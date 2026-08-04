@@ -51,14 +51,7 @@ extension Scene {
             }
         }
         var scene = Scene(nodes: roots)
-
-        let center = scene.nodes.isEmpty ? nil : scene.bounds
-        let sceneCenter = center.map { ($0.min + $0.max) * 0.5 }
-        scene.cameras = build.cameraRefs.map {
-            resolveCamera(projection: $0.projection, near: $0.near, far: $0.far,
-                          world: $0.world, sceneCenter: sceneCenter)
-        }
-        scene.lights = resolveUSDLights(refs: build.lightRefs)
+        Scene.normalizeLightSpecs(in: &scene.nodes)
 
         // The stage's one animation: baked xformOp tracks plus the SkelAnimation
         // channels, every track bound by prim identity. Each animated prim's
@@ -105,9 +98,6 @@ extension Scene {
         /// The next identity to assign; after the walk, the floor for the
         /// skinning pass's synthesized joint indices.
         var nextIndex = 0
-        var cameraRefs: [(projection: Camera3D.Projection, near: Double, far: Double,
-                          world: simd_float4x4)] = []
-        var lightRefs: [(prim: USDPrim, world: simd_double4x4)] = []
         /// Resolved materials by material prim path (decoding a texture twice
         /// would be wasteful; `nil` records a material that resolved to nothing).
         var materials: [String: MeshMaterial?] = [:]
@@ -140,12 +130,6 @@ extension Scene {
             renderSkipped = true
         }
 
-        if prim.typeName == "Camera", !hidden {
-            build.cameraRefs.append(resolveUSDCamera(prim, world: world))
-        }
-        if usdLightTypeNames.contains(prim.typeName), !renderSkipped {
-            build.lightRefs.append((prim, world))
-        }
         var mesh: Mesh?
         if prim.typeName == "Mesh", !renderSkipped {
             // A deforming mesh must keep the authored points indexed: every
@@ -165,8 +149,18 @@ extension Scene {
                 children.append(node)
             }
         }
-        return SceneNode(name: prim.name, mesh: mesh, children: children,
-                         localTransform: f4x4(local), sourceIndex: index)
+        var node = SceneNode(name: prim.name, mesh: mesh, children: children,
+                             localTransform: f4x4(local), sourceIndex: index)
+        // Cameras and lights ride their nodes: the projection / emission
+        // halves attach here and the pose resolves from the node's world
+        // transform on every `cameras` / `lights` read.
+        if prim.typeName == "Camera", !hidden {
+            node.cameraSpec = usdCameraSpec(prim)
+        }
+        if usdLightTypeNames.contains(prim.typeName), !renderSkipped {
+            node.lightSpec = usdLightSpec(prim)
+        }
+        return node
     }
 
     /// Mutate the first node carrying `sourceIndex` (depth-first), in place.
@@ -182,12 +176,13 @@ extension Scene {
 
     // MARK: - Cameras
 
-    /// A camera prim's authored projection: field of view from focal length
-    /// over vertical aperture (both spelled in the same tenth-of-unit scale,
-    /// so only the ratio matters), an orthographic aperture in tenths of a
-    /// world unit, near/far from `clippingRange`. Schema defaults apply.
-    private static func resolveUSDCamera(_ prim: USDPrim, world: simd_double4x4)
-        -> (projection: Camera3D.Projection, near: Double, far: Double, world: simd_float4x4) {
+    /// A camera prim's authored projection as a node-local spec: field of view
+    /// from focal length over vertical aperture (both spelled in the same
+    /// tenth-of-unit scale, so only the ratio matters), an orthographic
+    /// aperture in tenths of a world unit, near/far from `clippingRange`.
+    /// Schema defaults apply; the pose resolves later from the node's world
+    /// transform.
+    private static func usdCameraSpec(_ prim: USDPrim) -> SceneCameraSpec {
         var near = 1.0
         var far = 1_000_000.0
         if case .tuple(let clip)? = prim.attribute("clippingRange")?.authoredValue,
@@ -206,7 +201,7 @@ extension Scene {
             projection = .perspective(fieldOfView: min(max(fov, 0.01), .pi - 0.01))
             near = max(near, 1e-4)
         }
-        return (projection, near, far, f4x4(world))
+        return SceneCameraSpec(projection: projection, near: near, far: far)
     }
 
     // MARK: - Meshes

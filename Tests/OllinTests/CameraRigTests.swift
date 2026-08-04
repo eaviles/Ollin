@@ -301,4 +301,64 @@ struct CameraRigTests {
         }
         #expect(abs(h - 2 * 10 * tan((.pi / 3) / 2)) < 1e-9)
     }
+
+    // MARK: Seeding from an authored camera
+
+    /// The orbit decomposition inverts `Camera3D.orbiting` exactly: an orbit
+    /// camera comes back as the parameters that built it.
+    @Test func orbitPoseRoundTripsAnOrbitingCamera() {
+        let cam = Camera3D.orbiting(target: Vector3(1, 2, 3), radius: 8,
+                                    azimuth: 0.7, elevation: 0.4,
+                                    fieldOfView: 1.1)
+        let pose = cam.orbitPose
+        #expect((pose.target - Vector3(1, 2, 3)).length < 1e-9)
+        #expect(abs(pose.radius - 8) < 1e-9)
+        #expect(abs(pose.azimuth - 0.7) < 1e-9)
+        #expect(abs(pose.elevation - 0.4) < 1e-9)
+        #expect(abs(pose.fieldOfView - 1.1) < 1e-12)
+        #expect(!pose.orthographic)
+    }
+
+    /// Seeding the rig from an arbitrary authored camera reproduces its shot:
+    /// `makeCamera` lands on the same eye and view axis (up snaps to y-up, the
+    /// rig's one convention).
+    @Test func seededRigReproducesAnAuthoredCamera() {
+        let cam = Camera3D.perspective(eye: Vector3(4, 3, -2), target: Vector3(0.5, 1, 0),
+                                       fieldOfView: 0.9, near: 0.25, far: 60)
+        let pose = cam.orbitPose
+        let rig = CameraRig()
+        rig.seed(target: pose.target, radius: pose.radius, azimuth: pose.azimuth,
+                 elevation: pose.elevation, fieldOfView: pose.fieldOfView,
+                 orthographic: pose.orthographic)
+        let made = rig.makeCamera(near: cam.near, far: cam.far)
+        #expect((made.eye - cam.eye).length < 1e-9)
+        #expect((made.target - cam.target).length < 1e-9)
+        #expect(made.near == cam.near)
+        #expect(made.far == cam.far)
+        guard case .perspective(let fov) = made.projection else {
+            Issue.record("expected a perspective projection"); return
+        }
+        #expect(abs(fov - 0.9) < 1e-12)
+    }
+
+    /// An authored orthographic camera opens the rig flat, its frame height
+    /// mapped to the field of view at the target distance so the seeded shot
+    /// shows the authored extent, and toggling projections holds the scale.
+    @Test func orthographicCameraSeedsAnOrthographicRig() {
+        let cam = Camera3D.orthographic(eye: Vector3(0, 0, 10), target: .zero, height: 5)
+        let pose = cam.orbitPose
+        #expect(pose.orthographic)
+        let rig = CameraRig()
+        rig.seed(target: pose.target, radius: pose.radius, azimuth: pose.azimuth,
+                 elevation: pose.elevation, fieldOfView: pose.fieldOfView,
+                 orthographic: pose.orthographic)
+        guard case .orthographic(let h) = rig.makeCamera(near: 0.1, far: 100).projection else {
+            Issue.record("expected an orthographic projection"); return
+        }
+        #expect(abs(h - 5) < 1e-9)
+
+        // The seed's flag lands once: a later seed can't flip it back.
+        rig.seed(target: .zero, radius: 3, elevation: 0, fieldOfView: .pi / 3)
+        #expect(rig.isOrthographic)
+    }
 }

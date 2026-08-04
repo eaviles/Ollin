@@ -15,6 +15,7 @@ Each is a single call you make in `draw()`, like `camera(...)`. A sketch that ca
 - [The input surface it reads](#input) - `scrollDeltaY`, `modifiers`, `mouseWheel()`, `rightMouseIsPressed`
 - [Cinematic moves](#moves) - `cameraMove(_:)`
 - [The move catalog](#catalog) - `CameraMove`
+- [Opening on an authored camera](#from-authored) - the `from:` forms, seeding the rig from any `Camera3D`
 - [Composing: frame, then drift](#compose)
 - [Scene inspection views](#views) - `cameraView(_:)` / `resetCamera()`, the Camera menu
 - [Orientation axis & ground grid](#chrome) - `cameraAxis()` / `groundGrid()`, the live-only viewport aids
@@ -116,8 +117,18 @@ Like `cameraControl()`, the `target` / `radius` / `elevation` / `fieldOfView` ar
 cameraMove(.orbitAndRise(period: 12, rise: 0.5, in: 6), radius: 7)
 ```
 
-<a id="compose"></a>
-### Composing: frame, then drift
+<a id="from-authored"></a>
+### Opening on an authored camera
+
+All three calls take a `from:` form that seeds the opening shot from any `Camera3D` instead of the framing arguments, the natural fit for a [loaded scene's](./Scenes.md#cameras) authored camera: open on the exact shot composed in the design tool, then hand the viewer the orbit (or let a move drift from it).
+
+```swift
+cameraControl(from: stage.camera ?? .orbiting(radius: 6))     // the authored view, explorable
+cameraShowcase(from: stage.camera ?? .orbiting(radius: 6))    // ...or auto-orbiting from it
+cameraMove(.handheld(amount: 0.05), from: stage.camera!)      // ...or breathing on it
+```
+
+The camera decomposes into the rig's orbit pose: its `target` becomes the pivot, the eye's offset the radius and angles, and its field of view carries over. An orthographic camera opens the rig flat (the axis widget's Ortho toggle switches back), its frame height mapped to the matching field of view at the target distance so the shot shows the authored extent. `near`/`far` default to the camera's own clip range. Like the framing arguments, it seeds on the *first* call only, and the idle return / `.reset` glide back to it. Two things don't carry: the rig orbits y-up, so an authored camera roll is dropped, and a camera looking straight up or down clamps just off the pole.
 
 Because both halves write the same pose, a move *composes over the pose it starts from*. Switching from one move to another departs from where the last one left the camera, and a move started after `cameraControl()` departs from the pose the viewer framed by hand. So "frame it, then let it drift" is one call after another:
 

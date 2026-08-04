@@ -146,8 +146,10 @@ final class CameraRig {
     /// Seed the starting pose once. The first `cameraControl()` / `cameraMove()`
     /// call wins; later calls keep whatever the controller or move has reached, so
     /// passing framing arguments every frame does not snap the pose back.
+    /// `orthographic` sets the projection's starting state (an authored ortho
+    /// camera opens flat); the axis widget's toggle owns it from then on.
     func seed(target: Vector3, radius: Double, azimuth: Double = 0,
-              elevation: Double, fieldOfView: Double) {
+              elevation: Double, fieldOfView: Double, orthographic: Bool = false) {
         guard !seeded else { return }
         seeded = true
         self.target = target
@@ -155,6 +157,7 @@ final class CameraRig {
         self.azimuth = azimuth
         self.elevation = elevation
         self.fieldOfView = fieldOfView
+        isOrthographic = orthographic
         anchorTarget = target
         anchorRadius = radius
         anchorAzimuth = azimuth

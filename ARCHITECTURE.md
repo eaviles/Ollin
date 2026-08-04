@@ -2278,9 +2278,29 @@ byte-identical to the equivalent manual transform-stack calls.
   normalization keeps the authored balance within a kind without letting the
   incomparable units fight each other. Colors arrive linear and re-encode to
   sRGB, the base-color-factor treatment.
-- **Cameras and lights resolve at load** into flat world-space arrays;
-  moving a node later, by hand or by an applied animation, moves geometry
-  only. Keeping them on their nodes is the noted follow-up (the design note).
+- **Cameras and lights ride their nodes.** The loaders never resolve a pose:
+  they attach internal node-local specs (`SceneLightSpec`, everything but the
+  pose: kind, color, per-kind-normalized intensity, cone and area extents,
+  emitting down local -z; `SceneCameraSpec`, projection + clip range), and
+  `scene.cameras`/`scene.lights` are computed properties that walk the tree's
+  *current* transforms on every read (`Scene.visitWorlds`, pre-order,
+  matching the old collection order), so a carrier moved by hand or by an
+  applied animation carries its camera or light. One shared
+  `SceneLightSpec.resolve(world:)` serves both formats (position from column
+  3, direction from -z, a rect's extents scaled by the axis lengths, a tube's
+  endpoints transformed whole), so glTF and USD cannot drift; the camera
+  getter re-derives the scene-center target from the *posed* bounds, which is
+  render-safe because moving a look-at target along the view ray leaves the
+  view matrix unchanged. Intensity normalization (per kind, brightest = 1)
+  happens once at load over the specs (`normalizeLightSpecs`), so reads do no
+  cross-light work and later node edits can't re-scale the mix. Assigning
+  either array stores a fixed override (`fixedCameras`/`fixedLights`, and a
+  get-modify-set tweak of one element is an assignment): the hand-set,
+  world-space values win from then on and stop following the nodes, the
+  documented trade that keeps "tweak a light after loading" working. USD
+  composes prim worlds in double during the walk, but specs resolve through
+  the Float node tree; the drift is sub-ulp for authored transforms and the
+  whole snapshot suite passed unchanged.
 - **Value semantics with an in-place subscript.** `scene.node(_:)` returns a
   copy (nodes are values); `scene["name"]` get/set finds the first depth-first
   match and writes back through the tree, so
@@ -2528,11 +2548,13 @@ stage's camera ops itself, and `USDXformTests` pins our matrix against its
 
 The evaluator's first customer was **UsdLux lights** (stage 2 of the arc):
 light prims don't survive the platform importer at all, so
-`SceneLoaderUSDLights.swift` resolves them from the raw tree into ordinary
-`Light` values on `Scene.lights` (today the scene walk hands it the light
-prims it collected, so visibility and purpose gate them; the whole-stage
-`resolveUSDLights(_:)` form reads every light prim). The mapping is complete
-over Ollin's light kinds:
+`SceneLoaderUSDLights.swift` reads them from the raw tree into ordinary
+`Light` values on `Scene.lights` (today as node-riding `SceneLightSpec`s the
+scene walk attaches where it builds each light prim's node, so visibility
+and purpose gate them and the pose resolves through the tree's current
+transforms on every read; the whole-stage `resolveUSDLights(_:)` form reads
+every light prim directly). The mapping is complete over Ollin's light
+kinds:
 
 | UsdLux prim | Ollin light |
 | --- | --- |
@@ -3892,6 +3914,25 @@ plus a capped release-momentum flick. Both halves seed the framing on the first
 call only and compose over the current pose (`CameraRig.lastMode` re-syncs the
 controller's goal after a move), so "frame by hand, then drift" is one call
 after another, and the rig clamps elevation off the poles.
+
+**Seeding from an authored camera (the `from:` forms).** `cameraControl(from:)`
+/ `cameraMove(_:from:)` / `cameraShowcase(_:from:)` seed the rig from any
+`Camera3D` (a loaded scene's authored camera being the point), via the internal
+`Camera3D.orbitPose` decomposition: `target` is the pivot, the eye offset
+splits into radius / azimuth (`atan2(x, z)`, inverting `Camera3D.orbiting`
+exactly, round-trip-pinned) / elevation (`asin(y/r)`), and the projection maps
+to a field of view. An orthographic camera converts its frame height to the
+equivalent fov at the target distance (`2 * atan(h / 2r)`) and seeds
+`isOrthographic` through a `seed(orthographic:)` parameter that lands only
+when the seed takes, so the shot shows the authored extent, the axis widget's
+projection toggle still owns the flag afterward, and flipping projections
+holds the scale (the existing `makeCamera` convention). `near`/`far` default
+to the camera's own clip range, read every frame rather than seeded. What
+doesn't carry, by design: the rig is y-up, so authored roll drops, and a
+straight-down camera clamps just off the pole. The overloads call `seed`
+first, then forward to the plain forms (whose own `seed` is then a no-op),
+so every downstream behavior (anchor capture, idle return, view snaps) sees
+the authored framing as the opening shot.
 
 The rig is a plain `let` on `Sketch` advanced explicitly, *not*
 `FrameAdvancing`: the Mirror-collection cache behind `FrameAdvancing` only sees

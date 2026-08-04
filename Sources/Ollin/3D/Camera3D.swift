@@ -113,6 +113,37 @@ public extension Camera3D {
     }
 }
 
+// MARK: - Orbit decomposition (internal; the camera rig seeds from an authored camera)
+
+extension Camera3D {
+    /// This camera's pose as the rig's orbit parameters: the target as the
+    /// pivot, the eye's offset split into radius / azimuth / elevation, and a
+    /// vertical field of view. An orthographic camera maps its frame height to
+    /// the equivalent field of view at the target distance, so the rig's
+    /// projection toggle holds the scale; an intrinsic one keeps its lens
+    /// angle. The rig orbits y-up, so any authored roll is dropped.
+    var orbitPose: (target: Vector3, radius: Double, azimuth: Double,
+                    elevation: Double, fieldOfView: Double, orthographic: Bool) {
+        let offset = eye - target
+        let radius = Swift.max(offset.length, 1e-3)
+        let elevation = asin(Swift.min(Swift.max(offset.y / radius, -1), 1))
+        let azimuth = (offset.x != 0 || offset.z != 0) ? atan2(offset.x, offset.z) : 0
+        switch projection {
+        case .perspective(let fov):
+            return (target, radius, azimuth, elevation, fov, false)
+        case .orthographic(let height):
+            // The field of view that frames `height` at the target distance,
+            // so the seeded pose shows the extent the authored camera did.
+            let fov = 2 * atan(Swift.max(height, 1e-6) / (2 * radius))
+            return (target, radius, azimuth, elevation, fov, true)
+        case .intrinsic(let k):
+            let fov = k.height > 0 && k.fy > 0
+                ? 2 * atan(Double(k.height) / (2 * k.fy)) : .pi / 3
+            return (target, radius, azimuth, elevation, fov, false)
+        }
+    }
+}
+
 // MARK: - Matrices (internal — the renderer consumes these; sketches set the camera)
 
 extension Camera3D {

@@ -1,11 +1,11 @@
 import Foundation
 import simd
 
-// The lights leg of USD scene import: the authored UsdLux lights resolve into
-// ordinary `Light` values on `Scene.lights`, from the same raw-tree read that
-// builds the node tree (`loadUSDScene` collects the light prims with their
-// world transforms during its walk, so visibility and purpose gate them the
-// way they gate meshes).
+// The lights leg of USD scene import: the authored UsdLux lights become
+// node-riding `SceneLightSpec`s on the scene walk's nodes (`loadUSDScene`
+// attaches them where it builds each light prim's node, so visibility and
+// purpose gate them the way they gate meshes), and `Scene.lights` resolves
+// them into ordinary `Light` values through the tree's current transforms.
 //
 // The mapping, each USD light kind onto the Ollin light it is:
 //
@@ -21,12 +21,12 @@ import simd
 //
 // Every kind emits along its node's -z axis (the camera convention, shared
 // with glTF), so direction, position, and the area extents resolve through
-// the prim's world transform at load. Attribute names carry the `inputs:`
-// prefix, with the bare pre-2021 spellings accepted as fallbacks. The glTF
-// treatment applies throughout: colors arrive linear and re-encode to sRGB,
-// and physical intensities (scaled by 2^exposure) mean nothing without the
-// falloff model USD assumes, so each kind normalizes to its brightest;
-// relative balance survives, absolute units don't.
+// the prim's world transform whenever the lights are read. Attribute names
+// carry the `inputs:` prefix, with the bare pre-2021 spellings accepted as
+// fallbacks. The glTF treatment applies throughout: colors arrive linear and
+// re-encode to sRGB, and physical intensities (scaled by 2^exposure) mean
+// nothing without the falloff model USD assumes, so each kind normalizes to
+// its brightest; relative balance survives, absolute units don't.
 
 extension Scene {
 
@@ -36,46 +36,33 @@ extension Scene {
                                                 "DiskLight", "CylinderLight"]
 
     /// The authored UsdLux lights of `stage`, resolved through their prims'
-    /// world transforms. (The scene walk passes its own collected refs
-    /// instead, so hidden prims stay dark; this whole-stage form reads every
-    /// light prim.)
+    /// world transforms. (The scene walk attaches node-riding specs instead,
+    /// so hidden prims stay dark; this whole-stage form reads every light
+    /// prim.)
     static func resolveUSDLights(_ stage: USDStage) -> [Light] {
-        var refs: [(prim: USDPrim, world: simd_double4x4)] = []
+        var refs: [(spec: SceneLightSpec, world: simd_float4x4)] = []
         stage.visitPrims { prim, world in
-            if usdLightTypeNames.contains(prim.typeName) { refs.append((prim, world)) }
+            if usdLightTypeNames.contains(prim.typeName), let spec = usdLightSpec(prim) {
+                refs.append((spec, f4x4(world)))
+            }
         }
-        return resolveUSDLights(refs: refs)
-    }
-
-    /// The collected light prims resolved into `Light` values, with the
-    /// per-kind brightest-is-1 intensity normalization.
-    static func resolveUSDLights(refs: [(prim: USDPrim, world: simd_double4x4)]) -> [Light] {
         guard !refs.isEmpty else { return [] }
-
-        var lights: [Light] = []
-        var brightness: [Double] = []
-        for (prim, world) in refs {
-            guard let light = resolveUSDLight(prim, world: world) else { continue }
-            lights.append(light.0)
-            brightness.append(light.brightness)
-        }
 
         // Per-kind normalization: the brightest of each kind becomes 1.
         var kindMax: [Light.Kind: Double] = [:]
-        for (light, b) in zip(lights, brightness) {
-            kindMax[light.kind] = Swift.max(kindMax[light.kind] ?? 0, b)
+        for r in refs { kindMax[r.spec.kind] = Swift.max(kindMax[r.spec.kind] ?? 0, r.spec.intensity) }
+        return refs.map { r in
+            var spec = r.spec
+            let peak = kindMax[spec.kind] ?? 0
+            spec.intensity = peak > 0 ? spec.intensity / peak : 1
+            return spec.resolve(world: r.world)
         }
-        for i in lights.indices {
-            let peak = kindMax[lights[i].kind] ?? 0
-            lights[i].intensity = peak > 0 ? brightness[i] / peak : 1
-        }
-        return lights
     }
 
-    /// One light prim as a `Light` (intensity still the raw physical
-    /// brightness; the caller normalizes) or nil for a kind this doesn't map.
-    private static func resolveUSDLight(_ prim: USDPrim, world: simd_double4x4)
-        -> (Light, brightness: Double)? {
+    /// One light prim as a node-local spec, intensity still the raw physical
+    /// brightness (`normalizeLightSpecs` rescales once the tree is built), or
+    /// nil for a kind this doesn't map.
+    static func usdLightSpec(_ prim: USDPrim) -> SceneLightSpec? {
         // Schema defaults: intensity 1 (except DistantLight, whose fallback
         // approximates sunlight), exposure 0, white; brightness scales by
         // 2^exposure.
@@ -89,52 +76,36 @@ extension Scene {
             color = Color(red: enc(c[0]), green: enc(c[1]), blue: enc(c[2]))
         }
 
-        func vec(_ c: SIMD4<Double>) -> Vector3 { Vector3(c.x, c.y, c.z) }
-        let position = vec(world.columns.3)
-        var direction = -vec(world.columns.2)
-        direction = direction.lengthSquared > 1e-12 ? direction.normalized : Vector3(0, -1, 0)
-        let xAxis = vec(world.columns.0)
-        let yAxis = vec(world.columns.1)
-
-        let light: Light
         switch prim.typeName {
         case "DistantLight":
-            light = .directional(color, direction: direction)
+            return SceneLightSpec(kind: .directional, color: color, intensity: brightness)
         case "SphereLight":
             if let halfAngle = lightScalar(prim, "shaping:cone:angle") {
                 // The cone restricts emission to `halfAngle` degrees off the
                 // -z axis; softness fades the cone's interior edge.
                 let softness = min(max(lightScalar(prim, "shaping:cone:softness") ?? 0, 0), 1)
-                light = .spot(color, at: position, direction: direction,
-                              angle: 2 * halfAngle * .pi / 180, penumbra: softness)
-            } else {
-                light = .point(color, at: position)
+                return SceneLightSpec(kind: .spot, color: color, intensity: brightness,
+                                      coneAngle: 2 * halfAngle * .pi / 180, penumbra: softness)
             }
+            return SceneLightSpec(kind: .point, color: color, intensity: brightness)
         case "RectLight":
             // Width spans local x, height local y; a scaling transform scales
-            // the panel with it.
-            let width = (lightScalar(prim, "width") ?? 1) * xAxis.length
-            let height = (lightScalar(prim, "height") ?? 1) * yAxis.length
-            let up = yAxis.lengthSquared > 1e-12 ? yAxis.normalized : .unitY
-            light = .rect(color, at: position, direction: direction,
-                          width: width, height: height, up: up)
+            // the panel with it at resolution.
+            return SceneLightSpec(kind: .rect, color: color, intensity: brightness,
+                                  width: lightScalar(prim, "width") ?? 1,
+                                  height: lightScalar(prim, "height") ?? 1)
         case "DiskLight":
-            let radius = (lightScalar(prim, "radius") ?? 0.5)
-                * (xAxis.length + yAxis.length) / 2
-            light = .disk(color, at: position, direction: direction, radius: radius)
+            return SceneLightSpec(kind: .disk, color: color, intensity: brightness,
+                                  radius: lightScalar(prim, "radius") ?? 0.5)
         case "CylinderLight":
-            // The tube runs along local x; transforming its endpoints carries
-            // position, aim, and any scale in one move.
-            let half = (lightScalar(prim, "length") ?? 1) / 2
-            let from = world * SIMD4<Double>(-half, 0, 0, 1)
-            let to = world * SIMD4<Double>(half, 0, 0, 1)
-            let radius = (lightScalar(prim, "radius") ?? 0.5)
-                * (yAxis.length + vec(world.columns.2).length) / 2
-            light = .tube(color, from: vec(from), to: vec(to), radius: radius)
+            // The tube runs along local x; resolution transforms its endpoints,
+            // carrying position, aim, and any scale in one move.
+            return SceneLightSpec(kind: .tube, color: color, intensity: brightness,
+                                  radius: lightScalar(prim, "radius") ?? 0.5,
+                                  length: lightScalar(prim, "length") ?? 1)
         default:
             return nil
         }
-        return (light, brightness)
     }
 
     /// A light input by its base name: the `inputs:`-prefixed spelling, else

@@ -573,6 +573,53 @@ open class Sketch {
         camera(cameraRig.makeCamera(near: near, far: far))
     }
 
+    /// Run a cinematic `move` opening on an authored camera's framing: the shot
+    /// starts at `camera`'s own pose (its target, distance, angle, and field of
+    /// view, e.g. a loaded scene's `scene.camera`), then the move owns it. Seeds
+    /// on the *first* call only, like the plain form's framing arguments.
+    /// `near`/`far` default to the camera's own clip range. The rig orbits y-up,
+    /// so an authored roll is dropped.
+    public func cameraMove(_ move: CameraMove, from camera: Camera3D,
+                           near: Double? = nil, far: Double? = nil) {
+        seedCameraRig(from: camera)
+        cameraMove(move, near: near ?? camera.near, far: far ?? camera.far)
+    }
+
+    /// Hand the viewer the camera, opening on an authored camera's framing: the
+    /// view starts at `camera`'s own pose (e.g. a loaded scene's `scene.camera`)
+    /// and the viewer orbits, dollies, and pans from there. The one-call form of
+    /// "open on the authored shot, then let them explore". Seeds on the *first*
+    /// call only; `near`/`far` default to the camera's own clip range. The rig
+    /// orbits y-up, so an authored roll is dropped.
+    public func cameraControl(from camera: Camera3D,
+                              near: Double? = nil, far: Double? = nil) {
+        seedCameraRig(from: camera)
+        cameraControl(near: near ?? camera.near, far: far ?? camera.far)
+    }
+
+    /// The interactive orbit, opening on an authored camera's framing: `move`
+    /// plays from `camera`'s own pose (e.g. a loaded scene's `scene.camera`),
+    /// the viewer can take over any time, and the idle return glides back to
+    /// the authored shot. Seeds on the *first* call only; `near`/`far` default
+    /// to the camera's own clip range. The rig orbits y-up, so an authored
+    /// roll is dropped.
+    public func cameraShowcase(_ move: CameraMove = .autoOrbit(), from camera: Camera3D,
+                               near: Double? = nil, far: Double? = nil,
+                               idleReturn: Double = 10, returnDuration: Double = 4) {
+        seedCameraRig(from: camera)
+        cameraShowcase(move, near: near ?? camera.near, far: far ?? camera.far,
+                       idleReturn: idleReturn, returnDuration: returnDuration)
+    }
+
+    /// Seed the rig's opening pose from an authored camera (the first call
+    /// wins, matching the plain forms' framing arguments).
+    private func seedCameraRig(from camera: Camera3D) {
+        let pose = camera.orbitPose
+        cameraRig.seed(target: pose.target, radius: pose.radius, azimuth: pose.azimuth,
+                       elevation: pose.elevation, fieldOfView: pose.fieldOfView,
+                       orthographic: pose.orthographic)
+    }
+
     /// Snap the camera to a canonical inspection angle, the way a modeling tool's
     /// numpad jumps the viewport to a known view. `.reset` returns to the sketch's
     /// opening framing; the six axis views (`.front`/`.back`/`.left`/`.right`/`.top`/

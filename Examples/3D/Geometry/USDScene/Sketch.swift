@@ -14,7 +14,8 @@ import Foundation
 /// beam on the gem, a rect backlight panel, an overhead disk pool, and a
 /// cylinder floor glow (regenerate it with `Scripts/make-usd-scene.swift`). The
 /// gem turns about its own pivot through the name subscript, its authored
-/// plinth transform composing underneath.
+/// plinth transform composing underneath, and the view opens on the authored
+/// camera then hands you the orbit (`cameraControl(from:)`).
 ///
 /// Point this at any USD scene by setting `OLLIN_SCENE` to its path, an exported
 /// `.usdz` from a 3D design tool drops straight in.
@@ -34,9 +35,11 @@ final class USDScene: Sketch {
     override func draw() {
         background(Color(hex: 0x101318))
 
-        // The authored view and the authored lighting rig; a scene with no
-        // lights of its own falls back to a plain sketch key.
-        camera(court.camera ?? .orbiting(target: Vector3(0, 1, 0), radius: 7, elevation: 0.25))
+        // Open on the authored view, then hand the viewer the orbit; the
+        // authored lighting rig applies as-is, and a scene with no lights of
+        // its own falls back to a plain sketch key.
+        cameraControl(from: court.camera ?? .orbiting(target: Vector3(0, 1, 0),
+                                                      radius: 7, elevation: 0.25))
         ambientLight(Color(white: 0.22))
         if court.lights.isEmpty {
             directionalLight(Color(hex: 0xFFF2DC), direction: Vector3(-0.55, -0.75, -0.35),

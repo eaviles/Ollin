@@ -194,6 +194,63 @@ struct SceneLoaderTests {
         #expect(abs(sun.intensity - 1) < 1e-9)
     }
 
+    // MARK: Lights and cameras ride their nodes
+
+    @Test func lightsFollowAMovedNode() throws {
+        var scene = try #require(try loadScene(stageJSON))
+        // Moving the light's carrier moves the resolved light: the "warm"
+        // point rides rig/warm, so lifting "rig" lifts it.
+        scene["rig"]?.position = Vector3(3, 1, 0)
+        #expect((scene.lights[0].position - Vector3(3, 6, 0)).length < 1e-5)
+        // Rotating the directional's node re-aims it: a quarter turn about y
+        // swings its -z beam onto -x.
+        scene["sun"]?.rotate(.pi / 2, axis: .unitY)
+        #expect((scene.lights[2].direction - Vector3(-1, 0, 0)).length < 1e-5)
+    }
+
+    @Test func camerasFollowAMovedNode() throws {
+        var scene = try #require(try loadScene(stageJSON))
+        scene["camNode"]?.position = Vector3(2, 1, 5)
+        let cam = try #require(scene.camera)
+        #expect((cam.eye - Vector3(2, 1, 5)).length < 1e-5)
+    }
+
+    @Test func anAppliedAnimationMovesALightsNode() throws {
+        var scene = try #require(try loadScene(stageJSON))
+        // A translation track targeting the "warm" carrier (file node 3): the
+        // authored (0,5,0) slides to (0,5,4) at t=1, and the resolved light
+        // (under "rig" at (1,0,0)) follows the posed tree.
+        let slide = SceneAnimation.Sampler(times: [0, 1],
+                                           values: [SIMD4<Float>(0, 5, 0, 0),
+                                                    SIMD4<Float>(0, 5, 4, 0)],
+                                           mode: .linear)
+        let anim = SceneAnimation(name: "slide", duration: 1,
+                                  tracks: [.init(nodeIndex: 3, translation: slide)])
+        scene.apply(anim, at: 1)
+        #expect((scene.lights[0].position - Vector3(1, 5, 4)).length < 1e-5)
+    }
+
+    @Test func settingLightsFreezesThemToTheHandSetArray() throws {
+        var scene = try #require(try loadScene(stageJSON))
+        // Tweaking one in place is a set: the array becomes yours, fixed in
+        // world space, and stops following the nodes.
+        scene.lights[0].intensity = 0.25
+        #expect(abs(scene.lights[0].intensity - 0.25) < 1e-12)
+        let held = scene.lights[0].position
+        scene["rig"]?.position = Vector3(9, 9, 9)
+        #expect(scene.lights[0].position == held)
+        #expect(scene.lights.count == 4)
+    }
+
+    @Test func handBuiltSceneKeepsItsArrays() {
+        let light = Light.point(.white, at: Vector3(1, 2, 3))
+        let cam = Camera3D(eye: Vector3(0, 0, 5), target: .zero)
+        let scene = Ollin.Scene(nodes: [SceneNode(name: "n")],
+                                cameras: [cam], lights: [light])
+        #expect(scene.lights == [light])
+        #expect(scene.cameras == [cam])
+    }
+
     // MARK: The USD reader
 
     /// Write a USD text fixture to a temp file and load it as a `Scene`.
@@ -494,6 +551,15 @@ struct SceneLoaderTests {
         #expect((neon.direction - Vector3(1, 0, 0)).length < 1e-6)
         #expect(abs(neon.length - 4) < 1e-6)
         #expect(abs(neon.radius - 0.1) < 1e-6)
+    }
+
+    @Test func usdLightsFollowAMovedNode() throws {
+        var scene = try #require(try loadUSDScene(lightsUSDA))
+        // The UsdLux prims are nodes too: lifting "rig" carries its sphere
+        // light, and the rest of the rig keeps resolving.
+        scene["rig"]?.position = Vector3(2, 1, 0)
+        #expect((scene.lights[0].position - Vector3(2, 6, 0)).length < 1e-5)
+        #expect(scene.lights.count == 7)
     }
 
     @Test func usdzPackageCarriesLightsThrough() throws {

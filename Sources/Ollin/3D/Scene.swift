@@ -37,16 +37,30 @@ public struct Scene: Sendable {
 
     /// The root nodes of the scene graph, in document order.
     public var nodes: [SceneNode]
-    /// Every camera the file authored, resolved to world space in traversal order.
+    /// Every camera the file authored, resolved to world space in traversal
+    /// order through the tree's *current* transforms, so a camera rides its
+    /// node: move the node (by hand or by an applied animation) and the camera
+    /// moves with it. Assigning this property replaces the authored cameras
+    /// with your own fixed array, which no longer follows the nodes.
     /// glTF cameras carry no aspect ratio worth honoring here: the projection uses
     /// the sketch's canvas aspect, like every other `Camera3D`.
-    public var cameras: [Camera3D]
-    /// Every light the file authored, resolved to world space in traversal order.
-    /// Ollin's punctual lights have no distance falloff, so the file's physical
-    /// intensities (lux, candela) can't carry over as-is: within each light kind
-    /// they are scaled so the brightest is 1, keeping relative balance. Tweak per
-    /// light after loading if the mix needs it.
-    public var lights: [Light]
+    public var cameras: [Camera3D] {
+        get { fixedCameras ?? nodeCameras }
+        set { fixedCameras = newValue }
+    }
+    /// Every light the file authored, resolved to world space in traversal
+    /// order through the tree's *current* transforms, so a light rides its
+    /// node: move the node (by hand or by an applied animation) and the light
+    /// moves with it. Ollin's punctual lights have no distance falloff, so the
+    /// file's physical intensities (lux, candela) can't carry over as-is:
+    /// within each light kind they are scaled so the brightest is 1, keeping
+    /// relative balance. Assigning this property (tweaking one light in place
+    /// counts) replaces the authored lights with your own fixed array, which
+    /// no longer follows the nodes.
+    public var lights: [Light] {
+        get { fixedLights ?? nodeLights }
+        set { fixedLights = newValue }
+    }
     /// Every animation the file authored, in document order: keyframe tracks that
     /// pose the nodes. Play one with `apply(_:at:)`, or find one by name with
     /// `animation(_:)`.
@@ -56,13 +70,17 @@ public struct Scene: Sendable {
     /// The file's skins: joint hierarchies that pose skinned meshes. `drawScene`
     /// reads them; a node references one by index.
     var skins: [SceneSkin]
+    /// Hand-set camera/light arrays (from the initializer or the property
+    /// setters), overriding the node-resolved ones; `nil` follows the nodes.
+    var fixedCameras: [Camera3D]?
+    var fixedLights: [Light]?
 
     /// An empty scene, or one composed by hand from nodes you build yourself.
     public init(nodes: [SceneNode] = [], cameras: [Camera3D] = [],
                 lights: [Light] = [], name: String? = nil) {
         self.nodes = nodes
-        self.cameras = cameras
-        self.lights = lights
+        self.fixedCameras = cameras.isEmpty ? nil : cameras
+        self.fixedLights = lights.isEmpty ? nil : lights
         self.animations = []
         self.name = name
         self.skins = []
@@ -117,6 +135,71 @@ public struct Scene: Sendable {
         }
         for node in nodes { visit(node, parent: matrix_identity_float4x4) }
         return any ? (lo, hi) : (.zero, .zero)
+    }
+
+    // MARK: - Node-riding cameras and lights
+
+    /// Walk the tree depth-first, handing each node its composed world transform.
+    static func visitWorlds(_ nodes: [SceneNode], parent: simd_float4x4,
+                            _ body: (SceneNode, simd_float4x4) -> Void) {
+        for node in nodes {
+            let world = parent * node.localTransform
+            body(node, world)
+            visitWorlds(node.children, parent: world, body)
+        }
+    }
+
+    /// The authored lights resolved through the tree's current transforms, in
+    /// traversal order (each node's spec emits through its composed world).
+    private var nodeLights: [Light] {
+        var out: [Light] = []
+        Scene.visitWorlds(nodes, parent: matrix_identity_float4x4) { node, world in
+            if let spec = node.lightSpec { out.append(spec.resolve(world: world)) }
+        }
+        return out
+    }
+
+    /// The authored cameras resolved through the tree's current transforms, in
+    /// traversal order. The target rule reads the current bounds, so the pivot
+    /// follows the posed geometry.
+    private var nodeCameras: [Camera3D] {
+        var refs: [(spec: SceneCameraSpec, world: simd_float4x4)] = []
+        Scene.visitWorlds(nodes, parent: matrix_identity_float4x4) { node, world in
+            if let spec = node.cameraSpec { refs.append((spec, world)) }
+        }
+        guard !refs.isEmpty else { return [] }
+        let b = bounds
+        let sceneCenter: Vector3? = nodes.isEmpty ? nil : (b.min + b.max) * 0.5
+        return refs.map {
+            Scene.resolveCamera(projection: $0.spec.projection, near: $0.spec.near,
+                                far: $0.spec.far, world: $0.world, sceneCenter: sceneCenter)
+        }
+    }
+
+    /// Rescale every node-riding light spec so the brightest of each kind is 1
+    /// (specs arrive from the loaders carrying the file's raw brightness).
+    static func normalizeLightSpecs(in nodes: inout [SceneNode]) {
+        var kindMax: [Light.Kind: Double] = [:]
+        func scan(_ ns: [SceneNode]) {
+            for n in ns {
+                if let s = n.lightSpec {
+                    kindMax[s.kind] = Swift.max(kindMax[s.kind] ?? 0, s.intensity)
+                }
+                scan(n.children)
+            }
+        }
+        scan(nodes)
+        guard !kindMax.isEmpty else { return }
+        func apply(_ ns: inout [SceneNode]) {
+            for i in ns.indices {
+                if let s = ns[i].lightSpec {
+                    let peak = kindMax[s.kind] ?? 0
+                    ns[i].lightSpec?.intensity = peak > 0 ? s.intensity / peak : 1
+                }
+                apply(&ns[i].children)
+            }
+        }
+        apply(&nodes)
     }
 
     private static func find(_ name: String, in nodes: [SceneNode]) -> SceneNode? {
@@ -186,6 +269,15 @@ public struct SceneNode: Sendable {
     var vertexWeights: [SIMD4<Float>] = []
     /// The mesh's morph targets: per-vertex displacements `weights` blends in.
     var morphTargets: [SceneMorphTarget] = []
+    /// The authored light riding this node, in the node's own frame (emitting
+    /// down local -z, extents at authored size, intensity already normalized);
+    /// `Scene.lights` resolves it through the node's world transform on every
+    /// read, so moving the node carries the light.
+    var lightSpec: SceneLightSpec?
+    /// The authored camera riding this node: the projection and clip range
+    /// (the pose comes from the node's world transform on every `Scene.cameras`
+    /// read, so moving the node carries the camera).
+    var cameraSpec: SceneCameraSpec?
 
     /// A node built by hand: `name`, an optional `mesh`, a `position` for its local
     /// translation, and `children`. For composing a scene in code; loaded scenes
@@ -244,6 +336,72 @@ public struct SceneNode: Sendable {
     }
 }
 
+// MARK: - Node-riding light and camera payloads
+
+/// A file-authored light in its node's local frame: everything but the pose.
+/// The light emits down the node's local -z (both formats' convention), area
+/// extents are the authored sizes (a scaling transform scales them at
+/// resolution), and `intensity` carries the per-kind normalized brightness.
+struct SceneLightSpec: Equatable, Sendable {
+    var kind: Light.Kind
+    var color: Color
+    var intensity: Double
+    var coneAngle: Double = 0
+    var penumbra: Double = 0
+    var width: Double = 1
+    var height: Double = 1
+    var radius: Double = 0.5
+    var length: Double = 1
+
+    /// The spec as a world-space `Light` through its node's composed world
+    /// transform: position from the origin, direction down -z, a rect's width
+    /// and height scaled by the x/y axis lengths, a disk's radius by their
+    /// mean, a tube's endpoints (along local x) transformed whole.
+    func resolve(world: simd_float4x4) -> Light {
+        func vec(_ c: SIMD4<Float>) -> Vector3 {
+            Vector3(Double(c.x), Double(c.y), Double(c.z))
+        }
+        let position = vec(world.columns.3)
+        var direction = -vec(world.columns.2)
+        direction = direction.lengthSquared > 1e-12 ? direction.normalized : Vector3(0, -1, 0)
+        let xAxis = vec(world.columns.0)
+        let yAxis = vec(world.columns.1)
+        switch kind {
+        case .directional:
+            return .directional(color, direction: direction, intensity: intensity)
+        case .point:
+            return .point(color, at: position, intensity: intensity)
+        case .spot:
+            return .spot(color, at: position, direction: direction,
+                         angle: coneAngle, penumbra: penumbra, intensity: intensity)
+        case .rect:
+            let up = yAxis.lengthSquared > 1e-12 ? yAxis.normalized : .unitY
+            return .rect(color, at: position, direction: direction,
+                         width: width * xAxis.length, height: height * yAxis.length,
+                         up: up, intensity: intensity)
+        case .disk:
+            return .disk(color, at: position, direction: direction,
+                         radius: radius * (xAxis.length + yAxis.length) / 2,
+                         intensity: intensity)
+        case .tube:
+            let half = Float(length / 2)
+            let from = world * SIMD4<Float>(-half, 0, 0, 1)
+            let to = world * SIMD4<Float>(half, 0, 0, 1)
+            return .tube(color, from: vec(from), to: vec(to),
+                         radius: radius * (yAxis.length + vec(world.columns.2).length) / 2,
+                         intensity: intensity)
+        }
+    }
+}
+
+/// A file-authored camera in its node's local frame: the projection and clip
+/// range (`Scene.cameras` resolves the pose from the node's world transform).
+struct SceneCameraSpec: Equatable, Sendable {
+    var projection: Camera3D.Projection
+    var near: Double
+    var far: Double
+}
+
 // MARK: - Loading
 
 extension Scene {
@@ -295,6 +453,7 @@ extension Scene {
 
         // Build the value-typed node tree. glTF forbids cycles, but the file is
         // untrusted input, so a visited set turns a malformed loop into a skip.
+        let lightDefs = gltf.extensions?.KHR_lights_punctual?.lights ?? []
         var building = Set<Int>()
         func build(_ ni: Int) -> SceneNode? {
             guard ni >= 0, ni < gltfNodes.count, !building.contains(ni) else { return nil }
@@ -322,11 +481,21 @@ extension Scene {
                     node.vertexWeights = meshData.weights
                 }
             }
+            // Cameras and lights ride their nodes: attach the projection /
+            // emission halves here; the pose resolves from the node's world
+            // transform on every `cameras` / `lights` read.
+            if let ci = n.camera, let defs = gltf.cameras, defs.indices.contains(ci) {
+                node.cameraSpec = Scene.cameraSpec(defs[ci])
+            }
+            if let li = n.extensions?.KHR_lights_punctual?.light, lightDefs.indices.contains(li) {
+                node.lightSpec = Scene.lightSpec(lightDefs[li])
+            }
             return node
         }
         let roots = doc.rootNodes.compactMap(build)
 
         var scene = Scene(nodes: roots)
+        Scene.normalizeLightSpecs(in: &scene.nodes)
         // The skins, resolved to file node indices plus their inverse bind
         // matrices (identity where the file authored none).
         scene.skins = (gltf.skins ?? []).map { def in
@@ -338,64 +507,26 @@ extension Scene {
             scene.name = gltf.scenes?[si].name
         }
 
-        // Resolve cameras and lights: walk the same tree composing world
-        // transforms, collecting each in traversal order.
-        let center = scene.nodes.isEmpty ? nil : scene.bounds
-        var cameras: [(def: GLTF.CameraDef, world: simd_float4x4)] = []
-        var lightRefs: [(def: GLTF.PunctualLightDef, world: simd_float4x4)] = []
-        let lightDefs = gltf.extensions?.KHR_lights_punctual?.lights ?? []
-        var visiting = Set<Int>()
-        func visit(_ ni: Int, parent: simd_float4x4) {
-            guard ni >= 0, ni < gltfNodes.count, !visiting.contains(ni) else { return }
-            visiting.insert(ni)
-            defer { visiting.remove(ni) }
-            let n = gltfNodes[ni]
-            let world = parent * n.localMatrix
-            if let ci = n.camera, let defs = gltf.cameras, defs.indices.contains(ci) {
-                cameras.append((defs[ci], world))
-            }
-            if let li = n.extensions?.KHR_lights_punctual?.light, lightDefs.indices.contains(li) {
-                lightRefs.append((lightDefs[li], world))
-            }
-            for c in n.children ?? [] { visit(c, parent: world) }
-        }
-        for r in doc.rootNodes { visit(r, parent: matrix_identity_float4x4) }
-
-        let sceneCenter = center.map { ($0.min + $0.max) * 0.5 }
-        scene.cameras = cameras.compactMap { Scene.resolveCamera($0.def, world: $0.world,
-                                                                 sceneCenter: sceneCenter) }
-        scene.lights = Scene.resolveLights(lightRefs)
         scene.animations = SceneAnimation.load(from: doc)
         return scene
     }
 
-    /// A `Camera3D` from an authored camera and its node's world transform. The
-    /// node's -z axis is the view direction (the glTF convention, same as Ollin's
-    /// camera space); the world up column keeps any authored roll. `Camera3D` wants
-    /// a target point, so the eye looks at the scene's center projected onto the
-    /// view direction (an orbit-friendly pivot), or one unit ahead when the scene
-    /// is empty or behind the camera.
-    static func resolveCamera(_ def: GLTF.CameraDef, world: simd_float4x4,
-                              sceneCenter: Vector3?) -> Camera3D? {
-        let projection: Camera3D.Projection
-        let near: Double
-        let far: Double
+    /// The projection half of an authored glTF camera (the pose resolves later
+    /// from the node's world transform). `nil` for an unknown type.
+    static func cameraSpec(_ def: GLTF.CameraDef) -> SceneCameraSpec? {
         switch def.type {
         case "perspective":
             guard let p = def.perspective else { return nil }
-            projection = .perspective(fieldOfView: min(max(p.yfov, 0.01), .pi - 0.01))
-            near = max(p.znear, 1e-4)
-            far = p.zfar ?? 1000
+            return SceneCameraSpec(
+                projection: .perspective(fieldOfView: min(max(p.yfov, 0.01), .pi - 0.01)),
+                near: max(p.znear, 1e-4), far: p.zfar ?? 1000)
         case "orthographic":
             guard let o = def.orthographic else { return nil }
-            projection = .orthographic(height: 2 * o.ymag)
-            near = o.znear
-            far = o.zfar
+            return SceneCameraSpec(projection: .orthographic(height: 2 * o.ymag),
+                                   near: o.znear, far: o.zfar)
         default:
             return nil
         }
-        return resolveCamera(projection: projection, near: near, far: far,
-                             world: world, sceneCenter: sceneCenter)
     }
 
     /// The pose half of camera resolution, shared by every format: eye, view
@@ -426,60 +557,38 @@ extension Scene {
                         near: near, far: far, projection: projection)
     }
 
-    /// `Light`s from the authored punctual lights and their nodes' world
-    /// transforms. A light shines down its node's -z axis (directional and spot);
-    /// a point light sits at the node's world position. Colors arrive linear and
-    /// re-encode to sRGB (the base-color-factor treatment). Physical intensities
-    /// (lux for directional, candela for point and spot) have no meaning without
-    /// distance falloff, which Ollin's punctual lights don't model, so each kind
-    /// normalizes to its brightest: relative balance survives, absolute units
-    /// don't. The spot's outer cone half-angle doubles into Ollin's full
-    /// `coneAngle`; the inner-to-outer soft band becomes `penumbra`.
-    static func resolveLights(_ refs: [(def: GLTF.PunctualLightDef, world: simd_float4x4)]) -> [Light] {
-        guard !refs.isEmpty else { return [] }
-
-        // Per-kind intensity normalization (see above).
-        var maxIntensity: [String: Double] = [:]
-        for r in refs {
-            let i = max(r.def.intensity ?? 1, 0)
-            maxIntensity[r.def.type] = Swift.max(maxIntensity[r.def.type] ?? 0, i)
+    /// An authored punctual light as a node-local spec, intensity still the
+    /// file's raw value (`normalizeLightSpecs` rescales once the tree is
+    /// built: physical intensities, lux for directional and candela for point
+    /// and spot, have no meaning without distance falloff, which Ollin's
+    /// punctual lights don't model, so each kind normalizes to its brightest
+    /// and relative balance survives where absolute units don't). A light
+    /// shines down its node's -z axis (directional and spot); a point light
+    /// sits at the node's position. Colors arrive linear and re-encode to sRGB
+    /// (the base-color-factor treatment). The spot's outer cone half-angle
+    /// doubles into Ollin's full `coneAngle`; the inner-to-outer soft band
+    /// becomes `penumbra`. `nil` for an unknown type.
+    static func lightSpec(_ def: GLTF.PunctualLightDef) -> SceneLightSpec? {
+        var color = Color.white
+        if let c = def.color, c.count == 3 {
+            func enc(_ x: Double) -> Double { Color.linearToSrgb(min(max(x, 0), 1)) }
+            color = Color(red: enc(c[0]), green: enc(c[1]), blue: enc(c[2]))
         }
-
-        var lights: [Light] = []
-        for r in refs {
-            let world = r.world
-            let position = Vector3(Double(world.columns.3.x), Double(world.columns.3.y),
-                                   Double(world.columns.3.z))
-            var direction = Vector3(-Double(world.columns.2.x), -Double(world.columns.2.y),
-                                    -Double(world.columns.2.z))
-            direction = direction.lengthSquared > 1e-12 ? direction.normalized : Vector3(0, -1, 0)
-
-            var color = Color.white
-            if let c = r.def.color, c.count == 3 {
-                func enc(_ x: Double) -> Double { Color.linearToSrgb(min(max(x, 0), 1)) }
-                color = Color(red: enc(c[0]), green: enc(c[1]), blue: enc(c[2]))
-            }
-            let rawIntensity = max(r.def.intensity ?? 1, 0)
-            let kindMax = maxIntensity[r.def.type] ?? 0
-            let intensity = kindMax > 0 ? rawIntensity / kindMax : 1
-
-            switch r.def.type {
-            case "directional":
-                lights.append(.directional(color, direction: direction, intensity: intensity))
-            case "point":
-                lights.append(.point(color, at: position, intensity: intensity))
-            case "spot":
-                let outer = r.def.spot?.outerConeAngle ?? .pi / 4
-                let inner = min(r.def.spot?.innerConeAngle ?? 0, outer)
-                let penumbra = outer > 0 ? min(max(1 - inner / outer, 0), 1) : 0
-                lights.append(.spot(color, at: position, direction: direction,
-                                    angle: 2 * outer, penumbra: penumbra,
-                                    intensity: intensity))
-            default:
-                continue
-            }
+        let intensity = max(def.intensity ?? 1, 0)
+        switch def.type {
+        case "directional":
+            return SceneLightSpec(kind: .directional, color: color, intensity: intensity)
+        case "point":
+            return SceneLightSpec(kind: .point, color: color, intensity: intensity)
+        case "spot":
+            let outer = def.spot?.outerConeAngle ?? .pi / 4
+            let inner = min(def.spot?.innerConeAngle ?? 0, outer)
+            let penumbra = outer > 0 ? min(max(1 - inner / outer, 0), 1) : 0
+            return SceneLightSpec(kind: .spot, color: color, intensity: intensity,
+                                  coneAngle: 2 * outer, penumbra: penumbra)
+        default:
+            return nil
         }
-        return lights
     }
 }
 
