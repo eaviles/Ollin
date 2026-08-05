@@ -150,20 +150,51 @@ typedef enum {
     CJOLT_CONSTRAINT_SLIDER = 3,   // anchorA + axis; optional translation limits
     CJOLT_CONSTRAINT_FIXED = 4,    // weld at current relative pose
     CJOLT_CONSTRAINT_SWING_TWIST = 5, // anchorA + axis; cone + twist limits
+    CJOLT_CONSTRAINT_PATH = 6,     // pathPoints + pathAlignment; B rides the curve
+    CJOLT_CONSTRAINT_PULLEY = 7,   // anchorA/anchorB on the bodies, overA/overB fixed
+    CJOLT_CONSTRAINT_SIX_DOF = 8,  // anchorA + freedom bits + shared limits
 } CJoltConstraintType;
+
+/// How a body riding a path is allowed to turn.
+typedef enum {
+    CJOLT_PATH_FREE = 0,   // no rotation constraint at all
+    CJOLT_PATH_ROLL = 1,   // only about the direction of travel
+    CJOLT_PATH_FOLLOW = 2, // the body's frame follows the curve
+    CJOLT_PATH_FIXED = 3,  // holds body 1's orientation
+} CJoltPathAlignment;
 
 typedef struct {
     CJoltConstraintType type;
     float anchorA[3]; // world space
-    float anchorB[3]; // world space (distance only)
+    float anchorB[3]; // world space (distance and pulley: the point on body B)
     float axis[3];    // world space (hinge/slider/swing-twist twist axis)
     bool hasLimits;
-    float limitMin, limitMax; // hinge/swing-twist: radians; slider: length; distance: min/max
+    float limitMin, limitMax; // hinge/swing-twist: radians; slider/six-DOF: length;
+                              // distance: min/max; pulley: nonzero means taut
     /// Distance-constraint spring; frequency <= 0 keeps the limits rigid.
     float frequency, damping;
     /// Swing-twist only: the half angle of the cone the twist axis may swing
     /// inside, in radians (0 locks the swing, pi frees it).
     float coneAngle;
+    /// Path only: `pathPointCount` points of nine floats each (world-space
+    /// position, then tangent, then normal). The tangent points the way the
+    /// path runs and need not be normalized; the normal is a perpendicular
+    /// reference the constraint frame is built from. Borrowed for the length
+    /// of the create call only.
+    const float *pathPoints;
+    int32_t pathPointCount;
+    bool pathLooping;
+    CJoltPathAlignment pathAlignment;
+    /// Pulley only: the two fixed world points the rope runs over, and how
+    /// many rope falls hold the second body up (a block and tackle).
+    float overA[3], overB[3];
+    float ratio;
+    /// Six-DOF only: which of the six degrees of freedom stay free
+    /// (CJOLT_FREEDOM_* bits). `hasLimits` bounds the ones that travel and
+    /// `hasRotationLimits` the ones that turn; the rest are locked at 0.
+    uint32_t freedom;
+    bool hasRotationLimits;
+    float rotationMin, rotationMax;
 } CJoltConstraintDesc;
 
 // World ---------------------------------------------------------------------
@@ -303,21 +334,49 @@ CJoltConstraint *cjolt_constraint_create(CJoltWorld *world, CJoltBodyID bodyA,
                                          const CJoltConstraintDesc *desc);
 void cjolt_constraint_destroy(CJoltWorld *world, CJoltConstraint *constraint);
 
+/// The two ways one constraint's motion can drive another's.
+typedef enum {
+    CJOLT_LINK_GEAR = 0,        // two hinges: turning one turns the other
+    CJOLT_LINK_RACK_PINION = 1, // a hinge and a slider: turning drives sliding
+} CJoltLinkType;
+
+/// Ties two existing constraints together. `a` must be a hinge; `b` a hinge
+/// for a gear and a slider for a rack and pinion. `ratio` is turns of `a` per
+/// turn of `b` (gear) or radians of pinion per meter of rack (rack and
+/// pinion). Each constraint's moving body is the one that is not static, or
+/// its second body when both can move. Returns NULL if either handle is not
+/// the kind the link needs.
+CJoltConstraint *cjolt_constraint_link(CJoltWorld *world, CJoltConstraint *a,
+                                       CJoltConstraint *b, CJoltLinkType type,
+                                       float ratio);
+
 typedef enum {
     CJOLT_MOTOR_OFF = 0,
     CJOLT_MOTOR_VELOCITY = 1,
     CJOLT_MOTOR_POSITION = 2,
 } CJoltMotorState;
 
-/// Powers a hinge or slider motor (a no-op on the other constraint kinds) and
-/// wakes both bodies. `target` is rad/s (hinge) or m/s (slider) for a velocity
-/// motor, radians or meters for a position motor. `frequency` (Hz) and
-/// `damping` (ratio) shape the position servo's spring; a velocity motor
-/// ignores them. `maxEffort` caps the torque (N·m) or force (N) the motor may
-/// apply; a non-finite or non-positive value leaves it unlimited.
+/// Powers a hinge, slider, swing-twist, or path motor (a no-op on the other
+/// constraint kinds) and wakes both bodies. `target` is rad/s (hinge,
+/// swing-twist twist) or m/s (slider, path) for a velocity motor, and radians
+/// (hinge, swing-twist twist), meters (slider), or a 0…1 fraction of the whole
+/// path for a position motor. `frequency` (Hz) and `damping` (ratio) shape the
+/// position servo's spring; a velocity motor ignores them. `maxEffort` caps the
+/// torque (N·m) or force (N) the motor may apply; a non-finite or non-positive
+/// value leaves it unlimited.
 void cjolt_constraint_set_motor(CJoltWorld *world, CJoltConstraint *constraint,
                                 CJoltMotorState state, float target,
                                 float frequency, float damping, float maxEffort);
+
+/// Drives a swing-twist joint's whole orientation: pulls its twist axis toward
+/// the world-space `direction` and rolls it `twist` radians about that. A
+/// no-op on the other constraint kinds. The target is clamped to the joint's
+/// own cone and twist limits by the solver.
+void cjolt_constraint_set_orientation_motor(CJoltWorld *world,
+                                            CJoltConstraint *constraint,
+                                            const float direction[3], float twist,
+                                            float frequency, float damping,
+                                            float maxTorque);
 
 /// Passive resistance while a hinge/slider motor is off: a drag torque (N·m)
 /// or force (N) the joint's motion must overcome.
@@ -331,9 +390,14 @@ void cjolt_constraint_set_limit_spring(CJoltWorld *world, CJoltConstraint *const
                                        float frequency, float damping);
 
 /// The hinge's current angle (radians), the slider's current offset (meters),
-/// or a swing-twist's current swing away from its twist axis (radians),
-/// relative to the pose the constraint was created at; 0 for other kinds.
+/// a swing-twist's current swing away from its twist axis (radians), or a path
+/// rider's progress along the whole curve (0…1), relative to the pose the
+/// constraint was created at; 0 for other kinds.
 float cjolt_constraint_current(const CJoltWorld *world, const CJoltConstraint *constraint);
+
+/// A swing-twist joint's current roll about its own twist axis (radians,
+/// signed); 0 for other kinds.
+float cjolt_constraint_twist(const CJoltWorld *world, const CJoltConstraint *constraint);
 
 // Grab (mouse drag) ---------------------------------------------------------
 

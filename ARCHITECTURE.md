@@ -3685,6 +3685,88 @@ Folded in here: the floor slab's collision group is remembered on the world
 because `rebuildGround` builds a fresh descriptor whenever `ground` or
 `unitsPerMeter` moves and the group would otherwise be silently lost.
 
+### Tracks, ropes, freedoms, and joint-to-joint links
+
+Five more constraint kinds, split by what each one links. Three connect two
+bodies and ride `JointKind3D` (`.path`, `.pulley`, `.allowing`); two connect two
+*joints* and ride a second enum, `JointLink3D` (`.gear`, `.rackAndPinion`),
+through a `connect(_ a: Joint3D, _ b: Joint3D, _:)` overload. The split follows
+what the solver actually constrains: a gear ties the rotation two hinges allow,
+so naming the hinges gives the bodies, the axes, and the drift-correction
+constraints in one go, where naming bodies would give none of them.
+
+`.path` is `PathConstraint` over a `PathConstraintPathHermite`. Three pieces are
+load-bearing. **The spline frame is built in Swift** (`PathSpline` in
+`JointPath.swift`): tangents are cardinal (half the span between neighbours,
+one-sided at an open path's ends) and normals are carried along the curve by
+**parallel transport**, because re-deriving "world up minus its along-track
+part" per point flips when the track goes vertical and the rider flips with it;
+the holonomy a closed loop comes back with is a stated envelope, not a defect.
+**Points arrive in world space and the bridge takes them into body 1's own
+space** with the settings' path transform left at identity, which is exactly
+what makes path space equal body-1 *body* space (the centre-of-mass offset in
+`mPathToBody1` cancels against the body's own COM transform), so a track hung
+off a moving body rides it. The rider joins at `GetClosestPoint` of where it
+already is. **Progress is normalized in the bridge**, since a Hermite path's
+fraction runs to its segment count and only the bridge knows that: `drive(to:)`
+scales a 0…1 target up and `cjolt_constraint_current` scales the reading back
+down, so `Joint3D.progress` means the same thing on any track. The four
+`PathAlignment` cases map onto `EPathRotationConstraintType`.
+
+`.pulley` is the one place a vendored-library defect had to be handled rather
+than patched. `IndependentAxisConstraintPart::CalculateConstraintProperties`
+guards on `IsStatic()` where every other constraint part guards on `IsDynamic()`,
+so a **kinematic** end reaches `MultiplyWorldSpaceInverseInertiaByVector`, which
+asserts on non-dynamic bodies (and in a release build would read a kinematic
+body's inertia and shove it off its driven path). The bridge refuses that pair
+and `World3D.connect` notes once; the vendored source stays pristine. The rope's
+default range is `min 0, max -1`, which is the library's "measure the current
+length" sentinel on the max only, and is exactly rope behaviour: resists being
+pulled longer, gives when let slack. `taut:` sets both to -1.
+
+`.allowing` is `SixDOFConstraint` with `ESwingType::Pyramid` (the swing type
+that takes limits which are not symmetric) and the world's own axes as the
+constraint frame, so a freedom names the same direction here that it names on a
+body. `Freedom3D`'s six bits are already in `EAxis` order, so the per-axis loop
+is `MakeFixedAxis` / `MakeFreeAxis` / `SetLimitedAxis` off one mask plus the two
+shared ranges.
+
+The links resolve **which end of each joint actually moves** in the bridge
+(`resolveLinkEnd`): the body that is not static, or the second body when both
+can move, matching the order every `connect` call is written in. A hinge hands
+back `GetLocalSpaceHingeAxis1/2`; a slider has no public accessor, so its axis
+is column 0 of `GetConstraintToBody{1,2}Matrix()`, and both are already in the
+body's centre-of-mass space, which is why the settings use
+`EConstraintSpace::LocalToBodyCOM`. Both links call `SetConstraints` with the
+two source joints so the solver can measure and correct its own drift. Two
+knobs are converted on Ollin's side: `travelPerTurn` becomes the library's
+radians-per-meter (`2π / travel`), and a **gear ratio is forced positive** with
+a note, because a negative one leaves the position correction pulling against
+the velocity rule until the pair detonates (probe-confirmed), and a real gear
+ratio is a tooth count with no sign anyway. A link records all four bodies it
+reaches (`Joint3D.alsoTouches`) and its two source joints (`links(_:)`), so
+removing any body or either joint takes it with them, which matters because the
+gear holds raw `Body` pointers.
+
+The swing-twist motor gap closed at the same time. `cjolt_constraint_set_motor`
+now handles `SwingTwist` and `Path` beside Hinge and Slider. A scalar target on
+a joint that bends in every direction can only mean the roll about its own axis,
+so it runs the **twist motor only** (`SetSwingMotorState(Off)`, a pure-twist
+target orientation): the solver reads the twist error from constraint-space x
+alone, so the swing half of the target is unused and the bone keeps swinging
+free (measured: twist lands within 0.001 of the target with swing at 0.000).
+Pointing it somewhere is `cjolt_constraint_set_orientation_motor`, which takes a
+world direction back through body 1's rotation and `GetConstraintToBody1()` into
+constraint space, turns x onto it with `Quat::sFromTo`, and composes the twist;
+`SetTargetOrientationCS` clamps that to the joint's own limits, so aiming past
+the cone leans as far as it may. `cjolt_constraint_twist` reads the roll back
+(`2·atan2(q.x, q.w)` of the twist half).
+
+`JointKind3DTests` (24) pins the family against counterfactual twins, the
+sharpest being a body on a track and a loose one thrown the same way (the railed
+one holds its circle to 0.05 while its twin falls twenty units). Example
+`3D/Physics/Contraption`.
+
 ## The geometry and generator catalog
 
 The CPU-side geometry types and generative-technique recipes live in

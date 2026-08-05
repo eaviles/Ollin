@@ -34,8 +34,14 @@
 #include <Jolt/Physics/Collision/Shape/TaperedCylinderShape.h>
 #include <Jolt/Physics/Constraints/DistanceConstraint.h>
 #include <Jolt/Physics/Constraints/FixedConstraint.h>
+#include <Jolt/Physics/Constraints/GearConstraint.h>
 #include <Jolt/Physics/Constraints/HingeConstraint.h>
+#include <Jolt/Physics/Constraints/PathConstraint.h>
+#include <Jolt/Physics/Constraints/PathConstraintPathHermite.h>
 #include <Jolt/Physics/Constraints/PointConstraint.h>
+#include <Jolt/Physics/Constraints/PulleyConstraint.h>
+#include <Jolt/Physics/Constraints/RackAndPinionConstraint.h>
+#include <Jolt/Physics/Constraints/SixDOFConstraint.h>
 #include <Jolt/Physics/Constraints/SliderConstraint.h>
 #include <Jolt/Physics/Constraints/SwingTwistConstraint.h>
 #include <Jolt/Physics/PhysicsSettings.h>
@@ -493,6 +499,44 @@ namespace {
 Body *resolveBody(CJoltWorld *world, CJoltBodyID id) {
     if (id == CJOLT_BODY_INVALID) { return &Body::sFixedToWorld; }
     return world->physics.GetBodyLockInterfaceNoLock().TryGetBody(BodyID(id));
+}
+
+// The end of a hinge or slider that actually moves, plus that body's own
+// constraint axis in its centre-of-mass space, which is what a gear or a rack
+// and pinion is written against.
+struct LinkEnd {
+    Body *body = nullptr;
+    Vec3 axis = Vec3::sAxisX();
+};
+
+// The moving end is the one that is not static; when both can move it is the
+// second body, matching the order every `connect` call is written in (the
+// anchor first, the part that turns second).
+bool resolveLinkEnd(Constraint *constraint, bool wantsHinge, LinkEnd &out) {
+    const EConstraintSubType subType = constraint->GetSubType();
+    if (subType != (wantsHinge ? EConstraintSubType::Hinge
+                               : EConstraintSubType::Slider)) {
+        return false;
+    }
+    TwoBodyConstraint *pair = static_cast<TwoBodyConstraint *>(constraint);
+    Body *first = pair->GetBody1();
+    Body *second = pair->GetBody2();
+    if (first == nullptr || second == nullptr) { return false; }
+    const bool useFirst = second->IsStatic() && !first->IsStatic();
+    out.body = useFirst ? first : second;
+    if (out.body->IsStatic()) { return false; }
+    if (wantsHinge) {
+        HingeConstraint *hinge = static_cast<HingeConstraint *>(constraint);
+        out.axis = useFirst ? hinge->GetLocalSpaceHingeAxis1()
+                            : hinge->GetLocalSpaceHingeAxis2();
+    } else {
+        // A slider keeps no public accessor for its axis, but its constraint
+        // frame's first column is exactly that direction in the body's space.
+        const Mat44 frame = useFirst ? pair->GetConstraintToBody1Matrix()
+                                     : pair->GetConstraintToBody2Matrix();
+        out.axis = frame.GetColumn3(0).Normalized();
+    }
+    return true;
 }
 
 // A freedom mask as the library spells it. The bit values match, so this is a
@@ -1210,8 +1254,146 @@ CJoltConstraint *cjolt_constraint_create(CJoltWorld *world, CJoltBodyID bodyA,
         constraint = settings.Create(*a, *b);
         break;
     }
+    case CJOLT_CONSTRAINT_PATH: {
+        if (desc->pathPoints == nullptr || desc->pathPointCount < 2) {
+            return nullptr;
+        }
+        // The path arrives in world space and lives in body 1's frame, so a
+        // track carried by a moving body rides it. Leaving the settings' own
+        // path transform at identity makes path space exactly body 1's own,
+        // so the points only need that body's inverse world transform.
+        const RMat44 toBody1 = a->GetWorldTransform().InversedRotationTranslation();
+        Ref<PathConstraintPathHermite> path = new PathConstraintPathHermite();
+        path->SetIsLooping(desc->pathLooping);
+        for (int i = 0; i < desc->pathPointCount; ++i) {
+            const float *p = desc->pathPoints + 9 * i;
+            path->AddPoint(Vec3(toBody1 * RVec3(vec3(p))),
+                           toBody1.Multiply3x3(vec3(p + 3)),
+                           toBody1.Multiply3x3(vec3(p + 6)));
+        }
+
+        PathConstraintSettings settings;
+        settings.mPath = path;
+        settings.mPathPosition = RVec3::sZero();
+        settings.mPathRotation = Quat::sIdentity();
+        switch (desc->pathAlignment) {
+        case CJOLT_PATH_ROLL:
+            settings.mRotationConstraintType =
+                EPathRotationConstraintType::ConstrainAroundTangent;
+            break;
+        case CJOLT_PATH_FOLLOW:
+            settings.mRotationConstraintType =
+                EPathRotationConstraintType::ConstrainToPath;
+            break;
+        case CJOLT_PATH_FIXED:
+            settings.mRotationConstraintType =
+                EPathRotationConstraintType::FullyConstrained;
+            break;
+        case CJOLT_PATH_FREE:
+            settings.mRotationConstraintType = EPathRotationConstraintType::Free;
+            break;
+        }
+        // The rider joins the path wherever it already is.
+        settings.mPathFraction =
+            path->GetClosestPoint(Vec3(toBody1 * b->GetPosition()), 0.0f);
+        constraint = settings.Create(*a, *b);
+        break;
+    }
+    case CJOLT_CONSTRAINT_PULLEY: {
+        // The library's pulley reads a kinematic end's inertia as though it
+        // were an ordinary body, which traps in a checked build and shoves the
+        // driven body around in a release one. Every other constraint part
+        // asks `IsDynamic`, this one asks `IsStatic`, so the case is refused
+        // here rather than patched into the vendored source.
+        if (a->IsKinematic() || b->IsKinematic()) { return nullptr; }
+        PulleyConstraintSettings settings;
+        settings.mSpace = EConstraintSpace::WorldSpace;
+        settings.mBodyPoint1 = RVec3(vec3(desc->anchorA));
+        settings.mFixedPoint1 = RVec3(vec3(desc->overA));
+        settings.mBodyPoint2 = RVec3(vec3(desc->anchorB));
+        settings.mFixedPoint2 = RVec3(vec3(desc->overB));
+        settings.mRatio = desc->ratio > 0 ? desc->ratio : 1.0f;
+        // A rope resists being lengthened but not shortened, so by default it
+        // is only capped at the length it has now; -1 means "measure it from
+        // where the bodies are". A taut linkage pins both ends of that range.
+        settings.mMinLength = desc->hasLimits ? -1.0f : 0.0f;
+        settings.mMaxLength = -1.0f;
+        constraint = settings.Create(*a, *b);
+        break;
+    }
+    case CJOLT_CONSTRAINT_SIX_DOF: {
+        SixDOFConstraintSettings settings;
+        settings.mSpace = EConstraintSpace::WorldSpace;
+        settings.mPosition1 = settings.mPosition2 = RVec3(vec3(desc->anchorA));
+        // The world's own axes, so a freedom names the same direction here
+        // that it names on a body.
+        settings.mAxisX1 = settings.mAxisX2 = Vec3::sAxisX();
+        settings.mAxisY1 = settings.mAxisY2 = Vec3::sAxisY();
+        // A pyramid swing is the one that takes limits that aren't symmetric.
+        settings.mSwingType = ESwingType::Pyramid;
+        using EAxis = SixDOFConstraintSettings::EAxis;
+        for (int i = 0; i < EAxis::Num; ++i) {
+            const EAxis axis = EAxis(i);
+            if ((desc->freedom & (1u << i)) == 0) {
+                settings.MakeFixedAxis(axis);
+                continue;
+            }
+            const bool turns = i >= EAxis::NumTranslation;
+            if (turns ? desc->hasRotationLimits : desc->hasLimits) {
+                settings.SetLimitedAxis(axis,
+                                        turns ? desc->rotationMin : desc->limitMin,
+                                        turns ? desc->rotationMax : desc->limitMax);
+            } else {
+                settings.MakeFreeAxis(axis);
+            }
+        }
+        constraint = settings.Create(*a, *b);
+        break;
+    }
     }
     if (constraint == nullptr) { return nullptr; }
+
+    world->physics.AddConstraint(constraint);
+    CJoltConstraint *wrapper = new CJoltConstraint();
+    wrapper->constraint = constraint;
+    world->constraints.push_back(wrapper);
+    return wrapper;
+}
+
+CJoltConstraint *cjolt_constraint_link(CJoltWorld *world, CJoltConstraint *a,
+                                       CJoltConstraint *b, CJoltLinkType type,
+                                       float ratio) {
+    if (world == nullptr || a == nullptr || b == nullptr) { return nullptr; }
+    LinkEnd pinion, driven;
+    if (!resolveLinkEnd(a->constraint, true, pinion)) { return nullptr; }
+    if (!resolveLinkEnd(b->constraint, type == CJOLT_LINK_GEAR, driven)) {
+        return nullptr;
+    }
+
+    Constraint *constraint = nullptr;
+    if (type == CJOLT_LINK_GEAR) {
+        GearConstraintSettings settings;
+        settings.mSpace = EConstraintSpace::LocalToBodyCOM;
+        settings.mHingeAxis1 = pinion.axis;
+        settings.mHingeAxis2 = driven.axis;
+        settings.mRatio = ratio;
+        GearConstraint *gear =
+            static_cast<GearConstraint *>(settings.Create(*pinion.body, *driven.body));
+        // Handing it the two hinges lets it measure its own drift and correct
+        // it, so meshed teeth never walk out of step over a long run.
+        gear->SetConstraints(a->constraint.GetPtr(), b->constraint.GetPtr());
+        constraint = gear;
+    } else {
+        RackAndPinionConstraintSettings settings;
+        settings.mSpace = EConstraintSpace::LocalToBodyCOM;
+        settings.mHingeAxis = pinion.axis;
+        settings.mSliderAxis = driven.axis;
+        settings.mRatio = ratio;
+        RackAndPinionConstraint *rack = static_cast<RackAndPinionConstraint *>(
+            settings.Create(*pinion.body, *driven.body));
+        rack->SetConstraints(a->constraint.GetPtr(), b->constraint.GetPtr());
+        constraint = rack;
+    }
 
     world->physics.AddConstraint(constraint);
     CJoltConstraint *wrapper = new CJoltConstraint();
@@ -1265,6 +1447,45 @@ void cjolt_constraint_set_motor(CJoltWorld *world, CJoltConstraint *wrapper,
         slider->SetMotorState(motorState);
         break;
     }
+    case EConstraintSubType::SwingTwist: {
+        SwingTwistConstraint *joint = static_cast<SwingTwistConstraint *>(constraint);
+        MotorSettings &motor = joint->GetTwistMotorSettings();
+        motor.mSpringSettings = servo;
+        if (limited) { motor.SetTorqueLimit(maxEffort); }
+        else { motor.SetTorqueLimits(-FLT_MAX, FLT_MAX); }
+        // One number about a joint that bends in every direction is the roll
+        // about its own axis, so only the twist motor runs here and the bone
+        // keeps swinging freely. Pointing it somewhere is the orientation
+        // motor's job.
+        joint->SetSwingMotorState(EMotorState::Off);
+        joint->SetTargetAngularVelocityCS(
+            Vec3(state == CJOLT_MOTOR_VELOCITY ? target : 0, 0, 0));
+        if (state == CJOLT_MOTOR_POSITION) {
+            joint->SetTargetOrientationCS(Quat::sRotation(Vec3::sAxisX(), target));
+        }
+        joint->SetTwistMotorState(motorState);
+        break;
+    }
+    case EConstraintSubType::Path: {
+        PathConstraint *path = static_cast<PathConstraint *>(constraint);
+        const PathConstraintPath *curve = path->GetPath();
+        if (curve == nullptr) { return; }
+        MotorSettings &motor = path->GetPositionMotorSettings();
+        motor.mSpringSettings = servo;
+        if (limited) { motor.SetForceLimit(maxEffort); }
+        else { motor.SetForceLimits(-FLT_MAX, FLT_MAX); }
+        path->SetTargetVelocity(state == CJOLT_MOTOR_VELOCITY ? target : 0);
+        if (state == CJOLT_MOTOR_POSITION) {
+            // A target along a path is a fraction of the whole curve, so the
+            // caller's 0…1 is scaled by however many segments it has.
+            const float span = curve->GetPathMaxFraction();
+            const float fraction = target * span;
+            path->SetTargetPathFraction(
+                curve->IsLooping() ? fraction : std::clamp(fraction, 0.0f, span));
+        }
+        path->SetPositionMotorState(motorState);
+        break;
+    }
     default:
         return;
     }
@@ -1292,9 +1513,50 @@ void cjolt_constraint_set_friction(CJoltWorld *, CJoltConstraint *wrapper,
     case EConstraintSubType::SwingTwist:
         static_cast<SwingTwistConstraint *>(constraint)->SetMaxFrictionTorque(drag);
         break;
+    case EConstraintSubType::Path:
+        static_cast<PathConstraint *>(constraint)->SetMaxFrictionForce(drag);
+        break;
     default:
         break;
     }
+}
+
+void cjolt_constraint_set_orientation_motor(CJoltWorld *world,
+                                            CJoltConstraint *wrapper,
+                                            const float direction[3], float twist,
+                                            float frequency, float damping,
+                                            float maxTorque) {
+    if (wrapper == nullptr) { return; }
+    Constraint *constraint = wrapper->constraint;
+    if (constraint->GetSubType() != EConstraintSubType::SwingTwist) { return; }
+    SwingTwistConstraint *joint = static_cast<SwingTwistConstraint *>(constraint);
+
+    const SpringSettings servo(ESpringMode::FrequencyAndDamping,
+                               std::max(frequency, 0.0f), std::max(damping, 0.0f));
+    const bool limited = std::isfinite(maxTorque) && maxTorque > 0;
+    for (MotorSettings *motor :
+         {&joint->GetSwingMotorSettings(), &joint->GetTwistMotorSettings()}) {
+        motor->mSpringSettings = servo;
+        if (limited) { motor->SetTorqueLimit(maxTorque); }
+        else { motor->SetTorqueLimits(-FLT_MAX, FLT_MAX); }
+    }
+
+    // The target is an orientation in the joint's own space, where the twist
+    // axis is x, so a world direction comes back through body 1's rotation and
+    // then the constraint frame before the shortest-arc turn onto it.
+    Vec3 aim = vec3(direction);
+    if (aim.LengthSq() < 1.0e-12f) { aim = Vec3::sAxisX(); }
+    const Quat toConstraint =
+        (joint->GetBody1()->GetRotation() * joint->GetConstraintToBody1()).Conjugated();
+    const Vec3 local = toConstraint * aim.Normalized();
+    const Quat swing = Quat::sFromTo(Vec3::sAxisX(), local);
+    joint->SetTargetOrientationCS(swing * Quat::sRotation(Vec3::sAxisX(), twist));
+    joint->SetSwingMotorState(EMotorState::Position);
+    joint->SetTwistMotorState(EMotorState::Position);
+
+    BodyInterface &bodies = world->physics.GetBodyInterface();
+    bodies.ActivateBody(joint->GetBody1()->GetID());
+    bodies.ActivateBody(joint->GetBody2()->GetID());
 }
 
 void cjolt_constraint_set_limit_spring(CJoltWorld *, CJoltConstraint *wrapper,
@@ -1332,9 +1594,29 @@ float cjolt_constraint_current(const CJoltWorld *, const CJoltConstraint *wrappe
             .GetSwingTwist(swing, twist);
         return 2.0f * ACos(std::clamp(std::abs(swing.GetW()), 0.0f, 1.0f));
     }
+    case EConstraintSubType::Path: {
+        const PathConstraint *path = static_cast<const PathConstraint *>(constraint);
+        const PathConstraintPath *curve = path->GetPath();
+        if (curve == nullptr) { return 0; }
+        const float span = curve->GetPathMaxFraction();
+        return span > 0 ? path->GetPathFraction() / span : 0;
+    }
     default:
         return 0;
     }
+}
+
+float cjolt_constraint_twist(const CJoltWorld *, const CJoltConstraint *wrapper) {
+    if (wrapper == nullptr) { return 0; }
+    const Constraint *constraint = wrapper->constraint.GetPtr();
+    if (constraint->GetSubType() != EConstraintSubType::SwingTwist) { return 0; }
+    // The twist half of the relative rotation is a turn about the joint's own
+    // axis, which the library keeps as constraint-space x.
+    Quat swing, twist;
+    static_cast<const SwingTwistConstraint *>(constraint)
+        ->GetRotationInConstraintSpace()
+        .GetSwingTwist(swing, twist);
+    return 2.0f * std::atan2(twist.GetX(), twist.GetW());
 }
 
 // Grab ----------------------------------------------------------------------

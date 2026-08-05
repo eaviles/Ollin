@@ -965,6 +965,70 @@ It is off by default because it is not free, but it is close: the check only run
 
 All three can be set when you add a body and changed while it runs. The [`3D/Physics/Bagatelle`](../Examples/3D/Physics/Bagatelle/) example is a pin table with all three on a knob: flatten the balls or free them, make them heavy or weightless, and fire a shot quick enough to leave through a thin rail the moment you stop checking its path.
 
+## Machines out of joints
+
+A hinge and a slider will get you a door and a drawer. A machine wants more, and the joints left over are each one idea.
+
+**A track.** Hand `.path` a ring of points and the second body is threaded onto the smooth curve through them, free to travel along it and nothing else. A rollercoaster car, a bead on a wire, a camera on a dolly rail:
+
+```swift
+let ride = world.connect(rails, cart,
+                         .path(through: points, looping: true,
+                               alignment: .followsPath))
+ride.drive(at: 6)          // world units per second along the track
+ride.progress              // 0 at the first point, 1 at the last
+```
+
+The curve runs *through* the points rather than between them, so a dozen of them describe a long smooth track. `alignment` decides how much of the body's turning the track takes over: `.free` leaves it tumbling, `.followsPath` banks it into every bend. A flat `Contour` becomes a track on the ground in one call, which means you can draw the route with the curve tools from Chapter 13 and then ride it.
+
+**A rope over two hooks.** `.pulley` ties two bodies to one length of rope, so one side rising is the other falling. Read it the way you would trace it with a finger:
+
+```swift
+world.connect(tray, counterweight,
+              .pulley(from: trayTop, over: leftHook,
+                      and: rightHook, to: weightTop))
+```
+
+Rope behaves like rope: it resists being pulled longer and gives when it is let slack, so both ends can drop together but neither can stretch. `ratio: 2` threads the second side twice, which is a block and tackle: that side moves half as far and lifts twice as much.
+
+**The joint that is just a list of freedoms.** Every kind so far is a choice out of the six things a body can do, the same six the last section took away. When none of the named kinds fits, say which ones you're keeping:
+
+```swift
+// A post a platter rides: it may rise and it may spin, and nothing else.
+world.connect(post, platter,
+              .allowing([.moveY, .turnY], at: top, travel: 0...1.4))
+```
+
+`.allowing([])` is a weld. `.allowing([.turnX, .turnY, .turnZ])` is a ball joint. One turn with a range is a hinge. It is worth writing those three out once, because it shows what the whole set is made of.
+
+**And two joints that tie other joints together.** Here is the shift worth slowing down for. **A gear does not connect two wheels; it connects two hinges.** What is tied together is not the bodies but the *motion the joints allow*, so that is what you name:
+
+```swift
+let small = world.connect(frame, pinion, .revolute(at: hub, axis: .unitZ))
+let big = world.connect(frame, wheel, .revolute(at: farHub, axis: .unitZ))
+world.connect(small, big, .gear(teeth: 20, and: 40))
+```
+
+Turn either hinge now and the other turns, the opposite way, at the ratio you asked for. Its sibling ties a hinge to a slider, so turning becomes sliding:
+
+```swift
+world.connect(big, rack, .rackAndPinion(travelPerTurn: 2 * .pi * pinionRadius))
+```
+
+`travelPerTurn` is how far the bar runs for one full turn of the pinion, which for a pinion of radius `r` is its own circumference. Both links compose: the machine below is one motor, two links, and four bodies.
+
+<img src="Images/17-3DGently/Machines.jpg" alt="A small toothed wheel meshed with a wheel twice its size on a timber back plate. Each wheel has one pale spoke, and the two are at clearly different angles. Below them a steel bar has slid to the right and pushed four teal blocks into a bunch at the end of their shelf" width="620">
+
+The motor only ever turns the small wheel. The big wheel is turning because the gear link says it must, half as fast and the other way, and the bar is sliding because the rack link says a turn of that same shaft is a distance along the shelf. The pale spokes are there so you can see the two wheels are not at the same angle.
+
+One gotcha, and it will be your first one: real gear teeth mesh, and plain cylinders just jam into each other. Tell them not to collide.
+
+```swift
+world.ignoreCollisions(between: "gears", and: "gears")
+```
+
+The [`3D/Physics/Contraption`](../Examples/3D/Physics/Contraption/) example is a workshop with one of each: that drive train, a hoist you can load, a platter allowed only to rise and spin, and a cart on a track. Drag any of it.
+
 ## What the depth buffer is for
 
 Chapter 14 filtered layers by their color. A 3D scene drawn into a layer carries something extra that a flat drawing never has: for every pixel, how far away the thing at that pixel is. That's the **depth buffer**, and three effects exist purely to use it.

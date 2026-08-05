@@ -52,6 +52,7 @@ See the [3D physics reference](../../Docs/Simulation/Physics3D.md).
 | [Sightlines](Physics/Sightlines/) | A yard under watch: a lamp lighting only the crates it can actually see, a drone holding its clearance over whatever passes below, and a pulse that shoves everything inside a sphere. Drag a crate into cover. `raycast`, `sweep`, `bodiesOverlapping`. |
 | [Sieve](Physics/Sieve/) | Beads of three colors sorted down one ramp: each window in the ramp is told to ignore one color, so that color falls through it and the rest roll over. Space withdraws the rules and everything rides to the end. `group:`, `ignoreCollisions(between:and:)`, `raycast(as:)`. |
 | [Bagatelle](Physics/Bagatelle/) | A pin table in a 3D world talked out of its third dimension: every ball is held to the board's plane, so the machine works however hard the pins knock it about. Turn that off and the balls wander out of the board. Space fires a shot quick enough to leave through a thin rail unless its path is checked. `freedom:`, `gravityScale`, `checksPath`. |
+| [Contraption](Physics/Contraption/) | A workshop of machines, each one a joint a hinge cannot make: a gear pair driving a rack through the same shaft, a rope over two hooks trading a tray for a counterweight, a platter allowed only to rise and spin, and a cart threaded onto a track. Space loads the tray. `.gear`, `.rackAndPinion`, `.pulley`, `.allowing`, `.path`. |
 
 ### Camera
 

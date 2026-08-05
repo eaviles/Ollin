@@ -50,6 +50,8 @@ Distances are the 3D scene's world units (y-up, matching the camera). The solver
 - [Terrain and scenery](#terrain) - heightfield ground and `Scene` colliders
 - [Joints](#joints) - hinges, ball-and-sockets, rods, welds, sliders
 - [Motors, limits, and springs](#motors) - powered hinges and sliders, travel stops, springy ends
+- [Tracks, ropes, and freedoms](#morejoints) - a path to ride, a pulley, and the general joint
+- [Gears and racks](#links) - one joint driving another
 - [Contacts](#contacts) - what hit what this step, and how hard
 - [Sensors](#sensors) - regions that detect without colliding
 - [Collision groups](#groups) - saying that two kinds of thing never touch
@@ -253,6 +255,8 @@ world.connect(chest, upperArm,
 
 A shoulder is a wide cone with a little twist; a knee is a narrow one. `swing: 0` locks the bone straight, `.pi` frees it entirely. Its `angle` reads how far the joint is currently bent, and `friction` gives it the stiffness of an old hinge. It is what `addRagdoll` hangs every limb on.
 
+Three more kinds do what none of these can: [`.path`](#morejoints) threads a body onto a track, [`.pulley`](#morejoints) runs a rope over two hooks, and [`.allowing`](#morejoints) is the general joint written as the freedoms it keeps. Two more link one joint to another: [gears and a rack and pinion](#links).
+
 <a name="motors"></a>
 
 ### Motors, limits, and springs
@@ -296,6 +300,87 @@ gate.softenLimits(frequency: 3, damping: 0.5)   // springy end stops
 ```
 
 `friction` is the stiff old hinge: a constant resistance the joint's motion must overcome while no motor is powering it, which is also what winds a spinning wheel down after `stopMotor()`. `softenLimits` swaps the hard stops for springs, so a gate thrown against its limit gives a little and bounces back; `frequency` 0 restores the wall. The other joint kinds have no axis to power, so the motor calls on a `.ball`, `.distance`, or `.weld` note once and do nothing (`.distance` has its own spring: the `stiffness` on the case).
+
+A `.swingTwist` joint takes both motor calls too, and one more of its own. A single number about a joint that bends in every direction can only mean the roll about its own axis, so `drive(at:)` and `drive(to:)` run the twist and leave the bend alone; `joint.twist` reads that roll back where `joint.angle` reads the bend. To point the bone somewhere, say so:
+
+```swift
+neck.drive(toward: (bird.position - head.position).normalized, frequency: 6)
+neck.stopMotor()                                   // and it hangs again
+```
+
+`drive(toward:)` pulls the joint's axis onto a world direction, rolled `twist` radians about itself, clamped to the joint's own cone and twist limits: aim past the cone and it leans as far as it may. Set it each frame to follow something.
+
+<a name="morejoints"></a>
+
+### Tracks, ropes, and freedoms
+
+Three more kinds, each doing something no hinge or slider can.
+
+**`.path` is a track.** Give it a ring of points and the second body is threaded onto the smooth curve through them, free to travel along it and nothing else. The rollercoaster car, the bead on a wire, the camera on a dolly rail:
+
+```swift
+let ride = world.connect(rails, cart,
+                         .path(through: points, looping: true,
+                               alignment: .followsPath))
+ride.drive(at: 6)          // world units per second along the track
+ride.drive(to: 0.5)        // or seek half way round and hold there
+ride.progress              // 0 at the first point, 1 at the last
+```
+
+The curve is a spline *through* the points, not a polyline, so a handful of them describes a long track, and the body joins it at the point nearest to wherever it already is (place it on the track before connecting). `alignment` says how much of its turning the track takes over: `.free` leaves it tumbling, `.rolls` lets it spin only about the direction of travel, `.followsPath` banks it into every bend, and `.fixed` holds the first body's orientation the whole way round. The track belongs to that first body, so hanging it off a moving one carries the whole ride along. A flat `Contour` becomes a track on the ground in one call:
+
+```swift
+world.connect(ground, cart, .path(loop, atHeight: 0.3))   // contour y runs along world z
+```
+
+**`.pulley` is a rope over two hooks.** One end is on each body, and the total length is what ties them together, so one side rising is the other falling:
+
+```swift
+world.connect(tray, counterweight,
+              .pulley(from: trayTop, over: leftHook,
+                      and: rightHook, to: weightTop))
+```
+
+Read it as written: from the tray, up over the left hook, across to the right one, and down to the weight. `ratio` is how many falls of rope hold the second side (2 is a block and tackle, where that side moves half as far and lifts twice as much). A rope resists being pulled longer but not being let slack, which is what lets both ends drop together; `taut: true` makes it a rigid linkage instead, so lifting one end drives the other down. Both ends must be an ordinary or a static body: the solver reads a kinematic one wrongly, so that case is refused with a note (move a static end instead).
+
+**`.allowing` is the general joint, written as what it keeps.** Every other kind is a choice out of the six degrees of freedom a body has, so when none of them fits, name the freedoms:
+
+```swift
+// A post a platter rides: it may rise and it may spin, and nothing else.
+world.connect(post, platter,
+              .allowing([.moveY, .turnY], at: top, travel: 0...1.4))
+```
+
+The freedoms are the same `Freedom3D` set a body's own [motion knobs](#motion) use, in world axes at the moment of connecting. `travel` bounds every direction it may move in and `rotation` every axis it may turn about, both measured from the connect pose; leave either out to run unbounded. `.allowing([])` is a weld, `.allowing([.turnX, .turnY, .turnZ])` is a `.ball`, and a single turn with a range is a hinge, which is a good way to see what the named kinds are made of.
+
+<a name="links"></a>
+
+### Gears and racks
+
+The last two are links between *joints*, not bodies, because what they tie together is the motion those joints allow. Build each part's own joint first, then connect the joints:
+
+```swift
+let small = world.connect(frame, pinion, .revolute(at: hub, axis: .unitZ))
+let big = world.connect(frame, wheel, .revolute(at: farHub, axis: .unitZ))
+world.connect(small, big, .gear(teeth: 20, and: 36))
+```
+
+Turning either hinge now turns the other, in the opposite sense and at the ratio asked for. `.gear(ratio:)` says the same thing as a number: how many turns the first makes per turn of the second. It counts teeth and has no sign, so to make a pair turn the same way, flip one hinge's axis.
+
+A rack and pinion ties a hinge to a slider, so turning drives sliding:
+
+```swift
+let rack = world.connect(frame, bar, .prismatic(at: p, axis: .unitX))
+world.connect(big, rack, .rackAndPinion(travelPerTurn: 2 * .pi * pinionRadius))
+```
+
+`travelPerTurn` is how far the bar runs, in world units, for one full turn of the pinion, which for a pinion of radius `r` rolling along it is its own circumference. A negative value runs the bar the other way.
+
+Both links take a hinge as their first joint, and a hinge (gear) or a slider (rack and pinion) as their second; anything else notes once and does nothing. Each joint's moving part is the body that is not static, or the second body it was connected with when both can move, which matches the order every `connect` call is written in (the frame first, the part that turns second). And because the shapes never touch, meshed wheels want to be told not to collide, or their plain cylinders will jam:
+
+```swift
+world.ignoreCollisions(between: "gears", and: "gears")
+```
 
 <a name="contacts"></a>
 

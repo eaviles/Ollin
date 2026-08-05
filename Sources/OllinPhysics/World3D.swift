@@ -583,6 +583,9 @@ public final class World3D {
     @discardableResult
     public func connect(_ a: Body3D, _ b: Body3D, _ kind: JointKind3D) -> Joint3D {
         var desc = CJoltConstraintDesc()
+        // A track is the one kind that carries a list rather than a handful of
+        // numbers, so its points ride a buffer the create call borrows.
+        var spline: PathSpline?
         switch kind {
         case .revolute(let at, let axis, let limits):
             desc.type = CJOLT_CONSTRAINT_HINGE
@@ -649,13 +652,128 @@ public final class World3D {
                 desc.limitMin = Float(min(limits.lowerBound / unitsPerMeter, 0))
                 desc.limitMax = Float(max(limits.upperBound / unitsPerMeter, 0))
             }
+
+        case .path(let points, let looping, let alignment):
+            desc.type = CJOLT_CONSTRAINT_PATH
+            desc.pathLooping = looping
+            desc.pathAlignment = switch alignment {
+            case .free: CJOLT_PATH_FREE
+            case .rolls: CJOLT_PATH_ROLL
+            case .followsPath: CJOLT_PATH_FOLLOW
+            case .fixed: CJOLT_PATH_FIXED
+            }
+            spline = PathSpline(through: points, looping: looping,
+                                scale: 1 / unitsPerMeter)
+            if spline == nil {
+                noteOnce("a .path joint needs at least two points that are not "
+                         + "on top of each other; ignoring.")
+            }
+
+        case .pulley(let from, let over, let and, let to, let ratio, let taut):
+            desc.type = CJOLT_CONSTRAINT_PULLEY
+            let pa = meters(from: from)
+            let pb = meters(from: to)
+            let oa = meters(from: over)
+            let ob = meters(from: and)
+            desc.anchorA = (pa.0, pa.1, pa.2)
+            desc.anchorB = (pb.0, pb.1, pb.2)
+            desc.overA = (oa.0, oa.1, oa.2)
+            desc.overB = (ob.0, ob.1, ob.2)
+            desc.ratio = Float(max(ratio, 0.001))
+            desc.hasLimits = taut
+
+        case .allowing(let freedom, let at, let travel, let rotation):
+            desc.type = CJOLT_CONSTRAINT_SIX_DOF
+            let p = meters(from: at)
+            desc.anchorA = (p.0, p.1, p.2)
+            desc.freedom = freedom.rawValue
+            if let travel {
+                // Both bounds are measured from the connect pose, so the range
+                // straddles 0 the way a slider's does.
+                desc.hasLimits = true
+                desc.limitMin = Float(min(travel.lowerBound / unitsPerMeter, 0))
+                desc.limitMax = Float(max(travel.upperBound / unitsPerMeter, 0))
+            }
+            if let rotation {
+                desc.hasRotationLimits = true
+                desc.rotationMin = Float(min(max(rotation.lowerBound, -.pi), 0))
+                desc.rotationMax = Float(max(min(rotation.upperBound, .pi), 0))
+            }
         }
 
-        let constraint = withUnsafePointer(to: &desc) {
-            cjolt_constraint_create(handle, a.id, b.id, $0)
+        let constraint: OpaquePointer?
+        if let spline {
+            constraint = spline.floats.withUnsafeBufferPointer { points in
+                desc.pathPoints = points.baseAddress
+                desc.pathPointCount = Int32(spline.count)
+                return withUnsafePointer(to: &desc) {
+                    cjolt_constraint_create(handle, a.id, b.id, $0)
+                }
+            }
+        } else {
+            constraint = withUnsafePointer(to: &desc) {
+                cjolt_constraint_create(handle, a.id, b.id, $0)
+            }
+        }
+        if constraint == nil, case .pulley = kind {
+            noteOnce("a pulley holds ordinary and static bodies; a kinematic one "
+                     + "is refused (move a static end instead). Ignoring.")
         }
         let joint = Joint3D(world: self, constraint: constraint, a: a.id, b: b.id,
                             kind: kind)
+        joints.append(joint)
+        return joint
+    }
+
+    /// Tie one joint's motion to another's: meshed gears, or a pinion turning
+    /// a rack. Both parts need their own joint first (a gear is a hinge, a
+    /// rack is a slider), because what a link constrains is the motion those
+    /// joints allow.
+    ///
+    /// ```swift
+    /// let small = world.connect(frame, pinion, .revolute(at: hub, axis: .unitZ))
+    /// let big = world.connect(frame, wheel, .revolute(at: farHub, axis: .unitZ))
+    /// world.connect(small, big, .gear(teeth: 12, and: 36))   // 3 turns to 1
+    /// ```
+    ///
+    /// A link needs a hinge as its first joint, and a hinge (gear) or slider
+    /// (rack and pinion) as its second; anything else notes once and does
+    /// nothing. Each joint's moving part is the body that is not static, or the
+    /// second body it was connected with when both can move.
+    @discardableResult
+    public func connect(_ a: Joint3D, _ b: Joint3D, _ link: JointLink3D) -> Joint3D {
+        var ratio = 1.0
+        var type = CJOLT_LINK_GEAR
+        switch link {
+        case .gear(let value):
+            // Meshed teeth always turn opposite ways, so a gear ratio is a
+            // count and has no sign; a negative one leaves the solver's own
+            // drift correction pulling against its velocity rule until the
+            // pair detonates. Turn a pair the same way by flipping one hinge's
+            // axis instead.
+            if value < 0 {
+                noteOnce("a gear ratio counts teeth and has no sign; flip a "
+                         + "hinge's axis to turn a pair the same way.")
+            }
+            ratio = abs(value)
+        case .rackAndPinion(let travelPerTurn):
+            type = CJOLT_LINK_RACK_PINION
+            // The solver wants radians of pinion per meter of rack, where a
+            // sketch thinks in how far the rack runs per turn.
+            let travel = travelPerTurn / unitsPerMeter
+            ratio = abs(travel) > 1e-9 ? 2 * .pi / travel : 0
+        }
+
+        let constraint = cjolt_constraint_link(handle, a.constraint, b.constraint,
+                                               type, Float(ratio))
+        if constraint == nil {
+            noteOnce("a gear links two hinges and a rack and pinion a hinge to a "
+                     + "slider, each with a part that can move; ignoring.")
+        }
+        // A link is written against four bodies and two joints, and removing
+        // any of them has to take it with them.
+        let joint = Joint3D(world: self, constraint: constraint, a: a.a, b: a.b,
+                            alsoTouches: [b.a, b.b], linking: (a, b))
         joints.append(joint)
         return joint
     }
@@ -679,10 +797,10 @@ public final class World3D {
 
     /// Remove a body and any joints attached to it.
     public func remove(_ body: Body3D) {
-        for joint in joints where joint.a == body.id || joint.b == body.id {
+        for joint in joints where joint.touches(body.id) {
             joint.destroyBackingConstraint()
         }
-        joints.removeAll { $0.a == body.id || $0.b == body.id }
+        joints.removeAll { $0.touches(body.id) }
         cjolt_body_destroy(handle, body.id)
         bodies.removeAll { $0 === body }
         bodyByID[body.id] = nil
@@ -715,10 +833,15 @@ public final class World3D {
         if let groundBody { bodyByID[groundBody.id] = groundBody }
     }
 
-    /// Destroy a joint (called by `Joint3D.remove()`).
+    /// Destroy a joint (called by `Joint3D.remove()`), and with it any link
+    /// written against it: a gear pair means nothing once one of its hinges is
+    /// gone.
     func removeJoint(_ joint: Joint3D) {
+        for link in joints where link.links(joint) {
+            link.destroyBackingConstraint()
+        }
         joint.destroyBackingConstraint()
-        joints.removeAll { $0 === joint }
+        joints.removeAll { $0 === joint || $0.links(joint) }
     }
 
     // MARK: Stepping
