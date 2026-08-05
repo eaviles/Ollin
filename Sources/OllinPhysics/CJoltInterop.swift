@@ -28,8 +28,9 @@ func readFloats4(_ body: (UnsafeMutablePointer<Float>) -> Void) -> (Float, Float
 }
 
 /// Calls `body` with a pointer to three floats the C side reads.
-func withFloats3(_ values: (Float, Float, Float),
-                 _ body: (UnsafePointer<Float>) -> Void) {
+@discardableResult
+func withFloats3<R>(_ values: (Float, Float, Float),
+                    _ body: (UnsafePointer<Float>) -> R) -> R {
     withUnsafeBytes(of: values) {
         body($0.baseAddress!.assumingMemoryBound(to: Float.self))
     }

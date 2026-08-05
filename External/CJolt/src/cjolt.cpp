@@ -9,6 +9,7 @@
 #include <Jolt/Core/JobSystemThreadPool.h>
 #include <Jolt/Core/TempAllocator.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
+#include <Jolt/Physics/Collision/BroadPhase/BroadPhaseQuery.h>
 #include <Jolt/Physics/Collision/CastResult.h>
 #include <Jolt/Physics/Collision/ContactListener.h>
 #include <Jolt/Physics/Collision/RayCast.h>
@@ -758,6 +759,113 @@ void cjolt_body_set_restitution(CJoltWorld *world, CJoltBodyID body, float resti
 
 void cjolt_body_set_gravity_factor(CJoltWorld *world, CJoltBodyID body, float factor) {
     world->physics.GetBodyInterface().SetGravityFactor(BodyID(body), factor);
+}
+
+// Buoyancy ------------------------------------------------------------------
+
+int32_t cjolt_world_bodies_in_box(const CJoltWorld *world, const float boxMin[3],
+                                  const float boxMax[3], CJoltBodyID *outBodies,
+                                  float *outCenters, int32_t capacity) {
+    if (capacity <= 0) { return 0; }
+    CJoltWorld *w = const_cast<CJoltWorld *>(world);
+
+    // The broad phase reports whatever overlaps the box; which of those can
+    // actually take an impulse is decided below.
+    class Collector : public CollideShapeBodyCollector {
+    public:
+        explicit Collector(std::vector<BodyID> &ids) : mIDs(ids) {}
+        virtual void AddHit(const BodyID &id) override { mIDs.push_back(id); }
+
+    private:
+        std::vector<BodyID> &mIDs;
+    };
+
+    std::vector<BodyID> hits;
+    Collector collector(hits);
+    AABox box(Vec3(boxMin[0], boxMin[1], boxMin[2]),
+              Vec3(boxMax[0], boxMax[1], boxMax[2]));
+    w->physics.GetBroadPhaseQuery().CollideAABox(
+        box, collector, SpecifiedBroadPhaseLayerFilter(BroadPhaseLayers::MOVING),
+        SpecifiedObjectLayerFilter(Layers::MOVING));
+
+    // The tree hands them back in whatever order it walked; sorting makes the
+    // caller's per-body pass replay identically.
+    std::sort(hits.begin(), hits.end());
+
+    int32_t written = 0;
+    for (const BodyID &id : hits) {
+        if (written >= capacity) { break; }
+        Body *body = resolveBody(w, id.GetIndexAndSequenceNumber());
+        // Only a dynamic rigid body has the mass and the motion properties the
+        // impulse is expressed in: a sensor or a character's kinematic stand-in
+        // would be nudged off its driven path, and the library's buoyancy is
+        // not implemented for soft bodies at all.
+        if (body == nullptr || !body->IsRigidBody() || !body->IsDynamic()
+            || body->IsSensor()) {
+            continue;
+        }
+        outBodies[written] = id.GetIndexAndSequenceNumber();
+        RVec3 center = body->GetCenterOfMassPosition();
+        outCenters[3 * written + 0] = float(center.GetX());
+        outCenters[3 * written + 1] = float(center.GetY());
+        outCenters[3 * written + 2] = float(center.GetZ());
+        written += 1;
+    }
+    return written;
+}
+
+bool cjolt_body_apply_buoyancy(CJoltWorld *world, CJoltBodyID bodyID,
+                               const float surfacePoint[3],
+                               const float surfaceNormal[3], float density,
+                               float scale, float linearDrag, float angularDrag,
+                               const float flow[3], float dt,
+                               CJoltBuoyancyWake wake) {
+    Body *body = resolveBody(world, bodyID);
+    if (body == nullptr || !body->IsRigidBody() || !body->IsDynamic()
+        || body->IsSensor()) {
+        return false;
+    }
+
+    RVec3 point(surfacePoint[0], surfacePoint[1], surfacePoint[2]);
+    Vec3 normal(surfaceNormal[0], surfaceNormal[1], surfaceNormal[2]);
+    if (normal.IsNearZero()) { return false; }
+    normal = normal.Normalized();
+
+    if (!body->IsActive()) {
+        if (wake == CJOLT_BUOYANCY_WAKE_NEVER) { return false; }
+        if (wake == CJOLT_BUOYANCY_WAKE_AT_SURFACE) {
+            // A surface that is merely rolling only concerns what it passes
+            // through. Anything wholly below it has nothing to ride (its
+            // submerged volume is already all of it, whatever shape the swell
+            // takes), so a sunk pile settles instead of being stirred awake
+            // every step.
+            const AABox &bounds = body->GetWorldSpaceBounds();
+            float distance = normal.Dot(Vec3(bounds.GetCenter() - point));
+            float reach = bounds.GetExtent().Dot(normal.Abs());
+            if (std::abs(distance) > reach) { return false; }
+        }
+        world->physics.GetBodyInterface().ActivateBody(BodyID(bodyID));
+    }
+
+    float totalVolume = 0.0f, submergedVolume = 0.0f;
+    Vec3 relativeCenterOfBuoyancy;
+    body->GetSubmergedVolume(point, normal, totalVolume, submergedVolume,
+                             relativeCenterOfBuoyancy);
+    if (submergedVolume <= 0.0f || totalVolume <= 0.0f) { return false; }
+
+    // The library wants the ratio of the fluid's density to the body's own
+    // rather than a density, so the body's is formed here from the very volume
+    // the submerged fraction was just measured against. Anything else (the
+    // shape's own reported volume, say) would put the waterline slightly off
+    // what the displaced volume says.
+    const float inverseMass = body->GetMotionProperties()->GetInverseMass();
+    const float buoyancy = scale * density * totalVolume * inverseMass;
+
+    Vec3 flowVelocity(flow[0], flow[1], flow[2]);
+    return body->ApplyBuoyancyImpulse(totalVolume, submergedVolume,
+                                      relativeCenterOfBuoyancy, buoyancy,
+                                      linearDrag, angularDrag, flowVelocity,
+                                      world->physics.GetGravity(), dt);
 }
 
 // Constraints ---------------------------------------------------------------

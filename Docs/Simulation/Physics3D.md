@@ -55,6 +55,7 @@ Distances are the 3D scene's world units (y-up, matching the camera). The solver
 - [Vehicles](#vehicles) - a chassis on sprung wheels you drive from `draw()`
 - [Ragdolls](#ragdolls) - a skinned figure given weight, limp or powered
 - [Soft bodies](#softbodies) - cloth that drapes and closed shapes that squash
+- [Water](#water) - buoyancy: what floats, how deep it sits, and what carries it
 - [Grabbing with the mouse](#grabbing) - ray-picking and dragging bodies through the camera
 - [Drawing bodies](#drawing) - `withBody` and matching meshes to colliders
 
@@ -671,6 +672,67 @@ if let grip { dragSoftGrab(grip, to: Vector2(mouseX, mouseY)) }
 **What a soft body cannot do yet.** The solver collides them with the rigid bodies around them but not with each other, and not with themselves, so a sheet folded double will pass through its own layers (which reads as a flicker where the two lie together). They are also outside the contact surface above: a soft body's touches do not appear in `world.contacts`, and it is invisible to `body(under:in:)` (use `grabSoftBody(at:in:)`). Tearing is not offered, because a real tear has to split a shared vertex in two and rebuild the surface, which the solver has no way to do while it runs.
 
 The worked example is [`3D/Physics/Drape`](../../Examples/3D/Physics/Drape/): a banner pegged to a washing line that flaps in a gusting wind, a sheet thrown over a crate, and a beach ball you can let the air out of.
+
+<a name="water"></a>
+
+### Water
+
+A world can have water the same way it has ground: one property, and nothing opts in.
+
+```swift
+world.water = Water(level: 0)
+```
+
+Everything already in the world starts floating. What floats and what does not comes from the `density` each body was built with, measured against the water's, so it is a number you were already setting:
+
+```swift
+world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, 4, 0),
+              density: 0.3)   // a cork: rides with a third of it under
+world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(2, 4, 0),
+              density: 3)     // a stone: goes to the bottom
+```
+
+The waterline is not something you tune. A body of density `d` settles with fraction `d` of itself submerged, because that is the volume it has to displace to hold its own weight up: a barrel at `0.5` floats half under, one at `0.8` rides low with a fifth of it dry. `Water.density` is the same relative scale bodies use, where `1` is water, so raising it to `1.3` for brine floats every one of them higher without touching the bodies.
+
+**The knobs.**
+
+| | |
+|---|---|
+| `level` | the height of the still surface. Animate it for a tide; bodies asleep at the old level wake and follow. |
+| `density` | how heavy the water is, `1` being water and the default body material. |
+| `linearDrag` | how hard it resists a body dragged through it. This is what makes something dropped in settle rather than bob for ages. |
+| `angularDrag` | the same for turning, which is what stops a long shape rocking too long after it lands. |
+| `flow` | a current, in units per second, that carries everything afloat along. |
+| `waves` | a rolling swell, or `nil` for a flat calm. |
+
+Drag is worth a moment because it is the difference between water and a trampoline. With `linearDrag: 0`, a crate dropped in oscillates about its waterline and never stops. The default `0.5` reads like water: it dips, comes back up, and settles within a second or two.
+
+**A swell.** `Water.Waves` gives the surface a shape, and it carries whatever is riding it:
+
+```swift
+world.water = Water(level: 0, waves: Water.Waves(amplitude: 0.25,
+                                                 wavelength: 8, speed: 1.5))
+```
+
+The same surface is available to draw, which is the point of `waterMesh`: it hands back the very surface the bodies are floating on, so the swell you see and the swell they ride cannot drift apart.
+
+```swift
+if let surface = world.waterMesh(extent: 40) {
+    fill(Color(hex: 0x2C7C96))
+    material(.dielectric(roughness: 0.3))
+    drawMesh(surface)
+}
+```
+
+`waterHeight(at:)` asks the same question for a single point, for sitting something exactly on the waterline. Both read the surface as it stands this frame; `world.waterPhase` is the clock behind it, if a shader needs to move in step.
+
+**Riding higher than it should.** `Body3D.buoyancy` multiplies what the water would otherwise do to one body: `1` is what its density says, `2` floats it as though it were half as heavy, `0` sinks it whatever it is made of. Reach for `density` first and keep this for the one crate that has to bob higher than the rest.
+
+**What the water leaves alone.** Sensors, static and kinematic bodies, and a character's capsule are not floated: a detector volume and a walking figure go where the sketch puts them, not where the water would. The solver has no buoyancy for soft bodies either, so a cloth dropped in the sea sinks through it; if you need something soft to float, hang it off a rigid body that does. The water itself is an ocean rather than a pool: everything below `level` is water, out to the horizon, so a container of water needs its own walls built from static bodies (which is all a harbour is).
+
+One thing worth knowing about sleeping. A floating body settles at its waterline and then goes to sleep, which is what you want (it stops costing anything and holds its level exactly). If you move the water afterwards, by changing the level or any other setting, everything afloat is woken so it can follow. A swell wakes only what it actually washes over, which is why a stone that has sunk to the bottom stays asleep under a rolling sea.
+
+The worked example is [`3D/Physics/Flotsam`](../../Examples/3D/Physics/Flotsam/): crates from cork to nearly waterlogged riding a swell at their own depths, a stone anchor on the bottom, and a current carrying the lot past. Drag one under and let go.
 
 <a name="grabbing"></a>
 

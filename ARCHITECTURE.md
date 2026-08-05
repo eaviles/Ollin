@@ -3442,6 +3442,73 @@ volume a limp one loses and shoves a crate further, pressure on a sheet changes
 nothing at all, a cloth drapes over a sphere rather than through it, a wind
 holds a banner out, and identical runs replay identically.
 
+### Water and buoyancy
+
+Buoyancy is unlike everything above it in the bridge: the solver does not work
+it out. It is an impulse the *caller* applies to each body, each step, before
+the step that integrates it, so the whole tier is a loop Ollin owns rather than
+a thing configured on the solver. `World3D.step` runs it after the characters
+and vehicles have had their turn and immediately before `cjolt_world_step`,
+which is where the library's own samples put it.
+
+**Density in, factor out.** The library takes a dimensionless `inBuoyancy`
+(the ratio of the fluid's density to the body's) rather than a fluid density,
+on the grounds that a plain number is easier to configure. That is the wrong
+trade for Ollin, because a body already carries a `density` and the collider
+already maps relative density 1 onto 1000 kg/m³, which is water. So the bridge
+takes a real density and forms the ratio itself:
+`buoyancy = scale · density · totalVolume / mass`. The `totalVolume` is
+deliberately the one `GetSubmergedVolume` just returned rather than the shape's
+own reported volume, so the ratio is formed against exactly the volume the
+submerged fraction was measured against and the waterline lands where the
+displaced volume says. That is what makes the headline behaviour derived rather
+than tuned: a body of density *d* settles with fraction *d* of itself under,
+pinned to within 0.08 across the range (the margin is what sleeping costs,
+since the solver freezes the body wherever its last small oscillation had
+reached rather than at the exact equilibrium).
+
+**Waves are a per-body tangent plane.** The impulse takes a surface *point and
+normal* per call, not a world-wide plane, so a swell is expressible: each body
+is handed the plane tangent to the surface under its own centre of mass. This
+is the library's own boat sample's approach, not an invention, and it carries
+the honest envelope that a body much larger than the wavelength it rides is
+approximated. The surface function lives in Swift (`Water.surface(at:phase:)`,
+three crossed sines whose gradient is analytic rather than sampled either
+side), which is what lets `waterMesh` and `waterHeight` read the very same
+surface the bodies ride: one source of truth, pinned by a test that every mesh
+vertex sits at `waterHeight` for its own x and z.
+
+**The query.** `cjolt_world_bodies_in_box` is a broad-phase `CollideAABox` over
+the water volume, filtered to dynamic rigid non-sensor bodies and sorted by
+handle. The filter is load-bearing three times over: a kinematic body (a
+sensor, a character's stand-in) has motion properties an impulse would nudge
+off its driven path, a static one has none at all, and the library's buoyancy
+is not implemented for soft bodies and asserts on one. Sorting is the
+stage-4 rule again, so the per-body pass replays in one order.
+
+**Sleeping is the interesting part, and the wake rule has two modes because
+one is wrong.** A floating body settles and sleeps, and that is correct: it
+holds its waterline exactly (measured: zero movement over thirty further
+seconds) and costs nothing. It stops being right the moment the surface moves,
+and the two ways that happens want different answers. A swell wakes only what
+its surface passes through, tested against the body's own bounds, so a stone
+sunk to the bottom (whose submerged volume no wave shape can change) sleeps on
+instead of being stirred awake every step. A *changed setting* has to wake
+everything afloat wherever it is, because the equilibrium itself moved. The
+first draft had only the swell rule, and a probe caught it: raising the level
+from 0 to 3 left a sleeping crate frozen at the old waterline, three units
+under the new surface and outside its own bounds, so it never woke.
+`CJoltBuoyancyWake` names the three cases rather than passing a bool.
+
+`Buoyancy3DTests` (20) pins the tier against counterfactual twins: a cork
+floats where a stone sinks and where the same cork with no water just falls,
+the waterline tracks density across the range, denser water floats the same
+body higher, drag settles a body that otherwise still bobs after a minute, a
+sleeping floater holds its level, a tide reaches it, a swell carries what
+floats and lets the bottom sleep, a current drifts a raft, `buoyancy`
+multiplies both ways, sensors and soft bodies are left alone, the drawn surface
+is the ridden one, and identical runs replay identically.
+
 ## The geometry and generator catalog
 
 The CPU-side geometry types and generative-technique recipes live in

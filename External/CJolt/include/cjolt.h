@@ -176,6 +176,56 @@ void cjolt_body_set_friction(CJoltWorld *world, CJoltBodyID body, float friction
 void cjolt_body_set_restitution(CJoltWorld *world, CJoltBodyID body, float restitution);
 void cjolt_body_set_gravity_factor(CJoltWorld *world, CJoltBodyID body, float factor);
 
+// Buoyancy ------------------------------------------------------------------
+
+/// Fills `outBodies` with the bodies whose bounds overlap the axis-aligned box
+/// and `outCenters` (3 floats each) with their centers of mass. Only bodies a
+/// buoyancy impulse can move are reported: statics, sensors, kinematic bodies,
+/// and soft bodies are left out. Returns how many were written, in ascending
+/// handle order so the same simulation floats the same bodies in the same
+/// order every run.
+int32_t cjolt_world_bodies_in_box(const CJoltWorld *world, const float boxMin[3],
+                                  const float boxMax[3], CJoltBodyID *outBodies,
+                                  float *outCenters, int32_t capacity);
+
+/// What a sleeping body does when the fluid reaches it. A body that has
+/// settled at its waterline and gone to sleep is right to stay there while the
+/// fluid is unchanged, so the caller says which kind of change this step is.
+typedef enum {
+    /// Leave it asleep: the fluid has not moved, so its waterline has not
+    /// either.
+    CJOLT_BUOYANCY_WAKE_NEVER = 0,
+    /// Wake it only if the surface passes through its bounds. This is what a
+    /// swell wants: a floating crate wakes to ride the wave while a stone
+    /// settled on the bottom, whose submerged volume the wave shape cannot
+    /// change, sleeps on.
+    CJOLT_BUOYANCY_WAKE_AT_SURFACE = 1,
+    /// Wake it wherever it is. This is what a changed level (or density, or
+    /// current) wants: the equilibrium itself moved, so a body sleeping at the
+    /// old one has to be let go of, however far away the new surface is.
+    CJOLT_BUOYANCY_WAKE_ALWAYS = 2,
+} CJoltBuoyancyWake;
+
+/// Applies one step of fluid buoyancy and drag to a body, against the fluid
+/// surface plane through `surfacePoint` with `surfaceNormal` (a wavy surface
+/// passes the local tangent plane under each body). Call once per body per
+/// step, before stepping the world.
+///
+/// `density` is the fluid's, in kg/m^3. The library itself takes a
+/// dimensionless factor instead, so the density is divided here by the body's
+/// own (its mass over the same total volume the submerged fraction is measured
+/// against), which is what puts the waterline where the displaced volume says.
+/// `scale` multiplies that factor, for a body that should ride higher or lower
+/// than its weight alone would put it.
+///
+/// Returns true if the body was in the fluid at all.
+bool cjolt_body_apply_buoyancy(CJoltWorld *world, CJoltBodyID body,
+                               const float surfacePoint[3],
+                               const float surfaceNormal[3], float density,
+                               float scale, float linearDrag, float angularDrag,
+                               const float flow[3], float dt,
+                               CJoltBuoyancyWake wake);
+
 // Constraints ---------------------------------------------------------------
 
 /// Connects two bodies (either may be CJOLT_BODY_INVALID for the world).

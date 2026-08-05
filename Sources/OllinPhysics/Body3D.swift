@@ -45,6 +45,13 @@ public final class Body3D {
     /// added (see `World3D.addBody(_:at:kind:isSensor:)`).
     public let isSensor: Bool
 
+    /// How hard `World3D.water` pushes this body up, against what its own
+    /// weight and volume already say. `1`, the default, floats it exactly where
+    /// its `density` puts it; above 1 rides it higher than it should; `0` sinks
+    /// it whatever it is made of. Reach for `density` first and keep this for
+    /// the one crate that has to bob higher than the rest.
+    public var buoyancy: Double = 1
+
     /// Free-form tag so a sketch can hang its own data off a body (its colour,
     /// its mesh, a group id) without a parallel array.
     public var userData: Any?

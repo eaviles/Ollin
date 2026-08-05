@@ -769,6 +769,62 @@ banner.applyForce(Vector3(0, 0, gust))
 
 The [`3D/Physics/Drape`](../Examples/3D/Physics/Drape/) example puts all of it in one scene: a banner pegged to a washing line, a sheet thrown over a crate, and a ball you can let the air out of, all three draggable. Worth knowing before you build on this: soft bodies collide with the rigid world but not with each other or themselves, so a sheet folded double will pass through its own layers, and they do not report contacts the way the crates in "Asking what hit what" do.
 
+## Water, and what it holds up
+
+A world can have water the same way it has ground. One property, and nothing has to opt in.
+
+```swift
+world.water = Water(level: 0)
+```
+
+Everything already in the world starts floating. You do not mark a crate as floatable, and you do not pick how high it rides, because you have already said: it is the `density` you built it with.
+
+```swift
+world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, 4, 0),
+              density: 0.3)   // cork
+world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(2, 4, 0),
+              density: 3)     // stone
+```
+
+The cork bobs, the stone goes to the bottom, and the interesting part is what happens in between. A body of density `0.5` settles with exactly half of itself under the surface. One at `0.8` rides low with a fifth of it dry. **The waterline is not a setting, it is an answer**: a body sinks until the water it has pushed out of the way weighs the same as it does, which is the whole of buoyancy in one sentence.
+
+Here are four identical crates that differ in nothing but that number.
+
+<img src="Images/17-3DGently/Floating.jpg" alt="Four cube crates floating in a row on still blue water, each sitting lower than the one before it, from a pale crate mostly above the surface to a dark one almost entirely under" width="560">
+
+`Water` has a `density` of its own, on the same scale, where `1` is water and also the default body material. Push it to `1.3` for brine and every crate in the scene rides higher, without touching any of them.
+
+The knob you will actually reach for first is drag.
+
+```swift
+world.water = Water(level: 0, linearDrag: 0.5)   // the default
+```
+
+At `0` a crate dropped in oscillates about its waterline and never stops, which looks less like water than like a trampoline. The default dips, comes back, and settles in about a second. `angularDrag` does the same for turning, which is what stops a long shape rocking all afternoon after it lands.
+
+Give the surface a shape and it carries whatever is riding it:
+
+```swift
+world.water = Water(level: 0, waves: Water.Waves(amplitude: 0.25,
+                                                 wavelength: 8, speed: 1.5))
+```
+
+Now you have a problem you would have had to solve yourself: drawing water that matches the water. `waterMesh` hands back the surface the bodies are floating on, as an ordinary mesh, so the swell you can see and the swell they ride are the same one.
+
+```swift
+if let surface = world.waterMesh(extent: 40) {
+    fill(Color(hex: 0x2C7C96))
+    material(.dielectric(roughness: 0.3))
+    drawMesh(surface)
+}
+```
+
+Keep a little roughness in that material. A perfect mirror reflects the lower half of the environment wherever a wave tilts the reflection below the horizon, which lays flat grey patches along the troughs, and a sea is not a mirror anyway.
+
+Two things worth knowing before you build on this. `world.water` is an ocean, not a pool: everything below `level` is water, out to the horizon, so a harbour is what you get by putting static walls in it. And the water does not reach everything, on purpose. Sensors, static bodies, and a walking character go where you put them rather than where the water would. Soft bodies are the real gap: the solver has no buoyancy for them, so the sheet from the last section sinks. If you need something soft afloat, hang it off a rigid body that floats.
+
+The [`3D/Physics/Flotsam`](../Examples/3D/Physics/Flotsam/) example is the whole thing in one scene: crates from cork to nearly waterlogged riding a swell at their own depths, a stone anchor on the bottom, and a current carrying the lot past. Drag one under and let go.
+
 ## What the depth buffer is for
 
 Chapter 14 filtered layers by their color. A 3D scene drawn into a layer carries something extra that a flat drawing never has: for every pixel, how far away the thing at that pixel is. That's the **depth buffer**, and three effects exist purely to use it.

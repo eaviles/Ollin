@@ -48,6 +48,7 @@ See the [3D physics reference](../../Docs/Simulation/Physics3D.md).
 | [Joyride](Physics/Joyride/) | Drive a car over an eroded island: arrows or WASD, space for the hand brake, with the gearing, the springs, and the tire grip on live sliders. `addVehicle`, `Wheel3D`, `throttle`/`steering`/`handBrake`, `withWheel`. |
 | [Ragdoll](Physics/Ragdoll/) | A skinned figure given weight: it stands and waves while its joints are powered, collapses when they are not, and can be dragged around by an arm either way. `addRagdoll`, `scene.apply(ragdoll)`, `drive(toward:)`, `withLimb`. |
 | [Drape](Physics/Drape/) | A washing line in the wind: a banner pegged along its top edge that flaps, a sheet thrown over a crate, and a beach ball you can let the air out of. Drag any of them. `addSoftBody`, `pinned:`, `pressure`, `applyForce`, `drawSoftBody`, `grabSoftBody`. |
+| [Flotsam](Physics/Flotsam/) | A harbour after a spill: crates from cork to nearly waterlogged riding a swell at their own depths, a stone anchor on the bottom, and a current carrying the lot past. Drag one under and let go. `world.water`, `Water.Waves`, `density`, `waterMesh`, `flow`. |
 
 ### Camera
 

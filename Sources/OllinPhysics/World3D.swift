@@ -41,6 +41,17 @@ public final class World3D {
         didSet { rebuildGround() }
     }
 
+    /// Water filling the world below a level, or `nil` (the default) for a dry
+    /// world. Bodies lighter than it float, bob, and drift; heavier ones sink
+    /// through. Nothing opts in: setting this floats whatever is already here.
+    ///
+    /// ```swift
+    /// world.water = Water(level: 0)
+    /// ```
+    public var water: Water? {
+        didSet { if water != oldValue { waterMoved = true } }
+    }
+
     /// Default restitution `0…1` for the ground and for bodies that don't pass
     /// their own: how much speed survives a bounce. Kept low so stacks settle.
     public var bounce: Double = 0.2
@@ -125,6 +136,22 @@ public final class World3D {
 
     /// The solver handle of the slab backing `ground`, if any.
     private var groundID: CJoltBodyID = CJOLT_BODY_INVALID
+
+    /// How far into the swell the water is, in seconds of simulated time, so
+    /// the surface a sketch draws and the surface the bodies ride are read at
+    /// the same moment. Advanced by `step(dt:)`, so a fixed timestep replays
+    /// the same waves. Read it to drive a shader's own waves in step with the
+    /// ones the bodies are riding.
+    public internal(set) var waterPhase: Double = 0
+
+    /// Whether the water changed since the last step, which is what tells the
+    /// buoyancy pass to wake bodies that had settled at the old surface.
+    var waterMoved = false
+
+    /// Scratch for the buoyancy pass's query, kept between steps so a floating
+    /// scene allocates nothing per frame.
+    var waterBodies: [CJoltBodyID] = []
+    var waterCenters: [Float] = []
 
     /// Creates an empty world. `maxBodies` bounds how many bodies can ever be
     /// live at once (the solver reserves its tables up front).
@@ -666,6 +693,9 @@ public final class World3D {
         // A vehicle's wheels are collided and driven by the solver's own step
         // listener, so all it needs beforehand is this frame's controls.
         for vehicle in vehicles { vehicle.advance() }
+        // Buoyancy is an impulse the caller applies, not something the solver
+        // works out, so it goes on just before the step that will integrate it.
+        applyBuoyancy(dt: clamped)
         // One collision pass per ~60 Hz of simulated time keeps long frames
         // stable without costing short ones anything.
         let passes = max(1, Int((clamped * 60).rounded(.up)))
