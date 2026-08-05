@@ -51,6 +51,7 @@ Distances are the 3D scene's world units (y-up, matching the camera). The solver
 - [Motors, limits, and springs](#motors) - powered hinges and sliders, travel stops, springy ends
 - [Contacts](#contacts) - what hit what this step, and how hard
 - [Sensors](#sensors) - regions that detect without colliding
+- [Collision groups](#groups) - saying that two kinds of thing never touch
 - [Queries](#queries) - rays, shape sweeps, and overlaps: asking the world what is there
 - [Characters](#characters) - a walking figure you steer from `draw()`
 - [Vehicles](#vehicles) - a chassis on sprung wheels you drive from `draw()`
@@ -319,6 +320,57 @@ Because it never falls, a sensor stays where it is put; move one by setting its 
 
 Sensors detect *moving* bodies (dynamic and kinematic), not static scenery, and not each other, so a trigger volume laid over the ground doesn't spend every step reporting the ground.
 
+<a name="groups"></a>
+
+### Collision groups
+
+Everything in a world collides with everything else. A **collision group** is a name you put things in so the world can be told that two of those names pass straight through each other.
+
+```swift
+let bead = world.addBody(.sphere(radius: 0.2), at: p, group: "beads")
+world.ignoreCollisions(between: "beads", and: "glass")
+```
+
+That is the whole surface: `group:` wherever a thing is made, and one sentence per rule. The rule is a fact about a pair rather than a direction, so there is no way to say that beads ignore the glass and forget that the glass ignores beads. `allowCollisions(between:and:)` withdraws a rule, and `collides(_:with:)` reads one back.
+
+**Everything starts in `.default`, and naming a group is not itself a rule.** A world nobody has written a rule for behaves exactly like a world with no groups. A group only means something once something has been said about it, which is why a group name is a plain string and needs no declaring.
+
+**A group collides with itself** until told otherwise, so two crates in one group still stack. Saying it twice is how confetti falls through its own drift:
+
+```swift
+world.ignoreCollisions(between: "confetti", and: "confetti")
+```
+
+**What a rule reaches.** A filtered pair is filtered everywhere the pair could have met: it never collides, it never reaches [`contacts`](#contacts), a [sensor](#sensors) in an ignored group never reports it, a [character](#characters) walks through it (including through another character), and a [vehicle](#vehicles)'s wheels do not feel it under them. Every kind of thing takes a group:
+
+```swift
+world.addBody(…, group: "phantoms")
+world.addCharacter(…, group: "phantoms")
+world.addVehicle(…, group: "traffic")
+world.addRagdoll(from: figure, group: "phantoms")
+world.addSoftBody(from: cloth, group: "drapes")
+world.addStaticColliders(from: hall, group: "scenery")
+```
+
+and each of them can be moved between groups while it runs: `body.group`, `character.group`, `vehicle.group`, `ragdoll.group`, `softBody.group`. A rule written after things have already settled on each other still applies; the bodies are woken so the solver looks at the pair again.
+
+A figure's own limbs are kept from fighting each other by a separate mechanism that groups never touch, so two ragdolls in one group still collide with each other exactly as they should.
+
+**Asking as a group.** Every [query](#queries) takes `as:`, which asks the question the way a body of that group would ask it, looking straight through whatever that group passes through:
+
+```swift
+world.ignoreCollisions(between: "bullets", and: "glass")
+
+world.raycast(from: muzzle, to: target)                  // stops at the pane
+world.raycast(from: muzzle, to: target, as: "bullets")   // goes through it
+```
+
+A query with no `as:` is asked in `.default` and sees the whole world.
+
+**The bookkeeping.** A world holds `World3D.maxCollisionGroups` (64) groups; naming more keeps the extras in `.default` rather than quietly aliasing them onto a group already in use. `world.collisionGroups` lists the ones it knows in the order they were named, which is how a misspelled name is found: a typo is a *new* group, and a rule written about it does nothing.
+
+Worked example: `Examples/3D/Physics/Sieve` sorts three colors of bead down one ramp, with the sorting itself being three `ignoreCollisions` calls.
+
 <a name="queries"></a>
 
 ### Queries
@@ -366,6 +418,8 @@ A [sensor](#sensors) answers the same question *continuously* from a body that e
 let ahead = world.raycast(from: robot.position, to: target,
                           ignoring: [robot])
 ```
+
+`as:` narrows it the other way, by [collision group](#groups) rather than by naming bodies.
 
 Queries cost nothing but the search: asking does not step the world, so a per-body sight check every frame is an ordinary thing to write.
 

@@ -109,6 +109,22 @@ public final class Vehicle3D {
         didSet { cjolt_vehicle_set_wheel_contact(handle, wheelContact.cjolt) }
     }
 
+    /// Which collision group the whole machine is in: the chassis body and the
+    /// wheels alike, so a car in a group that ignores the barriers drives
+    /// through them rather than sitting on them with its bodywork clipping.
+    public var group: CollisionGroup {
+        get { body.group }
+        set { body.group = newValue }   // the world rebuilds the wheels' testers
+    }
+
+    /// Rebuild the wheels' collision testers against the chassis's group. Each
+    /// tester is made against one object layer, so a chassis that changed group
+    /// needs a new set; the world calls this when that happens.
+    func syncGroupToChassis() {
+        cjolt_vehicle_set_group(world.handle, handle,
+                                cjolt_body_get_group(world.handle, body.id))
+    }
+
     /// The furthest the chassis may tilt away from upright, in radians. `nil`
     /// (the default) lets it roll over like any other body; a value around
     /// `.pi / 3` keeps a car on its wheels through anything.

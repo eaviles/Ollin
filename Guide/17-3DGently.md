@@ -873,6 +873,50 @@ Two things worth knowing before you build on this. `world.water` is an ocean, no
 
 The [`3D/Physics/Flotsam`](../Examples/3D/Physics/Flotsam/) example is the whole thing in one scene: crates from cork to nearly waterlogged riding a swell at their own depths, a stone anchor on the bottom, and a current carrying the lot past. Drag one under and let go.
 
+## Things that pass through each other
+
+So far everything in a world collides with everything else, which is the honest default and is usually what you want. But a lot of scenes need the opposite of a wall somewhere: sparks that drift through the machine that threw them, a ghost that walks through the door, confetti that does not pile on itself, a laser that only some things stop.
+
+You could reach for that with logic, checking who touched what and undoing it. Ollin gives you the other way round. Put things in a named **group**, then tell the world that two groups never touch.
+
+```swift
+let bead = world.addBody(.sphere(radius: 0.2), at: p, group: "beads")
+world.ignoreCollisions(between: "beads", and: "grating")
+```
+
+That is the whole thing: a word where you build something, and one sentence saying what it does not touch. Here are two identical tubes with identical gratings and the same beads poured into each. The only difference is that the right pour is in a group the grating was told to ignore.
+
+<img src="Images/17-3DGently/Sorted.jpg" alt="Two glass tubes side by side, each with a horizontal grating across the middle. In the left tube a pile of amber beads rests on top of the grating; in the right tube the same number of teal beads has fallen straight through it and lies on the floor below" width="560">
+
+Three things about that sentence are worth having straight.
+
+**It reads both ways.** `ignoreCollisions(between: "beads", and: "grating")` is a fact about a pair, not a direction. There is no version of this where the beads ignore the grating and the grating still stops the beads.
+
+**Naming a group is not a rule.** A world where nobody has written an `ignoreCollisions` behaves exactly like a world with no groups at all, so you can tag things as you build them and decide later what any of it means. That also means a typo in a group name does nothing at all rather than something surprising, which is worth remembering when a rule seems to have been ignored. `world.collisionGroups` prints what the world actually heard.
+
+**A group still collides with itself.** Two crates in one group stack normally. If you want confetti that drifts through its own drift, say so:
+
+```swift
+world.ignoreCollisions(between: "confetti", and: "confetti")
+```
+
+Everything you can add to a world takes a group, the same way it takes a density: bodies, characters, vehicles, ragdolls, soft bodies, and the static scenery you import from a `Scene`. And a rule holds everywhere the pair could have met, which matters more than it sounds. A filtered pair does not collide, does not turn up in `contacts`, is not seen by a sensor, is walked through by a character (including another character), and is not felt by a vehicle's wheels. There is no corner of the world where the rule half-applies.
+
+Groups also change what a question sees. Every query from earlier in this chapter takes `as:`, which asks it the way a body of that group would ask it:
+
+```swift
+world.ignoreCollisions(between: "bullets", and: "glass")
+
+world.raycast(from: muzzle, to: target)                  // stops at the pane
+world.raycast(from: muzzle, to: target, as: "bullets")   // goes right through
+```
+
+That is the piece that turns filtering from a physics trick into something you can aim with: a sight line that ignores foliage, a ground probe that ignores the character doing the probing, a targeting ray that only sees what its own shot would hit.
+
+You can move something between groups while it runs, too. `body.group = "debris"` takes effect on the next step, and things already settled on each other are woken so the world looks at the pair again, which is how a crate that was scenery a moment ago becomes something to fall through.
+
+The [`3D/Physics/Sieve`](../Examples/3D/Physics/Sieve/) example is a sorting machine built out of nothing else: beads of three colors roll down one ramp with three windows set into it, each window told to ignore one color. Press space and the three rules are withdrawn, and the same machine stops sorting.
+
 ## What the depth buffer is for
 
 Chapter 14 filtered layers by their color. A 3D scene drawn into a layer carries something extra that a flat drawing never has: for every pixel, how far away the thing at that pixel is. That's the **depth buffer**, and three effects exist purely to use it.

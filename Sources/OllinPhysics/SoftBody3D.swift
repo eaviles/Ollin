@@ -81,7 +81,7 @@ public final class SoftBody3D {
           mass: Double, stiffness: Double, bend: Double, pressure: Double,
           damping: Double, friction: Double, restitution: Double,
           iterations: Int, vertexRadius: Double, twoSided: Bool,
-          pinned: ((Vector3) -> Bool)?) {
+          pinned: ((Vector3) -> Bool)?, group: CollisionGroup) {
         let welding = mesh.welded()
         guard welding.count >= 3, welding.indices.count >= 3 else { return nil }
 
@@ -167,6 +167,7 @@ public final class SoftBody3D {
         desc.iterations = Int32(max(1, iterations))
         desc.allowSleep = true
         desc.twoSided = twoSided
+        desc.group = world.groupIndex(group)
         let meters = world.meters(from: position)
         desc.position = (meters.0, meters.1, meters.2)
         let q = rotation.normalized
@@ -302,6 +303,19 @@ public final class SoftBody3D {
     public func wake() {
         guard !isDestroyed else { return }
         cjolt_soft_body_activate(world.handle, handle)
+    }
+
+    /// Which collision group the surface is in: a cloth in a group the crates
+    /// ignore drapes straight through them.
+    public var group: CollisionGroup {
+        get {
+            guard !isDestroyed else { return .default }
+            return world.group(at: cjolt_body_get_group(world.handle, bodyID))
+        }
+        set {
+            guard !isDestroyed else { return }
+            cjolt_body_set_group(world.handle, bodyID, world.groupIndex(newValue))
+        }
     }
 
     // MARK: Tuning it while it runs

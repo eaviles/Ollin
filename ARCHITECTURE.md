@@ -3565,6 +3565,78 @@ not flat, a compound reported once however many parts are inside, sensors and
 soft bodies invisible until asked for or never, distances in world units under
 a changed `unitsPerMeter`, and identical worlds answering identically.
 
+### Collision groups
+
+"These two never touch" is a named `CollisionGroup` on each thing plus a
+symmetric table on the world (`Sources/OllinPhysics/CollisionGroup.swift`,
+`ignoreCollisions(between:and:)` / `allowCollisions` / `collides(_:with:)`).
+The name is `ExpressibleByStringLiteral`, so a group costs one word at the site
+where a body is made and the rule is one sentence somewhere else.
+
+**The group rides in the object layer, and that choice is the whole design.**
+Jolt offers two filtering mechanisms and only one of them reaches everywhere a
+pair can meet. A per-body `CollisionGroup`/`GroupFilterTable` is consulted in
+the *narrow phase only*: it would never have reached a query, a character's own
+sweep, or a wheel's collision tester, it hardcodes "same sub-group never
+collides" (so two crates in one category could not have stacked), and it only
+filters within one `GroupID`, which is the slot the ragdoll tier already owns
+for keeping one figure's limbs from fighting each other. The **object layer**,
+by contrast, is what the library consults when finding collision pairs (so the
+contact listener never hears a filtered touch), in `DefaultObjectLayerFilter`
+for every query, in the filters `CharacterVirtual::ExtendedUpdate` takes, in the
+`ObjectLayer` a `VehicleCollisionTester` is constructed against, and in
+`SoftBodyCreationSettings::mObjectLayer`. So the layer carries both halves:
+
+```
+layer = (group << 2) | kind        kind in {NON_MOVING 0, MOVING 1, GHOST 2, SENSOR 3}
+```
+
+Group 0 leaves every layer numerically identical to the four fixed kinds it had
+before, so **a world that never names a group is byte-identical**; the whole
+existing physics suite passed unchanged. `ObjectLayerPairFilterImpl` answers the
+fixed kind rules against `layerKind` and then consults a `GroupTable` (64
+`uint64` rows, symmetric, diagonal meaningful), written from the main thread
+between steps and only read while one runs. The two mechanisms stay orthogonal:
+a ragdoll takes an Ollin group *and* keeps its own per-figure `CollisionGroup`,
+so two figures in one group still collide.
+
+Four places needed the split honored by hand, each of which would otherwise have
+filtered a pair in one place and not another:
+
+- **Character against character.** Characters are not in the broad phase; they
+  meet through `CharacterVsCharacterCollisionSimple`, which the layer never
+  reaches. `GroupedCharacterCollision` wraps it and refills a scratch list per
+  call with only the characters the caller's group can touch, then delegates to
+  the library's own loop rather than reimplementing it. The group travels as the
+  `CharacterVirtual`'s user data (the bridge owns that slot) so the filter can
+  answer for a bare character pointer without searching for its wrapper.
+- **Wheel collision testers** take their `ObjectLayer` at construction, so
+  changing a live vehicle's group rebuilds all three and re-selects the active
+  one (`CJoltVehicle` remembers `contactIndex` and `wheelWidth` for exactly
+  this). `Body3D.group`'s setter routes through `World3D.bodyChangedGroup` so
+  setting the group on a *chassis body* rebuilds them too, rather than leaving
+  the wheels probing the old layer.
+- **Buoyancy's sweep** asked for `SpecifiedObjectLayerFilter(Layers::MOVING)`,
+  an exact layer match that was correct while there was one moving layer and
+  silently stops floating a grouped body once there are many. It became a
+  kind-based `MovingKindLayerFilter`. This was a real trap, caught by writing
+  the "a grouped body still floats" twin before trusting the encoding.
+- **Motion changes rewrite the layer**, so `cjolt_body_set_motion` and
+  `cjolt_ragdoll_set_motion` re-derive it from the *current* layer's group: a
+  body let go from static keeps the group it was in.
+
+Queries narrow through a `group` field on `CJoltQueryFilter` rather than a new
+parameter on the four C calls (the stage-10 rule paying off); `QueryFilters`
+builds its layer filters from `layerFor(filter->group, MOVING)`, so `as:` sees
+what a moving body of that group would see and the default group answers exactly
+as before. A world holds 64 groups; naming more keeps the extras in `.default`
+(never aliasing an in-use group, which would filter the wrong things) with a
+one-time note, and `world.collisionGroups` lists the names so a typo, which is a
+*new* group silently doing nothing, is findable. `CollisionFilter3DTests` (22)
+pins each answer against its counterfactual twin, the sharpest being the four
+that exist only to catch a half-applied filter: the contact listener, the
+sensor, the second character, and the wheel testers.
+
 ## The geometry and generator catalog
 
 The CPU-side geometry types and generative-technique recipes live in

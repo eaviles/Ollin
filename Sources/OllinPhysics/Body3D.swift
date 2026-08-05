@@ -160,6 +160,28 @@ public final class Body3D {
     /// Whether the body is awake (a settled body sleeps until touched).
     public var isAwake: Bool { cjolt_body_is_active(world.handle, id) }
 
+    /// Wake a settled body, so it feels a rule that changed under it.
+    public func wake() {
+        cjolt_body_activate(world.handle, id)
+    }
+
+    /// Which collision group the body is in. Set it to move the body between
+    /// groups; what it then passes through is whatever the world's
+    /// `ignoreCollisions(between:and:)` rules say about that group.
+    ///
+    /// ```swift
+    /// crate.group = "debris"        // now ignored by whatever ignores debris
+    /// ```
+    public var group: CollisionGroup {
+        get { world.group(at: cjolt_body_get_group(world.handle, id)) }
+        set {
+            cjolt_body_set_group(world.handle, id, world.groupIndex(newValue))
+            // A vehicle's wheels feel the road through their own testers, which
+            // are built against the chassis's group and so are rebuilt here.
+            world.bodyChangedGroup(self)
+        }
+    }
+
     // MARK: Touching
 
     /// Every body currently in contact with this one, in a stable order. For a

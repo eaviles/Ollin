@@ -54,11 +54,16 @@ extension World3D {
     ///   - includingSensors: report detector volumes too. A sensor is a region
     ///     to be inside rather than a surface to hit, so a ray passes through
     ///     one by default.
+    ///   - as: ask as a body of this collision group would: the ray looks
+    ///     straight through whatever that group passes through. `.default`
+    ///     sees the whole world.
     public func raycast(from origin: Vector3, to end: Vector3,
                         ignoring: [Body3D] = [],
-                        includingSensors: Bool = false) -> Hit3D? {
+                        includingSensors: Bool = false,
+                        as group: CollisionGroup = .default) -> Hit3D? {
         castRay(from: origin, to: end, ignoring: ignoring,
-                includingSensors: includingSensors, allHits: false).first
+                includingSensors: includingSensors, group: group,
+                allHits: false).first
     }
 
     /// Every body along the segment from `origin` to `end`, nearest first: what
@@ -71,9 +76,10 @@ extension World3D {
     /// ```
     public func raycastAll(from origin: Vector3, to end: Vector3,
                            ignoring: [Body3D] = [],
-                           includingSensors: Bool = false) -> [Hit3D] {
+                           includingSensors: Bool = false,
+                           as group: CollisionGroup = .default) -> [Hit3D] {
         castRay(from: origin, to: end, ignoring: ignoring,
-                includingSensors: includingSensors, allHits: true)
+                includingSensors: includingSensors, group: group, allHits: true)
     }
 
     // MARK: Sweeps
@@ -98,10 +104,11 @@ extension World3D {
     public func sweep(_ collider: Collider3D, from origin: Vector3, to end: Vector3,
                       rotated angle: Double = 0, axis: Vector3 = .unitY,
                       ignoring: [Body3D] = [],
-                      includingSensors: Bool = false) -> Hit3D? {
+                      includingSensors: Bool = false,
+                      as group: CollisionGroup = .default) -> Hit3D? {
         castShape(collider, from: origin, to: end, rotated: angle, axis: axis,
                   ignoring: ignoring, includingSensors: includingSensors,
-                  allHits: false).first
+                  group: group, allHits: false).first
     }
 
     /// Every body a swept `collider` touches on its way from `origin` to `end`,
@@ -109,10 +116,11 @@ extension World3D {
     public func sweepAll(_ collider: Collider3D, from origin: Vector3, to end: Vector3,
                          rotated angle: Double = 0, axis: Vector3 = .unitY,
                          ignoring: [Body3D] = [],
-                         includingSensors: Bool = false) -> [Hit3D] {
+                         includingSensors: Bool = false,
+                         as group: CollisionGroup = .default) -> [Hit3D] {
         castShape(collider, from: origin, to: end, rotated: angle, axis: axis,
                   ignoring: ignoring, includingSensors: includingSensors,
-                  allHits: true)
+                  group: group, allHits: true)
     }
 
     // MARK: Overlaps
@@ -135,11 +143,13 @@ extension World3D {
     public func bodiesOverlapping(_ collider: Collider3D, at position: Vector3,
                                   rotated angle: Double = 0, axis: Vector3 = .unitY,
                                   ignoring: [Body3D] = [],
-                                  includingSensors: Bool = false) -> [Body3D] {
+                                  includingSensors: Bool = false,
+                                  as group: CollisionGroup = .default) -> [Body3D] {
         guard let arena = probeArena(for: collider) else { return [] }
         var shape = arena.shape
         return withExtendedLifetime(arena.storage) {
-            collectBodies(ignoring: ignoring, includingSensors: includingSensors) {
+            collectBodies(ignoring: ignoring, includingSensors: includingSensors,
+                          group: group) {
                 filter, out, capacity in
                 withUnsafePointer(to: &shape) { shapePointer in
                     withFloats3(meters(from: position)) { positionPointer in
@@ -161,8 +171,10 @@ extension World3D {
     /// let scored = world.bodiesContaining(ball.position).contains { $0 === goal }
     /// ```
     public func bodiesContaining(_ point: Vector3, ignoring: [Body3D] = [],
-                                 includingSensors: Bool = false) -> [Body3D] {
-        collectBodies(ignoring: ignoring, includingSensors: includingSensors) {
+                                 includingSensors: Bool = false,
+                                 as group: CollisionGroup = .default) -> [Body3D] {
+        collectBodies(ignoring: ignoring, includingSensors: includingSensors,
+                      group: group) {
             filter, out, capacity in
             withFloats3(meters(from: point)) { pointPointer in
                 cjolt_world_overlap_point(handle, pointPointer, filter, out, capacity)
@@ -201,10 +213,11 @@ extension World3D {
     /// solver abandon anything further away as it goes.
     private func castRay(from origin: Vector3, to end: Vector3,
                          ignoring: [Body3D], includingSensors: Bool,
-                         allHits: Bool) -> [Hit3D] {
+                         group: CollisionGroup, allHits: Bool) -> [Hit3D] {
         let along = end - origin
         guard along.lengthSquared > 0 else { return [] }
-        return collectHits(ignoring: ignoring, includingSensors: includingSensors) {
+        return collectHits(ignoring: ignoring, includingSensors: includingSensors,
+                           group: group) {
             filter, out, capacity in
             withFloats3(meters(from: origin)) { originPointer in
                 withFloats3(meters(from: along)) { alongPointer in
@@ -219,14 +232,15 @@ extension World3D {
     private func castShape(_ collider: Collider3D, from origin: Vector3,
                            to end: Vector3, rotated angle: Double, axis: Vector3,
                            ignoring: [Body3D], includingSensors: Bool,
-                           allHits: Bool) -> [Hit3D] {
+                           group: CollisionGroup, allHits: Bool) -> [Hit3D] {
         let along = end - origin
         guard along.lengthSquared > 0, let arena = probeArena(for: collider) else {
             return []
         }
         var shape = arena.shape
         return withExtendedLifetime(arena.storage) {
-            collectHits(ignoring: ignoring, includingSensors: includingSensors) {
+            collectHits(ignoring: ignoring, includingSensors: includingSensors,
+                        group: group) {
                 filter, out, capacity in
                 withUnsafePointer(to: &shape) { shapePointer in
                     withFloats3(meters(from: origin)) { originPointer in
@@ -265,7 +279,7 @@ extension World3D {
     /// held more than the first guess. The C side returns how many it *found*
     /// rather than how many it wrote, which is what makes the retry exact.
     private func collectHits(
-        ignoring: [Body3D], includingSensors: Bool,
+        ignoring: [Body3D], includingSensors: Bool, group: CollisionGroup,
         _ run: (UnsafePointer<CJoltQueryFilter>, UnsafeMutablePointer<CJoltQueryHit>,
                 Int32) -> Int32
     ) -> [Hit3D] {
@@ -275,7 +289,8 @@ extension World3D {
             var buffer = [CJoltQueryHit](repeating: CJoltQueryHit(), count: capacity)
             let found = buffer.withUnsafeMutableBufferPointer { out in
                 Int(withQueryFilter(ignoring: ignoring,
-                                    includingSensors: includingSensors) { filter in
+                                    includingSensors: includingSensors,
+                                    group: group) { filter in
                     run(filter, out.baseAddress!, Int32(capacity))
                 })
             }
@@ -288,7 +303,7 @@ extension World3D {
 
     /// Runs a body-returning query, with the same grow-once rule.
     private func collectBodies(
-        ignoring: [Body3D], includingSensors: Bool,
+        ignoring: [Body3D], includingSensors: Bool, group: CollisionGroup,
         _ run: (UnsafePointer<CJoltQueryFilter>, UnsafeMutablePointer<CJoltBodyID>,
                 Int32) -> Int32
     ) -> [Body3D] {
@@ -298,7 +313,8 @@ extension World3D {
             var buffer = [CJoltBodyID](repeating: CJOLT_BODY_INVALID, count: capacity)
             let found = buffer.withUnsafeMutableBufferPointer { out in
                 Int(withQueryFilter(ignoring: ignoring,
-                                    includingSensors: includingSensors) { filter in
+                                    includingSensors: includingSensors,
+                                    group: group) { filter in
                     run(filter, out.baseAddress!, Int32(capacity))
                 })
             }
@@ -326,6 +342,7 @@ extension World3D {
     /// on each of them.
     func withQueryFilter<R>(ignoring: [Body3D], includingSensors: Bool,
                             includingSoftBodies: Bool = false,
+                            group: CollisionGroup = .default,
                             _ body: (UnsafePointer<CJoltQueryFilter>) -> R) -> R {
         let ids = ignoring.map(\.id)
         return ids.withUnsafeBufferPointer { ignored in
@@ -334,6 +351,7 @@ extension World3D {
             filter.ignoreCount = Int32(ignored.count)
             filter.includeSensors = includingSensors
             filter.includeSoftBodies = includingSoftBodies
+            filter.group = groupIndex(group)
             return withUnsafePointer(to: &filter) { body($0) }
         }
     }

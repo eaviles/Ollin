@@ -31,6 +31,21 @@ typedef enum {
     CJOLT_MOTION_DYNAMIC = 2,
 } CJoltMotionType;
 
+/// A collision group: a small index every body, character, vehicle, ragdoll,
+/// and soft body carries, plus a symmetric table on the world saying which
+/// pairs of groups touch. Group 0 is the default one everything starts in, and
+/// a world whose table is untouched behaves exactly as one with no groups at
+/// all. Indices past `CJOLT_MAX_GROUPS - 1` are rejected by the table calls.
+///
+/// The group rides in the *object layer*, which is the one thing the library
+/// consults everywhere a pair can meet: finding collision pairs (so the contact
+/// listener never hears a filtered touch), the query filters, the character's
+/// own sweep filters, the wheel collision testers, and the soft-body pass. A
+/// per-body collision group would only have reached the narrow phase, and that
+/// slot is already spoken for by the filter that keeps one ragdoll's limbs from
+/// fighting each other.
+#define CJOLT_MAX_GROUPS 64
+
 typedef enum {
     CJOLT_SHAPE_BOX = 0,              // a, b, c = half extents
     CJOLT_SHAPE_SPHERE = 1,           // a = radius
@@ -103,6 +118,8 @@ typedef struct {
     /// reporting) and lands in its own object layer, which pairs only with
     /// moving bodies.
     bool isSensor;
+    /// Which collision group the body is in; 0 is the default group.
+    int32_t group;
 } CJoltBodyDesc;
 
 typedef enum {
@@ -141,6 +158,18 @@ int cjolt_world_step(CJoltWorld *world, float dt, int collisionSteps);
 /// Rebuilds the broad-phase tree; call after inserting many static bodies.
 void cjolt_world_optimize(CJoltWorld *world);
 
+/// Sets whether two collision groups collide. Symmetric: setting (a, b) sets
+/// (b, a) with it. Passing one group twice says whether that group collides
+/// with itself. Out-of-range indices are ignored. Takes effect on the next
+/// step; a pair already touching is separated then.
+void cjolt_world_set_group_collision(CJoltWorld *world, int32_t groupA,
+                                     int32_t groupB, bool collide);
+
+/// Whether two collision groups currently collide (true for anything
+/// out of range, which is what an unfiltered world answers).
+bool cjolt_world_group_collision(const CJoltWorld *world, int32_t groupA,
+                                 int32_t groupB);
+
 // Bodies --------------------------------------------------------------------
 
 CJoltBodyID cjolt_body_create(CJoltWorld *world, const CJoltBodyDesc *desc);
@@ -175,6 +204,10 @@ void cjolt_body_activate(CJoltWorld *world, CJoltBodyID body);
 void cjolt_body_set_friction(CJoltWorld *world, CJoltBodyID body, float friction);
 void cjolt_body_set_restitution(CJoltWorld *world, CJoltBodyID body, float restitution);
 void cjolt_body_set_gravity_factor(CJoltWorld *world, CJoltBodyID body, float factor);
+/// Moves a body into another collision group. Survives a later motion-type
+/// change (the layer carries both, and switching one keeps the other).
+void cjolt_body_set_group(CJoltWorld *world, CJoltBodyID body, int32_t group);
+int32_t cjolt_body_get_group(const CJoltWorld *world, CJoltBodyID body);
 
 // Buoyancy ------------------------------------------------------------------
 
@@ -340,6 +373,10 @@ typedef struct {
     float maxStrength;    // N, the hardest it can shove a dynamic body; 0 = never
     float predictiveContactDistance;
     float penetrationRecoverySpeed;
+    /// Which collision group the character is in; 0 is the default group. It
+    /// filters the character's own sweep, its inner body, and which other
+    /// characters it can walk into.
+    int32_t group;
 } CJoltCharacterDesc;
 
 /// Creates a character. Returns NULL if the description is unusable.
@@ -360,6 +397,10 @@ void cjolt_character_set_step_height(CJoltCharacter *character, float height);
 void cjolt_character_set_stick_to_floor(CJoltCharacter *character, float distance);
 void cjolt_character_set_mass(CJoltCharacter *character, float mass);
 void cjolt_character_set_max_strength(CJoltCharacter *character, float newtons);
+/// Moves a character into another collision group, which filters its sweep,
+/// its inner body, and the other characters it can bump into.
+void cjolt_character_set_group(CJoltWorld *world, CJoltCharacter *character,
+                               int32_t group);
 
 CJoltGroundState cjolt_character_get_ground_state(const CJoltCharacter *character);
 void cjolt_character_get_ground_normal(const CJoltCharacter *character, float out[3]);
@@ -472,6 +513,12 @@ CJoltVehicle *cjolt_vehicle_create(CJoltWorld *world, CJoltBodyID chassis,
                                    const CJoltVehicleDesc *desc);
 void cjolt_vehicle_destroy(CJoltWorld *world, CJoltVehicle *vehicle);
 
+/// Moves a vehicle into another collision group: the chassis body's layer and
+/// the wheels' own collision testers, which are built against a layer and so
+/// are rebuilt here.
+void cjolt_vehicle_set_group(CJoltWorld *world, CJoltVehicle *vehicle,
+                             int32_t group);
+
 /// The driver's controls for the coming step. `forward` is -1…1 (the gearbox
 /// picks reverse for a negative value), `right` -1…1, `brake` and `handBrake`
 /// 0…1. Any nonzero input wakes the chassis, so a parked vehicle may sleep
@@ -547,8 +594,14 @@ typedef struct {
 CJoltRagdoll *cjolt_ragdoll_create(CJoltWorld *world,
                                    const CJoltRagdollPartDesc *parts,
                                    int32_t partCount, float friction,
-                                   float restitution);
+                                   float restitution, int32_t group);
 void cjolt_ragdoll_destroy(CJoltWorld *world, CJoltRagdoll *ragdoll);
+
+/// Moves every limb of a figure into another collision group. The filter that
+/// keeps a figure's own limbs from fighting each other is a separate thing and
+/// is left alone, so two figures in one group still collide with each other.
+void cjolt_ragdoll_set_group(CJoltWorld *world, CJoltRagdoll *ragdoll,
+                             int32_t group);
 
 int32_t cjolt_ragdoll_part_count(const CJoltRagdoll *ragdoll);
 /// The body standing at part `index`'s joint.
@@ -639,6 +692,8 @@ typedef struct {
     /// Collide with both sides of every face (a single-sided sheet lets things
     /// through from behind).
     bool twoSided;
+    /// Which collision group the body is in; 0 is the default group.
+    int32_t group;
 } CJoltSoftBodyDesc;
 
 /// Builds a soft body and adds it to the world. The stretch, shear, and bend
@@ -711,6 +766,11 @@ typedef struct CJoltQueryFilter {
     /// therefore invisible to the public query surface. The mouse pick paths
     /// set it, since a soft body is grabbable.
     bool includeSoftBodies;
+    /// The collision group the query asks *as*: it sees what a moving body in
+    /// that group would touch, so the world's ignore table narrows a question
+    /// the same way it narrows a collision. 0, the default group, is what an
+    /// unfiltered world always answered.
+    int32_t group;
 } CJoltQueryFilter;
 
 /// One thing a query found, in solver meters.

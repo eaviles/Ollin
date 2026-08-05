@@ -121,6 +121,11 @@ public final class World3D {
     /// sketch holds rather than a number.
     var bodyByID: [CJoltBodyID: Body3D] = [:]
 
+    /// The collision groups this world knows, in the order first named, which
+    /// is also the solver's own indexing: slot 0 is `.default`.
+    var groupNames: [CollisionGroup] = [.default]
+    var groupIndices: [CollisionGroup: Int32] = [.default: 0]
+
     /// Who is currently touching whom, kept up to date from the drained
     /// contact events (sorted, so `Body3D.touching` reads the same order every
     /// run).
@@ -186,15 +191,20 @@ public final class World3D {
     ///     heavier bodies shove lighter ones.
     ///   - friction: surface friction, `0` slick … `1` grippy.
     ///   - restitution: bounciness `0…1`; defaults to the world's `bounce`.
+    ///   - group: which collision group it joins. Everything is in `.default`
+    ///     and collides with everything until `ignoreCollisions(between:and:)`
+    ///     says two groups pass through each other.
     @discardableResult
     public func addBody(_ collider: Collider3D, at position: Vector3,
                         kind: Body3D.Kind = .dynamic, isSensor: Bool = false,
                         rotated angle: Double = 0, axis: Vector3 = .unitY,
                         density: Double = 1, friction: Double = 0.5,
-                        restitution: Double? = nil) -> Body3D {
+                        restitution: Double? = nil,
+                        group: CollisionGroup = .default) -> Body3D {
         addBody(collider, at: position, kind: kind, isSensor: isSensor,
                 rotated: angle, axis: axis, density: density, friction: friction,
-                restitution: restitution, mass: nil, centerOfMass: .zero)
+                restitution: restitution, mass: nil, centerOfMass: .zero,
+                group: group)
     }
 
     /// The full body-creation path, with the two extras only a vehicle chassis
@@ -207,7 +217,8 @@ public final class World3D {
                  kind: Body3D.Kind, isSensor: Bool, rotated angle: Double,
                  axis: Vector3, density: Double, friction: Double,
                  restitution: Double?, mass: Double?,
-                 centerOfMass: Vector3) -> Body3D {
+                 centerOfMass: Vector3,
+                 group: CollisionGroup = .default) -> Body3D {
         var desc = CJoltBodyDesc()
         let p = meters(from: position)
         desc.position = (p.0, p.1, p.2)
@@ -224,6 +235,7 @@ public final class World3D {
         desc.gravityFactor = 1
         desc.allowSleep = true
         desc.isSensor = isSensor
+        desc.group = groupIndex(group)
         desc.mass = Float(mass ?? 0)
         let com = meters(from: centerOfMass)
         desc.centerOfMass = (com.0, com.1, com.2)
@@ -267,7 +279,8 @@ public final class World3D {
     /// ```
     @discardableResult
     public func addStaticColliders(from scene: Scene, friction: Double = 0.5,
-                                   restitution: Double? = nil) -> [Body3D] {
+                                   restitution: Double? = nil,
+                                   group: CollisionGroup = .default) -> [Body3D] {
         var added: [Body3D] = []
         Scene.visitWorlds(scene.nodes, parent: matrix_identity_float4x4) { node, world in
             guard var mesh = node.mesh, !mesh.isEmpty else { return }
@@ -277,7 +290,8 @@ public final class World3D {
                 return Vector3(Double(w.x), Double(w.y), Double(w.z))
             }
             added.append(addBody(.mesh(mesh), at: .zero, kind: .static,
-                                 friction: friction, restitution: restitution))
+                                 friction: friction, restitution: restitution,
+                                 group: group))
         }
         // Many statics arrived at once; rebuild the broad-phase tree.
         cjolt_world_optimize(handle)
@@ -302,18 +316,22 @@ public final class World3D {
     ///   - mass: what it presses down with, in kilograms.
     ///   - pushStrength: the hardest it can shove a dynamic body, in newtons
     ///     (`0` to make crates immovable).
+    ///   - group: which collision group it walks in, filtering what it can walk
+    ///     through, including other characters.
     @discardableResult
     public func addCharacter(radius: Double = 0.3, height: Double = 1.8,
                              at position: Vector3, stepHeight: Double = 0.4,
                              stickToFloorDistance: Double = 0.5,
                              maxSlope: Double = 50 * .pi / 180,
                              mass: Double = 70,
-                             pushStrength: Double = 100) -> Character3D {
+                             pushStrength: Double = 100,
+                             group: CollisionGroup = .default) -> Character3D {
         let character = Character3D(world: self, radius: radius, height: height,
                                     position: position, stepHeight: stepHeight,
                                     stickToFloorDistance: stickToFloorDistance,
                                     maxSlope: maxSlope, mass: mass,
-                                    pushStrength: pushStrength)!
+                                    pushStrength: pushStrength,
+                                    group: group)!
         characters.append(character)
         return character
     }
@@ -350,6 +368,8 @@ public final class World3D {
     ///     which is what keeps a vehicle from rolling over in a turn.
     ///   - balances: a two-wheeler that holds itself up, leaning into turns
     ///     instead of falling over.
+    ///   - group: which collision group the chassis and its wheels are in: the
+    ///     wheels feel for the road in the same group the body collides in.
     @discardableResult
     public func addVehicle(_ chassis: Collider3D, at position: Vector3,
                            wheels: [Wheel3D], mass: Double = 1500,
@@ -358,7 +378,8 @@ public final class World3D {
                            rotated angle: Double = 0, axis: Vector3 = .unitY,
                            friction: Double = 0.5,
                            balances: Bool = false,
-                           maxLeanAngle: Double = 45 * .pi / 180) -> Vehicle3D? {
+                           maxLeanAngle: Double = 45 * .pi / 180,
+                           group: CollisionGroup = .default) -> Vehicle3D? {
         guard !wheels.isEmpty else {
             noteOnce("a vehicle needs at least one wheel")
             return nil
@@ -371,7 +392,7 @@ public final class World3D {
         let body = addBody(chassis, at: position, kind: .dynamic, isSensor: false,
                            rotated: angle, axis: axis, density: 1,
                            friction: friction, restitution: nil, mass: mass,
-                           centerOfMass: hang)
+                           centerOfMass: hang, group: group)
         guard let vehicle = Vehicle3D(world: self, chassis: body, wheels: wheels,
                                       engineTorque: engineTorque,
                                       topSpeed: topSpeed,
@@ -414,16 +435,21 @@ public final class World3D {
     ///     limbs by how much of the mesh each one fills. `0` leaves it to the
     ///     shapes' own volume.
     ///   - friction: the limbs' surface friction, `0` slick … `1` grippy.
+    ///   - group: which collision group every limb joins. The separate filter
+    ///     that keeps one figure's own limbs from fighting each other is
+    ///     untouched, so two figures in one group still collide.
     @discardableResult
     public func addRagdoll(from scene: Scene, at position: Vector3? = nil,
                            joints: [String]? = nil,
                            swing: Double = 50 * .pi / 180,
                            twist: ClosedRange<Double> = -0.3...0.3,
                            mass: Double = 70,
-                           friction: Double = 0.5) -> Ragdoll3D? {
+                           friction: Double = 0.5,
+                           group: CollisionGroup = .default) -> Ragdoll3D? {
         guard let ragdoll = Ragdoll3D(world: self, scene: scene, at: position,
                                       joints: joints, swing: swing, twist: twist,
-                                      mass: mass, friction: friction) else {
+                                      mass: mass, friction: friction,
+                                      group: group) else {
             return nil
         }
         ragdolls.append(ragdoll)
@@ -465,6 +491,7 @@ public final class World3D {
     ///   - twoSided: collide with the back of every face as well as the front.
     ///   - pinned: given a vertex of `mesh` in the mesh's own space, whether it
     ///     is held in place. This is how a flag hangs from its corners.
+    ///   - group: which collision group the surface is in.
     @discardableResult
     public func addSoftBody(from mesh: Mesh, at position: Vector3 = .zero,
                             rotation: Double = 0, axis: Vector3 = Vector3(0, 1, 0),
@@ -478,7 +505,8 @@ public final class World3D {
                             iterations: Int = 5,
                             vertexRadius: Double = 0,
                             twoSided: Bool = true,
-                            pinned: ((Vector3) -> Bool)? = nil) -> SoftBody3D? {
+                            pinned: ((Vector3) -> Bool)? = nil,
+                            group: CollisionGroup = .default) -> SoftBody3D? {
         let direction = axis.lengthSquared > 1e-18 ? axis.normalized : Vector3(0, 1, 0)
         let turn = simd_quatd(angle: rotation,
                               axis: simd_double3(direction.x, direction.y, direction.z))
@@ -490,7 +518,8 @@ public final class World3D {
                                     restitution: bounce ?? self.bounce,
                                     iterations: iterations,
                                     vertexRadius: vertexRadius,
-                                    twoSided: twoSided, pinned: pinned) else {
+                                    twoSided: twoSided, pinned: pinned,
+                                    group: group) else {
             noteOnce("addSoftBody needs a mesh with at least one triangle whose "
                      + "corners are distinct; nothing was added.")
             return nil
@@ -753,6 +782,16 @@ public final class World3D {
                           kind: .static, density: 1)
         bodyByID[groundID] = slab
         groundBody = slab
+    }
+
+    /// A body just moved between collision groups. Everything else filters
+    /// through the layer on its own, but a vehicle's wheels feel for the road
+    /// through collision testers built against one layer, so a chassis that
+    /// changed group needs a new set.
+    func bodyChangedGroup(_ body: Body3D) {
+        for vehicle in vehicles where vehicle.body === body {
+            vehicle.syncGroupToChassis()
+        }
     }
 
     // MARK: One-time notes

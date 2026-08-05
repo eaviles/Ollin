@@ -115,6 +115,20 @@ public final class Character3D {
         didSet { cjolt_character_set_max_strength(handle, Float(max(0, pushStrength))) }
     }
 
+    /// Which collision group the character walks in. It filters what the
+    /// capsule sweeps against, what its stand-in body collides with, and which
+    /// other characters it can walk into.
+    ///
+    /// ```swift
+    /// ghost.group = "phantoms"      // walks through whatever ignores phantoms
+    /// ```
+    public var group: CollisionGroup {
+        get { body.group }
+        set {
+            cjolt_character_set_group(world.handle, handle, world.groupIndex(newValue))
+        }
+    }
+
     /// Which way the character faces, in radians about +y. Nothing in the
     /// simulation depends on it (the capsule is round), so it is there for the
     /// figure you draw: point it along the heading and the walker turns.
@@ -133,7 +147,7 @@ public final class Character3D {
 
     init?(world: World3D, radius: Double, height: Double, position: Vector3,
           stepHeight: Double, stickToFloorDistance: Double, maxSlope: Double,
-          mass: Double, pushStrength: Double) {
+          mass: Double, pushStrength: Double, group: CollisionGroup) {
         // A capsule needs room for both caps; a height under two radii would
         // leave no cylinder between them.
         let r = max(0.001, radius)
@@ -153,6 +167,7 @@ public final class Character3D {
         // direction, and penetration resolved within one update.
         desc.predictiveContactDistance = 0.1
         desc.penetrationRecoverySpeed = 1
+        desc.group = world.groupIndex(group)
 
         guard let handle = withUnsafePointer(to: &desc, {
             cjolt_character_create(world.handle, $0)

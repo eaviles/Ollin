@@ -92,7 +92,8 @@ public final class Ragdoll3D {
     /// Builds the figure. Fails (returning nil) when the scene has no skin or
     /// the solver can't make the bodies.
     init?(world: World3D, scene: Scene, at position: Vector3?, joints names: [String]?,
-          swing: Double, twist: ClosedRange<Double>, mass: Double, friction: Double) {
+          swing: Double, twist: ClosedRange<Double>, mass: Double, friction: Double,
+          group: CollisionGroup) {
         self.world = world
 
         let skeleton = scene.skeleton()
@@ -141,7 +142,8 @@ public final class Ragdoll3D {
         let created: OpaquePointer? = withExtendedLifetime(arena) {
             parts.withUnsafeMutableBufferPointer {
                 cjolt_ragdoll_create(world.handle, $0.baseAddress, Int32($0.count),
-                                     Float(friction), Float(world.bounce))
+                                     Float(friction), Float(world.bounce),
+                                     world.groupIndex(group))
             }
         }
         guard let created else {
@@ -289,6 +291,21 @@ public final class Ragdoll3D {
     public func wake() {
         guard let handle else { return }
         cjolt_ragdoll_activate(world.handle, handle)
+    }
+
+    /// Which collision group every limb is in. The separate filter that keeps
+    /// this figure's own limbs from fighting each other is untouched, so two
+    /// figures in one group still collide with each other.
+    ///
+    /// ```swift
+    /// figure.group = "phantoms"     // falls through whatever ignores phantoms
+    /// ```
+    public var group: CollisionGroup {
+        get { limbs.first.map(\.body.group) ?? .default }
+        set {
+            guard let handle else { return }
+            cjolt_ragdoll_set_group(world.handle, handle, world.groupIndex(newValue))
+        }
     }
 
     /// Where the root joint (the hips of a humanoid) currently is: the one

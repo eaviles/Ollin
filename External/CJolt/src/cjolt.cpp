@@ -85,9 +85,14 @@ void store(QuatArg q, float out[4]) {
     out[3] = q.GetW();
 }
 
-// Object layers: statics only pair with moving bodies, the ghost layer (grab
+// An object layer carries two things at once: what KIND of thing it is in the
+// low two bits, and which collision GROUP it belongs to above them. Group 0
+// leaves the layer numerically identical to the four fixed kinds, so a world
+// that never mentions a group is indistinguishable from an ungrouped one.
+//
+// The kinds: statics only pair with moving bodies, the ghost kind (grab
 // anchors) pairs with nothing, so a grab can never nudge the scene by
-// collision, only through its constraint, and the sensor layer pairs only
+// collision, only through its constraint, and the sensor kind pairs only
 // with moving bodies, since a detector volume has nothing to report about
 // scenery that never moves or about another detector.
 namespace Layers {
@@ -95,8 +100,62 @@ constexpr ObjectLayer NON_MOVING = 0;
 constexpr ObjectLayer MOVING = 1;
 constexpr ObjectLayer GHOST = 2;
 constexpr ObjectLayer SENSOR = 3;
-constexpr ObjectLayer NUM_LAYERS = 4;
+constexpr ObjectLayer KIND_BITS = 2;
+constexpr ObjectLayer KIND_MASK = 3;
 } // namespace Layers
+
+/// The kind half of a layer (what the fixed rules are written against).
+constexpr ObjectLayer layerKind(ObjectLayer layer) { return layer & Layers::KIND_MASK; }
+
+/// The group half of a layer.
+constexpr int32_t layerGroup(ObjectLayer layer) { return int32_t(layer >> Layers::KIND_BITS); }
+
+/// The layer a thing of this kind in this group lives in. An out-of-range
+/// group falls back to the default one rather than aliasing another group.
+constexpr ObjectLayer layerFor(int32_t group, ObjectLayer kind) {
+    const int32_t clamped = (group > 0 && group < CJOLT_MAX_GROUPS) ? group : 0;
+    return ObjectLayer((uint32_t(clamped) << Layers::KIND_BITS) | kind);
+}
+
+/// Which groups collide with which: one bit per ordered pair, kept symmetric
+/// by writing both ends. Everything collides until a caller says otherwise,
+/// the diagonal included (two crates in one group still stack).
+///
+/// Written only from the main thread between steps, and read from the solver's
+/// worker threads while one runs, which is safe because a step never writes it.
+class GroupTable {
+public:
+    /// All bits set: everything collides with everything until told otherwise.
+    GroupTable() {
+        for (uint64_t &row : mRows) { row = ~uint64_t(0); }
+    }
+
+    void set(int32_t a, int32_t b, bool collide) {
+        if (!inRange(a) || !inRange(b)) { return; }
+        const uint64_t bitA = uint64_t(1) << uint32_t(b);
+        const uint64_t bitB = uint64_t(1) << uint32_t(a);
+        if (collide) {
+            mRows[a] |= bitA;
+            mRows[b] |= bitB;
+        } else {
+            mRows[a] &= ~bitA;
+            mRows[b] &= ~bitB;
+        }
+    }
+
+    bool collides(int32_t a, int32_t b) const {
+        if (!inRange(a) || !inRange(b)) { return true; }
+        return (mRows[a] & (uint64_t(1) << uint32_t(b))) != 0;
+    }
+
+private:
+    static constexpr bool inRange(int32_t group) {
+        return group >= 0 && group < CJOLT_MAX_GROUPS;
+    }
+
+    static_assert(CJOLT_MAX_GROUPS == 64, "a row holds one bit per group");
+    uint64_t mRows[CJOLT_MAX_GROUPS] = {};
+};
 
 namespace BroadPhaseLayers {
 constexpr BroadPhaseLayer NON_MOVING(0);
@@ -109,8 +168,8 @@ public:
     uint GetNumBroadPhaseLayers() const override { return BroadPhaseLayers::NUM_LAYERS; }
 
     BroadPhaseLayer GetBroadPhaseLayer(ObjectLayer inLayer) const override {
-        return inLayer == Layers::NON_MOVING ? BroadPhaseLayers::NON_MOVING
-                                             : BroadPhaseLayers::MOVING;
+        return layerKind(inLayer) == Layers::NON_MOVING ? BroadPhaseLayers::NON_MOVING
+                                                        : BroadPhaseLayers::MOVING;
     }
 
 #if defined(JPH_EXTERNAL_PROFILE) || defined(JPH_PROFILE_ENABLED)
@@ -123,7 +182,9 @@ public:
 class ObjectVsBroadPhaseLayerFilterImpl final : public ObjectVsBroadPhaseLayerFilter {
 public:
     bool ShouldCollide(ObjectLayer inLayer1, BroadPhaseLayer inLayer2) const override {
-        switch (inLayer1) {
+        // Groups are settled per pair in the narrow filter below; a broad-phase
+        // tree holds every group at once, so only the kind can be answered here.
+        switch (layerKind(inLayer1)) {
         case Layers::NON_MOVING: return inLayer2 == BroadPhaseLayers::MOVING;
         case Layers::MOVING: return true;
         case Layers::SENSOR: return inLayer2 == BroadPhaseLayers::MOVING;
@@ -134,15 +195,28 @@ public:
 
 class ObjectLayerPairFilterImpl final : public ObjectLayerPairFilter {
 public:
+    GroupTable groups;
+
     bool ShouldCollide(ObjectLayer inObject1, ObjectLayer inObject2) const override {
-        if (inObject1 == Layers::GHOST || inObject2 == Layers::GHOST) { return false; }
-        if (inObject1 == Layers::SENSOR || inObject2 == Layers::SENSOR) {
-            return inObject1 == Layers::MOVING || inObject2 == Layers::MOVING;
-        }
-        if (inObject1 == Layers::NON_MOVING && inObject2 == Layers::NON_MOVING) {
+        const ObjectLayer kind1 = layerKind(inObject1);
+        const ObjectLayer kind2 = layerKind(inObject2);
+        if (kind1 == Layers::GHOST || kind2 == Layers::GHOST) { return false; }
+        if (kind1 == Layers::SENSOR || kind2 == Layers::SENSOR) {
+            if (kind1 != Layers::MOVING && kind2 != Layers::MOVING) { return false; }
+        } else if (kind1 == Layers::NON_MOVING && kind2 == Layers::NON_MOVING) {
             return false;
         }
-        return true;
+        return groups.collides(layerGroup(inObject1), layerGroup(inObject2));
+    }
+};
+
+/// Everything that moves, whatever group it is in: the buoyancy sweep's filter.
+/// It has to test the kind rather than compare whole layers, since a moving
+/// body in any group is one the impulse must reach.
+class MovingKindLayerFilter final : public ObjectLayerFilter {
+public:
+    bool ShouldCollide(ObjectLayer inLayer) const override {
+        return layerKind(inLayer) == Layers::MOVING;
     }
 };
 
@@ -283,6 +357,57 @@ struct CJoltCharacter {
     float stickToFloor = 0.0f;
 };
 
+/// A character's collision group, which rides in the library's own user-data
+/// slot on the character (the bridge owns that slot; nothing else uses it).
+/// Keeping it there rather than in the wrapper is what lets the filter below
+/// answer for a bare `CharacterVirtual *` without searching for its wrapper.
+inline int32_t characterGroup(const CharacterVirtual *character) {
+    return int32_t(character->GetUserData());
+}
+
+/// Characters sweep against each other through this list rather than through
+/// the broad phase, so the object-layer table that filters everything else
+/// never sees a character-against-character pair. This hands the library's own
+/// loop a list with the ignored groups left out, one call at a time, so a group
+/// a character walks through is walked through by every path it has.
+///
+/// Called only from `cjolt_character_update`, on the one thread that steps the
+/// world, which is what makes the scratch list safe.
+class GroupedCharacterCollision final : public CharacterVsCharacterCollision {
+public:
+    CJoltWorld *world = nullptr;
+
+    void Add(CharacterVirtual *inCharacter) { mAll.Add(inCharacter); }
+    void Remove(const CharacterVirtual *inCharacter) { mAll.Remove(inCharacter); }
+
+    void CollideCharacter(const CharacterVirtual *inCharacter,
+                          RMat44Arg inCenterOfMassTransform,
+                          const CollideShapeSettings &inCollideShapeSettings,
+                          RVec3Arg inBaseOffset,
+                          CollideShapeCollector &ioCollector) const override {
+        visibleTo(inCharacter).CollideCharacter(inCharacter, inCenterOfMassTransform,
+                                                inCollideShapeSettings, inBaseOffset,
+                                                ioCollector);
+    }
+
+    void CastCharacter(const CharacterVirtual *inCharacter,
+                       RMat44Arg inCenterOfMassTransform, Vec3Arg inDirection,
+                       const ShapeCastSettings &inShapeCastSettings,
+                       RVec3Arg inBaseOffset,
+                       CastShapeCollector &ioCollector) const override {
+        visibleTo(inCharacter).CastCharacter(inCharacter, inCenterOfMassTransform,
+                                             inDirection, inShapeCastSettings,
+                                             inBaseOffset, ioCollector);
+    }
+
+private:
+    /// The characters this one can touch, refilled per call.
+    const CharacterVsCharacterCollisionSimple &visibleTo(const CharacterVirtual *self) const;
+
+    CharacterVsCharacterCollisionSimple mAll;
+    mutable CharacterVsCharacterCollisionSimple mVisible;
+};
+
 /// A vehicle: the constraint that owns the wheels, the three collision testers
 /// it can switch between, the filter they all share, and the driven-wheel
 /// radius the top-speed gearing is solved against.
@@ -291,6 +416,11 @@ struct CJoltVehicle {
     JPH::Ref<JPH::VehicleCollisionTester> testers[3];
     VehicleGroundFilter groundFilter;
     float drivenWheelRadius = 0.3f;
+    /// The narrowest wheel, which sizes the sphere tester, and which of the
+    /// three testers is in use: both are needed to build the set again when the
+    /// vehicle changes collision group (a tester is made against one layer).
+    float wheelWidth = 0.2f;
+    int contactIndex = 0;
 };
 
 /// A ragdoll: the library's own body-per-joint figure, kept alive together with
@@ -322,7 +452,7 @@ struct CJoltWorld {
     std::vector<CJoltConstraint *> constraints;
     // Characters are not in the broad phase, so they can only be collided
     // against each other through this list, which each one is registered in.
-    JPH::CharacterVsCharacterCollisionSimple characterCollision;
+    GroupedCharacterCollision characterCollision;
     std::vector<CJoltCharacter *> characters;
     std::vector<CJoltVehicle *> vehicles;
     std::vector<CJoltRagdoll *> ragdolls;
@@ -335,8 +465,25 @@ struct CJoltWorld {
     CJoltWorld()
         : tempAllocator(16 * 1024 * 1024),
           jobSystem(JPH::cMaxPhysicsJobs, JPH::cMaxPhysicsBarriers,
-                    std::clamp(int(std::thread::hardware_concurrency()) - 1, 1, 8)) {}
+                    std::clamp(int(std::thread::hardware_concurrency()) - 1, 1, 8)) {
+        characterCollision.world = this;
+    }
 };
+
+const CharacterVsCharacterCollisionSimple &
+GroupedCharacterCollision::visibleTo(const CharacterVirtual *self) const {
+    const GroupTable &groups = world->objectPairs.groups;
+    const int32_t group = characterGroup(self);
+    mVisible.mCharacters.clear();
+    for (CharacterVirtual *other : mAll.mCharacters) {
+        // `self` stays in the list: the library's own loop skips it, and
+        // leaving it out would be a second place that rule is written.
+        if (other == self || groups.collides(group, characterGroup(other))) {
+            mVisible.mCharacters.push_back(other);
+        }
+    }
+    return mVisible;
+}
 
 namespace {
 
@@ -542,6 +689,18 @@ int cjolt_world_step(CJoltWorld *world, float dt, int collisionSteps) {
 
 void cjolt_world_optimize(CJoltWorld *world) { world->physics.OptimizeBroadPhase(); }
 
+void cjolt_world_set_group_collision(CJoltWorld *world, int32_t groupA, int32_t groupB,
+                                     bool collide) {
+    if (world == nullptr) { return; }
+    world->objectPairs.groups.set(groupA, groupB, collide);
+}
+
+bool cjolt_world_group_collision(const CJoltWorld *world, int32_t groupA,
+                                 int32_t groupB) {
+    if (world == nullptr) { return true; }
+    return world->objectPairs.groups.collides(groupA, groupB);
+}
+
 // Bodies --------------------------------------------------------------------
 
 CJoltBodyID cjolt_body_create(CJoltWorld *world, const CJoltBodyDesc *desc) {
@@ -559,16 +718,16 @@ CJoltBodyID cjolt_body_create(CJoltWorld *world, const CJoltBodyDesc *desc) {
     }
 
     EMotionType motion = EMotionType::Static;
-    ObjectLayer layer = Layers::NON_MOVING;
+    ObjectLayer kind = Layers::NON_MOVING;
     switch (desc->motion) {
     case CJOLT_MOTION_STATIC: break;
     case CJOLT_MOTION_KINEMATIC:
         motion = EMotionType::Kinematic;
-        layer = Layers::MOVING;
+        kind = Layers::MOVING;
         break;
     case CJOLT_MOTION_DYNAMIC:
         motion = EMotionType::Dynamic;
-        layer = Layers::MOVING;
+        kind = Layers::MOVING;
         break;
     }
     // A sensor is a detector volume, not a solid: it goes in the layer that
@@ -578,17 +737,18 @@ CJoltBodyID cjolt_body_create(CJoltWorld *world, const CJoltBodyDesc *desc) {
     // settles, which is the wrong answer for a pressure plate).
     if (desc->isSensor) {
         motion = EMotionType::Kinematic;
-        layer = Layers::SENSOR;
+        kind = Layers::SENSOR;
     }
     // A dynamic body cannot ride a static-only shape (mesh, height field, or
     // a compound containing one); keep the body but pin it in place.
     if (shape->MustBeStatic() && motion != EMotionType::Static) {
         motion = EMotionType::Static;
-        layer = desc->isSensor ? Layers::SENSOR : Layers::NON_MOVING;
+        kind = desc->isSensor ? Layers::SENSOR : Layers::NON_MOVING;
     }
 
     BodyCreationSettings settings(shape, RVec3(vec3(desc->position)),
-                                  quat(desc->rotation), motion, layer);
+                                  quat(desc->rotation), motion,
+                                  layerFor(desc->group, kind));
     settings.mIsSensor = desc->isSensor;
     settings.mFriction = std::max(0.0f, desc->friction);
     settings.mRestitution = std::clamp(desc->restitution, 0.0f, 1.0f);
@@ -719,22 +879,41 @@ void cjolt_body_set_motion(CJoltWorld *world, CJoltBodyID body, CJoltMotionType 
         if (shape != nullptr && shape->MustBeStatic()) { return; }
     }
     EMotionType type = EMotionType::Static;
-    ObjectLayer layer = Layers::NON_MOVING;
+    ObjectLayer kind = Layers::NON_MOVING;
     switch (motion) {
     case CJOLT_MOTION_STATIC: break;
     case CJOLT_MOTION_KINEMATIC:
         type = EMotionType::Kinematic;
-        layer = Layers::MOVING;
+        kind = Layers::MOVING;
         break;
     case CJOLT_MOTION_DYNAMIC:
         type = EMotionType::Dynamic;
-        layer = Layers::MOVING;
+        kind = Layers::MOVING;
         break;
     }
     bodies.SetMotionType(id, type,
                          type == EMotionType::Static ? EActivation::DontActivate
                                                      : EActivation::Activate);
-    bodies.SetObjectLayer(id, layer);
+    // The layer carries the kind and the group together, so changing one has
+    // to keep the other: a body let go from static keeps the group it was in.
+    bodies.SetObjectLayer(id, layerFor(layerGroup(bodies.GetObjectLayer(id)), kind));
+}
+
+void cjolt_body_set_group(CJoltWorld *world, CJoltBodyID body, int32_t group) {
+    BodyInterface &bodies = world->physics.GetBodyInterface();
+    BodyID id{body};
+    const ObjectLayer layer = bodies.GetObjectLayer(id);
+    if (layer == cObjectLayerInvalid) { return; }
+    bodies.SetObjectLayer(id, layerFor(group, layerKind(layer)));
+    // A pair that has just become able to touch has to be looked at again, and
+    // a sleeping body is looked at by nothing.
+    if (bodies.GetMotionType(id) != EMotionType::Static) { bodies.ActivateBody(id); }
+}
+
+int32_t cjolt_body_get_group(const CJoltWorld *world, CJoltBodyID body) {
+    CJoltWorld *w = const_cast<CJoltWorld *>(world);
+    const ObjectLayer layer = w->physics.GetBodyInterface().GetObjectLayer(BodyID(body));
+    return layer == cObjectLayerInvalid ? 0 : layerGroup(layer);
 }
 
 bool cjolt_body_is_active(const CJoltWorld *world, CJoltBodyID body) {
@@ -784,7 +963,7 @@ int32_t cjolt_world_bodies_in_box(const CJoltWorld *world, const float boxMin[3]
               Vec3(boxMax[0], boxMax[1], boxMax[2]));
     w->physics.GetBroadPhaseQuery().CollideAABox(
         box, collector, SpecifiedBroadPhaseLayerFilter(BroadPhaseLayers::MOVING),
-        SpecifiedObjectLayerFilter(Layers::MOVING));
+        MovingKindLayerFilter());
 
     // The tree hands them back in whatever order it walked; sorting makes the
     // caller's per-body pass replay identically.
@@ -1206,11 +1385,16 @@ CJoltCharacter *cjolt_character_create(CJoltWorld *world,
     // slightly smaller than the character so it never collides before the
     // swept shape does.
     settings->mInnerBodyShape = makeCharacterShape(0.9f * radius, 0.9f * desc->height);
-    settings->mInnerBodyLayer = Layers::MOVING;
+    settings->mInnerBodyLayer = layerFor(desc->group, Layers::MOVING);
 
     CJoltCharacter *wrapper = new CJoltCharacter();
+    // The group travels as the character's user data, which is what lets the
+    // character-against-character filter answer for a bare character pointer.
+    const uint64_t group = uint64_t(uint32_t(
+        (desc->group > 0 && desc->group < CJOLT_MAX_GROUPS) ? desc->group : 0));
     wrapper->character = new CharacterVirtual(settings, RVec3(vec3(desc->position)),
-                                              quat(desc->rotation), 0, &world->physics);
+                                              quat(desc->rotation), group,
+                                              &world->physics);
     wrapper->stepHeight = std::max(0.0f, desc->stepHeight);
     wrapper->stickToFloor = std::max(0.0f, desc->stickToFloor);
     // Characters live outside the broad phase, so they can only see each other
@@ -1322,17 +1506,35 @@ void cjolt_character_update(CJoltWorld *world, CJoltCharacter *character, float 
     settings.mStickToFloorStepDown = -up * character->stickToFloor;
     settings.mWalkStairsStepUp = up * character->stepHeight;
 
+    // The character sees the world as a moving body of its own group would.
+    const ObjectLayer layer = layerFor(characterGroup(self), Layers::MOVING);
     self->ExtendedUpdate(dt, vec3(gravity), settings,
-                         world->physics.GetDefaultBroadPhaseLayerFilter(Layers::MOVING),
-                         world->physics.GetDefaultLayerFilter(Layers::MOVING), {}, {},
+                         world->physics.GetDefaultBroadPhaseLayerFilter(layer),
+                         world->physics.GetDefaultLayerFilter(layer), {}, {},
                          world->tempAllocator);
+}
+
+void cjolt_character_set_group(CJoltWorld *world, CJoltCharacter *character,
+                               int32_t group) {
+    if (world == nullptr || character == nullptr) { return; }
+    const int32_t clamped = (group > 0 && group < CJOLT_MAX_GROUPS) ? group : 0;
+    character->character->SetUserData(uint64_t(uint32_t(clamped)));
+    // The stand-in body is an ordinary body, so everything else filters against
+    // it through the layer the way it does for any other.
+    const BodyID inner = character->character->GetInnerBodyID();
+    if (!inner.IsInvalid()) {
+        BodyInterface &bodies = world->physics.GetBodyInterface();
+        bodies.SetObjectLayer(inner, layerFor(clamped, Layers::MOVING));
+    }
 }
 
 void cjolt_character_refresh_contacts(CJoltWorld *world, CJoltCharacter *character) {
     if (world == nullptr || character == nullptr) { return; }
+    const ObjectLayer layer =
+        layerFor(characterGroup(character->character), Layers::MOVING);
     character->character->RefreshContacts(
-        world->physics.GetDefaultBroadPhaseLayerFilter(Layers::MOVING),
-        world->physics.GetDefaultLayerFilter(Layers::MOVING), {}, {},
+        world->physics.GetDefaultBroadPhaseLayerFilter(layer),
+        world->physics.GetDefaultLayerFilter(layer), {}, {},
         world->tempAllocator);
 }
 
@@ -1355,6 +1557,21 @@ float solveDifferentialRatio(float maxRPM, float topGear, float topSpeed,
 WheeledVehicleController *controllerOf(const CJoltVehicle *vehicle) {
     return static_cast<WheeledVehicleController *>(
         vehicle->constraint->GetController());
+}
+
+/// Builds the three wheel collision testers against an object layer. A tester
+/// takes its layer at construction, so a vehicle that changes collision group
+/// needs a new set rather than a setter.
+void buildVehicleTesters(CJoltVehicle *vehicle, ObjectLayer layer) {
+    vehicle->testers[0] = new VehicleCollisionTesterRay(layer);
+    vehicle->testers[1] =
+        new VehicleCollisionTesterCastSphere(layer, 0.5f * vehicle->wheelWidth);
+    vehicle->testers[2] = new VehicleCollisionTesterCastCylinder(layer);
+    for (Ref<VehicleCollisionTester> &tester : vehicle->testers) {
+        // Overriding the body filter replaces the default one that hides the
+        // vehicle from itself, so this filter has to do that job too.
+        tester->SetBodyFilter(&vehicle->groundFilter);
+    }
 }
 
 /// Writes a wheel description onto a wheel's settings. Every one of these is
@@ -1497,15 +1714,8 @@ CJoltVehicle *cjolt_vehicle_create(CJoltWorld *world, CJoltBodyID chassisID,
     CJoltVehicle *wrapper = new CJoltVehicle();
     wrapper->drivenWheelRadius = drivenRadius;
     wrapper->groundFilter.chassis = chassis->GetID();
-    wrapper->testers[0] = new VehicleCollisionTesterRay(Layers::MOVING);
-    wrapper->testers[1] =
-        new VehicleCollisionTesterCastSphere(Layers::MOVING, 0.5f * narrowest);
-    wrapper->testers[2] = new VehicleCollisionTesterCastCylinder(Layers::MOVING);
-    for (Ref<VehicleCollisionTester> &tester : wrapper->testers) {
-        // Overriding the body filter replaces the default one that hides the
-        // vehicle from itself, so this filter has to do that job too.
-        tester->SetBodyFilter(&wrapper->groundFilter);
-    }
+    wrapper->wheelWidth = narrowest;
+    buildVehicleTesters(wrapper, chassis->GetObjectLayer());
     wrapper->constraint = new VehicleConstraint(*chassis, vehicle);
     cjolt_vehicle_set_wheel_contact(wrapper, desc->contact);
 
@@ -1583,7 +1793,21 @@ void cjolt_vehicle_set_wheel_contact(CJoltVehicle *vehicle,
     int index = contact == CJOLT_WHEEL_CONTACT_RAY      ? 0
                 : contact == CJOLT_WHEEL_CONTACT_SPHERE ? 1
                                                         : 2;
+    vehicle->contactIndex = index;
     vehicle->constraint->SetVehicleCollisionTester(vehicle->testers[index]);
+}
+
+void cjolt_vehicle_set_group(CJoltWorld *world, CJoltVehicle *vehicle, int32_t group) {
+    if (world == nullptr || vehicle == nullptr) { return; }
+    const ObjectLayer layer = layerFor(group, Layers::MOVING);
+    // The chassis is an ordinary body and filters through its own layer; the
+    // wheels feel the ground through testers built against one.
+    BodyInterface &bodies = world->physics.GetBodyInterface();
+    bodies.SetObjectLayer(vehicle->groundFilter.chassis, layer);
+    buildVehicleTesters(vehicle, layer);
+    vehicle->constraint->SetVehicleCollisionTester(
+        vehicle->testers[vehicle->contactIndex]);
+    bodies.ActivateBody(vehicle->groundFilter.chassis);
 }
 
 void cjolt_vehicle_set_max_pitch_roll(CJoltVehicle *vehicle, float radians) {
@@ -1678,7 +1902,7 @@ Ref<Shape> makeRagdollPartShape(const CJoltRagdollPartDesc &part) {
 CJoltRagdoll *cjolt_ragdoll_create(CJoltWorld *world,
                                    const CJoltRagdollPartDesc *parts,
                                    int32_t partCount, float friction,
-                                   float restitution) {
+                                   float restitution, int32_t group) {
     if (parts == nullptr || partCount <= 0) { return nullptr; }
 
     Ref<Skeleton> skeleton = new Skeleton;
@@ -1709,7 +1933,7 @@ CJoltRagdoll *cjolt_ragdoll_create(CJoltWorld *world,
         part.mPosition = RVec3(vec3(desc.position));
         part.mRotation = quat(desc.rotation);
         part.mMotionType = EMotionType::Dynamic;
-        part.mObjectLayer = Layers::MOVING;
+        part.mObjectLayer = layerFor(group, Layers::MOVING);
         part.mFriction = std::max(0.0f, friction);
         part.mRestitution = std::clamp(restitution, 0.0f, 1.0f);
         part.mLinearDamping = 0.05f;
@@ -1881,11 +2105,11 @@ void cjolt_ragdoll_set_motion(CJoltWorld *world, CJoltRagdoll *ragdoll,
                               CJoltMotionType motion) {
     if (ragdoll == nullptr) { return; }
     EMotionType type = EMotionType::Dynamic;
-    ObjectLayer layer = Layers::MOVING;
+    ObjectLayer kind = Layers::MOVING;
     switch (motion) {
     case CJOLT_MOTION_STATIC:
         type = EMotionType::Static;
-        layer = Layers::NON_MOVING;
+        kind = Layers::NON_MOVING;
         break;
     case CJOLT_MOTION_KINEMATIC: type = EMotionType::Kinematic; break;
     case CJOLT_MOTION_DYNAMIC: break;
@@ -1897,8 +2121,21 @@ void cjolt_ragdoll_set_motion(CJoltWorld *world, CJoltRagdoll *ragdoll,
         bodies.SetMotionType(id, type,
                              type == EMotionType::Static ? EActivation::DontActivate
                                                          : EActivation::Activate);
-        bodies.SetObjectLayer(id, layer);
+        // The group half of the layer survives a motion change, as it does for
+        // an ordinary body.
+        bodies.SetObjectLayer(id, layerFor(layerGroup(bodies.GetObjectLayer(id)), kind));
     }
+}
+
+void cjolt_ragdoll_set_group(CJoltWorld *world, CJoltRagdoll *ragdoll, int32_t group) {
+    if (world == nullptr || ragdoll == nullptr) { return; }
+    BodyInterface &bodies = world->physics.GetBodyInterface();
+    const int count = int(ragdoll->ragdoll->GetBodyCount());
+    for (int i = 0; i < count; ++i) {
+        const BodyID id = ragdoll->ragdoll->GetBodyID(i);
+        bodies.SetObjectLayer(id, layerFor(group, layerKind(bodies.GetObjectLayer(id))));
+    }
+    ragdoll->ragdoll->Activate();
 }
 
 void cjolt_ragdoll_activate(CJoltWorld *, CJoltRagdoll *ragdoll) {
@@ -2023,7 +2260,8 @@ CJoltSoftBody *cjolt_soft_body_create(CJoltWorld *world,
     settings->Optimize();
 
     SoftBodyCreationSettings creation(settings, RVec3(vec3(desc->position)),
-                                      quat(desc->rotation), Layers::MOVING);
+                                      quat(desc->rotation),
+                                      layerFor(desc->group, Layers::MOVING));
     creation.mNumIterations = uint32_t(std::max(1, desc->iterations));
     creation.mLinearDamping = std::max(0.0f, desc->linearDamping);
     creation.mFriction = std::max(0.0f, desc->friction);
@@ -2222,8 +2460,16 @@ private:
 /// ghosts (the grab anchors) never are.
 struct QueryFilters {
     explicit QueryFilters(CJoltWorld *world, const CJoltQueryFilter *filter)
-        : broadPhase(world->objectVsBroadPhase, Layers::MOVING),
-          objects(world->objectPairs, Layers::MOVING), bodies(filter) {}
+        : broadPhase(world->objectVsBroadPhase, asLayer(filter)),
+          objects(world->objectPairs, asLayer(filter)), bodies(filter) {}
+
+    /// The layer a query asks as: a moving body of the filter's own group, so
+    /// the world's ignore table narrows the question exactly as it narrows a
+    /// collision. A null filter asks as the default group, which sees
+    /// everything.
+    static ObjectLayer asLayer(const CJoltQueryFilter *filter) {
+        return layerFor(filter != nullptr ? filter->group : 0, Layers::MOVING);
+    }
 
     DefaultBroadPhaseLayerFilter broadPhase;
     DefaultObjectLayerFilter objects;
