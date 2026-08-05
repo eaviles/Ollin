@@ -34,6 +34,9 @@
 #include <Jolt/Physics/PhysicsSettings.h>
 #include <Jolt/Physics/PhysicsSystem.h>
 #include <Jolt/Physics/Ragdoll/Ragdoll.h>
+#include <Jolt/Physics/SoftBody/SoftBodyCreationSettings.h>
+#include <Jolt/Physics/SoftBody/SoftBodyMotionProperties.h>
+#include <Jolt/Physics/SoftBody/SoftBodySharedSettings.h>
 #include <Jolt/Physics/Vehicle/MotorcycleController.h>
 #include <Jolt/Physics/Vehicle/VehicleCollisionTester.h>
 #include <Jolt/Physics/Vehicle/VehicleConstraint.h>
@@ -299,6 +302,14 @@ struct CJoltRagdoll {
     JPH::Ref<JPH::Ragdoll> ragdoll;
 };
 
+/// A soft body: the shared settings that describe its particles and springs,
+/// plus the body it was added to the world as. The settings are owned per body
+/// rather than shared, since each one is built from its own mesh.
+struct CJoltSoftBody {
+    JPH::Ref<JPH::SoftBodySharedSettings> settings;
+    JPH::BodyID id;
+};
+
 struct CJoltWorld {
     JPH::TempAllocatorImpl tempAllocator;
     JPH::JobSystemThreadPool jobSystem;
@@ -316,6 +327,7 @@ struct CJoltWorld {
     std::vector<CJoltCharacter *> characters;
     std::vector<CJoltVehicle *> vehicles;
     std::vector<CJoltRagdoll *> ragdolls;
+    std::vector<CJoltSoftBody *> softBodies;
     // Every ragdoll gets its own collision group, so the filter table that
     // stops one figure's limbs from fighting each other never stops two
     // figures from colliding.
@@ -501,6 +513,14 @@ void cjolt_world_destroy(CJoltWorld *world) {
         delete ragdoll;
     }
     world->ragdolls.clear();
+    // Soft bodies are ordinary bodies, so they leave through the body
+    // interface; only the settings that describe their springs are ours.
+    for (CJoltSoftBody *soft : world->softBodies) {
+        world->physics.GetBodyInterface().RemoveBody(soft->id);
+        world->physics.GetBodyInterface().DestroyBody(soft->id);
+        delete soft;
+    }
+    world->softBodies.clear();
     // Characters before the world: releasing one destroys its inner body
     // through the physics system, which has to still be alive to hear it.
     for (CJoltCharacter *character : world->characters) {
@@ -1819,6 +1839,242 @@ void cjolt_ragdoll_add_impulse(CJoltWorld *world, CJoltRagdoll *ragdoll,
         }
         bodies.AddImpulse(id, vec3(impulse) * (mass / total));
     }
+}
+
+// Soft bodies ---------------------------------------------------------------
+
+namespace {
+
+// Reading or writing particle state needs the body, and every soft-body call
+// runs on the main thread between steps, so the no-lock interface is enough.
+SoftBodyMotionProperties *softMotion(const CJoltWorld *world,
+                                     const CJoltSoftBody *soft) {
+    if (soft == nullptr) { return nullptr; }
+    Body *body = const_cast<CJoltWorld *>(world)
+                     ->physics.GetBodyLockInterfaceNoLock()
+                     .TryGetBody(soft->id);
+    if (body == nullptr || !body->IsSoftBody()) { return nullptr; }
+    return static_cast<SoftBodyMotionProperties *>(body->GetMotionProperties());
+}
+
+Body *softBody(const CJoltWorld *world, const CJoltSoftBody *soft) {
+    if (soft == nullptr) { return nullptr; }
+    return const_cast<CJoltWorld *>(world)
+        ->physics.GetBodyLockInterfaceNoLock()
+        .TryGetBody(soft->id);
+}
+
+} // namespace
+
+CJoltSoftBody *cjolt_soft_body_create(CJoltWorld *world,
+                                      const CJoltSoftBodyDesc *desc) {
+    if (world == nullptr || desc == nullptr) { return nullptr; }
+    if (desc->positions == nullptr || desc->vertexCount < 3) { return nullptr; }
+    if (desc->indices == nullptr || desc->indexCount < 3) { return nullptr; }
+
+    Ref<SoftBodySharedSettings> settings = new SoftBodySharedSettings;
+    settings->mVertices.reserve(size_t(desc->vertexCount));
+    for (int32_t i = 0; i < desc->vertexCount; ++i) {
+        SoftBodySharedSettings::Vertex v;
+        v.mPosition = Float3(desc->positions[i * 3], desc->positions[i * 3 + 1],
+                             desc->positions[i * 3 + 2]);
+        float inverseMass = desc->inverseMasses ? desc->inverseMasses[i] : 1.0f;
+        v.mInvMass = std::max(0.0f, inverseMass);
+        settings->mVertices.push_back(v);
+    }
+
+    // A face whose corners repeat, or whose corners sit on top of each other,
+    // would give the constraint builder a zero-length spring; drop it rather
+    // than let the library trip over it.
+    const uint32_t vertexCount = uint32_t(desc->vertexCount);
+    for (int32_t i = 0; i + 2 < desc->indexCount; i += 3) {
+        uint32_t a = desc->indices[i], b = desc->indices[i + 1],
+                 c = desc->indices[i + 2];
+        if (a >= vertexCount || b >= vertexCount || c >= vertexCount) { continue; }
+        if (a == b || b == c || a == c) { continue; }
+        Vec3 pa(settings->mVertices[a].mPosition);
+        Vec3 pb(settings->mVertices[b].mPosition);
+        Vec3 pc(settings->mVertices[c].mPosition);
+        if ((pb - pa).LengthSq() <= 0.0f || (pc - pb).LengthSq() <= 0.0f
+            || (pa - pc).LengthSq() <= 0.0f) {
+            continue;
+        }
+        settings->AddFace(SoftBodySharedSettings::Face(a, b, c));
+    }
+    if (settings->mFaces.empty()) { return nullptr; }
+
+    // The dihedral bend constraint is the one that works on a curved surface:
+    // it holds the angle two faces already meet at, where the cheaper distance
+    // form assumes they started in a plane.
+    SoftBodySharedSettings::VertexAttributes attributes;
+    attributes.mCompliance = std::max(0.0f, desc->compliance);
+    attributes.mShearCompliance = attributes.mCompliance;
+    bool bends = desc->bendCompliance >= 0.0f;
+    attributes.mBendCompliance = bends ? std::max(0.0f, desc->bendCompliance) : FLT_MAX;
+    settings->CreateConstraints(&attributes, 1,
+                                bends ? SoftBodySharedSettings::EBendType::Dihedral
+                                      : SoftBodySharedSettings::EBendType::None);
+    settings->Optimize();
+
+    SoftBodyCreationSettings creation(settings, RVec3(vec3(desc->position)),
+                                      quat(desc->rotation), Layers::MOVING);
+    creation.mNumIterations = uint32_t(std::max(1, desc->iterations));
+    creation.mLinearDamping = std::max(0.0f, desc->linearDamping);
+    creation.mFriction = std::max(0.0f, desc->friction);
+    creation.mRestitution = std::clamp(desc->restitution, 0.0f, 1.0f);
+    creation.mPressure = std::max(0.0f, desc->pressure);
+    creation.mGravityFactor = desc->gravityFactor;
+    creation.mVertexRadius = std::max(0.0f, desc->vertexRadius);
+    creation.mAllowSleeping = desc->allowSleep;
+    creation.mFacesDoubleSided = desc->twoSided;
+
+    BodyID id = world->physics.GetBodyInterface().CreateAndAddSoftBody(
+        creation, EActivation::Activate);
+    if (id.IsInvalid()) { return nullptr; }
+
+    CJoltSoftBody *soft = new CJoltSoftBody{settings, id};
+    world->softBodies.push_back(soft);
+    return soft;
+}
+
+void cjolt_soft_body_destroy(CJoltWorld *world, CJoltSoftBody *body) {
+    if (world == nullptr || body == nullptr) { return; }
+    world->physics.GetBodyInterface().RemoveBody(body->id);
+    world->physics.GetBodyInterface().DestroyBody(body->id);
+    world->softBodies.erase(
+        std::remove(world->softBodies.begin(), world->softBodies.end(), body),
+        world->softBodies.end());
+    delete body;
+}
+
+CJoltBodyID cjolt_soft_body_get_id(const CJoltSoftBody *body) {
+    if (body == nullptr) { return CJOLT_BODY_INVALID; }
+    return body->id.GetIndexAndSequenceNumber();
+}
+
+int32_t cjolt_soft_body_vertex_count(const CJoltSoftBody *body) {
+    if (body == nullptr) { return 0; }
+    return int32_t(body->settings->mVertices.size());
+}
+
+int32_t cjolt_soft_body_get_positions(const CJoltWorld *world,
+                                      const CJoltSoftBody *body, float *out,
+                                      int32_t capacity) {
+    SoftBodyMotionProperties *motion = softMotion(world, body);
+    Body *jbody = softBody(world, body);
+    if (motion == nullptr || jbody == nullptr || out == nullptr) { return 0; }
+    // Particles are stored relative to the body's center of mass, which the
+    // solver re-centres every step; the transform is what puts them back.
+    RMat44 com = jbody->GetCenterOfMassTransform();
+    const Array<SoftBodyMotionProperties::Vertex> &vertices = motion->GetVertices();
+    int32_t count = std::min(capacity, int32_t(vertices.size()));
+    for (int32_t i = 0; i < count; ++i) {
+        Vec3 world_position = Vec3(com * vertices[size_t(i)].mPosition);
+        store(world_position, out + i * 3);
+    }
+    return count;
+}
+
+void cjolt_soft_body_get_center(const CJoltWorld *world,
+                                const CJoltSoftBody *body, float out[3]) {
+    Body *jbody = softBody(world, body);
+    if (jbody == nullptr || out == nullptr) {
+        if (out != nullptr) { store(Vec3::sZero(), out); }
+        return;
+    }
+    store(Vec3(jbody->GetCenterOfMassPosition()), out);
+}
+
+float cjolt_soft_body_get_volume(const CJoltWorld *world,
+                                 const CJoltSoftBody *body) {
+    SoftBodyMotionProperties *motion = softMotion(world, body);
+    return motion == nullptr ? 0.0f : motion->GetVolume();
+}
+
+void cjolt_soft_body_set_pressure(CJoltWorld *world, CJoltSoftBody *body,
+                                  float pressure) {
+    SoftBodyMotionProperties *motion = softMotion(world, body);
+    if (motion == nullptr) { return; }
+    motion->SetPressure(std::max(0.0f, pressure));
+    world->physics.GetBodyInterface().ActivateBody(body->id);
+}
+
+void cjolt_soft_body_set_iterations(CJoltWorld *world, CJoltSoftBody *body,
+                                    int32_t iterations) {
+    SoftBodyMotionProperties *motion = softMotion(world, body);
+    if (motion == nullptr) { return; }
+    motion->SetNumIterations(uint32_t(std::max(1, iterations)));
+}
+
+void cjolt_soft_body_set_vertex_radius(CJoltWorld *world, CJoltSoftBody *body,
+                                       float radius) {
+    SoftBodyMotionProperties *motion = softMotion(world, body);
+    if (motion == nullptr) { return; }
+    motion->SetVertexRadius(std::max(0.0f, radius));
+}
+
+float cjolt_soft_body_get_vertex_inverse_mass(const CJoltWorld *world,
+                                              const CJoltSoftBody *body,
+                                              int32_t index) {
+    SoftBodyMotionProperties *motion = softMotion(world, body);
+    if (motion == nullptr || index < 0
+        || size_t(index) >= motion->GetVertices().size()) {
+        return 0.0f;
+    }
+    return motion->GetVertex(uint(index)).mInvMass;
+}
+
+void cjolt_soft_body_set_vertex_inverse_mass(CJoltWorld *world,
+                                             CJoltSoftBody *body, int32_t index,
+                                             float inverseMass) {
+    SoftBodyMotionProperties *motion = softMotion(world, body);
+    if (motion == nullptr || index < 0
+        || size_t(index) >= motion->GetVertices().size()) {
+        return;
+    }
+    SoftBodyMotionProperties::Vertex &v = motion->GetVertex(uint(index));
+    v.mInvMass = std::max(0.0f, inverseMass);
+    // A pinned particle keeps whatever velocity it had, which would carry it
+    // away from the spot it is meant to hold.
+    if (v.mInvMass <= 0.0f) { v.mVelocity = Vec3::sZero(); }
+    world->physics.GetBodyInterface().ActivateBody(body->id);
+}
+
+void cjolt_soft_body_move_vertex(CJoltWorld *world, CJoltSoftBody *body,
+                                 int32_t index, const float target[3],
+                                 float dt) {
+    SoftBodyMotionProperties *motion = softMotion(world, body);
+    Body *jbody = softBody(world, body);
+    if (motion == nullptr || jbody == nullptr || target == nullptr
+        || index < 0 || size_t(index) >= motion->GetVertices().size()
+        || dt <= 0.0f) {
+        return;
+    }
+    SoftBodyMotionProperties::Vertex &v = motion->GetVertex(uint(index));
+    v.mInvMass = 0.0f;
+    RMat44 com = jbody->GetCenterOfMassTransform();
+    Vec3 current = Vec3(com * v.mPosition);
+    // Velocities are stored in the body's own space, so the world-space step
+    // comes back through the transform's rotation.
+    v.mVelocity = com.Multiply3x3Transposed((vec3(target) - current) / dt);
+    world->physics.GetBodyInterface().ActivateBody(body->id);
+}
+
+void cjolt_soft_body_add_force(CJoltWorld *world, CJoltSoftBody *body,
+                               const float force[3]) {
+    if (world == nullptr || body == nullptr || force == nullptr) { return; }
+    world->physics.GetBodyInterface().AddForce(body->id, vec3(force));
+}
+
+void cjolt_soft_body_activate(CJoltWorld *world, CJoltSoftBody *body) {
+    if (world == nullptr || body == nullptr) { return; }
+    world->physics.GetBodyInterface().ActivateBody(body->id);
+}
+
+bool cjolt_soft_body_is_active(const CJoltWorld *world,
+                               const CJoltSoftBody *body) {
+    if (world == nullptr || body == nullptr) { return false; }
+    return world->physics.GetBodyInterface().IsActive(body->id);
 }
 
 // Queries -------------------------------------------------------------------

@@ -3372,6 +3372,76 @@ a figure straighter, per-joint retuning, limbs naming the floor they land on,
 parent-child pairs never reporting a touch while two figures do, and identical
 replays.
 
+### Soft bodies
+
+A `SoftBody3D` (`Sources/OllinPhysics/SoftBody3D.swift`) is the one member of
+the tier whose state is not a pose. The solver's soft body is position-based
+dynamics over a set of particles with springs between them; the bridge
+(`cjolt_soft_body_*`) builds one `SoftBodySharedSettings` per body from a mesh,
+lets the library derive stretch, shear, and fold constraints from the faces, and
+hands the result to `CreateAndAddSoftBody`. It is a real body in the world (it
+collides with the rigid bodies and a ray cast reports its id), so it needs no
+step listener or hand update the way a character and a vehicle do.
+
+**Welding is a precondition, not a nicety.** Ollin's generators emit flat-shaded
+meshes whose triangles share no vertex index, and a soft body built from one has
+no connectivity at all: it would fall apart into loose triangles on the first
+step. `addSoftBody` runs the mesh through the core's `package` `Mesh.welded()`
+seam (`Sources/Ollin/3D/MeshWeld.swift`, a thin public-to-the-package face over
+the existing internal `WeldedMesh`, the same seam `MeshReactionDiffusion` needs
+for the same reason), simulates on the merged particles, and republishes through
+the `remap` so `positions` and `mesh` still line up with the source mesh index
+for index. That is what keeps uvs, colors, and the material intact.
+
+**Normals follow the source mesh, not the winding.** The read-back derives
+normals from the simulated positions, and the obvious cross-product order is
+right only if the mesh winds the way you assume. Ollin's own catalog does not
+agree with itself here (the same trap the subdivision surfaces hit), so a
+`Mesh.plane` came back lit from underneath. The fix is a one-time area-weighted
+vote at build time: derive the normals for the *rest* shape, dot them against
+the mesh's authored normals, and remember a flip if the sum is negative.
+
+**Two knobs, both made scale-free, both by measurement.** The library's own
+numbers are physical and therefore useless as a 0…1 dial:
+
+- *Compliance* (the inverse stiffness of a spring, in m/N) has to be compared
+  against the load, so one fixed value visibly softens a heavy cloth and does
+  nothing at all to a light one. The knob is normalized by the body's own
+  hanging weight: `scale = meanEdge * sqrt(particleCount) / (mass * gravity)` is
+  the compliance at which one loaded edge stretches by its own length, and
+  `stiffness` maps onto a fraction of it. Measured: mean edge stretch runs
+  1.0005 at `stiffness: 1` to 1.22 at `0.05`, and a 0.2 kg cloth and a 20 kg one
+  agree to four decimals (`stiffnessMeansTheSameAtAnyWeight` pins that).
+- A *fold* constraint measures an angle where a stretch constraint measures a
+  length, so its compliance carries two fewer powers of length. `bend` therefore
+  divides the same scale by the mean edge squared. Without that correction the
+  whole 0.2…1.0 range of the knob was already rigid, which the first probe found
+  by sweeping.
+
+`pressure` is the third: the solver's number is `n R T`, and working the force
+through `ApplyPressure` gives an outward acceleration of `pressure * area /
+(mass * volume)`. Expressing the knob as that acceleration *in gravities* makes
+`pressure: 1` mean "just holds its own weight up" at any size, and the rest
+shape's area and volume are measured once at build time to convert. It is
+refused on an open surface with a one-time note, the closed test being that
+every edge belongs to exactly two faces.
+
+**What the tier does not do**, all of it the library's own envelope rather than
+a shortcut: soft bodies collide with rigid bodies but not with each other or
+themselves; they are outside the rigid contact listener, so their touches do not
+reach `world.contacts`; impulses and constraints do not apply to one (hence
+`applyForce` for wind, and a grip that *pins a particle* rather than adding a
+joint); and there is no tearing, because a tear has to split a shared vertex and
+rebuild the constraint set, which cannot be done to a body mid-simulation.
+
+`SoftBody3DTests` pins it behaviorally against counterfactual twins: a pinned
+sheet hangs where a free one lands on the floor, a stiffer cloth stretches less
+under the same load, a fold-resisting sheet held at its middle stays a plate
+where a limp one falls around the pin, a pressurized ball keeps a height and
+volume a limp one loses and shoves a crate further, pressure on a sheet changes
+nothing at all, a cloth drapes over a sphere rather than through it, a wind
+holds a banner out, and identical runs replay identically.
+
 ## The geometry and generator catalog
 
 The CPU-side geometry types and generative-technique recipes live in

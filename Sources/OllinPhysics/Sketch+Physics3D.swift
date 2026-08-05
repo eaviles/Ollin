@@ -89,6 +89,99 @@ extension Sketch {
         }
     }
 
+    /// Draw a soft body's simulated surface.
+    ///
+    /// Unlike `withBody(_:)`, which moves the transform stack to a rigid body's
+    /// pose and lets the sketch draw whatever it likes there, a soft body *is*
+    /// its mesh: the simulation's answer arrives already in world space, so
+    /// this draws it where it is, under the current fill, stroke, and material.
+    ///
+    /// ```swift
+    /// fill(.crimson)
+    /// material(.dielectric(roughness: 0.6))
+    /// drawSoftBody(cloth)
+    /// ```
+    public func drawSoftBody(_ softBody: SoftBody3D) {
+        drawMesh(softBody.mesh)
+    }
+
+    /// A hold on one particle of a soft body, from `grabSoftBody(at:in:)`.
+    public struct SoftGrip {
+        /// The body being held.
+        public let body: SoftBody3D
+        /// Which of its source mesh's vertices is in hand.
+        public let vertex: Int
+        /// Whether that particle was already pinned before it was picked up, so
+        /// letting go can put it back the way it was.
+        let wasPinned: Bool
+        /// How deep into the view the grip sits, so dragging moves it in the
+        /// plane through that point rather than toward the camera.
+        let viewDepth: Double
+    }
+
+    /// Take hold of the nearest particle of the soft body under a canvas point.
+    /// `nil` when the cursor is not on one.
+    ///
+    /// A soft body has no single pose to hang a joint from, so a grip is a
+    /// *pinned particle* the sketch drives instead. Drag it with
+    /// `dragSoftGrab(_:to:)` each frame and `releaseSoftGrab(_:)` to let go:
+    ///
+    /// ```swift
+    /// var grip: SoftGrip?
+    /// override func mousePressed() {
+    ///     grip = grabSoftBody(at: Vector2(mouseX, mouseY), in: world)
+    /// }
+    /// override func mouseReleased() {
+    ///     if let grip { releaseSoftGrab(grip) }
+    ///     grip = nil
+    /// }
+    /// // in draw():
+    /// if let grip { dragSoftGrab(grip, to: Vector2(mouseX, mouseY)) }
+    /// ```
+    public func grabSoftBody(at canvasPoint: Vector2, in world: World3D) -> SoftGrip? {
+        guard let camera = activeCamera,
+              let ray = cameraRay(through: canvasPoint, camera: camera) else {
+            return nil
+        }
+        let reach = ray.direction * (camera.far - camera.near)
+        var hitBody: CJoltBodyID = CJOLT_BODY_INVALID
+        var fraction: Float = 0
+        var hit = false
+        withFloats3(world.meters(from: ray.origin)) { op in
+            withFloats3(world.meters(from: reach)) { dp in
+                hit = cjolt_world_ray_cast(world.handle, op, dp, &hitBody, &fraction)
+            }
+        }
+        guard hit, let soft = world.softBodies.first(where: { $0.bodyID == hitBody }) else {
+            return nil
+        }
+        let point = ray.origin + reach * Double(fraction)
+        guard let vertex = soft.nearestVertex(to: point) else { return nil }
+        let forward = (camera.target - camera.eye).normalized
+        return SoftGrip(body: soft, vertex: vertex, wasPinned: soft.isPinned(vertex),
+                        viewDepth: (point - camera.eye).dot(forward))
+    }
+
+    /// Drag a soft-body grip toward a canvas point, keeping the particle at the
+    /// view depth where it was picked up.
+    public func dragSoftGrab(_ grip: SoftGrip, to canvasPoint: Vector2) {
+        guard let camera = activeCamera,
+              let ray = cameraRay(through: canvasPoint, camera: camera) else {
+            return
+        }
+        let forward = (camera.target - camera.eye).normalized
+        let along = ray.direction.dot(forward)
+        guard along > 1e-6 else { return }
+        grip.body.move(grip.vertex, to: ray.origin + ray.direction * (grip.viewDepth / along))
+    }
+
+    /// Let go of a soft-body grip. A particle that was free before it was picked
+    /// up is handed back to the simulation; one that was already pinned stays
+    /// pinned where the drag left it.
+    public func releaseSoftGrab(_ grip: SoftGrip) {
+        if !grip.wasPinned { grip.body.unpin(grip.vertex) }
+    }
+
     /// The dynamic body under a canvas point, seen through the active camera,
     /// with the world point where the ray touched it. `nil` when nothing is
     /// there (or no camera is active). Use it to probe; use

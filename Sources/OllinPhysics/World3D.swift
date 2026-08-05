@@ -85,6 +85,11 @@ public final class World3D {
     /// sketch draws the figure's mesh rather than the capsules under it.
     public private(set) var ragdolls: [Ragdoll3D] = []
 
+    /// Every `SoftBody3D` in the world, in the order added. Their bodies are
+    /// simulated with everything else; they are not in `bodies`, whose surface
+    /// (one pose, one velocity, impulses) does not describe them.
+    public private(set) var softBodies: [SoftBody3D] = []
+
     /// Every touch that started or stopped during the most recent `step(dt:)`,
     /// including bodies entering and leaving a sensor. Poll it in `draw()` the
     /// way mouse state is polled; the list is replaced by the next step, and
@@ -114,6 +119,10 @@ public final class World3D {
     /// the hand is allowed to move its anchor.
     var lastTimestep: Double = 1.0 / 60
 
+    /// Counts the steps taken, so a soft body can tell whether the mesh it read
+    /// back last is still the current one.
+    private(set) var stepGeneration: Int = 0
+
     /// The solver handle of the slab backing `ground`, if any.
     private var groundID: CJoltBodyID = CJOLT_BODY_INVALID
 
@@ -131,6 +140,7 @@ public final class World3D {
         for character in characters { character.isDestroyed = true }
         for vehicle in vehicles { vehicle.isDestroyed = true }
         for ragdoll in ragdolls { ragdoll.isDestroyed = true }
+        for soft in softBodies { soft.isDestroyed = true }
         cjolt_world_destroy(handle)
     }
 
@@ -393,6 +403,80 @@ public final class World3D {
         return ragdoll
     }
 
+    /// Add a soft body built from `mesh` and return it: a surface of simulated
+    /// particles that drapes, folds, and squashes rather than moving as one
+    /// rigid piece.
+    ///
+    /// The mesh's coincident vertices are merged into shared particles first, so
+    /// a flat-shaded generator mesh (whose triangles share no vertex index)
+    /// still comes out as one connected sheet. Everything the mesh carries
+    /// besides positions rides through to the simulated copy.
+    ///
+    /// - Parameters:
+    ///   - mesh: the rest shape. An open surface is cloth; a closed one can be
+    ///     pressurised into a ball.
+    ///   - position: where the rest shape is placed in the world.
+    ///   - rotation: how far the rest shape is turned, in radians, about
+    ///     `axis`, applied before it is placed.
+    ///   - axis: the axis `rotation` turns about.
+    ///   - mass: the whole body's weight in kilograms, split evenly between its
+    ///     particles.
+    ///   - stiffness: how hard the surface resists being stretched, `0` slack
+    ///     … `1` inextensible.
+    ///   - bend: how hard it resists being folded, `0` (the default) limp like
+    ///     fabric … `1` stiff like card. Anything above 0 costs a constraint
+    ///     per pair of neighbouring faces.
+    ///   - pressure: how hard the inside of a closed surface pushes out, in
+    ///     gravities: `1` just holds its own weight up, `2`…`4` reads as a firm
+    ///     ball. Ignored on an open sheet.
+    ///   - damping: how quickly particle motion bleeds away.
+    ///   - friction: the surface's friction against what it lands on.
+    ///   - bounce: how much speed survives a bounce; `nil` takes the world's.
+    ///   - iterations: solver passes per step; more is stiffer and steadier.
+    ///   - vertexRadius: how far each particle's body reaches past its
+    ///     position, which lifts a draped surface clear of what it lies on.
+    ///   - twoSided: collide with the back of every face as well as the front.
+    ///   - pinned: given a vertex of `mesh` in the mesh's own space, whether it
+    ///     is held in place. This is how a flag hangs from its corners.
+    @discardableResult
+    public func addSoftBody(from mesh: Mesh, at position: Vector3 = .zero,
+                            rotation: Double = 0, axis: Vector3 = Vector3(0, 1, 0),
+                            mass: Double = 1,
+                            stiffness: Double = 1,
+                            bend: Double = 0,
+                            pressure: Double = 0,
+                            damping: Double = 0.1,
+                            friction: Double = 0.5,
+                            bounce: Double? = nil,
+                            iterations: Int = 5,
+                            vertexRadius: Double = 0,
+                            twoSided: Bool = true,
+                            pinned: ((Vector3) -> Bool)? = nil) -> SoftBody3D? {
+        let direction = axis.lengthSquared > 1e-18 ? axis.normalized : Vector3(0, 1, 0)
+        let turn = simd_quatd(angle: rotation,
+                              axis: simd_double3(direction.x, direction.y, direction.z))
+        guard let soft = SoftBody3D(world: self, mesh: mesh, position: position,
+                                    rotation: turn, mass: mass,
+                                    stiffness: stiffness, bend: bend,
+                                    pressure: pressure, damping: damping,
+                                    friction: friction,
+                                    restitution: bounce ?? self.bounce,
+                                    iterations: iterations,
+                                    vertexRadius: vertexRadius,
+                                    twoSided: twoSided, pinned: pinned) else {
+            noteOnce("addSoftBody needs a mesh with at least one triangle whose "
+                     + "corners are distinct; nothing was added.")
+            return nil
+        }
+        softBodies.append(soft)
+        return soft
+    }
+
+    /// Remove a soft body from the world.
+    public func remove(_ softBody: SoftBody3D) {
+        softBodies.removeAll { $0 === softBody }
+    }
+
     /// Remove a figure and every limb body it owns from the world.
     public func remove(_ ragdoll: Ragdoll3D) {
         ragdoll.destroyBackingRagdoll()
@@ -541,6 +625,8 @@ public final class World3D {
         // the loose bodies do.
         for ragdoll in ragdolls { ragdoll.destroyBackingRagdoll() }
         ragdolls.removeAll()
+        // Soft bodies own their own body and destroy it on release.
+        softBodies.removeAll()
         // Characters own their inner bodies and destroy them on release.
         characters.removeAll()
         for body in bodies { cjolt_body_destroy(handle, body.id) }
@@ -584,6 +670,7 @@ public final class World3D {
         // stable without costing short ones anything.
         let passes = max(1, Int((clamped * 60).rounded(.up)))
         _ = cjolt_world_step(handle, Float(clamped), Int32(passes))
+        stepGeneration &+= 1
         // The solver's worker threads filled a buffer while it ran; empty it
         // here, on the one thread the sketch reads from.
         drainContacts()

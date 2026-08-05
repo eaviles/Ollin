@@ -712,6 +712,63 @@ Nothing drives the root, so a powered figure still falls over as a whole: the mo
 
 Two more things worth knowing. Every limb is an ordinary body, so you can grab one with the mouse and drag the figure around by an arm. And each figure gets its own collision group, so a thigh never fights the pelvis it sits inside, while two figures still knock into each other properly.
 
+## Cloth that finds its own shape
+
+Everything in this chapter so far moves as one solid piece. A crate can be anywhere, but it is always crate-shaped. A **soft body** is the other kind of thing: its mesh's vertices *are* the simulation, held to each other by springs, so it arrives at a shape rather than carrying one around.
+
+You build one from any mesh you already know how to draw.
+
+```swift
+cloth = world.addSoftBody(from: .plane(width: 3, depth: 3, segments: 24),
+                          at: Vector3(0, 3, 0))
+```
+
+Then the loop, which has one new call in it:
+
+```swift
+world.step(dt: deltaTime)
+fill(.beige)
+drawSoftBody(cloth)
+```
+
+`drawSoftBody` draws the mesh the simulation just arrived at. It is the same mesh you handed over, with new positions and new normals, so its uvs, its colors, and its material all carry through, and shadows and reflections treat it like any other mesh. Drop that sheet on a sphere and it drapes over it, because a hundred particles each found somewhere to be and the springs between them argued about it.
+
+Two knobs decide what fabric it is, and they are separate for a good reason.
+
+```swift
+stiffness: 1     // how hard it resists being stretched
+bend: 0          // how hard it resists being folded
+```
+
+A bedsheet barely stretches at all and folds freely, which is exactly `stiffness: 1, bend: 0` (the defaults). Card is stiff in both. A rubber sheet is the odd one, low stiffness and low bend. Reach for `bend` when a cloth is crumpling more than it should; reach for `stiffness` when it is sagging like a net.
+
+Nothing holds a sheet up unless you say so, and the way you say so is `pinned:`. It gets handed every vertex of the mesh, in the mesh's own coordinates, and answers yes or no:
+
+```swift
+pinned: { $0.z < -1.4 }      // hold the far edge, let the rest hang
+```
+
+That closure is the whole hanging story: two corners for a flag, one edge for a curtain, a patch in the middle for a handkerchief held up by its middle. You can change your mind later too, with `pin`, `unpin`, and `move(_:to:)`, which drags a particle to a point and lets the rest of the cloth follow.
+
+A **closed** mesh can do something a sheet cannot: hold air.
+
+```swift
+ball = world.addSoftBody(from: .icosphere(radius: 0.5, subdivisions: 3),
+                         at: Vector3(0, 2, 0), pressure: 3)
+```
+
+`pressure` is in gravities: `1` means the air inside pushes out just hard enough to hold the ball's own weight up, and `2` to `4` reads as a firm ball that still dents when it lands. Zero is an empty bag. It is a live number, so a ball can deflate under your hand mid-frame. On a sheet it does nothing, since a sheet has no inside, and Ollin will say so once rather than quietly inventing a shape.
+
+<img src="Images/17-3DGently/Cloth.jpg" alt="A cream sheet draped over a sphere on a dark floor, beside two teal balls: the left one slumped flat, the right one round" width="560">
+
+One last move, because a soft body has no single pose for a force to push on: impulses do nothing to one. `applyForce` does, spread over all its particles, and it is how you make wind.
+
+```swift
+banner.applyForce(Vector3(0, 0, gust))
+```
+
+The [`3D/Physics/Drape`](../Examples/3D/Physics/Drape/) example puts all of it in one scene: a banner pegged to a washing line, a sheet thrown over a crate, and a ball you can let the air out of, all three draggable. Worth knowing before you build on this: soft bodies collide with the rigid world but not with each other or themselves, so a sheet folded double will pass through its own layers, and they do not report contacts the way the crates in "Asking what hit what" do.
+
 ## What the depth buffer is for
 
 Chapter 14 filtered layers by their color. A 3D scene drawn into a layer carries something extra that a flat drawing never has: for every pixel, how far away the thing at that pixel is. That's the **depth buffer**, and three effects exist purely to use it.

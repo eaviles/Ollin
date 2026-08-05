@@ -6,7 +6,7 @@
 
 Rigid bodies inside the 3D scene: crates that stack and topple, balls that roll, chains that swing, all with real contact response. This is the spatial sibling of the [2D physics world](Physics.md)'s rigid side, and it keeps the same shape: build a [`World3D`](#world3d) once, add [`Body3D`](#body3d)s, step it each frame, and draw each body from its pose. It lives in the same satellite, so `import OllinPhysics` brings both.
 
-Beside the bodies there are two things that aren't ones: a [`Character3D`](#characters), a walking figure you steer from `draw()` rather than push around with forces, and a [`Vehicle3D`](#vehicles), a chassis on sprung wheels you drive.
+Beside the bodies there are three things that aren't ones: a [`Character3D`](#characters), a walking figure you steer from `draw()` rather than push around with forces, a [`Vehicle3D`](#vehicles), a chassis on sprung wheels you drive, and a [`SoftBody3D`](#softbodies), a mesh whose vertices are simulated so it drapes and squashes.
 
 The solver behind it is [Jolt Physics](https://github.com/jrouwe/JoltPhysics), vendored and wrapped the way Box2D backs the 2D side; nothing of it leaks into the API.
 
@@ -54,6 +54,7 @@ Distances are the 3D scene's world units (y-up, matching the camera). The solver
 - [Characters](#characters) - a walking figure you steer from `draw()`
 - [Vehicles](#vehicles) - a chassis on sprung wheels you drive from `draw()`
 - [Ragdolls](#ragdolls) - a skinned figure given weight, limp or powered
+- [Soft bodies](#softbodies) - cloth that drapes and closed shapes that squash
 - [Grabbing with the mouse](#grabbing) - ray-picking and dragging bodies through the camera
 - [Drawing bodies](#drawing) - `withBody` and matching meshes to colliders
 
@@ -596,6 +597,81 @@ world.addRagdoll(from: figure,
 
 The worked example is [`3D/Physics/Ragdoll`](../../Examples/3D/Physics/Ragdoll/): a figure that stands and waves while its joints are powered, collapses when they are not, and can be dragged around by an arm either way.
 
+<a name="softbodies"></a>
+
+### Soft bodies
+
+Everything above moves as one rigid piece. A **`SoftBody3D`** does not: its state lives in its vertices, which are simulated particles held together by springs, so it drapes, folds, and squashes instead of turning up somewhere else with the same shape. Cloth and a beach ball are the two ends of the same idea.
+
+Build one from any `Mesh`:
+
+```swift
+let cloth = world.addSoftBody(from: .plane(width: 3, depth: 3, segments: 24),
+                              at: Vector3(0, 3, 0),
+                              pinned: { $0.z < -1.4 })   // hung from one edge
+
+// each frame:
+world.step(dt: deltaTime)
+fill(.crimson)
+drawSoftBody(cloth)
+```
+
+`drawSoftBody(_:)` draws `softBody.mesh`, which is the source mesh with the simulation's positions and freshly derived normals. Everything else the mesh carried rides through untouched, so a textured sheet stays textured while it moves, and every renderer feature (materials, shadows, reflections, export) applies exactly as it does to any other mesh.
+
+**Coincident vertices merge into shared particles.** Ollin's mesh generators are flat shaded: every triangle carries its own copies of its corners, so a generator mesh's triangles share no vertex index at all. `addSoftBody` welds by position first, so a `Mesh.box` becomes eight particles rather than twenty-four loose ones. `particleCount` reports what the simulation actually runs on; `positions` still comes back one per *source* vertex, in the source mesh's order.
+
+**Pinning is how a cloth is hung.** The `pinned:` closure is handed each vertex of the mesh, in the mesh's own local space, and returns whether that particle is held in place. Pins can also be moved afterwards:
+
+```swift
+cloth.pin(index)          // hold this vertex where it is
+cloth.unpin(index)        // hand it back to the simulation
+cloth.isPinned(index)
+cloth.move(index, to: point)   // carry it to a world point over this frame
+```
+
+`move(_:to:)` pins the particle if it was free and drives it there by velocity, so the sheet hanging off it is dragged along rather than snapped. `nearestVertex(to:)` finds the one nearest a world point.
+
+**The knobs.** All of them are scale-free: the same number means the same thing on a handkerchief and on a marquee.
+
+| | |
+|---|---|
+| `mass` | the whole body's weight in kilograms, split evenly between the particles |
+| `stiffness` | resistance to *stretching*, `0` slack to `1` inextensible (the default) |
+| `bend` | resistance to *folding*, `0` limp like fabric (the default) to `1` stiff like card |
+| `pressure` | the gas inside a closed surface, in gravities of outward push |
+| `damping` | how quickly particle motion bleeds away |
+| `friction`, `bounce` | the surface against what it lands on |
+| `iterations` | solver passes per step; more is stiffer and steadier |
+| `vertexRadius` | how far a particle's own body reaches past its position |
+
+`stiffness` and `bend` are separate because they are separate: a bedsheet barely stretches at all and folds freely, which is `stiffness: 1, bend: 0`. `pressure` needs a closed surface to fill, so it does nothing on a sheet (`isClosed` reports which you have, and setting it on an open one notes once and is ignored); `1` just holds the body's own weight up, `2` to `4` reads as a firm ball that still dents. `pressure`, `iterations`, and `vertexRadius` are all live, so a ball can deflate while you watch.
+
+**Pushing one about.** Impulses, joints, and grabs do not apply to a soft body, because there is no single pose or velocity for them to act on. What works is `applyForce(_:)`, spread evenly over the particles, which is how wind is applied:
+
+```swift
+banner.applyForce(Vector3(0, 0, gust))
+```
+
+**Taking hold of one** is the soft-body twin of `grabBody`/`dragGrab`, and it works by pinning the particle under the cursor rather than adding a joint:
+
+```swift
+var grip: SoftGrip?
+
+override func mousePressed() {
+    grip = grabSoftBody(at: Vector2(mouseX, mouseY), in: world)
+}
+override func mouseReleased() {
+    if let grip { releaseSoftGrab(grip) }
+    grip = nil
+}
+// in draw(), before world.step:
+if let grip { dragSoftGrab(grip, to: Vector2(mouseX, mouseY)) }
+```
+
+**What a soft body cannot do yet.** The solver collides them with the rigid bodies around them but not with each other, and not with themselves, so a sheet folded double will pass through its own layers (which reads as a flicker where the two lie together). They are also outside the contact surface above: a soft body's touches do not appear in `world.contacts`, and it is invisible to `body(under:in:)` (use `grabSoftBody(at:in:)`). Tearing is not offered, because a real tear has to split a shared vertex in two and rebuild the surface, which the solver has no way to do while it runs.
+
+The worked example is [`3D/Physics/Drape`](../../Examples/3D/Physics/Drape/): a banner pegged to a washing line that flaps in a gusting wind, a sheet thrown over a crate, and a beach ball you can let the air out of.
+
 <a name="grabbing"></a>
 
 ### Grabbing with the mouse
@@ -643,4 +719,4 @@ for body in world.bodies {
 
 The simulation is deterministic within a build: the same setup stepped the same way reproduces exactly, which is what the seeded-variations story needs live. Exact poses can shift across toolchain rebuilds, so physics scenes aren't pinned by pixel snapshots; the behavioral test suite pins the solver instead.
 
-Worked examples: [`3D/Physics/Stack`](../../Examples/3D/Physics/Stack/) (a crate pyramid under cannon fire), [`3D/Physics/Tumble`](../../Examples/3D/Physics/Tumble/) (a mixed-solid pile you can drag), [`3D/Physics/Chain`](../../Examples/3D/Physics/Chain/) (a wrecking ball on a ball-jointed chain), [`3D/Physics/Windmill`](../../Examples/3D/Physics/Windmill/) (a motor-driven compound blade cross batting balls through limited, spring-shut swing gates), [`3D/Physics/Rockslide`](../../Examples/3D/Physics/Rockslide/) (rocks tumbling down eroded heightfield terrain), [`3D/Physics/Trigger`](../../Examples/3D/Physics/Trigger/) (a scoring hoop and a loaded tray, both sensors, with every knock ringing at the speed it landed), and [`3D/Physics/Ragdoll`](../../Examples/3D/Physics/Ragdoll/) (a skinned figure that stands and waves, or collapses, depending on whether its joints are powered).
+Worked examples: [`3D/Physics/Stack`](../../Examples/3D/Physics/Stack/) (a crate pyramid under cannon fire), [`3D/Physics/Tumble`](../../Examples/3D/Physics/Tumble/) (a mixed-solid pile you can drag), [`3D/Physics/Chain`](../../Examples/3D/Physics/Chain/) (a wrecking ball on a ball-jointed chain), [`3D/Physics/Windmill`](../../Examples/3D/Physics/Windmill/) (a motor-driven compound blade cross batting balls through limited, spring-shut swing gates), [`3D/Physics/Rockslide`](../../Examples/3D/Physics/Rockslide/) (rocks tumbling down eroded heightfield terrain), [`3D/Physics/Trigger`](../../Examples/3D/Physics/Trigger/) (a scoring hoop and a loaded tray, both sensors, with every knock ringing at the speed it landed), [`3D/Physics/Ragdoll`](../../Examples/3D/Physics/Ragdoll/) (a skinned figure that stands and waves, or collapses, depending on whether its joints are powered), and [`3D/Physics/Drape`](../../Examples/3D/Physics/Drape/) (a banner in the wind, a sheet over a crate, and a beach ball you can deflate).

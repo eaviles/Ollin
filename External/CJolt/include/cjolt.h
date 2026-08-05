@@ -542,6 +542,108 @@ bool cjolt_ragdoll_is_active(const CJoltWorld *world, const CJoltRagdoll *ragdol
 void cjolt_ragdoll_add_impulse(CJoltWorld *world, CJoltRagdoll *ragdoll,
                                const float impulse[3]);
 
+// Soft bodies ---------------------------------------------------------------
+
+/// Opaque soft-body handle: a body whose state lives in its particles rather
+/// than in one pose, simulated by position-based dynamics. It is a real body in
+/// the world (it collides with the rigid bodies and its id is reported by ray
+/// casts) but it never rotates, its velocity is the average of its particles',
+/// and impulses and constraints do not apply to it.
+typedef struct CJoltSoftBody CJoltSoftBody;
+
+typedef struct {
+    /// The rest shape: particle positions as xyz triples in body-local space,
+    /// and the triangles connecting them (3 indices per face). Coincident
+    /// positions must already be merged, or the surface has no connectivity and
+    /// falls apart into loose triangles.
+    const float *positions;
+    int32_t vertexCount;
+    const uint32_t *indices;
+    int32_t indexCount;
+    /// One inverse mass per particle (0 pins it to the world). NULL gives every
+    /// particle an inverse mass of 1.
+    const float *inverseMasses;
+    float position[3]; // world placement of the rest shape
+    float rotation[4]; // quaternion x, y, z, w (baked into the particles)
+    /// Inverse stiffness of the stretch and shear springs, in m/N. 0 is
+    /// inextensible; larger is stretchier.
+    float compliance;
+    /// Inverse stiffness of the fold-resisting constraints between neighbouring
+    /// faces, in m/N. Negative switches them off entirely, which is the limp
+    /// cloth every fabric wants.
+    float bendCompliance;
+    /// n * R * T for the gas inside a closed surface: the outward push is
+    /// pressure * area / volume, so it grows as the shape is squashed. 0 is a
+    /// limp bag.
+    float pressure;
+    float linearDamping;  // >= 0
+    float friction;       // >= 0
+    float restitution;    // 0...1
+    float gravityFactor;  // 1 = normal gravity
+    /// How far a particle's own body extends past its position, which keeps a
+    /// surface from z-fighting whatever it lies on.
+    float vertexRadius;
+    /// Solver iterations per step; more is stiffer and steadier.
+    int32_t iterations;
+    bool allowSleep;
+    /// Collide with both sides of every face (a single-sided sheet lets things
+    /// through from behind).
+    bool twoSided;
+} CJoltSoftBodyDesc;
+
+/// Builds a soft body and adds it to the world. The stretch, shear, and bend
+/// constraints are derived from the faces. Returns NULL if the description has
+/// no usable surface.
+CJoltSoftBody *cjolt_soft_body_create(CJoltWorld *world,
+                                      const CJoltSoftBodyDesc *desc);
+void cjolt_soft_body_destroy(CJoltWorld *world, CJoltSoftBody *body);
+
+/// The body id the soft body occupies, so a ray cast hit can be recognised.
+CJoltBodyID cjolt_soft_body_get_id(const CJoltSoftBody *body);
+int32_t cjolt_soft_body_vertex_count(const CJoltSoftBody *body);
+
+/// Copies up to `capacity` particle positions as world-space xyz triples.
+/// Returns how many were written.
+int32_t cjolt_soft_body_get_positions(const CJoltWorld *world,
+                                      const CJoltSoftBody *body, float *out,
+                                      int32_t capacity);
+/// The average of the particle positions, in world space.
+void cjolt_soft_body_get_center(const CJoltWorld *world,
+                                const CJoltSoftBody *body, float out[3]);
+/// The volume the surface currently encloses (negative if it is inside out).
+float cjolt_soft_body_get_volume(const CJoltWorld *world,
+                                 const CJoltSoftBody *body);
+
+void cjolt_soft_body_set_pressure(CJoltWorld *world, CJoltSoftBody *body,
+                                  float pressure);
+void cjolt_soft_body_set_iterations(CJoltWorld *world, CJoltSoftBody *body,
+                                    int32_t iterations);
+void cjolt_soft_body_set_vertex_radius(CJoltWorld *world, CJoltSoftBody *body,
+                                       float radius);
+
+/// A particle's inverse mass: 0 pins it where it is, and anything positive
+/// hands it back to the simulation. Position is deliberately not settable:
+/// moving a particle outright skips collision detection, so a pinned particle
+/// is driven by `cjolt_soft_body_move_vertex` instead.
+float cjolt_soft_body_get_vertex_inverse_mass(const CJoltWorld *world,
+                                              const CJoltSoftBody *body,
+                                              int32_t index);
+void cjolt_soft_body_set_vertex_inverse_mass(CJoltWorld *world,
+                                             CJoltSoftBody *body, int32_t index,
+                                             float inverseMass);
+/// Carries a pinned particle to a world-space target over `dt` seconds by
+/// giving it the velocity that arrives there, so the surface hanging off it is
+/// dragged rather than teleported. Pins the particle if it was free.
+void cjolt_soft_body_move_vertex(CJoltWorld *world, CJoltSoftBody *body,
+                                 int32_t index, const float target[3], float dt);
+
+/// Pushes the whole body, spread evenly over its particles (N).
+void cjolt_soft_body_add_force(CJoltWorld *world, CJoltSoftBody *body,
+                               const float force[3]);
+void cjolt_soft_body_activate(CJoltWorld *world, CJoltSoftBody *body);
+bool cjolt_soft_body_is_active(const CJoltWorld *world,
+                               const CJoltSoftBody *body);
+
 // Queries -------------------------------------------------------------------
 
 /// Casts a ray (direction scaled by length) against the moving bodies.
