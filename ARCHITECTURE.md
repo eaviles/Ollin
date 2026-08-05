@@ -3509,6 +3509,62 @@ floats and lets the bottom sleep, a current drifts a raft, `buoyancy`
 multiplies both ways, sensors and soft bodies are left alone, the drawn surface
 is the ridden one, and identical runs replay identically.
 
+### World queries
+
+Ray casts, shape sweeps, and overlap tests (`Sources/OllinPhysics/Query3D.swift`
+over four `cjolt_world_*` bridge calls) are the one part of the tier that is not
+simulation at all: they run against the world as it stands, between steps, and
+change nothing. The public surface is `raycast` / `raycastAll`, `sweep` /
+`sweepAll`, `bodiesOverlapping`, and `bodiesContaining`, all returning the
+shared `Hit3D` (body, point, outward normal, distance along the query) the way
+`Contact3D` is the shared answer for what the solver noticed *during* a step.
+
+Three decisions carry the design.
+
+**The filter is a struct, not a parameter list.** `CJoltQueryFilter` (ignore
+list, `includeSensors`, `includeSoftBodies`) travels by pointer into every query
+call, so the next way to narrow one, collision layers and groups, is a field
+there rather than another argument added to four functions and their Swift
+wrappers. Its body-level half is `QueryBodyFilter`, which replaced the old
+`NonSensorBodyFilter` the mouse pick used; the broad-phase and object-layer
+halves are the same "filter as a moving body would" pair the pick has always
+used, so statics stay visible and the ghost layer (grab anchors) never is.
+
+**What a query is blind to was chosen, not inherited.** A sensor is a region to
+be inside rather than a surface to hit, so it is transparent unless asked for,
+which is the rule mouse picking already followed. A soft body is transparent for
+a different reason: it has no single rigid pose, so there is no `Body3D` to hand
+back, matching its absence from `contacts` and `body(under:in:)`. Bodies the
+world keeps out of `bodies` (the ground slab, a character's stand-in, a
+ragdoll's limbs) *are* visible, because hits resolve through `bodyByID` rather
+than by searching that array, which is what makes a ground probe and a
+line-of-sight check on a walking figure work at all.
+
+**The mouse pick is the same call.** `World3D.pick(from:to:)` is the internal
+ray with `includeSoftBodies` on, which is why the soft-body grab still works
+while the public surface stays rigid-only; `body(under:in:)` and
+`grabSoftBody(at:in:)` both go through it, so there is one ray implementation
+rather than a public one and a private one that can drift.
+
+The rest is mechanical, with two details worth knowing. A ray's surface normal
+can only come from the body itself (the sub-shape id names the face, and a
+mesh's faces each have their own), so it needs a `BodyLockRead`; a sweep's
+normal is the negated penetration axis, which needs no lock. And the count-out
+convention is that the bridge returns how many hits it *found*, not how many it
+wrote, so the Swift side sizes a stack buffer of 16, and grows exactly once when
+a scene held more.
+
+Sweeping or overlapping with a `mesh` or `heightfield` collider is refused with a
+one-time note (`Shape::MustBeStatic()` asked of the created shape, the stage-3
+rule): those describe scenery, and the narrow phase cannot carry one as a probe.
+`Query3DTests` (24) pins the surface against counterfactual twins: the nearest
+body versus the same scene with it removed, line of sight with and without the
+wall, a swept sphere stopping exactly its radius short of where the ray reached,
+a gap a ray threads and a sphere does not, a probe that fits turned edge-on and
+not flat, a compound reported once however many parts are inside, sensors and
+soft bodies invisible until asked for or never, distances in world units under
+a changed `unitsPerMeter`, and identical worlds answering identically.
+
 ## The geometry and generator catalog
 
 The CPU-side geometry types and generative-technique recipes live in

@@ -561,6 +561,54 @@ That tray is also why sensors are built the way they are. A ball that settles in
 
 You don't animate a pile; you drop one.
 
+## Asking what is there
+
+Contacts tell you what the solver noticed while it was stepping. Often you want something it was never asked: whether the lamp can see a crate, how far the floor is below a point in mid-air, what is standing inside a circle you just made up. It knows all of that, because working out what is where is what a collision solver does all day. You just have to ask, and you ask between steps.
+
+Three questions, three calls. **A ray** is a line with a start and an end, and it comes back holding the first thing in the way.
+
+```swift
+if let hit = world.raycast(from: lamp, to: crate.position) {
+    lit = hit.body === crate        // nothing got in first
+}
+```
+
+That second line is the whole of line of sight: the crate is visible when the crate *is* what the ray found. Put a pillar between them and the ray comes back holding the pillar instead.
+
+A `Hit3D` says which body, where it touched (`point`), which way the surface faces there (`normal`, which is what a bounce or a scorch mark is built from), and how far along the query the touch was (`distance`). Aim the same call downward and that last one is the height of the drop:
+
+```swift
+let drop = world.raycast(from: p, to: p - Vector3(0, 20, 0))?.distance
+```
+
+**A sweep** is a ray with a body. It slides a whole shape along the line and reports what the shape runs into.
+
+```swift
+let below = world.sweep(.sphere(radius: 0.55), from: overhead, to: patrol)
+```
+
+A ray asks what is in the way; a sweep asks whether something fits. That is usually the question you meant. A ray threads a gap a shoulder would never get through, and a ray drops between two crates onto the floor a drone would never have reached. Anything a body can wear works as the probe, turned however you like with `rotated:`, apart from the two colliders that describe scenery rather than a thing: a mesh and a height field.
+
+**An overlap** asks what is inside a region right now.
+
+```swift
+for body in world.bodiesOverlapping(.sphere(radius: 4), at: blast) {
+    body.applyImpulse((body.position - blast).normalized * 12)
+}
+```
+
+A blast radius in four lines, and the sphere it asked with never existed. You could build a sensor body there and read `touching` instead, and for a *standing* question, the pressure plate from the last section, you should. But a sensor has to exist before the moment, sit somewhere, and be cleared away after. An overlap is a question asked once, anywhere, with a shape invented on the spot. `bodiesContaining(point)` is the same question with no shape at all.
+
+<img src="Images/17-3DGently/Sightlines.jpg" alt="A dark yard of orange crates and four tall pillars, a pale lamp at the upper left with thin beams reaching the crates it can see, two crates behind the pillars left dark blue, and a small teal drone hovering inside a wide teal ring with a probe line down to a disc on the floor" width="560">
+
+All three are in that yard. The beams are one ray per crate, so the two crates behind the pillars stay dark. The drone is holding its height with a sweep straight down, and the disc under it is where the sweep stopped. The ring is the sphere an overlap just asked with, drawn at its own radius as it fades, since a pulse does not spread: everything inside it was caught at once.
+
+Three habits worth having early. Queries see solid bodies, so a sensor is invisible to them unless you pass `includingSensors: true`, and so is a soft body, which has no single pose to hand back. `ignoring:` is how something casts from inside itself, which you will want the first time a robot's own chassis blocks its view. And none of this steps the world, so you can ask fourteen times a frame, once per crate, and find everything exactly where you left it.
+
+The [`3D/Physics/Sightlines`](../Examples/3D/Physics/Sightlines/) example is the playable version, where you can drag a crate into cover and watch its beam go out.
+
+A query is a question, not a move.
+
 ## Someone to be in there
 
 Everything so far you watch. A **character** is something you *are*: a figure that walks where you steer it, climbs what it can climb, and stops at what it can't.

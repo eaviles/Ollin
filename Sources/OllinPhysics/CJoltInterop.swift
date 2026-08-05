@@ -64,8 +64,9 @@ final class ShapeDescArena {
     }
 }
 
-func withFloats4(_ values: (Float, Float, Float, Float),
-                 _ body: (UnsafePointer<Float>) -> Void) {
+@discardableResult
+func withFloats4<R>(_ values: (Float, Float, Float, Float),
+                    _ body: (UnsafePointer<Float>) -> R) -> R {
     withUnsafeBytes(of: values) {
         body($0.baseAddress!.assumingMemoryBound(to: Float.self))
     }

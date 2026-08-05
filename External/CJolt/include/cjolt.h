@@ -696,12 +696,69 @@ bool cjolt_soft_body_is_active(const CJoltWorld *world,
 
 // Queries -------------------------------------------------------------------
 
-/// Casts a ray (direction scaled by length) against the moving bodies.
-/// Sensors are transparent to it. On a hit, writes the body and the fraction
-/// along the ray.
-bool cjolt_world_ray_cast(const CJoltWorld *world, const float origin[3],
-                          const float direction[3], CJoltBodyID *outBody,
-                          float *outFraction);
+/// What a query is allowed to see. A zeroed struct (or NULL) is the default:
+/// every solid rigid body, sensors and soft bodies transparent, nothing
+/// ignored. Filters travel as a struct rather than as call arguments so that
+/// a new way to narrow a query (collision layers, groups) adds a field here
+/// instead of another parameter to every function below.
+typedef struct CJoltQueryFilter {
+    /// Bodies the query looks straight through (its own body, usually).
+    const CJoltBodyID *ignoreBodies;
+    int32_t ignoreCount;
+    /// Report detector volumes as well as solid bodies.
+    bool includeSensors;
+    /// Report soft bodies, which have no rigid pose to hand back and are
+    /// therefore invisible to the public query surface. The mouse pick paths
+    /// set it, since a soft body is grabbable.
+    bool includeSoftBodies;
+} CJoltQueryFilter;
+
+/// One thing a query found, in solver meters.
+typedef struct CJoltQueryHit {
+    CJoltBodyID body;
+    /// Where the query touched the body, in world space.
+    float point[3];
+    /// The body's outward surface normal there (unit length).
+    float normal[3];
+    /// How far along the query the touch is: the distance from a ray's origin,
+    /// or how far a swept shape travelled before it landed.
+    float distance;
+} CJoltQueryHit;
+
+/// Casts a ray (direction scaled by its length) through the world. With
+/// `allHits` false only the nearest is reported; otherwise every hit is,
+/// nearest first. Returns how many were found, which may exceed `capacity`
+/// (only `capacity` are written, so a caller can size a second call from it).
+int32_t cjolt_world_cast_ray(const CJoltWorld *world, const float origin[3],
+                             const float direction[3],
+                             const CJoltQueryFilter *filter, bool allHits,
+                             CJoltQueryHit *out, int32_t capacity);
+
+/// Sweeps a shape from `position`/`rotation` along `direction` (scaled by the
+/// sweep's length) and reports what it runs into, nearest first. Counting and
+/// capacity work as in `cjolt_world_cast_ray`. Mesh and height-field shapes
+/// cannot be swept.
+int32_t cjolt_world_cast_shape(const CJoltWorld *world,
+                               const CJoltShapeDesc *shape,
+                               const float position[3], const float rotation[4],
+                               const float direction[3],
+                               const CJoltQueryFilter *filter, bool allHits,
+                               CJoltQueryHit *out, int32_t capacity);
+
+/// The bodies overlapping a shape placed at `position`/`rotation`, in handle
+/// order, one entry per body however many of its parts touch. Returns how many
+/// were found (see `cjolt_world_cast_ray` for the capacity rule).
+int32_t cjolt_world_overlap_shape(const CJoltWorld *world,
+                                  const CJoltShapeDesc *shape,
+                                  const float position[3],
+                                  const float rotation[4],
+                                  const CJoltQueryFilter *filter,
+                                  CJoltBodyID *out, int32_t capacity);
+
+/// The bodies a world-space point is inside, in handle order.
+int32_t cjolt_world_overlap_point(const CJoltWorld *world, const float point[3],
+                                  const CJoltQueryFilter *filter,
+                                  CJoltBodyID *out, int32_t capacity);
 
 #ifdef __cplusplus
 } // extern "C"

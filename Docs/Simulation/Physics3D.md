@@ -51,6 +51,7 @@ Distances are the 3D scene's world units (y-up, matching the camera). The solver
 - [Motors, limits, and springs](#motors) - powered hinges and sliders, travel stops, springy ends
 - [Contacts](#contacts) - what hit what this step, and how hard
 - [Sensors](#sensors) - regions that detect without colliding
+- [Queries](#queries) - rays, shape sweeps, and overlaps: asking the world what is there
 - [Characters](#characters) - a walking figure you steer from `draw()`
 - [Vehicles](#vehicles) - a chassis on sprung wheels you drive from `draw()`
 - [Ragdolls](#ragdolls) - a skinned figure given weight, limp or powered
@@ -317,6 +318,56 @@ let load = tray.touching.count        // still right once they doze off
 Because it never falls, a sensor stays where it is put; move one by setting its `position` (to make a detector follow something, drive it from that body's pose each frame). Sensors are also invisible to `body(under:in:)` and `grabBody(at:in:)`: the cursor's ray looks straight through them to the solid scene behind.
 
 Sensors detect *moving* bodies (dynamic and kinematic), not static scenery, and not each other, so a trigger volume laid over the ground doesn't spend every step reporting the ground.
+
+<a name="queries"></a>
+
+### Queries
+
+`contacts` reports what the solver noticed while it stepped. A **query** asks it something it was never asked, between steps: what is along this line, what would a shape run into, what is inside this region right now. All of them answer immediately, none of them changes anything, and none needs a body built to ask with.
+
+Every answer is a `Hit3D`: the `body`, the `point` where the query touched it, the outward surface `normal` there, and `distance`, how far along the query the touch was (from a ray's start, or how far a swept shape travelled).
+
+**Rays.** `raycast(from:to:)` returns the nearest body along a segment, `raycastAll(from:to:)` every body along it, nearest first.
+
+```swift
+// line of sight: the crate is visible when the crate is what the ray found
+let visible = world.raycast(from: lamp, to: crate.position)?.body === crate
+
+// a ground probe: how far down the floor is
+let drop = world.raycast(from: p, to: p - Vector3(0, 20, 0))?.distance
+```
+
+A ray is a segment, not an infinite line: it reaches exactly as far as `to`. For a direction and a reach, pass `to: p + direction * reach`.
+
+**Sweeps.** `sweep(_:from:to:)` slides a collider along a line without turning it and returns the first thing it runs into (`sweepAll` returns them all). A ray asks what is in the way; a sweep asks whether something *fits*, which is what a clearance probe, a camera that must not end up inside a wall, or a step a character is about to take actually needs.
+
+```swift
+// hold 1.5 units above whatever passes below, crates included
+let below = world.sweep(.sphere(radius: 0.4), from: overhead,
+                        to: overhead - Vector3(0, 12, 0))
+let height = (below?.point.y ?? 0) + 1.5
+```
+
+`rotated:`/`axis:` turn the probe, which changes what fits (a wide, thin box goes through a narrow gap edge-on and not flat). A sweep that sets off already touching reports `distance` 0. `mesh` and `heightfield` colliders describe scenery rather than a probe and cannot be swept or overlapped with; use a hull, a compound, or a primitive.
+
+**Overlaps.** `bodiesOverlapping(_:at:)` returns the bodies inside a shape placed in the world, in a stable order, one entry per body however many of its parts are inside. `bodiesContaining(_:)` is the same question for a bare point.
+
+```swift
+for body in world.bodiesOverlapping(.sphere(radius: 4), at: blast) {
+    body.applyImpulse((body.position - blast).normalized * 12)
+}
+```
+
+A [sensor](#sensors) answers the same question *continuously* from a body that exists in the scene, which is what a pressure plate or a goal wants. An overlap answers it once, anywhere, with a shape that never existed.
+
+**What a query sees.** Solid bodies, static scenery and the `ground` slab included, plus the ones the world keeps out of `bodies` (a character's stand-in, a ragdoll's limbs), so a walking figure can be spotted through `character.body`. Two things are deliberately transparent: **sensors**, since a detector volume is a region to be inside rather than a surface to hit (pass `includingSensors: true` to have them reported too), and **soft bodies**, which have no single rigid pose to hand back, matching their absence from `contacts` and `body(under:in:)`. `ignoring:` takes bodies to look straight through, which is how something casts from inside itself:
+
+```swift
+let ahead = world.raycast(from: robot.position, to: target,
+                          ignoring: [robot])
+```
+
+Queries cost nothing but the search: asking does not step the world, so a per-body sight check every frame is an ordinary thing to write.
 
 <a name="characters"></a>
 
@@ -781,4 +832,4 @@ for body in world.bodies {
 
 The simulation is deterministic within a build: the same setup stepped the same way reproduces exactly, which is what the seeded-variations story needs live. Exact poses can shift across toolchain rebuilds, so physics scenes aren't pinned by pixel snapshots; the behavioral test suite pins the solver instead.
 
-Worked examples: [`3D/Physics/Stack`](../../Examples/3D/Physics/Stack/) (a crate pyramid under cannon fire), [`3D/Physics/Tumble`](../../Examples/3D/Physics/Tumble/) (a mixed-solid pile you can drag), [`3D/Physics/Chain`](../../Examples/3D/Physics/Chain/) (a wrecking ball on a ball-jointed chain), [`3D/Physics/Windmill`](../../Examples/3D/Physics/Windmill/) (a motor-driven compound blade cross batting balls through limited, spring-shut swing gates), [`3D/Physics/Rockslide`](../../Examples/3D/Physics/Rockslide/) (rocks tumbling down eroded heightfield terrain), [`3D/Physics/Trigger`](../../Examples/3D/Physics/Trigger/) (a scoring hoop and a loaded tray, both sensors, with every knock ringing at the speed it landed), [`3D/Physics/Ragdoll`](../../Examples/3D/Physics/Ragdoll/) (a skinned figure that stands and waves, or collapses, depending on whether its joints are powered), and [`3D/Physics/Drape`](../../Examples/3D/Physics/Drape/) (a banner in the wind, a sheet over a crate, and a beach ball you can deflate).
+Worked examples: [`3D/Physics/Stack`](../../Examples/3D/Physics/Stack/) (a crate pyramid under cannon fire), [`3D/Physics/Tumble`](../../Examples/3D/Physics/Tumble/) (a mixed-solid pile you can drag), [`3D/Physics/Chain`](../../Examples/3D/Physics/Chain/) (a wrecking ball on a ball-jointed chain), [`3D/Physics/Windmill`](../../Examples/3D/Physics/Windmill/) (a motor-driven compound blade cross batting balls through limited, spring-shut swing gates), [`3D/Physics/Rockslide`](../../Examples/3D/Physics/Rockslide/) (rocks tumbling down eroded heightfield terrain), [`3D/Physics/Trigger`](../../Examples/3D/Physics/Trigger/) (a scoring hoop and a loaded tray, both sensors, with every knock ringing at the speed it landed), [`3D/Physics/Ragdoll`](../../Examples/3D/Physics/Ragdoll/) (a skinned figure that stands and waves, or collapses, depending on whether its joints are powered), [`3D/Physics/Drape`](../../Examples/3D/Physics/Drape/) (a banner in the wind, a sheet over a crate, and a beach ball you can deflate), and [`3D/Physics/Sightlines`](../../Examples/3D/Physics/Sightlines/) (a lamp that lights only the crates it can see, a drone holding its clearance by sweep, and a pulse that shoves whatever a sphere overlaps).

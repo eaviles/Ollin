@@ -144,18 +144,11 @@ extension Sketch {
             return nil
         }
         let reach = ray.direction * (camera.far - camera.near)
-        var hitBody: CJoltBodyID = CJOLT_BODY_INVALID
-        var fraction: Float = 0
-        var hit = false
-        withFloats3(world.meters(from: ray.origin)) { op in
-            withFloats3(world.meters(from: reach)) { dp in
-                hit = cjolt_world_ray_cast(world.handle, op, dp, &hitBody, &fraction)
-            }
-        }
-        guard hit, let soft = world.softBodies.first(where: { $0.bodyID == hitBody }) else {
+        guard let hit = world.pick(from: ray.origin, to: ray.origin + reach),
+              let soft = world.softBodies.first(where: { $0.bodyID == hit.id }) else {
             return nil
         }
-        let point = ray.origin + reach * Double(fraction)
+        let point = hit.point
         guard let vertex = soft.nearestVertex(to: point) else { return nil }
         let forward = (camera.target - camera.eye).normalized
         return SoftGrip(body: soft, vertex: vertex, wasPinned: soft.isPinned(vertex),
@@ -193,20 +186,14 @@ extension Sketch {
             return nil
         }
         let reach = ray.direction * (camera.far - camera.near)
-        var hitBody: CJoltBodyID = CJOLT_BODY_INVALID
-        var fraction: Float = 0
-        var hit = false
-        withFloats3(world.meters(from: ray.origin)) { op in
-            withFloats3(world.meters(from: reach)) { dp in
-                hit = cjolt_world_ray_cast(world.handle, op, dp, &hitBody, &fraction)
-            }
-        }
         // Looked up by solver handle rather than in `bodies`, so the ones the
         // world keeps out of that list (a ragdoll's limbs, a character's
         // stand-in, the ground slab) are pickable too.
-        guard hit, let body = world.bodyByID[hitBody] else { return nil }
-        let point = ray.origin + reach * Double(fraction)
-        return (body, point)
+        guard let hit = world.pick(from: ray.origin, to: ray.origin + reach),
+              let body = world.bodyByID[hit.id] else {
+            return nil
+        }
+        return (body, hit.point)
     }
 
     /// Grab the body under a canvas point (through the active camera) and

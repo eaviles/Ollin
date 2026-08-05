@@ -9,10 +9,16 @@
 #include <Jolt/Core/JobSystemThreadPool.h>
 #include <Jolt/Core/TempAllocator.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
+#include <Jolt/Physics/Body/BodyLock.h>
 #include <Jolt/Physics/Collision/BroadPhase/BroadPhaseQuery.h>
 #include <Jolt/Physics/Collision/CastResult.h>
+#include <Jolt/Physics/Collision/CollidePointResult.h>
+#include <Jolt/Physics/Collision/CollideShape.h>
+#include <Jolt/Physics/Collision/CollisionCollectorImpl.h>
 #include <Jolt/Physics/Collision/ContactListener.h>
+#include <Jolt/Physics/Collision/NarrowPhaseQuery.h>
 #include <Jolt/Physics/Collision/RayCast.h>
+#include <Jolt/Physics/Collision/ShapeCast.h>
 #include <Jolt/Physics/Character/CharacterVirtual.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
@@ -140,18 +146,10 @@ public:
     }
 };
 
-/// Ray casts see the solid scene: a sensor is a region to be inside, never a
-/// surface to hit, so picking with the cursor looks straight through one.
-class NonSensorBodyFilter final : public BodyFilter {
-public:
-    bool ShouldCollideLocked(const Body &inBody) const override {
-        return !inBody.IsSensor();
-    }
-};
-
 /// A vehicle's wheels see the solid scene except their own chassis: the same
-/// sensor rule as a ray cast, plus the self-collision the collision tester's
-/// default filter would otherwise have handled on its own.
+/// sensor rule the queries use (a detector volume is a region to be inside,
+/// never a surface to stand on), plus the self-collision the collision
+/// tester's default filter would otherwise have handled on its own.
 class VehicleGroundFilter final : public BodyFilter {
 public:
     BodyID chassis;
@@ -2187,21 +2185,237 @@ bool cjolt_soft_body_is_active(const CJoltWorld *world,
 
 // Queries -------------------------------------------------------------------
 
-bool cjolt_world_ray_cast(const CJoltWorld *world, const float origin[3],
-                          const float direction[3], CJoltBodyID *outBody,
-                          float *outFraction) {
-    CJoltWorld *w = const_cast<CJoltWorld *>(world);
-    RRayCast ray{RVec3(vec3(origin)), vec3(direction)};
-    RayCastResult hit;
-    // Filter as a moving body would: statics stay visible, ghosts never hit.
-    DefaultBroadPhaseLayerFilter broadPhaseFilter(w->objectVsBroadPhase, Layers::MOVING);
-    DefaultObjectLayerFilter objectFilter(w->objectPairs, Layers::MOVING);
-    NonSensorBodyFilter bodyFilter;
-    if (!w->physics.GetNarrowPhaseQuery().CastRay(ray, hit, broadPhaseFilter,
-                                                  objectFilter, bodyFilter)) {
-        return false;
+namespace {
+
+/// The body-level half of a query's filter. Two of the three decisions here
+/// are about what a query is even asking: a sensor is a region to be inside
+/// rather than a surface to hit, and a soft body has no rigid pose to hand
+/// back, so both are transparent unless the caller says otherwise.
+class QueryBodyFilter final : public BodyFilter {
+public:
+    explicit QueryBodyFilter(const CJoltQueryFilter *filter) : mFilter(filter) {}
+
+    bool ShouldCollide(const BodyID &inBodyID) const override {
+        if (mFilter == nullptr || mFilter->ignoreBodies == nullptr) { return true; }
+        const CJoltBodyID id = inBodyID.GetIndexAndSequenceNumber();
+        for (int32_t index = 0; index < mFilter->ignoreCount; ++index) {
+            if (mFilter->ignoreBodies[index] == id) { return false; }
+        }
+        return true;
     }
-    if (outBody != nullptr) { *outBody = hit.mBodyID.GetIndexAndSequenceNumber(); }
-    if (outFraction != nullptr) { *outFraction = hit.mFraction; }
-    return true;
+
+    bool ShouldCollideLocked(const Body &inBody) const override {
+        if (inBody.IsSensor()) {
+            return mFilter != nullptr && mFilter->includeSensors;
+        }
+        if (!inBody.IsRigidBody()) {
+            return mFilter != nullptr && mFilter->includeSoftBodies;
+        }
+        return true;
+    }
+
+private:
+    const CJoltQueryFilter *mFilter;
+};
+
+/// A query sees the world the way a moving body does: statics stay visible,
+/// ghosts (the grab anchors) never are.
+struct QueryFilters {
+    explicit QueryFilters(CJoltWorld *world, const CJoltQueryFilter *filter)
+        : broadPhase(world->objectVsBroadPhase, Layers::MOVING),
+          objects(world->objectPairs, Layers::MOVING), bodies(filter) {}
+
+    DefaultBroadPhaseLayerFilter broadPhase;
+    DefaultObjectLayerFilter objects;
+    QueryBodyFilter bodies;
+};
+
+/// The surface normal where a ray landed, which only the body itself can
+/// answer (the sub shape id names the face, and a mesh's faces each have their
+/// own). Zero if the body has gone in the meantime.
+Vec3 surfaceNormal(CJoltWorld *world, const BodyID &id, const SubShapeID &subShape,
+                   RVec3Arg point) {
+    BodyLockRead lock(world->physics.GetBodyLockInterface(), id);
+    if (!lock.Succeeded()) { return Vec3::sZero(); }
+    return lock.GetBody().GetWorldSpaceSurfaceNormal(subShape, point);
+}
+
+void writeHit(CJoltQueryHit &out, const BodyID &id, Vec3Arg point,
+              Vec3Arg normal, float distance) {
+    out.body = id.GetIndexAndSequenceNumber();
+    store(point, out.point);
+    store(normal, out.normal);
+    out.distance = distance;
+}
+
+/// Copies collected body ids out, one per body and in handle order: the tree
+/// hands them back in whatever order it walked, and a compound's parts or a
+/// mesh's triangles each report their own hit.
+int32_t writeBodies(std::vector<BodyID> &ids, CJoltBodyID *out, int32_t capacity) {
+    std::sort(ids.begin(), ids.end());
+    ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
+    const int32_t found = int32_t(ids.size());
+    for (int32_t index = 0; index < found && index < capacity; ++index) {
+        out[index] = ids[size_t(index)].GetIndexAndSequenceNumber();
+    }
+    return found;
+}
+
+/// The shape a shape query is asking with, placed in the world. Returns null
+/// for a shape the narrow phase cannot cast or collide *with* (a mesh or a
+/// height field is scenery, not a probe).
+Ref<Shape> queryShape(const CJoltShapeDesc *desc) {
+    if (desc == nullptr) { return nullptr; }
+    Ref<Shape> shape = makeShape(*desc);
+    if (shape == nullptr || shape->MustBeStatic()) { return nullptr; }
+    return shape;
+}
+
+} // namespace
+
+int32_t cjolt_world_cast_ray(const CJoltWorld *world, const float origin[3],
+                             const float direction[3],
+                             const CJoltQueryFilter *filter, bool allHits,
+                             CJoltQueryHit *out, int32_t capacity) {
+    if (world == nullptr || origin == nullptr || direction == nullptr) { return 0; }
+    CJoltWorld *w = const_cast<CJoltWorld *>(world);
+    const Vec3 along = vec3(direction);
+    const float length = along.Length();
+    if (length <= 0.0f) { return 0; }
+    RRayCast ray{RVec3(vec3(origin)), along};
+    QueryFilters filters(w, filter);
+
+    if (!allHits) {
+        RayCastResult hit;
+        if (!w->physics.GetNarrowPhaseQuery().CastRay(ray, hit, filters.broadPhase,
+                                                      filters.objects,
+                                                      filters.bodies)) {
+            return 0;
+        }
+        if (out != nullptr && capacity > 0) {
+            const RVec3 point = ray.GetPointOnRay(hit.mFraction);
+            writeHit(out[0], hit.mBodyID, Vec3(point),
+                     surfaceNormal(w, hit.mBodyID, hit.mSubShapeID2, point),
+                     hit.mFraction * length);
+        }
+        return 1;
+    }
+
+    AllHitCollisionCollector<CastRayCollector> collector;
+    RayCastSettings settings;
+    w->physics.GetNarrowPhaseQuery().CastRay(ray, settings, collector,
+                                             filters.broadPhase, filters.objects,
+                                             filters.bodies);
+    collector.Sort();
+    const int32_t found = int32_t(collector.mHits.size());
+    for (int32_t index = 0; index < found && index < capacity; ++index) {
+        const RayCastResult &hit = collector.mHits[size_t(index)];
+        const RVec3 point = ray.GetPointOnRay(hit.mFraction);
+        writeHit(out[index], hit.mBodyID, Vec3(point),
+                 surfaceNormal(w, hit.mBodyID, hit.mSubShapeID2, point),
+                 hit.mFraction * length);
+    }
+    return found;
+}
+
+int32_t cjolt_world_cast_shape(const CJoltWorld *world,
+                               const CJoltShapeDesc *shape,
+                               const float position[3], const float rotation[4],
+                               const float direction[3],
+                               const CJoltQueryFilter *filter, bool allHits,
+                               CJoltQueryHit *out, int32_t capacity) {
+    if (world == nullptr || position == nullptr || rotation == nullptr
+        || direction == nullptr) {
+        return 0;
+    }
+    Ref<Shape> probe = queryShape(shape);
+    if (probe == nullptr) { return 0; }
+    CJoltWorld *w = const_cast<CJoltWorld *>(world);
+    const Vec3 along = vec3(direction);
+    const float length = along.Length();
+    if (length <= 0.0f) { return 0; }
+
+    const RMat44 start =
+        RMat44::sRotationTranslation(quat(rotation), RVec3(vec3(position)));
+    RShapeCast cast = RShapeCast::sFromWorldTransform(probe, Vec3::sReplicate(1),
+                                                      start, along);
+    ShapeCastSettings settings;
+    QueryFilters filters(w, filter);
+
+    // Hits come back relative to a base offset, which is only there for
+    // precision far from the origin; zero keeps them in world space.
+    if (!allHits) {
+        ClosestHitCollisionCollector<CastShapeCollector> collector;
+        w->physics.GetNarrowPhaseQuery().CastShape(cast, settings, RVec3::sZero(),
+                                                   collector, filters.broadPhase,
+                                                   filters.objects, filters.bodies);
+        if (!collector.HadHit()) { return 0; }
+        if (out != nullptr && capacity > 0) {
+            const ShapeCastResult &hit = collector.mHit;
+            // The penetration axis runs from the swept shape into what it hit,
+            // so the surface's own outward normal is its opposite.
+            writeHit(out[0], hit.mBodyID2, hit.mContactPointOn2,
+                     -hit.mPenetrationAxis.NormalizedOr(Vec3::sZero()),
+                     hit.mFraction * length);
+        }
+        return 1;
+    }
+
+    AllHitCollisionCollector<CastShapeCollector> collector;
+    w->physics.GetNarrowPhaseQuery().CastShape(cast, settings, RVec3::sZero(),
+                                               collector, filters.broadPhase,
+                                               filters.objects, filters.bodies);
+    collector.Sort();
+    const int32_t found = int32_t(collector.mHits.size());
+    for (int32_t index = 0; index < found && index < capacity; ++index) {
+        const ShapeCastResult &hit = collector.mHits[size_t(index)];
+        writeHit(out[index], hit.mBodyID2, hit.mContactPointOn2,
+                 -hit.mPenetrationAxis.NormalizedOr(Vec3::sZero()),
+                 hit.mFraction * length);
+    }
+    return found;
+}
+
+int32_t cjolt_world_overlap_shape(const CJoltWorld *world,
+                                  const CJoltShapeDesc *shape,
+                                  const float position[3],
+                                  const float rotation[4],
+                                  const CJoltQueryFilter *filter,
+                                  CJoltBodyID *out, int32_t capacity) {
+    if (world == nullptr || position == nullptr || rotation == nullptr) { return 0; }
+    Ref<Shape> probe = queryShape(shape);
+    if (probe == nullptr) { return 0; }
+    CJoltWorld *w = const_cast<CJoltWorld *>(world);
+
+    const RMat44 centerOfMass =
+        RMat44::sRotationTranslation(quat(rotation), RVec3(vec3(position)))
+            .PreTranslated(probe->GetCenterOfMass());
+    CollideShapeSettings settings;
+    QueryFilters filters(w, filter);
+    AllHitCollisionCollector<CollideShapeCollector> collector;
+    w->physics.GetNarrowPhaseQuery().CollideShape(probe, Vec3::sReplicate(1),
+                                                  centerOfMass, settings,
+                                                  RVec3::sZero(), collector,
+                                                  filters.broadPhase,
+                                                  filters.objects, filters.bodies);
+    std::vector<BodyID> ids;
+    ids.reserve(collector.mHits.size());
+    for (const CollideShapeResult &hit : collector.mHits) { ids.push_back(hit.mBodyID2); }
+    return writeBodies(ids, out, capacity);
+}
+
+int32_t cjolt_world_overlap_point(const CJoltWorld *world, const float point[3],
+                                  const CJoltQueryFilter *filter,
+                                  CJoltBodyID *out, int32_t capacity) {
+    if (world == nullptr || point == nullptr) { return 0; }
+    CJoltWorld *w = const_cast<CJoltWorld *>(world);
+    QueryFilters filters(w, filter);
+    AllHitCollisionCollector<CollidePointCollector> collector;
+    w->physics.GetNarrowPhaseQuery().CollidePoint(RVec3(vec3(point)), collector,
+                                                  filters.broadPhase,
+                                                  filters.objects, filters.bodies);
+    std::vector<BodyID> ids;
+    ids.reserve(collector.mHits.size());
+    for (const CollidePointResult &hit : collector.mHits) { ids.push_back(hit.mBodyID); }
+    return writeBodies(ids, out, capacity);
 }

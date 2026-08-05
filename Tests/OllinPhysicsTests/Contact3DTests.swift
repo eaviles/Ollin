@@ -250,16 +250,7 @@ struct Contact3DTests {
             let world = World3D()
             world.addBody(.box(width: 2, height: 2, depth: 2), at: Vector3(0, 0, 0),
                           kind: .static, isSensor: sensing)
-            var hitBody: CJoltBodyID = CJOLT_BODY_INVALID
-            var fraction: Float = 0
-            var hit = false
-            withFloats3((0, 0, 8)) { origin in
-                withFloats3((0, 0, -16)) { reach in
-                    hit = cjolt_world_ray_cast(world.handle, origin, reach,
-                                               &hitBody, &fraction)
-                }
-            }
-            return hit
+            return world.pick(from: Vector3(0, 0, 8), to: Vector3(0, 0, -8)) != nil
         }
 
         #expect(pick(sensing: false))       // the solid twin is hit
