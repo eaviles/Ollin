@@ -130,6 +130,16 @@ typedef struct {
     /// between one step and the next. Costs nothing while the body moves less
     /// than about three quarters of its own inner radius per step.
     bool continuous;
+    /// How fast the body is already moving when it is created, in m/s and
+    /// rad/s. Zero (so a zeroed descriptor) creates it at rest; a restored
+    /// world hands each body back the motion it was captured with.
+    float linearVelocity[3];
+    float angularVelocity[3];
+    /// Create the body already settled rather than awake, so a pile restored
+    /// from a snapshot is exactly as still as the one it was captured from.
+    /// False (so a zeroed descriptor) activates it the way every other caller
+    /// expects. A static body is never activated either way.
+    bool startAsleep;
 } CJoltBodyDesc;
 
 /// The six degrees of freedom a body may be restricted to, in world axes.
@@ -255,6 +265,8 @@ bool cjolt_body_is_active(const CJoltWorld *world, CJoltBodyID body);
 void cjolt_body_activate(CJoltWorld *world, CJoltBodyID body);
 void cjolt_body_set_friction(CJoltWorld *world, CJoltBodyID body, float friction);
 void cjolt_body_set_restitution(CJoltWorld *world, CJoltBodyID body, float restitution);
+float cjolt_body_get_friction(const CJoltWorld *world, CJoltBodyID body);
+float cjolt_body_get_restitution(const CJoltWorld *world, CJoltBodyID body);
 void cjolt_body_set_gravity_factor(CJoltWorld *world, CJoltBodyID body, float factor);
 float cjolt_body_get_gravity_factor(const CJoltWorld *world, CJoltBodyID body);
 /// Restricts which degrees of freedom the body may use (a mask of

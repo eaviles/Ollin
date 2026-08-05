@@ -22,37 +22,54 @@ public final class Joint3D {
     let a: CJoltBodyID
     let b: CJoltBodyID
 
-    /// The kind this joint was connected as (nil for a grab), so the motor
-    /// knobs know whether they drive an angle or an offset.
+    /// The kind this joint was connected as (nil for a grab, and for a link
+    /// between two joints), so the motor knobs know whether they drive an
+    /// angle or an offset.
     public let kind: JointKind3D?
 
+    /// Which link this is, when it was made by `connect(_:_:_:)` over two
+    /// joints rather than two bodies; nil for every other joint.
+    public let link: JointLink3D?
+
     /// Whether this is a grab joint, so `target` knows to drive it.
-    private let isGrab: Bool
+    let isGrab: Bool
 
     /// For a mouse-driven grab, the view depth the sketch sugar drags in.
     var grabViewDepth: Double?
+
+    /// The poses the two bodies held when the joint was made. Every joint's
+    /// zero is measured from there (a hinge's angle, a slider's offset, a
+    /// weld's relative pose, the point on a track a body joined at), so this
+    /// is what lets a snapshot put a jointed machine back exactly rather than
+    /// re-zeroing it wherever it had swung to.
+    let connectPoseA: Pose3D
+    let connectPoseB: Pose3D
 
     /// The other bodies a link between two joints reaches, so removing any of
     /// the four cuts it.
     private let alsoTouches: [CJoltBodyID]
 
     /// The two joints a link was written against, so cutting either cuts it.
-    private weak var linkedA: Joint3D?
-    private weak var linkedB: Joint3D?
+    weak var linkedA: Joint3D?
+    weak var linkedB: Joint3D?
 
     init(world: World3D, constraint: OpaquePointer?,
          a: CJoltBodyID, b: CJoltBodyID, kind: JointKind3D? = nil,
          isGrab: Bool = false, alsoTouches: [CJoltBodyID] = [],
-         linking: (Joint3D, Joint3D)? = nil) {
+         linking: (Joint3D, Joint3D)? = nil, link: JointLink3D? = nil,
+         connectPoseA: Pose3D = .identity, connectPoseB: Pose3D = .identity) {
         self.world = world
         self.constraint = constraint
         self.a = a
         self.b = b
         self.kind = kind
+        self.link = link
         self.isGrab = isGrab
         self.alsoTouches = alsoTouches
         self.linkedA = linking?.0
         self.linkedB = linking?.1
+        self.connectPoseA = connectPoseA
+        self.connectPoseB = connectPoseB
     }
 
     /// Whether this joint holds onto `body` in any way.

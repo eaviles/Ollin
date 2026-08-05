@@ -62,6 +62,7 @@ Distances are the 3D scene's world units (y-up, matching the camera). The solver
 - [Ragdolls](#ragdolls) - a skinned figure given weight, limp or powered
 - [Soft bodies](#softbodies) - cloth that drapes and closed shapes that squash
 - [Water](#water) - buoyancy: what floats, how deep it sits, and what carries it
+- [Saving and loading](#snapshots) - keeping an arrangement you like, and putting it back
 - [Grabbing with the mouse](#grabbing) - ray-picking and dragging bodies through the camera
 - [Drawing bodies](#drawing) - `withBody` and matching meshes to colliders
 
@@ -109,6 +110,8 @@ body.velocity                 // units per second, get/set
 body.angularVelocity          // radians per second about each axis
 body.mass                     // from collider volume × density (0 when static)
 body.kind                     // switch .dynamic / .static / .kinematic live
+body.friction                 // 0 slick … 1 grippy, get/set
+body.restitution              // how much speed survives a bounce, get/set
 body.isAwake                  // settled bodies sleep until touched
 
 body.applyForce(Vector3(0, 40, 0))      // steady, accumulated for next step
@@ -1043,6 +1046,51 @@ One thing worth knowing about sleeping. A floating body settles at its waterline
 
 The worked examples are [`3D/Physics/Flotsam`](../../Examples/3D/Physics/Flotsam/) (crates from cork to nearly waterlogged riding a swell at their own depths, a stone anchor on the bottom, and a current carrying the lot past) and [`3D/Physics/Raft`](../../Examples/3D/Physics/Raft/), where the thing afloat is a cloth. Drag either about.
 
+<a name="snapshots"></a>
+
+### Saving and loading
+
+Some arrangements are worth keeping. A heap of stones that took four hundred steps to settle, a stack knocked into a shape you liked, a scene you spent a minute nudging into place by hand: none of it can be written down as code, and running the simulation again does not give it back. `snapshot()` captures the whole world as it stands, and `restore(_:)` puts it back:
+
+```swift
+let settled = world.snapshot()      // after the pile has come to rest
+// …knock it over, rummage through it…
+world.restore(settled)              // exactly the pile you had
+```
+
+A `PhysicsSnapshot` is a value you can hold, hand around, and write to a file:
+
+```swift
+try world.save(to: url)             // = try world.snapshot().write(to: url)
+world.load(contentsOf: url)         // false, and the world is untouched, if it can't be read
+```
+
+which is how a settled arrangement becomes an asset the sketch opens with:
+
+```swift
+override func setup() {
+    world.ground = 0
+    if !world.load(contentsOf: file) {
+        buildAndSettleTheHeap()
+        try? world.save(to: file)
+    }
+}
+```
+
+The snapshot's own `bodyCount` and `jointCount` say what is in it before anything is restored, and `PhysicsSnapshot(data:)` / `init(contentsOf:)` / `init(resource:in:)` read one back. Anything that is not a snapshot is refused rather than half-read, and a snapshot that stops short leaves the world that is already standing alone.
+
+**Restoring is exact.** A restored body is in the same pose, moving at the same speed, spinning the same way, and, if it had settled, still asleep, so a saved heap does not shudder back into shape on the way in. A world stepped on from a restore lands exactly where the one that was never interrupted does. It goes through the ordinary `addBody` and `connect` calls, so a restored world is one you could have built by hand, and a joint keeps the zero it was made at: a door saved standing half open is still half open, and still stops where it used to.
+
+**What comes back.** Every rigid `Body3D` with its collider, pose, velocity, and every knob `addBody` takes (kind, sensor, density, friction, restitution, freedom, gravity scale, path checking, group, buoyancy); every `Joint3D` between them, gears and racks included; the collision-group table with its rules; and the world's `gravity`, `ground`, `bounce`, `maxTimestep`, `unitsPerMeter`, and `water`.
+
+**What does not.** Characters, vehicles, ragdolls, and soft bodies are each built from something a snapshot has no way to carry (a rig, a wheel layout, a skinned scene, a mesh), so they are left out, with a note naming what was skipped; add them back after restoring. A grab is a hand on a body rather than part of the world, and contacts are worked out again by the next `step(dt:)`, so neither is saved. Motors are not saved either: `drive(at:)` and friends are things a sketch says, usually every frame, so say them again.
+
+**The bodies are new objects.** `restore(_:)` empties the world first, so any `Body3D` or `Joint3D` you were holding is gone; take them from `world.bodies` and `world.joints` again. They come back in the order they were saved in, so an index still names the same body, and each one still knows its own `collider`, which is usually all a drawing loop needs.
+
+This is also the honest answer to determinism. Simulating is reproducible within one build, but the solver runs in floating point, and a toolchain that moves one last bit moves the last bounce, which a toppling stack magnifies into a different heap. A saved arrangement has nothing left to compute, so it comes back the same anywhere. Continuing from a restore is exact for the pose and the motion; the solver's in-flight contact bookkeeping is not carried, so a scene captured mid-collision may drift a little where a settled one cannot.
+
+The worked example is [`3D/Physics/Cairn`](../../Examples/3D/Physics/Cairn/): a heap of stones laid one at a time, restored with **R**, written to a file with **S**, and read back with **L**, so quitting and running the sketch again finds the same cairn standing.
+
 <a name="grabbing"></a>
 
 ### Grabbing with the mouse
@@ -1088,6 +1136,6 @@ for body in world.bodies {
 }
 ```
 
-The simulation is deterministic within a build: the same setup stepped the same way reproduces exactly, which is what the seeded-variations story needs live. Exact poses can shift across toolchain rebuilds, so physics scenes aren't pinned by pixel snapshots; the behavioral test suite pins the solver instead.
+The simulation is deterministic within a build: the same setup stepped the same way reproduces exactly, which is what the seeded-variations story needs live. Exact poses can shift across toolchain rebuilds, so physics scenes aren't pinned by pixel snapshots; the behavioral test suite pins the solver instead, and [a snapshot](#snapshots) is how an arrangement is kept for good.
 
-Worked examples: [`3D/Physics/Stack`](../../Examples/3D/Physics/Stack/) (a crate pyramid under cannon fire), [`3D/Physics/Tumble`](../../Examples/3D/Physics/Tumble/) (a mixed-solid pile you can drag), [`3D/Physics/Chain`](../../Examples/3D/Physics/Chain/) (a wrecking ball on a ball-jointed chain), [`3D/Physics/Windmill`](../../Examples/3D/Physics/Windmill/) (a motor-driven compound blade cross batting balls through limited, spring-shut swing gates), [`3D/Physics/Rockslide`](../../Examples/3D/Physics/Rockslide/) (rocks tumbling down eroded heightfield terrain), [`3D/Physics/Trigger`](../../Examples/3D/Physics/Trigger/) (a scoring hoop and a loaded tray, both sensors, with every knock ringing at the speed it landed), [`3D/Physics/Ragdoll`](../../Examples/3D/Physics/Ragdoll/) (a skinned figure that stands and waves, or collapses, depending on whether its joints are powered), [`3D/Physics/Drape`](../../Examples/3D/Physics/Drape/) (a banner in the wind, a sheet over a crate, and a beach ball you can deflate), and [`3D/Physics/Sightlines`](../../Examples/3D/Physics/Sightlines/) (a lamp that lights only the crates it can see, a drone holding its clearance by sweep, and a pulse that shoves whatever a sphere overlaps).
+Worked examples: [`3D/Physics/Stack`](../../Examples/3D/Physics/Stack/) (a crate pyramid under cannon fire), [`3D/Physics/Tumble`](../../Examples/3D/Physics/Tumble/) (a mixed-solid pile you can drag), [`3D/Physics/Chain`](../../Examples/3D/Physics/Chain/) (a wrecking ball on a ball-jointed chain), [`3D/Physics/Windmill`](../../Examples/3D/Physics/Windmill/) (a motor-driven compound blade cross batting balls through limited, spring-shut swing gates), [`3D/Physics/Rockslide`](../../Examples/3D/Physics/Rockslide/) (rocks tumbling down eroded heightfield terrain), [`3D/Physics/Trigger`](../../Examples/3D/Physics/Trigger/) (a scoring hoop and a loaded tray, both sensors, with every knock ringing at the speed it landed), [`3D/Physics/Ragdoll`](../../Examples/3D/Physics/Ragdoll/) (a skinned figure that stands and waves, or collapses, depending on whether its joints are powered), [`3D/Physics/Drape`](../../Examples/3D/Physics/Drape/) (a banner in the wind, a sheet over a crate, and a beach ball you can deflate), [`3D/Physics/Sightlines`](../../Examples/3D/Physics/Sightlines/) (a lamp that lights only the crates it can see, a drone holding its clearance by sweep, and a pulse that shoves whatever a sphere overlaps), and [`3D/Physics/Cairn`](../../Examples/3D/Physics/Cairn/) (a heap of stones saved to a file and put back exactly).

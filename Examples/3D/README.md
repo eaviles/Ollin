@@ -55,6 +55,7 @@ See the [3D physics reference](../../Docs/Simulation/Physics3D.md).
 | [Sieve](Physics/Sieve/) | Beads of three colors sorted down one ramp: each window in the ramp is told to ignore one color, so that color falls through it and the rest roll over. Space withdraws the rules and everything rides to the end. `group:`, `ignoreCollisions(between:and:)`, `raycast(as:)`. |
 | [Bagatelle](Physics/Bagatelle/) | A pin table in a 3D world talked out of its third dimension: every ball is held to the board's plane, so the machine works however hard the pins knock it about. Turn that off and the balls wander out of the board. Space fires a shot quick enough to leave through a thin rail unless its path is checked. `freedom:`, `gravityScale`, `checksPath`. |
 | [Contraption](Physics/Contraption/) | A workshop of machines, each one a joint a hinge cannot make: a gear pair driving a rack through the same shaft, a rope over two hooks trading a tray for a counterweight, a platter allowed only to rise and spin, and a cart threaded onto a track. Space loads the tray. `.gear`, `.rackAndPinion`, `.pulley`, `.allowing`, `.path`. |
+| [Cairn](Physics/Cairn/) | A heap of stones laid one at a time, kept. R puts back the arrangement it settled into, exactly; S writes it to a file and L reads it back, so quitting and running again finds the same cairn standing. Drag a stone to wreck it first. `snapshot()`, `restore(_:)`, `save(to:)`, `load(contentsOf:)`. |
 
 ### Camera
 

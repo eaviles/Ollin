@@ -144,13 +144,13 @@ public final class World3D {
     private(set) var stepGeneration: Int = 0
 
     /// The solver handle of the slab backing `ground`, if any.
-    private var groundID: CJoltBodyID = CJOLT_BODY_INVALID
+    var groundID: CJoltBodyID = CJOLT_BODY_INVALID
 
     /// Which collision group the floor slab is in. Remembered on the world
     /// rather than on the slab, because moving the ground or changing the unit
     /// scale builds a whole new slab, which would otherwise arrive back in the
     /// default group having quietly forgotten what it was told.
-    private var groundGroup: CollisionGroup = .default
+    var groundGroup: CollisionGroup = .default
 
     /// How far into the swell the water is, in seconds of simulated time, so
     /// the surface a sketch draws and the surface the bodies ride are read at
@@ -239,15 +239,32 @@ public final class World3D {
                  centerOfMass: Vector3,
                  freedom: Freedom3D = .all, gravityScale: Double = 1,
                  checksPath: Bool = false,
-                 group: CollisionGroup = .default) -> Body3D {
+                 group: CollisionGroup = .default,
+                 orientation: SIMD4<Double>? = nil,
+                 velocity: Vector3 = .zero,
+                 angularVelocity: Vector3 = .zero,
+                 asleep: Bool = false) -> Body3D {
         var desc = CJoltBodyDesc()
         let p = meters(from: position)
         desc.position = (p.0, p.1, p.2)
-        let unit = axis.normalized
-        let half = angle / 2
-        let s = sin(half)
-        desc.rotation = (Float(unit.x * s), Float(unit.y * s), Float(unit.z * s),
-                         Float(cos(half)))
+        if let orientation {
+            // A restored body is handed the exact quaternion it was captured
+            // with, rather than an angle about an axis that would have to be
+            // taken apart and put back together.
+            desc.rotation = (Float(orientation.x), Float(orientation.y),
+                             Float(orientation.z), Float(orientation.w))
+        } else {
+            let unit = axis.normalized
+            let half = angle / 2
+            let s = sin(half)
+            desc.rotation = (Float(unit.x * s), Float(unit.y * s),
+                             Float(unit.z * s), Float(cos(half)))
+        }
+        let v = meters(from: velocity)
+        desc.linearVelocity = (v.0, v.1, v.2)
+        desc.angularVelocity = (Float(angularVelocity.x), Float(angularVelocity.y),
+                                Float(angularVelocity.z))
+        desc.startAsleep = asleep
         desc.motion = kind.cjolt
         desc.friction = Float(max(0, friction))
         desc.restitution = Float(restitution ?? bounce)
@@ -603,6 +620,11 @@ public final class World3D {
     /// Anchors are world points at the moment of connecting.
     @discardableResult
     public func connect(_ a: Body3D, _ b: Body3D, _ kind: JointKind3D) -> Joint3D {
+        // Where the two bodies stand right now is the joint's own zero, so it
+        // is remembered on the joint: a snapshot restores a jointed machine by
+        // standing the bodies back here to make the joint, then moving them on.
+        let poseA = Pose3D(of: a)
+        let poseB = Pose3D(of: b)
         var desc = CJoltConstraintDesc()
         // A track is the one kind that carries a list rather than a handful of
         // numbers, so its points ride a buffer the create call borrows.
@@ -741,7 +763,7 @@ public final class World3D {
                      + "is refused (move a static end instead). Ignoring.")
         }
         let joint = Joint3D(world: self, constraint: constraint, a: a.id, b: b.id,
-                            kind: kind)
+                            kind: kind, connectPoseA: poseA, connectPoseB: poseB)
         joints.append(joint)
         return joint
     }
@@ -794,7 +816,7 @@ public final class World3D {
         // A link is written against four bodies and two joints, and removing
         // any of them has to take it with them.
         let joint = Joint3D(world: self, constraint: constraint, a: a.a, b: a.b,
-                            alsoTouches: [b.a, b.b], linking: (a, b))
+                            alsoTouches: [b.a, b.b], linking: (a, b), link: link)
         joints.append(joint)
         return joint
     }

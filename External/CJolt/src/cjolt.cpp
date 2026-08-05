@@ -963,6 +963,11 @@ CJoltBodyID cjolt_body_create(CJoltWorld *world, const CJoltBodyDesc *desc) {
     settings.mAngularDamping = std::max(0.0f, desc->angularDamping);
     settings.mGravityFactor = desc->gravityFactor;
     settings.mAllowSleeping = desc->allowSleep;
+    // Motion the body already has. A zeroed descriptor creates it at rest,
+    // which is what every ordinary caller wants; a restored snapshot hands
+    // each body back the velocity it was captured with.
+    settings.mLinearVelocity = vec3(desc->linearVelocity);
+    settings.mAngularVelocity = vec3(desc->angularVelocity);
     settings.mAllowedDOFs = allowedDOFs(desc->freedom);
     // Sweeping the shape along its path is what stops a small quick body from
     // stepping straight through a thin wall. The solver only pays for it once
@@ -983,9 +988,12 @@ CJoltBodyID cjolt_body_create(CJoltWorld *world, const CJoltBodyDesc *desc) {
         settings.mMassPropertiesOverride.mMass = desc->mass;
     }
 
+    // A body asked to start settled is added without being activated, which is
+    // what "asleep" is: it holds its pose exactly and costs nothing to step
+    // until something touches it.
+    const bool activate = motion != EMotionType::Static && !desc->startAsleep;
     BodyID id = world->physics.GetBodyInterface().CreateAndAddBody(
-        settings, motion == EMotionType::Static ? EActivation::DontActivate
-                                                : EActivation::Activate);
+        settings, activate ? EActivation::Activate : EActivation::DontActivate);
     return id.IsInvalid() ? CJOLT_BODY_INVALID : id.GetIndexAndSequenceNumber();
 }
 
@@ -1150,6 +1158,16 @@ void cjolt_body_set_friction(CJoltWorld *world, CJoltBodyID body, float friction
 void cjolt_body_set_restitution(CJoltWorld *world, CJoltBodyID body, float restitution) {
     world->physics.GetBodyInterface().SetRestitution(BodyID(body),
                                                      std::clamp(restitution, 0.0f, 1.0f));
+}
+
+float cjolt_body_get_friction(const CJoltWorld *world, CJoltBodyID body) {
+    CJoltWorld *w = const_cast<CJoltWorld *>(world);
+    return w->physics.GetBodyInterface().GetFriction(BodyID(body));
+}
+
+float cjolt_body_get_restitution(const CJoltWorld *world, CJoltBodyID body) {
+    CJoltWorld *w = const_cast<CJoltWorld *>(world);
+    return w->physics.GetBodyInterface().GetRestitution(BodyID(body));
 }
 
 void cjolt_body_set_gravity_factor(CJoltWorld *world, CJoltBodyID body, float factor) {

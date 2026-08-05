@@ -3904,6 +3904,78 @@ sharpest being a body on a track and a loose one thrown the same way (the railed
 one holds its circle to 0.05 while its twin falls twenty units). Example
 `3D/Physics/Contraption`.
 
+### Saving a world
+
+`World3D.snapshot()` captures the whole world as a `PhysicsSnapshot`, and
+`restore(_:)` builds it back; `save(to:)` / `load(contentsOf:)` are the file
+pair over them. The format is **Ollin's own**, not the solver's
+`PhysicsScene`, and the reason is `Body3D.collider`: a snapshot has to hand back
+the *Ollin* description of each body, because that is what a sketch draws from
+and what `addBody`'s knobs are expressed in, and a restored Jolt shape cannot
+be turned back into a `Collider3D` case (a compound or a hull has forgotten it
+ever was one). Once the colliders have to be written down anyway, the solver's
+serialization buys nothing and costs a second representation to keep in step.
+
+The consequence is the design's best property: **restoring replays the ordinary
+`addBody` and `connect` calls**, so a restored world is one a sketch could have
+built by hand and cannot be in a state a built one cannot reach. What it costs
+is a small binary encoder (`SnapshotWriter` / `SnapshotReader` in
+`PhysicsSnapshot.swift`): a magic + version + counts header, then the world
+settings, the group table, the bodies, the joints, and the joint-to-joint links,
+every number a `Float64`. `PhysicsSnapshot` wraps the `Data` rather than the
+decoded model, which makes it `Sendable` and `Equatable` for free (a `Collider3D`
+is neither) and leaves exactly one representation, so a snapshot that went
+through a file and one that did not are the same value.
+
+Four things are load-bearing:
+
+- **A joint's zero is the pose its bodies were in when it was made**, and that
+  is not where they are now. `connect` reads both bodies' current poses to build
+  the constraint frames, so a hinge saved half open and re-connected where it
+  stands would call *open* zero, and its limits would run a whole swing further.
+  So `Joint3D` records `connectPoseA` / `connectPoseB` at creation, and restore
+  stands the two bodies back there, makes the joint, and then puts them where
+  the snapshot found them. Constraint frames are fixed at creation, so the
+  result is exact for every kind at once (a weld's relative pose, a
+  length-less rod's span, a track's attachment point) rather than per-kind
+  arithmetic. Pinned by `aHingeKeepsItsZeroAcrossASnapshot` against the naive
+  twin, which reads 0.
+- **The desc grew three fields whose zero is the old behaviour**, the encoding
+  rule from stages 11 and 12: `CJoltBodyDesc.linearVelocity` /
+  `angularVelocity` / `startAsleep`. Velocity through
+  `BodyCreationSettings` rather than a post-create setter, because
+  `BodyInterface::SetLinearVelocity` activates a body it moves; `startAsleep`
+  adds `EActivation::DontActivate` to what was already the static case, which
+  is what "asleep" is. A settled pile therefore comes back *settled*: measured
+  0/12 awake after a restore against 12/12 for the same poses handed to
+  `addBody`, and zero movement over the next sixty steps.
+- **A vehicle's chassis is an ordinary body in `world.bodies`**, so capturing
+  naively would save it as a loose crate that restores without its wheels.
+  It is filtered out instead, and the one-time note names every higher tier the
+  world was holding. Characters, ragdoll limbs, and soft bodies are already out
+  of `bodies`, so they need no filter, only the note.
+- **The group table survives `removeAll()` in the solver but not in Swift.**
+  Restore rebuilds `groupNames` in the saved order (which *is* the solver's
+  indexing, so a body's saved index still names its group) and then sets every
+  pair among the union of the old and new counts back to what the snapshot
+  says, rather than trusting whatever the previous world left behind.
+
+Two bridge getters came with it (`cjolt_body_get_friction` /
+`_get_restitution`, surfaced as live `Body3D.friction` / `.restitution`), since
+the two knobs `addBody` took had until now been write-only.
+
+The round trip is exact end to end, which is stronger than the docs promise: a
+restored pile's worst pose error is 0, a re-capture is byte-identical to the
+first, and a ballistic body stepped on from a restore lands at the same
+position as one never interrupted. The envelope is the solver's in-flight
+bookkeeping (contact caches, island assignments), which is not carried, so a
+scene captured mid-collision may drift where a settled one cannot. That is also
+the whole point of the feature: determinism is per binary, so a heap made by
+simulating is a different heap wherever the floating point rounds differently
+(measured: releasing one stone 1e-7 higher moves a stone in the settled heap
+0.45 units), where a saved one has nothing left to compute.
+`PhysicsSnapshotTests` (21) pins it; example `3D/Physics/Cairn`.
+
 ## The geometry and generator catalog
 
 The CPU-side geometry types and generative-technique recipes live in

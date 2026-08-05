@@ -1,0 +1,577 @@
+import Foundation
+import Testing
+import Ollin
+@testable import OllinPhysics
+
+/// Correctness for saving a world and loading it back. Behavioral (the
+/// no-pixel-snapshot policy for physics), each answer pinned against a
+/// counterfactual twin: the same scene with one thing changed, so a passing
+/// test can't be explained by the geometry alone. Parallel-safe like the rest
+/// of the 3D suite.
+struct PhysicsSnapshotTests {
+
+    func run(_ world: World3D, steps: Int, dt: Double = 1.0 / 60) {
+        for _ in 0 ..< steps { world.step(dt: dt) }
+    }
+
+    /// A heap of boxes dropped into a ring, settled. Deterministic: no
+    /// randomness anywhere near a physics test.
+    @discardableResult
+    func pile(in world: World3D, count: Int = 12, settle: Int = 600) -> World3D {
+        world.ground = 0
+        world.bounce = 0.15
+        for i in 0 ..< count {
+            let a = Double(i) * 0.7
+            world.addBody(.box(width: 0.5, height: 0.5, depth: 0.5),
+                          at: Vector3(cos(a) * 0.6, 1.0 + Double(i) * 0.6, sin(a) * 0.6),
+                          rotated: a, axis: Vector3(0.3, 1, 0.2))
+        }
+        run(world, steps: settle)
+        return world
+    }
+
+    // MARK: The pile comes back
+
+    /// The headline: a settled heap restored from its own snapshot stands in
+    /// exactly the poses it was captured in, to the last bit. The twin is the
+    /// same heap after it has been knocked over, which is metres away, so the
+    /// zero is the snapshot's doing and not a heap that never moved.
+    @Test func aRestoredPileStandsExactlyWhereItWasSaved() {
+        let world = World3D()
+        pile(in: world)
+        let saved = world.snapshot()
+        let settled = world.bodies.map(\.position)
+
+        // Knock it over.
+        for body in world.bodies { body.velocity = Vector3(0, 2, 9) }
+        run(world, steps: 240)
+        let scattered = world.bodies.map(\.position)
+        let disturbance = zip(settled, scattered).map { ($0 - $1).length }.max() ?? 0
+        #expect(disturbance > 1, "the twin should really be knocked about")
+
+        world.restore(saved)
+        let restored = world.bodies.map(\.position)
+        #expect(restored.count == settled.count)
+        let error = zip(settled, restored).map { ($0 - $1).length }.max() ?? .infinity
+        #expect(error == 0, "a restored pile stands exactly where it was saved")
+    }
+
+    /// Restoring is idempotent down to the byte: capture, put it back, capture
+    /// again, and the two files are the same. Nothing is quietly re-derived on
+    /// the way through.
+    @Test func restoringAndCapturingAgainGivesTheSameBytes() {
+        let world = World3D()
+        pile(in: world)
+        let first = world.snapshot()
+        world.restore(first)
+        #expect(world.snapshot() == first)
+    }
+
+    /// A settled pile is asleep, and it comes back asleep, so it holds its
+    /// shape exactly rather than shuddering back into place. The twin is the
+    /// same poses handed to `addBody` the ordinary way, which arrive awake.
+    @Test func aRestoredPileIsAsSettledAsTheOneItCameFrom() {
+        let world = World3D()
+        pile(in: world)
+        #expect(world.bodies.allSatisfy { !$0.isAwake }, "the pile has settled")
+        let settled = world.bodies.map(\.position)
+
+        world.restore(world.snapshot())
+        #expect(world.bodies.allSatisfy { !$0.isAwake },
+                "a restored pile is asleep, not woken")
+        run(world, steps: 60)
+        let drift = zip(settled, world.bodies.map(\.position))
+            .map { ($0 - $1).length }.max() ?? .infinity
+        #expect(drift == 0, "and it does not move at all when stepped")
+
+        let fresh = World3D()
+        fresh.ground = 0
+        for position in settled {
+            fresh.addBody(.box(width: 0.5, height: 0.5, depth: 0.5), at: position)
+        }
+        #expect(fresh.bodies.allSatisfy { $0.isAwake },
+                "an ordinarily built pile arrives awake")
+    }
+
+    /// The determinism claim: a world stepped on from a restore lands exactly
+    /// where the one that was never interrupted does. The twin is the same
+    /// flight with a different launch, which lands elsewhere.
+    @Test func aRestoredWorldCarriesOnIdentically() {
+        func flight(restoring: Bool, push: Double = 3) -> Vector3 {
+            let world = World3D()
+            let ball = world.addBody(.sphere(radius: 0.2), at: Vector3(0, 10, 0))
+            ball.velocity = Vector3(push, 2, -1)
+            ball.angularVelocity = Vector3(0.5, -0.2, 0.9)
+            run(world, steps: 30)
+            if restoring { world.restore(world.snapshot()) }
+            run(world, steps: 60)
+            return world.bodies[0].position
+        }
+        let straight = flight(restoring: false)
+        let viaSnapshot = flight(restoring: true)
+        #expect((straight - viaSnapshot).length == 0,
+                "a restored world carries on exactly where it left off")
+        #expect((straight - flight(restoring: false, push: 4)).length > 0.5,
+                "and the measurement is not blind to a real difference")
+    }
+
+    /// A body in motion keeps it: the restored ball is travelling and spinning
+    /// at the speed it was captured at, where a body rebuilt by hand starts
+    /// from rest.
+    @Test func aMovingBodyCarriesItsMotion() {
+        let world = World3D()
+        let ball = world.addBody(.sphere(radius: 0.3), at: Vector3(0, 5, 0),
+                                 gravityScale: 0)
+        ball.velocity = Vector3(2, -3, 1)
+        ball.angularVelocity = Vector3(0.4, 1.1, -0.7)
+        run(world, steps: 10)
+        let velocity = ball.velocity
+        let spin = ball.angularVelocity
+
+        world.restore(world.snapshot())
+        #expect((world.bodies[0].velocity - velocity).length == 0)
+        #expect((world.bodies[0].angularVelocity - spin).length == 0)
+    }
+
+    // MARK: Joints keep their zero
+
+    /// A joint's angle is measured from the pose it was made in, so a snapshot
+    /// has to remember that pose rather than re-zeroing the joint wherever the
+    /// door happens to be standing. The twin is the naive restore: the same
+    /// door, the same limits, connected at the swung pose, which reads zero.
+    @Test func aHingeKeepsItsZeroAcrossASnapshot() {
+        let world = World3D()
+        let frame = world.addBody(.box(width: 1, height: 0.2, depth: 1), at: .zero,
+                                  kind: .static)
+        let door = world.addBody(.box(width: 1.4, height: 0.1, depth: 0.6),
+                                 at: Vector3(1, 0, 0))
+        let hinge = world.connect(frame, door,
+                                  .revolute(at: .zero, axis: .unitZ,
+                                            limits: -0.02...1.2))
+        hinge.drive(to: 0.8, frequency: 6)
+        run(world, steps: 180)
+        let swung = hinge.angle
+        #expect(swung > 0.5, "the door really is standing open")
+
+        world.restore(world.snapshot())
+        #expect(abs(world.joints[0].angle - swung) == 0,
+                "the restored hinge reads the same angle it was saved at")
+
+        // The counterfactual: connect it where it now stands and zero moves.
+        let naive = World3D()
+        let post = naive.addBody(.box(width: 1, height: 0.2, depth: 1), at: .zero,
+                                 kind: .static)
+        let leaf = naive.addBody(.box(width: 1.4, height: 0.1, depth: 0.6),
+                                 at: world.bodies[1].position)
+        leaf.setRotation(swung, axis: .unitZ)
+        let naiveHinge = naive.connect(post, leaf,
+                                       .revolute(at: .zero, axis: .unitZ,
+                                                 limits: -0.02...1.2))
+        #expect(abs(naiveHinge.angle) < 1e-6,
+                "a joint made at the swung pose calls that pose zero")
+    }
+
+    /// And the limit moves with the zero: a restored door still stops where the
+    /// original one did, rather than opening another whole swing past it.
+    @Test func aHingeLimitStillStopsWhereItDid() {
+        func openWide(restoring: Bool) -> Double {
+            let world = World3D()
+            let frame = world.addBody(.box(width: 1, height: 0.2, depth: 1),
+                                      at: .zero, kind: .static)
+            let door = world.addBody(.box(width: 1.4, height: 0.1, depth: 0.6),
+                                     at: Vector3(1, 0, 0))
+            var hinge = world.connect(frame, door,
+                                      .revolute(at: .zero, axis: .unitZ,
+                                                limits: -0.02...1.2))
+            hinge.drive(to: 0.6, frequency: 6)
+            run(world, steps: 180)
+            if restoring {
+                world.restore(world.snapshot())
+                hinge = world.joints[0]
+            }
+            // Now shove it as far open as it will go.
+            hinge.drive(to: 4, frequency: 8)
+            run(world, steps: 240)
+            return world.bodies[1].rotationAngle
+        }
+        let straight = openWide(restoring: false)
+        let viaSnapshot = openWide(restoring: true)
+        #expect(abs(straight - 1.2) < 0.05, "the door stops at its limit")
+        #expect(abs(viaSnapshot - straight) < 0.02,
+                "and a restored door stops in the same place")
+    }
+
+    /// A rod between two bodies still holds them the distance it was made at,
+    /// including the length it worked out for itself from where they stood.
+    @Test func aRodKeepsTheLengthItWasMadeAt() {
+        let world = World3D()
+        world.ground = -6
+        let anchor = world.addBody(.sphere(radius: 0.2), at: Vector3(0, 4, 0),
+                                   kind: .static)
+        let bob = world.addBody(.sphere(radius: 0.3), at: Vector3(1.7, 4, 0))
+        world.connect(anchor, bob, .distance(from: anchor.position, to: bob.position))
+        run(world, steps: 120)
+        let spanBefore = (world.bodies[1].position - world.bodies[0].position).length
+
+        world.restore(world.snapshot())
+        run(world, steps: 120)
+        let spanAfter = (world.bodies[1].position - world.bodies[0].position).length
+        #expect(abs(spanAfter - 1.7) < 0.05, "the rod is still 1.7 long")
+        #expect(abs(spanAfter - spanBefore) < 0.02)
+    }
+
+    /// A joint anchored to the world's own floor slab, which is not one of the
+    /// saved bodies, comes back anchored to the restored floor.
+    @Test func aJointToTheGroundCarries() {
+        let world = World3D()
+        world.ground = 0
+        let post = world.addBody(.box(width: 0.3, height: 2, depth: 0.3),
+                                 at: Vector3(0, 3, 0))
+        world.connect(world.groundBody!, post, .ball(at: Vector3(0, 2, 0)))
+        run(world, steps: 120)
+        let hangingBefore = world.bodies[0].position
+
+        world.restore(world.snapshot())
+        #expect(world.joints.count == 1, "the joint to the floor was kept")
+        run(world, steps: 120)
+        #expect((world.bodies[0].position - hangingBefore).length < 0.05,
+                "and it still hangs from the same point")
+
+        // The twin: no joint at all and the post falls to the floor.
+        let loose = World3D()
+        loose.ground = 0
+        let free = loose.addBody(.box(width: 0.3, height: 2, depth: 0.3),
+                                 at: Vector3(0, 3, 0))
+        run(loose, steps: 120)
+        #expect(free.position.y < hangingBefore.y - 0.5,
+                "an unjointed post ends up on the ground")
+    }
+
+    /// Gears are written against two joints rather than two bodies, so they are
+    /// saved last and put back once both hinges exist. The twin is the same
+    /// pair with the gear left out, where the second wheel never turns.
+    @Test func aGearPairCarries() {
+        func turn(linked: Bool, restoring: Bool) -> Double {
+            let world = World3D()
+            world.gravity = .zero
+            let frame = world.addBody(.box(width: 4, height: 0.2, depth: 0.2),
+                                      at: .zero, kind: .static)
+            let small = world.addBody(.cylinder(height: 0.2, radius: 0.5),
+                                      at: Vector3(-0.8, 0, 0),
+                                      rotated: .pi / 2, axis: .unitX)
+            let big = world.addBody(.cylinder(height: 0.2, radius: 1.0),
+                                    at: Vector3(1.2, 0, 0),
+                                    rotated: .pi / 2, axis: .unitX)
+            world.ignoreCollisions(between: .default, and: .default)
+            var driver = world.connect(frame, small,
+                                       .revolute(at: small.position, axis: .unitZ))
+            var follower = world.connect(frame, big,
+                                         .revolute(at: big.position, axis: .unitZ))
+            if linked { world.connect(driver, follower, .gear(teeth: 1, and: 2)) }
+            if restoring {
+                world.restore(world.snapshot())
+                driver = world.joints[0]
+                follower = world.joints[1]
+            }
+            driver.drive(at: 4)
+            run(world, steps: 120)
+            // How far the second hinge has turned from where it was made,
+            // which is what the gear does or does not carry over to it.
+            return abs(follower.angle)
+        }
+        #expect(turn(linked: true, restoring: false) > 0.5, "the gear pair turns")
+        #expect(turn(linked: false, restoring: true) < 0.05,
+                "without a gear the second wheel sits still")
+        #expect(turn(linked: true, restoring: true) > 0.5,
+                "and a restored gear pair still turns")
+    }
+
+    // MARK: The world's own settings
+
+    /// Everything the world itself holds rides along: how hard gravity pulls,
+    /// where the floor is, how bouncy it is, the unit scale, and the water.
+    @Test func theWorldsOwnSettingsCarry() {
+        let world = World3D(maxBodies: 256)
+        world.unitsPerMeter = 4
+        world.gravity = Vector3(0.5, -14, -0.25)
+        world.ground = 1.5
+        world.bounce = 0.42
+        world.maxTimestep = 1.0 / 45
+        world.water = Water(level: 2.5, density: 1.3, linearDrag: 0.7,
+                            angularDrag: 0.2, flow: Vector3(0.4, 0, -0.1),
+                            waves: Water.Waves(amplitude: 0.3, wavelength: 7,
+                                               speed: 1.1, heading: 0.6))
+        world.addBody(.sphere(radius: 0.4), at: Vector3(0, 6, 0), density: 0.4)
+        run(world, steps: 60)
+        let phase = world.waterPhase
+
+        let fresh = World3D(maxBodies: 256)
+        fresh.restore(world.snapshot())
+        #expect(fresh.unitsPerMeter == 4)
+        #expect(fresh.gravity == Vector3(0.5, -14, -0.25))
+        #expect(fresh.ground == 1.5)
+        #expect(fresh.bounce == 0.42)
+        #expect(fresh.maxTimestep == 1.0 / 45)
+        #expect(fresh.water == world.water)
+        #expect(fresh.waterPhase == phase)
+        #expect(fresh.groundBody != nil, "the floor was rebuilt")
+    }
+
+    /// A floating crate restored into a world with no water of its own arrives
+    /// with the sea it was saved in, and stays afloat. The twin is the same
+    /// crate restored from a snapshot taken with the water turned off, which
+    /// sinks past the level the first one holds.
+    @Test func aFloatingSceneStaysAfloatAcrossASnapshot() {
+        func settle(withWater: Bool) -> Double {
+            let world = World3D()
+            world.ground = -12
+            if withWater { world.water = Water(level: 0) }
+            world.addBody(.box(width: 1, height: 1, depth: 1),
+                          at: Vector3(0, 3, 0), density: 0.4)
+            run(world, steps: 400)
+            let restored = World3D()
+            restored.restore(world.snapshot())
+            run(restored, steps: 200)
+            return restored.bodies[0].position.y
+        }
+        #expect(settle(withWater: true) > -0.6, "the crate is still floating")
+        #expect(settle(withWater: false) < -10, "the dry twin is on the bottom")
+    }
+
+    /// The collision-group table carries: the names in their solver order and
+    /// every rule written about them. The twin is a snapshot taken before the
+    /// rule, whose beads land on the tray instead of falling through it.
+    @Test func collisionGroupsAndTheirRulesCarry() {
+        func drop(writingTheRule: Bool) -> Double {
+            let world = World3D()
+            world.ground = -8
+            world.addBody(.box(width: 4, height: 0.3, depth: 4), at: .zero,
+                          kind: .static, group: "tray")
+            world.addBody(.sphere(radius: 0.3), at: Vector3(0, 3, 0), group: "beads")
+            if writingTheRule { world.ignoreCollisions(between: "beads", and: "tray") }
+            let saved = world.snapshot()
+
+            let fresh = World3D()
+            fresh.restore(saved)
+            #expect(fresh.collisionGroups.map(\.name) == ["default", "tray", "beads"],
+                    "the group names come back in the solver's own order")
+            run(fresh, steps: 400)
+            return fresh.bodies[1].position.y
+        }
+        #expect(drop(writingTheRule: false) > -0.5, "the bead rests on the tray")
+        #expect(drop(writingTheRule: true) < -7, "the rule lets it through")
+    }
+
+    /// Every per-body knob comes back, including the ones only the solver knows
+    /// (friction and restitution) and the ones only Ollin does (`buoyancy`).
+    @Test func everyBodyKnobCarries() {
+        let world = World3D()
+        world.ground = 0
+        let crate = world.addBody(.box(width: 1, height: 1, depth: 1),
+                                  at: Vector3(0, 4, 0), density: 2.5,
+                                  friction: 0.85, restitution: 0.33,
+                                  freedom: .upright, gravityScale: 0.4,
+                                  checksPath: true, group: "cargo")
+        crate.buoyancy = 1.7
+        let sensor = world.addBody(.sphere(radius: 1), at: Vector3(3, 1, 0),
+                                   isSensor: true)
+        let wall = world.addBody(.box(width: 2, height: 2, depth: 0.2),
+                                 at: Vector3(-3, 1, 0), kind: .static)
+        _ = sensor
+        _ = wall
+
+        world.restore(world.snapshot())
+        let restored = world.bodies[0]
+        #expect(restored.density == 2.5)
+        #expect(abs(restored.friction - 0.85) < 1e-6)
+        #expect(abs(restored.restitution - 0.33) < 1e-6)
+        #expect(restored.freedom == Freedom3D.upright)
+        #expect(abs(restored.gravityScale - 0.4) < 1e-6)
+        #expect(restored.checksPath)
+        #expect(restored.group == "cargo")
+        #expect(restored.buoyancy == 1.7)
+        #expect(abs(restored.mass - 2500) < 1, "density still sets the weight")
+        #expect(world.bodies[1].isSensor, "the sensor is still a sensor")
+        #expect(world.bodies[2].kind == .static, "the wall is still static")
+    }
+
+    /// Every collider kind survives, shape for shape. Mass is the check that a
+    /// shape really came back the same size, since it falls out of the volume;
+    /// the static-only kinds are checked by what they hold up.
+    @Test func everyColliderKindCarries() {
+        let world = World3D(maxBodies: 512)
+        let field = Heightfield(columns: 9, rows: 9) { u, v in 0.2 + 0.3 * u * v }
+        let sculpted = Mesh.box(width: 2, height: 0.4, depth: 2)
+        let colliders: [Collider3D] = [
+            .sphere(radius: 0.4),
+            .box(width: 0.6, height: 0.5, depth: 0.7),
+            .capsule(height: 0.8, radius: 0.25),
+            .cylinder(height: 0.9, radius: 0.3),
+            .taperedCapsule(height: 0.7, topRadius: 0.15, bottomRadius: 0.35),
+            .taperedCylinder(height: 0.6, topRadius: 0.2, bottomRadius: 0.4),
+            .cone(height: 0.8, radius: 0.35),
+            .hull([Vector3(-0.3, -0.3, -0.3), Vector3(0.4, -0.2, -0.3),
+                   Vector3(0, 0.5, -0.2), Vector3(0, 0, 0.45)]),
+            .compound([.part(.box(width: 0.3, height: 0.3, depth: 0.3)),
+                       .part(.sphere(radius: 0.2), at: Vector3(0, 0.4, 0),
+                             rotated: 0.5, axis: .unitZ, density: 6)]),
+        ]
+        for (i, collider) in colliders.enumerated() {
+            world.addBody(collider, at: Vector3(Double(i) * 3, 5, 0),
+                          gravityScale: 0)
+        }
+        world.addBody(.mesh(sculpted), at: Vector3(0, 0, 12), kind: .static)
+        world.addBody(.heightfield(field, width: 6, depth: 6, height: 2),
+                      at: Vector3(0, 0, -12), kind: .static)
+        let masses = world.bodies.map(\.mass)
+        let positions = world.bodies.map(\.position)
+
+        world.restore(world.snapshot())
+        #expect(world.bodies.count == colliders.count + 2)
+        for (i, body) in world.bodies.enumerated() {
+            #expect(abs(body.mass - masses[i]) < 1e-4,
+                    "collider \(i) came back the same size")
+            #expect((body.position - positions[i]).length == 0)
+        }
+        // The static kinds are checked by what they carry: a ball dropped onto
+        // the restored plate and one dropped onto the restored terrain both
+        // come to rest above them.
+        let onPlate = world.addBody(.sphere(radius: 0.2), at: Vector3(0, 3, 12))
+        let onTerrain = world.addBody(.sphere(radius: 0.2), at: Vector3(0, 4, -12))
+        run(world, steps: 300)
+        #expect(onPlate.position.y > 0.3, "the restored mesh plate holds it up")
+        #expect(onTerrain.position.y > 0.3, "and so does the restored terrain")
+    }
+
+    // MARK: Files
+
+    /// The file round trip is the same snapshot: the bytes match, and a world
+    /// built from the file stands where the one in memory does.
+    @Test func aFileRoundTripIsTheSameSnapshot() throws {
+        let world = World3D()
+        pile(in: world, count: 6, settle: 400)
+        let saved = world.snapshot()
+        let settled = world.bodies.map(\.position)
+
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ollin-snapshot-test-\(UUID().uuidString).physics")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try world.save(to: url)
+
+        let read = try PhysicsSnapshot(contentsOf: url)
+        #expect(read == saved, "the file holds exactly the snapshot")
+        #expect(read.bodyCount == 6)
+
+        let fresh = World3D()
+        #expect(fresh.load(contentsOf: url), "the file loads")
+        let error = zip(settled, fresh.bodies.map(\.position))
+            .map { ($0 - $1).length }.max() ?? .infinity
+        #expect(error == 0, "and the loaded pile stands where the saved one did")
+    }
+
+    /// Anything that isn't a snapshot is refused rather than half-read, and a
+    /// truncated one leaves the pile that is already standing alone.
+    @Test func aBadFileIsRefusedAndLeavesTheWorldStanding() {
+        #expect(PhysicsSnapshot(data: Data()) == nil)
+        #expect(PhysicsSnapshot(data: Data(repeating: 7, count: 64)) == nil)
+
+        let world = World3D()
+        pile(in: world, count: 4, settle: 300)
+        let saved = world.snapshot()
+        let settled = world.bodies.map(\.position)
+
+        // Keep the header, lose the body: a snapshot that opens and then stops.
+        let truncated = PhysicsSnapshot(data: saved.data.prefix(40))
+        #expect(truncated != nil, "the header still reads")
+        world.restore(truncated!)
+        #expect(world.bodies.count == 4, "the world was left alone")
+        let error = zip(settled, world.bodies.map(\.position))
+            .map { ($0 - $1).length }.max() ?? .infinity
+        #expect(error == 0, "down to the last bit")
+
+        #expect(world.load(contentsOf: FileManager.default.temporaryDirectory
+            .appendingPathComponent("ollin-there-is-no-such-file.physics")) == false)
+    }
+
+    // MARK: What a snapshot leaves out
+
+    /// A snapshot holds the rigid tier. A vehicle's chassis is an ordinary body
+    /// in `bodies`, so the check that matters is that it is *not* saved as a
+    /// loose crate: a restored world has the loose bodies and no vehicle.
+    @Test func theHigherTiersAreLeftOutRatherThanHalfSaved() {
+        let world = World3D()
+        world.ground = 0
+        world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, 1, 0))
+        world.addVehicle(.box(width: 1.8, height: 0.6, depth: 4),
+                         at: Vector3(6, 1, 0),
+                         wheels: [
+                            .wheel(at: Vector3(0.9, -0.1, 1.3), steers: true),
+                            .wheel(at: Vector3(-0.9, -0.1, 1.3), steers: true),
+                            .wheel(at: Vector3(0.9, -0.1, -1.3), driven: true),
+                            .wheel(at: Vector3(-0.9, -0.1, -1.3), driven: true),
+                         ])
+        world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(-6, 2, 0))
+        world.addSoftBody(from: Mesh.plane(width: 2, depth: 2, segments: 6),
+                          at: Vector3(0, 4, 6))
+        #expect(world.bodies.count == 2, "the chassis is one of the world's bodies")
+
+        let saved = world.snapshot()
+        #expect(saved.bodyCount == 1, "but only the loose crate is saved")
+
+        let fresh = World3D()
+        fresh.restore(saved)
+        #expect(fresh.bodies.count == 1)
+        #expect(fresh.vehicles.isEmpty)
+        #expect(fresh.characters.isEmpty)
+        #expect(fresh.softBodies.isEmpty)
+    }
+
+    /// Restoring empties whatever the world was holding first, so a snapshot
+    /// replaces a world rather than piling onto it.
+    @Test func restoringReplacesTheWorldRatherThanAddingToIt() {
+        let source = World3D()
+        source.ground = 0
+        for i in 0 ..< 3 {
+            source.addBody(.sphere(radius: 0.3), at: Vector3(Double(i), 1, 0))
+        }
+        let saved = source.snapshot()
+
+        let busy = World3D()
+        busy.ground = 5
+        for i in 0 ..< 9 {
+            busy.addBody(.box(width: 1, height: 1, depth: 1),
+                         at: Vector3(0, Double(i) + 6, 0))
+        }
+        busy.restore(saved)
+        #expect(busy.bodies.count == 3)
+        #expect(busy.ground == 0)
+    }
+
+    /// The counts on the snapshot itself say what is in it before anything is
+    /// restored, which is what a sketch checks a file with.
+    @Test func aSnapshotSaysWhatItHolds() {
+        let world = World3D()
+        world.ground = 0
+        let a = world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, 3, 0))
+        let b = world.addBody(.sphere(radius: 0.4), at: Vector3(0, 5, 0))
+        world.connect(a, b, .distance(from: a.position, to: b.position))
+        let saved = world.snapshot()
+        #expect(saved.bodyCount == 2)
+        #expect(saved.jointCount == 1)
+        #expect(saved.data.count > 20, "there is a payload behind the header")
+    }
+
+    /// A grab is a hand on a body, not a part of the world, so it is not saved
+    /// and a restored world is not still holding on to anything.
+    @Test func aGrabIsNotSaved() {
+        let world = World3D()
+        world.ground = 0
+        let crate = world.addBody(.box(width: 1, height: 1, depth: 1),
+                                  at: Vector3(0, 2, 0))
+        world.grab(crate, at: crate.position)
+        #expect(world.joints.count == 1)
+        #expect(world.snapshot().jointCount == 0)
+        world.restore(world.snapshot())
+        #expect(world.joints.isEmpty)
+    }
+}

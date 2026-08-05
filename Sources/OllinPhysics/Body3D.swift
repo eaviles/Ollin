@@ -229,6 +229,21 @@ public final class Body3D {
         set { cjolt_body_set_continuous(world.handle, id, newValue) }
     }
 
+    /// How much the body's surface grips what it slides against, `0` slick …
+    /// `1` grippy. Two touching bodies' frictions combine, so a puck on ice
+    /// needs both of them low.
+    public var friction: Double {
+        get { Double(cjolt_body_get_friction(world.handle, id)) }
+        set { cjolt_body_set_friction(world.handle, id, Float(newValue)) }
+    }
+
+    /// How much speed survives a bounce off this body, `0` dead … `1` lively.
+    /// Defaults to the world's `bounce` unless `addBody` was given its own.
+    public var restitution: Double {
+        get { Double(cjolt_body_get_restitution(world.handle, id)) }
+        set { cjolt_body_set_restitution(world.handle, id, Float(newValue)) }
+    }
+
     /// Whether the body is awake (a settled body sleeps until touched).
     public var isAwake: Bool { cjolt_body_is_active(world.handle, id) }
 

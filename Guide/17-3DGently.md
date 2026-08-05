@@ -1111,6 +1111,44 @@ world.ignoreCollisions(between: "gears", and: "gears")
 
 The [`3D/Physics/Contraption`](../Examples/3D/Physics/Contraption/) example is a workshop with one of each: that drive train, a hoist you can load, a platter allowed only to rise and spin, and a cart on a track. Drag any of it.
 
+## Keeping what settled
+
+Some arrangements you don't design, you find. A heap of stones tipped in one at a time and left to rock itself quiet is one of them: four hundred steps of falling and leaning went into it, and there is no way to write it down as code. It only exists in the world's memory, and closing the sketch loses it.
+
+So save it. `snapshot()` takes the whole world as it stands, and `restore(_:)` puts it back:
+
+```swift
+let settled = world.snapshot()      // once the heap has come to rest
+// …knock it over, drag stones out of it, wreck it…
+world.restore(settled)              // exactly the heap you had
+```
+
+A snapshot is a value you can keep, so it also goes to a file, which is how a heap survives quitting:
+
+```swift
+override func setup() {
+    world.ground = 0
+    if !world.load(contentsOf: file) {   // nothing there the first time
+        buildTheHeap()
+        try? world.save(to: file)
+    }
+}
+```
+
+Restoring is not "roughly where things were". Every body comes back in the same pose, moving at the same speed, spinning the same way, and, if it had gone to sleep, still asleep, so a saved heap doesn't shudder back into shape as it arrives. A door saved standing half open is still half open, and still stops where it used to, because a joint remembers the pose it was made in and the snapshot remembers that too.
+
+Now, you might reasonably ask why any of this is needed. If the code that built the heap is right there, why not run it again?
+
+<img src="Images/17-3DGently/Kept.jpg" alt="Three heaps of flat stones side by side on a dark floor. The first two, labelled saved and restored, are identical stone for stone. The third, labelled simulated again, is a visibly different heap" width="720">
+
+Three heaps, all from the same code. The first was simulated and captured. The second is that capture restored, which is exact. The third was simulated again with one stone released a ten-millionth of a unit higher, and that is the whole difference in the setup. Stones landing on stones magnify it: one lands a little differently, which tips the next, and by the twelfth you have a different heap.
+
+That is not a bug, it is what falling stones are. It does mean the same code can give you a slightly different heap on a machine whose floating point rounds one bit differently, which is exactly the situation a committed figure or a piece you want to keep is in. **Simulating it again gives you *a* heap; only saving gives you *that* heap.**
+
+A snapshot holds the rigid tier: every body with its collider and all its knobs, every joint between them, gears and racks, the collision groups and their rules, and the world's gravity, ground, bounce, and water. It does not hold characters, vehicles, ragdolls, or soft bodies, each of which is built from something a file has no way to carry (a rig, a wheel layout, a skinned figure, a mesh), so it says which ones it skipped and you add them back afterwards. One thing to watch: restoring empties the world first, so any `Body3D` you were holding onto is gone. Take them from `world.bodies` again. They come back in the order they were saved, and each one still knows its own `collider`, which is usually all a drawing loop needs.
+
+The [`3D/Physics/Cairn`](../Examples/3D/Physics/Cairn/) example is a heap of stones laid one at a time. Wreck it by dragging, press R and it is back exactly; press S, quit, and run it again, and the same cairn is standing there.
+
 ## What the depth buffer is for
 
 Chapter 14 filtered layers by their color. A 3D scene drawn into a layer carries something extra that a flat drawing never has: for every pixel, how far away the thing at that pixel is. That's the **depth buffer**, and three effects exist purely to use it.
@@ -1245,7 +1283,7 @@ The camera-on-an-orbit model is the shared convention of 3D tools everywhere, fr
 - Textures and wireframes: [`Mesh.textured(_:)`](../Docs/3D/3D.md#textures) also takes a `baseColor` for tinting a shared texture, and [`Mesh.uvs`](../Docs/3D/3D.md) is where the coordinates live if you're generating your own geometry.
 - [The 26 built-in matcaps](../Docs/3D/3D.md#the-built-in-matcaps), listed by family, plus `Matcap.shaded` for baking one from a color.
 - [Terrain](../Docs/Generators/Terrain.md): building heightfields from noise or subdivision, every erosion knob, and reading a field out as a mesh, an image, or samples.
-- [3D physics](../Docs/Simulation/Physics3D.md): the full `World3D` reference, every collider and joint kind, forces and impulses, and the camera-grab machinery, with the `3D/Physics` examples (a tower under cannon fire, a pile you can rummage through, a wrecking ball on a chain).
+- [3D physics](../Docs/Simulation/Physics3D.md): the full `World3D` reference, every collider and joint kind, forces and impulses, the camera-grab machinery, and [saving a world](../Docs/Simulation/Physics3D.md#snapshots) to load back later, with the `3D/Physics` examples (a tower under cannon fire, a pile you can rummage through, a wrecking ball on a chain).
 - Worked examples: [`Examples/3D/Geometry/Solids`](../Examples/3D/Geometry/Solids/Sketch.swift), [`Examples/3D/Geometry/ShapeFactory`](../Examples/3D/Geometry/ShapeFactory/Sketch.swift), [`Examples/3D/Geometry/Transforms`](../Examples/3D/Geometry/Transforms/Sketch.swift), [`Examples/3D/Lighting/LightingPresets`](../Examples/3D/Lighting/LightingPresets/Sketch.swift), [`Examples/3D/Lighting/Shadows`](../Examples/3D/Lighting/Shadows/Sketch.swift), [`Examples/3D/Materials/Materials`](../Examples/3D/Materials/Materials/Sketch.swift), [`Examples/3D/Materials/Matcap`](../Examples/3D/Materials/Matcap/Sketch.swift), [`Examples/3D/Geometry/LoadedMesh`](../Examples/3D/Geometry/LoadedMesh/Sketch.swift), [`Examples/3D/Geometry/LoadedScene`](../Examples/3D/Geometry/LoadedScene/Sketch.swift), and [`Examples/3D/Geometry/Terrain`](../Examples/3D/Geometry/Terrain/Sketch.swift).
 
 ---
