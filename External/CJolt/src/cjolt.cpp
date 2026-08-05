@@ -47,7 +47,9 @@
 #include <Jolt/Physics/PhysicsSettings.h>
 #include <Jolt/Physics/PhysicsSystem.h>
 #include <Jolt/Physics/Ragdoll/Ragdoll.h>
+#include <Jolt/Physics/SoftBody/SoftBodyContactListener.h>
 #include <Jolt/Physics/SoftBody/SoftBodyCreationSettings.h>
+#include <Jolt/Physics/SoftBody/SoftBodyManifold.h>
 #include <Jolt/Physics/SoftBody/SoftBodyMotionProperties.h>
 #include <Jolt/Physics/SoftBody/SoftBodySharedSettings.h>
 #include <Jolt/Physics/Vehicle/MotorcycleController.h>
@@ -59,7 +61,9 @@
 #include <algorithm>
 #include <cfloat>
 #include <cmath>
+#include <map>
 #include <mutex>
+#include <set>
 #include <thread>
 #include <unordered_map>
 #include <vector>
@@ -253,7 +257,12 @@ public:
 // mesh's triangles each report their own contact, so the listener counts a
 // pair's live contacts and emits one began as the count leaves zero and one
 // ended as it returns, which is the granularity a sketch asks about.
-class ContactRecorder final : public ContactListener {
+//
+// Soft bodies come through a second listener the solver keeps for them, whose
+// shape is entirely different (see the soft half below), and both are recorded
+// into this one buffer so a sketch reads one list.
+class ContactRecorder final : public ContactListener,
+                              public SoftBodyContactListener {
 public:
     void OnContactAdded(const Body &inBody1, const Body &inBody2,
                         const ContactManifold &inManifold,
@@ -298,6 +307,100 @@ public:
         mEvents.push_back(event);
     }
 
+    // The soft half. A soft body is outside the listener above: the solver
+    // keeps a separate one for it, and hands it a whole contact *set* in one
+    // callback (once per collision pass, and only when something touched),
+    // never a parting. So began and ended are derived rather than reported:
+    // the set is accumulated as it arrives and diffed against the previous
+    // step's by `finishSoftStep` once the step has returned.
+    void OnSoftBodyContactAdded(const Body &inSoftBody,
+                                const SoftBodyManifold &inManifold) override {
+        const RMat44 com = inSoftBody.GetCenterOfMassTransform();
+        // The body still carries the velocity it arrived with: the update
+        // averages the new particle velocities into it *after* this callback.
+        // So this is the approach speed, which is what an impact asks for, and
+        // reading the other body's would be a race.
+        const Vec3 approach = inSoftBody.GetLinearVelocity();
+        const CJoltBodyID soft = inSoftBody.GetID().GetIndexAndSequenceNumber();
+
+        std::lock_guard<std::mutex> lock(mMutex);
+        for (const SoftBodyVertex &vertex : inManifold.GetVertices()) {
+            if (!inManifold.HasContact(vertex)) { continue; }
+            const BodyID other = inManifold.GetContactBodyID(vertex);
+            if (other.IsInvalid()) { continue; }
+            // Both are in the soft body's own space, and the normal points out
+            // of the soft body into whatever the particle landed on.
+            const Vec3 point = Vec3(com * inManifold.GetLocalContactPoint(vertex));
+            const Vec3 normal = com.Multiply3x3(inManifold.GetContactNormal(vertex));
+            noteSoftTouch(soft, other.GetIndexAndSequenceNumber(), point, normal,
+                          approach);
+        }
+        // A sensor is reported without a per-particle plane, so its touch
+        // carries neither point nor normal, the way a parting does.
+        for (uint index = 0; index < inManifold.GetNumSensorContacts(); ++index) {
+            const BodyID sensor = inManifold.GetSensorContactBodyID(index);
+            if (sensor.IsInvalid()) { continue; }
+            noteSoftTouch(soft, sensor.GetIndexAndSequenceNumber(), Vec3::sZero(),
+                          Vec3::sZero(), Vec3::sZero());
+        }
+    }
+
+    /// Turns this step's soft-body contact sets into began and ended events.
+    /// Runs on the main thread once the step has returned, so a soft body that
+    /// reported nothing is the one whose touches have ended.
+    ///
+    /// With one deliberate exception: a soft body that has settled and gone to
+    /// sleep is not *asked* who it is touching, which is not the same as
+    /// having let go, so its list is held rather than emptied. (A rigid pile
+    /// does drop its contacts on sleeping, but that is the solver reporting a
+    /// removal; here the diff is ours to make.) It is also what tells the
+    /// buoyancy pass that a sunk sheet is lying on something rather than
+    /// stalled in mid water.
+    void finishSoftStep(PhysicsSystem &inSystem) {
+        std::lock_guard<std::mutex> lock(mMutex);
+        for (const auto &entry : mSoftSeen) {
+            if (!mSoftPairs.insert({entry.first, entry.second.soft}).second) {
+                continue;
+            }
+            CJoltContactEvent event{};
+            event.phase = CJOLT_CONTACT_BEGAN;
+            event.bodyA = CJoltBodyID(entry.first >> 32);
+            event.bodyB = CJoltBodyID(entry.first & 0xffffffffull);
+            store(entry.second.point, event.point);
+            store(entry.second.normal, event.normal);
+            event.speed = entry.second.speed;
+            mEvents.push_back(event);
+        }
+        for (auto entry = mSoftPairs.begin(); entry != mSoftPairs.end();) {
+            if (mSoftSeen.find(entry->first) != mSoftSeen.end()) {
+                ++entry;
+                continue;
+            }
+            BodyLockRead lock(inSystem.GetBodyLockInterface(), BodyID(entry->second));
+            if (lock.Succeeded() && !lock.GetBody().IsActive()) {
+                ++entry; // asleep, so nothing has changed: hold the touch
+                continue;
+            }
+            CJoltContactEvent event{};
+            event.phase = CJOLT_CONTACT_ENDED;
+            event.bodyA = CJoltBodyID(entry->first >> 32);
+            event.bodyB = CJoltBodyID(entry->first & 0xffffffffull);
+            mEvents.push_back(event);
+            entry = mSoftPairs.erase(entry);
+        }
+        mSoftSeen.clear();
+    }
+
+    /// Whether a soft body is resting against anything at all, which is what
+    /// says that its weight is being carried rather than that it has stalled.
+    bool isSoftTouching(CJoltBodyID soft) {
+        std::lock_guard<std::mutex> lock(mMutex);
+        for (const auto &entry : mSoftPairs) {
+            if (entry.second == soft) { return true; }
+        }
+        return false;
+    }
+
     int32_t count() {
         std::lock_guard<std::mutex> lock(mMutex);
         return int32_t(mEvents.size());
@@ -323,14 +426,53 @@ public:
     }
 
 private:
-    static uint64_t pairKey(const BodyID &inA, const BodyID &inB) {
-        const uint64_t a = inA.GetIndexAndSequenceNumber();
-        const uint64_t b = inB.GetIndexAndSequenceNumber();
+    /// What a soft body's first touching particle saw, kept until the step is
+    /// over and the pair can be compared with the previous step's.
+    struct SoftTouch {
+        Vec3 point = Vec3::sZero();
+        Vec3 normal = Vec3::sZero();
+        float speed = 0.0f;
+        CJoltBodyID soft = 0;
+    };
+
+    /// Records one soft-body-to-body touch for this step. The first particle
+    /// to report a pair is the one whose point and normal the event carries.
+    void noteSoftTouch(CJoltBodyID soft, CJoltBodyID other, Vec3Arg point,
+                       Vec3Arg normal, Vec3Arg approach) {
+        const uint64_t key = pairKey(soft, other);
+        if (mSoftSeen.find(key) != mSoftSeen.end()) { return; }
+        SoftTouch touch;
+        touch.soft = soft;
+        touch.point = point;
+        // A pair is stored low id first and a contact's normal always runs
+        // from the first toward the second, so it turns around when the soft
+        // body is the second of the two.
+        touch.normal = soft <= other ? normal : -normal;
+        // Along the normal out of the soft body, the approach velocity is the
+        // closing speed whichever way round the pair ended up stored.
+        touch.speed = std::max(0.0f, approach.Dot(normal));
+        mSoftSeen[key] = touch;
+    }
+
+    static uint64_t pairKey(CJoltBodyID inA, CJoltBodyID inB) {
+        const uint64_t a = inA;
+        const uint64_t b = inB;
         return a <= b ? (a << 32) | b : (b << 32) | a;
+    }
+
+    static uint64_t pairKey(const BodyID &inA, const BodyID &inB) {
+        return pairKey(inA.GetIndexAndSequenceNumber(),
+                       inB.GetIndexAndSequenceNumber());
     }
 
     std::mutex mMutex;
     std::unordered_map<uint64_t, int> mPairs;
+    // Ordered, so the soft diff walks its pairs the same way every run; the
+    // drain sorts what leaves anyway, but a stable walk keeps the two halves
+    // of the buffer from depending on hash order.
+    std::map<uint64_t, SoftTouch> mSoftSeen;
+    // Pair key -> which of the two is the soft body.
+    std::map<uint64_t, CJoltBodyID> mSoftPairs;
     std::vector<CJoltContactEvent> mEvents;
 };
 
@@ -688,6 +830,9 @@ CJoltWorld *cjolt_world_create(float gravityX, float gravityY, float gravityZ,
                         world->objectPairs);
     world->physics.SetGravity(Vec3(gravityX, gravityY, gravityZ));
     world->physics.SetContactListener(&world->contacts);
+    // One recorder answers both listeners: a soft body's touches are reported
+    // through a separate channel but land in the same buffer.
+    world->physics.SetSoftBodyContactListener(&world->contacts);
     return world;
 }
 
@@ -738,6 +883,9 @@ void cjolt_world_set_gravity(CJoltWorld *world, float x, float y, float z) {
 int cjolt_world_step(CJoltWorld *world, float dt, int collisionSteps) {
     EPhysicsUpdateError error = world->physics.Update(
         dt, std::max(1, collisionSteps), &world->tempAllocator, &world->jobSystem);
+    // A soft body's contacts arrive as a set rather than as events, so the
+    // began and ended of it are worked out here, once every pass has reported.
+    world->contacts.finishSoftStep(world->physics);
     return int(error);
 }
 
@@ -2770,6 +2918,94 @@ bool cjolt_soft_body_is_active(const CJoltWorld *world,
                                const CJoltSoftBody *body) {
     if (world == nullptr || body == nullptr) { return false; }
     return world->physics.GetBodyInterface().IsActive(body->id);
+}
+
+bool cjolt_soft_body_apply_buoyancy(CJoltWorld *world, CJoltSoftBody *body,
+                                    const float *heights, int32_t heightCount,
+                                    float buoyancy, float density,
+                                    float linearDrag, float dragArea, float band,
+                                    const float flow[3], float dt,
+                                    CJoltBuoyancyWake wake) {
+    SoftBodyMotionProperties *motion = softMotion(world, body);
+    Body *jbody = softBody(world, body);
+    if (motion == nullptr || jbody == nullptr || heights == nullptr
+        || dt <= 0.0f || buoyancy <= 0.0f) {
+        return false;
+    }
+    Array<SoftBodyMotionProperties::Vertex> &vertices = motion->GetVertices();
+    if (size_t(heightCount) < vertices.size()) { return false; }
+
+    // Half the ramp: a particle a full band under the surface is wholly in the
+    // water, one a band above it is wholly out. Without it a flat sheet has no
+    // waterline to hold, since every particle of it crosses at once.
+    const float half = std::max(band, 1.0e-4f);
+    bool anyWet = false, anyDry = false;
+    for (size_t index = 0; index < vertices.size(); ++index) {
+        if (vertices[index].mInvMass <= 0.0f) { continue; } // pinned, so held
+        if (heights[index] < half) { anyWet = true; } else { anyDry = true; }
+    }
+    if (!anyWet) { return false; }
+
+    if (!jbody->IsActive()) {
+        bool waking = wake == CJOLT_BUOYANCY_WAKE_ALWAYS;
+        // The same rule the rigid path follows: a rolling surface only concerns
+        // what it passes through, which for a body made of particles is exactly
+        // the one with some of them out of the water and some in. A sheet
+        // settled on the bottom sleeps on instead of being stirred every step.
+        if (!waking && wake == CJOLT_BUOYANCY_WAKE_AT_SURFACE) { waking = anyDry; }
+        // A body heavier than the fluid has no depth at which the fluid could
+        // hold it, so it has not settled, it has stalled: a sheet's area for
+        // its weight is enormous, so drag holds it below the solver's own sleep
+        // threshold and it would otherwise hang in mid water reading as though
+        // it floated. Resting against something is what says its weight is
+        // carried after all (and a sleeping soft body keeps its touches, so
+        // that answer holds rather than flickering).
+        if (!waking && buoyancy < 1.0f
+            && !world->contacts.isSoftTouching(
+                    body->id.GetIndexAndSequenceNumber())) {
+            waking = true;
+        }
+        if (!waking) { return false; }
+        world->physics.GetBodyInterface().ActivateBody(body->id);
+    }
+
+    // Velocities are in the body's own frame, so the transform carries the
+    // change back in.
+    const RMat44 com = jbody->GetCenterOfMassTransform();
+    const Vec3 gravity = world->physics.GetGravity() * motion->GetGravityFactor();
+    const Vec3 current = vec3(flow);
+    const float dragScale = 0.5f * std::max(0.0f, density)
+                            * std::max(0.0f, linearDrag) * std::max(0.0f, dragArea);
+
+    for (size_t index = 0; index < vertices.size(); ++index) {
+        SoftBodyMotionProperties::Vertex &v = vertices[index];
+        if (v.mInvMass <= 0.0f) { continue; } // a pinned particle holds
+        const float submerged =
+            std::clamp(0.5f - 0.5f * heights[index] / half, 0.0f, 1.0f);
+        if (submerged <= 0.0f) { continue; }
+
+        // Buoyancy is the fluid's density over the body's, so what it adds is
+        // that ratio of a gravity, upward: it needs neither the particle's mass
+        // nor its share of a volume the surface may not even enclose.
+        Vec3 change = (-buoyancy * submerged * dt) * gravity;
+
+        if (dragScale > 0.0f) {
+            const Vec3 velocity = com.Multiply3x3(v.mVelocity);
+            const Vec3 relative = current - velocity;
+            const float speed = relative.Length();
+            if (speed > 1.0e-6f) {
+                Vec3 drag = (dragScale * submerged * speed * v.mInvMass * dt)
+                            * relative;
+                // Drag may only take relative motion away, never push the
+                // particle past the water it is moving through.
+                const float delta = drag.Length();
+                if (delta > speed) { drag *= speed / delta; }
+                change += drag;
+            }
+        }
+        v.mVelocity += com.Multiply3x3Transposed(change);
+    }
+    return true;
 }
 
 // Queries -------------------------------------------------------------------

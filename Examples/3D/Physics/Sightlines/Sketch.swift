@@ -144,8 +144,10 @@ final class Sightlines: Sketch {
     /// The pulse: everything inside a sphere at the drone, shoved away from it.
     /// The sphere is not a body and never was, which is the point.
     func firePulse() {
-        for body in world.bodiesOverlapping(.sphere(radius: pulseRadius), at: drone) {
-            guard body.kind == .dynamic else { continue }
+        for caught in world.bodiesOverlapping(.sphere(radius: pulseRadius), at: drone) {
+            // An impulse only reaches a solid body: a soft one has no single
+            // mass to push, which is what the cast says.
+            guard let body = caught as? Body3D, body.kind == .dynamic else { continue }
             let away = body.position - drone
             let falloff = 1 - min(1, away.length / pulseRadius)
             body.applyImpulse((away.normalized + Vector3(0, 0.6, 0))

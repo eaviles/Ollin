@@ -53,7 +53,9 @@ struct Contact3DTests {
         #expect(landing.speed > 4)                    // ≈ √(2·9.8·2.5) = 7 units/s
 
         // The normal points from a toward b, whichever way round the pair fell.
-        let toB = landing.b.position - landing.a.position
+        let a = try! #require(landing.a as? Body3D)
+        let b = try! #require(landing.b as? Body3D)
+        let toB = b.position - a.position
         #expect(landing.normal.dot(toB) > 0)
         #expect(abs(abs(landing.normal.y) - 1) < 0.01)
     }
@@ -250,7 +252,7 @@ struct Contact3DTests {
             let world = World3D()
             world.addBody(.box(width: 2, height: 2, depth: 2), at: Vector3(0, 0, 0),
                           kind: .static, isSensor: sensing)
-            return world.pick(from: Vector3(0, 0, 8), to: Vector3(0, 0, -8)) != nil
+            return world.raycast(from: Vector3(0, 0, 8), to: Vector3(0, 0, -8)) != nil
         }
 
         #expect(pick(sensing: false))       // the solid twin is hit
@@ -356,5 +358,126 @@ struct Contact3DTests {
         let first = runScene()
         #expect(first.count > 8)
         #expect(runScene() == first)
+    }
+
+    // MARK: A cloth's touches
+
+    static let clothMesh = Mesh.plane(width: 2, depth: 2, segments: 10)
+
+    /// A soft body reaches the same list, though the solver reports it through
+    /// a channel of its own: a whole contact set per step and never a parting,
+    /// diffed back into a began and an ended. Twin: the same sheet dropped
+    /// where the floor is not.
+    @Test func aClothLandingReportsWhatItLandedOn() throws {
+        func drop(onto floor: Bool) throws -> (contacts: [Contact3D], landedOn: Bool) {
+            let world = World3D()
+            if floor { world.ground = 0 }
+            let cloth = try #require(world.addSoftBody(from: Self.clothMesh,
+                                                       at: Vector3(0, 2, 0)))
+            let seen = collect(world, steps: 90).filter { $0.involves(cloth) }
+            let onGround = seen.contains {
+                $0.phase == .began && $0.other(than: cloth) === world.groundBody
+            }
+            return (seen, onGround)
+        }
+        #expect(try drop(onto: false).contacts.isEmpty,
+                "nothing to land on, nothing to report")
+
+        let landed = try drop(onto: true)
+        #expect(landed.landedOn, "the cloth names the floor it came down on")
+        let landing = try #require(landed.contacts.first { $0.phase == .began })
+        #expect(abs(landing.point.y) < 0.05)         // touched at y = 0
+        // Dropped 2 units: sqrt(2 * 9.8 * 2) is about 6.3 units/s.
+        #expect(landing.speed > 4 && landing.speed < 9, "\(landing.speed)")
+        #expect(abs(abs(landing.normal.y) - 1) < 0.01)
+    }
+
+    /// A settled cloth keeps its touch list where a settled pile of crates
+    /// drops one. The difference is deliberate: the solver *reports* a rigid
+    /// pair being removed, but it merely stops asking a sleeping soft body who
+    /// it is against, and that is not the same as letting go.
+    @Test func aSettledClothHoldsItsTouchesWhereASettledCrateDropsThem() throws {
+        let world = World3D()
+        world.ground = 0
+        let cloth = try #require(world.addSoftBody(from: Self.clothMesh,
+                                                   at: Vector3(0, 1, 0)))
+        let crate = world.addBody(.box(width: 0.6, height: 0.6, depth: 0.6),
+                                  at: Vector3(4, 1, 0))
+        run(world, steps: 600)
+        #expect(!cloth.isAwake && !crate.isAwake, "both have settled")
+        #expect(cloth.touching.count == 1)
+        #expect(cloth.isTouching(try #require(world.groundBody)))
+        #expect(crate.touching.isEmpty, "the rigid rule, unchanged")
+    }
+
+    /// Taking the cloth off again reports the parting, so a began is always
+    /// answered by an ended.
+    @Test func liftingAClothOffReportsTheParting() throws {
+        let world = World3D()
+        world.ground = 0
+        let cloth = try #require(world.addSoftBody(from: Self.clothMesh,
+                                                   at: Vector3(0, 1, 0)))
+        run(world, steps: 240)
+        #expect(cloth.touching.count == 1)
+
+        for vertex in 0 ..< Self.clothMesh.positions.count { cloth.pin(vertex) }
+        var parted = false
+        for _ in 0 ..< 60 {
+            for vertex in 0 ..< Self.clothMesh.positions.count {
+                cloth.move(vertex, to: cloth.positions[vertex] + Vector3(0, 0.05, 0))
+            }
+            world.step(dt: 1.0 / 60)
+            if cloth.contacts.contains(where: { $0.phase == .ended }) { parted = true }
+        }
+        #expect(parted, "the ended event arrives as it comes off")
+        #expect(cloth.touching.isEmpty)
+    }
+
+    /// A sensor sees a cloth the way it sees anything else. Twin: the same
+    /// plate with nothing dropped through it.
+    @Test func aSensorSeesAClothPassThrough() throws {
+        func run(withCloth: Bool) throws -> Int {
+            let world = World3D()
+            world.ground = 0
+            let plate = world.addBody(.box(width: 3, height: 0.3, depth: 3),
+                                      at: Vector3(0, 0.6, 0), kind: .static,
+                                      isSensor: true)
+            if withCloth {
+                _ = try #require(world.addSoftBody(from: Self.clothMesh,
+                                                   at: Vector3(0, 2, 0)))
+            }
+            var seen = 0
+            for _ in 0 ..< 120 {
+                world.step(dt: 1.0 / 60)
+                seen += plate.entered.count
+            }
+            return seen
+        }
+        #expect(try run(withCloth: false) == 0)
+        #expect(try run(withCloth: true) >= 1, "the plate is crossed")
+    }
+
+    /// The soft half of the buffer replays like the rigid half: the diff walks
+    /// its pairs in a fixed order and the drain sorts what leaves.
+    @Test func aClothLogsTheSameContactsOnEveryRun() throws {
+        func log() throws -> [String] {
+            let world = World3D()
+            world.ground = 0
+            world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0.6, 0.5, 0),
+                          kind: .static)
+            _ = try #require(world.addSoftBody(from: Self.clothMesh, at: Vector3(0, 2, 0)))
+            var lines: [String] = []
+            for step in 0 ..< 200 {
+                world.step(dt: 1.0 / 60)
+                for contact in world.contacts {
+                    lines.append("\(step) \(contact.phase) "
+                                 + "\(String(format: "%.4f", contact.point.x))")
+                }
+            }
+            return lines
+        }
+        let first = try log()
+        #expect(!first.isEmpty)
+        #expect(try log() == first)
     }
 }

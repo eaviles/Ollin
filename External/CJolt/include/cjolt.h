@@ -419,6 +419,11 @@ typedef enum {
 /// *body pair*: the shapes of a compound or the triangles of a mesh may touch
 /// in many places, but a pair reports one began when the first of them lands
 /// and one ended when the last of them lifts.
+///
+/// A soft body's touches come through here too, though the solver reports them
+/// differently (a whole contact set per step, and no parting at all), so they
+/// are diffed into the same began/ended shape once each step is over. Either
+/// id may therefore name a soft body.
 typedef struct {
     CJoltContactPhase phase;
     /// The pair, always ordered so `bodyA` < `bodyB`.
@@ -848,11 +853,39 @@ void cjolt_soft_body_activate(CJoltWorld *world, CJoltSoftBody *body);
 bool cjolt_soft_body_is_active(const CJoltWorld *world,
                                const CJoltSoftBody *body);
 
+/// Applies one step of fluid buoyancy and drag to a soft body. The library's
+/// own buoyancy asserts on one (it works through a single mass and inertia,
+/// which a bag of particles has neither of), so this is the particle-by-particle
+/// form: each particle below the surface is pushed up and dragged on its own.
+///
+/// Where the rigid call takes one tangent plane for the whole body, this takes
+/// `heights`, one per particle in the solver's own order: how far that particle
+/// is *above* the fluid's surface, in meters (negative is under). Only the
+/// caller knows the shape of the surface, and a sheet is wide enough that one
+/// plane through its middle would have its edges riding a wave that is not
+/// there.
+///
+/// `buoyancy` is the ratio of the fluid's density to the body's, the same
+/// dimensionless number the library's rigid path forms internally; the caller
+/// forms it here because only it knows what a surface with no enclosed volume
+/// weighs per unit of displacement. `dragArea` is one particle's share of the
+/// surface, in m^2, and `band` is how far a particle's push ramps in over
+/// (about the spacing between particles), which is what lets a flat sheet
+/// settle at the waterline instead of flipping in and out of the water whole.
+///
+/// Returns true if any particle was in the fluid.
+bool cjolt_soft_body_apply_buoyancy(CJoltWorld *world, CJoltSoftBody *body,
+                                    const float *heights, int32_t heightCount,
+                                    float buoyancy, float density,
+                                    float linearDrag, float dragArea, float band,
+                                    const float flow[3], float dt,
+                                    CJoltBuoyancyWake wake);
+
 // Queries -------------------------------------------------------------------
 
 /// What a query is allowed to see. A zeroed struct (or NULL) is the default:
 /// every solid rigid body, sensors and soft bodies transparent, nothing
-/// ignored. Filters travel as a struct rather than as call arguments so that
+/// ignored. (Ollin's own queries all ask to see soft bodies.) Filters travel as a struct rather than as call arguments so that
 /// a new way to narrow a query (collision layers, groups) adds a field here
 /// instead of another parameter to every function below.
 typedef struct CJoltQueryFilter {
@@ -861,9 +894,9 @@ typedef struct CJoltQueryFilter {
     int32_t ignoreCount;
     /// Report detector volumes as well as solid bodies.
     bool includeSensors;
-    /// Report soft bodies, which have no rigid pose to hand back and are
-    /// therefore invisible to the public query surface. The mouse pick paths
-    /// set it, since a soft body is grabbable.
+    /// Report soft bodies. They are part of the world a query asks about (a
+    /// hanging sheet stops a sightline the way a wall does), so every caller
+    /// sets it; clearing it is how a query looks straight through cloth.
     bool includeSoftBodies;
     /// The collision group the query asks *as*: it sees what a moving body in
     /// that group would touch, so the world's ignore table narrows a question

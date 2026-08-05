@@ -592,7 +592,8 @@ A ray asks what is in the way; a sweep asks whether something fits. That is usua
 **An overlap** asks what is inside a region right now.
 
 ```swift
-for body in world.bodiesOverlapping(.sphere(radius: 4), at: blast) {
+for caught in world.bodiesOverlapping(.sphere(radius: 4), at: blast) {
+    guard let body = caught as? Body3D else { continue }   // only a solid takes one
     body.applyImpulse((body.position - blast).normalized * 12)
 }
 ```
@@ -815,7 +816,7 @@ One last move, because a soft body has no single pose for a force to push on: im
 banner.applyForce(Vector3(0, 0, gust))
 ```
 
-The [`3D/Physics/Drape`](../Examples/3D/Physics/Drape/) example puts all of it in one scene: a banner pegged to a washing line, a sheet thrown over a crate, and a ball you can let the air out of, all three draggable. Worth knowing before you build on this: soft bodies collide with the rigid world but not with each other or themselves, so a sheet folded double will pass through its own layers, and they do not report contacts the way the crates in "Asking what hit what" do.
+The [`3D/Physics/Drape`](../Examples/3D/Physics/Drape/) example puts all of it in one scene: a banner pegged to a washing line, a sheet thrown over a crate, and a ball you can let the air out of, all three draggable. Worth knowing before you build on this: soft bodies collide with the rigid world but not with each other or themselves, so a sheet folded double will pass through its own layers.
 
 ## Water, and what it holds up
 
@@ -869,9 +870,47 @@ if let surface = world.waterMesh(extent: 40) {
 
 Keep a little roughness in that material. A perfect mirror reflects the lower half of the environment wherever a wave tilts the reflection below the horizon, which lays flat grey patches along the troughs, and a sea is not a mirror anyway.
 
-Two things worth knowing before you build on this. `world.water` is an ocean, not a pool: everything below `level` is water, out to the horizon, so a harbour is what you get by putting static walls in it. And the water does not reach everything, on purpose. Sensors, static bodies, and a walking character go where you put them rather than where the water would. Soft bodies are the real gap: the solver has no buoyancy for them, so the sheet from the last section sinks. If you need something soft afloat, hang it off a rigid body that floats.
+Two things worth knowing before you build on this. `world.water` is an ocean, not a pool: everything below `level` is water, out to the horizon, so a harbour is what you get by putting static walls in it. And the water does not reach everything, on purpose: sensors, static bodies, and a walking character go where you put them rather than where the water would.
 
 The [`3D/Physics/Flotsam`](../Examples/3D/Physics/Flotsam/) example is the whole thing in one scene: crates from cork to nearly waterlogged riding a swell at their own depths, a stone anchor on the bottom, and a current carrying the lot past. Drag one under and let go.
+
+## A raft made of cloth
+
+The sheet from two sections ago floats too, and it is worth a section of its own because it is where the two halves of this chapter meet: the thing with no pose turns out to be an ordinary member of the world.
+
+Floating it is one number.
+
+```swift
+raft.density = 0.3           // rides high; above 1 it sinks
+```
+
+That reads exactly like a crate's `density`, and it means the same thing: how heavy this is for its size, against the water. A *closed* soft body does not even need telling, because a mass and a volume are all it takes and a beach ball has both. A sheet has no inside, so there is nothing to work it out from, and it starts as heavy as water, lying awash in the surface the way a wet sheet does. The line above is what makes it a raft.
+
+<img src="Images/17-3DGently/Raft.jpg" alt="A flat cloth raft floating on a calm sea carrying two crates, a sounding line hanging from a post beside it" width="560">
+
+Cloth in water behaves like cloth: its area for its weight is enormous, and drag is what measures that, so a heavy sheet sinks slowly and a floating one is carried along by a current rather than left standing in it.
+
+The second half is that a cloth turns up in `world.contacts`, the list from "Asking what hit what". A crate landing on the deck reports where it hit and how hard, exactly like a crate landing on the floor.
+
+```swift
+for contact in world.contacts where contact.phase == .began {
+    splash(at: contact.point, size: contact.speed)
+}
+```
+
+The one thing to notice is that a contact names `any Colliding3D`, not `Body3D`. That is deliberate, and it is the type telling you the truth: either side may be a cloth, and a cloth is not something you can push with an impulse or hang a joint from. When you want to act on what you found, say which kind you were after.
+
+```swift
+if let crate = contact.other(than: raft) as? Body3D {
+    crate.applyImpulse(Vector3(0, 3, 0))
+}
+```
+
+Everything else about touching works the way it did: `raft.touching` is what is aboard, a sensor sees the raft sail into it, and `raycast` stops at cloth, so a curtain blocks a sightline and a sounding line drops onto a deck.
+
+One asymmetry to keep in mind, because it is useful rather than annoying: a settled *pile of crates* falls asleep and stops reporting its touches, while a settled cloth keeps its list. The solver stops asking a sleeping soft body who it is against, which is not the same as it having let go.
+
+The [`3D/Physics/Raft`](../Examples/3D/Physics/Raft/) example is the three of them in one scene: a cloth raft riding a swell with cargo on it, a sounding line that shortens onto her deck when you sail her under it, and a harbour gate that lights when she passes through. Drag the deck to steer.
 
 ## Things that pass through each other
 

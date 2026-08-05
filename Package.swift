@@ -555,6 +555,7 @@ let package = Package(
         example("3D/Physics/Tumble", [.physics]),
         example("3D/Physics/Chain", [.physics]),
         example("3D/Physics/Windmill", [.physics]),
+        example("3D/Physics/Raft", [.physics]),
         example("3D/Physics/Rockslide", [.physics]),
         example("3D/Physics/Stroll", [.physics]),
         example("3D/Physics/Trigger", [.physics]),

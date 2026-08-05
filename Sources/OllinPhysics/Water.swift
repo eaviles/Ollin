@@ -307,5 +307,40 @@ extension World3D {
                 }
             }
         }
+
+        // Soft bodies are not in that sweep: the solver's own buoyancy works
+        // through one mass and one inertia, which a bag of particles has
+        // neither of, so each is floated particle by particle instead. They are
+        // few and each is one call, so the list is walked rather than queried.
+        let scale = unitsPerMeter
+        for soft in softBodies where soft.density > 0 {
+            // Where a rigid body is handed one tangent plane through its own
+            // centre, every particle is handed the surface directly above it.
+            // A sheet is wide enough that one plane would have its far edges
+            // riding a wave that is not under them, which curls a raft into a
+            // bowl; this is the same surface function, asked more often.
+            let particles = soft.particlePositions
+            if soft.surfaceHeights.count != particles.count {
+                soft.surfaceHeights = [Float](repeating: 0, count: particles.count)
+            }
+            for (index, particle) in particles.enumerated() {
+                let height = water.height(at: particle, phase: waterPhase)
+                soft.surfaceHeights[index] = Float((particle.y - height) / scale)
+            }
+            // The lift is the ratio of the two densities, the same
+            // dimensionless number the rigid path forms from a body's mass and
+            // the volume it displaces. A surface with no inside cannot be
+            // measured that way, which is why it is formed here instead.
+            let buoyancy = Float(max(0, water.density) / soft.density)
+            soft.surfaceHeights.withUnsafeBufferPointer { heights in
+                withFloats3(flow) { current in
+                    _ = cjolt_soft_body_apply_buoyancy(
+                        handle, soft.handle, heights.baseAddress,
+                        Int32(heights.count), buoyancy, fluidDensity, linearDrag,
+                        Float(soft.dragArea), Float(soft.particleSpacing),
+                        current, Float(dt), wake)
+                }
+            }
+        }
     }
 }

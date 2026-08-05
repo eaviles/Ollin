@@ -144,8 +144,8 @@ extension Sketch {
             return nil
         }
         let reach = ray.direction * (camera.far - camera.near)
-        guard let hit = world.pick(from: ray.origin, to: ray.origin + reach),
-              let soft = world.softBodies.first(where: { $0.bodyID == hit.id }) else {
+        guard let hit = world.raycast(from: ray.origin, to: ray.origin + reach),
+              let soft = hit.body as? SoftBody3D else {
             return nil
         }
         let point = hit.point
@@ -186,11 +186,13 @@ extension Sketch {
             return nil
         }
         let reach = ray.direction * (camera.far - camera.near)
-        // Looked up by solver handle rather than in `bodies`, so the ones the
-        // world keeps out of that list (a ragdoll's limbs, a character's
-        // stand-in, the ground slab) are pickable too.
-        guard let hit = world.pick(from: ray.origin, to: ray.origin + reach),
-              let body = world.bodyByID[hit.id] else {
+        // The ray sees everything the world holds, the ones kept out of
+        // `bodies` included (a ragdoll's limbs, a character's stand-in, the
+        // ground slab). A cloth in front of a crate answers for the crate: it
+        // is what the cursor is on, and `grabSoftBody(at:in:)` is what takes
+        // hold of one.
+        guard let hit = world.raycast(from: ray.origin, to: ray.origin + reach),
+              let body = hit.body as? Body3D else {
             return nil
         }
         return (body, hit.point)

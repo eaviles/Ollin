@@ -248,15 +248,136 @@ struct Buoyancy3DTests {
         #expect(abs(sensor.position.y + 0.5) < 1e-6)
     }
 
-    /// The library has no buoyancy for soft bodies, so the pass has to step
-    /// over one rather than trip on it. A cloth dropped in water sinks.
-    @Test func aSoftBodyIsLeftOutOfTheWater() throws {
+    /// A soft body floats too, though nothing about it is the rigid path: the
+    /// library's own buoyancy asserts on one, so each particle is pushed up on
+    /// its own. Twins: the same sheet, one lighter than the water and one
+    /// heavier.
+    @Test func aLightClothFloatsWhereAHeavyOneSinks() throws {
+        func drop(density: Double) throws -> Double {
+            let world = pool(Water(level: 0))
+            let cloth = try #require(
+                world.addSoftBody(from: Mesh.plane(width: 2, depth: 2, segments: 8),
+                                  at: Vector3(0, 3, 0), mass: 1, stiffness: 0.9))
+            cloth.density = density
+            run(world, steps: 900)
+            return cloth.center.y
+        }
+        let raft = try drop(density: 0.3)
+        let soaked = try drop(density: 4)
+        #expect(abs(raft) < 0.3, "a light sheet lies in the surface: \(raft)")
+        #expect(soaked < raft - 0.5, "a heavy one goes down: \(soaked)")
+    }
+
+    // MARK: What floats that has no pose
+
+    static let sheet = Mesh.plane(width: 2, depth: 2, segments: 10)
+
+    /// The waterline a raft settles at moves with how heavy it is, the same
+    /// promise the rigid path makes, worked out particle by particle instead of
+    /// from a displaced volume a sheet does not have.
+    @Test func aRaftRidesHigherTheLighterItIs() throws {
+        func settle(density: Double) throws -> Double {
+            let world = pool(Water(level: 0))
+            let raft = try #require(world.addSoftBody(from: Self.sheet,
+                                                      at: Vector3(0, 1.5, 0),
+                                                      mass: 2, stiffness: 0.9))
+            raft.density = density
+            run(world, steps: 900)
+            return raft.center.y
+        }
+        let cork = try settle(density: 0.2)
+        let heavier = try settle(density: 0.6)
+        #expect(cork > heavier + 0.03, "\(cork) vs \(heavier)")
+        #expect(cork < 0.4 && heavier > -0.4, "both are riding the surface")
+    }
+
+    /// A closed surface works its own density out from the mass and the volume
+    /// it encloses, so a beach ball floats without being told anything. A sheet
+    /// encloses nothing to work one out from, so it starts as heavy as water.
+    @Test func aClosedSurfaceKnowsItsOwnDensity() throws {
         let world = pool(Water(level: 0))
-        let cloth = try #require(
-            world.addSoftBody(from: Mesh.plane(width: 2, depth: 2, segments: 8),
-                              at: Vector3(0, 3, 0), mass: 1))
+        let ball = try #require(world.addSoftBody(from: Mesh.icosphere(radius: 0.5,
+                                                                      subdivisions: 2),
+                                                  at: Vector3(0, 1.5, 0), mass: 1,
+                                                  pressure: 3))
+        let cloth = try #require(world.addSoftBody(from: Self.sheet,
+                                                   at: Vector3(4, 1.5, 0), mass: 2))
+        // A 1 kg ball half a metre across is a balloon: light enough to ride
+        // almost wholly out of the water.
+        #expect(ball.density < 0.01)
+        #expect(cloth.density == 1)
         run(world, steps: 600)
-        #expect(cloth.center.y < -9, "a soft body is not floated")
+        #expect(ball.center.y > 0.25, "it sits on top: \(ball.center.y)")
+    }
+
+    /// The fix the first probe of this tier asked for. A sheet's area for its
+    /// weight is enormous, so drag holds a sinking one below the solver's own
+    /// sleep threshold and it would stall in mid water and read as floating.
+    /// A body the water cannot hold up is kept going instead. Twin: the same
+    /// sheet light enough to float, which does settle and sleep.
+    @Test func aSinkingClothKeepsGoingWhereAFloatingOneSettles() throws {
+        func fall(density: Double) throws -> (half: Double, full: Double, awake: Bool) {
+            let world = pool(Water(level: 0))
+            let cloth = try #require(world.addSoftBody(from: Self.sheet,
+                                                       at: Vector3(0, 1, 0),
+                                                       mass: 2, stiffness: 0.9))
+            cloth.density = density
+            run(world, steps: 600)
+            let half = cloth.center.y
+            run(world, steps: 600)
+            return (half, cloth.center.y, cloth.isAwake)
+        }
+        let sinking = try fall(density: 4)
+        #expect(sinking.full < sinking.half - 0.1,
+                "still going down: \(sinking.half) then \(sinking.full)")
+
+        let floating = try fall(density: 0.3)
+        #expect(abs(floating.full - floating.half) < 0.02, "settled")
+        #expect(!floating.awake, "and asleep at its waterline")
+    }
+
+    /// A swell carries a raft up and down with it, and a current takes it
+    /// along. Twins: still water for the heave, no current for the drift.
+    @Test func aSwellCarriesARaftAndACurrentDriftsIt() throws {
+        func sail(waves: Water.Waves?, flow: Vector3) throws -> (heave: Double, drift: Double) {
+            let world = pool(Water(level: 0, flow: flow, waves: waves))
+            let raft = try #require(world.addSoftBody(from: Self.sheet,
+                                                      at: Vector3(0, 0.6, 0),
+                                                      mass: 2, stiffness: 0.9))
+            raft.density = 0.3
+            var low = Double.infinity, high = -Double.infinity
+            for step in 0 ..< 600 {
+                world.step(dt: 1.0 / 60)
+                if step > 240 {
+                    low = min(low, raft.center.y)
+                    high = max(high, raft.center.y)
+                }
+            }
+            return (high - low, raft.center.x)
+        }
+        let calm = try sail(waves: nil, flow: .zero)
+        #expect(calm.heave < 0.02 && abs(calm.drift) < 0.2, "still water holds it still")
+
+        let swell = try sail(waves: Water.Waves(amplitude: 0.4, wavelength: 8), flow: .zero)
+        #expect(swell.heave > 0.3, "it rides the wave: \(swell.heave)")
+
+        let carried = try sail(waves: nil, flow: Vector3(1, 0, 0))
+        #expect(carried.drift > 5, "the current takes it: \(carried.drift)")
+    }
+
+    /// A pinned particle is held by whatever pinned it, so the water does not
+    /// lift it: a sheet pegged along one edge above the surface stays pegged.
+    @Test func theWaterDoesNotLiftPinnedParticles() throws {
+        let world = pool(Water(level: 0))
+        let flag = try #require(world.addSoftBody(from: Self.sheet, at: Vector3(0, 0.2, 0),
+                                                  mass: 2, stiffness: 0.9,
+                                                  pinned: { $0.z < -0.9 }))
+        let pegged = flag.positions.enumerated()
+            .filter { Self.sheet.positions[$0.offset].z < -0.9 }
+        let before = pegged.map(\.element)
+        run(world, steps: 600)
+        let after = pegged.map { flag.positions[$0.offset] }
+        #expect(zip(before, after).allSatisfy { ($0 - $1).length < 1e-6 })
     }
 
     // MARK: The surface a sketch draws

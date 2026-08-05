@@ -256,21 +256,24 @@ public final class Body3D {
 
     // MARK: Touching
 
-    /// Every body currently in contact with this one, in a stable order. For a
+    /// Everything currently in contact with this body, in a stable order. For a
     /// sensor that is everything inside it, including bodies that have settled
     /// and fallen asleep there:
     ///
     /// ```swift
     /// let load = plate.touching.count      // how many crates are on the plate
     /// ```
-    public var touching: [Body3D] {
-        (world.touchingIDs[id] ?? []).compactMap { world.bodyByID[$0] }
+    ///
+    /// A cloth lying on it is in the list too, as the `SoftBody3D` it is.
+    public var touching: [any Colliding3D] {
+        (world.touchingIDs[id] ?? []).compactMap { world.colliding(at: $0) }
     }
 
-    /// Whether the two bodies are touching right now (for a sensor, whether
-    /// `other` is inside it).
-    public func isTouching(_ other: Body3D) -> Bool {
-        world.touchingIDs[id]?.contains(other.id) ?? false
+    /// Whether the two are touching right now (for a sensor, whether `other` is
+    /// inside it). `other` may be a soft body.
+    public func isTouching(_ other: any Colliding3D) -> Bool {
+        guard let otherID = world.identifier(of: other) else { return false }
+        return world.touchingIDs[id]?.contains(otherID) ?? false
     }
 
     /// The touches involving this body that started or stopped during the last
@@ -279,19 +282,19 @@ public final class Body3D {
         world.contacts.filter { $0.involves(self) }
     }
 
-    /// Bodies that started touching this one during the last `step`: the
-    /// arrivals. For a sensor, what just came in.
+    /// What started touching this body during the last `step`: the arrivals.
+    /// For a sensor, what just came in.
     ///
     /// ```swift
     /// score += goal.entered.count
     /// ```
-    public var entered: [Body3D] {
+    public var entered: [any Colliding3D] {
         world.contacts.compactMap { $0.phase == .began ? $0.other(than: self) : nil }
     }
 
-    /// Bodies that stopped touching this one during the last `step`: the
-    /// departures. For a sensor, what just left.
-    public var exited: [Body3D] {
+    /// What stopped touching this body during the last `step`: the departures.
+    /// For a sensor, what just left.
+    public var exited: [any Colliding3D] {
         world.contacts.compactMap { $0.phase == .ended ? $0.other(than: self) : nil }
     }
 

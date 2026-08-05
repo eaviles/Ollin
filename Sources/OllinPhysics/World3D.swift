@@ -121,6 +121,10 @@ public final class World3D {
     /// sketch holds rather than a number.
     var bodyByID: [CJoltBodyID: Body3D] = [:]
 
+    /// Soft bodies by the same handles, since a contact or a query hit may
+    /// name one of those instead (`colliding(at:)` asks both).
+    var softBodyByID: [CJoltBodyID: SoftBody3D] = [:]
+
     /// The collision groups this world knows, in the order first named, which
     /// is also the solver's own indexing: slot 0 is `.default`.
     var groupNames: [CollisionGroup] = [.default]
@@ -546,11 +550,15 @@ public final class World3D {
             return nil
         }
         softBodies.append(soft)
+        softBodyByID[soft.bodyID] = soft
         return soft
     }
 
     /// Remove a soft body from the world.
     public func remove(_ softBody: SoftBody3D) {
+        softBodyByID[softBody.bodyID] = nil
+        forgetTouches(of: softBody.bodyID)
+        contacts.removeAll { $0.involves(softBody) }
         softBodies.removeAll { $0 === softBody }
     }
 
@@ -822,6 +830,7 @@ public final class World3D {
         ragdolls.removeAll()
         // Soft bodies own their own body and destroy it on release.
         softBodies.removeAll()
+        softBodyByID.removeAll()
         // Characters own their inner bodies and destroy them on release.
         characters.removeAll()
         for body in bodies { cjolt_body_destroy(handle, body.id) }

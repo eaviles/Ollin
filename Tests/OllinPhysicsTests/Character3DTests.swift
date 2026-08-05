@@ -345,7 +345,9 @@ struct Character3DTests {
         #expect(world.bodyByID[innerID] == nil)
         // The world keeps stepping with no character left in it.
         run(world, steps: 20)
-        #expect(world.contacts.allSatisfy { $0.a.id != innerID && $0.b.id != innerID })
+        #expect(world.contacts.allSatisfy {
+            world.identifier(of: $0.a) != innerID && world.identifier(of: $0.b) != innerID
+        })
     }
 
     /// The 3D physics determinism rule: the same build replays a scene

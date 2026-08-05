@@ -81,7 +81,9 @@ final class Sightlines: Sketch {
 
         // One pulse, fired on a known frame so the ring is in the picture.
         if frameCount == 130 {
-            for body in world.bodiesOverlapping(.sphere(radius: pulseRadius), at: drone) {
+            for caught in world.bodiesOverlapping(.sphere(radius: pulseRadius), at: drone) {
+                // Only a solid body takes an impulse.
+                guard let body = caught as? Body3D else { continue }
                 let away = body.position - drone
                 let falloff = 1 - min(1, away.length / pulseRadius)
                 body.applyImpulse((away.normalized + Vector3(0, 0.6, 0))

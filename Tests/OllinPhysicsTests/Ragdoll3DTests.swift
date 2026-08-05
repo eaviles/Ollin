@@ -446,7 +446,7 @@ struct Ragdoll3DTests {
         for _ in 0..<200 {
             world.step(dt: 1.0 / 60)
             for contact in world.contacts where contact.phase == .began {
-                let ids = [contact.a.id, contact.b.id]
+                let ids = [contact.a, contact.b].compactMap(world.identifier(of:))
                 if ids.contains(where: upperIDs.contains),
                    ids.contains(where: lowerIDs.contains) {
                     betweenFigures += 1
@@ -496,7 +496,8 @@ struct Ragdoll3DTests {
         // The world keeps stepping with no figure in it.
         run(world, steps: 30)
         #expect(world.contacts.allSatisfy { contact in
-            !ids.contains(contact.a.id) && !ids.contains(contact.b.id)
+            [contact.a, contact.b].compactMap(world.identifier(of:))
+                .allSatisfy { !ids.contains($0) }
         })
     }
 

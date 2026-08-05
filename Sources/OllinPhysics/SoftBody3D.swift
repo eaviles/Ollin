@@ -62,6 +62,15 @@ public final class SoftBody3D {
     /// same at any size.
     private let pressureScale: Double
 
+    /// One particle's share of the rest surface, in square meters: what the
+    /// water pushes on when it drags the body along.
+    let dragArea: Double
+
+    /// The mean distance between neighbouring particles, in meters. Buoyancy
+    /// ramps in over about this much depth, since that is the width of surface
+    /// one particle stands for.
+    let particleSpacing: Double
+
     /// The last read-back, and the world step it was taken at, so drawing the
     /// same body twice in a frame costs one copy rather than two.
     private var cachedMesh: Mesh?
@@ -69,6 +78,11 @@ public final class SoftBody3D {
 
     /// Scratch for the particle read-back, reused across frames.
     private var particles: [Vector3]
+
+    /// Scratch for the water pass: how far each particle is above the fluid's
+    /// surface, in meters. Kept here so the per-step buoyancy allocates
+    /// nothing.
+    var surfaceHeights: [Float] = []
 
     /// The total mass, kept so `unpin` can restore a particle's share of it.
     private let totalMass: Double
@@ -115,6 +129,12 @@ public final class SoftBody3D {
         // faces; anything else has a boundary and no inside to pressurise.
         isClosed = !edgeCounts.isEmpty && edgeCounts.values.allSatisfy { $0 == 2 }
         let volume = abs(sixVolume) / 6
+        // A closed surface holds a real volume, so how heavy it is for its size
+        // falls out of the mass it was given, the same way a collider's density
+        // decides a solid body's. A sheet holds nothing, so there is nothing to
+        // work it out from and it starts as heavy as water.
+        let restDensity = isClosed && volume > 1e-9
+            ? max(mass, 1e-6) / (volume * 1000) : 1
 
         let massKg = max(mass, 1e-6)
         totalMass = massKg
@@ -131,6 +151,8 @@ public final class SoftBody3D {
         let gravity = world.gravity.length > 1e-6 ? world.gravity.length : 9.8
         pressureScale = area > 1e-12 && volume > 1e-12
             ? gravity * massKg * volume / area : 0
+        dragArea = area / Double(welding.count)
+        particleSpacing = meanEdge
 
         var inverseMasses = [Float](repeating: Float(1 / particleMass),
                                     count: welding.count)
@@ -212,6 +234,7 @@ public final class SoftBody3D {
         guard let created else { return nil }
         handle = created
         bodyID = cjolt_soft_body_get_id(created)
+        self.density = restDensity
         self.pressure = pressure
         self.iterations = max(1, iterations)
         self.vertexRadius = vertexRadius
@@ -318,7 +341,57 @@ public final class SoftBody3D {
         }
     }
 
+    // MARK: Touching
+
+    /// Everything the surface is currently resting against or caught on, in a
+    /// stable order: the crate a sheet has draped over, the floor it settled
+    /// on, the sensor it drifted into.
+    ///
+    /// A soft body that settles and falls asleep stops reporting, the same way
+    /// a settled pile of crates does; a sensor is the way to ask about standing
+    /// occupancy.
+    public var touching: [any Colliding3D] {
+        (world.touchingIDs[bodyID] ?? []).compactMap { world.colliding(at: $0) }
+    }
+
+    /// Whether the surface is touching `other` right now.
+    public func isTouching(_ other: any Colliding3D) -> Bool {
+        guard let otherID = world.identifier(of: other) else { return false }
+        return world.touchingIDs[bodyID]?.contains(otherID) ?? false
+    }
+
+    /// The touches involving this surface that started or stopped during the
+    /// last `step`, out of the world's whole list.
+    public var contacts: [Contact3D] {
+        world.contacts.filter { $0.involves(self) }
+    }
+
+    /// What the surface landed on during the last `step`.
+    public var entered: [any Colliding3D] {
+        world.contacts.compactMap { $0.phase == .began ? $0.other(than: self) : nil }
+    }
+
+    /// What the surface came off during the last `step`.
+    public var exited: [any Colliding3D] {
+        world.contacts.compactMap { $0.phase == .ended ? $0.other(than: self) : nil }
+    }
+
     // MARK: Tuning it while it runs
+
+    /// How heavy the surface is compared with the water it may be dropped in,
+    /// exactly the way a collider's `density` is: `0.3` is a cork raft riding
+    /// high, `1` floats awash, and anything above sinks. It changes nothing but
+    /// buoyancy, so the body keeps the `mass` it was built with.
+    ///
+    /// A closed surface starts with the density its own mass and volume work
+    /// out to, so a beach ball just floats. A sheet encloses nothing to work
+    /// one out from, so it starts at `1` (fabric, lying awash in the surface);
+    /// set it to make a raft:
+    ///
+    /// ```swift
+    /// raft.density = 0.3
+    /// ```
+    public var density: Double = 1
 
     /// How hard the gas inside a closed surface pushes out, in gravities: 0 is a
     /// limp bag, 1 just holds its own weight up, and 2 to 4 reads as a firm ball

@@ -15,7 +15,8 @@ internal import CJolt
 ///
 /// Contacts are per body *pair*: a crate resting on a mesh floor touches it
 /// along many triangles, but that is one `began` when it lands and one `ended`
-/// when it lifts.
+/// when it lifts. A soft body's touches are in here too, so a sail landing on a
+/// crate reports the landing the same way the crate landing on the floor does.
 public struct Contact3D {
 
     /// Whether the two bodies just started touching or just stopped.
@@ -23,9 +24,11 @@ public struct Contact3D {
 
     public let phase: Phase
 
-    /// The two bodies, in a fixed order (not "the one that moved").
-    public let a: Body3D
-    public let b: Body3D
+    /// The two things that touched, in a fixed order (not "the one that
+    /// moved"). Either may be a `SoftBody3D` rather than a `Body3D`, which is
+    /// why they are typed as what a world holds rather than as bodies.
+    public let a: any Colliding3D
+    public let b: any Colliding3D
 
     /// Where they touched, in world units. `.zero` for an `ended` contact: by
     /// the time the solver notices a touch is over there is no longer a point
@@ -41,15 +44,21 @@ public struct Contact3D {
     /// it reads the force of the impact rather than what was left after the
     /// bounce. `0` when `ended`, and `0` for two bodies that slid into contact
     /// rather than struck.
+    ///
+    /// For a soft body it is the speed the whole surface arrived at, since a
+    /// cloth has no one velocity at the moment its first particle lands.
     public let speed: Double
 
-    /// Whether `body` is one of the two.
-    public func involves(_ body: Body3D) -> Bool { a === body || b === body }
+    /// Whether `thing` is one of the two.
+    public func involves(_ thing: any Colliding3D) -> Bool {
+        a === thing || b === thing
+    }
 
-    /// The far side of the contact from `body`, or `nil` if `body` isn't in it.
-    public func other(than body: Body3D) -> Body3D? {
-        if a === body { return b }
-        if b === body { return a }
+    /// The far side of the contact from `thing`, or `nil` if `thing` isn't in
+    /// it.
+    public func other(than thing: any Colliding3D) -> (any Colliding3D)? {
+        if a === thing { return b }
+        if b === thing { return a }
         return nil
     }
 }
@@ -84,7 +93,8 @@ extension World3D {
             // A body destroyed last frame still has its partings to report;
             // the touch lists above are already clean, so the event itself is
             // dropped rather than handed over half-resolved.
-            guard let a = bodyByID[event.bodyA], let b = bodyByID[event.bodyB] else {
+            guard let a = colliding(at: event.bodyA),
+                  let b = colliding(at: event.bodyB) else {
                 continue
             }
             let began = event.phase == CJOLT_CONTACT_BEGAN

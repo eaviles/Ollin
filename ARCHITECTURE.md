@@ -3085,6 +3085,27 @@ been destroyed), which is why an `ended` event carries no point or normal, and
 why an event naming a body Swift can no longer resolve is dropped after its
 bookkeeping is applied rather than handed over half-resolved.
 
+**Soft bodies come in through a second listener**, and its shape is nothing
+like the first. `SoftBodyContactListener::OnSoftBodyContactAdded` is called once
+per soft body per collision pass, carrying a `SoftBodyManifold` of that body's
+*whole* contact set, and there is no removal callback at all. So began and ended
+are derived rather than reported: the same `ContactRecorder` (registered as both
+listeners, so a sketch reads one list) accumulates the set as it arrives and
+`finishSoftStep` diffs it against the previous step's once `Update` has
+returned. Three details are load-bearing. The event's point and normal come
+from the *first* particle to report a pair, which keeps the choice deterministic
+(the particle array is in a fixed order); the pair is stored low id first and
+the normal turned around when the soft body is the second of the two, so the
+"normal runs from `a` toward `b`" rule holds either way. `speed` reads
+`inSoftBody.GetLinearVelocity()` **during the callback**, which is the velocity
+the body arrived with, because the update averages the new particle velocities
+into it only afterwards, and reading the *other* body's would be a documented
+race. And a sleeping soft body's touches are **held rather than ended**: the
+solver stops asking it, which is not the same as it having let go. (That is a
+deliberate difference from the rigid rule, where the solver genuinely reports
+the removal; it is also what tells the buoyancy pass below that a sunk sheet is
+lying on something rather than stalled in mid water.)
+
 Sensors ride `BodyCreationSettings::mIsSensor` plus a fourth object layer
 (`SENSOR`) that pairs only with `MOVING`, so a trigger volume never spends a
 step colliding against static scenery or another sensor. The DX decision here
@@ -3426,13 +3447,22 @@ shape's area and volume are measured once at build time to convert. It is
 refused on an open surface with a one-time note, the closed test being that
 every edge belongs to exactly two faces.
 
+**A soft body is a thing in the world**, which took three seams. Its touches
+reach `world.contacts` through the soft contact listener described above, and
+the same widening that made that possible (a contact naming
+`any Colliding3D` rather than two `Body3D`s) let the query surface stop looking
+through one. Buoyancy is its own loop (see *Water and buoyancy*). The shared
+protocol is deliberately tiny (`group`, `isAwake`, `wake()`, `userData`, all of
+which already existed on both types) because the *difference* between the two
+kinds is the honest part: a cast to `Body3D` is what a sketch writes before
+applying an impulse, and it fails for exactly the reason it should.
+
 **What the tier does not do**, all of it the library's own envelope rather than
 a shortcut: soft bodies collide with rigid bodies but not with each other or
-themselves; they are outside the rigid contact listener, so their touches do not
-reach `world.contacts`; impulses and constraints do not apply to one (hence
-`applyForce` for wind, and a grip that *pins a particle* rather than adding a
-joint); and there is no tearing, because a tear has to split a shared vertex and
-rebuild the constraint set, which cannot be done to a body mid-simulation.
+themselves; impulses and constraints do not apply to one (hence `applyForce` for
+wind, and a grip that *pins a particle* rather than adding a joint); and there
+is no tearing, because a tear has to split a shared vertex and rebuild the
+constraint set, which cannot be done to a body mid-simulation.
 
 `SoftBody3DTests` pins it behaviorally against counterfactual twins: a pinned
 sheet hangs where a free one lands on the floor, a stiffer cloth stretches less
@@ -3500,7 +3530,53 @@ from 0 to 3 left a sleeping crate frozen at the old waterline, three units
 under the new surface and outside its own bounds, so it never woke.
 `CJoltBuoyancyWake` names the three cases rather than passing a bool.
 
-`Buoyancy3DTests` (20) pins the tier against counterfactual twins: a cork
+**A soft body is floated by hand, particle by particle.** The library's own
+`ApplyBuoyancyImpulse` asserts `IsRigidBody()`, and rightly: it works through one
+inverse mass, one inertia tensor, and a submerged volume, and a bag of particles
+has none of them (`SoftBodyShape::GetSubmergedVolume` returns a submerged volume
+of exactly zero: it is a stub). So `cjolt_soft_body_apply_buoyancy` adds the
+impulse to each particle's velocity itself, and three decisions make it work.
+
+*What it takes is a ratio, not a density.* The lift a particle gets is
+`(ρ_fluid / ρ_body) · g` upward, which needs neither the particle's mass nor its
+share of a volume the surface may not even enclose, so the bridge takes that
+dimensionless number and Swift forms it, since only Swift knows what a sheet
+weighs per unit of displacement. Hence `SoftBody3D.density`: derived from mass
+over enclosed volume when the surface is closed (the rigid tier's
+derived-not-tuned rule), and `1` for an open sheet, which has no volume to
+derive one from.
+
+*Every particle gets its own surface height.* Where a rigid body is handed one
+tangent plane sampled under its centre, the call takes an array of per-particle
+heights above the surface, computed in Swift from the same `Water.height(at:)`
+the drawn mesh uses. This was not a refinement, it was the fix for a real
+defect: with one plane, a 4-unit raft on a 9-unit swell reads its far edges
+against a wave that is not under them, so every crest gave the edges extra lift
+and the deck **curled into a bowl** over about ten seconds. Sampling per
+particle made the same deck flat, and it is cheap (three sines per particle, on
+a body whose positions the frame reads anyway).
+
+*A particle's push ramps in over a band* about one particle spacing wide, rather
+than switching on at the surface. A flat sheet's particles all cross the
+waterline at the same instant, so a hard test leaves it with no waterline to
+hold and it chatters; with the band, the deck settles where the mean submerged
+fraction balances its weight.
+
+Sleeping needed one more rule than the rigid path. A cloth's area for its weight
+is enormous, so drag holds a *sinking* sheet below Jolt's own sleep threshold
+(`mPointVelocitySleepThreshold`, compared against a squared speed, so an
+effective 0.17 m/s) and it would stop dead in mid water and read as though it
+floated. The test that fixes it is not a measurement but a fact about the two
+densities: **a body heavier than the fluid has no depth at which the fluid could
+hold it**, so if it is asleep, submerged, and touching nothing, it has stalled
+rather than settled, and it is woken. "Touching nothing" is exactly why a
+sleeping soft body keeps its touch list: a sheet lying on the sea bed has its
+weight carried and is left alone. An earlier draft compared the *measured* lift
+against 1 and failed, because a floating raft's balance sits a few percent under
+a full gravity (measured 0.92: the band means it settles slightly high, and the
+solver freezes it there).
+
+`Buoyancy3DTests` (25) pins the tier against counterfactual twins: a cork
 floats where a stone sinks and where the same cork with no water just falls,
 the waterline tracks density across the range, denser water floats the same
 body higher, drag settles a body that otherwise still bobs after a minute, a
@@ -3532,19 +3608,26 @@ used, so statics stay visible and the ghost layer (grab anchors) never is.
 
 **What a query is blind to was chosen, not inherited.** A sensor is a region to
 be inside rather than a surface to hit, so it is transparent unless asked for,
-which is the rule mouse picking already followed. A soft body is transparent for
-a different reason: it has no single rigid pose, so there is no `Body3D` to hand
-back, matching its absence from `contacts` and `body(under:in:)`. Bodies the
-world keeps out of `bodies` (the ground slab, a character's stand-in, a
-ragdoll's limbs) *are* visible, because hits resolve through `bodyByID` rather
-than by searching that array, which is what makes a ground probe and a
-line-of-sight check on a walking figure work at all.
+which is the rule mouse picking already followed. Soft bodies started
+transparent for a different reason (no single rigid pose meant no `Body3D` to
+hand back), and that reason **went away** with the soft-contact work: once a
+touch could name `any Colliding3D`, so could a hit, and a hanging sheet blocking
+a sightline is plainly the right answer. So `Hit3D.body` is
+`any Colliding3D` and every query sees cloth (`ignoring:` and collision groups
+are how to look through one). Every public call site of `hit.body` was an
+identity comparison, so the widening cost one cast, in the one place that
+applies an impulse to what it found. Bodies the world keeps out of `bodies` (the
+ground slab, a character's stand-in, a ragdoll's limbs) *are* visible too,
+because hits resolve through `bodyByID` rather than by searching that array,
+which is what makes a ground probe and a line-of-sight check on a walking figure
+work at all.
 
-**The mouse pick is the same call.** `World3D.pick(from:to:)` is the internal
-ray with `includeSoftBodies` on, which is why the soft-body grab still works
-while the public surface stays rigid-only; `body(under:in:)` and
-`grabSoftBody(at:in:)` both go through it, so there is one ray implementation
-rather than a public one and a private one that can drift.
+**The mouse pick is the same call.** It used to be a separate internal ray
+(`World3D.pick`) that differed only by seeing soft bodies; once the public
+queries saw them too it had nothing left to be, so it went away and
+`body(under:in:)` and `grabSoftBody(at:in:)` both call `raycast` and cast the
+hit to the kind they can use. A cloth hanging in front of a crate therefore
+answers for the cloth, which is what the cursor is on.
 
 The rest is mechanical, with two details worth knowing. A ray's surface normal
 can only come from the body itself (the sub-shape id names the face, and a

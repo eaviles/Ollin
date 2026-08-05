@@ -288,32 +288,38 @@ struct Query3DTests {
 
     // MARK: What a query is blind to
 
-    /// A soft body has no rigid pose to hand back, so the query surface looks
-    /// straight through one, the way `world.contacts` never mentions it. The
-    /// twin proves the ray would otherwise have stopped there: the same sheet as
-    /// a rigid slab is what it reports.
-    @Test func softBodiesAreInvisibleToQueries() throws {
+    /// A soft body is part of the world a query asks about: a curtain stops a
+    /// sightline the way a wall does, and the hit names the cloth. Twins: the
+    /// same sheet as a rigid slab stops the ray at the same height, and
+    /// `ignoring:` is what looks through one.
+    @Test func aClothStopsARayTheWayASlabDoes() throws {
         /// How high the ray stopped: at the sheet hanging at y = 3, or at the
         /// floor below it.
-        func stoppedAt(cloth: Bool) throws -> Double {
+        func stoppedAt(cloth: Bool, ignoringIt: Bool = false) throws -> Double {
             let world = World3D()
             world.addBody(.box(width: 6, height: 1, depth: 6), at: .zero,
                           kind: .static)
+            var sheet: SoftBody3D?
             if cloth {
-                _ = world.addSoftBody(from: Mesh.plane(width: 4, depth: 4, segments: 8),
-                                      at: Vector3(0, 3, 0))
+                sheet = world.addSoftBody(from: Mesh.plane(width: 4, depth: 4, segments: 8),
+                                          at: Vector3(0, 3, 0))
             } else {
                 world.addBody(.box(width: 4, height: 0.1, depth: 4),
                               at: Vector3(0, 3, 0), kind: .static)
             }
             let hit = try #require(world.raycast(from: Vector3(0, 6, 0),
-                                                 to: Vector3(0, -2, 0)))
+                                                 to: Vector3(0, -2, 0),
+                                                 ignoring: ignoringIt
+                                                     ? [sheet].compactMap { $0 } : []))
+            if cloth && !ignoringIt { #expect(hit.body === sheet) }
             return hit.point.y
         }
         #expect(try abs(stoppedAt(cloth: false) - 3.05) < 0.1,
-                "a rigid sheet at that height is what stops the ray")
-        #expect(try abs(stoppedAt(cloth: true) - 0.5) < 0.1,
-                "a cloth at that height is not")
+                "a rigid sheet at that height stops the ray")
+        #expect(try abs(stoppedAt(cloth: true) - 3) < 0.1,
+                "and so does a cloth")
+        #expect(try abs(stoppedAt(cloth: true, ignoringIt: true) - 0.5) < 0.1,
+                "unless the ray is told to look through it")
     }
 
     // MARK: Scale and repeatability
@@ -365,7 +371,8 @@ struct Query3DTests {
     }
 }
 
-/// Identity comparison for a list of bodies, so a hit order reads as one line.
-private func === (lhs: [Body3D], rhs: [Body3D]) -> Bool {
+/// Identity comparison for a list of whatever a world holds, so a hit order
+/// reads as one line.
+private func === (lhs: [any Colliding3D], rhs: [any Colliding3D]) -> Bool {
     lhs.count == rhs.count && zip(lhs, rhs).allSatisfy { $0 === $1 }
 }

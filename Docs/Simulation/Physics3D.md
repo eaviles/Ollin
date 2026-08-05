@@ -406,6 +406,14 @@ Contacts are per body **pair**. A crate resting on a mesh floor touches it along
 
 An `ended` contact carries only the pair: by the time the solver notices a touch is over there is nothing left to measure, and the other body may already have been removed, so `point`, `normal`, and `speed` are zero there.
 
+The two sides are typed `any Colliding3D`, not `Body3D`, because either may be a [soft body](#softbodies): a cloth is a real thing in the world that lands on floors and sails into sensors, but there is nothing to push it with and no single pose to read, and the type is what says so. `involves`, `other(than:)`, and `===` all work either way; reach for the concrete kind when you want to act on it:
+
+```swift
+if let crate = contact.other(than: raft) as? Body3D {
+    crate.applyImpulse(Vector3(0, 3, 0))    // only a solid takes one
+}
+```
+
 Each body can be asked directly, out of the same list:
 
 ```swift
@@ -510,7 +518,7 @@ Worked example: `Examples/3D/Physics/Sieve` sorts three colors of bead down one 
 
 `contacts` reports what the solver noticed while it stepped. A **query** asks it something it was never asked, between steps: what is along this line, what would a shape run into, what is inside this region right now. All of them answer immediately, none of them changes anything, and none needs a body built to ask with.
 
-Every answer is a `Hit3D`: the `body`, the `point` where the query touched it, the outward surface `normal` there, and `distance`, how far along the query the touch was (from a ray's start, or how far a swept shape travelled).
+Every answer is a `Hit3D`: what it ran into (`body`, typed `any Colliding3D` since it may be a [soft body](#softbodies)), the `point` where the query touched it, the outward surface `normal` there, and `distance`, how far along the query the touch was (from a ray's start, or how far a swept shape travelled).
 
 **Rays.** `raycast(from:to:)` returns the nearest body along a segment, `raycastAll(from:to:)` every body along it, nearest first.
 
@@ -538,14 +546,15 @@ let height = (below?.point.y ?? 0) + 1.5
 **Overlaps.** `bodiesOverlapping(_:at:)` returns the bodies inside a shape placed in the world, in a stable order, one entry per body however many of its parts are inside. `bodiesContaining(_:)` is the same question for a bare point.
 
 ```swift
-for body in world.bodiesOverlapping(.sphere(radius: 4), at: blast) {
+for caught in world.bodiesOverlapping(.sphere(radius: 4), at: blast) {
+    guard let body = caught as? Body3D else { continue }   // only a solid takes one
     body.applyImpulse((body.position - blast).normalized * 12)
 }
 ```
 
 A [sensor](#sensors) answers the same question *continuously* from a body that exists in the scene, which is what a pressure plate or a goal wants. An overlap answers it once, anywhere, with a shape that never existed.
 
-**What a query sees.** Solid bodies, static scenery and the `ground` slab included, plus the ones the world keeps out of `bodies` (a character's stand-in, a ragdoll's limbs), so a walking figure can be spotted through `character.body`. Two things are deliberately transparent: **sensors**, since a detector volume is a region to be inside rather than a surface to hit (pass `includingSensors: true` to have them reported too), and **soft bodies**, which have no single rigid pose to hand back, matching their absence from `contacts` and `body(under:in:)`. `ignoring:` takes bodies to look straight through, which is how something casts from inside itself:
+**What a query sees.** Solid bodies, static scenery and the `ground` slab included, plus the ones the world keeps out of `bodies` (a character's stand-in, a ragdoll's limbs), so a walking figure can be spotted through `character.body`. **Soft bodies** are in there too: a hanging sheet stops a sightline the way a wall does, and the hit names the `SoftBody3D`. One thing is deliberately transparent: a **sensor**, since a detector volume is a region to be inside rather than a surface to hit (pass `includingSensors: true` to have them reported too). `ignoring:` takes anything to look straight through, which is how something casts from inside itself, or through a curtain:
 
 ```swift
 let ahead = world.raycast(from: robot.position, to: target,
@@ -907,9 +916,21 @@ override func mouseReleased() {
 if let grip { dragSoftGrab(grip, to: Vector2(mouseX, mouseY)) }
 ```
 
-**What a soft body cannot do yet.** The solver collides them with the rigid bodies around them but not with each other, and not with themselves, so a sheet folded double will pass through its own layers (which reads as a flicker where the two lie together). They are also outside the contact surface above: a soft body's touches do not appear in `world.contacts`, and it is invisible to `body(under:in:)` (use `grabSoftBody(at:in:)`). Tearing is not offered, because a real tear has to split a shared vertex in two and rebuild the surface, which the solver has no way to do while it runs.
+**A soft body is part of the world**, not a thing draped over it, so the rest of this page applies to one:
 
-The worked example is [`3D/Physics/Drape`](../../Examples/3D/Physics/Drape/): a banner pegged to a washing line that flaps in a gusting wind, a sheet thrown over a crate, and a beach ball you can let the air out of.
+- **It turns up in `world.contacts`.** A cloth landing on a crate reports a `began` with a point and an approach speed, and a `ended` when it comes off, exactly like anything else; `cloth.touching`, `.contacts`, `.entered`, and `.exited` read the same lists a body's do, and a sensor sees a cloth sail into it. Two details are its own. A soft body has no one velocity at the moment its first particle lands, so `speed` is the speed the whole surface arrived at. And where a settled *pile of crates* drops its touches when it falls asleep, a settled cloth **keeps** its list: the solver stops asking a sleeping soft body who it is against, which is not the same as it having let go.
+- **It floats.** [Water](#water) pushes each of its particles up on its own, and each particle rides the surface directly above it, so a raft follows the shape of a swell rather than one plane through its middle. What decides how high it rides is `density`, relative to the water's the same way a collider's is. A *closed* surface works its own out from the mass and the volume it holds, so a beach ball just floats; a sheet holds no volume to work one out from, so it starts as heavy as water (lying awash) and one line makes it a raft:
+
+  ```swift
+  raft.density = 0.3        // rides high; above 1 it sinks
+  ```
+
+  A sheet's area for its weight is enormous, which is exactly what drag measures, so a cloth heavier than water sinks slowly and a floating one is carried along by a current rather than left behind by it.
+- **A query can find it.** `raycast`, `sweep`, and the overlap calls all see soft bodies, so a hanging sheet blocks a sightline and a `Hit3D` may name a `SoftBody3D`. To look through one, name it in `ignoring:` or put it in a collision group the query does not ask as.
+
+**What a soft body still cannot do.** The solver collides them with the rigid bodies around them but not with each other, and not with themselves, so a sheet folded double will pass through its own layers (which reads as a flicker where the two lie together). Impulses, joints, and grabs do not reach one, and `body(under:in:)` answers only for solids (use `grabSoftBody(at:in:)`). Tearing is not offered, because a real tear has to split a shared vertex in two and rebuild the surface, which the solver has no way to do while it runs.
+
+The worked examples are [`3D/Physics/Drape`](../../Examples/3D/Physics/Drape/) (a banner pegged to a washing line that flaps in a gusting wind, a sheet thrown over a crate, and a beach ball you can let the air out of) and [`3D/Physics/Raft`](../../Examples/3D/Physics/Raft/) (a cloth raft riding a swell with cargo on it, a sounding line that stops at her deck, and a harbour gate that reports her sailing through).
 
 <a name="water"></a>
 
@@ -966,11 +987,13 @@ if let surface = world.waterMesh(extent: 40) {
 
 **Riding higher than it should.** `Body3D.buoyancy` multiplies what the water would otherwise do to one body: `1` is what its density says, `2` floats it as though it were half as heavy, `0` sinks it whatever it is made of. Reach for `density` first and keep this for the one crate that has to bob higher than the rest.
 
-**What the water leaves alone.** Sensors, static and kinematic bodies, and a character's capsule are not floated: a detector volume and a walking figure go where the sketch puts them, not where the water would. The solver has no buoyancy for soft bodies either, so a cloth dropped in the sea sinks through it; if you need something soft to float, hang it off a rigid body that does. The water itself is an ocean rather than a pool: everything below `level` is water, out to the horizon, so a container of water needs its own walls built from static bodies (which is all a harbour is).
+**Cloth floats too.** A [soft body](#softbodies) is floated particle by particle, since it has neither the one mass nor the one shape the rigid path works from, and each particle rides the surface directly above it rather than a plane through the body's middle, so a raft follows the swell instead of being curled by it. Its own `density` decides how high it rides: derived from mass and volume for a closed surface (a beach ball just floats), and `1` for a sheet, which holds no volume to derive one from, so `raft.density = 0.3` is what makes a sail into a raft. Drag bites much harder on cloth than on a crate, because a sheet's area for its weight is enormous: a heavy one sinks slowly and a floating one is carried by a current rather than left behind by it.
+
+**What the water leaves alone.** Sensors, static and kinematic bodies, and a character's capsule are not floated: a detector volume and a walking figure go where the sketch puts them, not where the water would. The water itself is an ocean rather than a pool: everything below `level` is water, out to the horizon, so a container of water needs its own walls built from static bodies (which is all a harbour is).
 
 One thing worth knowing about sleeping. A floating body settles at its waterline and then goes to sleep, which is what you want (it stops costing anything and holds its level exactly). If you move the water afterwards, by changing the level or any other setting, everything afloat is woken so it can follow. A swell wakes only what it actually washes over, which is why a stone that has sunk to the bottom stays asleep under a rolling sea.
 
-The worked example is [`3D/Physics/Flotsam`](../../Examples/3D/Physics/Flotsam/): crates from cork to nearly waterlogged riding a swell at their own depths, a stone anchor on the bottom, and a current carrying the lot past. Drag one under and let go.
+The worked examples are [`3D/Physics/Flotsam`](../../Examples/3D/Physics/Flotsam/) (crates from cork to nearly waterlogged riding a swell at their own depths, a stone anchor on the bottom, and a current carrying the lot past) and [`3D/Physics/Raft`](../../Examples/3D/Physics/Raft/), where the thing afloat is a cloth. Drag either about.
 
 <a name="grabbing"></a>
 
