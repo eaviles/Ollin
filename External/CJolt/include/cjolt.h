@@ -120,7 +120,28 @@ typedef struct {
     bool isSensor;
     /// Which collision group the body is in; 0 is the default group.
     int32_t group;
+    /// Which of the six degrees of freedom the body may use, as a mask of
+    /// CJOLT_FREEDOM_* bits. 0 means all six (so a zeroed descriptor keeps the
+    /// unrestricted default); a mask with no translation and no rotation bit
+    /// is rejected the same way.
+    uint32_t freedom;
+    /// Sweep the body's shape along its path each step instead of only testing
+    /// where it lands, so a small quick body cannot pass through a thin wall
+    /// between one step and the next. Costs nothing while the body moves less
+    /// than about three quarters of its own inner radius per step.
+    bool continuous;
 } CJoltBodyDesc;
+
+/// The six degrees of freedom a body may be restricted to, in world axes.
+enum {
+    CJOLT_FREEDOM_MOVE_X = 0x01,
+    CJOLT_FREEDOM_MOVE_Y = 0x02,
+    CJOLT_FREEDOM_MOVE_Z = 0x04,
+    CJOLT_FREEDOM_TURN_X = 0x08,
+    CJOLT_FREEDOM_TURN_Y = 0x10,
+    CJOLT_FREEDOM_TURN_Z = 0x20,
+    CJOLT_FREEDOM_ALL = 0x3f,
+};
 
 typedef enum {
     CJOLT_CONSTRAINT_HINGE = 0,    // anchorA + axis; optional angular limits
@@ -204,6 +225,20 @@ void cjolt_body_activate(CJoltWorld *world, CJoltBodyID body);
 void cjolt_body_set_friction(CJoltWorld *world, CJoltBodyID body, float friction);
 void cjolt_body_set_restitution(CJoltWorld *world, CJoltBodyID body, float restitution);
 void cjolt_body_set_gravity_factor(CJoltWorld *world, CJoltBodyID body, float factor);
+float cjolt_body_get_gravity_factor(const CJoltWorld *world, CJoltBodyID body);
+/// Restricts which degrees of freedom the body may use (a mask of
+/// CJOLT_FREEDOM_* bits; 0 means all six). The solver stores the restriction
+/// inside the body's mass properties, so this re-derives the inverse mass and
+/// inertia: `mass` is the body's own mass in kg, used because a body whose
+/// translation was locked reports an inverse mass of zero and cannot say what
+/// it weighed; pass <= 0 to take the shape's own. Wakes the body, whose
+/// equilibrium has just changed under it.
+void cjolt_body_set_freedom(CJoltWorld *world, CJoltBodyID body, uint32_t freedom,
+                            float mass);
+uint32_t cjolt_body_get_freedom(const CJoltWorld *world, CJoltBodyID body);
+/// Turns path sweeping (continuous collision detection) on or off for a body.
+void cjolt_body_set_continuous(CJoltWorld *world, CJoltBodyID body, bool continuous);
+bool cjolt_body_get_continuous(const CJoltWorld *world, CJoltBodyID body);
 /// Moves a body into another collision group. Survives a later motion-type
 /// change (the layer carries both, and switching one keeps the other).
 void cjolt_body_set_group(CJoltWorld *world, CJoltBodyID body, int32_t group);

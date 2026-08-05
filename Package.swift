@@ -564,6 +564,7 @@ let package = Package(
         example("3D/Physics/Flotsam", [.physics]),
         example("3D/Physics/Sightlines", [.physics]),
         example("3D/Physics/Sieve", [.physics]),
+        example("3D/Physics/Bagatelle", [.physics]),
         example("3D/Raymarching/RaymarchedSDF"),
         example("3D/Raymarching/RaymarchedShapes"),
         example("3D/Raymarching/RaymarchedSculpt"),

@@ -51,6 +51,7 @@ See the [3D physics reference](../../Docs/Simulation/Physics3D.md).
 | [Flotsam](Physics/Flotsam/) | A harbour after a spill: crates from cork to nearly waterlogged riding a swell at their own depths, a stone anchor on the bottom, and a current carrying the lot past. Drag one under and let go. `world.water`, `Water.Waves`, `density`, `waterMesh`, `flow`. |
 | [Sightlines](Physics/Sightlines/) | A yard under watch: a lamp lighting only the crates it can actually see, a drone holding its clearance over whatever passes below, and a pulse that shoves everything inside a sphere. Drag a crate into cover. `raycast`, `sweep`, `bodiesOverlapping`. |
 | [Sieve](Physics/Sieve/) | Beads of three colors sorted down one ramp: each window in the ramp is told to ignore one color, so that color falls through it and the rest roll over. Space withdraws the rules and everything rides to the end. `group:`, `ignoreCollisions(between:and:)`, `raycast(as:)`. |
+| [Bagatelle](Physics/Bagatelle/) | A pin table in a 3D world talked out of its third dimension: every ball is held to the board's plane, so the machine works however hard the pins knock it about. Turn that off and the balls wander out of the board. Space fires a shot quick enough to leave through a thin rail unless its path is checked. `freedom:`, `gravityScale`, `checksPath`. |
 
 ### Camera
 

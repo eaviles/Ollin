@@ -495,6 +495,16 @@ Body *resolveBody(CJoltWorld *world, CJoltBodyID id) {
     return world->physics.GetBodyLockInterfaceNoLock().TryGetBody(BodyID(id));
 }
 
+// A freedom mask as the library spells it. The bit values match, so this is a
+// cast plus two sanity rules: an empty descriptor field (0) means the
+// unrestricted default, and a mask that forbids every degree of freedom is
+// invalid in the library (it would divide by a zero mass), so it reads as
+// unrestricted too. Use a static body to hold something still.
+EAllowedDOFs allowedDOFs(uint32_t freedom) {
+    const uint32_t bits = freedom & uint32_t(CJOLT_FREEDOM_ALL);
+    return bits == 0 ? EAllowedDOFs::All : EAllowedDOFs(bits);
+}
+
 Ref<Shape> makeShape(const CJoltShapeDesc &desc) {
     const float density = desc.density > 0 ? desc.density : 1000.0f;
     switch (desc.type) {
@@ -756,6 +766,13 @@ CJoltBodyID cjolt_body_create(CJoltWorld *world, const CJoltBodyDesc *desc) {
     settings.mAngularDamping = std::max(0.0f, desc->angularDamping);
     settings.mGravityFactor = desc->gravityFactor;
     settings.mAllowSleeping = desc->allowSleep;
+    settings.mAllowedDOFs = allowedDOFs(desc->freedom);
+    // Sweeping the shape along its path is what stops a small quick body from
+    // stepping straight through a thin wall. The solver only pays for it once
+    // the body actually moves a good fraction of its own inner radius in a
+    // step, so it costs nothing while the body is slow.
+    settings.mMotionQuality = desc->continuous ? EMotionQuality::LinearCast
+                                               : EMotionQuality::Discrete;
     // Bodies may switch motion type later (a static anchor released to fall).
     // Not with a static-only shape, though: allowing the switch makes body
     // creation compute mass properties, which a mesh or height field cannot
@@ -867,7 +884,11 @@ float cjolt_body_get_mass(const CJoltWorld *world, CJoltBodyID body) {
     Body *resolved = resolveBody(w, body);
     if (resolved == nullptr || !resolved->IsDynamic()) { return 0.0f; }
     float inverseMass = resolved->GetMotionProperties()->GetInverseMass();
-    return inverseMass > 0 ? 1.0f / inverseMass : 0.0f;
+    if (inverseMass > 0) { return 1.0f / inverseMass; }
+    // A body whose travel is locked has no mass the solver can be pushed by,
+    // but it still weighs what its shape says: report that rather than the
+    // zero that reads as weightless.
+    return resolved->GetShape()->GetMassProperties().mMass;
 }
 
 void cjolt_body_set_motion(CJoltWorld *world, CJoltBodyID body, CJoltMotionType motion) {
@@ -936,6 +957,54 @@ void cjolt_body_set_restitution(CJoltWorld *world, CJoltBodyID body, float resti
 
 void cjolt_body_set_gravity_factor(CJoltWorld *world, CJoltBodyID body, float factor) {
     world->physics.GetBodyInterface().SetGravityFactor(BodyID(body), factor);
+}
+
+float cjolt_body_get_gravity_factor(const CJoltWorld *world, CJoltBodyID body) {
+    CJoltWorld *w = const_cast<CJoltWorld *>(world);
+    return w->physics.GetBodyInterface().GetGravityFactor(BodyID(body));
+}
+
+void cjolt_body_set_freedom(CJoltWorld *world, CJoltBodyID body, uint32_t freedom,
+                            float mass) {
+    Body *resolved = resolveBody(world, body);
+    if (resolved == nullptr) { return; }
+    // Not `IsDynamic`: a body created static keeps its motion properties (it
+    // may be let go later), so a restriction set now is waiting for it.
+    MotionProperties *motion = resolved->GetMotionPropertiesUnchecked();
+    if (motion == nullptr) { return; }
+
+    // The restriction lives inside the mass properties (a locked axis is one
+    // the solver gives infinite mass or inertia), so it cannot be assigned on
+    // its own: the whole set is re-derived from the shape and scaled back to
+    // the mass the body actually has. That mass comes from the caller because
+    // a body whose translation is already locked reports an inverse mass of
+    // zero and so cannot say what it weighed.
+    MassProperties properties = resolved->GetShape()->GetMassProperties();
+    if (mass > 0) { properties.ScaleToMass(mass); }
+    motion->SetMassProperties(allowedDOFs(freedom), properties);
+
+    // Whatever held it in place a moment ago may not any more.
+    world->physics.GetBodyInterface().ActivateBody(BodyID(body));
+}
+
+uint32_t cjolt_body_get_freedom(const CJoltWorld *world, CJoltBodyID body) {
+    Body *resolved = resolveBody(const_cast<CJoltWorld *>(world), body);
+    const MotionProperties *motion =
+        resolved == nullptr ? nullptr : resolved->GetMotionPropertiesUnchecked();
+    if (motion == nullptr) { return uint32_t(CJOLT_FREEDOM_ALL); }
+    return uint32_t(motion->GetAllowedDOFs());
+}
+
+void cjolt_body_set_continuous(CJoltWorld *world, CJoltBodyID body, bool continuous) {
+    world->physics.GetBodyInterface().SetMotionQuality(
+        BodyID(body), continuous ? EMotionQuality::LinearCast
+                                 : EMotionQuality::Discrete);
+}
+
+bool cjolt_body_get_continuous(const CJoltWorld *world, CJoltBodyID body) {
+    CJoltWorld *w = const_cast<CJoltWorld *>(world);
+    return w->physics.GetBodyInterface().GetMotionQuality(BodyID(body))
+        == EMotionQuality::LinearCast;
 }
 
 // Buoyancy ------------------------------------------------------------------

@@ -3637,6 +3637,54 @@ pins each answer against its counterfactual twin, the sharpest being the four
 that exist only to catch a half-applied filter: the contact listener, the
 sensor, the second character, and the wheel testers.
 
+**Per-body motion knobs** are three fields the body descriptor and the solver
+already carried, surfaced as `Body3D.freedom` / `.gravityScale` / `.checksPath`
+plus matching `addBody` parameters. Two of them are pass-throughs
+(`SetGravityFactor`, `SetMotionQuality`, both null-guarded upstream so they are
+safe on a body that is currently static). `freedom` is not, and the reason is
+worth keeping: the library stores a restricted degree of freedom *inside the
+body's mass properties* (a locked axis is one given infinite mass or inertia),
+so `MotionProperties::SetMassProperties(dofs, properties)` is the only way in
+and the whole mass set has to be re-derived from the shape and scaled back to
+the body's mass. That mass cannot be read back from the body, because a body
+whose translation is already locked reports an inverse mass of zero, so
+`cjolt_body_set_freedom` takes it as an argument: Swift passes the explicit
+mass a body was created with (the vehicle-chassis path) and otherwise zero,
+which the bridge reads as "the shape's own". The same asymmetry made
+`cjolt_body_get_mass` answer `0` for a pinned body, reading as weightless when
+the truth is the opposite, so it now falls back to the shape's mass properties
+and `Body3D.mass` prefers an overridden mass over that fallback. `Freedom3D` is
+an `OptionSet` whose raw bits *are* `EAllowedDOFs`', so the bridge casts; two
+sanity rules live in `allowedDOFs()`: a zeroed descriptor field means
+unrestricted (which is what keeps every existing `CJoltBodyDesc()` byte-identical,
+including the ground slab's), and a mask with no freedom at all, which the
+library documents as invalid and would divide by a zero mass, reads as
+unrestricted rather than trapping. Setting freedom activates the body, since
+whatever was holding it still may not any more.
+
+Continuous collision detection needed a decision rather than a translation. The
+solver's own gate (`PhysicsSystem`, `mLinearCastThreshold` × the shape's inner
+radius) means a `LinearCast` body that is moving slowly costs nothing beyond one
+comparison, which is what makes an opt-in flag the right shape: turning it on
+for a slow body is measurably free (`checkingThePathChangesNothingWhileTheBodyIsSlow`
+pins the two runs byte-identical), so there is no reason to guess on the sketch's
+behalf, and guessing would change results for every fast body in every existing
+sketch. What a probe also settled is where tunnelling actually starts: speculative
+contacts catch far more than the naive "moved further than the wall is thick"
+estimate, so a 0.05-radius pellet against a 0.04-thick wall passes through at 40
+units/s and bounces at 20, which is why the example's shot has to cross *thin*
+plates to make the point. `Character3D` and `Vehicle3D` need nothing turned on:
+a `CharacterVirtual` shape-casts its own path each update, and a vehicle's wheels
+find the road by ray, leaving the chassis as the only part with an ordinary
+body's tunnelling story. `Motion3DTests` (16) pins the tier against counterfactual
+twins, the sharpest being a contact that throws a free body five units and cannot
+move its flat twin at all.
+
+Folded in here: the floor slab's collision group is remembered on the world
+(`World3D.groundGroup`, recorded by `bodyChangedGroup`) rather than on the slab,
+because `rebuildGround` builds a fresh descriptor whenever `ground` or
+`unitsPerMeter` moves and the group would otherwise be silently lost.
+
 ## The geometry and generator catalog
 
 The CPU-side geometry types and generative-technique recipes live in

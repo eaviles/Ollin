@@ -142,6 +142,12 @@ public final class World3D {
     /// The solver handle of the slab backing `ground`, if any.
     private var groundID: CJoltBodyID = CJOLT_BODY_INVALID
 
+    /// Which collision group the floor slab is in. Remembered on the world
+    /// rather than on the slab, because moving the ground or changing the unit
+    /// scale builds a whole new slab, which would otherwise arrive back in the
+    /// default group having quietly forgotten what it was told.
+    private var groundGroup: CollisionGroup = .default
+
     /// How far into the swell the water is, in seconds of simulated time, so
     /// the surface a sketch draws and the surface the bodies ride are read at
     /// the same moment. Advanced by `step(dt:)`, so a fixed timestep replays
@@ -191,6 +197,12 @@ public final class World3D {
     ///     heavier bodies shove lighter ones.
     ///   - friction: surface friction, `0` slick … `1` grippy.
     ///   - restitution: bounciness `0…1`; defaults to the world's `bounce`.
+    ///   - freedom: which ways it may move. `.all` (the default) leaves it
+    ///     free; `.plane()` keeps it flat, `.upright` keeps it from tipping.
+    ///   - gravityScale: how hard gravity pulls on this one body, against the
+    ///     `1` everything else feels. `0` is weightless, negative rises.
+    ///   - checksPath: sweep its shape along its whole path each step so a
+    ///     small quick body can't pass through a thin wall between two steps.
     ///   - group: which collision group it joins. Everything is in `.default`
     ///     and collides with everything until `ignoreCollisions(between:and:)`
     ///     says two groups pass through each other.
@@ -200,11 +212,14 @@ public final class World3D {
                         rotated angle: Double = 0, axis: Vector3 = .unitY,
                         density: Double = 1, friction: Double = 0.5,
                         restitution: Double? = nil,
+                        freedom: Freedom3D = .all, gravityScale: Double = 1,
+                        checksPath: Bool = false,
                         group: CollisionGroup = .default) -> Body3D {
         addBody(collider, at: position, kind: kind, isSensor: isSensor,
                 rotated: angle, axis: axis, density: density, friction: friction,
                 restitution: restitution, mass: nil, centerOfMass: .zero,
-                group: group)
+                freedom: freedom, gravityScale: gravityScale,
+                checksPath: checksPath, group: group)
     }
 
     /// The full body-creation path, with the two extras only a vehicle chassis
@@ -218,6 +233,8 @@ public final class World3D {
                  axis: Vector3, density: Double, friction: Double,
                  restitution: Double?, mass: Double?,
                  centerOfMass: Vector3,
+                 freedom: Freedom3D = .all, gravityScale: Double = 1,
+                 checksPath: Bool = false,
                  group: CollisionGroup = .default) -> Body3D {
         var desc = CJoltBodyDesc()
         let p = meters(from: position)
@@ -232,9 +249,13 @@ public final class World3D {
         desc.restitution = Float(restitution ?? bounce)
         desc.linearDamping = 0.05
         desc.angularDamping = 0.05
-        desc.gravityFactor = 1
+        desc.gravityFactor = Float(gravityScale)
         desc.allowSleep = true
         desc.isSensor = isSensor
+        // A body free every way sends 0, which the bridge reads as
+        // unrestricted, so an ordinary body carries no restriction at all.
+        desc.freedom = freedom == .all ? 0 : freedom.rawValue
+        desc.continuous = checksPath
         desc.group = groupIndex(group)
         desc.mass = Float(mass ?? 0)
         let com = meters(from: centerOfMass)
@@ -260,7 +281,7 @@ public final class World3D {
         // keeps reporting bodies that fall asleep inside it.
         let body = Body3D(world: self, id: id, collider: collider,
                           kind: isSensor ? .kinematic : kind, density: density,
-                          isSensor: isSensor)
+                          isSensor: isSensor, overriddenMass: mass)
         bodies.append(body)
         bodyByID[id] = body
         return body
@@ -772,6 +793,7 @@ public final class World3D {
         desc.restitution = Float(bounce)
         desc.allowSleep = true
         desc.gravityFactor = 1
+        desc.group = groupIndex(groundGroup)
         groundID = withUnsafePointer(to: &desc) { cjolt_body_create(handle, $0) }
         // Registered so contacts with the floor name a body, but kept out of
         // `bodies`: a sketch's drawing loop never asked for a 1000-unit slab.
@@ -789,6 +811,9 @@ public final class World3D {
     /// through collision testers built against one layer, so a chassis that
     /// changed group needs a new set.
     func bodyChangedGroup(_ body: Body3D) {
+        // The floor is rebuilt from scratch whenever `ground` or the unit scale
+        // moves, so what it was put in has to be remembered here to survive.
+        if body === groundBody { groundGroup = body.group }
         for vehicle in vehicles where vehicle.body === body {
             vehicle.syncGroupToChassis()
         }

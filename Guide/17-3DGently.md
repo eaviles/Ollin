@@ -917,6 +917,54 @@ You can move something between groups while it runs, too. `body.group = "debris"
 
 The [`3D/Physics/Sieve`](../Examples/3D/Physics/Sieve/) example is a sorting machine built out of nothing else: beads of three colors roll down one ramp with three windows set into it, each window told to ignore one color. Press space and the three rules are withdrawn, and the same machine stops sorting.
 
+## Taking a direction away
+
+A rigid body can do six things: travel along three axes and turn about three. You can take any of them away.
+
+That sounds like a small setting. The first thing it buys is not. A lot of sketches want a flat world: a pin table, a side-on machine, a puzzle of tiles that slide. Building one in 2D means giving up lighting, shadows, and solid shapes. Building it in 3D means every collision quietly pushes things toward and away from the camera until the whole thing stops reading as flat. So say the bodies may not go that way.
+
+```swift
+let bead = world.addBody(.sphere(radius: 0.2), at: p, freedom: .plane())
+```
+
+Below are two identical pin boards. The same beads are poured down each, one at a time, and every bead is given the same careless sideways nudge on the way down. The beads on the left are held to the board's plane. The ones on the right are not.
+
+<img src="Images/17-3DGently/Flattened.jpg" alt="Two identical pin boards standing in open-fronted bins. At the foot of the left board nine teal beads lie in a single straight row, all at the same depth. At the right board the same nine amber beads are scattered: a few still in the bin at different depths, several out on the open floor in front of it" width="620">
+
+The left beads had nowhere to put that nudge, so they landed in one flat sheet. The right ones took it and left. **A locked direction is not a rule the body tries to obey; it is a direction the body no longer has.** Nothing can move it that way: not gravity, not a contact, not a joint, not even a velocity you set on it yourself.
+
+There are names for the combinations worth wanting, and you can spell out anything else:
+
+```swift
+.all                        // the default
+.plane()                    // travels in x and y, turns about z: a flat world
+.plane(normal: .unitY)      // travels in x and z, turns about y: a top view
+.upright                    // travels any way, turns only about up, never tips
+.noTurning                  // slides and is shoved, never spins
+.noMoving                   // spins where it is, never travels
+[.moveX, .turnZ]
+```
+
+`.upright` is the other one you'll reach for: a fridge on a dolly, a chess piece, anything that should slide and turn without ever falling over. The one thing you cannot ask for is a tilted plane, because what the solver takes away is whole world axes, so `.plane(normal:)` rounds its normal to the nearest one.
+
+Two smaller knobs live next to it. **`gravityScale`** is how hard the world pulls on one body against the `1` everything else feels, which is a balloon and a feather in the same world:
+
+```swift
+balloon.gravityScale = -0.3      // rises
+feather.gravityScale = 0.15      // falls a sixth as far in the same second
+```
+
+And **`checksPath`** is for things that are small and quick. A body that covers more than its own width between two steps can be in front of a thin wall at one step and past it at the next, having touched nothing on the way. Turn this on and the solver sweeps the body's shape along its whole path instead of only testing where it ended up:
+
+```swift
+let pellet = world.addBody(.sphere(radius: 0.05), at: muzzle, checksPath: true)
+pellet.velocity = Vector3(0, 0, 120)
+```
+
+It is off by default because it is not free, but it is close: the check only runs once a body is actually moving fast for its size, so an ordinary throw lands in exactly the same spot either way. Turn it on for bullets, pellets, and anything you fire, and leave it alone for everything else.
+
+All three can be set when you add a body and changed while it runs. The [`3D/Physics/Bagatelle`](../Examples/3D/Physics/Bagatelle/) example is a pin table with all three on a knob: flatten the balls or free them, make them heavy or weightless, and fire a shot quick enough to leave through a thin rail the moment you stop checking its path.
+
 ## What the depth buffer is for
 
 Chapter 14 filtered layers by their color. A 3D scene drawn into a layer carries something extra that a flat drawing never has: for every pixel, how far away the thing at that pixel is. That's the **depth buffer**, and three effects exist purely to use it.

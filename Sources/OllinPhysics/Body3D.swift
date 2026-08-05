@@ -56,17 +56,24 @@ public final class Body3D {
     /// its mesh, a group id) without a parallel array.
     public var userData: Any?
 
+    /// The mass the body was created with, when one was given instead of being
+    /// worked out from the shape. Restricting `freedom` has to re-derive the
+    /// body's mass properties, and a body whose travel is already locked
+    /// reports no mass of its own, so this is what it is rebuilt from.
+    let overriddenMass: Double?
+
     /// Backing store for `kind` (the solver is told on set).
     private var storedKind: Kind
 
     init(world: World3D, id: CJoltBodyID, collider: Collider3D, kind: Kind,
-         density: Double, isSensor: Bool = false) {
+         density: Double, isSensor: Bool = false, overriddenMass: Double? = nil) {
         self.world = world
         self.id = id
         self.collider = collider
         self.storedKind = kind
         self.density = density
         self.isSensor = isSensor
+        self.overriddenMass = overriddenMass
     }
 
     /// The body's centre, in world units.
@@ -135,9 +142,18 @@ public final class Body3D {
         }
     }
 
-    /// The body's mass (from its collider's volume and `density`). Read-only;
-    /// `0` for static and kinematic bodies.
-    public var mass: Double { Double(cjolt_body_get_mass(world.handle, id)) }
+    /// The body's mass (from its collider's volume and `density`, or whatever
+    /// it was created with). Read-only; `0` for static and kinematic bodies.
+    public var mass: Double {
+        let reported = Double(cjolt_body_get_mass(world.handle, id))
+        // Static and kinematic bodies have no mass to report.
+        guard reported > 0 else { return reported }
+        // A body with every direction of travel locked is infinitely heavy to
+        // push, so the solver keeps no mass for it and the bridge falls back to
+        // what the shape's volume says. A body handed its own mass instead is
+        // the one case that answer is wrong for.
+        return overriddenMass ?? reported
+    }
 
     /// Whether the body is dynamic, static, or kinematic. Switching to
     /// `.static` freezes it in place (an anchor); back to `.dynamic` lets
@@ -155,6 +171,62 @@ public final class Body3D {
             storedKind = newValue
             cjolt_body_set_motion(world.handle, id, newValue.cjolt)
         }
+    }
+
+    /// Which ways the body is allowed to move. `.all` (the default) leaves it
+    /// free; restricting it is how a body is kept flat, kept upright, or kept
+    /// from spinning at all.
+    ///
+    /// ```swift
+    /// coin.freedom = .plane()      // travels in x and y, spins about z
+    /// crate.freedom = .upright     // slides and turns, never tips over
+    /// ```
+    ///
+    /// A locked direction is one the solver gives the body infinite mass along,
+    /// so nothing can push it that way: not gravity, not a contact, not a
+    /// joint, not `applyForce`. Setting this rebuilds how the body's weight is
+    /// spread and wakes it.
+    public var freedom: Freedom3D {
+        get { Freedom3D(rawValue: cjolt_body_get_freedom(world.handle, id)) }
+        set {
+            cjolt_body_set_freedom(world.handle, id, newValue.rawValue,
+                                   Float(overriddenMass ?? 0))
+        }
+    }
+
+    /// How hard the world's gravity pulls on this body, against what everything
+    /// else feels. `1` is the default; `0` leaves it weightless (it still gets
+    /// pushed around by everything else), and a negative value makes it rise.
+    ///
+    /// ```swift
+    /// balloon.gravityScale = -0.3   // drifts upward
+    /// feather.gravityScale = 0.15   // falls slowly
+    /// ```
+    public var gravityScale: Double {
+        get { Double(cjolt_body_get_gravity_factor(world.handle, id)) }
+        set { cjolt_body_set_gravity_factor(world.handle, id, Float(newValue)) }
+    }
+
+    /// Whether the solver checks the body's whole path each step rather than
+    /// only where it ends up. Off by default, and worth turning on for anything
+    /// small and quick: a body that covers more than its own width between two
+    /// steps can be on one side of a thin wall at one step and past it at the
+    /// next, having never touched it.
+    ///
+    /// ```swift
+    /// let pellet = world.addBody(.sphere(radius: 0.05), at: muzzle,
+    ///                            checksPath: true)
+    /// pellet.velocity = Vector3(0, 0, 120)
+    /// ```
+    ///
+    /// (This is continuous collision detection. It costs nothing while the body
+    /// is moving slowly, since the check only runs once a body covers a good
+    /// fraction of its own size in one step; a body that hits something at
+    /// speed gives up the rest of its step at the impact, so it can read as
+    /// briefly slowing down where a body that tunnelled would not have.)
+    public var checksPath: Bool {
+        get { cjolt_body_get_continuous(world.handle, id) }
+        set { cjolt_body_set_continuous(world.handle, id, newValue) }
     }
 
     /// Whether the body is awake (a settled body sleeps until touched).

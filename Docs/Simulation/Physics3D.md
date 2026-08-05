@@ -44,6 +44,7 @@ Distances are the 3D scene's world units (y-up, matching the camera). The solver
 
 - [World3D](#world3d) - the simulation, its ground, and the per-frame `step`
 - [Body3D](#body3d) - a rigid body: pose, velocity, forces
+- [Motion knobs](#motion) - which ways a body may move, its own gravity, checking its path
 - [Collider3D](#collider3d) - the shape catalog
 - [Compound bodies](#compound) - several shapes fused into one body
 - [Terrain and scenery](#terrain) - heightfield ground and `Scene` colliders
@@ -113,6 +114,53 @@ body.applyTorque(Vector3(0, 5, 0))      // spin about each axis
 ```
 
 `userData` is a free slot for whatever the sketch wants to hang off a body (its color, its mesh), and `collider` keeps the shape the body was created with so a drawing loop can match a mesh to it without a parallel array.
+
+<a name="motion"></a>
+
+### Motion knobs
+
+Three things a body can be told about its own motion, each available when it is added and settable live afterward.
+
+```swift
+let coin = world.addBody(.cylinder(height: 0.1, radius: 0.4), at: p,
+                         freedom: .plane(),        // stays flat
+                         gravityScale: 0.4,        // falls lazily
+                         checksPath: true)         // never tunnels
+
+coin.freedom = .upright                            // all three are live
+coin.gravityScale = -0.2
+coin.checksPath = false
+```
+
+**`freedom`** is which of the six directions the body may use: three to travel along, three to turn about, in world axes. Everything is free by default.
+
+```swift
+.all                        // the default
+.plane()                    // travels in x and y, turns about z: a flat world
+.plane(normal: .unitY)      // travels in x and z, turns about y: a top view
+.upright                    // travels any way, turns only about up, never tips
+.noTurning                  // slides and is shoved, never spins
+.noMoving                   // spins where it is, never travels
+[.moveX, .turnZ]            // or spell out whatever fits
+```
+
+`.plane()` is the 2.5D lever: a sketch drawn side-on stays flat however hard things hit each other, while everything else about the world (lighting, shadows, solid drawing, the whole collider catalog) carries on in three dimensions. A locked direction is one the solver gives the body infinite mass along, so **nothing** can move it that way: not gravity, not a contact, not a joint, not a velocity you set yourself. Only whole world axes can be taken away, so `.plane(normal:)` rounds its normal to the nearest axis; there is no tilted plane. An empty set would leave a body no freedom at all, which the solver cannot express, so it reads as `.all`. To hold a body still, set `kind = .static` instead.
+
+**`gravityScale`** is how hard this one body answers the world's gravity: `1` as everything else, `0` weightless, negative to rise.
+
+```swift
+balloon.gravityScale = -0.3
+feather.gravityScale = 0.15      // falls a sixth as far in the same second
+```
+
+**`checksPath`** sweeps the body's shape along its whole path each step instead of only testing where it ends up. Off by default, and worth turning on for anything small and quick: a body that covers more than its own width between two steps can be in front of a thin wall at one step and past it at the next, having never touched it.
+
+```swift
+let pellet = world.addBody(.sphere(radius: 0.05), at: muzzle, checksPath: true)
+pellet.velocity = Vector3(0, 0, 120)
+```
+
+It costs nothing while the body is slow: the check only runs once a body covers a good fraction of its own size in a step, and an ordinary throw lands on exactly the same spot either way. What it does cost is a little honesty about speed, since a body that hits something at pace gives up the rest of its step where it struck. (This is continuous collision detection, under a name that says what it does.) Two neighbours have their own answer to the same problem and need nothing turned on: a `Character3D` already tests its path as it walks, and a `Vehicle3D`'s wheels feel for the road by casting rays, so it is the chassis (`vehicle.body.checksPath`) that would want it if anything did.
 
 <a name="collider3d"></a>
 
