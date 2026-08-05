@@ -53,6 +53,7 @@
 #include <Jolt/Physics/SoftBody/SoftBodyMotionProperties.h>
 #include <Jolt/Physics/SoftBody/SoftBodySharedSettings.h>
 #include <Jolt/Physics/Vehicle/MotorcycleController.h>
+#include <Jolt/Physics/Vehicle/TrackedVehicleController.h>
 #include <Jolt/Physics/Vehicle/VehicleCollisionTester.h>
 #include <Jolt/Physics/Vehicle/VehicleConstraint.h>
 #include <Jolt/Physics/Vehicle/WheeledVehicleController.h>
@@ -563,7 +564,11 @@ struct CJoltVehicle {
     JPH::Ref<JPH::VehicleConstraint> constraint;
     JPH::Ref<JPH::VehicleCollisionTester> testers[3];
     VehicleGroundFilter groundFilter;
+    CJoltVehicleKind kind = CJOLT_VEHICLE_WHEELED;
     float drivenWheelRadius = 0.3f;
+    /// The top speed the gearing was solved against (m/s), kept so a change to
+    /// which wheels are driven can re-solve it against the new radius.
+    float topSpeed = 0;
     /// The narrowest wheel, which sizes the sphere tester, and which of the
     /// three testers is in use: both are needed to build the set again when the
     /// vehicle changes collision group (a tester is made against one layer).
@@ -2053,9 +2058,30 @@ float solveDifferentialRatio(float maxRPM, float topGear, float topSpeed,
     return std::clamp(engineOmega / (wheelOmega * topGear), 0.05f, 200.0f);
 }
 
-WheeledVehicleController *controllerOf(const CJoltVehicle *vehicle) {
+WheeledVehicleController *wheeledOf(const CJoltVehicle *vehicle) {
+    if (vehicle->kind == CJOLT_VEHICLE_TRACKED) { return nullptr; }
     return static_cast<WheeledVehicleController *>(
         vehicle->constraint->GetController());
+}
+
+TrackedVehicleController *trackedOf(const CJoltVehicle *vehicle) {
+    if (vehicle->kind != CJOLT_VEHICLE_TRACKED) { return nullptr; }
+    return static_cast<TrackedVehicleController *>(
+        vehicle->constraint->GetController());
+}
+
+/// The engine and the gearbox live on both controllers but not on the base
+/// class they share, so reaching either is a branch on the kind.
+VehicleEngine &engineOf(const CJoltVehicle *vehicle) {
+    TrackedVehicleController *tracked = trackedOf(vehicle);
+    return tracked != nullptr ? tracked->GetEngine()
+                              : wheeledOf(vehicle)->GetEngine();
+}
+
+VehicleTransmission &transmissionOf(const CJoltVehicle *vehicle) {
+    TrackedVehicleController *tracked = trackedOf(vehicle);
+    return tracked != nullptr ? tracked->GetTransmission()
+                              : wheeledOf(vehicle)->GetTransmission();
 }
 
 /// Builds the three wheel collision testers against an object layer. A tester
@@ -2075,9 +2101,10 @@ void buildVehicleTesters(CJoltVehicle *vehicle, ObjectLayer layer) {
 
 /// Writes a wheel description onto a wheel's settings. Every one of these is
 /// read again on each step, so the same function serves the initial build and
-/// a live retune. The friction curves are rebuilt from the library's own tire
-/// before grip scales them, so repeated calls cannot compound.
-void applyWheelDesc(WheelSettingsWV &wheel, const CJoltWheelDesc &desc) {
+/// a live retune. What each drivetrain does with the tire's friction differs
+/// (curves against slip for a rolling wheel, a flat pair of coefficients for a
+/// track), so that half lives in the overloads below.
+void applyWheelDesc(WheelSettings &wheel, const CJoltWheelDesc &desc) {
     wheel.mPosition = vec3(desc.position);
     wheel.mRadius = std::max(desc.radius, 1.0e-3f);
     wheel.mWidth = std::max(desc.width, 1.0e-3f);
@@ -2097,6 +2124,13 @@ void applyWheelDesc(WheelSettingsWV &wheel, const CJoltWheelDesc &desc) {
         wheel.mSuspensionDirection = Vec3(0, -1, 0);
         wheel.mSteeringAxis = Vec3(0, 1, 0);
     }
+}
+
+/// A rolling wheel: steering, brakes, and friction curves read against slip.
+/// The curves are rebuilt from the library's own tire before grip scales them,
+/// so repeated calls cannot compound.
+void applyWheelDesc(WheelSettingsWV &wheel, const CJoltWheelDesc &desc) {
+    applyWheelDesc(static_cast<WheelSettings &>(wheel), desc);
     wheel.mMaxSteerAngle = std::clamp(desc.maxSteerAngle, 0.0f, 0.5f * JPH_PI);
     wheel.mMaxBrakeTorque = std::max(desc.maxBrakeTorque, 0.0f);
     wheel.mMaxHandBrakeTorque = std::max(desc.maxHandBrakeTorque, 0.0f);
@@ -2116,6 +2150,18 @@ void applyWheelDesc(WheelSettingsWV &wheel, const CJoltWheelDesc &desc) {
     }
 }
 
+/// A road wheel under a track. It never steers, its brakes belong to the track
+/// rather than to it, and its friction is a flat pair of coefficients (a track
+/// lays the same rubber down however fast the band is running), so grip scales
+/// two numbers instead of two curves.
+void applyWheelDesc(WheelSettingsTV &wheel, const CJoltWheelDesc &desc) {
+    applyWheelDesc(static_cast<WheelSettings &>(wheel), desc);
+    const WheelSettingsTV band;
+    const float grip = desc.grip > 0 ? desc.grip : 1.0f;
+    wheel.mLongitudinalFriction = band.mLongitudinalFriction * grip;
+    wheel.mLateralFriction = band.mLateralFriction * grip;
+}
+
 } // namespace
 
 CJoltVehicle *cjolt_vehicle_create(CJoltWorld *world, CJoltBodyID chassisID,
@@ -2133,68 +2179,36 @@ CJoltVehicle *cjolt_vehicle_create(CJoltWorld *world, CJoltBodyID chassisID,
     vehicle.mMaxPitchRollAngle =
         desc->maxPitchRollAngle > 0 ? desc->maxPitchRollAngle : JPH_PI;
 
+    const bool tracked = desc->kind == CJOLT_VEHICLE_TRACKED;
+    const bool leans = desc->kind == CJOLT_VEHICLE_LEANING;
+
     float narrowest = FLT_MAX;
     for (int32_t i = 0; i < desc->wheelCount; ++i) {
-        WheelSettingsWV *wheel = new WheelSettingsWV();
-        applyWheelDesc(*wheel, desc->wheels[i]);
+        WheelSettings *wheel = nullptr;
+        if (tracked) {
+            WheelSettingsTV *road = new WheelSettingsTV();
+            applyWheelDesc(*road, desc->wheels[i]);
+            wheel = road;
+        } else {
+            WheelSettingsWV *tire = new WheelSettingsWV();
+            applyWheelDesc(*tire, desc->wheels[i]);
+            wheel = tire;
+        }
         narrowest = std::min(narrowest, wheel->mWidth);
         vehicle.mWheels.push_back(wheel);
     }
 
-    const bool leans = desc->leans;
-    WheeledVehicleControllerSettings *controller =
-        leans ? new MotorcycleControllerSettings()
-              : new WheeledVehicleControllerSettings();
-    controller->mEngine.mMaxTorque = std::max(desc->maxEngineTorque, 1.0f);
-    if (leans) {
-        MotorcycleControllerSettings *bike =
-            static_cast<MotorcycleControllerSettings *>(controller);
-        bike->mMaxLeanAngle = std::clamp(desc->maxLeanAngle, 0.0f, 0.5f * JPH_PI);
-    }
-
-    // Which axles the engine turns, and how big their wheels are: the
-    // differential ratio is solved once against that radius so every driven
-    // axle shares one gearing.
     const auto wheelInRange = [&](int32_t index) {
         return index >= 0 && index < desc->wheelCount;
     };
-    int drivenAxles = 0;
-    float drivenRadius = 0;
-    int drivenWheels = 0;
-    for (int32_t i = 0; i < desc->axleCount; ++i) {
-        const CJoltAxleDesc &axle = desc->axles[i];
-        if (!axle.driven) { continue; }
-        ++drivenAxles;
-        for (int32_t index : {axle.leftWheel, axle.rightWheel}) {
-            if (wheelInRange(index)) {
-                drivenRadius += vehicle.mWheels[index]->mRadius;
-                ++drivenWheels;
-            }
-        }
-    }
-    drivenRadius = drivenWheels > 0 ? drivenRadius / float(drivenWheels)
-                                    : vehicle.mWheels[0]->mRadius;
-    const Array<float> &gears = controller->mTransmission.mGearRatios;
-    const float ratio = solveDifferentialRatio(
-        controller->mEngine.mMaxRPM, gears.empty() ? 1.0f : gears.back(),
-        desc->topSpeed, drivenRadius);
 
+    // The wheels pair across the machine whatever drives them, and a pair is
+    // tied by an anti-roll bar so the outside wheel's compression lifts the
+    // inside one. A lone wheel has nothing to tie to.
     for (int32_t i = 0; i < desc->axleCount; ++i) {
         const CJoltAxleDesc &axle = desc->axles[i];
         const int32_t left = wheelInRange(axle.leftWheel) ? axle.leftWheel : -1;
         const int32_t right = wheelInRange(axle.rightWheel) ? axle.rightWheel : -1;
-        if (left < 0 && right < 0) { continue; }
-        if (axle.driven) {
-            VehicleDifferentialSettings differential;
-            differential.mLeftWheel = left;
-            differential.mRightWheel = right;
-            differential.mDifferentialRatio = ratio;
-            differential.mEngineTorqueRatio = 1.0f / float(drivenAxles);
-            controller->mDifferentials.push_back(differential);
-        }
-        // An anti-roll bar ties a pair together so the outside wheel's
-        // compression lifts the inside one, which is what keeps a car flat
-        // through a corner. A lone wheel has nothing to tie to.
         if (left >= 0 && right >= 0 && desc->antiRollStiffness > 0) {
             VehicleAntiRollBar bar;
             bar.mLeftWheel = left;
@@ -2203,15 +2217,124 @@ CJoltVehicle *cjolt_vehicle_create(CJoltWorld *world, CJoltBodyID chassisID,
             vehicle.mAntiRollBars.push_back(bar);
         }
     }
-    // The controller's torque ratios must add up over at least one driven
-    // differential, so a vehicle always has something the engine turns; the
-    // caller picks which axle rather than leaving it to chance.
-    if (controller->mDifferentials.empty()) { return nullptr; }
 
-    vehicle.mController = controller;
+    VehicleControllerSettings *controllerSettings = nullptr;
+    float drivenRadius = vehicle.mWheels[0]->mRadius;
+
+    if (tracked) {
+        TrackedVehicleControllerSettings *controller =
+            new TrackedVehicleControllerSettings();
+        controller->mEngine.mMaxTorque = std::max(desc->maxEngineTorque, 1.0f);
+        // Every wheel must belong to exactly one track: the controller looks up
+        // each wheel's track by an index it fills in from these lists, and a
+        // wheel no track claims would keep the -1 it was born with.
+        std::vector<bool> claimed(size_t(desc->wheelCount), false);
+        for (int32_t side = 0; side < 2; ++side) {
+            const CJoltTrackDesc &band = desc->tracks[side];
+            if (band.wheels == nullptr || band.wheelCount < 1 ||
+                !wheelInRange(band.drivenWheel)) {
+                delete controller;
+                return nullptr;
+            }
+            for (int32_t i = 0; i < band.wheelCount; ++i) {
+                const int32_t index = band.wheels[i];
+                if (!wheelInRange(index) || claimed[size_t(index)]) {
+                    delete controller;
+                    return nullptr;
+                }
+                claimed[size_t(index)] = true;
+            }
+        }
+        for (bool wheelHasTrack : claimed) {
+            if (!wheelHasTrack) {
+                delete controller;
+                return nullptr;
+            }
+        }
+        drivenRadius = 0.5f * (vehicle.mWheels[desc->tracks[0].drivenWheel]->mRadius +
+                               vehicle.mWheels[desc->tracks[1].drivenWheel]->mRadius);
+        const Array<float> &gears = controller->mTransmission.mGearRatios;
+        const float ratio = solveDifferentialRatio(
+            controller->mEngine.mMaxRPM, gears.empty() ? 1.0f : gears.back(),
+            desc->topSpeed, drivenRadius);
+        for (int32_t side = 0; side < 2; ++side) {
+            const CJoltTrackDesc &band = desc->tracks[side];
+            VehicleTrackSettings &track = controller->mTracks[side];
+            track.mWheels.clear();
+            for (int32_t i = 0; i < band.wheelCount; ++i) {
+                track.mWheels.push_back(uint(band.wheels[i]));
+            }
+            track.mDrivenWheel = uint(band.drivenWheel);
+            track.mInertia = std::max(band.inertia, 0.01f);
+            track.mAngularDamping = std::max(band.angularDamping, 0.0f);
+            track.mMaxBrakeTorque = std::max(band.maxBrakeTorque, 0.0f);
+            track.mDifferentialRatio = ratio;
+        }
+        controllerSettings = controller;
+    } else {
+        WheeledVehicleControllerSettings *controller =
+            leans ? new MotorcycleControllerSettings()
+                  : new WheeledVehicleControllerSettings();
+        controller->mEngine.mMaxTorque = std::max(desc->maxEngineTorque, 1.0f);
+        if (leans) {
+            MotorcycleControllerSettings *bike =
+                static_cast<MotorcycleControllerSettings *>(controller);
+            bike->mMaxLeanAngle =
+                std::clamp(desc->maxLeanAngle, 0.0f, 0.5f * JPH_PI);
+        }
+
+        // Which axles the engine turns, and how big their wheels are: the
+        // differential ratio is solved once against that radius so every driven
+        // axle shares one gearing.
+        int drivenAxles = 0;
+        float radiusSum = 0;
+        int drivenWheels = 0;
+        for (int32_t i = 0; i < desc->axleCount; ++i) {
+            const CJoltAxleDesc &axle = desc->axles[i];
+            if (!axle.driven) { continue; }
+            ++drivenAxles;
+            for (int32_t index : {axle.leftWheel, axle.rightWheel}) {
+                if (wheelInRange(index)) {
+                    radiusSum += vehicle.mWheels[index]->mRadius;
+                    ++drivenWheels;
+                }
+            }
+        }
+        if (drivenWheels > 0) { drivenRadius = radiusSum / float(drivenWheels); }
+        const Array<float> &gears = controller->mTransmission.mGearRatios;
+        const float ratio = solveDifferentialRatio(
+            controller->mEngine.mMaxRPM, gears.empty() ? 1.0f : gears.back(),
+            desc->topSpeed, drivenRadius);
+
+        for (int32_t i = 0; i < desc->axleCount; ++i) {
+            const CJoltAxleDesc &axle = desc->axles[i];
+            if (!axle.driven) { continue; }
+            const int32_t left = wheelInRange(axle.leftWheel) ? axle.leftWheel : -1;
+            const int32_t right = wheelInRange(axle.rightWheel) ? axle.rightWheel : -1;
+            if (left < 0 && right < 0) { continue; }
+            VehicleDifferentialSettings differential;
+            differential.mLeftWheel = left;
+            differential.mRightWheel = right;
+            differential.mDifferentialRatio = ratio;
+            differential.mEngineTorqueRatio = 1.0f / float(drivenAxles);
+            controller->mDifferentials.push_back(differential);
+        }
+        // The controller's torque ratios must add up over at least one driven
+        // differential, so a vehicle always has something the engine turns; the
+        // caller picks which axle rather than leaving it to chance.
+        if (controller->mDifferentials.empty()) {
+            delete controller;
+            return nullptr;
+        }
+        controllerSettings = controller;
+    }
+
+    vehicle.mController = controllerSettings;
 
     CJoltVehicle *wrapper = new CJoltVehicle();
+    wrapper->kind = desc->kind;
     wrapper->drivenWheelRadius = drivenRadius;
+    wrapper->topSpeed = desc->topSpeed;
     wrapper->groundFilter.chassis = chassis->GetID();
     wrapper->wheelWidth = narrowest;
     buildVehicleTesters(wrapper, chassis->GetObjectLayer());
@@ -2241,10 +2364,29 @@ void cjolt_vehicle_set_input(CJoltWorld *world, CJoltVehicle *vehicle,
                              float forward, float right, float brake,
                              float handBrake) {
     if (vehicle == nullptr) { return; }
-    controllerOf(vehicle)->SetDriverInput(std::clamp(forward, -1.0f, 1.0f),
-                                          std::clamp(right, -1.0f, 1.0f),
-                                          std::clamp(brake, 0.0f, 1.0f),
-                                          std::clamp(handBrake, 0.0f, 1.0f));
+    if (TrackedVehicleController *tracked = trackedOf(vehicle)) {
+        // A tracked machine has no steering angle: it turns by running one
+        // track faster than the other. Full lock runs the inside band
+        // backwards, which is the pivot turn on the spot. Neither ratio may be
+        // exactly zero (the controller divides by them), so a stopped band is
+        // spelled as a very slow one.
+        const float turn = std::clamp(right, -1.0f, 1.0f);
+        const auto alive = [](float ratio) {
+            return std::abs(ratio) < 1.0e-3f ? (ratio < 0 ? -1.0e-3f : 1.0e-3f)
+                                             : ratio;
+        };
+        const float left = turn < 0 ? 1.0f + 2.0f * turn : 1.0f;
+        const float inner = turn > 0 ? 1.0f - 2.0f * turn : 1.0f;
+        // A tank has one brake pedal; the hand brake pulls the same one.
+        tracked->SetDriverInput(std::clamp(forward, -1.0f, 1.0f), alive(left),
+                                alive(inner),
+                                std::clamp(std::max(brake, handBrake), 0.0f, 1.0f));
+    } else {
+        wheeledOf(vehicle)->SetDriverInput(std::clamp(forward, -1.0f, 1.0f),
+                                           std::clamp(right, -1.0f, 1.0f),
+                                           std::clamp(brake, 0.0f, 1.0f),
+                                           std::clamp(handBrake, 0.0f, 1.0f));
+    }
     // A settled vehicle is allowed to sleep, but one being driven never is.
     if (world != nullptr &&
         (forward != 0 || right != 0 || brake != 0 || handBrake != 0)) {
@@ -2264,26 +2406,113 @@ void cjolt_vehicle_set_wheel_settings(CJoltVehicle *vehicle, int32_t index,
     // field of it fresh on each step, so writing through the wheel's const
     // handle is safe and takes effect next step.
     const Wheel *wheel = vehicle->constraint->GetWheel(uint(index));
-    WheelSettingsWV *settings = const_cast<WheelSettingsWV *>(
-        static_cast<const WheelSettingsWV *>(wheel->GetSettings()));
-    applyWheelDesc(*settings, *desc);
+    WheelSettings *settings =
+        const_cast<WheelSettings *>(wheel->GetSettings());
+    if (vehicle->kind == CJOLT_VEHICLE_TRACKED) {
+        applyWheelDesc(*static_cast<WheelSettingsTV *>(settings), *desc);
+    } else {
+        applyWheelDesc(*static_cast<WheelSettingsWV *>(settings), *desc);
+    }
 }
 
 void cjolt_vehicle_set_engine_torque(CJoltVehicle *vehicle, float maxTorque) {
     if (vehicle == nullptr) { return; }
-    controllerOf(vehicle)->GetEngine().mMaxTorque = std::max(maxTorque, 1.0f);
+    engineOf(vehicle).mMaxTorque = std::max(maxTorque, 1.0f);
 }
+
+namespace {
+
+/// Re-solves the gearing for the vehicle's remembered top speed and pushes it
+/// onto whatever carries it: a wheeled vehicle's differentials, a tracked one's
+/// two bands.
+void applyGearing(CJoltVehicle *vehicle) {
+    const Array<float> &gears = transmissionOf(vehicle).mGearRatios;
+    const float ratio = solveDifferentialRatio(
+        engineOf(vehicle).mMaxRPM, gears.empty() ? 1.0f : gears.back(),
+        vehicle->topSpeed, vehicle->drivenWheelRadius);
+    if (TrackedVehicleController *tracked = trackedOf(vehicle)) {
+        for (VehicleTrack &track : tracked->GetTracks()) {
+            track.mDifferentialRatio = ratio;
+        }
+    } else {
+        for (VehicleDifferentialSettings &d :
+             wheeledOf(vehicle)->GetDifferentials()) {
+            d.mDifferentialRatio = ratio;
+        }
+    }
+}
+
+} // namespace
 
 void cjolt_vehicle_set_top_speed(CJoltVehicle *vehicle, float metersPerSecond) {
     if (vehicle == nullptr) { return; }
-    WheeledVehicleController *controller = controllerOf(vehicle);
-    const Array<float> &gears = controller->GetTransmission().mGearRatios;
-    const float ratio = solveDifferentialRatio(
-        controller->GetEngine().mMaxRPM, gears.empty() ? 1.0f : gears.back(),
-        metersPerSecond, vehicle->drivenWheelRadius);
-    for (VehicleDifferentialSettings &d : controller->GetDifferentials()) {
-        d.mDifferentialRatio = ratio;
+    vehicle->topSpeed = metersPerSecond;
+    applyGearing(vehicle);
+}
+
+void cjolt_vehicle_set_drive(CJoltVehicle *vehicle, const CJoltAxleDesc *axles,
+                             int32_t axleCount, const CJoltTrackDesc *tracks) {
+    if (vehicle == nullptr) { return; }
+    const int32_t wheelCount = int32_t(vehicle->constraint->GetWheels().size());
+    const auto wheelInRange = [&](int32_t index) {
+        return index >= 0 && index < wheelCount;
+    };
+    const auto radiusOf = [&](int32_t index) {
+        return vehicle->constraint->GetWheel(uint(index))->GetSettings()->mRadius;
+    };
+
+    if (TrackedVehicleController *tracked = trackedOf(vehicle)) {
+        if (tracks == nullptr) { return; }
+        for (int32_t side = 0; side < 2; ++side) {
+            if (!wheelInRange(tracks[side].drivenWheel)) { return; }
+        }
+        float radiusSum = 0;
+        for (int32_t side = 0; side < 2; ++side) {
+            tracked->GetTracks()[side].mDrivenWheel =
+                uint(tracks[side].drivenWheel);
+            tracked->GetTracks()[side].mMaxBrakeTorque =
+                std::max(tracks[side].maxBrakeTorque, 0.0f);
+            radiusSum += radiusOf(tracks[side].drivenWheel);
+        }
+        vehicle->drivenWheelRadius = 0.5f * radiusSum;
+        applyGearing(vehicle);
+        return;
     }
+
+    if (axles == nullptr || axleCount < 1) { return; }
+    int drivenAxles = 0;
+    float radiusSum = 0;
+    int drivenWheels = 0;
+    for (int32_t i = 0; i < axleCount; ++i) {
+        if (!axles[i].driven) { continue; }
+        ++drivenAxles;
+        for (int32_t index : {axles[i].leftWheel, axles[i].rightWheel}) {
+            if (wheelInRange(index)) {
+                radiusSum += radiusOf(index);
+                ++drivenWheels;
+            }
+        }
+    }
+    // The torque split must sum to one over at least one differential, so a
+    // drive nothing turns is refused rather than left half-applied.
+    if (drivenAxles < 1 || drivenWheels < 1) { return; }
+
+    WheeledVehicleController::Differentials rebuilt;
+    for (int32_t i = 0; i < axleCount; ++i) {
+        if (!axles[i].driven) { continue; }
+        const int32_t left = wheelInRange(axles[i].leftWheel) ? axles[i].leftWheel : -1;
+        const int32_t right = wheelInRange(axles[i].rightWheel) ? axles[i].rightWheel : -1;
+        if (left < 0 && right < 0) { continue; }
+        VehicleDifferentialSettings differential;
+        differential.mLeftWheel = left;
+        differential.mRightWheel = right;
+        differential.mEngineTorqueRatio = 1.0f / float(drivenAxles);
+        rebuilt.push_back(differential);
+    }
+    if (rebuilt.empty()) { return; }
+    wheeledOf(vehicle)->GetDifferentials() = rebuilt;
+    vehicle->drivenWheelRadius = radiusSum / float(drivenWheels);
+    applyGearing(vehicle);
 }
 
 void cjolt_vehicle_set_wheel_contact(CJoltVehicle *vehicle,
@@ -2355,19 +2584,32 @@ void cjolt_vehicle_get_wheel(const CJoltVehicle *vehicle, int32_t index,
         out->contactBody = wheel->GetContactBodyID().GetIndexAndSequenceNumber();
         store(wheel->GetContactNormal(), out->contactNormal);
     }
-    const WheelWV *wv = static_cast<const WheelWV *>(wheel);
-    out->longitudinalSlip = wv->mLongitudinalSlip;
-    out->lateralSlip = wv->mLateralSlip;
+    // Slip is a rolling wheel's measurement: a road wheel under a track only
+    // ever turns as fast as the band it rides, so there is nothing to report.
+    if (vehicle->kind != CJOLT_VEHICLE_TRACKED) {
+        const WheelWV *wv = static_cast<const WheelWV *>(wheel);
+        out->longitudinalSlip = wv->mLongitudinalSlip;
+        out->lateralSlip = wv->mLateralSlip;
+    }
 }
 
 float cjolt_vehicle_get_rpm(const CJoltVehicle *vehicle) {
     if (vehicle == nullptr) { return 0; }
-    return controllerOf(vehicle)->GetEngine().GetCurrentRPM();
+    return engineOf(vehicle).GetCurrentRPM();
 }
 
 int32_t cjolt_vehicle_get_gear(const CJoltVehicle *vehicle) {
     if (vehicle == nullptr) { return 0; }
-    return int32_t(controllerOf(vehicle)->GetTransmission().GetCurrentGear());
+    return int32_t(transmissionOf(vehicle).GetCurrentGear());
+}
+
+float cjolt_vehicle_get_track_speed(const CJoltVehicle *vehicle, int32_t side) {
+    if (vehicle == nullptr || side < 0 || side > 1) { return 0; }
+    TrackedVehicleController *tracked = trackedOf(vehicle);
+    if (tracked == nullptr) { return 0; }
+    const VehicleTrack &track = tracked->GetTracks()[side];
+    const Wheel *driven = vehicle->constraint->GetWheel(track.mDrivenWheel);
+    return track.mAngularVelocity * driven->GetSettings()->mRadius;
 }
 
 // Ragdolls ------------------------------------------------------------------

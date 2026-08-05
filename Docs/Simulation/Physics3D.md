@@ -58,6 +58,7 @@ Distances are the 3D scene's world units (y-up, matching the camera). The solver
 - [Queries](#queries) - rays, shape sweeps, and overlaps: asking the world what is there
 - [Characters](#characters) - a walking figure you steer from `draw()`
 - [Vehicles](#vehicles) - a chassis on sprung wheels you drive from `draw()`
+- [Tracks](#tracks) - the same machine on two bands, turning without steering
 - [Ragdolls](#ragdolls) - a skinned figure given weight, limp or powered
 - [Soft bodies](#softbodies) - cloth that drapes and closed shapes that squash
 - [Water](#water) - buoyancy: what floats, how deep it sits, and what carries it
@@ -723,7 +724,12 @@ front.grip = 0.4                      // and a slick tire
 
 **Wheels level with each other along the vehicle share an axle**, worked out from where they sit rather than the order you listed them, and an axle with any driven wheel is turned by the engine, so marking one of a pair marks its pair. A lone wheel, as a two-wheeler's are, is an axle by itself. Each full pair is also tied by an anti-roll bar (`antiRollStiffness`, 1000 N/m by default, `0` to untie them), which is what keeps the vehicle flat through a corner.
 
-Everything on a wheel except `driven` can be changed while the vehicle drives, so a slider on the springs or the grip is felt on the next step. `driven` is the gearbox rather than the wheel, and is fixed once the vehicle is built.
+Everything on a wheel can be changed while the vehicle drives, so a slider on the springs or the grip is felt on the next step. `driven` is the gearbox rather than the wheel, so it is the one that costs something: changing it rebuilds the drive on the next step and re-gears it against whatever is now driven. Set the whole list, then step, then read the flags back to see what the drivetrain settled on:
+
+```swift
+for wheel in car.wheels { wheel.driven = wheel.position.z > 0 }   // front drive
+world.step(dt: deltaTime)
+```
 
 #### The engine
 
@@ -770,6 +776,48 @@ let bike = world.addVehicle(.box(width: 0.4, height: 0.6, depth: 0.8),
 Running dead straight even an unbalanced two-wheeler stays up, because nothing tips it; the balancing shows the moment something does. Start it leaned over and it stands back up, and it leans into a corner rather than falling out of it.
 
 The worked example is [`3D/Physics/Joyride`](../../Examples/3D/Physics/Joyride/): a car you drive over an eroded island, with the springs and the grip on live sliders.
+
+<a name="tracks"></a>
+
+### Tracks
+
+`tracked: true` builds the same machine on two tracks. The wheels become road wheels, split into a left and a right band by **which side of the hull they sit on**, and the three controls mean what they always did:
+
+```swift
+var wheels: [Wheel3D] = []
+for side in [1.3, -1.3] {                       // +x is its left, -x its right
+    for i in 0 ..< 5 {
+        wheels.append(.wheel(at: Vector3(side, -0.28, -1.8 + Double(i) * 0.9),
+                             radius: 0.44, width: 0.6))
+    }
+}
+let crawler = world.addVehicle(.box(width: 2, height: 0.9, depth: 5.2),
+                               at: Vector3(0, 1.2, 0), wheels: wheels,
+                               mass: 4200, topSpeed: 9, tracked: true)!
+```
+
+Steering is the one that reaches the ground differently, because a track has nothing to turn. The number sets how much slower the inside band runs: half lock stops it, so the machine turns about its own inside track, and **full lock runs it backwards, which spins the machine where it stands**. It needs throttle to do any of that, the way a real one does: the bands are turned by the engine, so with the engine idle there is nothing to run one against the other.
+
+```swift
+crawler.throttle = 1
+crawler.steering = 1        // turn on the spot
+```
+
+`trackSpeed(.left)` and `trackSpeed(.right)` read how fast each band is running over the ground, in world units per second. They are equal in a straight line, differ through a turn, and run opposite ways in a pivot, so they are what to scroll a drawn track by. `wheels(on:)` gives one band's road wheels, front of the machine first, which is what a drawing loop walks to lay a track around them.
+
+Most of a wheel means the same thing on a band. These do not:
+
+| | |
+| --- | --- |
+| `driven` | Marks the **sprocket** its band is turned at, rather than one of a driven pair. With none marked, each band takes its rearmost wheel. |
+| `brakeTorque` | Adds up over a band: the whole band's brake is the sum of its wheels'. There is no separate hand brake, so `handBrake` pulls the same one. |
+| `grip` | Scales a flat pair of friction coefficients rather than a tire's slip curves. This is why a track keeps pulling while it slides, and what lets one climb a bank that would leave a wheel spinning. |
+| `steers` / `maxSteerAngle` / `casterAngle` | Inert. A road wheel never turns, and `steerAngle` always reads zero. |
+| `slip` / `slideAngle` | Always zero: a road wheel only ever turns as fast as the band it rides, so it has no slip of its own to report. |
+
+Everything else, the suspension especially, works exactly as it does on a wheel, and a tracked machine takes `maxTilt`, `wheelContact`, `engineTorque`, and `topSpeed` unchanged. It cannot also `balance`: a machine on tracks does not lean.
+
+The worked example is [`3D/Physics/Crawler`](../../Examples/3D/Physics/Crawler/): a crawler working a quarry, with its bands drawn as links that scroll at the speed the solver reports.
 
 <a name="ragdolls"></a>
 

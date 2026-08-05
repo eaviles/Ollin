@@ -719,6 +719,49 @@ Two wheels work too. `balances: true` adds the controller that holds a motorcycl
 
 The driveable version, a car over the same kind of eroded island the walker got, is the [`3D/Physics/Joyride`](../Examples/3D/Physics/Joyride/) example.
 
+## Turning without steering
+
+There is a third machine, and it is the same call again with `tracked: true`. The wheels stop being wheels and become road wheels, split into a left and a right band by which side of the hull you put them on. No list to keep in order, no pairs to declare: a wheel at positive x is on the left track, and that is the whole of it.
+
+```swift
+var wheels: [Wheel3D] = []
+for side in [1.3, -1.3] {
+    for i in 0 ..< 5 {
+        wheels.append(.wheel(at: Vector3(side, -0.28, -1.8 + Double(i) * 0.9),
+                             radius: 0.44, width: 0.6))
+    }
+}
+let crawler = world.addVehicle(.box(width: 2, height: 0.9, depth: 5.2),
+                               at: Vector3(0, 1.2, 0), wheels: wheels,
+                               mass: 4200, topSpeed: 9, tracked: true)!
+```
+
+Throttle and brake mean exactly what they did. Steering is the interesting one, because a track has nothing to turn. Instead the number runs the inside band slower: at half lock it stops, and the machine turns about its own stopped track. At full lock it runs *backwards*, one band forward and one back, and the machine spins where it stands.
+
+**A tracked machine steers with its drivetrain, so it needs throttle to turn at all.** Idle the engine and there is nothing to run one band against the other. That is true of the real thing too, and it is the first thing to try:
+
+```swift
+crawler.throttle = 1
+crawler.steering = 1        // turn on the spot
+```
+
+<img src="Images/17-3DGently/Crawler.jpg" alt="A yellow tracked machine seen from above, standing among a ring of eight colored posts and turned at an angle to them, its far track drawn in orange and its near track in blue" width="560">
+
+The posts are there to say it stayed put. It drove up to the middle, then held the throttle with the stick over, and it is turning between them rather than driving past them. The colors are the two bands: `trackSpeed(.left)` and `trackSpeed(.right)` read how fast each one is running over the ground, and painting one warm when that number is positive and cool when it is negative makes a still picture of a turn readable.
+
+```swift
+for side in [Vehicle3D.TrackSide.left, .right] {
+    fill(crawler.trackSpeed(side) < 0 ? Color(hex: 0x3F6FA8) : Color(hex: 0xC4622A))
+    // …draw that band's links…
+}
+```
+
+Those two numbers are also what you scroll a drawn track by, and `wheels(on:)` hands you one band's road wheels, front first, to lay it around.
+
+Most of what a wheel knows carries over. The suspension is the same suspension. Two things change meaning, and both are worth knowing. `driven` marks the **sprocket** its band is turned at rather than one of a driven pair, and with none marked each band takes its rearmost wheel. And `grip` scales a flat pair of numbers rather than a tire's slip curve, which is the real difference between a track and a wheel: a tire loses grip once it starts spinning, and a band does not. That is why a crawler walks up a bank a car would sit at the bottom of turning its wheels.
+
+The machine on tracks working a quarry is the [`3D/Physics/Crawler`](../Examples/3D/Physics/Crawler/) example.
+
 ## Letting a figure fall
 
 Back in "A mesh from a file" a skinned figure moved because a keyframe track told every joint where to be. That's animation: the same pose every time, whatever else is happening. A **ragdoll** is the other answer. Hand `addRagdoll` the same loaded scene and it reads the skeleton, builds a rigid body for every joint, and hangs each one off its parent on a cone-limited ball joint. Then the world decides where the limbs go.

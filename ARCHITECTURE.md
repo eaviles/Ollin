@@ -3268,17 +3268,26 @@ the sample's numbers. That sweep is also what settled `suspensionTravel`'s
 0.3 default: at 1.5 Hz a 1500 kg car sags ~0.11 m, so 0.2 sat too close to the
 bump stops.
 
-**Everything on a wheel except `driven` is live.** `applyWheelDesc` writes a
-whole `CJoltWheelDesc` onto a `WheelSettingsWV`, and the same function serves
+**Everything on a wheel is live, `driven` included.** `applyWheelDesc` writes a
+whole `CJoltWheelDesc` onto a wheel's settings, and the same function serves
 the initial build and a retune through `cjolt_vehicle_set_wheel_settings`,
 which `const_cast`s the wheel's settings handle. That is safe here and nowhere
 else: the bridge news one settings object per wheel and shares it with nothing,
 and the solver re-reads every field on each step. The friction curves are
 rebuilt from a default-constructed tire before `grip` scales them, so repeated
-pushes cannot compound. `driven` is the gearbox rather than the wheel (it
-would mean adding or removing a differential, and a zero-ratio differential
-still leaks torque through the limited-slip blend), so it is refused after
-construction with a one-time note.
+pushes cannot compound. `driven` is the gearbox rather than the wheel, so it
+goes through `cjolt_vehicle_set_drive`, which rebuilds the differentials (or a
+tracked machine's two sprockets) and re-solves the gearing against the new
+driven radius, so the vehicle keeps the `topSpeed` it was given. That is why
+`CJoltVehicle` remembers that speed. **The rebuild waits for the step rather
+than happening on the assignment**, and that is load-bearing rather than an
+optimization: which wheels drive is set a list at a time, and each wheel's flag
+is only half an answer while the loop is still running. Rebuilding eagerly
+means the drivetrain's report-back (an axle the engine turns drives *both* its
+wheels) lands in the middle of the sketch's loop and undoes the assignments
+still to come, so `for wheel in car.wheels { wheel.driven = wheel.position.z > 0 }`
+ends with all four driven. Deferring to `advance()` makes the whole list one
+edit, resolved once.
 
 Three smaller decisions. The wheels' collision tester gets a body filter that
 rejects both the chassis and any sensor, because overriding the filter replaces
@@ -3289,6 +3298,41 @@ region to drive through rather than a surface to ride on. All three testers
 a quaternion posing a **+y-aligned cylinder** (`GetWheelWorldTransform(i,
 Vec3::sAxisY(), Vec3::sAxisX())`), which is the axis convention `drawCylinder`
 already uses, so `withWheel` is a translate and a rotate with no fixups.
+
+**The tracked sibling is a third controller, and the wheel type goes with it.**
+`tracked: true` builds a `TrackedVehicleControllerSettings` instead, whose
+`ConstructWheel` asserts on the wheel settings type, so the bridge news
+`WheelSettingsTV` rather than `WheelSettingsWV` for every wheel. That split is
+the reason `applyWheelDesc` became a shared base over two overloads: the
+suspension, the position, and the radius are the same on both, while a rolling
+wheel takes steering, brakes, and friction *curves* read against slip, and a
+road wheel takes a flat pair of coefficients (4.0 longitudinal, 2.0 lateral by
+default, which is why a band keeps pulling while it slides where a tire's curve
+falls away past its peak). `cjolt_vehicle_get_wheel` guards its `WheelWV` cast
+on the kind for the same reason; a `WheelTV` has no slip to report.
+
+Three decisions shape the tier, all of them on the Ollin side. **The bands come
+from geometry, like axles do:** the driver's right is `-x`, so the left band
+takes the wheels at positive `x`, and a machine whose wheels all sit on one side
+is refused rather than half-built (the controller looks each wheel's track up by
+an index it fills in from the two lists, and a wheel no track claims keeps the
+`-1` it was born with). The axle list is still computed and still passed, but
+for a tracked machine it is read only for the anti-roll bars, which live on the
+constraint rather than on the controller. **Steering is mapped in the bridge**,
+because the library takes a rotation-rate multiplier per band rather than an
+angle: `steering` runs the inside band at `1 - 2·|steering|`, so half lock stops
+it and full lock reverses it. Neither ratio may be exactly zero (the controller
+divides by them, and asserts), so a stopped band is spelled as a very slow one.
+**Track inertia is derived, not exposed.** `VehicleTrackSettings::mInertia` is
+the band's moment at the sprocket, and the library's default is one number for
+one reference machine; Ollin forms it as `share · mass · radius²` with the share
+at 0.08, which is a run of track plus its road wheels swung at the sprocket's
+radius. It was measured across a range of sizes rather than guessed, and the
+range from 0.02 to 0.15 turned out to be within a few percent on straight-line
+distance and turn rate, which is why it stays a constant instead of becoming a
+knob. The same derivation covers the brake: a band's `mMaxBrakeTorque` is the
+sum of its wheels' `brakeTorque`, so the shipped per-wheel knob keeps meaning
+something and a tracked machine needs no new one.
 
 The motorcycle sibling is the same call with `balances: true`. Getting it to
 work took one thing the car does not need: `casterAngle`, which rakes both
@@ -3306,7 +3350,17 @@ the suspension sag (soft vs stiff), braking distance vs coasting, the hand
 brake locking only the wheels that have one, reverse braking through a stop,
 the top-speed gearing ceiling, wheels-in-the-air, the axle grouping as a pure
 CPU test, a leaned two-wheeler righting itself where the unbalanced twin falls,
-and identical replays.
+and identical replays. `TrackedVehicle3DTests` does the same for the tracked
+machine, its own sharpest being the pivot: full lock turns it through more than
+a full circle without leaving its own length, where the twin given the same
+throttle and no steering covers ground and barely changes heading. Around it
+sit the band split, one sprocket per band, the bands running opposite ways in a
+pivot and the inside one stopping at half lock, steering needing throttle at
+all, a road wheel neither steering nor slipping, the brake and the hand brake
+pulling the same one, slick bands climbing less of the same bank, and the live
+`driven` rebuild pinned through the wheeled routing test (a car switched to
+front drive after it was built goes nowhere on slick front tires where its
+rear-driven twin keeps its legs).
 
 ### Ragdolls
 

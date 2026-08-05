@@ -545,6 +545,19 @@ typedef enum {
     CJOLT_WHEEL_CONTACT_CYLINDER = 2,
 } CJoltWheelContact;
 
+/// Which drivetrain sits between the engine and the ground. The three pick
+/// different controllers, and with them different wheel settings, so the kind
+/// is fixed when the vehicle is built.
+typedef enum {
+    /// Steered wheels on axles, torque split by differentials.
+    CJOLT_VEHICLE_WHEELED = 0,
+    /// The same, plus the lean controller that holds a two-wheeler up.
+    CJOLT_VEHICLE_LEANING = 1,
+    /// Two tracks, each a band of road wheels turning as one. There is no
+    /// steering angle: the machine turns by running one track faster.
+    CJOLT_VEHICLE_TRACKED = 2,
+} CJoltVehicleKind;
+
 typedef struct {
     /// Where the suspension is bolted to the chassis, in the body's local
     /// space (the same space the collider is described in).
@@ -567,16 +580,38 @@ typedef struct {
 /// One axle: the wheels that share it (either index may be -1 for a single
 /// wheel, as a two-wheeler's are), and whether the engine drives it. A pair
 /// with both wheels present is also tied together by an anti-roll bar.
+///
+/// A tracked vehicle has no axles in the drivetrain sense, but its road wheels
+/// still pair up across the hull, so the list is read for the anti-roll bars
+/// there and `driven` is ignored.
 typedef struct {
     int32_t leftWheel, rightWheel;
     bool driven;
 } CJoltAxleDesc;
+
+/// One of a tracked vehicle's two tracks: the road wheels it carries (they all
+/// turn together, scaled by radius), which of them the engine reaches, and how
+/// the band itself behaves.
+typedef struct {
+    const int32_t *wheels;
+    int32_t wheelCount;
+    /// Index into the vehicle's wheel list, not into `wheels`.
+    int32_t drivenWheel;
+    /// Moment of inertia (kg·m²) of the band and its wheels, as seen at the
+    /// driven wheel: how much the track resists spinning up.
+    float inertia;
+    /// Damping on the band's own rotation: dw/dt = -c·w.
+    float angularDamping;
+    float maxBrakeTorque; // N·m at the driven wheel
+} CJoltTrackDesc;
 
 typedef struct {
     const CJoltWheelDesc *wheels;
     int32_t wheelCount;
     const CJoltAxleDesc *axles;
     int32_t axleCount;
+    /// The two tracks, left then right; read only when `kind` is tracked.
+    CJoltTrackDesc tracks[2];
     float maxEngineTorque; // N·m
     /// The speed the gearing tops out at, in m/s: the differential ratio is
     /// solved so that top gear at the engine's max RPM turns the driven wheels
@@ -587,10 +622,9 @@ typedef struct {
     /// >= pi lets it roll over freely.
     float maxPitchRollAngle;
     CJoltWheelContact contact;
-    /// A two-wheeler that balances itself: adds the lean controller, which
-    /// steers into a turn and holds the machine up.
-    bool leans;
-    float maxLeanAngle; // radians
+    CJoltVehicleKind kind;
+    /// How far a leaning two-wheeler may lay itself over, in radians.
+    float maxLeanAngle;
 } CJoltVehicleDesc;
 
 /// Everything a wheel knows about itself after a step.
@@ -633,10 +667,16 @@ void cjolt_vehicle_set_input(CJoltWorld *world, CJoltVehicle *vehicle,
 
 /// Re-applies a wheel's description to a live vehicle: the solver reads these
 /// every step, so suspension, steering lock, brakes, and grip can all be
-/// tuned while it drives. Which wheels the engine turns is not among them
-/// (that is the gearbox, fixed when the vehicle is built).
+/// tuned while it drives.
 void cjolt_vehicle_set_wheel_settings(CJoltVehicle *vehicle, int32_t index,
                                       const CJoltWheelDesc *desc);
+
+/// Rebuilds which wheels the engine turns while the vehicle drives: the
+/// differentials of a wheeled vehicle, or the driven wheel of each track. The
+/// gearing is re-solved against the new driven radius, so the vehicle keeps the
+/// top speed it was given.
+void cjolt_vehicle_set_drive(CJoltVehicle *vehicle, const CJoltAxleDesc *axles,
+                             int32_t axleCount, const CJoltTrackDesc *tracks);
 
 void cjolt_vehicle_set_engine_torque(CJoltVehicle *vehicle, float maxTorque);
 /// Re-solves the differential ratio for a new top speed (m/s).
@@ -652,6 +692,9 @@ void cjolt_vehicle_get_wheel(const CJoltVehicle *vehicle, int32_t index,
 float cjolt_vehicle_get_rpm(const CJoltVehicle *vehicle);
 /// The gear the box has picked: -1 reverse, 0 neutral, 1 first, and up.
 int32_t cjolt_vehicle_get_gear(const CJoltVehicle *vehicle);
+/// How fast a track's band is running over the ground, in m/s (side 0 left,
+/// 1 right). Zero for a vehicle that is not tracked.
+float cjolt_vehicle_get_track_speed(const CJoltVehicle *vehicle, int32_t side);
 
 // Ragdolls ------------------------------------------------------------------
 

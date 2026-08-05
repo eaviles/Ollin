@@ -393,6 +393,10 @@ public final class World3D {
     ///     which is what keeps a vehicle from rolling over in a turn.
     ///   - balances: a two-wheeler that holds itself up, leaning into turns
     ///     instead of falling over.
+    ///   - tracked: a machine on two tracks rather than steered wheels. The
+    ///     wheels become road wheels, split into a left and a right band by
+    ///     which side of the hull they sit on, and `steering` runs one band
+    ///     faster than the other rather than turning anything.
     ///   - group: which collision group the chassis and its wheels are in: the
     ///     wheels feel for the road in the same group the body collides in.
     @discardableResult
@@ -404,10 +408,14 @@ public final class World3D {
                            friction: Double = 0.5,
                            balances: Bool = false,
                            maxLeanAngle: Double = 45 * .pi / 180,
+                           tracked: Bool = false,
                            group: CollisionGroup = .default) -> Vehicle3D? {
         guard !wheels.isEmpty else {
             noteOnce("a vehicle needs at least one wheel")
             return nil
+        }
+        if tracked, balances {
+            noteOnce("a tracked machine does not lean; ignoring balances")
         }
         // Weight that hangs at axle height is what stops a vehicle from
         // toppling: it is high enough to be inside the body and low enough
@@ -421,10 +429,15 @@ public final class World3D {
         guard let vehicle = Vehicle3D(world: self, chassis: body, wheels: wheels,
                                       engineTorque: engineTorque,
                                       topSpeed: topSpeed,
-                                      antiRollStiffness: 1000, leans: balances,
-                                      maxLeanAngle: maxLeanAngle) else {
+                                      antiRollStiffness: 1000,
+                                      leans: balances && !tracked,
+                                      maxLeanAngle: maxLeanAngle,
+                                      tracked: tracked, mass: mass) else {
             remove(body)
-            noteOnce("the vehicle could not be built; check its wheels")
+            noteOnce(tracked
+                     ? "a tracked machine needs road wheels on both sides of "
+                        + "the hull; check where its wheels sit"
+                     : "the vehicle could not be built; check its wheels")
             return nil
         }
         vehicles.append(vehicle)
@@ -977,5 +990,9 @@ public final class World3D {
     func units(from x: Float, _ y: Float, _ z: Float) -> Vector3 {
         Vector3(Double(x) * unitsPerMeter, Double(y) * unitsPerMeter,
                 Double(z) * unitsPerMeter)
+    }
+
+    func units(from s: Float) -> Double {
+        Double(s) * unitsPerMeter
     }
 }

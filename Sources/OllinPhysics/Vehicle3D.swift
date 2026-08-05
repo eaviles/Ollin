@@ -33,7 +33,20 @@ internal import CJolt
 ///
 /// The vehicle drives along its chassis's local **+z**, with +y up, so model
 /// whatever you draw facing that way.
+///
+/// `tracked: true` builds the same machine on two tracks instead: the wheels
+/// become road wheels, split into a left and a right band by which side of the
+/// hull they sit on, and the three controls mean the same things. Steering is
+/// the one that reaches the ground differently, since a track has nothing to
+/// turn: full lock runs the inside band backwards and the machine spins on
+/// the spot.
 public final class Vehicle3D {
+
+    /// Which side of a tracked machine a band is on, seen from the driver's
+    /// seat looking along the vehicle's forward axis.
+    public enum TrackSide {
+        case left, right
+    }
 
     /// How a wheel finds the ground each step.
     public enum WheelContact {
@@ -61,6 +74,12 @@ public final class Vehicle3D {
     /// The wheels, in the order they were given.
     public private(set) var wheels: [Wheel3D]
 
+    /// Whether this machine runs on tracks rather than on steered wheels. A
+    /// tracked one turns by running one band faster than the other, so
+    /// `steering` reaches the ground through the drivetrain instead of through
+    /// a steering rack, and full lock spins it on the spot.
+    public let isTracked: Bool
+
     /// Free-form tag so a sketch can hang its own data off a vehicle.
     public var userData: Any?
 
@@ -76,13 +95,20 @@ public final class Vehicle3D {
 
     /// Which way the wheels are turned, `-1` hard left … `1` hard right. How
     /// far that actually turns them is each wheel's `maxSteerAngle`.
+    ///
+    /// A tracked machine has nothing to turn, so the same number sets how much
+    /// slower the inside band runs: half lock stops it, and full lock runs it
+    /// backwards, which spins the machine on the spot. It needs throttle to do
+    /// any of that, the way a real one does.
     public var steering: Double = 0
 
-    /// The brake pedal, `0…1`. Slows every wheel that has `brakeTorque`.
+    /// The brake pedal, `0…1`. Slows every wheel that has `brakeTorque`; on a
+    /// tracked machine it slows both bands, which is the only brake it has.
     public var brake: Double = 0
 
     /// The hand brake, `0…1`. Locks the wheels that have `handBrakeTorque`
-    /// (the rear pair, normally), which is what makes a car slide.
+    /// (the rear pair, normally), which is what makes a car slide. A tracked
+    /// machine has one brake, so this pulls the same one.
     public var handBrake: Double = 0
 
     // MARK: The machine
@@ -165,15 +191,37 @@ public final class Vehicle3D {
     /// in the air, and nothing the driver does will change anything.
     public var isOnGround: Bool { wheels.contains { $0.isOnGround } }
 
+    /// How fast one band of a tracked machine is running over the ground, in
+    /// world units per second: the number to scroll a drawn track by. The two
+    /// differ through a turn, and run opposite ways in a pivot. Zero on a
+    /// machine that is not tracked.
+    public func trackSpeed(_ side: TrackSide) -> Double {
+        guard isTracked else { return 0 }
+        let metric = cjolt_vehicle_get_track_speed(handle, side == .left ? 0 : 1)
+        return world.units(from: metric)
+    }
+
+    /// The road wheels one band carries, front of the machine first: what a
+    /// drawing loop walks to lay a track around them. Empty on a machine that
+    /// is not tracked.
+    public func wheels(on side: TrackSide) -> [Wheel3D] {
+        guard isTracked else { return [] }
+        return wheels
+            .filter { (side == .left) == ($0.position.x >= 0) }
+            .sorted { $0.position.z > $1.position.z }
+    }
+
     /// The direction the vehicle last accepted, so reversing has to pass
     /// through a stop (the gearbox model, mirroring the solver's own sample).
     private var acceptedDirection: Double = 1
 
     init?(world: World3D, chassis: Body3D, wheels: [Wheel3D], engineTorque: Double,
           topSpeed: Double, antiRollStiffness: Double, leans: Bool,
-          maxLeanAngle: Double) {
+          maxLeanAngle: Double, tracked: Bool, mass: Double) {
         guard !wheels.isEmpty else { return nil }
-        let axles = Vehicle3D.axles(of: wheels)
+        let layout = Vehicle3D.driveLayout(of: wheels, tracked: tracked,
+                                           mass: mass, world: world)
+        guard !tracked || layout.tracks.count == 2 else { return nil }
         let wheelDescs = wheels.map { $0.desc(world: world) }
 
         var desc = CJoltVehicleDesc()
@@ -182,14 +230,19 @@ public final class Vehicle3D {
         desc.antiRollStiffness = Float(max(0, antiRollStiffness))
         desc.maxPitchRollAngle = Float.pi
         desc.contact = CJOLT_WHEEL_CONTACT_CYLINDER
-        desc.leans = leans
+        desc.kind = tracked ? CJOLT_VEHICLE_TRACKED
+            : (leans ? CJOLT_VEHICLE_LEANING : CJOLT_VEHICLE_WHEELED)
         desc.maxLeanAngle = Float(maxLeanAngle)
         desc.wheelCount = Int32(wheels.count)
-        desc.axleCount = Int32(axles.count)
+        desc.axleCount = Int32(layout.axles.count)
 
         let arena = ShapeDescArena()
         desc.wheels = arena.store(wheelDescs)
-        desc.axles = arena.store(axles)
+        desc.axles = arena.store(layout.axles)
+        if tracked {
+            desc.tracks = (layout.tracks[0].desc(arena: arena),
+                           layout.tracks[1].desc(arena: arena))
+        }
         let created = withExtendedLifetime(arena) {
             withUnsafePointer(to: &desc) {
                 cjolt_vehicle_create(world.handle, chassis.id, $0)
@@ -201,22 +254,25 @@ public final class Vehicle3D {
         self.handle = created
         self.body = chassis
         self.wheels = wheels
+        self.isTracked = tracked
+        self.chassisMass = mass
         self.engineTorque = engineTorque
         self.topSpeed = topSpeed
         self.antiRollStiffness = antiRollStiffness
-        // An axle the engine turns drives both of its wheels, so report back
-        // what actually ended up driven rather than what was asked for. This
-        // happens before the wheels are adopted, while `driven` is still the
-        // build spec rather than a setting fixed in the gearbox.
-        for axle in axles where axle.driven {
-            for index in [axle.leftWheel, axle.rightWheel] where index >= 0 {
-                wheels[Int(index)].driven = true
-            }
-        }
+        // An axle the engine turns drives both of its wheels, and a track is
+        // turned at one sprocket however many wheels were marked, so report
+        // back what actually ended up driven rather than what was asked for.
+        // This happens before the wheels are adopted, while `driven` is still
+        // the build spec rather than something to push at the solver.
         for (index, wheel) in wheels.enumerated() {
+            wheel.driven = layout.driven[index]
             wheel.adopt(by: self, index: index)
         }
     }
+
+    /// The machine's weight, kept because a track band's inertia is derived
+    /// from it (see `driveLayout`).
+    private let chassisMass: Double
 
     deinit {
         destroyBackingVehicle()
@@ -261,6 +317,7 @@ public final class Vehicle3D {
     /// Hand this frame's controls to the solver, which collides and drives the
     /// wheels inside the step that follows.
     func advance() {
+        if driveNeedsRebuild { rebuildDrive() }
         var forwardInput = throttle
         var brakeInput = brake
         // A car with an automatic box will not slam into reverse: asking for
@@ -293,6 +350,129 @@ public final class Vehicle3D {
         let t = v.cross(local) * 2
         return local + t * Double(q.3) + v.cross(t)
     }
+
+    /// How the engine reaches the ground: the axle pairs (which carry the
+    /// anti-roll bars whatever drives the machine), the two bands of a tracked
+    /// one, and which wheels end up driven once axle-mates and sprockets are
+    /// resolved.
+    struct DriveLayout {
+        var axles: [CJoltAxleDesc]
+        var tracks: [TrackBand]
+        var driven: [Bool]
+    }
+
+    /// One band of a tracked machine: the road wheels it carries, which of them
+    /// the engine turns, and how hard its brake bites.
+    struct TrackBand {
+        var wheels: [Int32]
+        var drivenWheel: Int32
+        var inertia: Double
+        var brakeTorque: Double
+
+        func desc(arena: ShapeDescArena) -> CJoltTrackDesc {
+            var desc = CJoltTrackDesc()
+            desc.wheels = arena.store(wheels)
+            desc.wheelCount = Int32(wheels.count)
+            desc.drivenWheel = drivenWheel
+            desc.inertia = Float(inertia)
+            // Enough that a band left alone winds down rather than coasting
+            // forever, which is the library's own figure.
+            desc.angularDamping = 0.5
+            desc.maxBrakeTorque = Float(brakeTorque)
+            return desc
+        }
+    }
+
+    /// What share of the machine's weight one band's inertia at the sprocket
+    /// stands for: a run of track plus its road wheels, swung at the sprocket's
+    /// radius. Measured across a range of sizes rather than guessed.
+    static let trackInertiaShare = 0.08
+
+    static func driveLayout(of wheels: [Wheel3D], tracked: Bool, mass: Double,
+                            world: World3D) -> DriveLayout {
+        let axles = Vehicle3D.axles(of: wheels)
+        guard tracked else {
+            var driven = [Bool](repeating: false, count: wheels.count)
+            for axle in axles where axle.driven {
+                for index in [axle.leftWheel, axle.rightWheel] where index >= 0 {
+                    driven[Int(index)] = true
+                }
+            }
+            return DriveLayout(axles: axles, tracks: [], driven: driven)
+        }
+
+        // The driver's right is -x (forward × up), so the left band carries the
+        // wheels at positive x. A wheel dead on the centerline has to ride one
+        // of them; it rides the left.
+        var sides: [[Int]] = [[], []]
+        for (index, wheel) in wheels.enumerated() {
+            sides[wheel.position.x >= 0 ? 0 : 1].append(index)
+        }
+        var bands: [TrackBand] = []
+        var driven = [Bool](repeating: false, count: wheels.count)
+        // Newton-metres over a world whose metre is `unitsPerMeter`, so a
+        // torque scales with the square of it.
+        let torqueScale = 1 / (world.unitsPerMeter * world.unitsPerMeter)
+        for side in sides {
+            guard !side.isEmpty else { continue }
+            // Real tracks are turned at one sprocket, so one wheel per band is
+            // driven: the one asked for, else the rearmost.
+            let sprocket = side.filter { wheels[$0].driven }.min {
+                wheels[$0].position.z < wheels[$1].position.z
+            } ?? side.min { wheels[$0].position.z < wheels[$1].position.z }!
+            driven[sprocket] = true
+            // The band's inertia at the sprocket stands for the weight of the
+            // whole run of track and its road wheels: a share of the machine
+            // swung at the sprocket's radius.
+            let radius = max(0.01, wheels[sprocket].radius)
+            let metricRadius = radius / world.unitsPerMeter
+            let inertia = Vehicle3D.trackInertiaShare * mass
+                * metricRadius * metricRadius
+            let brake = side.reduce(0.0) { $0 + max(0, wheels[$1].brakeTorque) }
+            bands.append(TrackBand(wheels: side.map(Int32.init),
+                                   drivenWheel: Int32(sprocket),
+                                   inertia: max(0.01, inertia),
+                                   brakeTorque: brake * torqueScale))
+        }
+        return DriveLayout(axles: axles, tracks: bands, driven: driven)
+    }
+
+    /// Set by a wheel whose `driven` changed. The rebuild waits for the step
+    /// rather than happening on the assignment, because which wheels drive is
+    /// usually set a whole list at a time and each wheel's flag is only half an
+    /// answer while the loop is still running.
+    var driveNeedsRebuild = false
+
+    /// Push the current `driven` flags at a vehicle that is already built: the
+    /// differentials of a wheeled machine, the sprocket of each band on a
+    /// tracked one. The gearing is re-solved, so the top speed is kept.
+    func rebuildDrive() {
+        driveNeedsRebuild = false
+        guard !isSyncingDrive, !isDestroyed else { return }
+        isSyncingDrive = true
+        defer { isSyncingDrive = false }
+        let layout = Vehicle3D.driveLayout(of: wheels, tracked: isTracked,
+                                           mass: chassisMass, world: world)
+        guard !isTracked || layout.tracks.count == 2 else { return }
+        let arena = ShapeDescArena()
+        let tracks = layout.tracks.map { $0.desc(arena: arena) }
+        withExtendedLifetime(arena) {
+            layout.axles.withUnsafeBufferPointer { axles in
+                tracks.withUnsafeBufferPointer { bands in
+                    cjolt_vehicle_set_drive(handle, axles.baseAddress,
+                                            Int32(axles.count),
+                                            bands.baseAddress)
+                }
+            }
+        }
+        // Report back what the drivetrain settled on. The guard above swallows
+        // the echo these assignments would otherwise send back through here.
+        for (index, wheel) in wheels.enumerated() {
+            wheel.driven = layout.driven[index]
+        }
+    }
+
+    private var isSyncingDrive = false
 
     /// Which wheels share an axle, worked out from where they sit rather than
     /// from the order they were listed: wheels at the same distance along the
@@ -383,17 +563,18 @@ public final class Wheel3D {
     public var steers: Bool { didSet { pushSettings() } }
 
     /// Whether the engine turns this wheel. Wheels sharing an axle are driven
-    /// together, so marking one marks its pair.
+    /// together, so marking one marks its pair; on a tracked machine it marks
+    /// the sprocket its band is turned at, so marking one clears the other on
+    /// that side.
     ///
-    /// This one is the gearbox rather than the wheel, so unlike everything
-    /// else here it is fixed once the vehicle is built: to change which end
-    /// drives, build the vehicle again.
+    /// This one is the gearbox rather than the wheel, so changing it rebuilds
+    /// the drive on the next step: the vehicle keeps its top speed, which is
+    /// re-geared against whatever is now driven. Set the whole list, then step,
+    /// and read these back to see what the drivetrain settled on.
     public var driven: Bool {
         didSet {
-            guard vehicle != nil, driven != oldValue else { return }
-            driven = oldValue
-            noteOnce("which wheels are driven is fixed when the vehicle is "
-                     + "built; make a new vehicle to change it")
+            guard driven != oldValue else { return }
+            vehicle?.driveNeedsRebuild = true
         }
     }
 
@@ -424,8 +605,17 @@ public final class Wheel3D {
     /// overshooting, and lower values wallow.
     public var suspensionDamping: Double = 0.5 { didSet { pushSettings() } }
 
-    /// How hard the brakes bite on this wheel, in newton-metres.
-    public var brakeTorque: Double = 1500 { didSet { pushSettings() } }
+    /// How hard the brakes bite on this wheel, in newton-metres. On a tracked
+    /// machine the brake belongs to the whole band, so this is that band's
+    /// share of it.
+    public var brakeTorque: Double = 1500 {
+        didSet {
+            pushSettings()
+            // A band's brake is the sum of its wheels', and it is carried by
+            // the drivetrain rather than by the wheel's own settings.
+            if vehicle?.isTracked == true { vehicle?.driveNeedsRebuild = true }
+        }
+    }
 
     /// How hard the hand brake bites on this wheel, in newton-metres. Zero on
     /// the front wheels of a car, so pulling it slides the back out.
@@ -567,10 +757,6 @@ public final class Wheel3D {
         withUnsafePointer(to: &settings) {
             cjolt_vehicle_set_wheel_settings(vehicle.handle, index, $0)
         }
-    }
-
-    private func noteOnce(_ message: String) {
-        vehicle?.world.noteOnce(message)
     }
 
     private func readState() -> CJoltWheelState {
