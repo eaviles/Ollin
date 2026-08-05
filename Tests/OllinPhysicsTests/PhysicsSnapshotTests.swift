@@ -493,6 +493,75 @@ struct PhysicsSnapshotTests {
             .appendingPathComponent("ollin-there-is-no-such-file.physics")) == false)
     }
 
+    /// A damaged snapshot is refused too, which a reader running out of bytes
+    /// cannot manage on its own: the payload is packed, and a packed payload
+    /// with a byte flipped still unpacks to a full-length buffer that parses
+    /// into *some* world. The twin is the same snapshot undamaged, which
+    /// restores the pile it came from.
+    @Test func aDamagedSnapshotIsRefusedRatherThanHalfRead() {
+        let world = World3D()
+        pile(in: world, count: 5, settle: 300)
+        let saved = world.snapshot()
+        let settled = world.bodies.map(\.position)
+
+        var bytes = saved.data
+        let middle = bytes.startIndex + bytes.count / 2
+        bytes[middle] = bytes[middle] &+ 1
+        let damaged = PhysicsSnapshot(data: bytes)
+        #expect(damaged != nil, "the header still reads, so the refusal is the payload's")
+
+        world.restore(damaged!)
+        #expect(world.bodies.count == 5, "the world was left alone")
+        let held = zip(settled, world.bodies.map(\.position))
+            .map { ($0 - $1).length }.max() ?? .infinity
+        #expect(held == 0, "down to the last bit")
+
+        // The twin: undamaged, the same bytes restore the pile.
+        let fresh = World3D()
+        fresh.restore(saved)
+        let restored = zip(settled, fresh.bodies.map(\.position))
+            .map { ($0 - $1).length }.max() ?? .infinity
+        #expect(fresh.bodies.count == 5)
+        #expect(restored == 0, "so the refusal was the damage, not the format")
+    }
+
+    /// The payload is packed, which is what keeps a settled arrangement small
+    /// enough to commit beside a sketch. A body writes about 130 bytes of
+    /// `Double`s whose high bytes repeat, so a pile of them packs several fold;
+    /// the twin is the same count of bodies given genuinely varied poses, which
+    /// packs less well and still round-trips exactly.
+    @Test func aSnapshotIsPackedAndStillExact() {
+        let world = World3D()
+        pile(in: world, count: 40, settle: 400)
+        let saved = world.snapshot()
+        let loose = 40 * 130
+        #expect(saved.data.count < loose / 2,
+                "40 bodies packed into \(saved.data.count) bytes, under half of \(loose)")
+
+        let fresh = World3D()
+        fresh.restore(saved)
+        let error = zip(world.bodies.map(\.position), fresh.bodies.map(\.position))
+            .map { ($0 - $1).length }.max() ?? .infinity
+        #expect(error == 0, "and packing lost nothing")
+
+        // The twin: poses that share far fewer bytes still come back exact.
+        let varied = World3D()
+        varied.ground = 0
+        for i in 0 ..< 40 {
+            let t = Double(i)
+            varied.addBody(.box(width: 0.3 + t * 0.017, height: 0.41, depth: 0.29),
+                           at: Vector3(sin(t * 1.7) * 9.13, 1.37 + t * 0.61,
+                                       cos(t * 2.3) * 7.41),
+                           rotated: t * 0.37, axis: Vector3(0.31, 0.83, 0.46))
+        }
+        let variedSnapshot = varied.snapshot()
+        let back = World3D()
+        back.restore(variedSnapshot)
+        let variedError = zip(varied.bodies.map(\.position), back.bodies.map(\.position))
+            .map { ($0 - $1).length }.max() ?? .infinity
+        #expect(variedError == 0, "whatever the bytes look like")
+    }
+
     // MARK: What a snapshot leaves out
 
     /// A snapshot holds the rigid tier. A vehicle's chassis is an ordinary body

@@ -1,4 +1,5 @@
 import Foundation
+import Compression
 import Ollin
 internal import CJolt
 
@@ -49,9 +50,9 @@ public struct PhysicsSnapshot: Sendable, Equatable {
     public let jointCount: Int
 
     /// Reads a snapshot's bytes back, or `nil` if they are not a snapshot (or
-    /// are from a newer version of Ollin than this one).
+    /// are in a format this version of Ollin does not read).
     public init?(data: Data) {
-        guard let header = SnapshotReader.header(of: data) else { return nil }
+        guard let header = SnapshotHeader(of: data) else { return nil }
         self.data = data
         self.bodyCount = header.bodies
         self.jointCount = header.joints
@@ -87,20 +88,44 @@ public struct PhysicsSnapshot: Sendable, Equatable {
         case unreadable
     }
 
-    /// Builds a snapshot from an already-encoded payload.
+    /// Builds a snapshot from an already-encoded payload, compressing it when
+    /// that comes out smaller. A world is mostly arrays of `Double`s whose
+    /// high bytes repeat, which is exactly what a general compressor is good
+    /// at: a settled heap of primitives shrinks about ninefold, and a world
+    /// carrying scenery about twofold.
     init(payload: Data, bodies: Int, joints: Int) {
+        let squeezed = SnapshotCompression.compress(payload)
         var writer = SnapshotWriter()
         writer.magic()
         writer.u32(UInt32(PhysicsSnapshot.version))
         writer.u32(UInt32(bodies))
         writer.u32(UInt32(joints))
-        self.data = writer.data + payload
+        writer.u8(squeezed == nil ? 0 : 1)
+        writer.u32(UInt32(payload.count))
+        writer.u64(SnapshotChecksum.of(payload))
+        self.data = writer.data + (squeezed ?? payload)
         self.bodyCount = bodies
         self.jointCount = joints
     }
 
-    /// The format this build writes, and the highest it reads.
-    static let version = 1
+    /// The bytes a reader walks: the payload, unpacked if it was packed, and
+    /// only if it is all there. The checksum is what makes a truncated or
+    /// damaged snapshot *refused* rather than half-read, which the reader
+    /// running out of bytes cannot do on its own: a packed payload cut short
+    /// still unpacks to a full-length buffer of rubbish, and rubbish parses.
+    var payload: Data? {
+        guard let header = SnapshotHeader(of: data) else { return nil }
+        let stored = Data(data.dropFirst(SnapshotHeader.size))
+        let unpacked = header.isCompressed
+            ? SnapshotCompression.decompress(stored, to: header.payloadBytes)
+            : stored
+        guard let unpacked, unpacked.count == header.payloadBytes,
+              SnapshotChecksum.of(unpacked) == header.checksum else { return nil }
+        return unpacked
+    }
+
+    /// The format this build writes, and the only one it reads.
+    static let version = 2
 
     /// The body index a joint anchored to `World3D.groundBody` carries, since
     /// the floor slab is not one of the saved bodies.
@@ -212,11 +237,11 @@ extension World3D {
     /// world was holding beforehand is gone, characters, vehicles, ragdolls,
     /// and soft bodies included.
     public func restore(_ snapshot: PhysicsSnapshot) {
-        var reader = SnapshotReader(snapshot.data)
-        guard reader.skipHeader() else {
+        guard let payload = snapshot.payload else {
             noteOnce("this snapshot could not be read; the world is unchanged")
             return
         }
+        var reader = SnapshotReader(payload)
         do {
             try rebuild(from: &reader)
         } catch {
@@ -425,6 +450,95 @@ private struct SavedJoint {
     var poseB: Pose3D
 }
 
+// MARK: - The header
+
+/// What sits in front of a snapshot's payload: enough to tell one from any
+/// other bytes, to refuse a format this build does not read, to say what is
+/// inside without unpacking it, and to unpack it.
+private struct SnapshotHeader {
+    var bodies: Int
+    var joints: Int
+    var isCompressed: Bool
+    var payloadBytes: Int
+    var checksum: UInt64
+
+    /// magic(8) + version(4) + bodies(4) + joints(4) + flags(1) + length(4)
+    /// + checksum(8).
+    static let size = 33
+
+    init?(of data: Data) {
+        var reader = SnapshotReader(data)
+        guard let magic = try? reader.bytes(8),
+              magic.elementsEqual(Array("OLLNPHYS".utf8)),
+              let version = try? reader.u32(),
+              Int(version) == PhysicsSnapshot.version,
+              let bodies = try? reader.u32(), let joints = try? reader.u32(),
+              let flags = try? reader.u8(), let length = try? reader.u32(),
+              let checksum = try? reader.u64()
+        else { return nil }
+        self.bodies = Int(bodies)
+        self.joints = Int(joints)
+        self.isCompressed = flags & 1 != 0
+        self.payloadBytes = Int(length)
+        self.checksum = checksum
+    }
+}
+
+/// A cheap hash over a payload, so a snapshot can tell whether the bytes it
+/// was handed are the bytes it wrote. FNV-1a: not a cryptographic digest, and
+/// it does not need to be. What it has to catch is a file cut short, a byte
+/// flipped, or bytes from something else entirely.
+private enum SnapshotChecksum {
+    static func of(_ data: Data) -> UInt64 {
+        var hash: UInt64 = 0xcbf2_9ce4_8422_2325
+        for byte in data {
+            hash ^= UInt64(byte)
+            hash &*= 0x1000_0000_01b3
+        }
+        return hash
+    }
+}
+
+/// Packing for a snapshot's payload. LZFSE, the system codec, so nothing is
+/// vendored and the result is the same bytes on every machine.
+private enum SnapshotCompression {
+
+    /// The packed payload, or nil when packing it would not make it smaller
+    /// (the codec says so itself by refusing a destination this size).
+    static func compress(_ source: Data) -> Data? {
+        guard !source.isEmpty else { return nil }
+        var packed = Data(count: source.count)
+        let written = packed.withUnsafeMutableBytes { destination -> Int in
+            source.withUnsafeBytes { input -> Int in
+                guard let out = destination.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                      let raw = input.baseAddress?.assumingMemoryBound(to: UInt8.self)
+                else { return 0 }
+                return compression_encode_buffer(out, source.count, raw, source.count,
+                                                 nil, COMPRESSION_LZFSE)
+            }
+        }
+        guard written > 0 else { return nil }
+        return packed.prefix(written)
+    }
+
+    /// The payload a `compress` produced, or nil when the bytes are not what
+    /// the header said they were.
+    static func decompress(_ packed: Data, to size: Int) -> Data? {
+        guard size > 0, packed.count > 0 else { return nil }
+        var unpacked = Data(count: size)
+        let written = unpacked.withUnsafeMutableBytes { destination -> Int in
+            packed.withUnsafeBytes { input -> Int in
+                guard let out = destination.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                      let raw = input.baseAddress?.assumingMemoryBound(to: UInt8.self)
+                else { return 0 }
+                return compression_decode_buffer(out, size, raw, packed.count,
+                                                 nil, COMPRESSION_LZFSE)
+            }
+        }
+        return written == size ? unpacked : nil
+    }
+}
+
 // MARK: - Writing
 
 /// Appends little-endian values to a growing buffer. Every number is written
@@ -440,6 +554,10 @@ private struct SnapshotWriter {
     mutating func u8(_ value: UInt8) { data.append(value) }
 
     mutating func u32(_ value: UInt32) {
+        withUnsafeBytes(of: value.littleEndian) { data.append(contentsOf: $0) }
+    }
+
+    mutating func u64(_ value: UInt64) {
         withUnsafeBytes(of: value.littleEndian) { data.append(contentsOf: $0) }
     }
 
@@ -624,28 +742,9 @@ private struct SnapshotReader {
         self.offset = 0
     }
 
-    /// The magic, version, and counts at the front of a snapshot, or nil when
-    /// these bytes are not one.
-    static func header(of data: Data) -> (bodies: Int, joints: Int)? {
-        var reader = SnapshotReader(data)
-        guard let magic = try? reader.bytes(8),
-              magic.elementsEqual(Array("OLLNPHYS".utf8)),
-              let version = try? reader.u32(), Int(version) <= PhysicsSnapshot.version,
-              let bodies = try? reader.u32(), let joints = try? reader.u32() else {
-            return nil
-        }
-        return (Int(bodies), Int(joints))
-    }
-
-    mutating func skipHeader() -> Bool {
-        guard SnapshotReader.header(of: data) != nil else { return false }
-        offset = 20
-        return true
-    }
-
     enum Failure: Error { case truncated, unknownTag }
 
-    private mutating func bytes(_ count: Int) throws -> [UInt8] {
+    mutating func bytes(_ count: Int) throws -> [UInt8] {
         guard count >= 0, offset + count <= data.count else { throw Failure.truncated }
         let start = data.startIndex + offset
         defer { offset += count }
@@ -670,11 +769,15 @@ private struct SnapshotReader {
         return value
     }
 
-    mutating func f64() throws -> Double {
+    mutating func u64() throws -> UInt64 {
         let raw = try bytes(8)
         var pattern: UInt64 = 0
         for (shift, byte) in raw.enumerated() { pattern |= UInt64(byte) << (8 * shift) }
-        return Double(bitPattern: pattern)
+        return pattern
+    }
+
+    mutating func f64() throws -> Double {
+        Double(bitPattern: try u64())
     }
 
     mutating func vector() throws -> Vector3 {

@@ -3920,12 +3920,37 @@ The consequence is the design's best property: **restoring replays the ordinary
 `addBody` and `connect` calls**, so a restored world is one a sketch could have
 built by hand and cannot be in a state a built one cannot reach. What it costs
 is a small binary encoder (`SnapshotWriter` / `SnapshotReader` in
-`PhysicsSnapshot.swift`): a magic + version + counts header, then the world
-settings, the group table, the bodies, the joints, and the joint-to-joint links,
-every number a `Float64`. `PhysicsSnapshot` wraps the `Data` rather than the
+`PhysicsSnapshot.swift`): a header, then a payload holding the world settings,
+the group table, the bodies, the joints, and the joint-to-joint links, every
+number a `Float64`. `PhysicsSnapshot` wraps the `Data` rather than the
 decoded model, which makes it `Sendable` and `Equatable` for free (a `Collider3D`
 is neither) and leaves exactly one representation, so a snapshot that went
 through a file and one that did not are the same value.
+
+The payload is **packed with LZFSE** (the system codec, so nothing is vendored
+and the bytes are the same on every machine), and the header carries a flag, the
+unpacked length, and an FNV-1a checksum beside the magic, version, and counts.
+Two measurements settled that. On a scenery-heavy world (a 129² heightfield
+collider, a 16,641-vertex terrain mesh, a 5,000-vertex knot, sixty boxes) the
+file goes 1912 KB to 966 KB, and on the case the feature exists for, a settled
+heap of sixty primitives, 10.7 KB to 1.2 KB. A world is arrays of `Double`s
+whose exponent bytes repeat, which is exactly what a general compressor eats.
+The second measurement is the one that **rejected narrowing mesh positions to
+`Float32`**: it saves less (1912 KB to 1210 KB, or 575 KB packed as well), it is
+lossy for the `Mesh` a sketch reads back out of `body.collider`, and where it
+would help most it is dominated outright by naming the geometry instead of
+holding it. Compression is conditional on being smaller, which the codec reports
+by refusing a destination the source's size, so an incompressible payload simply
+rides uncompressed and the flag says so.
+
+The checksum is not decoration. **LZFSE's decoder returns the full requested
+length from a truncated stream** rather than reporting the truncation (measured:
+15 bytes of a 46-byte stream decoded to all 825 bytes, none of them right), so
+the old "the reader runs out of bytes" defence silently became "rubbish parses
+into some world" the moment the payload was packed. The checksum makes *refused
+rather than half-read* true by construction, and it also catches a
+corrupted-but-complete file, which the unpacked format never could.
+`aDamagedSnapshotIsRefusedRatherThanHalfRead` pins it against its undamaged twin.
 
 Four things are load-bearing:
 
@@ -3974,7 +3999,7 @@ the whole point of the feature: determinism is per binary, so a heap made by
 simulating is a different heap wherever the floating point rounds differently
 (measured: releasing one stone 1e-7 higher moves a stone in the settled heap
 0.45 units), where a saved one has nothing left to compute.
-`PhysicsSnapshotTests` (21) pins it; example `3D/Physics/Cairn`.
+`PhysicsSnapshotTests` (23) pins it; example `3D/Physics/Cairn`.
 
 ## The geometry and generator catalog
 
