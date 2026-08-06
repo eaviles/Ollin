@@ -637,6 +637,108 @@ private final class AreaReflectionProbe: Sketch {
     }
 }
 
+/// Behavioral probe for the hit shade's roughness fade: a surface seen *in* a reflection
+/// carries only one traced ray, which has no lobe width, so a rough hit fades that ray
+/// back into the prefiltered environment. The measurable consequence is that past the
+/// fade's ramp, geometry in the hit's own mirror direction stops mattering: blocking that
+/// direction with a black wall must leave a rough surface's mirrored image alone while
+/// visibly darkening a smooth one. Rendered as two counterfactual pairs (one knob, the
+/// wall's roughness) because the whole-frame snapshot diff averages this away entirely.
+/// RT-gated: without ray tracing there is no traced hit to fade.
+@Suite
+@MainActor
+struct ReflectionRoughnessProbes {
+
+    /// Mean red over the band of the mirror floor holding the wall's reflected image.
+    private func mirroredWallMean(roughness: Double, blocked: Bool) throws -> Double {
+        let scene = ReflectionRoughnessProbe.make(roughness: roughness, blocked: blocked)
+        let image = try #require(OllinApp.image(of: scene, frame: 1))
+        let w = image.width, h = image.height
+        var data = [UInt8](repeating: 0, count: w * h * 4)
+        let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
+                            bytesPerRow: w * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+        var sum = 0, count = 0
+        for y in (h * 56 / 100)..<(h * 70 / 100) {
+            for x in (w * 38 / 100)..<(w * 68 / 100) {
+                sum += Int(data[(y * w + x) * 4]); count += 1
+            }
+        }
+        return Double(sum) / Double(count)
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func aRoughSurfaceInAMirrorIgnoresWhatItFaces() throws {
+        // Roughness 0.85 is past the fade's ramp, so the traced bounce is discarded
+        // entirely and only the prefiltered environment remains: walling off the mirror
+        // direction can have no effect. Without the fade the wall would mirror the black
+        // wall sharply and this region would drop.
+        let open = try mirroredWallMean(roughness: 0.85, blocked: false)
+        let walled = try mirroredWallMean(roughness: 0.85, blocked: true)
+        #expect(abs(open - walled) < 2,
+                "expected a rough wall's mirrored image to ignore its own mirror direction: open \(open), walled \(walled)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func aSmoothSurfaceInAMirrorStillShowsWhatItFaces() throws {
+        // The counterfactual that gives the test above its teeth: below the ramp the
+        // traced bounce survives at full weight, so the same black wall must show up.
+        let open = try mirroredWallMean(roughness: 0.05, blocked: false)
+        let walled = try mirroredWallMean(roughness: 0.05, blocked: true)
+        #expect(open - walled > 6,
+                "expected a smooth wall to mirror the black wall it faces: open \(open), walled \(walled)")
+    }
+}
+
+/// The roughness-fade probe scene: a white wall over a near-mirror floor under a bundled
+/// environment, its reflection the thing measured. `blocked` stands a black wall behind
+/// the camera, out of frame, filling the white wall's mirror direction: it is invisible
+/// to the eye and reachable only by a traced ray.
+private final class ReflectionRoughnessProbe: Sketch {
+    var roughness = 0.85
+    var blocked = false
+
+    static func make(roughness: Double, blocked: Bool) -> ReflectionRoughnessProbe {
+        let probe = ReflectionRoughnessProbe()
+        probe.roughness = roughness
+        probe.blocked = blocked
+        return probe
+    }
+
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(.black)
+        camera(.orbiting(target: Vector3(0, 0.8, 0), radius: 9,
+                         azimuth: 0.2, elevation: 0.35))
+        environment(.night)
+        rayTracedReflections()
+        directionalLight(.white, direction: Vector3(-0.3, -1, -0.4), intensity: 0.8)
+        withState {
+            fill(Color(white: 0.9))
+            material(.metal(roughness: 0.05))
+            drawPlane(width: 16, depth: 12)
+        }
+        withState {
+            translate(0, 1.6, -2.6)
+            fill(.white)
+            // Metal, so the reflected lobe *is* the whole appearance: a dielectric
+            // reflects about 4% head-on and buries the effect under its diffuse body.
+            material(.metal(roughness: roughness))
+            drawBox(width: 5.0, height: 3.2, depth: 0.25)
+        }
+        if blocked {
+            withState {
+                translate(0, 1.6, 11)
+                fill(.black)
+                material(.dielectric(roughness: 0.9))
+                drawBox(width: 40, height: 30, depth: 0.5)
+            }
+        }
+    }
+}
+
 /// `lightingPreset(_:)` is the bare facade; checks here go through `Drawer` to pin
 /// that a preset packs as a custom (sketch-controlled) rig.
 @Suite

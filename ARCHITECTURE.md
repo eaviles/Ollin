@@ -2226,6 +2226,16 @@ irradiance cube integrates the same bright HDRI floor that leaked), and lobe
 widening alone dims the streak but cannot remove it (the leak is radiometric,
 not a filtering problem).
 
+A rough first hit **fades its traced bounce back into that lobe** by
+`smoothstep(0.12, 0.55, rough)`, the same rule the inline wrapper applies to the
+primary surface. One ray carries no lobe width, so without the fade a matte
+floor seen in a mirror, or through glass, showed a crisp reflection of its
+surroundings that a direct view of the same floor never shows (the first
+sighting was the glass example's `roughness: 0.8` floor mirroring the striped
+wall behind it). The miss branch already *is* that lobe, so it needs no blend,
+and a hit below the ramp is untouched: the near-mirror snapshots
+(`rt-reflections-3d`, `area-reflections`) did not move.
+
 ---
 
 ## User-supplied shaders

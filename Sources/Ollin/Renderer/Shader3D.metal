@@ -899,7 +899,8 @@ static inline float3 ollin_rt_env_lobe(texturecube<float> prefilterTex, sampler 
 // remove (it is consistently-shaded content, not an edge). Shading the actual second
 // surface instead dims the corner by the product of the two surfaces' own reflectances,
 // exactly as a real mirror corner does. The second bounce terminates at the environment
-// (no third trace); both env samples use the grazing-aware lobe width above.
+// (no third trace); both env samples use the grazing-aware lobe width above, and a rough
+// first hit fades its traced bounce back into that lobe so it still reads as matte.
 // Shade one committed hit surface `s1` seen along `rayDir` from `rayOrigin`: the
 // two-bounce, metalness-aware hit shade shared by the reflection trace and the
 // refraction walk (one shade, so a surface reads the same in a mirror and through
@@ -940,6 +941,18 @@ static inline float3 ollin_rt_hit_radiance(OllinRTSurface s1, float3 rayOrigin, 
         float3 diffuse2 = s2.albedo * irradianceTex.sample(cubeSamp, rot * s2.N).rgb
                         + ollin_rt_direct(s2, light, -secDir, ltcAmp, iesProfiles, cookies);
         envAtHit = env2 * Fb + diffuse2 * (1.0 - s2.metal);
+        // A rough first hit cannot show a sharp mirror. One traced ray carries no lobe
+        // width, so blend it back toward the prefiltered environment by this surface's
+        // own roughness, the same rule the inline wrapper applies to the primary
+        // surface. Without it a matte floor seen in a mirror, or through glass, shows a
+        // crisp reflection the direct view of that same floor never does. The miss
+        // branch below already *is* that lobe, so it needs no blend.
+        float lobeBlend = smoothstep(0.12, 0.55, s1.rough);
+        if (lobeBlend > 0.0) {
+            float3 lobe = ollin_rt_env_lobe(prefilterTex, cubeSamp, rot, secDir,
+                                            s1.rough, NoV, light.iblMaxMip);
+            envAtHit = mix(envAtHit, lobe, lobeBlend);
+        }
     } else {
         envAtHit = ollin_rt_env_lobe(prefilterTex, cubeSamp, rot, secDir,
                                      s1.rough, NoV, light.iblMaxMip);
