@@ -89,6 +89,38 @@ extension Sketch {
         }
     }
 
+    /// Run `draw` with the 3D transform stack standing in the middle of one of
+    /// a rope's segments, turned so that **+y runs along the rope**, which is
+    /// the axis Ollin's cylinders, capsules, and cones stand on. So a primitive
+    /// drawn inside the block lies along the rope with no turning of its own,
+    /// and anything else riding the rope is placed the same way a rigid body is
+    /// by `withBody(_:)`:
+    ///
+    /// ```swift
+    /// for segment in vine.segments where segment.index % 3 == 0 {
+    ///     withSegment(segment) {
+    ///         translate(0, 0, 0.12)
+    ///         drawSphere(radius: 0.06)     // a leaf, carried and twisted by the stem
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// The turn is the rod's own, not one worked out from the neighbouring
+    /// points, so it carries the rope's twist as well as its bend.
+    public func withSegment(_ segment: RopeSegment, _ draw: () -> Void) {
+        let q = segment.rotation.normalized
+        let w = max(-1, min(1, q.real))
+        let angle = 2 * acos(w)
+        let s = (1 - w * w).squareRoot()
+        withState {
+            translate(segment.center)
+            if s > 1e-6 {
+                rotate(angle, axis: Vector3(q.imag.x / s, q.imag.y / s, q.imag.z / s))
+            }
+            draw()
+        }
+    }
+
     /// Draw a soft body's simulated surface.
     ///
     /// Unlike `withBody(_:)`, which moves the transform stack to a rigid body's
@@ -144,15 +176,33 @@ extension Sketch {
             return nil
         }
         let reach = ray.direction * (camera.far - camera.near)
-        guard let hit = world.raycast(from: ray.origin, to: ray.origin + reach),
-              let soft = hit.body as? SoftBody3D else {
-            return nil
-        }
-        let point = hit.point
-        guard let vertex = soft.nearestVertex(to: point) else { return nil }
         let forward = (camera.target - camera.eye).normalized
-        return SoftGrip(body: soft, vertex: vertex, wasPinned: soft.isPinned(vertex),
-                        viewDepth: (point - camera.eye).dot(forward))
+        if let hit = world.raycast(from: ray.origin, to: ray.origin + reach),
+           let soft = hit.body as? SoftBody3D,
+           let vertex = soft.nearestVertex(to: hit.point) {
+            return SoftGrip(body: soft, vertex: vertex, wasPinned: soft.isPinned(vertex),
+                            viewDepth: (hit.point - camera.eye).dot(forward))
+        }
+        // A rope has no surface for a ray to strike, so nothing above can find
+        // one. What the cursor means on a rope is still perfectly clear, so the
+        // fallback is to take the nearest particle to the line of sight, within
+        // the rope's own thickness of it.
+        var best: (rope: Rope3D, vertex: Int, point: Vector3, distance: Double)?
+        for rope in world.softBodies.compactMap({ $0 as? Rope3D }) {
+            for (index, point) in rope.particlePositions.enumerated() {
+                let along = (point - ray.origin).dot(ray.direction)
+                guard along > 0 else { continue }
+                let distance = (point - (ray.origin + ray.direction * along)).length
+                guard distance <= max(rope.thickness, 1e-6) * 3 else { continue }
+                if best == nil || along < (best!.point - ray.origin).dot(ray.direction) {
+                    best = (rope, index, point, distance)
+                }
+            }
+        }
+        guard let best else { return nil }
+        return SoftGrip(body: best.rope, vertex: best.vertex,
+                        wasPinned: best.rope.isPinned(best.vertex),
+                        viewDepth: (best.point - camera.eye).dot(forward))
     }
 
     /// Drag a soft-body grip toward a canvas point, keeping the particle at the

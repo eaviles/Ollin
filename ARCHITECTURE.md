@@ -3608,6 +3608,98 @@ five-fold, the back stop holds the cloth off the figure a free one sinks into,
 a snapshot round trip is exact to 1e-6 and still follows a figure it has never
 seen, and identical runs replay identically.
 
+### Ropes, and the frame a rod carries
+
+A `Rope3D` (`Sources/OllinPhysics/Rope3D.swift`) is a `SoftBody3D` whose
+particles are held by **Cosserat rods** rather than springs. The solver has
+seven soft-body constraint families and the bridge built four; this is the
+fifth, and it is the one that carries an *orientation*: a rod holds a rotation
+of its own, integrated beside the particle positions, so geometry attached to it
+turns as the rope bends and twists. A chain of springs cannot express that,
+because a frame guessed from neighbouring points has no roll.
+
+**A rope is the first body with no surface at all**, which is why the slice
+starts in the bridge. `cjolt_soft_body_create` refused a description with no
+faces, on the reasonable ground that a triangle is the smallest simulable
+surface; with rods it is not the smallest simulable *thing*. The guard now asks
+for faces only when there are no rods. Everything downstream of that turns out
+to cope: `CreateConstraints` derives its long-range attachments by walking every
+vertex rather than every face, and `CalculateClosestKinematic` walks rods beside
+edges, so `maxStretch:` works on a rope with no faces exactly as it does on
+cloth (measured 1.80 uncapped against 1.00 capped on the same hanging rope) as
+long as the rods go in *before* `CreateConstraints`, the same ordering rule the
+skin already needed.
+
+**Two things the solver does to the rod list have to be undone on the way out,
+and both are the bridge's to know.** `Optimize()` reorders the rods so it can
+solve them in parallel, and `CalculateRodProperties()` reverses any rod pointing
+against its neighbour, so that neighbouring rods agree on which way is forward.
+The handle therefore records, per rod the caller handed over, where it ended up
+and whether it was turned around; the read-back walks that map and multiplies a
+reversed rod's rotation by a half turn about its own x axis, which sends its +z
+back the way the caller asked for and leaves a right-handed frame. So `segments`
+speaks in the caller's own order and direction, and the `RopeSegment.rotation` a
+sketch reads is the same convention `withSegment(_:)` applies (local +y along
+the rope, matching the axis Ollin's cylinders and capsules stand on; local +x
+carries the twist).
+
+**The bend knob needed its own scale, and the scale had to be measured.** The
+stretch constraint is a distance constraint with an orientation term bolted on,
+so the shipped cloth normalization (`meanEdge * sqrt(particleCount) /
+(mass * gravity)`) transfers to it unchanged and is exact across weight. The
+bend-and-twist constraint is not: it holds a *rotation*, a pure number, against
+a generalized mass in units of inverse kilograms, so there is no length in it to
+compare against and no derivation to do. Hanging a rope out sideways and asking
+what compliance leaves the tip drooping by a third of the rope's own length, at
+several lengths and particle counts, gives
+
+    compliance  ∝  meanRod² / (length³ · mass · gravity)
+
+with a measured constant that puts "drooping about a third" in the middle of the
+knob. Before the correction the knob's meaning ran away with length: `bend: 0.1`
+left a half-unit rope nearly rigid (drop/span 0.13) and a six-unit one limp
+(0.92). After it, `bend: 0.5` lands at 0.26 to 0.33 across twelve-fold in length,
+double in particle count, and a hundred-fold in mass. The one case that stays
+out of that band is a long rope divided finely (forty particles over six units),
+which is not the normalization failing but PBD's own propagation limit, the same
+thing the raft's folding deck runs into: stiffness travels one rod per solver
+pass, so `iterations` is the lever, and raising it from 5 to 20 takes that rope
+from 0.40 to 0.027.
+
+Both sweeps were **non-monotone at 900 steps and monotone at 3000**, which is
+the stage-8 lesson again: a cantilever that has not stopped swinging measures
+its swing, not its stiffness.
+
+**Putting a rope back needed the rod frames, and they turned out to be
+writable.** `SoftBodyMotionProperties` exposes `GetRodRotation` and no setter,
+and `mRodStates` is private, so a restored rope opened every rod in the frame
+its *rest* polyline gives while its particles stood in the shape it had reached.
+The stretch constraint then hauls each rod round to the direction it is actually
+in and drags the particles with it: exact at the moment of restore and 0.36
+units out one step later, oscillating for hundreds of frames. The way in is that
+`RodStretchShear::mBishop` is read exactly once at runtime, by
+`SoftBodyMotionProperties::Initialize`, to seed each rod's state, and everything
+else it feeds (`mLength`, `mOmega0`, the rest shape the rope springs back
+toward) is computed by `CalculateRodProperties` *before* that. So writing the
+saved orientations over `mBishop` after that call and before `Optimize` stands
+the rope's rods back up without touching the shape it wants to return to.
+Measured on a settled rope: 0.0014 units of drift after one step against 0.361
+without, which is what `aRestoredRopeDoesNotSpring` pins as a counterfactual
+twin. It also means a rope needs **no `assetName`** to be saved, unlike a
+surface: its whole rest shape is a handful of points, so it carries itself.
+
+**The envelope is mostly the tier's, with one piece of its own.** No
+self-collision, so a coil passes through its own turns. And `SoftBodyShape` is
+built entirely from a body's faces, so a rope is invisible to `raycast`,
+`sweep`, and `bodiesOverlapping` (pinned deliberately by
+`aRopeIsInvisibleToQueries`) while still colliding perfectly well *with* the
+rigid world, because that runs off the particles' own `vertexRadius` spheres
+inside the soft body's update rather than off the shape. `grabSoftBody(at:in:)`
+would have gone with the queries, so it falls back to the nearest particle
+within a few thicknesses of the line of sight, which is what the cursor plainly
+means on a rope anyway. Branching is out: a rope is one strand, and a plant with
+several stems is several ropes.
+
 ### Water and buoyancy
 
 Buoyancy is unlike everything above it in the bridge: the solver does not work

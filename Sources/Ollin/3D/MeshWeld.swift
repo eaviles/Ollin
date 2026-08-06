@@ -27,6 +27,12 @@ package struct MeshWelding: Sendable {
 
     /// How many original vertices merged onto each welded position.
     package var count: Int { positions.count }
+
+    package init(positions: [Vector3], indices: [UInt32], remap: [Int]) {
+        self.positions = positions
+        self.indices = indices
+        self.remap = remap
+    }
 }
 
 extension Mesh {

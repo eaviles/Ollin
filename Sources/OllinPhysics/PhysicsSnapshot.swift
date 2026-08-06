@@ -146,7 +146,7 @@ public struct PhysicsSnapshot: Sendable, Equatable {
     }
 
     /// The format this build writes, and the only one it reads.
-    static let version = 3
+    static let version = 4
 
     /// The body index a joint anchored to `World3D.groundBody` carries, since
     /// the floor slab is not one of the saved bodies.
@@ -217,7 +217,9 @@ extension World3D {
             index[vehicle.body.id] = UInt32(saved.count + offset)
         }
         if let groundBody { index[groundBody.id] = PhysicsSnapshot.groundIndex }
-        let savedSoft = softBodies.filter { $0.assetName != nil }
+        // A rope is nothing but its mesh too, but its mesh is a handful of
+        // points, so it carries itself and needs no name.
+        let savedSoft = softBodies.filter { $0.assetName != nil || $0 is Rope3D }
         if savedSoft.count < softBodies.count {
             noteOnce("a soft body is nothing but its mesh, so it is saved only "
                      + "when it has an assetName to write down in place of it; "
@@ -491,6 +493,30 @@ extension World3D {
     /// so, the way a named collider that resolves to nothing is.
     private func restoreSoftBody(_ saved: SavedSoftBody,
                                  resolving resolve: PhysicsAssetResolver?) {
+        let turn = simd_quatd(ix: saved.rotation.imag.x, iy: saved.rotation.imag.y,
+                              iz: saved.rotation.imag.z, r: saved.rotation.real)
+            .normalized
+        // A rope carried its own rest shape, so it needs nothing resolved: it
+        // is rebuilt on the polyline it was built on, with each rod already
+        // turned the way it was, and then stood in the shape it had reached.
+        if let rope = saved.rope {
+            guard let body = makeRope(points: rope.points, position: saved.position,
+                                      rotation: turn, thickness: rope.thickness,
+                                      sides: rope.sides, mass: saved.mass,
+                                      stiffness: saved.stiffness, bend: saved.bend,
+                                      damping: saved.damping,
+                                      friction: saved.friction,
+                                      restitution: saved.restitution,
+                                      iterations: saved.iterations,
+                                      pinned: nil, maxStretch: saved.maxStretch,
+                                      group: group(at: Int32(saved.group)),
+                                      rodRotations: rope.rodRotations)
+            else { return }
+            if !saved.assetName.isEmpty { body.assetName = saved.assetName }
+            for index in saved.pinned { body.pin(index) }
+            body.restoreState(positions: saved.positions, velocities: saved.velocities)
+            return
+        }
         guard let mesh = resolve?(saved.assetName)?.mesh else {
             noteOnce("this world names a soft body's mesh \"\(saved.assetName)\" "
                      + "that nothing was handed back for, so the surface is "
@@ -505,9 +531,6 @@ extension World3D {
         // Built where it was built, so its rest shape is in the frame the
         // saved particle positions were measured against, then stood back in
         // the shape it had reached.
-        let turn = simd_quatd(ix: saved.rotation.imag.x, iy: saved.rotation.imag.y,
-                              iz: saved.rotation.imag.z, r: saved.rotation.real)
-            .normalized
         guard let body = makeSoftBody(mesh: mesh, position: saved.position,
                                       rotation: turn, mass: saved.mass,
                                       stiffness: saved.stiffness,
@@ -836,6 +859,18 @@ private struct SavedSoftBody {
     /// decided it are a sketch's and cannot be carried, the same reason the
     /// pinned list is here.
     var skin: SoftBody3D.Skin
+    /// What makes it a rope rather than a surface: its own rest polyline, how
+    /// thick it draws, and the way each rod was turned. All small, which is why
+    /// a rope needs no `assetName` to be saved when a surface does.
+    var rope: SavedRope?
+}
+
+/// A rope's own build data, small enough to carry rather than name.
+private struct SavedRope {
+    var points: [Vector3]
+    var thickness: Double
+    var sides: Int
+    var rodRotations: [simd_quatd]
 }
 
 /// One joint as a snapshot holds it.
@@ -1297,6 +1332,24 @@ private struct SnapshotWriter {
             f32(carried.backStopDistance)
             f32(carried.backStopRadius)
         }
+
+        // A rope's own rest shape, which is small enough to write down rather
+        // than name, plus the way each rod is turned: without those the solver
+        // would open every rod in its rest frame and haul the rope round to the
+        // shape it is actually in, which reads as a spring on the first frame.
+        let rope = body as? Rope3D
+        u32(UInt32(rope?.points.count ?? 0))
+        if let rope {
+            for point in rope.points { vector(point) }
+            f64(rope.thickness)
+            u32(UInt32(max(3, rope.sides)))
+            let frames = rope.rodOrientations()
+            u32(UInt32(frames.count))
+            for q in frames {
+                f32(Float(q.imag.x)); f32(Float(q.imag.y))
+                f32(Float(q.imag.z)); f32(Float(q.real))
+            }
+        }
     }
 
     mutating func ragdoll(_ ragdoll: Ragdoll3D, in world: World3D) {
@@ -1735,6 +1788,24 @@ private struct SnapshotReader {
         }
         skin.flatBinds = SoftBody3D.flattened(skin.binds)
 
+        var rope: SavedRope?
+        // A point count of zero says this is a surface, not a rope.
+        let ropePoints = try count()
+        if ropePoints > 0 {
+            var points: [Vector3] = []
+            points.reserveCapacity(ropePoints)
+            for _ in 0 ..< ropePoints { points.append(try vector()) }
+            let thickness = try f64()
+            let sides = Int(try u32())
+            var frames: [simd_quatd] = []
+            for _ in 0 ..< (try count()) {
+                frames.append(simd_quatd(ix: Double(try f32()), iy: Double(try f32()),
+                                         iz: Double(try f32()), r: Double(try f32())))
+            }
+            rope = SavedRope(points: points, thickness: thickness, sides: sides,
+                             rodRotations: frames)
+        }
+
         return SavedSoftBody(assetName: name, fingerprint: print,
                              position: position,
                              rotation: simd_quatd(ix: qx, iy: qy, iz: qz, r: qw),
@@ -1746,7 +1817,7 @@ private struct SnapshotReader {
                              positions: positions, velocities: velocities,
                              pinned: pinned,
                              maxStretch: stretch > 0 ? stretch : nil,
-                             skin: skin)
+                             skin: skin, rope: rope)
     }
 
     mutating func ragdoll() throws -> SavedRagdoll {

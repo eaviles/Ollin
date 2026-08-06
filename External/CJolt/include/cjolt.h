@@ -925,11 +925,36 @@ typedef struct {
     int32_t lraType;
     /// A multiple of that rest distance: 1 is inextensible, 1.05 allows 5%.
     float lraStretch;
+    /// Cosserat rods: pairs of particle indices, each pair a rigid rod of fixed
+    /// length that carries its own orientation as well as its two ends. Rods
+    /// take the place of faces, so a description with rods and no triangles is
+    /// a valid body: a rope, which is exactly what has no surface.
+    const uint32_t *rods;
+    int32_t rodCount;
+    /// Which rods hold each other's orientation, as pairs of indices into
+    /// `rods`. Every rod needs at least one of these or its frame spins about
+    /// its own axis forever, so a chain of rods with no links is not usable.
+    const uint32_t *rodLinks;
+    int32_t rodLinkCount;
+    /// Inverse stiffness of the rods themselves, in m/N: how far the chain
+    /// stretches and shears under load. 0 is inextensible.
+    float rodCompliance;
+    /// Inverse stiffness of the links between rods: how readily the chain
+    /// bends and twists. 0 is a rigid bar; larger is limp rope.
+    float rodBendCompliance;
+    /// Which way each rod is already turned, as world-space quaternions (x, y,
+    /// z, w) in the same order as `rods`. NULL starts every rod in the frame
+    /// its rest shape gives, which is what a rope being built for the first
+    /// time wants; a rope being put back where it was hands over the
+    /// orientations it had, so it does not spring as the solver hauls each
+    /// rod round to the shape it is actually in. The rest shape the rope wants
+    /// to return to is `positions` either way.
+    const float *rodRotations;
 } CJoltSoftBodyDesc;
 
 /// Builds a soft body and adds it to the world. The stretch, shear, and bend
 /// constraints are derived from the faces. Returns NULL if the description has
-/// no usable surface.
+/// neither a usable surface nor any rods.
 CJoltSoftBody *cjolt_soft_body_create(CJoltWorld *world,
                                       const CJoltSoftBodyDesc *desc);
 void cjolt_soft_body_destroy(CJoltWorld *world, CJoltSoftBody *body);
@@ -949,6 +974,23 @@ void cjolt_soft_body_get_center(const CJoltWorld *world,
 /// The volume the surface currently encloses (negative if it is inside out).
 float cjolt_soft_body_get_volume(const CJoltWorld *world,
                                  const CJoltSoftBody *body);
+
+/// How many Cosserat rods the body was built with.
+int32_t cjolt_soft_body_rod_count(const CJoltSoftBody *body);
+
+/// Copies up to `capacity` rod orientations as world-space quaternions (x, y,
+/// z, w), in the order the rods were handed over. Returns how many were
+/// written.
+///
+/// A rod's local +z runs from the first of its two particles to the second, so
+/// geometry posed by one of these rotations lies along the rod. Both things the
+/// solver does to the rod list on the way in are undone here: it reorders the
+/// rods to solve them in parallel, and it may swap a rod's two ends so that
+/// neighbouring rods point the same way. The caller therefore sees the rods it
+/// asked for, pointing the way it asked for.
+int32_t cjolt_soft_body_get_rod_rotations(const CJoltWorld *world,
+                                          const CJoltSoftBody *body, float *out,
+                                          int32_t capacity);
 
 void cjolt_soft_body_set_pressure(CJoltWorld *world, CJoltSoftBody *body,
                                   float pressure);

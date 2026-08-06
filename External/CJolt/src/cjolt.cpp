@@ -590,6 +590,13 @@ struct CJoltRagdoll {
 struct CJoltSoftBody {
     JPH::Ref<JPH::SoftBodySharedSettings> settings;
     JPH::BodyID id;
+    /// Where each rod the caller handed over ended up in the solver's own list,
+    /// and whether its two ends were swapped on the way. The solver reorders
+    /// rods so it can solve them in parallel, and reverses one whose direction
+    /// disagrees with its neighbour's, so this is what lets a read-back speak
+    /// in the caller's terms.
+    std::vector<uint32_t> rodIndex;
+    std::vector<bool> rodFlipped;
 };
 
 struct CJoltWorld {
@@ -3012,8 +3019,13 @@ Body *softBody(const CJoltWorld *world, const CJoltSoftBody *soft) {
 CJoltSoftBody *cjolt_soft_body_create(CJoltWorld *world,
                                       const CJoltSoftBodyDesc *desc) {
     if (world == nullptr || desc == nullptr) { return nullptr; }
-    if (desc->positions == nullptr || desc->vertexCount < 3) { return nullptr; }
-    if (desc->indices == nullptr || desc->indexCount < 3) { return nullptr; }
+    if (desc->positions == nullptr || desc->vertexCount < 2) { return nullptr; }
+    bool hasRods = desc->rods != nullptr && desc->rodCount > 0;
+    if (!hasRods
+        && (desc->indices == nullptr || desc->indexCount < 3
+            || desc->vertexCount < 3)) {
+        return nullptr;
+    }
 
     Ref<SoftBodySharedSettings> settings = new SoftBodySharedSettings;
     settings->mVertices.reserve(size_t(desc->vertexCount));
@@ -3030,7 +3042,8 @@ CJoltSoftBody *cjolt_soft_body_create(CJoltWorld *world,
     // would give the constraint builder a zero-length spring; drop it rather
     // than let the library trip over it.
     const uint32_t vertexCount = uint32_t(desc->vertexCount);
-    for (int32_t i = 0; i + 2 < desc->indexCount; i += 3) {
+    for (int32_t i = 0; desc->indices != nullptr && i + 2 < desc->indexCount;
+         i += 3) {
         uint32_t a = desc->indices[i], b = desc->indices[i + 1],
                  c = desc->indices[i + 2];
         if (a >= vertexCount || b >= vertexCount || c >= vertexCount) { continue; }
@@ -3044,7 +3057,10 @@ CJoltSoftBody *cjolt_soft_body_create(CJoltWorld *world,
         }
         settings->AddFace(SoftBodySharedSettings::Face(a, b, c));
     }
-    if (settings->mFaces.empty()) { return nullptr; }
+    // A body with rods needs no surface at all: a rope is nothing but its
+    // spine. Without them a triangle is the smallest thing that can be
+    // simulated, so an unusable mesh is still refused.
+    if (settings->mFaces.empty() && !hasRods) { return nullptr; }
 
     // Which particles a skeleton carries, built before the constraints so the
     // long range attachments can already see which ones are kinematic.
@@ -3089,6 +3105,65 @@ CJoltSoftBody *cjolt_soft_body_create(CJoltWorld *world,
         }
     }
 
+    // Cosserat rods, built before the constraints for the same reason the skin
+    // is: the long range attachments are derived in there from whatever the
+    // particles are connected by, and a rope's connections are its rods.
+    std::vector<uint32_t> rodPairs;
+    std::vector<bool> rodFlipped;
+    if (hasRods) {
+        settings->mRodStretchShearConstraints.reserve(size_t(desc->rodCount));
+        for (int32_t i = 0; i < desc->rodCount; ++i) {
+            uint32_t a = desc->rods[i * 2], b = desc->rods[i * 2 + 1];
+            if (a >= vertexCount || b >= vertexCount || a == b) { continue; }
+            // A rod of no length has no direction to carry, and the library
+            // asserts on one rather than working around it.
+            if ((Vec3(settings->mVertices[b].mPosition)
+                 - Vec3(settings->mVertices[a].mPosition)).LengthSq() <= 0.0f) {
+                continue;
+            }
+            rodPairs.push_back(a);
+            rodPairs.push_back(b);
+            settings->mRodStretchShearConstraints.emplace_back(
+                a, b, std::max(0.0f, desc->rodCompliance));
+        }
+        uint32_t rodCount = uint32_t(settings->mRodStretchShearConstraints.size());
+        for (int32_t i = 0; desc->rodLinks != nullptr && i < desc->rodLinkCount;
+             ++i) {
+            uint32_t a = desc->rodLinks[i * 2], b = desc->rodLinks[i * 2 + 1];
+            if (a >= rodCount || b >= rodCount || a == b) { continue; }
+            settings->mRodBendTwistConstraints.emplace_back(
+                a, b, std::max(0.0f, desc->rodBendCompliance));
+        }
+        // Works out each rod's length, its share of the mass, and the twist-free
+        // frame it rests in. It also reverses any rod pointing against its
+        // neighbour, which is what has to be measured rather than assumed, and
+        // has to be measured here while the rods are still in the caller's own
+        // order.
+        settings->CalculateRodProperties();
+        for (size_t i = 0; i * 2 + 1 < rodPairs.size(); ++i) {
+            rodFlipped.push_back(
+                settings->mRodStretchShearConstraints[i].mVertex[0] != rodPairs[i * 2]);
+        }
+
+        // A rod's frame is seeded from its Bishop quaternion and read nowhere
+        // else once the body is running, and the rest rotations between rods
+        // have already been worked out above, so writing the caller's own
+        // orientations over it stands a rope back up mid-motion while leaving
+        // the shape it wants to return to alone.
+        if (desc->rodRotations != nullptr) {
+            Quat inverse = quat(desc->rotation).Normalized().Conjugated();
+            const Quat reverse = Quat(1.0f, 0.0f, 0.0f, 0.0f);
+            for (size_t i = 0; i < settings->mRodStretchShearConstraints.size(); ++i) {
+                Quat given(desc->rodRotations[i * 4], desc->rodRotations[i * 4 + 1],
+                           desc->rodRotations[i * 4 + 2], desc->rodRotations[i * 4 + 3]);
+                if (given.LengthSq() <= 0.0f) { continue; }
+                if (rodFlipped[i]) { given = given * reverse; }
+                settings->mRodStretchShearConstraints[i].mBishop =
+                    (inverse * given.Normalized()).Normalized();
+            }
+        }
+    }
+
     // The dihedral bend constraint is the one that works on a curved surface:
     // it holds the angle two faces already meet at, where the cheaper distance
     // form assumes they started in a plane.
@@ -3116,7 +3191,10 @@ CJoltSoftBody *cjolt_soft_body_create(CJoltWorld *world,
     // Works out which faces each skinned particle's normal comes from, which
     // is what the back stop pushes along. A no-op when nothing is skinned.
     settings->CalculateSkinnedConstraintNormals();
-    settings->Optimize();
+    // Optimize reorders the rods so they can be solved in parallel, so the
+    // remap is the other half of speaking in the caller's terms.
+    SoftBodySharedSettings::OptimizationResults optimization;
+    settings->Optimize(optimization);
 
     SoftBodyCreationSettings creation(settings, RVec3(vec3(desc->position)),
                                       quat(desc->rotation),
@@ -3136,6 +3214,10 @@ CJoltSoftBody *cjolt_soft_body_create(CJoltWorld *world,
     if (id.IsInvalid()) { return nullptr; }
 
     CJoltSoftBody *soft = new CJoltSoftBody{settings, id};
+    for (size_t i = 0; i * 2 + 1 < rodPairs.size(); ++i) {
+        soft->rodIndex.push_back(optimization.mRodStretchShearConstraintRemap[i]);
+        soft->rodFlipped.push_back(rodFlipped[i]);
+    }
     world->softBodies.push_back(soft);
     return soft;
 }
@@ -3222,6 +3304,37 @@ void cjolt_soft_body_get_center(const CJoltWorld *world,
         return;
     }
     store(Vec3(jbody->GetCenterOfMassPosition()), out);
+}
+
+int32_t cjolt_soft_body_rod_count(const CJoltSoftBody *body) {
+    if (body == nullptr) { return 0; }
+    return int32_t(body->rodIndex.size());
+}
+
+int32_t cjolt_soft_body_get_rod_rotations(const CJoltWorld *world,
+                                          const CJoltSoftBody *body, float *out,
+                                          int32_t capacity) {
+    SoftBodyMotionProperties *motion = softMotion(world, body);
+    Body *jbody = softBody(world, body);
+    if (motion == nullptr || jbody == nullptr || out == nullptr) { return 0; }
+    // Rod orientations are held in the same frame the particles are, so the
+    // body's own rotation is what takes one into the world.
+    Quat body_rotation = jbody->GetRotation();
+    // Half a turn about the rod's own x axis, which sends its +z the other way
+    // and leaves a right-handed frame: what a rod the solver reversed needs to
+    // point the way the caller asked for.
+    const Quat reverse = Quat(1.0f, 0.0f, 0.0f, 0.0f);
+    int32_t count = std::min(capacity, int32_t(body->rodIndex.size()));
+    for (int32_t i = 0; i < count; ++i) {
+        Quat rotation = body_rotation * motion->GetRodRotation(body->rodIndex[size_t(i)]);
+        if (body->rodFlipped[size_t(i)]) { rotation = rotation * reverse; }
+        Vec4 v = rotation.GetXYZW();
+        out[i * 4] = v.GetX();
+        out[i * 4 + 1] = v.GetY();
+        out[i * 4 + 2] = v.GetZ();
+        out[i * 4 + 3] = v.GetW();
+    }
+    return count;
 }
 
 float cjolt_soft_body_get_volume(const CJoltWorld *world,

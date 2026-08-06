@@ -901,6 +901,52 @@ maxStretch: 1.02       // how far it may reach from what holds it
 
 Two knobs work while it runs: `cape.swayScale` multiplies every leash at once, and `cape.followsSkin = false` drops the leashes entirely, leaving only the clasp. The [`3D/Physics/Cape`](../Examples/3D/Physics/Cape/) example has both on keys, and a figure you can knock over so the cape comes down with it.
 
+## A line that knows how it is turned
+
+Cloth is a surface. Plenty of what you want to hang in a scene is not one: a rope, a cable, a chain, a vine, the stem of a plant. Those are curves, and you build one from a list of points.
+
+```swift
+let rope = world.addRope(through: (0 ..< 40).map { Vector3(0, -Double($0) * 0.1, 0) },
+                         at: Vector3(0, 3, 0),
+                         thickness: 0.04,
+                         pinned: { $0.y > -0.001 })      // hung from the top
+```
+
+Anything that makes points makes a rope, so that list could as easily be a `Contour`, a sampled `Path`, a `randomWalk`, or a ridge you read off a `Heightfield`. The points become the particles one for one, so `pin`, `move(_:to:)`, and `positions` all speak in indices into the list you handed over, and `drawSoftBody(rope)` sweeps a tube of `thickness` along it. Everything from the last few pages still applies: it lands on things, turns up in `world.contacts`, floats, takes `applyForce` for wind, and can be dragged with `grabSoftBody`.
+
+Two knobs shape it, and both mean the same thing on a twig and on a mooring line:
+
+```swift
+stiffness: 1,      // how much it resists being stretched
+bend: 0            // how much it resists being bent
+```
+
+`bend` is the one that decides what the rope *is*. At `0` it is limp rope. Around `0.5` a length sticking out sideways droops about a third of its own length, which reads as heavy cable. Near `1` it holds itself out like a stem.
+
+<img src="Images/17-3DGently/Rope.jpg" alt="Four lines on four posts: the first has folded straight down, the second droops in an arc, the third holds itself straight out, and the fourth hangs as a chain of interlocking links" width="560">
+
+The three on the left were built as the same straight line sticking out from their posts, and differ in that one number.
+
+The fourth is where a rope stops being a line of points. **Every segment carries an orientation of its own**, which you read with `rope.segments`. `withSegment(_:)` stands the transform stack in the middle of one with +y running along the rope, the same way `withBody(_:)` stands it on a body, so a cylinder or a capsule drawn inside the block already lies the right way:
+
+```swift
+for segment in chain.segments {
+    withSegment(segment) {
+        rotate(.pi / 2, axis: Vector3(1, 0, 0))       // lay the ring across the rope
+        if segment.index.isMultiple(of: 2) {
+            rotate(.pi / 2, axis: Vector3(0, 0, 1))   // roll every other link
+        }
+        drawTorus(radius: segment.length * 0.6, tube: 0.028)
+    }
+}
+```
+
+That second `rotate` is the whole point. Rolling every other link a quarter turn about the rope's own axis is what makes a chain interlock, and you can only ask that of something that knows how it is rolled. **Three points in a row tell you which way a line is going and nothing about which way is up.** Leaves along a stem, rings on a flag, beads on a string: same move each time.
+
+Two things worth knowing before you build something long. `maxStretch: 1` caps how far a rope may reach from what holds it, which stops a heavy one creeping longer under load. And stiffness travels one segment per solver pass, so a long rope divided finely needs more passes than the default five before a high `bend` really holds: forty points over six units wants about twenty.
+
+A rope does not collide with itself, so a coil passes through its own turns. It also has no surface for a ray to hit, so `raycast` and the other queries look straight through one (the mouse still finds it). And it is a single strand: a plant with three stems is three ropes. The [`3D/Physics/Rigging`](../Examples/3D/Physics/Rigging/) example has a rope, a chain, and a leafy vine hanging in the same wind.
+
 ## Water, and what it holds up
 
 A world can have water the same way it has ground. One property, and nothing has to opt in.

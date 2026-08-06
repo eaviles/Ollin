@@ -653,6 +653,100 @@ public final class World3D {
         return soft
     }
 
+    /// Add a rope: a line of particles held by rigid rods, which is the soft
+    /// body whose shape is a curve rather than a surface. Cable, chain, hair, a
+    /// vine, the stem of a plant.
+    ///
+    /// It rests on the polyline it is given, so anything that makes one makes a
+    /// rope: hand-placed points, a sampled `Path`, a `Contour`, a `randomWalk`.
+    ///
+    /// ```swift
+    /// let line = world.addRope(through: (0...30).map { Vector3(0, 4 - Double($0) * 0.1, 0) },
+    ///                          thickness: 0.03,
+    ///                          pinned: { $0.y > 3.9 })
+    /// ```
+    ///
+    /// Each rod carries its own orientation, which is what a rope has that a
+    /// chain of springs does not: read `Rope3D.segments` to hang links, leaves,
+    /// or beads along it.
+    ///
+    /// - Parameters:
+    ///   - points: the rope's rest shape, in its own local space. Two points
+    ///     make the shortest usable rope; more make it bend in more places.
+    ///   - position: where the rest shape stands in the world.
+    ///   - rotation: how far the rest shape is turned, in radians, about `axis`.
+    ///   - thickness: the rope's radius, which is both what it draws as and how
+    ///     far it stands off whatever it lies on.
+    ///   - sides: how many sides the drawn tube has.
+    ///   - mass: the whole rope's mass, spread evenly over its particles.
+    ///   - stiffness: how much the rope resists being stretched, 0 to 1. `1` is
+    ///     a steel cable and lower is elastic.
+    ///   - bend: how much it resists being bent and twisted, 0 to 1. `0` is limp
+    ///     rope, low values are cable, and high values are a stem or a branch
+    ///     that holds its own shape.
+    ///   - damping: how quickly its motion dies away.
+    ///   - friction: how much it grips what it slides against.
+    ///   - bounce: how much it rebounds, defaulting to the world's own.
+    ///   - iterations: solver passes per step. More holds a long rope steadier.
+    ///   - pinned: given a point in the rope's own space, whether it is held in
+    ///     place. This is how a rope hangs from a hook.
+    ///   - maxStretch: how far the rope may reach from what holds it, as a
+    ///     multiple of its own rest length: `1` is inextensible. `nil` lets the
+    ///     rods alone decide.
+    ///   - group: which collision group the rope is in.
+    @discardableResult
+    public func addRope(through points: [Vector3], at position: Vector3 = .zero,
+                        rotation: Double = 0, axis: Vector3 = Vector3(0, 1, 0),
+                        thickness: Double = 0.05,
+                        sides: Int = 8,
+                        mass: Double = 1,
+                        stiffness: Double = 1,
+                        bend: Double = 0,
+                        damping: Double = 0.1,
+                        friction: Double = 0.5,
+                        bounce: Double? = nil,
+                        iterations: Int = 5,
+                        pinned: ((Vector3) -> Bool)? = nil,
+                        maxStretch: Double? = nil,
+                        group: CollisionGroup = .default) -> Rope3D? {
+        let direction = axis.lengthSquared > 1e-18 ? axis.normalized : Vector3(0, 1, 0)
+        let turn = simd_quatd(angle: rotation,
+                              axis: simd_double3(direction.x, direction.y, direction.z))
+        return makeRope(points: points, position: position, rotation: turn,
+                        thickness: thickness, sides: sides, mass: mass,
+                        stiffness: stiffness, bend: bend, damping: damping,
+                        friction: friction, restitution: bounce ?? self.bounce,
+                        iterations: iterations, pinned: pinned,
+                        maxStretch: maxStretch, group: group)
+    }
+
+    /// The one place a rope is built and registered, which a restore comes
+    /// through too, so a rope that comes back is one the ordinary call could
+    /// have made.
+    func makeRope(points: [Vector3], position: Vector3, rotation: simd_quatd,
+                  thickness: Double, sides: Int, mass: Double,
+                  stiffness: Double, bend: Double, damping: Double,
+                  friction: Double, restitution: Double, iterations: Int,
+                  pinned: ((Vector3) -> Bool)?, maxStretch: Double?,
+                  group: CollisionGroup,
+                  rodRotations: [simd_quatd] = []) -> Rope3D? {
+        guard let rope = Rope3D(world: self, points: points, position: position,
+                                rotation: rotation, thickness: thickness,
+                                sides: sides, mass: mass, stiffness: stiffness,
+                                bend: bend, damping: damping, friction: friction,
+                                restitution: restitution, iterations: iterations,
+                                pinned: pinned, maxStretch: maxStretch,
+                                group: group, rodRotations: rodRotations)
+        else {
+            noteOnce("addRope needs at least two points that are not on top of "
+                     + "each other; nothing was added.")
+            return nil
+        }
+        softBodies.append(rope)
+        softBodyByID[rope.bodyID] = rope
+        return rope
+    }
+
     /// Remove a soft body from the world.
     public func remove(_ softBody: SoftBody3D) {
         softBodyByID[softBody.bodyID] = nil

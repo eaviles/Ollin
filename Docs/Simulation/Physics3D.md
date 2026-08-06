@@ -61,6 +61,7 @@ Distances are the 3D scene's world units (y-up, matching the camera). The solver
 - [Tracks](#tracks) - the same machine on two bands, turning without steering
 - [Ragdolls](#ragdolls) - a skinned figure given weight, limp or powered
 - [Soft bodies](#softbodies) - cloth that drapes and closed shapes that squash
+- [Ropes](#ropes) - a line of particles on rigid rods, each carrying an orientation
 - [Cloth a figure carries](#carriedcloth) - a cape on a skeleton: what is held, what hangs
 - [Water](#water) - buoyancy: what floats, how deep it sits, and what carries it
 - [Saving and loading](#snapshots) - keeping an arrangement you like, and putting it back
@@ -982,6 +983,122 @@ if let grip { dragSoftGrab(grip, to: Vector2(mouseX, mouseY)) }
 - **A query can find it.** `raycast`, `sweep`, and the overlap calls all see soft bodies, so a hanging sheet blocks a sightline and a `Hit3D` may name a `SoftBody3D`. To look through one, name it in `ignoring:` or put it in a collision group the query does not ask as.
 
 **What a soft body still cannot do.** The solver collides them with the rigid bodies around them but not with each other, and not with themselves, so a sheet folded double will pass through its own layers (which reads as a flicker where the two lie together). Impulses, joints, and grabs do not reach one, and `body(under:in:)` answers only for solids (use `grabSoftBody(at:in:)`). Tearing is not offered, because a real tear has to split a shared vertex in two and rebuild the surface, which the solver has no way to do while it runs.
+
+<a name="ropes"></a>
+
+### Ropes
+
+A soft body's shape is usually a surface. A rope's is a *curve*, and the
+difference runs deeper than one dimension: a rope is built from **rigid rods**
+rather than springs, and every rod holds an orientation of its own. That is what
+lets geometry ride it.
+
+Build one from a polyline. Anything that makes points makes a rope, so hand it
+hand-placed points, a sampled `Path`, a `Contour`, a `randomWalk`, or a ridge off
+a `Heightfield`:
+
+```swift
+let rope = world.addRope(through: (0 ..< 40).map { Vector3(0, -Double($0) * 0.1, 0) },
+                         at: Vector3(0, 3, 0),
+                         thickness: 0.04,
+                         pinned: { $0.y > -0.001 })       // hung from the top
+
+// each frame:
+world.step(dt: deltaTime)
+drawSoftBody(rope)                                        // a tube along the rope
+```
+
+The points are the particles one for one, so `pin(_:)`, `move(_:to:)`,
+`positions`, and `nearestVertex(to:)` all speak in indices into the polyline you
+handed over. `drawSoftBody(_:)` sweeps a tube of `thickness` along it, which is
+also how far the rope stands off whatever it lies on.
+
+**Two knobs shape it**, both scale-free: one setting means the same thing on a
+twig and on a mooring line.
+
+- **`stiffness`** is how much it resists being *stretched*. `1` is a steel cable
+  (measured on a rope hung under its own weight: about 1% longer than its rest
+  length), `0.5` lets it stretch by nearly a third, and by `0.2` it has doubled,
+  which is a bungee.
+- **`bend`** is how much it resists being *bent and twisted*, and it is the one
+  that decides what the rope is. `0` is limp rope. Around `0.5` a cantilevered
+  length droops about a third of its own length, which reads as heavy cable.
+  Near `1` it holds itself out like a stem or a branch.
+
+A long, finely divided rope is the case where `iterations` matters: stiffness
+propagates one rod per solver pass, so forty particles over six units needs about
+twenty passes before `bend: 1` is really rigid, where twenty particles is stiff
+at the default five.
+
+`maxStretch:` works here exactly as it does on cloth, and is worth having on
+anything hung: it caps how far the rope may get from what holds it, measured
+along its own length, so a heavy rope stops creeping longer under load.
+
+```swift
+let chain = world.addRope(through: links, at: Vector3(0, 3, 0),
+                          mass: 4, bend: 0.06,
+                          pinned: { $0.y > -0.001 },
+                          maxStretch: 1)                  // does not stretch at all
+```
+
+<a name="segments"></a>
+
+#### Riding a rope
+
+`rope.segments` is the rope read as rods rather than points. Each `RopeSegment`
+carries its `start` and `end`, its `center`, `direction`, and `length`, and the
+thing a chain of springs could never give you: a `rotation`, held by the rod
+itself, which turns as the rope bends *and twists*.
+
+`withSegment(_:)` stands the transform stack in the middle of a segment with
+**+y running along the rope**, the axis Ollin's cylinders, capsules, and cones
+stand on, so a primitive drawn inside the block lies along the rope with no
+turning of its own. It is `withBody(_:)`'s twin:
+
+```swift
+for segment in vine.segments where segment.index % 3 == 1 {
+    withSegment(segment) {
+        translate(0.11, 0, 0)
+        drawSphere(radius: 0.06)          // a leaf, carried and twisted by the stem
+    }
+}
+```
+
+The clearest use is a chain, where every other link is turned a quarter turn
+about the rope's own axis. That turn is only expressible because each rod knows
+how it is rolled:
+
+```swift
+for segment in chain.segments {
+    withSegment(segment) {
+        rotate(.pi / 2, axis: Vector3(1, 0, 0))       // lay the ring across the rope
+        if segment.index.isMultiple(of: 2) {
+            rotate(.pi / 2, axis: Vector3(0, 0, 1))   // roll every other link
+        }
+        drawTorus(radius: segment.length * 0.62, tube: 0.026)
+    }
+}
+```
+
+The tube `drawSoftBody(_:)` sweeps uses a twist-free frame of its own, so a rope
+wound up looks the same as one that is not. The twist lives in `segments`, which
+is where anything riding the rope should read it.
+
+**What a rope shares with the rest of the tier.** It collides with the rigid
+bodies around it, turns up in `world.contacts` and in `touching`, floats
+according to its `density`, takes `applyForce(_:)` for wind, belongs to a
+collision group, sleeps when it settles, and is saved and restored by
+[`snapshot()`](#snapshots). Unlike a surface it needs no `assetName` to be
+saved: a rope's whole rest shape is a handful of points, so it carries itself.
+
+**What it cannot do.** A rope does not collide with itself, so a coil passes
+through its own turns, and it does not collide with another rope or cloth (the
+same envelope as the rest of the tier). More particular to a rope: the shape a
+query asks about is built from a body's *faces*, and a rope has none, so
+`raycast`, `sweep`, and `bodiesOverlapping` all look straight through one.
+`grabSoftBody(at:in:)` still finds it, by taking the nearest particle to the line
+of sight. And a rope is one strand: there is no branching form, so a plant with
+several stems is several ropes.
 
 <a name="carriedcloth"></a>
 

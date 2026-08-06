@@ -28,7 +28,10 @@ internal import CJolt
 /// soft body, and impulses, joints, and grabs do not apply to it (its state
 /// lives in the particles, not in one pose). Push it with `applyForce(_:)`, or
 /// take hold of a particle with `move(_:to:)`.
-public final class SoftBody3D {
+///
+/// `Rope3D` is the one-dimensional member of the same family: a line of
+/// particles with no surface at all, built by `World3D.addRope(through:)`.
+public class SoftBody3D {
 
     /// Anything a sketch hung on this body.
     public var userData: Any?
@@ -44,7 +47,9 @@ public final class SoftBody3D {
     /// ```
     public var assetName: String?
 
-    /// The mesh it was built from, in its own local space, unchanged.
+    /// The mesh it was built from, in its own local space, unchanged. A rope
+    /// was built from a polyline rather than a surface, so this is empty for
+    /// one and `Rope3D.points` is what it was made from.
     public let sourceMesh: Mesh
 
     /// How many particles the simulation actually runs on. Coincident vertices
@@ -89,6 +94,24 @@ public final class SoftBody3D {
 
     /// Scratch for the particle read-back, reused across frames.
     private var particles: [Vector3]
+
+    /// How many Cosserat rods run through the body: the segments of a rope,
+    /// and zero for an ordinary surface.
+    let rodCount: Int
+
+    /// Scratch for the rod orientation read-back, reused across frames.
+    private var rodRotations: [Float]
+
+    /// The spine of a rope: the polyline its particles sit on, in the body's
+    /// own local space, and how thick it draws.
+    struct RopeShape {
+        var points: [Vector3]
+        var thickness: Double
+        var sides: Int
+        /// Which way each rod is already turned, for a rope being put back
+        /// where it was rather than built for the first time. Empty otherwise.
+        var rodRotations: [simd_quatd] = []
+    }
 
     /// Scratch for the water pass: how far each particle is above the fluid's
     /// surface, in meters. Kept here so the per-step buoyancy allocates
@@ -149,9 +172,20 @@ public final class SoftBody3D {
           sway: ((Vector3) -> Double)? = nil,
           backStop: Double? = nil,
           maxStretch: Double? = nil,
-          restoredSkin: Skin? = nil) {
-        let welding = mesh.welded()
-        guard welding.count >= 3, welding.indices.count >= 3 else { return nil }
+          restoredSkin: Skin? = nil,
+          rope: RopeShape? = nil) {
+        // A rope's particles *are* its points, so there is nothing to weld and
+        // the map back to the caller's order is the identity. That is what
+        // makes `pin`, `move`, and `positions` speak in point indices.
+        let welding: MeshWelding
+        if let rope {
+            welding = MeshWelding(positions: rope.points, indices: [],
+                                  remap: Array(rope.points.indices))
+            guard welding.count >= 2 else { return nil }
+        } else {
+            welding = mesh.welded()
+            guard welding.count >= 3, welding.indices.count >= 3 else { return nil }
+        }
 
         self.world = world
         self.sourceMesh = mesh
@@ -189,6 +223,16 @@ public final class SoftBody3D {
             }
             i += 3
         }
+        // A rope has no faces to measure, so its own two numbers stand in: the
+        // skin of the tube it draws as is the area the water drags on, and a
+        // rod is what a face's edge would have been.
+        var ropeLength = 0.0
+        if let rope {
+            for i in 1 ..< rope.points.count {
+                ropeLength += ((rope.points[i] - rope.points[i - 1]) / scale).length
+            }
+            area = 2 * .pi * (rope.thickness / scale) * ropeLength
+        }
         // A closed surface is one where every edge belongs to exactly two
         // faces; anything else has a boundary and no inside to pressurise.
         isClosed = !edgeCounts.isEmpty && edgeCounts.values.allSatisfy { $0 == 2 }
@@ -207,7 +251,10 @@ public final class SoftBody3D {
         for (edge, _) in edgeCounts {
             edgeTotal += ((welding.positions[edge.high] - welding.positions[edge.low]) / scale).length
         }
-        let meanEdge = edgeCounts.isEmpty ? 1 : edgeTotal / Double(edgeCounts.count)
+        var meanEdge = edgeCounts.isEmpty ? 1 : edgeTotal / Double(edgeCounts.count)
+        if rope != nil, welding.count > 1 {
+            meanEdge = ropeLength / Double(welding.count - 1)
+        }
         // The solver's pressure is `n R T`, and the outward acceleration it
         // gives works out to pressure * area / (mass * volume). Expressing the
         // knob as that acceleration in gravities is what makes `pressure: 1`
@@ -218,12 +265,16 @@ public final class SoftBody3D {
         dragArea = area / Double(welding.count)
         particleSpacing = meanEdge
 
+        // What the caller's closures are asked about: a mesh's own vertices, or
+        // a rope's points, which are its particles one for one.
+        let sourcePoints = rope?.points ?? mesh.positions
+
         var inverseMasses = [Float](repeating: Float(1 / particleMass),
                                     count: welding.count)
         if let pinned {
             for (source, particle) in welding.remap.enumerated()
-            where source < mesh.positions.count {
-                if pinned(mesh.positions[source]) { inverseMasses[particle] = 0 }
+            where source < sourcePoints.count {
+                if pinned(sourcePoints[source]) { inverseMasses[particle] = 0 }
             }
         }
 
@@ -232,9 +283,45 @@ public final class SoftBody3D {
         let complianceScale = meanEdge * Double(welding.count).squareRoot()
             / (massKg * gravity)
 
+        // A rope's rods run down its spine, and every neighbouring pair holds
+        // the other's orientation: without those links a rod's frame spins
+        // about its own axis forever and carries nothing.
+        var rods: [UInt32] = []
+        var rodLinks: [UInt32] = []
+        if rope != nil, welding.count > 1 {
+            for i in 0 ..< welding.count - 1 {
+                rods.append(UInt32(i))
+                rods.append(UInt32(i + 1))
+            }
+            for i in 0 ..< max(0, welding.count - 2) {
+                rodLinks.append(UInt32(i))
+                rodLinks.append(UInt32(i + 1))
+            }
+        }
+        rodCount = rods.count / 2
+        rodRotations = [Float](repeating: 0, count: rods.count / 2 * 4)
+
+        // A rope being put back where it was hands over the orientations its
+        // rods had, so the solver does not have to haul each one round to the
+        // shape the rope is actually in, which is a visible spring.
+        var restoredRods = [Float]()
+        if let rope, rope.rodRotations.count == rods.count / 2 {
+            for q in rope.rodRotations {
+                restoredRods.append(contentsOf: [Float(q.imag.x), Float(q.imag.y),
+                                                 Float(q.imag.z), Float(q.real)])
+            }
+        }
+
         var desc = CJoltSoftBodyDesc()
         desc.vertexCount = Int32(welding.count)
         desc.indexCount = Int32(welding.indices.count)
+        desc.rodCount = Int32(rods.count / 2)
+        desc.rodLinkCount = Int32(rodLinks.count / 2)
+        desc.rodCompliance = Float(SoftBody3D.compliance(for: stiffness, scale: complianceScale))
+        desc.rodBendCompliance = Float(SoftBody3D.compliance(
+            for: bend,
+            scale: SoftBody3D.rodBendScale(meanEdge: meanEdge, length: ropeLength,
+                                           mass: massKg, gravity: gravity)))
         desc.compliance = Float(SoftBody3D.compliance(for: stiffness, scale: complianceScale))
         // A fold constraint measures an angle where a stretch constraint
         // measures a length, so its compliance carries two fewer powers of
@@ -289,15 +376,27 @@ public final class SoftBody3D {
                 inverseMasses.withUnsafeBufferPointer { masses in
                     skin.flatBinds.withUnsafeBufferPointer { binds in
                         skin.vertices.withUnsafeBufferPointer { skinned in
-                            desc.positions = points.baseAddress
-                            desc.indices = indices.baseAddress
-                            desc.inverseMasses = masses.baseAddress
-                            desc.inverseBinds = binds.baseAddress
-                            desc.inverseBindCount = Int32(skin.binds.count)
-                            desc.skinned = skinned.baseAddress
-                            desc.skinnedCount = Int32(skin.vertices.count)
-                            return withUnsafePointer(to: desc) {
-                                cjolt_soft_body_create(world.handle, $0)
+                            rods.withUnsafeBufferPointer { rodPairs in
+                                rodLinks.withUnsafeBufferPointer { links in
+                                    restoredRods.withUnsafeBufferPointer { frames in
+                                    desc.positions = points.baseAddress
+                                    desc.indices = indices.baseAddress
+                                    desc.inverseMasses = masses.baseAddress
+                                    desc.inverseBinds = binds.baseAddress
+                                    desc.inverseBindCount = Int32(skin.binds.count)
+                                    desc.skinned = skinned.baseAddress
+                                    desc.skinnedCount = Int32(skin.vertices.count)
+                                    desc.rods = rodPairs.baseAddress
+                                    desc.rodLinks = links.baseAddress
+                                    // An empty array's base address is not
+                                    // promised to be nil, and a stray pointer
+                                    // here reads as garbage orientations.
+                                    desc.rodRotations = frames.isEmpty ? nil : frames.baseAddress
+                                    return withUnsafePointer(to: desc) {
+                                        cjolt_soft_body_create(world.handle, $0)
+                                    }
+                                    }
+                                }
                             }
                         }
                     }
@@ -448,6 +547,24 @@ public final class SoftBody3D {
                                        Double(raw[index * 3 + 2]) * scale)
         }
         return particles
+    }
+
+    /// Which way each rod points, in world space, in the order the rods were
+    /// built. A rod's local +z runs from the first of its two particles to the
+    /// second, so this is what geometry riding the rod is turned by.
+    func rodOrientations() -> [simd_quatd] {
+        guard !isDestroyed, rodCount > 0 else { return [] }
+        let written = rodRotations.withUnsafeMutableBufferPointer { buffer in
+            Int(cjolt_soft_body_get_rod_rotations(world.handle, handle,
+                                                  buffer.baseAddress,
+                                                  Int32(rodCount)))
+        }
+        return (0 ..< written).map {
+            simd_quatd(ix: Double(rodRotations[$0 * 4]),
+                       iy: Double(rodRotations[$0 * 4 + 1]),
+                       iz: Double(rodRotations[$0 * 4 + 2]),
+                       r: Double(rodRotations[$0 * 4 + 3]))
+        }
     }
 
     /// The average of the particle positions: where the body has drifted to.
@@ -888,6 +1005,26 @@ public final class SoftBody3D {
     /// body's own hanging weight, stretches by its own length. So a softness of
     /// `0.1` means "the most loaded springs give about a tenth of their length",
     /// on a curtain or on a beach ball.
+    /// The compliance a rod's bend-and-twist knob maps onto, per unit of
+    /// softness, in the same 0…1 terms the rest of the tier uses.
+    ///
+    /// A rod's bend constraint holds a *rotation*, which is a pure number, so
+    /// unlike a stretch constraint there is no length in it to compare against
+    /// and its scale has to be measured. Hanging a rope out sideways and asking
+    /// what compliance leaves the tip drooping by a third of the rope's own
+    /// length gives, across every size probed:
+    ///
+    ///     compliance  ∝  meanRod² / (length³ · mass · gravity)
+    ///
+    /// which is what makes one `bend` setting mean the same thing on a stem, a
+    /// vine, and a mooring line. The constant is what puts "drooping about a
+    /// third of the way" in the middle of the knob rather than at one end.
+    static func rodBendScale(meanEdge: Double, length: Double, mass: Double,
+                             gravity: Double) -> Double {
+        let span = max(length, 1e-9)
+        return 100 * meanEdge * meanEdge / (span * span * span * mass * gravity)
+    }
+
     private static func compliance(for stiffness: Double, scale: Double) -> Double {
         guard stiffness < 1 else { return 0 }
         let softness = (1 / max(stiffness, 1e-3) - 1) / 10
