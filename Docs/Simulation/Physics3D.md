@@ -61,6 +61,7 @@ Distances are the 3D scene's world units (y-up, matching the camera). The solver
 - [Tracks](#tracks) - the same machine on two bands, turning without steering
 - [Ragdolls](#ragdolls) - a skinned figure given weight, limp or powered
 - [Soft bodies](#softbodies) - cloth that drapes and closed shapes that squash
+- [Cloth a figure carries](#carriedcloth) - a cape on a skeleton: what is held, what hangs
 - [Water](#water) - buoyancy: what floats, how deep it sits, and what carries it
 - [Saving and loading](#snapshots) - keeping an arrangement you like, and putting it back
 - [Reading physics from a file](#importing) - picking up `UsdPhysics` bodies and joints authored elsewhere
@@ -981,6 +982,44 @@ if let grip { dragSoftGrab(grip, to: Vector2(mouseX, mouseY)) }
 - **A query can find it.** `raycast`, `sweep`, and the overlap calls all see soft bodies, so a hanging sheet blocks a sightline and a `Hit3D` may name a `SoftBody3D`. To look through one, name it in `ignoring:` or put it in a collision group the query does not ask as.
 
 **What a soft body still cannot do.** The solver collides them with the rigid bodies around them but not with each other, and not with themselves, so a sheet folded double will pass through its own layers (which reads as a flicker where the two lie together). Impulses, joints, and grabs do not reach one, and `body(under:in:)` answers only for solids (use `grabSoftBody(at:in:)`). Tearing is not offered, because a real tear has to split a shared vertex in two and rebuild the surface, which the solver has no way to do while it runs.
+
+<a name="carriedcloth"></a>
+
+### Cloth a figure carries
+
+`pinned:` holds part of a surface still. A cape needs the other thing: part of it held to a figure that is *moving*, and the rest left to hang off that and swing. Say which joint of a skinned scene's skeleton carries each part of the cloth, and hand the simulation this frame's pose:
+
+```swift
+cape = world.addSoftBody(from: sheet, at: Vector3(0, 0.85, -0.13),
+                         rotation: .pi / 2, axis: Vector3(1, 0, 0),
+                         mass: 1.2, stiffness: 0.92,
+                         pinned: { $0.z < -0.58 },        // clasped at the neck
+                         skinnedTo: figure,
+                         carriedBy: { _ in "chest" })
+
+// each frame, after the figure is posed and before the world steps:
+figure.apply(ragdoll)
+cape.follow(figure)
+world.step(dt: deltaTime)
+```
+
+**The pose the figure is standing in when you build the cloth is the bind pose.** Nothing has to be authored in a modelling tool and no weights have to be painted: hang the cloth where it belongs, name the joints, and every later pose is read as the motion since. `carriedBy:` is given a vertex in the mesh's own space (the same space `pinned:` reads) and answers with a joint's name, or `nil` for a part that is ordinary cloth. A name the skeleton does not have is skipped with a note, so a typo leaves that part hanging free rather than silently doing something else.
+
+**`pinned:` means held by whatever holds it.** A pinned vertex a joint carries is held to the *figure*; one no joint carries is held to the *world*, which is what it has always meant. So the same closure clasps a cape at the neck and pegs a banner to a line.
+
+Three more numbers shape what the rest of it may do, and all three are **lengths in world units**, not ratios to be calibrated:
+
+- **`sway:`** is how far a vertex may travel from where the skeleton puts it, given the same way `pinned:` is: `0` holds it exactly there, `.infinity` (the default) leaves it free to swing. A leash of `0.05` really does hold every particle within 5 cm of its skinned position. Grading it (tight at the shoulders, loose at the hem) is how a mantle is told apart from a cloak; **watch the sign** if you compute one, since a negative value clamps to `0` and hard-skins that part into a board.
+- **`backStop:`** is how far *behind* the carried surface a particle may be pushed before it is held back out, which keeps a cape out of the back it hangs on without waiting for a collision. `0.04` is a few centimetres of clearance.
+- **`maxStretch:`** caps how far any particle may get from what holds it, as a multiple of the distance measured *along the cloth*: `1` is inextensible, `1.05` allows 5%, `nil` (the default) leaves the springs to it. This one is worth knowing about even for cloth no skeleton carries, because a heavy sheet hung from one edge stretches under its own weight however stiff you make it, and a cap fixes it for almost nothing. Measured on a 2-unit sheet weighing 8 kg: the springs alone let it hang 6% long; `maxStretch: 1` hangs it at exactly its own length.
+
+Two knobs work while it runs. **`swayScale`** multiplies every leash at once, so one slider lets a whole cape out. **`followsSkin`** turns the leashes off entirely, leaving only the parts held exactly on the skin still following, which is the way to let a cape go loose without rebuilding it.
+
+**`follow(_:)` before `step(dt:)`, once a frame.** The solver eases the cloth from the previous pose to this one across the step, so a second call in the same frame loses that, and a call after the step leaves the cloth a frame behind. **`snap(to:)`** is the other one: it puts every carried particle exactly where the skeleton says and stops it dead, which is what a figure that was *stood* somewhere rather than *moved* there needs, so the cloth arrives with it instead of being dragged across the room.
+
+A carried cape is otherwise an ordinary soft body: it collides with the rigid world, floats, turns up in `world.contacts`, can be grabbed, and rides in a snapshot (which writes down what the closures decided, since it cannot carry the closures). Its own gap is the one every soft body has: **it does not collide with itself**, so a cape passes through its own folds and through any other cloth on the same figure.
+
+The worked example is [`3D/Physics/Cape`](../../Examples/3D/Physics/Cape/): a figure striding with a cape clasped at the neck, which collapses with it when the figure goes limp.
 
 <a name="naming-geometry"></a>
 

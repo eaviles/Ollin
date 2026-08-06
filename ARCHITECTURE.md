@@ -3526,6 +3526,88 @@ volume a limp one loses and shoves a crate further, pressure on a sheet changes
 nothing at all, a cloth drapes over a sphere rather than through it, a wind
 holds a banner out, and identical runs replay identically.
 
+### Cloth a skeleton carries
+
+The solver has a second way to hold a particle, beside pinning it: a *skinned
+constraint* ties it to a set of joints and caps how far it may travel from where
+they put it. That is what turns a hanging sheet into a cape. Ollin exposes it as
+four parameters on the same `addSoftBody` call (`skinnedTo:` a scene,
+`carriedBy:` a closure naming a joint per vertex, `sway:` a leash, `backStop:` a
+clearance) plus `SoftBody3D.follow(_:)` and `snap(to:)`.
+
+**The bind pose is whatever the figure is standing in when the cloth is built,
+which is what makes it need no authored weights.** The solver's `InvBind` takes
+a particle's rest position into a joint's own space; Ollin forms it as
+`jointWorld_bind⁻¹ · placement`, where `placement` is where the rest shape was
+put. Every later pose then reads as the motion since. This has a second payoff
+that is not obvious: **the bind pose does not have to be remembered to be
+recovered**, since `placement · invBind⁻¹` is that joint's bind transform back
+exactly. That is what lets a surface restored from a snapshot, with no scene in
+sight, open standing in the pose it was hung in rather than collapsed on its own
+origin.
+
+Scale is handled by dividing *only the translation* of every joint matrix by
+`unitsPerMeter`. For an affine `[R|t]` that is exactly the conjugation
+`S⁻¹ [R|t] S`, so a bind and a later pose converted the same way compose in
+meters precisely as they did in world units.
+
+**A particle held exactly on the skin is made kinematic, and that is the link
+between the two halves of the slice.** The library treats `maxDistance == 0` as
+"kinematic" for the skin constraint's own purposes, but leaves the particle's
+inverse mass alone, so the springs still drag it about. The bridge zeroes the
+inverse mass instead, which does three things at once: the particle really does
+hold still, `CalculateClosestKinematic` can see it, and therefore the long-range
+attachments (`maxStretch:`, the LRA constraints of Kim/Chentanez/Mueller-Fischer,
+which Ollin drives at `GeodesicDistance` so a cloth that has to reach round a
+corner is not over-constrained) work from anchors the *skin* holds rather than
+only from ones pinned to the world. Measured: a 6 kg cape hangs 8 cm long on its
+springs alone and exactly at its rest length with `maxStretch: 1`.
+
+**`sway` and `backStop` are raw lengths, and that is a deliberate departure from
+the stage-8 rule.** Stiffness, bend, and pressure all needed a derived
+normalization because compliance is m/N and means different things on different
+bodies. A distance does not: probed across the range, a sway of 0.02 held every
+particle within 0.0202 of its skinned position, 0.05 within 0.0504, 0.1 within
+0.1009, and a back stop of 0.02/0.1/0.4 held the cloth 0.0200/0.1000/0.4005 past
+the skin. The rule is about *compliance*, not about every physical number the
+library takes.
+
+**`follow(_:)` records; `World3D.step` applies.** `SkinVertices` interpolates
+from the previous skin pose to the current one across the step's iterations, so
+it must be called exactly once per step; recording the pose and handing it over
+beside the character and vehicle passes is what guarantees that, and it keeps the
+"call it before `step`" contract meaningful. `snap(to:)` is the other half and
+applies at once, since a teleport should be readable before the next step.
+
+**A pose that changed is what wakes the body, and it had to be.** The skin
+constraints are solved *during* the update, so a cape that has hung still long
+enough to settle and fall asleep stops answering the figure entirely: stand
+still until it settles, walk away, and it is left behind (the probe caught this
+outright, with a fully hard-skinned cape reading 1.39 units adrift). Comparing
+this frame's flattened pose against the last applied one costs a few hundred
+float comparisons and wakes the body only when the figure has actually moved,
+which is also what still lets a cape on a still figure sleep.
+
+Build order inside `cjolt_soft_body_create` is load-bearing: the skinned
+constraints and their inverse-mass zeroing go in *before* `CreateConstraints`
+(which is where the LRA constraints are derived, and it can only see kinematic
+particles that already are), and `CalculateSkinnedConstraintNormals` runs before
+`Optimize`. Both are no-ops for a body nothing carries, so every existing soft
+body is untouched.
+
+The snapshot writes the skin down rather than naming a scene for it: the
+closures that decided which joint carries what, and how long each leash is, are
+a sketch's and cannot be carried, exactly as the pinned list already could not
+be. That is one `simd_float4x4` per joint plus six numbers per carried particle
+(measured 4.7 KB for a 169-particle cape), and it needs no new `PhysicsAsset`
+case, because the mesh is already named. `SkinnedCloth3DTests` pins the tier
+against counterfactual twins: a cape goes where its figure goes where an
+unskinned twin stays put, a settled one still answers a figure that walks away,
+each leash holds to within 5%, cutting the skin loose multiplies the reach
+five-fold, the back stop holds the cloth off the figure a free one sinks into,
+a snapshot round trip is exact to 1e-6 and still follows a figure it has never
+seen, and identical runs replay identically.
+
 ### Water and buoyancy
 
 Buoyancy is unlike everything above it in the bridge: the solver does not work

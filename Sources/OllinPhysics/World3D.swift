@@ -558,7 +558,24 @@ public final class World3D {
     ///     position, which lifts a draped surface clear of what it lies on.
     ///   - twoSided: collide with the back of every face as well as the front.
     ///   - pinned: given a vertex of `mesh` in the mesh's own space, whether it
-    ///     is held in place. This is how a flag hangs from its corners.
+    ///     is held in place. This is how a flag hangs from its corners. A
+    ///     pinned vertex a joint carries is held by the *figure* rather than by
+    ///     the world, which is how a cape stays on the shoulders.
+    ///   - skinnedTo: a skinned scene whose skeleton carries part of the
+    ///     surface. The pose it is standing in right now is the bind pose, so
+    ///     hang the cloth where it belongs and then build it.
+    ///   - carriedBy: given a vertex of `mesh`, the name of the joint that
+    ///     carries it, or `nil` for ordinary cloth. Needs `skinnedTo`.
+    ///   - sway: given a carried vertex, how far it may travel from where the
+    ///     skeleton puts it, in world units. `0` holds it exactly there and
+    ///     `.infinity` (the default) leaves it free to swing.
+    ///   - backStop: how far behind the carried surface a particle may be
+    ///     pushed before it is held back out, in world units, which is what
+    ///     keeps a cape from sinking into the back it hangs on.
+    ///   - maxStretch: how far the surface may reach from what holds it, as a
+    ///     multiple of its own rest distance along the cloth: `1` is
+    ///     inextensible, `1.05` allows 5%. `nil` (the default) lets the springs
+    ///     alone decide, which is a hung cloth stretching under its own weight.
     ///   - group: which collision group the surface is in.
     @discardableResult
     public func addSoftBody(from mesh: Mesh, at position: Vector3 = .zero,
@@ -574,20 +591,59 @@ public final class World3D {
                             vertexRadius: Double = 0,
                             twoSided: Bool = true,
                             pinned: ((Vector3) -> Bool)? = nil,
+                            skinnedTo scene: Scene? = nil,
+                            carriedBy: ((Vector3) -> String?)? = nil,
+                            sway: ((Vector3) -> Double)? = nil,
+                            backStop: Double? = nil,
+                            maxStretch: Double? = nil,
                             group: CollisionGroup = .default) -> SoftBody3D? {
         let direction = axis.lengthSquared > 1e-18 ? axis.normalized : Vector3(0, 1, 0)
         let turn = simd_quatd(angle: rotation,
                               axis: simd_double3(direction.x, direction.y, direction.z))
+        if carriedBy != nil && scene == nil {
+            noteOnce("carriedBy names joints of a skeleton, so it needs a "
+                     + "skinnedTo: scene to look them up in; the surface is "
+                     + "ordinary cloth")
+        }
+        return makeSoftBody(mesh: mesh, position: position, rotation: turn,
+                            mass: mass, stiffness: stiffness, bend: bend,
+                            pressure: pressure, damping: damping,
+                            friction: friction, restitution: bounce ?? self.bounce,
+                            iterations: iterations, vertexRadius: vertexRadius,
+                            twoSided: twoSided, pinned: pinned, group: group,
+                            skeleton: scene?.skeleton() ?? [],
+                            carriedBy: carriedBy, sway: sway, backStop: backStop,
+                            maxStretch: maxStretch, restoredSkin: nil)
+    }
+
+    /// The one place a soft body is built and registered. A restore comes
+    /// through here too, handing over the skin it wrote down rather than the
+    /// closures that first decided it, so a surface that comes back is one the
+    /// ordinary call could have made.
+    func makeSoftBody(mesh: Mesh, position: Vector3, rotation: simd_quatd,
+                      mass: Double, stiffness: Double, bend: Double,
+                      pressure: Double, damping: Double, friction: Double,
+                      restitution: Double, iterations: Int, vertexRadius: Double,
+                      twoSided: Bool, pinned: ((Vector3) -> Bool)?,
+                      group: CollisionGroup, skeleton: [SceneSkeletonJoint],
+                      carriedBy: ((Vector3) -> String?)?,
+                      sway: ((Vector3) -> Double)?, backStop: Double?,
+                      maxStretch: Double?,
+                      restoredSkin: SoftBody3D.Skin?) -> SoftBody3D? {
         guard let soft = SoftBody3D(world: self, mesh: mesh, position: position,
-                                    rotation: turn, mass: mass,
+                                    rotation: rotation, mass: mass,
                                     stiffness: stiffness, bend: bend,
                                     pressure: pressure, damping: damping,
                                     friction: friction,
-                                    restitution: bounce ?? self.bounce,
+                                    restitution: restitution,
                                     iterations: iterations,
                                     vertexRadius: vertexRadius,
                                     twoSided: twoSided, pinned: pinned,
-                                    group: group) else {
+                                    group: group, skeleton: skeleton,
+                                    carriedBy: carriedBy, sway: sway,
+                                    backStop: backStop, maxStretch: maxStretch,
+                                    restoredSkin: restoredSkin)
+        else {
             noteOnce("addSoftBody needs a mesh with at least one triangle whose "
                      + "corners are distinct; nothing was added.")
             return nil
@@ -952,6 +1008,10 @@ public final class World3D {
         // A vehicle's wheels are collided and driven by the solver's own step
         // listener, so all it needs beforehand is this frame's controls.
         for vehicle in vehicles { vehicle.advance() }
+        // A surface a skeleton carries is posed from whatever `follow(_:)` was
+        // handed this frame, once, which is what the solver interpolates its
+        // skin constraints across the coming step.
+        for soft in softBodies { soft.applyPendingSkin() }
         // Buoyancy is an impulse the caller applies, not something the solver
         // works out, so it goes on just before the step that will integrate it.
         applyBuoyancy(dt: clamped)

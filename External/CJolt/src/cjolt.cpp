@@ -3046,6 +3046,49 @@ CJoltSoftBody *cjolt_soft_body_create(CJoltWorld *world,
     }
     if (settings->mFaces.empty()) { return nullptr; }
 
+    // Which particles a skeleton carries, built before the constraints so the
+    // long range attachments can already see which ones are kinematic.
+    if (desc->skinned != nullptr && desc->skinnedCount > 0
+        && desc->inverseBinds != nullptr && desc->inverseBindCount > 0) {
+        settings->mInvBindMatrices.reserve(size_t(desc->inverseBindCount));
+        for (int32_t i = 0; i < desc->inverseBindCount; ++i) {
+            settings->mInvBindMatrices.emplace_back(
+                uint32(i), matrix4(desc->inverseBinds + i * 16));
+        }
+        settings->mSkinnedConstraints.reserve(size_t(desc->skinnedCount));
+        for (int32_t i = 0; i < desc->skinnedCount; ++i) {
+            const CJoltSoftSkinVertex &in = desc->skinned[i];
+            if (in.vertex < 0 || uint32_t(in.vertex) >= vertexCount) { continue; }
+            SoftBodySharedSettings::Skinned skinned;
+            skinned.mVertex = uint32(in.vertex);
+            // The library spells "no limit" as FLT_MAX, so an infinity from the
+            // caller (the natural way to say a particle is free) becomes that.
+            skinned.mMaxDistance = std::isfinite(in.maxDistance)
+                ? std::max(0.0f, in.maxDistance) : FLT_MAX;
+            skinned.mBackStopDistance = std::isfinite(in.backStopDistance)
+                ? in.backStopDistance : FLT_MAX;
+            skinned.mBackStopRadius =
+                in.backStopRadius > 0.0f ? in.backStopRadius : 40.0f;
+            int slot = 0;
+            for (int w = 0; w < 4 && slot < 4; ++w) {
+                if (!(in.weights[w] > 0.0f)) { continue; }
+                if (in.joints[w] >= uint32_t(desc->inverseBindCount)) { continue; }
+                skinned.mWeights[slot++] = SoftBodySharedSettings::SkinWeight(
+                    in.joints[w], in.weights[w]);
+            }
+            // Nothing carries it, so it is ordinary cloth.
+            if (slot == 0) { continue; }
+            skinned.NormalizeWeights();
+            settings->mSkinnedConstraints.push_back(skinned);
+            // A particle held exactly where the skin puts it is kinematic: the
+            // springs must not drag it off, and it is what the long range
+            // attachments measure the rest of the surface against.
+            if (skinned.mMaxDistance <= 0.0f) {
+                settings->mVertices[skinned.mVertex].mInvMass = 0.0f;
+            }
+        }
+    }
+
     // The dihedral bend constraint is the one that works on a curved surface:
     // it holds the angle two faces already meet at, where the cheaper distance
     // form assumes they started in a plane.
@@ -3054,9 +3097,25 @@ CJoltSoftBody *cjolt_soft_body_create(CJoltWorld *world,
     attributes.mShearCompliance = attributes.mCompliance;
     bool bends = desc->bendCompliance >= 0.0f;
     attributes.mBendCompliance = bends ? std::max(0.0f, desc->bendCompliance) : FLT_MAX;
+    switch (desc->lraType) {
+    case CJOLT_SOFT_LRA_EUCLIDEAN:
+        attributes.mLRAType = SoftBodySharedSettings::ELRAType::EuclideanDistance;
+        break;
+    case CJOLT_SOFT_LRA_GEODESIC:
+        attributes.mLRAType = SoftBodySharedSettings::ELRAType::GeodesicDistance;
+        break;
+    default:
+        attributes.mLRAType = SoftBodySharedSettings::ELRAType::None;
+        break;
+    }
+    attributes.mLRAMaxDistanceMultiplier =
+        desc->lraStretch > 0.0f ? desc->lraStretch : 1.0f;
     settings->CreateConstraints(&attributes, 1,
                                 bends ? SoftBodySharedSettings::EBendType::Dihedral
                                       : SoftBodySharedSettings::EBendType::None);
+    // Works out which faces each skinned particle's normal comes from, which
+    // is what the back stop pushes along. A no-op when nothing is skinned.
+    settings->CalculateSkinnedConstraintNormals();
     settings->Optimize();
 
     SoftBodyCreationSettings creation(settings, RVec3(vec3(desc->position)),
@@ -3237,6 +3296,56 @@ void cjolt_soft_body_move_vertex(CJoltWorld *world, CJoltSoftBody *body,
     // Velocities are stored in the body's own space, so the world-space step
     // comes back through the transform's rotation.
     v.mVelocity = com.Multiply3x3Transposed((vec3(target) - current) / dt);
+    world->physics.GetBodyInterface().ActivateBody(body->id);
+}
+
+int32_t cjolt_soft_body_skinned_count(const CJoltSoftBody *body) {
+    if (body == nullptr) { return 0; }
+    return int32_t(body->settings->mSkinnedConstraints.size());
+}
+
+void cjolt_soft_body_skin(CJoltWorld *world, CJoltSoftBody *body,
+                          const float *jointMatrices, int32_t jointCount,
+                          bool hardSkinAll) {
+    SoftBodyMotionProperties *motion = softMotion(world, body);
+    Body *jbody = softBody(world, body);
+    if (motion == nullptr || jbody == nullptr || jointMatrices == nullptr) { return; }
+    if (body->settings->mSkinnedConstraints.empty()) { return; }
+    // Every inverse bind names a joint, and the library reads that slot without
+    // checking it in a release build.
+    if (jointCount < int32_t(body->settings->mInvBindMatrices.size())) { return; }
+
+    // The library wants the joints in the body's own frame, so the conversion
+    // lives here, where the body is, rather than in every caller.
+    const RMat44 com = jbody->GetCenterOfMassTransform();
+    const RMat44 inverse = com.InversedRotationTranslation();
+    Array<Mat44> local;
+    local.reserve(size_t(jointCount));
+    for (int32_t i = 0; i < jointCount; ++i) {
+        local.push_back(Mat44(inverse * matrix4(jointMatrices + i * 16)));
+    }
+    motion->SkinVertices(com, local.data(), uint(jointCount), hardSkinAll,
+                         world->tempAllocator);
+    // A surface stood on a fresh pose has to be awake to answer it, and one
+    // that has just been carried somewhere has to re-centre.
+    if (hardSkinAll) {
+        world->physics.GetBodyInterface().ActivateBody(body->id);
+    }
+}
+
+void cjolt_soft_body_set_skin_enabled(CJoltWorld *world, CJoltSoftBody *body,
+                                      bool enabled) {
+    SoftBodyMotionProperties *motion = softMotion(world, body);
+    if (motion == nullptr) { return; }
+    motion->SetEnableSkinConstraints(enabled);
+    world->physics.GetBodyInterface().ActivateBody(body->id);
+}
+
+void cjolt_soft_body_set_skin_slack(CJoltWorld *world, CJoltSoftBody *body,
+                                    float multiplier) {
+    SoftBodyMotionProperties *motion = softMotion(world, body);
+    if (motion == nullptr) { return; }
+    motion->SetSkinnedMaxDistanceMultiplier(std::max(0.0f, multiplier));
     world->physics.GetBodyInterface().ActivateBody(body->id);
 }
 

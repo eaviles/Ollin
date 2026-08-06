@@ -861,6 +861,46 @@ banner.applyForce(Vector3(0, 0, gust))
 
 The [`3D/Physics/Drape`](../Examples/3D/Physics/Drape/) example puts all of it in one scene: a banner pegged to a washing line, a sheet thrown over a crate, and a ball you can let the air out of, all three draggable. Worth knowing before you build on this: soft bodies collide with the rigid world but not with each other or themselves, so a sheet folded double will pass through its own layers.
 
+## A cape on someone's back
+
+`pinned:` holds a corner of cloth *still*. A cape needs the other thing: held to something that is moving, and left to hang off it. Your figure from a page ago already has the moving thing in it, a skeleton, so you can name which joint of it carries which part of the cloth.
+
+```swift
+cape = world.addSoftBody(from: sheet, at: Vector3(0, 0.85, -0.13),
+                         rotation: .pi / 2, axis: Vector3(1, 0, 0),
+                         pinned: { $0.z < -0.55 },      // clasped at the neck
+                         skinnedTo: figure,
+                         carriedBy: { _ in "chest" })
+```
+
+Then one call a frame, after the figure is posed and before the world steps:
+
+```swift
+figure.apply(ragdoll)
+cape.follow(figure)
+world.step(dt: deltaTime)
+```
+
+Nothing was painted in a modelling tool to make that work. **The pose the figure is standing in when you build the cloth is the bind pose**, so you hang the cape where it belongs, name the joints, and everything the figure does from then on is read as the motion since. `carriedBy:` is handed a vertex in the mesh's own coordinates, the same ones `pinned:` gets, and answers with a joint's name or `nil` for a part that is just cloth.
+
+Notice that `pinned:` is doing something new here without changing its meaning: **a pinned vertex is held by whatever holds it.** A joint carries it, so it is held to the figure; if no joint does, it is held to the world, exactly as your banner's top edge was.
+
+<img src="Images/17-3DGently/Cape.jpg" alt="Two identical figures walking, each with a cape: the left cape hangs where it was hung while its figure walks away from it, the right one is still on its figure's back" width="560">
+
+Both figures there are walking the same path. The only difference between them is that one cape names a joint and the other does not.
+
+Three numbers shape what the loose part may do, and all three are plain distances in world units:
+
+```swift
+sway: { 0.05 },        // how far from the skin it may get
+backStop: 0.04,        // how far into the figure's back it may be pushed
+maxStretch: 1.02       // how far it may reach from what holds it
+```
+
+`sway` is a leash: `0` welds that part to the skin, the default of `.infinity` lets it swing freely, and `0.05` really does mean five centimetres. `backStop` keeps the cape out of the back it hangs on without waiting for a collision to sort it out. `maxStretch` is the one worth remembering even for cloth no figure carries: a heavy sheet hung from one edge stretches under its own weight however stiff you make it, and `1` (its own rest length, no more) fixes that for almost nothing.
+
+Two knobs work while it runs: `cape.swayScale` multiplies every leash at once, and `cape.followsSkin = false` drops the leashes entirely, leaving only the clasp. The [`3D/Physics/Cape`](../Examples/3D/Physics/Cape/) example has both on keys, and a figure you can knock over so the cape comes down with it.
+
 ## Water, and what it holds up
 
 A world can have water the same way it has ground. One property, and nothing has to opt in.

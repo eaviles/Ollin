@@ -835,6 +835,41 @@ void cjolt_ragdoll_add_impulse(CJoltWorld *world, CJoltRagdoll *ragdoll,
 /// and impulses and constraints do not apply to it.
 typedef struct CJoltSoftBody CJoltSoftBody;
 
+/// One particle tied to a skeleton: which joints carry it, and how far it is
+/// allowed to travel from where they put it. A surface with these follows an
+/// animated figure instead of only falling.
+typedef struct {
+    /// Index into the description's particle array.
+    int32_t vertex;
+    /// Up to four joints, as indices into the description's inverse-bind list,
+    /// and how much of the particle each one carries. A weight of 0 ends the
+    /// list; the weights are normalised for you.
+    uint32_t joints[4];
+    float weights[4];
+    /// How far the simulated particle may get from the skinned position, in
+    /// meters. 0 holds it exactly there (and makes it kinematic, which is what
+    /// the long range attachments hang the rest of the surface from); anything
+    /// not finite leaves it free.
+    float maxDistance;
+    /// How far behind the skinned surface the particle may be pushed before a
+    /// sphere holds it back out, in meters, which is how a cape is kept from
+    /// sinking into the back it hangs on. Ignored at or above `maxDistance`.
+    float backStopDistance;
+    /// The radius of that sphere, in meters. Large approximates a plane, which
+    /// is usually what a surface wants.
+    float backStopRadius;
+} CJoltSoftSkinVertex;
+
+/// How a long range attachment measures the distance it caps.
+typedef enum {
+    CJOLT_SOFT_LRA_NONE = 0,
+    /// Straight-line distance to the nearest pinned particle.
+    CJOLT_SOFT_LRA_EUCLIDEAN = 1,
+    /// Distance along the surface's own edges, which is the true bound for a
+    /// cloth that has to reach round a corner.
+    CJOLT_SOFT_LRA_GEODESIC = 2,
+} CJoltSoftLRAType;
+
 typedef struct {
     /// The rest shape: particle positions as xyz triples in body-local space,
     /// and the triangles connecting them (3 indices per face). Coincident
@@ -875,6 +910,21 @@ typedef struct {
     bool twoSided;
     /// Which collision group the body is in; 0 is the default group.
     int32_t group;
+    /// The skeleton's inverse bind matrices, 16 floats each, column major: one
+    /// per joint, each taking a particle's rest position into that joint's own
+    /// space. `cjolt_soft_body_skin` is handed the joints in the same order.
+    const float *inverseBinds;
+    int32_t inverseBindCount;
+    /// Which particles the skeleton carries. NULL or a count of 0 leaves the
+    /// body unskinned, which is every soft body that predates this.
+    const CJoltSoftSkinVertex *skinned;
+    int32_t skinnedCount;
+    /// Long range attachment: caps how far a particle may get from the nearest
+    /// pinned one, so a hung surface stops stretching under its own weight.
+    /// `CJOLT_SOFT_LRA_NONE` (0) creates none.
+    int32_t lraType;
+    /// A multiple of that rest distance: 1 is inextensible, 1.05 allows 5%.
+    float lraStretch;
 } CJoltSoftBodyDesc;
 
 /// Builds a soft body and adds it to the world. The stretch, shear, and bend
@@ -938,6 +988,29 @@ void cjolt_soft_body_set_state(CJoltWorld *world, CJoltSoftBody *body,
                                int32_t count);
 
 /// Pushes the whole body, spread evenly over its particles (N).
+/// How many particles the skeleton carries, so a caller can tell whether a
+/// body is worth posing at all.
+int32_t cjolt_soft_body_skinned_count(const CJoltSoftBody *body);
+
+/// Poses the skinned particles from world-space joint matrices (16 floats
+/// each, column major, in meters, in the order the inverse binds were given).
+/// Call once before each step: the solver interpolates from the previous pose
+/// across the step's iterations, so a second call in one step loses that.
+/// `hardSkinAll` puts every skinned particle exactly where the skin says and
+/// clears its velocity, which is how a surface is placed or reset.
+void cjolt_soft_body_skin(CJoltWorld *world, CJoltSoftBody *body,
+                          const float *jointMatrices, int32_t jointCount,
+                          bool hardSkinAll);
+
+/// Whether the skin constraints are solved at all. Off leaves only the
+/// particles held exactly on the skin following it, so the rest goes limp.
+void cjolt_soft_body_set_skin_enabled(CJoltWorld *world, CJoltSoftBody *body,
+                                      bool enabled);
+/// Scales every skinned particle's max distance, so one number loosens or
+/// tightens the whole surface against its skin while it runs.
+void cjolt_soft_body_set_skin_slack(CJoltWorld *world, CJoltSoftBody *body,
+                                    float multiplier);
+
 void cjolt_soft_body_add_force(CJoltWorld *world, CJoltSoftBody *body,
                                const float force[3]);
 void cjolt_soft_body_activate(CJoltWorld *world, CJoltSoftBody *body);

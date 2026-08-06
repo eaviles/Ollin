@@ -105,6 +105,8 @@ public final class SoftBody3D {
     let buildFriction: Double
     let buildRestitution: Double
     let buildTwoSided: Bool
+    /// How far the surface may reach from what holds it, if it was capped.
+    let buildMaxStretch: Double?
     /// Where the surface was built, which is the frame its rest shape is in.
     let buildPosition: Vector3
     let buildRotation: simd_quatd
@@ -116,11 +118,38 @@ public final class SoftBody3D {
     /// reach into a solver that no longer exists.
     var isDestroyed = false
 
+    /// Whether a skeleton carries any of this surface, which is what makes
+    /// `follow(_:)` mean anything.
+    public private(set) var isSkinned = false
+
+    /// What ties the surface to a skeleton: one inverse bind per joint,
+    /// captured from the pose the figure was standing in when the cloth was
+    /// hung on it, plus which joint carries each particle and how far it may
+    /// stray. Kept whole because a snapshot writes it down: the closures that
+    /// decided it are gone by then, the way the pinned list already is.
+    private(set) var skinning = Skin()
+
+    /// The pose `follow(_:)` recorded for this frame, handed to the solver by
+    /// the world's step. Kept rather than applied at once so a surface is
+    /// skinned exactly once per step, which is what the solver interpolates
+    /// its constraints across.
+    private var pendingPose: [Float]?
+
+    /// The pose the skin was last stood on, so a figure that has actually
+    /// moved can be told from one holding still.
+    private var lastPose: [Float]?
+
     init?(world: World3D, mesh: Mesh, position: Vector3, rotation: simd_quatd,
           mass: Double, stiffness: Double, bend: Double, pressure: Double,
           damping: Double, friction: Double, restitution: Double,
           iterations: Int, vertexRadius: Double, twoSided: Bool,
-          pinned: ((Vector3) -> Bool)?, group: CollisionGroup) {
+          pinned: ((Vector3) -> Bool)?, group: CollisionGroup,
+          skeleton: [SceneSkeletonJoint] = [],
+          carriedBy: ((Vector3) -> String?)? = nil,
+          sway: ((Vector3) -> Double)? = nil,
+          backStop: Double? = nil,
+          maxStretch: Double? = nil,
+          restoredSkin: Skin? = nil) {
         let welding = mesh.welded()
         guard welding.count >= 3, welding.indices.count >= 3 else { return nil }
 
@@ -135,6 +164,7 @@ public final class SoftBody3D {
         self.buildFriction = friction
         self.buildRestitution = restitution
         self.buildTwoSided = twoSided
+        self.buildMaxStretch = maxStretch
         self.buildPosition = position
         self.buildRotation = rotation
 
@@ -238,14 +268,38 @@ public final class SoftBody3D {
             restPositions[index * 3 + 2] = Float(p.z / scale)
         }
 
+        // Which skeleton joint carries each particle, worked out from the rest
+        // shape before anything is built, since the bind pose is whatever the
+        // figure is standing in right now.
+        let skin = restoredSkin
+            ?? SoftBody3D.skin(mesh: mesh, welding: welding,
+                               skeleton: skeleton, carriedBy: carriedBy,
+                               sway: sway, backStop: backStop,
+                               pinned: pinned, position: position,
+                               rotation: rotation, unitsPerMeter: scale)
+        skinning = skin
+        isSkinned = !skin.vertices.isEmpty
+        if maxStretch != nil {
+            desc.lraType = Int32(CJOLT_SOFT_LRA_GEODESIC.rawValue)
+            desc.lraStretch = Float(max(1, maxStretch ?? 1))
+        }
+
         let created: OpaquePointer? = restPositions.withUnsafeBufferPointer { points in
             welding.indices.withUnsafeBufferPointer { indices in
                 inverseMasses.withUnsafeBufferPointer { masses in
-                    desc.positions = points.baseAddress
-                    desc.indices = indices.baseAddress
-                    desc.inverseMasses = masses.baseAddress
-                    return withUnsafePointer(to: desc) {
-                        cjolt_soft_body_create(world.handle, $0)
+                    skin.flatBinds.withUnsafeBufferPointer { binds in
+                        skin.vertices.withUnsafeBufferPointer { skinned in
+                            desc.positions = points.baseAddress
+                            desc.indices = indices.baseAddress
+                            desc.inverseMasses = masses.baseAddress
+                            desc.inverseBinds = binds.baseAddress
+                            desc.inverseBindCount = Int32(skin.binds.count)
+                            desc.skinned = skinned.baseAddress
+                            desc.skinnedCount = Int32(skin.vertices.count)
+                            return withUnsafePointer(to: desc) {
+                                cjolt_soft_body_create(world.handle, $0)
+                            }
+                        }
                     }
                 }
             }
@@ -273,9 +327,32 @@ public final class SoftBody3D {
         self.iterations = max(1, iterations)
         self.vertexRadius = vertexRadius
 
+        // The skin state starts empty, so a surface that is never posed would
+        // be pulled to the frame's origin the first time the constraints are
+        // solved. Standing it on the bind pose costs nothing (it is already
+        // there) and is what makes the first step behave.
+        //
+        // The bind pose does not have to be remembered to be recovered: an
+        // inverse bind is `bindWorld⁻¹ · placement`, so `placement · bind⁻¹` is
+        // that joint's world transform back, exactly. Which is also why a
+        // surface restored from a file, with no scene in sight, opens standing
+        // in the pose it was hung in rather than collapsed on the origin.
+        if isSkinned {
+            let placement = SoftBody3D.placement(position: position,
+                                                 rotation: rotation,
+                                                 unitsPerMeter: scale)
+            applySkin(SoftBody3D.flattened(skin.binds.map { placement * $0.inverse }),
+                      hard: true)
+        }
+
         if pressure > 0 && !isClosed {
             world.noteOnce("pressure needs a closed surface to fill; this mesh "
                            + "has an open edge, so the pressure is ignored.")
+        }
+        for name in skin.unknownJoints.sorted() {
+            world.noteOnce("no joint named \"\(name)\" carries anything in this "
+                           + "skeleton, so the part of the surface asking for "
+                           + "it is ordinary cloth")
         }
     }
 
@@ -565,7 +642,231 @@ public final class SoftBody3D {
         }
     }
 
+    // MARK: Carried by a figure
+
+    /// Pose the skin from a scene's skeleton, ready for the next `step`.
+    ///
+    /// Call it once a frame, after the scene has been posed (by an animation,
+    /// or by `scene.apply(ragdoll)`) and before `world.step(dt:)`:
+    ///
+    /// ```swift
+    /// figure.apply(ragdoll)
+    /// cape.follow(figure)
+    /// world.step(dt: deltaTime)
+    /// ```
+    ///
+    /// The joints are read in the scene's own space, which is the space the
+    /// surface was hung in and the space `drawScene(_:)` draws in, so a figure
+    /// that walks carries the cloth with it. A surface no skeleton carries
+    /// ignores this.
+    public func follow(_ scene: Scene) {
+        guard isSkinned, !isDestroyed else { return }
+        pendingPose = jointPose(from: scene.skeleton())
+    }
+
+    /// Put every carried particle exactly where the skeleton says, right now,
+    /// and stop it dead. This is the teleport: what a surface needs when the
+    /// figure it hangs on has been stood somewhere else rather than moved
+    /// there, so it should arrive with it instead of being dragged across.
+    public func snap(to scene: Scene) {
+        guard isSkinned, !isDestroyed,
+              let pose = jointPose(from: scene.skeleton()) else { return }
+        applySkin(pose, hard: true)
+        pendingPose = nil
+    }
+
+    /// Whether the skin is holding the surface at all. Turn it off and only
+    /// the particles held exactly on it keep following: a cape stays on the
+    /// shoulders and everything below goes limp.
+    public var followsSkin: Bool = true {
+        didSet {
+            guard !isDestroyed, isSkinned else { return }
+            cjolt_soft_body_set_skin_enabled(world.handle, handle, followsSkin)
+        }
+    }
+
+    /// Scales every particle's `sway` at once, so one number lets the whole
+    /// surface out or reins it in while it runs. `1` is what it was built with.
+    public var swayScale: Double = 1 {
+        didSet {
+            guard !isDestroyed, isSkinned else { return }
+            cjolt_soft_body_set_skin_slack(world.handle, handle, Float(max(0, swayScale)))
+        }
+    }
+
+    /// Hand the world's step whatever `follow(_:)` recorded. Applying it here
+    /// rather than in `follow` is what keeps it to once per step.
+    func applyPendingSkin() {
+        guard let pendingPose else { return }
+        self.pendingPose = nil
+        applySkin(pendingPose, hard: false)
+    }
+
+    /// A skeleton's joints flattened to the column-major meter-scale matrices
+    /// the bridge takes, or `nil` if the skeleton is not the one this surface
+    /// was hung on.
+    private func jointPose(from joints: [SceneSkeletonJoint]) -> [Float]? {
+        guard joints.count >= skinning.binds.count else {
+            world.noteOnce("this surface was hung on a skeleton of "
+                           + "\(skinning.binds.count) joints and was handed one of "
+                           + "\(joints.count), so it is not being posed")
+            return nil
+        }
+        let scale = Float(world.unitsPerMeter)
+        var flat = [Float](repeating: 0, count: joints.count * 16)
+        for (index, joint) in joints.enumerated() {
+            SoftBody3D.write(SoftBody3D.inMeters(joint.world, scale: scale),
+                             into: &flat, at: index * 16)
+        }
+        return flat
+    }
+
+    private func applySkin(_ pose: [Float], hard: Bool) {
+        guard !isDestroyed else { return }
+        pose.withUnsafeBufferPointer { buffer in
+            cjolt_soft_body_skin(world.handle, handle, buffer.baseAddress,
+                                 Int32(pose.count / 16), hard)
+        }
+        // The skin constraints are solved by the step, so a surface that has
+        // settled and gone to sleep stops answering the figure entirely: stand
+        // still until a cape hangs quiet, walk away, and it is left behind. A
+        // pose that has actually changed is what wakes it, which is also what
+        // lets a cape on a still figure sleep, the way a settled pile does.
+        if pose != lastPose {
+            lastPose = pose
+            wake()
+        }
+    }
+
     // MARK: Internals
+
+    /// What ties a surface to a skeleton, worked out from the rest shape.
+    struct Skin {
+        /// One inverse bind per joint of the skeleton, kept so a later pose can
+        /// be measured against the one the surface was hung in.
+        var binds: [simd_float4x4] = []
+        /// The same matrices flattened for the bridge.
+        var flatBinds: [Float] = []
+        /// Which particles the skeleton carries, in particle order.
+        var vertices: [CJoltSoftSkinVertex] = []
+        /// Joint names the closure asked for that the skeleton does not have.
+        var unknownJoints: Set<String> = []
+    }
+
+    /// Work out which joint carries each particle, and how far it may stray.
+    ///
+    /// The bind pose is *whatever the figure is standing in right now*, which
+    /// is what makes this work without authored weights: a cape hung on a
+    /// figure is bound where it was hung, and every later pose is measured as
+    /// the motion since. So `inverseBind` takes a particle's rest position out
+    /// of the surface's own frame and into the joint's, and the frame pose puts
+    /// it back.
+    private static func skin(mesh: Mesh, welding: MeshWelding,
+                             skeleton: [SceneSkeletonJoint],
+                             carriedBy: ((Vector3) -> String?)?,
+                             sway: ((Vector3) -> Double)?,
+                             backStop: Double?,
+                             pinned: ((Vector3) -> Bool)?,
+                             position: Vector3, rotation: simd_quatd,
+                             unitsPerMeter: Double) -> Skin {
+        guard let carriedBy, !skeleton.isEmpty else { return Skin() }
+        var out = Skin()
+        let scale = Float(unitsPerMeter)
+
+        let placement = placement(position: position, rotation: rotation,
+                                  unitsPerMeter: unitsPerMeter)
+        var slotOf: [String: Int] = [:]
+        for (slot, joint) in skeleton.enumerated()
+        where !joint.name.isEmpty && slotOf[joint.name] == nil {
+            slotOf[joint.name] = slot
+        }
+
+        // Which joint holds each particle, and how far it may travel from it.
+        // A mesh's coincident vertices merge onto one particle and the closures
+        // answer the same for each of them, so the first joint wins and the
+        // tightest leash does.
+        var jointOf: [Int: Int] = [:]
+        var distanceOf: [Int: Double] = [:]
+        for (source, particle) in welding.remap.enumerated()
+        where source < mesh.positions.count {
+            let point = mesh.positions[source]
+            guard let name = carriedBy(point) else { continue }
+            guard let slot = slotOf[name] else {
+                out.unknownJoints.insert(name)
+                continue
+            }
+            // A pinned particle is held by whatever holds it: by the figure
+            // when a joint carries it, by the world when none does.
+            let held = pinned?(point) ?? false
+            let distance = held ? 0 : max(0, sway?(point) ?? .infinity)
+            if jointOf[particle] == nil { jointOf[particle] = slot }
+            distanceOf[particle] = min(distanceOf[particle] ?? .infinity, distance)
+        }
+        guard !jointOf.isEmpty else { return out }
+
+        out.binds = skeleton.map {
+            SoftBody3D.inMeters($0.world, scale: scale).inverse * placement
+        }
+        out.flatBinds = SoftBody3D.flattened(out.binds)
+
+        let stop = backStop.map { Float(max(0, $0) / unitsPerMeter) } ?? .infinity
+        for particle in jointOf.keys.sorted() {
+            var entry = CJoltSoftSkinVertex()
+            entry.vertex = Int32(particle)
+            entry.joints.0 = UInt32(jointOf[particle] ?? 0)
+            entry.weights.0 = 1
+            let distance = distanceOf[particle] ?? .infinity
+            entry.maxDistance = distance.isFinite
+                ? Float(distance / unitsPerMeter) : .infinity
+            entry.backStopDistance = stop
+            // The library's own default: a sphere big enough to read as a
+            // plane behind the surface.
+            entry.backStopRadius = 40
+            out.vertices.append(entry)
+        }
+        return out
+    }
+
+    /// Where the rest shape stands, in meters: the surface's own frame, which
+    /// is what an inverse bind takes a particle out of.
+    private static func placement(position: Vector3, rotation: simd_quatd,
+                                  unitsPerMeter: Double) -> simd_float4x4 {
+        var out = simd_float4x4(simd_quatf(
+            ix: Float(rotation.imag.x), iy: Float(rotation.imag.y),
+            iz: Float(rotation.imag.z), r: Float(rotation.real)))
+        out.columns.3 = SIMD4<Float>(Float(position.x / unitsPerMeter),
+                                     Float(position.y / unitsPerMeter),
+                                     Float(position.z / unitsPerMeter), 1)
+        return out
+    }
+
+    /// A transform whose translation is in meters rather than world units. The
+    /// rotation is untouched, so a bind and a later pose measured this way
+    /// compose exactly as they do in world units.
+    private static func inMeters(_ m: simd_float4x4, scale: Float) -> simd_float4x4 {
+        var out = m
+        out.columns.3 = SIMD4<Float>(m.columns.3.x / scale, m.columns.3.y / scale,
+                                     m.columns.3.z / scale, m.columns.3.w)
+        return out
+    }
+
+    /// Matrices flattened into one column-major float array, which is the
+    /// shape the bridge takes them in.
+    static func flattened(_ matrices: [simd_float4x4]) -> [Float] {
+        var flat = [Float](repeating: 0, count: matrices.count * 16)
+        for (index, m) in matrices.enumerated() { write(m, into: &flat, at: index * 16) }
+        return flat
+    }
+
+    /// A matrix written into a flat column-major float array.
+    private static func write(_ m: simd_float4x4, into flat: inout [Float], at start: Int) {
+        for column in 0 ..< 4 {
+            flat[start + column * 4] = m[column].x
+            flat[start + column * 4 + 1] = m[column].y
+            flat[start + column * 4 + 2] = m[column].z
+            flat[start + column * 4 + 3] = m[column].w
+        }
+    }
 
     private func particle(for vertex: Int) -> Int? {
         guard vertex >= 0, vertex < welding.remap.count else { return nil }

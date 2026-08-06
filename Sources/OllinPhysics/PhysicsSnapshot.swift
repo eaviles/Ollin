@@ -146,7 +146,7 @@ public struct PhysicsSnapshot: Sendable, Equatable {
     }
 
     /// The format this build writes, and the only one it reads.
-    static let version = 2
+    static let version = 3
 
     /// The body index a joint anchored to `World3D.groundBody` carries, since
     /// the floor slab is not one of the saved bodies.
@@ -505,28 +505,24 @@ extension World3D {
         // Built where it was built, so its rest shape is in the frame the
         // saved particle positions were measured against, then stood back in
         // the shape it had reached.
-        // `addSoftBody` takes an angle about an axis, so the saved quaternion
-        // is handed back in that form. A quaternion with no turn in it has no
-        // axis either, so any axis will do there.
         let turn = simd_quatd(ix: saved.rotation.imag.x, iy: saved.rotation.imag.y,
                               iz: saved.rotation.imag.z, r: saved.rotation.real)
             .normalized
-        let sine = simd_length(turn.imag)
-        let angle = 2 * atan2(sine, turn.real)
-        let axis = sine > 1e-9
-            ? Vector3(turn.imag.x / sine, turn.imag.y / sine, turn.imag.z / sine)
-            : Vector3(0, 1, 0)
-        guard let body = addSoftBody(from: mesh, at: saved.position,
-                                     rotation: angle, axis: axis,
-                                     mass: saved.mass, stiffness: saved.stiffness,
-                                     bend: saved.bend, pressure: saved.pressure,
-                                     damping: saved.damping,
-                                     friction: saved.friction,
-                                     bounce: saved.restitution,
-                                     iterations: saved.iterations,
-                                     vertexRadius: saved.vertexRadius,
-                                     twoSided: saved.twoSided,
-                                     group: group(at: Int32(saved.group)))
+        guard let body = makeSoftBody(mesh: mesh, position: saved.position,
+                                      rotation: turn, mass: saved.mass,
+                                      stiffness: saved.stiffness,
+                                      bend: saved.bend, pressure: saved.pressure,
+                                      damping: saved.damping,
+                                      friction: saved.friction,
+                                      restitution: saved.restitution,
+                                      iterations: saved.iterations,
+                                      vertexRadius: saved.vertexRadius,
+                                      twoSided: saved.twoSided, pinned: nil,
+                                      group: group(at: Int32(saved.group)),
+                                      skeleton: [], carriedBy: nil, sway: nil,
+                                      backStop: nil,
+                                      maxStretch: saved.maxStretch,
+                                      restoredSkin: saved.skin)
         else { return }
         body.assetName = saved.assetName
         for index in saved.pinned { body.pin(index) }
@@ -835,6 +831,11 @@ private struct SavedSoftBody {
     var positions: [Vector3]
     var velocities: [Vector3]
     var pinned: [Int]
+    var maxStretch: Double?
+    /// What a skeleton was carrying, written down because the closures that
+    /// decided it are a sketch's and cannot be carried, the same reason the
+    /// pinned list is here.
+    var skin: SoftBody3D.Skin
 }
 
 /// One joint as a snapshot holds it.
@@ -959,6 +960,12 @@ private struct SnapshotWriter {
     }
 
     mutating func f64(_ value: Double) {
+        withUnsafeBytes(of: value.bitPattern.littleEndian) { data.append(contentsOf: $0) }
+    }
+
+    /// Single precision, for the numbers the solver itself keeps that way: a
+    /// skin's bind matrices and leash lengths never had more.
+    mutating func f32(_ value: Float) {
         withUnsafeBytes(of: value.bitPattern.littleEndian) { data.append(contentsOf: $0) }
     }
 
@@ -1269,6 +1276,27 @@ private struct SnapshotWriter {
         }
         u32(UInt32(pinned.count))
         for index in pinned { u32(index) }
+
+        // How far it may reach from what holds it, and what a skeleton was
+        // carrying. A surface no skeleton carries writes two zero counts.
+        f64(body.buildMaxStretch ?? 0)
+        let skin = body.skinning
+        u32(UInt32(skin.binds.count))
+        for bind in skin.binds {
+            for column in 0 ..< 4 {
+                f32(bind[column].x); f32(bind[column].y)
+                f32(bind[column].z); f32(bind[column].w)
+            }
+        }
+        u32(UInt32(skin.vertices.count))
+        for carried in skin.vertices {
+            u32(UInt32(max(0, carried.vertex)))
+            u32(carried.joints.0)
+            f32(carried.weights.0)
+            f32(carried.maxDistance)
+            f32(carried.backStopDistance)
+            f32(carried.backStopRadius)
+        }
     }
 
     mutating func ragdoll(_ ragdoll: Ragdoll3D, in world: World3D) {
@@ -1363,6 +1391,13 @@ private struct SnapshotReader {
 
     mutating func f64() throws -> Double {
         Double(bitPattern: try u64())
+    }
+
+    mutating func f32() throws -> Float {
+        let raw = try bytes(4)
+        var pattern: UInt32 = 0
+        for (shift, byte) in raw.enumerated() { pattern |= UInt32(byte) << (8 * shift) }
+        return Float(bitPattern: pattern)
     }
 
     mutating func vector() throws -> Vector3 {
@@ -1677,6 +1712,29 @@ private struct SnapshotReader {
         var pinned: [Int] = []
         for _ in 0 ..< (try count()) { pinned.append(Int(try u32())) }
 
+        let stretch = try f64()
+        var skin = SoftBody3D.Skin()
+        // The bind count is a length in the stream, so it may be bounds
+        // checked; sixteen floats each.
+        for _ in 0 ..< (try count()) {
+            var m = matrix_identity_float4x4
+            for column in 0 ..< 4 {
+                m[column] = SIMD4<Float>(try f32(), try f32(), try f32(), try f32())
+            }
+            skin.binds.append(m)
+        }
+        for _ in 0 ..< (try count()) {
+            var carried = CJoltSoftSkinVertex()
+            carried.vertex = Int32(try u32())
+            carried.joints.0 = try u32()
+            carried.weights.0 = try f32()
+            carried.maxDistance = try f32()
+            carried.backStopDistance = try f32()
+            carried.backStopRadius = try f32()
+            skin.vertices.append(carried)
+        }
+        skin.flatBinds = SoftBody3D.flattened(skin.binds)
+
         return SavedSoftBody(assetName: name, fingerprint: print,
                              position: position,
                              rotation: simd_quatd(ix: qx, iy: qy, iz: qz, r: qw),
@@ -1686,7 +1744,9 @@ private struct SnapshotReader {
                              iterations: iterations, vertexRadius: vertexRadius,
                              twoSided: twoSided, group: group,
                              positions: positions, velocities: velocities,
-                             pinned: pinned)
+                             pinned: pinned,
+                             maxStretch: stretch > 0 ? stretch : nil,
+                             skin: skin)
     }
 
     mutating func ragdoll() throws -> SavedRagdoll {
