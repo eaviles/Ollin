@@ -63,6 +63,7 @@ Distances are the 3D scene's world units (y-up, matching the camera). The solver
 - [Soft bodies](#softbodies) - cloth that drapes and closed shapes that squash
 - [Water](#water) - buoyancy: what floats, how deep it sits, and what carries it
 - [Saving and loading](#snapshots) - keeping an arrangement you like, and putting it back
+- [Reading physics from a file](#importing) - picking up `UsdPhysics` bodies and joints authored elsewhere
 - [Grabbing with the mouse](#grabbing) - ray-picking and dragging bodies through the camera
 - [Drawing bodies](#drawing) - `withBody` and matching meshes to colliders
 
@@ -1217,6 +1218,34 @@ Three things are worth knowing:
 - **A name that now resolves to *different* geometry is still restored, and said out loud.** The saved poses are the best answer there is, but a pose saved against one shape rarely fits another. What notices is a fingerprint of the geometry stored beside the name, so a re-exported mesh or a terrain regrown from another seed is caught.
 
 The worked examples are [`3D/Physics/Cairn`](../../Examples/3D/Physics/Cairn/), a heap of stones laid one at a time, restored with **R**, written to a file with **S**, and read back with **L**, so quitting and running the sketch again finds the same cairn standing; and [`3D/Physics/Yard`](../../Examples/3D/Physics/Yard/), which does the same for a yard holding a truck you drive, a figure pacing across it, a second figure lying where it fell, and a heightfield floor and a cloth banner that the file names rather than holds.
+
+<a name="importing"></a>
+
+### Reading physics from a file
+
+A `.usd` scene can say more than what its prims look like. The `UsdPhysics` schema lets it say which of them are rigid bodies, which are scenery, what shape each collides as, how heavy they are, and how they are jointed together, and a scene carrying that comes into a world in one call:
+
+```swift
+let scene = loadScene("yard.usda")!
+world.addBodies(from: scene)          // every body and joint the file describes
+```
+
+Nothing else is needed. The bodies are ordinary `Body3D`s, so they collide, stack, take impulses, snapshot, and draw the way any others do; each one's `assetName` is the name of the prim it came from, which is how a drawing loop tells them apart.
+
+**What comes across.** Rigid bodies (falling, driven with `physics:kinematicEnabled`, or scenery), with their mass, density, center of mass, velocity, and whether they start asleep. Colliders as boxes, balls, capsules, cylinders, cones, hulls, and exact meshes. Friction and restitution from a bound physics material. The fixed, revolute, prismatic, spherical, and distance joints, with their limits. And the scene's gravity, if you ask for it with `applyGravity: true`.
+
+Four rules are worth knowing, because each is the schema's and not a choice made here:
+
+- **A collider's shape is the prim's own geometry.** There is no shape attribute: a `Cube` with `PhysicsCollisionAPI` on it is a box, a `Sphere` is a ball. A scale on the prim makes a bigger shape, since a solver's shapes carry no scale of their own.
+- **A rigid body owns everything under it.** Several collider prims in one subtree are one body wearing a compound collider, which is how a hammer is a handle and a head rather than two loose pieces.
+- **A collider with no rigid body over it is scenery**, and never moves.
+- **USD stands a capsule, cylinder, and cone on z** unless the prim's `axis` says otherwise, where Ollin's stand on y. A rod authored the default way therefore arrives lying down, because that is what the file says.
+
+**What does not.** Articulations, joint drives and their limit API, and collision groups and filtered pairs are said in the file's own vocabulary rather than one this world has, so they are left alone. The stage's `upAxis` and `metersPerUnit` are not applied either, the same contract the rest of scene import keeps: a scene arrives as authored.
+
+Reading is lossy, and that is exactly why this direction works. A file's notion of a body is a description, and anything it does not say has a sensible answer here. Writing would not be, which is why a world you want back *exactly* goes into Ollin's own snapshot instead. The two are complementary: import to pick up an arrangement somebody else authored, snapshot to keep one you found.
+
+The worked example is [`3D/Physics/Imported`](../../Examples/3D/Physics/Imported/), whose `yard.usda` is hand-written and readable: a seesaw on a hinge, a stack, a hammer, a sign on a hinge held to the world, and a capsule authored the default way so it comes in on its side.
 
 <a name="grabbing"></a>
 

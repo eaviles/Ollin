@@ -633,11 +633,33 @@ public final class World3D {
     /// Anchors are world points at the moment of connecting.
     @discardableResult
     public func connect(_ a: Body3D, _ b: Body3D, _ kind: JointKind3D) -> Joint3D {
+        connect(a, b as Body3D?, kind)
+    }
+
+    /// Hold a body to the world itself: a hinge fixed in space, a rail that
+    /// goes nowhere, a weld that pins a body where it stands. The world is not
+    /// a body, so there is nothing for the joint to shove.
+    ///
+    /// ```swift
+    /// // a sign swinging from a fixed point, with no post to hang it on
+    /// world.connect(sign, toWorld: .revolute(at: Vector3(0, 3, 0), axis: .unitZ))
+    /// ```
+    ///
+    /// This is what a scene that says a body is jointed to nothing in
+    /// particular means, and what `world.ground` would otherwise have to
+    /// stand in for.
+    @discardableResult
+    public func connect(_ body: Body3D, toWorld kind: JointKind3D) -> Joint3D {
+        connect(body, nil, kind)
+    }
+
+    @discardableResult
+    func connect(_ a: Body3D, _ b: Body3D?, _ kind: JointKind3D) -> Joint3D {
         // Where the two bodies stand right now is the joint's own zero, so it
         // is remembered on the joint: a snapshot restores a jointed machine by
         // standing the bodies back here to make the joint, then moving them on.
         let poseA = Pose3D(of: a)
-        let poseB = Pose3D(of: b)
+        let poseB = b.map { Pose3D(of: $0) } ?? .identity
         var desc = CJoltConstraintDesc()
         // A track is the one kind that carries a list rather than a handful of
         // numbers, so its points ride a buffer the create call borrows.
@@ -763,22 +785,29 @@ public final class World3D {
                 desc.pathPoints = points.baseAddress
                 desc.pathPointCount = Int32(spline.count)
                 return withUnsafePointer(to: &desc) {
-                    cjolt_constraint_create(handle, a.id, b.id, $0)
+                    cjolt_constraint_create(handle, a.id, worldEnd(b), $0)
                 }
             }
         } else {
             constraint = withUnsafePointer(to: &desc) {
-                cjolt_constraint_create(handle, a.id, b.id, $0)
+                cjolt_constraint_create(handle, a.id, worldEnd(b), $0)
             }
         }
         if constraint == nil, case .pulley = kind {
             noteOnce("a pulley holds ordinary and static bodies; a kinematic one "
                      + "is refused (move a static end instead). Ignoring.")
         }
-        let joint = Joint3D(world: self, constraint: constraint, a: a.id, b: b.id,
-                            kind: kind, connectPoseA: poseA, connectPoseB: poseB)
+        let joint = Joint3D(world: self, constraint: constraint, a: a.id,
+                            b: worldEnd(b), kind: kind, connectPoseA: poseA,
+                            connectPoseB: poseB)
         joints.append(joint)
         return joint
+    }
+
+    /// A joint's second end: a body, or the world itself, which the solver
+    /// spells as no body at all.
+    private func worldEnd(_ body: Body3D?) -> CJoltBodyID {
+        body?.id ?? CJOLT_BODY_INVALID
     }
 
     /// Tie one joint's motion to another's: meshed gears, or a pinion turning

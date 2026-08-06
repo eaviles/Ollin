@@ -77,6 +77,8 @@ extension Scene {
         if !tracks.isEmpty {
             scene.animations = [SceneAnimation(name: "", duration: duration, tracks: tracks)]
         }
+        let physics = resolveUSDPhysics(stage)
+        if !physics.isEmpty { scene.physicsDescription = physics }
         return scene
     }
 

@@ -570,6 +570,7 @@ let package = Package(
         example("3D/Physics/Contraption", [.physics]),
         example("3D/Physics/Cairn", [.physics]),
         example("3D/Physics/Yard", [.physics], resources: [.copy("figure.gltf")]),
+        example("3D/Physics/Imported", [.physics], resources: [.copy("yard.usda")]),
         example("3D/Raymarching/RaymarchedSDF"),
         example("3D/Raymarching/RaymarchedShapes"),
         example("3D/Raymarching/RaymarchedSculpt"),

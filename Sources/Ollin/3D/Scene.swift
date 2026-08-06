@@ -75,6 +75,10 @@ public struct Scene: Sendable {
     var fixedCameras: [Camera3D]?
     var fixedLights: [Light]?
 
+    /// The UsdPhysics annotations the file carried, when it carried any. Read
+    /// through the `physics` seam by the physics satellite.
+    var physicsDescription: ScenePhysics?
+
     /// An empty scene, or one composed by hand from nodes you build yourself.
     public init(nodes: [SceneNode] = [], cameras: [Camera3D] = [],
                 lights: [Light] = [], name: String? = nil) {

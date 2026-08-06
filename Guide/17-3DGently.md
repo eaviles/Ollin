@@ -1174,7 +1174,16 @@ world.restore(saved) { name in
 
 On a yard with a terrain floor in it that is the difference between a hundred kilobytes and one. The trade is real, though, and it goes both ways: a snapshot that names nothing is self-contained, which is what lets you commit it beside the sketch and open it anywhere, so that stays the default. A name the resolver doesn't recognize costs you that one body and a note, not the restore. And a cloth needs a name to be saved at all, because a cloth is nothing but its mesh.
 
-The [`3D/Physics/Cairn`](../Examples/3D/Physics/Cairn/) example is a heap of stones laid one at a time. Wreck it by dragging, press R and it is back exactly; press S, quit, and run it again, and the same cairn is standing there. [`3D/Physics/Yard`](../Examples/3D/Physics/Yard/) does the same for a yard with a truck in it, a figure pacing across, another lying where it fell, and a terrain floor and a banner that the file names rather than holds.
+That is one direction: keeping a world you found. The other is picking up one somebody else made. A `.usd` file can say which of its prims are physical, and `world.addBodies(from: scene)` reads the lot, so a sketch that loads such a file writes no physics of its own:
+
+```swift
+let scene = loadScene("yard.usda")!
+world.addBodies(from: scene)
+```
+
+Bodies, colliders, joints, masses, materials, gravity. Reading it is lossy, and that is exactly why it works: a file's description of a body is a description, and anything it leaves out has a sensible answer waiting. Writing the same format would not be, which is why the two jobs use two formats. Import to pick up an arrangement; snapshot to keep one.
+
+The [`3D/Physics/Cairn`](../Examples/3D/Physics/Cairn/) example is a heap of stones laid one at a time. Wreck it by dragging, press R and it is back exactly; press S, quit, and run it again, and the same cairn is standing there. [`3D/Physics/Yard`](../Examples/3D/Physics/Yard/) does the same for a yard with a truck in it, a figure pacing across, another lying where it fell, and a terrain floor and a banner that the file names rather than holds. And [`3D/Physics/Imported`](../Examples/3D/Physics/Imported/) goes the other way: its `yard.usda` is hand-written, and the sketch is a camera and a drawing loop.
 
 ## What the depth buffer is for
 

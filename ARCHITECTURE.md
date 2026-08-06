@@ -4109,6 +4109,59 @@ belongs only where the number really is a length.
 `SnapshotAssetTests` (10) pins it; the `3D/Physics/Yard` example names its
 heightfield floor and its cloth banner.
 
+### Reading UsdPhysics
+
+`World3D.addBodies(from: Scene)` picks up rigid-body, collider, and joint
+annotations authored elsewhere. It is the interchange leg, and the direction is
+the whole argument: **reading is lossy and that is fine** (a file's notion of a
+body is a description, and what it omits has a sensible default), where writing
+would not be, which is why the snapshot stays Ollin's own format.
+
+The split follows the lights/cameras precedent: the core reads the annotations
+into `package` value types (`ScenePhysics` / `ScenePhysicsBody` /
+`ScenePhysicsShape` / `ScenePhysicsJoint`, in `3D/SceneLoaderUSDPhysics.swift`,
+attached to the loaded `Scene`), and `OllinPhysics/UsdPhysics.swift` turns those
+into ordinary `addBody` / `connect` calls. So the satellite never sees the USD
+parser, and a restored or snapshotted imported world is one a sketch could have
+built.
+
+**Every attribute name was verified against `pxr/usd/usdPhysics/schema.usda`
+rather than recalled**, which the continuation prompt specifically warned about,
+and the schema's shape drove four decisions:
+
+- **A collider's shape is the prim's own geometry.** There is no shape
+  attribute: `PhysicsCollisionAPI` on a `Cube` means a box. So the reader maps
+  gprim types, and the sizes are the gprim's own (`Cube.size` default **2**, not
+  three extents; `Capsule` default radius 0.5 / height 1, the height being the
+  span between cap centres, which is already Ollin's meaning).
+- **USD stands a Capsule, Cylinder, and Cone on z** (`axis`, default `"Z"`)
+  where Ollin's stand on y, so the difference is baked into the shape's own turn
+  inside its body. A rod authored the default way arrives lying down, and
+  `aCapsuleAuthoredOnZComesInLyingDown` pins it against a y-axis twin.
+- **A rigid body owns its whole subtree**, so several collider prims under one
+  body fuse into one `.compound`, which is exactly what the schema means and
+  what makes a hammer one body.
+- **A joint naming one body holds it to the world.** The bridge already
+  supported that (`resolveBody` returns `Body::sFixedToWorld` for
+  `CJOLT_BODY_INVALID`, which the header had documented all along), so the fix
+  was a Swift seam rather than C: the new public **`connect(_:toWorld:)`**, with
+  the two-body `connect` and it both forwarding to one optional-second-body
+  form. A first draft added a `cjolt_body_create_anchor` before reading far
+  enough to find the existing support; checking the header beat writing the
+  code.
+
+The bug worth remembering: **a collider prim that *is* its body has an identity
+local transform**, so taking the shape's scale from the collider-inside-body
+transform loses the prim's own scale entirely, which is the common case. Scale
+must come from the collider's **world** transform always, with the
+body-relative transform supplying only position and rotation (and that
+measured against the body's rotation and place rather than any scale it
+carries, since the scale is already in the sizes). It rendered as a scene of
+unscaled cubes: caught by looking at it, not by a test.
+
+`UsdPhysicsTests` (14) pins the tier; example `3D/Physics/Imported` with a
+hand-authored `yard.usda`.
+
 ## The geometry and generator catalog
 
 The CPU-side geometry types and generative-technique recipes live in

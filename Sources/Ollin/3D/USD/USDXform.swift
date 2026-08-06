@@ -247,13 +247,20 @@ extension USDStage {
     /// transform. Abstract (`class`) prims and their subtrees are skipped;
     /// a `!resetXformStack!` prim starts over from its own local transform.
     func visitPrims(_ body: (USDPrim, simd_double4x4) -> Void) {
-        func walk(_ prim: USDPrim, parent: simd_double4x4) {
+        visitPrims { prim, _, world in body(prim, world) }
+    }
+
+    /// The same walk, with each prim's absolute path, which is what a
+    /// relationship names it by.
+    func visitPrims(_ body: (USDPrim, String, simd_double4x4) -> Void) {
+        func walk(_ prim: USDPrim, parentPath: String, parent: simd_double4x4) {
             guard prim.specifier != .class else { return }
             let (local, resets) = prim.localXform()
             let world = resets ? local : parent * local
-            body(prim, world)
-            for child in prim.children { walk(child, parent: world) }
+            let path = parentPath + "/" + prim.name
+            body(prim, path, world)
+            for child in prim.children { walk(child, parentPath: path, parent: world) }
         }
-        for prim in prims { walk(prim, parent: matrix_identity_double4x4) }
+        for prim in prims { walk(prim, parentPath: "", parent: matrix_identity_double4x4) }
     }
 }
