@@ -3762,6 +3762,89 @@ within a few thicknesses of the line of sight, which is what the cursor plainly
 means on a rope anyway. Branching is out: a rope is one strand, and a plant with
 several stems is several ropes.
 
+#### Why there is no hair tier
+
+Jolt v5.6.0 vendors a whole `Jolt/Physics/Hair/` module beside the soft-body
+solver, with 49 shader files behind it. It simulates a groom of hair strands as
+Cosserat rods, which is the same maths `Rope3D` already rides, plus a velocity
+and density grid that lets strands push on each other, plus an interpolation step
+that draws ten render strands around every simulated one. It is not exposed, and
+the reason is a fit problem before it is a cost problem.
+
+**It cannot be blown.** `Hair` takes no force of any kind: the whole external
+input is the head's transform, the scalp's joint matrices, and the velocities of
+the shapes it collides with, and the string `wind` does not occur anywhere in the
+49 shaders (upstream's own missing-features list in `Hair.h` names wind forces
+first). Hair moves because the head moved, and by nothing else. Every cloth and
+rope thing Ollin ships is built the other way round: the Drape, Cape, and Rigging
+examples all gust, through `applyForce`. A strand tier that cannot be blown is
+not the tier this framework wants.
+
+**It only collides with `ConvexHullShape`.** Every other shape sub-type is
+skipped without a word (`Hair.cpp`, the `GetSubType() == EShapeSubType::ConvexHull`
+tests). Ollin's figures are meshes and capsules: a ragdoll limb is a capsule and
+so is a character, so hair would pass straight through everything the framework
+actually builds.
+
+**Its input is an authored groom, not a generated one.** `HairSettings` wants
+simulation strands, render strands, a scalp mesh, that scalp's inverse bind pose
+and skin weights, and per-frame joint matrices, and nothing in Jolt reads a groom
+from a file. In Ollin the sketch is what makes the geometry, and once a sketch is
+placing strands the whole scalp-and-bind-pose apparatus is overhead:
+`addRope(through:)` already takes a polyline.
+
+**And it is a secondary-motion system, by design.** Measured on 200 strands run
+for 10 s at the shipped defaults: gravity moves the tip of a 175 mm strand by
+2.15 mm, against 0.02 mm with the gravity factor zeroed. Long-range attachments
+and the global-pose pull hold the hair in the groom it was authored in, which is
+right for a game character whose hair should stay styled and is the opposite of
+what a sketch asks for.
+
+The measurement that made the decision cheap is that the rod family **already
+exposed** carries more strands than the hair module does. Nothing requires a
+soft body's rods to form one chain, so one body can hold a whole groom. On an M2
+in release, 8 particles per strand, every root held and every body awake:
+
+| strands (particles) | one soft body of rod chains | `Rope3D`, one body each | Jolt `Hair`, its own CPU backend |
+|---|---|---|---|
+| 1,000 (8,000) | **0.94 ms** | 1.30 ms at 800 | 5.93 ms |
+| 4,000 (32,000) | **3.10 ms** | 8.58 ms | 20.28 ms |
+| 10,000 (80,000) | **6.90 ms** | past the body budget | 25.74 ms at 4,000 simulated |
+| 20,000 (160,000) | **12.45 ms** | past the body budget | past the frame |
+| 40,000 (320,000) | 26.02 ms | past the body budget | past the frame |
+
+So the shipped solver holds **20,000 fully simulated strands inside a 60 fps
+frame** where the hair module holds about 2,500, and it does it with no new build
+machinery at all. The honest caveat is that those hair figures are its **CPU**
+compute backend, whose `Dispatch` is a serial loop over every thread and which
+upstream describes as being for debugging rather than for speed, so a Metal
+backend would be much faster than the table shows. That is exactly the work being
+declined: the Metal backend loads a precompiled `Jolt.metallib`, so the 49
+HLSL-dialect shaders would have to be cross-compiled to Metal and packaged by a
+SwiftPM build step, the backend is Objective-C++ and would have to be admitted
+into a target whose whole point is that `cjolt.cpp` is the only code that ever
+includes a Jolt header, and the simulation's output is a Jolt-owned compute
+buffer that Ollin's renderer would need a new path to draw, since the readback
+the header offers is labelled slow and for debugging. All of that pays for a
+system that still could not be blown by wind.
+
+`Rope3D`'s own knobs already reach hair scale, which is what makes the
+alternative real rather than theoretical: swept from rope scale down, a
+cantilever of 8 points at 25 mm spacing droops 0.26 of its span at `bend: 0.5`
+and 0.79 at `bend: 0.05`. Below about 10 mm of spacing the bend knob loses its
+authority (0.149 against 0.165 across its whole range), which is the floor.
+
+What would reopen it: upstream growing **external forces** and **collision
+against more than convex hulls**, and dropping the "currently still in
+development" note the header carries, since those two are what make it fit at
+all. If hair is wanted before then, the way in is a multi-strand `Rope3D` rather
+than this module: one body, many rod chains, drawn with a few interpolated
+strands around each simulated one, which is the trick that earns the hair module
+most of its strand count and is pure sketch code. The cost to watch there is
+build rather than step time, since `CreateConstraints` plus `Optimize` take 3.2 s
+at 20,000 strands and 12.5 s at 40,000, which makes strand count a setup-shaped
+artwork parameter like `maxVertices`.
+
 ### Water and buoyancy
 
 Buoyancy is unlike everything above it in the bridge: the solver does not work

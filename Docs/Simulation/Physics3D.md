@@ -1104,6 +1104,18 @@ query asks about is built from a body's *faces*, and a rope has none, so
 of sight. And a rope is one strand: there is no branching form, so a plant with
 several stems is several ropes.
 
+**Hair and fur are ropes.** There is no separate hair simulation, and a rope is
+what to reach for instead. It is the same Cosserat rod maths a hair solver uses,
+and its knobs reach hair scale: a cantilever of 8 points spaced 25 mm apart
+droops about a quarter of its span at `bend: 0.5` and about four fifths of it at
+`bend: 0.05`. Below roughly 10 mm of spacing `bend` stops making much difference,
+which is the practical floor. The cost to plan around is the count: each rope is
+its own body, and `World3D(maxBodies:)` defaults to 4,096, so a few thousand
+strands is the working range (measured on an M2: 2,000 strands of 8 points step
+in about 3.3 ms, 4,000 in about 8.6 ms). Past that, simulate a sparse set of
+strands and draw several interpolated around each one, which is how hair is
+usually drawn anyway.
+
 <a name="carriedcloth"></a>
 
 ### Cloth a figure carries
