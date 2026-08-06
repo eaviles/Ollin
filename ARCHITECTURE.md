@@ -3975,10 +3975,10 @@ Four things are load-bearing:
   0/12 awake after a restore against 12/12 for the same poses handed to
   `addBody`, and zero movement over the next sixty steps.
 - **A vehicle's chassis is an ordinary body in `world.bodies`**, so capturing
-  naively would save it as a loose crate that restores without its wheels.
-  It is filtered out instead, and the one-time note names every higher tier the
-  world was holding. Characters, ragdoll limbs, and soft bodies are already out
-  of `bodies`, so they need no filter, only the note.
+  it with the loose ones would save a crate that restores without its wheels.
+  It is written in the vehicle section instead, while still taking a body index
+  after the loose ones so a joint saved against it (a trailer on a hitch) still
+  names it.
 - **The group table survives `removeAll()` in the solver but not in Swift.**
   Restore rebuilds `groupNames` in the saved order (which *is* the solver's
   indexing, so a body's saved index still names its group) and then sets every
@@ -4000,6 +4000,62 @@ simulating is a different heap wherever the floating point rounds differently
 (measured: releasing one stone 1e-7 higher moves a stone in the settled heap
 0.45 units), where a saved one has nothing left to compute.
 `PhysicsSnapshotTests` (23) pins it; example `3D/Physics/Cairn`.
+
+#### The tiers above a loose body
+
+Characters, vehicles, and ragdolls are in the file too, and the reason they can
+be is the taxonomy: **sorting the tiers by what is actually heavy in each**
+turns "what may a snapshot reference" into a much narrower question. A
+character is a capsule and a handful of numbers. A vehicle is colliders plus a
+wheel list plus live drivetrain state. A ragdoll *splits*: what the solver holds
+(a fitted shape per limb, the joint tree, the limits) is derived data that fits
+by value, while the skinned `Scene` it was fitted from is the sketch's own
+asset, already loaded and already handed back for `scene.apply(ragdoll)`. None
+of the three needs to name anything outside the file, so all three are written
+by value and only a soft body's source mesh is left.
+
+That split is what shaped `Ragdoll3D`: its initializer was divided into a
+`convenience init` that works a `Scene` down to a `RagdollPlan` and a designated
+one that builds the solver objects **from the plan**, so a restored figure is
+built by the same code a fitted one is, and `RagdollPlan` grew each limb's
+`name` and `sourceIndex` (which a plan previously read back off the skeleton it
+no longer has). The per-joint limits are held on the figure as
+`jointLimits`, since the solver takes them and never hands them back.
+
+Three findings came out of building it, each measured rather than reasoned:
+
+- **A vehicle must carry its drivetrain, not just its chassis.** Restoring pose
+  and velocity alone leaves the engine idling and the wheels stationary, so a
+  machine at speed has to spin both up again: measured, a car under full
+  throttle fell **6.4 units** behind over two seconds. Carrying engine RPM,
+  gear, clutch, and each wheel's angular velocity and rolled angle brings that
+  to 1.5. What is left is the solver's own in-flight bookkeeping, and the fair
+  comparison says so: a *rigid* stack captured mid-collapse and restored
+  diverges **2.13** units over the same 120 steps, worse than the vehicle, while
+  a parked machine and a coasting one come back at 0 and 0.07. Wheel suspension
+  length is deliberately not carried (there is no setter, and `PreCollide`
+  re-measures it against the ground), which shows only as the wheels' contact
+  cache being rebuilt on the first step.
+- **Never write a pose as a position then a rotation.** The solver holds a body
+  by its **centre of mass**, so `SetPosition` computes it against the
+  orientation the body still has; a following `SetRotation` then leaves the body
+  origin a fraction out. It is invisible for a box or a sphere (centre of mass
+  at the origin) and real for a **ragdoll limb**, whose shape is pushed out
+  along the bone by a `RotatedTranslatedShape`: three of sixteen limbs came back
+  up to 4.8e-07 off. The new `cjolt_body_set_pose` (over
+  `SetPositionAndRotation`) fixed all three.
+- **The bytes settle after one restore rather than on the first capture, and
+  that is the solver's doing.** Integrating a body lets its quaternion drift a
+  hair off unit length; anything handed back to the solver is normalized on the
+  way in, since it requires a unit quaternion. So capturing a *stepped* world
+  twice around a restore differs in a few last bits, and every capture after
+  that is identical (verified to five rounds). Reproducing the normalization in
+  Swift was tried and reverted: it fixed fifteen limbs of sixteen, which is a
+  half-measure dressed up as a guarantee. `aWorldOfEveryTierRoundTripsToTheSameBytes`
+  states the property that is actually true.
+
+`SnapshotTierTests` (13) pins the tier against counterfactual twins; example
+`3D/Physics/Yard`.
 
 ## The geometry and generator catalog
 

@@ -252,6 +252,12 @@ public final class Body3D {
         cjolt_body_activate(world.handle, id)
     }
 
+    /// Put a body to sleep where it stands, as though it had settled there.
+    /// Anything that touches it wakes it again.
+    public func sleep() {
+        cjolt_body_deactivate(world.handle, id)
+    }
+
     /// Which collision group the body is in. Set it to move the body between
     /// groups; what it then passes through is whatever the world's
     /// `ignoreCollisions(between:and:)` rules say about that group.

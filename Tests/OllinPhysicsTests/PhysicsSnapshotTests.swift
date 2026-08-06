@@ -564,10 +564,10 @@ struct PhysicsSnapshotTests {
 
     // MARK: What a snapshot leaves out
 
-    /// A snapshot holds the rigid tier. A vehicle's chassis is an ordinary body
-    /// in `bodies`, so the check that matters is that it is *not* saved as a
-    /// loose crate: a restored world has the loose bodies and no vehicle.
-    @Test func theHigherTiersAreLeftOutRatherThanHalfSaved() {
+    /// A soft body is the one tier a snapshot has no way to carry, since it is
+    /// built from a mesh. Everything else in the world comes back, so the
+    /// check is that the cloth is the only thing missing.
+    @Test func aSoftBodyIsLeftOutRatherThanHalfSaved() {
         let world = World3D()
         world.ground = 0
         world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, 1, 0))
@@ -585,14 +585,14 @@ struct PhysicsSnapshotTests {
         #expect(world.bodies.count == 2, "the chassis is one of the world's bodies")
 
         let saved = world.snapshot()
-        #expect(saved.bodyCount == 1, "but only the loose crate is saved")
+        #expect(saved.bodyCount == 2, "the crate and the chassis")
 
         let fresh = World3D()
         fresh.restore(saved)
-        #expect(fresh.bodies.count == 1)
-        #expect(fresh.vehicles.isEmpty)
-        #expect(fresh.characters.isEmpty)
-        #expect(fresh.softBodies.isEmpty)
+        #expect(fresh.bodies.count == 2)
+        #expect(fresh.vehicles.count == 1, "and the chassis came back a vehicle")
+        #expect(fresh.characters.count == 1)
+        #expect(fresh.softBodies.isEmpty, "only the cloth is left behind")
     }
 
     /// Restoring empties whatever the world was holding first, so a snapshot
@@ -642,5 +642,469 @@ struct PhysicsSnapshotTests {
         #expect(world.snapshot().jointCount == 0)
         world.restore(world.snapshot())
         #expect(world.joints.isEmpty)
+    }
+}
+
+// MARK: - The tiers above a loose body
+
+/// A snapshot carries the characters, vehicles, and figures a world is holding,
+/// not just its loose bodies: none of them is built from anything heavier than
+/// the shapes a body already writes down. Behavioral, counterfactual twins,
+/// same house rules as the rest of the file.
+struct SnapshotTierTests {
+
+    func run(_ world: World3D, steps: Int, dt: Double = 1.0 / 60) {
+        for _ in 0 ..< steps { world.step(dt: dt) }
+    }
+
+    // MARK: Characters
+
+    /// A walking figure comes back walking: in the same place, at the same
+    /// pace, and it carries on to exactly where the one that was never
+    /// interrupted gets to. The twin is the same walk from a standing start,
+    /// which ends up short.
+    @Test func aWalkingFigureComesBackWalking() {
+        let world = World3D()
+        world.ground = 0
+        let walker = world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(0, 2, 0))
+        walker.move(Vector3(1.5, 0, 0))
+        run(world, steps: 120)
+        let mid = walker.position
+
+        let fresh = World3D()
+        fresh.ground = 0
+        fresh.restore(world.snapshot())
+        let back = try! #require(fresh.characters.first)
+        #expect((back.position - mid).length == 0, "it comes back where it was")
+        #expect((back.velocity - walker.velocity).length == 0, "at the same pace")
+
+        walker.move(Vector3(1.5, 0, 0))
+        back.move(Vector3(1.5, 0, 0))
+        run(world, steps: 60)
+        run(fresh, steps: 60)
+        #expect((back.position - walker.position).length == 0,
+                "and walks on to the same place")
+
+        // The twin: a figure that came back standing where it started, or one
+        // not walking at all, is a metre and a half away. (A character has no
+        // inertia to lose, so the counterfactual has to be about the carried
+        // position rather than about carried speed.)
+        let idle = World3D()
+        idle.ground = 0
+        let sitting = idle.addCharacter(radius: 0.3, height: 1.8, at: mid)
+        run(idle, steps: 60)
+        #expect(sitting.position.x < walker.position.x - 1,
+                "and the measurement is not blind to a figure that stayed put")
+    }
+
+    /// Every knob a character was tuned with comes back, each set away from
+    /// its default so a forgotten one reads as the default rather than passing
+    /// by accident.
+    @Test func everyCharacterKnobCarries() {
+        let world = World3D()
+        world.ground = 0
+        let walker = world.addCharacter(radius: 0.42, height: 1.55,
+                                        at: Vector3(1, 2, -3),
+                                        stepHeight: 0.61,
+                                        stickToFloorDistance: 0.34,
+                                        maxSlope: 0.77, mass: 88,
+                                        pushStrength: 210,
+                                        group: "walkers")
+        walker.facing = 1.23
+
+        let fresh = World3D()
+        fresh.ground = 0
+        fresh.restore(world.snapshot())
+        let back = try! #require(fresh.characters.first)
+        #expect(back.radius == 0.42)
+        #expect(back.height == 1.55)
+        #expect(back.stepHeight == 0.61)
+        #expect(back.stickToFloorDistance == 0.34)
+        #expect(back.maxSlope == 0.77)
+        #expect(back.mass == 88)
+        #expect(back.pushStrength == 210)
+        #expect(back.facing == 1.23)
+        #expect(back.group == "walkers")
+
+        // The twin: a default character shares none of those numbers.
+        let plain = World3D()
+        let bare = plain.addCharacter(at: .zero)
+        #expect(bare.radius != back.radius)
+        #expect(bare.stepHeight != back.stepHeight)
+        #expect(bare.maxSlope != back.maxSlope)
+        #expect(bare.pushStrength != back.pushStrength)
+    }
+
+    // MARK: Vehicles
+
+    func machine(in world: World3D, at position: Vector3 = Vector3(0, 1, 0),
+                 tracked: Bool = false) -> Vehicle3D? {
+        world.ground = 0
+        return world.addVehicle(.box(width: 1.8, height: 0.6, depth: 4),
+                                at: position,
+                                wheels: [
+                                    .wheel(at: Vector3(0.9, -0.1, 1.3), steers: !tracked),
+                                    .wheel(at: Vector3(-0.9, -0.1, 1.3), steers: !tracked),
+                                    .wheel(at: Vector3(0.9, -0.1, -1.3), driven: true),
+                                    .wheel(at: Vector3(-0.9, -0.1, -1.3), driven: true),
+                                ], tracked: tracked)
+    }
+
+    /// A parked machine comes back parked, and stepping it on moves it not at
+    /// all: the chassis is in the same pose and everything under it is still.
+    /// The twin is the same machine under power, which is metres away.
+    @Test func aParkedMachineComesBackParked() throws {
+        let world = World3D()
+        let still = try #require(machine(in: world))
+        run(world, steps: 240)
+        let parked = still.body.position
+
+        let fresh = World3D()
+        fresh.restore(world.snapshot())
+        let back = try #require(fresh.vehicles.first)
+        #expect((back.body.position - parked).length == 0)
+
+        run(fresh, steps: 120)
+        #expect((back.body.position - parked).length == 0,
+                "a parked machine restored stays parked")
+
+        let driven = World3D()
+        let mover = try #require(machine(in: driven, at: parked))
+        mover.throttle = 1
+        run(driven, steps: 120)
+        #expect((mover.body.position - parked).length > 1,
+                "and the measurement is not blind to a machine that moves")
+    }
+
+    /// A machine in motion keeps its drivetrain: the engine turning at the
+    /// same speed, in the same gear, with its wheels already spinning. The twin
+    /// is the same machine rebuilt by hand at the same pose and speed, whose
+    /// wheels and engine start from rest and which falls behind.
+    @Test func aMovingMachineKeepsItsDrivetrain() throws {
+        let world = World3D()
+        let car = try #require(machine(in: world))
+        car.throttle = 1
+        run(world, steps: 180)
+        let pose = car.body.position
+        let speed = car.speed
+
+        let fresh = World3D()
+        fresh.restore(world.snapshot())
+        let back = try #require(fresh.vehicles.first)
+        #expect(abs(back.rpm - car.rpm) == 0, "the engine is turning as fast")
+        #expect(back.gear == car.gear, "in the gear it was in")
+        #expect(abs(back.wheels[3].spinRate - car.wheels[3].spinRate) == 0,
+                "and its wheels are already turning")
+        #expect(abs(back.speed - speed) == 0)
+
+        // The twin: rebuilt by hand, at the same pose, with the same chassis
+        // velocity, but a drivetrain at rest.
+        let rebuilt = World3D()
+        let cold = try #require(machine(in: rebuilt, at: pose))
+        cold.body.velocity = car.body.velocity
+        #expect(cold.wheels[3].spinRate == 0, "its wheels are not turning")
+        #expect(cold.rpm < back.rpm - 100, "and its engine is idling")
+
+        car.throttle = 1; back.throttle = 1; cold.throttle = 1
+        run(world, steps: 30); run(fresh, steps: 30); run(rebuilt, steps: 30)
+        let carried = abs(back.speed - car.speed)
+        let fromRest = abs(cold.speed - car.speed)
+        #expect(carried < fromRest,
+                "a carried drivetrain keeps pace better than one from rest: \(carried) against \(fromRest)")
+    }
+
+    /// Every wheel knob comes back, each moved off its default.
+    @Test func everyWheelKnobCarries() throws {
+        let world = World3D()
+        world.ground = 0
+        let front = Wheel3D.wheel(at: Vector3(0.9, -0.1, 1.3), radius: 0.41,
+                                  width: 0.27, steers: true)
+        front.maxSteerAngle = 0.44
+        front.casterAngle = 0.13
+        front.suspensionLength = 0.52
+        front.suspensionTravel = 0.37
+        front.suspensionFrequency = 1.9
+        front.suspensionDamping = 0.61
+        front.brakeTorque = 1234
+        front.handBrakeTorque = 567
+        front.grip = 1.4
+        let rear = Wheel3D.wheel(at: Vector3(0, -0.1, -1.3), driven: true)
+        let machine = try #require(
+            world.addVehicle(.box(width: 1.8, height: 0.6, depth: 4),
+                             at: Vector3(0, 1, 0), wheels: [front, rear],
+                             mass: 900, engineTorque: 640, topSpeed: 22,
+                             group: "traffic"))
+        #expect(machine.wheels.count == 2)
+
+        let fresh = World3D()
+        fresh.restore(world.snapshot())
+        let back = try #require(fresh.vehicles.first)
+        #expect(back.wheels.count == 2)
+        let wheel = back.wheels[0]
+        #expect(wheel.radius == 0.41)
+        #expect(wheel.width == 0.27)
+        #expect(wheel.steers)
+        #expect(wheel.maxSteerAngle == 0.44)
+        #expect(wheel.casterAngle == 0.13)
+        #expect(wheel.suspensionLength == 0.52)
+        #expect(wheel.suspensionTravel == 0.37)
+        #expect(wheel.suspensionFrequency == 1.9)
+        #expect(wheel.suspensionDamping == 0.61)
+        #expect(wheel.brakeTorque == 1234)
+        #expect(wheel.handBrakeTorque == 567)
+        #expect(wheel.grip == 1.4)
+        #expect(back.wheels[1].driven, "and which wheels the engine turns")
+        #expect(back.engineTorque == 640)
+        #expect(back.topSpeed == 22)
+        #expect(back.body.mass == 900)
+        #expect(back.group == "traffic")
+
+        // The twin: a default wheel shares none of the tuned numbers.
+        let plain = Wheel3D.wheel(at: .zero)
+        #expect(plain.radius != wheel.radius)
+        #expect(plain.suspensionFrequency != wheel.suspensionFrequency)
+        #expect(plain.grip != wheel.grip)
+    }
+
+    /// A tracked machine comes back tracked rather than as a car with four
+    /// loose wheels, so its bands are still bands. The twin is the same hull
+    /// saved as a wheeled machine, which reports no tracks at all.
+    @Test func aTrackedMachineComesBackTracked() throws {
+        let world = World3D()
+        let crawler = try #require(machine(in: world, tracked: true))
+        #expect(crawler.isTracked)
+        run(world, steps: 60)
+
+        let fresh = World3D()
+        fresh.restore(world.snapshot())
+        let back = try #require(fresh.vehicles.first)
+        #expect(back.isTracked, "it is still a tracked machine")
+        #expect(back.wheels(on: .left).count == 2)
+        #expect(back.wheels(on: .right).count == 2)
+
+        let wheeled = World3D()
+        wheeled.restore({ () -> PhysicsSnapshot in
+            let w = World3D()
+            _ = machine(in: w, tracked: false)
+            return w.snapshot()
+        }())
+        let plain = try #require(wheeled.vehicles.first)
+        #expect(!plain.isTracked)
+        #expect(plain.wheels(on: .left).isEmpty, "a wheeled machine has no bands")
+    }
+
+    /// A two-wheeler that holds itself up comes back still holding itself up.
+    /// The twin is the same bike saved without balancing, which lies down.
+    @Test func aBalancingTwoWheelerComesBackBalancing() throws {
+        func lean(balances: Bool) throws -> Double {
+            let world = World3D()
+            world.ground = 0
+            let bike = try #require(
+                world.addVehicle(.box(width: 0.4, height: 0.6, depth: 1.8),
+                                 at: Vector3(0, 1, 0),
+                                 wheels: [
+                                    .wheel(at: Vector3(0, -0.3, 0.7), radius: 0.35,
+                                           width: 0.1, steers: true),
+                                    .wheel(at: Vector3(0, -0.3, -0.7), radius: 0.35,
+                                           width: 0.1, driven: true),
+                                 ], balances: balances))
+            for wheel in bike.wheels { wheel.casterAngle = 30 * .pi / 180 }
+            // Start it leaned over, or nothing perturbs it and both stand up.
+            bike.body.setRotation(0.44, axis: Vector3(0, 0, 1))
+            bike.throttle = 0.6
+            run(world, steps: 30)
+
+            let fresh = World3D()
+            fresh.restore(world.snapshot())
+            let back = try #require(fresh.vehicles.first)
+            #expect(back.balances == balances, "the machine came back as it was")
+            back.throttle = 0.6
+            run(fresh, steps: 240)
+            return back.up.dot(Vector3(0, 1, 0))
+        }
+        let held = try lean(balances: true)
+        let fallen = try lean(balances: false)
+        #expect(held > 0.8, "the restored balancing bike rights itself (\(held))")
+        #expect(fallen < held, "where the one saved unbalanced does not (\(fallen))")
+    }
+
+    // MARK: Figures
+
+    /// A figure comes back with its limbs where they had fallen, fitted to the
+    /// same shapes, and the scene it was fitted from still takes the pose. The
+    /// twin is a figure built fresh from the same scene, which stands in the
+    /// rest pose rather than in a heap.
+    @Test func aFallenFigureComesBackWhereItLay() throws {
+        let world = World3D()
+        world.ground = 0
+        let scene = try Ragdoll3DTests.figure()
+        let doll = try #require(world.addRagdoll(from: scene, at: Vector3(0, 2, 0)))
+        run(world, steps: 240)
+        let fallen = doll.limbs.map(\.body.position)
+
+        let fresh = World3D()
+        fresh.ground = 0
+        fresh.restore(world.snapshot())
+        let back = try #require(fresh.ragdolls.first)
+        #expect(back.limbs.count == doll.limbs.count)
+        #expect(back.limbs.map { $0.name } == doll.limbs.map { $0.name },
+                "the joints came back named")
+        let error = zip(fallen, back.limbs.map(\.body.position))
+            .map { ($0 - $1).length }.max() ?? .infinity
+        #expect(error < 1e-6, "and lying where they fell (\(error))")
+
+        // The scene is the sketch's own asset, and it still takes the pose.
+        var drawn = scene
+        drawn.apply(back)
+
+        // The twin: built fresh, the same figure stands upright, not in a heap.
+        let standing = World3D()
+        standing.ground = 0
+        let upright = try #require(standing.addRagdoll(from: scene,
+                                                       at: Vector3(0, 2, 0)))
+        let spread = zip(fallen, upright.limbs.map(\.body.position))
+            .map { ($0 - $1).length }.max() ?? 0
+        #expect(spread > 0.5, "a fresh figure is nowhere near a fallen one")
+    }
+
+    /// A figure keeps the shapes that were fitted to its mesh, which is the
+    /// part a snapshot cannot re-derive without the skin. The twin is a
+    /// different limb's shape, which is a different size.
+    @Test func aFigureKeepsItsFittedShapes() throws {
+        let world = World3D()
+        world.ground = 0
+        let doll = try #require(world.addRagdoll(from: try Ragdoll3DTests.figure(),
+                                                 at: Vector3(0, 2, 0)))
+        func radius(_ collider: Collider3D) -> Double? {
+            if case .capsule(_, let r) = collider { return r }
+            if case .sphere(let r) = collider { return r }
+            return nil
+        }
+        let fitted = doll.limbs.compactMap { radius($0.collider) }
+        #expect(fitted.count == doll.limbs.count, "every limb wears a round shape")
+
+        let fresh = World3D()
+        fresh.ground = 0
+        fresh.restore(world.snapshot())
+        let back = try #require(fresh.ragdolls.first)
+        #expect(back.limbs.compactMap { radius($0.collider) } == fitted,
+                "the fitted shapes came back unchanged")
+        #expect((fitted.max() ?? 0) > (fitted.min() ?? 1) * 2,
+                "and the fitting varies limb to limb, so matching them all is not matching one number")
+    }
+
+    /// A tightened joint keeps its limit across a snapshot, which the solver
+    /// takes and never hands back. The twin is the same figure with the limits
+    /// left loose, which folds further under the same shove.
+    @Test func aFigureKeepsItsJointLimits() throws {
+        // How far the figure has come apart: each limb's distance from the one
+        // it hangs off, against the distance it was fitted at. A figure that
+        // merely topples does not move here, where one whose joints let go
+        // does, so this reads folding rather than falling.
+        func splay(_ ragdoll: Ragdoll3D) -> Double {
+            var worst = 0.0
+            for (index, limb) in ragdoll.limbs.enumerated() {
+                guard let parent = limb.parent else { continue }
+                let now = (limb.body.position
+                           - ragdoll.limbs[parent].body.position).length
+                let fitted = (ragdoll.plan.limbs[index].jointOrigin
+                              - ragdoll.plan.limbs[parent].jointOrigin).length
+                worst = max(worst, abs(now - fitted))
+            }
+            return worst
+        }
+        func shove(tighten: Bool) throws -> Double {
+            let world = World3D()
+            world.ground = 0
+            let doll = try #require(world.addRagdoll(from: try Ragdoll3DTests.figure(),
+                                                     at: Vector3(0, 2, 0), swing: 1.2))
+            if tighten {
+                for limb in doll.limbs { doll.limit(limb.name, swing: 0.02) }
+            }
+            let fresh = World3D()
+            fresh.ground = 0
+            fresh.restore(world.snapshot())
+            let back = try #require(fresh.ragdolls.first)
+            back.limbs[0].body.kind = .kinematic     // hang it up, so it cannot fall
+            back.limbs[3].body.velocity = Vector3(9, 0, 4)
+            run(fresh, steps: 120)
+            return splay(back)
+        }
+        let stiff = try shove(tighten: true)
+        let loose = try shove(tighten: false)
+        #expect(stiff < loose,
+                "a restored figure holds the limits it was given: \(stiff) against \(loose)")
+    }
+
+    /// A figure does not need its scene to come back. The fitting is what the
+    /// solver was built from, so a world restored in a process that never
+    /// loaded the file still has the figure in it.
+    @Test func aFigureComesBackWithoutItsScene() throws {
+        let saved: PhysicsSnapshot
+        do {
+            let world = World3D()
+            world.ground = 0
+            _ = try #require(world.addRagdoll(from: try Ragdoll3DTests.figure(),
+                                              at: Vector3(0, 2, 0)))
+            run(world, steps: 120)
+            saved = world.snapshot()
+        }
+        // Nothing here has seen the file.
+        let fresh = World3D()
+        fresh.ground = 0
+        fresh.restore(saved)
+        let back = try #require(fresh.ragdolls.first)
+        #expect(back.limbs.count == 16)
+        #expect(back.bodies.allSatisfy { $0.mass > 0 })
+    }
+
+    // MARK: Files
+
+    /// The tiers survive a file the way the rigid tier does.
+    @Test func theTiersSurviveAFileRoundTrip() throws {
+        let world = World3D()
+        let machine = try #require(machine(in: world))
+        machine.throttle = 1
+        world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(-6, 2, 0))
+            .move(Vector3(0, 0, 1))
+        run(world, steps: 120)
+
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ollin-tiers-\(UUID().uuidString).physics")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try world.save(to: url)
+
+        let fresh = World3D()
+        #expect(fresh.load(contentsOf: url))
+        #expect(fresh.vehicles.count == 1)
+        #expect(fresh.characters.count == 1)
+        let back = try #require(fresh.vehicles.first)
+        #expect((back.body.position - machine.body.position).length == 0)
+    }
+
+    /// A world of every tier, restored and captured again, gives the same
+    /// bytes: nothing is re-derived on the way through.
+    ///
+    /// The first capture of a *stepped* world is the exception, and it is the
+    /// solver's doing rather than the format's: integrating a body lets its
+    /// orientation drift a hair off unit length, and a quaternion handed back
+    /// to the solver is normalized on the way in, since it requires a unit
+    /// one. So the bytes settle after a single restore and never move again,
+    /// which is what a file written from a loaded world needs.
+    @Test func aWorldOfEveryTierRoundTripsToTheSameBytes() throws {
+        let world = World3D()
+        _ = try #require(machine(in: world))
+        world.addCharacter(radius: 0.33, height: 1.7, at: Vector3(-6, 2, 0))
+        _ = try #require(world.addRagdoll(from: try Ragdoll3DTests.figure(),
+                                          at: Vector3(4, 2, 0)))
+        world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(0, 6, 3))
+        run(world, steps: 120)
+
+        world.restore(world.snapshot())
+        let settled = world.snapshot()
+        world.restore(settled)
+        #expect(world.snapshot() == settled)
+        world.restore(world.snapshot())
+        #expect(world.snapshot() == settled, "and it stays settled")
     }
 }

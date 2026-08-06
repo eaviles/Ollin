@@ -1145,9 +1145,19 @@ Three heaps, all from the same code. The first was simulated and captured. The s
 
 That is not a bug, it is what falling stones are. It does mean the same code can give you a slightly different heap on a machine whose floating point rounds one bit differently, which is exactly the situation a committed figure or a piece you want to keep is in. **Simulating it again gives you *a* heap; only saving gives you *that* heap.**
 
-A snapshot holds the rigid tier: every body with its collider and all its knobs, every joint between them, gears and racks, the collision groups and their rules, and the world's gravity, ground, bounce, and water. It does not hold characters, vehicles, ragdolls, or soft bodies, each of which is built from something a file has no way to carry (a rig, a wheel layout, a skinned figure, a mesh), so it says which ones it skipped and you add them back afterwards. One thing to watch: restoring empties the world first, so any `Body3D` you were holding onto is gone. Take them from `world.bodies` again. They come back in the order they were saved, and each one still knows its own `collider`, which is usually all a drawing loop needs.
+A snapshot holds every body with its collider and all its knobs, every joint between them, gears and racks, the collision groups and their rules, and the world's gravity, ground, bounce, and water. It also holds the things you built on top of those. A character comes back mid-stride. A vehicle comes back drivable and still under power, with its engine turning at the speed it was turning and its wheels already spinning, so a truck restored at speed carries on rather than pulling away from rest. A ragdoll comes back where it fell.
 
-The [`3D/Physics/Cairn`](../Examples/3D/Physics/Cairn/) example is a heap of stones laid one at a time. Wreck it by dragging, press R and it is back exactly; press S, quit, and run it again, and the same cairn is standing there.
+That last one is worth a moment, because it is the one that looks impossible. A ragdoll was built from a skinned figure loaded off disk, and a file of physics has no business carrying a mesh. It doesn't. What the solver actually holds is a shape per limb, the tree they hang in, and how far each joint may bend, and *that* is small enough to write down. The skin stays where it always was: your asset, in your sketch, loaded the ordinary way. So the snapshot and the sketch each keep the half they are good at, and `figure.apply(ragdoll)` puts them back together:
+
+```swift
+world.restore(saved)
+figure = world.ragdolls.first     // the bodies are new ones
+skin.apply(figure)                // your mesh, over the restored pose
+```
+
+The one thing left out is a soft body, which really is nothing but its mesh, so the snapshot says it skipped one and you add it back. And one thing to watch throughout: restoring empties the world first, so any `Body3D`, `Vehicle3D`, or `Character3D` you were holding onto is gone. Take them from `world.bodies`, `world.vehicles`, and `world.characters` again. They come back in the order they were saved, and each body still knows its own `collider`, which is usually all a drawing loop needs.
+
+The [`3D/Physics/Cairn`](../Examples/3D/Physics/Cairn/) example is a heap of stones laid one at a time. Wreck it by dragging, press R and it is back exactly; press S, quit, and run it again, and the same cairn is standing there. [`3D/Physics/Yard`](../Examples/3D/Physics/Yard/) does the same for a yard with a truck in it, a figure pacing across, and another lying where it fell.
 
 ## What the depth buffer is for
 

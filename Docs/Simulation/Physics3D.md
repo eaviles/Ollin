@@ -1083,15 +1083,29 @@ The snapshot's own `bodyCount` and `jointCount` say what is in it before anythin
 
 **What comes back.** Every rigid `Body3D` with its collider, pose, velocity, and every knob `addBody` takes (kind, sensor, density, friction, restitution, freedom, gravity scale, path checking, group, buoyancy); every `Joint3D` between them, gears and racks included; the collision-group table with its rules; and the world's `gravity`, `ground`, `bounce`, `maxTimestep`, `unitsPerMeter`, and `water`.
 
+The tiers above a loose body come back too, since none of them holds anything heavier than the shapes a body already writes down:
+
+- **Characters** come back mid-stride: the capsule, every knob `addCharacter` takes, where the figure stands, which way it faces, and the velocity it was moving at.
+- **Vehicles** come back drivable, and under power. The chassis and its collider, every wheel with everything it was tuned to, the gearing, and the live drivetrain: the engine turning at the speed it was turning, in the gear the box had picked, with the wheels already spinning. Without that last part a restored machine has to pull away from rest, which a moving one notices.
+- **Ragdolls** come back as the fitting they were built from: a shape per limb, the tree they hang in, how far each joint may bend, and where every limb had got to. The skinned `Scene` is *not* in the file, and does not need to be: it is the sketch's own asset, still loaded, and `scene.apply(ragdoll)` writes the restored pose onto it exactly as before. So a figure comes back even in a run that has not read the file it was fitted from.
+
+```swift
+world.restore(saved)
+// the objects are new ones, so take them from the world again
+truck = world.vehicles.first
+walker = world.characters.first
+figure = world.ragdolls.first
+```
+
 **What it costs.** A snapshot is self-contained, which is what makes it a file you can commit beside a sketch, and it holds geometry the same way: a `.mesh` or `.heightfield` collider is written out whole, so a world that colliders a loaded set piece carries that set piece inside every snapshot of it. The bytes are packed, which costs nothing and is why a settled arrangement is small: a heap of sixty primitives is about a kilobyte, while a world carrying a heightfield and two loaded meshes runs to about a megabyte, roughly half the scenery's own weight. A damaged or half-written file is refused rather than half-read.
 
-**What does not.** Characters, vehicles, ragdolls, and soft bodies are each built from something a snapshot has no way to carry (a rig, a wheel layout, a skinned scene, a mesh), so they are left out, with a note naming what was skipped; add them back after restoring. A grab is a hand on a body rather than part of the world, and contacts are worked out again by the next `step(dt:)`, so neither is saved. Motors are not saved either: `drive(at:)` and friends are things a sketch says, usually every frame, so say them again.
+**What does not.** A soft body is built from a mesh a snapshot has no way to carry, so it is left out with a note; add it back after restoring. A grab is a hand on a body rather than part of the world, and contacts are worked out again by the next `step(dt:)`, so neither is saved. Motors are not saved either: `drive(at:)` and friends are things a sketch says, usually every frame, so say them again.
 
 **The bodies are new objects.** `restore(_:)` empties the world first, so any `Body3D` or `Joint3D` you were holding is gone; take them from `world.bodies` and `world.joints` again. They come back in the order they were saved in, so an index still names the same body, and each one still knows its own `collider`, which is usually all a drawing loop needs.
 
-This is also the honest answer to determinism. Simulating is reproducible within one build, but the solver runs in floating point, and a toolchain that moves one last bit moves the last bounce, which a toppling stack magnifies into a different heap. A saved arrangement has nothing left to compute, so it comes back the same anywhere. Continuing from a restore is exact for the pose and the motion; the solver's in-flight contact bookkeeping is not carried, so a scene captured mid-collision may drift a little where a settled one cannot.
+This is also the honest answer to determinism. Simulating is reproducible within one build, but the solver runs in floating point, and a toolchain that moves one last bit moves the last bounce, which a toppling stack magnifies into a different heap. A saved arrangement has nothing left to compute, so it comes back the same anywhere. Continuing from a restore is exact for the pose and the motion; the solver's in-flight contact bookkeeping is not carried, so a scene captured mid-collision may drift where a settled one cannot. That covers a vehicle's wheels too, since what a wheel is rolling on is worked out afresh each step: a machine saved parked comes back parked and stays exactly where it was put, while one saved at full throttle carries on from the same speed in the same gear and then wanders, the way a stack of crates saved mid-collapse does.
 
-The worked example is [`3D/Physics/Cairn`](../../Examples/3D/Physics/Cairn/): a heap of stones laid one at a time, restored with **R**, written to a file with **S**, and read back with **L**, so quitting and running the sketch again finds the same cairn standing.
+The worked examples are [`3D/Physics/Cairn`](../../Examples/3D/Physics/Cairn/), a heap of stones laid one at a time, restored with **R**, written to a file with **S**, and read back with **L**, so quitting and running the sketch again finds the same cairn standing; and [`3D/Physics/Yard`](../../Examples/3D/Physics/Yard/), which does the same for a yard holding a truck you drive, a figure pacing across it, and a second figure lying where it fell.
 
 <a name="grabbing"></a>
 

@@ -3,6 +3,14 @@ import simd
 import Ollin
 internal import CJolt
 
+/// How far one ragdoll joint may bend: a cone its bone may lean off where it
+/// started, and a range it may roll through about that bone. The solver takes
+/// both and does not hand them back, so a figure keeps its own copy.
+struct RagdollLimit {
+    var swing: Double
+    var twist: ClosedRange<Double>
+}
+
 /// A skinned figure given weight: one rigid body per skeleton joint, hung off
 /// each other by cone-limited ball joints, sized from the shape of the mesh
 /// each joint carries. Build one from a loaded `Scene` that has a skin, step the
@@ -79,23 +87,37 @@ public final class Ragdoll3D {
     /// joints the skeleton had, so a pose handed in later can be checked
     /// against the one the figure was built from.
     let jointSource: [Int]
-    private let skinJointCount: Int
+    let skinJointCount: Int
     /// The skin-joint index of each limb, and each limb's parent limb (-1 for
     /// the root): what a pose read off a scene is regrouped by.
-    private let skinIndexOfLimb: [Int]
-    private let parentOfLimb: [Int]
+    let skinIndexOfLimb: [Int]
+    let parentOfLimb: [Int]
+
+    /// The fitting this figure was built from: where each joint stood, which
+    /// way its bone ran, and what shape was fitted to it. Kept because a
+    /// constraint's zero is the pose it was made in, so anything that builds
+    /// this figure again has to stand it back in the pose it was fitted in
+    /// first, exactly as a joint does.
+    let plan: RagdollPlan
+
+    /// Each limb's swing cone and twist range, which the solver takes but does
+    /// not hand back. Set at build time and updated by `limit(_:swing:twist:)`.
+    private(set) var jointLimits: [RagdollLimit]
+
+    /// The surface friction and collision group every limb was built with.
+    let limbFriction: Double
+    let limbGroup: CollisionGroup
 
     /// Set by the world when it goes away first, so this object's own teardown
     /// doesn't reach into a solver that no longer exists.
     var isDestroyed = false
 
-    /// Builds the figure. Fails (returning nil) when the scene has no skin or
-    /// the solver can't make the bodies.
-    init?(world: World3D, scene: Scene, at position: Vector3?, joints names: [String]?,
-          swing: Double, twist: ClosedRange<Double>, mass: Double, friction: Double,
-          group: CollisionGroup) {
-        self.world = world
-
+    /// Builds the figure from a scene. Fails (returning nil) when the scene has
+    /// no skin or the solver can't make the bodies.
+    convenience init?(world: World3D, scene: Scene, at position: Vector3?,
+                      joints names: [String]?, swing: Double,
+                      twist: ClosedRange<Double>, mass: Double, friction: Double,
+                      group: CollisionGroup) {
         let skeleton = scene.skeleton()
         guard !skeleton.isEmpty else {
             world.noteOnce("addRagdoll needs a scene with a skin (a skeleton posing "
@@ -105,17 +127,33 @@ public final class Ragdoll3D {
         let plan = RagdollPlan(skeleton: skeleton, vertices: scene.skinnedVertices(),
                                names: names, mass: mass,
                                offset: RagdollPlan.placement(of: skeleton, at: position))
-        guard !plan.limbs.isEmpty else { return nil }
+        let limits = plan.limbs.map { _ in RagdollLimit(swing: swing, twist: twist) }
+        self.init(world: world, plan: plan, limits: limits, friction: friction,
+                  group: group)
+    }
 
-        skinJointCount = skeleton.count
+    /// Builds the figure from a fitting. This is the one that reaches the
+    /// solver: the fitting is what a scene is worked down to, and it is also
+    /// what a snapshot holds, so a restored figure is built by the same code as
+    /// a fitted one.
+    init?(world: World3D, plan: RagdollPlan, limits: [RagdollLimit],
+          friction: Double, group: CollisionGroup) {
+        self.world = world
+        guard !plan.limbs.isEmpty, limits.count == plan.limbs.count else { return nil }
+
+        skinJointCount = plan.skinJointCount
         skinIndexOfLimb = plan.limbs.map(\.skinIndex)
         parentOfLimb = plan.limbs.map(\.parent)
-        jointSource = plan.limbs.map { skeleton[$0.skinIndex].sourceIndex }
+        jointSource = plan.limbs.map(\.sourceIndex)
+        self.plan = plan
+        self.jointLimits = limits
+        self.limbFriction = friction
+        self.limbGroup = group
 
         // Every fitted shape's flat data lives in the arena for the span of the
         // create, the body-creation rule.
         let arena = ShapeDescArena()
-        var parts = plan.limbs.map { limb -> CJoltRagdollPartDesc in
+        var parts = zip(plan.limbs, limits).map { limb, limit -> CJoltRagdollPartDesc in
             var desc = CJoltRagdollPartDesc()
             desc.parent = Int32(limb.parent)
             desc.shape = limb.collider.shapeDesc(unitsPerMeter: world.unitsPerMeter,
@@ -134,9 +172,9 @@ public final class Ragdoll3D {
             desc.twistAxis = (Float(axis.x), Float(axis.y), Float(axis.z))
             let plane = axis.anyPerpendicular
             desc.planeAxis = (Float(plane.x), Float(plane.y), Float(plane.z))
-            desc.swingLimit = Float(min(max(swing, 0), .pi))
-            desc.twistMin = Float(min(max(twist.lowerBound, -.pi), 0))
-            desc.twistMax = Float(max(min(twist.upperBound, .pi), 0))
+            desc.swingLimit = Float(min(max(limit.swing, 0), .pi))
+            desc.twistMin = Float(min(max(limit.twist.lowerBound, -.pi), 0))
+            desc.twistMax = Float(max(min(limit.twist.upperBound, .pi), 0))
             return desc
         }
         let created: OpaquePointer? = withExtendedLifetime(arena) {
@@ -160,7 +198,7 @@ public final class Ragdoll3D {
             // limb, but kept out of `world.bodies`: the sketch draws the mesh
             // these carry, not the capsules.
             world.bodyByID[id] = body
-            return Limb(name: skeleton[limb.skinIndex].name, body: body,
+            return Limb(name: limb.name, body: body,
                         parent: limb.parent >= 0 ? limb.parent : nil,
                         collider: limb.collider, shapeCenter: limb.shapeCenter,
                         shapeAngle: limb.shapeAngle, shapeAxis: limb.shapeAxis)
@@ -253,6 +291,7 @@ public final class Ragdoll3D {
                       twist: ClosedRange<Double> = -0.3...0.3) {
         guard let handle, let index = limbs.firstIndex(where: { $0.name == name })
         else { return }
+        jointLimits[index] = RagdollLimit(swing: swing, twist: twist)
         cjolt_ragdoll_set_limits(handle, Int32(index),
                                  Float(min(max(swing, 0), .pi)),
                                  Float(min(max(twist.lowerBound, -.pi), 0)),

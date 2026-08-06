@@ -80,6 +80,10 @@ public final class Vehicle3D {
     /// a steering rack, and full lock spins it on the spot.
     public let isTracked: Bool
 
+    /// Whether this is a two-wheeler that holds itself up, leaning into turns
+    /// instead of falling over.
+    public let balances: Bool
+
     /// Free-form tag so a sketch can hang its own data off a vehicle.
     public var userData: Any?
 
@@ -187,6 +191,22 @@ public final class Vehicle3D {
     /// The gear the box has picked: `-1` reverse, `0` neutral, `1` first, up.
     public var gear: Int { Int(cjolt_vehicle_get_gear(handle)) }
 
+    /// How far the clutch is engaged, `0` slipping … `1` locked. It dips
+    /// through a gear change and while pulling away.
+    public var clutch: Double { Double(cjolt_vehicle_get_clutch(handle)) }
+
+    /// Put the drivetrain back where it was turning: the engine's speed, the
+    /// gear, the clutch, and each wheel's own rotation. This is what a restored
+    /// machine needs to carry on rather than spin up from rest.
+    func restoreDrivetrain(rpm: Double, gear: Int, clutch: Double,
+                           wheelSpins: [(rate: Double, angle: Double)]) {
+        cjolt_vehicle_set_drivetrain(handle, Float(rpm), Int32(gear), Float(clutch))
+        for (index, spin) in wheelSpins.enumerated() where index < wheels.count {
+            cjolt_vehicle_set_wheel_motion(handle, Int32(index),
+                                           Float(spin.rate), Float(spin.angle))
+        }
+    }
+
     /// Whether any wheel is touching something. `false` means every wheel is
     /// in the air, and nothing the driver does will change anything.
     public var isOnGround: Bool { wheels.contains { $0.isOnGround } }
@@ -217,7 +237,8 @@ public final class Vehicle3D {
 
     init?(world: World3D, chassis: Body3D, wheels: [Wheel3D], engineTorque: Double,
           topSpeed: Double, antiRollStiffness: Double, leans: Bool,
-          maxLeanAngle: Double, tracked: Bool, mass: Double) {
+          maxLeanAngle: Double, tracked: Bool, mass: Double,
+          centerOfMass: Vector3) {
         guard !wheels.isEmpty else { return nil }
         let layout = Vehicle3D.driveLayout(of: wheels, tracked: tracked,
                                            mass: mass, world: world)
@@ -255,7 +276,10 @@ public final class Vehicle3D {
         self.body = chassis
         self.wheels = wheels
         self.isTracked = tracked
+        self.balances = leans
         self.chassisMass = mass
+        self.centerOfMass = centerOfMass
+        self.maxLeanAngle = maxLeanAngle
         self.engineTorque = engineTorque
         self.topSpeed = topSpeed
         self.antiRollStiffness = antiRollStiffness
@@ -271,8 +295,16 @@ public final class Vehicle3D {
     }
 
     /// The machine's weight, kept because a track band's inertia is derived
-    /// from it (see `driveLayout`).
-    private let chassisMass: Double
+    /// from it (see `driveLayout`), and because it is not something a chassis
+    /// body can be asked for once its centre of mass has been moved.
+    let chassisMass: Double
+
+    /// Where the weight hangs inside the chassis, in its local space: what
+    /// keeps a vehicle from rolling over in a turn.
+    let centerOfMass: Vector3
+
+    /// The furthest a two-wheeler may lean, in radians. Inert on anything else.
+    let maxLeanAngle: Double
 
     deinit {
         destroyBackingVehicle()

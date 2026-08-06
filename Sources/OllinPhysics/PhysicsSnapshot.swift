@@ -1,5 +1,6 @@
 import Foundation
 import Compression
+import simd
 import Ollin
 internal import CJolt
 
@@ -169,9 +170,10 @@ extension World3D {
         writer.u32(UInt32(separated.count))
         for pair in separated { writer.u32(pair.0); writer.u32(pair.1) }
 
-        // A vehicle's chassis is an ordinary body in `bodies`, so it would be
-        // saved as a loose crate and come back without its wheels. Leave it out
-        // rather than restore something that is no longer a vehicle.
+        // A vehicle's chassis is an ordinary body in `bodies`, but it comes
+        // back as part of its vehicle rather than as a loose crate, so it is
+        // written in the vehicle section. It still takes a body index, after
+        // the loose ones, so a joint can name it (a trailer on a hitch).
         let driven = Set(vehicles.map { ObjectIdentifier($0.body) })
         var saved: [Body3D] = []
         var index: [CJoltBodyID: UInt32] = [:]
@@ -179,14 +181,15 @@ extension World3D {
             index[body.id] = UInt32(saved.count)
             saved.append(body)
         }
+        for (offset, vehicle) in vehicles.enumerated() {
+            index[vehicle.body.id] = UInt32(saved.count + offset)
+        }
         if let groundBody { index[groundBody.id] = PhysicsSnapshot.groundIndex }
-        if !vehicles.isEmpty || !characters.isEmpty || !ragdolls.isEmpty
-            || !softBodies.isEmpty {
-            noteOnce("a snapshot holds rigid bodies and the joints between "
-                     + "them; the world's characters, vehicles, ragdolls, and "
-                     + "soft bodies are built from rigs and meshes it cannot "
-                     + "carry, so they are left out and the sketch adds them "
-                     + "back after restoring")
+        if !softBodies.isEmpty {
+            noteOnce("a snapshot holds the rigid tier, its characters, "
+                     + "vehicles, and ragdolls; a soft body is built from a "
+                     + "mesh it does not carry, so it is left out and the "
+                     + "sketch adds it back after restoring")
         }
 
         writer.u32(UInt32(saved.count))
@@ -224,7 +227,20 @@ extension World3D {
             writer.link(link.2)
         }
 
-        return PhysicsSnapshot(payload: writer.data, bodies: saved.count,
+        // The tiers above a loose body. Each is written by value: none of them
+        // holds anything heavier than the shapes a body already writes, so
+        // what kept them out was an encoding rather than a limit.
+        writer.u32(UInt32(characters.count))
+        for character in characters { writer.character(character, in: self) }
+
+        writer.u32(UInt32(vehicles.count))
+        for vehicle in vehicles { writer.vehicle(vehicle, in: self) }
+
+        writer.u32(UInt32(ragdolls.count))
+        for ragdoll in ragdolls { writer.ragdoll(ragdoll, in: self) }
+
+        return PhysicsSnapshot(payload: writer.data,
+                               bodies: saved.count + vehicles.count,
                                joints: structural.count + links.count)
     }
 
@@ -295,6 +311,17 @@ extension World3D {
             savedLinks.append((try reader.u32(), try reader.u32(), try reader.link()))
         }
 
+        var savedCharacters: [SavedCharacter] = []
+        for _ in 0 ..< (try reader.count()) {
+            savedCharacters.append(try reader.character())
+        }
+
+        var savedVehicles: [SavedVehicle] = []
+        for _ in 0 ..< (try reader.count()) { savedVehicles.append(try reader.vehicle()) }
+
+        var savedRagdolls: [SavedRagdoll] = []
+        for _ in 0 ..< (try reader.count()) { savedRagdolls.append(try reader.ragdoll()) }
+
         // Everything read: now the world can be emptied.
         removeAll()
 
@@ -346,9 +373,14 @@ extension World3D {
             body.buoyancy = saved.buoyancy
         }
 
+        // Vehicles next, because a chassis is an ordinary body that lands in
+        // `bodies` right after the loose ones, which is the index a joint may
+        // have been saved naming (a trailer on a hitch).
+        for saved in savedVehicles { restoreVehicle(saved) }
+
         let restedPoses = savedBodies.map {
             Pose3D(position: $0.position, rotation: $0.rotation)
-        }
+        } + savedVehicles.map(\.pose)
         var madeJoints: [Joint3D] = []
         for saved in savedJoints {
             guard let a = restored(saved.a), let b = restored(saved.b) else { continue }
@@ -375,6 +407,86 @@ extension World3D {
             }
             connect(madeJoints[a], madeJoints[b], link.2)
         }
+
+        for saved in savedCharacters {
+            let character = addCharacter(radius: saved.radius, height: saved.height,
+                                         at: saved.position,
+                                         stepHeight: saved.stepHeight,
+                                         stickToFloorDistance: saved.stickToFloorDistance,
+                                         maxSlope: saved.maxSlope, mass: saved.mass,
+                                         pushStrength: saved.pushStrength,
+                                         group: group(at: Int32(saved.group)))
+            character.velocity = saved.velocity
+            character.facing = saved.facing
+        }
+
+        for saved in savedRagdolls { restoreRagdoll(saved) }
+    }
+
+    /// Build one saved vehicle back: the chassis through the ordinary
+    /// `addVehicle` call, then the state the solver does not take at create.
+    private func restoreVehicle(_ saved: SavedVehicle) {
+        let wheels = saved.wheels.map { spec -> Wheel3D in
+            let wheel = Wheel3D.wheel(at: spec.position, radius: spec.radius,
+                                      width: spec.width, steers: spec.steers,
+                                      driven: spec.driven)
+            wheel.maxSteerAngle = spec.maxSteerAngle
+            wheel.casterAngle = spec.casterAngle
+            wheel.suspensionLength = spec.suspensionLength
+            wheel.suspensionTravel = spec.suspensionTravel
+            wheel.suspensionFrequency = spec.suspensionFrequency
+            wheel.suspensionDamping = spec.suspensionDamping
+            wheel.brakeTorque = spec.brakeTorque
+            wheel.handBrakeTorque = spec.handBrakeTorque
+            wheel.grip = spec.grip
+            return wheel
+        }
+        // `addVehicle` takes an angle and an axis, so the saved orientation
+        // goes on after: the chassis is a body like any other underneath.
+        guard let vehicle = addVehicle(saved.collider, at: saved.pose.position,
+                                       wheels: wheels, mass: saved.mass,
+                                       engineTorque: saved.engineTorque,
+                                       topSpeed: saved.topSpeed,
+                                       centerOfMass: saved.centerOfMass,
+                                       friction: saved.friction,
+                                       balances: saved.balances,
+                                       maxLeanAngle: saved.maxLeanAngle,
+                                       tracked: saved.tracked,
+                                       group: group(at: Int32(saved.group)))
+        else { return }
+        place(vehicle.body, at: saved.pose)
+        vehicle.body.velocity = saved.velocity
+        vehicle.body.angularVelocity = saved.angularVelocity
+        vehicle.antiRollStiffness = saved.antiRollStiffness
+        vehicle.maxTilt = saved.maxTilt
+        vehicle.wheelContact = saved.wheelContact
+        vehicle.throttle = saved.throttle
+        vehicle.steering = saved.steering
+        vehicle.brake = saved.brake
+        vehicle.handBrake = saved.handBrake
+        vehicle.restoreDrivetrain(rpm: saved.rpm, gear: saved.gear,
+                                  clutch: saved.clutch,
+                                  wheelSpins: saved.wheels.map {
+                                      (rate: $0.spinRate, angle: $0.spin)
+                                  })
+        if !saved.isAwake { vehicle.body.sleep() }
+    }
+
+    /// Build one saved figure back from its fitting. A ragdoll is made in the
+    /// pose it was fitted in, exactly as a joint is made in the pose its bodies
+    /// held, so the limbs are moved to where the snapshot found them after.
+    private func restoreRagdoll(_ saved: SavedRagdoll) {
+        guard let ragdoll = addRagdoll(plan: saved.plan, limits: saved.limits,
+                                       friction: saved.friction,
+                                       group: group(at: Int32(saved.group)))
+        else { return }
+        ragdoll.kind = saved.kind
+        for (limb, pose) in zip(ragdoll.limbs, saved.poses) {
+            place(limb.body, at: pose.pose)
+            limb.body.velocity = pose.velocity
+            limb.body.angularVelocity = pose.angularVelocity
+            if !pose.isAwake { limb.body.sleep() }
+        }
     }
 
     /// The restored body a saved index names, the floor slab included.
@@ -388,12 +500,15 @@ extension World3D {
     /// floor slab never moves; it is wherever `ground` puts it.
     private func place(_ body: Body3D, at pose: Pose3D) {
         guard body !== groundBody else { return }
-        withFloats3(meters(from: pose.position)) {
-            cjolt_body_set_position(handle, body.id, $0, false)
-        }
-        withFloats4((Float(pose.rotation.x), Float(pose.rotation.y),
-                     Float(pose.rotation.z), Float(pose.rotation.w))) {
-            cjolt_body_set_rotation(handle, body.id, $0, false)
+        // Both at once, never one then the other: the solver holds a body by
+        // its centre of mass, so a position written against the orientation
+        // the body still has lands a shape that sits off its own origin (a
+        // ragdoll limb) a fraction out of place.
+        withFloats3(meters(from: pose.position)) { position in
+            withFloats4((Float(pose.rotation.x), Float(pose.rotation.y),
+                         Float(pose.rotation.z), Float(pose.rotation.w))) { rotation in
+                cjolt_body_set_pose(handle, body.id, position, rotation, false)
+            }
         }
     }
 }
@@ -438,6 +553,94 @@ private struct SavedBody {
     var checksPath: Bool
     var group: UInt32
     var isAwake: Bool
+}
+
+/// One walking figure as a snapshot holds it: a capsule and a handful of
+/// numbers, which is all a character ever was.
+private struct SavedCharacter {
+    var radius: Double
+    var height: Double
+    var position: Vector3
+    var stepHeight: Double
+    var stickToFloorDistance: Double
+    var maxSlope: Double
+    var mass: Double
+    var pushStrength: Double
+    var group: UInt32
+    var velocity: Vector3
+    var facing: Double
+}
+
+/// One wheel as a snapshot holds it: where it is bolted on and everything it
+/// was tuned to.
+private struct SavedWheel {
+    /// How fast it was turning and how far it had already rolled.
+    var spinRate: Double
+    var spin: Double
+    var position: Vector3
+    var radius: Double
+    var width: Double
+    var steers: Bool
+    var driven: Bool
+    var maxSteerAngle: Double
+    var casterAngle: Double
+    var suspensionLength: Double
+    var suspensionTravel: Double
+    var suspensionFrequency: Double
+    var suspensionDamping: Double
+    var brakeTorque: Double
+    var handBrakeTorque: Double
+    var grip: Double
+}
+
+/// One driveable machine as a snapshot holds it: its chassis, its wheels, its
+/// gearing, and what the driver was asking for.
+private struct SavedVehicle {
+    var collider: Collider3D
+    var pose: Pose3D
+    var velocity: Vector3
+    var angularVelocity: Vector3
+    var mass: Double
+    var friction: Double
+    var centerOfMass: Vector3
+    var group: UInt32
+    var isAwake: Bool
+    var engineTorque: Double
+    var topSpeed: Double
+    var antiRollStiffness: Double
+    var maxTilt: Double?
+    var wheelContact: Vehicle3D.WheelContact
+    var balances: Bool
+    var maxLeanAngle: Double
+    var tracked: Bool
+    var throttle: Double
+    var steering: Double
+    var brake: Double
+    var handBrake: Double
+    var rpm: Double
+    var gear: Int
+    var clutch: Double
+    var wheels: [SavedWheel]
+}
+
+/// Where one limb of a figure has got to.
+private struct SavedLimbPose {
+    var pose: Pose3D
+    var velocity: Vector3
+    var angularVelocity: Vector3
+    var isAwake: Bool
+}
+
+/// One figure as a snapshot holds it: the fitting rather than the skin. The
+/// skinned `Scene` it was fitted from is the sketch's own asset, still loaded,
+/// and still what `scene.apply(ragdoll)` writes the simulated pose back onto.
+private struct SavedRagdoll {
+    var plan: RagdollPlan
+    var limits: [RagdollLimit]
+    var friction: Double
+    var group: UInt32
+    var kind: Body3D.Kind
+    var poses: [SavedLimbPose]
 }
 
 /// One joint as a snapshot holds it.
@@ -726,6 +929,125 @@ private struct SnapshotWriter {
         case .rackAndPinion(let travel): u8(1); f64(travel)
         }
     }
+
+    mutating func character(_ character: Character3D, in world: World3D) {
+        f64(character.radius)
+        f64(character.height)
+        vector(character.position)
+        f64(character.stepHeight)
+        f64(character.stickToFloorDistance)
+        f64(character.maxSlope)
+        f64(character.mass)
+        f64(character.pushStrength)
+        u32(UInt32(world.groupIndex(character.group)))
+        vector(character.velocity)
+        f64(character.facing)
+    }
+
+    mutating func vehicle(_ vehicle: Vehicle3D, in world: World3D) {
+        // The chassis, written the way any body is, so a restore builds it
+        // through `addVehicle` and it lands in `world.bodies` as it was.
+        collider(vehicle.body.collider)
+        pose(Pose3D(of: vehicle.body))
+        vector(vehicle.body.velocity)
+        vector(vehicle.body.angularVelocity)
+        f64(vehicle.chassisMass)
+        f64(vehicle.body.friction)
+        vector(vehicle.centerOfMass)
+        u32(UInt32(world.groupIndex(vehicle.body.group)))
+        bool(vehicle.body.isAwake)
+
+        // The machine.
+        f64(vehicle.engineTorque)
+        f64(vehicle.topSpeed)
+        f64(vehicle.antiRollStiffness)
+        optionalDouble(vehicle.maxTilt)
+        switch vehicle.wheelContact {
+        case .ray: u8(0)
+        case .sphere: u8(1)
+        case .cylinder: u8(2)
+        }
+        bool(vehicle.balances)
+        f64(vehicle.maxLeanAngle)
+        bool(vehicle.isTracked)
+
+        // What the driver is asking for right now.
+        f64(vehicle.throttle)
+        f64(vehicle.steering)
+        f64(vehicle.brake)
+        f64(vehicle.handBrake)
+
+        // What the drivetrain is doing. Without it a restored machine has to
+        // spin its wheels and its engine up from rest, which a moving one
+        // notices: measured, a car at speed fell 6.4 units behind over two
+        // seconds, and lands within 0.06 with it.
+        f64(vehicle.rpm)
+        f64(Double(vehicle.gear))
+        f64(vehicle.clutch)
+
+        u32(UInt32(vehicle.wheels.count))
+        for wheel in vehicle.wheels { self.wheel(wheel) }
+    }
+
+    mutating func wheel(_ wheel: Wheel3D) {
+        f64(wheel.spinRate)
+        f64(wheel.spin)
+        vector(wheel.position)
+        f64(wheel.radius)
+        f64(wheel.width)
+        bool(wheel.steers)
+        bool(wheel.driven)
+        f64(wheel.maxSteerAngle)
+        f64(wheel.casterAngle)
+        f64(wheel.suspensionLength)
+        f64(wheel.suspensionTravel)
+        f64(wheel.suspensionFrequency)
+        f64(wheel.suspensionDamping)
+        f64(wheel.brakeTorque)
+        f64(wheel.handBrakeTorque)
+        f64(wheel.grip)
+    }
+
+    mutating func ragdoll(_ ragdoll: Ragdoll3D, in world: World3D) {
+        // The fitting, which is what the skinned scene was worked down to and
+        // the only part of a figure the solver actually needs.
+        u32(UInt32(ragdoll.plan.skinJointCount))
+        u32(UInt32(ragdoll.plan.limbs.count))
+        for limb in ragdoll.plan.limbs {
+            u32(UInt32(max(0, limb.skinIndex)))
+            string(limb.name)
+            u32(UInt32(max(0, limb.sourceIndex)))
+            // The root's parent is -1, which a count cannot hold.
+            u32(limb.parent < 0 ? PhysicsSnapshot.groundIndex : UInt32(limb.parent))
+            collider(limb.collider)
+            vector(limb.shapeCenter)
+            f64(limb.shapeAngle)
+            vector(limb.shapeAxis)
+            vector(limb.jointOrigin)
+            f64(Double(limb.jointRotation.imag.x))
+            f64(Double(limb.jointRotation.imag.y))
+            f64(Double(limb.jointRotation.imag.z))
+            f64(Double(limb.jointRotation.real))
+            vector(limb.worldAxis)
+            f64(limb.mass)
+        }
+        for limit in ragdoll.jointLimits {
+            f64(limit.swing)
+            f64(limit.twist.lowerBound)
+            f64(limit.twist.upperBound)
+        }
+        f64(ragdoll.limbFriction)
+        u32(UInt32(world.groupIndex(ragdoll.limbGroup)))
+        u8(ragdoll.kind == .dynamic ? 0 : (ragdoll.kind == .static ? 1 : 2))
+
+        // Where the figure has actually got to, which is not where it was fitted.
+        for limb in ragdoll.limbs {
+            pose(Pose3D(of: limb.body))
+            vector(limb.body.velocity)
+            vector(limb.body.angularVelocity)
+            bool(limb.body.isAwake)
+        }
+    }
 }
 
 // MARK: - Reading
@@ -967,5 +1289,124 @@ private struct SnapshotReader {
         case 1: return .rackAndPinion(travelPerTurn: try f64())
         default: throw Failure.unknownTag
         }
+    }
+
+    mutating func character() throws -> SavedCharacter {
+        SavedCharacter(radius: try f64(), height: try f64(), position: try vector(),
+                       stepHeight: try f64(), stickToFloorDistance: try f64(),
+                       maxSlope: try f64(), mass: try f64(), pushStrength: try f64(),
+                       group: try u32(), velocity: try vector(), facing: try f64())
+    }
+
+    mutating func vehicle() throws -> SavedVehicle {
+        let collider = try collider()
+        let pose = try pose()
+        let velocity = try vector()
+        let spin = try vector()
+        let mass = try f64()
+        let friction = try f64()
+        let centerOfMass = try vector()
+        let group = try u32()
+        let isAwake = try bool()
+
+        let engineTorque = try f64()
+        let topSpeed = try f64()
+        let antiRoll = try f64()
+        let maxTilt = try optionalDouble()
+        let contact: Vehicle3D.WheelContact
+        switch try u8() {
+        case 0: contact = .ray
+        case 1: contact = .sphere
+        case 2: contact = .cylinder
+        default: throw Failure.unknownTag
+        }
+        let balances = try bool()
+        let maxLean = try f64()
+        let tracked = try bool()
+
+        let throttle = try f64()
+        let steering = try f64()
+        let brake = try f64()
+        let handBrake = try f64()
+        let rpm = try f64()
+        let gear = Int(try f64())
+        let clutch = try f64()
+
+        var wheels: [SavedWheel] = []
+        for _ in 0 ..< (try count()) { wheels.append(try wheel()) }
+
+        return SavedVehicle(collider: collider, pose: pose, velocity: velocity,
+                            angularVelocity: spin, mass: mass, friction: friction,
+                            centerOfMass: centerOfMass, group: group,
+                            isAwake: isAwake, engineTorque: engineTorque,
+                            topSpeed: topSpeed, antiRollStiffness: antiRoll,
+                            maxTilt: maxTilt, wheelContact: contact,
+                            balances: balances, maxLeanAngle: maxLean,
+                            tracked: tracked, throttle: throttle,
+                            steering: steering, brake: brake,
+                            handBrake: handBrake, rpm: rpm, gear: gear,
+                            clutch: clutch, wheels: wheels)
+    }
+
+    mutating func wheel() throws -> SavedWheel {
+        SavedWheel(spinRate: try f64(), spin: try f64(),
+                   position: try vector(), radius: try f64(), width: try f64(),
+                   steers: try bool(), driven: try bool(),
+                   maxSteerAngle: try f64(), casterAngle: try f64(),
+                   suspensionLength: try f64(), suspensionTravel: try f64(),
+                   suspensionFrequency: try f64(), suspensionDamping: try f64(),
+                   brakeTorque: try f64(), handBrakeTorque: try f64(),
+                   grip: try f64())
+    }
+
+    mutating func ragdoll() throws -> SavedRagdoll {
+        var plan = RagdollPlan()
+        plan.skinJointCount = Int(try u32())
+        let limbCount = try count()
+        for _ in 0 ..< limbCount {
+            let skinIndex = Int(try u32())
+            let name = try string()
+            let sourceIndex = Int(try u32())
+            let rawParent = try u32()
+            let parent = rawParent == PhysicsSnapshot.groundIndex ? -1 : Int(rawParent)
+            let collider = try collider()
+            let shapeCenter = try vector()
+            let shapeAngle = try f64()
+            let shapeAxis = try vector()
+            let jointOrigin = try vector()
+            let qx = try f64(), qy = try f64(), qz = try f64(), qw = try f64()
+            plan.limbs.append(RagdollPlan.PlannedLimb(
+                skinIndex: skinIndex, name: name, sourceIndex: sourceIndex,
+                parent: parent, collider: collider, shapeCenter: shapeCenter,
+                shapeAngle: shapeAngle, shapeAxis: shapeAxis,
+                jointOrigin: jointOrigin,
+                jointRotation: simd_quatf(ix: Float(qx), iy: Float(qy),
+                                          iz: Float(qz), r: Float(qw)),
+                worldAxis: try vector(), mass: try f64()))
+        }
+        var limits: [RagdollLimit] = []
+        for _ in 0 ..< limbCount {
+            let swing = try f64()
+            let low = try f64()
+            let high = try f64()
+            limits.append(RagdollLimit(swing: swing, twist: low...max(low, high)))
+        }
+        let friction = try f64()
+        let group = try u32()
+        let kind: Body3D.Kind
+        switch try u8() {
+        case 0: kind = .dynamic
+        case 1: kind = .static
+        case 2: kind = .kinematic
+        default: throw Failure.unknownTag
+        }
+        var poses: [SavedLimbPose] = []
+        for _ in 0 ..< limbCount {
+            poses.append(SavedLimbPose(pose: try pose(), velocity: try vector(),
+                                       angularVelocity: try vector(),
+                                       isAwake: try bool()))
+        }
+        return SavedRagdoll(plan: plan, limits: limits, friction: friction,
+                            group: group, kind: kind, poses: poses)
     }
 }

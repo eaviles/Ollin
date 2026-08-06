@@ -245,6 +245,12 @@ void cjolt_body_set_position(CJoltWorld *world, CJoltBodyID body, const float po
                              bool activate);
 void cjolt_body_set_rotation(CJoltWorld *world, CJoltBodyID body, const float quat[4],
                              bool activate);
+/// Stands a body somewhere facing some way in one call. This is not the same
+/// as setting the two separately: the solver holds a body by its centre of
+/// mass, so a position written against the old orientation lands wrong for a
+/// body whose shape sits off its own origin (a ragdoll limb, a compound part).
+void cjolt_body_set_pose(CJoltWorld *world, CJoltBodyID body, const float pos[3],
+                         const float quat[4], bool activate);
 void cjolt_body_get_linear_velocity(const CJoltWorld *world, CJoltBodyID body, float out[3]);
 void cjolt_body_set_linear_velocity(CJoltWorld *world, CJoltBodyID body, const float v[3]);
 void cjolt_body_get_angular_velocity(const CJoltWorld *world, CJoltBodyID body, float out[3]);
@@ -263,6 +269,9 @@ float cjolt_body_get_mass(const CJoltWorld *world, CJoltBodyID body);
 void cjolt_body_set_motion(CJoltWorld *world, CJoltBodyID body, CJoltMotionType motion);
 bool cjolt_body_is_active(const CJoltWorld *world, CJoltBodyID body);
 void cjolt_body_activate(CJoltWorld *world, CJoltBodyID body);
+/// Puts a body to sleep where it stands. What `startAsleep` does at create,
+/// for the bodies a higher tier makes on the caller's behalf.
+void cjolt_body_deactivate(CJoltWorld *world, CJoltBodyID body);
 void cjolt_body_set_friction(CJoltWorld *world, CJoltBodyID body, float friction);
 void cjolt_body_set_restitution(CJoltWorld *world, CJoltBodyID body, float restitution);
 float cjolt_body_get_friction(const CJoltWorld *world, CJoltBodyID body);
@@ -704,6 +713,19 @@ void cjolt_vehicle_get_wheel(const CJoltVehicle *vehicle, int32_t index,
 float cjolt_vehicle_get_rpm(const CJoltVehicle *vehicle);
 /// The gear the box has picked: -1 reverse, 0 neutral, 1 first, and up.
 int32_t cjolt_vehicle_get_gear(const CJoltVehicle *vehicle);
+
+/// Puts a wheel back where it was turning: how fast it is spinning (rad/s) and
+/// how far it has already rolled (radians). A machine restored without these
+/// has to spin its wheels up from rest. Suspension length is not among them:
+/// it is measured against the ground on the next step, so it finds itself.
+void cjolt_vehicle_set_wheel_motion(CJoltVehicle *vehicle, int32_t index,
+                                    float angularVelocity, float rotationAngle);
+/// Puts the drivetrain back where it was turning: engine speed in RPM, the
+/// gear the box was in, and how far the clutch is engaged (0…1).
+void cjolt_vehicle_set_drivetrain(CJoltVehicle *vehicle, float rpm, int32_t gear,
+                                  float clutch);
+/// How far the clutch is engaged, 0…1.
+float cjolt_vehicle_get_clutch(const CJoltVehicle *vehicle);
 /// How fast a track's band is running over the ground, in m/s (side 0 left,
 /// 1 right). Zero for a vehicle that is not tracked.
 float cjolt_vehicle_get_track_speed(const CJoltVehicle *vehicle, int32_t side);

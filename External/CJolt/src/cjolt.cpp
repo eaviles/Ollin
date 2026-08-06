@@ -1039,6 +1039,13 @@ void cjolt_body_set_rotation(CJoltWorld *world, CJoltBodyID body, const float q[
         BodyID(body), quat(q), activate ? EActivation::Activate : EActivation::DontActivate);
 }
 
+void cjolt_body_set_pose(CJoltWorld *world, CJoltBodyID body, const float pos[3],
+                         const float q[4], bool activate) {
+    world->physics.GetBodyInterface().SetPositionAndRotation(
+        BodyID(body), RVec3(vec3(pos)), quat(q),
+        activate ? EActivation::Activate : EActivation::DontActivate);
+}
+
 void cjolt_body_get_linear_velocity(const CJoltWorld *world, CJoltBodyID body,
                                     float out[3]) {
     CJoltWorld *w = const_cast<CJoltWorld *>(world);
@@ -1149,6 +1156,10 @@ bool cjolt_body_is_active(const CJoltWorld *world, CJoltBodyID body) {
 
 void cjolt_body_activate(CJoltWorld *world, CJoltBodyID body) {
     world->physics.GetBodyInterface().ActivateBody(BodyID(body));
+}
+
+void cjolt_body_deactivate(CJoltWorld *world, CJoltBodyID body) {
+    world->physics.GetBodyInterface().DeactivateBody(BodyID(body));
 }
 
 void cjolt_body_set_friction(CJoltWorld *world, CJoltBodyID body, float friction) {
@@ -2619,6 +2630,36 @@ float cjolt_vehicle_get_rpm(const CJoltVehicle *vehicle) {
 int32_t cjolt_vehicle_get_gear(const CJoltVehicle *vehicle) {
     if (vehicle == nullptr) { return 0; }
     return int32_t(transmissionOf(vehicle).GetCurrentGear());
+}
+
+float cjolt_vehicle_get_clutch(const CJoltVehicle *vehicle) {
+    if (vehicle == nullptr) { return 0; }
+    return transmissionOf(vehicle).GetClutchFriction();
+}
+
+void cjolt_vehicle_set_wheel_motion(CJoltVehicle *vehicle, int32_t index,
+                                    float angularVelocity, float rotationAngle) {
+    if (vehicle == nullptr) { return; }
+    const Wheels &wheels = vehicle->constraint->GetWheels();
+    if (index < 0 || index >= int32_t(wheels.size())) { return; }
+    Wheel *wheel = wheels[index];
+    wheel->SetAngularVelocity(angularVelocity);
+    wheel->SetRotationAngle(rotationAngle);
+}
+
+void cjolt_vehicle_set_drivetrain(CJoltVehicle *vehicle, float rpm, int32_t gear,
+                                  float clutch) {
+    if (vehicle == nullptr) { return; }
+    VehicleController *controller = vehicle->constraint->GetController();
+    if (auto *wheeled = dynamic_cast<WheeledVehicleController *>(controller)) {
+        wheeled->GetEngine().SetCurrentRPM(rpm);
+        wheeled->GetTransmission().Set(int(gear),
+                                       std::min(std::max(clutch, 0.0f), 1.0f));
+    } else if (auto *tracked = dynamic_cast<TrackedVehicleController *>(controller)) {
+        tracked->GetEngine().SetCurrentRPM(rpm);
+        tracked->GetTransmission().Set(int(gear),
+                                       std::min(std::max(clutch, 0.0f), 1.0f));
+    }
 }
 
 float cjolt_vehicle_get_track_speed(const CJoltVehicle *vehicle, int32_t side) {

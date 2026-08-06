@@ -449,7 +449,8 @@ public final class World3D {
                                       antiRollStiffness: 1000,
                                       leans: balances && !tracked,
                                       maxLeanAngle: maxLeanAngle,
-                                      tracked: tracked, mass: mass) else {
+                                      tracked: tracked, mass: mass,
+                                      centerOfMass: hang) else {
             remove(body)
             noteOnce(tracked
                      ? "a tracked machine needs road wheels on both sides of "
@@ -505,6 +506,18 @@ public final class World3D {
                                       joints: joints, swing: swing, twist: twist,
                                       mass: mass, friction: friction,
                                       group: group) else {
+            return nil
+        }
+        ragdolls.append(ragdoll)
+        return ragdoll
+    }
+
+    /// Add a figure from a fitting rather than from a scene: what a snapshot
+    /// restores, since the fitting is what a skinned scene is worked down to.
+    func addRagdoll(plan: RagdollPlan, limits: [RagdollLimit], friction: Double,
+                    group: CollisionGroup) -> Ragdoll3D? {
+        guard let ragdoll = Ragdoll3D(world: self, plan: plan, limits: limits,
+                                      friction: friction, group: group) else {
             return nil
         }
         ragdolls.append(ragdoll)

@@ -17,6 +17,11 @@ struct RagdollPlan {
     struct PlannedLimb {
         /// This limb's joint, as an index into the skeleton array.
         var skinIndex: Int
+        /// The joint's name in the file, which is how a limb is found by name.
+        var name: String
+        /// The joint's prim identity in the file, which is what a pose handed
+        /// in later binds by.
+        var sourceIndex: Int
         /// The limb above it, as an index into `limbs`, or -1 for the root.
         var parent: Int
         var collider: Collider3D
@@ -38,6 +43,13 @@ struct RagdollPlan {
 
     var limbs: [PlannedLimb] = []
 
+    /// How many joints the skeleton this was fitted from had, so a pose handed
+    /// in later can be checked against it.
+    var skinJointCount = 0
+
+    /// An empty plan, filled in by whoever read one back.
+    init() {}
+
     /// Where the figure's root joint currently is, so a caller can ask for it
     /// to stand somewhere else.
     static func placement(of skeleton: [SceneSkeletonJoint], at position: Vector3?)
@@ -52,6 +64,7 @@ struct RagdollPlan {
     init(skeleton: [SceneSkeletonJoint], vertices: [SceneSkinnedVertex],
          names: [String]?, mass: Double, offset: Vector3) {
         let count = skeleton.count
+        skinJointCount = count
         guard count > 0 else { return }
 
         // Which joints get a body. A named subset keeps the roots whatever the
@@ -163,6 +176,8 @@ struct RagdollPlan {
             volumes[index] = fit.volume
             planned.append(PlannedLimb(
                 skinIndex: k,
+                name: joint.name,
+                sourceIndex: joint.sourceIndex,
                 parent: skeleton[k].parent.map { limbOf[owner[$0]] } ?? -1,
                 collider: fit.collider, shapeCenter: fit.center,
                 shapeAngle: stand.angle, shapeAxis: stand.axis,
