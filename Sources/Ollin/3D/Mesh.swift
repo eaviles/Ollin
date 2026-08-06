@@ -224,7 +224,12 @@ public extension Mesh {
             b.gridQuad(top, topNext, botNext, bot)
         }
         if caps {
-            // Top cap: a fan around a center vertex, normal +y.
+            // Top cap: a fan around a center vertex, normal +y. Wound so its
+            // triangles face the same way out of the solid as the wall's do:
+            // the two caps and the wall have to agree, or the surface has no
+            // consistent inside and anything reading the winding rather than
+            // the normals (a soft body's springs, a subdivision cage) sees a
+            // shape turned partly inside out.
             let topCenter = b.addVertex(Vector3(0, hy, 0), normal: .unitY)
             let topStart = b.nextIndex
             for j in 0...segs {
@@ -232,9 +237,10 @@ public extension Mesh {
                 b.vertex(Vector3(cos(phi) * radius, hy, sin(phi) * radius), normal: .unitY)
             }
             for j in 0..<segs {
-                b.triangle(topCenter, topStart + UInt32(j), topStart + UInt32(j) + 1)
+                b.triangle(topCenter, topStart + UInt32(j) + 1, topStart + UInt32(j))
             }
-            // Bottom cap: a fan, normal -y, wound the other way so it faces down.
+            // Bottom cap: a fan, normal -y, wound the other way so it too faces
+            // out of the solid rather than into it.
             let botCenter = b.addVertex(Vector3(0, -hy, 0), normal: -.unitY)
             let botStart = b.nextIndex
             for j in 0...segs {
@@ -242,7 +248,7 @@ public extension Mesh {
                 b.vertex(Vector3(cos(phi) * radius, -hy, sin(phi) * radius), normal: -.unitY)
             }
             for j in 0..<segs {
-                b.triangle(botCenter, botStart + UInt32(j) + 1, botStart + UInt32(j))
+                b.triangle(botCenter, botStart + UInt32(j), botStart + UInt32(j) + 1)
             }
         }
         return b.mesh()
@@ -321,9 +327,12 @@ public extension Mesh {
             b.vertex(Vector3(cos(p0) * radius, -hy, sin(p0) * radius), normal: sideNormal(p0))
             b.vertex(Vector3(cos(p1) * radius, -hy, sin(p1) * radius), normal: sideNormal(p1))
             b.vertex(Vector3(0, hy, 0), normal: sideNormal((p0 + p1) / 2))
-            b.triangle(i, i + 1, i + 2)
+            // Wound out of the solid, matching the normals the sides already
+            // carry, so the cone has a consistent inside for anything reading
+            // its triangles rather than its normals.
+            b.triangle(i, i + 2, i + 1)
         }
-        // Base cap: a fan, normal −y.
+        // Base cap: a fan, normal −y, wound out of the solid the same way.
         let center = b.addVertex(Vector3(0, -hy, 0), normal: -.unitY)
         let start = b.nextIndex
         for j in 0...segs {
@@ -331,7 +340,7 @@ public extension Mesh {
             b.vertex(Vector3(cos(phi) * radius, -hy, sin(phi) * radius), normal: -.unitY)
         }
         for j in 0..<segs {
-            b.triangle(center, start + UInt32(j) + 1, start + UInt32(j))
+            b.triangle(center, start + UInt32(j), start + UInt32(j) + 1)
         }
         return b.mesh()
     }
@@ -345,10 +354,14 @@ public extension Mesh {
         let c0 = Vector3(-hx, -hy, -hz), c1 = Vector3(hx, -hy, -hz)
         let c2 = Vector3(hx, -hy, hz),  c3 = Vector3(-hx, -hy, hz)
         var b = Builder()
-        b.triFlat(c0, c1, apex)   // four slanted faces, each its own flat normal
-        b.triFlat(c1, c2, apex)
-        b.triFlat(c2, c3, apex)
-        b.triFlat(c3, c0, apex)
+        // Four slanted faces, each its own flat normal. Wound so the normal the
+        // winding gives points out of the solid: `triFlat` takes the face's
+        // normal from the order of its corners, so the corners going round the
+        // other way would light every slope from inside the pyramid.
+        b.triFlat(c1, c0, apex)
+        b.triFlat(c2, c1, apex)
+        b.triFlat(c3, c2, apex)
+        b.triFlat(c0, c3, apex)
         b.polygonFlat([c0, c1, c2, c3])   // base (auto-oriented to face −y)
         return b.mesh()
     }
@@ -505,10 +518,14 @@ public extension Mesh {
         var b = Builder()
         // Each face: a (segs+1)² grid over the two tangent axes, pushed out from the
         // inset core. `axis` is the face's outward unit, `uAxis`/`vAxis` span it.
+        // The two span axes are listed so that `uAxis × vAxis` is the face's own
+        // outward direction, which is what makes every quad below come out wound
+        // the same way round the solid; listed the other way, half the faces
+        // wind inward and the box has no consistent inside.
         let faces: [(axis: Vector3, uAxis: Vector3, vAxis: Vector3, uh: Double, vh: Double)] = [
-            (.unitX, .unitZ, .unitY, hz, hy), (-.unitX, .unitZ, .unitY, hz, hy),
-            (.unitY, .unitX, .unitZ, hx, hz), (-.unitY, .unitX, .unitZ, hx, hz),
-            (.unitZ, .unitX, .unitY, hx, hy), (-.unitZ, .unitX, .unitY, hx, hy),
+            (.unitX, .unitY, .unitZ, hy, hz), (-.unitX, .unitZ, .unitY, hz, hy),
+            (.unitY, .unitZ, .unitX, hz, hx), (-.unitY, .unitX, .unitZ, hx, hz),
+            (.unitZ, .unitX, .unitY, hx, hy), (-.unitZ, .unitY, .unitX, hy, hx),
         ]
         for face in faces {
             let base = b.nextIndex
@@ -681,7 +698,9 @@ public extension Mesh {
                 let i = b.nextIndex
                 b.vertex(f0, normal: n); b.vertex(f1, normal: n)
                 b.vertex(k1, normal: n); b.vertex(k0, normal: n)
-                b.gridQuad(i, i + 1, i + 2, i + 3)
+                // Round the wall the way `n` already faces, so the side agrees
+                // with the two caps about which way is out of the solid.
+                b.gridQuad(i, i + 3, i + 2, i + 1)
             }
         }
         return b.mesh()
@@ -893,7 +912,11 @@ extension Mesh {
             for j in 0..<vCount {
                 let du = at(i + 1, j) - at(i - 1, j)
                 let dv = at(i, j + 1) - at(i, j - 1)
-                let cross = du.cross(dv)
+                // `dv × du`, not the other way round: the quads below are wound
+                // along +v and then +u, so this is the direction their own
+                // winding faces. Taking the other order shades every surface
+                // built here from the side the light is not on.
+                let cross = dv.cross(du)
                 b.vertex(pos[i * vCount + j], normal: cross.lengthSquared > 1e-12 ? cross.normalized : .unitY)
             }
         }

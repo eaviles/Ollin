@@ -3518,6 +3518,68 @@ wind, and a grip that *pins a particle* rather than adding a joint); and there
 is no tearing, because a tear has to split a shared vertex and rebuild the
 constraint set, which cannot be done to a body mid-simulation.
 
+#### Why there is no tetrahedral solid
+
+The solver has a sixth constraint family the bridge does not build: a **volume
+constraint** over a tetrahedron, held at the volume it started with, which is
+how a body resists being squashed through its *interior* rather than only at its
+skin. Its cost is that nothing in the library builds one. `CreateConstraints`
+derives edges and bends from *faces*, so the tetrahedra are the caller's to
+supply, and the only tetrahedral body upstream ships is `sCreateCube`, whose
+lattice *is* its surface. Any other shape has to be meshed, and the tractable
+form of that is a lattice: fill the bounds with a grid, keep the cells a parity
+test puts inside the surface, split each into six tetrahedra, and tie the skin
+to the result.
+
+Both models were built and measured against each other before the question was
+answered, because the answer decides whether a whole meshing pass and two more
+knobs earn their place. The shipped one wins or ties everywhere that matters, on
+a 5 kg ball of radius 0.5 against a lattice six cells across:
+
+| | `pressure: 20` | interior lattice + tetrahedra |
+|---|---|---|
+| a 25 kg weight on it | 99.2% of its height, 100.0% of its volume | 100.4%, 100.0% |
+| a finger driven 0.4 in, then withdrawn | no dent left, 100.0% of its volume | no dent left, 100.0% |
+| pressed to 45% of its height, released | **100% of its height, 100% of its volume** | 111%, 103% |
+| the same on a cube | **99%, 97%** | 115%, 60% |
+| holding an authored cube's volume at rest | 122 to 127% at `bend: 0`, 100.6 to 103.5% at `bend: 1` | 100.0% |
+| particles | 162 | 243 |
+
+Three readings settle it. The **load case is a tie**, so the tetrahedra are not
+buying the thing they exist for at any load a sketch would apply. **Recovery
+from a hard squash goes to pressure**, which is the case a jelly demo actually
+is. And the one place the lattice plainly wins, holding an authored shape with
+corners, is won by its interior **springs** rather than its tetrahedra: the same
+lattice with the tetrahedra removed holds the same 100.0%, and `bend` closes
+most of that gap on a pressurised body anyway, which is guidance worth having on
+its own and is on the soft-body page.
+
+The recovery gap is structural rather than tunable, and it is one line of the
+vendored source: `ApplyVolumeConstraints` forms its residual as
+`abs(signed volume) - restVolume`, so a tetrahedron that has been turned inside
+out reads as *satisfied* and nothing pushes it back. A hard squash is exactly
+what inverts one. A gas law has no such failure mode, since `nRT/V` grows
+without bound as the enclosed volume shrinks, which is why the pressurised ball
+comes back round every time.
+
+Two things would reopen it: a vertex-follows-tetrahedron binding in the solver
+(so a real surface could ride a lattice instead of hanging off springs, which is
+what a proper embedded solid does and what Jolt's skinned constraints, which
+bind to a *skeleton*, cannot express), or a signed volume constraint that can
+drive an inverted tetrahedron back out.
+
+Found while probing this, and fixed rather than worked around: a soft body built
+from `Mesh.cylinder` detonated inside half a second, because the generator wound
+both cap fans into the solid while its wall wound out of it, leaving the surface
+with no consistent inside. `Mesh.pyramid`, `Mesh.roundedBox`, `Mesh.extrude`,
+and `Mesh.cone` carried versions of the same defect, and `parametricSurface`
+derived its normals as `du × dv` while winding its quads the other way, which
+shaded the superellipsoid, the supershape, the Möbius band, and the Klein bottle
+from the side the light is not on. Nothing culls back faces and every mesh
+carries its own normals, so none of it showed in a snapshot; `MeshTests`
+now pins consistent outward winding and normal/winding agreement across the
+catalog.
+
 `SoftBody3DTests` pins it behaviorally against counterfactual twins: a pinned
 sheet hangs where a free one lands on the floor, a stiffer cloth stretches less
 under the same load, a fold-resisting sheet held at its middle stays a plate

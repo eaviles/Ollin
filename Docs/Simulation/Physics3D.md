@@ -948,6 +948,8 @@ cloth.move(index, to: point)   // carry it to a world point over this frame
 
 `stiffness` and `bend` are separate because they are separate: a bedsheet barely stretches at all and folds freely, which is `stiffness: 1, bend: 0`. `pressure` needs a closed surface to fill, so it does nothing on a sheet (`isClosed` reports which you have, and setting it on an open one notes once and is ignored); `1` just holds the body's own weight up, `2` to `4` reads as a firm ball that still dents. `pressure`, `iterations`, and `vertexRadius` are all live, so a ball can deflate while you watch.
 
+**A pressurised shape with corners needs `bend`.** Gas pushes on every face at once and nothing in a limp surface holds an authored angle, so a soft cube at `bend: 0` inflates into a pillow: measured on a 1-unit cube, `pressure` alone leaves it holding a fifth more volume than it was built with, and the higher the pressure the rounder it gets. `bend: 1` brings it back to within a few percent of the shape you handed over. Round shapes do not show this, because round is what pressure is already trying to make. So: `bend: 0` for anything meant to read as a bag or a balloon, and `bend` up near `1` for anything meant to keep its own flat faces.
+
 **Pushing one about.** Impulses, joints, and grabs do not apply to a soft body, because there is no single pose or velocity for them to act on. What works is `applyForce(_:)`, spread evenly over the particles, which is how wind is applied:
 
 ```swift
@@ -983,6 +985,8 @@ if let grip { dragSoftGrab(grip, to: Vector2(mouseX, mouseY)) }
 - **A query can find it.** `raycast`, `sweep`, and the overlap calls all see soft bodies, so a hanging sheet blocks a sightline and a `Hit3D` may name a `SoftBody3D`. To look through one, name it in `ignoring:` or put it in a collision group the query does not ask as.
 
 **What a soft body still cannot do.** The solver collides them with the rigid bodies around them but not with each other, and not with themselves, so a sheet folded double will pass through its own layers (which reads as a flicker where the two lie together). Impulses, joints, and grabs do not reach one, and `body(under:in:)` answers only for solids (use `grabSoftBody(at:in:)`). Tearing is not offered, because a real tear has to split a shared vertex in two and rebuild the surface, which the solver has no way to do while it runs.
+
+**A soft body is a surface, not a filled solid**, and `pressure` is how it reads as full. There is no separate "jelly" model holding the space inside it, and that is a measured choice rather than a missing feature: a pressurised body already holds a weight without squashing, comes back from a dent perfectly, and costs nothing extra, where filling one with tetrahedra costs half again as many particles and comes back from a hard squash permanently out of shape. The reasoning and the numbers are in [`ARCHITECTURE.md`](../../ARCHITECTURE.md).
 
 <a name="ropes"></a>
 
