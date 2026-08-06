@@ -55,6 +55,13 @@ extension Mesh {
         // UVs are kept only if *every* merged primitive supplied them (a partial set
         // would mismap), so a mixed model drops to flat (untextured) instead.
         var allHaveUV = true
+        // Vertex colors take the opposite rule, because they multiply the surface
+        // color: white is their identity, so a primitive without `COLOR_0` fills with
+        // white and comes out looking exactly as it would with no colors at all. A
+        // partial set is therefore lossless, and the mesh carries colors as soon as
+        // *any* primitive supplied them.
+        var colors: [Color] = []
+        var anyHaveColor = false
         // The material the merged mesh wears: the first primitive's material, but
         // preferring the first one that carries a base-color texture (the visible part).
         var chosenMaterial: Int?
@@ -94,6 +101,15 @@ extension Mesh {
                     uvs.append(contentsOf: repeatElement(Vector2.zero, count: localPos.count))
                 }
 
+                // Vertex colors (white where a primitive has none, the multiply identity).
+                if let colorIndex = prim.attributes["COLOR_0"], let localColor = doc.readColors(colorIndex),
+                   localColor.count == localPos.count {
+                    colors.append(contentsOf: localColor)
+                    anyHaveColor = true
+                } else {
+                    colors.append(contentsOf: repeatElement(Color.white, count: localPos.count))
+                }
+
                 // Pick the material to carry: the first one seen, upgraded to the first
                 // that has a base-color texture.
                 if let mi = prim.material {
@@ -113,8 +129,10 @@ extension Mesh {
         }
 
         guard !positions.isEmpty, !indices.isEmpty else { return nil }
-        return Mesh(positions: positions, normals: normals, indices: indices,
-                    uvs: allHaveUV ? uvs : [], material: chosenMaterial.flatMap(doc.resolveMaterial))
+        var mesh = Mesh(positions: positions, normals: normals, indices: indices,
+                        uvs: allHaveUV ? uvs : [], material: chosenMaterial.flatMap(doc.resolveMaterial))
+        if anyHaveColor { mesh.colors = colors }
+        return mesh
     }
 
     /// Fill in smooth, area-weighted normals for the vertices in `vertexRange`, using
@@ -413,6 +431,53 @@ struct GLTFDocument {
         return out
     }
 
+    /// Read a `COLOR_0` accessor as `[Color]`. Unlike positions and UVs this one takes
+    /// every shape the spec allows, because vertex colors are usually the quantized
+    /// ones: VEC3 (opaque) or VEC4, as floats or as normalized `UNSIGNED_BYTE` /
+    /// `UNSIGNED_SHORT`. The stored values are **linear**, like every other glTF color
+    /// factor, so each channel re-encodes to sRGB on the way into `Color` (alpha is a
+    /// coverage fraction and stays linear).
+    func readColors(_ index: Int) -> [Color]? {
+        let accessors = gltf.accessors ?? []
+        let views = gltf.bufferViews ?? []
+        guard index >= 0, index < accessors.count else { return nil }
+        let a = accessors[index]
+        let channels: Int
+        switch a.type { case "VEC3": channels = 3; case "VEC4": channels = 4; default: return nil }
+        let size: Int
+        switch a.componentType {
+        case 5126: size = 4                 // FLOAT
+        case 5121: size = 1                 // UNSIGNED_BYTE, normalized
+        case 5123: size = 2                 // UNSIGNED_SHORT, normalized
+        default: return nil
+        }
+        let element = channels * size
+        guard let bvi = a.bufferView, bvi < views.count else { return nil }
+        let bv = views[bvi]
+        guard bv.buffer < buffers.count else { return nil }
+        let buf = buffers[bv.buffer]
+        let stride = bv.byteStride ?? element
+        let start = (bv.byteOffset ?? 0) + (a.byteOffset ?? 0)
+        guard a.count > 0, start + (a.count - 1) * stride + element <= buf.count else { return nil }
+        var out = [Color](); out.reserveCapacity(a.count)
+        buf.withUnsafeBytes { raw in
+            func component(_ offset: Int) -> Double {
+                switch size {
+                case 4: return Double(raw.loadUnaligned(fromByteOffset: offset, as: Float.self))
+                case 1: return Double(raw.loadUnaligned(fromByteOffset: offset, as: UInt8.self)) / 255
+                default: return Double(raw.loadUnaligned(fromByteOffset: offset, as: UInt16.self)) / 65535
+                }
+            }
+            for i in 0..<a.count {
+                let o = start + i * stride
+                func encoded(_ c: Int) -> Double { Color.linearToSrgb(min(max(component(o + c * size), 0), 1)) }
+                let alpha = channels == 4 ? min(max(component(o + 3 * size), 0), 1) : 1
+                out.append(Color(red: encoded(0), green: encoded(1), blue: encoded(2), alpha: alpha))
+            }
+        }
+        return out
+    }
+
     /// Read a MAT4-of-float accessor (a skin's inverse bind matrices) as
     /// column-major `simd_float4x4`s, honoring offset and stride.
     func readMat4(_ index: Int) -> [simd_float4x4]? {
@@ -574,6 +639,11 @@ struct GLTFDocument {
         var indices: [UInt32] = []
         var uvs: [Vector2] = []
         var allHaveUV = true
+        // Vertex colors fill with white where a primitive has none (white is the
+        // multiply identity, so a partial set is lossless) and survive as soon as any
+        // primitive supplied them, unlike the all-or-nothing UV and skin attributes.
+        var colors: [Color] = []
+        var anyHaveColor = false
         var chosenMaterial: Int?
         var chosenHasTexture = false
         // Each primitive's slice of the merged index buffer with its material
@@ -614,6 +684,14 @@ struct GLTFDocument {
             } else {
                 allHaveUV = false
                 uvs.append(contentsOf: repeatElement(Vector2.zero, count: localPos.count))
+            }
+
+            if let colorIndex = prim.attributes["COLOR_0"], let localColor = readColors(colorIndex),
+               localColor.count == localPos.count {
+                colors.append(contentsOf: localColor)
+                anyHaveColor = true
+            } else {
+                colors.append(contentsOf: repeatElement(Color.white, count: localPos.count))
             }
 
             // Skin attributes, all-or-nothing like UVs: a primitive missing either
@@ -703,7 +781,8 @@ struct GLTFDocument {
         }
 
         let mesh = Mesh(positions: positions, normals: normals, indices: indices,
-                        uvs: allHaveUV ? uvs : [], material: resolved(chosenMaterial))
+                        uvs: allHaveUV ? uvs : [], colors: anyHaveColor ? colors : [],
+                        material: resolved(chosenMaterial))
         var data = LocalMeshData(mesh: mesh)
         data.parts = parts
         if allHaveSkin, !joints.isEmpty {

@@ -339,4 +339,59 @@ struct SubdivisionSurfaceTests {
         #expect(sub.uvs.isEmpty)
         #expect(sub.normals.count == sub.positions.count)
     }
+
+    /// A cage painted red on one side and blue on the other keeps its colors through
+    /// refinement, and they *smooth* rather than stepping: the surface between the two
+    /// halves has to pass through the mixtures, and no vertex may invent a color
+    /// outside the range its cage spanned (every mask is a convex combination).
+    @Test func vertexColorsRefineAlongWithPositions() {
+        var cage = Mesh.box(size: 2)
+        cage.colors = cage.positions.map { $0.x < 0 ? Color.red : Color.blue }
+        let sub = cage.subdivided(.catmullClark, levels: 2)
+
+        #expect(sub.colors.count == sub.positions.count)
+        // Convex combinations only: red and blue both stay off, green never appears.
+        #expect(sub.colors.allSatisfy { $0.green <= 1e-9 })
+        #expect(sub.colors.allSatisfy { $0.red >= -1e-9 && $0.red <= 1 + 1e-9 })
+        // The two originals survive somewhere, and the seam carries genuine mixtures
+        // (a nearest-neighbour transfer would give only the two endpoint colors).
+        #expect(sub.colors.contains { $0.red > 0.9 })
+        #expect(sub.colors.contains { $0.blue > 0.9 })
+        #expect(sub.colors.contains { $0.red > 0.2 && $0.red < 0.8 })
+        // Color follows position: the reddest vertices sit on the cage's red side.
+        let reddest = zip(sub.positions, sub.colors).filter { $0.1.red > 0.9 }
+        #expect(!reddest.isEmpty && reddest.allSatisfy { $0.0.x < 0 })
+    }
+
+    /// The same through the Loop scheme, whose limit push touches colors too.
+    @Test func loopCarriesVertexColors() {
+        var cage = Mesh.icosahedron(radius: 1)
+        cage.colors = cage.positions.map { $0.y < 0 ? Color.black : Color.white }
+        let sub = cage.subdivided(.loop, levels: 2)
+        #expect(sub.colors.count == sub.positions.count)
+        #expect(sub.colors.contains { $0.red > 0.2 && $0.red < 0.8 })
+        let dark = zip(sub.positions, sub.colors).filter { $0.1.red < 0.15 }
+        #expect(!dark.isEmpty && dark.allSatisfy { $0.0.y < 0.15 })
+    }
+
+    /// A mesh with no colors must come back with none: an empty `colors` is the
+    /// constant-color render path, so refinement must not fill it in.
+    @Test func aColorlessCageStaysColorless() {
+        let plain = Mesh.box(size: 1)
+        #expect(plain.colors.isEmpty)
+        #expect(plain.subdivided(.catmullClark, levels: 2).colors.isEmpty)
+        #expect(Mesh.icosahedron(radius: 1).subdivided(.loop, levels: 2).colors.isEmpty)
+    }
+
+    /// Colors ride along without disturbing the geometry: the same cage with and
+    /// without them refines to exactly the same positions and indices.
+    @Test func colorsDoNotMoveTheSurface() {
+        let plain = Mesh.box(size: 2)
+        var painted = plain
+        painted.colors = plain.positions.map { $0.x < 0 ? Color.red : Color.blue }
+        let a = plain.subdivided(.catmullClark, levels: 2)
+        let b = painted.subdivided(.catmullClark, levels: 2)
+        #expect(a.indices == b.indices)
+        #expect(zip(a.positions, b.positions).allSatisfy { ($0 - $1).length == 0 })
+    }
 }

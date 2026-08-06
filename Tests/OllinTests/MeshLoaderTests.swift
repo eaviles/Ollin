@@ -188,6 +188,129 @@ struct MeshLoaderTests {
         #expect(tex.width == 4 && tex.height == 4)
     }
 
+    /// `COLOR_0` as normalized `UNSIGNED_BYTE` VEC4, the quantized form most exporters
+    /// write. Pins that the attribute is read at all, that the byte form normalizes,
+    /// and that the stored values re-encode linear to sRGB the way every other glTF
+    /// color factor does (0.5 linear is *not* 0.5 sRGB, and reading it as sRGB would
+    /// wash a painted mesh out by a visible amount).
+    @Test func gltfReadsQuantizedVertexColors() throws {
+        var buffer = Data()
+        for f: Float in [0, 0, 0, 1, 0, 0, 0, 1, 0] {           // 3 positions (VEC3) @0
+            withUnsafeBytes(of: f) { buffer.append(contentsOf: $0) }
+        }
+        // 3 colors (VEC4 of normalized bytes) @36: mid-gray, pure red, opaque white.
+        buffer.append(contentsOf: [128, 128, 128, 255] as [UInt8])
+        buffer.append(contentsOf: [255, 0, 0, 255] as [UInt8])
+        buffer.append(contentsOf: [255, 255, 255, 255] as [UInt8])
+        for i: UInt16 in [0, 1, 2] {                            // 3 indices (SCALAR) @48
+            withUnsafeBytes(of: i) { buffer.append(contentsOf: $0) }
+        }
+        let b64 = buffer.base64EncodedString()
+        let json = """
+        { "asset": {"version": "2.0"},
+          "scene": 0, "scenes": [{"nodes": [0]}],
+          "nodes": [{"mesh": 0}],
+          "meshes": [{"primitives": [{"attributes": {"POSITION": 0, "COLOR_0": 1}, "indices": 2, "mode": 4}]}],
+          "accessors": [
+            {"bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3"},
+            {"bufferView": 1, "componentType": 5121, "normalized": true, "count": 3, "type": "VEC4"},
+            {"bufferView": 2, "componentType": 5123, "count": 3, "type": "SCALAR"}],
+          "bufferViews": [
+            {"buffer": 0, "byteOffset": 0, "byteLength": 36},
+            {"buffer": 0, "byteOffset": 36, "byteLength": 12},
+            {"buffer": 0, "byteOffset": 48, "byteLength": 6}],
+          "buffers": [{"uri": "data:application/octet-stream;base64,\(b64)", "byteLength": \(buffer.count)}]
+        }
+        """
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ollin-\(ProcessInfo.processInfo.globallyUniqueString).gltf")
+        try json.write(to: url, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let mesh = try #require(Mesh(contentsOf: url))
+        #expect(mesh.colors.count == mesh.positions.count)
+        // 128/255 = 0.502 linear, which re-encodes to about 0.7366 sRGB.
+        #expect(abs(mesh.colors[0].red - 0.7366) < 0.01)
+        #expect(abs(mesh.colors[0].green - 0.7366) < 0.01)
+        // The endpoints are fixed points of the transfer curve, so they stay exact.
+        #expect(abs(mesh.colors[1].red - 1) < 1e-6)
+        #expect(abs(mesh.colors[1].green) < 1e-6)
+        #expect(abs(mesh.colors[2].blue - 1) < 1e-6)
+        #expect(mesh.colors.allSatisfy { abs($0.alpha - 1) < 1e-6 })
+    }
+
+    /// A mesh whose file carries no `COLOR_0` must come back with *no* colors rather
+    /// than a white array: an empty `colors` is the constant-color render path, and
+    /// filling it with white would push every loaded model onto the per-vertex one.
+    @Test func gltfWithoutVertexColorsCarriesNone() throws {
+        var buffer = Data()
+        for f: Float in [0, 0, 0, 1, 0, 0, 0, 1, 0] {
+            withUnsafeBytes(of: f) { buffer.append(contentsOf: $0) }
+        }
+        for i: UInt16 in [0, 1, 2] {
+            withUnsafeBytes(of: i) { buffer.append(contentsOf: $0) }
+        }
+        let b64 = buffer.base64EncodedString()
+        let json = """
+        { "asset": {"version": "2.0"},
+          "scene": 0, "scenes": [{"nodes": [0]}],
+          "nodes": [{"mesh": 0}],
+          "meshes": [{"primitives": [{"attributes": {"POSITION": 0}, "indices": 1, "mode": 4}]}],
+          "accessors": [
+            {"bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3"},
+            {"bufferView": 1, "componentType": 5123, "count": 3, "type": "SCALAR"}],
+          "bufferViews": [
+            {"buffer": 0, "byteOffset": 0, "byteLength": 36},
+            {"buffer": 0, "byteOffset": 36, "byteLength": 6}],
+          "buffers": [{"uri": "data:application/octet-stream;base64,\(b64)", "byteLength": \(buffer.count)}]
+        }
+        """
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ollin-\(ProcessInfo.processInfo.globallyUniqueString).gltf")
+        try json.write(to: url, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let mesh = try #require(Mesh(contentsOf: url))
+        #expect(mesh.colors.isEmpty)
+    }
+
+    /// An ASCII PLY with per-vertex `red`/`green`/`blue`, the form a scan or a
+    /// vertex-painted export writes. Unlike glTF these are display values, so they
+    /// arrive unconverted.
+    @Test func plyReadsVertexColors() throws {
+        let ply = """
+        ply
+        format ascii 1.0
+        element vertex 3
+        property float x
+        property float y
+        property float z
+        property uchar red
+        property uchar green
+        property uchar blue
+        element face 1
+        property list uchar int vertex_indices
+        end_header
+        0 0 0 255 0 0
+        1 0 0 0 255 0
+        0 1 0 0 0 255
+        3 0 1 2
+
+        """
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ollin-\(ProcessInfo.processInfo.globallyUniqueString).ply")
+        try ply.write(to: url, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let mesh = try #require(Mesh(contentsOf: url))
+        #expect(mesh.colors.count == mesh.positions.count)
+        // One saturated vertex per channel, in the file's order.
+        let reds = mesh.colors.map(\.red), greens = mesh.colors.map(\.green), blues = mesh.colors.map(\.blue)
+        #expect(reds.contains { $0 > 0.99 } && greens.contains { $0 > 0.99 } && blues.contains { $0 > 0.99 })
+        // Saturated in one channel means dark in the others: nothing re-encoded them.
+        #expect(mesh.colors.allSatisfy { $0.red + $0.green + $0.blue < 1.05 })
+    }
+
     /// An OBJ quad with UVs and an `mtllib`/`usemtl` material whose `.mtl` carries a
     /// diffuse color and a `map_Kd` texture: exercises `vt` reading and the `.mtl`
     /// parse (color + sibling texture file). Writes the trio to a temp folder.

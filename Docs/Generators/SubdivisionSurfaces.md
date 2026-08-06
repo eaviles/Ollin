@@ -70,6 +70,7 @@ Each level multiplies the face count by about four, so cost climbs fast and smoo
 - **Smooth normals**, computed from the refined surface, so it lights cleanly.
 - **The cage's shading orientation.** Where the input carries normals, the output's winding and normals follow them, whichever way the source happened to wind.
 - **No texture coordinates.** A welded, re-knit surface has no single parameterization to keep; use a [material](../3D/3D.md) rather than a texture. The base `material` color carries over.
+- **Per-vertex colors**, refined by the same rules the positions take, so a painted cage smooths into a painted surface and the color follows the shape it was painted onto. A cage with no `colors` produces a mesh with none, which is the plain single-color path. Where two coincident cage vertices were painted differently the weld keeps the first, since a smoothed surface has no hard edge left to carry the split.
 - **Determinism.** The same cage and arguments give the same mesh, vertex for vertex.
 
 ### See also

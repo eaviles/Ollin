@@ -44,7 +44,9 @@ public extension Mesh {
     /// past two million faces refinement stops early with a note. The result
     /// carries smooth normals and no texture coordinates (a welded, re-knit
     /// surface has no single parameterization to keep), and the base
-    /// `material` color carries over. Where the input has normals, the
+    /// `material` color carries over. Per-vertex `colors` carry too, refined
+    /// by the same masks the positions take, so a painted cage smooths into a
+    /// painted surface. Where the input has normals, the
     /// output's orientation follows them, so the smoothed surface lights the
     /// way its cage did regardless of how the source happened to wind.
     ///
@@ -93,6 +95,14 @@ struct SubdivisionMesh {
     var points: [Vector3]
     /// Faces as counter-clockwise corner rings (3+ corners each).
     var faces: [[Int]]
+    /// Per-point vertex colors as straight RGBA, parallel to `points`, or nil
+    /// when the source mesh carried none. Refinement is a linear operator on a
+    /// vertex attribute and the masks depend only on `faces`, so a color takes
+    /// exactly the weights its position does and arrives smoothed the same way.
+    /// A mirror of the position math rather than a fold into it: the position
+    /// path is byte-pinned by the snapshot and the five-fold-symmetry test, so
+    /// the color pass sits beside it rather than rewriting around it.
+    var colors: [SIMD4<Double>]?
 
     /// Weld the mesh's (often deliberately duplicated, flat-shaded) vertices
     /// into shared topology and keep its triangles as three-corner faces.
@@ -113,6 +123,20 @@ struct SubdivisionMesh {
             i += 3
         }
         faces = rawTriangles.compactMap { SubdivisionMesh.canonicalFace([$0.0, $0.1, $0.2]) }
+        // A welded point takes the color of the first source vertex that claimed
+        // it, matching the weld's own first-come identity. Duplicated flat-shaded
+        // corners of one seam agree anyway; where they genuinely differ the mesh
+        // was painting a hard edge that a smoothed surface cannot keep.
+        if mesh.colors.count == mesh.positions.count, !mesh.colors.isEmpty {
+            var welded = [SIMD4<Double>](repeating: SIMD4(1, 1, 1, 1), count: points.count)
+            var claimed = [Bool](repeating: false, count: points.count)
+            for (source, target) in weld.map.enumerated() where !claimed[target] {
+                let c = mesh.colors[source]
+                welded[target] = SIMD4(c.red, c.green, c.blue, c.alpha)
+                claimed[target] = true
+            }
+            colors = welded
+        }
     }
 
     /// The welded triangles in emission order, kept so `recoverQuads` can see
@@ -461,6 +485,53 @@ struct SubdivisionMesh {
                 newFaces.append([face[c], ahead, center, behind])
             }
         }
+        // Colors take the same three masks, in the same order, so a refined color
+        // lands on the vertex its position did.
+        if let old = colors {
+            var faceColors = [SIMD4<Double>](repeating: .zero, count: fCount)
+            for (f, face) in faces.enumerated() {
+                var sum = SIMD4<Double>.zero
+                for v in face { sum += old[v] }
+                faceColors[f] = sum / Double(face.count)
+            }
+            var edgeColors = [SIMD4<Double>](repeating: .zero, count: topo.edgeEnds.count)
+            for (id, ends) in topo.edgeEnds.enumerated() {
+                if topo.isBoundaryEdge(id) {
+                    edgeColors[id] = (old[ends.0] + old[ends.1]) * 0.5
+                } else {
+                    let f = topo.edgeFaces[id]
+                    edgeColors[id] = (old[ends.0] + old[ends.1] + faceColors[f.0] + faceColors[f.1]) * 0.25
+                }
+            }
+            var faceColorSum = [SIMD4<Double>](repeating: .zero, count: vCount)
+            for (f, face) in faces.enumerated() {
+                for v in face { faceColorSum[v] += faceColors[f] }
+            }
+            var midColorSum = [SIMD4<Double>](repeating: .zero, count: vCount)
+            for ends in topo.edgeEnds {
+                let mid = (old[ends.0] + old[ends.1]) * 0.5
+                midColorSum[ends.0] += mid
+                midColorSum[ends.1] += mid
+            }
+            var vertexColors = [SIMD4<Double>](repeating: .zero, count: vCount)
+            for v in 0..<vCount {
+                if topo.isPinned(v) || topo.valence[v] == 0 {
+                    vertexColors[v] = old[v]
+                } else if topo.isCrease(v) {
+                    let b = topo.boundaryNeighbors[v]
+                    vertexColors[v] = (old[v] * 6 + old[b.0] + old[b.1]) / 8
+                } else {
+                    let n = Double(topo.valence[v])
+                    let q = faceColorSum[v] / Double(topo.faceCount[v])
+                    let r = midColorSum[v] / Double(topo.valence[v])
+                    vertexColors[v] = (q + r * 2 + old[v] * (n - 3)) / n
+                }
+            }
+            var newColors = vertexColors
+            newColors.append(contentsOf: faceColors)
+            newColors.append(contentsOf: edgeColors)
+            colors = newColors
+        }
         points = newPoints
         faces = newFaces
     }
@@ -534,6 +605,40 @@ struct SubdivisionMesh {
             newFaces.append([face[2], e20, e12])
             newFaces.append([e01, e12, e20])
         }
+        // Colors under the same odd/even masks.
+        if let old = colors {
+            var edgeColors = [SIMD4<Double>](repeating: .zero, count: topo.edgeEnds.count)
+            for (id, ends) in topo.edgeEnds.enumerated() {
+                let a = old[ends.0], b = old[ends.1]
+                let far = opposite[id]
+                if topo.isBoundaryEdge(id) || far.0 == -1 || far.1 == -1 {
+                    edgeColors[id] = (a + b) * 0.5
+                } else {
+                    edgeColors[id] = (a + b) * (3.0 / 8.0) + (old[far.0] + old[far.1]) * (1.0 / 8.0)
+                }
+            }
+            var neighborColorSum = [SIMD4<Double>](repeating: .zero, count: vCount)
+            for ends in topo.edgeEnds {
+                neighborColorSum[ends.0] += old[ends.1]
+                neighborColorSum[ends.1] += old[ends.0]
+            }
+            var vertexColors = [SIMD4<Double>](repeating: .zero, count: vCount)
+            for v in 0..<vCount {
+                if topo.isPinned(v) || topo.valence[v] == 0 {
+                    vertexColors[v] = old[v]
+                } else if topo.isCrease(v) {
+                    let b = topo.boundaryNeighbors[v]
+                    vertexColors[v] = (old[v] * 6 + old[b.0] + old[b.1]) / 8
+                } else {
+                    let n = topo.valence[v]
+                    let beta = SubdivisionMesh.loopBeta(n)
+                    vertexColors[v] = old[v] * (1 - Double(n) * beta) + neighborColorSum[v] * beta
+                }
+            }
+            var newColors = vertexColors
+            newColors.append(contentsOf: edgeColors)
+            colors = newColors
+        }
         points = newPoints
         faces = newFaces
     }
@@ -569,6 +674,29 @@ struct SubdivisionMesh {
                 limit[v] = points[v] * (1 - Double(n) * gamma) + neighborSum[v] * gamma
             }
         }
+        // The limit masks read a value on the limit surface, not a position in
+        // particular, so a color takes the same push and stays the color of the
+        // point it is attached to.
+        if let old = colors {
+            var neighborColorSum = [SIMD4<Double>](repeating: .zero, count: old.count)
+            for ends in topo.edgeEnds {
+                neighborColorSum[ends.0] += old[ends.1]
+                neighborColorSum[ends.1] += old[ends.0]
+            }
+            var limitColors = old
+            for v in 0..<old.count {
+                if topo.isPinned(v) || topo.valence[v] == 0 { continue }
+                if topo.isCrease(v) {
+                    let b = topo.boundaryNeighbors[v]
+                    limitColors[v] = (old[v] * 3 + old[b.0] + old[b.1]) / 5
+                } else {
+                    let n = topo.valence[v]
+                    let gamma = 1.0 / (Double(n) + 3.0 / (8.0 * SubdivisionMesh.loopBeta(n)))
+                    limitColors[v] = old[v] * (1 - Double(n) * gamma) + neighborColorSum[v] * gamma
+                }
+            }
+            colors = limitColors
+        }
         points = limit
     }
 
@@ -587,7 +715,13 @@ struct SubdivisionMesh {
                 indices.append(UInt32(face[c + 1]))
             }
         }
-        let out = Mesh(positions: points, indices: indices, material: material)
+        var out = Mesh(positions: points, indices: indices, material: material)
+        if let colors {
+            out.colors = colors.map {
+                Color(red: min(max($0.x, 0), 1), green: min(max($0.y, 0), 1),
+                      blue: min(max($0.z, 0), 1), alpha: min(max($0.w, 0), 1))
+            }
+        }
         return out.withSmoothNormals()
     }
 

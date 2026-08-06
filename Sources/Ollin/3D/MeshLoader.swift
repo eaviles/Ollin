@@ -309,6 +309,7 @@ extension Mesh {
         var normals: [Vector3]
         var uvs: [Vector2]?
         var indices: [UInt32]
+        var colors: [Color]?
         var material: MeshMaterial?
     }
 
@@ -328,6 +329,11 @@ extension Mesh {
         var uvs: [Vector2] = []
         var indices: [UInt32] = []
         var allHaveUV = true
+        // Vertex colors fill with white where a mesh has none, since white is the
+        // multiply identity: a partial set costs nothing, so they survive as soon as
+        // any merged mesh carried them (unlike UVs, where a partial set would mismap).
+        var colors: [Color] = []
+        var anyHaveColor = false
         var material: MeshMaterial?
 
         for mdl in mdlMeshes {
@@ -341,13 +347,20 @@ extension Mesh {
                 allHaveUV = false
                 uvs.append(contentsOf: repeatElement(.zero, count: data.positions.count))
             }
+            if let meshColors = data.colors, meshColors.count == data.positions.count {
+                colors.append(contentsOf: meshColors)
+                anyHaveColor = true
+            } else {
+                colors.append(contentsOf: repeatElement(.white, count: data.positions.count))
+            }
             indices.append(contentsOf: data.indices.map { base + $0 })
             if material == nil { material = data.material }
         }
 
         guard !positions.isEmpty, !indices.isEmpty else { return nil }
         return Mesh(positions: positions, normals: normals, indices: indices,
-                    uvs: allHaveUV ? uvs : [], material: material)
+                    uvs: allHaveUV ? uvs : [], colors: anyHaveColor ? colors : [],
+                    material: material)
     }
 
     /// Read one `MDLMesh`'s vertices, triangle indices, and first readable
@@ -369,6 +382,7 @@ extension Mesh {
         var normals: [Vector3] = []
         var uvs: [Vector2]?
         var indices: [UInt32] = []
+        var colors: [Color]?
         var material: MeshMaterial?
 
         // Positions and normals are read three floats at a time from each vertex's
@@ -394,6 +408,35 @@ extension Mesh {
             }
             uvs = read
         }
+        // Per-vertex color, the payload a scanned or vertex-painted mesh carries (a
+        // point-cloud PLY's `red`/`green`/`blue`). These arrive as *display* values
+        // (the format stores what a viewer should show, and nothing color-manages
+        // them on the way in), so they become a `Color` directly rather than being
+        // re-encoded the way a linear glTF factor is.
+        //
+        // The requested format must keep the attribute's own component count. Asking
+        // a three-component color for four hands back a buffer that reads as the
+        // first vertex's value repeated for every vertex, silently: it does not
+        // return nil, so there is nothing to fall back from. The count is the low
+        // byte of the format, so read that and ask for the matching width.
+        func clamped01(_ v: Float) -> Double { Double(min(max(v, 0), 1)) }
+        let colorFormat = mdl.vertexDescriptor.attributeNamed(MDLVertexAttributeColor)?.format
+        if let colorFormat, colorFormat != .invalid {
+            let wide = Int(colorFormat.rawValue & 0xFF) >= 4
+            if let colorAttr = mdl.vertexAttributeData(forAttributeNamed: MDLVertexAttributeColor,
+                                                       as: wide ? .float4 : .float3) {
+                var read: [Color] = []
+                read.reserveCapacity(count)
+                for i in 0..<count {
+                    let c = colorAttr.dataStart.advanced(by: i * colorAttr.stride)
+                        .assumingMemoryBound(to: Float.self)
+                    read.append(Color(red: clamped01(c[0]), green: clamped01(c[1]),
+                                      blue: clamped01(c[2]),
+                                      alpha: wide ? clamped01(c[3]) : 1))
+                }
+                colors = read
+            }
+        }
 
         for case let submesh as MDLSubmesh in mdl.submeshes ?? [] {
             if material == nil, let m = submesh.material { material = readMaterial(m) }
@@ -417,7 +460,7 @@ extension Mesh {
 
         let unit = normals.map { $0.lengthSquared > 1e-12 ? $0.normalized : .unitY }
         return MDLMeshData(positions: positions, normals: unit, uvs: uvs,
-                           indices: indices, material: material)
+                           indices: indices, colors: colors, material: material)
     }
 
     /// Read an `MDLMaterial`'s base color: a texture (decoded to an `Image`) or a solid
