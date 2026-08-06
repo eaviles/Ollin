@@ -33,6 +33,17 @@ public final class SoftBody3D {
     /// Anything a sketch hung on this body.
     public var userData: Any?
 
+    /// A name for the mesh this body was built from, so a snapshot can write
+    /// the name down instead of the whole surface. A soft body *is* its mesh,
+    /// so unlike a rigid body this is what decides whether it can be saved at
+    /// all: an unnamed one is left out with a note.
+    ///
+    /// ```swift
+    /// let banner = world.addSoftBody(from: sheet, at: Vector3(0, 3, 0))
+    /// banner.assetName = "banner"
+    /// ```
+    public var assetName: String?
+
     /// The mesh it was built from, in its own local space, unchanged.
     public let sourceMesh: Mesh
 
@@ -84,6 +95,20 @@ public final class SoftBody3D {
     /// nothing.
     var surfaceHeights: [Float] = []
 
+    /// The numbers this body was built with. The solver takes them and works
+    /// them into compliances and rest lengths it never hands back, so a body
+    /// that wants to be written down keeps its own copy.
+    let buildMass: Double
+    let buildStiffness: Double
+    let buildBend: Double
+    let buildDamping: Double
+    let buildFriction: Double
+    let buildRestitution: Double
+    let buildTwoSided: Bool
+    /// Where the surface was built, which is the frame its rest shape is in.
+    let buildPosition: Vector3
+    let buildRotation: simd_quatd
+
     /// The total mass, kept so `unpin` can restore a particle's share of it.
     private let totalMass: Double
 
@@ -103,6 +128,15 @@ public final class SoftBody3D {
         self.sourceMesh = mesh
         self.welding = welding
         self.particles = welding.positions
+        self.buildMass = mass
+        self.buildStiffness = stiffness
+        self.buildBend = bend
+        self.buildDamping = damping
+        self.buildFriction = friction
+        self.buildRestitution = restitution
+        self.buildTwoSided = twoSided
+        self.buildPosition = position
+        self.buildRotation = rotation
 
         // Rest measurements, in meters, are what let the knobs mean the same
         // thing whatever the body's size: the pressure knob is calibrated
@@ -277,6 +311,48 @@ public final class SoftBody3D {
     public var positions: [Vector3] {
         let particles = particlePositions
         return welding.remap.map { particles[$0] }
+    }
+
+    /// How fast every particle is moving, in world units per second, in the
+    /// same order as `particlePositions`.
+    public var particleVelocities: [Vector3] {
+        guard !isDestroyed else { return [] }
+        var raw = [Float](repeating: 0, count: welding.count * 3)
+        let written = raw.withUnsafeMutableBufferPointer { buffer in
+            Int(cjolt_soft_body_get_velocities(world.handle, handle,
+                                               buffer.baseAddress,
+                                               Int32(welding.count)))
+        }
+        let scale = world.unitsPerMeter
+        return (0 ..< written).map {
+            Vector3(Double(raw[$0 * 3]) * scale, Double(raw[$0 * 3 + 1]) * scale,
+                    Double(raw[$0 * 3 + 2]) * scale)
+        }
+    }
+
+    /// Stand every particle where it was and moving as it was. This is how a
+    /// saved surface is put back; while the world is running, take hold of a
+    /// particle with `move(_:to:)` instead, which collides on the way.
+    func restoreState(positions: [Vector3], velocities: [Vector3]) {
+        guard !isDestroyed, positions.count == welding.count else { return }
+        let scale = 1 / world.unitsPerMeter
+        var flatPositions = [Float](repeating: 0, count: positions.count * 3)
+        var flatVelocities = [Float](repeating: 0, count: positions.count * 3)
+        for (index, point) in positions.enumerated() {
+            flatPositions[index * 3] = Float(point.x * scale)
+            flatPositions[index * 3 + 1] = Float(point.y * scale)
+            flatPositions[index * 3 + 2] = Float(point.z * scale)
+            let velocity = index < velocities.count ? velocities[index] : .zero
+            flatVelocities[index * 3] = Float(velocity.x * scale)
+            flatVelocities[index * 3 + 1] = Float(velocity.y * scale)
+            flatVelocities[index * 3 + 2] = Float(velocity.z * scale)
+        }
+        flatPositions.withUnsafeBufferPointer { p in
+            flatVelocities.withUnsafeBufferPointer { v in
+                cjolt_soft_body_set_state(world.handle, handle, p.baseAddress,
+                                          v.baseAddress, Int32(positions.count))
+            }
+        }
     }
 
     /// The simulated position of every particle, in world space. Shorter than

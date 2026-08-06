@@ -23,6 +23,15 @@ import OllinPhysics
 /// holds only what the solver was built from: a capsule per joint, the tree
 /// they hang in, and how far each may bend. So `figure.apply(walker)` still
 /// draws the mesh over the restored bodies, exactly as it did before.
+///
+/// Two things in the yard say the same thing out loud. The ground the yard is
+/// cut into is a heightfield, and the banner strung across it is a cloth, and
+/// both are made of more numbers than everything else here put together. So
+/// each is given an `assetName`, the file writes the name down instead of the
+/// geometry, and the sketch says what the names mean on the way back in. That
+/// is the trade: a snapshot that names nothing is self-contained and can be
+/// committed beside a sketch, and one that names things is a fraction of the
+/// size and needs the sketch to hand its assets over.
 @main
 final class Yard: Sketch {
     let world = World3D()
@@ -32,6 +41,12 @@ final class Yard: Sketch {
     /// loaded, so the pacer has a body to wear.
     var skin: Scene!
     var standing: Scene!
+    /// The two heavy pieces of geometry, which the file names rather than
+    /// holds. They are built here, once, and handed back when it asks.
+    let ground = Heightfield.diamondSquare(size: 65, roughness: 0.5, seed: 6)
+    let bannerMesh = Mesh.plane(width: 5, depth: 2.4, segments: 18)
+    var groundMesh: Mesh!
+    var banner: SoftBody3D?
     /// The animation the file ships with, so the pacer is not a mannequin.
     var idle: SceneAnimation?
     var truck: Vehicle3D?
@@ -60,10 +75,11 @@ final class Yard: Sketch {
         skin = Scene(resource: "figure", extension: "gltf", in: Bundle.module)
         standing = skin
         idle = skin.animations.first
-        world.ground = 0
+        groundMesh = ground.mesh(width: 40, depth: 34, height: 1.6)
+        world.ground = nil
         world.bounce = 0.1
 
-        if world.load(contentsOf: file) {
+        if world.load(contentsOf: file, resolving: asset) {
             adopt()
             kept = try? PhysicsSnapshot(contentsOf: file)
             say("loaded the yard from the last run")
@@ -74,8 +90,26 @@ final class Yard: Sketch {
 
     // MARK: Laying out a yard
 
+    /// What each name the snapshot wrote down actually is. The sketch stays
+    /// the source of truth about where its own geometry lives.
+    func asset(_ name: String) -> PhysicsAsset? {
+        switch name {
+        case "yard": return .heightfield(ground)
+        case "banner": return .mesh(bannerMesh)
+        default: return nil
+        }
+    }
+
     func build() {
         world.removeAll()
+
+        // The yard's own ground: a heightfield, which is thousands of numbers,
+        // so it is named rather than written into the file.
+        let floor = world.addBody(.heightfield(ground, width: 40, depth: 34,
+                                               height: 1.6),
+                                  at: Vector3(0, -0.8, 0), kind: .static,
+                                  friction: 0.9)
+        floor.assetName = "yard"
 
         // The walls, so nothing that gets hit leaves.
         world.addBody(.box(width: 22, height: 1.4, depth: 0.5),
@@ -105,9 +139,13 @@ final class Yard: Sketch {
                 return wheel
             }
         truck = world.addVehicle(.box(width: 1.7, height: 0.7, depth: 3.4),
-                                 at: Vector3(3.0, 0.9, 1.4), wheels: wheels,
+                                 at: Vector3(2.4, 1.3, 2.4), wheels: wheels,
                                  mass: 1400, engineTorque: 520, topSpeed: 16,
                                  rotated: .pi, axis: .unitY)
+
+        // Parked while the yard settles, or it rolls away down the slope
+        // before anyone has touched it.
+        truck?.handBrake = 1
 
         pacer = world.addCharacter(radius: 0.3, height: 1.75,
                                    at: Vector3(-5.5, 0.1, 1.6))
@@ -116,6 +154,14 @@ final class Yard: Sketch {
         // arrangement a snapshot exists to keep.
         fallen = world.addRagdoll(from: skin, at: Vector3(-0.6, 2.4, -1.4),
                                   mass: 68, friction: 0.7)
+
+        // A banner strung between two posts. A soft body *is* its mesh, so a
+        // name is what makes it saveable at all.
+        banner = world.addSoftBody(from: bannerMesh, at: Vector3(2.9, 2.7, -3.9),
+                                   mass: 1.2, stiffness: 0.7, damping: 0.2,
+                                   pinned: { $0.z < -1.1 && abs($0.x) > 2.2 })
+        banner?.assetName = "banner"
+
         for _ in 0 ..< 300 { world.step(dt: 1.0 / 60) }
 
         kept = world.snapshot()
@@ -128,6 +174,7 @@ final class Yard: Sketch {
         truck = world.vehicles.first
         pacer = world.characters.first
         fallen = world.ragdolls.first
+        banner = world.softBodies.first
     }
 
     // MARK: Keeping it
@@ -143,7 +190,7 @@ final class Yard: Sketch {
                 say("could not write \(file.path)")
             }
         case "l":
-            if world.load(contentsOf: file) {
+            if world.load(contentsOf: file, resolving: asset) {
                 adopt()
                 kept = try? PhysicsSnapshot(contentsOf: file)
                 say("loaded the yard from the file")
@@ -152,7 +199,7 @@ final class Yard: Sketch {
             }
         case "r":
             guard let kept else { return }
-            world.restore(kept)
+            world.restore(kept, resolving: asset)
             adopt()
             say("back to the yard as it was saved")
         case "n":
@@ -174,7 +221,7 @@ final class Yard: Sketch {
         environment(.sky(turbidity: 3.6, sunElevation: 0.36))
         lightingPreset(.goldenHour)
         castShadows()
-        perspective(eye: Vector3(6.8, 5.0, 8.6), target: Vector3(-1.5, 0.5, -1.6))
+        perspective(eye: Vector3(7.4, 6.2, 12.2), target: Vector3(-0.7, 0.9, -1.4))
 
         drive()
         walk()
@@ -185,6 +232,7 @@ final class Yard: Sketch {
         if let fallen { skin.apply(fallen) }
 
         drawGround()
+        drawBanner()
         drawCrates()
         drawTruck()
         drawPacer()
@@ -203,6 +251,9 @@ final class Yard: Sketch {
         truck.throttle = (isKeyDown(.upArrow) ? 1 : 0) - (isKeyDown(.downArrow) ? 1 : 0)
         truck.steering = (isKeyDown(.rightArrow) ? 1 : 0) - (isKeyDown(.leftArrow) ? 1 : 0)
         truck.brake = isKeyDown(" ") ? 1 : 0
+        // The yard is not flat, so a truck nobody is driving is a truck with
+        // its parking brake on.
+        truck.handBrake = truck.throttle == 0 ? 1 : 0
     }
 
     /// The pacer walks its own beat, so a restore lands mid-stride rather than
@@ -215,13 +266,22 @@ final class Yard: Sketch {
         pacer.facing = pacing > 0 ? .pi / 2 : -.pi / 2
     }
 
+    /// The yard's ground is the same heightfield the collider was cut from, so
+    /// the mesh drawn and the surface walked on are one surface.
     func drawGround() {
         fill(Color(hex: 0x8A7F63))
         material(.dielectric(roughness: 1))
         withState {
-            translate(0, -0.25, 0)
-            drawBox(width: 90, height: 0.5, depth: 90)
+            translate(0, -0.8, 0)
+            drawMesh(groundMesh)
         }
+    }
+
+    func drawBanner() {
+        guard let banner else { return }
+        fill(Color(hex: 0xC2544A))
+        material(.dielectric(roughness: 0.85))
+        drawSoftBody(banner)
     }
 
     /// Everything loose in the yard, walls included, drawn out of the collider

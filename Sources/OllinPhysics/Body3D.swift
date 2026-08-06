@@ -56,6 +56,20 @@ public final class Body3D {
     /// its mesh, a group id) without a parallel array.
     public var userData: Any?
 
+    /// A name for the geometry this body's collider was cut from, so a
+    /// snapshot can write the name down instead of every vertex of it. Only a
+    /// `.mesh` or `.heightfield` collider has anything heavy to name; on
+    /// anything else it is carried as a label and nothing more.
+    ///
+    /// ```swift
+    /// island.assetName = "island"
+    /// // …and when the world comes back:
+    /// world.restore(saved) { $0 == "island" ? .heightfield(terrain) : nil }
+    /// ```
+    ///
+    /// `userData` is the sibling for everything that is not going in a file.
+    public var assetName: String?
+
     /// The mass the body was created with, when one was given instead of being
     /// worked out from the shape. Restricting `freedom` has to re-derive the
     /// body's mass properties, and a body whose travel is already locked

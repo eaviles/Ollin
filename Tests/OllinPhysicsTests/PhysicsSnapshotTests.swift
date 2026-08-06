@@ -1108,3 +1108,277 @@ struct SnapshotTierTests {
         #expect(world.snapshot() == settled, "and it stays settled")
     }
 }
+
+// MARK: - Naming geometry rather than holding it
+
+/// A snapshot holds everything by value, which is what makes it a file you can
+/// commit. Bulk geometry is the exception worth naming: a mesh or heightfield
+/// collider, and a soft body's whole surface. Behavioral, counterfactual twins.
+struct SnapshotAssetTests {
+
+    func run(_ world: World3D, steps: Int, dt: Double = 1.0 / 60) {
+        for _ in 0 ..< steps { world.step(dt: dt) }
+    }
+
+    static let terrain = Heightfield.diamondSquare(size: 65, roughness: 0.6, seed: 3)
+    static let knot = Mesh.torusKnot(radius: 2, tube: 0.5, segments: 120, sides: 18)
+
+    /// A world with scenery in it: a terrain collider, a mesh collider, and a
+    /// heap of crates settled on top.
+    @discardableResult
+    func scenery(in world: World3D, named: Bool) -> World3D {
+        world.ground = 0
+        // Standing on the floor rather than sunk into it, so anything landing
+        // on the terrain is above where the bare floor would have caught it.
+        let island = world.addBody(.heightfield(Self.terrain, width: 40, depth: 40,
+                                                height: 6),
+                                   at: Vector3(0, 0, 0), kind: .static)
+        let sculpture = world.addBody(.mesh(Self.knot), at: Vector3(0, 11, 0),
+                                      kind: .static)
+        if named {
+            island.assetName = "island"
+            sculpture.assetName = "knot"
+        }
+        for i in 0 ..< 20 {
+            world.addBody(.box(width: 0.4, height: 0.4, depth: 0.4),
+                          at: Vector3(Double(i % 5) * 0.5 - 1,
+                                      9 + Double(i / 5) * 0.5, 0))
+        }
+        run(world, steps: 400)
+        return world
+    }
+
+    func resolver(_ name: String) -> PhysicsAsset? {
+        switch name {
+        case "island": return .heightfield(Self.terrain)
+        case "knot": return .mesh(Self.knot)
+        default: return nil
+        }
+    }
+
+    /// The headline: naming the scenery takes the file from a hundred kilobytes
+    /// to about one, and the world that comes back is the same world. The twin
+    /// is the identical scene saved whole, which is the size of its scenery.
+    @Test func namingTheSceneryIsTheDifferenceBetweenAKilobyteAndAHundred() {
+        let whole = World3D()
+        scenery(in: whole, named: false)
+        let held = whole.snapshot()
+
+        let world = World3D()
+        scenery(in: world, named: true)
+        let named = world.snapshot()
+
+        #expect(held.assetNames.isEmpty, "a snapshot that holds everything names nothing")
+        #expect(named.assetNames == ["island", "knot"], "and one that names says what")
+        #expect(named.data.count * 20 < held.data.count,
+                "naming it is at least twenty times smaller: \(named.data.count) against \(held.data.count)")
+
+        let back = World3D()
+        back.restore(named, resolving: resolver)
+        #expect(back.bodies.count == world.bodies.count, "every body came back")
+        let error = zip(world.bodies.map(\.position), back.bodies.map(\.position))
+            .map { ($0 - $1).length }.max() ?? .infinity
+        #expect(error == 0, "in exactly the poses it was saved in")
+    }
+
+    /// The named geometry itself comes back, not a stand-in: the terrain still
+    /// holds bodies up where it did. The twin is the same world restored with
+    /// no resolver, where the terrain is missing and a dropped body falls past
+    /// where it should have landed.
+    @Test func namedSceneryStillHoldsThingsUp() throws {
+        let world = World3D()
+        scenery(in: world, named: true)
+        let saved = world.snapshot()
+
+        let back = World3D()
+        back.restore(saved, resolving: resolver)
+        let onTerrain = back.addBody(.sphere(radius: 0.2), at: Vector3(4, 12, 4))
+        run(back, steps: 240)
+
+        let bare = World3D()
+        bare.ground = 0
+        bare.restore(saved)      // no resolver: the scenery is left out
+        let falling = bare.addBody(.sphere(radius: 0.2), at: Vector3(4, 12, 4))
+        run(bare, steps: 240)
+
+        #expect(bare.bodies.count == back.bodies.count - 2,
+                "the two named bodies are the ones missing")
+        #expect(onTerrain.position.y > falling.position.y + 0.5,
+                "the restored terrain holds the ball above where the bare world lets it fall")
+    }
+
+    /// A name the resolver does not know costs that one body, not the restore.
+    /// The twin is the resolver that knows both names.
+    @Test func anUnknownNameCostsOneBodyRatherThanTheWholeWorld() {
+        let world = World3D()
+        scenery(in: world, named: true)
+        let saved = world.snapshot()
+        let crates = world.bodies.count - 2
+
+        let partial = World3D()
+        partial.restore(saved) { $0 == "island" ? .heightfield(Self.terrain) : nil }
+        #expect(partial.bodies.count == crates + 1, "the knot is the only one lost")
+
+        let full = World3D()
+        full.restore(saved, resolving: resolver)
+        #expect(full.bodies.count == crates + 2, "where a resolver that knows both keeps both")
+    }
+
+    /// Handing back the wrong kind of geometry for a name is refused rather
+    /// than forced into a collider it cannot be. The twin is the right kind.
+    @Test func theWrongKindOfGeometryIsRefused() {
+        let world = World3D()
+        scenery(in: world, named: true)
+        let saved = world.snapshot()
+
+        let muddled = World3D()
+        muddled.restore(saved) { name in
+            // Both names answered, both with the other one's kind.
+            name == "island" ? .mesh(Self.knot) : .heightfield(Self.terrain)
+        }
+        #expect(muddled.bodies.count == world.bodies.count - 2,
+                "neither could be used")
+
+        let right = World3D()
+        right.restore(saved, resolving: resolver)
+        #expect(right.bodies.count == world.bodies.count)
+    }
+
+    /// A name that now resolves to different geometry is still restored, since
+    /// the saved poses are the best answer there is, but the snapshot notices.
+    /// The fingerprint is what notices, so this pins that it can tell the two
+    /// apart at all.
+    @Test func aFingerprintTellsChangedGeometryFromTheSame() {
+        let same = AssetFingerprint(of: .mesh(Self.knot))
+        #expect(same.matches(AssetFingerprint(of: .mesh(Self.knot))))
+
+        let coarser = Mesh.torusKnot(radius: 2, tube: 0.5, segments: 60, sides: 18)
+        #expect(!same.matches(AssetFingerprint(of: .mesh(coarser))),
+                "a re-exported mesh with a different vertex count is caught")
+
+        let bigger = Mesh.torusKnot(radius: 3, tube: 0.5, segments: 120, sides: 18)
+        #expect(!same.matches(AssetFingerprint(of: .mesh(bigger))),
+                "and so is one of the same counts at a different size")
+
+        let field = AssetFingerprint(of: .heightfield(Self.terrain))
+        #expect(field.matches(AssetFingerprint(of: .heightfield(Self.terrain))))
+        #expect(!field.matches(AssetFingerprint(
+            of: .heightfield(Heightfield.diamondSquare(size: 65, roughness: 0.6,
+                                                       seed: 9)))),
+            "a terrain regenerated from another seed is not the same terrain")
+    }
+
+    // MARK: Soft bodies
+
+    static let sheet = Mesh.plane(width: 3, depth: 3, segments: 16)
+
+    /// A draped sheet comes back draped, particle for particle, still pinned
+    /// where it was pinned. The twin is a sheet built fresh from the same mesh,
+    /// which is flat and up in the air.
+    @Test func aDrapedSheetComesBackDraped() throws {
+        let world = World3D()
+        world.ground = 0
+        let cloth = try #require(world.addSoftBody(from: Self.sheet,
+                                                   at: Vector3(0, 3, 0),
+                                                   mass: 1.5, stiffness: 0.8,
+                                                   pinned: { $0.z < -1.4 }))
+        cloth.assetName = "sheet"
+        run(world, steps: 240)
+        let draped = cloth.particlePositions
+        let pinned = (0 ..< cloth.particleCount).filter { cloth.isPinned($0) }
+        #expect(!pinned.isEmpty, "some of it is held up")
+
+        let back = World3D()
+        back.ground = 0
+        back.restore(world.snapshot()) { $0 == "sheet" ? .mesh(Self.sheet) : nil }
+        let restored = try #require(back.softBodies.first)
+        #expect(restored.particleCount == cloth.particleCount)
+        let error = zip(draped, restored.particlePositions)
+            .map { ($0 - $1).length }.max() ?? .infinity
+        #expect(error < 1e-6, "every particle came back where it was (\(error))")
+        #expect((0 ..< restored.particleCount).filter { restored.isPinned($0) } == pinned,
+                "and the same ones are still held")
+
+        // The twin: built fresh, the same sheet is flat and has not fallen.
+        let fresh = World3D()
+        fresh.ground = 0
+        let flat = try #require(fresh.addSoftBody(from: Self.sheet,
+                                                  at: Vector3(0, 3, 0),
+                                                  mass: 1.5, stiffness: 0.8,
+                                                  pinned: { $0.z < -1.4 }))
+        let spread = zip(draped, flat.particlePositions)
+            .map { ($0 - $1).length }.max() ?? 0
+        #expect(spread > 0.5, "a fresh sheet is nowhere near a draped one")
+    }
+
+    /// A soft body with no name is left out, because a soft body is nothing but
+    /// its mesh. The twin is the same sheet with a name, which is saved.
+    @Test func anUnnamedSoftBodyIsLeftOutRatherThanHalfSaved() throws {
+        func saveAndRestore(naming: Bool) throws -> Int {
+            let world = World3D()
+            world.ground = 0
+            let cloth = try #require(world.addSoftBody(from: Self.sheet,
+                                                       at: Vector3(0, 3, 0)))
+            if naming { cloth.assetName = "sheet" }
+            run(world, steps: 120)
+            let back = World3D()
+            back.ground = 0
+            back.restore(world.snapshot()) { $0 == "sheet" ? .mesh(Self.sheet) : nil }
+            return back.softBodies.count
+        }
+        #expect(try saveAndRestore(naming: true) == 1)
+        #expect(try saveAndRestore(naming: false) == 0)
+    }
+
+    /// A named soft body whose mesh nothing answers for is left out too, rather
+    /// than failing the restore or coming back as something else.
+    @Test func aSoftBodyWhoseMeshIsNotFoundIsLeftOut() throws {
+        let world = World3D()
+        world.ground = 0
+        let cloth = try #require(world.addSoftBody(from: Self.sheet,
+                                                   at: Vector3(0, 3, 0)))
+        cloth.assetName = "sheet"
+        world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(4, 1, 0))
+        run(world, steps: 120)
+
+        let back = World3D()
+        back.ground = 0
+        back.restore(world.snapshot())          // no resolver
+        #expect(back.softBodies.isEmpty)
+        #expect(back.bodies.count == 1, "and the crate still came back")
+    }
+
+    /// Naming carries through a file, and the names can be read off a snapshot
+    /// before anything is restored, which is how a sketch knows what to hand
+    /// back.
+    @Test func aNamedWorldSurvivesAFile() throws {
+        let world = World3D()
+        scenery(in: world, named: true)
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ollin-named-\(UUID().uuidString).physics")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try world.save(to: url)
+
+        let read = try PhysicsSnapshot(contentsOf: url)
+        #expect(read.assetNames == ["island", "knot"],
+                "a sketch can ask what it will be needing")
+
+        let back = World3D()
+        #expect(back.load(contentsOf: url, resolving: resolver))
+        #expect(back.bodies.count == world.bodies.count)
+        let error = zip(world.bodies.map(\.position), back.bodies.map(\.position))
+            .map { ($0 - $1).length }.max() ?? .infinity
+        #expect(error == 0)
+    }
+
+    /// A named world restored and captured again gives the same bytes, name
+    /// table and all.
+    @Test func aNamedWorldRoundTripsToTheSameBytes() {
+        let world = World3D()
+        scenery(in: world, named: true)
+        world.restore(world.snapshot(), resolving: resolver)
+        let settled = world.snapshot()
+        world.restore(settled, resolving: resolver)
+        #expect(world.snapshot() == settled)
+    }
+}

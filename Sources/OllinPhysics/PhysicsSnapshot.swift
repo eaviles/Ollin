@@ -125,6 +125,26 @@ public struct PhysicsSnapshot: Sendable, Equatable {
         return unpacked
     }
 
+    /// The names of the geometry this snapshot declines to hold, in the order
+    /// they were first used, so a sketch can see what a resolver will be asked
+    /// for before restoring anything. Empty for a snapshot that names nothing,
+    /// which is the default and the self-contained case.
+    ///
+    /// ```swift
+    /// for name in saved.assetNames { print("needs \(name)") }
+    /// ```
+    public var assetNames: [String] {
+        guard let payload else { return [] }
+        var reader = SnapshotReader(payload)
+        guard let count = try? reader.count() else { return [] }
+        var names: [String] = []
+        for _ in 0 ..< count {
+            guard let name = try? reader.string() else { return names }
+            names.append(name)
+        }
+        return names
+    }
+
     /// The format this build writes, and the only one it reads.
     static let version = 2
 
@@ -146,6 +166,18 @@ extension World3D {
     /// objects themselves are new ones.
     public func snapshot() -> PhysicsSnapshot {
         var writer = SnapshotWriter()
+
+        // The names of everything this snapshot declines to hold, so a reader
+        // can ask what it will be needing without unpacking the rest.
+        var named: [String] = []
+        for name in bodies.compactMap(\.assetName) where !named.contains(name) {
+            named.append(name)
+        }
+        for name in softBodies.compactMap(\.assetName) where !named.contains(name) {
+            named.append(name)
+        }
+        writer.u32(UInt32(named.count))
+        for name in named { writer.string(name) }
 
         // World settings.
         writer.vector(gravity)
@@ -185,11 +217,12 @@ extension World3D {
             index[vehicle.body.id] = UInt32(saved.count + offset)
         }
         if let groundBody { index[groundBody.id] = PhysicsSnapshot.groundIndex }
-        if !softBodies.isEmpty {
-            noteOnce("a snapshot holds the rigid tier, its characters, "
-                     + "vehicles, and ragdolls; a soft body is built from a "
-                     + "mesh it does not carry, so it is left out and the "
-                     + "sketch adds it back after restoring")
+        let savedSoft = softBodies.filter { $0.assetName != nil }
+        if savedSoft.count < softBodies.count {
+            noteOnce("a soft body is nothing but its mesh, so it is saved only "
+                     + "when it has an assetName to write down in place of it; "
+                     + "set one, and say what it means with "
+                     + "restore(_:resolving:)")
         }
 
         writer.u32(UInt32(saved.count))
@@ -239,6 +272,9 @@ extension World3D {
         writer.u32(UInt32(ragdolls.count))
         for ragdoll in ragdolls { writer.ragdoll(ragdoll, in: self) }
 
+        writer.u32(UInt32(savedSoft.count))
+        for body in savedSoft { writer.softBody(body, in: self) }
+
         return PhysicsSnapshot(payload: writer.data,
                                bodies: saved.count + vehicles.count,
                                joints: structural.count + links.count)
@@ -252,14 +288,15 @@ extension World3D {
     /// restored world is one a sketch could have built by hand. Anything the
     /// world was holding beforehand is gone, characters, vehicles, ragdolls,
     /// and soft bodies included.
-    public func restore(_ snapshot: PhysicsSnapshot) {
+    public func restore(_ snapshot: PhysicsSnapshot,
+                        resolving resolve: PhysicsAssetResolver? = nil) {
         guard let payload = snapshot.payload else {
             noteOnce("this snapshot could not be read; the world is unchanged")
             return
         }
         var reader = SnapshotReader(payload)
         do {
-            try rebuild(from: &reader)
+            try rebuild(from: &reader, resolving: resolve)
         } catch {
             noteOnce("this snapshot could not be read; the world is unchanged")
         }
@@ -273,15 +310,21 @@ extension World3D {
     /// Read a snapshot from a file and restore it. Returns false, leaving the
     /// world alone, when the file is missing or unreadable.
     @discardableResult
-    public func load(contentsOf url: URL) -> Bool {
+    public func load(contentsOf url: URL,
+                     resolving resolve: PhysicsAssetResolver? = nil) -> Bool {
         guard let snapshot = try? PhysicsSnapshot(contentsOf: url) else { return false }
-        restore(snapshot)
+        restore(snapshot, resolving: resolve)
         return true
     }
 
-    private func rebuild(from reader: inout SnapshotReader) throws {
+    private func rebuild(from reader: inout SnapshotReader,
+                         resolving resolve: PhysicsAssetResolver?) throws {
         // Read the whole thing before touching the world, so a truncated file
-        // leaves the pile that is already there standing.
+        // leaves the pile that is already there standing. The leading name
+        // table is for a reader asking what it needs; each body carries its
+        // own name, so nothing here reads it back.
+        for _ in 0 ..< (try reader.count()) { _ = try reader.string() }
+
         let gravity = try reader.vector()
         let ground = try reader.optionalDouble()
         let bounce = try reader.f64()
@@ -322,6 +365,11 @@ extension World3D {
         var savedRagdolls: [SavedRagdoll] = []
         for _ in 0 ..< (try reader.count()) { savedRagdolls.append(try reader.ragdoll()) }
 
+        var savedSoftBodies: [SavedSoftBody] = []
+        for _ in 0 ..< (try reader.count()) {
+            savedSoftBodies.append(try reader.softBody())
+        }
+
         // Everything read: now the world can be emptied.
         removeAll()
 
@@ -356,8 +404,19 @@ extension World3D {
         self.waterPhase = waterPhase
         waterMoved = false
 
+        // A body whose geometry was named and could not be found is left out
+        // rather than restored wearing something else, and the joints that
+        // named it are dropped with it. The saved indices still have to line
+        // up, so the gaps are kept as nils.
+        var restoredBodies: [Body3D?] = []
         for saved in savedBodies {
-            let body = addBody(saved.collider, at: saved.position,
+            guard let collider = saved.collider.resolved(by: resolve,
+                                                         note: { noteOnce($0) })
+            else {
+                restoredBodies.append(nil)
+                continue
+            }
+            let body = addBody(collider, at: saved.position,
                                kind: saved.kind, isSensor: saved.isSensor,
                                rotated: 0, axis: .unitY, density: saved.density,
                                friction: saved.friction,
@@ -371,19 +430,22 @@ extension World3D {
                                angularVelocity: saved.angularVelocity,
                                asleep: !saved.isAwake)
             body.buoyancy = saved.buoyancy
+            body.assetName = saved.assetName
+            restoredBodies.append(body)
         }
 
         // Vehicles next, because a chassis is an ordinary body that lands in
         // `bodies` right after the loose ones, which is the index a joint may
         // have been saved naming (a trailer on a hitch).
-        for saved in savedVehicles { restoreVehicle(saved) }
+        for saved in savedVehicles { restoredBodies.append(restoreVehicle(saved)) }
 
         let restedPoses = savedBodies.map {
             Pose3D(position: $0.position, rotation: $0.rotation)
         } + savedVehicles.map(\.pose)
         var madeJoints: [Joint3D] = []
         for saved in savedJoints {
-            guard let a = restored(saved.a), let b = restored(saved.b) else { continue }
+            guard let a = restored(saved.a, in: restoredBodies),
+                  let b = restored(saved.b, in: restoredBodies) else { continue }
             // A joint's zero is the pose its two bodies were in when it was
             // made, so they stand back there while it is made and are then put
             // back where the snapshot found them. Neither move wakes them.
@@ -421,11 +483,60 @@ extension World3D {
         }
 
         for saved in savedRagdolls { restoreRagdoll(saved) }
+        for saved in savedSoftBodies { restoreSoftBody(saved, resolving: resolve) }
+    }
+
+    /// Build one saved surface back. The mesh comes from the resolver, since a
+    /// soft body is nothing but its mesh; without one it is left out and said
+    /// so, the way a named collider that resolves to nothing is.
+    private func restoreSoftBody(_ saved: SavedSoftBody,
+                                 resolving resolve: PhysicsAssetResolver?) {
+        guard let mesh = resolve?(saved.assetName)?.mesh else {
+            noteOnce("this world names a soft body's mesh \"\(saved.assetName)\" "
+                     + "that nothing was handed back for, so the surface is "
+                     + "left out; pass a resolver to restore(_:resolving:)")
+            return
+        }
+        if !saved.fingerprint.matches(AssetFingerprint(of: mesh)) {
+            noteOnce("the mesh named \"\(saved.assetName)\" is not what it was "
+                     + "when this world was saved, so the surface in it may "
+                     + "not fit")
+        }
+        // Built where it was built, so its rest shape is in the frame the
+        // saved particle positions were measured against, then stood back in
+        // the shape it had reached.
+        // `addSoftBody` takes an angle about an axis, so the saved quaternion
+        // is handed back in that form. A quaternion with no turn in it has no
+        // axis either, so any axis will do there.
+        let turn = simd_quatd(ix: saved.rotation.imag.x, iy: saved.rotation.imag.y,
+                              iz: saved.rotation.imag.z, r: saved.rotation.real)
+            .normalized
+        let sine = simd_length(turn.imag)
+        let angle = 2 * atan2(sine, turn.real)
+        let axis = sine > 1e-9
+            ? Vector3(turn.imag.x / sine, turn.imag.y / sine, turn.imag.z / sine)
+            : Vector3(0, 1, 0)
+        guard let body = addSoftBody(from: mesh, at: saved.position,
+                                     rotation: angle, axis: axis,
+                                     mass: saved.mass, stiffness: saved.stiffness,
+                                     bend: saved.bend, pressure: saved.pressure,
+                                     damping: saved.damping,
+                                     friction: saved.friction,
+                                     bounce: saved.restitution,
+                                     iterations: saved.iterations,
+                                     vertexRadius: saved.vertexRadius,
+                                     twoSided: saved.twoSided,
+                                     group: group(at: Int32(saved.group)))
+        else { return }
+        body.assetName = saved.assetName
+        for index in saved.pinned { body.pin(index) }
+        body.restoreState(positions: saved.positions, velocities: saved.velocities)
     }
 
     /// Build one saved vehicle back: the chassis through the ordinary
     /// `addVehicle` call, then the state the solver does not take at create.
-    private func restoreVehicle(_ saved: SavedVehicle) {
+    @discardableResult
+    private func restoreVehicle(_ saved: SavedVehicle) -> Body3D? {
         let wheels = saved.wheels.map { spec -> Wheel3D in
             let wheel = Wheel3D.wheel(at: spec.position, radius: spec.radius,
                                       width: spec.width, steers: spec.steers,
@@ -453,7 +564,7 @@ extension World3D {
                                        maxLeanAngle: saved.maxLeanAngle,
                                        tracked: saved.tracked,
                                        group: group(at: Int32(saved.group)))
-        else { return }
+        else { return nil }
         place(vehicle.body, at: saved.pose)
         vehicle.body.velocity = saved.velocity
         vehicle.body.angularVelocity = saved.angularVelocity
@@ -470,6 +581,7 @@ extension World3D {
                                       (rate: $0.spinRate, angle: $0.spin)
                                   })
         if !saved.isAwake { vehicle.body.sleep() }
+        return vehicle.body
     }
 
     /// Build one saved figure back from its fitting. A ragdoll is made in the
@@ -489,10 +601,11 @@ extension World3D {
         }
     }
 
-    /// The restored body a saved index names, the floor slab included.
-    private func restored(_ index: UInt32) -> Body3D? {
+    /// The restored body a saved index names, the floor slab included, or nil
+    /// when that body was left out because its geometry could not be found.
+    private func restored(_ index: UInt32, in built: [Body3D?]) -> Body3D? {
         if index == PhysicsSnapshot.groundIndex { return groundBody }
-        return bodies.indices.contains(Int(index)) ? bodies[Int(index)] : nil
+        return built.indices.contains(Int(index)) ? built[Int(index)] : nil
     }
 
     /// Stand a body at a pose without waking it: a sleeping pile is moved
@@ -535,9 +648,67 @@ struct Pose3D: Sendable, Equatable {
     }
 }
 
+/// A body's collider as a snapshot holds it: either the whole shape, or the
+/// name of the geometry it was cut from, waiting for a resolver to say what
+/// that name means.
+private enum SavedCollider {
+    case ready(Collider3D)
+    case namedMesh(String, AssetFingerprint)
+    case namedHeightfield(String, AssetFingerprint,
+                          width: Double, depth: Double, height: Double)
+
+    /// The name this collider is waiting on, if any.
+    var name: String? {
+        switch self {
+        case .ready: return nil
+        case .namedMesh(let name, _): return name
+        case .namedHeightfield(let name, _, _, _, _): return name
+        }
+    }
+
+    /// The shape, once a resolver has said what the name means. `nil` when the
+    /// name resolved to nothing, or to the wrong kind of geometry.
+    func resolved(by resolve: PhysicsAssetResolver?, note: (String) -> Void)
+        -> Collider3D? {
+        switch self {
+        case .ready(let collider):
+            return collider
+        case .namedMesh(let name, let print):
+            guard let mesh = resolve?(name)?.mesh else {
+                note("this world names a mesh \"\(name)\" that nothing was "
+                     + "handed back for, so the body wearing it is left out; "
+                     + "pass a resolver to restore(_:resolving:)")
+                return nil
+            }
+            warnIfChanged(name, print, AssetFingerprint(of: mesh), note)
+            return .mesh(mesh)
+        case .namedHeightfield(let name, let print, let width, let depth, let height):
+            guard let field = resolve?(name)?.heightfield else {
+                note("this world names a heightfield \"\(name)\" that nothing "
+                     + "was handed back for, so the body wearing it is left "
+                     + "out; pass a resolver to restore(_:resolving:)")
+                return nil
+            }
+            warnIfChanged(name, print, AssetFingerprint(of: .heightfield(field)), note)
+            return .heightfield(field, width: width, depth: depth, height: height)
+        }
+    }
+
+    /// A name that now resolves to different geometry is restored anyway (the
+    /// poses are still the best answer there is), but it is said out loud,
+    /// because a pose saved against one shape rarely fits another.
+    private func warnIfChanged(_ name: String, _ saved: AssetFingerprint,
+                               _ found: AssetFingerprint, _ note: (String) -> Void) {
+        guard !saved.matches(found) else { return }
+        note("the geometry named \"\(name)\" is not what it was when this "
+             + "world was saved, so the poses in it may not fit")
+    }
+}
+
 /// One rigid body as a snapshot holds it.
 private struct SavedBody {
-    var collider: Collider3D
+    var collider: SavedCollider
+    var assetName: String?
     var position: Vector3
     var rotation: SIMD4<Double>
     var velocity: Vector3
@@ -641,6 +812,29 @@ private struct SavedRagdoll {
     var group: UInt32
     var kind: Body3D.Kind
     var poses: [SavedLimbPose]
+}
+
+/// One soft body as a snapshot holds it: the name of the mesh it was built
+/// from, the numbers it was built with, and where every particle has got to.
+private struct SavedSoftBody {
+    var assetName: String
+    var fingerprint: AssetFingerprint
+    var position: Vector3
+    var rotation: simd_quatd
+    var mass: Double
+    var stiffness: Double
+    var bend: Double
+    var pressure: Double
+    var damping: Double
+    var friction: Double
+    var restitution: Double
+    var iterations: Int
+    var vertexRadius: Double
+    var twoSided: Bool
+    var group: UInt32
+    var positions: [Vector3]
+    var velocities: [Vector3]
+    var pinned: [Int]
 }
 
 /// One joint as a snapshot holds it.
@@ -824,6 +1018,37 @@ private struct SnapshotWriter {
         f64(value.waves?.heading ?? 0)
     }
 
+    /// A collider, with the bulk of it replaced by a name when the body it
+    /// belongs to has one. Only the two heavy cases have anything to name, and
+    /// only at the top level: a mesh nested inside a compound is written whole,
+    /// since the name belongs to the body rather than to one of its parts.
+    mutating func collider(_ value: Collider3D, named name: String?) {
+        if let name {
+            switch value {
+            case .mesh(let mesh):
+                u8(11)
+                string(name)
+                fingerprint(AssetFingerprint(of: mesh))
+                return
+            case .heightfield(let field, let width, let depth, let height):
+                u8(12)
+                string(name)
+                fingerprint(AssetFingerprint(of: .heightfield(field)))
+                f64(width); f64(depth); f64(height)
+                return
+            default:
+                break
+            }
+        }
+        collider(value)
+    }
+
+    mutating func fingerprint(_ value: AssetFingerprint) {
+        u32(UInt32(max(0, value.pieces)))
+        u32(UInt32(max(0, value.parts)))
+        u64(value.hash)
+    }
+
     mutating func collider(_ value: Collider3D) {
         switch value {
         case .sphere(let radius):
@@ -870,7 +1095,8 @@ private struct SnapshotWriter {
     }
 
     mutating func body(_ body: Body3D, in world: World3D) {
-        collider(body.collider)
+        string(body.assetName ?? "")
+        collider(body.collider, named: body.assetName)
         pose(Pose3D(of: body))
         vector(body.velocity)
         vector(body.angularVelocity)
@@ -1008,6 +1234,43 @@ private struct SnapshotWriter {
         f64(wheel.grip)
     }
 
+    mutating func softBody(_ body: SoftBody3D, in world: World3D) {
+        // The name stands in for the mesh; everything else here is either a
+        // number the body was built with or the state it has reached.
+        string(body.assetName ?? "")
+        fingerprint(AssetFingerprint(of: body.sourceMesh))
+        vector(body.buildPosition)
+        let q = body.buildRotation
+        f64(q.imag.x); f64(q.imag.y); f64(q.imag.z); f64(q.real)
+        f64(body.buildMass)
+        f64(body.buildStiffness)
+        f64(body.buildBend)
+        f64(body.pressure)
+        f64(body.buildDamping)
+        f64(body.buildFriction)
+        f64(body.buildRestitution)
+        u32(UInt32(max(0, body.iterations)))
+        f64(body.vertexRadius)
+        bool(body.buildTwoSided)
+        u32(UInt32(world.groupIndex(body.group)))
+
+        let positions = body.particlePositions
+        let velocities = body.particleVelocities
+        u32(UInt32(positions.count))
+        for point in positions { vector(point) }
+        for index in positions.indices {
+            vector(index < velocities.count ? velocities[index] : .zero)
+        }
+        // Which particles are held, which is a decision the sketch made with a
+        // closure the snapshot cannot carry.
+        var pinned: [UInt32] = []
+        for index in 0 ..< body.particleCount where body.isPinned(index) {
+            pinned.append(UInt32(index))
+        }
+        u32(UInt32(pinned.count))
+        for index in pinned { u32(index) }
+    }
+
     mutating func ragdoll(_ ragdoll: Ragdoll3D, in world: World3D) {
         // The fitting, which is what the skinned scene was worked down to and
         // the only part of a figure the solver actually needs.
@@ -1057,7 +1320,7 @@ private struct SnapshotWriter {
 /// crashing a sketch.
 private struct SnapshotReader {
     private let data: Data
-    private var offset: Int
+    fileprivate var offset: Int
 
     init(_ data: Data) {
         self.data = data
@@ -1172,6 +1435,32 @@ private struct SnapshotReader {
                                      : nil)
     }
 
+    /// A body's own collider, which may be a name standing in for geometry the
+    /// snapshot declined to hold. Nested colliders (a compound's parts) go
+    /// through `collider()` instead, since a name belongs to a body.
+    mutating func topCollider() throws -> SavedCollider {
+        let mark = offset
+        switch try u8() {
+        case 11:
+            return .namedMesh(try string(), try fingerprint())
+        case 12:
+            return .namedHeightfield(try string(), try fingerprint(),
+                                     width: try f64(), depth: try f64(),
+                                     height: try f64())
+        default:
+            offset = mark
+            return .ready(try collider())
+        }
+    }
+
+    mutating func fingerprint() throws -> AssetFingerprint {
+        // Plain numbers, not lengths in this stream: a fingerprint counts the
+        // pieces of geometry that is *not* here, which is exactly why `count()`
+        // (which bounds a length against the bytes left) is the wrong reader.
+        AssetFingerprint(pieces: Int(try u32()), parts: Int(try u32()),
+                         hash: try u64())
+    }
+
     mutating func collider() throws -> Collider3D {
         switch try u8() {
         case 0: return .sphere(radius: try f64())
@@ -1217,7 +1506,8 @@ private struct SnapshotReader {
     }
 
     mutating func body() throws -> SavedBody {
-        let collider = try collider()
+        let name = try string()
+        let shape = try topCollider()
         let pose = try pose()
         let velocity = try vector()
         let spin = try vector()
@@ -1228,7 +1518,8 @@ private struct SnapshotReader {
         case 2: kind = .kinematic
         default: throw Failure.unknownTag
         }
-        return SavedBody(collider: collider, position: pose.position,
+        return SavedBody(collider: shape, assetName: name.isEmpty ? nil : name,
+                         position: pose.position,
                          rotation: pose.rotation, velocity: velocity,
                          angularVelocity: spin, kind: kind,
                          isSensor: try bool(), density: try f64(),
@@ -1357,6 +1648,45 @@ private struct SnapshotReader {
                    suspensionFrequency: try f64(), suspensionDamping: try f64(),
                    brakeTorque: try f64(), handBrakeTorque: try f64(),
                    grip: try f64())
+    }
+
+    mutating func softBody() throws -> SavedSoftBody {
+        let name = try string()
+        let print = try fingerprint()
+        let position = try vector()
+        let qx = try f64(), qy = try f64(), qz = try f64(), qw = try f64()
+        let mass = try f64()
+        let stiffness = try f64()
+        let bend = try f64()
+        let pressure = try f64()
+        let damping = try f64()
+        let friction = try f64()
+        let restitution = try f64()
+        let iterations = Int(try u32())
+        let vertexRadius = try f64()
+        let twoSided = try bool()
+        let group = try u32()
+
+        let particles = try count()
+        var positions: [Vector3] = []
+        positions.reserveCapacity(particles)
+        for _ in 0 ..< particles { positions.append(try vector()) }
+        var velocities: [Vector3] = []
+        velocities.reserveCapacity(particles)
+        for _ in 0 ..< particles { velocities.append(try vector()) }
+        var pinned: [Int] = []
+        for _ in 0 ..< (try count()) { pinned.append(Int(try u32())) }
+
+        return SavedSoftBody(assetName: name, fingerprint: print,
+                             position: position,
+                             rotation: simd_quatd(ix: qx, iy: qy, iz: qz, r: qw),
+                             mass: mass, stiffness: stiffness, bend: bend,
+                             pressure: pressure, damping: damping,
+                             friction: friction, restitution: restitution,
+                             iterations: iterations, vertexRadius: vertexRadius,
+                             twoSided: twoSided, group: group,
+                             positions: positions, velocities: velocities,
+                             pinned: pinned)
     }
 
     mutating func ragdoll() throws -> SavedRagdoll {

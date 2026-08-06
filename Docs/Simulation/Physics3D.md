@@ -981,6 +981,43 @@ if let grip { dragSoftGrab(grip, to: Vector2(mouseX, mouseY)) }
 
 **What a soft body still cannot do.** The solver collides them with the rigid bodies around them but not with each other, and not with themselves, so a sheet folded double will pass through its own layers (which reads as a flicker where the two lie together). Impulses, joints, and grabs do not reach one, and `body(under:in:)` answers only for solids (use `grabSoftBody(at:in:)`). Tearing is not offered, because a real tear has to split a shared vertex in two and rebuild the surface, which the solver has no way to do while it runs.
 
+<a name="naming-geometry"></a>
+
+#### Naming geometry rather than holding it
+
+Almost everything in a world is small. A box is three numbers, a joint is a point and an axis. Two things are not: a `.mesh` or `.heightfield` collider carries every vertex of whatever it was cut from, and a soft body carries the whole mesh it was built out of. Give either a name and the snapshot writes the name down instead:
+
+```swift
+let island = world.addBody(.heightfield(terrain, width: 60, depth: 60, height: 8),
+                           at: .zero, kind: .static)
+island.assetName = "island"
+
+let banner = world.addSoftBody(from: sheet, at: Vector3(0, 3, 0))
+banner?.assetName = "banner"
+```
+
+and say what the names mean when the world comes back:
+
+```swift
+world.restore(saved) { name in
+    switch name {
+    case "island": return .heightfield(terrain)
+    case "banner": return .mesh(sheet)
+    default:       return nil
+    }
+}
+```
+
+`load(contentsOf:resolving:)` takes the same closure. `PhysicsAsset` is the two things worth naming, `.mesh(_:)` and `.heightfield(_:)`, and `snapshot.assetNames` lists what a snapshot will ask for, so a sketch can check a file before restoring it. How a heightfield is sized in the world (its width, depth, and height) travels in the snapshot, since that is three numbers rather than geometry; only the samples are named.
+
+Measured on a world with a 65² terrain, a five-thousand-vertex mesh, and twenty crates: **105 KB holding it all, 1.1 KB naming it.** On a smaller scene the difference is smaller, and the default stays holding everything, because that is what makes a file you can commit beside a sketch and open anywhere.
+
+Three things are worth knowing:
+
+- **A name that resolves to nothing costs that one body, not the restore.** The rest of the world comes back and a note names what was missing, so a resolver you have not finished writing yet gives you a yard with no ground rather than nothing at all.
+- **A soft body needs a name to be saved at all**, since there is nothing else to it. An unnamed one is left out with a note.
+- **A name that now resolves to *different* geometry is still restored, and said out loud.** The saved poses are the best answer there is, but a pose saved against one shape rarely fits another. What notices is a fingerprint of the geometry stored beside the name, so a re-exported mesh or a terrain regrown from another seed is caught.
+
 The worked examples are [`3D/Physics/Drape`](../../Examples/3D/Physics/Drape/) (a banner pegged to a washing line that flaps in a gusting wind, a sheet thrown over a crate, and a beach ball you can let the air out of) and [`3D/Physics/Raft`](../../Examples/3D/Physics/Raft/) (a cloth raft riding a swell with cargo on it, a sounding line that stops at her deck, and a harbour gate that reports her sailing through).
 
 <a name="water"></a>
@@ -1044,6 +1081,43 @@ if let surface = world.waterMesh(extent: 40) {
 
 One thing worth knowing about sleeping. A floating body settles at its waterline and then goes to sleep, which is what you want (it stops costing anything and holds its level exactly). If you move the water afterwards, by changing the level or any other setting, everything afloat is woken so it can follow. A swell wakes only what it actually washes over, which is why a stone that has sunk to the bottom stays asleep under a rolling sea.
 
+<a name="naming-geometry"></a>
+
+#### Naming geometry rather than holding it
+
+Almost everything in a world is small. A box is three numbers, a joint is a point and an axis. Two things are not: a `.mesh` or `.heightfield` collider carries every vertex of whatever it was cut from, and a soft body carries the whole mesh it was built out of. Give either a name and the snapshot writes the name down instead:
+
+```swift
+let island = world.addBody(.heightfield(terrain, width: 60, depth: 60, height: 8),
+                           at: .zero, kind: .static)
+island.assetName = "island"
+
+let banner = world.addSoftBody(from: sheet, at: Vector3(0, 3, 0))
+banner?.assetName = "banner"
+```
+
+and say what the names mean when the world comes back:
+
+```swift
+world.restore(saved) { name in
+    switch name {
+    case "island": return .heightfield(terrain)
+    case "banner": return .mesh(sheet)
+    default:       return nil
+    }
+}
+```
+
+`load(contentsOf:resolving:)` takes the same closure. `PhysicsAsset` is the two things worth naming, `.mesh(_:)` and `.heightfield(_:)`, and `snapshot.assetNames` lists what a snapshot will ask for, so a sketch can check a file before restoring it. How a heightfield is sized in the world (its width, depth, and height) travels in the snapshot, since that is three numbers rather than geometry; only the samples are named.
+
+Measured on a world with a 65² terrain, a five-thousand-vertex mesh, and twenty crates: **105 KB holding it all, 1.1 KB naming it.** On a smaller scene the difference is smaller, and the default stays holding everything, because that is what makes a file you can commit beside a sketch and open anywhere.
+
+Three things are worth knowing:
+
+- **A name that resolves to nothing costs that one body, not the restore.** The rest of the world comes back and a note names what was missing, so a resolver you have not finished writing yet gives you a yard with no ground rather than nothing at all.
+- **A soft body needs a name to be saved at all**, since there is nothing else to it. An unnamed one is left out with a note.
+- **A name that now resolves to *different* geometry is still restored, and said out loud.** The saved poses are the best answer there is, but a pose saved against one shape rarely fits another. What notices is a fingerprint of the geometry stored beside the name, so a re-exported mesh or a terrain regrown from another seed is caught.
+
 The worked examples are [`3D/Physics/Flotsam`](../../Examples/3D/Physics/Flotsam/) (crates from cork to nearly waterlogged riding a swell at their own depths, a stone anchor on the bottom, and a current carrying the lot past) and [`3D/Physics/Raft`](../../Examples/3D/Physics/Raft/), where the thing afloat is a cloth. Drag either about.
 
 <a name="snapshots"></a>
@@ -1097,15 +1171,52 @@ walker = world.characters.first
 figure = world.ragdolls.first
 ```
 
-**What it costs.** A snapshot is self-contained, which is what makes it a file you can commit beside a sketch, and it holds geometry the same way: a `.mesh` or `.heightfield` collider is written out whole, so a world that colliders a loaded set piece carries that set piece inside every snapshot of it. The bytes are packed, which costs nothing and is why a settled arrangement is small: a heap of sixty primitives is about a kilobyte, while a world carrying a heightfield and two loaded meshes runs to about a megabyte, roughly half the scenery's own weight. A damaged or half-written file is refused rather than half-read.
+**What it costs.** A snapshot is self-contained, which is what makes it a file you can commit beside a sketch, and it holds geometry the same way: a `.mesh` or `.heightfield` collider is written out whole, so a world that colliders a loaded set piece carries that set piece inside every snapshot of it. The bytes are packed, which costs nothing and is why a settled arrangement is small: a heap of sixty primitives is about a kilobyte, while a world carrying a heightfield and two loaded meshes runs to about a megabyte, roughly half the scenery's own weight. A damaged or half-written file is refused rather than half-read. When that size matters, name the scenery instead of holding it, below.
 
-**What does not.** A soft body is built from a mesh a snapshot has no way to carry, so it is left out with a note; add it back after restoring. A grab is a hand on a body rather than part of the world, and contacts are worked out again by the next `step(dt:)`, so neither is saved. Motors are not saved either: `drive(at:)` and friends are things a sketch says, usually every frame, so say them again.
+**What does not.** A grab is a hand on a body rather than part of the world, and contacts are worked out again by the next `step(dt:)`, so neither is saved. Motors are not saved either: `drive(at:)` and friends are things a sketch says, usually every frame, so say them again. A soft body is nothing but its mesh, so it is saved only when it has been given a name to write down in place of one.
 
 **The bodies are new objects.** `restore(_:)` empties the world first, so any `Body3D` or `Joint3D` you were holding is gone; take them from `world.bodies` and `world.joints` again. They come back in the order they were saved in, so an index still names the same body, and each one still knows its own `collider`, which is usually all a drawing loop needs.
 
 This is also the honest answer to determinism. Simulating is reproducible within one build, but the solver runs in floating point, and a toolchain that moves one last bit moves the last bounce, which a toppling stack magnifies into a different heap. A saved arrangement has nothing left to compute, so it comes back the same anywhere. Continuing from a restore is exact for the pose and the motion; the solver's in-flight contact bookkeeping is not carried, so a scene captured mid-collision may drift where a settled one cannot. That covers a vehicle's wheels too, since what a wheel is rolling on is worked out afresh each step: a machine saved parked comes back parked and stays exactly where it was put, while one saved at full throttle carries on from the same speed in the same gear and then wanders, the way a stack of crates saved mid-collapse does.
 
-The worked examples are [`3D/Physics/Cairn`](../../Examples/3D/Physics/Cairn/), a heap of stones laid one at a time, restored with **R**, written to a file with **S**, and read back with **L**, so quitting and running the sketch again finds the same cairn standing; and [`3D/Physics/Yard`](../../Examples/3D/Physics/Yard/), which does the same for a yard holding a truck you drive, a figure pacing across it, and a second figure lying where it fell.
+<a name="naming-geometry"></a>
+
+#### Naming geometry rather than holding it
+
+Almost everything in a world is small. A box is three numbers, a joint is a point and an axis. Two things are not: a `.mesh` or `.heightfield` collider carries every vertex of whatever it was cut from, and a soft body carries the whole mesh it was built out of. Give either a name and the snapshot writes the name down instead:
+
+```swift
+let island = world.addBody(.heightfield(terrain, width: 60, depth: 60, height: 8),
+                           at: .zero, kind: .static)
+island.assetName = "island"
+
+let banner = world.addSoftBody(from: sheet, at: Vector3(0, 3, 0))
+banner?.assetName = "banner"
+```
+
+and say what the names mean when the world comes back:
+
+```swift
+world.restore(saved) { name in
+    switch name {
+    case "island": return .heightfield(terrain)
+    case "banner": return .mesh(sheet)
+    default:       return nil
+    }
+}
+```
+
+`load(contentsOf:resolving:)` takes the same closure. `PhysicsAsset` is the two things worth naming, `.mesh(_:)` and `.heightfield(_:)`, and `snapshot.assetNames` lists what a snapshot will ask for, so a sketch can check a file before restoring it. How a heightfield is sized in the world (its width, depth, and height) travels in the snapshot, since that is three numbers rather than geometry; only the samples are named.
+
+Measured on a world with a 65² terrain, a five-thousand-vertex mesh, and twenty crates: **105 KB holding it all, 1.1 KB naming it.** On a smaller scene the difference is smaller, and the default stays holding everything, because that is what makes a file you can commit beside a sketch and open anywhere.
+
+Three things are worth knowing:
+
+- **A name that resolves to nothing costs that one body, not the restore.** The rest of the world comes back and a note names what was missing, so a resolver you have not finished writing yet gives you a yard with no ground rather than nothing at all.
+- **A soft body needs a name to be saved at all**, since there is nothing else to it. An unnamed one is left out with a note.
+- **A name that now resolves to *different* geometry is still restored, and said out loud.** The saved poses are the best answer there is, but a pose saved against one shape rarely fits another. What notices is a fingerprint of the geometry stored beside the name, so a re-exported mesh or a terrain regrown from another seed is caught.
+
+The worked examples are [`3D/Physics/Cairn`](../../Examples/3D/Physics/Cairn/), a heap of stones laid one at a time, restored with **R**, written to a file with **S**, and read back with **L**, so quitting and running the sketch again finds the same cairn standing; and [`3D/Physics/Yard`](../../Examples/3D/Physics/Yard/), which does the same for a yard holding a truck you drive, a figure pacing across it, a second figure lying where it fell, and a heightfield floor and a cloth banner that the file names rather than holds.
 
 <a name="grabbing"></a>
 

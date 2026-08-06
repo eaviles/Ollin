@@ -3119,6 +3119,42 @@ int32_t cjolt_soft_body_get_positions(const CJoltWorld *world,
     return count;
 }
 
+int32_t cjolt_soft_body_get_velocities(const CJoltWorld *world,
+                                       const CJoltSoftBody *body, float *out,
+                                       int32_t capacity) {
+    SoftBodyMotionProperties *motion = softMotion(world, body);
+    if (motion == nullptr || out == nullptr) { return 0; }
+    const Array<SoftBodyMotionProperties::Vertex> &vertices = motion->GetVertices();
+    int32_t count = std::min(capacity, int32_t(vertices.size()));
+    for (int32_t i = 0; i < count; ++i) {
+        // Velocities are already relative to nothing but the world: the centre
+        // of mass moves, it does not rotate the frame.
+        store(vertices[size_t(i)].mVelocity, out + i * 3);
+    }
+    return count;
+}
+
+void cjolt_soft_body_set_state(CJoltWorld *world, CJoltSoftBody *body,
+                               const float *positions, const float *velocities,
+                               int32_t count) {
+    SoftBodyMotionProperties *motion = softMotion(world, body);
+    Body *jbody = softBody(world, body);
+    if (motion == nullptr || jbody == nullptr || positions == nullptr) { return; }
+    // Particles are held relative to the body's centre of mass, so a world
+    // position has to come back through that transform, the way the read does.
+    RMat44 inverse = jbody->GetCenterOfMassTransform().InversedRotationTranslation();
+    Array<SoftBodyMotionProperties::Vertex> &vertices = motion->GetVertices();
+    int32_t n = std::min(count, int32_t(vertices.size()));
+    for (int32_t i = 0; i < n; ++i) {
+        SoftBodyMotionProperties::Vertex &vertex = vertices[size_t(i)];
+        vertex.mPosition = Vec3(inverse * RVec3(vec3(positions + i * 3)));
+        vertex.mPreviousPosition = vertex.mPosition;
+        vertex.mVelocity = velocities != nullptr ? vec3(velocities + i * 3)
+                                                 : Vec3::sZero();
+    }
+    world->physics.GetBodyInterface().ActivateBody(jbody->GetID());
+}
+
 void cjolt_soft_body_get_center(const CJoltWorld *world,
                                 const CJoltSoftBody *body, float out[3]) {
     Body *jbody = softBody(world, body);

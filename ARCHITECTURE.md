@@ -4057,6 +4057,58 @@ Three findings came out of building it, each measured rather than reasoned:
 `SnapshotTierTests` (13) pins the tier against counterfactual twins; example
 `3D/Physics/Yard`.
 
+#### Naming geometry rather than holding it
+
+The one thing genuinely too heavy to write down every time is bulk geometry: a
+`.mesh` or `.heightfield` collider, and a soft body's whole source mesh. The
+shape that fits the house rules is **a name the sketch chooses plus a resolver
+at restore** (`Body3D.assetName` / `SoftBody3D.assetName`, a serializable
+sibling of `userData`; `restore(_:resolving:)` and `load(contentsOf:resolving:)`
+over a `PhysicsAssetResolver`), which keeps the sketch the source of truth about
+where its assets live, the way `resource:in:` refuses to default its bundle.
+`PhysicsAsset` is deliberately just the two kinds worth naming. Naming stays
+**opt-in**, because a self-contained file is what makes a settled arrangement
+committable, and that is the right default. Measured: a world with a 65²
+terrain, a 5,000-vertex mesh, and twenty crates is **105 KB held, 1.1 KB
+named**.
+
+Naming is also what lets **soft bodies into the snapshot at all**, which closes
+the last tier: a soft body is nothing *but* its mesh, so an unnamed one is left
+out with a note while a named one saves the numbers it was built with plus every
+particle's position and velocity and the pinned set. That needed
+`cjolt_soft_body_get_velocities` and `cjolt_soft_body_set_state` (the write goes
+through the body's centre-of-mass transform, mirroring the existing read, and
+sets `mPreviousPosition` alongside `mPosition` so the first step does not read a
+step's worth of phantom motion). Measured round trip: 289 particles back at
+1.19e-07.
+
+Three decisions are load-bearing:
+
+- **A name is per body, at the top level only.** A mesh nested inside a compound
+  is still written whole, because the name belongs to the body rather than to
+  one of its parts, and a compound of meshes pins the body anyway.
+- **An unresolved name costs one body, not the restore.** It is skipped with a
+  note and the joints that named it are dropped with it, which meant the
+  restored-body list has to keep **nils in the gaps** so the saved indices still
+  line up (`restored(_:in:)` reads that list rather than searching `bodies`).
+- **The fingerprint hashes the geometry; counts and bounds were not enough.**
+  The first draft stored counts plus a bounding box, which is *blind* to the
+  case that matters most: `Heightfield.diamondSquare` normalizes to 0…1, so two
+  terrains grown from different seeds have identical counts and identical bounds
+  and are not remotely the same ground (a probe caught it). FNV-1a over the
+  samples costs the same walk and answers the question. A mismatch notes and
+  restores anyway, since the saved poses are the best answer available.
+
+One bug worth remembering came out of it: the reader's `count()` helper bounds a
+length against the bytes remaining, which is right for an array *in* the stream
+and wrong for a fingerprint's piece count, which counts geometry that is
+deliberately **not** there. Reading a 4,225-sample terrain's count that way threw
+on a 1 KB payload and the whole restore was refused. A bounds-checked reader
+belongs only where the number really is a length.
+
+`SnapshotAssetTests` (10) pins it; the `3D/Physics/Yard` example names its
+heightfield floor and its cloth banner.
+
 ## The geometry and generator catalog
 
 The CPU-side geometry types and generative-technique recipes live in

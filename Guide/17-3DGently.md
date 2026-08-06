@@ -1155,9 +1155,26 @@ figure = world.ragdolls.first     // the bodies are new ones
 skin.apply(figure)                // your mesh, over the restored pose
 ```
 
-The one thing left out is a soft body, which really is nothing but its mesh, so the snapshot says it skipped one and you add it back. And one thing to watch throughout: restoring empties the world first, so any `Body3D`, `Vehicle3D`, or `Character3D` you were holding onto is gone. Take them from `world.bodies`, `world.vehicles`, and `world.characters` again. They come back in the order they were saved, and each body still knows its own `collider`, which is usually all a drawing loop needs.
+One thing to watch throughout: restoring empties the world first, so any `Body3D`, `Vehicle3D`, or `Character3D` you were holding onto is gone. Take them from `world.bodies`, `world.vehicles`, and `world.characters` again. They come back in the order they were saved, and each body still knows its own `collider`, which is usually all a drawing loop needs.
 
-The [`3D/Physics/Cairn`](../Examples/3D/Physics/Cairn/) example is a heap of stones laid one at a time. Wreck it by dragging, press R and it is back exactly; press S, quit, and run it again, and the same cairn is standing there. [`3D/Physics/Yard`](../Examples/3D/Physics/Yard/) does the same for a yard with a truck in it, a figure pacing across, and another lying where it fell.
+There is one more thing worth saying about size, and it follows the same idea one step further. Almost everything in a world is small. A box is three numbers. But a terrain collider is thousands of samples, and a cloth is a whole mesh, and those get written into the file every single time you save. So name them instead:
+
+```swift
+island.assetName = "island"
+banner?.assetName = "banner"
+```
+
+and say what the names mean on the way back in:
+
+```swift
+world.restore(saved) { name in
+    name == "island" ? .heightfield(terrain) : .mesh(sheet)
+}
+```
+
+On a yard with a terrain floor in it that is the difference between a hundred kilobytes and one. The trade is real, though, and it goes both ways: a snapshot that names nothing is self-contained, which is what lets you commit it beside the sketch and open it anywhere, so that stays the default. A name the resolver doesn't recognize costs you that one body and a note, not the restore. And a cloth needs a name to be saved at all, because a cloth is nothing but its mesh.
+
+The [`3D/Physics/Cairn`](../Examples/3D/Physics/Cairn/) example is a heap of stones laid one at a time. Wreck it by dragging, press R and it is back exactly; press S, quit, and run it again, and the same cairn is standing there. [`3D/Physics/Yard`](../Examples/3D/Physics/Yard/) does the same for a yard with a truck in it, a figure pacing across, another lying where it fell, and a terrain floor and a banner that the file names rather than holds.
 
 ## What the depth buffer is for
 

@@ -923,6 +923,20 @@ void cjolt_soft_body_set_vertex_inverse_mass(CJoltWorld *world,
 void cjolt_soft_body_move_vertex(CJoltWorld *world, CJoltSoftBody *body,
                                  int32_t index, const float target[3], float dt);
 
+/// Every particle's velocity, in world units per second, written as x, y, z
+/// triples. Returns how many were written.
+int32_t cjolt_soft_body_get_velocities(const CJoltWorld *world,
+                                       const CJoltSoftBody *body, float *out,
+                                       int32_t capacity);
+/// Stands every particle where it was and moving as it was: world-space
+/// positions and velocities, both x, y, z triples of `count` entries. This is
+/// how a saved surface is put back, and it is deliberately not the way to move
+/// a particle while the world is running (that skips collision detection, so
+/// `cjolt_soft_body_move_vertex` is the one for that).
+void cjolt_soft_body_set_state(CJoltWorld *world, CJoltSoftBody *body,
+                               const float *positions, const float *velocities,
+                               int32_t count);
+
 /// Pushes the whole body, spread evenly over its particles (N).
 void cjolt_soft_body_add_force(CJoltWorld *world, CJoltSoftBody *body,
                                const float force[3]);
