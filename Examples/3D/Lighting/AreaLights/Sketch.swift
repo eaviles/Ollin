@@ -15,11 +15,15 @@ import Ollin
 /// The front row of spheres climbs in roughness left to right, so the panels'
 /// reflections go from sharp little windows to broad sheens; the glossy floor
 /// stretches all three into long streaks. `color` × `intensity` is each surface's
-/// *radiance*, so the thin tube runs at a much higher intensity than the panels
-/// (a real neon is a very bright surface). The lights themselves are invisible,
-/// like every `Light`, so each one also draws a matching glowing prop (a flat
-/// single-color matcap ignores the scene lighting, which is exactly an emissive
-/// look).
+/// *radiance*, meaning how bright it looks head-on rather than how much light it
+/// puts out in total, which is why the thin tube and the wide softbox run at
+/// similar numbers and the tube still dominates the floor it lies close to. The
+/// lights themselves are invisible, like every `Light`, so each one also draws a
+/// matching glowing prop (a flat single-color matcap ignores the scene lighting,
+/// which is exactly an emissive look). The tube's prop is nearly white where its
+/// light is pink, which is the rule behind all three: a glowing thing has to
+/// out-bright every reflection of itself, or the pool it casts reads as the
+/// brighter object and the picture inverts.
 @main
 final class AreaLights: Sketch {
 
@@ -27,7 +31,10 @@ final class AreaLights: Sketch {
     // keeps its texture).
     private let rectGlow = Image(width: 1, height: 1, color: Color(hue: 0.09, saturation: 0.30, brightness: 1.0))
     private let diskGlow = Image(width: 1, height: 1, color: Color(hue: 0.52, saturation: 0.45, brightness: 1.0))
-    private let tubeGlow = Image(width: 1, height: 1, color: Color(hue: 0.87, saturation: 0.55, brightness: 1.0))
+    // The tube's own surface runs near-white where its light is pink: a glowing source
+    // has to out-bright every reflection of itself, or the pool on the floor reads as
+    // the brighter thing and the picture inverts.
+    private let tubeGlow = Image(width: 1, height: 1, color: Color(hue: 0.87, saturation: 0.10, brightness: 1.0))
 
     override func draw() {
         background(Color(hex: 0x07080C))
@@ -57,12 +64,16 @@ final class AreaLights: Sketch {
         diskLight(Color(hue: 0.52, saturation: 0.45, brightness: 1.0),
                   at: diskCenter, direction: diskDir, radius: 1.1, intensity: 4.5)
 
-        // The tube: a thin neon lying along the floor's front edge. A thin cylinder
-        // subtends very little sky, so its radiance (intensity) runs high.
-        let tubeA = Vector3(-4.0, -1.05, 3.0)
-        let tubeB = Vector3(4.0, -1.05, 3.0)
+        // The tube: a thin neon lying along the front edge of the floor. Two things
+        // here are about reading the picture rather than about the light. It sits far
+        // enough off the floor for its pool to spread, since a brighter tube lying
+        // closer clips its pool to flat white; and it is short enough that both ends
+        // stay in frame, since a tube running off both sides of the picture reads as a
+        // painted stripe, and then so do its pool and its reflected streak.
+        let tubeA = Vector3(-3.2, -0.85, 3.0)
+        let tubeB = Vector3(3.2, -0.85, 3.0)
         tubeLight(Color(hue: 0.87, saturation: 0.55, brightness: 1.0),
-                  from: tubeA, to: tubeB, radius: 0.06, intensity: 20)
+                  from: tubeA, to: tubeB, radius: 0.06, intensity: 9)
 
         // --- The set ---
 
@@ -120,7 +131,7 @@ final class AreaLights: Sketch {
             rotateZ(.pi / 2)
             fill(.white)
             matcap(tubeGlow)
-            drawCylinder(radius: 0.07, height: 8.0)
+            drawCylinder(radius: 0.07, height: 6.4)
         }
     }
 
