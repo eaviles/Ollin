@@ -21,7 +21,7 @@ If that prints a version, clone the repository and run your first example:
 ```sh
 git clone https://github.com/eaviles/Ollin.git
 cd Ollin
-swift run Example-Basic-HelloCircle
+swift run --package-path Examples Example-Basic-HelloCircle
 ```
 
 The first build takes a few minutes, and after that builds are quick. A window opens with a circle slowly breathing on a white canvas. What you're looking at is a sketch, which is a small program that draws the same picture over and over, changing it a little each time so that the drawing turns into motion.

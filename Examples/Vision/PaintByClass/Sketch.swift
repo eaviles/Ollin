@@ -16,9 +16,25 @@ import OllinVision
 /// Model: DeepLabV3 (MobileNetV2 backbone) — Apple's Core ML conversion of the
 /// TensorFlow research model (Apache-2.0) — downloaded by the fetch script,
 /// never bundled. Provenance in THIRD-PARTY-NOTICES.md.
+/// The fetched weights live in `Models/` at the repo root. This sketch runs both
+/// from there (the gallery compiles it where it sits) and from `Examples/` (a
+/// direct `swift run`), so the folder is found by walking up from this file
+/// instead of trusting whatever the working directory happens to be.
+private func modelsPath(_ name: String) -> String {
+    var dir = (#filePath as NSString).deletingLastPathComponent
+    while dir.count > 1 {
+        let models = (dir as NSString).appendingPathComponent("Models")
+        if FileManager.default.fileExists(atPath: models) {
+            return (models as NSString).appendingPathComponent(name)
+        }
+        dir = (dir as NSString).deletingLastPathComponent
+    }
+    return ("Models" as NSString).appendingPathComponent(name)
+}
+
 @main
 final class PaintByClass: Sketch {
-    static let modelPath = "Models/DeepLabV3FP16.mlmodel"
+    static let modelPath = modelsPath("DeepLabV3FP16.mlmodel")
 
     let camera = Camera()
     lazy var segmenter = ModelTracker(camera, modelAt: URL(fileURLWithPath: Self.modelPath))

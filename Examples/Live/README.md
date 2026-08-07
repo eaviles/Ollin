@@ -10,4 +10,4 @@ Sketches that show off OllinLive features.
 |---|---|
 | [Parameters](Parameters/Sketch.swift) | the typed `@Param` family in grouped inspector cards under OllinLive |
 
-Run one with `swift run Example-Live-<Name>`, e.g. `swift run Example-Live-Parameters`. Or run it under live reload: `swift run OllinLive Examples/Live/Parameters/Sketch.swift`.
+Run one from this `Examples/` directory with `swift run Example-Live-<Name>`, e.g. `swift run Example-Live-Parameters`. Or run it under live reload, from the repo root: `swift run OllinLive Examples/Live/Parameters/Sketch.swift`.

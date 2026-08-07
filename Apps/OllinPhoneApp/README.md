@@ -66,13 +66,16 @@ Requirements:
 1. Build + run on the iPhone. The screen shows **READY** until the Mac connects,
    then **ON AIR**, with the **Body / Face / World** toggle and live status.
 2. Connect the cable to the Mac.
-3. On the Mac, run a sketch. With the toggle on **Body**: `swift run
-   Example-3D-PhoneBodyPose` — the orbiting stick figure is driven by the phone's
-   skeleton. On **Face**: `swift run Example-3D-PhoneFace` — the face mesh orbits and the
-   expression bars move as you smile, blink, and open your mouth. On **World** (a
-   LiDAR iPhone): `swift run Example-3D-PhoneDepthCloud` — point the phone at the room and
-   the rear LiDAR's depth becomes a live point cloud. Before tracking begins, the
-   gravity readout proves the USB wire is alive (tilt the phone — it moves).
+3. On the Mac, run a sketch. With the toggle on **Body**:
+   `swift run --package-path Examples Example-3D-Phone-PhoneBodyPose`, and the
+   orbiting stick figure is driven by the phone's skeleton. On **Face**:
+   `swift run --package-path Examples Example-3D-Phone-PhoneFace`, where the face
+   mesh orbits and the expression bars move as you smile, blink, and open your
+   mouth. On **World** (a LiDAR iPhone):
+   `swift run --package-path Examples Example-3D-Phone-PhoneDepthCloud`, then
+   point the phone at the room and the rear LiDAR's depth becomes a live point
+   cloud. Before tracking begins, the gravity readout proves the USB wire is
+   alive (tilt the phone and it moves).
 
 ## Notes
 

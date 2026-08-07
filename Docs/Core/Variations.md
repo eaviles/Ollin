@@ -74,7 +74,7 @@ A sketch that pins its own seed in `setup()` reproduces that one variation no ma
 The reason to have seeds at all is to cull them. `--export-grid` renders one frame at each of a run of seeds and tiles them into a single labeled proof sheet:
 
 ```sh
-swift run Example-Randomness-Variations --export-grid sheet.png --seeds 25
+swift run --package-path Examples Example-Randomness-Variations --export-grid sheet.png --seeds 25
 ```
 
 ```
@@ -103,9 +103,9 @@ let sheet: CGImage? = OllinApp.contactSheet(of: { MySketch() }, seeds: [3, 17, 9
 `--seed N` reseeds the sketch before `setup()` on **every** export path, so a variation you found on a sheet or in the inspector comes back at full resolution, as a video, or as vector art:
 
 ```sh
-swift run Example-Randomness-Variations --export keeper.png --seed 10
-swift run Example-Randomness-Variations --export-svg keeper.svg --seed 10
-swift run Example-Randomness-Variations --export-video keeper.mp4 --seconds 6 --seed 10
+swift run --package-path Examples Example-Randomness-Variations --export keeper.png --seed 10
+swift run --package-path Examples Example-Randomness-Variations --export-svg keeper.svg --seed 10
+swift run --package-path Examples Example-Randomness-Variations --export-video keeper.mp4 --seconds 6 --seed 10
 ```
 
 Same seed, same pixels, every time. That's the whole loop: roll a sheet, pick a keeper, render it big.

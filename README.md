@@ -44,7 +44,7 @@ That's the whole program: a black circle outline, breathing on a white canvas. T
 From the terminal, no Xcode required:
 
 ```sh
-swift run Example-Basic-HelloCircle
+swift run --package-path Examples Example-Basic-HelloCircle
 ```
 
 That builds the package and opens a window with the breathing circle above. More runnable sketches live in [`Examples/`](Examples/), where `swift run` with no argument lists every example target and `swift run OllinExamples` opens a gallery with all of them in a sidebar.
@@ -159,19 +159,19 @@ ollin dots.swift --export-gif dots.gif --seconds 4
 
 See [Single-file sketches](Docs/Tools/SingleFile.md) for assets, satellite imports, and growing a file into a package.
 
-There are other ways to iterate. Tweak and re-run an example (`swift run Example-Motion-Breathing`, where incremental builds keep it snappy), or open the package in Xcode (`open Package.swift`) for ⌘R, breakpoints, and the debugger.
+There are other ways to iterate. Tweak and re-run an example (`swift run --package-path Examples Example-Motion-Breathing`, where incremental builds keep it snappy), or open the package in Xcode (`open Package.swift`) for ⌘R, breakpoints, and the debugger.
 
 ## Export
 
 Any sketch renders headlessly, no window needed. Stills, deterministic PNG sequences, video, GIF, and vector SVG and PDF all hang off the same run command:
 
 ```sh
-swift run Example-Basic-HelloCircle --export frame.png --frame 120
-swift run Example-Motion-Breathing --export-sequence frames/ --seconds 20 --fps 60
-swift run Example-Motion-Breathing --export-video breathing.mp4 --seconds 6
-swift run Example-Motion-Breathing --export-gif breathing.gif --seconds 4
-swift run Example-Basic-HelloCircle --export-svg still.svg   # vector, for pen plotters
-swift run Example-Basic-HelloCircle --export-pdf still.pdf   # vector, for print (paper-size presets)
+swift run --package-path Examples Example-Basic-HelloCircle --export frame.png --frame 120
+swift run --package-path Examples Example-Motion-Breathing --export-sequence frames/ --seconds 20 --fps 60
+swift run --package-path Examples Example-Motion-Breathing --export-video breathing.mp4 --seconds 6
+swift run --package-path Examples Example-Motion-Breathing --export-gif breathing.gif --seconds 4
+swift run --package-path Examples Example-Basic-HelloCircle --export-svg still.svg   # vector, for pen plotters
+swift run --package-path Examples Example-Basic-HelloCircle --export-pdf still.pdf   # vector, for print (paper-size presets)
 swift run OllinLive MySketches/Loop.swift --export-gif loop.gif --seconds 4   # a loose file, same flags
 ```
 
@@ -180,8 +180,8 @@ Sequence, video, and GIF exports advance the clock at a fixed timestep rather th
 A seeded sketch is a generator, so Ollin names the seed each run grew from ([`variation`](Docs/Core/Variations.md)) and gives you the tools to explore the space it indexes: step, roll, or jump through seeds from the inspector's Variation card, proof a whole range as a labeled contact sheet, then re-render the keeper at full size.
 
 ```sh
-swift run Example-Randomness-Variations --export-grid sheet.png --seeds 25  # proof 25 variations
-swift run Example-Randomness-Variations --export keeper.png --seed 10       # render the one you liked
+swift run --package-path Examples Example-Randomness-Variations --export-grid sheet.png --seeds 25  # proof 25 variations
+swift run --package-path Examples Example-Randomness-Variations --export keeper.png --seed 10       # render the one you liked
 ```
 
 ## Documentation

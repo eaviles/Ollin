@@ -13,9 +13,25 @@ import OllinVision
 /// Apache-2.0. Lihe Yang et al., "Depth Anything V2" (2024),
 /// https://huggingface.co/apple/coreml-depth-anything-v2-small — downloaded by
 /// the fetch script, never bundled.
+/// The fetched weights live in `Models/` at the repo root. This sketch runs both
+/// from there (the gallery compiles it where it sits) and from `Examples/` (a
+/// direct `swift run`), so the folder is found by walking up from this file
+/// instead of trusting whatever the working directory happens to be.
+private func modelsPath(_ name: String) -> String {
+    var dir = (#filePath as NSString).deletingLastPathComponent
+    while dir.count > 1 {
+        let models = (dir as NSString).appendingPathComponent("Models")
+        if FileManager.default.fileExists(atPath: models) {
+            return (models as NSString).appendingPathComponent(name)
+        }
+        dir = (dir as NSString).deletingLastPathComponent
+    }
+    return ("Models" as NSString).appendingPathComponent(name)
+}
+
 @main
 final class DepthRelief: Sketch {
-    static let modelPath = "Models/DepthAnythingV2SmallF16.mlpackage"
+    static let modelPath = modelsPath("DepthAnythingV2SmallF16.mlpackage")
 
     let camera = Camera()
     lazy var depth = ModelTracker(camera, modelAt: URL(fileURLWithPath: Self.modelPath))

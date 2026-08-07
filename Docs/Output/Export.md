@@ -36,14 +36,14 @@ swift run OllinLive MySketches/Loop.swift --export poster.png --frame 90
 Write one frame to a PNG:
 
 ```sh
-swift run Example-Basic-HelloCircle --export /tmp/frame.png            # frame 0
-swift run Example-Basic-HelloCircle --export /tmp/frame.png --frame 90 # a later frame
+swift run --package-path Examples Example-Basic-HelloCircle --export /tmp/frame.png            # frame 0
+swift run --package-path Examples Example-Basic-HelloCircle --export /tmp/frame.png --frame 90 # a later frame
 ```
 
 Write a deterministic, fixed-timestep PNG sequence (ready for `ffmpeg`):
 
 ```sh
-swift run Example-Motion-Breathing --export-sequence /tmp/out --seconds 5 --fps 60
+swift run --package-path Examples Example-Motion-Breathing --export-sequence /tmp/out --seconds 5 --fps 60
 ```
 
 Both render through Metal off-screen (MSAA, then resolve), so the pixels match the live window. The same capability is available as `OllinApp.image(of:frame:)` (returns a `CGImage`), `OllinApp.export(_:to:frame:)`, and `OllinApp.exportSequence(...)`. For a *reproducible* sequence, seed the sketch (`seed(…)` in `setup()`). Sources that follow the export clock stay reproducible too. A [`VideoPlayer`](../Video/Video.md) decodes by the sketch clock (frame `k` shows the clip at `k / fps`), and an [`AudioPlayer`](../Helpers/Audio.md#audioplayer) feeds its analyzer the same slice of its file each frame, so an audio-reactive piece exports with its beats in the same places every run.
@@ -60,9 +60,9 @@ A few features trade visual fidelity for frame rate through the shared `RenderQu
 Override the export default with `--render-quality`:
 
 ```sh
-swift run Example-3D-Raymarching-RaymarchedSDF --export field.png                              # .detail (default, full quality)
-swift run Example-3D-Raymarching-RaymarchedSDF --export field.png --render-quality performance # fast/low: quarter-res raymarch, fewer samples
-swift run Example-Effects-Defocus      --export-video dof.mp4 --seconds 6 --render-quality default
+swift run --package-path Examples Example-3D-Raymarching-RaymarchedSDF --export field.png                              # .detail (default, full quality)
+swift run --package-path Examples Example-3D-Raymarching-RaymarchedSDF --export field.png --render-quality performance # fast/low: quarter-res raymarch, fewer samples
+swift run --package-path Examples Example-Effects-Defocus      --export-video dof.mp4 --seconds 6 --render-quality default
 ```
 
 It takes `performance`, `default`, or `detail` (aliases: `fast` / `balanced` / `high`) and applies to every raster/video/GIF export. It is **distinct from `--quality`**, which is the video *encoding* quality (0…1) for `--export-video`.
@@ -74,8 +74,8 @@ It takes `performance`, `default`, or `detail` (aliases: `fast` / `balanced` / `
 Encode an animated sketch straight to a `.mp4` or `.mov`, one command from a sketch to a file you can post, with no external tool:
 
 ```sh
-swift run Example-Motion-Breathing --export-video breathing.mp4 --seconds 6
-swift run Example-Motion-Orbits --export-video orbits.mov --seconds 10 --codec hevc --bitrate 8
+swift run --package-path Examples Example-Motion-Breathing --export-video breathing.mp4 --seconds 6
+swift run --package-path Examples Example-Motion-Orbits --export-video orbits.mov --seconds 10 --codec hevc --bitrate 8
 ```
 
 It runs on the same deterministic fixed-timestep drive as `--export-sequence` (`--seconds`/`--frames`, `--fps`, and `--skip` work the same way), so a render that takes ten minutes still plays back smooth at the requested rate. In code it's `OllinApp.exportVideo(_:to:frames:fps:codec:bitsPerSecond:quality:skipSeconds:)`.
@@ -99,7 +99,7 @@ Exported tracks are tagged Rec. 709, so what players show matches what the canva
 Write a short, infinitely looping GIF:
 
 ```sh
-swift run Example-Motion-Breathing --export-gif breathing.gif --seconds 4 --gif-width 540
+swift run --package-path Examples Example-Motion-Breathing --export-gif breathing.gif --seconds 4 --gif-width 540
 ```
 
 In code it's `OllinApp.exportGIF(_:to:frames:fps:width:skipSeconds:)`. GIF is palette-limited (256 colors a frame) and heavy per second next to video, so the format wants **short loops at modest sizes**. `--gif-width` downscales the output (height follows the canvas aspect), which is usually the difference between a few hundred kilobytes and many megabytes. For anything long or subtle, `--export-video` is the better tool.
@@ -119,8 +119,8 @@ override var loopDuration: Double? { 6 }   // this sketch repeats every 6 second
 and export one seamless lap:
 
 ```sh
-swift run Example-Motion-PerfectLoop --export-loop loop.gif
-swift run Example-Motion-PerfectLoop --export-loop loop.mp4 --fps 30
+swift run --package-path Examples Example-Motion-PerfectLoop --export-loop loop.gif
+swift run --package-path Examples Example-Motion-PerfectLoop --export-loop loop.mp4 --fps 30
 ```
 
 The frame count is derived (`loopDuration × fps`), and the output format follows the file extension, so `.gif` takes the GIF options (`--gif-width`) and anything else encodes video (`--codec`, `--bitrate`, `--quality`). `--fps` (default 25 for GIF, 60 for video), `--skip`, and `--render-quality` work as everywhere else. For a GIF, the lap is computed against the centisecond-quantized rate the format can actually play (see the timing note above), so the loop stays exact at that rate. If `loopDuration × fps` isn't a whole number of frames, the export warns and rounds, so pick a rate that divides the loop.
@@ -134,8 +134,8 @@ There's no separate code entry point, so in Swift, derive the count yourself and
 Serialize one frame's geometry as an SVG document rather than pixels:
 
 ```sh
-swift run Example-Export-VectorExport --export-svg /tmp/shapes.svg            # frame 0
-swift run Example-Export-VectorExport --export-svg /tmp/shapes.svg --frame 30 # a later frame
+swift run --package-path Examples Example-Export-VectorExport --export-svg /tmp/shapes.svg            # frame 0
+swift run --package-path Examples Example-Export-VectorExport --export-svg /tmp/shapes.svg --frame 30 # a later frame
 ```
 
 Unlike raster export, SVG export records the draw calls on the **CPU**, so it never touches the GPU, runs anywhere, and is fully deterministic. The same is available as functions:
@@ -152,8 +152,8 @@ The output is **standard, general-purpose SVG**, with native `<circle>`/`<ellips
 Write the same frame as a single-page PDF, the print-ready form of the vector output:
 
 ```sh
-swift run Example-Export-VectorExport --export-pdf /tmp/shapes.pdf            # frame 0
-swift run Example-Export-VectorExport --export-pdf /tmp/shapes.pdf --frame 30 # a later frame
+swift run --package-path Examples Example-Export-VectorExport --export-pdf /tmp/shapes.pdf            # frame 0
+swift run --package-path Examples Example-Export-VectorExport --export-pdf /tmp/shapes.pdf --frame 30 # a later frame
 ```
 
 In code it's `OllinApp.pdf(of:frame:)` (returns `Data`) and `OllinApp.exportPDF(_:to:frame:)`. PDF export replays the **same recorded geometry** as the SVG export, so the two documents of a frame always agree. Everything under [What SVG export records](#what-svg-export-records), including the limits, applies equally, and `--hatch` works the same way. Both flags can even ride one invocation (`--export-svg a.svg --export-pdf b.pdf`). Like the SVG path it runs on the CPU with no GPU, and gradients, clipping, transforms, and alpha all come through as native PDF constructs.
@@ -198,8 +198,8 @@ A few things the vector format can't express exactly, and how they're handled:
 A pen plotter draws with a pen, so it has no fill, and a solid shape would plot as a bare outline. **Hatching** turns each fill into line work, parallel (or cross-hatch) lines clipped to the shape's outline, spaced by the fill's tone, so the plotter shades it. Add `--hatch` to the SVG export (the PDF export takes the same flags):
 
 ```sh
-swift run Example-Export-Hatching --export-svg /tmp/hatched.svg --hatch
-swift run Example-Export-Hatching --export-svg /tmp/hatched.svg --cross-hatch --hatch-angle 30
+swift run --package-path Examples Example-Export-Hatching --export-svg /tmp/hatched.svg --hatch
+swift run --package-path Examples Example-Export-Hatching --export-svg /tmp/hatched.svg --cross-hatch --hatch-angle 30
 ```
 
 The flags:
@@ -256,8 +256,8 @@ GIF is the one format without a writable slot. For a quick look at a PNG, run `e
 `--seed N` reseeds the sketch before its `setup()` on **every** export path above, so a variation you found in the inspector or on a contact sheet comes back exactly:
 
 ```sh
-swift run Example-Randomness-Variations --export keeper.png --seed 10
-swift run Example-Randomness-Variations --export-video keeper.mp4 --seconds 6 --seed 10
+swift run --package-path Examples Example-Randomness-Variations --export keeper.png --seed 10
+swift run --package-path Examples Example-Randomness-Variations --export-video keeper.mp4 --seconds 6 --seed 10
 ```
 
 The same seed always renders the same pixels. A sketch that pins its own seed in `setup()` ignores the flag, as it ignores every other way of setting a seed.
@@ -269,8 +269,8 @@ The same seed always renders the same pixels. A sketch that pins its own seed in
 `--export-grid` renders one frame at each of a run of seeds and tiles them into a single labeled proof sheet, the way a photographer contact-prints a roll before choosing an enlargement:
 
 ```sh
-swift run Example-Randomness-Variations --export-grid sheet.png --seeds 25
-swift run Example-Randomness-Variations --export-grid sheet.png --seeds 12 --columns 4 --tile 400
+swift run --package-path Examples Example-Randomness-Variations --export-grid sheet.png --seeds 25
+swift run --package-path Examples Example-Randomness-Variations --export-grid sheet.png --seeds 12 --columns 4 --tile 400
 ```
 
 | Flag | Meaning |
@@ -297,8 +297,8 @@ Pick a tile you like, then render it big with `--export … --seed N`. The whole
 `--export-sweep` is the same sheet as a tuning tool: instead of walking the sketch's chance, it walks one of its [`@Param`](../Helpers/Parameters.md) knobs. Name the parameter and a range (or explicit values), and every tile renders at the same seed with only that parameter changing, which is what makes the sheet a fair comparison. Seeds remain the identity a piece reproduces from; a sweep is for choosing the knob's value before you commit to it:
 
 ```sh
-swift run Example-Live-Parameters --export-sweep sweep.png --param radius --from 40 --to 360 --steps 9
-swift run Example-Live-Parameters --export-sweep sweep.png --param rings --values "2,3,5,8" --seed 7
+swift run --package-path Examples Example-Live-Parameters --export-sweep sweep.png --param radius --from 40 --to 360 --steps 9
+swift run --package-path Examples Example-Live-Parameters --export-sweep sweep.png --param rings --values "2,3,5,8" --seed 7
 ```
 
 | Flag | Meaning |

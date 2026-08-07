@@ -39,16 +39,23 @@ Examples are grouped into **category** folders, and each example gets its own fo
 
 ### Running
 
-Each example is its own target, prefixed `Example-`:
+The examples are a package of their own, so run them from this directory. Each
+one is a target prefixed `Example-`:
 
 ```sh
+cd Examples
 swift run Example-Basic-HelloCircle
 swift run Example-Motion-Breathing
 ```
 
-(Run `swift run` with no argument to list every runnable target.)
+(Run `swift run` with no argument to list every runnable target.) From the repo
+root instead, name the package: `swift run --package-path Examples Example-Basic-HelloCircle`.
 
-Or browse them all in one window:
+The commands in the per-category READMEs below assume you are in this directory.
+They live here because SwiftPM builds every target of a package, so keeping 350
+sketch executables in the root package meant `swift test` linked all of them.
+
+Or browse them all in one window, from the repo root:
 
 ```sh
 swift run OllinExamples

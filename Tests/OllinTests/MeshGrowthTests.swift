@@ -61,12 +61,19 @@ struct MeshGrowthTests {
     @Test
     func generatorMeshesWeldIntoAConnectedSurface() {
         let mesh = Mesh.icosphere(subdivisions: 3)
-        let raw = MeshOperators(positions: mesh.positions,
-                                triangles: (0 ..< mesh.indices.count / 3).map {
-                                    MeshTriangle(Int(mesh.indices[$0 * 3]),
-                                                 Int(mesh.indices[$0 * 3 + 1]),
-                                                 Int(mesh.indices[$0 * 3 + 2]))
-                                })
+        // Spelled as a loop rather than a `map` over a range, matching `edgeUse`
+        // above: the index arithmetic and the three `Int(...)` conversions in one
+        // expression cost enough to type-check that a slower machine gives up on
+        // it, and the whole test target then fails to compile.
+        var loose: [MeshTriangle] = []
+        loose.reserveCapacity(mesh.indices.count / 3)
+        var i = 0
+        while i + 2 < mesh.indices.count {
+            let a = Int(mesh.indices[i]), b = Int(mesh.indices[i + 1]), c = Int(mesh.indices[i + 2])
+            loose.append(MeshTriangle(a, b, c))
+            i += 3
+        }
+        let raw = MeshOperators(positions: mesh.positions, triangles: loose)
         // Unwelded, every vertex sees only the two other corners of its own
         // triangle.
         #expect(raw.neighbors.allSatisfy { $0.count == 2 })

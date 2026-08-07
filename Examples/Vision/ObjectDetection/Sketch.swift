@@ -16,9 +16,25 @@ import OllinVision
 /// Joseph Redmon and Ali Farhadi's Darknet original (YOLO License v2, public
 /// domain) — downloaded by the fetch script, never bundled. Provenance in
 /// THIRD-PARTY-NOTICES.md.
+/// The fetched weights live in `Models/` at the repo root. This sketch runs both
+/// from there (the gallery compiles it where it sits) and from `Examples/` (a
+/// direct `swift run`), so the folder is found by walking up from this file
+/// instead of trusting whatever the working directory happens to be.
+private func modelsPath(_ name: String) -> String {
+    var dir = (#filePath as NSString).deletingLastPathComponent
+    while dir.count > 1 {
+        let models = (dir as NSString).appendingPathComponent("Models")
+        if FileManager.default.fileExists(atPath: models) {
+            return (models as NSString).appendingPathComponent(name)
+        }
+        dir = (dir as NSString).deletingLastPathComponent
+    }
+    return ("Models" as NSString).appendingPathComponent(name)
+}
+
 @main
 final class ObjectDetection: Sketch {
-    static let modelPath = "Models/YOLOv3TinyFP16.mlmodel"
+    static let modelPath = modelsPath("YOLOv3TinyFP16.mlmodel")
 
     let camera = Camera()
     lazy var detector = ModelTracker(camera, modelAt: URL(fileURLWithPath: Self.modelPath))

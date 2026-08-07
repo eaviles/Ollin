@@ -31,7 +31,15 @@ enum ExampleCatalog {
         }
 
         var examples: [Example] = []
-        for case let url as URL in walker where url.lastPathComponent == "Sketch.swift" {
+        for case let url as URL in walker {
+            // `Examples/` is its own package, so its build tree sits inside the
+            // directory being walked. Descending into it is slow and can surface
+            // a `Sketch.swift` belonging to a checkout rather than to an example.
+            if url.lastPathComponent == ".build" {
+                walker.skipDescendants()
+                continue
+            }
+            guard url.lastPathComponent == "Sketch.swift" else { continue }
             let parts = url.pathComponents
             guard let examplesIndex = parts.lastIndex(of: root) else { continue }
             let relative = Array(parts[(examplesIndex + 1)...])   // [Category, (Group,) Name, "Sketch.swift"]

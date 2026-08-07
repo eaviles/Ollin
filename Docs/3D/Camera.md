@@ -163,7 +163,7 @@ The views:
 
 By default the camera glides over `duration` seconds (reusing the rig's eased return); pass `animated: false` to cut. A snap works with the rig (`cameraShowcase` / `cameraControl` / `cameraMove`): after gliding it resumes that motion from the snapped pose. A sketch that drives the camera by hand with `camera(...)` overrides the pose every frame, so a snap has no effect there, and a 2D sketch ignores it.
 
-**From the menu.** The host apps (a standalone `swift run Example-X`, the examples gallery, and OllinLive) carry a **Camera** menu with the same snaps and keyboard shortcuts, so you can orbit by hand and snap back without the sketch wiring anything: Reset View (⌘0), Front (⌘1), Back (⌘2), Right (⌘3), Left (⌘4), Top (⌘5), Bottom (⌘6), Isometric (⌘7). The menu drives whatever 3D sketch is running.
+**From the menu.** The host apps (a standalone example run, the examples gallery, and OllinLive) carry a **Camera** menu with the same snaps and keyboard shortcuts, so you can orbit by hand and snap back without the sketch wiring anything: Reset View (⌘0), Front (⌘1), Back (⌘2), Right (⌘3), Left (⌘4), Top (⌘5), Bottom (⌘6), Isometric (⌘7). The menu drives whatever 3D sketch is running.
 
 <a id="chrome"></a>
 ### Orientation axis & ground grid

@@ -101,13 +101,14 @@ Pipelines build through the `PipelineKey`-keyed cache (`makePipeline(_:)`; the e
 ## Build, run, verify
 
 ```sh
-swift run Example-Basic-HelloCircle   # opens a window running an example
+swift run --package-path Examples Example-Basic-HelloCircle   # opens a window running an example
 ```
 
 The canvas is `1080×1080` by default (`canvasSize`, the typed `CanvasSize` enum — `.square(n)` / `.size(w, h)` + named presets, integer pixels); the preview window is sized from the sketch's `windowMode` (`.auto` fits the screen, `.fixed`, or `.resizable`) — the window is a scaled view of the canvas, not the canvas itself.
 
 - **Requires macOS 26+ and a Metal-capable GPU.**
-- **`swift build --target Example-X` does not relink the executable.** It compiles the module and reports success, but `.build/debug/Example-X` stays the *old* binary — a tuning loop against it silently re-runs stale code (a real hour lost: three "tuning" rounds of VideoTrace all ran the first build). Rebuild runnable examples with `swift build --product Example-X` or just `swift run Example-X`; reserve `--target` for compile-checking libraries.
+- **The examples are their own package, in `Examples/`.** SwiftPM builds every target of a package and offers no way to scope a build to the tests and their dependencies (`--target` and `--product` are both refused alongside `--build-tests`), so 350 sketch executables in the root package would make every `swift test` link all of them: a cold run measures 7m23s / 13 GB that way against 1m30s / 1.7 GB split out. Add an example with a folder plus one `example(...)` line in `Examples/Package.swift`; run it with `cd Examples && swift run Example-X` or `swift run --package-path Examples Example-X`. Nothing reaches an example through its *target* — the gallery and the live hosts compile a sketch from its source file, finding modules from their own binary's location and resolving `Bundle.module` to the sketch's folder — so the targets serve only `swift run` and the compile-check build. A sketch needing the shared CPU↔GPU structs imports `COllinShaders`, now a product for exactly that reason.
+- **`swift build --target Example-X` does not relink the executable.** It compiles the module and reports success, but the built binary stays the *old* one — a tuning loop against it silently re-runs stale code (a real hour lost: three "tuning" rounds of VideoTrace all ran the first build). Rebuild runnable examples with `swift build --package-path Examples --product Example-X` or just `swift run --package-path Examples Example-X`; reserve `--target` for compile-checking libraries.
 - **Check the environment before claiming you can't build.** Ollin needs the Swift toolchain and Metal, which exist on a Mac but *not* in the Linux web/iPhone container. These two run on different machines, so don't assume: if `swift --version` and `xcrun --find metal` succeed, you're on a Mac with the toolchain — **build, run, and verify directly** (`swift build`, `swift run <Example>`), and don't add caveats about being unable to compile. Only when that toolchain is genuinely absent (the Linux container) are changes unverifiable on this machine — say so then, and not before. Either way, the things that truly need a simulator or device (iOS/visionOS/AR) stay unverifiable here regardless.
 
 ## Current state & roadmap

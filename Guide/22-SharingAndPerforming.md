@@ -16,7 +16,7 @@ Every file export runs the sketch *headlessly*. No window opens, `setup()` runs,
 
 ```sh
 swift run OllinLive MySketches/Finale.swift --export poster.png --frame 200
-swift run Example-Motion-Breathing --export-sequence /tmp/out --seconds 5 --fps 60
+swift run --package-path Examples Example-Motion-Breathing --export-sequence /tmp/out --seconds 5 --fps 60
 ```
 
 `--export` writes one frame as a PNG, and `--export-sequence` writes every frame, lossless, ready for `ffmpeg` or an edit timeline. Exports default to the best render quality (`.detail`), since a file has no frame rate to protect, and `--render-quality` dials that down when you want a fast draft.

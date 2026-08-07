@@ -70,8 +70,8 @@ Run the sketch and the inspector (press ⌘/ if you launched it on its own) show
 When you want to see many at once, ask for a contact sheet. This renders one frame per seed and tiles them into a single labeled image, exactly like the nine-tile sheet you saw a moment ago:
 
 ```sh
-swift run Example-Randomness-Variations --export-grid sheet.png --seeds 25
-swift run Example-Randomness-Variations --export keeper.png --seed 10   # render the one you liked
+swift run --package-path Examples Example-Randomness-Variations --export-grid sheet.png --seeds 25
+swift run --package-path Examples Example-Randomness-Variations --export keeper.png --seed 10   # render the one you liked
 ```
 
 One rule makes this worth doing. A seed is worth flipping through only when it decides something structural: which palette, how dense, how large. Make those choices in `setup()`, where the seeded rolls happen once, and let `draw()` animate what `setup()` decided. Do it in `draw()` instead and every seed gives you the same piece, shaken slightly differently.

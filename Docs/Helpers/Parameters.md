@@ -109,7 +109,7 @@ Every form takes an optional `icon:` and `group:`:
 
 Under the live-reload host (`swift run OllinLive path/to/Sketch.swift`), every `@Param` is a control in the inspector sidebar. Tuned values survive a reload, so when you save the file and the sketch hot-swaps, the host re-applies what you dialed in and a knob doesn't snap back to its default mid-session. If an edit changes a property's *type*, the stale tuned value is dropped and the freshly written default wins.
 
-A standalone run (`swift run Example-…`) gets the same controls in the inspector panel, under View ▸ Show Inspector (⌘/), and the examples gallery shows them in its right sidebar.
+A standalone run of an example gets the same controls in the inspector panel, under View ▸ Show Inspector (⌘/), and the examples gallery shows them in its right sidebar.
 
 Headless export never opens an inspector, so a render uses the defaults written in code. Once a tuned value feels right, copy it back into the declaration.
 
@@ -163,7 +163,7 @@ Assignment retargets (and glides, when smoothed), while `set(_:)` lands immediat
 A knob is also sweepable offline. `--export-sweep` renders a proof sheet along one parameter's range, one tile per value, and every tile is pinned to the same seed, so the knob is the only thing changing across the sheet. Seeds stay what they are on the [Variations](../Core/Variations.md) page, a sketch's identity; a sweep is a tuning tool, the inspector's drag laid out as a sheet:
 
 ```sh
-swift run Example-Live-Parameters --export-sweep sweep.png --param radius --from 40 --to 360
+swift run --package-path Examples Example-Live-Parameters --export-sweep sweep.png --param radius --from 40 --to 360
 ```
 
 The full flag list is on the [Export](../Output/Export.md#contact-sheets-proofing-a-variation-space) page, and `OllinApp.contactSheet(of:sweeping:values:seed:)` is the code form.

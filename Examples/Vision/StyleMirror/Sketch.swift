@@ -20,10 +20,26 @@ import OllinVision
 /// Any image works as the style — a painting, a texture, an export of one of
 /// your own sketches. Relaunch — or train while this runs; the sketch is
 /// watching for the file. Details and options in `Examples/Vision/README.md`.
+/// The fetched weights live in `Models/` at the repo root. This sketch runs both
+/// from there (the gallery compiles it where it sits) and from `Examples/` (a
+/// direct `swift run`), so the folder is found by walking up from this file
+/// instead of trusting whatever the working directory happens to be.
+private func modelsPath(_ name: String) -> String {
+    var dir = (#filePath as NSString).deletingLastPathComponent
+    while dir.count > 1 {
+        let models = (dir as NSString).appendingPathComponent("Models")
+        if FileManager.default.fileExists(atPath: models) {
+            return (models as NSString).appendingPathComponent(name)
+        }
+        dir = (dir as NSString).deletingLastPathComponent
+    }
+    return ("Models" as NSString).appendingPathComponent(name)
+}
+
 @main
 final class StyleMirror: Sketch {
-    static let modelPaths = ["Models/StyleTransfer.mlmodel",
-                             "Models/StyleTransfer.mlpackage"]
+    static let modelPaths = [modelsPath("StyleTransfer.mlmodel"),
+                             modelsPath("StyleTransfer.mlpackage")]
     static var modelPath: String? {
         modelPaths.first { FileManager.default.fileExists(atPath: $0) }
     }
@@ -56,7 +72,7 @@ final class StyleMirror: Sketch {
                               "image (a couple of minutes):\n" +
                               "swift Scripts/train-style-model.swift your-image.jpg\n" +
                               "Train while this runs — the sketch is watching for\n" +
-                              Self.modelPaths[0] + ".",
+                              "Models/StyleTransfer.mlmodel.",
                               style: .warning)
         }
         if let reason = styler.unavailableReason {

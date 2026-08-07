@@ -1,30 +1,48 @@
 name: Build
 
-# Compile-test the whole package on macOS: the Ollin library, the live/gallery
-# hosts, and every Examples/ sketch. Each example is an executable target in the
-# root package, so a single `swift build` compiles them all — and picks up new
-# examples automatically, with no list to maintain here (mirrors the no-hand-
-# maintained-stanzas rule the Package.swift follows). This is the guard that
-# keeps the examples building against the current API instead of rotting.
+# Compile-test on macOS, in two jobs, because the two halves cost very
+# different amounts.
 #
-# It cannot run on Linux — Ollin is Swift + Metal, Apple-platforms only — so the
-# job runs on a macOS runner. The Metal shader is compiled at *runtime* from
-# source, so no GPU is needed at build time, only the macOS SDK.
+# `build` covers the Ollin library, the live/gallery hosts, and the tests: a
+# cold run is about a minute and a half.
+#
+# `examples` compiles all 350 sketches in the Examples package, which is the
+# guard that keeps them building against the current API instead of rotting. It
+# picks up new examples automatically, with no list to maintain here (mirroring
+# the no-hand-maintained-stanzas rule the manifests follow), but it is the
+# expensive half: a cold run is over six minutes, because a path dependency is
+# built again inside that package. Kept separate so the cheap half can be read
+# on its own, and so this one can be dropped from a run without touching the
+# other.
+#
+# Neither can run on Linux, since Ollin is Swift plus Metal and Apple-platforms
+# only, so both use a macOS runner. The Metal shader is compiled at *runtime*
+# from source, so no GPU is needed at build time, only the macOS SDK.
 
-# Docs-only changes skip the whole run: there is nothing to compile, and a
-# macOS runner bills every minute at a 10x multiplier, so idle coverage of
-# Markdown edits is the most expensive no-op available.
+# Deliberately NOT run on push. A macOS runner bills every minute at a 10x
+# multiplier, a full run is a cold build of both jobs (about a minute and a half
+# for the library and the tests, over six minutes for the 350 examples), and
+# pre-1.0 work goes straight to main at roughly fifteen pushes a day. That is
+# well past a thousand billable minutes a day, which exhausts a month's
+# allowance in about three, and it did so in both July and August 2026. A green
+# build costs exactly as much as a red one, so this is a volume problem and the
+# only fix is to stop running it on every commit.
+#
+# So: pull requests, plus a manual trigger for when a check is actually wanted
+# (before a milestone, say). While main is pushed to directly this means the
+# workflow effectively does not run, which is the intent. It starts earning its
+# keep again on its own the moment pull requests appear, whether from a bot or,
+# once the repo is public, from a contributor. Public is also when this stops
+# costing anything: standard runners, macOS among them, are free there.
+#
+# Docs-only changes still skip: there is nothing to compile.
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - "**.md"
-      - "Docs/**"
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths-ignore:
       - "**.md"
       - "Docs/**"
+  workflow_dispatch:
 
 # A newer push to the same branch/PR supersedes an in-flight run.
 concurrency:
@@ -41,9 +59,9 @@ jobs:
     # Hard ceiling so a wedged runner can never coast to the 6-hour default.
     # The runner's paravirtualized GPU once failed at test startup and left
     # `swift test` hung for 4.5 hours; at the 10x macOS billing multiplier
-    # that single run consumed most of a month's Actions minutes. A cold
-    # (cache-miss) build plus the tests fits comfortably under this cap, and
-    # the test step below carries its own tighter one.
+    # that single run consumed most of a month's Actions minutes. A full
+    # build plus the tests fits far under this cap (the build alone measured
+    # about ninety seconds), and the test step carries its own tighter one.
     timeout-minutes: 35
     steps:
       - name: Checkout
@@ -58,20 +76,28 @@ jobs:
       - name: Swift version
         run: swift --version
 
-      # Cache the SwiftPM build directory, keyed on the manifest. A miss just
-      # means a clean build, never a wrong one.
-      - name: Cache SwiftPM build
-        uses: actions/cache@v4
-        with:
-          path: .build
-          key: spm-${{ runner.os }}-${{ hashFiles('Package.swift') }}
-          restore-keys: |
-            spm-${{ runner.os }}-
+      # There is deliberately no build cache here, on measurement rather than
+      # principle. Since the examples moved to their own package this tree is
+      # about 1.7 GB, which would fit the 10 GB per-repository cache limit, but a
+      # cold build of it is only about ninety seconds, so storing and restoring
+      # a tree that size buys little. The Examples job's tree is about 12 GB and
+      # does not fit at all.
+      #
+      # One earlier failure is worth recording, because it is invisible until
+      # looked for: the combined cache action skips its save step when the job
+      # fails, and this job failed on every run for weeks, so the cache sat at
+      # zero bytes while every run paid for a full from-scratch build. A cache
+      # can only ever land on a green run.
 
-      # Builds the library, OllinLive/OllinExamples hosts, and all Example-*
-      # targets. Warnings stay warnings; this fails only on a compile error.
+      # Builds the library, the OllinLive/OllinExamples/OllinLiveCoding hosts,
+      # and the test targets. `--build-tests` compiles the tests here, so
+      # a test that merely fails to *compile* is reported here rather than after
+      # the whole build has already been paid for. It also makes the failure
+      # reproducible with one command locally, which a plain `swift build` (which
+      # never touches the test targets) quietly is not.
+      # Warnings stay warnings; this fails only on a compile error.
       - name: Build everything
-        run: swift build
+        run: swift build --build-tests
 
       # Run the GPU-independent tests (the frame-grab seam's dispatch logic).
       # The image-snapshot tests are skipped here on purpose: their reference
@@ -93,3 +119,25 @@ jobs:
       - name: Test (excluding GPU snapshots)
         timeout-minutes: 10
         run: swift test --skip 'SnapshotTests|FlowTrackerTests'
+
+  # The anti-rot guard: every sketch still compiles against the current API.
+  # Separate from `build` because it is the expensive half (see the note at the
+  # top of this file) and because nothing in it can fail in a way the library
+  # build would not, so a red `build` makes this one's result uninteresting.
+  examples:
+    name: Examples (macOS)
+    runs-on: macos-26
+    needs: build
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Swift version
+        run: swift --version
+
+      # The examples are their own package, so the build is scoped to it. It
+      # builds its own copy of the library through the path dependency, which is
+      # why this costs more than the job above rather than less.
+      - name: Build every example
+        run: swift build --package-path Examples
