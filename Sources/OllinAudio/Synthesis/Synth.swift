@@ -35,9 +35,27 @@ public final class Synth: AudioSource {
     private let delayUnit = AVAudioUnitDelay()
     private let reverbUnit = AVAudioUnitReverb()
     private var tapInstalled = false
+    /// What a sketch asked for while it was being exported, and the clock those
+    /// requests are measured against. Both are untouched on the live path.
+    var recorded: [RecordedNote] = []
+    var exportClock: Double = 0
+    /// The offline machine, once an export has asked for a soundtrack.
+    var offline: OfflineRender?
+    /// The voice and polyphony an offline render has to be built with.
+    let startingVoice: Voice
+    let polyphony: Int
 
     /// Whether the engine is running.
     public private(set) var isRunning = false
+
+    /// Where this instrument is in the scene, if a sketch has placed it.
+    /// See ``place(at:heardFrom:)``.
+    lazy var spatial = SpatialPlacement(owner: self)
+
+    /// The node that carries a placed instrument's position. The source node is
+    /// the one the engine will spatialize, because it is the one feeding the
+    /// listener.
+    var spatialMixing: AVAudioMixing? { sourceNode }
 
     /// The recipe every new note is built from.
     ///
@@ -46,7 +64,7 @@ public final class Synth: AudioSource {
     public var voice: Voice {
         didSet {
             guard voice != oldValue else { return }
-            events.push(SynthEvent(kind: .changeVoice, voice: voice))
+            emit(SynthEvent(kind: .changeVoice, voice: voice))
         }
     }
 
@@ -82,6 +100,8 @@ public final class Synth: AudioSource {
         self.sampleRate = rate > 0 ? rate : 44100
         self.tapBufferSize = UInt32(max(256, fftSize))
         self.voice = voice
+        self.startingVoice = voice
+        self.polyphony = max(1, polyphony)
         self.analyzer = AudioAnalyzer(fftSize: fftSize, sampleRate: self.sampleRate, smoothing: 0.5)
         self.renderer = SynthRenderer(
             voice: voice, polyphony: polyphony, sampleRate: self.sampleRate, events: events
@@ -124,28 +144,44 @@ public final class Synth: AudioSource {
     ///   - velocity: how hard the note is struck, `0...1`.
     ///   - duration: seconds to hold it, or nil to hold it until let go.
     public func play(_ pitch: Pitch, velocity: Double = 0.8, for duration: Double? = nil) {
-        start()
-        let samples = duration.map { Int(max(0.001, $0) * sampleRate) } ?? 0
-        events.push(SynthEvent(
+        // A duration is kept in seconds for an export, which may render at a
+        // different rate from the one the hardware happens to be running at.
+        let seconds = duration.map { max(0.001, $0) } ?? 0
+        emit(SynthEvent(
             kind: .noteOn, pitch: pitch.midi, velocity: velocity,
-            durationSamples: max(1, samples)
-        ))
+            durationSamples: seconds > 0 ? max(1, Int(seconds * sampleRate)) : 0
+        ), seconds: seconds)
     }
 
     /// Starts a note and holds it until `noteOff(_:)`.
     public func noteOn(_ pitch: Pitch, velocity: Double = 0.8) {
-        start()
-        events.push(SynthEvent(kind: .noteOn, pitch: pitch.midi, velocity: velocity))
+        emit(SynthEvent(kind: .noteOn, pitch: pitch.midi, velocity: velocity))
     }
 
     /// Lets a held note go, so it moves into its release.
     public func noteOff(_ pitch: Pitch) {
-        events.push(SynthEvent(kind: .noteOff, pitch: pitch.midi))
+        emit(SynthEvent(kind: .noteOff, pitch: pitch.midi))
     }
 
     /// Lets every held note go. Their tails still sound.
     public func allNotesOff() {
-        events.push(SynthEvent(kind: .allNotesOff))
+        emit(SynthEvent(kind: .allNotesOff))
+    }
+
+    /// Sends an event to the speakers, or writes it down when a sketch is being
+    /// exported and there are no speakers to send it to.
+    ///
+    /// `seconds` is the note's length where it has one, because an export may
+    /// render at a different sample rate from the hardware.
+    private func emit(_ event: SynthEvent, seconds: Double = 0) {
+        guard !isRecordingForExport else {
+            var recordedEvent = event
+            recordedEvent.durationSeconds = seconds
+            record(recordedEvent)
+            return
+        }
+        start()
+        events.push(event)
     }
 
     /// Plays several notes at once.
@@ -156,8 +192,11 @@ public final class Synth: AudioSource {
     // MARK: Engine
 
     /// Starts the audio engine. Called for you by the first note.
+    ///
+    /// Does nothing while a sketch is being exported: there is no hardware to
+    /// start, and the notes are written down for the soundtrack instead.
     public func start() {
-        guard !isRunning else { return }
+        guard !isRunning, !isRecordingForExport else { return }
         installTapIfNeeded()
         engine.prepare()
         do {
@@ -186,24 +225,68 @@ public final class Synth: AudioSource {
         tapInstalled = true
     }
 
-    private func applyDelay() {
-        guard let delay else {
-            delayUnit.wetDryMix = 0
-            return
+    /// Rebuilds the chain so the instrument can be placed in the scene.
+    ///
+    /// Placing a sound is a different shape of graph rather than a setting on
+    /// it: one stream has to arrive at something that knows where the ears are
+    /// and leave it as two. A source node's channel count is fixed when it is
+    /// made, so the old one is replaced rather than reconnected, and the
+    /// listener sits ahead of the effects so the room is applied to the sound
+    /// after it has been placed in the room.
+    func rewireForPlacement(_ environment: AVAudioEnvironmentNode) {
+        let wasRunning = isRunning
+        if wasRunning {
+            engine.stop()
+            isRunning = false
         }
-        delayUnit.delayTime = max(0, delay.time)
-        delayUnit.feedback = Float(min(max(0, delay.feedback), 0.95) * 100)
-        delayUnit.lowPassCutoff = Float(delay.damping)
-        delayUnit.wetDryMix = Float(min(max(0, delay.mix), 1) * 100)
+
+        engine.disconnectNodeOutput(sourceNode)
+        engine.detach(sourceNode)
+
+        let mono = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)!
+        let placed = makeSynthSourceNode(format: mono, renderer: renderer)
+        // `.auto` is what picks the way a head hears on headphones and a plain
+        // left and right on speakers.
+        placed.renderingAlgorithm = .auto
+        sourceNode = placed
+
+        engine.attach(placed)
+        engine.attach(environment)
+        engine.connect(placed, to: environment, format: mono)
+        // From here on the engine works the formats out: the listener hands
+        // back two channels whatever went in, and the effects follow that
+        // rather than the format the chain started in.
+        engine.connect(environment, to: delayUnit, format: nil)
+        engine.connect(delayUnit, to: reverbUnit, format: nil)
+        engine.connect(reverbUnit, to: engine.mainMixerNode, format: nil)
+
+        if wasRunning { start() }
     }
 
-    private func applyReverb() {
-        guard let reverb else {
-            reverbUnit.wetDryMix = 0
+    private func applyDelay() { Synth.configure(delayUnit, with: delay) }
+
+    private func applyReverb() { Synth.configure(reverbUnit, with: reverb) }
+
+    /// Settings applied in one place, because an export builds its own units
+    /// and they have to come out sounding the same as the ones on the output.
+    static func configure(_ unit: AVAudioUnitDelay, with delay: Delay?) {
+        guard let delay else {
+            unit.wetDryMix = 0
             return
         }
-        reverbUnit.loadFactoryPreset(reverb.space.preset)
-        reverbUnit.wetDryMix = Float(min(max(0, reverb.mix), 1) * 100)
+        unit.delayTime = max(0, delay.time)
+        unit.feedback = Float(min(max(0, delay.feedback), 0.95) * 100)
+        unit.lowPassCutoff = Float(delay.damping)
+        unit.wetDryMix = Float(min(max(0, delay.mix), 1) * 100)
+    }
+
+    static func configure(_ unit: AVAudioUnitReverb, with reverb: Reverb?) {
+        guard let reverb else {
+            unit.wetDryMix = 0
+            return
+        }
+        unit.loadFactoryPreset(reverb.space.preset)
+        unit.wetDryMix = Float(min(max(0, reverb.mix), 1) * 100)
     }
 }
 
@@ -259,7 +342,7 @@ public struct Reverb: Sendable, Hashable {
 ///
 /// It captures the renderer and nothing else, and everything it touches there
 /// was allocated before the first note.
-private func makeSynthSourceNode(format: AVAudioFormat, renderer: SynthRenderer) -> AVAudioSourceNode {
+func makeSynthSourceNode(format: AVAudioFormat, renderer: SynthRenderer) -> AVAudioSourceNode {
     AVAudioSourceNode(format: format) { _, _, frameCount, audioBufferList in
         let buffers = UnsafeMutableAudioBufferListPointer(audioBufferList)
         let frames = Int(frameCount)

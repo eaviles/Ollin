@@ -151,10 +151,32 @@ public extension OllinApp {
                 software.identifier = .commonIdentifierSoftware
                 software.value = "Ollin" as NSString
                 writer.metadata = [description, software]
-                writer.startWriting()
+                // Declared before writing starts, and after `setup()` has run,
+                // so an instrument made there is found.
+                prepareSoundtrack(for: sketch, writer: writer)
+                guard writer.startWriting() else {
+                    fatalError("Ollin: the video writer refused to start: "
+                               + (writer.error?.localizedDescription ?? "unknown error"))
+                }
                 writer.startSession(atSourceTime: .zero)
             }
-            while !input.isReadyForMoreMediaData { usleep(1000) }
+            // Bounded, because a wedged writer never says so: it simply never
+            // becomes ready again, and an export that hangs is worse than one
+            // that says what went wrong.
+            var videoWait = 0
+            // The sound that goes with this frame, written before the picture
+            // so the audio track never lags the video track. It cannot go any
+            // further ahead than this: the notes for the next frame have not
+            // been asked for yet.
+            pumpSoundtrack(for: sketch, upTo: Double(index + 1) / fps)
+            while !input.isReadyForMoreMediaData {
+                usleep(1000)
+                videoWait += 1
+                guard videoWait < 30_000 else {
+                    fatalError("Ollin: the video writer stopped taking frames at \(index): "
+                               + (writer.error?.localizedDescription ?? "no error reported"))
+                }
+            }
             guard let pool = adaptor.pixelBufferPool else {
                 fatalError("Ollin: video encoder rejected the settings: \(writer.error?.localizedDescription ?? "unknown error")")
             }
@@ -181,6 +203,10 @@ public extension OllinApp {
         }
 
         input.markAsFinished()
+        // The sound the sketch made while those frames were being drawn. A
+        // sketch that holds no instrument declared no track, so it writes
+        // exactly the file it wrote before.
+        finishSoundtrack(for: sketch, seconds: Double(frames) / fps)
         let finished = DispatchSemaphore(value: 0)
         writer.finishWriting { finished.signal() }
         finished.wait()
@@ -271,4 +297,155 @@ public extension OllinApp {
         let attributes = try? FileManager.default.attributesOfItem(atPath: path)
         return Double(attributes?[.size] as? Int ?? 0) / 1_000_000
     }
+}
+
+// MARK: - Sound
+
+extension OllinApp {
+    /// Makes room in the file for the sketch's own sound.
+    ///
+    /// Called once the sketch has run `setup()` and before the writer starts,
+    /// because a track has to be declared before anything is written and an
+    /// instrument may have been made in `setup()`. Whether there is anything to
+    /// play is not known yet: that is decided while the frames are drawn.
+    static func prepareSoundtrack(for sketch: Sketch, writer: AVAssetWriter) {
+        pendingSoundtrack = nil
+        soundtrackSources = sketch.exportAudioSources()
+        soundtrackWritten = 0
+        guard !soundtrackSources.isEmpty else { return }
+
+        let settings: [String: Any] = [
+            AVFormatIDKey: kAudioFormatMPEG4AAC,
+            AVSampleRateKey: soundtrackSampleRate,
+            AVNumberOfChannelsKey: 2,
+            AVEncoderBitRateKey: 192_000,
+        ]
+        guard writer.canApply(outputSettings: settings, forMediaType: .audio) else {
+            print("Ollin: this container cannot carry the sketch's sound; writing it silent")
+            return
+        }
+        let input = AVAssetWriterInput(mediaType: .audio, outputSettings: settings)
+        // Realtime, deliberately, and not because the data is. A file-paced
+        // input is interleaved in chunks of about a second, and the writer
+        // holds every other track until the lagging one has delivered its
+        // chunk. The sound cannot run a second ahead of the picture, because
+        // the notes for those frames have not been asked for yet, so the
+        // writer would hold the picture forever, about a second in. A realtime
+        // input is exempt from that gating: the writer takes what arrives when
+        // it arrives, at the cost of a less tidily interleaved file.
+        input.expectsMediaDataInRealTime = true
+        writer.add(input)
+        pendingSoundtrack = input
+    }
+
+    /// Writes the sound the sketch has made so far, up to `seconds`.
+    ///
+    /// Called after each frame rather than at the end, because a writer will
+    /// not let one track run far ahead of another: it stops taking pictures
+    /// until the sound catches up, and an export that looks like a hang is what
+    /// that turns into. Everything the sketch asked for up to this moment has
+    /// already been asked for, so there is always something to render.
+    static func pumpSoundtrack(for sketch: Sketch, upTo seconds: Double) {
+        guard let input = pendingSoundtrack else { return }
+        let samples = sketch.renderSoundtrack(upTo: seconds, sampleRate: soundtrackSampleRate,
+                                              sources: soundtrackSources)
+        guard !samples.isEmpty else { return }
+        append(samples, to: input)
+    }
+
+    /// Finishes the track once the last frame is in.
+    static func finishSoundtrack(for sketch: Sketch, seconds: Double) {
+        guard let input = pendingSoundtrack else { return }
+        pumpSoundtrack(for: sketch, upTo: seconds)
+        input.markAsFinished()
+        pendingSoundtrack = nil
+        soundtrackSources = []
+    }
+
+    private static func append(_ samples: [Float], to input: AVAssetWriterInput) {
+        let sampleRate = soundtrackSampleRate
+        // Float pairs, one per frame, exactly as the mixer left them. The
+        // encoder is handed uncompressed samples and does the compressing.
+        var description = AudioStreamBasicDescription(
+            mSampleRate: sampleRate,
+            mFormatID: kAudioFormatLinearPCM,
+            mFormatFlags: kAudioFormatFlagIsFloat | kAudioFormatFlagIsPacked,
+            mBytesPerPacket: 8, mFramesPerPacket: 1, mBytesPerFrame: 8,
+            mChannelsPerFrame: 2, mBitsPerChannel: 32, mReserved: 0
+        )
+        var format: CMAudioFormatDescription?
+        guard CMAudioFormatDescriptionCreate(
+            allocator: kCFAllocatorDefault, asbd: &description, layoutSize: 0, layout: nil,
+            magicCookieSize: 0, magicCookie: nil, extensions: nil, formatDescriptionOut: &format
+        ) == noErr, let format else {
+            print("Ollin: could not describe the sketch's sound; writing it silent")
+            return
+        }
+
+        let framesPerBlock = 4096
+        let totalFrames = samples.count / 2
+        var written = 0
+        while written < totalFrames {
+            // Bounded, because a writer that has stopped accepting data never
+            // says so: it simply never becomes ready again, and an export that
+            // hangs is worse than one that says what went wrong.
+            var waited = 0
+            while !input.isReadyForMoreMediaData, waited < 5000 {
+                usleep(1000)
+                waited += 1
+            }
+            guard input.isReadyForMoreMediaData else {
+                print("Ollin: the writer stopped taking sound; the picture is unaffected")
+                return
+            }
+
+            let count = min(framesPerBlock, totalFrames - written)
+            let bytes = count * 8
+            guard let block = malloc(bytes) else { return }
+            samples.withUnsafeBufferPointer { source in
+                block.copyMemory(from: source.baseAddress! + written * 2, byteCount: bytes)
+            }
+
+            var blockBuffer: CMBlockBuffer?
+            guard CMBlockBufferCreateWithMemoryBlock(
+                allocator: kCFAllocatorDefault, memoryBlock: block, blockLength: bytes,
+                blockAllocator: kCFAllocatorDefault, customBlockSource: nil,
+                offsetToData: 0, dataLength: bytes, flags: 0, blockBufferOut: &blockBuffer
+            ) == noErr, let blockBuffer else {
+                free(block)
+                return
+            }
+
+            var timing = CMSampleTimingInfo(
+                duration: CMTime(value: 1, timescale: CMTimeScale(sampleRate)),
+                presentationTimeStamp: CMTime(value: Int64(soundtrackWritten + written),
+                                              timescale: CMTimeScale(sampleRate)),
+                decodeTimeStamp: .invalid
+            )
+            var sampleSize = 8
+            var sampleBuffer: CMSampleBuffer?
+            guard CMSampleBufferCreate(
+                allocator: kCFAllocatorDefault, dataBuffer: blockBuffer, dataReady: true,
+                makeDataReadyCallback: nil, refcon: nil, formatDescription: format,
+                sampleCount: count, sampleTimingEntryCount: 1, sampleTimingArray: &timing,
+                sampleSizeEntryCount: 1, sampleSizeArray: &sampleSize,
+                sampleBufferOut: &sampleBuffer
+            ) == noErr, let sampleBuffer else { return }
+
+            guard input.append(sampleBuffer) else {
+                print("Ollin: the encoder refused the sketch's sound; the picture is unaffected")
+                return
+            }
+            written += count
+        }
+        soundtrackWritten += totalFrames
+    }
+
+    static let soundtrackSampleRate = 44100.0
+
+    /// The audio track being filled as the frames go in, what is filling it,
+    /// and how far it has got.
+    nonisolated(unsafe) private static var pendingSoundtrack: AVAssetWriterInput?
+    nonisolated(unsafe) private static var soundtrackSources: [ExportAudioSource] = []
+    nonisolated(unsafe) private static var soundtrackWritten = 0
 }

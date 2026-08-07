@@ -69,12 +69,10 @@ See the [design notes](DESIGN-NOTES.md#photorealistic-3d).
 
 ## Sound, synthesis, and spatial audio
 
-The audio layer both listens (FFT, bands, beat detection) and plays: a polyphonic [`Synth`](Docs/Helpers/Synthesis.md) over shaped, filtered voices with delay and reverb, fed by a [composition](Docs/Helpers/Composition.md) tier that works out what to play, over waves and two physical models. What builds on that:
+The audio layer both listens (FFT, bands, beat detection) and plays: a polyphonic [`Synth`](Docs/Helpers/Synthesis.md) over shaped, filtered voices with delay and reverb, fed by a [composition](Docs/Helpers/Composition.md) tier that works out what to play, over waves and two physical models, placed in the 3D scene and carried into an exported video. What builds on that:
 
 - **A patchable graph.** Wiring voices and effects rather than choosing from a fixed chain, so an instrument can be built rather than picked.
-- **Spatial audio.** A drawn object emits sound from its position in the 3D scene, with the camera as the listener, over PHASE or the engine's environment node.
 - **Sonification.** Turning a data series or a sampled field into sound, mapped onto pitch and amplitude over the voices and the [composition](Docs/Helpers/Composition.md) tier. It doubles as an accessibility read-out of a visual.
-- **Sound in an export.** The offline exporters write frames and no audio. The synthesis renderer is deterministic and offline-capable by construction, so a video carrying its own sketch's sound is wiring rather than new DSP.
 
 See the [design notes](DESIGN-NOTES.md#sound-synthesis-and-spatial-audio).
 

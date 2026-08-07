@@ -35,6 +35,8 @@ Two things are worth noticing there. Nothing was started: the first note starts 
 - [Pitch](#pitch) - names, numbers, and what lies between them
 - [Voice](#voice) - what a note is made of
 - [Physical models](#physical-models) - a string and a struck shape, worked out rather than drawn
+- [Placing a sound](#placing-a-sound) - where it comes from in the 3D scene
+- [Sound in an export](#sound-in-an-export) - carrying the music out of the window
 - [Envelope](#envelope) - how a note arrives and how it goes
 - [`Voice.Filter`](#voicefilter) - what is taken out of it, and how that moves
 - [Delay and Reverb](#delay-and-reverb) - putting the sound somewhere
@@ -253,6 +255,60 @@ A body carries up to sixteen tones, which is what lets it reach the audio thread
 
 ---
 
+### Placing a sound
+
+A sound can come from somewhere in the 3D scene, with the camera as the listener.
+
+```swift
+override func draw() {
+    cameraShowcase(.autoOrbit())
+    guard let eye = activeCamera else { return }
+
+    synth.place(at: Vector3(2, 0, -3), heardFrom: eye)
+    synth.hearingRange = 1...20
+}
+```
+
+Both facts arrive together because neither means anything alone: a position says nothing until something is listening, and where the sketch is looking from is where it hears from. Call it every frame, so a moving object and a moving camera both work.
+
+On headphones the placing is done the way the ear works it out, which is more than loudness: how much later the sound reaches one ear than the other, and what a head does to a sound arriving round it. So something behind you is behind you rather than merely quiet. On speakers it falls back to a plain left and right.
+
+| Member | What it does |
+|---|---|
+| `place(at:heardFrom:)` | where the sound is, and where it is heard from |
+| `position` | where it is, or nil if it has not been placed |
+| `hearingRange` | the distance over which it fades, in scene units |
+| `unplace()` | back to being heard from everywhere at once |
+
+**The first call rebuilds the instrument's audio chain**, so make it before the first note if you can. Placing a sound is a different shape of graph rather than a setting on it: one stream has to arrive at something that knows where the ears are and leave it as two. Once placed, an instrument stays placed.
+
+`Examples/Audio/Spatial` is three chimes standing still and one walking past them.
+
+---
+
+### Sound in an export
+
+A sketch that plays carries its sound out of the window:
+
+```sh
+swift run --package-path Examples Example-Audio-SoundInAnExport --export-video piece.mp4 --frames 480
+```
+
+The file has the music in it. There is no recording step and nothing to switch on. The exporters drive a sketch on a fixed clock with nothing playing, so instead of going to the speakers the notes are written down, and the soundtrack is rendered at the end through the same code that would have fed them.
+
+That works because the renderer takes events and gives back samples and has no clock of its own: an export is that same code with the waiting taken out. Which is also why **the sound reproduces**. Export twice and the audio comes back sample for sample identical, so a piece is something you can come back to.
+
+What to know:
+
+- **`--export-video` and `--export-loop` carry sound.** GIF has no way to hold any, and the still and vector exports are one frame.
+- **An instrument has to be a property of the sketch**, in the usual place, so it can be found. One made and thrown away inside `draw()` is not.
+- **A note's length travels in beats of real time, not samples**, so the file is written at its own rate rather than whatever the hardware happened to be running at.
+- **Delay and reverb are in the file**, because the export runs the same effects the output had.
+- **A placed sound is not placed in the export.** The soundtrack is rendered without the listener, so it comes out centered. Placing is a live thing for now.
+- **A sketch that holds no instrument writes exactly the file it wrote before**, with no audio track at all.
+
+---
+
 ### Envelope
 
 The shape of a note over time.
@@ -324,8 +380,8 @@ Said plainly, so you can plan around it rather than go looking:
 - **No sequencer.** Notes are asked for from `draw()`, on whatever clock the sketch keeps. [`Composition`](./Composition.md) is what decides which notes and when; [`TempoClock`](../Integration/MIDI.md) is the way to run on someone else's clock.
 - **No sampler.** Playing a recorded sound is [`AudioPlayer`](./Audio.md#audioplayer)'s job, not a voice's.
 - **Two physical models.** A plucked string and a struck body are here; a bowed string and a blown tube are not.
-- **Not placed in the 3D scene.** A voice has no position, so nothing is heard from where it is drawn.
-- **Not in an export.** The offline exporters render frames; a video written from a sketch has no sound. The renderer underneath is deterministic and offline-capable, which is what a future audio export would be built on, but nothing writes sound to a file today.
+- **One position per instrument.** A `Synth` is placed as a whole, so several sounds in several places means several `Synth`s, which is fine and cheap.
+- **No sound in a GIF.** The format has no way to hold any.
 
 ---
 

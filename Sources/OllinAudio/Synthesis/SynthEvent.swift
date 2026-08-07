@@ -16,6 +16,9 @@ struct SynthEvent {
     var durationSamples: Int = 0
     /// The voice to switch to, read only by `changeVoice`.
     var voice: Voice = Voice()
+    /// The same length in seconds, which is what an offline render needs: it
+    /// may run at a different rate from the hardware the note was asked on.
+    var durationSeconds: Double = 0
 }
 
 /// A one-writer, one-reader queue of events between the sketch and the render
