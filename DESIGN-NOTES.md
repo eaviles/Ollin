@@ -137,12 +137,11 @@ The fringe expander carries a half-width per path vertex, `StrokeProfile` shapes
 
 ## Sound, synthesis, and spatial audio
 
-`OllinAudio` covers both directions: `AudioAnalyzer` (FFT, bands, beat detection) over `AudioInput` / `AudioPlayer` / `Tone` / `Soundtrack` on the listening side, and a polyphonic `Synth` (voices over anti-aliased oscillators, ADSR envelopes, a resonant state-variable filter, delay and reverb) on the playing side, with a clock-free composition tier deciding what it plays. What is left is shaping: a patchable graph, and sonification over the voices that exist.
+`OllinAudio` covers both directions: `AudioAnalyzer` (FFT, bands, beat detection) over `AudioInput` / `AudioPlayer` / `Tone` / `Soundtrack` on the listening side, and a polyphonic `Synth` (voices over anti-aliased oscillators, ADSR envelopes, a resonant state-variable filter, delay and reverb) on the playing side, with a clock-free composition tier deciding what it plays. What is left is shaping: a patchable graph over the voices that exist.
 
 - **A patchable graph.** Today a voice is a fixed chain (oscillator, envelope, filter) and the effects are two fixed slots on the output. The next step up is routing as a value: voices and effects wired rather than chosen, so an instrument is built rather than picked. Keep the bare form untouched, since choosing a preset must stay a one-liner; the graph is the tier under it, the same relationship the `Drawer` has to the bare draw calls. The built-in `AVAudioUnitEQ` / `AVAudioUnitReverb` / `AVAudioUnitDelay` cover the bus effects, so the work is the routing model, not the DSP.
 - **The render-thread rule holds.** Anything the audio callback touches is built non-isolated and allocated before the first note, and parameters reach it through the lock-free event ring rather than a lock. A new voice type inherits that constraint; it is not a per-feature decision.
 - **Keep the renderer pure.** The samples are made by a renderer that knows nothing about the audio engine: events in, buffer out, no clock. That is what makes the sound testable at all (a test renders and measures) and what a sound-carrying export would be built on, so a feature that reaches for the engine from inside the renderer is going the wrong way.
-- **Sonification** falls out of the voices and the composition tier: map a data series or a sampled field onto pitch and amplitude, snapping through a `Scale` so the result stays in key. It doubles as an accessibility read-out of a visual.
 
 ## Tempo sync
 

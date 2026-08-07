@@ -300,6 +300,39 @@ for step in counter.steps(upTo: time * 104 / 60) {
 
 That is `Examples/Audio/Generative`, drawn as three of those rings turning on one step count, with the key and the figure and the tempo as knobs you move while it plays. All of it repeats: the same seed gives the same melody, the same two numbers give the same rhythm. A generated piece is something you can come back to, not something you had to be there to catch.
 
+## Numbers you can hear
+
+Everything so far invents what it plays. The other way to fill a scale with notes is to already have the numbers, and read them out.
+
+```swift
+let readings = Sonification(table, column: "temperature",
+                            in: Scale(.minorPentatonic, root: "A3"))
+
+for step in counter.steps(upTo: time * 2) {
+    synth.play(readings, step: step, tempo: 120)
+}
+```
+
+That reads a column of a table. The same call reads a line across a terrain, `Sonification(land, row: 32)`, or a row of a picture, `Sonification(photo, row: 200)`, as brightness. It answers a step number and owns no clock, like everything else in this tier, so the counter you already have drives it.
+
+<img src="Images/20-SoundAndControl/Sonification.jpg" alt="A series of sixteen values shown as bars, then the same series as note positions spread evenly in semitones, again spread evenly in hertz where the low half bunches against the top two octaves, and again snapped so every mark lands on a line of the scale" width="880">
+
+Two decisions inside that call are worth pulling out, because neither is what you would write first and the figure is the argument for both.
+
+**Pitch is spread evenly in semitones, not in hertz.** Hearing is logarithmic. The step from 220 Hz to 440 and the step from 440 to 880 sound like the same distance, though the second is twice the size of the first. Spread a series evenly in hertz and the whole bottom half of your data crushes into the top of the range, which is the middle row of the figure: the same numbers, unreadable. Spread it evenly in semitones and the shape survives.
+
+**Snapping is what makes it music instead of a signal.** The bottom row is the same reading landing only on notes of the key. Nothing about the data changed; it simply cannot play a wrong note now. This is why `Scale` was worth having before there was anything to read.
+
+One more piece, small and easy to skip:
+
+```swift
+marker.play(readings.reference(at: 20), tempo: 120)   // 20 degrees, sounded
+```
+
+A reference sounds one named value on exactly the same footing as the reading. Without one, a listener needs absolute pitch to know what any note means; with one, every note is heard as above or below something. It is a chart's grid line, in sound, and it is the difference between a noise that rises and falls and a measurement you can actually read.
+
+Which is the other reason this exists. A sketch that draws a column can read the same column out loud, from the same numbers, in one more line. `Examples/Audio/Sonification` does exactly that: a line across a landscape, drawn as a profile and played as a tune, with the playhead marking the note sounding. The picture and the sound are two views of one series, and one of them works for someone who is not looking.
+
 ## Sound that comes from somewhere, and sound you can keep
 
 Two things are left, and both are one line each.
@@ -532,10 +565,11 @@ The idea that any sound splits into pure vibrations is Joseph Fourier's (1822), 
 - [Synthesis](../Docs/Helpers/Synthesis.md): `Synth`, pitches, the `Voice` presets and what is inside one, envelopes, filters, delay and reverb.
 - [Synthesis](../Docs/Helpers/Synthesis.md#physical-models): both models, their settings, why the string's tuning is exact, how a shape is measured, placing a sound, and what carries into an export.
 - [Composition](../Docs/Helpers/Composition.md): rhythms, scales, chords, arpeggios, chains, and the counter that joins them to time.
+- [Sonification](../Docs/Helpers/Sonification.md): the four sources, how the ends of the data are decided, the reference note, and reading a second series as loudness.
 - [MIDI](../Docs/Integration/MIDI.md): messages, the three reads, binding, and sending MIDI out.
 - [OSC](../Docs/Integration/OSC.md): addresses and arguments, bundles, binding, and testing with a phone.
 - [Parameters](../Docs/Helpers/Parameters.md): the typed `@Param` family, smoothing, and the binding surface.
-- Worked examples: [`Examples/Audio/Synth`](../Examples/Audio/Synth/Sketch.swift) (a playable keyboard), [`Examples/Audio/Generative`](../Examples/Audio/Generative/Sketch.swift) (three Euclidean rings deciding what to play), [`Examples/Audio/Strings`](../Examples/Audio/Strings/Sketch.swift) (six strings you pluck where you click), [`Examples/Audio/StruckShapes`](../Examples/Audio/StruckShapes/Sketch.swift) (shapes that sound like the shape they are), [`Examples/Audio/Spatial`](../Examples/Audio/Spatial/Sketch.swift) (sound placed in a 3D scene), [`Examples/Audio/SoundInAnExport`](../Examples/Audio/SoundInAnExport/Sketch.swift) (a piece that exports its own music), [`Examples/Audio/Spectrum`](../Examples/Audio/Spectrum/Sketch.swift) (self-contained tone analysis), [`Examples/Audio/Microphone`](../Examples/Audio/Microphone/Sketch.swift), [`Examples/Audio/FilePlayer`](../Examples/Audio/FilePlayer/Sketch.swift), [`Examples/Video/SoundReactive`](../Examples/Video/SoundReactive/Sketch.swift) (a video's own soundtrack), [`Examples/Integration/MIDILoopback`](../Examples/Integration/MIDILoopback/Sketch.swift), [`Examples/Integration/MIDIMonitor`](../Examples/Integration/MIDIMonitor/Sketch.swift), [`Examples/Integration/OSCLoopback`](../Examples/Integration/OSCLoopback/Sketch.swift), and [`Examples/Integration/OSCMonitor`](../Examples/Integration/OSCMonitor/Sketch.swift).
+- Worked examples: [`Examples/Audio/Synth`](../Examples/Audio/Synth/Sketch.swift) (a playable keyboard), [`Examples/Audio/Generative`](../Examples/Audio/Generative/Sketch.swift) (three Euclidean rings deciding what to play), [`Examples/Audio/Sonification`](../Examples/Audio/Sonification/Sketch.swift) (a landscape drawn and read out at once), [`Examples/Audio/Strings`](../Examples/Audio/Strings/Sketch.swift) (six strings you pluck where you click), [`Examples/Audio/StruckShapes`](../Examples/Audio/StruckShapes/Sketch.swift) (shapes that sound like the shape they are), [`Examples/Audio/Spatial`](../Examples/Audio/Spatial/Sketch.swift) (sound placed in a 3D scene), [`Examples/Audio/SoundInAnExport`](../Examples/Audio/SoundInAnExport/Sketch.swift) (a piece that exports its own music), [`Examples/Audio/Spectrum`](../Examples/Audio/Spectrum/Sketch.swift) (self-contained tone analysis), [`Examples/Audio/Microphone`](../Examples/Audio/Microphone/Sketch.swift), [`Examples/Audio/FilePlayer`](../Examples/Audio/FilePlayer/Sketch.swift), [`Examples/Video/SoundReactive`](../Examples/Video/SoundReactive/Sketch.swift) (a video's own soundtrack), [`Examples/Integration/MIDILoopback`](../Examples/Integration/MIDILoopback/Sketch.swift), [`Examples/Integration/MIDIMonitor`](../Examples/Integration/MIDIMonitor/Sketch.swift), [`Examples/Integration/OSCLoopback`](../Examples/Integration/OSCLoopback/Sketch.swift), and [`Examples/Integration/OSCMonitor`](../Examples/Integration/OSCMonitor/Sketch.swift).
 
 ---
 

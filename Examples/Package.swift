@@ -402,6 +402,7 @@ let package = Package(
         example("Audio/StruckShapes", [.audio]),
         example("Audio/SoundInAnExport", [.audio]),
         example("Audio/Spatial", [.audio]),
+        example("Audio/Sonification", [.audio]),
         example("Audio/Spectrum", [.audio]),
         example("Audio/Microphone", [.audio]),
         example("Audio/ChladniResonance", [.audio]),
