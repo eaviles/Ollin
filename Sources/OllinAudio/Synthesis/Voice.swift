@@ -157,6 +157,22 @@ public struct Voice: Sendable, Hashable, Codable {
                   detune: detune, gain: gain)
     }
 
+    /// A voice built on recordings rather than on something worked out.
+    ///
+    /// Which recordings is ``Synth/instrument``, set separately, because they
+    /// are far too large to travel inside a note. This says only how they are
+    /// played.
+    public init(
+        sampled: Sampled,
+        envelope: Envelope = .plucked,
+        filter: Filter? = nil,
+        detune: Double = 0,
+        gain: Double = 0.8
+    ) {
+        self.init(source: .sampled(sampled), envelope: envelope, filter: filter,
+                  detune: detune, gain: gain)
+    }
+
     public init(
         source: VoiceSource,
         envelope: Envelope = .standard,

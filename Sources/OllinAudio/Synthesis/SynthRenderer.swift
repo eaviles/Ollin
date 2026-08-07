@@ -24,6 +24,7 @@ final class SynthRenderer: @unchecked Sendable {
         var secondTube: TubeVoice
         var patch: PatchVoice
         var secondPatch: PatchVoice
+        var sampler = SamplerVoice()
         var amplitude = EnvelopeRunner()
         var filterEnvelope = EnvelopeRunner()
         var filter = StateVariableFilter()
@@ -52,6 +53,14 @@ final class SynthRenderer: @unchecked Sendable {
     private let drivenMemory: UnsafeMutablePointer<Double>
     /// Samples rendered so far, used only to order voices by age.
     private var clock = 0
+    /// The recordings a sampled voice plays, if a sketch has set any.
+    ///
+    /// Held here rather than inside a `Voice` because it is a reference to
+    /// something large, and a voice has to be copyable a word at a time to
+    /// reach the audio thread. Set before the note that needs it and only read
+    /// afterwards, so the render thread never sees it change under a note.
+    var instrument: SampledInstrument?
+
     /// The voice every new note is built from. Changed between notes.
     private var currentVoice: Voice
 
@@ -229,6 +238,10 @@ final class SynthRenderer: @unchecked Sendable {
             if voice.spec.detune != 0 {
                 sample = 0.5 * (sample + voice.secondBow.next(bowVelocity: speed))
             }
+        case .sampled:
+            // The read head was placed when the note started; here it only
+            // moves along the recording.
+            sample = voice.sampler.next()
         case .patch:
             // The patch was set up when the note started; here it is only run
             // forward a sample, exactly as an oscillator is.
@@ -257,7 +270,14 @@ final class SynthRenderer: @unchecked Sendable {
             sample = voice.filter.next(sample, mode: spec.mode)
         }
 
-        return sample * amplitude * voice.velocity * voice.spec.gain
+        // A sampled voice has already taken the note's velocity into account,
+        // because how much of it is heard is one of its own settings: an
+        // instrument whose recordings are already its dynamics should not be
+        // scaled by velocity a second time. Every other source is scaled here
+        // as it always was.
+        var struck = voice.velocity
+        if case .sampled = voice.spec.source { struck = 1 }
+        return sample * amplitude * struck * voice.spec.gain
     }
 
     private func frequency(of midi: Double) -> Double { 440 * pow(2, (midi - 69) / 12) }
@@ -302,6 +322,14 @@ final class SynthRenderer: @unchecked Sendable {
                     frequency: frequency(of: event.pitch + currentVoice.detune),
                     velocity: voice.velocity, body: spec, sampleRate: sampleRate
                 )
+            }
+        }
+        voice.sampler.reset()
+        if case .sampled(let spec) = currentVoice.source {
+            if let instrument, !instrument.isEmpty {
+                voice.sampler.start(instrument: instrument, pitch: event.pitch,
+                                    velocity: voice.velocity, spec: spec,
+                                    sampleRate: sampleRate)
             }
         }
         voice.patch.reset()

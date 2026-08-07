@@ -112,6 +112,25 @@ public final class Synth: AudioSource {
         set { renderer.drive = newValue }
     }
 
+    /// The recordings a sampled voice plays.
+    ///
+    /// Set separately from ``voice`` rather than being part of it, because a
+    /// voice travels to the audio thread inside a note and has to be copyable
+    /// a word at a time, where recordings are megabytes on the heap. So the
+    /// voice says how to play them and this says which.
+    ///
+    /// ```swift
+    /// synth.instrument = SampledInstrument.builtin
+    /// synth.voice = Voice(sampled: Sampled())
+    /// ```
+    ///
+    /// Set it before the notes that need it. Notes already sounding keep the
+    /// recordings they started on.
+    public var instrument: SampledInstrument? {
+        get { renderer.instrument }
+        set { renderer.instrument = newValue }
+    }
+
     /// Everything done to the sound after it is made, in order.
     ///
     /// ```swift

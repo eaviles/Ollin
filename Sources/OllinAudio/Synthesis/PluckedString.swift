@@ -114,6 +114,10 @@ public enum VoiceSource: Sendable, Hashable, Codable {
     /// Several oscillators and what they do to each other, built rather than
     /// picked. See ``Patch``.
     case patch(Patch)
+    /// A recording, moved to whatever pitch is asked for. The recordings
+    /// themselves live on the ``Synth``, since they are far too large to
+    /// travel inside a note. See ``SampledInstrument``.
+    case sampled(Sampled)
 
     /// Whether this source has to be driven to keep sounding.
     ///
@@ -121,7 +125,7 @@ public enum VoiceSource: Sendable, Hashable, Codable {
     public var isDriven: Bool {
         switch self {
         case .bowed, .blown: return true
-        case .wave, .string, .body, .patch: return false
+        case .wave, .string, .body, .patch, .sampled: return false
         }
     }
 }
