@@ -33,8 +33,11 @@ final class Loop: Sketch {
 - [Rhythm](#rhythm) - a cycle of strikes, spread as evenly as the numbers allow
 - [Scale](#scale) - whole numbers in, notes in key out
 - [Chord](#chord) - notes meant to sound together
+- [Progression](#progression) - a cycle of chords, built out of a key
 - [Arpeggio](#arpeggio) - a chord played one note at a time
 - [MarkovChain](#markovchain) - carrying on the way something else carried on
+- [Tuning](#tuning) - pitches described by ratios rather than by semitones
+- [BeatFollower](#beatfollower) - playing along with the room
 - [Note](#note) - a pitch with its loudness and length attached
 - [Putting it together](#putting-it-together)
 - [What is not here yet](#what-is-not-here-yet)
@@ -156,6 +159,63 @@ The qualities: `.major` `.minor` `.diminished` `.augmented` `.sus2` `.sus4` `.fi
 
 `inverted(_:)` lifts notes from the bottom to the top, which is how one chord moves to the next without every part leaping. Turning it all the way round arrives an octave up; a negative inversion drops notes from the top instead, which is how a close voicing is opened out. `spread(over:)` lays the chord across several octaves, because a chord packed inside one reads as crowded rather than rich.
 
+### Progression
+
+A cycle of chords, written as scale degrees rather than as chord names.
+
+```swift
+let changes = Progression("I vi IV V", in: Scale(.major, root: "C3"))
+
+for step in counter.steps(upTo: time * 2) {
+    synth.play(chord: changes.pitches(at: step), for: 1.8)
+}
+```
+
+Degrees rather than names because that is the fact that survives changing key. `I vi IV V` is the same progression in every key there is, and writing it that way means the chords' qualities fall out of the scale instead of having to be said: the same four numbers come out major in a major key and minor in a minor one, with nothing changed.
+
+Roman numerals `I` to `VII`, separated by anything. Case is accepted and ignored, since the key is what decides major or minor. Anything unreadable is skipped.
+
+| Member | What it gives |
+|---|---|
+| `pitches(at:)` / `[step]` | the notes of the chord at a step, lowest first |
+| `degree(at:)` | which scale degree that chord is built on |
+| `root(at:)` | its root, for a bass line underneath |
+| `chord(at:)` | the `Chord` itself, for a progression written as symbols. Nil for one written as degrees |
+| `count` | how many chords before it repeats |
+| `notes` / `spacing` | three notes or four; two degrees apart is the usual stack of thirds |
+| `transposed(by:)` / `rotated(by:)` | the same progression elsewhere, or starting elsewhere |
+
+The cycle wraps, so a step number can climb forever.
+
+**Named ones**, each taking the key to build in: `.pop` (I V vi IV), `.fifties` (I vi IV V), `.twoFiveOne`, `.blues` (twelve bars), `.andalusian`, `.circleOfFifths`.
+
+#### Wandering
+
+```swift
+let changes = Progression("I vi IV V ii V", in: key).wandering(32)
+```
+
+The moves this progression already makes become the moves a longer one is allowed to make, so what comes out belongs to the same music without being the same cycle. It is a [`MarkovChain`](#markovchain) over the degrees, learned round the loop so the last chord returning to the first counts as a move.
+
+Seeded per call rather than from the sketch's own randomness, so a progression a sketch liked can be asked for again and be the same one, and adding one cannot shift anything else you were drawing at random.
+
+#### Chord symbols
+
+```swift
+let chord: Chord = "F#m7"
+let changes = Progression(symbols: "Dm7 G7 Cmaj7 Cmaj7")
+```
+
+The other way of writing changes down, and the one for when the chords do not all come from one key. A symbol is a root (`C`, `Bb`, `F#`), an optional octave (`C3`), an optional quality (`m7`, `maj7`, `dim7`, `sus4`, `m7b5`, `add9`, and the several spellings each of those has), and an optional bass after a slash (`C/G`, which turns the chord until that note is lowest).
+
+`Chord(symbol:)` returns nil for anything that is not a chord, so a typo is something you find out about. The literal form lands on C major and says so once instead, the same way a pitch name does.
+
+The one genuinely ambiguous thing about the notation is a trailing number: the 7 of `Cmaj7` is a quality and the 3 of `Cm3` is an octave. The quality is tried on the whole suffix first, and only if that is not a quality is a trailing number read as an octave.
+
+Degrees survive a change of key and symbols do not, which is the trade between the two forms.
+
+---
+
 ---
 
 ### Arpeggio
@@ -205,6 +265,80 @@ for (degree, probability) in melody.continuations {
 ```
 
 The walk is seeded and keeps its own generator. `reset()` forgets where it is, keeps what it learned, and rewinds the randomness so the same walk comes out again.
+
+### Tuning
+
+Pitches described by frequency ratios rather than by semitones.
+
+```swift
+let tuning = Tuning.just.rooted(at: "C3")
+synth.play(tuning[degree])
+```
+
+[`Scale`](#scale) divides the octave into twelve, because almost all the music a sketch is likely to make does. A `Tuning` does not assume it. It has the same shape as a `Scale`, so a sketch that indexes degrees and snaps stray pitches works the same way with either.
+
+The reason to reach for it is that equal temperament is a compromise: it makes every key equally usable by making every interval except the octave slightly wrong. A drone piece that never changes key gives up nothing by being tuned in whole number ratios, and gets back intervals that lock together instead of beating.
+
+| Member | What it gives |
+|---|---|
+| `tuning[degree]` / `pitch(_:)` | the pitch of a degree, running past both ends into the periods above and below |
+| `frequency(_:)` | the same in Hz |
+| `snap(_:)` | the nearest pitch in the tuning, for something decided by a mouse or a sensor |
+| `cents` | how far each degree sits above the root, so you can see what a tuning is doing |
+| `ratios` / `period` / `degreeCount` | what it is made of |
+| `rooted(at:)` | the same tuning somewhere else |
+
+| Named | What it is |
+|---|---|
+| `.equalTemperament` | twelve equal steps: the ordinary keyboard |
+| `.just` | five limit just intonation, the major scale in whole number ratios |
+| `.pythagorean` | stacked fifths: a very pure fifth and a noticeably wide third |
+| `.quarterTones` | twenty four equal steps |
+| `.nineteen` / `.thirtyOne` | equal divisions with sweeter thirds than twelve |
+| `.bohlenPierce` | thirteen equal steps of a *third* rather than an octave |
+
+`Tuning.equal(_:period:root:)` builds any equal division, and `Tuning(ratios:)` takes ratios of your own, folded into one period and deduplicated.
+
+**Bohlen-Pierce has no octave in it at all.** Doubling a frequency is so familiar that a tuning without it sounds wrong before it sounds strange, and then stops sounding wrong. It works because odd harmonics still line up, so it suits sounds that have only odd harmonics: the [blown tube](./Synthesis.md#physical-models) is the obvious one.
+
+---
+
+### BeatFollower
+
+Following the beat in whatever the sketch is listening to, so it can play along.
+
+```swift
+let mic = AudioInput()
+lazy var room = BeatFollower(mic)
+var counter = StepCounter(perBeat: 2)
+
+override func draw() {
+    room.update(at: time)
+    for step in counter.steps(upTo: room.beats) {
+        synth.play(scale[step % 5], for: 0.2)      // in time with the room
+    }
+}
+```
+
+| Member | What it gives |
+|---|---|
+| `update(at:)` | reads what has been heard since the last call. Once a frame |
+| `beats` | where the music has got to, in beats. Hand this to a `StepCounter` |
+| `tempo` | beats per minute, or zero until it has an opinion |
+| `isFollowing` | whether it has heard enough to be worth following |
+| `steadiness` | `0...1`. One is a machine; low numbers are a player breathing, or a detector guessing |
+| `rhythm(steps:perBeat:)` | the room's own pattern, as a [`Rhythm`](#rhythm) a sketch can play |
+| `reset()` | forget everything, for when the music changes |
+
+Three things are worth knowing:
+
+- **A tempo outside the range is folded into it.** The common failure is hearing every eighth note as a beat and reporting twice the tempo, which is the same music. Halving and doubling until it lands in `60...160` is what stops that.
+- **A missed beat costs nothing.** The tempo is the middle of the recent gaps rather than their average, and one missed beat doubles a gap, which moves an average and does not move a middle.
+- **It hears arrivals, not the beat a drummer would tap.** A steady loop is followed well and rubato is followed badly. `steadiness` is how much to trust it.
+
+`BeatEngine` is the same thing with nothing listening: onset times in, musical time out. That is what makes it testable, and it is there if a sketch has its own idea of when a beat happened.
+
+---
 
 ---
 
@@ -259,16 +393,14 @@ override func draw() {
 Said plainly, so you can plan around it rather than go looking:
 
 - **No sequencer.** There is no type that holds a piece and plays it back. A step number goes in and notes come out, and the arrangement is the sketch's own code. That is deliberate: a sequencer would need a clock, and a clock is what keeps this tier from running on somebody else's.
-- **No chord progressions.** Chords are named or built from a scale one at a time. Where the next chord comes from is a `MarkovChain` over qualities or degrees, which is a few lines rather than a type.
-- **No note names for chords.** `Chord("C4", .minorSeventh)` rather than `"Cm7"`. Parsing chord symbols is a bigger job than it looks and it is not done.
-- **No microtonal scales.** A `Pitch` holds a fractional MIDI number, so a scale of your own can sit between the keys with `Scale(intervals:)` taking whole semitones only. Non-twelve tunings need their own type and do not have one.
-- **Nothing generates rhythm from audio.** [Beat detection](./Audio.md#bands-and-beats) reads a beat off incoming sound; nothing turns that into a `Rhythm`.
+- **A `Scale` is still twelve tone.** `Scale(intervals:)` takes whole semitones. Anything else is a [`Tuning`](#tuning), which is a separate type rather than a setting on a scale, and chords are not built out of one.
+- **Following a beat is not following a bar.** A [`BeatFollower`](#beatfollower) knows where the beat is and not where the downbeat is, so a pattern locks to the pulse rather than to the phrase.
 
 ---
 
 ### Credits
 
-The Euclidean rhythms come from Bjorklund's algorithm for spacing pulses in a spallation neutron source, which Godfried Toussaint connected to musical timelines. The named rhythms and the pattern-and-gap notation are from his paper; the implementation here is written from the description of the construction, not translated from anyone's code. Full credit in [`ATTRIBUTION.md`](../../ATTRIBUTION.md).
+The Euclidean rhythms come from Bjorklund's algorithm for spacing pulses in a spallation neutron source, which Godfried Toussaint connected to musical timelines. The named rhythms and the pattern-and-gap notation are from his paper; the implementation here is written from the description of the construction, not translated from anyone's code. The tunings are historical: five limit just intonation and the Pythagorean stack of fifths are older than notation, and Bohlen-Pierce is named for Heinz Bohlen, Kees van Prooijen and John R. Pierce, who each arrived at it separately. Full credit in [`ATTRIBUTION.md`](../../ATTRIBUTION.md).
 
 ---
 

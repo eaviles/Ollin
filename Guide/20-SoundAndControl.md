@@ -325,6 +325,75 @@ for step in counter.steps(upTo: time * 104 / 60) {
 
 That is `Examples/Audio/Generative`, drawn as three of those rings turning on one step count, with the key and the figure and the tempo as knobs you move while it plays. All of it repeats: the same seed gives the same melody, the same two numbers give the same rhythm. A generated piece is something you can come back to, not something you had to be there to catch.
 
+## Chords that come out of a key
+
+The scale gave every number somewhere safe to land. Chords are the same idea one level up, and the useful way to write them down is as *degrees* rather than as names.
+
+```swift
+let changes = Progression("I vi IV V", in: Scale(.major, root: "C3"))
+
+for step in counter.steps(upTo: time * 2) {
+    pad.play(chord: changes.pitches(at: step), for: 1.8)
+    bass.play(changes.root(at: step).transposed(by: -12), for: 1.6)
+}
+```
+
+Degrees, because that is the fact that survives changing key. `I vi IV V` is the same progression in every key there is, and writing it this way means the qualities fall out of the scale instead of having to be said: the same four numbers come out major in a major key and minor in a minor one, with nothing changed. `Examples/Audio/Changes` puts the key on a knob so you can hear that happen while it plays.
+
+There are named ones (`.pop`, `.blues`, `.twoFiveOne`, `.andalusian`), and there is a way to leave the cycle:
+
+```swift
+let changes = Progression("I vi IV V ii V", in: key).wandering(32)
+```
+
+That is the Markov chain from a few pages back, learned off the progression's own moves. It only ever makes a move the original made, so two bars in it is somewhere the original never went, having got there by steps the original took. Seeded per call, so a wander you like is one you can ask for again.
+
+When the chords do not all come from one key, write them out instead:
+
+```swift
+let changes = Progression(symbols: "Dm7 G7 Cmaj7 Cmaj7")
+let chord: Chord = "F#m7"
+```
+
+Symbols do not survive a change of key and degrees do, which is the whole trade between the two.
+
+## Twelve is a choice
+
+Everything so far has divided the octave into twelve, because almost all the music you are likely to make does. It is worth knowing that this is a decision and not a law.
+
+```swift
+let tuning = Tuning.just.rooted(at: "C3")
+synth.play(tuning[degree])
+```
+
+A `Tuning` is a list of frequency ratios and the interval they repeat over. It has the same shape as a `Scale`, so indexing degrees and snapping stray pitches work the same way.
+
+Equal temperament is a compromise: it makes every key equally usable by making every interval except the octave slightly wrong. Play a held triad in `.equalTemperament` and then the same triad in `.just` and you can hear what that costs. The equal one beats, slowly and audibly; the whole number one locks and sits still. A piece that never changes key gives up nothing by being tuned the second way.
+
+Past that there are more steps rather than different ones (`.nineteen`, `.thirtyOne`, `.quarterTones`), and then there is `.bohlenPierce`, which divides a *third* into thirteen and so contains no octave at all. Doubling a frequency is so familiar that a tuning without it sounds wrong before it sounds strange, and then stops sounding wrong. It works because odd harmonics still line up, which is why it suits the clarinet from earlier in this chapter and suits almost nothing else.
+
+## Playing along with the room
+
+The beat detector at the start of this chapter told you *that* a beat happened. Getting from there to playing in time with one is a bit more:
+
+```swift
+lazy var room = BeatFollower(mic)
+var counter = StepCounter(perBeat: 2)
+
+override func draw() {
+    room.update(at: time)
+    for step in counter.steps(upTo: room.beats) {
+        synth.play(scale[step % 5], for: 0.2)
+    }
+}
+```
+
+`room.beats` is musical time inferred from what it is hearing, so the same `StepCounter` that ran off `time` now runs off the record playing in the room. `room.rhythm(steps: 16)` hands back the pattern it heard as a `Rhythm`, which you can then play against.
+
+Two things it does that are easy to get wrong if you write this yourself. A detector that fires on every eighth note reports twice the tempo, which is the same music, so anything outside a believable range is halved or doubled until it lands inside one. And the tempo is the *middle* of the recent gaps rather than their average, because one missed beat doubles a gap, and that moves an average where it does not move a middle.
+
+It hears arrivals rather than the beat a drummer would tap, so a steady loop is followed well and rubato is followed badly. `room.steadiness` is how much to trust it.
+
 ## Numbers you can hear
 
 Everything so far invents what it plays. The other way to fill a scale with notes is to already have the numbers, and read them out.
@@ -589,12 +658,12 @@ The idea that any sound splits into pure vibrations is Joseph Fourier's (1822), 
 - [Audio](../Docs/Helpers/Audio.md): every source and read, `bands`, beats, and feeding the `AudioAnalyzer` yourself.
 - [Synthesis](../Docs/Helpers/Synthesis.md): `Synth`, pitches, the `Voice` presets and what is inside one, envelopes, filters, delay and reverb.
 - [Synthesis](../Docs/Helpers/Synthesis.md#physical-models): all four models, their settings, why the tuning is exact, how a shape is measured, driving a bow or a breath, placing a sound, and what carries into an export.
-- [Composition](../Docs/Helpers/Composition.md): rhythms, scales, chords, arpeggios, chains, and the counter that joins them to time.
+- [Composition](../Docs/Helpers/Composition.md): rhythms, scales, chords, progressions, arpeggios, chains, tunings, following a beat, and the counter that joins them to time.
 - [Sonification](../Docs/Helpers/Sonification.md): the four sources, how the ends of the data are decided, the reference note, and reading a second series as loudness.
 - [MIDI](../Docs/Integration/MIDI.md): messages, the three reads, binding, and sending MIDI out.
 - [OSC](../Docs/Integration/OSC.md): addresses and arguments, bundles, binding, and testing with a phone.
 - [Parameters](../Docs/Helpers/Parameters.md): the typed `@Param` family, smoothing, and the binding surface.
-- Worked examples: [`Examples/Audio/Synth`](../Examples/Audio/Synth/Sketch.swift) (a playable keyboard), [`Examples/Audio/Generative`](../Examples/Audio/Generative/Sketch.swift) (three Euclidean rings deciding what to play), [`Examples/Audio/Sonification`](../Examples/Audio/Sonification/Sketch.swift) (a landscape drawn and read out at once), [`Examples/Audio/Strings`](../Examples/Audio/Strings/Sketch.swift) (six strings you pluck where you click), [`Examples/Audio/StruckShapes`](../Examples/Audio/StruckShapes/Sketch.swift) (shapes that sound like the shape they are), [`Examples/Audio/Bowing`](../Examples/Audio/Bowing/Sketch.swift) (a bow and a reed you keep playing), [`Examples/Audio/Spatial`](../Examples/Audio/Spatial/Sketch.swift) (sound placed in a 3D scene), [`Examples/Audio/SoundInAnExport`](../Examples/Audio/SoundInAnExport/Sketch.swift) (a piece that exports its own music), [`Examples/Audio/Spectrum`](../Examples/Audio/Spectrum/Sketch.swift) (self-contained tone analysis), [`Examples/Audio/Microphone`](../Examples/Audio/Microphone/Sketch.swift), [`Examples/Audio/FilePlayer`](../Examples/Audio/FilePlayer/Sketch.swift), [`Examples/Video/SoundReactive`](../Examples/Video/SoundReactive/Sketch.swift) (a video's own soundtrack), [`Examples/Integration/MIDILoopback`](../Examples/Integration/MIDILoopback/Sketch.swift), [`Examples/Integration/MIDIMonitor`](../Examples/Integration/MIDIMonitor/Sketch.swift), [`Examples/Integration/OSCLoopback`](../Examples/Integration/OSCLoopback/Sketch.swift), and [`Examples/Integration/OSCMonitor`](../Examples/Integration/OSCMonitor/Sketch.swift).
+- Worked examples: [`Examples/Audio/Synth`](../Examples/Audio/Synth/Sketch.swift) (a playable keyboard), [`Examples/Audio/Generative`](../Examples/Audio/Generative/Sketch.swift) (three Euclidean rings deciding what to play), [`Examples/Audio/Sonification`](../Examples/Audio/Sonification/Sketch.swift) (a landscape drawn and read out at once), [`Examples/Audio/Strings`](../Examples/Audio/Strings/Sketch.swift) (six strings you pluck where you click), [`Examples/Audio/StruckShapes`](../Examples/Audio/StruckShapes/Sketch.swift) (shapes that sound like the shape they are), [`Examples/Audio/Bowing`](../Examples/Audio/Bowing/Sketch.swift) (a bow and a reed you keep playing), [`Examples/Audio/Changes`](../Examples/Audio/Changes/Sketch.swift) (a progression whose key you change while it plays), [`Examples/Audio/Spatial`](../Examples/Audio/Spatial/Sketch.swift) (sound placed in a 3D scene), [`Examples/Audio/SoundInAnExport`](../Examples/Audio/SoundInAnExport/Sketch.swift) (a piece that exports its own music), [`Examples/Audio/Spectrum`](../Examples/Audio/Spectrum/Sketch.swift) (self-contained tone analysis), [`Examples/Audio/Microphone`](../Examples/Audio/Microphone/Sketch.swift), [`Examples/Audio/FilePlayer`](../Examples/Audio/FilePlayer/Sketch.swift), [`Examples/Video/SoundReactive`](../Examples/Video/SoundReactive/Sketch.swift) (a video's own soundtrack), [`Examples/Integration/MIDILoopback`](../Examples/Integration/MIDILoopback/Sketch.swift), [`Examples/Integration/MIDIMonitor`](../Examples/Integration/MIDIMonitor/Sketch.swift), [`Examples/Integration/OSCLoopback`](../Examples/Integration/OSCLoopback/Sketch.swift), and [`Examples/Integration/OSCMonitor`](../Examples/Integration/OSCMonitor/Sketch.swift).
 
 ---
 
