@@ -242,6 +242,62 @@ Two honest notes. The look needs some texture in the source, because run boundar
 
 Everything in these three sections reads real pixels on the CPU, which means two practical things. A texture-backed image needs `snapshot()` first, and all of it is setup work: run it once, hold the result, and let `draw()` replay it.
 
+## Numbers you didn't type
+
+Words and pictures are material you bring in. So are numbers.
+
+A comma-separated file is the format everything exports: a spreadsheet, a sensor log, a download from a public archive. `loadTable` reads one, and each row hands you its cells by column name.
+
+<img src="Images/07-WordsAndPictures/DataAsMaterial.jpg" alt="Left, five lines of a CSV file in a pixel font, the header and one quoted row picked out in dark ink. Right, the four data rows as colored horizontal bars labeled Oslo, Bath Maine, Kyoto, and Lima, each sized by its number" width="680">
+
+```swift
+var table: Table?
+
+override func setup() {
+    table = loadTable(resource: "visits", withExtension: "csv", in: .module)
+}
+
+override func draw() {
+    background(.white)
+    guard let table else { return }
+
+    for (index, row) in table.enumerated() {
+        let y = 100 + Double(index) * 60
+        fill(row.color("tint") ?? .gray)
+        drawRect(corner: Vector2(80, y), width: row.number("visits") ?? 0, height: 22)
+    }
+}
+```
+
+A cell is text, because that is what a file holds. `row["city"]` gives you that text, and `row.number(_:)`, `row.int(_:)`, `row.bool(_:)`, and `row.color(_:)` convert it when you ask. Each one answers `nil` when the column isn't there or the cell isn't what you asked for, which is the honest answer for a file with a gap in it. An empty cell is not a zero.
+
+The scale should come from the file too. `table.numbers("visits")` reads a whole column as a series, so the drawing fits whatever the file holds:
+
+```swift
+let visits = table.numbers("visits")
+guard let most = visits.max() else { return }
+let length = (row.number("visits") ?? 0) / most * 250
+```
+
+Once the numbers come from a file, the drawing changes when the file does, and you never touch the sketch.
+
+Two things about the format are worth knowing, and the figure above shows both. A cell wrapped in double quotes may hold commas and line breaks, so `"Bath, Maine"` is one cell and arrives without its quotes. And a first row holding no numbers is read as the header. When that guess is wrong, say so with `header: false` and read cells by position instead.
+
+JSON works the same way, for documents with a shape rather than rows:
+
+```swift
+let doc = loadJSON(resource: "places", withExtension: "json", in: .module)
+
+for point in doc?["points"].array ?? [] {
+    fill(point["tint"].color ?? .gray)
+    drawCircle(point["x"].number ?? 0, point["y"].number ?? 0, 20)
+}
+```
+
+Reach in by name or index, then ask for the kind you want at the end: `.string`, `.number`, `.int`, `.bool`, `.color`, `.array`. A key that isn't there answers null rather than stopping, so a whole path is safe to write in one line, and a loop over a key that isn't there runs zero times. That is why the `tint` above needs no check: a point that doesn't carry one lands on the fallback.
+
+Both loaders belong in `setup()`. Reading a file is slow next to drawing one frame, and a network URL blocks until it arrives.
+
 ## Putting it together: a picture painted with type
 
 This is the piece from the top of the chapter, and it's the whole chapter in one grid: words drawn with `drawText`, a picture read with `image[x, y]`, and the two fused so the picture is *made of* the words. A message repeats across a grid in reading order, and each letter samples the sunset at its own position, takes the pixel's color, and scales by its brightness.
@@ -362,6 +418,8 @@ The picture-as-marks tools each come from a named piece of work. Halftone screen
 - [Glyph mosaic](../Docs/Drawing/GlyphMosaic.md) and [halftone](../Docs/Drawing/Halftone.md): the measured-ink ramp, the curated glyph sets, screen angles, and the data forms that let you draw your own marks.
 - [Stippling](../Docs/Generators/Stippling.md), [single line](../Docs/Generators/SingleLine.md), and [spanning tree](../Docs/Generators/SpanningTree.md): dot placement and the two ways to join it, with the `cutoff` and point-count guidance.
 - [Pixel sorting](../Docs/Drawing/PixelSorting.md): every key and direction, and how to get each of the classic looks.
+- [Data](../Docs/Helpers/Data.md): `loadTable` and `loadJSON` in full, including the separator and header guesses, reading a headerless file, and when a `Codable` type is the better tool.
+- Worked examples for data: [`Examples/Data/Readings`](../Examples/Data/Readings/Sketch.swift) (a CSV as a range chart) and [`Examples/Data/Places`](../Examples/Data/Places/Sketch.swift) (a JSON survey).
 - Worked examples: [`Examples/Images/GlyphMosaic`](../Examples/Images/GlyphMosaic/Sketch.swift), [`Halftone`](../Examples/Images/Halftone/Sketch.swift), [`PixelSort`](../Examples/Images/PixelSort/Sketch.swift), [`SingleLine`](../Examples/Images/SingleLine/Sketch.swift), and [`SpanningTree`](../Examples/Images/SpanningTree/Sketch.swift).
 
 ---

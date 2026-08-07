@@ -1,0 +1,17 @@
+{
+  "survey": {
+    "title": "Survey points",
+    "subtitle": "eight stations and the paths walked between them"
+  },
+  "points": [
+    { "name": "Ridge",   "at": { "x": 0.22, "y": 0.26 }, "weight": 0.90, "tint": "#E8590C" },
+    { "name": "Hollow",  "at": { "x": 0.66, "y": 0.17 }, "weight": 0.50, "tint": "#1098AD" },
+    { "name": "Ford",    "at": { "x": 0.44, "y": 0.52 }, "weight": 0.75, "tint": "#0CA678" },
+    { "name": "Cairn",   "at": { "x": 0.80, "y": 0.60 }, "weight": 0.35 },
+    { "name": "Mire",    "at": { "x": 0.14, "y": 0.71 }, "weight": 0.60, "tint": "#7048E8" },
+    { "name": "Beacon",  "at": { "x": 0.88, "y": 0.33 }, "weight": 0.45, "tint": "#F59F00" },
+    { "name": "Weir",    "at": { "x": 0.53, "y": 0.84 }, "weight": 0.80, "tint": "#D6336C" },
+    { "name": "Larch",   "at": { "x": 0.30, "y": 0.43 }, "weight": 0.28, "tint": "#4263EB" }
+  ],
+  "paths": [[0, 7], [7, 2], [2, 3], [2, 6], [1, 5], [5, 3], [7, 4], [4, 6]]
+}

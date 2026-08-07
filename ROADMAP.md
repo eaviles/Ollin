@@ -94,7 +94,6 @@ More of the platform's live signals, each a `FrameSource` or a simple value read
 - **Voice and sound events.** Speech recognition as drawable live captions, and sound-event classification (a clap, a genre, a bark) as a trigger, the audio analogue of the vision trackers.
 - **Rich controllers.** Game controllers (gyro, triggers, touchpad), and, on the iOS leg, Apple Pencil tilt and azimuth.
 - **Body and world data.** Heart rate from a paired Watch for biofeedback, and real-world ambient data (weather, location) as a slow live input.
-- **Data as input.** The classic data-loading staple: CSV / TSV / JSON from a file or URL as simple typed rows and values a sketch reads in `setup()`, so data-driven drawing is one line rather than hand-rolled networking and decoding.
 
 Several overlap the [iPhone sensor array](#iphone-as-a-sensor-array); these are the Mac-side direct sources. See the [design notes](DESIGN-NOTES.md#new-input-sources).
 

@@ -1,0 +1,13 @@
+month,high,low,rain,tint,note
+Jan,6.2,-1.4,58,#4C6EF5,"cold, clear"
+Feb,7.1,-1.0,44,#4C6EF5,"the ""thaw"" week"
+Mar,10.4,1.6,47,#3BC9DB,wind off the water
+Apr,14.8,4.2,41,#3BC9DB,first warm afternoon
+May,19.3,8.5,52,#51CF66,"long, mild evenings"
+Jun,23.1,12.4,63,#51CF66,thunder most weeks
+Jul,25.6,14.8,71,#FCC419,"hot, still air"
+Aug,24.9,14.5,68,#FCC419,heavy rain twice
+Sep,20.7,11.2,59,#FF922B,clear mornings
+Oct,15.2,7.1,66,#FF922B,leaves down early
+Nov,10.1,3.4,72,#845EF7,"grey, wet, dark"
+Dec,7.0,0.2,64,#845EF7,frost on the glass

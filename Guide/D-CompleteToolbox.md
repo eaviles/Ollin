@@ -65,6 +65,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Glyph mosaic | A picture rebuilt as a grid of characters, each chosen by its measured ink in the active font | [Ch 7](07-WordsAndPictures.md) | [GlyphMosaic](../Docs/Drawing/GlyphMosaic.md) |
 | Pixel sorting | Brightness-bounded runs of a picture's own pixels reordered into streaks, the classic glitch melt | [Ch 7](07-WordsAndPictures.md) | [PixelSorting](../Docs/Drawing/PixelSorting.md) |
 | Halftone | A picture as the classic print dot screen: area-exact dots on a rotated grid, real circles for the plotter | [Ch 7](07-WordsAndPictures.md) | [Halftone](../Docs/Drawing/Halftone.md) |
+| Tables and JSON | `loadTable` reads a CSV or TSV with typed reads by column name; `loadJSON` reads a document by name and index | [Ch 7](07-WordsAndPictures.md) | [Data](../Docs/Helpers/Data.md) |
 | Luminance melt | A picture liquified by a warped noise field and poured through a palette, the `.melt` filter | [Ch 14](14-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
 
 ## Geometry you can hold
