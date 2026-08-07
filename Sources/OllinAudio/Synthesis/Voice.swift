@@ -1,0 +1,182 @@
+import Foundation
+
+/// The recipe for one note: what it is made of, how it is shaped, and what is
+/// filtered out of it.
+///
+/// A `Voice` is a value, so it can be built once and held, copied and adjusted,
+/// or changed on a running `Synth` between notes. It says nothing about pitch or
+/// loudness: those arrive with the note.
+///
+/// ```swift
+/// let synth = Synth(.pluck)                        // one of the presets
+///
+/// var glass = Voice.bell                           // or start from one
+/// glass.envelope.release = 3
+/// glass.filter?.cutoff = 4000
+/// ```
+public struct Voice: Sendable, Hashable, Codable {
+    /// The wave the note is built from.
+    public var waveform: Waveform
+    /// How the note's loudness moves over time.
+    public var envelope: Envelope
+    /// What is filtered out of it, and how that moves. Nil leaves the wave alone.
+    public var filter: Filter?
+    /// A second oscillator this far from the first, in semitones.
+    ///
+    /// Small values (a few hundredths) are the point: two oscillators slightly
+    /// apart drift in and out of phase with each other, which is what makes a
+    /// held note shimmer instead of sitting still. Zero runs a single oscillator.
+    public var detune: Double
+    /// The voice's own level, `0...1`, before the note's velocity.
+    public var gain: Double
+
+    public init(
+        waveform: Waveform = .sawtooth,
+        envelope: Envelope = .standard,
+        filter: Filter? = nil,
+        detune: Double = 0,
+        gain: Double = 0.8
+    ) {
+        self.waveform = waveform
+        self.envelope = envelope
+        self.filter = filter
+        self.detune = detune
+        self.gain = min(max(0, gain), 1)
+    }
+
+    /// What is taken out of the wave, and how that moves while the note sounds.
+    public struct Filter: Sendable, Hashable, Codable {
+        /// Which side of the cutoff is kept.
+        public enum Mode: String, Sendable, Hashable, Codable, CaseIterable {
+            /// Keeps what is below the cutoff: the usual one, and what makes a
+            /// bright wave sound dark.
+            case lowpass
+            /// Keeps what is above it: thins a sound out.
+            case highpass
+            /// Keeps a band around it: hollow and vocal.
+            case bandpass
+            /// Takes out a band around it, leaving the rest.
+            case notch
+        }
+
+        public var mode: Mode
+        /// Where the filter sits when the note starts, in Hz.
+        public var cutoff: Double
+        /// How much the filter emphasises its own cutoff, `0...1`. Past about
+        /// 0.7 the cutoff starts to whistle, which is usually the point.
+        public var resonance: Double
+        /// How far `envelope` moves the cutoff, in octaves. Negative closes the
+        /// filter as the note goes on, which is what a plucked string does.
+        public var envelopeAmount: Double
+        /// The shape of that movement. Ignored when `envelopeAmount` is zero.
+        public var envelope: Envelope
+        /// How far the cutoff follows the note being played, `0...1`.
+        ///
+        /// At 0 the filter sits at `cutoff` whatever is played, so high notes
+        /// come out duller than low ones (which is what real instruments do, and
+        /// why it is the default). At 1 it moves with the note step for step, so
+        /// every note is filtered the same distance above its own pitch. That is
+        /// what makes an unpitched wave playable: a noise voice has no pitch of
+        /// its own, so the filter is the only thing a note can move.
+        public var keyTracking: Double
+
+        public init(
+            mode: Mode = .lowpass,
+            cutoff: Double = 2000,
+            resonance: Double = 0.2,
+            envelopeAmount: Double = 0,
+            envelope: Envelope = .percussive,
+            keyTracking: Double = 0
+        ) {
+            self.mode = mode
+            self.cutoff = max(10, cutoff)
+            self.resonance = min(max(0, resonance), 1)
+            self.envelopeAmount = envelopeAmount
+            self.envelope = envelope
+            self.keyTracking = min(max(0, keyTracking), 1)
+        }
+
+        /// A plain lowpass that does not move.
+        public static func lowpass(cutoff: Double, resonance: Double = 0.2) -> Filter {
+            Filter(mode: .lowpass, cutoff: cutoff, resonance: resonance)
+        }
+
+        /// A lowpass that opens as the note is struck and closes as it decays,
+        /// which is most of what a synthesizer sounds like.
+        public static func sweep(
+            from cutoff: Double, by octaves: Double = 3,
+            resonance: Double = 0.3, envelope: Envelope = .percussive
+        ) -> Filter {
+            Filter(mode: .lowpass, cutoff: cutoff, resonance: resonance,
+                   envelopeAmount: octaves, envelope: envelope)
+        }
+    }
+}
+
+// MARK: - Presets
+
+extension Voice {
+    /// One partial and nothing else: a test tone, and the quietest thing here.
+    public static let sine = Voice(
+        waveform: .sine,
+        envelope: Envelope(attack: 0.01, decay: 0.1, sustain: 0.8, release: 0.2),
+        gain: 0.7
+    )
+
+    /// Struck and gone, bright at the front and dark by the end: the sound a
+    /// string makes when it is let go rather than bowed.
+    public static let pluck = Voice(
+        waveform: .sawtooth,
+        envelope: Envelope(attack: 0.002, decay: 0.5, sustain: 0, release: 0.2),
+        filter: Filter(mode: .lowpass, cutoff: 400, resonance: 0.35,
+                       envelopeAmount: 3.5,
+                       envelope: Envelope(attack: 0.001, decay: 0.25, sustain: 0, release: 0.15)),
+        gain: 0.8
+    )
+
+    /// Low, round, and quick: sits under everything else without competing.
+    public static let bass = Voice(
+        waveform: .square,
+        envelope: Envelope(attack: 0.005, decay: 0.15, sustain: 0.6, release: 0.12),
+        filter: Filter(mode: .lowpass, cutoff: 180, resonance: 0.25,
+                       envelopeAmount: 2.5,
+                       envelope: Envelope(attack: 0.002, decay: 0.12, sustain: 0.2, release: 0.1)),
+        gain: 0.9
+    )
+
+    /// Slow in, slow out, and never quite still, so held notes wash together.
+    public static let pad = Voice(
+        waveform: .sawtooth,
+        envelope: .swell,
+        filter: Filter(mode: .lowpass, cutoff: 1200, resonance: 0.15,
+                       envelopeAmount: 1.5, envelope: .swell),
+        detune: 0.08,
+        gain: 0.5
+    )
+
+    /// A struck bell: nothing at the front, a long ring, and two tones just far
+    /// enough apart to beat against each other.
+    public static let bell = Voice(
+        waveform: .sine,
+        envelope: Envelope(attack: 0.001, decay: 2.5, sustain: 0, release: 1.2),
+        detune: 0.35,
+        gain: 0.6
+    )
+
+    /// Blunt and immediate, and it stops when you do.
+    public static let stab = Voice(
+        waveform: .sawtooth,
+        envelope: .organ,
+        filter: Filter(mode: .lowpass, cutoff: 2400, resonance: 0.5),
+        detune: 0.05,
+        gain: 0.6
+    )
+
+    /// Air rather than pitch: noise through a band the note moves.
+    public static let breath = Voice(
+        waveform: .noise,
+        envelope: Envelope(attack: 0.15, decay: 0.4, sustain: 0.5, release: 0.6),
+        filter: Filter(mode: .bandpass, cutoff: 900, resonance: 0.75, keyTracking: 1),
+        gain: 0.7
+    )
+}

@@ -20,10 +20,8 @@ import os
 @MainActor
 public final class Tone: AudioSource {
 
-    /// Oscillator shapes, brightest last.
-    public enum Waveform: Sendable {
-        case sine, triangle, sawtooth, square
-    }
+    /// Oscillator shapes, brightest last. The same set a `Synth` voice uses.
+    public typealias Waveform = OllinAudio.Waveform
 
     public nonisolated let analyzer: AudioAnalyzer
 
@@ -118,34 +116,17 @@ private func makeOscillatorNode(
     AVAudioSourceNode(format: format) { _, _, frameCount, audioBufferList in
         let abl = UnsafeMutableAudioBufferListPointer(audioBufferList)
         let p = st.params.withLock { $0 }
-        let inc = 2.0 * Double.pi * p.frequency / sr2
-        var phase = st.phase
+        // The fraction of a cycle one sample covers, which is what the
+        // oscillator's corner correction is written against.
+        let increment = p.frequency / sr2
         for frame in 0..<Int(frameCount) {
-            let s = Float(oscillatorSample(phase: phase, waveform: p.waveform) * p.amplitude)
+            let s = Float(st.oscillator.next(p.waveform, increment: increment) * p.amplitude)
             for buffer in abl {
                 let out = buffer.mData!.assumingMemoryBound(to: Float.self)
                 out[frame] = s
             }
-            phase += inc
-            if phase >= 2.0 * Double.pi { phase -= 2.0 * Double.pi }
         }
-        st.phase = phase
         return noErr
-    }
-}
-
-/// One oscillator sample for a phase in `0..<2π`.
-private func oscillatorSample(phase: Double, waveform: Tone.Waveform) -> Double {
-    let t = phase / (2.0 * Double.pi)   // 0...1 through the cycle
-    switch waveform {
-    case .sine:
-        return sin(phase)
-    case .triangle:
-        return 4.0 * abs(t - 0.5) - 1.0
-    case .sawtooth:
-        return 2.0 * t - 1.0
-    case .square:
-        return t < 0.5 ? 1.0 : -1.0
     }
 }
 
@@ -156,10 +137,10 @@ private struct Params: Sendable {
     var waveform: Tone.Waveform
 }
 
-/// Holds the oscillator's live parameters (behind a lock) and its running phase
+/// Holds the oscillator's live parameters (behind a lock) and its running state
 /// (touched only by the render block, which the engine calls serially).
 private final class ToneState: @unchecked Sendable {
     let params: OSAllocatedUnfairLock<Params>
-    var phase: Double = 0
+    var oscillator = Oscillator(seed: 0x7043)
     init(params: Params) { self.params = OSAllocatedUnfairLock(initialState: params) }
 }

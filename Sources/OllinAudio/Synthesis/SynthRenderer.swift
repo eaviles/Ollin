@@ -1,0 +1,227 @@
+import Foundation
+import Synchronization
+
+/// The part of a synthesizer that actually makes samples.
+///
+/// Deliberately knows nothing about the audio engine: it takes events in and
+/// fills a buffer, so the same code that feeds the speakers can be run offline
+/// at any rate, which is what makes the sound testable and what a deterministic
+/// render later leans on. Given the same events at the same rate it produces the
+/// same samples, so nothing here reads a clock or the sketch's randomness.
+final class SynthRenderer: @unchecked Sendable {
+
+    /// One voice's running state: everything a single note needs to sound.
+    private struct RenderVoice {
+        var oscillator: Oscillator
+        var second: Oscillator
+        var amplitude = EnvelopeRunner()
+        var filterEnvelope = EnvelopeRunner()
+        var filter = StateVariableFilter()
+
+        var spec = Voice()
+        var pitch: Double = 60
+        var velocity: Double = 0
+        /// Samples left before the note releases itself, or nil if it is held.
+        var remaining: Int?
+        /// Whether the note is still held, so a `noteOff` can find it.
+        var isHeld = false
+        /// When the note started, for deciding which voice to take.
+        var startedAt: Int = 0
+
+        var isSounding: Bool { !amplitude.isFinished }
+    }
+
+    private var voices: [RenderVoice]
+    private let sampleRate: Double
+    private let events: EventRing
+    /// Samples rendered so far, used only to order voices by age.
+    private var clock = 0
+    /// The voice every new note is built from. Changed between notes.
+    private var currentVoice: Voice
+
+    /// Master level, `0...1`.
+    ///
+    /// Set from the sketch and read on the render thread, so it travels as a
+    /// single atomic word rather than a plain property: a torn read here would
+    /// be an audible jump. The bit pattern is what makes a `Double` atomic.
+    var gain: Double {
+        get { Double(bitPattern: gainBits.load(ordering: .relaxed)) }
+        set { gainBits.store(min(max(0, newValue), 1).bitPattern, ordering: .relaxed) }
+    }
+    private let gainBits = Atomic<UInt64>((0.7 as Double).bitPattern)
+
+    /// How many voices are sounding, published for the sketch to read.
+    ///
+    /// Written once per block by the render thread rather than read off the
+    /// voice array, which only that thread may touch.
+    var activeVoiceCount: Int { activeCount.load(ordering: .relaxed) }
+    private let activeCount = Atomic<Int>(0)
+
+    init(voice: Voice, polyphony: Int, sampleRate: Double, events: EventRing, seed: UInt64 = 0x5EED) {
+        self.currentVoice = voice
+        self.sampleRate = sampleRate
+        self.events = events
+        // Each voice gets its own noise stream so a render replays exactly.
+        self.voices = (0..<max(1, polyphony)).map { index in
+            RenderVoice(
+                oscillator: Oscillator(seed: seed &+ UInt64(index) &* 0x9E37_79B9),
+                second: Oscillator(seed: seed &+ UInt64(index) &* 0x85EB_CA6B &+ 1)
+            )
+        }
+    }
+
+    /// Fills `output` with the next `frameCount` samples, applying anything the
+    /// sketch has asked for since the last block.
+    func render(into output: UnsafeMutableBufferPointer<Float>, frameCount: Int) {
+        drainEvents()
+        let level = gain
+
+        for frame in 0..<frameCount {
+            var mix = 0.0
+            for index in voices.indices where voices[index].isSounding {
+                mix += nextSample(&voices[index])
+            }
+            output[frame] = Float(softClip(mix * level))
+            clock += 1
+        }
+
+        activeCount.store(voices.count { $0.isSounding }, ordering: .relaxed)
+    }
+
+    /// One sample from one voice.
+    private func nextSample(_ voice: inout RenderVoice) -> Double {
+        // A note given a length releases itself when it runs out.
+        if let remaining = voice.remaining {
+            if remaining <= 0 {
+                voice.amplitude.noteOff()
+                voice.filterEnvelope.noteOff()
+                voice.isHeld = false
+                voice.remaining = nil
+            } else {
+                voice.remaining = remaining - 1
+            }
+        }
+
+        let amplitude = voice.amplitude.next()
+        let increment = frequency(of: voice.pitch) / sampleRate
+
+        var sample = voice.oscillator.next(voice.spec.waveform, increment: increment)
+        if voice.spec.detune != 0 {
+            let detuned = frequency(of: voice.pitch + voice.spec.detune) / sampleRate
+            sample = 0.5 * (sample + voice.second.next(voice.spec.waveform, increment: detuned))
+        }
+
+        if let spec = voice.spec.filter {
+            let envelope = voice.filterEnvelope.next()
+            // The envelope moves the cutoff in octaves, and key tracking moves
+            // it with the note, so both are multiples of where it started.
+            var cutoff = spec.cutoff
+            if spec.envelopeAmount != 0 { cutoff *= pow(2, spec.envelopeAmount * envelope) }
+            if spec.keyTracking != 0 { cutoff *= pow(2, spec.keyTracking * (voice.pitch - 60) / 12) }
+            voice.filter.setCoefficients(cutoff: cutoff, resonance: spec.resonance, sampleRate: sampleRate)
+            sample = voice.filter.next(sample, mode: spec.mode)
+        }
+
+        return sample * amplitude * voice.velocity * voice.spec.gain
+    }
+
+    private func frequency(of midi: Double) -> Double { 440 * pow(2, (midi - 69) / 12) }
+
+    // MARK: Events
+
+    private func drainEvents() {
+        while let event = events.pop() {
+            switch event.kind {
+            case .noteOn:      start(event)
+            case .noteOff:     release(pitch: event.pitch)
+            case .allNotesOff: for index in voices.indices { releaseVoice(&voices[index]) }
+            case .changeVoice: currentVoice = event.voice
+            }
+        }
+    }
+
+    private func start(_ event: SynthEvent) {
+        let index = claimVoice()
+        var voice = voices[index]
+
+        voice.spec = currentVoice
+        voice.pitch = event.pitch
+        voice.velocity = min(max(0, event.velocity), 1)
+        voice.remaining = event.durationSamples > 0 ? event.durationSamples : nil
+        voice.isHeld = event.durationSamples == 0
+        voice.startedAt = clock
+
+        voice.oscillator.reset()
+        voice.second.reset()
+        voice.filter.reset()
+        voice.amplitude.prepare(currentVoice.envelope, sampleRate: sampleRate)
+        voice.amplitude.noteOn()
+        voice.filterEnvelope.prepare(currentVoice.filter?.envelope ?? currentVoice.envelope, sampleRate: sampleRate)
+        voice.filterEnvelope.noteOn()
+
+        voices[index] = voice
+    }
+
+    /// Picks the voice a new note should use.
+    ///
+    /// A silent one if there is one, then the note that has already been let go
+    /// and is furthest through its tail, and only then the oldest note still
+    /// held. Taking a held note last is what keeps a chord intact while a melody
+    /// runs over it.
+    private func claimVoice() -> Int {
+        if let free = voices.firstIndex(where: { !$0.isSounding }) { return free }
+
+        var bestReleasing: (index: Int, level: Double)?
+        var oldestHeld: (index: Int, startedAt: Int)?
+        for (index, voice) in voices.enumerated() {
+            if !voice.isHeld {
+                let level = voice.amplitude.level
+                if bestReleasing == nil || level < bestReleasing!.level {
+                    bestReleasing = (index, level)
+                }
+            } else if oldestHeld == nil || voice.startedAt < oldestHeld!.startedAt {
+                oldestHeld = (index, voice.startedAt)
+            }
+        }
+
+        let index = bestReleasing?.index ?? oldestHeld?.index ?? 0
+        // Cutting a sounding voice dead would click, so it is given a few
+        // milliseconds to get out of the way. The new note starts from wherever
+        // the envelope had reached, which is the other half of the same trick.
+        voices[index].amplitude.steal()
+        return index
+    }
+
+    private func release(pitch: Double) {
+        // The nearest held note wins, so releasing works with bends and glides.
+        var best: (index: Int, distance: Double)?
+        for (index, voice) in voices.enumerated() where voice.isHeld && voice.isSounding {
+            let distance = abs(voice.pitch - pitch)
+            if best == nil || distance < best!.distance { best = (index, distance) }
+        }
+        guard let best, best.distance < 0.5 else { return }
+        releaseVoice(&voices[best.index])
+    }
+
+    private func releaseVoice(_ voice: inout RenderVoice) {
+        guard voice.isHeld else { return }
+        voice.amplitude.noteOff()
+        voice.filterEnvelope.noteOff()
+        voice.isHeld = false
+        voice.remaining = nil
+    }
+}
+
+/// Keeps a dense chord inside the range the speakers can take.
+///
+/// Below the knee this is exactly the identity, so a single note is untouched
+/// and only a stack of them is bent. The curve meets the straight part with the
+/// same slope, so there is no corner to hear where it takes over.
+@inline(__always)
+func softClip(_ x: Double) -> Double {
+    let knee = 0.8
+    let magnitude = abs(x)
+    guard magnitude > knee else { return x }
+    let excess = (magnitude - knee) / (1 - knee)
+    return (x < 0 ? -1 : 1) * (knee + (1 - knee) * tanh(excess))
+}

@@ -91,6 +91,57 @@ let sound = Soundtrack(of: player)                             // a playing vide
 
 `AudioInput` is the microphone, permission and all. `AudioPlayer` plays a file (`.m4a`, `.mp3`, `.wav`, and friends) and analyzes it as it sounds, and the `Audio/FilePlayer` example ships with a violin recording and shows the shape. It's also the source that survives export, because during a headless render it follows the export clock through the file, so an audio-reactive piece writes the same frames every time (Chapter 22 has the whole export story). `Tone` is a modest oscillator that both sounds and feeds the analyzer, which makes it the self-contained option, and the `Audio/Spectrum` example generates a gliding sawtooth and draws its own harmonics, with no permission and no file. And `Soundtrack` taps the audio of a playing `VideoPlayer` from Chapter 21's territory, so footage can drive visuals with its own music. One habit applies to all four. An audio file you bundle follows the same license care as any asset, so credit what you ship.
 
+## A sketch that plays
+
+`Tone` sounds one note forever, which is enough to feed the analyzer and not much else. When you want the sketch to actually play something, the instrument is `Synth`, and asking it for a note is one line:
+
+```swift
+let synth = Synth(.pluck)
+
+override func mousePressed() {
+    synth.play("C4", for: 0.4)
+}
+```
+
+Nothing was started. The first note starts the engine, because forgetting to is otherwise the most common way to end up staring at a silent sketch. Pitches are written however you already think of them: `"C4"` by name, `60` as a MIDI number, `60.5` for the quarter tone between the keys. And `for:` is how long to hold it, so the note ends without being told to again.
+
+Notes that outlive one call are the other half, which is what a held key wants:
+
+```swift
+synth.noteOn("C4")     // sounds until told otherwise
+synth.noteOff("C4")
+```
+
+A `Synth` plays several notes at once, sixteen by default, so chords and overlapping tails work without any bookkeeping from you. When they run out, the next note takes one from whatever is already fading rather than from anything you are still holding, so a melody over a held chord takes its voices from its own earlier notes.
+
+**What a note is made of** is a `Voice`, and the presets are the quick way in: `.pluck`, `.bass`, `.pad`, `.bell`, `.stab`, `.breath`, `.sine`. Assigning a new one leaves sounding notes alone, so you can change instrument between notes:
+
+```swift
+synth.voice = .bell
+```
+
+Inside a voice, the part worth understanding first is the envelope, because it is what makes a bell a bell and an organ an organ using the same wave underneath.
+
+<img src="Images/20-SoundAndControl/Voices.jpg" alt="Four envelope curves drawn over three seconds with the key let go at 1.4 seconds: a labelled one showing attack rising, decay falling to a held sustain level, and release falling away, then percussive spiking and vanishing at once, organ holding flat until it is let go, and swell rising and falling slowly" width="680">
+
+Four numbers, and only three of them are times. `attack` is how long the note takes to arrive, `decay` how long it takes to settle, `release` how long it takes to go once let go. `sustain` is the odd one out: it is the *level* the note rests at while held, not a duration. Set it to zero and holding the key adds nothing at all, which is exactly what struck things do, and why `.percussive` sounds like a drum however long you lean on it.
+
+You can draw the shape you designed, which is what the figure above does:
+
+```swift
+Envelope.swell.level(at: 0.7, heldFor: 1.4)   // where a note has got to
+```
+
+The other half of a voice is the `filter`, and it is most of what people mean when they say something sounds like a synthesizer. A note that is bright when struck and darkens as it fades is not the wave changing, it is a filter closing over it. `Voice.Filter.sweep(from:by:)` is that gesture, and `.pluck` is built from it.
+
+Finally, a `Synth` is an `AudioSource` like the microphone is, so everything earlier in this chapter reads off the sketch's own playing:
+
+```swift
+drawCircle(width / 2, height / 2, 100 + Double(synth.amplitude) * 900)
+```
+
+That closes the loop the chapter opened with. A sketch that listens to the room can listen to itself instead, and then the picture and the sound are the same decision made once. The `Audio/Synth` example is a playable keyboard doing exactly that.
+
 ## Knobs from anywhere
 
 The hands come next. Since Chapter 1 you've tuned sketches with `@Param` knobs in the inspector, and the news here is that the inspector is only one of the hands that can hold those knobs.
@@ -291,10 +342,11 @@ The idea that any sound splits into pure vibrations is Joseph Fourier's (1822), 
 ## Go deeper
 
 - [Audio](../Docs/Helpers/Audio.md): every source and read, `bands`, beats, and feeding the `AudioAnalyzer` yourself.
+- [Synthesis](../Docs/Helpers/Synthesis.md): `Synth`, pitches, the `Voice` presets and what is inside one, envelopes, filters, delay and reverb.
 - [MIDI](../Docs/Integration/MIDI.md): messages, the three reads, binding, and sending MIDI out.
 - [OSC](../Docs/Integration/OSC.md): addresses and arguments, bundles, binding, and testing with a phone.
 - [Parameters](../Docs/Helpers/Parameters.md): the typed `@Param` family, smoothing, and the binding surface.
-- Worked examples: [`Examples/Audio/Spectrum`](../Examples/Audio/Spectrum/Sketch.swift) (self-contained tone analysis), [`Examples/Audio/Microphone`](../Examples/Audio/Microphone/Sketch.swift), [`Examples/Audio/FilePlayer`](../Examples/Audio/FilePlayer/Sketch.swift), [`Examples/Video/SoundReactive`](../Examples/Video/SoundReactive/Sketch.swift) (a video's own soundtrack), [`Examples/Integration/MIDILoopback`](../Examples/Integration/MIDILoopback/Sketch.swift), [`Examples/Integration/MIDIMonitor`](../Examples/Integration/MIDIMonitor/Sketch.swift), [`Examples/Integration/OSCLoopback`](../Examples/Integration/OSCLoopback/Sketch.swift), and [`Examples/Integration/OSCMonitor`](../Examples/Integration/OSCMonitor/Sketch.swift).
+- Worked examples: [`Examples/Audio/Synth`](../Examples/Audio/Synth/Sketch.swift) (a playable keyboard), [`Examples/Audio/Spectrum`](../Examples/Audio/Spectrum/Sketch.swift) (self-contained tone analysis), [`Examples/Audio/Microphone`](../Examples/Audio/Microphone/Sketch.swift), [`Examples/Audio/FilePlayer`](../Examples/Audio/FilePlayer/Sketch.swift), [`Examples/Video/SoundReactive`](../Examples/Video/SoundReactive/Sketch.swift) (a video's own soundtrack), [`Examples/Integration/MIDILoopback`](../Examples/Integration/MIDILoopback/Sketch.swift), [`Examples/Integration/MIDIMonitor`](../Examples/Integration/MIDIMonitor/Sketch.swift), [`Examples/Integration/OSCLoopback`](../Examples/Integration/OSCLoopback/Sketch.swift), and [`Examples/Integration/OSCMonitor`](../Examples/Integration/OSCMonitor/Sketch.swift).
 
 ---
 

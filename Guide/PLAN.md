@@ -360,6 +360,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | `3D/Record3D.md` | Ch 19 | taught |
 | `3D/Phone.md` (capture app streams, world fusion) | Ch 19 | taught |
 | `Helpers/Audio.md` (analysis, beats, sources) | Ch 20 | taught |
+| `Helpers/Synthesis.md` (`Synth`, `Pitch`, `Voice`, `Envelope`, `Voice.Filter`, delay and reverb) | Ch 20 | taught ("A sketch that plays" with the Voices figure: the engine starting itself on the first note, pitches by name or number, `for:` versus `noteOn`/`noteOff`, polyphony and what a new note takes a voice from, `Voice` presets swapped without disturbing sounding notes, the envelope taught off four real curves with sustain read as a level rather than a time (and why `.percussive` ignores a held key), `level(at:heldFor:)` for drawing the shape you designed, the filter named as most of what "sounds like a synthesizer" means, and the loop closed by reading `synth.amplitude` back off the sketch's own playing) |
 | `Integration/MIDI.md` | Ch 20 | taught |
 | Tempo sync (`TempoClock` over MIDI clock; `Integration/MIDI.md`) | Ch 20 | taught (a musical-time diagram: 24 ticks per beat is the whole protocol, why counting means the grid can't drift, every reader with a worked position, `progress(over:)`, and the arm-on-next-tick and free-running-master behaviors) |
 | `Integration/OSC.md` | Ch 20 | taught |
