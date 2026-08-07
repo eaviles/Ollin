@@ -361,6 +361,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | `3D/Phone.md` (capture app streams, world fusion) | Ch 19 | taught |
 | `Helpers/Audio.md` (analysis, beats, sources) | Ch 20 | taught |
 | `Helpers/Synthesis.md` (`Synth`, `Pitch`, `Voice`, `Envelope`, `Voice.Filter`, delay and reverb) | Ch 20 | taught ("A sketch that plays" with the Voices figure: the engine starting itself on the first note, pitches by name or number, `for:` versus `noteOn`/`noteOff`, polyphony and what a new note takes a voice from, `Voice` presets swapped without disturbing sounding notes, the envelope taught off four real curves with sustain read as a level rather than a time (and why `.percussive` ignores a held key), `level(at:heldFor:)` for drawing the shape you designed, the filter named as most of what "sounds like a synthesizer" means, and the loop closed by reading `synth.amplitude` back off the sketch's own playing) |
+| `Helpers/Composition.md` (`Rhythm`, `Scale`, `Chord`, `Arpeggio`, `MarkovChain`, `StepCounter`, `Note`) | Ch 20 | taught ("Music the sketch works out for itself" with the Euclidean figure: every type answers a step number and owns no clock, so the same pattern runs on `time`, on a detected beat, or on a drum machine later in the chapter; `StepCounter` returning a range because a frame outlasts a step; the even-spread property read off the gaps column, and the traditional rhythms that fall out of it; degrees running past both ends so a wandering number cannot play a wrong note, and `snap` for a number that did not come from music; a chord built out of the scale so its quality follows the key; an arpeggio read at the step so the figure keeps its place in the bar; and a seeded chain that borrows nothing from the sketch's own randomness) |
 | `Integration/MIDI.md` | Ch 20 | taught |
 | Tempo sync (`TempoClock` over MIDI clock; `Integration/MIDI.md`) | Ch 20 | taught (a musical-time diagram: 24 ticks per beat is the whole protocol, why counting means the grid can't drift, every reader with a worked position, `progress(over:)`, and the arm-on-next-tick and free-running-master behaviors) |
 | `Integration/OSC.md` | Ch 20 | taught |
@@ -407,7 +408,7 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | iPhone sensor array (scene mesh, drift correction) | Ch 19 |
 | 3D: live camera environment; richer 3D physics (ragdolls, 3D soft bodies) | Ch 17 (soft bodies also Ch 16) |
 | Photorealistic 3D tier | Ch 17/18, likely a new chapter when substantial |
-| Sound synthesis, spatial audio, algorithmic composition | Ch 20, likely splitting into its own chapter |
+| Sound: physical models, spatial audio, sound in an export | Ch 20, likely splitting into its own chapter |
 | Tempo sync: Ableton Link | Ch 20 |
 | Live rigs (serial/BLE, DMX/LED, NDI) | Ch 22, or a future installations chapter |
 | New input sources | Ch 20/21 |

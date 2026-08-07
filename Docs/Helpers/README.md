@@ -11,3 +11,4 @@
 - [`Data`](./Data.md) - `loadTable` for CSV and TSV files, and `loadJSON` for documents you reach through by name and index
 - [`Audio`](./Audio.md) - `import OllinAudio` for microphone, file, and oscillator sources, analyzed into `amplitude`/`spectrum`/band values you read in `draw()`
 - [`Synthesis`](./Synthesis.md) - `Synth`, the instrument a sketch plays: notes by name or number, `Voice` presets over a shaped and filtered oscillator, delay and reverb
+- [`Composition`](./Composition.md) - working out what to play: Euclidean rhythms, scales and chords, arpeggios, and Markov sequences, as pure values on a step number

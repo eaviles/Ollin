@@ -237,6 +237,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Beat detection | Onsets as events: `beat`, `beatCount`, `timeSinceBeat` | [Ch 20](20-SoundAndControl.md) | [Audio](../Docs/Helpers/Audio.md) |
 | Audio sources | Microphone, audio files (export-reproducible), test tones, a video's soundtrack | [Ch 20](20-SoundAndControl.md), [Ch 21](21-Seeing.md) | [Audio](../Docs/Helpers/Audio.md) |
 | Synthesis | A `Synth` the sketch plays: notes by name or number, voice presets, envelopes, filters, delay and reverb | [Ch 20](20-SoundAndControl.md) | [Synthesis](../Docs/Helpers/Synthesis.md) |
+| Composition | Working out what to play: Euclidean rhythms, scales and chords, arpeggios, Markov sequences, all on a step number | [Ch 20](20-SoundAndControl.md) | [Composition](../Docs/Helpers/Composition.md) |
 | MIDI | Knobs, notes, and messages from hardware controllers, in and out | [Ch 20](20-SoundAndControl.md) | [MIDI](../Docs/Integration/MIDI.md) |
 | OSC | Network control messages from tablets, DAWs, and other machines | [Ch 20](20-SoundAndControl.md) | [OSC](../Docs/Integration/OSC.md) |
 | Parameter binding | One `@Param` driven by MIDI, OSC, and the inspector alike, with smoothing | [Ch 20](20-SoundAndControl.md) | [Parameters](../Docs/Helpers/Parameters.md) |

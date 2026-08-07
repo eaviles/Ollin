@@ -142,6 +142,98 @@ drawCircle(width / 2, height / 2, 100 + Double(synth.amplitude) * 900)
 
 That closes the loop the chapter opened with. A sketch that listens to the room can listen to itself instead, and then the picture and the sound are the same decision made once. The `Audio/Synth` example is a playable keyboard doing exactly that.
 
+## Music the sketch works out for itself
+
+A synth answers what a note sounds like. It says nothing about which notes there are, or when. That half is the composition types, and the thing they have in common is that not one of them can tell the time.
+
+Each answers a step number. Step 0, step 1, step 2, forever. Turning the sketch's clock into step numbers is one small counter's job:
+
+```swift
+var counter = StepCounter(perBeat: 4)
+
+override func draw() {
+    for step in counter.steps(upTo: time * 2) {     // 120 beats a minute
+        synth.play(60, for: 0.1)
+    }
+}
+```
+
+It hands back a range rather than a single step, because at any real tempo a frame lasts longer than a step, and a step that fell inside the frame still has to be played.
+
+Keeping the clock outside is what makes the rest portable. `time * 2` today; a beat detected in whatever is playing in the room; a drum machine's own clock arriving over MIDI later in this chapter. None of what follows changes.
+
+**`Rhythm` decides when.** Ask for a number of strikes over a number of steps and it spreads them as evenly as whole steps allow:
+
+```swift
+let rhythm = Rhythm(5, in: 16)
+if rhythm[step] { synth.play(60, for: 0.1) }
+```
+
+<img src="Images/20-SoundAndControl/Euclidean.jpg" alt="Seven rows showing 2, 3, 4, 5, 7, 9, and 11 strikes spread over sixteen steps, with the gaps between strikes listed beside each row, and below them the tresillo, cinquillo, and bell pattern drawn as the shape between their strikes on a circle" width="680">
+
+Read the gaps column. However many strikes you divide over sixteen steps, the gaps come out in at most two lengths, and those two differ by one. That is the whole idea. What falls out of it is the surprise: `Rhythm(3, in: 8)` is the Cuban tresillo, `Rhythm(5, in: 8)` the cinquillo, and `Rhythm(7, in: 12)` begun three strikes in is the bell pattern played across west Africa and, after it, much of the Americas. An algorithm written for timing pulses in a particle accelerator turns out to produce the rhythms people were already playing.
+
+The named ones are on the type, so you rarely have to remember which numbers: `.tresillo`, `.cinquillo`, `.bellPattern`, `.bossaNova`, `.samba`, `.aksak`, and a few more. Or write one out, which is what you want when the pattern is already in your head:
+
+```swift
+let clave: Rhythm = "x..x..x...x.x..."
+```
+
+**`Scale` decides which.** It turns whole numbers into notes, so a number arrived at any way at all stays in key:
+
+```swift
+let key = Scale(.minorPentatonic, root: "A3")
+synth.play(key[step])
+```
+
+Degrees run past both ends: `key[5]` is an octave up, `key[-1]` the note below the root. This is the piece that does the most work for the least code. Feed a wandering number through a scale and it cannot play a wrong note.
+
+When the number came from somewhere that is not music, a mouse position or a sensor reading, `snap` moves it to the nearest note of the scale instead:
+
+```swift
+synth.play(key.snap(Pitch(40 + mouseY / 12)))
+```
+
+**`Chord` and `Arpeggio` decide what goes together.** A chord can be named, `Chord("A3", .minorSeventh)`, or built out of the scale by taking every other note:
+
+```swift
+key.chord(on: 0)     // a triad on the root
+key.chord(on: 1)     // a triad on the second degree
+```
+
+On a major scale those come out major and minor from the same call. That is the point of building a chord out of a key: the quality follows from where in the scale you started, so changing the key changes the chords along with it rather than fighting them.
+
+An `Arpeggio` plays a chord one note at a time, and like a rhythm it answers a step number:
+
+```swift
+let arp = Arpeggio(Chord("A3", .minorSeventh), .upDown, octaves: 2)
+synth.play(arp[step], for: 0.1)
+```
+
+Reading it at the step, rather than counting the notes you have played so far, is what keeps the figure in its place in the bar instead of restarting every time the rhythm strikes.
+
+**`MarkovChain` decides what next.** Show it a phrase and it learns what tends to follow what:
+
+```swift
+var melody = MarkovChain(learning: [0, 2, 4, 2, 0, -3], seed: 4, loops: true)
+melody.start(at: 0)
+
+synth.play(key[melody.next() ?? 0])
+```
+
+`order` is how far back it looks. At 1 each element is picked from whatever followed the one before it; at 2 it looks at the last two, which tracks the source more closely and invents less. It is seeded, and it keeps its own generator rather than borrowing the sketch's, so adding one cannot shift anything else you were drawing at random.
+
+Four small pieces, and together they are a piece of music:
+
+```swift
+for step in counter.steps(upTo: time * 104 / 60) {
+    if pulse[step] { bass.play(key[melody.next() ?? 0], for: 0.34) }
+    if figure[step] { chords.play(key.snap(arp[step]), velocity: 0.55, for: 0.22) }
+}
+```
+
+That is `Examples/Audio/Generative`, drawn as three of those rings turning on one step count, with the key and the figure and the tempo as knobs you move while it plays. All of it repeats: the same seed gives the same melody, the same two numbers give the same rhythm. A generated piece is something you can come back to, not something you had to be there to catch.
+
 ## Knobs from anywhere
 
 The hands come next. Since Chapter 1 you've tuned sketches with `@Param` knobs in the inspector, and the news here is that the inspector is only one of the hands that can hold those knobs.
@@ -337,16 +429,17 @@ Then make it yours:
 
 ## Where this comes from
 
-The idea that any sound splits into pure vibrations is Joseph Fourier's (1822), and the fast algorithm that made it real-time, the FFT, is Cooley and Tukey's (1965), and Ollin runs Apple's implementation. Detecting arrivals by spectral flux is a standard technique from music information retrieval, surveyed well in Bello and colleagues' onset-detection tutorial (2005), and the real-time recipe Ollin follows is Böck, Krebs, and Schedl's online method (2012). MIDI was created in 1983 by Dave Smith and Ikutaro Kakehashi so rival instruments could talk to each other, a rare act of industry peace that still works four decades later. Open Sound Control came from Matt Wright and Adrian Freed at CNMAT, Berkeley (1997), built for the networked, higher-resolution rigs MIDI predates. And the audio-reactive visual itself has a long lineage, from Oskar Fischinger's hand-drawn sound films through the oscilloscope and music-visualizer traditions to today's VJ and live-coding scenes. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The idea that any sound splits into pure vibrations is Joseph Fourier's (1822), and the fast algorithm that made it real-time, the FFT, is Cooley and Tukey's (1965), and Ollin runs Apple's implementation. Detecting arrivals by spectral flux is a standard technique from music information retrieval, surveyed well in Bello and colleagues' onset-detection tutorial (2005), and the real-time recipe Ollin follows is Böck, Krebs, and Schedl's online method (2012). The even spread behind `Rhythm` is Eric Bjorklund's algorithm for timing pulses in a spallation neutron source, which Godfried Toussaint connected to musical timelines in 2005, along with the names of the rhythms it produces. MIDI was created in 1983 by Dave Smith and Ikutaro Kakehashi so rival instruments could talk to each other, a rare act of industry peace that still works four decades later. Open Sound Control came from Matt Wright and Adrian Freed at CNMAT, Berkeley (1997), built for the networked, higher-resolution rigs MIDI predates. And the audio-reactive visual itself has a long lineage, from Oskar Fischinger's hand-drawn sound films through the oscilloscope and music-visualizer traditions to today's VJ and live-coding scenes. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
 - [Audio](../Docs/Helpers/Audio.md): every source and read, `bands`, beats, and feeding the `AudioAnalyzer` yourself.
 - [Synthesis](../Docs/Helpers/Synthesis.md): `Synth`, pitches, the `Voice` presets and what is inside one, envelopes, filters, delay and reverb.
+- [Composition](../Docs/Helpers/Composition.md): rhythms, scales, chords, arpeggios, chains, and the counter that joins them to time.
 - [MIDI](../Docs/Integration/MIDI.md): messages, the three reads, binding, and sending MIDI out.
 - [OSC](../Docs/Integration/OSC.md): addresses and arguments, bundles, binding, and testing with a phone.
 - [Parameters](../Docs/Helpers/Parameters.md): the typed `@Param` family, smoothing, and the binding surface.
-- Worked examples: [`Examples/Audio/Synth`](../Examples/Audio/Synth/Sketch.swift) (a playable keyboard), [`Examples/Audio/Spectrum`](../Examples/Audio/Spectrum/Sketch.swift) (self-contained tone analysis), [`Examples/Audio/Microphone`](../Examples/Audio/Microphone/Sketch.swift), [`Examples/Audio/FilePlayer`](../Examples/Audio/FilePlayer/Sketch.swift), [`Examples/Video/SoundReactive`](../Examples/Video/SoundReactive/Sketch.swift) (a video's own soundtrack), [`Examples/Integration/MIDILoopback`](../Examples/Integration/MIDILoopback/Sketch.swift), [`Examples/Integration/MIDIMonitor`](../Examples/Integration/MIDIMonitor/Sketch.swift), [`Examples/Integration/OSCLoopback`](../Examples/Integration/OSCLoopback/Sketch.swift), and [`Examples/Integration/OSCMonitor`](../Examples/Integration/OSCMonitor/Sketch.swift).
+- Worked examples: [`Examples/Audio/Synth`](../Examples/Audio/Synth/Sketch.swift) (a playable keyboard), [`Examples/Audio/Generative`](../Examples/Audio/Generative/Sketch.swift) (three Euclidean rings deciding what to play), [`Examples/Audio/Spectrum`](../Examples/Audio/Spectrum/Sketch.swift) (self-contained tone analysis), [`Examples/Audio/Microphone`](../Examples/Audio/Microphone/Sketch.swift), [`Examples/Audio/FilePlayer`](../Examples/Audio/FilePlayer/Sketch.swift), [`Examples/Video/SoundReactive`](../Examples/Video/SoundReactive/Sketch.swift) (a video's own soundtrack), [`Examples/Integration/MIDILoopback`](../Examples/Integration/MIDILoopback/Sketch.swift), [`Examples/Integration/MIDIMonitor`](../Examples/Integration/MIDIMonitor/Sketch.swift), [`Examples/Integration/OSCLoopback`](../Examples/Integration/OSCLoopback/Sketch.swift), and [`Examples/Integration/OSCMonitor`](../Examples/Integration/OSCMonitor/Sketch.swift).
 
 ---
 

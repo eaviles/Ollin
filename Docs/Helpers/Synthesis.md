@@ -216,7 +216,7 @@ Both apply to everything the synth plays, delay first and reverb after, which is
 Said plainly, so you can plan around it rather than go looking:
 
 - **One instrument, one sound at a time.** A `Synth` plays one `voice`. Several sounds at once means several `Synth`s, which is fine and cheap.
-- **No sequencer.** Notes are asked for from `draw()`, on whatever clock the sketch keeps. [`TempoClock`](../Integration/MIDI.md) is the way to run on someone else's.
+- **No sequencer.** Notes are asked for from `draw()`, on whatever clock the sketch keeps. [`Composition`](./Composition.md) is what decides which notes and when; [`TempoClock`](../Integration/MIDI.md) is the way to run on someone else's clock.
 - **No sampler.** Playing a recorded sound is [`AudioPlayer`](./Audio.md#audioplayer)'s job, not a voice's.
 - **Not placed in the 3D scene.** A voice has no position, so nothing is heard from where it is drawn.
 - **Not in an export.** The offline exporters render frames; a video written from a sketch has no sound. The renderer underneath is deterministic and offline-capable, which is what a future audio export would be built on, but nothing writes sound to a file today.
