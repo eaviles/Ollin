@@ -101,6 +101,37 @@ public struct Voice: Sendable, Hashable, Codable {
                   detune: detune, gain: gain)
     }
 
+    /// A voice built on a bowed string.
+    ///
+    /// The bow decides how the note goes, so the envelope's job is to open and
+    /// close around it rather than to shape it. `.sustained` is that envelope,
+    /// and the presets use it.
+    public init(
+        bowed: BowedString,
+        envelope: Envelope = .sustained,
+        filter: Filter? = nil,
+        detune: Double = 0,
+        gain: Double = 0.8
+    ) {
+        self.init(source: .bowed(bowed), envelope: envelope, filter: filter,
+                  detune: detune, gain: gain)
+    }
+
+    /// A voice built on a blown tube.
+    ///
+    /// The breath decides how the note goes, so the envelope only opens and
+    /// closes around it.
+    public init(
+        blown: BlownTube,
+        envelope: Envelope = .sustained,
+        filter: Filter? = nil,
+        detune: Double = 0,
+        gain: Double = 0.8
+    ) {
+        self.init(source: .blown(blown), envelope: envelope, filter: filter,
+                  detune: detune, gain: gain)
+    }
+
     public init(
         source: VoiceSource,
         envelope: Envelope = .standard,
@@ -255,6 +286,24 @@ extension Voice {
 
     /// A string stopped by the hand that plucked it.
     public static let muted = Voice(string: .muted, gain: 0.9)
+
+    /// A bowed string close to the bridge: bright, and it keeps going.
+    public static let violin = Voice(bowed: .violin, gain: 0.7)
+
+    /// Broader and darker, bowed further along.
+    public static let cello = Voice(bowed: .cello, gain: 0.75)
+
+    /// A light bow a long way up the string, almost breathy.
+    public static let bowed = Voice(bowed: .sustained, gain: 0.7)
+
+    /// Hollow and woody: a stopped tube, so only the odd harmonics are there.
+    public static let clarinet = Voice(blown: .clarinet, gain: 0.62)
+
+    /// Bitten tight: thin and pure, with almost nothing above the third.
+    public static let reed = Voice(blown: .reedy, gain: 0.58)
+
+    /// A loose reed on a long tube, dark and full of air.
+    public static let hollow = Voice(blown: .hollow, gain: 0.66)
 
     /// A round drumhead, struck off center.
     public static let drum = Voice(body: .drum, gain: 0.9)

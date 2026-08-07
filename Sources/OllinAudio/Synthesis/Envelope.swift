@@ -68,6 +68,11 @@ public struct Envelope: Sendable, Hashable, Codable {
     /// envelope's only job is to open at once, hold, and let go without a
     /// click. Anything shorter would cut the string off mid-ring.
     public static let plucked = Envelope(attack: 0.0005, decay: 0.01, sustain: 1, release: 0.12)
+    /// Out of the way in the other direction: a bow or a breath keeps the note
+    /// going by itself, so the envelope only has to open without a click and
+    /// close without cutting the tail off. The attack is long enough that the
+    /// model has time to start speaking, which a real one also needs.
+    public static let sustained = Envelope(attack: 0.03, decay: 0.02, sustain: 1, release: 0.18)
 }
 
 /// One envelope's running state, advanced a sample at a time by a voice.

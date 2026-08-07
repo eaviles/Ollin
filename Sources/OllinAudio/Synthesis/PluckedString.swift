@@ -91,9 +91,15 @@ public struct PluckedString: Sendable, Hashable, Codable {
 
 /// What a voice is built from.
 ///
-/// A wave is drawn; a string and a struck body are modelled. All three end up
-/// as one stream of samples the envelope and filter shape the same way, so
-/// everything else about a `Voice` is unchanged whichever it is.
+/// A wave is drawn; the rest are modelled. They all end up as one stream of
+/// samples the envelope and filter shape the same way, so everything else about
+/// a `Voice` is unchanged whichever it is.
+///
+/// The models split into two kinds, and the difference is audible. A string and
+/// a struck body are **set going once** and then left to fade, so the whole
+/// note is decided at its start. A bow and a breath are **kept going**, so the
+/// note lasts as long as the player keeps driving it and can change while it
+/// sounds. `Synth.drive` is that driving.
 public enum VoiceSource: Sendable, Hashable, Codable {
     /// An oscillator tracing a shape.
     case wave(Waveform)
@@ -101,4 +107,18 @@ public enum VoiceSource: Sendable, Hashable, Codable {
     case string(PluckedString)
     /// A struck body, ringing at the frequencies its shape implies.
     case body(ModalBody)
+    /// A bowed string, which sounds for as long as the bow moves.
+    case bowed(BowedString)
+    /// A blown tube, which sounds for as long as the breath lasts.
+    case blown(BlownTube)
+
+    /// Whether this source has to be driven to keep sounding.
+    ///
+    /// The two driven kinds read `Synth.drive`; the rest ignore it entirely.
+    public var isDriven: Bool {
+        switch self {
+        case .bowed, .blown: return true
+        case .wave, .string, .body: return false
+        }
+    }
 }

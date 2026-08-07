@@ -18,6 +18,10 @@ final class SynthRenderer: @unchecked Sendable {
         var secondString: StringVoice
         var body = ModalVoice()
         var secondBody = ModalVoice()
+        var bow: BowVoice
+        var secondBow: BowVoice
+        var tube: TubeVoice
+        var secondTube: TubeVoice
         var amplitude = EnvelopeRunner()
         var filterEnvelope = EnvelopeRunner()
         var filter = StateVariableFilter()
@@ -42,6 +46,8 @@ final class SynthRenderer: @unchecked Sendable {
     /// note. Raw memory rather than arrays because the render thread writes it.
     private let stringMemory: UnsafeMutablePointer<Double>
     private let stringCapacity: Int
+    /// Every driven voice's delay lines, taken in one piece for the same reason.
+    private let drivenMemory: UnsafeMutablePointer<Double>
     /// Samples rendered so far, used only to order voices by age.
     private var clock = 0
     /// The voice every new note is built from. Changed between notes.
@@ -57,6 +63,19 @@ final class SynthRenderer: @unchecked Sendable {
         set { gainBits.store(min(max(0, newValue), 1).bitPattern, ordering: .relaxed) }
     }
     private let gainBits = Atomic<UInt64>((0.7 as Double).bitPattern)
+
+    /// How hard a driven voice is being bowed or blown, `0...1`.
+    ///
+    /// A bow and a breath keep happening, so this is read every sample rather
+    /// than at the start of a note, which is what gives a driven note a middle
+    /// that can change. It travels as one atomic word for the same reason
+    /// `gain` does: a torn read on the render thread would be audible.
+    /// Ignored entirely by the sources that are set going once.
+    var drive: Double {
+        get { Double(bitPattern: driveBits.load(ordering: .relaxed)) }
+        set { driveBits.store(min(max(0, newValue), 1).bitPattern, ordering: .relaxed) }
+    }
+    private let driveBits = Atomic<UInt64>((1.0 as Double).bitPattern)
 
     /// How many voices are sounding, published for the sketch to read.
     ///
@@ -80,7 +99,18 @@ final class SynthRenderer: @unchecked Sendable {
         self.stringMemory = .allocate(capacity: perString * count * 2)
         self.stringMemory.initialize(repeating: 0, count: perString * count * 2)
 
+        // The driven models are delay lines too, and the render thread may not
+        // allocate, so theirs is taken here as well. A voice is only ever one
+        // kind at a time, but keeping the blocks apart means no two of them can
+        // ever be looking at the same samples.
+        let perBow = BowVoice.memoryNeeded(capacity: capacity)
+        let perTube = TubeVoice.memoryNeeded(capacity: capacity)
+        let perDriven = perBow + perTube
+        self.drivenMemory = .allocate(capacity: perDriven * count * 2)
+        self.drivenMemory.initialize(repeating: 0, count: perDriven * count * 2)
+
         let memory = stringMemory
+        let driven = drivenMemory
         // Each voice gets its own noise stream so a render replays exactly.
         self.voices = (0..<count).map { index in
             RenderVoice(
@@ -93,6 +123,18 @@ final class SynthRenderer: @unchecked Sendable {
                 secondString: StringVoice(
                     buffer: memory + perString * (2 * index + 1), capacity: capacity,
                     seed: seed &+ UInt64(index) &* 0x27D4_EB2F &+ 1
+                ),
+                bow: BowVoice(buffer: driven + perDriven * (2 * index), capacity: capacity),
+                secondBow: BowVoice(
+                    buffer: driven + perDriven * (2 * index + 1), capacity: capacity
+                ),
+                tube: TubeVoice(
+                    buffer: driven + perDriven * (2 * index) + perBow, capacity: capacity,
+                    seed: seed &+ UInt64(index) &* 0x165667B1
+                ),
+                secondTube: TubeVoice(
+                    buffer: driven + perDriven * (2 * index + 1) + perBow, capacity: capacity,
+                    seed: seed &+ UInt64(index) &* 0xD3A2646C &+ 1
                 )
             )
         }
@@ -100,6 +142,7 @@ final class SynthRenderer: @unchecked Sendable {
 
     deinit {
         stringMemory.deallocate()
+        drivenMemory.deallocate()
     }
 
     /// The lowest note a string voice can be tuned to, which is what sizes the
@@ -112,11 +155,14 @@ final class SynthRenderer: @unchecked Sendable {
     func render(into output: UnsafeMutableBufferPointer<Float>, frameCount: Int) {
         drainEvents()
         let level = gain
+        // Read once for the block rather than once a sample: it is a control,
+        // not a signal, and a block is a few milliseconds.
+        let driving = drive
 
         for frame in 0..<frameCount {
             var mix = 0.0
             for index in voices.indices where voices[index].isSounding {
-                mix += nextSample(&voices[index])
+                mix += nextSample(&voices[index], drive: driving)
             }
             output[frame] = Float(softClip(mix * level))
             clock += 1
@@ -126,7 +172,7 @@ final class SynthRenderer: @unchecked Sendable {
     }
 
     /// One sample from one voice.
-    private func nextSample(_ voice: inout RenderVoice) -> Double {
+    private func nextSample(_ voice: inout RenderVoice, drive: Double) -> Double {
         // A note given a length releases itself when it runs out.
         if let remaining = voice.remaining {
             if remaining <= 0 {
@@ -161,6 +207,31 @@ final class SynthRenderer: @unchecked Sendable {
             sample = voice.body.next()
             if voice.spec.detune != 0 {
                 sample = 0.5 * (sample + voice.secondBody.next())
+            }
+        case .bowed(let spec):
+            // The bow is still moving, so the note is still being made. This is
+            // the whole difference from the sources above, which were set going
+            // once and are only fading now.
+            // Bow speed against the speed the rosin lets go at is what decides
+            // whether the string moves the way a bowed string moves. Below that
+            // ratio the string is caught and released once a cycle and the tone
+            // is the falling spectrum of a real bow; above it the string tears
+            // loose twice a cycle and jumps to the octave, which is exactly what
+            // over-bowing sounds like. Force widens the sticking band, so a
+            // light bow can be over-driven and a heavy one stays solid, which is
+            // the same bargain a player makes.
+            let speed = drive * (0.06 + 0.22 * min(max(0, spec.force), 1))
+            sample = voice.bow.next(bowVelocity: speed)
+            if voice.spec.detune != 0 {
+                sample = 0.5 * (sample + voice.secondBow.next(bowVelocity: speed))
+            }
+        case .blown(let spec):
+            let breath = drive * 1.1
+            sample = voice.tube.next(breath: breath, breathiness: spec.breathiness)
+            if voice.spec.detune != 0 {
+                sample = 0.5 * (sample
+                                + voice.secondTube.next(breath: breath,
+                                                        breathiness: spec.breathiness))
             }
         }
 
@@ -219,6 +290,33 @@ final class SynthRenderer: @unchecked Sendable {
                 voice.secondBody.strike(
                     frequency: frequency(of: event.pitch + currentVoice.detune),
                     velocity: voice.velocity, body: spec, sampleRate: sampleRate
+                )
+            }
+        }
+        voice.bow.reset()
+        voice.secondBow.reset()
+        voice.tube.reset()
+        voice.secondTube.reset()
+        if case .bowed(let spec) = currentVoice.source {
+            // Tuned but not excited: a bow makes no sound until it moves.
+            let played = max(SynthRenderer.lowestStringFrequency, frequency(of: event.pitch))
+            voice.bow.start(frequency: played, spec: spec, sampleRate: sampleRate)
+            if currentVoice.detune != 0 {
+                voice.secondBow.start(
+                    frequency: max(SynthRenderer.lowestStringFrequency,
+                                   frequency(of: event.pitch + currentVoice.detune)),
+                    spec: spec, sampleRate: sampleRate
+                )
+            }
+        }
+        if case .blown(let spec) = currentVoice.source {
+            let played = max(SynthRenderer.lowestStringFrequency, frequency(of: event.pitch))
+            voice.tube.start(frequency: played, spec: spec, sampleRate: sampleRate)
+            if currentVoice.detune != 0 {
+                voice.secondTube.start(
+                    frequency: max(SynthRenderer.lowestStringFrequency,
+                                   frequency(of: event.pitch + currentVoice.detune)),
+                    spec: spec, sampleRate: sampleRate
                 )
             }
         }

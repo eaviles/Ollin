@@ -34,7 +34,7 @@ Two things are worth noticing there. Nothing was started: the first note starts 
 - [Synth](#synth) - the instrument, and how notes are asked for
 - [Pitch](#pitch) - names, numbers, and what lies between them
 - [Voice](#voice) - what a note is made of
-- [Physical models](#physical-models) - a string and a struck shape, worked out rather than drawn
+- [Physical models](#physical-models) - a plucked string, a struck shape, a bowed string, and a blown tube
 - [Placing a sound](#placing-a-sound) - where it comes from in the 3D scene
 - [Sound in an export](#sound-in-an-export) - carrying the music out of the window
 - [Envelope](#envelope) - how a note arrives and how it goes
@@ -139,7 +139,7 @@ synth.voice = glass             // notes already sounding are undisturbed
 
 | Property | What it does |
 |---|---|
-| `source` | what the note is built from: `.wave(Waveform)`, `.string(PluckedString)`, or `.body(ModalBody)`. See [Physical models](#physical-models) |
+| `source` | what the note is built from: `.wave(Waveform)`, `.string(PluckedString)`, `.body(ModalBody)`, `.bowed(BowedString)`, or `.blown(BlownTube)`. See [Physical models](#physical-models) |
 | `waveform` | `.sine`, `.triangle`, `.sawtooth`, `.square`, `.noise`, brightest last |
 | `envelope` | how the note's loudness moves. See [Envelope](#envelope) |
 | `filter` | what is taken out of it, or nil. See [`Voice.Filter`](#voicefilter) |
@@ -156,7 +156,9 @@ The geometric waves are corrected as they are drawn, so a sawtooth still sounds 
 
 ### Physical models
 
-A wave is a shape drawn over and over. A physical model is the thing itself, worked out as it goes, and what you hear falls out of that rather than being dialled in. There are two here: a string you pluck, and a body you hit.
+A wave is a shape drawn over and over. A physical model is the thing itself, worked out as it goes, and what you hear falls out of that rather than being dialled in.
+
+There are four, and they split into two kinds. A plucked string and a struck body are **set going once** and then left to fade, so the whole note is decided at its start. A bowed string and a blown tube are **kept going**, so the note lasts as long as you keep driving it and can change while it sounds. `Synth.drive` is that driving, and it is the difference this section is really about.
 
 #### A plucked string
 
@@ -252,6 +254,74 @@ Three things are worth knowing:
 - **A symmetric shape rings at some tones twice.** A pattern that fits at one rotation fits at another and both are really there, which is why the circle's list above has each entry twice except the ones with no rotation at all. A real drum does the same. Which of a pair takes a given strike is arbitrary, since they ring at the same frequency, so read their gains together rather than one at a time.
 
 A body carries up to sixteen tones, which is what lets it reach the audio thread without allocating, and a tone that would land above half the sample rate is dropped rather than folded back down the spectrum as something that was never struck.
+
+#### A bowed string
+
+```swift
+let synth = Synth(.cello)
+synth.noteOn("G2")
+synth.drive = 0.7          // and keep moving it while the note sounds
+```
+
+| Preset | What it sounds like |
+|---|---|
+| `.violin` | bright and a little edgy |
+| `.cello` | broader and darker, bowed further from the bridge |
+| `.bowed` | a light bow a long way up the string, soft and almost breathy |
+| `.ponticello` | right next to the bridge: glassy, with the fundamental thinned out |
+
+The string is the same string. What is different is that a pluck happens once and a bow keeps happening.
+
+What makes it sound bowed is one nonlinearity. Rosin grips harder when the bow and the string are travelling together than when they are sliding past each other, so the string is caught by the bow, dragged sideways, torn loose, snapped back, and caught again, hundreds of times a second. That cycle is the tone, and it is why a bowed note comes out close to a sawtooth: the string spends most of each cycle stuck to the bow.
+
+| Setting | What it does |
+|---|---|
+| `position` | where the bow sits, `0...1` from the bridge. Small is thin and bright, which is what *sul ponticello* means |
+| `force` | how hard it presses. More force keeps the string stuck for longer in each cycle, which is louder and harder-edged |
+| `decay` | how long the string would ring if the bow were lifted |
+| `damping` | how much sooner the bright part goes than the low part |
+
+Two things fall out of the model rather than being settings, and both are worth knowing:
+
+- **Bow too fast for the force and it breaks.** The string tears loose twice a cycle instead of once and the note jumps to the octave, which is exactly what over-bowing sounds like on a real instrument. Raise `force` or lower `drive` and it settles back.
+- **Loudness comes from force as much as from speed.** Across the whole range of `drive` the level moves by about 8 dB; `force` moves it further. That is also true of a bow, but it means `force` is the loudness knob and `drive` is the expression one.
+
+#### A blown tube
+
+```swift
+let synth = Synth(.clarinet)
+synth.noteOn("D4")
+synth.drive = 0.8
+```
+
+| Preset | What it sounds like |
+|---|---|
+| `.clarinet` | hollow and woody |
+| `.reed` | bitten tight: thin and pure, with almost nothing above the third harmonic |
+| `.hollow` | a loose lip on a long tube, dark and full of air |
+
+A column of air in a tube resonates, and a reed at one end keeps feeding it. The reed is pushed shut by the very pressure that is driving it, and that feedback is what makes the whole thing sing.
+
+The tube is stopped at the reed and open at the far end, and that one fact is most of the sound. A tube closed at one end fits only a quarter of a wave, so it supports the odd harmonics and not the even ones. That is why it is hollow and woody rather than bright, and why it sounds an octave and a fifth below an open tube of the same length instead of an octave below. Nothing in the code decides that the even harmonics should be missing; they are missing because the tube is half as long as an open one.
+
+| Setting | What it does |
+|---|---|
+| `embouchure` | the bite. Higher shuts the reed at a lower pressure so it never gets far open, which is thinner and purer; a looser lip is the fuller, reedier one |
+| `breathiness` | how much of the breath arrives as noise. A wind instrument with none of it sounds synthetic in a way that is hard to place until it is put back |
+| `decay` | how long the tube would ring if the breath stopped |
+| `damping` | how much sooner the bright part goes |
+
+#### Driving them
+
+```swift
+synth.drive = 0.3 + 0.5 * abs(sin(time * 2))
+```
+
+`drive` is `0...1`, read every sample, and shared by every note the instrument is playing, which is right: one bow, one breath. At zero there is nothing to hear, because nothing is being done. The sources that are set going once (a wave, a plucked string, a struck body) ignore it entirely, so adding it changed nothing that already worked.
+
+This is the control an envelope cannot give you. An envelope is decided when the note starts; `drive` is whatever you are doing right now.
+
+---
 
 ---
 
@@ -382,7 +452,8 @@ Said plainly, so you can plan around it rather than go looking:
 - **One instrument, one sound at a time.** A `Synth` plays one `voice`. Several sounds at once means several `Synth`s, which is fine and cheap.
 - **No sequencer.** Notes are asked for from `draw()`, on whatever clock the sketch keeps. [`Composition`](./Composition.md) is what decides which notes and when; [`TempoClock`](../Integration/MIDI.md) is the way to run on someone else's clock.
 - **No sampler.** Playing a recorded sound is [`AudioPlayer`](./Audio.md#audioplayer)'s job, not a voice's.
-- **Two physical models.** A plucked string and a struck body are here; a bowed string and a blown tube are not.
+- **No jet-driven tube.** The blown tube is reed-driven. A flute is a jet of air splitting across an edge, which is a different excitation and is not here.
+- **One drive per instrument.** Every note a `Synth` is playing is bowed or blown by the same hand, which is usually what you want. Two independently driven lines means two `Synth`s.
 - **One position per instrument.** A `Synth` is placed as a whole, so several sounds in several places means several `Synth`s, which is fine and cheap.
 - **No sound in a GIF.** The format has no way to hold any.
 

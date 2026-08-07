@@ -85,6 +85,27 @@ public final class Synth: AudioSource {
     /// How many notes are sounding right now, tails included.
     public var activeVoiceCount: Int { renderer.activeVoiceCount }
 
+    /// How hard a driven voice is being bowed or blown, `0...1`.
+    ///
+    /// The bowed string and the blown tube keep sounding only while something
+    /// keeps driving them, so this is the expressive control for those voices:
+    /// move it while a note is held and the note changes under your hand, which
+    /// is what a player does and what an envelope cannot do.
+    ///
+    /// ```swift
+    /// synth.noteOn("G3")
+    /// // in draw(), for as long as the note is held:
+    /// synth.drive = 0.3 + 0.5 * abs(sin(time * 2))
+    /// ```
+    ///
+    /// Every voice shares it, which is right: one bow and one breath. The
+    /// sources that are set going once and then fade (a wave, a plucked string,
+    /// a struck body) ignore it entirely.
+    public var drive: Double {
+        get { renderer.drive }
+        set { renderer.drive = newValue }
+    }
+
     /// An echo on everything the synth plays, or nil for none.
     public var delay: Delay? {
         didSet { applyDelay() }
