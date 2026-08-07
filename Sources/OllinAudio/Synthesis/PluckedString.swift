@@ -91,12 +91,14 @@ public struct PluckedString: Sendable, Hashable, Codable {
 
 /// What a voice is built from.
 ///
-/// A wave is drawn; a string is modelled. Both end up as one stream of samples
-/// the envelope and filter shape the same way, so everything else about a
-/// `Voice` is unchanged whichever it is.
+/// A wave is drawn; a string and a struck body are modelled. All three end up
+/// as one stream of samples the envelope and filter shape the same way, so
+/// everything else about a `Voice` is unchanged whichever it is.
 public enum VoiceSource: Sendable, Hashable, Codable {
     /// An oscillator tracing a shape.
     case wave(Waveform)
     /// A plucked string, worked out rather than drawn.
     case string(PluckedString)
+    /// A struck body, ringing at the frequencies its shape implies.
+    case body(ModalBody)
 }

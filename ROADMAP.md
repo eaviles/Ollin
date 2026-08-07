@@ -69,9 +69,8 @@ See the [design notes](DESIGN-NOTES.md#photorealistic-3d).
 
 ## Sound, synthesis, and spatial audio
 
-The audio layer both listens (FFT, bands, beat detection) and plays: a polyphonic [`Synth`](Docs/Helpers/Synthesis.md) over shaped, filtered voices with delay and reverb, fed by a [composition](Docs/Helpers/Composition.md) tier that works out what to play. What builds on that:
+The audio layer both listens (FFT, bands, beat detection) and plays: a polyphonic [`Synth`](Docs/Helpers/Synthesis.md) over shaped, filtered voices with delay and reverb, fed by a [composition](Docs/Helpers/Composition.md) tier that works out what to play, over waves and two physical models. What builds on that:
 
-- **Modal synthesis.** A shape rings at the frequencies its geometry implies, so form and timbre move together and a struck object sounds like the thing that was drawn.
 - **A patchable graph.** Wiring voices and effects rather than choosing from a fixed chain, so an instrument can be built rather than picked.
 - **Spatial audio.** A drawn object emits sound from its position in the 3D scene, with the camera as the listener, over PHASE or the engine's environment node.
 - **Sonification.** Turning a data series or a sampled field into sound, mapped onto pitch and amplitude over the voices and the [composition](Docs/Helpers/Composition.md) tier. It doubles as an accessibility read-out of a visual.

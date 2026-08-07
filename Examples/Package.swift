@@ -399,6 +399,7 @@ let package = Package(
         example("Audio/Synth", [.audio]),
         example("Audio/Generative", [.audio]),
         example("Audio/Strings", [.audio]),
+        example("Audio/StruckShapes", [.audio]),
         example("Audio/Spectrum", [.audio]),
         example("Audio/Microphone", [.audio]),
         example("Audio/ChladniResonance", [.audio]),

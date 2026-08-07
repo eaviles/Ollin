@@ -16,6 +16,8 @@ final class SynthRenderer: @unchecked Sendable {
         var second: Oscillator
         var string: StringVoice
         var secondString: StringVoice
+        var body = ModalVoice()
+        var secondBody = ModalVoice()
         var amplitude = EnvelopeRunner()
         var filterEnvelope = EnvelopeRunner()
         var filter = StateVariableFilter()
@@ -155,6 +157,11 @@ final class SynthRenderer: @unchecked Sendable {
             if voice.spec.detune != 0 {
                 sample = 0.5 * (sample + voice.secondString.next())
             }
+        case .body:
+            sample = voice.body.next()
+            if voice.spec.detune != 0 {
+                sample = 0.5 * (sample + voice.secondBody.next())
+            }
         }
 
         if let spec = voice.spec.filter {
@@ -199,6 +206,22 @@ final class SynthRenderer: @unchecked Sendable {
 
         voice.oscillator.reset()
         voice.second.reset()
+        voice.body.reset()
+        voice.secondBody.reset()
+        if case .body(let spec) = currentVoice.source {
+            // A struck body carries its whole note in its tones, so the note is
+            // made here, once, rather than a sample at a time.
+            voice.body.strike(
+                frequency: frequency(of: event.pitch), velocity: voice.velocity,
+                body: spec, sampleRate: sampleRate
+            )
+            if currentVoice.detune != 0 {
+                voice.secondBody.strike(
+                    frequency: frequency(of: event.pitch + currentVoice.detune),
+                    velocity: voice.velocity, body: spec, sampleRate: sampleRate
+                )
+            }
+        }
         if case .string(let spec) = currentVoice.source {
             // A string carries its whole note in the line, so the note is made
             // here, once, rather than a sample at a time.

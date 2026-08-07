@@ -30,6 +30,14 @@ public struct Voice: Sendable, Hashable, Codable {
         }
         set { source = .wave(newValue) }
     }
+    /// The struck body this voice rings as, or nil if it is not one.
+    public var body: ModalBody? {
+        get {
+            if case .body(let body) = source { return body }
+            return nil
+        }
+        set { if let newValue { source = .body(newValue) } }
+    }
     /// The string this voice is worked out on, or nil if it is a wave.
     public var string: PluckedString? {
         get {
@@ -78,6 +86,21 @@ public struct Voice: Sendable, Hashable, Codable {
                   detune: detune, gain: gain)
     }
 
+    /// A voice built on a struck body rather than an oscillator.
+    ///
+    /// The body decides how the note fades, so the envelope's job here is to
+    /// let it ring rather than to shape it.
+    public init(
+        body: ModalBody,
+        envelope: Envelope = .plucked,
+        filter: Filter? = nil,
+        detune: Double = 0,
+        gain: Double = 0.8
+    ) {
+        self.init(source: .body(body), envelope: envelope, filter: filter,
+                  detune: detune, gain: gain)
+    }
+
     public init(
         source: VoiceSource,
         envelope: Envelope = .standard,
@@ -110,7 +133,7 @@ public struct Voice: Sendable, Hashable, Codable {
         public var mode: Mode
         /// Where the filter sits when the note starts, in Hz.
         public var cutoff: Double
-        /// How much the filter emphasises its own cutoff, `0...1`. Past about
+        /// How much the filter emphasizes its own cutoff, `0...1`. Past about
         /// 0.7 the cutoff starts to whistle, which is usually the point.
         public var resonance: Double
         /// How far `envelope` moves the cutoff, in octaves. Negative closes the
@@ -232,6 +255,19 @@ extension Voice {
 
     /// A string stopped by the hand that plucked it.
     public static let muted = Voice(string: .muted, gain: 0.9)
+
+    /// A round drumhead, struck off center.
+    public static let drum = Voice(body: .drum, gain: 0.9)
+
+    /// A bar free at both ends, which is what a xylophone key is.
+    public static let bar = Voice(body: .bar, gain: 0.85)
+
+    /// A bell, with the minor third that makes one sound like a bell.
+    public static let chime = Voice(body: .bell, gain: 0.7)
+
+    /// A glass rung rather than struck: almost nothing at the front and a long
+    /// pure tone behind it.
+    public static let glass = Voice(body: .glass, gain: 0.7)
 
     /// Air rather than pitch: noise through a band the note moves.
     public static let breath = Voice(

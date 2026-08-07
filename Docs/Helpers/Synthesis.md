@@ -34,7 +34,7 @@ Two things are worth noticing there. Nothing was started: the first note starts 
 - [Synth](#synth) - the instrument, and how notes are asked for
 - [Pitch](#pitch) - names, numbers, and what lies between them
 - [Voice](#voice) - what a note is made of
-- [Physical models](#physical-models) - a string worked out rather than a wave drawn
+- [Physical models](#physical-models) - a string and a struck shape, worked out rather than drawn
 - [Envelope](#envelope) - how a note arrives and how it goes
 - [`Voice.Filter`](#voicefilter) - what is taken out of it, and how that moves
 - [Delay and Reverb](#delay-and-reverb) - putting the sound somewhere
@@ -137,7 +137,7 @@ synth.voice = glass             // notes already sounding are undisturbed
 
 | Property | What it does |
 |---|---|
-| `source` | what the note is built from: `.wave(Waveform)` or `.string(PluckedString)`. See [Physical models](#physical-models) |
+| `source` | what the note is built from: `.wave(Waveform)`, `.string(PluckedString)`, or `.body(ModalBody)`. See [Physical models](#physical-models) |
 | `waveform` | `.sine`, `.triangle`, `.sawtooth`, `.square`, `.noise`, brightest last |
 | `envelope` | how the note's loudness moves. See [Envelope](#envelope) |
 | `filter` | what is taken out of it, or nil. See [`Voice.Filter`](#voicefilter) |
@@ -154,7 +154,9 @@ The geometric waves are corrected as they are drawn, so a sawtooth still sounds 
 
 ### Physical models
 
-A wave is a shape drawn over and over. A physical model is the thing itself, worked out as it goes, and what you hear falls out of that rather than being dialled in.
+A wave is a shape drawn over and over. A physical model is the thing itself, worked out as it goes, and what you hear falls out of that rather than being dialled in. There are two here: a string you pluck, and a body you hit.
+
+#### A plucked string
 
 ```swift
 let synth = Synth(.steel)
@@ -168,7 +170,7 @@ synth.play("E3", for: 3)
 | `.harp` | plucked near the middle, so it comes out hollow and rings a long time |
 | `.muted` | a string stopped by the hand that plucked it |
 
-A string is a disturbance running up and down a length of something under tension, losing a little at each end and losing its top faster than its bottom. That is a delay line one period long with a filter in the loop, and everything a player recognises comes out of it: the attack, the way a held note darkens, and the difference between plucking near the bridge and over the hole.
+A string is a disturbance running up and down a length of something under tension, losing a little at each end and losing its top faster than its bottom. That is a delay line one period long with a filter in the loop, and everything a player recognizes comes out of it: the attack, the way a held note darkens, and the difference between plucking near the bridge and over the hole.
 
 ```swift
 var string = PluckedString.steel
@@ -190,6 +192,64 @@ synth.voice = Voice(string: string)
 **Tuning is exact.** The loop has to come out exactly one period long, and a whole number of samples cannot do that. The fraction left over is supplied by an allpass filter, and the loop filter's own delay is counted into the budget, so changing `damping` cannot move the pitch. Without that, notes go progressively sharper or flatter towards the top of the keyboard: at the top of the range, rounding the loop to whole samples is out by most of a semitone.
 
 Everything else about the voice is unchanged. `detune` gives a second string slightly apart, the `filter` still applies after, and a string is an ordinary `Voice` that can be assigned between notes like any other.
+
+#### A struck body
+
+The other model here is something hit rather than plucked. A struck object does not make a wave: it makes a handful of pure tones at once, each fading at its own rate, and which tones those are is decided by its shape.
+
+```swift
+let synth = Synth(.chime)
+synth.play("C4", for: 4)
+```
+
+| Preset | What it sounds like |
+|---|---|
+| `.drum` | a round drumhead, with a pitch you can argue about |
+| `.bar` | a xylophone key: a note with a knock on the front |
+| `.chime` | a bell, with the minor third that makes one sound like a bell |
+| `.glass` | rung rather than struck: nothing at the front, a long pure tone behind |
+
+`ModalBody` is the value underneath, and `.drum`, `.plate`, `.bar`, `.bell`, `.wood`, and `.glass` are the ones with names. Its settings:
+
+| Property | What it does |
+|---|---|
+| `modes` | the tones it rings at, as ratios to its lowest, and how much of each |
+| `decay` | how long the lowest tone takes to fade, in seconds |
+| `damping` | how much sooner the higher ones go, `0...3` |
+| `hardness` | how hard the strike is, `0...1`: a small hard mallet against a soft one |
+
+`damping` is most of what separates one struck thing from another. At 0 every tone fades together, which is a bell. At 1 a tone twice as high goes twice as fast, which is most things. Past 2 it is a knock rather than a note.
+
+#### A shape you drew, struck
+
+The frequencies can come from geometry instead of a list. A flat shape held at its edge rings at frequencies decided entirely by its outline, and `StruckShape` works them out:
+
+```swift
+let outline = textToShapes("O").first!
+let bell = StruckShape(outline)                  // once, in setup()
+
+override func mousePressed() {
+    synth.voice = Voice(body: bell!.body(struckAt: Vector2(mouseX, mouseY)))
+    synth.play("C4", for: 3)
+}
+```
+
+Nothing chooses that sound. A round outline comes back with the ratios a real drumhead has (1, 1.59, 2.14, 2.30, and so on, which are the zeros of the Bessel functions), a square one with a square membrane's (1, 1.58, 2, 2.24), and an outline nobody has a name for with whatever its own geometry allows. Only the *ratios* come from the shape: the note is decided when you play it, so one outline is an instrument rather than a single sound.
+
+| Member | What it does |
+|---|---|
+| `StruckShape(_:modes:resolution:)` | measures an outline. Nil if it is too small or thin to hold a standing wave |
+| `ratios` | what it rings at, as multiples of its lowest tone |
+| `body(struckAt:decay:damping:hardness:)` | the body it is, struck at a point |
+| `gains(struckAt:)` | how much a strike there puts into each tone |
+
+Three things are worth knowing:
+
+- **Measuring is the expensive part; striking is free.** Measuring a circle takes a few hundredths of a second in a release build and a second or two unoptimized, which is what a sketch run straight from source is. So do it once, in `setup()`, and keep the `StruckShape`. `ModalBody(shape:)` is the one-liner that measures every time, for when the shape never changes.
+- **Where you strike it decides which tones answer.** A tone that holds still under your finger gets nothing, the same reason a string plucked in the middle sounds hollow. Strike a circle exactly in the middle and every tone with a line of stillness through the center goes quiet, which is most of them.
+- **A symmetric shape rings at some tones twice.** A pattern that fits at one rotation fits at another and both are really there, which is why the circle's list above has each entry twice except the ones with no rotation at all. A real drum does the same. Which of a pair takes a given strike is arbitrary, since they ring at the same frequency, so read their gains together rather than one at a time.
+
+A body carries up to sixteen tones, which is what lets it reach the audio thread without allocating, and a tone that would land above half the sample rate is dropped rather than folded back down the spectrum as something that was never struck.
 
 ---
 
@@ -227,7 +287,7 @@ Voice.Filter.sweep(from: 400, by: 3.5, resonance: 0.35)     // opens, then close
 |---|---|
 | `mode` | `.lowpass` (the usual one), `.highpass`, `.bandpass`, `.notch` |
 | `cutoff` | where the filter sits when the note starts, in Hz |
-| `resonance` | how much it emphasises its own cutoff, `0...1`. Past about 0.7 the cutoff whistles |
+| `resonance` | how much it emphasizes its own cutoff, `0...1`. Past about 0.7 the cutoff whistles |
 | `envelopeAmount` | how far `envelope` moves the cutoff, **in octaves**. Negative closes it as the note goes on |
 | `envelope` | the shape of that movement |
 | `keyTracking` | how far the cutoff follows the note being played, `0...1` |
@@ -263,7 +323,7 @@ Said plainly, so you can plan around it rather than go looking:
 - **One instrument, one sound at a time.** A `Synth` plays one `voice`. Several sounds at once means several `Synth`s, which is fine and cheap.
 - **No sequencer.** Notes are asked for from `draw()`, on whatever clock the sketch keeps. [`Composition`](./Composition.md) is what decides which notes and when; [`TempoClock`](../Integration/MIDI.md) is the way to run on someone else's clock.
 - **No sampler.** Playing a recorded sound is [`AudioPlayer`](./Audio.md#audioplayer)'s job, not a voice's.
-- **One physical model.** A plucked string is here; a struck body, a bowed string, and a blown tube are not.
+- **Two physical models.** A plucked string and a struck body are here; a bowed string and a blown tube are not.
 - **Not placed in the 3D scene.** A voice has no position, so nothing is heard from where it is drawn.
 - **Not in an export.** The offline exporters render frames; a video written from a sketch has no sound. The renderer underneath is deterministic and offline-capable, which is what a future audio export would be built on, but nothing writes sound to a file today.
 
