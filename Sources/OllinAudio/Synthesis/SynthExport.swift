@@ -143,15 +143,22 @@ extension Synth: @MainActor FrameAdvancing, @MainActor ExportAudioSource {
             // Fed in as mono it reaches only the first of them.
             let placing = !pendingPoses.isEmpty
             source = makeSynthSourceNode(format: placing ? mono : stereo, renderer: renderer)
-            let delayUnit = AVAudioUnitDelay()
-            let reverbUnit = AVAudioUnitReverb()
             engine.attach(source)
-            engine.attach(delayUnit)
-            engine.attach(reverbUnit)
+            // The same chain the output has, built the same way from the same
+            // list. An export that ran a different set of effects from the one
+            // the sketch was heard through would be a different piece.
+            var chain: [AVAudioUnit] = []
+            for effect in synth.effects {
+                let unit = Effect.makeUnit(for: effect.kind)
+                engine.attach(unit)
+                effect.apply(to: unit)
+                chain.append(unit)
+            }
 
+            // Whatever the chain hangs from: the listener where there is one.
+            var head: AVAudioNode = source
             if !placing {
                 environment = nil
-                engine.connect(source, to: delayUnit, format: stereo)
             } else {
                 // The same shape the live path is rewired into: one stream
                 // reaches something that knows where the ears are and leaves it
@@ -168,12 +175,13 @@ extension Synth: @MainActor FrameAdvancing, @MainActor ExportAudioSource {
                 environment = listener
                 engine.attach(listener)
                 engine.connect(source, to: listener, format: mono)
-                engine.connect(listener, to: delayUnit, format: nil)
+                head = listener
             }
-            engine.connect(delayUnit, to: reverbUnit, format: nil)
-            engine.connect(reverbUnit, to: engine.mainMixerNode, format: nil)
-            Synth.configure(delayUnit, with: synth.delay)
-            Synth.configure(reverbUnit, with: synth.reverb)
+            for unit in chain {
+                engine.connect(head, to: unit, format: nil)
+                head = unit
+            }
+            engine.connect(head, to: engine.mainMixerNode, format: nil)
 
             do {
                 try engine.enableManualRenderingMode(.offline, format: stereo,

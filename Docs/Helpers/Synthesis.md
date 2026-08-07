@@ -40,7 +40,7 @@ Two things are worth noticing there. Nothing was started: the first note starts 
 - [Sound in an export](#sound-in-an-export) - carrying the music out of the window
 - [Envelope](#envelope) - how a note arrives and how it goes
 - [`Voice.Filter`](#voicefilter) - what is taken out of it, and how that moves
-- [Delay and Reverb](#delay-and-reverb) - putting the sound somewhere
+- [Effects](#effects) - the chain the sound leaves through
 - [What is not here yet](#what-is-not-here-yet)
 
 ---
@@ -483,21 +483,81 @@ The filter is solved by integrating the circuit rather than folding a fixed answ
 
 ---
 
-### Delay and Reverb
+### Effects
 
-Where the sound is heard.
+Everything done to the sound after it is made, in order.
 
 ```swift
-synth.delay = Delay(time: 0.28, feedback: 0.35, mix: 0.25)
-synth.reverb = Reverb(.hall, mix: 0.3)
-synth.reverb = nil                                   // dry again
+synth.effects = [
+    .distortion(Distortion(.softClip, mix: 0.3)),
+    .delay(Delay(time: 0.28, feedback: 0.5)),
+    .reverb(Reverb(.hall, mix: 0.4)),
+]
 ```
 
-`Delay` is an echo: `time` before the first repeat, `feedback` how much of each repeat feeds the next (`0...0.95`), `mix` how much of the result is the echo, and `damping` where the repeats start losing their top end, so each is duller than the last the way a real one is.
+The voice side of this library is routing as a value: a [`Patch`](#patch) says what an instrument is made of and how the pieces are wired. This is the same idea on the way out, so an instrument is finished rather than merely decorated.
 
-`Reverb` is a room: `.room`, `.hall`, `.plate`, or `.cathedral`, and a `mix`.
+**Order is the point.** An echo of a distorted sound and a distorted echo are different, and so are a reverb of an echo and an echo of a reverb: the first repeats a room, the second puts repeats in one. Writing the chain as a list is how that becomes something you can say.
 
-Both apply to everything the synth plays, delay first and reverb after, which is the order these are usually chained in. Effects per voice are not a thing here.
+| Effect | What it is |
+|---|---|
+| `.delay(Delay)` | the sound again, later and quieter each time |
+| `.reverb(Reverb)` | a room around it |
+| `.equalizer(Equalizer)` | lifting or cutting part of the spectrum |
+| `.distortion(Distortion)` | driving it past where it fits |
+
+#### The two that were here first
+
+```swift
+synth.reverb = Reverb(.hall, mix: 0.3)      // still works
+synth.delay = Delay(time: 0.25)
+```
+
+`delay` and `reverb` are views over the chain: reading gives the first of that kind, and setting replaces it **where it already is** or appends it. So a sketch that only wants one echo and one room never has to think about a chain, and one that does can reach past them.
+
+#### Delay
+
+```swift
+Delay(time: 0.25, feedback: 0.4, mix: 0.3, damping: 6000)
+```
+
+| Setting | What it does |
+|---|---|
+| `time` | seconds before the first repeat |
+| `feedback` | how much of each repeat feeds the next, `0...0.95`. Higher runs longer |
+| `mix` | how much of the result is the echo rather than the sound, `0...1` |
+| `damping` | where the repeats start losing their top, in Hz. Lower makes each repeat duller than the last, the way a real one is |
+
+#### Reverb
+
+```swift
+Reverb(.hall, mix: 0.3)
+```
+
+`.room`, `.hall`, `.plate`, `.cathedral`, biggest last, and `mix` is how much of the result is the room.
+
+#### Equalizer
+
+```swift
+Equalizer(low: -6, high: 3)                 // thinner and brighter
+Equalizer.lowCut(below: 300)                // when a sound is muddy
+```
+
+Three controls: the bottom, the top, and one place in the middle you put wherever the problem is. Gains are in decibels, so zero is untouched. A few decibels is a great deal more than it sounds like written down. Presets: `.warm`, `.bright`, `.scooped`.
+
+#### Distortion
+
+```swift
+Distortion(.softClip, drive: -6, mix: 0.3)
+```
+
+`.softClip` is warmth rather than damage; `.overdrive`, `.bitCrush`, `.ring` and `.squeeze` get progressively less polite. `drive` is how hard it is pushed in, in decibels, and `mix` dials the whole thing back to nothing.
+
+#### What it costs to change one
+
+Changing a **setting** costs nothing: the chain is the same wiring and only the numbers move. Changing **which effects are in the chain** rewires it, and that is done on the running engine rather than around a stop, because measured on this wiring reconnecting while it runs costs nothing audible and stopping costs the same.
+
+The chain reaches an [export](#sound-in-an-export) as well, built the same way from the same list. An export that ran a different set of effects from the one the sketch was heard through would be a different piece.
 
 ---
 
@@ -507,6 +567,8 @@ Said plainly, so you can plan around it rather than go looking:
 
 - **One instrument, one sound at a time.** A `Synth` plays one `voice`. Several sounds at once means several `Synth`s, which is fine and cheap.
 - **A patch is oscillators, not a whole modular rack.** Operators push each other and mix; there is no filter, envelope, or effect inside a patch. Those are the `Voice` around it, one per voice rather than one per operator.
+- **The chain is on the instrument, not on a note.** Every note a `Synth` plays goes through the same effects. Two different treatments means two `Synth`s.
+- **No effect of your own.** The chain holds the four kinds above. There is no seam for a filter you wrote yourself, the way [`Shader`](../Shaders/Shaders.md) is that seam for drawing.
 - **No sequencer.** Notes are asked for from `draw()`, on whatever clock the sketch keeps. [`Composition`](./Composition.md) is what decides which notes and when; [`TempoClock`](../Integration/MIDI.md) is the way to run on someone else's clock.
 - **No sampler.** Playing a recorded sound is [`AudioPlayer`](./Audio.md#audioplayer)'s job, not a voice's.
 - **No jet-driven tube.** The blown tube is reed-driven. A flute is a jet of air splitting across an edge, which is a different excitation and is not here.

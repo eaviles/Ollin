@@ -32,8 +32,10 @@ public final class Synth: AudioSource {
     private let sampleRate: Double
     private let tapBufferSize: UInt32
     private var sourceNode: AVAudioSourceNode!
-    private let delayUnit = AVAudioUnitDelay()
-    private let reverbUnit = AVAudioUnitReverb()
+    /// The units the chain is currently wired as, one per effect, in order.
+    private var effectUnits: [AVAudioUnit] = []
+    /// The kinds those units are, which is what a rebuild is decided against.
+    private var wiredKinds: [Effect.Kind] = []
     private var tapInstalled = false
     /// What a sketch asked for while it was being exported, and the clock those
     /// requests are measured against. All three are untouched on the live path.
@@ -59,6 +61,10 @@ public final class Synth: AudioSource {
     /// How far a sound carries. Held here rather than on the placement so that
     /// an export can read it without a live environment node existing.
     var placementRange: ClosedRange<Double> = 1...50
+
+    /// The listener, once a sketch has placed this instrument. The effects hang
+    /// off it from then on.
+    private var listener: AVAudioEnvironmentNode?
 
     /// The node that carries a placed instrument's position. The source node is
     /// the one the engine will spatialize, because it is the one feeding the
@@ -106,14 +112,59 @@ public final class Synth: AudioSource {
         set { renderer.drive = newValue }
     }
 
+    /// Everything done to the sound after it is made, in order.
+    ///
+    /// ```swift
+    /// synth.effects = [
+    ///     .distortion(Distortion(.softClip, mix: 0.3)),
+    ///     .delay(Delay(time: 0.28)),
+    ///     .reverb(Reverb(.hall, mix: 0.4)),
+    /// ]
+    /// ```
+    ///
+    /// Order is the point: a distorted echo and an echo of a distorted sound
+    /// are different things. Changing a setting costs nothing, and changing
+    /// which effects are in the chain rewires it, which the engine does without
+    /// interrupting what is playing.
+    public var effects: [Effect] = [] {
+        didSet { applyEffects() }
+    }
+
     /// An echo on everything the synth plays, or nil for none.
+    ///
+    /// A view over ``effects``: the first echo in the chain, or where one goes
+    /// if there is not one yet. Here because it was here before the chain was,
+    /// and because one echo is what most sketches want.
     public var delay: Delay? {
-        didSet { applyDelay() }
+        get {
+            for case .delay(let delay) in effects { return delay }
+            return nil
+        }
+        set { replaceFirst(.delay, with: newValue.map { Effect.delay($0) }) }
     }
 
     /// A room around everything the synth plays, or nil for none.
+    ///
+    /// A view over ``effects``, the same way ``delay`` is.
     public var reverb: Reverb? {
-        didSet { applyReverb() }
+        get {
+            for case .reverb(let reverb) in effects { return reverb }
+            return nil
+        }
+        set { replaceFirst(.reverb, with: newValue.map { Effect.reverb($0) }) }
+    }
+
+    /// Puts an effect where the first one of its kind is, or on the end, or
+    /// takes it out. Keeping the position is what stops setting `reverb` twice
+    /// from moving it down the chain.
+    private func replaceFirst(_ kind: Effect.Kind, with effect: Effect?) {
+        var chain = effects
+        if let position = chain.firstIndex(where: { $0.kind == kind }) {
+            if let effect { chain[position] = effect } else { chain.remove(at: position) }
+        } else if let effect {
+            chain.append(effect)
+        }
+        effects = chain
     }
 
     /// Creates an instrument.
@@ -148,16 +199,10 @@ public final class Synth: AudioSource {
         self.sourceNode = makeSynthSourceNode(format: format, renderer: renderer)
 
         engine.attach(sourceNode)
-        engine.attach(delayUnit)
-        engine.attach(reverbUnit)
-        // The effects are wired in once and left there, mixed all the way dry
-        // until a sketch asks for them: rebuilding a running graph to add an
-        // echo is how you get a gap in the sound.
-        engine.connect(sourceNode, to: delayUnit, format: format)
-        engine.connect(delayUnit, to: reverbUnit, format: format)
-        engine.connect(reverbUnit, to: engine.mainMixerNode, format: format)
-        applyDelay()
-        applyReverb()
+        // Straight to the output until a sketch asks for an effect. The chain
+        // is built from `effects` and rebuilt when its shape changes, which the
+        // engine takes without interrupting what is playing.
+        engine.connect(sourceNode, to: engine.mainMixerNode, format: format)
     }
 
     // MARK: Playing
@@ -282,23 +327,64 @@ public final class Synth: AudioSource {
         engine.attach(placed)
         engine.attach(environment)
         engine.connect(placed, to: environment, format: mono)
+        listener = environment
         // From here on the engine works the formats out: the listener hands
         // back two channels whatever went in, and the effects follow that
         // rather than the format the chain started in.
-        engine.connect(environment, to: delayUnit, format: nil)
-        engine.connect(delayUnit, to: reverbUnit, format: nil)
-        engine.connect(reverbUnit, to: engine.mainMixerNode, format: nil)
+        rebuildEffectChain()
 
         if wasRunning { start() }
     }
 
-    private func applyDelay() { Synth.configure(delayUnit, with: delay) }
+    /// Where the effects hang from: the listener once there is one, since the
+    /// room has to be applied to the sound after it has been placed in the room,
+    /// and the source itself otherwise.
+    private var chainHead: AVAudioNode { listener ?? sourceNode }
 
-    private func applyReverb() { Synth.configure(reverbUnit, with: reverb) }
+    /// Brings the wiring into line with `effects`.
+    ///
+    /// A chain of the same kinds in the same order is the same wiring, so only
+    /// the settings are applied and nothing is touched. Anything else is a
+    /// rebuild.
+    private func applyEffects() {
+        let kinds = effects.map(\.kind)
+        if kinds != wiredKinds {
+            rebuildEffectChain()
+        } else {
+            for (unit, effect) in zip(effectUnits, effects) { effect.apply(to: unit) }
+        }
+    }
+
+    /// Wires the chain from scratch.
+    ///
+    /// Done on the running engine rather than around a stop. Measured on this
+    /// wiring, reconnecting while it runs costs nothing audible, and stopping
+    /// costs the same, so there is no reason to take the sound away first.
+    private func rebuildEffectChain() {
+        for unit in effectUnits {
+            engine.disconnectNodeOutput(unit)
+            engine.detach(unit)
+        }
+        effectUnits = effects.map { effect in
+            let unit = Effect.makeUnit(for: effect.kind)
+            engine.attach(unit)
+            effect.apply(to: unit)
+            return unit
+        }
+        wiredKinds = effects.map(\.kind)
+
+        engine.disconnectNodeOutput(chainHead)
+        var previous: AVAudioNode = chainHead
+        for unit in effectUnits {
+            engine.connect(previous, to: unit, format: nil)
+            previous = unit
+        }
+        engine.connect(previous, to: engine.mainMixerNode, format: nil)
+    }
 
     /// Settings applied in one place, because an export builds its own units
     /// and they have to come out sounding the same as the ones on the output.
-    static func configure(_ unit: AVAudioUnitDelay, with delay: Delay?) {
+    nonisolated static func configure(_ unit: AVAudioUnitDelay, with delay: Delay?) {
         guard let delay else {
             unit.wetDryMix = 0
             return
@@ -309,7 +395,7 @@ public final class Synth: AudioSource {
         unit.wetDryMix = Float(min(max(0, delay.mix), 1) * 100)
     }
 
-    static func configure(_ unit: AVAudioUnitReverb, with reverb: Reverb?) {
+    nonisolated static func configure(_ unit: AVAudioUnitReverb, with reverb: Reverb?) {
         guard let reverb else {
             unit.wetDryMix = 0
             return
@@ -322,7 +408,7 @@ public final class Synth: AudioSource {
 // MARK: - Effects
 
 /// An echo: the sound again, later and quieter each time.
-public struct Delay: Sendable, Hashable {
+public struct Delay: Sendable, Hashable, Codable {
     /// Seconds before the first repeat.
     public var time: Double
     /// How much of each repeat feeds the next, `0...0.95`. Higher runs longer.
@@ -342,7 +428,7 @@ public struct Delay: Sendable, Hashable {
 }
 
 /// A room the sound is heard in.
-public struct Reverb: Sendable, Hashable {
+public struct Reverb: Sendable, Hashable, Codable {
     /// How big the room is.
     public enum Space: String, Sendable, Hashable, CaseIterable, Codable {
         case room, hall, plate, cathedral

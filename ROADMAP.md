@@ -69,9 +69,7 @@ See the [design notes](DESIGN-NOTES.md#photorealistic-3d).
 
 ## Sound, synthesis, and spatial audio
 
-The audio layer both listens (FFT, bands, beat detection) and plays: a polyphonic [`Synth`](Docs/Helpers/Synthesis.md) over shaped, filtered voices with delay and reverb, fed by a [composition](Docs/Helpers/Composition.md) tier that works out what to play (rhythms, keys, chord progressions, tunings past the twelve semitones, and following the beat in the room), over waves, four physical models (two of them driven rather than struck) and a patchable operator graph, reading [data out as notes](Docs/Helpers/Sonification.md), placed in the 3D scene and carried into an exported video. What builds on that:
-
-- **Effects as a graph.** The voice side is routing as a value; the effect side is still two fixed slots on the output. Wiring those the same way, so a sketch builds a chain rather than filling two slots.
+The audio layer both listens (FFT, bands, beat detection) and plays: a polyphonic [`Synth`](Docs/Helpers/Synthesis.md) over shaped, filtered voices with delay and reverb, fed by a [composition](Docs/Helpers/Composition.md) tier that works out what to play (rhythms, keys, chord progressions, tunings past the twelve semitones, and following the beat in the room), over waves, four physical models (two of them driven rather than struck), a patchable operator graph and an ordered chain of effects, reading [data out as notes](Docs/Helpers/Sonification.md), placed in the 3D scene and carried into an exported video.
 
 See the [design notes](DESIGN-NOTES.md#sound-synthesis-and-spatial-audio).
 

@@ -1,0 +1,218 @@
+import AVFoundation
+
+/// One thing done to the sound after it is made.
+///
+/// The voice side of this library is routing as a value: a ``Patch`` says what
+/// an instrument is made of and how the pieces are wired. This is the same idea
+/// on the way out. A `Synth` holds an ordered chain of these rather than a
+/// fixed pair of slots, so an instrument is finished rather than merely
+/// decorated.
+///
+/// ```swift
+/// synth.effects = [
+///     .distortion(Distortion(.softClip, mix: 0.3)),
+///     .delay(Delay(time: 0.28, feedback: 0.5)),
+///     .reverb(Reverb(.hall, mix: 0.4)),
+/// ]
+/// ```
+///
+/// **Order is the point.** An echo of a distorted sound and a distorted echo
+/// are different, and so are a reverb of an echo and an echo of a reverb: the
+/// first repeats a room and the second puts repeats in one. Writing the chain
+/// down as a list is how that becomes something you can say.
+public enum Effect: Sendable, Hashable, Codable {
+    /// The sound again, later and quieter each time.
+    case delay(Delay)
+    /// A room around it.
+    case reverb(Reverb)
+    /// Lifting or cutting part of the spectrum.
+    case equalizer(Equalizer)
+    /// Driving it past where it fits, from a warm edge to a broken one.
+    case distortion(Distortion)
+
+    /// Which kind of effect this is, ignoring its settings.
+    ///
+    /// What the chain is rebuilt against: two chains of the same kinds in the
+    /// same order are the same wiring, whatever their settings say, so changing
+    /// a setting never disturbs the graph.
+    public enum Kind: String, Sendable, Hashable, Codable, CaseIterable {
+        case delay, reverb, equalizer, distortion
+    }
+
+    public var kind: Kind {
+        switch self {
+        case .delay:      return .delay
+        case .reverb:     return .reverb
+        case .equalizer:  return .equalizer
+        case .distortion: return .distortion
+        }
+    }
+
+    /// A unit that can do this kind of work. The settings are applied
+    /// separately, so one unit serves every setting of its kind.
+    static func makeUnit(for kind: Kind) -> AVAudioUnit {
+        switch kind {
+        case .delay:      return AVAudioUnitDelay()
+        case .reverb:     return AVAudioUnitReverb()
+        case .equalizer:  return AVAudioUnitEQ(numberOfBands: 3)
+        case .distortion: return AVAudioUnitDistortion()
+        }
+    }
+
+    /// Puts this effect's settings onto a unit of its kind.
+    func apply(to unit: AVAudioUnit) {
+        switch self {
+        case .delay(let delay):
+            guard let unit = unit as? AVAudioUnitDelay else { return }
+            Synth.configure(unit, with: delay)
+        case .reverb(let reverb):
+            guard let unit = unit as? AVAudioUnitReverb else { return }
+            Synth.configure(unit, with: reverb)
+        case .equalizer(let equalizer):
+            guard let unit = unit as? AVAudioUnitEQ else { return }
+            equalizer.apply(to: unit)
+        case .distortion(let distortion):
+            guard let unit = unit as? AVAudioUnitDistortion else { return }
+            distortion.apply(to: unit)
+        }
+    }
+}
+
+// MARK: - Equalizer
+
+/// Lifting or cutting parts of the spectrum.
+///
+/// Three controls, which is what most sounds need: the bottom, the top, and one
+/// place in the middle you can put wherever the problem is.
+///
+/// ```swift
+/// synth.effects = [.equalizer(Equalizer(low: -6, high: 3))]
+/// ```
+///
+/// Gains are in decibels, so zero is untouched, positive lifts and negative
+/// cuts. A few decibels is a great deal more than it sounds like written down.
+public struct Equalizer: Sendable, Hashable, Codable {
+    /// How much to lift or cut everything below `lowEdge`, in decibels.
+    public var low: Double
+    /// Where the bottom shelf turns over, in Hz.
+    public var lowEdge: Double
+    /// How much to lift or cut around `midFrequency`, in decibels.
+    public var mid: Double
+    /// Where the middle band sits, in Hz.
+    public var midFrequency: Double
+    /// How narrow that middle band is. Higher is narrower: around 1 is a broad
+    /// tilt and past 5 is a notch aimed at one thing.
+    public var midWidth: Double
+    /// How much to lift or cut everything above `highEdge`, in decibels.
+    public var high: Double
+    /// Where the top shelf turns over, in Hz.
+    public var highEdge: Double
+
+    public init(
+        low: Double = 0, lowEdge: Double = 200,
+        mid: Double = 0, midFrequency: Double = 1000, midWidth: Double = 1,
+        high: Double = 0, highEdge: Double = 4000
+    ) {
+        self.low = min(max(-24, low), 24)
+        self.lowEdge = min(max(20, lowEdge), 20000)
+        self.mid = min(max(-24, mid), 24)
+        self.midFrequency = min(max(20, midFrequency), 20000)
+        self.midWidth = min(max(0.05, midWidth), 20)
+        self.high = min(max(-24, high), 24)
+        self.highEdge = min(max(20, highEdge), 20000)
+    }
+
+    /// Everything under the edge, and nothing else. The one to reach for when
+    /// a sound is muddy rather than wrong.
+    public static func lowCut(below edge: Double, by decibels: Double = -12) -> Equalizer {
+        Equalizer(low: decibels, lowEdge: edge)
+    }
+
+    /// Warm: a lift at the bottom and a little off the top.
+    public static let warm = Equalizer(low: 4, lowEdge: 250, high: -3, highEdge: 5000)
+
+    /// The opposite: thinner and more present.
+    public static let bright = Equalizer(low: -5, lowEdge: 300, high: 5, highEdge: 3500)
+
+    /// A hole in the middle, which is how a sound makes room for another.
+    public static let scooped = Equalizer(mid: -9, midFrequency: 900, midWidth: 1.2)
+
+    func apply(to unit: AVAudioUnitEQ) {
+        guard unit.bands.count >= 3 else { return }
+        unit.bands[0].filterType = .lowShelf
+        unit.bands[0].frequency = Float(lowEdge)
+        unit.bands[0].gain = Float(low)
+        unit.bands[0].bypass = low == 0
+
+        unit.bands[1].filterType = .parametric
+        unit.bands[1].frequency = Float(midFrequency)
+        unit.bands[1].bandwidth = Float(1 / max(0.05, midWidth))
+        unit.bands[1].gain = Float(mid)
+        unit.bands[1].bypass = mid == 0
+
+        unit.bands[2].filterType = .highShelf
+        unit.bands[2].frequency = Float(highEdge)
+        unit.bands[2].gain = Float(high)
+        unit.bands[2].bypass = high == 0
+
+        unit.globalGain = 0
+        unit.bypass = low == 0 && mid == 0 && high == 0
+    }
+}
+
+// MARK: - Distortion
+
+/// Driving a sound past where it fits.
+///
+/// The mildest settings are a warm edge on something clean; the strongest stop
+/// being a treatment and become the instrument. `mix` is how much of the result
+/// is the driven sound rather than the original, so it can be dialled all the
+/// way back to nothing.
+///
+/// ```swift
+/// synth.effects = [.distortion(Distortion(.softClip, mix: 0.35))]
+/// ```
+public struct Distortion: Sendable, Hashable, Codable {
+    /// The character of the breaking up.
+    public enum Character: String, Sendable, Hashable, Codable, CaseIterable {
+        /// A gentle rounding of the peaks: warmth rather than damage.
+        case softClip
+        /// Harder, with the edge of something overdriven.
+        case overdrive
+        /// Broken into steps, the sound of too few bits to describe it with.
+        case bitCrush
+        /// A ring rather than a fuzz, which is metallic and unmusical on
+        /// purpose.
+        case ring
+        /// Squeezed through something much too small for it.
+        case squeeze
+
+        var preset: AVAudioUnitDistortionPreset {
+            switch self {
+            case .softClip:  return .multiEcho1
+            case .overdrive: return .drumsBitBrush
+            case .bitCrush:  return .speechRadioTower
+            case .ring:      return .multiCellphoneConcert
+            case .squeeze:   return .speechCosmicInterference
+            }
+        }
+    }
+
+    public var character: Character
+    /// How hard it is driven in, in decibels. More is more broken.
+    public var drive: Double
+    /// How much of the result is the driven sound, `0...1`.
+    public var mix: Double
+
+    public init(_ character: Character = .softClip, drive: Double = -6, mix: Double = 0.3) {
+        self.character = character
+        self.drive = min(max(-80, drive), 20)
+        self.mix = min(max(0, mix), 1)
+    }
+
+    func apply(to unit: AVAudioUnitDistortion) {
+        unit.loadFactoryPreset(character.preset)
+        unit.preGain = Float(drive)
+        unit.wetDryMix = Float(mix * 100)
+    }
+}

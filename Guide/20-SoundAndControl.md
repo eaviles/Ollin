@@ -163,6 +163,24 @@ The reason to bother is one sentence. **A filter can only take harmonics away, a
 
 There is a constraint worth knowing about, because it explains the one number in the API that looks arbitrary. A patch travels to the audio thread inside a note, through a queue of slots that already exist, so it has to be something copyable a word at a time: no arrays, no references, nothing to allocate. So the operators live in fixed lanes and there are eight. A patch that would need more comes back unchanged and says so, rather than quietly dropping one, because a patch with a piece missing is a different instrument and finding that out by ear is worse than reading it in the log.
 
+### And the rest of the instrument
+
+A patch says what the sound is made of. What happens to it afterwards is a chain, written the same way:
+
+```swift
+synth.effects = [
+    .distortion(Distortion(.softClip, mix: 0.3)),
+    .delay(Delay(time: 0.28, feedback: 0.5)),
+    .reverb(Reverb(.hall, mix: 0.4)),
+]
+```
+
+Order is the point, and it is the reason this is a list and not a pair of switches. An echo of a distorted sound and a distorted echo are different things: one repeats something dirty, the other dirties the repeats. Swap those two lines and you can hear which you have.
+
+`synth.reverb = Reverb(.hall)` still works, and now means "put one room in the chain, or replace the one that is already there". Most sketches never need more than that, and the ones that do are not stuck with two slots.
+
+Changing a setting costs nothing. Changing which effects are in the chain rewires it, and that happens on the running engine rather than around a stop, because measured on this wiring reconnecting while it plays costs nothing you can hear.
+
 ## A string, worked out rather than drawn
 
 Every voice so far starts with a wave: a shape an oscillator traces over and over, which you then carve with an envelope and a filter until it sounds like something. That works, and it is what most synthesizers are. But it is a description of a result, and there is another way in.

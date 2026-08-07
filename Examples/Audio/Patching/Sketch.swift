@@ -23,6 +23,9 @@ final class Patching: Sketch {
     @Param(0 ... 0.9, icon: "arrow.triangle.2.circlepath", group: "Carrier") var feedback = 0.0
     @Param(icon: "waveform", group: "Carrier") var shape = Waveform.sine
 
+    enum Finish: String, ParamOption { case dry, room, echo, echoOfADirtySound, aDirtyEcho }
+    @Param(icon: "slider.horizontal.3", group: "Finish") var finish = Finish.room
+
     let synth = Synth(.sine, polyphony: 8)
     // Neither `scale` nor `key` will do: a Sketch already has both, one the
     // resolution-relative scale and one the keyboard.
@@ -34,11 +37,24 @@ final class Patching: Sketch {
 
     override func setup() {
         synth.gain = 0.5
-        synth.reverb = Reverb(.room, mix: 0.16)
         rebuild()
     }
 
-    private var recipe: String { "\(index)-\(ratio)-\(feedback)-\(shape)" }
+    private var recipe: String { "\(index)-\(ratio)-\(feedback)-\(shape)-\(finish)" }
+
+    /// The rest of the instrument. A chain rather than two slots, and the last
+    /// two differ only in which way round they are, which is audible.
+    private var chain: [Effect] {
+        switch finish {
+        case .dry:               return []
+        case .room:              return [.reverb(Reverb(.hall, mix: 0.3))]
+        case .echo:              return [.delay(Delay(time: 0.26, feedback: 0.45, mix: 0.4))]
+        case .echoOfADirtySound: return [.distortion(Distortion(.overdrive, mix: 0.5)),
+                                         .delay(Delay(time: 0.26, feedback: 0.45, mix: 0.4))]
+        case .aDirtyEcho:        return [.delay(Delay(time: 0.26, feedback: 0.45, mix: 0.4)),
+                                         .distortion(Distortion(.overdrive, mix: 0.5))]
+        }
+    }
 
     /// The whole feature, in one expression: the routing is a value.
     private func rebuild() {
@@ -46,6 +62,7 @@ final class Patching: Sketch {
             .modulated(by: .tone(.sine, ratio: ratio), index: index)
             .fedBack(feedback)
         synth.voice = Voice(patch: patch, envelope: .percussive, gain: 0.7)
+        synth.effects = chain
         built = recipe
     }
 
@@ -64,7 +81,8 @@ final class Patching: Sketch {
         drawGraph()
         drawCaption("Two operators, wired live. The upper one pushes the lower one.",
                     edge: .top)
-        drawCaption("A filter can only take harmonics away. This puts them in.")
+        drawCaption("A filter can only take harmonics away. This puts them in. "
+                    + "The finish is a chain, and its order is audible.")
     }
 
     private func drawGraph() {
