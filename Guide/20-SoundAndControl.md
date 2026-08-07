@@ -327,6 +327,8 @@ This is worth a moment, because it is the one place in this chapter where an ear
 
 Which means the sound reproduces exactly the way the picture does. Export the same piece twice and the audio comes back sample for sample identical, so a generated piece is something you can come back to rather than something you had to be there to catch. That is the same promise the seed made in Chapter 4, arriving in a medium you cannot look at.
 
+The two halves of this section meet, which is worth saying because it would be easy to assume they don't. Placing works by rewiring the audio graph, and an export has no audio graph to rewire; so where each instrument was and where it was heard from get written down as the frames are drawn, exactly the way the notes are, and the finished soundtrack is rendered through a listener at the end. A chime that walks past your left ear on screen walks past your left ear in the file. Place from the first frame if you want that: the soundtrack machine is built once and its shape is fixed then, so an instrument that starts playing before it is ever placed will tell you it cannot be moved rather than quietly coming out in the middle.
+
 ## Knobs from anywhere
 
 The hands come next. Since Chapter 1 you've tuned sketches with `@Param` knobs in the inspector, and the news here is that the inspector is only one of the hands that can hold those knobs.

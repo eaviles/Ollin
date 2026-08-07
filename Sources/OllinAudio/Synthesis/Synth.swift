@@ -36,8 +36,12 @@ public final class Synth: AudioSource {
     private let reverbUnit = AVAudioUnitReverb()
     private var tapInstalled = false
     /// What a sketch asked for while it was being exported, and the clock those
-    /// requests are measured against. Both are untouched on the live path.
+    /// requests are measured against. All three are untouched on the live path.
     var recorded: [RecordedNote] = []
+    /// Where the instrument was and where it was heard from, whenever either
+    /// changed. Empty unless the sketch placed it, which is what keeps an
+    /// export of an unplaced instrument exactly what it was before.
+    var recordedPoses: [RecordedPose] = []
     var exportClock: Double = 0
     /// The offline machine, once an export has asked for a soundtrack.
     var offline: OfflineRender?
@@ -51,6 +55,10 @@ public final class Synth: AudioSource {
     /// Where this instrument is in the scene, if a sketch has placed it.
     /// See ``place(at:heardFrom:)``.
     lazy var spatial = SpatialPlacement(owner: self)
+
+    /// How far a sound carries. Held here rather than on the placement so that
+    /// an export can read it without a live environment node existing.
+    var placementRange: ClosedRange<Double> = 1...50
 
     /// The node that carries a placed instrument's position. The source node is
     /// the one the engine will spatialize, because it is the one feeding the

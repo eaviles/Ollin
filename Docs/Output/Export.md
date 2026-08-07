@@ -101,6 +101,8 @@ A sketch that plays carries its sound into the video. Nothing is switched on: if
 
 It reproduces the way the picture does. The exporters drive the sketch on a fixed clock with nothing playing, so the notes are written down as the frames are drawn and the soundtrack is rendered through the same code that would have fed the speakers. Export twice and the audio comes back sample for sample identical.
 
+A sound the sketch [placed in the scene](../Helpers/Synthesis.md#placing-a-sound) is placed in the file as well. Where each instrument was and where it was heard from are written down alongside the notes, so something that walks past you on screen walks past you in the audio.
+
 GIF has no way to hold sound. The details, and what stays out, are on the [Synthesis](../Helpers/Synthesis.md#sound-in-an-export) page.
 
 ---

@@ -13,6 +13,15 @@ import OllinAudio
 /// falls back to a plain left and right.
 ///
 /// Drag to move the camera, and the whole scene turns around your head.
+///
+/// It exports placed, too. Where each chime is and where it is being heard from
+/// are written down as the frames are drawn, so the walk past your left ear is
+/// in the file:
+///
+/// ```sh
+/// swift run --package-path Examples Example-Audio-Spatial \
+///     --export-video spatial.mp4 --frames 480
+/// ```
 @main
 final class Spatial: Sketch {
 

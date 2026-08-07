@@ -273,6 +273,8 @@ Both facts arrive together because neither means anything alone: a position says
 
 On headphones the placing is done the way the ear works it out, which is more than loudness: how much later the sound reaches one ear than the other, and what a head does to a sound arriving round it. So something behind you is behind you rather than merely quiet. On speakers it falls back to a plain left and right.
 
+Placing survives an [export](#sound-in-an-export): the moves are written down as the frames are drawn and applied when the soundtrack is rendered.
+
 | Member | What it does |
 |---|---|
 | `place(at:heardFrom:)` | where the sound is, and where it is heard from |
@@ -304,7 +306,8 @@ What to know:
 - **An instrument has to be a property of the sketch**, in the usual place, so it can be found. One made and thrown away inside `draw()` is not.
 - **A note's length travels in beats of real time, not samples**, so the file is written at its own rate rather than whatever the hardware happened to be running at.
 - **Delay and reverb are in the file**, because the export runs the same effects the output had.
-- **A placed sound is not placed in the export.** The soundtrack is rendered without the listener, so it comes out centered. Placing is a live thing for now.
+- **A placed sound is placed in the export too.** Where the instrument was and where it was heard from are written down as the frames go by, the same way the notes are, and the soundtrack is rendered through a listener afterwards. So a sound that walks past you live walks past you in the file. Place from the first frame: the chain is fixed when the soundtrack machine is built, and an instrument that starts playing before it is placed says so rather than quietly coming out centered.
+- **An exported placing is a plain left and right**, not the head model headphones get live. A file cannot know what it will be played back on.
 - **A sketch that holds no instrument writes exactly the file it wrote before**, with no audio track at all.
 
 ---

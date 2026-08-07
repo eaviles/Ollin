@@ -34,6 +34,16 @@ extension Synth: @MainActor FrameAdvancing, @MainActor ExportAudioSource {
         samples.reserveCapacity((target - offline.rendered) * 2)
 
         while offline.rendered < target {
+            // A move takes effect at the next block rather than splitting one.
+            // An onset is a transient and has to land on its own sample; where
+            // a sound is coming from is not, and a block is a fifth of a frame,
+            // so quantizing the move to it cannot be heard.
+            while let next = offline.pendingPoses.first,
+                  Int(next.at * sampleRate) <= offline.rendered {
+                offline.apply(next)
+                offline.pendingPoses.removeFirst()
+            }
+
             // Rendered up to the next note rather than in fixed blocks, so a
             // note starts on the sample it was asked for rather than at the
             // next block boundary. An export has no deadline, so it can be
@@ -99,12 +109,19 @@ extension Synth: @MainActor FrameAdvancing, @MainActor ExportAudioSource {
         let events = EventRing(capacity: 4096)
         let buffer: AVAudioPCMBuffer
         var pending: [RecordedNote]
+        /// Where the instrument was and where it was heard from, still to come.
+        var pendingPoses: [RecordedPose]
         var rendered = 0
         private var started = false
+        /// The listener, built only for an instrument the sketch actually
+        /// placed. Nil leaves the chain exactly the shape it has always been.
+        private let environment: AVAudioEnvironmentNode?
+        private let source: AVAudioSourceNode
 
         init?(synth: Synth, sampleRate: Double) {
             self.sampleRate = sampleRate
             pending = synth.recorded.sorted { $0.at < $1.at }
+            pendingPoses = synth.recordedPoses.sorted { $0.at < $1.at }
 
             guard let stereo = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 2),
                   let mono = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1),
@@ -118,13 +135,41 @@ extension Synth: @MainActor FrameAdvancing, @MainActor ExportAudioSource {
             )
             renderer.gain = synth.gain
 
-            let source = makeSynthSourceNode(format: mono, renderer: renderer)
+            // A placed instrument has to reach the listener as a single stream,
+            // because turning one into two is the listener's whole job. An
+            // unplaced one is built at the output's own channel count instead,
+            // exactly as the live path builds it: the render block writes its
+            // one stream into every channel, so the sound arrives in both ears.
+            // Fed in as mono it reaches only the first of them.
+            let placing = !pendingPoses.isEmpty
+            source = makeSynthSourceNode(format: placing ? mono : stereo, renderer: renderer)
             let delayUnit = AVAudioUnitDelay()
             let reverbUnit = AVAudioUnitReverb()
             engine.attach(source)
             engine.attach(delayUnit)
             engine.attach(reverbUnit)
-            engine.connect(source, to: delayUnit, format: nil)
+
+            if !placing {
+                environment = nil
+                engine.connect(source, to: delayUnit, format: stereo)
+            } else {
+                // The same shape the live path is rewired into: one stream
+                // reaches something that knows where the ears are and leaves it
+                // as two, with the room applied after the placing.
+                let listener = AVAudioEnvironmentNode()
+                listener.distanceAttenuationParameters.distanceAttenuationModel = .inverse
+                // `.auto` is what the live path asks for too. With no output
+                // device to ask about, it resolves to a plain left and right
+                // rather than the head model: a file cannot know what it will
+                // be played back on.
+                listener.renderingAlgorithm = .auto
+                applyHearingRange(synth.placementRange, to: listener)
+                source.renderingAlgorithm = .auto
+                environment = listener
+                engine.attach(listener)
+                engine.connect(source, to: listener, format: mono)
+                engine.connect(listener, to: delayUnit, format: nil)
+            }
             engine.connect(delayUnit, to: reverbUnit, format: nil)
             engine.connect(reverbUnit, to: engine.mainMixerNode, format: nil)
             Synth.configure(delayUnit, with: synth.delay)
@@ -140,6 +185,26 @@ extension Synth: @MainActor FrameAdvancing, @MainActor ExportAudioSource {
                               + "(\(error.localizedDescription)).")
                 return nil
             }
+        }
+
+        /// Whether this machine was built with a listener in it, and so can
+        /// carry a placing at all.
+        var canPlace: Bool { environment != nil }
+
+        /// Moves the sound and the listener to where the sketch had them.
+        ///
+        /// Both at once, because neither means anything alone: a position is
+        /// only somewhere relative to whoever is listening.
+        func apply(_ pose: RecordedPose) {
+            guard let environment else { return }
+            environment.listenerPosition = audioPoint(pose.listener.eye)
+            environment.listenerVectorOrientation = AVAudio3DVectorOrientation(
+                forward: audioVector(pose.listener.forward),
+                up: audioVector(pose.listener.up)
+            )
+            // No position means the instrument left the scene, which is the
+            // same as sitting in the middle of the listener's head.
+            source.position = audioPoint(pose.position ?? pose.listener.eye)
         }
 
         func shutDown() {
