@@ -11,7 +11,7 @@ import OllinAudio
 /// What is played on a strike comes from the other three. The bass takes a
 /// degree from a `MarkovChain` taught a four note motif, so it wanders but
 /// keeps the motif's habits. The middle ring plays an `Arpeggio` over a chord
-/// built out of the `Scale` itself, so the chord's colour follows the key. The
+/// built out of the `Scale` itself, so the chord's color follows the key. The
 /// outer ring is air rather than pitch.
 ///
 /// Nothing here has a clock of its own. Every one of them answers a step
@@ -102,7 +102,7 @@ final class Generative: Sketch {
 
         if rings[1][step] {
             // The chord is built out of the scale rather than named, so it
-            // changes colour with the key rather than fighting it. The figure
+            // changes color with the key rather than fighting it. The figure
             // is read at the step, which is why it keeps its place in the
             // pattern instead of restarting on every strike.
             let chord = Chord(key[0].transposed(by: 12), quality)

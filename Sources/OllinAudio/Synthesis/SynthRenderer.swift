@@ -14,6 +14,8 @@ final class SynthRenderer: @unchecked Sendable {
     private struct RenderVoice {
         var oscillator: Oscillator
         var second: Oscillator
+        var string: StringVoice
+        var secondString: StringVoice
         var amplitude = EnvelopeRunner()
         var filterEnvelope = EnvelopeRunner()
         var filter = StateVariableFilter()
@@ -34,6 +36,10 @@ final class SynthRenderer: @unchecked Sendable {
     private var voices: [RenderVoice]
     private let sampleRate: Double
     private let events: EventRing
+    /// Every string voice's delay line, taken in one piece before the first
+    /// note. Raw memory rather than arrays because the render thread writes it.
+    private let stringMemory: UnsafeMutablePointer<Double>
+    private let stringCapacity: Int
     /// Samples rendered so far, used only to order voices by age.
     private var clock = 0
     /// The voice every new note is built from. Changed between notes.
@@ -61,14 +67,43 @@ final class SynthRenderer: @unchecked Sendable {
         self.currentVoice = voice
         self.sampleRate = sampleRate
         self.events = events
+
+        // A string is a delay line as long as one period, so the longest one is
+        // set by the lowest note this can play. Every string's memory is taken
+        // once, here, because the render thread may not allocate.
+        let count = max(1, polyphony)
+        let capacity = max(64, Int(sampleRate / SynthRenderer.lowestStringFrequency) + 2)
+        let perString = StringVoice.memoryNeeded(capacity: capacity)
+        self.stringCapacity = capacity
+        self.stringMemory = .allocate(capacity: perString * count * 2)
+        self.stringMemory.initialize(repeating: 0, count: perString * count * 2)
+
+        let memory = stringMemory
         // Each voice gets its own noise stream so a render replays exactly.
-        self.voices = (0..<max(1, polyphony)).map { index in
+        self.voices = (0..<count).map { index in
             RenderVoice(
                 oscillator: Oscillator(seed: seed &+ UInt64(index) &* 0x9E37_79B9),
-                second: Oscillator(seed: seed &+ UInt64(index) &* 0x85EB_CA6B &+ 1)
+                second: Oscillator(seed: seed &+ UInt64(index) &* 0x85EB_CA6B &+ 1),
+                string: StringVoice(
+                    buffer: memory + perString * (2 * index), capacity: capacity,
+                    seed: seed &+ UInt64(index) &* 0xC2B2_AE35
+                ),
+                secondString: StringVoice(
+                    buffer: memory + perString * (2 * index + 1), capacity: capacity,
+                    seed: seed &+ UInt64(index) &* 0x27D4_EB2F &+ 1
+                )
             )
         }
     }
+
+    deinit {
+        stringMemory.deallocate()
+    }
+
+    /// The lowest note a string voice can be tuned to, which is what sizes the
+    /// delay lines. Below it the note is played sharp rather than the buffer
+    /// being outrun.
+    static let lowestStringFrequency = 16.0
 
     /// Fills `output` with the next `frameCount` samples, applying anything the
     /// sketch has asked for since the last block.
@@ -103,12 +138,23 @@ final class SynthRenderer: @unchecked Sendable {
         }
 
         let amplitude = voice.amplitude.next()
-        let increment = frequency(of: voice.pitch) / sampleRate
 
-        var sample = voice.oscillator.next(voice.spec.waveform, increment: increment)
-        if voice.spec.detune != 0 {
-            let detuned = frequency(of: voice.pitch + voice.spec.detune) / sampleRate
-            sample = 0.5 * (sample + voice.second.next(voice.spec.waveform, increment: detuned))
+        var sample: Double
+        switch voice.spec.source {
+        case .wave(let waveform):
+            let increment = frequency(of: voice.pitch) / sampleRate
+            sample = voice.oscillator.next(waveform, increment: increment)
+            if voice.spec.detune != 0 {
+                let detuned = frequency(of: voice.pitch + voice.spec.detune) / sampleRate
+                sample = 0.5 * (sample + voice.second.next(waveform, increment: detuned))
+            }
+        case .string:
+            // The string was set going when the note started; here it only
+            // carries on losing what it loses.
+            sample = voice.string.next()
+            if voice.spec.detune != 0 {
+                sample = 0.5 * (sample + voice.secondString.next())
+            }
         }
 
         if let spec = voice.spec.filter {
@@ -153,6 +199,23 @@ final class SynthRenderer: @unchecked Sendable {
 
         voice.oscillator.reset()
         voice.second.reset()
+        if case .string(let spec) = currentVoice.source {
+            // A string carries its whole note in the line, so the note is made
+            // here, once, rather than a sample at a time.
+            let played = max(SynthRenderer.lowestStringFrequency, frequency(of: event.pitch))
+            voice.string.pluck(
+                frequency: played, velocity: voice.velocity, spec: spec, sampleRate: sampleRate
+            )
+            if currentVoice.detune != 0 {
+                let apart = max(
+                    SynthRenderer.lowestStringFrequency,
+                    frequency(of: event.pitch + currentVoice.detune)
+                )
+                voice.secondString.pluck(
+                    frequency: apart, velocity: voice.velocity, spec: spec, sampleRate: sampleRate
+                )
+            }
+        }
         voice.filter.reset()
         voice.amplitude.prepare(currentVoice.envelope, sampleRate: sampleRate)
         voice.amplitude.noteOn()

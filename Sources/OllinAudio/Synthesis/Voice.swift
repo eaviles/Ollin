@@ -15,8 +15,29 @@ import Foundation
 /// glass.filter?.cutoff = 4000
 /// ```
 public struct Voice: Sendable, Hashable, Codable {
+    /// What the note is built from: a wave an oscillator traces, or a string
+    /// the note is worked out on.
+    public var source: VoiceSource
     /// The wave the note is built from.
-    public var waveform: Waveform
+    ///
+    /// The same thing as ``source`` for a voice built on an oscillator, which
+    /// is most of them. Reading it on a string voice gives `.sine`; setting it
+    /// makes the voice an oscillator again.
+    public var waveform: Waveform {
+        get {
+            if case .wave(let waveform) = source { return waveform }
+            return .sine
+        }
+        set { source = .wave(newValue) }
+    }
+    /// The string this voice is worked out on, or nil if it is a wave.
+    public var string: PluckedString? {
+        get {
+            if case .string(let string) = source { return string }
+            return nil
+        }
+        set { if let newValue { source = .string(newValue) } }
+    }
     /// How the note's loudness moves over time.
     public var envelope: Envelope
     /// What is filtered out of it, and how that moves. Nil leaves the wave alone.
@@ -37,7 +58,34 @@ public struct Voice: Sendable, Hashable, Codable {
         detune: Double = 0,
         gain: Double = 0.8
     ) {
-        self.waveform = waveform
+        self.init(source: .wave(waveform), envelope: envelope, filter: filter,
+                  detune: detune, gain: gain)
+    }
+
+    /// A voice built on a plucked string rather than an oscillator.
+    ///
+    /// The string decides how the note fades, so the envelope's job here is to
+    /// let it ring rather than to shape it. `.plucked` is that envelope, and
+    /// the presets use it.
+    public init(
+        string: PluckedString,
+        envelope: Envelope = .plucked,
+        filter: Filter? = nil,
+        detune: Double = 0,
+        gain: Double = 0.8
+    ) {
+        self.init(source: .string(string), envelope: envelope, filter: filter,
+                  detune: detune, gain: gain)
+    }
+
+    public init(
+        source: VoiceSource,
+        envelope: Envelope = .standard,
+        filter: Filter? = nil,
+        detune: Double = 0,
+        gain: Double = 0.8
+    ) {
+        self.source = source
         self.envelope = envelope
         self.filter = filter
         self.detune = detune
@@ -171,6 +219,19 @@ extension Voice {
         detune: 0.05,
         gain: 0.6
     )
+
+    /// A nylon string: soft, round, and gone fairly soon.
+    public static let nylon = Voice(string: .nylon, gain: 0.85)
+
+    /// A steel string: brighter at the front and longer behind it.
+    public static let steel = Voice(string: .steel, gain: 0.8)
+
+    /// Plucked near the middle, so the even harmonics are missing and what is
+    /// left rings hollow for a long time.
+    public static let harp = Voice(string: .harp, gain: 0.75)
+
+    /// A string stopped by the hand that plucked it.
+    public static let muted = Voice(string: .muted, gain: 0.9)
 
     /// Air rather than pitch: noise through a band the note moves.
     public static let breath = Voice(

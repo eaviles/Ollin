@@ -64,6 +64,10 @@ public struct Envelope: Sendable, Hashable, Codable {
     public static let swell = Envelope(attack: 0.7, decay: 0.9, sustain: 0.7, release: 1.6)
     /// The default: audible attack, gentle fall, moderate tail.
     public static let standard = Envelope()
+    /// Out of the way: a string decides for itself how a note fades, so the
+    /// envelope's only job is to open at once, hold, and let go without a
+    /// click. Anything shorter would cut the string off mid-ring.
+    public static let plucked = Envelope(attack: 0.0005, decay: 0.01, sustain: 1, release: 0.12)
 }
 
 /// One envelope's running state, advanced a sample at a time by a voice.

@@ -150,7 +150,7 @@ public struct Scale: Sendable, Hashable {
         case major
         /// Minor with a raised sixth, so it is sad without being heavy.
         case dorian
-        /// Minor with a lowered second, the flamenco colour.
+        /// Minor with a lowered second, the flamenco color.
         case phrygian
         /// Major with a raised fourth, floating and unresolved.
         case lydian

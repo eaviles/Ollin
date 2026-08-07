@@ -34,6 +34,7 @@ Two things are worth noticing there. Nothing was started: the first note starts 
 - [Synth](#synth) - the instrument, and how notes are asked for
 - [Pitch](#pitch) - names, numbers, and what lies between them
 - [Voice](#voice) - what a note is made of
+- [Physical models](#physical-models) - a string worked out rather than a wave drawn
 - [Envelope](#envelope) - how a note arrives and how it goes
 - [`Voice.Filter`](#voicefilter) - what is taken out of it, and how that moves
 - [Delay and Reverb](#delay-and-reverb) - putting the sound somewhere
@@ -136,6 +137,7 @@ synth.voice = glass             // notes already sounding are undisturbed
 
 | Property | What it does |
 |---|---|
+| `source` | what the note is built from: `.wave(Waveform)` or `.string(PluckedString)`. See [Physical models](#physical-models) |
 | `waveform` | `.sine`, `.triangle`, `.sawtooth`, `.square`, `.noise`, brightest last |
 | `envelope` | how the note's loudness moves. See [Envelope](#envelope) |
 | `filter` | what is taken out of it, or nil. See [`Voice.Filter`](#voicefilter) |
@@ -144,7 +146,50 @@ synth.voice = glass             // notes already sounding are undisturbed
 
 **`detune` is smaller than it looks.** A few hundredths of a semitone is the useful range: two oscillators slightly apart drift in and out of phase with each other, and that beating is what makes a held note shimmer rather than sit still. A whole semitone is an interval, not a shimmer, which is what `.bell` uses it for.
 
+`waveform` and `source` are the same setting written two ways. Reading `waveform` on a string voice gives `.sine`, and setting it makes the voice an oscillator again.
+
 The geometric waves are corrected as they are drawn, so a sawtooth still sounds like a sawtooth at the top of the keyboard instead of ringing against itself.
+
+---
+
+### Physical models
+
+A wave is a shape drawn over and over. A physical model is the thing itself, worked out as it goes, and what you hear falls out of that rather than being dialled in.
+
+```swift
+let synth = Synth(.steel)
+synth.play("E3", for: 3)
+```
+
+| Preset | What it sounds like |
+|---|---|
+| `.nylon` | soft and round, and it does not ring for long |
+| `.steel` | brighter and longer, with more of the pluck left in the front |
+| `.harp` | plucked near the middle, so it comes out hollow and rings a long time |
+| `.muted` | a string stopped by the hand that plucked it |
+
+A string is a disturbance running up and down a length of something under tension, losing a little at each end and losing its top faster than its bottom. That is a delay line one period long with a filter in the loop, and everything a player recognises comes out of it: the attack, the way a held note darkens, and the difference between plucking near the bridge and over the hole.
+
+```swift
+var string = PluckedString.steel
+string.pick = 0.5              // halfway along
+synth.voice = Voice(string: string)
+```
+
+| Property | What it does |
+|---|---|
+| `pick` | where along the string it is plucked, `0...1` |
+| `hardness` | how hard, `0...1`: a fingertip against a plectrum |
+| `decay` | how long the note takes to fade, in seconds at the note being played |
+| `damping` | how much sooner the top goes than the bottom, `0...1` |
+
+**`pick` is the one that sounds least like a setting.** A string held at a point cannot move there, so every harmonic with a node at that point is missing from the sound. Plucking at `0.5` loses every even harmonic and comes out hollow; near the end keeps them all and comes out thin and nasal. A quarter of the way along is roughly where a guitar is played. `Examples/Audio/Strings` lets you click a string wherever you want to pluck it.
+
+**A string decides for itself how a note fades**, so the envelope's job is to stay out of the way rather than to shape it. `Envelope.plucked` is that envelope, and the string presets use it. Ask for a note long enough to let the string finish (`for: string.decay`), or the envelope's release will cut it off mid-ring.
+
+**Tuning is exact.** The loop has to come out exactly one period long, and a whole number of samples cannot do that. The fraction left over is supplied by an allpass filter, and the loop filter's own delay is counted into the budget, so changing `damping` cannot move the pitch. Without that, notes go progressively sharper or flatter towards the top of the keyboard: at the top of the range, rounding the loop to whole samples is out by most of a semitone.
+
+Everything else about the voice is unchanged. `detune` gives a second string slightly apart, the `filter` still applies after, and a string is an ordinary `Voice` that can be assigned between notes like any other.
 
 ---
 
@@ -218,6 +263,7 @@ Said plainly, so you can plan around it rather than go looking:
 - **One instrument, one sound at a time.** A `Synth` plays one `voice`. Several sounds at once means several `Synth`s, which is fine and cheap.
 - **No sequencer.** Notes are asked for from `draw()`, on whatever clock the sketch keeps. [`Composition`](./Composition.md) is what decides which notes and when; [`TempoClock`](../Integration/MIDI.md) is the way to run on someone else's clock.
 - **No sampler.** Playing a recorded sound is [`AudioPlayer`](./Audio.md#audioplayer)'s job, not a voice's.
+- **One physical model.** A plucked string is here; a struck body, a bowed string, and a blown tube are not.
 - **Not placed in the 3D scene.** A voice has no position, so nothing is heard from where it is drawn.
 - **Not in an export.** The offline exporters render frames; a video written from a sketch has no sound. The renderer underneath is deterministic and offline-capable, which is what a future audio export would be built on, but nothing writes sound to a file today.
 
