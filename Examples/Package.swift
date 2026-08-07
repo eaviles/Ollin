@@ -405,6 +405,7 @@ let package = Package(
         example("Audio/Sonification", [.audio]),
         example("Audio/Bowing", [.audio]),
         example("Audio/Changes", [.audio]),
+        example("Audio/Patching", [.audio]),
         example("Audio/Spectrum", [.audio]),
         example("Audio/Microphone", [.audio]),
         example("Audio/ChladniResonance", [.audio]),

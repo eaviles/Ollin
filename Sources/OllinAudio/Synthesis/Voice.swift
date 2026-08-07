@@ -46,6 +46,14 @@ public struct Voice: Sendable, Hashable, Codable {
         }
         set { if let newValue { source = .string(newValue) } }
     }
+    /// The patch this voice is built from, or nil if it is not one.
+    public var patch: Patch? {
+        get {
+            if case .patch(let patch) = source { return patch }
+            return nil
+        }
+        set { if let newValue { source = .patch(newValue) } }
+    }
     /// How the note's loudness moves over time.
     public var envelope: Envelope
     /// What is filtered out of it, and how that moves. Nil leaves the wave alone.
@@ -129,6 +137,23 @@ public struct Voice: Sendable, Hashable, Codable {
         gain: Double = 0.8
     ) {
         self.init(source: .blown(blown), envelope: envelope, filter: filter,
+                  detune: detune, gain: gain)
+    }
+
+    /// A voice built on a patch: several oscillators and what they do to each
+    /// other, rather than one shape an envelope and a filter work on.
+    ///
+    /// Everything else about a `Voice` still applies. The patch decides what
+    /// the note is made of; the envelope and the filter shape it as they shape
+    /// anything else.
+    public init(
+        patch: Patch,
+        envelope: Envelope = .standard,
+        filter: Filter? = nil,
+        detune: Double = 0,
+        gain: Double = 0.8
+    ) {
+        self.init(source: .patch(patch), envelope: envelope, filter: filter,
                   detune: detune, gain: gain)
     }
 
@@ -304,6 +329,17 @@ extension Voice {
 
     /// A loose reed on a long tube, dark and full of air.
     public static let hollow = Voice(blown: .hollow, gain: 0.66)
+
+    /// A sine pushed by one at three and a half times its frequency, which is
+    /// not a harmonic, so it rings like struck metal rather than like a note.
+    public static let fmBell = Voice(patch: .bell, envelope: .percussive, gain: 0.6)
+
+    /// Pushed hard by one an octave up, which fills in the harmonics a filter
+    /// would otherwise have had to take away from something brighter.
+    public static let fmBrass = Voice(patch: .brass, gain: 0.55)
+
+    /// One operator pushing itself into a buzz.
+    public static let fmBuzz = Voice(patch: .buzz, gain: 0.5)
 
     /// A round drumhead, struck off center.
     public static let drum = Voice(body: .drum, gain: 0.9)

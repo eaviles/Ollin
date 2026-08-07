@@ -35,6 +35,7 @@ Two things are worth noticing there. Nothing was started: the first note starts 
 - [Pitch](#pitch) - names, numbers, and what lies between them
 - [Voice](#voice) - what a note is made of
 - [Physical models](#physical-models) - a plucked string, a struck shape, a bowed string, and a blown tube
+- [Patch](#patch) - an instrument built rather than picked
 - [Placing a sound](#placing-a-sound) - where it comes from in the 3D scene
 - [Sound in an export](#sound-in-an-export) - carrying the music out of the window
 - [Envelope](#envelope) - how a note arrives and how it goes
@@ -139,7 +140,7 @@ synth.voice = glass             // notes already sounding are undisturbed
 
 | Property | What it does |
 |---|---|
-| `source` | what the note is built from: `.wave(Waveform)`, `.string(PluckedString)`, `.body(ModalBody)`, `.bowed(BowedString)`, or `.blown(BlownTube)`. See [Physical models](#physical-models) |
+| `source` | what the note is built from: `.wave(Waveform)`, `.string(PluckedString)`, `.body(ModalBody)`, `.bowed(BowedString)`, `.blown(BlownTube)`, or `.patch(Patch)`. See [Physical models](#physical-models) and [Patch](#patch) |
 | `waveform` | `.sine`, `.triangle`, `.sawtooth`, `.square`, `.noise`, brightest last |
 | `envelope` | how the note's loudness moves. See [Envelope](#envelope) |
 | `filter` | what is taken out of it, or nil. See [`Voice.Filter`](#voicefilter) |
@@ -323,6 +324,61 @@ This is the control an envelope cannot give you. An envelope is decided when the
 
 ---
 
+### Patch
+
+An instrument built rather than picked.
+
+A [`Voice`](#voice) is a fixed chain: something makes a wave, an envelope shapes it, a filter takes part of it away. That covers a great deal and it cannot be rearranged. A `Patch` is the tier underneath, where the routing itself is the value.
+
+```swift
+let bell = Patch.tone(.sine)
+    .modulated(by: .tone(.sine, ratio: 3.5), index: 4)
+
+synth.voice = Voice(patch: bell, envelope: .percussive)
+```
+
+The relationship is the one the drawing side already has. Bare calls sit on a `Drawer` that can do more; the presets sit on this. Nothing about `Synth(.pluck)` changes because this exists, and a one operator patch renders the same samples the plain oscillator does.
+
+#### What an operator is
+
+One oscillator with a frequency, a level, and possibly something modulating it. Its frequency is a **ratio of the note** rather than a pitch, so a patch is an instrument rather than a chord: ratio 1 is the note, 2 the octave above, 3.5 something that is not a note at all and is where metallic sounds come from.
+
+An operator's `level` means one of two things depending on where it sits. On an operator that reaches the output it is a mix level. On one that modulates another it is how far it pushes, which is the difference between a slight waver and a bell. That is one number doing the two jobs a level does, and it is the convention rather than a shortcut.
+
+| Building | What it does |
+|---|---|
+| `.tone(_:ratio:level:)` | one oscillator, sounding on its own |
+| `.modulated(by:index:)` | the other patch stops being heard and starts being felt |
+| `.mixed(with:)` | both sounding at once, additively |
+| `.fedBack(_:)` | its output operators pushing themselves |
+| `.at(level:)` / `.at(ratio:)` | balancing one against another |
+| `operators` / `count` | reading a patch back |
+
+| Named | What it sounds like |
+|---|---|
+| `.simple` | one sine |
+| `.bell` | pushed at three and a half, which is not a harmonic, so it rings like struck metal |
+| `.brass` | pushed hard by one an octave up |
+| `.glass` | pushed at a ratio just off a whole number, so it drifts against itself |
+| `.buzz` | one operator pushing itself |
+| `.struck` | a body and a strike heard together |
+
+#### Why modulation rather than a filter
+
+A filter can only take harmonics away, and a sine has none to take. Modulation puts them in, which is why `index` turns a plain tone into brass and no amount of filtering will. Small values waver; past about 2 it is a new instrument rather than the old one wobbling.
+
+Whole ratios stay musical, since their tones land on the note's own harmonics. Anything else gives the inharmonic tones bells and metal are made of, which is the whole of why `.bell` uses 3.5.
+
+#### Why it is a fixed size
+
+A patch travels to the audio thread inside a note, through a queue of preallocated slots, so it has to be something that can be copied a word at a time: no arrays, no references, nothing to allocate. So the operators live in fixed lanes and there are **eight** of them, the same bargain [`ModalBody`](#physical-models) makes with its sixteen tones.
+
+Eight is more than most instruments worth having need. A patch that would exceed it **comes back unchanged and says so**, rather than quietly dropping an operator: a patch with a piece missing is a different instrument, and finding that out by ear is worse than a note in the log.
+
+Modulators always end up in an earlier lane than what they push, so one forward pass evaluates the whole patch. That is a property of how patches are built rather than something checked afterwards.
+
+---
+
 ---
 
 ### Placing a sound
@@ -450,6 +506,7 @@ Both apply to everything the synth plays, delay first and reverb after, which is
 Said plainly, so you can plan around it rather than go looking:
 
 - **One instrument, one sound at a time.** A `Synth` plays one `voice`. Several sounds at once means several `Synth`s, which is fine and cheap.
+- **A patch is oscillators, not a whole modular rack.** Operators push each other and mix; there is no filter, envelope, or effect inside a patch. Those are the `Voice` around it, one per voice rather than one per operator.
 - **No sequencer.** Notes are asked for from `draw()`, on whatever clock the sketch keeps. [`Composition`](./Composition.md) is what decides which notes and when; [`TempoClock`](../Integration/MIDI.md) is the way to run on someone else's clock.
 - **No sampler.** Playing a recorded sound is [`AudioPlayer`](./Audio.md#audioplayer)'s job, not a voice's.
 - **No jet-driven tube.** The blown tube is reed-driven. A flute is a jet of air splitting across an edge, which is a different excitation and is not here.

@@ -22,6 +22,8 @@ final class SynthRenderer: @unchecked Sendable {
         var secondBow: BowVoice
         var tube: TubeVoice
         var secondTube: TubeVoice
+        var patch: PatchVoice
+        var secondPatch: PatchVoice
         var amplitude = EnvelopeRunner()
         var filterEnvelope = EnvelopeRunner()
         var filter = StateVariableFilter()
@@ -135,7 +137,9 @@ final class SynthRenderer: @unchecked Sendable {
                 secondTube: TubeVoice(
                     buffer: driven + perDriven * (2 * index + 1) + perBow, capacity: capacity,
                     seed: seed &+ UInt64(index) &* 0xD3A2646C &+ 1
-                )
+                ),
+                patch: PatchVoice(seed: seed &+ UInt64(index) &* 0x2545F491),
+                secondPatch: PatchVoice(seed: seed &+ UInt64(index) &* 0x94D049BB &+ 1)
             )
         }
     }
@@ -225,6 +229,13 @@ final class SynthRenderer: @unchecked Sendable {
             if voice.spec.detune != 0 {
                 sample = 0.5 * (sample + voice.secondBow.next(bowVelocity: speed))
             }
+        case .patch:
+            // The patch was set up when the note started; here it is only run
+            // forward a sample, exactly as an oscillator is.
+            sample = voice.patch.next()
+            if voice.spec.detune != 0 {
+                sample = 0.5 * (sample + voice.secondPatch.next())
+            }
         case .blown(let spec):
             let breath = drive * 1.1
             sample = voice.tube.next(breath: breath, breathiness: spec.breathiness)
@@ -290,6 +301,18 @@ final class SynthRenderer: @unchecked Sendable {
                 voice.secondBody.strike(
                     frequency: frequency(of: event.pitch + currentVoice.detune),
                     velocity: voice.velocity, body: spec, sampleRate: sampleRate
+                )
+            }
+        }
+        voice.patch.reset()
+        voice.secondPatch.reset()
+        if case .patch(let spec) = currentVoice.source {
+            let played = frequency(of: event.pitch)
+            voice.patch.start(patch: spec, frequency: played, sampleRate: sampleRate)
+            if currentVoice.detune != 0 {
+                voice.secondPatch.start(
+                    patch: spec, frequency: frequency(of: event.pitch + currentVoice.detune),
+                    sampleRate: sampleRate
                 )
             }
         }

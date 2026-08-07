@@ -111,6 +111,9 @@ public enum VoiceSource: Sendable, Hashable, Codable {
     case bowed(BowedString)
     /// A blown tube, which sounds for as long as the breath lasts.
     case blown(BlownTube)
+    /// Several oscillators and what they do to each other, built rather than
+    /// picked. See ``Patch``.
+    case patch(Patch)
 
     /// Whether this source has to be driven to keep sounding.
     ///
@@ -118,7 +121,7 @@ public enum VoiceSource: Sendable, Hashable, Codable {
     public var isDriven: Bool {
         switch self {
         case .bowed, .blown: return true
-        case .wave, .string, .body: return false
+        case .wave, .string, .body, .patch: return false
         }
     }
 }

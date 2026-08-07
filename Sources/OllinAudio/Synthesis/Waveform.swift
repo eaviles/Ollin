@@ -1,4 +1,5 @@
 import Foundation
+import Ollin
 
 /// The shape an oscillator traces through one cycle, brightest last.
 ///
@@ -48,45 +49,22 @@ struct Oscillator {
     /// The next sample for `waveform`, advancing the phase by one step.
     ///
     /// `increment` is the fraction of a cycle one sample covers, frequency
-    /// divided by sample rate.
-    mutating func next(_ waveform: Waveform, increment: Double) -> Double {
+    /// divided by sample rate. `phaseOffset` moves where in the cycle the
+    /// shape is read without moving the oscillator, which is how one operator
+    /// modulates another.
+    mutating func next(_ waveform: Waveform, increment: Double,
+                       phaseOffset: Double = 0) -> Double {
         if waveform == .noise { return nextNoise() }
 
-        let t = phase
-        var value: Double
-
-        switch waveform {
-        case .sine:
-            // A sine has no corners, so it needs no correction at all.
-            value = sin(t * 2 * .pi)
-
-        case .sawtooth:
-            value = 2 * t - 1
-            value -= polyBLEP(t, increment)
-
-        case .square:
-            value = t < 0.5 ? 1 : -1
-            value += polyBLEP(t, increment)
-            value -= polyBLEP(fract(t + 0.5), increment)
-
-        case .triangle:
-            // A triangle is the integral of a square, so it is built by
-            // integrating the corrected square rather than drawn directly:
-            // correcting the corners of the source wave is what keeps the
-            // result clean. The leak makes the integrator forget its own drift,
-            // and the gain is what puts the result back in -1...1 (a square of
-            // +/-1 integrated at `4 * increment` per sample swings exactly 2
-            // over the half cycle it holds each sign).
-            var square = t < 0.5 ? 1.0 : -1.0
-            square += polyBLEP(t, increment)
-            square -= polyBLEP(fract(t + 0.5), increment)
-            value = 4 * increment * square + (1 - 4 * increment) * lastTriangle
-            lastTriangle = value
-
-        case .noise:
-            value = 0   // handled above
-        }
-
+        // The shape is read a little further round the cycle than the
+        // oscillator has actually got to, while the oscillator's own phase
+        // advances as it always did. That is what one operator modulating
+        // another comes to: nothing about the carrier's pitch changes, only
+        // where in its cycle it is being read. An offset of zero is the
+        // ordinary path, untouched.
+        let t = phaseOffset == 0 ? phase : fract(phase + phaseOffset)
+        let value = waveformSample(waveform, at: t, increment: increment,
+                                   lastTriangle: &lastTriangle)
         phase = fract(phase + increment)
         return value
     }
@@ -107,6 +85,54 @@ struct Oscillator {
         return Double(z >> 11) * (2.0 / 9_007_199_254_740_992.0) - 1.0
     }
 }
+
+/// One shape's value at a point in its cycle.
+///
+/// Pulled out of the oscillator so the patch tier can read the same shapes from
+/// its own lanes without keeping an oscillator object per operator, which would
+/// mean a reference on the audio thread. One place for the corrections means
+/// the two cannot drift apart.
+///
+/// `lastTriangle` is the running integrator a triangle is built from, and it
+/// belongs to whoever is holding the phase.
+@inline(__always)
+func waveformSample(_ waveform: Waveform, at t: Double, increment: Double,
+                    lastTriangle: inout Double) -> Double {
+    switch waveform {
+    case .sine:
+        // A sine has no corners, so it needs no correction at all.
+        return sin(t * 2 * .pi)
+
+    case .sawtooth:
+        return (2 * t - 1) - polyBLEP(t, increment)
+
+    case .square:
+        var value = t < 0.5 ? 1.0 : -1.0
+        value += polyBLEP(t, increment)
+        value -= polyBLEP(fract(t + 0.5), increment)
+        return value
+
+    case .triangle:
+        // A triangle is the integral of a square, so it is built by
+        // integrating the corrected square rather than drawn directly:
+        // correcting the corners of the source wave is what keeps the
+        // result clean. The leak makes the integrator forget its own drift,
+        // and the gain is what puts the result back in -1...1 (a square of
+        // +/-1 integrated at `4 * increment` per sample swings exactly 2
+        // over the half cycle it holds each sign).
+        var square = t < 0.5 ? 1.0 : -1.0
+        square += polyBLEP(t, increment)
+        square -= polyBLEP(fract(t + 0.5), increment)
+        let value = 4 * increment * square + (1 - 4 * increment) * lastTriangle
+        lastTriangle = value
+        return value
+
+    case .noise:
+        return 0   // the caller owns the generator
+    }
+}
+
+extension Waveform: ParamOption {}
 
 /// The polynomial residual that rounds off one step discontinuity.
 ///
@@ -133,4 +159,4 @@ func polyBLEP(_ t: Double, _ dt: Double) -> Double {
 
 /// The fractional part, always in `0..<1`.
 @inline(__always)
-private func fract(_ x: Double) -> Double { x - floor(x) }
+func fract(_ x: Double) -> Double { x - floor(x) }
