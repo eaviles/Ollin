@@ -8,6 +8,7 @@ A strange attractor is the shape a chaotic system settles onto: a bounded path t
 
 - **`StrangeAttractor`** is a *continuous* system, a velocity field integrated over time with fourth-order Runge-Kutta. Its orbit is a `[Vector3]`, so it rides the [point-cloud](../3D/3D.md) path through the camera. Lorenz, Rössler, Aizawa, and friends.
 - **`ChaoticMap`** is a *discrete* iterated map, a `[Vector2]` orbit you plot as a scatter of points (prettiest accumulated additively into a density field). Clifford, Peter de Jong, Hénon.
+- **`AttractorFlow`** runs the same continuous systems on the GPU with a million particles riding the field at once, so the shape arrives as moving material rather than a still curve.
 
 The family's one-dimensional members (the logistic map and friends, with their bifurcation diagrams, cobwebs, and Lyapunov exponents) live in [`IteratedMap`](../Generators/Bifurcation.md).
 
@@ -20,6 +21,8 @@ Each orbit is a pure function of its starting point and parameters, so a run alw
 - [ChaoticMap (discrete)](#map)
 - [Drawing sugar](#sugar)
 - [Your own system](#custom)
+- [A million at once: AttractorFlow](#flow)
+- [The systems in a shader of your own](#shaderlib)
 
 <a name="quick-start"></a>
 
@@ -150,6 +153,78 @@ let mine = ChaoticMap(start: .zero) { p in
 }
 ```
 
+
+<a name="flow"></a>
+
+### A million at once: `AttractorFlow`
+
+`StrangeAttractor` integrates **one** orbit and hands you the points. `AttractorFlow` runs the same field on the GPU under a million particles at once, each on its own trajectory, stepped every frame. Instead of a curve you get the attractor as material: dense where the orbit dwells, thin where it hurries, and visibly flowing along itself.
+
+```swift
+var flow: AttractorFlow!
+
+override func setup() {
+    flow = attractorFlow(count: 1_000_000, .lorenz())
+}
+
+override func draw() {
+    background(.black)
+    blendMode(.add)                    // let the particles pile into a density plot
+    toneMap(.aces)
+    cameraShowcase(target: flow.center, radius: flow.extent * 3.4)
+    updateAttractorFlow(flow)
+    drawParticles(flow)                // camera-facing splats, like a point cloud
+}
+```
+
+A flow is 3D and rides the camera, so `drawParticles` is a no-op without one. Measured on an M2 at 1080²: a million particles step and draw at 55 fps, with 0.2 ms of CPU per frame.
+
+**It sizes and paces itself.** At build the flow integrates one CPU orbit of the same system and reads everything else off it, so a system whose whole shape is a unit and a half across (Aizawa) and one that spans fifty (Lorenz) both open framed, lit, and moving at a sensible speed with no per-system numbers in your sketch:
+
+| Property | What it is |
+| --- | --- |
+| `center: Vector3` | The middle of the attractor. Point a camera here. |
+| `extent: Double` | How far it reaches. A camera radius of about `extent * 3` frames it. |
+
+Both are percentiles of the orbit rather than its outright extremes: several of these systems take rare long excursions, so a maximum keeps growing the longer you watch (the four-wing's reach measures 2.0 over 120,000 points and 3.5 over 400,000), where a percentile settles.
+
+| Knob | Meaning |
+| --- | --- |
+| `system: AttractorSystem` | Which field. Settable live: the flow re-measures and the particles flow into the new shape. |
+| `speed: Double` | Pace, as a multiple of the measured one (1 crosses the attractor about once a second). |
+| `size: Double?` | Splat diameter in world units. `nil` derives one from `extent`. |
+| `colors: [Color]` | The speed ramp, up to eight stops. |
+| `opacity: Double` | How much light one particle contributes. Low, so density reads as tone. |
+| `maxSubsteps: Int` | The most Runge-Kutta steps one frame may take. |
+
+**Color is speed, brightness is density.** A particle's color comes from how fast it is moving, which is what shows the structure: the fast outer sweeps against the slow, crowded core. The default stops shift hue and hold their brightness roughly level on purpose, because drawn additively the *brightness* already means density. A ramp that also ran dark to light would put two different facts on one channel, and a slow crowded region would come out looking like a fast empty one.
+
+**Particles start on the attractor**, sampled from a settled orbit and nudged off it by a hair. The nudge is what matters: exactly on the orbit every particle rides the same trajectory forever and the picture can only ever be that one curve with dots sliding along it, while a hair off it chaos separates them within a few laps into a million trajectories. Starting them in a box instead would mean watching them fall onto the shape first, and how long that takes is the system's own contraction rate: a fraction of a second for Lorenz, a minute of watching nothing for Aizawa.
+
+**The step never outruns the system.** Each frame advances `speed` worth of the system's own time, split into as many fourth-order Runge-Kutta steps as it takes to keep every one at or under the step the system was published at. Ask for more pace than `maxSubsteps` allows and the flow runs slower than asked rather than taking a coarser step, because a step past that one is a different system. A particle that leaves the neighborhood altogether (wild constants can push one out) is dropped back into the middle rather than flying off, so a stray can never streak the frame.
+
+**Reproducibility**, as everywhere on this GPU path: a flow repeats on one machine but is not promised frame-exact across GPUs, and there is no pixel snapshot of one. Every system also answers `.attractor`, the CPU `StrangeAttractor` twin with the same constants, for a still plot or a measurement beside the moving one.
+
+See the [`Simulation/Attractor`](../../Examples/Simulation/Attractor) example.
+
+<a name="shaderlib"></a>
+
+### The systems in a shader of your own
+
+The velocity fields and the Runge-Kutta step are part of the [shader library](../Shaders/ShaderLibrary.md), spliced into every compute kernel and user shader, so a sketch can ride a chaotic system in a kernel it wrote itself:
+
+```swift
+lazy var motes = Particles(count: 500_000, step: """
+    float3 p = float3(position, seedA);
+    for (int i = 0; i < 3; ++i) {
+        OLLIN_RK4_STEP(p, 0.006, ollin_lorenz(_p, 10.0, 28.0, 8.0 / 3.0));
+    }
+    position = p.xy; seedA = p.z;
+""")
+```
+
+`OLLIN_RK4_STEP(state, h, derivative)` advances a `float3` one step; `derivative` is an expression in the sample point `_p`, which is how a system's constants reach it (Metal has no function pointers here, so this is a macro like the neighbor iteration). Beside the eight flows sit the three maps, `ollin_clifford`, `ollin_de_jong`, and `ollin_henon`, which return the next point outright and need no integration.
+
 ---
 
-See also [`Chaotic maps & bifurcation`](../Generators/Bifurcation.md) for the one-dimensional members of this family (`IteratedMap`: the logistic route to chaos, bifurcation diagrams, cobwebs, Lyapunov exponents), [`3D`](../3D/3D.md) for the `PointCloud` and camera the continuous orbits ride, [`Accumulation`](Accumulation.md) and [`HDR`](HDR.md) for the additive density build-up the 2D maps want, and [`Voronoi`](Voronoi.md)/[`Grid`](Geometry.md) for the other geometry helpers.
+See also [`Chaotic maps & bifurcation`](../Generators/Bifurcation.md) for the one-dimensional members of this family (`IteratedMap`: the logistic route to chaos, bifurcation diagrams, cobwebs, Lyapunov exponents), [`3D`](../3D/3D.md) for the `PointCloud` and camera the continuous orbits ride, [`Accumulation`](Accumulation.md) and [`HDR`](HDR.md) for the additive density build-up the 2D maps want, [`Compute`](../Shaders/Compute.md) for the GPU particle path `AttractorFlow` runs on, and [`Voronoi`](Voronoi.md)/[`Grid`](Geometry.md) for the other geometry helpers.

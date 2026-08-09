@@ -1209,6 +1209,43 @@ final class Drawer {
                                      clipLevel: activeClipLevel))
     }
 
+    /// Open a `.points3D` batch drawing `count` camera-facing splats straight from the
+    /// GPU `buffer` (a compute-written `OllinPoint` array), rather than from the
+    /// frame's uploaded point list. The 3D sibling of `recordParticles`: world-space
+    /// positions the GPU already holds, so nothing round-trips through the CPU. A no-op
+    /// without a camera, like `drawPointCloud`.
+    func recordPointCloud(_ buffer: ComputeBindable, count: Int) {
+        // Same reasoning as the particle path: the buffer is rewritten every frame, so
+        // there is nothing static for a retained batch to hold.
+        if isRecordingBatch {
+            noteBatchRecording("a GPU point cloud inside makeBatch { } is not recorded (its points are already GPU-resident); draw it where the batch is drawn.")
+            return
+        }
+        guard camera3D != nil, count > 0 else { return }
+        // Vector export is 2D only, and a splat cloud has no outline to write.
+        if svgRecorder != nil { return }
+        currentTarget?.needsDepth = true   // 3D in a target → that pass carries depth
+        // Left open to nothing, so a following `drawPointCloud` opens its own batch
+        // rather than merging its uploaded points into this one (where they would be
+        // passed over: a batch carrying a GPU buffer draws that buffer and nothing else).
+        currentKind = nil
+        currentBatchBlend = currentBlend
+        currentBatchDepth = currentDepth
+        currentBatchClip = activeClipLevel
+        batches.append(GeometryBatch(kind: .points3D, vertexStart: vertices.count,
+                                     instanceStart: sdfInstances.count,
+                                     imageStart: imageVertices.count,
+                                     glyphStart: glyphVertices.count,
+                                     pointStart: points.count,
+                                     meshStart: meshVertices.count,
+                                     sdfGroupStart: sdfGroups.count,
+                                     sdf3DGroupStart: sdf3DGroups.count,
+                                     blendMode: currentBlend,
+                                     particleBuffer: buffer, particleCount: count,
+                                     depth: currentDepth, target: currentTarget,
+                                     clipLevel: activeClipLevel))
+    }
+
     /// Set the standard compute uniforms for this frame (called by the runner before
     /// `draw()`). `particleCount`/`custom` are filled per dispatch.
     func setComputeFrame(resolution: SIMD2<Float>, mouse: SIMD2<Float>,

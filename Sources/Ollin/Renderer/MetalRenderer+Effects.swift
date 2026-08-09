@@ -2238,9 +2238,22 @@ extension MetalRenderer {
                 // projected by the camera constants bound at index 2 above. Each draw
                 // is a run in the per-frame `points` array (count from the next
                 // batch's start), like the SDF/triangle paths.
+                guard drawer.camera3D != nil else { continue }
+                if let gpuBuffer = batch.particleBuffer {
+                    // A GPU-resident cloud (an attractor flow, say): the splats were
+                    // written by a compute dispatch this frame and are read straight
+                    // from that buffer, never uploaded through the frame's point list.
+                    guard batch.particleCount > 0,
+                          let buffer = gpuBuffer.metalBuffer(for: device) else { continue }
+                    encoder.setRenderPipelineState(state)
+                    encoder.setVertexBuffer(buffer, offset: 0, index: 0)
+                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6,
+                                           instanceCount: batch.particleCount)
+                    continue
+                }
                 let end = next?.pointStart ?? points.count
                 let count = end - batch.pointStart
-                guard count > 0, let pointBuffer, drawer.camera3D != nil else { continue }
+                guard count > 0, let pointBuffer else { continue }
                 encoder.setRenderPipelineState(state)
                 encoder.setVertexBuffer(pointBuffer, offset: batch.pointStart * pointStride, index: 0)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: count)

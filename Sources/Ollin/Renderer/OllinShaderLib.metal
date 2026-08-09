@@ -1203,3 +1203,109 @@ static inline float2 ollin_torus_delta(float2 from, float2 to, float2 worldSize)
           for (uint _k = _beg; _k < _end; ++_k) { \
             uint J = (SORTED)[_k];
 #define OLLIN_END_NEIGHBORS }}}}
+
+// MARK: - Chaotic systems (compute-only)
+//
+// The classic strange attractors as velocity fields, and the classic iterated maps
+// as rules, implemented from their published equations (the same ones the CPU
+// `StrangeAttractor` / `ChaoticMap` integrate, so the two sides agree step for
+// step). Unmarked (outside any `OLLIN_LIB_BEGIN` module) like the neighbor search
+// above, so they always splice into a compute kernel.
+//
+// A *flow* returns the derivative (dx, dy, dz)/dt at a phase-space point; advance
+// it with `OLLIN_RK4_STEP`. A *map* returns the next point outright, so there is
+// nothing to integrate: iterate it.
+
+// Lorenz: two lobes the orbit weaves between, the butterfly.
+static inline float3 ollin_lorenz(float3 p, float sigma, float rho, float beta) {
+    return float3(sigma * (p.y - p.x),
+                  p.x * (rho - p.z) - p.y,
+                  p.x * p.y - beta * p.z);
+}
+
+// Rossler: one spiral stretching outward on a sheet, then folding back.
+static inline float3 ollin_rossler(float3 p, float a, float b, float c) {
+    return float3(-(p.y + p.z),
+                  p.x + a * p.y,
+                  b + p.z * (p.x - c));
+}
+
+// Aizawa: an orbit wrapping a torus while drilling through its axis.
+static inline float3 ollin_aizawa(float3 p, float a, float b, float c, float d, float e, float f) {
+    float x = p.x, y = p.y, z = p.z;
+    return float3((z - b) * x - d * y,
+                  d * x + (z - b) * y,
+                  c + a * z - (z * z * z) / 3.0 - (x * x + y * y) * (1.0 + e * z) + f * z * x * x * x);
+}
+
+// Thomas: a looping, almost knotted lattice walk, symmetric across all three axes.
+static inline float3 ollin_thomas(float3 p, float b) {
+    return float3(sin(p.y) - b * p.x,
+                  sin(p.z) - b * p.y,
+                  sin(p.x) - b * p.z);
+}
+
+// Halvorsen: three intertwined scrolls, cyclically symmetric.
+static inline float3 ollin_halvorsen(float3 p, float a) {
+    float x = p.x, y = p.y, z = p.z;
+    return float3(-a * x - 4.0 * y - 4.0 * z - y * y,
+                  -a * y - 4.0 * z - 4.0 * x - z * z,
+                  -a * z - 4.0 * x - 4.0 * y - x * x);
+}
+
+// Dadras: a four-winged shape with a central twist.
+static inline float3 ollin_dadras(float3 p, float a, float b, float c, float d, float e) {
+    return float3(p.y - a * p.x + b * p.y * p.z,
+                  c * p.y - p.x * p.z + p.z,
+                  d * p.x * p.y - e * p.z);
+}
+
+// Chen: a double scroll, a more tightly wound relative of Lorenz.
+static inline float3 ollin_chen(float3 p, float alpha, float beta, float delta) {
+    return float3(alpha * p.x - p.y * p.z,
+                  beta * p.y + p.x * p.z,
+                  delta * p.z + p.x * p.y / 3.0);
+}
+
+// Wang-Sun: four lobes meeting at the center.
+static inline float3 ollin_four_wing(float3 p, float a, float b, float c) {
+    return float3(a * p.x + p.y * p.z,
+                  b * p.x + c * p.y - p.x * p.z,
+                  -p.z - p.x * p.y);
+}
+
+// Clifford's map: trigonometric filigree, staying within roughly [-2, 2].
+static inline float2 ollin_clifford(float2 p, float a, float b, float c, float d) {
+    return float2(sin(a * p.y) + c * cos(a * p.x),
+                  sin(b * p.x) + d * cos(b * p.y));
+}
+
+// The Peter de Jong map: the same family, a different web.
+static inline float2 ollin_de_jong(float2 p, float a, float b, float c, float d) {
+    return float2(sin(a * p.y) - cos(b * p.x),
+                  sin(c * p.x) - cos(d * p.y));
+}
+
+// The Henon map: a thin, folded boomerang curve.
+static inline float2 ollin_henon(float2 p, float a, float b) {
+    return float2(1.0 - a * p.x * p.x + p.y, b * p.x);
+}
+
+// Advance `STATE` (a `float3`) one fixed step `H` of fourth-order Runge-Kutta: the
+// standard weighted average of four slope samples across the step, the same one the
+// CPU side takes. `DERIV` is an expression giving the derivative at the sample point
+// `_p`, so a system's parameters come from the surrounding scope rather than through
+// a callback (Metal has no function pointers here, the reason this is a macro like
+// the neighbor iteration above):
+//
+//     OLLIN_RK4_STEP(state, 0.01, ollin_lorenz(_p, 10.0, 28.0, 8.0 / 3.0));
+//
+// A step much larger than the system's own scale integrates a *different* system, so
+// keep it near the published one and take several small steps rather than one big one.
+#define OLLIN_RK4_STEP(STATE, H, DERIV) { \
+    float _h = (H); \
+    float3 _p = (STATE);                        float3 _k1 = (DERIV); \
+    _p = (STATE) + (0.5 * _h) * _k1;            float3 _k2 = (DERIV); \
+    _p = (STATE) + (0.5 * _h) * _k2;            float3 _k3 = (DERIV); \
+    _p = (STATE) + _h * _k3;                    float3 _k4 = (DERIV); \
+    (STATE) += (_h / 6.0) * (_k1 + 2.0 * _k2 + 2.0 * _k3 + _k4); }

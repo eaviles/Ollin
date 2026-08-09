@@ -32,6 +32,7 @@ let s = Shader(source, using: [.noise, .sdf])   // only these sections splice
 - [Signed-distance functions](#signed-distance-functions)
 - [Domain operators](#domain-operators)
 - [Visual-chain operations](#visual-chain-operations)
+- [Chaotic systems (compute only)](#chaotic-systems-compute-only)
 
 ---
 
@@ -204,6 +205,35 @@ Always available in a **compute kernel** (they take bound buffers, so they are n
 | `float2 ollin_torus_delta(float2 from, float2 to, float2 worldSize)` | shortest displacement on the torus (minimum image), for wrap-correct distances. |
 | `OLLIN_FOR_NEIGHBORS(pos, grid, sorted, start, count, j)` … `OLLIN_END_NEIGHBORS` | iterate the neighbors of `pos` (the 3×3 wrapped cell block); `j` is each neighbor's particle index. |
 
+## Chaotic systems (compute only)
+
+Always available in a **compute kernel** (like the neighbor search, they sit outside the `using:` fragment-shader subset). The velocity fields behind [`AttractorFlow`](../Drawing/Attractors.md#flow) and the classic iterated maps, from their published equations, so a kernel of your own can ride a chaotic system directly.
+
+A **flow** returns the derivative at a phase-space point and is advanced with `OLLIN_RK4_STEP`. A **map** returns the next point outright and needs no integration.
+
+| Function | Description |
+| --- | --- |
+| `float3 ollin_lorenz(float3 p, float sigma, float rho, float beta)` | the original two-lobed butterfly. |
+| `float3 ollin_rossler(float3 p, float a, float b, float c)` | a single folded band. |
+| `float3 ollin_aizawa(float3 p, float a, float b, float c, float d, float e, float f)` | a spiralling sphere-and-spindle. |
+| `float3 ollin_thomas(float3 p, float b)` | a looping, axis-symmetric lattice walk. |
+| `float3 ollin_halvorsen(float3 p, float a)` | three intertwined scrolls. |
+| `float3 ollin_dadras(float3 p, float a, float b, float c, float d, float e)` | a four-winged twist. |
+| `float3 ollin_chen(float3 p, float alpha, float beta, float delta)` | a tightly wound double scroll. |
+| `float3 ollin_four_wing(float3 p, float a, float b, float c)` | four lobes meeting at the center. |
+| `float2 ollin_clifford(float2 p, float a, float b, float c, float d)` | Clifford's map: trigonometric filigree within roughly ±2. |
+| `float2 ollin_de_jong(float2 p, float a, float b, float c, float d)` | the Peter de Jong map, the same family. |
+| `float2 ollin_henon(float2 p, float a, float b)` | the Hénon map: a thin folded curve. |
+| `OLLIN_RK4_STEP(state, h, derivative)` | advance a `float3` one fixed step of fourth-order Runge-Kutta. |
+
+`derivative` is an expression in the sample point `_p`, which is how a system's constants reach it (Metal has no function pointers here, so this is a macro like the neighbor iteration):
+
+```metal
+OLLIN_RK4_STEP(state, 0.01, ollin_lorenz(_p, 10.0, 28.0, 8.0 / 3.0));
+```
+
+Keep the step near the one the system was published at. A step much larger than the system's own scale is integrating a different system, so take several small ones rather than one big one.
+
 ---
 
 ### See also
@@ -212,3 +242,4 @@ Always available in a **compute kernel** (they take bound buffers, so they are n
 - [Visuals](./Visuals.md): the fluent `Visual` chains these operations render
 - [SDF combinators](../Drawing/Combinators.md): compose signed-distance fields into merged shapes without writing shader code
 - [Color](../Drawing/Color.md): the CPU-side `Color`, `Palette`, and OKLab family
+- [Strange attractors](../Drawing/Attractors.md): the CPU orbits and the `AttractorFlow` these fields drive

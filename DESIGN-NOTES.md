@@ -117,8 +117,6 @@ This is the umbrella the [generative-geometry](#generative-geometry) tier is one
 - **Field techniques** that read per-pixel (a new noise basis, an interference field) land as a GPU `Generator` (a no-input `ollin_gen_*` fragment) or a user shader, reusing the layered-effects substrate rather than the CPU geometry path.
 - **Simulations** (iterated function systems accumulated on the GPU) run on the compute and `SimField` paths already in place: persistent ping-pong buffers or textures stepped each frame, drawn through the instanced or image path.
 
-The **chaotic-systems** family still wants a GPU leg: an MSL form of each system's derivative for the million-particle compute path, spliced like the noise prelude, leaning on the fixed-step fourth-order Runge-Kutta step already shared in `Math/`.
-
 The rest of the catalog follows the same shape: a canonical algorithm implemented from the published source, credited in `ATTRIBUTION.md`'s Techniques list, seeded for reproducibility, and shipped with an example, several of which pair naturally with a [recreation](#examples-folder) (an attractor plot, a flow field, a substrate).
 
 The families added in this pass, with where each routes and its canonical source: **genetic / evolutionary** form-finding (selection toward a target or by interaction, the Karl Sims lineage) as a simulation. The catalog is also a *Nature of Code* coverage map, so it reads as a familiar curriculum to anyone arriving from that world.

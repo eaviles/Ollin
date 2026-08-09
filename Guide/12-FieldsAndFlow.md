@@ -132,7 +132,7 @@ for _ in 0 ..< 30_000 {
 }
 ```
 
-The plates accumulate on a canvas that never clears, with `blendMode(.add)`, so instead of painting over what's below, each faint dot *adds* its light, so the places the orbit revisits glow brighter, a first taste of the additive layering Chapter 14 develops. Every constant in `clifford(a:b:c:d:)` reshapes the ghost completely. Most values collapse to a dot or explode into static, and part of the craft is collecting constants that sing (the four plates are four such finds). The 3D members of this family, Lorenz and friends, live in `StrangeAttractor` and wait for Chapter 17's camera.
+The plates accumulate on a canvas that never clears, with `blendMode(.add)`, so instead of painting over what's below, each faint dot *adds* its light, so the places the orbit revisits glow brighter, a first taste of the additive layering Chapter 14 develops. Every constant in `clifford(a:b:c:d:)` reshapes the ghost completely. Most values collapse to a dot or explode into static, and part of the craft is collecting constants that sing (the four plates are four such finds). The 3D members of this family, Lorenz and friends, live in `StrangeAttractor` and wait for Chapter 17's camera, which is also where a million particles ride one at once.
 
 ## One dial away from chaos
 

@@ -449,6 +449,27 @@ open class Sketch {
         drawer.recordParticles(swarm.current, count: swarm.count)
     }
 
+    /// Make an `AttractorFlow`: `count` particles riding `system`, scattered through
+    /// the attractor's own neighborhood from `seed` (this sketch's `variation` by
+    /// default). Build it in `setup()`, then `updateAttractorFlow` + `drawParticles`
+    /// in `draw()`. The flow is 3D, so it needs a camera. See `AttractorFlow`.
+    public func attractorFlow(count: Int, _ system: AttractorSystem,
+                              seed: UInt64? = nil) -> AttractorFlow {
+        AttractorFlow(count: count, system: system, seed: seed ?? UInt64(variation))
+    }
+
+    /// Step an `AttractorFlow` one frame (advances every particle along the velocity
+    /// field with fourth-order Runge-Kutta and recolors it by the speed it reached).
+    public func updateAttractorFlow(_ flow: AttractorFlow) {
+        flow.recordStep(into: drawer, frameDt: deltaTime)
+    }
+
+    /// Draw an `AttractorFlow`'s particles as camera-facing splats, like a
+    /// `PointCloud`. A no-op in a 2D frame: set a `camera` first.
+    public func drawParticles(_ flow: AttractorFlow) {
+        drawer.recordPointCloud(flow.current, count: flow.count)
+    }
+
     /// Make a `ParticleFluid`: `count` fluid particles interacting within `radius`
     /// (the fluid's resolution), seeded as a block inside `bounds` (the full canvas
     /// by default) from `seed` (this sketch's `variation` by default). Build it in

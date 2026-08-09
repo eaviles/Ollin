@@ -721,6 +721,29 @@ typedef struct {
     unsigned int paramCount;    // number of valid user floats in the params buffer
 } OllinShaderUniforms;
 
+// Per-frame parameters for the strange-attractor step (`AttractorFlow`), packed by
+// the CPU and bound at buffer index 11. Every particle rides the same velocity field
+// and reads no other particle, so a step is `substeps` fourth-order Runge-Kutta steps
+// of size `step`, fixed in the *system's* own time rather than the frame's, because a
+// step much larger than the system's scale integrates a different system. The extent
+// figures (`seed`, `escapeRadius`, `speedLow`/`speedHigh`) are measured once from a
+// short CPU orbit of the same system, so they suit whatever it was tuned to.
+// Stride 208 (16-aligned).
+typedef struct {
+    simd_float4 kA;           // system parameters 0…3
+    simd_float4 kB;           // system parameters 4…7 (only Aizawa reaches this far)
+    simd_float4 stops[8];     // speed→color ramp, straight RGBA; `stopCount` in use
+    simd_float4 seed;         // xyz respawn-box center (world), w its half-extent
+    float step;               // one Runge-Kutta step, in the system's own time
+    float escapeRadius;       // past this from the seed center a particle is lost
+    float speedLow;           // the speed that maps to the ramp's first stop
+    float speedHigh;          // the speed that maps to its last
+    float size;               // splat diameter, world units
+    unsigned int system;      // which system (AttractorSystem.Kind's shader index)
+    unsigned int substeps;    // Runge-Kutta steps this frame
+    unsigned int stopCount;   // ramp stops in use, 1…8
+} OllinAttractorParams;
+
 // Constants for the final present/tone-map pass (`ollin_present_fragment`). The
 // frame renders into a linear `rgba16Float` intermediate; this pass reads it,
 // scales by `exposure`, maps high-dynamic-range values into displayable range
