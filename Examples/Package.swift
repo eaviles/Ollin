@@ -206,6 +206,7 @@ let package = Package(
         example("3D/Geometry/SubdivisionSurfaces"),
         example("3D/Geometry/MeshGrowth"),
         example("3D/Geometry/SurfaceFromPoints"),
+        example("3D/Geometry/Fabrication"),
         example("3D/Camera/CameraControl"),
         example("3D/Camera/CameraMoves"),
         example("3D/Camera/SceneViews"),

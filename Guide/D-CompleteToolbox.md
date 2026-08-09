@@ -267,6 +267,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Perfect loops | Declare `loopDuration` and `--export-loop` renders exactly one seamless lap | [Ch 3](03-MotionAndTime.md) | [Export](../Docs/Output/Export.md) |
 | SVG for plotters | `--export-svg` true vectors, with `--hatch` turning fills into line work | [Ch 13](13-ShapesAsMaterial.md), [Ch 22](22-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
 | Print separations | `--export-separations`: one grayscale master per spot ink, screened, with an overprint preview | [Ch 22](22-SharingAndPerforming.md) | [PrintSeparations](../Docs/Output/PrintSeparations.md) |
+| 3D printing | `mesh.write(to:)` as STL, OBJ, or 3MF at a real size, with `printCheck()` reporting whether the surface is a solid | [Ch 22](22-SharingAndPerforming.md) | [Fabrication](../Docs/Output/Fabrication.md) |
 | Headless capture | `OllinApp.image(of:frame:)` renders any sketch to a `CGImage` in code, no window; the export flags are wrappers around it, and this guide's figures are made with it | [Ch 22](22-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
 | Reproducibility metadata | Every PNG/SVG/PDF/video embeds its recipe: seed, `@Param` values, git commit, frame | [Ch 22](22-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md#reproducibility-metadata) |
 | Contact sheets | `--export-grid` tiles one frame per seed into a labeled proof sheet; `--seed` re-renders a keeper | [Ch 4](04-Randomness.md) | [Variations](../Docs/Core/Variations.md) |

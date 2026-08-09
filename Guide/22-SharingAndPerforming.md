@@ -83,6 +83,35 @@ The interesting part is what happens for a color no single ink can make. Ollin s
 
 One practical note carries over from Chapter 7's halftone. A press cannot hold a dot smaller than about two percent coverage, so anything fainter drops to bare paper rather than becoming invisible speckle, and `separation.halftoned(pitch:)` rotates each ink's dot grid to its own angle so the drums overprint into a rosette instead of a moire. `separation.dithered()` is the grainier alternative. [Print separations](../Docs/Output/PrintSeparations.md) has the full ink catalog, which carries the community-measured colors of the standard risograph line, plus the screening details.
 
+## Something you can hold
+
+A plotter turns a `Contour` into ink on paper. A 3D printer does the same job for a `Mesh`, and the call is just as short:
+
+```swift
+sculpture.normalized(scale: 60).write(to: "sculpture.3mf")
+```
+
+`normalized(scale: 60)` is doing the work that matters. A mesh carries bare numbers, and a printer needs millimeters, so this centers the shape on the origin, where a build platform wants it, and fits its longest side to 60 mm. The extension picks the format, and the file records that size.
+
+Then there is the thing nobody warns you about, which is that a shape can look completely finished and still be unbuildable. A printer has to decide, for every point in space, whether it is inside the object or outside it, and it can only answer that if the surface actually closes. Here are two copies of the same knot, one swept closed and one left open at its ends:
+
+<img src="Images/22-SharingAndPerforming/Fabrication.jpg" alt="Two identical-looking gold torus knots side by side; the left is labelled closed and ready to print, the right open at the ends with 36 edges bordering a hole" width="680">
+
+On screen an open surface is exactly as convincing as a closed one. A printer is the first thing that ever disagrees.
+
+So ask before you commit to plastic:
+
+```swift
+let check = sculpture.printCheck()
+print(check.summary)        // "9360 triangles, 60.00 x 52.50 x 26.02 units: ready to print"
+```
+
+`printCheck()` reports whether the surface closes, whether neighbouring triangles agree on which side is out, whether the whole thing is inside out, and how big the file says it is. When something is wrong, `problems` says so in words rather than numbers. A mesh that fails is still written, with a note, because an open surface is a perfectly good thing to draw and only fabrication needs it sealed.
+
+Starting from a shape that closes by construction saves the repair work entirely: Chapter 17's metaballs and isosurfaces close by definition, since a field has an inside, and so do the solid primitives and a tube swept with `closed: true`. A plane, or a lathe without caps, does not.
+
+One last thing happens quietly on the way out. Ollin's meshes are flat-shaded, which means every triangle carries its own three corners so each face can hold its own normal, and neighbouring triangles share no vertex at all. Read as a solid, that is not a surface with a few holes in it, it is nothing but holes. The writers merge those duplicate corners first, settle the winding against the mesh's own normals, and stand the model up on z, because Ollin's world is y-up and a build platform is not. You get a solid without having to know any of that, which is the point. [Fabrication](../Docs/Output/Fabrication.md) has the details, and `Examples/3D/Geometry/Fabrication` is the knot above, with knobs.
+
 ## Reproducibility is part of the piece
 
 A shared render is better when it can be *re-made*. Three habits from earlier chapters do the work here. Seed the randomness (`seed(…)` in `setup()`, Chapter 4), so the export and the re-export are the same artwork, not siblings. Copy tuned `@Param` values back into their declarations once they feel right, because a headless export reads the defaults written in code, not the inspector. And share the `.swift` file alongside the render when you can, because in Ollin the sketch is the artifact, and a reader holding the source holds the whole piece, seeds, knobs, and all.
@@ -213,6 +242,7 @@ Live coding as a performance practice was organized by TOPLAP (founded 2004), wh
 
 - [Export](../Docs/Output/Export.md): every flag, codec advice, GIF timing, SVG mapping, hatching.
 - [Print separations](../Docs/Output/PrintSeparations.md): the spot-ink model, the ink catalog, screening angles, and the overprint preview.
+- [Fabrication](../Docs/Output/Fabrication.md): writing a mesh as STL, OBJ, or 3MF, real-world sizing, and what makes a surface printable.
 - [Syphon](../Docs/Integration/Syphon.md): publishing, receiving, discovery, and the loopback.
 - [Virtual camera](../Docs/Integration/VirtualCamera.md): the one-time install, publishing, the test card.
 - [Live coding](../Docs/Tools/LiveCoding.md): the evaluate loop, errors, recovery, and the keyboard reference.

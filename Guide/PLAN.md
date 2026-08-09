@@ -375,6 +375,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | `Output/Export.md` (PNG, sequence, video, GIF, SVG, PDF) | Ch 3 (GIF), Ch 13 (SVG), Ch 22 (all) | taught |
 | Reproducibility metadata in exports (`Output/Export.md`) | Ch 22 | taught (what the recipe holds, where it lives and why that slot exists, reading it back with `exiftool`, the recover-a-past-render scenario, and the GIF and missing-code limits) |
 | Print separations (`Image.separated` into spot inks, screening, `--export-separations`; `Output/PrintSeparations.md`) | Ch 22 | taught ("Printing one ink at a time" with a masters-plus-overprint figure: what a master is, why translucent inks make more colors than drums, `printInks` and the in-code form, the perceptual nearest-mix search, and the minimum-dot and rosette notes) |
+| Fabrication export (`Mesh.write(to:)` as STL/OBJ/3MF, `printCheck()`; `Output/Fabrication.md`) | Ch 22 | taught ("Something you can hold" with a closed-versus-open figure: `normalized(scale:)` as the sizing step, why a printer needs the surface to close when the screen does not care, `printCheck()` and its plain-words `problems`, which generators close by construction, and the welding and up-axis work the writers do quietly) |
 | Variations & seed exploration (`Core/Variations.md`): `variation`, the Variation card, `--export-grid`, `--seed` | Ch 4 | taught |
 | Normalized coordinates `uv(u, v)` (`Core/Canvas.md`) | Ch 1 | taught ("Placing things without pixels" with a six-panel figure of one layout in three canvas shapes, placed by pixels and by fractions; `uv` corners and `scale` for sizes, plus honest guidance on when plain pixels are fine) |
 | `Tools/LiveCoding.md` (OllinLiveCoding) | Ch 22; OllinLive workflow in Ch 1 | taught |
@@ -415,7 +416,7 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | Tempo sync: Ableton Link | Ch 20 |
 | Live rigs (serial/BLE, DMX/LED, NDI) | Ch 22, or a future installations chapter |
 | New input sources | Ch 20/21 |
-| New output surfaces (haptics, screensaver, USDZ, fabrication, performance capture) | Ch 22 |
+| New output surfaces (haptics, screensaver, USDZ, performance capture) | Ch 22 |
 | Rendering/color frontier (P3/HDR out, GPU-driven, path tracing) | Ch 14/22 |
 | Authoring/editor tooling | Ch 22 |
 | Collaboration and multi-device | future chapter beside Ch 22 |
