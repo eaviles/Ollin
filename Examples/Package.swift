@@ -40,6 +40,7 @@ enum Satellite: String, CaseIterable {
     case camera = "OllinCamera"
     case record3D = "OllinRecord3D"
     case phone = "OllinPhone"
+    case screen = "OllinScreen"
 
     var dependency: Target.Dependency { .product(name: rawValue, package: "Ollin") }
 }
@@ -449,6 +450,10 @@ let package = Package(
         // camera; the canvas shows the connection state. Needs the Ollin
         // Camera extension installed (Apps/OllinCameraApp).
         example("Integration/VirtualCamera", [.camera]),
+        // Takes the Mac's own screen as material: the whole display, one app, or
+        // a single window, drawn and filtered like any image. `tunnel` leaves the
+        // sketch's own window in the capture, so the picture recedes into itself.
+        example("Integration/ScreenCapture", [.screen]),
         // Physics — a Verlet world stepped each frame. Packing is a field of
         // colliding discs; Blobs are spring-built soft bodies that squish.
         example("Physics/Packing", [.physics]),

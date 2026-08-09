@@ -273,6 +273,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Contact sheets | `--export-grid` tiles one frame per seed into a labeled proof sheet; `--seed` re-renders a keeper | [Ch 4](04-Randomness.md) | [Variations](../Docs/Core/Variations.md) |
 | Syphon | Publish frames to (and read frames from) other Mac apps, GPU to GPU | [Ch 22](22-SharingAndPerforming.md) | [Syphon](../Docs/Integration/Syphon.md) |
 | Virtual camera | Your sketch as a system-wide webcam every video app can pick, including the browser, which Syphon cannot reach | [Ch 22](22-SharingAndPerforming.md) | [VirtualCamera](../Docs/Integration/VirtualCamera.md) |
+| Screen capture | Any display, app, or window on the Mac as a live frame source, whether or not it cooperates the way Syphon needs; a tracker reads it like a camera, and leaving your own window in gives you the feedback tunnel | [Ch 21](21-Seeing.md) | [ScreenCapture](../Docs/Integration/ScreenCapture.md) |
 | Live coding | `swift run OllinLiveCoding`: code over visuals, evaluate mid-motion, perform | [Ch 22](22-SharingAndPerforming.md) | [LiveCoding](../Docs/Tools/LiveCoding.md) |
 | Extensions | `Sketch.extend`: hooks before, during, and after each frame, for recorders and chrome | [Ch 22](22-SharingAndPerforming.md) | [Sketch](../Docs/Core/Sketch.md#extensions) |
 

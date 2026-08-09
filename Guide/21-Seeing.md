@@ -267,6 +267,52 @@ override func draw() { drawFrame(player) }
 
 Frames arrive as GPU textures (drawing them costs almost nothing), `drawFrame` letterboxes them the same way, trackers analyze the footage as it plays, and `snapshot()` hands you a CPU still for the one-shot `detect(in:)` calls. Chapter 20's `Soundtrack(of: player)` completes the loop: one clip can drive a piece with its pixels *and* its music. The `Video/VideoPlayback` example ships with a short clip of the *Voladores de Papantla* to play with, and `Vision/VideoTrace` runs a contour tracker over it live. One export note is worth carrying forward. Headless exports drive the player deterministically (frame `k` of the export always shows the clip at `k/fps`), but a *tracker* attached to it analyzes nothing during an export, since analysis rides the live clock.
 
+## The screen as material
+
+There's a third source of pictures, and it's the one already running on your machine. `ScreenCapture` hands over any display, any app, or any single window as a live image, so a browser, a map, a video call, a terminal, or another sketch becomes something to draw with.
+
+```swift
+import OllinScreen
+
+let screen = ScreenCapture(.mainDisplay)
+
+override func setup() { screen.start() }
+override func draw() { drawFrame(screen) }
+```
+
+It's a frame source like the other two, so everything in this chapter applies unchanged: `drawFrame` letterboxes it, filters work on it, and a tracker attaches to it exactly as it would to a camera.
+
+```swift
+let screen = ScreenCapture(.app("Safari"))
+lazy var words = TextRecognizer(screen)     // reads the page as it scrolls
+lazy var faces = FaceTracker(screen)        // finds faces in whatever is playing
+```
+
+That is a genuinely strange amount of reach for four lines.
+
+You say what to capture as a value you write down, which keeps the sketch the record of what it drew:
+
+```swift
+ScreenCapture(.app("Safari"))                    // every window one app has open
+ScreenCapture(.window(title: "Shopping list"))   // one window, by its title
+```
+
+An app matches on its name or its bundle identifier and has to match in full; a window matches any title *containing* the text, which is what keeps `"Shopping list"` working when the title bar reads `"Notes: Shopping list"`. Naming something that isn't open yet is not an error, it's a wait: the capture keeps looking and starts by itself when the window appears. And a window captured on its own arrives at its own size with nothing in front of it, even when something covers it on screen.
+
+Now the part worth playing with. Point a sketch at the screen it is drawn on and it would draw the window it is being drawn in, forever, so by default its own windows are cut out of the picture. Turn that off and the recursion is exactly the point:
+
+```swift
+screen.excludesOwnWindows = false
+```
+
+<img src="Images/21-Seeing/ScreenAsMaterial.jpg" alt="Two panels of a stand-in desktop. Left, a clean capture of a wallpaper with two windows. Right, the same capture with an Ollin sketch window on it showing the same picture, nested four levels deep" width="680">
+
+That is video feedback, the thing people have been getting by pointing a camera at a monitor since the 1960s, and here it costs one boolean. How deep it goes depends on how fast the sketch draws relative to the capture, and it smears and drifts as you move the window, which is the good part. (The figure uses a made-up desktop rather than a real capture, since no committed figure could reproduce your screen. The nesting is what the live one does.)
+
+One thing to know before you point this at a 5K display: at `scale = 1` a capture arrives at the screen's true backing resolution, which on a Retina display is twice its size in points. `screen.scale = 0.5` quarters the pixels and is the knob to reach for when an effect chain starts to labor.
+
+The catch is permission, and it behaves in a way worth understanding rather than being surprised by. Recording the screen needs the user's consent, and macOS grants that to an *application*. A sketch run from the terminal has no application identity of its own, so the consent is attributed to whatever launched it: Terminal, iTerm, Ghostty, whichever you use. The prompt names your terminal, the entry in System Settings is your terminal, and once you allow it there, every sketch you run from that terminal can capture with no further prompt. Convenient, and worth being clear-eyed about, since it means allowing your terminal to record the screen allows everything you run from it to do the same. Granting it doesn't reach a process already running, so allow it and then start the sketch again. `ScreenCapture.isAvailable` and `unavailableReason` tell you where you stand, and `drawFrame` puts the reason on the canvas for you.
+
 ## The past as material
 
 Everything so far reads the frame in front of you. Keeping the *previous* frames around opens a different technique, and it's one of the oldest tricks in camera art.
@@ -356,11 +402,13 @@ Camera-as-instrument art is older than the personal computer: Myron Krueger's *V
 
 - [Vision](../Docs/Vision/Vision.md): every tracker in detail, coordinate mapping, still images, availability.
 - [Video](../Docs/Video/Video.md): loading and playing footage, analysis, the soundtrack, deterministic export.
+- [Screen capture](../Docs/Integration/ScreenCapture.md): naming a display, app, or window, listing what's there, the permission story in full, and the feedback tunnel.
 - [Slit scan](../Docs/Video/SlitScan.md): the frame history, both delay forms, memory cost, and the delay maps worth trying.
 - Worked examples, people first: [`FaceTracking`](../Examples/Vision/FaceTracking/Sketch.swift), [`HandTracking`](../Examples/Vision/HandTracking/Sketch.swift), [`BodyPose`](../Examples/Vision/BodyPose/Sketch.swift), [`BodyPose3D`](../Examples/Vision/BodyPose3D/Sketch.swift), [`PersonSegmentation`](../Examples/Vision/PersonSegmentation/Sketch.swift), [`SubjectLift`](../Examples/Vision/SubjectLift/Sketch.swift).
 - Then the picture itself: [`ContourTrace`](../Examples/Vision/ContourTrace/Sketch.swift), [`OpticalFlow`](../Examples/Vision/OpticalFlow/Sketch.swift), [`RectangleScan`](../Examples/Vision/RectangleScan/Sketch.swift), [`TextScan`](../Examples/Vision/TextScan/Sketch.swift), [`BarcodeReader`](../Examples/Vision/BarcodeReader/Sketch.swift), [`ObjectTracking`](../Examples/Vision/ObjectTracking/Sketch.swift), [`TrajectoryTracking`](../Examples/Vision/TrajectoryTracking/Sketch.swift), [`SceneLabels`](../Examples/Vision/SceneLabels/Sketch.swift), [`EyeCatcher`](../Examples/Vision/EyeCatcher/Sketch.swift).
 - Models of your own: [`DepthRelief`](../Examples/Vision/DepthRelief/Sketch.swift), [`ObjectDetection`](../Examples/Vision/ObjectDetection/Sketch.swift), [`PaintByClass`](../Examples/Vision/PaintByClass/Sketch.swift), [`StyleMirror`](../Examples/Vision/StyleMirror/Sketch.swift), and [`DigitReader`](../Examples/Vision/DigitReader/Sketch.swift), which points a model at the sketch's own pixels with no camera anywhere. The rest live in [`Examples/Vision/`](../Examples/Vision).
 - Footage and history: [`Examples/Video/VideoPlayback`](../Examples/Video/VideoPlayback/Sketch.swift), [`Examples/Vision/VideoTrace`](../Examples/Vision/VideoTrace/Sketch.swift), and [`Examples/Images/SlitScan`](../Examples/Images/SlitScan/Sketch.swift).
+- The screen itself: [`Examples/Integration/ScreenCapture`](../Examples/Integration/ScreenCapture/Sketch.swift), which lists what your Mac can capture as the line of code that names each one, and puts the feedback tunnel on a knob.
 
 ---
 

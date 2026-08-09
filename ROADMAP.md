@@ -88,7 +88,6 @@ All of it is the interop posture: play in someone's existing rig, not replace it
 
 More of the platform's live signals, each a `FrameSource` or a simple value read in `draw()`:
 
-- **Screen and window capture.** Any app's window or the whole screen as a live texture, processed like a video feed (the non-cooperative complement to Syphon, which needs the other app to publish).
 - **Voice and sound events.** Speech recognition as drawable live captions, and sound-event classification (a clap, a genre, a bark) as a trigger, the audio analogue of the vision trackers.
 - **Rich controllers.** Game controllers (gyro, triggers, touchpad), and, on the iOS leg, Apple Pencil tilt and azimuth.
 - **Body and world data.** Heart rate from a paired Watch for biofeedback, and real-world ambient data (weather, location) as a slow live input.

@@ -28,6 +28,7 @@ enum Satellite: String, CaseIterable {
     case camera = "OllinCamera"
     case record3D = "OllinRecord3D"
     case phone = "OllinPhone"
+    case screen = "OllinScreen"
 
     var dependency: Target.Dependency { .byName(name: rawValue) }
 }
@@ -96,6 +97,13 @@ let package = Package(
         // motion) over USB. The own-app sibling of OllinRecord3D's borrowed RGBD
         // feed; the wire format (PhoneWire) is shared verbatim with the iOS app.
         .library(name: "OllinPhone", targets: ["OllinPhone"]),
+        // Screen and window capture as a satellite library: `import OllinScreen`
+        // to take any window or display on the Mac as a live texture-backed
+        // frame source, drawn with `drawImage` and analyzed by the vision
+        // trackers like a camera. Built on ScreenCaptureKit; kept out of `Ollin`
+        // so the drawing core stays free of it, and so the screen-recording
+        // permission is something a sketch opts into rather than inherits.
+        .library(name: "OllinScreen", targets: ["OllinScreen"]),
         // The shared CPU/GPU struct header as an importable module. A sketch
         // driving the raw `SpatialHash` builds `OllinParticle` buffers itself and
         // needs the declarations, which is why the compute examples `import
@@ -406,6 +414,16 @@ let package = Package(
             name: "OllinPhone",
             dependencies: ["Ollin", "OllinUSBMux"]
         ),
+        // Screen and window capture: a `ScreenCapture` over ScreenCaptureKit that
+        // surfaces any window or display as a texture-backed `Image` (IOSurface
+        // straight into a Metal texture, no CPU round-trip) and as a `FrameSource`
+        // the vision trackers read. A satellite (like OllinVideo) so the drawing
+        // core stays free of ScreenCaptureKit, and so the screen-recording consent
+        // belongs to sketches that ask for it.
+        .target(
+            name: "OllinScreen",
+            dependencies: ["Ollin"]
+        ),
         // The structs shared between Swift and the Metal shaders (`OllinVertex`,
         // `Uniforms`, `SDFInstance`) are defined once in a C header so their
         // memory layout can't drift between the two sides. This thin C module
@@ -548,6 +566,14 @@ let package = Package(
         .testTarget(
             name: "OllinVideoTests",
             dependencies: ["Ollin", "OllinVideo"]
+        ),
+        // Screen capture: the source-matching rules (pure, and the part a sketch
+        // actually writes) plus the permission surface, then an end-to-end
+        // capture that soft-skips where the screen-recording permission is off,
+        // so it never fails CI for a consent the machine can't grant itself.
+        .testTarget(
+            name: "OllinScreenTests",
+            dependencies: ["Ollin", "OllinScreen"]
         ),
         // Record3D decode correctness: synthesizes a tiny `.r3d` in memory (a ZIP
         // of metadata + one JPEG + one LZFSE depth/confidence buffer) and checks
