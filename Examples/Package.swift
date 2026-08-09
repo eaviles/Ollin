@@ -115,6 +115,8 @@ let package = Package(
         example("Simulation/Ripples"),
         example("Simulation/Watercolor"),
         example("Simulation/Attractor"),
+        example("Simulation/Breeding"),
+        example("Simulation/Evolution"),
         example("Simulation/Swarm"),
         example("Simulation/ParticleLife"),
         example("Simulation/PrimordialParticles"),

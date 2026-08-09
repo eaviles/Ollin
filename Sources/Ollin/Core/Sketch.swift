@@ -470,6 +470,29 @@ open class Sketch {
         drawer.recordPointCloud(flow.current, count: flow.count)
     }
 
+    /// Make an `Evolution`: `count` individuals, each carrying `genes` steering
+    /// impulses, flying from `from` toward `to` and bred each generation from whoever
+    /// came closest. Seeded from `seed` (this sketch's `variation` by default). Build
+    /// it in `setup()` (set `obstacles` there too), then `updateEvolution` +
+    /// `drawParticles` in `draw()`. See `Evolution`.
+    public func evolution(count: Int, genes: Int, from start: Vector2, to target: Vector2,
+                          seed: UInt64? = nil) -> Evolution {
+        Evolution(count: count, genes: genes, start: start, target: target,
+                  seed: seed ?? UInt64(variation))
+    }
+
+    /// Step an `Evolution` one frame: another step of the current trial, or, when the
+    /// trial is up, the breeding pass that makes the next generation.
+    public func updateEvolution(_ evolution: Evolution) {
+        evolution.recordStep(into: drawer, frameDt: deltaTime)
+    }
+
+    /// Draw an `Evolution`'s population as additive discs, colored by how far along the
+    /// way to the target each one has got.
+    public func drawParticles(_ evolution: Evolution) {
+        drawer.recordParticles(evolution.current, count: evolution.count)
+    }
+
     /// Make a `ParticleFluid`: `count` fluid particles interacting within `radius`
     /// (the fluid's resolution), seeded as a block inside `bounds` (the full canvas
     /// by default) from `seed` (this sketch's `variation` by default). Build it in

@@ -119,7 +119,7 @@ This is the umbrella the [generative-geometry](#generative-geometry) tier is one
 
 The rest of the catalog follows the same shape: a canonical algorithm implemented from the published source, credited in `ATTRIBUTION.md`'s Techniques list, seeded for reproducibility, and shipped with an example, several of which pair naturally with a [recreation](#examples-folder) (an attractor plot, a flow field, a substrate).
 
-The families added in this pass, with where each routes and its canonical source: **genetic / evolutionary** form-finding (selection toward a target or by interaction, the Karl Sims lineage) as a simulation. The catalog is also a *Nature of Code* coverage map, so it reads as a familiar curriculum to anyone arriving from that world.
+The catalog is also a *Nature of Code* coverage map, so it reads as a familiar curriculum to anyone arriving from that world.
 
 A related compute-heavy family worth its own note, since it's where GPU artificial-life work concentrates: **particle-interaction systems**, simple local rules over many particles producing emergent, lifelike structure over the spatial-hash neighbor search. Pushed toward self-replication, mutation, and selection, this is the open-ended-evolution / artificial-life territory the **ALIEN** project (chrxh/alien) explores at scale. The posture stays the framework one: study the *techniques* (the interaction rules, the bond and matter models, the genome/agent encoding) and reimplement them in Metal compute as recipes a sketch composes, never port the source and never become the environment/editor itself. Credit ALIEN in `ATTRIBUTION.md`, and verify ALIEN's license before any closer study (it stays an inspiration regardless, since CUDA to Metal is a rewrite).
 

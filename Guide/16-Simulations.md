@@ -448,6 +448,61 @@ drawParticles(blobs)
 
 Bodies collide with each other and flatten where they press together, which is the pile on the right. Both systems run fixed substeps against a clamped clock, so a dropped frame slows them down rather than detonating them, and both carry the same reproducibility caveat as the last section.
 
+## Letting the sketch find it
+
+Every other system in this chapter runs a *rule*. This one runs a *search*.
+
+Thirty thousand individuals set off from the same spot at the same moment. Each carries a genome, which here is a short list of pushes played back in order over a few seconds, so a genome is a plan for a journey and the flight is what that plan turns out to be worth. When the time is up, everyone is scored on how close they came to a target, and the whole population is replaced by the children of whoever did best. Then it happens again.
+
+<img src="Images/16-Simulations/Evolution.jpg" alt="Three dark panels, each with a wall across the middle broken by a narrow gap and a gold ring near the top. Left, generation 1: a violet blob of dots at the bottom and a thin scatter above the wall. Middle, generation 8: a broad blue and green plume rising through the gap and spreading toward the ring. Right, generation 23: one clean arc, violet at the bottom through blue and green to gold, threading the gap and ending in the ring" width="880">
+
+```swift
+run = evolution(count: 30_000, genes: 28,
+                from: Vector2(540, 990), to: Vector2(540, 110))
+run.obstacles = [Rectangle(x: 0, y: 620, width: 640, height: 34),
+                 Rectangle(x: 800, y: 620, width: 280, height: 34)]
+
+// each frame:
+updateEvolution(run)
+drawParticles(run)
+```
+
+Nowhere in that do you say how to get there. You place a start, a target, and the walls; the route is the one thing you leave out, and the route is what comes back.
+
+The three panels are the same search a few seconds apart. Generation 1 is a spray with no idea; by generation 8 a plume has found the gap and is pouring through it; by generation 23 the population is a single arc that threads the gap and ends in the ring. Nothing improved a genome. All that happened is that the ones that did badly had fewer children.
+
+Choosing the parents is the interesting part. Each parent is picked by holding a small tournament: grab four individuals at random, keep whichever scored highest. That sounds like a shortcut for the fairer-looking method, where a genome's share of the parents is its share of everyone's total score, but it is better suited here for a reason worth knowing. A tournament never adds anything up. It only ever asks *which of these two is higher*, so thirty thousand children can each pick their own parents at the same instant with nothing to agree on and nothing to wait for, which is exactly what a GPU is. It also means the scale of a score is irrelevant. Only its order matters.
+
+The pace comes out of the geometry rather than out of numbers you tune. Top speed crosses the distance to the target in about two seconds, the trial is long enough to go the long way round, and one gene pushes hard enough to reach top speed in a quarter of a trial, all worked out from how far apart the two points are. That is why the sketch above names a population, a genome length, and two points and nothing else, and why dragging the target repaces the whole run.
+
+One decision in there is easy to overlook and decides whether any of this works: what the first generation is made of. Pick every gene at random and a genome is a random walk, whose steps mostly cancel. The entire population would mill about the start, all of them equally hopeless, and selection would have nothing to tell apart for a very long time. So a genome starts as a smooth arc instead, a random heading with each gene a small turn from the one before, and generation 1 is already a spray of paths going somewhere different. Evolution's job is then to bend the promising ones, which takes a dozen generations rather than a hundred.
+
+Mutation is what keeps that going. Each gene, as it is copied into a child, has a small chance of being nudged, and it really is a nudge: a random amount added to what the gene already held rather than a fresh random value. Turn mutation off and a run still improves for a while, on the variety generation 1 happened to contain, and then stops, because copying can only ever narrow. Selection chooses; it never invents.
+
+## Sixteen things and no opinion about them
+
+The other half of evolution has no score at all.
+
+`Population` is a handful of genomes, each just a bag of numbers between 0 and 1 that your sketch reads however it likes. You draw them, somebody picks the ones they like, and those breed:
+
+```swift
+pool = population(count: 16, genes: 8)      // in setup()
+
+// a genome, read as a drawing:
+let arms  = g.value(0, in: 3 ... 11)
+let hue   = g.value(1, in: 0.0 ... 1.0)
+let rings = g.value(2, in: 1 ... 4)
+
+// when someone has picked their favorites:
+pool.breed(from: chosen)
+```
+
+Nothing in a `Genome` knows what its numbers mean, which is exactly what lets the framework mate and mutate one without knowing what is being evolved. Sixteen ornaments become sixteen slightly different ornaments, then sixteen variations on the two you liked, and after a dozen rounds the grid is full of things you would not have thought to draw.
+
+The mutation rate here defaults far higher than the scored version's, and the reason is arithmetic about people. A search you judge by eye gets maybe twenty candidates a generation and maybe twenty generations before you get bored, so a few hundred looks have to cover ground a scored run covers in millions. Variation has to arrive fast enough to be worth looking at. For the same reason the genomes you picked are carried into the next generation untouched: one breeding is a big step when a person is doing the judging, and the thing you just chose should not vanish the moment you choose it.
+
+The two halves are not the same tool at two sizes. A scored search can only ever find what the score was written to want. A search judged by eye can arrive somewhere you did not know you were going, because you are allowed to change your mind between generations.
+
 ## Putting it together: the organism
 
 The finished piece grows a culture. A scatter of spores seeds a reaction-diffusion dish in its mitosis regime, whatever you draw while it runs joins the chemistry, and the display pipeline is pure Chapter 14: a levels stretch, a gradient map for the skin, and a liquid relight so the ridges catch light. Make `MySketches/Organism.swift`:
@@ -507,6 +562,8 @@ The multi-scale patterns are Jonathan McCabe's, from his 2010 Bridges paper "Cyc
 
 The newer arrivals have their own names attached. The 256 elementary rules were catalogued and numbered by Stephen Wolfram in 1983, and turmites generalize Christopher Langton's 1986 ant. Lenia is Bert Wang-Chak Chan's continuous generalization of the Game of Life, from his 2019 paper "Lenia: Biology of Artificial Life", and Ollin implements the exponential kernel and growth rule it describes, with the paper's Orbium creature as the defaults. Particle Life descends from Jeffrey Ventrella's *Clusters*, and the Primordial Particle System is Thomas Schmickl, Martin Stefanec, and Karl Crailsheim's, published in *Scientific Reports* in 2016. The slime-mold agents follow Jeff Jones's 2010 model of *Physarum polycephalum* transport networks. The fluid is Matthias Müller and colleagues' 2003 particle-based formulation with the near-density anti-clumping term Simon Clavet, Philippe Beaudoin, and Pierre Poulin added in 2005, and the jellies use Müller's 2005 meshless shape matching.
 
+The genetic algorithm is John Holland's, set out in *Adaptation in Natural and Artificial Systems* in 1975 and made practical for the rest of us by David Goldberg's 1989 book, which is where crossover, mutation, and the roulette-wheel and tournament ways of choosing parents are all laid out. Breeding pictures by eye is Karl Sims', from his 1991 paper *Artificial Evolution for Computer Graphics* and the *Genetic Images* installation that came out of it, where visitors stood in front of the images they liked and those became the parents of the next generation. The flying-toward-a-target version is the one Daniel Shiffman teaches as smart rockets in *The Nature of Code*, after an earlier sketch by Jer Thorp.
+
 The two waves in this chapter are older than any of it. The ripple pool integrates the 2D wave equation, which Jean le Rond d'Alembert wrote down for a vibrating string in 1747, and the interactive-water form of it circulated widely as demoscene and graphics-tutorial code through the 1990s. The plate figures are Ernst Chladni's, first published in 1787; the closed form Ollin evaluates comes from the standard treatment of a square plate driven at its center, and Chladni's own demonstrations of them helped earn him the title of the father of acoustics. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
@@ -518,6 +575,7 @@ The two waves in this chapter are older than any of it. The ripple pool integrat
 - [Artificial life](../Docs/Simulation/ArtificialLife.md): all three systems with every knob, plus building your own on the public `SpatialHash`.
 - [Swarm](../Docs/Simulation/Swarm.md): all eight steering behaviors, every knob, and how to pick the three numbers that are tied together.
 - [Fluids & soft bodies](../Docs/Simulation/Fluids.md): the SPH and shape-matching knobs, grabbing, and the substep model.
+- [Evolution](../Docs/Simulation/Evolution.md): the scoring and selection in full, the pacing you can take over, and the interactive `Population` with its three ways of mixing two parents.
 - [Chladni figures](../Docs/Generators/Chladni.md): the closed form, the `.chladni` generator's two styles, the degenerate cases, and pulling nodal lines out as vector contours.
 - Worked examples: [`Examples/Simulation/GrayScott`](../Examples/Simulation/GrayScott/Sketch.swift), [`Examples/Simulation/GameOfLife`](../Examples/Simulation/GameOfLife/Sketch.swift), [`Examples/Simulation/MultiScaleTuring`](../Examples/Simulation/MultiScaleTuring/Sketch.swift), [`Examples/Simulation/Sandpile`](../Examples/Simulation/Sandpile/Sketch.swift), [`Examples/Simulation/Fluid`](../Examples/Simulation/Fluid/Sketch.swift), [`Examples/Simulation/Ripples`](../Examples/Simulation/Ripples/Sketch.swift), [`Examples/Simulation/Watercolor`](../Examples/Simulation/Watercolor/Sketch.swift), [`Examples/Patterns/Chladni`](../Examples/Patterns/Chladni/Sketch.swift), [`Examples/Audio/ChladniResonance`](../Examples/Audio/ChladniResonance/Sketch.swift), [`Examples/Effects/Fractals`](../Examples/Effects/Fractals/Sketch.swift), [`Examples/Compute/CurlField`](../Examples/Compute/CurlField/Sketch.swift), and [`Examples/Compute/ReactionDiffusion`](../Examples/Compute/ReactionDiffusion/Sketch.swift).
 

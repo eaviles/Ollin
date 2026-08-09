@@ -744,6 +744,36 @@ typedef struct {
     unsigned int stopCount;   // ramp stops in use, 1…8
 } OllinAttractorParams;
 
+// Per-frame parameters for the evolving population (`Evolution`), packed by the CPU
+// and bound at buffer index 11. Two kernels read this struct: the trial step, which
+// flies every individual along its own genome and scores it, and the breeding pass,
+// which replaces the population with the children of whoever scored well. The pacing
+// figures (`trialDuration`, `thrust`, `maxSpeed`) are derived from the distance a
+// trial has to cover rather than named by the sketch, so moving the target re-paces
+// the run. Stride 272 (16-aligned).
+typedef struct {
+    simd_float4 obstacles[8]; // walls, canvas points: xy corner, zw size; `obstacleCount` in use
+    simd_float4 stops[4];     // score→color ramp, straight RGBA; `stopCount` in use
+    simd_float2 start;        // where every trial begins, canvas points
+    simd_float2 target;       // what the population is selected for reaching
+    float targetRadius;       // inside this counts as arrived
+    float spanToTarget;       // start→target distance: what a score is measured against
+    float trialDuration;      // seconds one generation flies for
+    float elapsed;            // seconds into the current trial (picks the live gene)
+    float thrust;             // what one gene is worth, points/s²
+    float maxSpeed;           // top speed an individual may travel, points/s
+    float mutationRate;       // chance one gene is nudged when it is copied
+    float mutationAmount;     // how far such a nudge may reach (genes live in -1…1)
+    float dt;                 // seconds this step covers
+    float size;               // dot diameter, points
+    unsigned int genes;       // genome length (steering impulses per individual)
+    unsigned int tournament;  // rivals each parent is picked as the best of
+    unsigned int generation;  // which generation: the breeding pass's random stream
+    unsigned int seed;        // the population's own seed, never the sketch's rng
+    unsigned int obstacleCount;
+    unsigned int stopCount;   // ramp stops in use, 1…4
+} OllinEvolutionParams;
+
 // Constants for the final present/tone-map pass (`ollin_present_fragment`). The
 // frame renders into a linear `rgba16Float` intermediate; this pass reads it,
 // scales by `exposure`, maps high-dynamic-range values into displayable range

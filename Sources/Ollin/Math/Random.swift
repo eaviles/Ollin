@@ -8,7 +8,7 @@ import Foundation
 /// It's public so the seedable geometry generators (like `poissonDisk`) can be
 /// driven reproducibly outside a `Sketch` too — hand one a seeded `SplitMix64`
 /// and the same seed always yields the same result.
-public struct SplitMix64: RandomNumberGenerator {
+public struct SplitMix64: RandomNumberGenerator, Sendable {
     private var state: UInt64
     public init(seed: UInt64) { state = seed }
     public mutating func next() -> UInt64 {

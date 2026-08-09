@@ -155,6 +155,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 
 | Artificial life | `ParticleLife`, `PPS`, `Physarum` on the public `SpatialHash` neighbor search | [Ch 16](16-Simulations.md) | [Artificial life](../Docs/Simulation/ArtificialLife.md) |
 | Steering at scale | `Swarm`: separation, alignment, cohesion, seek, flee, arrive, wander, and flow as weights over tens of thousands of agents | [Ch 16](16-Simulations.md) | [Swarm](../Docs/Simulation/Swarm.md) |
+| Evolution | `Evolution`: GPU populations bred toward a target past obstacles by tournament selection; `Population` + `Genome`: a handful of genomes bred from the ones you pick by eye | [Ch 16](16-Simulations.md) | [Evolution](../Docs/Simulation/Evolution.md) |
 | Particle fluids | `ParticleFluid`: SPH liquid with a free surface, splashes, and grabbing | [Ch 16](16-Simulations.md) | [Fluids](../Docs/Simulation/Fluids.md) |
 | Soft bodies | `SoftBodies`: shape-matched jellies that squash and pile | [Ch 16](16-Simulations.md) | [Fluids](../Docs/Simulation/Fluids.md) |
 
