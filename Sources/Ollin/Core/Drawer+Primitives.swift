@@ -819,6 +819,9 @@ extension Drawer {
         guard camera3D != nil else { return }   // 3D only — needs an active camera
         // SVG export is 2D vector only; a sphere-traced surface has no vector outline.
         if svgRecorder != nil { return }
+        // A field is an equation rather than a surface; `isosurface(at:in:_:)`
+        // turns one into a mesh a file can hold.
+        if let spatialRecorder { spatialRecorder.skip("a raymarched field"); return }
         currentTarget?.needsDepth = true        // 3D in a target → that pass carries depth
 
         let defaultFill: Color = {

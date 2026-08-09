@@ -112,6 +112,50 @@ Starting from a shape that closes by construction saves the repair work entirely
 
 One last thing happens quietly on the way out. Ollin's meshes are flat-shaded, which means every triangle carries its own three corners so each face can hold its own normal, and neighbouring triangles share no vertex at all. Read as a solid, that is not a surface with a few holes in it, it is nothing but holes. The writers merge those duplicate corners first, settle the winding against the mesh's own normals, and stand the model up on z, because Ollin's world is y-up and a build platform is not. You get a solid without having to know any of that, which is the point. [Fabrication](../Docs/Output/Fabrication.md) has the details, and `Examples/3D/Geometry/Fabrication` is the knot above, with knobs.
 
+## Something you can walk around
+
+A printer takes one mesh. A whole 3D scene has somewhere else to go:
+
+```sh
+swift run Example-3D-Geometry-Solids --export-usdz piece.usdz
+```
+
+USDZ is the format Apple's platforms read without being asked. Double-click the file and Quick Look opens it. Send it in a message and it opens there too. Tap the AR button and the piece stands on the floor in front of you at whatever size the file says it is. Drop it into a visionOS app and it is already a model.
+
+The thing to notice is what changed about the artifact. Every export so far in this chapter has been a *picture of* the sketch, taken from where the camera happened to be. This one is the scene itself. Whoever opens it picks their own angle.
+
+Any `Scene` writes the same way, including one you loaded or built by hand:
+
+```swift
+scene.write(to: "piece.usdz")
+```
+
+And a frame becomes a scene when you ask for it:
+
+```swift
+let scene = OllinApp.spatialScene(of: sketch, frame: 120)
+```
+
+That hands back an ordinary `Scene`, the same kind [Chapter 17](17-3DGently.md) loaded from a file, so you can look at what your own frame is made of, move a node, and write it out. One writer serves both paths, which is why the file and the frame cannot disagree.
+
+Here is a frame drawn the ordinary way, beside the same frame written to a `.usdz` and opened again:
+
+<img src="Images/22-SharingAndPerforming/SpatialExport.jpg" alt="Two identical arrangements of a yellow sphere, blue rounded box and green torus; the left is surrounded by scattered grey dust motes, the right has none" width="680">
+
+The surfaces come back exactly. The dust does not, and that is the rule worth carrying: **a model file holds surfaces**. Meshes travel, with their transforms, their colors, their textures, and as much of their finish as the format has a slot for, along with the camera and the lights. A point cloud, a GPU particle system, and a raymarched field are not surfaces, so they stay behind. So does 2D drawing, which is why a labelled diagram arrives without its labels. Ollin prints one note for each thing it left, rather than letting you find out later.
+
+If you want a field or a cloud to travel, give it a surface first: `isosurface(at:in:_:)` and `particleSurface(of:)` from Chapter 17 turn one into a mesh, and a mesh always goes.
+
+One number decides whether the model is furniture or a paperweight:
+
+```swift
+scene.write(to: "piece.usdz", metersPerUnit: 0.05)
+```
+
+A model file records how big one scene unit is, and nothing is scaled on the way out. At the default of 1 a sphere of radius 1 arrives two meters across. Most 3D sketches work at unit scale, so something between `0.01` and `0.1` is usually what you want for a piece someone will set on a table.
+
+Lighting is the one place a spatial export deliberately gives something up. The lights travel, but an [environment](../Docs/3D/3D.md#environment-lighting) does not, because a viewer supplies its own, and in AR that viewer is a camera looking at your actual room. A metal surface exported this way reflects wherever it ends up, which is a better answer than the studio it was made in. [Spatial](../Docs/Output/Spatial.md) has the full list of what carries, and `Examples/3D/Geometry/SpatialExport` is a ring of solids with a save key.
+
 ## Reproducibility is part of the piece
 
 A shared render is better when it can be *re-made*. Three habits from earlier chapters do the work here. Seed the randomness (`seed(…)` in `setup()`, Chapter 4), so the export and the re-export are the same artwork, not siblings. Copy tuned `@Param` values back into their declarations once they feel right, because a headless export reads the defaults written in code, not the inspector. And share the `.swift` file alongside the render when you can, because in Ollin the sketch is the artifact, and a reader holding the source holds the whole piece, seeds, knobs, and all.

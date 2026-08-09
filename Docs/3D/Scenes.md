@@ -160,6 +160,14 @@ let stage = Scene(nodes: [
 drawScene(stage)
 ```
 
+### Writing one back out
+
+A scene goes out the way it came in. [`Scene.write(to:)`](../Output/Spatial.md) writes it as USDZ, the format Quick Look, Messages, and visionOS read, and `OllinApp.spatialScene(of:frame:)` records a frame of any 3D sketch as a `Scene` first, so a piece can leave as a model rather than a picture of one.
+
+```swift
+scene.write(to: "piece.usdz", metersPerUnit: 0.05)
+```
+
 <a id="notes"></a>
 ### Notes
 

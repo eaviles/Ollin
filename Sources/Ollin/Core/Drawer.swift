@@ -420,6 +420,19 @@ final class Drawer {
     static var defaultAmbient: Color { LightingPreset.standard.ambient }
     static var defaultLights: [Light] { LightingPreset.standard.lights }
 
+    /// The lights actually shading this frame: none when lighting is off or an
+    /// environment is standing in for the rig, the default rig when nothing was
+    /// set, and the sketch's own once it sets any. What the renderer packs, and
+    /// what a spatial export writes out, so the two can't disagree about which
+    /// lights the frame had.
+    var activeLights: [Light] {
+        switch lightingMode {
+        case .off: []
+        case .auto: environment != nil ? [] : Drawer.defaultLights
+        case .custom: lights
+        }
+    }
+
     /// Whether a depth scene (`drawDepthScene`) was recorded this frame. Like an
     /// active camera, it makes the renderer allocate the depth buffer — so a 2D
     /// sketch can prime depth from a depth map and composite 2D against it with no
@@ -817,6 +830,11 @@ final class Drawer {
     /// of being tessellated/SDF-encoded for the GPU (see SVGExport.swift). It lives
     /// outside the per-frame reset so the exporter owns its lifecycle.
     var svgRecorder: SVGRecorder?
+
+    /// When set, 3D draw calls are collected as scene nodes for spatial export
+    /// instead of being encoded for the GPU (see SpatialExport.swift). The
+    /// three-dimensional sibling of `svgRecorder`, with the same lifecycle.
+    var spatialRecorder: SpatialRecorder?
 
     // MARK: Gradient rows
 
@@ -1224,6 +1242,7 @@ final class Drawer {
         guard camera3D != nil, count > 0 else { return }
         // Vector export is 2D only, and a splat cloud has no outline to write.
         if svgRecorder != nil { return }
+        if let spatialRecorder { spatialRecorder.skip("a GPU particle system"); return }
         currentTarget?.needsDepth = true   // 3D in a target → that pass carries depth
         // Left open to nothing, so a following `drawPointCloud` opens its own batch
         // rather than merging its uploaded points into this one (where they would be
@@ -1787,26 +1806,19 @@ final class Drawer {
             u.fogParams2 = SIMD4<Float>(0, Float(camera3D?.far ?? 0), 0, 0)
         }
         let ambient: Color
-        let activeLights: [Light]
         switch lightingMode {
         case .off:
             u.enabled = 0
             return u   // flat, unlit; lights/ambient/shadows unused
         case .auto:
-            if environment != nil {
-                // An environment lights the scene through IBL, so it stands in for the
-                // auto rig: no default lights, no flat ambient (the irradiance map is the
-                // ambient). A sketch that wants both adds its own lights (→ `.custom`).
-                ambient = .black
-                activeLights = []
-            } else {
-                ambient = Drawer.defaultAmbient
-                activeLights = Drawer.defaultLights
-            }
+            // An environment lights the scene through IBL, so it stands in for the
+            // auto rig: no default lights, no flat ambient (the irradiance map is the
+            // ambient). A sketch that wants both adds its own lights (→ `.custom`).
+            ambient = environment != nil ? .black : Drawer.defaultAmbient
         case .custom:
             ambient = ambientLightColor ?? .black
-            activeLights = lights
         }
+        let activeLights = self.activeLights
         u.enabled = 1
         // Ray-traced reflections' self-hit ray-origin offset, sized to the scene (the
         // eye→target distance, the scene-scale proxy the shadow framing also uses). The
@@ -2094,6 +2106,7 @@ final class Drawer {
         guard isRecordingBatch || camera3D != nil, !cloud.isEmpty else { return }
         // SVG export is 2D vector only; a splat cloud has no vector outline.
         if svgRecorder != nil { return }
+        if let spatialRecorder { spatialRecorder.skip("a point cloud"); return }
         currentTarget?.needsDepth = true   // 3D in a target → that pass carries depth
         ensureBatch(.points3D)
         points.reserveCapacity(points.count + cloud.count)
@@ -2143,6 +2156,14 @@ final class Drawer {
         }
         // SVG export is 2D vector only; a shaded solid has no vector outline.
         if svgRecorder != nil { return }
+        // Spatial export wants the mesh itself, not a rasterization of it: the
+        // geometry in its own space beside the matrix that placed it.
+        if let spatialRecorder {
+            spatialRecorder.record(mesh: mesh, transform: modelMatrix,
+                                   surface: meshSurfaceColor, finish: currentMaterial,
+                                   wireframe: wireframeEnabled, matcap: currentMatcap != nil)
+            return
+        }
         currentTarget?.needsDepth = true   // 3D in a target → that pass carries depth
         // Wireframe draws the triangle edges only (the faces are see-through), so it
         // ignores the texture and lighting; otherwise a texture maps when matching UVs

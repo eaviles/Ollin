@@ -17,7 +17,16 @@ import Compression
 enum ZipWriter {
 
     /// The entries packed into one archive, in the order given.
-    static func package(_ entries: [(name: String, data: Data)]) -> Data {
+    ///
+    /// `stored` writes every entry uncompressed, and `alignment` (in bytes,
+    /// 0 for none) pads each entry so its *data* starts on that boundary. Both
+    /// are what a `.usdz` package requires: it is a zero-compression archive
+    /// whose files begin at multiples of 64 bytes, so a reader can map the
+    /// bytes in place instead of unpacking them. The padding rides the local
+    /// header's extra field, which is the room the format leaves for exactly
+    /// this. The defaults leave the ordinary compressed archive untouched.
+    static func package(_ entries: [(name: String, data: Data)],
+                        stored: Bool = false, alignment: Int = 0) -> Data {
         var output = Data()
         var directory = Data()
         var offsets: [Int] = []
@@ -26,9 +35,10 @@ enum ZipWriter {
             offsets.append(output.count)
             let name = Array(entry.name.utf8)
             let crc = crc32(entry.data)
-            let stored = deflate(entry.data)
-            let method: UInt16 = stored == nil ? 0 : 8
-            let payload = stored ?? entry.data
+            let deflated = stored ? nil : deflate(entry.data)
+            let method: UInt16 = deflated == nil ? 0 : 8
+            let payload = deflated ?? entry.data
+            let extra = padding(after: output.count + 30 + name.count, to: alignment)
 
             output.append(littleEndian: UInt32(0x0403_4b50))   // local file header
             output.append(littleEndian: UInt16(20))            // version needed
@@ -40,8 +50,9 @@ enum ZipWriter {
             output.append(littleEndian: UInt32(payload.count))
             output.append(littleEndian: UInt32(entry.data.count))
             output.append(littleEndian: UInt16(name.count))
-            output.append(littleEndian: UInt16(0))             // extra length
+            output.append(littleEndian: UInt16(extra.count))
             output.append(contentsOf: name)
+            output.append(extra)
             output.append(payload)
 
             directory.append(littleEndian: UInt32(0x0201_4b50))  // central directory
@@ -81,6 +92,25 @@ enum ZipWriter {
     /// way the format wants it. Fixed so the output stays reproducible.
     private static let time: UInt16 = 0
     private static let date: UInt16 = (1 << 5) | 1
+
+    /// An extra-field block long enough to push `offset` up to the next
+    /// multiple of `alignment`, empty when nothing is needed.
+    ///
+    /// An extra field is a sequence of blocks, each four bytes of header
+    /// followed by its payload, so the shortest one that exists at all is four
+    /// bytes. A gap narrower than that can't be spelled, and the fix is to take
+    /// a whole further boundary rather than write a malformed field.
+    private static func padding(after offset: Int, to alignment: Int) -> Data {
+        guard alignment > 1 else { return Data() }
+        var needed = (alignment - offset % alignment) % alignment
+        guard needed > 0 else { return Data() }
+        while needed < 4 { needed += alignment }
+        var block = Data()
+        block.append(littleEndian: UInt16(0x1986))            // the reference writer's block id
+        block.append(littleEndian: UInt16(needed - 4))
+        block.append(contentsOf: [UInt8](repeating: 0, count: needed - 4))
+        return block
+    }
 
     /// `data` as raw DEFLATE, or `nil` when compressing does not pay (which the
     /// encoder reports by declining to fit inside a buffer the same size as its

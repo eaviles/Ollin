@@ -1472,9 +1472,9 @@ public extension Sketch {
 public extension OllinApp {
     /// Handle the shared headless command-line surface (the export flags
     /// `--export`, `--export-sequence`, `--export-video`, `--export-gif`,
-    /// `--export-loop`, `--export-svg`, `--export-pdf`, `--export-grid`,
-    /// `--export-sweep`, `--export-separations` with their options, `--seed`
-    /// on any of them,
+    /// `--export-loop`, `--export-svg`, `--export-pdf`, `--export-usdz`,
+    /// `--export-grid`, `--export-sweep`, `--export-separations` with their
+    /// options, `--seed` on any of them,
     /// plus `--bench`) against a sketch supplied on demand.
     ///
     /// Returns `true` when a headless flag was recognized (the work ran, or a
@@ -1810,6 +1810,28 @@ public extension OllinApp {
                 FileHandle.standardError.write(Data(
                     "usage: --export-svg <path.svg> | --export-pdf <path.pdf> [--frame N] [--hatch | --cross-hatch] [--hatch-spacing N] [--hatch-angle DEG]\n".utf8))
             }
+            return true
+        }
+        // `swift run Example-X --export-usdz <path> [--frame N] [--meters-per-unit U]`
+        // writes one frame's 3D geometry as a spatial model and exits (no window,
+        // no GPU). `.usda` in the path writes the readable text layer instead of
+        // the package.
+        if let i = args.firstIndex(of: "--export-usdz") {
+            guard i + 1 < args.count else {
+                FileHandle.standardError.write(Data(
+                    "usage: --export-usdz <path.usdz | path.usda> [--frame N] [--meters-per-unit U]\n".utf8))
+                return true
+            }
+            var frame = 0
+            if let f = args.firstIndex(of: "--frame"), f + 1 < args.count {
+                frame = Int(args[f + 1]) ?? 0
+            }
+            var metersPerUnit = 1.0
+            if let m = args.firstIndex(of: "--meters-per-unit"), m + 1 < args.count {
+                metersPerUnit = Double(args[m + 1]) ?? 1
+            }
+            OllinApp.exportSpatial(make(), to: args[i + 1], frame: frame,
+                                   metersPerUnit: metersPerUnit)
             return true
         }
         if let i = args.firstIndex(of: "--bench") {
