@@ -774,6 +774,67 @@ typedef struct {
     unsigned int stopCount;   // ramp stops in use, 1…4
 } OllinEvolutionParams;
 
+// Per-frame parameters for the particle Lenia step (`ParticleLenia`), packed by the
+// CPU and bound at buffer index 11. Every particle reads the same numbers: the whole
+// model is one energy field E = R - G(U), where U is the sum of a ring-shaped kernel
+// over the neighbors, G scores that field, and R pushes anything closer than one unit
+// apart. A particle simply walks down the gradient of E at its own position, so there
+// is no force law, no velocity, and nothing per-particle to carry.
+//
+// Lengths are in *paper units*, and `spacing` says how many canvas points one of them
+// is worth, so the shape of a configuration is independent of how large it is drawn.
+// `wK` is not a free choice: it is the constant that normalizes the kernel over the
+// plane, derived on the CPU from `muK`/`sigmaK`, which is what keeps `muG` meaning the
+// same thing when the ring moves. Stride 112 (16-aligned).
+typedef struct {
+    simd_float4 stops[4];     // field→color ramp, straight RGBA; `stopCount` in use
+    float muK;                // radius of the kernel's ring of influence, paper units
+    float sigmaK;             // how wide that ring is
+    float wK;                 // kernel normalization, derived from muK/sigmaK
+    float muG;                // the field value growth peaks at (also the color's 1.0)
+    float sigmaG;             // how narrow that peak is
+    float cRep;               // how hard two particles inside one unit push apart
+    float spacing;            // canvas points per paper unit
+    float dt;                 // paper time units this step covers
+    float size;               // dot diameter, points
+    unsigned int stopCount;   // ramp stops in use, 1…4
+    float _leniaPad0;
+    float _leniaPad1;
+} OllinLeniaParams;
+
+// Per-frame parameters for the swarm-chemistry step (`SwarmChemistry`), packed by the
+// CPU and bound at buffer index 11. Unlike every other sim here, the numbers that
+// decide how a particle moves are *not* in this struct: each particle carries its own
+// eight-value recipe in a separate buffer, and this struct only holds what is true of
+// the whole world. What is here is the part that makes it evolve rather than merely
+// mix: on contact one particle's recipe overwrites the other's, and `competition`
+// picks which way it goes.
+//
+// The kinetic model is discrete-time (its published units are per *step*, not per
+// second), so `dt` is in steps and a shared recipe means what it says.
+//
+// `lengthScale` is what makes that last claim true. The published value ranges were
+// chosen for a world whose particles sit about 50 units apart, and the ranges carry
+// length: a separation strength is in length²/step². Dropped unconverted into a canvas
+// whose particles sit 17 points apart, separation comes out several times too strong
+// and the swarm blows apart into an even gas. So recipes are *stored* in the published
+// units, and the kernel converts on the way in: lengths and speeds by `lengthScale`,
+// separation by its square. Stride 48 (16-aligned).
+typedef struct {
+    float dt;                  // steps this dispatch covers; 1 is the published step
+    float perceptionLimit;     // the largest R a recipe may hold = the hash cell, points
+    float contactRadius;       // how close two particles count as colliding, points
+    float mutationRate;        // chance a recipe mutates as it is copied
+    float mutationAmount;      // how far one mutated value may move, as a fraction of its range
+    unsigned int competition;  // SwarmChemistry.Competition.shaderIndex: who transmits
+    unsigned int transmits;    // 0 freezes every recipe (a plain heterogeneous swarm)
+    unsigned int step;         // which step: the random stream for steering and mutation
+    unsigned int seed;         // the sim's own seed, never the sketch's rng
+    float size;                // dot diameter, points
+    float opacity;             // how much light one particle contributes, 0…1
+    float lengthScale;         // this world's mean spacing over the published one's (50)
+} OllinSwarmChemistryParams;
+
 // Constants for the final present/tone-map pass (`ollin_present_fragment`). The
 // frame renders into a linear `rgba16Float` intermediate; this pass reads it,
 // scales by `exposure`, maps high-dynamic-range values into displayable range

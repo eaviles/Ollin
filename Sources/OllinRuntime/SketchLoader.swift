@@ -184,8 +184,22 @@ public struct SketchLoader: Sendable {
         // (`CLibtess2` / `CClipper2` / `COllinShaders`). Discovered across both
         // build layouts; see `moduleSearchPaths()`. Without them the compile fails
         // with "no such module 'Ollin'" or "missing required modules".
-        for path in moduleSearchPaths() {
+        // One build layout does not put its C module maps anywhere `-I` can find
+        // them, so they are named outright; see `explicitModuleMaps()`.
+        let named = explicitModuleMaps()
+        // A module named outright must not also be reachable through a search path,
+        // or clang sees it declared twice and refuses the whole compile with
+        // "umbrella for module ... already covers this directory". Only some C
+        // targets get collected into the generated directory, so the ones that do
+        // are skipped by name and the rest still travel as search paths.
+        let alreadyNamed = Set(named.map {
+            ((($0 as NSString).lastPathComponent) as NSString).deletingPathExtension
+        })
+        for path in moduleSearchPaths() where !alreadyNamed.contains(moduleName(declaredIn: path) ?? "") {
             args.append(contentsOf: ["-I", path])
+        }
+        for path in named {
+            args.append(contentsOf: ["-Xcc", "-fmodule-map-file=\(path)"])
         }
         let result = run("/usr/bin/xcrun", args)
         guard result.status == 0 else {
@@ -291,6 +305,58 @@ public struct SketchLoader: Sendable {
 
     /// Walk up from the executable's directory to the enclosing `.build` directory
     /// (the SwiftPM build root), or `nil` if it isn't under one.
+    /// C module maps that have to be named one by one rather than searched for.
+    ///
+    /// `-I` finds a clang module only when the directory holds a file called exactly
+    /// `module.modulemap`, which is how the classic build layout writes them. The
+    /// Xcode build system instead collects every target's map into one
+    /// `GeneratedModuleMaps` directory and names each after its target
+    /// (`CClipper2.modulemap`, `COllinShaders.modulemap`, …), where no amount of
+    /// `-I` will ever find them: the compile fails with "missing required modules"
+    /// even though the maps are right there. That layout is what a plain `swift
+    /// build` produces on this toolchain, which is why every host that compiles a
+    /// sketch (the Guide figures, `OllinLive`, the gallery, `ollin`) could stop
+    /// working after a clean with nothing obviously wrong. Naming them outright is
+    /// what the real build does too.
+    private func explicitModuleMaps() -> [String] {
+        let fm = FileManager.default
+        var out: [String] = []
+        // The products dir is `<root>/Products/<config>`, so the intermediates sit
+        // two levels up. Derived from where this executable actually is rather than
+        // from an assumed `.build`, which is what makes it work from a checkout laid
+        // out any other way.
+        var roots: [String] = []
+        let productsParent = ((buildDir as NSString).deletingLastPathComponent as NSString)
+            .deletingLastPathComponent
+        roots.append((productsParent as NSString).appendingPathComponent("Intermediates.noindex"))
+        if let dotBuild = dotBuildDirectory() {
+            roots.append(((dotBuild as NSString).appendingPathComponent("out") as NSString)
+                .appendingPathComponent("Intermediates.noindex"))
+        }
+        for root in roots {
+            let dir = (root as NSString).appendingPathComponent("GeneratedModuleMaps")
+            for name in (try? fm.contentsOfDirectory(atPath: dir))?.sorted() ?? []
+            where name.hasSuffix(".modulemap") {
+                let path = (dir as NSString).appendingPathComponent(name)
+                if !out.contains(path) { out.append(path) }
+            }
+        }
+        return out
+    }
+
+    /// The module a search directory would contribute, read from the
+    /// `module.modulemap` it holds, or `nil` if it holds none (a Swift module
+    /// directory, which never collides).
+    private func moduleName(declaredIn dir: String) -> String? {
+        let map = (dir as NSString).appendingPathComponent("module.modulemap")
+        guard let text = try? String(contentsOfFile: map, encoding: .utf8) else { return nil }
+        for line in text.split(separator: "\n") {
+            let parts = line.split(whereSeparator: \.isWhitespace)
+            if parts.count >= 2, parts[0] == "module" { return String(parts[1]) }
+        }
+        return nil
+    }
+
     private func dotBuildDirectory() -> String? {
         var dir = buildDir
         while !dir.isEmpty, dir != "/" {

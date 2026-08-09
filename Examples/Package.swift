@@ -119,6 +119,8 @@ let package = Package(
         example("Simulation/Evolution"),
         example("Simulation/Swarm"),
         example("Simulation/ParticleLife"),
+        example("Simulation/ParticleLenia"),
+        example("Simulation/SwarmChemistry"),
         example("Simulation/PrimordialParticles"),
         example("Simulation/Physarum"),
         example("Simulation/ParticleFluid"),

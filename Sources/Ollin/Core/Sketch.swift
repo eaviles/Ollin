@@ -449,6 +449,53 @@ open class Sketch {
         drawer.recordParticles(swarm.current, count: swarm.count)
     }
 
+    /// Make a `ParticleLenia`: `count` particles over `bounds` (the full canvas by
+    /// default) with one model unit drawn `spacing` points wide, seeded from `seed`
+    /// (this sketch's `variation` by default). They start packed in a disc at the
+    /// middle, which is where the structures grow from. Build it in `setup()`, then
+    /// `updateParticleLenia` + `drawParticles` in `draw()`. See `ParticleLenia`.
+    public func particleLenia(count: Int, spacing: Double, bounds: Rectangle? = nil,
+                              seed: UInt64? = nil) -> ParticleLenia {
+        ParticleLenia(count: count, bounds: bounds ?? self.bounds, spacing: spacing,
+                      seed: seed ?? UInt64(variation))
+    }
+
+    /// Step a `ParticleLenia` one frame (a fresh neighbor sort and a walk downhill on
+    /// the energy field, as many times as the pace asks for).
+    public func updateParticleLenia(_ lenia: ParticleLenia) {
+        lenia.recordStep(into: drawer, frameDt: deltaTime)
+    }
+
+    /// Draw a `ParticleLenia`'s particles as discs colored by how crowded each one is.
+    public func drawParticles(_ lenia: ParticleLenia) {
+        drawer.recordParticles(lenia.current, count: lenia.count)
+    }
+
+    /// Make a `SwarmChemistry`: `count` particles over `bounds` (the full canvas by
+    /// default) sharing `kinds` distinct random recipes between them, seeded from
+    /// `seed` (this sketch's `variation` by default). How far a particle can see, how
+    /// close counts as a contact, and the conversion out of the recipes' published
+    /// units all come from how densely `count` particles fill `bounds`, so there is
+    /// nothing else to name. Build it in `setup()`, then `updateSwarmChemistry` +
+    /// `drawParticles` in `draw()`. See `SwarmChemistry`.
+    public func swarmChemistry(count: Int, kinds: Int = 6, size: Double = 2.6,
+                               bounds: Rectangle? = nil,
+                               seed: UInt64? = nil) -> SwarmChemistry {
+        SwarmChemistry(count: count, bounds: bounds ?? self.bounds, kinds: kinds,
+                       size: size, seed: seed ?? UInt64(variation))
+    }
+
+    /// Step a `SwarmChemistry` one frame (the kinetic rule each particle's own recipe
+    /// describes, and the recipes that change hands on contact).
+    public func updateSwarmChemistry(_ chemistry: SwarmChemistry) {
+        chemistry.recordStep(into: drawer, frameDt: deltaTime)
+    }
+
+    /// Draw a `SwarmChemistry`'s particles, colored by the recipe each one is holding.
+    public func drawParticles(_ chemistry: SwarmChemistry) {
+        drawer.recordParticles(chemistry.current, count: chemistry.count)
+    }
+
     /// Make an `AttractorFlow`: `count` particles riding `system`, scattered through
     /// the attractor's own neighborhood from `seed` (this sketch's `variation` by
     /// default). Build it in `setup()`, then `updateAttractorFlow` + `drawParticles`

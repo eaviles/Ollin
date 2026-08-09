@@ -60,12 +60,17 @@ public final class ComputeBuffer<Element>: ComputeBindable, @unchecked Sendable 
         return b
     }
 
-    /// Snapshot the buffer's current contents back to the CPU. Only valid once the
-    /// buffer has been realized and the GPU work that wrote it has completed, so it's
-    /// `@MainActor`: read it on the frame loop after the render, mainly for tests and
-    /// debugging (a per-frame sim never needs it). `nil` before the buffer is bound.
+    /// Snapshot the buffer's current contents back to the CPU. Only valid once the GPU
+    /// work that wrote it has completed, so it's `@MainActor`: read it on the frame loop
+    /// after the render, mainly for tests and debugging (a per-frame sim never needs
+    /// it).
+    ///
+    /// Before the buffer has ever been bound this hands back what it was seeded with,
+    /// which is what it holds: a sketch that reads a sim's state in `setup()` should see
+    /// the state it just built, not a buffer of zeros. `nil` only for a buffer that was
+    /// never seeded and never bound, which has no contents to report yet.
     @MainActor public func snapshot() -> [Element]? {
-        guard let buffer else { return nil }
+        guard let buffer else { return seed }
         let ptr = buffer.contents().bindMemory(to: Element.self, capacity: count)
         return Array(UnsafeBufferPointer(start: ptr, count: count))
     }

@@ -390,6 +390,30 @@ drawImage(slime.image, in: bounds)
 
 One honest caveat covers all three. The neighbor sort settles ties with a race between GPU threads, and these systems are chaotic, so a run is not reproducible frame for frame. Seed them for a repeatable *starting* layout, but don't expect two exports to match.
 
+## Matter that decides what shape to be
+
+The three systems above are written as forces: something pushes, something pulls. **Particle Lenia** is written a different way, and it is worth seeing because the difference is the whole idea. There is no force law. There is a landscape, and particles walk downhill on it.
+
+Each particle adds up a ring-shaped kernel over its neighbors to get one number, how crowded it is. A growth function scores that crowding: there is a level of company a particle likes, and the further from it in either direction, the worse things are. A repulsion term makes being stood on very bad indeed. Add those into one energy, and a particle simply moves whichever way that energy improves.
+
+<img src="Images/16-Simulations/ParticleLenia.jpg" alt="Three dark panels of colored dots. Left, a cell with a fringed pale-green membrane, a warm red interior, and small vesicles inside it. Middle, a looser coral-like labyrinth of green channels with a blue halo of scattered particles. Right, a solid red body inside one clean smooth green membrane" width="680">
+
+```swift
+lenia = particleLenia(count: 6000, spacing: 9)
+
+// each frame:
+updateParticleLenia(lenia)
+drawParticles(lenia)
+```
+
+The three panels above are that same code. The only difference between them is which crowding the growth function is asking for and how fussy it is about getting it: `muG` and `sigmaG`. Two numbers are the difference between a cell with a fringed skin, a coral, and a smooth solid body.
+
+It is worth knowing which term does what, because they pull against each other on the same thing. Growth is the only term that attracts, so with it switched off, particles drift apart. Repulsion is the only term with an opinion at very short range, so with *it* switched off, they end up standing on each other. That second one surprises people: the kernel is a *ring*, so two particles in exactly the same place add almost nothing to each other's crowding, and growth is perfectly happy to let them coincide.
+
+The color in those panels is the crowding itself, measured against what the rule asked for. That is why the membrane reads differently from the inside: particles on the rim have nobody beyond them, so their field is permanently short of the target however well the rule is working. The membrane is not a feature anybody wrote. It is just where the population runs out.
+
+One thing you never set is the kernel's weight. It is not a free number: it is whatever makes the kernel add up to one over the whole plane, so Ollin works it out from the ring you asked for. That is what keeps `muG` meaning the same crowding when you move the ring, and it is why the sketch above names no constants you would have to look up.
+
 ## The flock, a thousand times bigger
 
 Chapter 10 gave one creature a short list of urges and let a few hundred of them flock. That work was done on the CPU, one agent at a time, which is why the counts stayed small. `Swarm` is the same list of urges run on the GPU over the neighbor sort above, so the same rules carry tens or hundreds of thousands of agents.
@@ -502,6 +526,30 @@ Nothing in a `Genome` knows what its numbers mean, which is exactly what lets th
 The mutation rate here defaults far higher than the scored version's, and the reason is arithmetic about people. A search you judge by eye gets maybe twenty candidates a generation and maybe twenty generations before you get bored, so a few hundred looks have to cover ground a scored run covers in millions. Variation has to arrive fast enough to be worth looking at. For the same reason the genomes you picked are carried into the next generation untouched: one breeding is a big step when a person is doing the judging, and the thing you just chose should not vanish the moment you choose it.
 
 The two halves are not the same tool at two sizes. A scored search can only ever find what the score was written to want. A search judged by eye can arrive somewhere you did not know you were going, because you are allowed to change your mind between generations.
+
+## A rule that spreads by winning arguments
+
+Both halves above have generations: everybody flies, everybody is judged, everybody is replaced. **Swarm chemistry** takes the generation away and sees what is left.
+
+Every particle carries its own copy of the rule it moves by, eight numbers called a recipe: how far it sees, the speed it likes, the speed it can reach, and the strengths of cohesion, alignment, separation, random steering, and pace-keeping. When two particles touch, one recipe overwrites the other. Nothing is scored and nothing is aimed at. A recipe spreads because the particles holding it keep meeting particles holding something else and winning.
+
+<img src="Images/16-Simulations/SwarmChemistry.jpg" alt="Three dark panels showing one contest at three ages, with a colored share bar under each. At 71 steps, several small clusters of olive and white particles among scattered green and blue ones, and a bar split six ways. At 401 steps, two larger bodies and a bar split two ways. At 1501 steps, one large body with a green fringe and a bar almost entirely one color" width="680">
+
+```swift
+chem = swarmChemistry(count: 4000, kinds: 6)
+
+// each frame:
+updateSwarmChemistry(chem)
+drawParticles(chem)
+```
+
+The world opens with six random recipes shared out evenly, and the bars under the panels are who is left. Six lines, then two, then very nearly one. Nobody chose the winner, and nobody could have told you in advance which it would be.
+
+`competition` is the one knob that says what winning even means, and it is the whole character of a run. Under `.faster` the recipes that spread are the ones whose particles keep moving. Under `.slower` it is the ones that settle. Under `.majority`, whoever is already surrounded by more of its own kind, which makes the thing at stake territory. Setting `transmits` to false freezes every recipe and gives you the model before any of this was added, a fixed mixture of six kinds, which is worth looking at on its own.
+
+Mutation here is a chance *per contact*, not per generation, and a particle in a crowd makes contact several times a second. So the rate is far below the one `Evolution` uses. Set it as high as a generational search would and the recipes take dozens of nudges inside a single takeover and arrive as noise, which you see immediately: the structures dissolve and the whole thing flattens into an even gas.
+
+The color is the recipe itself, three of its numbers read as red, green and blue. So a takeover reads as one color eating the others, and a mutation as a shift in shade rather than a new color. When one line has won and the picture keeps changing shade, that is the line still drifting inside itself.
 
 ## Putting it together: the organism
 

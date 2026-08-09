@@ -4,7 +4,7 @@
 
 ## Artificial life
 
-Three classic emergent-behavior systems, each running on the GPU: **Particle Life**, the **Primordial Particle System (PPS)**, and **Physarum** (slime mold). They are recipes you call from `draw()`, no satellite needed (they ship with `import Ollin`). Particle Life and PPS are built on the [`SpatialHash`](../Shaders/Compute.md#spatialhash) neighbor search, so tens of thousands of particles can feel their neighbors every frame; Physarum communicates through a trail field instead.
+Five classic emergent-behavior systems, each running on the GPU: **Particle Life**, the **Primordial Particle System (PPS)**, **Physarum** (slime mold), **Particle Lenia**, and **swarm chemistry**. They are recipes you call from `draw()`, no satellite needed (they ship with `import Ollin`). All but Physarum are built on the [`SpatialHash`](../Shaders/Compute.md#spatialhash) neighbor search, so tens of thousands of particles can feel their neighbors every frame; Physarum communicates through a trail field instead.
 
 One shared caveat: these systems are chaotic, and the neighbor search's within-cell order is set by a GPU atomic race, so a run is **not** reproducible frame-for-frame across machines or exports. Seed them for a repeatable *starting* layout, but do not expect a pixel-identical video every time.
 
@@ -13,6 +13,8 @@ One shared caveat: these systems are chaotic, and the neighbor search's within-c
 - [Particle Life](#particle-life)
 - [Primordial Particle System](#pps)
 - [Physarum](#physarum)
+- [Particle Lenia](#particle-lenia)
+- [Swarm chemistry](#swarm-chemistry)
 - [Building your own on `SpatialHash`](#your-own)
 
 <a id="particle-life"></a>
@@ -101,6 +103,88 @@ The agents start in a central disc facing out, so a radial web reaches across th
 
 Example: `Examples/Simulation/Physarum`.
 
+<a id="particle-lenia"></a>
+### Particle Lenia
+
+No force law at all: an energy field, and particles walking downhill on it. Each particle adds up a ring-shaped kernel over its neighbors to get a field value `U`, a growth function scores that crowding, a repulsion term keeps anyone from standing on anyone, and the particle moves whichever way the total `E = R − G(U)` improves. Out of those three lines come membranes, cells that hold their shape, rotors, and things that split in two.
+
+```swift
+var lenia: ParticleLenia!
+
+override func setup() {
+    background(.black); noClear()
+    lenia = particleLenia(count: 6000, spacing: 9)
+}
+
+override func draw() {
+    background(.black)
+    blendMode(.add)
+    updateParticleLenia(lenia)
+    drawParticles(lenia)
+}
+```
+
+`spacing` is the only length you name: it says how many canvas points one model unit is drawn as, so a configuration keeps its shape at any size. Everything else is the model itself, live every frame:
+
+| Knob | Meaning | Default |
+| --- | --- | --- |
+| `muK` | radius of the kernel's ring of influence, in model units | 4 |
+| `sigmaK` | how wide that ring is | 1 |
+| `muG` | the field value growth peaks at: the crowding a particle prefers | 0.6 |
+| `sigmaG` | how narrow that preference is (small is fussy, and fussy makes a sharp edge) | 0.15 |
+| `cRep` | how hard two particles closer than one unit push apart | 1 |
+| `speed` | model time per second of wall clock | 1 |
+
+The two force terms pull against each other, and it is worth knowing which does what: **growth is the only attractive term**, and **repulsion is the only term with an opinion at very short range**. The kernel is a *ring*, so two particles in the same place contribute almost nothing to each other's field, and growth on its own is perfectly happy to let them coincide.
+
+There is no kernel weight to set. It is not a free parameter: the weight is whatever makes the kernel integrate to one over the plane, so Ollin derives it from `muK` and `sigmaK`. That is what keeps `muG` meaning the same crowding when you move the ring, and at the published ring it comes out as the 0.022 the paper prints.
+
+Particles start packed in a disc at the middle, about one per unit of area. Scattered over a whole canvas instead, most would open outside everyone's kernel with nothing to organize with, and the first thing you would see is a long minute of nothing.
+
+Example: `Examples/Simulation/ParticleLenia`.
+
+<a id="swarm-chemistry"></a>
+### Swarm chemistry
+
+Every particle carries its own copy of the rule it moves by, and on contact one copy overwrites the other. There is no generation boundary and nothing is being scored. A recipe spreads because the particles holding it keep meeting particles holding something else and winning, which turns out to be enough.
+
+A **recipe** is eight numbers: how far a particle sees, the speed it likes, the speed it can reach, and the strengths of cohesion, alignment, separation, random steering, and pace-keeping. The world opens with a handful of random recipes shared out evenly, and from then on they compete.
+
+```swift
+var chem: SwarmChemistry!
+
+override func setup() {
+    chem = swarmChemistry(count: 4000, kinds: 6)
+}
+
+override func draw() {
+    // A translucent wipe, not a hard clear: these particles move a few points a step,
+    // so a still frame of dots shows density where trails show movement.
+    background(Color(white: 0.04).withAlpha(0.14))
+    updateSwarmChemistry(chem)
+    drawParticles(chem)
+}
+```
+
+| Knob | Meaning | Default |
+| --- | --- | --- |
+| `transmits` | whether recipes copy on contact at all; false freezes them into a plain mixture of kinds | true |
+| `competition` | who wins a contact: `.faster`, `.slower`, or `.majority` (whoever is surrounded by more of its own line) | `.majority` |
+| `mutationRate` | chance a recipe mutates as it is copied | 0.01 |
+| `mutationAmount` | how far one mutated value may move, as a fraction of its range | 0.08 |
+
+`competition` is what "doing well" even means here, and it is the whole character of a run. Setting `transmits` to false gives you the model before the evolutionary layer: a fixed heterogeneous mixture, which is worth seeing on its own.
+
+**Mutation is per contact, not per generation**, and a particle in a crowd makes contact several times a second. That is why the default rate is far below what a generational algorithm like [`Evolution`](Evolution.md) uses: at that rate a recipe takes dozens of nudges within a single takeover and arrives as noise, which shows up as the whole population dissolving into an even gas.
+
+Color is the recipe itself (cohesion, alignment and separation as red, green and blue, the published visualization), so a takeover reads as one color eating the others and a mutation as a shift in shade rather than a new color.
+
+Read the state back with `lineageCounts()` (how many particles each opening line still holds, the scoreboard the model never keeps for itself), `snapshotRecipes()`, and `snapshotLineages()`. All three stall until the GPU has caught up, so call them a few times a second rather than every frame.
+
+**Recipes are stored in the published units**, so one written down anywhere means the same behaviour here. That takes a conversion, because those ranges were chosen for a world whose particles sit about fifty units apart and they carry length (separation is in length² per step²). Ollin derives the conversion, along with how far a particle can see and how close counts as a contact, from how densely `count` particles fill `bounds`, so a particle sees about as many others as one in the published world did and there is nothing else for you to name. Dropped in unconverted, separation comes out several times too strong and the swarm blows apart.
+
+Example: `Examples/Simulation/SwarmChemistry`.
+
 <a id="your-own"></a>
 ### Building your own on `SpatialHash`
 
@@ -108,6 +192,6 @@ Particle Life and PPS hide the neighbor search inside a typed sim. To build your
 
 ### Notes
 
-- **Credits.** Particle Life (Ventrella / Tom Mohr), PPS (Schmickl et al.), Physarum (Jones), and the counting-sort neighbor search (Hoetzlein) are reimplemented from the published techniques and credited in [`ATTRIBUTION.md`](../../ATTRIBUTION.md).
-- **Draw order.** Particle Life and PPS render as additive discs in call order like any other drawing; Physarum draws as an `Image`. Compose them with the rest of a sketch freely.
+- **Credits.** Particle Life (Ventrella / Tom Mohr), PPS (Schmickl et al.), Physarum (Jones), Particle Lenia (Mordvintsev, Niklasson and Randazzo), swarm chemistry (Sayama), and the counting-sort neighbor search (Hoetzlein) are reimplemented from the published techniques and credited in [`ATTRIBUTION.md`](../../ATTRIBUTION.md).
+- **Draw order.** Particle Life, PPS, Particle Lenia and swarm chemistry render as discs in call order like any other drawing; Physarum draws as an `Image`. Compose them with the rest of a sketch freely.
 - **Cost is neighbor density.** The hash makes the per-frame cost scale with the number of *near* pairs, not all pairs, so a larger `radius` (denser neighborhoods) costs more than a larger `count` alone.
