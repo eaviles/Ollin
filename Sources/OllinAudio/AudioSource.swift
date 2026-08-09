@@ -1,15 +1,20 @@
 import AVFoundation
 
-/// Installs a tap that feeds `analyzer` from a node's output.
+/// Installs a tap that feeds `analyzer` from a node's output, and passes the
+/// same audio on to `relay` when the source is also being listened to.
 ///
 /// This is a free (non-isolated) function on purpose: the tap closure runs on
 /// the audio render thread. If it were formed inside a `@MainActor` method,
 /// Swift would give it main-actor isolation and inject an executor assertion
 /// that traps the moment the audio thread invokes it. Forming it here keeps it
-/// non-isolated, and it only captures the `Sendable` analyzer.
-func installAnalyzerTap(on node: AVAudioNode, bufferSize: UInt32, analyzer: AudioAnalyzer) {
+/// non-isolated, and it only captures `Sendable` values.
+func installAnalyzerTap(
+    on node: AVAudioNode, bufferSize: UInt32, analyzer: AudioAnalyzer,
+    relay: AudioTapRelay? = nil
+) {
     node.installTap(onBus: 0, bufferSize: bufferSize, format: nil) { buffer, _ in
         analyzer.process(buffer)
+        relay?.deliver(buffer)
     }
 }
 

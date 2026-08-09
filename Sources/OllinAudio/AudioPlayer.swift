@@ -135,8 +135,22 @@ public final class AudioPlayer: AudioSource {
 
     private func installTapIfNeeded() {
         guard !tapInstalled else { return }
-        installAnalyzerTap(on: engine.mainMixerNode, bufferSize: tapBufferSize, analyzer: analyzer)
+        installAnalyzerTap(on: engine.mainMixerNode, bufferSize: tapBufferSize,
+                           analyzer: analyzer, relay: relay)
         tapInstalled = true
+    }
+
+    private let relay = AudioTapRelay()
+}
+
+/// A playing file is a sound source anything can listen to. Samples flow while
+/// the engine plays, so the export clock's silent path carries none: a sketch
+/// that wants words out of a file under an export transcribes it with
+/// `SpeechListener.transcribe(contentsOf:)` instead.
+extension AudioPlayer: AudioTapSource {
+    public var audioTap: AudioTap? {
+        get { relay.tap }
+        set { relay.tap = newValue }
     }
 }
 

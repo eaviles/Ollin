@@ -1,4 +1,5 @@
 import AVFoundation
+import Ollin
 import os
 
 /// The generation side: a single oscillator that synthesizes a tone you can hear
@@ -101,8 +102,20 @@ public final class Tone: AudioSource {
 
     private func installTapIfNeeded() {
         guard !tapInstalled else { return }
-        installAnalyzerTap(on: engine.mainMixerNode, bufferSize: tapBufferSize, analyzer: analyzer)
+        installAnalyzerTap(on: engine.mainMixerNode, bufferSize: tapBufferSize,
+                           analyzer: analyzer, relay: relay)
         tapInstalled = true
+    }
+
+    private let relay = AudioTapRelay()
+}
+
+/// A sounding oscillator is a sound source anything can listen to, which is
+/// mostly useful for checking a listener against a sound you generated.
+extension Tone: AudioTapSource {
+    public var audioTap: AudioTap? {
+        get { relay.tap }
+        set { relay.tap = newValue }
     }
 }
 

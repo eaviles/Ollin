@@ -1,4 +1,5 @@
 import AVFoundation
+import Ollin
 
 /// Live audio from the system's default input (the microphone), analyzed in real
 /// time. Create it in `setup()`, `start()` it, then read `amplitude`, `spectrum`,
@@ -69,9 +70,22 @@ public final class AudioInput: AudioSource {
     }
 
     private func startEngine() throws {
-        installAnalyzerTap(on: engine.inputNode, bufferSize: tapBufferSize, analyzer: analyzer)
+        installAnalyzerTap(on: engine.inputNode, bufferSize: tapBufferSize,
+                           analyzer: analyzer, relay: relay)
         engine.prepare()
         try engine.start()
         isRunning = true
+    }
+
+    private let relay = AudioTapRelay()
+}
+
+/// The microphone is a sound source anything can listen to, so a
+/// `SpeechListener` or a `SoundClassifier` binds to it the way it binds to a
+/// playing video. Samples flow once capture is running.
+extension AudioInput: AudioTapSource {
+    public var audioTap: AudioTap? {
+        get { relay.tap }
+        set { relay.tap = newValue }
     }
 }

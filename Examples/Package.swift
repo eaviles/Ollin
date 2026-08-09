@@ -418,6 +418,7 @@ let package = Package(
         example("Audio/Sampler", [.audio]),
         example("Audio/Spectrum", [.audio]),
         example("Audio/Microphone", [.audio]),
+        example("Audio/Listening", [.audio]),
         example("Audio/ChladniResonance", [.audio]),
         // The bundled clip the sketch loads via Bundle.module (a launch path
         // overrides it). CC BY-SA, provenance in THIRD-PARTY-NOTICES.md.

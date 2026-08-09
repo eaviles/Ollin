@@ -35,21 +35,22 @@ public final class Soundtrack: AudioSource {
     /// the band and beat math honest; the store hides the swap.
     public nonisolated var analyzer: AudioAnalyzer { store.current }
 
-    private let source: any AudioTapSource
+    private let hub: AudioTapHub
     private let store: SoundtrackAnalyzerStore
 
     /// Starts analyzing `source`'s audio. `fftSize` and `smoothing` mirror the
     /// other audio sources' knobs.
     public init(of source: any AudioTapSource, fftSize: Int = 1024, smoothing: Float = 0.8) {
-        self.source = source
         let store = SoundtrackAnalyzerStore(fftSize: fftSize, smoothing: smoothing)
         self.store = store
-        source.audioTap = makeSoundtrackTap(store: store)
+        self.hub = SourceTapHubs.hub(for: source)
+        hub.register(store)
     }
 
-    /// Stops analyzing, releasing the source's tap slot.
+    /// Stops analyzing. The source's tap slot is released once nothing else in
+    /// this library is listening to it.
     public func detach() {
-        source.audioTap = nil
+        hub.unregister(store)
     }
 }
 
@@ -88,12 +89,11 @@ final class SoundtrackAnalyzerStore: @unchecked Sendable {
     }
 }
 
-/// Forms the tap in a free function so the closure stays non-isolated: the
-/// source calls it on its audio thread, and a main-actor closure would trap
-/// there (the render-thread rule).
-private func makeSoundtrackTap(store: SoundtrackAnalyzerStore) -> AudioTap {
-    { samples, sampleRate in
+/// The store is what actually listens: the hub hands it each block of samples
+/// on the source's audio thread, and it keeps only what the analyzer needs.
+extension SoundtrackAnalyzerStore: AudioListening {
+    func hear(_ samples: UnsafeBufferPointer<Float>, sampleRate: Double) {
         guard let base = samples.baseAddress, samples.count > 0 else { return }
-        store.analyzer(matching: sampleRate).process(samples: base, count: samples.count)
+        analyzer(matching: sampleRate).process(samples: base, count: samples.count)
     }
 }
