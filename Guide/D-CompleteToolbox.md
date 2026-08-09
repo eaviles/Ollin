@@ -154,6 +154,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Force-directed layout | `ForceLayout`: a graph untangling itself into an even web you can grow, pin, and drag | [Ch 9](09-ForcesAndPhysics.md) | [ForceLayout](../Docs/Generators/ForceLayout.md) |
 
 | Artificial life | `ParticleLife`, `PPS`, `Physarum` on the public `SpatialHash` neighbor search | [Ch 16](16-Simulations.md) | [Artificial life](../Docs/Simulation/ArtificialLife.md) |
+| Steering at scale | `Swarm`: separation, alignment, cohesion, seek, flee, arrive, wander, and flow as weights over tens of thousands of agents | [Ch 16](16-Simulations.md) | [Swarm](../Docs/Simulation/Swarm.md) |
 | Particle fluids | `ParticleFluid`: SPH liquid with a free surface, splashes, and grabbing | [Ch 16](16-Simulations.md) | [Fluids](../Docs/Simulation/Fluids.md) |
 | Soft bodies | `SoftBodies`: shape-matched jellies that squash and pile | [Ch 16](16-Simulations.md) | [Fluids](../Docs/Simulation/Fluids.md) |
 

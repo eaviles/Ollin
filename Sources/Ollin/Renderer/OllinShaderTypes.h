@@ -672,6 +672,37 @@ typedef struct {
     float damping;                // fraction of velocity kept per second, 0…1
 } OllinSoftBodyParams;
 
+// Per-frame parameters for the steering step (`Swarm`), packed by the CPU and bound
+// at buffer index 11. Every behavior is a weight, so a zero weight is a behavior
+// that is off, and the kernel sums the weighted forces before one truncation at
+// `maxForce` (the published combination method). Speeds and forces are per second,
+// so the sim keeps its pace whatever the frame rate. Stride 96 (8-aligned).
+typedef struct {
+    simd_float2 target;           // seek/flee/arrive target, canvas points
+    float maxSpeed;               // top speed, points/s
+    float maxForce;               // strongest steering force, points/s²
+    float separation;             // ── behavior weights, 0 = off ──
+    float alignment;
+    float cohesion;
+    float seek;
+    float flee;
+    float arrive;
+    float wander;
+    float flow;
+    float separationRadius;       // points; ≤ the hash cell (the perception radius)
+    float viewCosine;             // cos of half the field of view; -1 sees all round
+    float slowingRadius;          // where arrival begins to ramp down, points
+    float wanderRadius;           // radius of the projected wander circle, points
+    float wanderDistance;         // how far ahead that circle sits, points
+    float wanderRate;             // radians of random displacement per second
+    float flowScale;              // flow-field frequency, cycles per point
+    float flowLookAhead;          // how far ahead the field is sampled, points
+    float minSpeed;               // slowest an agent may travel; 0 lets it stop
+    float dt;                     // seconds this step covers
+    float _swarmPad0;
+    float _swarmPad1;
+} OllinSwarmParams;
+
 // Per-frame constants bound to a user-supplied shader's fragment (buffer 1). The
 // generated wrapper exposes these to the sketch's `shade(uv, info)` as a
 // `ShaderInfo` value, so a shader reads `info.time` / `info.resolution` / … with

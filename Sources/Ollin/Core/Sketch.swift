@@ -425,6 +425,30 @@ open class Sketch {
     /// diffuses, decays, and colorizes).
     public func updatePhysarum(_ physarum: Physarum) { physarum.recordStep(into: drawer) }
 
+    /// Make a `Swarm`: `count` steering agents scattered over `bounds` (the full
+    /// canvas by default), each seeing others within `perceptionRadius`, seeded from
+    /// `seed` (this sketch's `variation` by default). Every behavior starts at weight
+    /// zero, so set the ones you want. Build it in `setup()`, then `updateSwarm` +
+    /// `drawParticles` in `draw()`. See `Swarm`.
+    public func swarm(count: Int, perceptionRadius: Double, colors: [Color] = [],
+                      size: Double = 2.0, bounds: Rectangle? = nil,
+                      seed: UInt64? = nil) -> Swarm {
+        Swarm(count: count, bounds: bounds ?? self.bounds,
+              perceptionRadius: perceptionRadius, colors: colors, size: size,
+              seed: seed ?? UInt64(variation))
+    }
+
+    /// Step a `Swarm` one frame (builds its neighbor hash, then sums the weighted
+    /// steering behaviors and moves every agent).
+    public func updateSwarm(_ swarm: Swarm) {
+        swarm.recordStep(into: drawer, frameDt: deltaTime)
+    }
+
+    /// Draw a `Swarm`'s agents as additive discs.
+    public func drawParticles(_ swarm: Swarm) {
+        drawer.recordParticles(swarm.current, count: swarm.count)
+    }
+
     /// Make a `ParticleFluid`: `count` fluid particles interacting within `radius`
     /// (the fluid's resolution), seeded as a block inside `bounds` (the full canvas
     /// by default) from `seed` (this sketch's `variation` by default). Build it in
