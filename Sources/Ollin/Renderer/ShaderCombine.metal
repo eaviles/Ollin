@@ -931,3 +931,70 @@ fragment float4 ollin_rt_reflect_temporal(PresentOut in [[stage_in]],
     float4 hist = clamp(history.sample(samp, prevUV), lo, hi);
     return mix(current, hist, alpha);             // exponential moving average
 }
+
+// MARK: - Separable subsurface scattering (the diffusion blur)
+//
+// Two fullscreen passes (horizontal, then vertical over the first's output) that
+// convolve the linear pre-tonemap frame with a separable diffusion kernel wherever
+// the scatter mask marks a surface, softening shading the way light spreading under
+// skin, wax, or marble does. Written from the published separable-subsurface-
+// scattering technique (see ATTRIBUTION.md); the kernel rows are built on the CPU
+// (a pure function of the material's falloff and strength, so exports reproduce).
+//
+// Inputs: texture 0 = the frame (linear, premultiplied; pass 2 reads pass 1's
+// output), texture 1 = the scatter mask (step in uv units of the height axis, mark,
+// view depth, profile index). Params: row 0 = (dir.x, dir.y, ortho flag, aspect),
+// row 1 = (projection[1][1], 0, 0, 0); kernel rows follow, 25 per profile (kept in
+// step with MetalRenderer.scatterTapCount), each (r, g, b weight, offset in ±3
+// profile units).
+//
+// An unmarked pixel passes through untouched, so within a scattering frame the
+// non-scattering pixels are bit-exact. A tap across a depth gap is pulled back to
+// the center color before it accumulates: a silhouette neither bleeds the
+// background into the surface nor rings dark (background depth reads 0, a hard
+// gap by construction). Alpha keeps the center's value; the kernel weights sum to
+// one per channel, so the blur conserves the surface's energy.
+
+fragment float4 ollin_sss_blur(PresentOut in [[stage_in]],
+                               texture2d<float> color [[texture(0)]],
+                               texture2d<float> mask [[texture(1)]],
+                               sampler samp [[sampler(0)]],
+                               constant float4 *params [[buffer(0)]]) {
+    float4 colorM = color.sample(samp, in.uv);
+    float4 m = mask.sample(samp, in.uv);
+    if (m.y < 0.5 || m.x <= 0.0) return colorM;   // not a scattering surface
+
+    float2 dir = params[0].xy;
+    bool ortho = params[0].z == 1.0;
+    float aspect = params[0].w;
+
+    // One unit of kernel offset is a third of the projected radius (the offsets
+    // span ±3); the mask's step is measured on the height axis, so the horizontal
+    // pass divides by the aspect to take equal ground in both directions.
+    float2 finalStep = dir * (m.x / 3.0);
+    finalStep.x /= aspect;
+
+    constant float4 *taps = params + 2 + int(rint(m.w)) * 25;
+    float depthM = m.z;
+    // The depth-gap guard, measured against the scattering radius itself (undo the
+    // projection the mask baked into the step) so it is scale-invariant: a tap
+    // fully cut once the surfaces sit four radii apart in depth, untouched blur
+    // within the surface's own gentle curvature. A fixed screen-space constant
+    // here saturates on any scene whose radius is a visible fraction of the
+    // object and silently turns the blur off, a real first-render bug.
+    float p11 = params[1].x;
+    float radiusWorld = 2.0 * m.x * (ortho ? 1.0 : depthM) / p11;
+    float followScale = 0.25 / max(radiusWorld, 1e-6);
+
+    float4 blurred = colorM;
+    blurred.rgb *= taps[0].rgb;
+    for (int i = 1; i < 25; ++i) {
+        float2 offset = in.uv + taps[i].w * finalStep;
+        float3 tap = color.sample(samp, offset).rgb;
+        float depthTap = mask.sample(samp, offset).z;
+        float gap = saturate(followScale * abs(depthM - depthTap));   // 1 at four radii of depth gap
+        tap = mix(tap, colorM.rgb, gap);
+        blurred.rgb += taps[i].rgb * tap;
+    }
+    return blurred;
+}

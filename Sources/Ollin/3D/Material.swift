@@ -210,6 +210,23 @@ public struct Material: Equatable, Sendable {
     /// The color of the subsurface glow (a jade green, a warm wax, a fleshy tone).
     public var subsurfaceColor: Color
 
+    /// Real subsurface scattering strength, `0…1`: how much of the surface's light
+    /// enters the body and re-emerges nearby, softening shading the way skin, wax,
+    /// and marble do (a screen-space diffusion over the rendered surface, distinct
+    /// from the stylized `subsurface` glow, which fakes back-light and can layer on
+    /// top). `0` (the default) is off. Needs `scatteringRadius` set too; applies to
+    /// solid and textured meshes on the main canvas.
+    public var scattering: Double
+    /// How far light travels under the surface before re-emerging, in world units.
+    /// A human-scale head wants roughly 1% of its width; too large reads as wax.
+    /// `0` (the default) turns the scattering off whatever `scattering` says.
+    public var scatteringRadius: Double
+    /// How far each channel travels *relative to* `scatteringRadius`: the channel
+    /// ratios shape the diffusion color. The default (1, 0.37, 0.3) lets red run
+    /// farthest, the warm halo of skin; near-equal channels read as a neutral
+    /// marble or wax.
+    public var scatteringColor: Color
+
     /// Gooch shading: the warm tone on the lit side. Ignored unless `shading == .gooch`.
     public var goochWarm: Color
     /// Gooch shading: the cool tone on the shadow side. Ignored unless `shading == .gooch`.
@@ -234,6 +251,8 @@ public struct Material: Equatable, Sendable {
                 sparkleSharpness: Double = 48, sparkleColor: Color = .white,
                 rim: Double = 0, rimPower: Double = 2, rimColor: Color = .white,
                 subsurface: Double = 0, subsurfaceColor: Color = .white,
+                scattering: Double = 0, scatteringRadius: Double = 0,
+                scatteringColor: Color = Color(red: 1.0, green: 0.37, blue: 0.3),
                 goochWarm: Color = Color(red: 0.7, green: 0.5, blue: 0.15),
                 goochCool: Color = Color(red: 0.05, green: 0.1, blue: 0.35)) {
         self.shading = shading
@@ -266,6 +285,9 @@ public struct Material: Equatable, Sendable {
         self.rimColor = rimColor
         self.subsurface = min(1, max(0, subsurface))
         self.subsurfaceColor = subsurfaceColor
+        self.scattering = min(1, max(0, scattering))
+        self.scatteringRadius = max(0, scatteringRadius)
+        self.scatteringColor = scatteringColor
         self.goochWarm = goochWarm
         self.goochCool = goochCool
     }
@@ -319,6 +341,14 @@ public struct Material: Equatable, Sendable {
         let sc = Material.linear(sheenColor, alpha: sheenRoughness)
         m.sheenColor = SIMD4<Float>(sc.x * Float(sheen), sc.y * Float(sheen),
                                     sc.z * Float(sheen), sc.w)
+        // The scattering falloff ratios ride raw (they are relative widths, not a
+        // display color; linearizing would bend the ratios the sketch wrote), floored
+        // just above zero so the kernel's per-channel stretch can't divide by zero.
+        m.scatter = SIMD4<Float>(Float(max(0.001, scatteringColor.red)),
+                                 Float(max(0.001, scatteringColor.green)),
+                                 Float(max(0.001, scatteringColor.blue)),
+                                 Float(scatteringRadius))
+        m.scatterStrength = Float(scattering)
         return m
     }
 
@@ -412,6 +442,27 @@ public extension Material {
     static let wax = Material(specular: 0.2, shininess: 24,
                               subsurface: 0.85,
                               subsurfaceColor: Color(red: 1.0, green: 0.75, blue: 0.45))
+
+    // Real subsurface scattering: the screen-space diffusion blur, on the
+    // physically-based finish. The radius is in world units, so it names the one
+    // scene-dependent number (a head-sized form wants roughly 1% of its width).
+
+    /// **Skin**: a soft dielectric whose light diffuses under the surface, red
+    /// running farthest, the warm halo that separates skin from painted plastic.
+    /// `radius` is how far light travels under the surface, in world units.
+    static func skin(radius: Double) -> Material {
+        Material(shading: .physicallyBased, metallic: 0, roughness: 0.45,
+                 scattering: 0.85, scatteringRadius: radius)
+    }
+
+    /// **Marble** / alabaster: a polished stone whose shading softens into the body,
+    /// with a near-neutral, slightly warm diffusion. `radius` is how far light
+    /// travels under the surface, in world units.
+    static func marble(radius: Double) -> Material {
+        Material(shading: .physicallyBased, metallic: 0, roughness: 0.2,
+                 scattering: 0.7, scatteringRadius: radius,
+                 scatteringColor: Color(red: 1.0, green: 0.83, blue: 0.72))
+    }
 
     // Non-photorealistic shading models.
 

@@ -406,6 +406,14 @@ typedef struct {
     float clearcoatRoughness;     // PBR: the coat layer's own perceptual roughness (0 = polished)
     simd_float4 sheenColor;       // PBR sheen: rgb = linear sheen tint premultiplied by strength
                                   // (0,0,0 = no sheen); w = the sheen lobe's perceptual roughness
+    simd_float4 scatter;          // real subsurface scattering (the screen-space diffusion blur):
+                                  // rgb = per-channel falloff ratios (raw, not linearized; they
+                                  // stretch the diffusion profile per channel, red widest for skin);
+                                  // w = the scattering radius in world units (0 = off). Read by the
+                                  // scatter-mask pass and the CPU kernel build, never by the lit
+                                  // mesh fragments, so every existing shading path is untouched.
+    float scatterStrength;        // 0…1 fraction of the surface's light the blur diffuses (0 = off)
+    float scatterPad0, scatterPad1, scatterPad2;
 } OllinMaterial;
 
 // Parameters for the live ground-grid overlay (`ollin_grid_fragment`): a shader-drawn

@@ -225,6 +225,7 @@ let package = Package(
         example("3D/Materials/CoatAndCloth"),
         example("3D/Materials/Glass"),
         example("3D/Materials/SoapBubble"),
+        example("3D/Materials/Subsurface"),
         example("3D/Environments/ImageBasedLighting"),
         example("3D/Environments/EnvironmentGallery"),
         example("3D/Environments/ProceduralSky"),

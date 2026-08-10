@@ -58,7 +58,7 @@ The high-end, well-curated realism tier, opt-in on the existing PBR, IBL, ray-tr
 
 - **Real-time global illumination.** Indirect bounce light beyond the IBL ambient term: light probes / irradiance volumes, screen-space GI, or a dynamic-diffuse-GI scheme (DDGI). The single biggest "it looks real" lever after direct lighting.
 - **Volumetrics and atmosphere.** Atmospheric / aerial-perspective scattering (distant objects desaturating into the sky, the depth cue that sells scale), and raymarched volumetric clouds over the procedural sky.
-- **Advanced materials.** Real **subsurface scattering** (skin, wax, jade, beyond the stylized finish), and surface detail (parallax-occlusion and displacement, triplanar and detail maps, decals).
+- **Advanced materials.** Surface detail: parallax-occlusion and displacement mapping, triplanar projection, detail and decal maps.
 - **Image quality and motion.** **Temporal anti-aliasing** (and the temporal accumulation that also cleans SSAO / SSR / GI noise), **MetalFX** temporal upscaling for quality and headroom, **contact shadows** (short-range screen-space) to seat objects on surfaces, and per-object and camera **motion blur** via a velocity buffer for cinematic movement.
 
 See the [design notes](DESIGN-NOTES.md#photorealistic-3d).

@@ -91,6 +91,10 @@ final class MetalRenderer {
         /// plus depth, single-sample, blending off: the one MRT pipeline, so it gets its
         /// own descriptor branch in `makePipeline`.
         var isGBuffer = false
+        /// The subsurface-scatter mask pass: one float attachment written with blending
+        /// off (the mask's alpha channel carries a profile index, which alpha blending
+        /// would corrupt), single-sample, depth-tested into its own depth.
+        var isScatterMask = false
         /// Set (to `.stencil8`) when the pass carries a stencil attachment (clipping is
         /// active on that surface). Part of the key because *every* pipeline drawn into
         /// a stencil-carrying pass must declare the format, clipped or not; a pass with
@@ -234,6 +238,14 @@ final class MetalRenderer {
         static func rtReflectGBuffer(depth: MTLPixelFormat) -> PipelineKey {
             PipelineKey(vertex: "ollin_mesh_gbuffer_vertex", fragment: "ollin_mesh_gbuffer_fragment",
                         depthFormat: depth, isGBuffer: true)
+        }
+        // subsurface-scatter mask: re-render the meshes single-sample into one float
+        // attachment (uv-space blur step, mark, view depth, profile index) with its own
+        // depth, so occluders suppress hidden scattering surfaces. Feeds the separable
+        // diffusion blur; only encoded when the frame carries a scattering material.
+        static func scatterMask(depth: MTLPixelFormat) -> PipelineKey {
+            PipelineKey(vertex: "ollin_mesh_scatter_vertex", fragment: "ollin_mesh_scatter_fragment",
+                        depthFormat: depth, isScatterMask: true)
         }
         // depth-scene backdrop: a textured quad that also writes per-pixel depth from
         // a depth map (premultiplied color, like the image path; outputs [[depth]]).
@@ -755,6 +767,15 @@ final class MetalRenderer {
     /// one queue serialize the writes and reads).
     var rtReflectGBuf: (normal: MTLTexture, material: MTLTexture, depth: MTLTexture, w: Int, h: Int)?
 
+    /// The subsurface-scatter mask pass's cached targets (the per-pixel step/depth
+    /// mask plus its own depth attachment), reallocated on a size change; rewritten
+    /// whole by the pass each frame like the reflection G-buffer above.
+    var scatterMaskCache: (mask: MTLTexture, depth: MTLTexture, w: Int, h: Int)?
+    /// Diffusion-blur kernels, cached by quantized (falloff, strength) profile: a
+    /// kernel is a pure function of the two, so a sketch reusing a material never
+    /// rebuilds its taps.
+    var scatterKernels: [ScatterProfileKey: [SIMD4<Float>]] = [:]
+
     /// The (drawer, frame) whose stateful passes (feedback / sim fields / fluid / SSR
     /// temporal) have already advanced, so a same-frame re-encode reuses their results
     /// instead of stepping them again. The live frame-grab and Syphon hooks re-render
@@ -1066,8 +1087,13 @@ final class MetalRenderer {
                deferredReflection: deferredReflection)
         geomEncoder.endEncoding()
 
-        // Whole-frame postProcess filters run over the resolved frame before present.
-        let presented = applyFrameFilters(drawer, resolved: resolve, width: width, height: height,
+        // The subsurface-scattering diffusion (returns `resolve` untouched when no
+        // material asked for it), then the whole-frame postProcess filters, run over
+        // the resolved frame before present.
+        let scattered = applySubsurfaceScattering(drawer, resolved: resolve, meshBuffer: meshBuf,
+                                                  into: commandBuffer, width: width, height: height,
+                                                  pooled: true)
+        let presented = applyFrameFilters(drawer, resolved: scattered, width: width, height: height,
                                           into: commandBuffer, pooled: true)
         if let presentEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: presentPass(into: drawable.texture)) {
             encodePresent(from: presented, drawer: drawer, into: presentEncoder)
@@ -1412,9 +1438,13 @@ final class MetalRenderer {
                deferredReflection: deferredReflection)
         encoder.endEncoding()
 
-        // Tone-map the resolved float frame (after whole-frame postProcess filters)
-        // into the sRGB display texture.
-        let presented = applyFrameFilters(drawer, resolved: resolveTexture, width: width, height: height,
+        // Tone-map the resolved float frame (after the subsurface-scattering
+        // diffusion and the whole-frame postProcess filters) into the sRGB display
+        // texture.
+        let scattered = applySubsurfaceScattering(drawer, resolved: resolveTexture, meshBuffer: meshBuf,
+                                                  into: commandBuffer, width: width, height: height,
+                                                  pooled: false)
+        let presented = applyFrameFilters(drawer, resolved: scattered, width: width, height: height,
                                           into: commandBuffer, pooled: false)
         guard let presentEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: presentPass(into: displayTexture)) else { return nil }
         encodePresent(from: presented, drawer: drawer, into: presentEncoder)
@@ -1527,7 +1557,9 @@ final class MetalRenderer {
                    halfResField: halfResField,
                    halfResFieldShadow: halfResFieldShadow)
             encoder.endEncoding()
-            let presented = applyFrameFilters(drawer, resolved: resolveTexture, width: width,
+            let scattered = applySubsurfaceScattering(drawer, resolved: resolveTexture, meshBuffer: meshBuf,
+                                                      into: cb, width: width, height: height, pooled: false)
+            let presented = applyFrameFilters(drawer, resolved: scattered, width: width,
                                               height: height, into: cb, pooled: false)
             if let presentEncoder = cb.makeRenderCommandEncoder(descriptor: presentPass(into: displayTexture)) {
                 encodePresent(from: presented, drawer: drawer, into: presentEncoder)

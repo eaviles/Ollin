@@ -2820,6 +2820,47 @@ fragment MeshGBufferFragOut ollin_mesh_gbuffer_fragment(MeshGBufferOut in [[stag
     return out;
 }
 
+// MARK: - Subsurface-scatter mask
+//
+// The subsurface-scattering blur's per-pixel control surface: re-render the meshes
+// (the same dedicated-re-encode pattern as the passes above, single-sample, blending
+// off) writing the projected blur step, a mark, the view-space depth, and the
+// material's diffusion-profile index. Every solid mesh rasterizes depth-tested into
+// the pass's own depth, so an occluder in front of a scattering surface suppresses
+// it; a non-scattering mesh writes mark 0 and only ever occludes. A cleared pixel
+// (all zero) is background: the blur passes through and its depth guard reads the
+// zero depth as a hard gap, so background color never bleeds into a surface.
+
+struct MeshScatterOut {
+    float4 position [[position]];
+    float viewDepth;     // positive view-space depth, world units
+};
+
+vertex MeshScatterOut ollin_mesh_scatter_vertex(uint vid [[vertex_id]],
+                                                const device OllinMeshVertex *verts [[buffer(0)]],
+                                                constant Uniforms3D &u [[buffer(2)]]) {
+    OllinMeshVertex v = verts[vid];
+    float4 viewPos = u.view * float4(v.position.xyz, 1.0);
+    MeshScatterOut out;
+    out.position = u.projection * viewPos;
+    out.viewDepth = -viewPos.z;
+    return out;
+}
+
+fragment float4 ollin_mesh_scatter_fragment(MeshScatterOut in [[stage_in]],
+                                            constant float4 &scatter [[buffer(0)]],
+                                            constant Uniforms3D &u [[buffer(2)]]) {
+    // scatter = (radius in world units, mark, profile index, unused). The stored
+    // step is the radius projected at this fragment's depth, in uv units of the
+    // frame's height axis: projection[1][1] maps view height to clip at unit
+    // depth, halved because clip spans −1…1 while uv spans 0…1. An orthographic
+    // projection ([3][3] is exactly 1) has no depth division.
+    bool ortho = u.projection[3].w == 1.0;
+    float w = ortho ? 1.0 : max(in.viewDepth, 1e-4);
+    float stepUV = scatter.x * u.projection[1].y * 0.5 / w;
+    return float4(stepUV, scatter.y, in.viewDepth, scatter.z);
+}
+
 // MARK: - Wireframe 3D mesh
 //
 // Draws a mesh's triangle edges only (the faces are see-through), unlit. The mesh

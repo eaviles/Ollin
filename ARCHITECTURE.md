@@ -2155,6 +2155,82 @@ neither shades byte-identically (verified against the whole snapshot suite).
   room for them), so a coated or sheened surface seen in a mirror shades as its
   base material there, the glass-in-glass envelope's sibling.
 
+### Subsurface scattering (the separable diffusion)
+
+`Material.scattering` / `scatteringRadius` / `scatteringColor` (presets `.skin(radius:)`
+/ `.marble(radius:)`) is real subsurface scattering as a screen-space diffusion,
+written from the published separable-subsurface-scattering technique (credited in
+`ATTRIBUTION.md`): the exact 2D diffusion kernel is well approximated by two 1D
+convolutions, so the whole effect is two fullscreen passes over the linear
+pre-tonemap frame, inserted between the geometry resolve and the whole-frame
+`postProcess` filters in every render path (live, headless/export, and the GPU
+benchmark; the accumulation surface and the texture hand-off keep their existing
+no-deferred-pass envelope). The stage is content-gated: a frame with no scattering
+material returns the resolved texture untouched and encodes nothing.
+
+- **The kernel is built on the CPU** (`MetalRenderer.scatterKernel`, nonisolated,
+  cached by quantized profile): 25 taps whose offsets are importance-distributed
+  (sign-kept o² over ±3 profile units), each weighted by the trapezoidal span it
+  covers times the diffusion profile there. The profile is the published
+  sum-of-Gaussians fit of measured skin reflectance, one channel's curve reused
+  for all three and stretched per channel by `scatteringColor` (which is what
+  makes one curve serve skin, marble, or a green jade); the fit's narrowest term
+  is direct bounce, accounted by `scattering`, so it's dropped. Weights normalize
+  to unit sum per channel, then the un-scattered share folds back into the center
+  tap: energy-conserving at any strength, and *exactly* the identity at strength
+  0. Pure function of (falloff, strength) → deterministic exports and a cache
+  that never invalidates. Up to 8 distinct profiles ride one frame's params rows
+  (extras reuse the last, noted once).
+- **The mask pass** is a dedicated mesh re-encode (the `encodeMeshNormals` /
+  reflection-G-buffer pattern: never a second attachment on the shared geometry
+  pass), single-sample, writing (projected step in uv units of the height axis,
+  mark, view-space depth, profile index) with its **own depth**, so every solid
+  mesh rasterizes and an occluder in front of a scattering surface suppresses it.
+  Its pipeline (`isScatterMask`) has **blending off**, load-bearing: the alpha
+  channel carries the profile *index*, which `.normal` blending would multiply
+  into the color channels (a profile-0 surface would write rgb × 0). Matcaps
+  occlude but never scatter (they bypass lighting and material entirely);
+  wireframes and the grid chrome are skipped, matching the sibling passes.
+- **The blur** (`ollin_sss_blur`, one fragment, two encodes with the direction in
+  the params) early-outs on unmarked pixels, so within a scattering frame every
+  non-scattering pixel is **bit-exact** (a linear sample at an exact texel center
+  is the texel; pinned by the probes, not a tolerance). The step is the mask's
+  projected radius over 3 (the kernel offsets span ±3), the horizontal pass
+  divided by the aspect; ortho projections skip the depth division (detected by
+  `projection[3][3] == 1`, exact for ortho).
+- **The depth-gap guard is measured against the scattering radius, not a
+  screen-space constant.** The reference implementation's guard
+  (`300 · dtpw · width · Δd`) is *proportional* to the radius, tuned for a radius
+  around 1% of the object: at any larger radius it saturates on the surface's own
+  curvature and silently turns the whole blur off (the first probe render showed
+  a max channel diff of 5/255, a real bug). Ollin's guard un-projects the mask's
+  step back to a world-space radius (`2 · step · wFactor / P11`) and cuts a tap
+  fully at four radii of depth gap, which is exactly the reference's behavior *at
+  its own scale* made scale-invariant. Background taps read the cleared depth 0,
+  a hard gap by construction, so background never bleeds into a surface; the blur
+  writes only marked pixels, so the glow never leaks past the silhouette either.
+- **`OllinMaterial` grew 192 → 224** (`scatter` float4: falloff ratios raw, not
+  linearized, since they're relative widths, floored 0.001 against the kernel's
+  per-channel divide; radius in w; plus `scatterStrength` and explicit tail
+  pads). The lit mesh fragments never read the new fields, so every existing
+  shading path is untouched; the batch's `finish` is how the mask pass and the
+  kernel collection see them, and the existing material-change batch break means
+  no new break rule.
+- **Envelope:** solid and textured meshes on the main canvas. A mesh drawn into a
+  render target and a raymarched SDF field each degrade to their plain shading
+  with a one-time note (the RT-reflections main-canvas precedent); 2D content
+  drawn *over* a scattering surface in the same frame sits on marked pixels and
+  is blurred with them (the reference approach shares this; a scattering frame
+  is a 3D scene in practice). Specular on a scattering surface is blurred with
+  the diffuse: the reference *demo* actually renders speculars to a separate
+  target and re-adds them after the blur, and that separation is the known
+  upgrade here. Its visible form: a radius several times the documented
+  guidance, on a polished surface with a tight grazing highlight (a huge HDR
+  near-delta), prints the kernel's 25 discrete taps as a faint replica comb
+  around the highlight. At documented radii the tap gaps stay near a pixel and
+  it cannot show (probed live at 1.6K; the first example draft overdrove its
+  radii 3 to 5x and combed).
+
 ---
 
 ## Deferred ray-traced reflection AA

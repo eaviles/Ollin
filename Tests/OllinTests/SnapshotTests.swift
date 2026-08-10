@@ -302,6 +302,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("coat-sheen",
                  note: "The layered physically-based lobes over a bundled environment plus a point light: a coated red metal beside its bare twin (the clear-coat Cook-Torrance lobe, the Kelemen visibility, the coat-interface F0 remap, and the coat's smooth IBL gather), a piano-black lacquer, a white-sheen felt beside its bare twin (the inverted-alpha sine sheen lobe, the cloth visibility, the sheen-LUT energy scaling, and the sheen's own prefiltered gather), and a two-tone velvet. Fixed camera + environment, no time.",
                  make: { CoatSheenScene() }),
+    SnapshotCase("subsurface-scattering",
+                 note: "Real subsurface scattering (the separable screen-space diffusion): a skin sphere beside its bare twin and a marble torus over a plain floor. Pins the scatter-mask pass (projected step, depth, profile index; the plain floor and twin as occluders writing mark 0), the CPU kernel build for two distinct profiles in one frame, the two-direction blur with its per-pixel early-out, and the radius-relative depth-gap guard. Fixed camera + light, no time.",
+                 make: { SubsurfaceScatteringScene() }),
     SnapshotCase("area-lights",
                  note: "A rect panel, a disk, and a tube (the LTC area lights) over a glossy floor and a roughness row: pins the bundled LTC table load, the horizon-clipped rect integral, the disk's ellipse/cubic path, the tube's line integral, the physical falloff, and the Blinn-Phong shininess-to-roughness mapping on the standard-material box. Fixed camera, no time.",
                  make: { AreaLightsScene() }),
@@ -1623,6 +1626,34 @@ private final class CoatSheenScene: Sketch {
         ]
         for (c, m, x, y) in bodies {
             withState { translate(x, y, 0); fill(c); material(m); drawSphere(radius: 0.9) }
+        }
+    }
+}
+
+private final class SubsurfaceScatteringScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        camera(.orbiting(target: Vector3(0, 0.2, 0), radius: 7,
+                         azimuth: 0.2, elevation: 0.12, fieldOfView: .pi / 3.6))
+        directionalLight(.white, direction: Vector3(-1, -0.3, -0.4), intensity: 1.25)
+        pointLight(Color(hex: 0xdfe8ff), at: Vector3(-3, 2.5, 3), intensity: 0.35)
+        noStroke()
+        // A skin sphere beside its bare twin (the diffusion is the only difference),
+        // and a marble torus carrying a second profile in the same frame.
+        fill(Color(red: 0.92, green: 0.72, blue: 0.62))
+        withState { translate(-1.9, 0.35, 0); material(.skin(radius: 0.4)); drawSphere(radius: 1.0) }
+        withState { translate(0, 0.35, 0); material(.dielectric(roughness: 0.45)); drawSphere(radius: 1.0) }
+        withState {
+            translate(2.0, 0.35, 0); fill(Color(white: 0.85))
+            material(.marble(radius: 0.3))
+            rotateX(0.9)
+            drawTorus(radius: 0.75, tube: 0.38)
+        }
+        withState {
+            translate(0, -0.85, 0); fill(Color(white: 0.4)); material(.roughPlastic)
+            drawBox(width: 22, height: 0.3, depth: 14)
         }
     }
 }

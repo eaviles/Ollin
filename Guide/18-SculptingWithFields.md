@@ -298,6 +298,22 @@ Now the second pair. The felt sphere is the same blue as its neighbor, but its s
 
 Both layers work under ordinary lights, under the area-light panels of Chapter 17, and from an environment; under `rayTracedReflections()` the coat's reflection upgrades to the traced scene along with everything else. The one honest edge matches glass: seen *inside a mirror*, a coated or fuzzed surface shows only its base there.
 
+## Skin, wax, and stone
+
+Every surface so far bounces light off its outside. Skin doesn't. Hold a flashlight against your fingers and the flesh glows red around it: some of the light went *in*, wandered a little way under the surface, and came back out somewhere else. Marble, wax, milk, and jade all do this, and the eye is remarkably good at noticing when a render of them doesn't. **A surface without it reads as painted plastic no matter how carefully it's colored.**
+
+```swift
+fill(Color(red: 0.92, green: 0.72, blue: 0.62))
+material(.skin(radius: 0.34))    // radius: how far light travels, world units
+drawSphere(radius: 0.72)
+```
+
+<img src="Images/18-SculptingWithFields/Subsurface.jpg" alt="Four balls under one hard side light, labeled skin, bare, marble, and bare. The skin ball's shadow side keeps a soft warm glow past the terminator where its bare twin cuts to black; the marble ball softens the same edge in near-neutral gray next to its crisper bare twin" width="680">
+
+Look at each pair at the line where light gives way to shadow. The bare balls cut off the way a painted surface does. The scattering ones carry light a little way past that line, because light that entered on the lit side is re-emerging on the dark one, and on the skin ball the carried light is *red*: red travels farthest through flesh, which is why shadow edges on faces are warm. That per-channel reach is the `scatteringColor`, and its default is the skin ratio. Near-equal channels give the neutral softening of `.marble`; a green-dominant color makes a jade whose glow is green.
+
+`scatteringRadius` is the one number you must set, and it's in world units because it's a physical distance: how far light gets before it's absorbed. A head-sized form wants roughly 1% of its width. Make it too big and the material slides toward wax, then toward glowing from within, which is a nice dial to know about. `scattering` (`0…1`) is how much of the surface's light takes the trip at all. It layers on any material, needs no other calls, and costs nothing in a frame that doesn't use it. Two honest edges: it applies to solid meshes on the main canvas (a raymarched field or a mesh inside a render target keeps its plain shading), and it's a different thing from the stylized `subsurface` glow Chapter 17's jade used, which fakes back-light cheaply and can still layer on top for ears and edges.
+
 ## Putting it together: molten
 
 The finished piece is a single body of four melted lobes, twisted a little, finished as glass under studio light, breathing slowly over a floor that catches its shadow. Make `MySketches/Molten.swift`:
@@ -364,6 +380,7 @@ Distance fields as a drawing medium are the craft of the demoscene and Shadertoy
 - [Environment lighting](../Docs/3D/3D.md#environment-lighting): all twenty curated environments listed by mood, which eight are bundled offline, `highRes` backdrops, loading your own `.exr` or `.hdr`, where downloads cache, and the full procedural-sky knobs.
 - [Physically based materials](../Docs/3D/3D.md): the metallic-roughness model in full, plus the ready-made metals and dielectrics and how they combine with the stylized finishes.
 - [Glass](../Docs/3D/3D.md#glass): every transmission knob with its units, the environment requirement, and the honest edges spelled out.
+- [Subsurface scattering](../Docs/3D/3D.md#subsurface-scattering): the three scattering knobs, the presets, and the envelope; worked example [`Examples/3D/Materials/Subsurface`](../Examples/3D/Materials/Subsurface/Sketch.swift) (hold space to compare against the plain surfaces).
 - Worked examples for this section: [`Examples/3D/Materials/PhysicalMaterials`](../Examples/3D/Materials/PhysicalMaterials/Sketch.swift), [`Examples/3D/Materials/Glass`](../Examples/3D/Materials/Glass/Sketch.swift) (hold space to drop the traced view through the glass), [`Examples/3D/Environments/ImageBasedLighting`](../Examples/3D/Environments/ImageBasedLighting/Sketch.swift), [`EnvironmentGallery`](../Examples/3D/Environments/EnvironmentGallery/Sketch.swift) (steps through all twenty), and [`ProceduralSky`](../Examples/3D/Environments/ProceduralSky/Sketch.swift).
 - Worked example for the mesh route: [`Examples/3D/Geometry/Metaballs`](../Examples/3D/Geometry/Metaballs/Sketch.swift), a cluster that keeps fusing and parting, with the merge level and the grid detail on knobs.
 - Worked examples: [`Examples/Shapes/Combinators`](../Examples/Shapes/Combinators/Sketch.swift) and [`CombinatorsGradient`](../Examples/Shapes/CombinatorsGradient/Sketch.swift) in 2D; in 3D, [`Examples/3D/Raymarching/RaymarchedSDF`](../Examples/3D/Raymarching/RaymarchedSDF/Sketch.swift), [`RaymarchedShapes`](../Examples/3D/Raymarching/RaymarchedShapes/Sketch.swift), [`RaymarchedSculpt`](../Examples/3D/Raymarching/RaymarchedSculpt/Sketch.swift), [`RaymarchedClay`](../Examples/3D/Raymarching/RaymarchedClay/Sketch.swift), [`RaymarchedDomain`](../Examples/3D/Raymarching/RaymarchedDomain/Sketch.swift), [`RaymarchedRadial`](../Examples/3D/Raymarching/RaymarchedRadial/Sketch.swift), [`RaymarchedPlane`](../Examples/3D/Raymarching/RaymarchedPlane/Sketch.swift), and [`RaymarchedEnvironment`](../Examples/3D/Raymarching/RaymarchedEnvironment/Sketch.swift).

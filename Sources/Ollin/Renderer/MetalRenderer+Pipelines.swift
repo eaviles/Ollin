@@ -102,6 +102,24 @@ extension MetalRenderer {
             d.colorAttachments[0].pixelFormat = key.iblColorFormat
             return try device.makeRenderPipelineState(descriptor: d)
         }
+        if key.isScatterMask {
+            // The subsurface-scatter mask: one float attachment, blending off (the
+            // fragment's alpha carries a profile index, which alpha blending would
+            // corrupt), single-sample, depth-tested + writing into its own depth.
+            guard let v = library.makeFunction(name: key.vertex),
+                  let f = library.makeFunction(name: key.fragment) else {
+                throw RendererError.shaderFunctions
+            }
+            let d = MTLRenderPipelineDescriptor()
+            d.vertexFunction = v
+            d.fragmentFunction = f
+            d.rasterSampleCount = 1
+            d.colorAttachments[0].pixelFormat = linearFormat
+            if let depthFormat = key.depthFormat {
+                d.depthAttachmentPixelFormat = depthFormat
+            }
+            return try device.makeRenderPipelineState(descriptor: d)
+        }
         if key.isGBuffer {
             // The reflection G-buffer: the one MRT pipeline; two float attachments
             // (world normal + coverage, metalness/roughness), blending off (the
