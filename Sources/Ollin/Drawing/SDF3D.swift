@@ -440,7 +440,27 @@ extension SDF3D {
                 lo = simd_max(ra.lo, rb.lo); hi = simd_min(ra.hi, rb.hi)
                 unbounded = ra.unbounded && rb.unbounded    // bounded once either operand is
             }
-            if k > 0 { lo -= SIMD3(repeating: k); hi += SIMD3(repeating: k) }
+            // The k-grow is each op's provable outward reach, not a blanket k. A polynomial
+            // smooth op's surface bulges at most k/4 past its operands (the k*h*(1-h) term
+            // tops out at k/4) and a chamfer/stairs seam reaches k/2 (its surface stays
+            // within k/2 of one operand), both padded to k/2 so a bound-type child SDF
+            // (ellipsoid, displaced) under-reporting distance stays covered; columns' rib
+            // band, pipe's bead, and tongue's ridge genuinely reach k. The subtract,
+            // intersect, and morph families cannot leave the hard op's region at all
+            // (their distance is a max over terms that include the operands' own, and
+            // morph is a convex blend), so they take no grow; morph's k is the blend
+            // fraction, not a length. Over-padding is not harmless: the AABB drives the
+            // march span, the shadow early-out, and the screen-coverage estimate behind
+            // the adaptive raymarch resolution, where a blanket k compounding per nested
+            // op reads a dollied-out field as near-screen-filling and holds it at reduced
+            // internal resolution long after it has shrunk on screen.
+            let grow: Float
+            switch op {
+            case .smoothUnion, .chamferUnion, .stairsUnion: grow = k / 2
+            case .columnsUnion, .pipe, .tongue:             grow = k
+            default:                                        grow = 0
+            }
+            if grow > 0 { lo -= SIMD3(repeating: grow); hi += SIMD3(repeating: grow) }
             if hi.x < lo.x || hi.y < lo.y || hi.z < lo.z { lo = .zero; hi = .zero }  // empty intersection
             return FlattenResult(lo: lo, hi: hi,
                                  valueDepth: max(ra.valueDepth, 1 + rb.valueDepth),

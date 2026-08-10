@@ -588,9 +588,10 @@ extension MetalRenderer {
     }
 
     /// The fraction of the screen the frame's 3D fields cover, estimated from each field's
-    /// world AABB projected through the camera (the sum of the projected boxes' clipped NDC
-    /// areas, capped at 1). Conservative where the estimate can't be trusted: an unbounded
-    /// field (a plane) or an AABB corner at/behind the camera counts as full coverage.
+    /// world AABB projected through the camera (per box, the smaller of its corners' clipped
+    /// NDC bounding rect and their convex hull's area; summed and capped at 1). Conservative
+    /// where the estimate can't be trusted: an unbounded field (a plane) or an AABB corner
+    /// at/behind the camera counts as full coverage.
     ///
     /// This drives the *coverage-adaptive* raymarch scale: the resolved quality fraction is a
     /// marched-pixel *budget at full coverage*, not a fixed downscale. The pre-pass traces at
@@ -605,6 +606,7 @@ extension MetalRenderer {
             if g.unbounded != 0 { return 1.0 }   // a plane spans the screen
             var lo = SIMD2<Float>(.greatestFiniteMagnitude, .greatestFiniteMagnitude)
             var hi = -lo
+            var corners = [SIMD2<Double>](); corners.reserveCapacity(8)
             var conservative = false
             for i in 0..<8 {
                 let corner = SIMD4<Float>((i & 1) == 0 ? g.boundsMin.x : g.boundsMax.x,
@@ -618,14 +620,48 @@ extension MetalRenderer {
                 let ndc = SIMD2<Float>(clip.x, clip.y) / clip.w
                 lo = simd_min(lo, ndc)
                 hi = simd_max(hi, ndc)
+                corners.append(SIMD2(Double(ndc.x), Double(ndc.y)))
             }
             if conservative { return 1.0 }
             let dx = Double(min(hi.x, 1) - max(lo.x, -1))
             let dy = Double(min(hi.y, 1) - max(lo.y, -1))
             if dx <= 0 || dy <= 0 { continue }   // fully off-screen: contributes nothing
-            total += (dx * dy) / 4.0             // NDC spans 2×2
+            // The box's screen footprint is the projected corners' convex hull, and the
+            // hull's area is well under its bounding rect's for the oblique views an orbit
+            // camera spends most of its time in (a corner-on cube projects a hexagon). Both
+            // are upper bounds of the true footprint, so take the smaller; the clipped rect
+            // still caps a hull hanging partly off screen.
+            total += min((dx * dy) / 4.0, Self.convexHullArea(corners) / 4.0)
         }
         return min(total, 1.0)
+    }
+
+    /// The area of a small point set's convex hull (Andrew's monotone chain + shoelace).
+    static func convexHullArea(_ points: [SIMD2<Double>]) -> Double {
+        guard points.count >= 3 else { return 0 }
+        let p = points.sorted { $0.x != $1.x ? $0.x < $1.x : $0.y < $1.y }
+        func cross(_ o: SIMD2<Double>, _ a: SIMD2<Double>, _ b: SIMD2<Double>) -> Double {
+            (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x)
+        }
+        var hull = [SIMD2<Double>]()
+        for pass in 0..<2 {
+            let run = pass == 0 ? p : p.reversed()
+            let base = hull.count
+            for pt in run {
+                while hull.count >= base + 2,
+                      cross(hull[hull.count - 2], hull[hull.count - 1], pt) <= 0 {
+                    hull.removeLast()
+                }
+                hull.append(pt)
+            }
+            hull.removeLast()   // each chain's endpoint starts the other chain
+        }
+        var area = 0.0
+        for i in 0..<hull.count {
+            let a = hull[i], b = hull[(i + 1) % hull.count]
+            area += a.x * b.y - b.x * a.y
+        }
+        return abs(area) / 2
     }
 
     /// Build the per-frame 3D camera constants (used by the points/mesh/raymarch pipelines),

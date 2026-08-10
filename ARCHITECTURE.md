@@ -1503,12 +1503,27 @@ cost tracks the pixels the fields *cover*, and a fixed fraction had it exactly
 backwards: a dollied-out field (small on screen, cheap to march) got the fewest
 real pixels and dissolved into upsampled blur (the zoom-out-blur bug). So
 `encodeRaymarchHalfRes` estimates the fields' projected screen coverage
-(`fieldScreenCoverage`: each world AABB's eight corners through the camera, the
-clipped NDC areas summed; a plane or a corner at/behind the camera counts as
-full coverage) and traces at `min(1, fraction / √coverage)`: the marched-pixel
+(`fieldScreenCoverage`: each world AABB's eight corners through the camera, and
+per box the smaller of the corners' clipped NDC bounding rect and their convex
+hull's area, summed; a plane or a corner at/behind the camera counts as full
+coverage) and traces at `min(1, fraction / √coverage)`: the marched-pixel
 count never exceeds `fraction² × canvas`, the cost the fraction already implies
 at full coverage, while a small field gets traced dense. At or above scale 1 the
 pre-pass is skipped entirely (the inline march is crisper *and* cheaper).
+The estimate's honesty is load-bearing, because every ounce of conservatism
+holds the internal resolution down: the flatteners grow a combine's AABB by
+each op's *provable* outward reach (a polynomial smooth op's surface bulges at
+most k/4 past its operands, padded to k/2 for bound-type child SDFs; chamfer
+and stairs seams stay within k/2; columns, pipe, and tongue genuinely reach k;
+the subtract, intersect, and morph families cannot leave the hard op's region
+at all, and morph's k is a blend fraction, not a length). The blanket
+k-per-nested-op grow this replaced compounded on a three-op metaball into a box
+whose projection read near-screen-filling four radii out, so the adaptive scale
+never rose and the dollied-out blob stayed at the reduced resolution: the
+zoom-out blur back again, from the estimate rather than the formula. The hull
+term earns its keep on the oblique views an orbit camera spends most of its
+time in, where a corner-on box's NDC bounding rect over-covers its hexagonal
+silhouette by about 2×.
 Deterministic (pure function of camera + AABBs, no temporal state), so it holds
 on export too. Two supporting pieces: the pre-pass targets are **grow-only** and
 the pass renders into a **viewport subrect** (a continuous dolly drifts the scale

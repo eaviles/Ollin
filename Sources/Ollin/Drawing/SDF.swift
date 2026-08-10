@@ -328,7 +328,19 @@ extension SDF {
                  .columnsIntersect, .pipe:
                 lo = simd_max(ra.lo, rb.lo); hi = simd_min(ra.hi, rb.hi)
             }
-            if k > 0 { lo -= SIMD2(repeating: k); hi += SIMD2(repeating: k) }
+            // Each op's provable outward reach, mirroring the 3D flattener's rule (see the
+            // derivation there): smooth/chamfer/stairs surfaces stay within k/2 of an
+            // operand, columns/pipe/tongue reach k, and the subtract/intersect/morph
+            // families cannot leave the hard op's region (morph's k is the blend
+            // fraction, not a length). The AABB sizes the covering quad, so a blanket k
+            // compounding per nested op only wastes fill.
+            let grow: Float
+            switch op {
+            case .smoothUnion, .chamferUnion, .stairsUnion: grow = k / 2
+            case .columnsUnion, .pipe, .tongue:             grow = k
+            default:                                        grow = 0
+            }
+            if grow > 0 { lo -= SIMD2(repeating: grow); hi += SIMD2(repeating: grow) }
             if hi.x < lo.x || hi.y < lo.y { lo = .zero; hi = .zero }  // empty intersection
             // Value stack: eval lhs (leaves 1), eval rhs while it's held, then OP.
             return FlattenResult(lo: lo, hi: hi,
