@@ -41,6 +41,7 @@ enum Satellite: String, CaseIterable {
     case record3D = "OllinRecord3D"
     case phone = "OllinPhone"
     case screen = "OllinScreen"
+    case controller = "OllinController"
 
     var dependency: Target.Dependency { .product(name: rawValue, package: "Ollin") }
 }
@@ -456,6 +457,9 @@ let package = Package(
         // a single window, drawn and filtered like any image. `tunnel` leaves the
         // sketch's own window in the capture, so the picture recedes into itself.
         example("Integration/ScreenCapture", [.screen]),
+        // A game controller as a drawing instrument: sticks steer the pen,
+        // triggers set its weight, and a pad that reports motion tips the page.
+        example("Integration/ControllerInput", [.controller]),
         // Physics — a Verlet world stepped each frame. Packing is a field of
         // colliding discs; Blobs are spring-built soft bodies that squish.
         example("Physics/Packing", [.physics]),

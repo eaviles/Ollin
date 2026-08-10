@@ -189,13 +189,37 @@ import Ollin
         #expect(displays == again)
     }
 
+    /// The claim is that a listing comes back in a settled order, so naming a
+    /// window picks the same one twice.
+    ///
+    /// It deliberately compares only what both readings saw. Windows open and
+    /// close on a live machine, and demanding two identical listings makes this
+    /// fail whenever anything on the Mac opens a window mid-test, which is a
+    /// property of the machine rather than of the code under test.
     @Test(.enabled(if: ScreenCaptureTests.isPermitted))
     func windowsAndAppsAreListedInAStableOrder() async {
         let windows = await ScreenCapture.windows()
-        #expect(windows == (await ScreenCapture.windows()))
+        let windowsAgain = await ScreenCapture.windows()
+        #expect(sharedOrder(windows, windowsAgain, by: \.id)
+            == sharedOrder(windowsAgain, windows, by: \.id))
         #expect(windows.sorted { $0.id < $1.id } == windows)
+
         let apps = await ScreenCapture.apps()
-        #expect(apps == (await ScreenCapture.apps()))
+        let appsAgain = await ScreenCapture.apps()
+        #expect(sharedOrder(apps, appsAgain, by: \.id)
+            == sharedOrder(appsAgain, apps, by: \.id))
+    }
+
+    /// The ids `first` and `second` both saw, left in `first`'s order.
+    ///
+    /// Ids rather than whole entries, because a window can be retitled or moved
+    /// between two readings and still be the same window in the same place in
+    /// the list, which is all this is claiming.
+    private func sharedOrder<Element, ID: Hashable>(
+        _ first: [Element], _ second: [Element], by id: KeyPath<Element, ID>
+    ) -> [ID] {
+        let shared = Set(second.map { $0[keyPath: id] })
+        return first.map { $0[keyPath: id] }.filter { shared.contains($0) }
     }
 
     /// The end-to-end run: point a capture at the main display, and frames must

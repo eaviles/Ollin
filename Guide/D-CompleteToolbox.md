@@ -244,6 +244,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Sonification | Numbers read out as notes: a table column, a terrain profile, or a picture row spread over a range of pitch and snapped to a scale | [Ch 20](20-SoundAndControl.md) | [Sonification](../Docs/Helpers/Sonification.md) |
 | MIDI | Knobs, notes, and messages from hardware controllers, in and out | [Ch 20](20-SoundAndControl.md) | [MIDI](../Docs/Integration/MIDI.md) |
 | OSC | Network control messages from tablets, DAWs, and other machines | [Ch 20](20-SoundAndControl.md) | [OSC](../Docs/Integration/OSC.md) |
+| Game controllers | Sticks, triggers, and buttons read in `draw()`, plus motion and a touchpad on hardware that has them, with several players at once and a null read when nothing is plugged in | [Ch 20](20-SoundAndControl.md) | [Controller](../Docs/Integration/Controller.md) |
 | Parameter binding | One `@Param` driven by MIDI, OSC, and the inspector alike, with smoothing | [Ch 20](20-SoundAndControl.md) | [Parameters](../Docs/Helpers/Parameters.md) |
 
 ## Seeing and video

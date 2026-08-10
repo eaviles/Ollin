@@ -198,7 +198,7 @@ Teaches: hearing (`amplitude`, `spectrum`, bands, beats) and drawing what you he
 Assumes: Part I (Ch 14 makes richer visuals).
 Payoff: an audio-reactive visual played with a MIDI controller (or the keyboard/mouse fallback).
 Figures: spectrum-anatomy diagram; beat-detection timeline; a binding-flow diagram (controller → param → visual); the visual.
-Draws from: `Docs/Helpers/Audio.md`, `Docs/Integration/MIDI.md`, `Docs/Integration/OSC.md`, `Docs/Helpers/Parameters.md`; `Examples/Audio/`, `Examples/Integration/`.
+Draws from: `Docs/Helpers/Audio.md`, `Docs/Integration/MIDI.md`, `Docs/Integration/OSC.md`, `Docs/Integration/Controller.md`, `Docs/Helpers/Parameters.md`; `Examples/Audio/`, `Examples/Integration/`.
 
 **21. Seeing.**
 Teaches: the webcam as a live image; the tracker model (attach, read typed results in `draw`); a tour in three depths: hands/face/body (taught), contours and optical flow (shown), the wider catalog (pointed); coordinate mapping done right; video files as material, including analyzing them.
@@ -369,6 +369,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | `Integration/MIDI.md` | Ch 20 | taught |
 | Tempo sync (`TempoClock` over MIDI clock; `Integration/MIDI.md`) | Ch 20 | taught (a musical-time diagram: 24 ticks per beat is the whole protocol, why counting means the grid can't drift, every reader with a worked position, `progress(over:)`, and the arm-on-next-tick and free-running-master behaviors) |
 | `Integration/OSC.md` | Ch 20 | taught |
+| `Integration/Controller.md` (`Controller`, `ControllerButton`, `controllerMotion`, `controllerDeadzone`, several players) | Ch 20 | taught ("Something to hold" with the ReadingAPad figure: one pose read five ways, so the level/moment/both split lands beside the same split the chapter already made for MIDI; why there is no drain, since a hand cannot press and release between two frames; the null read with nothing plugged in; the two rules the figure exists for, up being negative y and buttons named by position rather than by print; motion opt-in with Xbox having no sensors at all; and the live-only export note) |
 | `Vision/Vision.md` (16 trackers, ModelTracker) | Ch 21 | taught (all sixteen: hands/face/2D body/contours/optical flow, the segmenters, the 3D body read in its three spaces, then four sections for the rest with three figures built from synthetic scenes, so no figure needs a camera, a person, or downloaded weights: the card read by the rectangle detector and the OCR, the fitted trajectory carried past its last sighting onto where the ball really went, and the saliency map beside the classifier's confidence floor; `ModelTracker`'s four output surfaces are taught, with its weights left to the reader since Ollin ships none) |
 | `Video/Video.md` (playback as texture) | Ch 21 | taught |
 | `Integration/Syphon.md` | Ch 22 | taught |

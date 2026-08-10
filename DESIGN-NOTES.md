@@ -161,7 +161,7 @@ All output paths are real-time side effects of `draw()`, so they follow the rend
 
 Each conforms to the core `FrameSource` (so the vision trackers and effect graph consume it) or reads as a simple value in `draw()`.
 
-- **Rich controllers.** GameController (`GCController`) surfaces a modern controller's motion (gyro), triggers, and touchpad; Apple Pencil (tilt, azimuth, force, hover) waits on the iOS leg, and its force joins the pressure `Sketch` already reads. Each reads as plain values in `draw()` or a pressed/released hook like the keyboard.
+- **Apple Pencil.** Tilt, azimuth, force, and hover, on the iOS leg where a Pencil exists. Force joins the `pressure` `Sketch` already reads rather than arriving as a second thing, so a sketch written against trackpad pressure carries over unchanged and tilt, azimuth, and hover are the additions; each reads as a plain value in `draw()` beside the mouse and keyboard.
 - **Body and world data.** HealthKit (heart rate from a paired Apple Watch) for biofeedback, WeatherKit and Core Location for slow ambient input. Each needs its entitlement and consent prompt, the same "keep the easy things easy, make the prompt explicit" concern as screen capture. Niche but distinctive (native Apple-sensor-sourced live data) and impossible in a browser.
 
 ## New output surfaces

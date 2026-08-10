@@ -661,6 +661,47 @@ override func setup() {
 
 Each incoming value is mapped into the parameter's own range and assigned, and the sketch keeps reading plain `radius` without ever knowing who moved it. The inspector slider, the hardware, the phone, and plain assignment in code all stay live at once, and whichever moved most recently wins. One more line makes hardware feel good. Give the parameter a `smoothing:` (`.eased(0.3)` for a fixed glide, `.smoothed` for the adaptive filter that stays steady at rest and opens up under a moving hand), and every source glides instead of stepping, because the softening belongs to the knob rather than to the wire.
 
+## Something to hold
+
+A knob box is one kind of hand and a phone fader is another. A game controller is a third, and it's the one most people already own.
+
+```swift
+import OllinController
+
+override func draw() {
+    background(.white)
+    ship += controller.leftStick * 6
+    if controller.wasPressed(.a) { fire(from: ship) }
+    drawCircle(center: ship, radius: 30)
+}
+```
+
+`controller` is player one, read fresh each frame the way you read `mouseX`. No setup call, no `start()`, no permission.
+
+<img src="Images/20-SoundAndControl/ReadingAPad.jpg" alt="A schematic game controller with the left stick held up and to the right, the right trigger half pulled, and the bottom face button lit, beside a list of five reads and the value each returns for that pose" width="820">
+
+Three kinds of question, three shapes of answer, and the split is the same one this chapter has been making all along. A stick is a **level**, a number you read every frame like a fader. A button press is a **moment**: `wasPressed` is true on the one frame it went down and false while you keep holding, so a sketch drops one thing per press without counting anything itself. A controller arriving or leaving is both, so `isConnected` is the state and `didConnect` is the moment.
+
+There's no queue to drain here, unlike MIDI, and that's a decision rather than an omission. **A hand can't press and release a button between two frames.** A press lasts something like a tenth of a second, which is several frames; a drum machine can send faster than that, which is why MIDI has `messages()` and this doesn't.
+
+With nothing plugged in, everything reads centered and nothing is pressed. The sketch still runs, so you can write it on a train and try it later, and there's no check needed at every call site. Ask `isConnected` when you actually want to say "plug one in".
+
+Two things the figure is really about. The sticks read in canvas terms, so pushing up gives a *negative* y, and `position += controller.leftStick * speed` moves up the screen with no sign to remember. And buttons are named by where they sit rather than by what's printed on them, so `.a` is the bottom face button whether the pad in your hands calls it cross or A, and a sketch written on one controller works on the other.
+
+Motion is worth knowing about before you plan around it. PlayStation and Switch controllers have gyros; Xbox controllers have no motion sensors at all and never will. The sensors also cost battery, so they stay off until you ask:
+
+```swift
+override func setup() { controllerMotion(true) }
+// in draw():
+if controller.hasMotion { rotate(controller.gravity.x * 0.5) }
+```
+
+`hasMotion` is false both when the hardware has none and when nothing has asked for it, so check it rather than assuming. A PlayStation pad also has a touchpad, under `touch` and `isTouching`.
+
+Several people can play: `controller(2)` is player two, and a controller keeps its number while it stays connected, so unplugging player two doesn't turn player three into player two.
+
+Because a controller is live input, an export reads it as centered and says so, the same way the microphone did earlier. The `Integration/ControllerInput` example turns a pad into a drawing instrument, with a `map` knob that draws every stick, trigger and button as it's read, which is the fastest way to tell whether a controller is talking to the machine at all. [The controller reference](../Docs/Integration/Controller.md) has the rest, including the deadzone and running while another window is in front.
+
 ## Putting it together: a playable instrument
 
 The finished piece wires the whole chapter together: `bands` worn as a crown of spokes, a core that throbs on `beatCount`, sparks flung on each arrival, and two `@Param` knobs waiting for whatever hands you have. Make `MySketches/Resonator.swift` (bring `StageMic` along from [`Anatomy.swift`](Figures/20-SoundAndControl/Anatomy.swift); the committed figure with everything together is [`Resonator.swift`](Figures/20-SoundAndControl/Resonator.swift)):

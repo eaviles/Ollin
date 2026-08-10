@@ -29,6 +29,7 @@ enum Satellite: String, CaseIterable {
     case record3D = "OllinRecord3D"
     case phone = "OllinPhone"
     case screen = "OllinScreen"
+    case controller = "OllinController"
 
     var dependency: Target.Dependency { .byName(name: rawValue) }
 }
@@ -104,6 +105,13 @@ let package = Package(
         // so the drawing core stays free of it, and so the screen-recording
         // permission is something a sketch opts into rather than inherits.
         .library(name: "OllinScreen", targets: ["OllinScreen"]),
+        // Game controllers as a satellite library: `import OllinController` to
+        // read sticks, triggers, buttons, motion and a touchpad in `draw()`.
+        // Built on GameController; a satellite rather than core input because
+        // a controller arrives from a system service rather than through the
+        // view, so unlike the mouse and keyboard it needs no AppKit/UIKit
+        // seam, and the core stays free of the framework.
+        .library(name: "OllinController", targets: ["OllinController"]),
         // The shared CPU/GPU struct header as an importable module. A sketch
         // driving the raw `SpatialHash` builds `OllinParticle` buffers itself and
         // needs the declarations, which is why the compute examples `import
@@ -424,6 +432,16 @@ let package = Package(
             name: "OllinScreen",
             dependencies: ["Ollin"]
         ),
+        // Game controllers: sticks, triggers, buttons, motion and a touchpad,
+        // polled once a frame and read as plain values in `draw()`. A
+        // satellite (like OllinScreen) so the drawing core stays free of
+        // GameController, and because a controller reaches the process from a
+        // system service rather than through the view, so it needs none of the
+        // AppKit/UIKit plumbing the mouse and keyboard do.
+        .target(
+            name: "OllinController",
+            dependencies: ["Ollin"]
+        ),
         // The structs shared between Swift and the Metal shaders (`OllinVertex`,
         // `Uniforms`, `SDFInstance`) are defined once in a C header so their
         // memory layout can't drift between the two sides. This thin C module
@@ -574,6 +592,14 @@ let package = Package(
         .testTarget(
             name: "OllinScreenTests",
             dependencies: ["Ollin", "OllinScreen"]
+        ),
+        // Controller reading correctness. A synthetic `GCController` is a real
+        // controller object the system never lists, so the tests inject one
+        // through the hub's source seam and drive the shipped read path with
+        // no hardware attached.
+        .testTarget(
+            name: "OllinControllerTests",
+            dependencies: ["Ollin", "OllinController"]
         ),
         // Record3D decode correctness: synthesizes a tiny `.r3d` in memory (a ZIP
         // of metadata + one JPEG + one LZFSE depth/confidence buffer) and checks
