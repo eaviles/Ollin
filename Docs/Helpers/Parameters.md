@@ -66,7 +66,7 @@ enum Style: String, CaseIterable, ParamOption { case dots, rings, meshLines }
 @Param var style: Style = .dots
 ```
 
-The menu shows humanized case names ("Mesh Lines"), and `optionLabel` overrides the wording. The persisted selection keys on the case *name*, so renaming a case forgets a tuned choice while reordering is safe. Ollin's own mode enums (`BlendMode`, `StrokeCap`, `StrokeJoin`, `Colormap`) already conform, so `@Param var blend: BlendMode = .normal` gets its menu with no declaration at all.
+The menu shows humanized case names ("Mesh Lines"), and `optionLabel` overrides the wording. The persisted selection keys on the case *name*, so renaming a case forgets a tuned choice while reordering is safe. Ollin's own mode enums (`BlendMode`, `StrokeCap`, `StrokeJoin`, `Colormap`, `RenderQuality`) already conform, so `@Param var blend: BlendMode = .normal` gets its menu with no declaration at all, and a quality tier (`@Param var quality = RenderQuality.default` feeding `globalIlluminationQuality(quality)` or its shadow/raymarch/volumetric siblings) becomes a live dial the same way.
 
 A type that isn't an enum but has a fixed roster of named built-ins joins the menu tier through `ParamChoices` instead. Provide `paramChoices`, a list of `(name, value)` pairs, and the inspector shows the humanized names. `LightingPreset` conforms out of the box. The type's `Equatable` is what lets the menu find the current selection, which is also why `Easing` (a closure wrapper, no equality) and the parameterized `Material` finishes don't take this route.
 

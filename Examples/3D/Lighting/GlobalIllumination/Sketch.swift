@@ -15,7 +15,9 @@ import Ollin
 /// on the floor becomes the room's real lamp: the ceiling glows from below, the
 /// orange and teal walls dye the white statue from either side, and the ball's
 /// shadowed back is filled with floor-light. The `intensity` knob is an honest
-/// physical 1 by default; art wants what art wants, so it goes higher.
+/// physical 1 by default; art wants what art wants, so it goes higher. The
+/// `quality` tier is the ray budget per probe: flip it live and watch the bounce
+/// smooth out or loosen up.
 ///
 /// Needs a ray-tracing GPU (Apple silicon); elsewhere the direct pool is all there is.
 @main
@@ -24,6 +26,7 @@ final class GlobalIllumination: Sketch {
     override var loopDuration: Double? { 12 }
 
     @Param(0...4, icon: "sun.max") var intensity = 1.0
+    @Param(style: .segmented, icon: "dial.medium") var quality = RenderQuality.default
     private var bounceOn = true
 
     override func keyPressed() {
@@ -42,6 +45,7 @@ final class GlobalIllumination: Sketch {
                   direction: Vector3(swing * 0.12, -1, -0.1),
                   angle: .pi / 3.4, penumbra: 0.5, intensity: 3)
         castShadows()
+        globalIlluminationQuality(quality)
         if bounceOn { globalIllumination(intensity: intensity) }
 
         // The room: white floor, ceiling, and back; an orange wall and a teal wall

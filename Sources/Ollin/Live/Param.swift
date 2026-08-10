@@ -654,6 +654,7 @@ extension StrokeCap: ParamOption {}
 extension StrokeJoin: ParamOption {}
 extension Colormap: ParamOption {}
 extension Turmite.Preset: ParamOption {}
+extension RenderQuality: ParamOption {}
 
 // The curated-preset structs join through the named-choices tier.
 extension LightingPreset: ParamChoices {

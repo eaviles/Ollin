@@ -15,6 +15,17 @@
 
 #if OLLIN_RT_SHADOWS
 
+// Relocation statistics come from a FIXED, never-rotated fan (the production papers'
+// fixed rays): the decision whether a probe moves must not flicker with the radiance
+// fan's per-update rotation, or a probe hovering at a threshold oscillates between
+// positions and every surface its cage touches visibly pulses (a real live-window
+// defect, measured on a sphere the pool lit). The fixed columns sit FIRST in the
+// surfel texture: relocation reads only them, and the blends skip them (they never
+// rotate, so folding them in would bias the estimate toward their directions), which
+// makes the texture OLLIN_GI_FIXED_RAYS + radiance-ray columns wide. Mirrored by
+// `MetalRenderer.giFixedRays`; keep the two in step.
+#define OLLIN_GI_FIXED_RAYS 32
+
 // The i-th of n spherical-Fibonacci directions: near-uniform over the sphere, so a
 // probe's ray fan samples every direction about evenly at any count.
 static inline float3 ollin_gi_sf_dir(int i, int n) {
@@ -73,7 +84,9 @@ static inline bool ollin_gi_occluded(float3 origin, float3 dir, float tmax, floa
 // is what tells the relocation pass it was a backface, and the shortened magnitude is
 // what makes the visibility test read the probe as blocked from that side, which is
 // what keeps a probe that fell inside geometry from lighting anything. Output rgb =
-// display-linear radiance, a = signed hit distance capped at the far cap.
+// display-linear radiance, a = signed hit distance capped at the far cap. Columns
+// 0..<OLLIN_GI_FIXED_RAYS are the fixed statistics fan (distance-only, un-rotated);
+// the radiance fan fills the remaining raysPerProbe columns.
 // params[0] = (raysPerProbe, seed, farCap, probeCount); params[1].x = previous atlases
 // valid (0 on the first update after a volume refit).
 fragment float4 ollin_gi_trace(PresentOut in [[stage_in]],
@@ -93,13 +106,19 @@ fragment float4 ollin_gi_trace(PresentOut in [[stage_in]],
     int probe = int(in.position.y);
     int raysPerProbe = max(int(params[0].x), 1);
     float farCap = params[0].z;
-    if (rayIndex >= raysPerProbe || probe >= int(params[0].w)) {
+    if (rayIndex >= raysPerProbe + OLLIN_GI_FIXED_RAYS || probe >= int(params[0].w)) {
         return float4(0.0, 0.0, 0.0, farCap);
     }
 
+    // The first OLLIN_GI_FIXED_RAYS columns are the relocation pass's fixed fan,
+    // never rotated (stable statistics); the rest are the rotated radiance fan.
+    bool fixedRay = rayIndex < OLLIN_GI_FIXED_RAYS;
     float3 origin = ollin_gi_probe_position(probe, light)
                   + giProbeOffsets.read(uint2(uint(probe), 0u)).xyz;
-    float3 dir = ollin_gi_rotation(params[0].y) * ollin_gi_sf_dir(rayIndex, raysPerProbe);
+    float3 dir = fixedRay
+        ? ollin_gi_sf_dir(rayIndex, OLLIN_GI_FIXED_RAYS)
+        : ollin_gi_rotation(params[0].y)
+            * ollin_gi_sf_dir(rayIndex - OLLIN_GI_FIXED_RAYS, raysPerProbe);
 
     ray r;
     r.origin = origin;
@@ -123,6 +142,10 @@ fragment float4 ollin_gi_trace(PresentOut in [[stage_in]],
     float dist = q.get_committed_distance();
     if (backface) {
         return float4(0.0, 0.0, 0.0, -min(dist * 0.2, farCap));
+    }
+    // A fixed ray only ever feeds statistics (distance and facing); skip the shading.
+    if (fixedRay) {
+        return float4(0.0, 0.0, 0.0, min(dist, farCap));
     }
 
     float eps = max(light.rtReflectionBias, 1e-4);
@@ -193,11 +216,18 @@ static inline int2 ollin_gi_gutter_source(int2 local, int interior) {
 // Fold the traced rays into the irradiance atlas: per texel, the cosine-weighted mean of
 // the ray radiances about the texel's direction (E/pi, the irradiance-cube convention),
 // perceptually encoded (gamma 5) so the hysteresis converges visually linearly, then
-// blended into the previous value. Per-texel convergence: a change past 25% of range
-// drops the hysteresis by 0.15, past 80% to zero (the distribution moved; trust the
-// fresh estimate). Irradiance only; the visibility blend stays steady.
+// blended into the previous value. Per-texel temporal response, LIVE ONLY (the reference
+// pair, and the asymmetry is the point): a real DARKENING past 0.25 cuts the hysteresis
+// by 0.75 (a light switched off must not ghost), while a BRIGHTENING whose luminance
+// jumps past 0.10 is rate-limited to a quarter step (with a sun disc in the fan, one
+// update catches it on a couple of rays and the next on none, so a bright spike is
+// estimator variance to be absorbed, not news to be trusted; un-limited, a sky-lit
+// scene's whole field visibly pulses, a real live-window defect). Headless skips both
+// (params[1].z = 0): its iterations converge a progressive mean, and either heuristic
+// would bias the estimator it is converging. Irradiance only; the visibility blend
+// stays steady.
 // params[0] = (raysPerProbe, seed, hysteresis, probeCount); params[1] = (history valid,
-// farCap, 0, 0).
+// farCap, live-response heuristics on, 0).
 fragment float4 ollin_gi_blend_irradiance(PresentOut in [[stage_in]],
                                           constant float4 *params [[buffer(0)]],
                                           texture2d<float> surfels [[texture(0)]],
@@ -218,7 +248,7 @@ fragment float4 ollin_gi_blend_irradiance(PresentOut in [[stage_in]],
     for (int i = 0; i < rays; i++) {
         float w = max(0.0, dot(texelDir, rot * ollin_gi_sf_dir(i, rays)));
         if (w < 1e-4) { continue; }
-        sum += w * surfels.read(uint2(uint(i), uint(probe))).rgb;
+        sum += w * surfels.read(uint2(uint(i + OLLIN_GI_FIXED_RAYS), uint(probe))).rgb;
         wsum += w;
     }
     // Without history the previous texture is uninitialized: never read it, even at
@@ -229,9 +259,15 @@ fragment float4 ollin_gi_blend_irradiance(PresentOut in [[stage_in]],
     if (wsum < 1e-4) { return float4(old, 1.0); }
     float3 fresh = pow(sum / wsum, 1.0 / 5.0);
     float h = params[0].z * params[1].x;
-    float change = max3(abs(fresh.r - old.r), abs(fresh.g - old.g), abs(fresh.b - old.b));
-    if (change > 0.25) { h = max(0.0, h - 0.15); }
-    if (change > 0.8) { h = 0.0; }
+    if (params[1].z > 0.5 && hasHistory) {
+        if (max3(old.r - fresh.r, old.g - fresh.g, old.b - fresh.b) > 0.25) {
+            h = max(0.0, h - 0.75);
+        }
+        float3 delta = fresh - old;
+        if (dot(delta, float3(0.2126, 0.7152, 0.0722)) > 0.10) {
+            fresh = old + delta * 0.25;
+        }
+    }
     return float4(mix(fresh, old, h), 1.0);
 }
 
@@ -270,7 +306,7 @@ fragment float4 ollin_gi_blend_depth(PresentOut in [[stage_in]],
         if (w < 0.001) { continue; }
         // A backface's shortened depth rides in as a negative (the relocation flag);
         // the moments want its magnitude.
-        float d = min(abs(surfels.read(uint2(uint(i), uint(probe))).a), cap);
+        float d = min(abs(surfels.read(uint2(uint(i + OLLIN_GI_FIXED_RAYS), uint(probe))).a), cap);
         sum += w * float2(d, d * d);
         wsum += w;
     }
@@ -285,14 +321,17 @@ fragment float4 ollin_gi_blend_depth(PresentOut in [[stage_in]],
 // Probe-position relocation (the production papers' optimizer, one step per update):
 // a uniform grid inevitably drops some probes inside geometry (a probe row landing in
 // a wall slab is the common case for any room built from panels), and an embedded
-// probe darkens a blotch of every surface its cage touches. Statistics come straight
-// from this update's surfels: a probe whose rays see more than 25% backfaces is inside
-// something and steps THROUGH its closest backface (the nearest exit, plus a little
-// clearance); one pressed against a frontface backs away along its farthest visible
-// frontface, unless the two roughly oppose (a thin gap: stepping through is worse than
-// staying). Offsets clamp per axis to 0.45x the spacing so grid indexing and the
-// trilinear cage stay meaningful, and each step is a pure function of (surfels,
-// previous offsets), so exports reproduce. One texel per probe (probeCount x 1).
+// probe darkens a blotch of every surface its cage touches. Statistics come from the
+// surfel texture's FIXED columns only (see the OLLIN_GI_FIXED_RAYS note): a probe
+// whose fan sees more than 25% backfaces is inside something and steps THROUGH its
+// closest backface (the nearest exit, plus a little clearance); one pressed against a
+// frontface backs away along its farthest visible frontface, unless the two oppose (a
+// thin gap: stepping through is worse than staying); a comfortable probe drifts back
+// toward its grid anchor, so an offset never outlives the geometry that earned it.
+// Proposals commit only inside the 0.45-of-spacing ellipsoid (grid indexing and the
+// trilinear cage stay meaningful), and each step is a pure function of (geometry,
+// previous offsets), so exports reproduce and live positions settle rather than
+// oscillate. One texel per probe (probeCount x 1).
 // params[0] = (raysPerProbe, seed, probeCount, farCap); params[1] = (spacing.xyz, 0).
 fragment float4 ollin_gi_relocate(PresentOut in [[stage_in]],
                                   constant float4 *params [[buffer(0)]],
@@ -301,9 +340,12 @@ fragment float4 ollin_gi_relocate(PresentOut in [[stage_in]],
     int probe = int(in.position.x);
     if (int(in.position.y) > 0 || probe >= int(params[0].z)) { return float4(0.0); }
     float3 offset = previous.read(uint2(uint(probe), 0u)).xyz;
-    int rays = max(int(params[0].x), 1);
     float farCap = params[0].w;
-    float3x3 rot = ollin_gi_rotation(params[0].y);
+    // Statistics come from the fixed fan only (columns 0..<OLLIN_GI_FIXED_RAYS,
+    // never rotated): every decision below sits on a threshold, and a threshold fed
+    // rotating samples flickers, so a probe near one oscillates between positions
+    // and its cage visibly pulses. With a fixed fan each step is a pure function of
+    // (geometry, previous offsets) and the walk settles.
     int backfaces = 0;
     float closestBack = 1e9;
     float3 closestBackDir = float3(0.0);
@@ -311,9 +353,9 @@ fragment float4 ollin_gi_relocate(PresentOut in [[stage_in]],
     float3 closestFrontDir = float3(0.0);
     float farthestFront = 0.0;
     float3 farthestFrontDir = float3(0.0);
-    for (int i = 0; i < rays; i++) {
+    for (int i = 0; i < OLLIN_GI_FIXED_RAYS; i++) {
         float a = surfels.read(uint2(uint(i), uint(probe))).a;
-        float3 dir = rot * ollin_gi_sf_dir(i, rays);
+        float3 dir = ollin_gi_sf_dir(i, OLLIN_GI_FIXED_RAYS);
         if (a < 0.0) {
             backfaces += 1;
             float trueDist = -a * 5.0;   // the trace stored the 80%-shortened depth
@@ -325,12 +367,30 @@ fragment float4 ollin_gi_relocate(PresentOut in [[stage_in]],
     }
     float3 spacing = params[1].xyz;
     float minSpacing = min(spacing.x, min(spacing.y, spacing.z));
-    if (float(backfaces) / float(rays) > 0.25 && closestBack < 1e8) {
-        offset += closestBackDir * (closestBack + 0.15 * minSpacing);
-    } else if (closestFront < 0.3 * minSpacing
-               && dot(farthestFrontDir, closestFrontDir) <= 0.5) {
-        offset += farthestFrontDir * min(0.2 * minSpacing, farthestFront);
+    float minFront = 0.3 * minSpacing;
+    float3 proposed = offset;
+    if (float(backfaces) / float(OLLIN_GI_FIXED_RAYS) > 0.25 && closestBack < 1e8) {
+        proposed = offset + closestBackDir * (closestBack + 0.15 * minSpacing);
+    } else if (closestFront < minFront) {
+        if (dot(farthestFrontDir, closestFrontDir) <= 0.0) {
+            proposed = offset + farthestFrontDir * min(0.2 * minSpacing, farthestFront);
+        }
+    } else {
+        // Comfortable: drift back toward the grid anchor (the reference's third
+        // branch), never so far the clearance just gained is given back. A probe
+        // whose fan sees nothing near walks all the way home.
+        float len = length(offset);
+        if (len > 1e-5) {
+            float margin = min(closestFront - minFront, len);
+            proposed = offset - (offset / len) * margin;
+        }
     }
+    // Commit only inside the 0.45-of-spacing ellipsoid (the reference's rule): a
+    // proposal outside it is refused whole, keeping the previous offset, never
+    // clamped onto the shell. The per-axis clamp is the hard backstop: whatever
+    // the ping-pong holds, a sampled offset never exceeds the cage bound.
+    float3 n = proposed / spacing;
+    if (dot(n, n) < 0.2025) { offset = proposed; }
     float3 limit = spacing * 0.45;
     return float4(clamp(offset, -limit, limit), 1.0);
 }

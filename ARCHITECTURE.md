@@ -2381,31 +2381,56 @@ ShaderCombine: it reuses Shader3D's RT surface fetch and ShaderEffects'
 `PresentOut`), compiled only under `OLLIN_RT_SHADOWS`:
 
 1. **Trace** (`ollin_gi_trace`): one texel per (ray, probe) into a transient
-   surfel texture. Directions are a spherical-Fibonacci fan under a
-   per-update random rotation (Shoemake quaternion from the hashed seed, so an
-   update is a pure function of its seed). A hit shades as direct light
-   (Lambert over the punctual kinds, the exact LTC diffuse for panels, light
-   shaping applied) *times one visibility ray to the casting light* (without
-   that shadow ray, bounce light walks through the very wall whose shadow the
-   primary shading draws), plus the *previous* update's probe field at the hit
-   (each update deepens the bounce by one). A miss samples the environment's
-   radiance times the IBL exposure (sky light with occlusion, for free); a
-   backface hit stores zero radiance and a **negated, 80%-shortened** distance
-   (the sign is the relocation pass's flag, the shortening the leak guard).
+   surfel texture. The texture's first `OLLIN_GI_FIXED_RAYS` (32) columns are
+   the **fixed statistics fan**: spherical-Fibonacci directions with *no*
+   rotation and no shading (distance and facing only), traced solely for the
+   relocation pass. The remaining columns are the radiance fan: a
+   spherical-Fibonacci fan under a per-update random rotation (Shoemake
+   quaternion from the hashed seed, so an update is a pure function of its
+   seed). A radiance hit shades as direct light (Lambert over the punctual
+   kinds, the exact LTC diffuse for panels, light shaping applied) *times one
+   visibility ray to the casting light* (without that shadow ray, bounce
+   light walks through the very wall whose shadow the primary shading draws),
+   plus the *previous* update's probe field at the hit (each update deepens
+   the bounce by one). A miss samples the environment's radiance times the
+   IBL exposure (sky light with occlusion, for free); a backface hit stores
+   zero radiance and a **negated, 80%-shortened** distance (the sign is the
+   relocation pass's flag, the shortening the leak guard).
 2. **Blend irradiance** (`ollin_gi_blend_irradiance`): per octahedral texel,
-   the cosine-weighted mean of the fan's radiances (`Σ wL / Σ w`, which is
+   the cosine-weighted mean of the radiance fan (`Σ wL / Σ w`, which is
    E/π, the IBL irradiance cube's own convention, so the sample drops into
-   `diffuse = irradiance * base` unchanged), encoded `pow(x, 1/5)` (the 2021
-   paper's perceptual gamma) and hysteresis-blended into the previous atlas.
-   Per-texel convergence heuristics (change > 25% of range → hysteresis −0.15,
-   > 80% → 0) keep lighting changes from lagging.
+   `diffuse = irradiance * base` unchanged; the fixed columns are skipped,
+   since directions that never rotate would bias the estimate), encoded
+   `pow(x, 1/5)` (the 2021 paper's perceptual gamma) and hysteresis-blended
+   into the previous atlas. **Live only**, the reference's asymmetric
+   temporal-response pair, and the asymmetry is the point: a *darkening* past
+   0.25 cuts the hysteresis by 0.75 (a switched-off light must not ghost),
+   while a *brightening* whose luminance jumps past 0.10 is rate-limited to a
+   quarter step per update. With a sun disc in the fan, one update catches it
+   on a couple of rays and the next on none, so a bright spike is estimator
+   variance to be absorbed, not news to be trusted; before the rate limit, a
+   sky-lit scene's whole field visibly pulsed (a real live-window defect,
+   measured at ~25/255 swings on a lit sphere). Headless skips the pair
+   entirely: its iterations converge a progressive mean, and either heuristic
+   would bias the estimator it is converging.
 3. **Blend depth** (`ollin_gi_blend_depth`): mean distance + mean squared
    distance under a power-50 cosine lobe, at 16×16 per probe against the
-   irradiance's 8×8.
-4. **Relocate** (`ollin_gi_relocate`): per-probe statistics off the surfels
-   walk a probe seeing >25% backfaces out through its closest backface, and
-   back a surface-pressed probe away along its farthest frontface; offsets
-   clamp to 0.45× spacing per axis and live in a probeCount×1 ping-ponged
+   irradiance's 8×8, over the radiance columns (same skip).
+4. **Relocate** (`ollin_gi_relocate`): per-probe statistics off the surfel
+   texture's **fixed columns only**. Every decision below sits on a
+   threshold, and a threshold fed the rotating radiance fan flickers: a probe
+   hovering near one oscillated between positions every update, and every
+   surface its cage touched visibly pulsed (the second real live-window
+   defect; freezing relocation was the diagnostic that isolated it). With
+   the fixed fan each step is a pure function of (geometry, previous
+   offsets), so the walk settles. The branches are the reference's three: a
+   probe seeing >25% backfaces steps out through its closest backface; a
+   surface-pressed one (closest frontface under 0.3× min spacing) backs away
+   along its farthest frontface unless the two oppose; a comfortable one
+   drifts back toward its grid anchor by the clearance it can spare, so an
+   offset never outlives the geometry that earned it. Proposals commit only
+   inside the 0.45-of-spacing ellipsoid (a proposal outside is refused whole,
+   never clamped onto the shell); offsets live in a probeCount×1 ping-ponged
    texture the trace and samplers both read.
 
 Sampling (`ollin_gi_sample`, Shader3D, textures 13/14/15 on every lit carrier)
@@ -2495,7 +2520,13 @@ inside, intensity scaling, on-then-off byte-equality, two-render
 byte-determinism, the mirror-interior and render-target counterfactuals, the
 quality knob's export-tier bytes, and the exact per-axis-count derivation),
 all RT-gated except the count unit test, the toggle/mirror/target/knob claims
-each verified red by sabotage. The remaining envelope: GPU point clouds and
+each verified red by sabotage. The two live stabilizers (the fixed relocation
+fan and the temporal-response pair) deliberately carry no test of their own:
+both defects exist only in the live hysteresis loop, which every deterministic
+probe restarts from scratch, so the verification is the live A/B measurement
+(window captures diffed frame-to-frame: sphere pulsing mean ~4.4 → ~0.5,
+worst-band over-8/255 fraction 53% → under 1%), the same honesty rule the
+artificial-life sims follow. The remaining envelope: GPU point clouds and
 particles don't gather (they barely have surfaces to), documented in
 `Docs/3D/3D.md#global-illumination`.
 

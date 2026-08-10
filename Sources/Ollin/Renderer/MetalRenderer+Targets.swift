@@ -1302,6 +1302,12 @@ extension MetalRenderer {
     /// Probe tiles per atlas row. The blend/sample shaders re-derive it from the atlas
     /// width (width / tile), so the layout constant lives only here.
     private static let giTilesPerRow = 32
+    /// Fixed statistics rays per probe, the surfel texture's FIRST columns: never
+    /// rotated, distance-only, read by the relocation pass alone so its threshold
+    /// decisions can't flicker with the radiance fan's per-update rotation (the
+    /// production papers' fixed rays). Mirrors `OLLIN_GI_FIXED_RAYS` in
+    /// ShaderGI.metal; keep the two in step.
+    private static let giFixedRays = 32
 
     /// Per-axis probe counts for a fitted volume: near-isotropic spacing (counts
     /// proportional to extent) under the fixed total budget, each axis at least 2 (a
@@ -1552,7 +1558,8 @@ extension MetalRenderer {
               let blendIrrPipe = try? pipeline(.effect("ollin_gi_blend_irradiance")),
               let blendDepPipe = try? pipeline(.effect("ollin_gi_blend_depth")),
               let relocatePipe = try? pipeline(.effect("ollin_gi_relocate")),
-              let surfels = acquireFilterTexture(width: rays, height: probeCount, pooled: pooled)
+              let surfels = acquireFilterTexture(width: rays + Self.giFixedRays,
+                                                 height: probeCount, pooled: pooled)
         else { return nil }
         if iblPlaceholderCube == nil { iblPlaceholderCube = makeCubeTexture(face: 1, mipped: false) }
         let stand = gradientStripTexture(for: drawer.gradientRows)
@@ -1589,8 +1596,11 @@ extension MetalRenderer {
             trace.endEncoding()
             state.lastTraceOffsets = state.offFront
 
+            // params[1].z arms the irradiance blend's live temporal-response pair
+            // (darkening hysteresis cut + brightening rate limit); headless leaves it
+            // off so the iterations converge an unbiased progressive mean.
             let blendParams = [SIMD4<Float>(Float(rays), seed, hysteresis, Float(probeCount)),
-                               SIMD4<Float>(prevValid, depthCap, 0, 0)]
+                               SIMD4<Float>(prevValid, depthCap, supersample ? 0 : 1, 0)]
             encodeGIBlend(blendIrrPipe, surfels: surfels, previous: state.irrFront,
                           output: state.irrBack, params: blendParams, into: cb)
             encodeGIBlend(blendDepPipe, surfels: surfels, previous: state.depFront,
