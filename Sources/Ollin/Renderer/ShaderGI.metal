@@ -52,13 +52,40 @@ static inline float3x3 ollin_gi_rotation(float seed) {
         float3(2.0 * (x * z + y * w), 2.0 * (y * z - x * w), 1.0 - 2.0 * (x * x + y * y)));
 }
 
-// World position of probe `index` on the grid the lighting struct describes.
+// World position of probe `index` on the grid the lighting struct describes (the
+// single-volume trace's form; the cascaded twin below adds the slot/phase math).
 static inline float3 ollin_gi_probe_position(int index, constant OllinLighting &light) {
     int3 c = int3(light.giCounts.xyz);
     int x = index % c.x;
     int y = (index / c.x) % c.y;
     int z = index / (c.x * c.y);
     return light.giOrigin.xyz + float3(x, y, z) * light.giSpacing.xyz;
+}
+
+// World position of the probe in physical atlas slot `index`, cascades included.
+// Cascade 0 (the scene-fitted volume) is the lighting struct's own grid; a camera
+// cascade's grid coordinate un-wraps through its scroll phase ((phys - phase) mod
+// counts, the tank-tread rule), so a stationary world lattice point keeps its
+// atlas texel as the window scrolls and only the scrolled-in planes change meaning.
+static inline float3 ollin_gi_probe_position_cascaded(int index,
+                                                      constant OllinLighting &light) {
+    int cascade = index >> 9;   // 512-probe atlas slots
+    if (cascade == 0) { return ollin_gi_probe_position(index, light); }
+    constant OllinGICascade &cas = light.giCascades[cascade - 1];
+    int local = index & 511;
+    int3 c = int3(cas.countsPhase.xyz);
+    int3 phys = int3(local % c.x, (local / c.x) % c.y, local / (c.x * c.y));
+    int3 g = (phys - ollin_gi_unpack_phase(cas.countsPhase.w) + c + c) % c;
+    return cas.originBias.xyz + float3(g) * cas.spacingBase.x;
+}
+
+// A physical probe index's cascade-local probe count: how many of its 512-slot
+// texels are live (`count0` is the scene volume's own count, the shipped guard).
+static inline int ollin_gi_local_count(int cascade, int count0,
+                                       constant OllinLighting &light) {
+    if (cascade == 0) { return count0; }
+    int3 c = int3(light.giCascades[cascade - 1].countsPhase.xyz);
+    return c.x * c.y * c.z;
 }
 
 // One occlusion ray: anything committed between the point and the light.
@@ -193,6 +220,118 @@ fragment float4 ollin_gi_trace(PresentOut in [[stage_in]],
     return float4(direct + bounce, min(dist, farCap));
 }
 
+// The trace's cascaded twin, encoded instead of `ollin_gi_trace` only while camera
+// cascades exist. A DELIBERATE copy, not a shared body: the single-volume trace
+// above must keep its exact shipped codegen (fast-math re-contracts a function's
+// unchanged float expressions when its control flow grows, and even the ulp that
+// shifts is a byte off every dithered frame, a measured drift), so the shipped
+// fragment stays verbatim and the cascade awareness lives here. Keep the two
+// bodies in step (the `ollin_gi_sample` / `ollin_gi_sample_volume` rule); the
+// deltas are exactly three: the guard walks the 512-probe atlas slots, positions
+// come from `ollin_gi_probe_position_cascaded`, and the bounce recursion samples
+// the cascaded field.
+fragment float4 ollin_gi_trace_cascaded(PresentOut in [[stage_in]],
+                                        constant float4 *params [[buffer(0)]],
+                                        constant OllinLighting &light [[buffer(1)]],
+                                        primitive_acceleration_structure accel [[buffer(3)]],
+                                        const device OllinMeshVertex *verts [[buffer(6)]],
+                                        const device uint *geoOffsets [[buffer(7)]],
+                                        texturecube<float> prefilterTex [[texture(5)]],
+                                        texture2d<float> ltcAmp [[texture(9)]],
+                                        texture2d_array<float> iesProfiles [[texture(10)]],
+                                        texture2d_array<float> cookies [[texture(11)]],
+                                        texture2d<float> giIrradiance [[texture(13)]],
+                                        texture2d<float> giDepth [[texture(14)]],
+                                        texture2d<float> giProbeOffsets [[texture(15)]]) {
+    int rayIndex = int(in.position.x);
+    int probe = int(in.position.y);
+    int raysPerProbe = max(int(params[0].x), 1);
+    float farCap = params[0].z;
+    int cascade = probe >> 9;
+    if (rayIndex >= raysPerProbe + OLLIN_GI_FIXED_RAYS
+        || cascade >= max(int(light.giCascadeInfo.x), 1)
+        || (probe & 511) >= ollin_gi_local_count(cascade, int(params[0].w), light)) {
+        return float4(0.0, 0.0, 0.0, farCap);
+    }
+
+    bool fixedRay = rayIndex < OLLIN_GI_FIXED_RAYS;
+    float3 origin = ollin_gi_probe_position_cascaded(probe, light)
+                  + giProbeOffsets.read(uint2(uint(probe), 0u)).xyz;
+    float3 dir = fixedRay
+        ? ollin_gi_sf_dir(rayIndex, OLLIN_GI_FIXED_RAYS)
+        : ollin_gi_rotation(params[0].y)
+            * ollin_gi_sf_dir(rayIndex - OLLIN_GI_FIXED_RAYS, raysPerProbe);
+
+    ray r;
+    r.origin = origin;
+    r.direction = dir;
+    r.min_distance = 0.0;
+    r.max_distance = 1e9;
+    intersection_query<triangle_data> q;
+    if (!ollin_rt_query(q, r, accel)) {
+        float3 sky = float3(0.0);
+        if (light.iblEnabled != 0) {
+            constexpr sampler cubeSamp(filter::linear, mip_filter::linear, address::clamp_to_edge);
+            float cs = cos(light.iblRotation), sn = sin(light.iblRotation);
+            float3x3 rot = float3x3(float3(cs, 0.0, -sn), float3(0.0, 1.0, 0.0),
+                                    float3(sn, 0.0, cs));
+            sky = prefilterTex.sample(cubeSamp, rot * dir, level(0.0)).rgb * light.iblIntensity;
+        }
+        return float4(sky, farCap);
+    }
+    bool backface = false;
+    OllinRTSurface s = ollin_rt_fetch_surface(q, verts, geoOffsets, origin, dir, backface);
+    float dist = q.get_committed_distance();
+    if (backface) {
+        return float4(0.0, 0.0, 0.0, -min(dist * 0.2, farCap));
+    }
+    if (fixedRay) {
+        return float4(0.0, 0.0, 0.0, min(dist, farCap));
+    }
+
+    float eps = max(light.rtReflectionBias, 1e-4);
+    float3 direct = float3(0.0);
+    for (int i = 0; i < light.lightCount; i++) {
+        OllinLight L = light.lights[i];
+        float3 toLight;
+        float tmax;
+        if (L.kind == 0) {
+            toLight = L.direction.xyz;
+            tmax = 1e9;
+        } else {
+            float3 d = L.position.xyz - s.P;
+            float len = max(length(d), 1e-6);
+            toLight = d / len;
+            tmax = len * 0.99;
+        }
+        float vis = 1.0;
+        if (i == light.shadowLight
+            && ollin_gi_occluded(s.P + s.N * eps, toLight, tmax, eps, accel)) {
+            vis = 1.0 - light.shadowStrength;
+        }
+        if (L.kind >= 3) {
+            if (light.ltcEnabled != 0) {
+                direct += s.albedo * L.color.rgb
+                        * (vis * ollin_ltc_diffuse(L, s.N, -dir, s.P, ltcAmp));
+            }
+            continue;
+        }
+        float atten = 1.0;
+        if (L.kind == 2) {
+            atten = smoothstep(L.cosOuter, L.cosInner, dot(-toLight, L.direction.xyz));
+        }
+        ollin_apply_light_shaping(L, light, toLight, s.P, iesProfiles, cookies);
+        direct += s.albedo * L.color.rgb * (max(dot(s.N, toLight), 0.0) * atten * vis);
+    }
+
+    float3 bounce = float3(0.0);
+    if (params[1].x > 0.5) {
+        bounce = s.albedo * ollin_gi_sample_cascaded(s.P, s.N, -dir, light,
+                                                     giIrradiance, giDepth, giProbeOffsets);
+    }
+    return float4(direct + bounce, min(dist, farCap));
+}
+
 // Which interior texel a tile-local texel mirrors: identity inside the payload, the
 // octahedrally-wrapped source for the 1-texel gutter ring (edges continue by a half-turn
 // about the edge midpoint; the four corners all sit at the folded pole and copy the
@@ -227,18 +366,28 @@ static inline int2 ollin_gi_gutter_source(int2 local, int interior) {
 // would bias the estimator it is converging. Irradiance only; the visibility blend
 // stays steady.
 // params[0] = (raysPerProbe, seed, hysteresis, probeCount); params[1] = (history valid,
-// farCap, live-response heuristics on, 0).
+// farCap, live-response heuristics on, cascade count: 0 = the shipped single-volume
+// layout). With camera cascades, params[2 + c] = (local probe count, moment cap,
+// spacing, 0) for cascade c + 1, and per-probe validity rides the offsets texture's
+// w channel (texture 2): a probe whose plane just scrolled in reads 0 there, so its
+// stale texels blend exactly like a refit's (fresh at full weight, the reference's
+// clear-then-zero-hysteresis semantics in one step).
 fragment float4 ollin_gi_blend_irradiance(PresentOut in [[stage_in]],
                                           constant float4 *params [[buffer(0)]],
                                           texture2d<float> surfels [[texture(0)]],
-                                          texture2d<float> previous [[texture(1)]]) {
+                                          texture2d<float> previous [[texture(1)]],
+                                          texture2d<float> offsets [[texture(2)]]) {
     const int interior = 8;
     const int tile = interior + 2;
     int2 px = int2(in.position.xy);
     int perRow = max(int(previous.get_width()) / tile, 1);
     int2 tileIdx = px / tile;
     int probe = tileIdx.x + tileIdx.y * perRow;
-    if (probe >= int(params[0].w)) { return float4(0.0, 0.0, 0.0, 1.0); }
+    int cascade = probe >> 9;
+    int localCount = cascade == 0 ? int(params[0].w) : int(params[1 + cascade].x);
+    if (cascade >= max(int(params[1].w), 1) || (probe & 511) >= localCount) {
+        return float4(0.0, 0.0, 0.0, 1.0);
+    }
     int2 local = ollin_gi_gutter_source(px - tileIdx * tile, interior);
     float3 texelDir = ollin_gi_oct_decode((float2(local) - 0.5) / float(interior));
     int rays = max(int(params[0].x), 1);
@@ -254,11 +403,13 @@ fragment float4 ollin_gi_blend_irradiance(PresentOut in [[stage_in]],
     // Without history the previous texture is uninitialized: never read it, even at
     // hysteresis 0 (`mix(fresh, old, 0)` is fresh + 0*(old - fresh), which is NaN
     // wherever the garbage is NaN; a real first-frame bug, the whole field poisoned).
-    bool hasHistory = params[1].x > 0.5;
+    // History is per probe: the global flag AND the probe's own validity (offsets w,
+    // dropped by the scroll pass for a plane that just entered the window).
+    bool hasHistory = params[1].x > 0.5 && offsets.read(uint2(uint(probe), 0u)).w > 0.5;
     float3 old = hasHistory ? previous.read(uint2(px)).rgb : float3(0.0);
     if (wsum < 1e-4) { return float4(old, 1.0); }
     float3 fresh = pow(sum / wsum, 1.0 / 5.0);
-    float h = params[0].z * params[1].x;
+    float h = params[0].z * (hasHistory ? 1.0 : 0.0);
     if (params[1].z > 0.5 && hasHistory) {
         if (max3(old.r - fresh.r, old.g - fresh.g, old.b - fresh.b) > 0.25) {
             h = max(0.0, h - 0.75);
@@ -285,16 +436,22 @@ fragment float4 ollin_gi_blend_irradiance(PresentOut in [[stage_in]],
 fragment float4 ollin_gi_blend_depth(PresentOut in [[stage_in]],
                                      constant float4 *params [[buffer(0)]],
                                      texture2d<float> surfels [[texture(0)]],
-                                     texture2d<float> previous [[texture(1)]]) {
+                                     texture2d<float> previous [[texture(1)]],
+                                     texture2d<float> offsets [[texture(2)]]) {
     const int interior = 16;
     const int tile = interior + 2;
     int2 px = int2(in.position.xy);
     int perRow = max(int(previous.get_width()) / tile, 1);
     int2 tileIdx = px / tile;
     int probe = tileIdx.x + tileIdx.y * perRow;
-    float cap = params[1].y;
+    int cascade = probe >> 9;
+    // The moment cap is per cascade (1.5x its own spacing, the cage rule).
+    float cap = cascade == 0 ? params[1].y : params[1 + cascade].y;
     float2 rest = float2(cap, cap * cap);
-    if (probe >= int(params[0].w)) { return float4(rest, 0.0, 1.0); }
+    int localCount = cascade == 0 ? int(params[0].w) : int(params[1 + cascade].x);
+    if (cascade >= max(int(params[1].w), 1) || (probe & 511) >= localCount) {
+        return float4(rest, 0.0, 1.0);
+    }
     int2 local = ollin_gi_gutter_source(px - tileIdx * tile, interior);
     float3 texelDir = ollin_gi_oct_decode((float2(local) - 0.5) / float(interior));
     int rays = max(int(params[0].x), 1);
@@ -310,11 +467,13 @@ fragment float4 ollin_gi_blend_depth(PresentOut in [[stage_in]],
         sum += w * float2(d, d * d);
         wsum += w;
     }
-    bool hasHistory = params[1].x > 0.5;
+    // Per-probe history, like the irradiance blend: a scrolled-in probe's stale
+    // moments never survive into the new plane.
+    bool hasHistory = params[1].x > 0.5 && offsets.read(uint2(uint(probe), 0u)).w > 0.5;
     float2 old = hasHistory ? previous.read(uint2(px)).rg : rest;
     if (wsum < 1e-4) { return float4(old, 0.0, 1.0); }
     float2 fresh = sum / wsum;
-    float h = params[0].z * params[1].x;
+    float h = params[0].z * (hasHistory ? 1.0 : 0.0);
     return float4(mix(fresh, old, h), 0.0, 1.0);
 }
 
@@ -332,13 +491,19 @@ fragment float4 ollin_gi_blend_depth(PresentOut in [[stage_in]],
 // trilinear cage stay meaningful), and each step is a pure function of (geometry,
 // previous offsets), so exports reproduce and live positions settle rather than
 // oscillate. One texel per probe (probeCount x 1).
-// params[0] = (raysPerProbe, seed, probeCount, farCap); params[1] = (spacing.xyz, 0).
+// params[0] = (raysPerProbe, seed, probeCount, farCap); params[1] = (spacing.xyz,
+// cascade count: 0 = the shipped single-volume layout). With camera cascades,
+// params[2 + c] = (local probe count, moment cap, spacing, 0) for cascade c + 1
+// (the blend passes' slot layout).
 fragment float4 ollin_gi_relocate(PresentOut in [[stage_in]],
                                   constant float4 *params [[buffer(0)]],
                                   texture2d<float> surfels [[texture(0)]],
                                   texture2d<float> previous [[texture(1)]]) {
     int probe = int(in.position.x);
-    if (int(in.position.y) > 0 || probe >= int(params[0].z)) { return float4(0.0); }
+    int cascade = probe >> 9;
+    int localCount = cascade == 0 ? int(params[0].z) : int(params[1 + cascade].x);
+    if (int(in.position.y) > 0 || cascade >= max(int(params[1].w), 1)
+        || (probe & 511) >= localCount) { return float4(0.0); }
     float3 offset = previous.read(uint2(uint(probe), 0u)).xyz;
     float farCap = params[0].w;
     // Statistics come from the fixed fan only (columns 0..<OLLIN_GI_FIXED_RAYS,
@@ -365,7 +530,7 @@ fragment float4 ollin_gi_relocate(PresentOut in [[stage_in]],
             if (a > farthestFront) { farthestFront = a; farthestFrontDir = dir; }
         }
     }
-    float3 spacing = params[1].xyz;
+    float3 spacing = cascade == 0 ? params[1].xyz : float3(params[1 + cascade].z);
     float minSpacing = min(spacing.x, min(spacing.y, spacing.z));
     float minFront = 0.3 * minSpacing;
     float3 proposed = offset;
@@ -393,6 +558,45 @@ fragment float4 ollin_gi_relocate(PresentOut in [[stage_in]],
     if (dot(n, n) < 0.2025) { offset = proposed; }
     float3 limit = spacing * 0.45;
     return float4(clamp(offset, -limit, limit), 1.0);
+}
+
+// Scrolled-plane invalidation (live only): when a camera cascade's window moved
+// this update, the planes that scrolled in hold another world position's data, so
+// their probes restart: relocation offset zeroed (an offset earned at the old
+// position means nothing at the new one) and validity (w) dropped, which the blend
+// passes read as "no history" (fresh at full weight, the per-probe refit rule; the
+// reference clears such probes and zeroes their hysteresis, the same semantics in
+// one step). Every other texel passes through untouched, so the interior of the
+// field never re-converges. One texel per physical probe, over the offsets
+// ping-pong; the entered planes are contiguous grid-coordinate slabs per axis
+// (delta > 0 enters at the high edge, delta < 0 at the low one), computed CPU-side.
+// params[0].x = cascade count; params[1 + 3c] = (counts.xyz, packed NEW phase);
+// params[2 + 3c] = entered slab lo per axis (grid coords in the new window);
+// params[3 + 3c] = entered slab length per axis (0 = nothing entered on that axis).
+fragment float4 ollin_gi_scroll(PresentOut in [[stage_in]],
+                                constant float4 *params [[buffer(0)]],
+                                texture2d<float> previous [[texture(0)]]) {
+    int probe = int(in.position.x);
+    if (int(in.position.y) > 0) { return float4(0.0); }
+    float4 prev = previous.read(uint2(uint(probe), 0u));
+    int cascade = probe >> 9;
+    // Cascade 0 (the scene volume) never scrolls; its texels ride through.
+    if (cascade < 1 || cascade >= int(params[0].x)) { return prev; }
+    int slot = 3 * (cascade - 1);
+    float4 cp = params[1 + slot];
+    int3 c = int3(cp.xyz);
+    int local = probe & 511;
+    if (local >= c.x * c.y * c.z) { return prev; }
+    int3 phys = int3(local % c.x, (local / c.x) % c.y, local / (c.x * c.y));
+    int3 g = (phys - ollin_gi_unpack_phase(cp.w) + c + c) % c;
+    float4 lo = params[2 + slot];
+    float4 len = params[3 + slot];
+    for (int a = 0; a < 3; a++) {
+        if (len[a] > 0.5 && g[a] >= int(lo[a]) && g[a] < int(lo[a] + len[a])) {
+            return float4(0.0);
+        }
+    }
+    return prev;
 }
 
 #endif

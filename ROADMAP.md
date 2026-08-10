@@ -109,7 +109,6 @@ Deeper use of the Metal core and Apple displays, all opt-in so the 2D path stays
 
 - **Wide-gamut and HDR.** Composite and present through Display P3 (and Rec. 2020) end to end, and export true HDR video (HDR10 / Dolby Vision) from the float pipeline that already exists, for richer color than an 8-bit sRGB target can hold.
 - **GPU-driven rendering.** Indirect command buffers and mesh shaders to scale past instancing: many more distinct, GPU-encoded or GPU-generated objects with the CPU out of the per-object loop.
-- **Probe-field cascades.** Nested camera-anchored probe volumes at doubling spacing, so global-illumination bounce stays dense around what the camera sees in a terrain-scale scene instead of coarsening with the scene's bounds.
 - **Film-quality export.** An offline path-traced render path a sketch can switch to for gallery-grade stills and sequences, from the same scene tuned live (an extension of the ray-tracing direction noted under [3D mode](#3d-mode)).
 
 See the [design notes](DESIGN-NOTES.md#rendering-and-color-frontier). (The most speculative items here, spectral rendering, AI frame interpolation, optical-flow self-warp, and print color management, sit under [Further out / exploratory](#further-out--exploratory).)

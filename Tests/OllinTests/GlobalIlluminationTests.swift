@@ -177,6 +177,132 @@ struct GlobalIlluminationTests {
                 "`.performance` must actually trace a lighter update than `.detail`")
     }
 
+    /// Camera cascades change the near field on a vast scene: the red wall's face,
+    /// standing on a brilliantly lit floor, reads the floor's bounce through the fine
+    /// cascades where the single 512-probe volume spreads ~50-unit probes and smears
+    /// it. The counterfactual is the same scene and camera with only the ladder
+    /// removed (the test seam), so the pair isolates exactly the cascades' term.
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func cascadesResolveTheNearFieldOnAVastScene() throws {
+        func wallFace(cascades: Bool) throws -> Double {
+            MetalRenderer.giCascadesEnabledForTesting = cascades
+            defer { MetalRenderer.giCascadesEnabledForTesting = true }
+            let image = try #require(OllinApp.image(of: GIVastProbe.make(), frame: 1))
+            let m = bandMean(image, x: 0.20...0.27, y: 0.36...0.44)
+            return (m.r + m.g + m.b) / 3
+        }
+        let cascaded = try wallFace(cascades: true)
+        let single = try wallFace(cascades: false)
+        #expect(single > 40, "the wall must be lit in both renders: \(single)")
+        #expect(abs(cascaded - single) > 8,
+                "the fine cascades must change the wall's floor bounce: cascaded \(cascaded), single \(single)")
+    }
+
+    /// The coarseness threshold: a room-scale scene never derives camera cascades, so
+    /// disabling them changes nothing, byte-identically. This is the guard that the
+    /// shipped single-volume path (gi-3d and every room GI scene) is untouched by the
+    /// whole cascade mechanism.
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func aRoomScaleSceneStaysSingleVolume() throws {
+        let normal = try #require(OllinApp.image(of: GIRoomProbe.make(gi: true), frame: 1))
+        MetalRenderer.giCascadesEnabledForTesting = false
+        defer { MetalRenderer.giCascadesEnabledForTesting = true }
+        let forced = try #require(OllinApp.image(of: GIRoomProbe.make(gi: true), frame: 1))
+        #expect(pixels(normal).data == pixels(forced).data,
+                "a room under the coarseness threshold must not derive cascades")
+    }
+
+    /// A cascaded export stays a pure function of the frame: the headless path refits
+    /// the ladder from the frame's own camera and bounds every frame, so two renders
+    /// of the vast scene are byte-identical (the promise every export stands on).
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func aCascadedExportIsAPureFunctionOfTheFrame() throws {
+        let first = try #require(OllinApp.image(of: GIVastProbe.make(), frame: 1))
+        let second = try #require(OllinApp.image(of: GIVastProbe.make(), frame: 1))
+        #expect(pixels(first).data == pixels(second).data,
+                "two renders of one cascaded GI frame must be byte-identical")
+    }
+
+    /// The ladder derivation is the design in numbers: nothing at room scale, halving
+    /// cascades once the fitted spacing crosses half the working distance, the finest
+    /// near a quarter of it, at most three, axis counts clamped to the scene's slab
+    /// with covered axes pinned. Pure CPU.
+    @Test
+    func theCascadeLadderFollowsTheWorkingScale() {
+        // Room scale: spacing well under half the working distance, no ladder.
+        let room = MetalRenderer.giCascadeLadder(volumeOrigin: SIMD3(-5, 0, -5),
+                                                 volumeSpan: SIMD3(10, 6, 10),
+                                                 spacing: SIMD3(repeating: 1.5),
+                                                 eye: SIMD3(0, 2, 4), workingScale: 9.5)
+        #expect(room.isEmpty, "a room-scale scene must stay single-volume: \(room)")
+        // Terrain scale: the vast probe's own numbers (52-unit spacing, W 13.7).
+        let vast = MetalRenderer.giCascadeLadder(volumeOrigin: SIMD3(-390, -20, -390),
+                                                 volumeSpan: SIMD3(780, 39, 780),
+                                                 spacing: SIMD3(52, 39, 52),
+                                                 eye: SIMD3(6, 4, 12), workingScale: 13.75)
+        #expect(vast.count == 3, "a vast scene must ladder to three cascades: \(vast.count)")
+        #expect(vast.map(\.spacing) == [26, 13, 6.5],
+                "cascades must halve from the scene spacing: \(vast.map(\.spacing))")
+        for cas in vast {
+            let product = Int(cas.counts.x) * Int(cas.counts.y) * Int(cas.counts.z)
+            #expect(product <= 512 && cas.counts.min() >= 2 && cas.counts.max() <= 8,
+                    "a cascade must fit its atlas slot: \(cas.counts)")
+        }
+        // The vertical axis: covered by the slab at every rung, so pinned (never
+        // scrolls) and centered on it, while the vast axes anchor on the eye.
+        #expect(vast.allSatisfy { $0.scrolls.y == 0 && $0.scrolls.x == 1 && $0.scrolls.z == 1 },
+                "slab-covered axes pin, vast axes scroll: \(vast.map(\.scrolls))")
+        let finest = vast[2]
+        #expect(abs((finest.origin.x + Float(finest.counts.x - 1) * finest.spacing * 0.5) - 6) < 1e-3,
+                "a scrolling axis centers its window on the eye")
+        // Determinism: the derivation is a pure function.
+        let again = MetalRenderer.giCascadeLadder(volumeOrigin: SIMD3(-390, -20, -390),
+                                                  volumeSpan: SIMD3(780, 39, 780),
+                                                  spacing: SIMD3(52, 39, 52),
+                                                  eye: SIMD3(6, 4, 12), workingScale: 13.75)
+        #expect(again == vast, "the ladder must derive identically twice")
+    }
+
+    /// The scroll math is the reference's: a dead zone of one whole plane (truncation
+    /// toward zero), the phase wrap that keeps a stationary lattice point on its
+    /// texel, and entered slabs at the edge the window moved toward. Pure CPU.
+    @Test
+    func theScrollMathKeepsStationaryProbesPut() {
+        let counts = SIMD3<Int32>(8, 3, 8)
+        let scrolls = SIMD3<Int32>(1, 0, 1)
+        // Dead zone: anchor within one spacing of the center scrolls nothing.
+        let still = MetalRenderer.giScrollDelta(origin: SIMD3(-14, 0, -14), spacing: 4,
+                                                counts: counts, scrolls: scrolls,
+                                                anchor: SIMD3(3.9, 0, -3.9))
+        #expect(still == .zero, "under one plane of drift must not scroll: \(still)")
+        // A move of 2.5 spacings scrolls 2 whole planes, pinned axes never.
+        let delta = MetalRenderer.giScrollDelta(origin: SIMD3(-14, 0, -14), spacing: 4,
+                                                counts: counts, scrolls: scrolls,
+                                                anchor: SIMD3(10, 50, -4.1))
+        #expect(delta == SIMD3(2, 0, -1), "whole planes toward the anchor: \(delta)")
+        // The wrap: phase accumulates modulo counts, negatives included.
+        var phase = SIMD3<Int32>.zero
+        phase = MetalRenderer.giWrappedPhase(phase, delta: SIMD3(2, 0, -1), counts: counts)
+        #expect(phase == SIMD3(2, 0, 7), "the phase wraps per axis: \(phase)")
+        phase = MetalRenderer.giWrappedPhase(phase, delta: SIMD3(-3, 0, 2), counts: counts)
+        #expect(phase == SIMD3(7, 0, 1), "the wrap survives sign changes: \(phase)")
+        // The stationary-probe identity: a lattice point's physical texel is the same
+        // before and after a scroll (the tank-tread rule the atlases stand on).
+        let n: Int32 = 8, d: Int32 = 3, oldPhase: Int32 = 5
+        let newPhase = ((oldPhase + d) % n + n) % n
+        for g in 0..<(n - d) {   // points covered by both windows
+            let physOld = ((g + d) + oldPhase) % n   // old window grid coord is g + d
+            let physNew = (g + newPhase) % n
+            #expect(physOld == physNew, "a stationary probe must keep its texel")
+        }
+        // Entered slabs: the planes at the edge the window moved toward.
+        #expect(MetalRenderer.giEnteredRange(delta: 3, count: 8) == (5, 3))
+        #expect(MetalRenderer.giEnteredRange(delta: -2, count: 8) == (0, 2))
+        #expect(MetalRenderer.giEnteredRange(delta: 0, count: 8) == (0, 0))
+        #expect(MetalRenderer.giEnteredRange(delta: 12, count: 8) == (0, 8),
+                "a teleport clears the whole cascade")
+    }
+
     /// The per-axis probe counts follow the fitted volume's aspect under the fixed
     /// 512 budget: a cube keeps the shipped 8x8x8, a pancake spends its rows
     /// horizontally, and no extent can exceed the budget or drop an axis below a
@@ -308,6 +434,28 @@ private final class GITargetProbe: Sketch {
             withState { fill(Color(white: 0.85)); translate(1.6, 0.7, -1.0); drawSphere(radius: 0.7) }
         }
         drawImage(scene.image, 0, 0)
+    }
+}
+
+/// The vast scene: a terrain-scale ground plane (the fitted volume's spacing lands an
+/// order of magnitude past the coarseness threshold) with a small lit structure near
+/// the camera, so the camera cascades have near-field bounce to resolve that the
+/// single 512-probe volume cannot.
+private final class GIVastProbe: Sketch {
+    static func make() -> GIVastProbe { GIVastProbe() }
+
+    override var canvasSize: CanvasSize { .square(192) }
+
+    override func draw() {
+        background(.black)
+        perspective(eye: Vector3(6, 4, 12), target: Vector3(0, 1, 0),
+                    fieldOfView: .pi / 3.2, near: 0.5, far: 2000)
+        pointLight(.white, at: Vector3(2, 6, 2), intensity: 8)
+        castShadows()
+        globalIllumination()
+        withState { fill(Color(white: 0.85)); translate(0, -0.2, 0); drawBox(width: 600, height: 0.4, depth: 600) }
+        withState { fill(Color(hex: 0xd03030)); translate(-2.5, 1.5, 0); drawBox(width: 0.3, height: 3, depth: 6) }
+        withState { fill(Color(white: 0.9)); translate(0, 1, 0); drawBox(width: 2, height: 2, depth: 2) }
     }
 }
 

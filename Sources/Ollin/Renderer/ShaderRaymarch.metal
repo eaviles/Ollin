@@ -741,7 +741,8 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
     float3 gi = float3(0.0);
     if (light.giOrigin.w > 0.0 && mat.shadingModel != 2) {
         float3 giView = normalize(light.cameraPosition.xyz - pw);
-        gi = ollin_gi_sample(pw, n, giView, light, giIrradianceTex, giDepthTex, giOffsetsTex);
+        gi = ollin_gi_sample_cascaded(pw, n, giView, light,
+                                      giIrradianceTex, giDepthTex, giOffsetsTex);
     }
 #endif
     if (mat.shadingModel == 3 && light.iblEnabled != 0) {

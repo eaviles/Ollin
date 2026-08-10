@@ -2499,6 +2499,54 @@ Three bugs from the first render session, each now a pinned rule:
   (Chebyshev off → *brighter dots* at probes, trilinear-only → smooth but
   dark → the weights were fine and the probes were wrong).
 
+**Camera-anchored cascades give a vast scene a near field.** The fitted volume
+spends its 512 probes over the whole scene, so a terrain leaves ~50-unit gaps
+between probes and the bounce near the camera smears. Past a coarseness
+threshold (fitted spacing above half the eye-to-target distance, calibrated so
+a room with the camera inside stays single-volume with a comfortable margin),
+`giCascadeLadder` derives up to `OLLIN_GI_MAX_CAMERA_CASCADES` (3) extra
+volumes that halve the scene spacing down toward a quarter of the working
+distance, each an isotropic-spacing window of at most 8x8x8 probes centered on
+the eye: axes whose span already covers the scene's slab pin there instead (a
+terrain's cascades never scroll vertically), and per-axis counts clamp to the
+slab, so a flat scene's cascades spend a fraction of their 512-probe slots.
+The atlases stack one 512-probe slot per cascade (the same widths, so
+`ollin_gi_atlas_uv` and the carriers' three texture bindings are untouched;
+probe index = slot · 512 + local), allocated at the ladder's capacity: a
+capacity change only ever rides a refit, and the single-volume allocation is
+exactly the shipped one, so a room-scale scene keeps byte-identical sampling
+UVs. Live, a cascade scrolls in whole probe planes as the camera moves (the
+infinite-scrolling-volume model, studied via NVIDIA's public RTXGI SDK: a
+truncation dead zone of one plane, physical texel = (grid + phase) mod counts,
+so a stationary world lattice point keeps its texel), and a small pass over
+the offsets ping-pong invalidates exactly the scrolled-in planes by zeroing
+the offset and its w validity; the blends read that per-probe validity and
+blend an invalidated probe like a refit's (fresh at full weight, the
+reference's clear-then-zero-hysteresis semantics in one step), so the field's
+interior never re-converges. The ladder itself holds live until the working
+scale drifts past half/double its derivation value AND the fresh derivation
+differs structurally; headless refits ladder and volumes from the frame's own
+camera and bounds every frame (no scroll machinery at all), so an export stays
+a pure function of the frame, and the quality tier still never touches the
+grid. Sampling walks the table finest-first: the finest covering cascade wins,
+fading over its outermost cell into the next coarser (the ladder is nested by
+construction, so the blend partner always covers the band), with the scene
+volume the fallback that covers every shaded point; the interior of the finest
+window costs one 8-probe cage like before, the band two. Two codegen rules
+came out of the byte-identity work: `ollin_gi_sample` and `ollin_gi_trace`
+stay verbatim as the single-volume fast paths with cascaded twins beside them
+(`ollin_gi_sample_volume`/`_cascaded`, `ollin_gi_trace_cascaded`, selected per
+frame by whether cascades exist), because fast-math re-contracts a function's
+unchanged float expressions when its control flow grows, and even the ulp
+shifts a dithered byte; and the trace bisect that found it (whole-file revert,
+then per-function) is cheaper than reasoning about which expressions fuse.
+Verified: the room and mirror byte-identity scenes render pixel-exact against
+their pre-cascade references, a full snapshot re-record matches a clean-HEAD
+re-record on all 180 reference files byte-for-byte, and the vast-scene
+counterfactual (the test seam forcing the single volume on the same frame)
+moves the near structure's bounce by up to 149/255 where the fine cascades
+resolve the floor's light.
+
 **Mirror interiors and render targets gather too.** The traced hit shade
 (`ollin_rt_hit_radiance`, shared by the reflection and refraction walks) swaps
 its irradiance-cube diffuse for a probe-field sample at the *hit* when the
@@ -2518,9 +2566,12 @@ Behavioral net: `GlobalIlluminationTests` (bounce-fills-the-unlit-ceiling,
 red-wall dye vs a repainted twin, no leak into a sealed box vs a light moved
 inside, intensity scaling, on-then-off byte-equality, two-render
 byte-determinism, the mirror-interior and render-target counterfactuals, the
-quality knob's export-tier bytes, and the exact per-axis-count derivation),
-all RT-gated except the count unit test, the toggle/mirror/target/knob claims
-each verified red by sabotage. The two live stabilizers (the fixed relocation
+quality knob's export-tier bytes, the exact per-axis-count derivation, and the
+cascade tier: the vast-scene near-field counterfactual against the test seam's
+forced single volume, the room-stays-single byte-equality, cascaded two-render
+determinism, and the exact ladder/scroll-math derivations), all RT-gated
+except the CPU unit tests, the toggle/mirror/target/knob/cascade claims each
+verified red by sabotage. The two live stabilizers (the fixed relocation
 fan and the temporal-response pair) deliberately carry no test of their own:
 both defects exist only in the live hysteresis loop, which every deterministic
 probe restarts from scratch, so the verification is the live A/B measurement

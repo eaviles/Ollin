@@ -1017,6 +1017,11 @@ static inline float3 ollin_gi_sample(float3 worldPos, float3 n, float3 viewDir,
                                      texture2d<float> giIrradiance,
                                      texture2d<float> giDepth,
                                      texture2d<float> giProbeOffsets);
+static inline float3 ollin_gi_sample_cascaded(float3 worldPos, float3 n, float3 viewDir,
+                                              constant OllinLighting &light,
+                                              texture2d<float> giIrradiance,
+                                              texture2d<float> giDepth,
+                                              texture2d<float> giProbeOffsets);
 
 // The hit-or-miss half of the reflection: trace one closest-hit ray and shade the hit,
 // returning (radiance, 1) on a hit or (0, 0, 0, 0) on a miss — premultiplied by the hit
@@ -1087,7 +1092,7 @@ static inline float3 ollin_rt_hit_radiance(OllinRTSurface s1, float3 rayOrigin, 
         // exposure, since this whole radiance is scaled by it on composite and the
         // probes store display-linear, the `ollin_pbr_ibl_ambient` rule), else the cube.
         float3 irr2 = (light.giOrigin.w > 0.0)
-            ? ollin_gi_sample(s2.P, s2.N, -secDir, light, giIrradiance, giDepth, giOffsets)
+            ? ollin_gi_sample_cascaded(s2.P, s2.N, -secDir, light, giIrradiance, giDepth, giOffsets)
               / max(light.iblIntensity, 1e-3)
             : irradianceTex.sample(cubeSamp, rot * s2.N).rgb;
         float3 diffuse2 = s2.albedo * irr2
@@ -1116,7 +1121,7 @@ static inline float3 ollin_rt_hit_radiance(OllinRTSurface s1, float3 rayOrigin, 
     // lights as Lambert, faded out as metalness rises).
     float3 col = envAtHit * F;
     float3 irr1 = (light.giOrigin.w > 0.0)
-        ? ollin_gi_sample(s1.P, s1.N, -rayDir, light, giIrradiance, giDepth, giOffsets)
+        ? ollin_gi_sample_cascaded(s1.P, s1.N, -rayDir, light, giIrradiance, giDepth, giOffsets)
           / max(light.iblIntensity, 1e-3)
         : irradianceTex.sample(cubeSamp, rot * s1.N).rgb;
     float3 diffuse = s1.albedo * irr1
@@ -2585,6 +2590,127 @@ static inline float3 ollin_gi_sample(float3 worldPos, float3 n, float3 viewDir,
     return irr * irr * light.giSpacing.w;
 }
 
+// A cascade table entry's scroll phase, unpacked from its base-32 float.
+static inline int3 ollin_gi_unpack_phase(float packed) {
+    int p = int(packed + 0.5);
+    return int3(p % 32, (p / 32) % 32, p / 1024);
+}
+
+// The generalized single-volume sampler behind the cascade wrapper: the same
+// four-term weight as `ollin_gi_sample` above (which is kept verbatim as the
+// shipped single-volume fast path; a change here changes both, keep them in
+// step), parameterized by an explicit window so a camera cascade's scrolled grid
+// rides the same math. `phase` is the infinite-scroll wrap: grid coordinate g
+// stores into physical tile (g + phase) mod counts inside the cascade's
+// `probeBase` atlas slot, so a stationary world lattice point keeps its texel as
+// the window scrolls. Returns E/pi UN-scaled by the intensity dial (the wrapper
+// applies it once across a cascade blend).
+static inline float3 ollin_gi_sample_volume(float3 worldPos, float3 n, float3 viewDir,
+                                            float3 origin, float3 spacing, int3 counts,
+                                            int3 phase, int probeBase, float bias,
+                                            texture2d<float> giIrradiance,
+                                            texture2d<float> giDepth,
+                                            texture2d<float> giProbeOffsets) {
+    constexpr sampler giSamp(filter::linear, address::clamp_to_edge);
+    spacing = max(spacing, float3(1e-6));
+    float3 biased = worldPos + (n * 0.2 + viewDir * 0.8) * bias;
+    float3 grid = (biased - origin) / spacing;
+    int3 base = clamp(int3(floor(grid)), int3(0), max(counts - 2, int3(0)));
+    float3 t = clamp(grid - float3(base), 0.0, 1.0);
+    float3 sum = float3(0.0);
+    float wsum = 0.0;
+    for (int i = 0; i < 8; i++) {
+        int3 off = int3(i & 1, (i >> 1) & 1, (i >> 2) & 1);
+        int3 g = min(base + off, counts - 1);
+        int3 wrapped = (g + phase) % counts;
+        int probe = probeBase + wrapped.x + wrapped.y * counts.x
+                  + wrapped.z * counts.x * counts.y;
+        float3 probePos = origin + float3(g) * spacing
+                        + giProbeOffsets.read(uint2(uint(probe), 0u)).xyz;
+        float wrap = (dot(normalize(probePos - worldPos), n) + 1.0) * 0.5;
+        float w = wrap * wrap + 0.2;
+        float3 toBiased = biased - probePos;
+        float dist = length(toBiased);
+        float2 moments = giDepth.sample(giSamp,
+            ollin_gi_atlas_uv(probe, toBiased / max(dist, 1e-6), 16, giDepth)).rg;
+        if (dist > moments.x) {
+            float variance = abs(moments.y - moments.x * moments.x) + 1e-6;
+            float delta = dist - moments.x;
+            float cheb = variance / (variance + delta * delta);
+            w *= max(cheb * cheb * cheb, 0.05);
+        }
+        w = max(w, 1e-6);
+        const float crush = 0.2;
+        if (w < crush) { w *= (w * w) / (crush * crush); }
+        float3 tri = mix(1.0 - float3(off), float3(off), t);
+        w *= max(tri.x * tri.y * tri.z, 1e-5);
+        float3 probeIrr = giIrradiance.sample(giSamp,
+            ollin_gi_atlas_uv(probe, n, 8, giIrradiance)).rgb;
+        sum += w * pow(probeIrr, 2.5);
+        wsum += w;
+    }
+    if (wsum <= 1e-6) { return float3(0.0); }
+    float3 irr = sum / wsum;
+    return irr * irr;
+}
+
+// Sample the cascaded probe field: the finest camera cascade covering the point
+// wins, fading over its outermost cell into the next coarser one (the ladder is
+// nested by construction, so the blend partner always covers the band), with the
+// scene-fitted volume (cascade 0, the `light.giOrigin` fields) the outermost
+// fallback that covers every shaded point. While no camera cascades exist
+// (`giCascadeInfo.x` <= 1, every room-scale scene) this IS `ollin_gi_sample`,
+// so the pre-cascade path stays byte-identical.
+static inline float3 ollin_gi_sample_cascaded(float3 worldPos, float3 n, float3 viewDir,
+                                              constant OllinLighting &light,
+                                              texture2d<float> giIrradiance,
+                                              texture2d<float> giDepth,
+                                              texture2d<float> giProbeOffsets) {
+    int cascadeCount = int(light.giCascadeInfo.x);
+    if (cascadeCount <= 1) {
+        return ollin_gi_sample(worldPos, n, viewDir, light,
+                               giIrradiance, giDepth, giProbeOffsets);
+    }
+    for (int c = cascadeCount - 2; c >= 0; c--) {
+        constant OllinGICascade &cas = light.giCascades[c];
+        float spacing = cas.spacingBase.x;
+        float3 lo = cas.originBias.xyz;
+        float3 span = (cas.countsPhase.xyz - 1.0) * spacing;
+        // Inset from the window's nearest face in spacings: >= 1 well inside, 0 at
+        // the face. The outermost cell is the blend band toward the next cascade.
+        float3 inset = min(worldPos - lo, lo + span - worldPos) / spacing;
+        float w = clamp(min(inset.x, min(inset.y, inset.z)), 0.0, 1.0);
+        if (w <= 0.0) { continue; }
+        float3 fine = ollin_gi_sample_volume(worldPos, n, viewDir, lo, float3(spacing),
+                                             int3(cas.countsPhase.xyz),
+                                             ollin_gi_unpack_phase(cas.countsPhase.w),
+                                             int(cas.spacingBase.y), cas.originBias.w,
+                                             giIrradiance, giDepth, giProbeOffsets);
+        if (w >= 1.0) { return fine * light.giSpacing.w; }
+        float3 coarse;
+        if (c > 0) {
+            constant OllinGICascade &next = light.giCascades[c - 1];
+            coarse = ollin_gi_sample_volume(worldPos, n, viewDir, next.originBias.xyz,
+                                            float3(next.spacingBase.x),
+                                            int3(next.countsPhase.xyz),
+                                            ollin_gi_unpack_phase(next.countsPhase.w),
+                                            int(next.spacingBase.y), next.originBias.w,
+                                            giIrradiance, giDepth, giProbeOffsets);
+        } else {
+            coarse = ollin_gi_sample_volume(worldPos, n, viewDir, light.giOrigin.xyz,
+                                            light.giSpacing.xyz, int3(light.giCounts.xyz),
+                                            int3(0), 0, light.giCounts.w,
+                                            giIrradiance, giDepth, giProbeOffsets);
+        }
+        return mix(coarse, fine, w) * light.giSpacing.w;
+    }
+    return ollin_gi_sample_volume(worldPos, n, viewDir, light.giOrigin.xyz,
+                                  light.giSpacing.xyz, int3(light.giCounts.xyz),
+                                  int3(0), 0, light.giCounts.w,
+                                  giIrradiance, giDepth, giProbeOffsets)
+         * light.giSpacing.w;
+}
+
 // The image-based-lighting ambient for a physically-based surface: the split-sum
 // approximation (Karis), gathering the environment's diffuse irradiance and its
 // GGX-prefiltered specular reflection, recombined through the BRDF integration LUT. Added
@@ -2830,7 +2956,7 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
     float3 gi = float3(0.0);
     if (light.giOrigin.w > 0.0 && mat.shadingModel != 2) {
         float3 giView = normalize(light.cameraPosition.xyz - in.worldPos);
-        gi = ollin_gi_sample(in.worldPos, normalize(in.normal), giView, light,
+        gi = ollin_gi_sample_cascaded(in.worldPos, normalize(in.normal), giView, light,
                              giIrradianceTex, giDepthTex, giOffsetsTex);
     }
 #endif
@@ -3078,7 +3204,7 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
     float3 gi = float3(0.0);
     if (light.giOrigin.w > 0.0 && mat.shadingModel != 2) {
         float3 giView = normalize(light.cameraPosition.xyz - in.worldPos);
-        gi = ollin_gi_sample(in.worldPos, normalize(in.normal), giView, light,
+        gi = ollin_gi_sample_cascaded(in.worldPos, normalize(in.normal), giView, light,
                              giIrradianceTex, giDepthTex, giOffsetsTex);
     }
 #endif

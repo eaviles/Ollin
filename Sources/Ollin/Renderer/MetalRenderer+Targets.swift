@@ -1469,6 +1469,112 @@ extension MetalRenderer {
         return counts(at: hi)
     }
 
+    /// The camera-cascade axis cap: 8 per axis keeps a full cube inside one 512-probe
+    /// atlas slot, and a slab-clamped axis spends fewer.
+    private static let giCascadeAxisCap: Int32 = 8
+    /// Test seam: the counterfactual probes force the single-volume path on a scene
+    /// past the coarseness threshold (false = never derive camera cascades), because
+    /// nothing user-facing can hold the scene and camera fixed while removing only
+    /// the cascades. Always true outside the tests.
+    static var giCascadesEnabledForTesting = true
+    /// The coarseness threshold: cascades exist only while the fitted volume's spacing
+    /// exceeds this fraction of the eye-to-target distance. Calibrated so a room with
+    /// the camera inside it stays single-volume (the mirror probe room fits ~1.5-unit
+    /// spacing against a 5-unit working distance, 0.6x this line) while any
+    /// terrain-scale scene crosses it by an order of magnitude.
+    private static let giCascadeActivation: Float = 0.5
+    /// How fine the camera wants its nearest probes, as a fraction of the eye-to-target
+    /// distance: the ladder halves the scene spacing until it reaches this, so at the
+    /// activation boundary exactly one cascade appears and a vast scene ladders to the
+    /// full three.
+    private static let giCascadeTargetFraction: Float = 0.25
+
+    /// Derive the camera-anchored cascade ladder for a fitted scene volume: empty while
+    /// the fitted spacing serves the camera's working scale (every room-scale scene,
+    /// the shipped single-volume path), else cascades halving from the scene spacing
+    /// toward `workingScale * giCascadeTargetFraction`, at most
+    /// `OLLIN_GI_MAX_CAMERA_CASCADES`, each camera-anchored on the axes its span
+    /// cannot cover and pinned (centered on the scene's slab) on the axes it can.
+    /// Ordered coarsest first (the cascade table's order; the sampler walks it from
+    /// the finest down). A pure function of (volume, eye, working scale), so headless
+    /// re-derivation reproduces bit-exactly and the unit tests pin it; the quality
+    /// tier deliberately never touches it (the grid-never-rides-the-tier rule).
+    static func giCascadeLadder(volumeOrigin: SIMD3<Float>, volumeSpan: SIMD3<Float>,
+                                spacing: SIMD3<Float>, eye: SIMD3<Float>,
+                                workingScale: Float) -> [GICascadeState] {
+        let s0 = max(spacing.x, max(spacing.y, spacing.z))
+        guard giCascadesEnabledForTesting else { return [] }
+        guard workingScale > 1e-5, workingScale.isFinite, s0.isFinite else { return [] }
+        guard s0 > workingScale * giCascadeActivation else { return [] }
+        let target = workingScale * giCascadeTargetFraction
+        let k = min(max(Int(ceil(log2(Double(s0 / target)))), 1),
+                    Int(OLLIN_GI_MAX_CAMERA_CASCADES))
+        var ladder: [GICascadeState] = []
+        for i in 1...k {
+            let s = s0 / Float(1 << i)
+            var counts = SIMD3<Int32>.zero
+            var origin = SIMD3<Float>.zero
+            var scrolls = SIMD3<Int32>.zero
+            for a in 0..<3 {
+                let cover = volumeSpan[a]
+                let n = min(max(Int32((cover / s).rounded(.up)) + 1, 2), Self.giCascadeAxisCap)
+                let span = Float(n - 1) * s
+                counts[a] = n
+                if span >= cover {
+                    // Pinned: the window already covers the scene's slab on this axis,
+                    // so it centers there and never scrolls (a terrain's vertical).
+                    origin[a] = volumeOrigin[a] + cover * 0.5 - span * 0.5
+                } else {
+                    origin[a] = eye[a] - span * 0.5
+                    scrolls[a] = 1
+                }
+            }
+            ladder.append(GICascadeState(origin: origin, spacing: s,
+                                         counts: counts, scrolls: scrolls))
+        }
+        return ladder
+    }
+
+    /// Whole-plane scroll for a camera cascade: how many probe planes the window moves
+    /// this frame so its center chases the anchor, per scrolling axis. Truncation
+    /// toward zero is the reference's dead zone (no scroll until the anchor is a full
+    /// plane away), so a camera hovering at a boundary never flickers a plane in and
+    /// out. Clamped to one full wrap (a teleport clears the whole cascade, not more).
+    static func giScrollDelta(origin: SIMD3<Float>, spacing: Float, counts: SIMD3<Int32>,
+                              scrolls: SIMD3<Int32>, anchor: SIMD3<Float>) -> SIMD3<Int32> {
+        var delta = SIMD3<Int32>.zero
+        for a in 0..<3 where scrolls[a] == 1 {
+            let center = origin[a] + Float(counts[a] - 1) * spacing * 0.5
+            let raw = (anchor[a] - center) / spacing
+            guard raw.isFinite else { continue }
+            let bound = Float(counts[a])
+            delta[a] = Int32(max(min(raw, bound), -bound))
+        }
+        return delta
+    }
+
+    /// The scroll phase after moving `delta` planes: the wrap that keeps a stationary
+    /// world lattice point on the same atlas texel (phys = (grid + phase) mod counts).
+    static func giWrappedPhase(_ phase: SIMD3<Int32>, delta: SIMD3<Int32>,
+                               counts: SIMD3<Int32>) -> SIMD3<Int32> {
+        var p = SIMD3<Int32>.zero
+        for a in 0..<3 {
+            let n = max(counts[a], 1)
+            p[a] = ((phase[a] + delta[a]) % n + n) % n
+        }
+        return p
+    }
+
+    /// The grid-coordinate slab (in the NEW window) whose planes scrolled in: delta > 0
+    /// enters at the high edge, delta < 0 at the low one, |delta| >= counts is the
+    /// whole cascade. What the invalidation pass tests each probe against.
+    static func giEnteredRange(delta: Int32, count: Int32) -> (lo: Int32, length: Int32) {
+        let d = max(min(delta, count), -count)
+        if d > 0 { return (count - d, d) }
+        if d < 0 { return (0, -d) }
+        return (0, 0)
+    }
+
     /// The frame's mesh-geometry world bounds, folded over the same caster batches the
     /// acceleration structure is built from (target-drawn meshes included, matching
     /// `buildShadowAccel`'s walk), so the probe volume covers exactly what the probe
@@ -1541,6 +1647,22 @@ extension MetalRenderer {
         lighting.giSpacing = SIMD4<Float>(gi.spacing, Float(intensity))
         lighting.giCounts = SIMD4<Float>(Float(gi.counts.x), Float(gi.counts.y),
                                          Float(gi.counts.z), gi.biasScale)
+        lighting.giCascadeInfo = SIMD4<Float>(Float(1 + gi.cascades.count), 0, 0, 0)
+        guard !gi.cascades.isEmpty else { return }
+        withUnsafeMutablePointer(to: &lighting.giCascades) { tuplePtr in
+            tuplePtr.withMemoryRebound(to: OllinGICascade.self,
+                                       capacity: Int(OLLIN_GI_MAX_CAMERA_CASCADES)) { slots in
+                for (i, cas) in gi.cascades.prefix(Int(OLLIN_GI_MAX_CAMERA_CASCADES)).enumerated() {
+                    let iso = SIMD3<Float>(repeating: cas.spacing)
+                    slots[i].originBias = SIMD4<Float>(cas.origin, giBiasScale(iso))
+                    slots[i].spacingBase = SIMD4<Float>(cas.spacing, Float((i + 1) * 512),
+                                                        1.5 * cas.spacing, 0)
+                    let packedPhase = cas.phase.x + 32 * cas.phase.y + 1024 * cas.phase.z
+                    slots[i].countsPhase = SIMD4<Float>(Float(cas.counts.x), Float(cas.counts.y),
+                                                        Float(cas.counts.z), Float(packedPhase))
+                }
+            }
+        }
     }
 
     /// One blend pass: fold the traced surfels into an atlas's back texture against its
@@ -1548,7 +1670,8 @@ extension MetalRenderer {
     /// interior source in-shader, so no separate border pass).
     private func encodeGIBlend(_ pipe: MTLRenderPipelineState, surfels: MTLTexture,
                                previous: MTLTexture, output: MTLTexture,
-                               params: [SIMD4<Float>], into cb: MTLCommandBuffer) {
+                               params: [SIMD4<Float>], into cb: MTLCommandBuffer,
+                               offsets: MTLTexture? = nil) {
         let pass = MTLRenderPassDescriptor()
         pass.colorAttachments[0].texture = output
         pass.colorAttachments[0].loadAction = .dontCare
@@ -1560,6 +1683,10 @@ extension MetalRenderer {
         }
         enc.setFragmentTexture(surfels, index: 0)
         enc.setFragmentTexture(previous, index: 1)
+        // The offsets texture's w channel is the per-probe validity the atlas blends
+        // read (the scroll pass's invalidation flag; the same texture the trace took
+        // its positions from).
+        if let offsets { enc.setFragmentTexture(offsets, index: 2) }
         enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         enc.endEncoding()
     }
@@ -1591,45 +1718,51 @@ extension MetalRenderer {
            let sampled = s.lastTraceOffsets {
             return GIResolved(irradiance: s.irrFront, depth: s.depFront, offsets: sampled,
                               origin: s.origin, spacing: s.spacing, counts: s.counts,
-                              biasScale: giBiasScale(s.spacing))
+                              biasScale: giBiasScale(s.spacing), cascades: s.cascades)
         }
 
         guard let bounds = giSceneBounds(drawer) else { return nil }
-        let state: GIProbeState
-        if let existing = giState {
-            state = existing
-        } else {
-            // Allocated once at the full probe budget (the per-axis counts vary with
-            // the fitted volume, their product never past the budget), so a refit
-            // never reallocates the atlases.
-            let perRow = Self.giTilesPerRow
-            let rows = (Self.giProbeBudget + perRow - 1) / perRow
-            guard let iA = makeFloatResolve(width: perRow * 10, height: rows * 10),
-                  let iB = makeFloatResolve(width: perRow * 10, height: rows * 10),
-                  let dA = makeFloatResolve(width: perRow * 18, height: rows * 18),
-                  let dB = makeFloatResolve(width: perRow * 18, height: rows * 18),
-                  let oA = makeFloatResolve(width: Self.giProbeBudget, height: 1),
-                  let oB = makeFloatResolve(width: Self.giProbeBudget, height: 1)
-            else { return nil }
-            state = GIProbeState(irrA: iA, irrB: iB, depA: dA, depB: dB, offA: oA, offB: oB)
-            giState = state
+        // The vast-scene cascades anchor on the camera's eye and derive their fineness
+        // from the eye-to-target distance (the sceneScale proxy); no camera, no ladder.
+        var anchor = SIMD3<Float>.zero
+        var workingScale: Float = 0
+        if let camera = drawer.camera3D {
+            anchor = SIMD3<Float>(camera.eye.simd3)
+            workingScale = Float(simd_distance(camera.eye.simd3, camera.target.simd3))
         }
         // Headless: a pure function of this frame, so never inherit a live volume
         // or its half-converged field.
-        if supersample { state.valid = false }
-        var needFit = !state.valid
-        if !needFit {
-            let gridMax = state.origin + state.spacing * SIMD3<Float>(state.counts &- 1)
-            if bounds.lo.x < state.origin.x || bounds.lo.y < state.origin.y
-                || bounds.lo.z < state.origin.z || bounds.hi.x > gridMax.x
+        if supersample { giState?.valid = false }
+        var needFit = !(giState?.valid ?? false)
+        if let held = giState, !needFit {
+            let gridMax = held.origin + held.spacing * SIMD3<Float>(held.counts &- 1)
+            if bounds.lo.x < held.origin.x || bounds.lo.y < held.origin.y
+                || bounds.lo.z < held.origin.z || bounds.hi.x > gridMax.x
                 || bounds.hi.y > gridMax.y || bounds.hi.z > gridMax.z {
                 needFit = true
             } else {
-                let heldExt = gridMax - state.origin
+                let heldExt = gridMax - held.origin
                 let rawExt = simd_max(bounds.hi - bounds.lo, SIMD3<Float>(repeating: 1e-6))
                 let heldVol = heldExt.x * heldExt.y * heldExt.z
                 let targetVol = rawExt.x * rawExt.y * rawExt.z * (1.3 * 1.3 * 1.3)
                 if heldVol > targetVol * 6 { needFit = true }
+            }
+            // The ladder's own hold: the cascade set stands until the camera's working
+            // scale drifts past half/double the scale it derived from, and even then
+            // only a *structural* change (spacing, counts, or scroll axes) restarts
+            // the field; origins scroll and phases wrap without ever refitting.
+            if !needFit, held.ladderScale > 0, workingScale > 0,
+               abs(log2(workingScale / held.ladderScale)) > 0.5 {
+                let fresh = Self.giCascadeLadder(volumeOrigin: held.origin,
+                                                 volumeSpan: gridMax - held.origin,
+                                                 spacing: held.spacing, eye: anchor,
+                                                 workingScale: workingScale)
+                if fresh.count == held.cascades.count,
+                   zip(fresh, held.cascades).allSatisfy({ $0.matches($1) }) {
+                    held.ladderScale = workingScale
+                } else {
+                    needFit = true
+                }
             }
         }
         if needFit {
@@ -1642,17 +1775,105 @@ extension MetalRenderer {
             // Per-axis counts from the padded volume's aspect: a flat scene spends its
             // probes horizontally instead of stacking unused vertical rows. Derived at
             // fit time and held with the volume, so probes stay put between refits.
-            state.counts = Self.giAxisCounts(for: ext)
-            state.origin = center - ext * 0.5
-            state.spacing = ext / SIMD3<Float>(state.counts &- 1)
+            let counts = Self.giAxisCounts(for: ext)
+            let origin = center - ext * 0.5
+            let spacing = ext / SIMD3<Float>(counts &- 1)
+            let ladder = Self.giCascadeLadder(volumeOrigin: origin, volumeSpan: ext,
+                                              spacing: spacing, eye: anchor,
+                                              workingScale: workingScale)
+            let capacity = 1 + ladder.count
+            if giState == nil || giState!.slotCapacity != capacity {
+                // (Re)allocate at this ladder's slot capacity, the atlases stacking one
+                // 512-probe slot per cascade. A capacity change only ever rides a refit
+                // (the coarseness threshold is crossed by scene growth or a big camera
+                // rescale), and the single-volume allocation is exactly the shipped
+                // one, so a room-scale scene keeps its sampling UVs byte-identical.
+                let perRow = Self.giTilesPerRow
+                let rows = (Self.giProbeBudget + perRow - 1) / perRow
+                guard let iA = makeFloatResolve(width: perRow * 10, height: rows * 10 * capacity),
+                      let iB = makeFloatResolve(width: perRow * 10, height: rows * 10 * capacity),
+                      let dA = makeFloatResolve(width: perRow * 18, height: rows * 18 * capacity),
+                      let dB = makeFloatResolve(width: perRow * 18, height: rows * 18 * capacity),
+                      let oA = makeFloatResolve(width: Self.giProbeBudget * capacity, height: 1),
+                      let oB = makeFloatResolve(width: Self.giProbeBudget * capacity, height: 1)
+                else { return nil }
+                giState = GIProbeState(irrA: iA, irrB: iB, depA: dA, depB: dB,
+                                       offA: oA, offB: oB, slotCapacity: capacity)
+            }
+            guard let state = giState else { return nil }
+            state.counts = counts
+            state.origin = origin
+            state.spacing = spacing
+            state.cascades = ladder
+            state.ladderScale = workingScale
             state.valid = false
-            // Relocation offsets belong to a grid; a new grid starts from zero.
+            state.lastTraceOffsets = nil
+            // Relocation offsets (and the per-probe validity riding their w) belong
+            // to a grid; a new grid starts from zero.
             let clear = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
             clearFloatTexture(state.offA, color: clear, into: cb)
             clearFloatTexture(state.offB, color: clear, into: cb)
         }
+        guard let state = giState else { return nil }
+
+        // Live scrolling (the infinite-scrolling-volume model): a camera cascade
+        // chases the eye in whole probe planes; the pass invalidates exactly the
+        // scrolled-in planes on the offsets ping-pong (validity w = 0, offset zeroed)
+        // and every stationary probe keeps its texel, so the field's interior never
+        // re-converges. Headless never scrolls: it refit above, a pure function of
+        // the frame.
+        if !supersample, !needFit, !state.cascades.isEmpty,
+           let scrollPipe = try? pipeline(.effect("ollin_gi_scroll")) {
+            var scrollParams = [SIMD4<Float>](repeating: .zero,
+                                              count: 1 + 3 * Int(OLLIN_GI_MAX_CAMERA_CASCADES))
+            scrollParams[0].x = Float(1 + state.cascades.count)
+            var scrolled = false
+            for i in state.cascades.indices {
+                var cas = state.cascades[i]
+                let delta = Self.giScrollDelta(origin: cas.origin, spacing: cas.spacing,
+                                               counts: cas.counts, scrolls: cas.scrolls,
+                                               anchor: anchor)
+                var lo = SIMD4<Float>.zero
+                var len = SIMD4<Float>.zero
+                if delta != .zero {
+                    scrolled = true
+                    cas.origin += SIMD3<Float>(Float(delta.x), Float(delta.y),
+                                               Float(delta.z)) * cas.spacing
+                    cas.phase = Self.giWrappedPhase(cas.phase, delta: delta, counts: cas.counts)
+                    for a in 0..<3 {
+                        let r = Self.giEnteredRange(delta: delta[a], count: cas.counts[a])
+                        lo[a] = Float(r.lo)
+                        len[a] = Float(r.length)
+                    }
+                }
+                let packedPhase = cas.phase.x + 32 * cas.phase.y + 1024 * cas.phase.z
+                scrollParams[1 + 3 * i] = SIMD4<Float>(Float(cas.counts.x), Float(cas.counts.y),
+                                                       Float(cas.counts.z), Float(packedPhase))
+                scrollParams[2 + 3 * i] = lo
+                scrollParams[3 + 3 * i] = len
+                state.cascades[i] = cas
+            }
+            if scrolled {
+                encodeGIBlend(scrollPipe, surfels: state.offFront, previous: state.offFront,
+                              output: state.offBack, params: scrollParams, into: cb)
+                state.offFlipped.toggle()
+            }
+        }
         let counts = state.counts
         let probeCount = Int(counts.x) * Int(counts.y) * Int(counts.z)
+        // Physical probe rows: the scene volume's own count while single (the shipped
+        // layout), whole 512-probe slots while cascaded.
+        let probeRows = state.cascades.isEmpty
+            ? probeCount : Self.giProbeBudget * (1 + state.cascades.count)
+        // The per-cascade parameter slots the blend/relocate passes share, appended
+        // after their two global slots: (local count, moment cap, spacing, 0). Empty
+        // while single, so those passes' params are byte-for-byte the shipped ones.
+        let cascadeSlots: [SIMD4<Float>] = state.cascades.map { cas in
+            SIMD4<Float>(Float(Int(cas.counts.x) * Int(cas.counts.y) * Int(cas.counts.z)),
+                         1.5 * cas.spacing, cas.spacing, 0)
+        }
+        let cascadeCountParam: Float = state.cascades.isEmpty
+            ? 0 : Float(1 + state.cascades.count)
 
         // The trace shades hits with the same exposure/table state the main pass will
         // use (the reflection pass's mirroring rule), plus its own field for the
@@ -1676,7 +1897,7 @@ extension MetalRenderer {
         packGI(GIResolved(irradiance: state.irrFront, depth: state.depFront,
                           offsets: state.offFront,
                           origin: state.origin, spacing: state.spacing, counts: counts,
-                          biasScale: giBiasScale(state.spacing)),
+                          biasScale: giBiasScale(state.spacing), cascades: state.cascades),
                into: &lighting, intensity: 1)
 
         let farCap = 2 * simd_length(state.spacing * SIMD3<Float>(counts &- 1))
@@ -1686,12 +1907,16 @@ extension MetalRenderer {
         let depthCap = 1.5 * max(state.spacing.x, max(state.spacing.y, state.spacing.z))
         let rays = resolveGIRays(drawer.giQualitySetting)
         let iterations = supersample ? resolveGIIterations(drawer.giQualitySetting) : 1
-        guard let tracePipe = try? pipeline(.effect("ollin_gi_trace")),
+        // The cascaded trace is a separate fragment so the single-volume one keeps its
+        // exact shipped codegen (fast-math re-contracts unchanged expressions when a
+        // function's control flow grows; the ulp is a byte off every dithered frame).
+        let traceName = state.cascades.isEmpty ? "ollin_gi_trace" : "ollin_gi_trace_cascaded"
+        guard let tracePipe = try? pipeline(.effect(traceName)),
               let blendIrrPipe = try? pipeline(.effect("ollin_gi_blend_irradiance")),
               let blendDepPipe = try? pipeline(.effect("ollin_gi_blend_depth")),
               let relocatePipe = try? pipeline(.effect("ollin_gi_relocate")),
               let surfels = acquireFilterTexture(width: rays + Self.giFixedRays,
-                                                 height: probeCount, pooled: pooled)
+                                                 height: probeRows, pooled: pooled)
         else { return nil }
         if iblPlaceholderCube == nil { iblPlaceholderCube = makeCubeTexture(face: 1, mipped: false) }
         let stand = gradientStripTexture(for: drawer.gradientRows)
@@ -1730,26 +1955,32 @@ extension MetalRenderer {
 
             // params[1].z arms the irradiance blend's live temporal-response pair
             // (darkening hysteresis cut + brightening rate limit); headless leaves it
-            // off so the iterations converge an unbiased progressive mean.
+            // off so the iterations converge an unbiased progressive mean. The blends
+            // read per-probe validity off the offsets the trace just used, so a
+            // scrolled-in probe blends like a refit (fresh at full weight).
             let blendParams = [SIMD4<Float>(Float(rays), seed, hysteresis, Float(probeCount)),
-                               SIMD4<Float>(prevValid, depthCap, supersample ? 0 : 1, 0)]
+                               SIMD4<Float>(prevValid, depthCap, supersample ? 0 : 1,
+                                            cascadeCountParam)] + cascadeSlots
             encodeGIBlend(blendIrrPipe, surfels: surfels, previous: state.irrFront,
-                          output: state.irrBack, params: blendParams, into: cb)
+                          output: state.irrBack, params: blendParams, into: cb,
+                          offsets: state.offFront)
             encodeGIBlend(blendDepPipe, surfels: surfels, previous: state.depFront,
-                          output: state.depBack, params: blendParams, into: cb)
+                          output: state.depBack, params: blendParams, into: cb,
+                          offsets: state.offFront)
             // Relocation: walk embedded probes out through this update's surfel
             // statistics (the next trace starts from the moved positions).
             let relocateParams = [SIMD4<Float>(Float(rays), seed, Float(probeCount), farCap),
-                                  SIMD4<Float>(state.spacing, 0)]
+                                  SIMD4<Float>(state.spacing, cascadeCountParam)] + cascadeSlots
             encodeGIBlend(relocatePipe, surfels: surfels, previous: state.offFront,
                           output: state.offBack, params: relocateParams, into: cb)
-            state.flipped.toggle()   // the just-written backs are the next fronts
+            state.flipped.toggle()      // the just-written backs are the next fronts
+            state.offFlipped.toggle()   // the offsets advance in step (scrolls aside)
             state.valid = true
         }
         return GIResolved(irradiance: state.irrFront, depth: state.depFront,
                           offsets: state.lastTraceOffsets ?? state.offFront,
                           origin: state.origin, spacing: state.spacing, counts: counts,
-                          biasScale: giBiasScale(state.spacing))
+                          biasScale: giBiasScale(state.spacing), cascades: state.cascades)
     }
 
     func encodeFieldShadowHalfRes(_ drawer: Drawer, into cb: MTLCommandBuffer,

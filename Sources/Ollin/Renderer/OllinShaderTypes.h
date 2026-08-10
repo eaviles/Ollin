@@ -504,6 +504,24 @@ typedef struct {
 // flips it to kind 2, tracing visibility to the panel's actual surface (`shadowDepthB`
 // then carries the softness scale on the extent, not a radius). `shadowDepthB` is 0 /
 // unused for the remaining kinds.
+// One camera-anchored global-illumination probe cascade (the vast-scene ladder;
+// the scene-fitted volume rides `OllinLighting`'s own gi fields as cascade 0).
+// Spacing is isotropic per cascade (each cascade doubles the finer one's), and the
+// counts/phase pair carries the infinite-scrolling wrap: a probe at grid coordinate
+// g stores into physical tile ((g + phase) mod counts) inside the cascade's own
+// 512-probe atlas slot, so a camera move re-labels only the scrolled-in planes.
+#define OLLIN_GI_MAX_CAMERA_CASCADES 3
+typedef struct {
+    simd_float4 originBias;    // xyz = the window's world-space corner (first probe's grid
+                               // anchor); w = the cascade's self-shadow bias magnitude
+                               // (0.75 · spacing · 0.3, the volume rule at this spacing).
+    simd_float4 spacingBase;   // x = the isotropic probe spacing; y = the cascade's first
+                               // probe index in the stacked atlases ((c + 1) · 512); z = the
+                               // Chebyshev moment cap (1.5 · spacing, the cage rule); w unused.
+    simd_float4 countsPhase;   // xyz = probes per axis (2…8, as floats); w = the scroll phase
+                               // packed as phase.x + 32·(phase.y + 32·phase.z) (each 0…31).
+} OllinGICascade;
+
 typedef struct {
     simd_float4 ambient;          // rgb linear ambient (lights every surface flatly); a unused
     simd_float4 cameraPosition;   // world-space eye xyz (for the specular view direction); w unused
@@ -606,6 +624,14 @@ typedef struct {
                                   // self-shadow bias magnitude in world units, precomputed as
                                   // 0.75 · min axial spacing · the tunable 0.3 (the visibility
                                   // query's offset away from the surface).
+    OllinGICascade giCascades[OLLIN_GI_MAX_CAMERA_CASCADES];
+                                  // the camera-anchored probe cascades (vast scenes only), ordered
+                                  // coarsest → finest; the scene-fitted volume stays the three
+                                  // fields above (cascade 0). Entry c's probes live at atlas slot
+                                  // (c + 1) · 512. Unread while `giCascadeInfo.x` <= 1, so a
+                                  // room-scale frame is byte-identical to the pre-cascade path.
+    simd_float4 giCascadeInfo;    // x = total cascade count including the scene volume (1 = no
+                                  // camera cascades, the shipped single-volume path); y/z/w unused.
 } OllinLighting;
 
 // Per-frame constants auto-injected into every compute dispatch (bound at buffer

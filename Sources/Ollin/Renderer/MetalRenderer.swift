@@ -784,40 +784,79 @@ final class MetalRenderer {
     /// inside it, so probe positions stay put across frames and the hysteresis has a
     /// stable field to converge into; a refit moves every probe, so it invalidates the
     /// history (the next update writes fresh values at full weight).
+    /// One camera-anchored probe cascade of the vast-scene ladder (the scene-fitted
+    /// volume stays cascade 0 on `GIProbeState` itself). `phase` is the infinite-
+    /// scroll wrap: grid coordinate g stores into physical tile (g + phase) mod
+    /// counts inside the cascade's own 512-probe atlas slot, so a camera move
+    /// re-labels only the scrolled-in planes and the field's interior never
+    /// re-converges. Axes whose span already covers the scene's slab are pinned
+    /// (centered, `scrolls` 0), so a flat scene's cascades never scroll vertically.
+    struct GICascadeState: Equatable {
+        var origin: SIMD3<Float>
+        var spacing: Float
+        var counts: SIMD3<Int32>
+        var scrolls: SIMD3<Int32>
+        var phase = SIMD3<Int32>.zero
+        /// Structural equality (spacing/counts/scroll axes): what decides whether a
+        /// freshly derived ladder is the same ladder (origins move by scrolling and
+        /// phases wrap, neither is a reason to restart the field).
+        func matches(_ other: GICascadeState) -> Bool {
+            spacing == other.spacing && counts == other.counts && scrolls == other.scrolls
+        }
+    }
+
     final class GIProbeState {
         let irrA: MTLTexture, irrB: MTLTexture
         let depA: MTLTexture, depB: MTLTexture
-        /// Per-probe relocation offsets (probeCount x 1), ping-ponged like the atlases:
-        /// the trace reads the front, the relocation pass writes the back from this
-        /// update's surfels, so a probe that landed inside geometry walks out over the
-        /// next few updates.
+        /// Per-probe relocation offsets (xyz) + validity (w), one texel per physical
+        /// probe, ping-ponged like the atlases: the trace reads the front, the
+        /// relocation pass writes the back from this update's surfels, so a probe that
+        /// landed inside geometry walks out over the next few updates. The offsets
+        /// carry their own flip (`offFlipped`) because the live scroll pass advances
+        /// them mid-frame without touching the atlases.
         let offA: MTLTexture, offB: MTLTexture
+        /// How many 512-probe atlas slots this allocation holds (1 while no camera
+        /// cascades exist, 1 + the ladder size otherwise). A capacity change swaps the
+        /// whole state (rare: the coarseness threshold crossing is a refit event), so
+        /// the single-volume allocation, and the exact sampling UVs its sizes produce,
+        /// stay byte-identical to the pre-cascade path.
+        let slotCapacity: Int
         var flipped = false
+        var offFlipped = false
         var valid = false
         var origin = SIMD3<Float>.zero
         var spacing = SIMD3<Float>(repeating: 1)
         var counts = SIMD3<Int32>(repeating: 2)
+        /// The camera-anchored cascade ladder, coarsest first (empty = the shipped
+        /// single-volume path); entry i's probes live at atlas slot i + 1.
+        var cascades: [GICascadeState] = []
+        /// The eye-to-target distance the ladder derived from: held live until it
+        /// drifts past the re-derivation band, so cascade spacings stay put and the
+        /// fields converge (the volume-hold rule's ladder twin).
+        var ladderScale: Float = 0
         /// The offsets the most recent trace actually used: what the carriers must
         /// sample probe positions with (the freshly relocated front is one step ahead
         /// of the atlas content).
         var lastTraceOffsets: MTLTexture?
         init(irrA: MTLTexture, irrB: MTLTexture, depA: MTLTexture, depB: MTLTexture,
-             offA: MTLTexture, offB: MTLTexture) {
+             offA: MTLTexture, offB: MTLTexture, slotCapacity: Int = 1) {
             self.irrA = irrA; self.irrB = irrB; self.depA = depA; self.depB = depB
             self.offA = offA; self.offB = offB
+            self.slotCapacity = slotCapacity
         }
         var irrFront: MTLTexture { flipped ? irrB : irrA }
         var irrBack: MTLTexture { flipped ? irrA : irrB }
         var depFront: MTLTexture { flipped ? depB : depA }
         var depBack: MTLTexture { flipped ? depA : depB }
-        var offFront: MTLTexture { flipped ? offB : offA }
-        var offBack: MTLTexture { flipped ? offA : offB }
+        var offFront: MTLTexture { offFlipped ? offB : offA }
+        var offBack: MTLTexture { offFlipped ? offA : offB }
     }
     var giState: GIProbeState?
 
     /// What a frame's GI pass resolved: the atlases + probe offsets the carriers sample
     /// plus the volume the lighting struct describes them with (packed identically at
     /// every consumer by `packGI`, the `resolveFieldLighting`-mirroring rule).
+    /// `cascades` is the camera-anchored ladder (empty = single volume).
     struct GIResolved {
         var irradiance: MTLTexture
         var depth: MTLTexture
@@ -826,6 +865,7 @@ final class MetalRenderer {
         var spacing: SIMD3<Float>
         var counts: SIMD3<Int32>
         var biasScale: Float
+        var cascades: [GICascadeState] = []
     }
 
     /// The subsurface-scatter mask pass's cached targets (the per-pixel step/depth
