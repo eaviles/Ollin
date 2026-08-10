@@ -56,7 +56,6 @@ It's opt-in, so a 2D sketch never pays for a depth buffer or a perspective divid
 
 The high-end, well-curated realism tier, opt-in on the existing PBR, IBL, ray-traced shadows and reflections, and SDF raymarching, so a 2D or stylized 3D sketch never pays. The techniques that separate a polished product render or film still from "CG," each Metal-native and written from the published technique (credited in `ATTRIBUTION.md`'s Techniques list):
 
-- **Real-time global illumination.** Indirect bounce light beyond the IBL ambient term: light probes / irradiance volumes, screen-space GI, or a dynamic-diffuse-GI scheme (DDGI). The single biggest "it looks real" lever after direct lighting.
 - **Volumetrics and atmosphere.** Atmospheric / aerial-perspective scattering (distant objects desaturating into the sky, the depth cue that sells scale), and raymarched volumetric clouds over the procedural sky.
 - **Advanced materials.** Surface detail: parallax-occlusion and displacement mapping, triplanar projection, detail and decal maps.
 - **Image quality and motion.** **Temporal anti-aliasing** (and the temporal accumulation that also cleans SSAO / SSR / GI noise), **MetalFX** temporal upscaling for quality and headroom, **contact shadows** (short-range screen-space) to seat objects on surfaces, and per-object and camera **motion blur** via a velocity buffer for cinematic movement.

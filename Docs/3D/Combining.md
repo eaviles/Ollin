@@ -60,20 +60,21 @@ Notes worth knowing:
 <a id="matrix"></a>
 ### Who casts, receives, and appears in reflections
 
-Shadows (with [`castShadows()`](./3D.md#shadows)) and the two reflection systems each see a different subset of the scene:
+Shadows (with [`castShadows()`](./3D.md#shadows)), the two reflection systems, and [global illumination](./3D.md#global-illumination) each see a different subset of the scene:
 
-| | Casts shadows | Receives shadows | Appears in ray-traced reflections | Can mirror the scene (ray-traced) | Appears in screen-space reflections |
-| --- | --- | --- | --- | --- | --- |
-| Solid / textured meshes | yes | yes | yes | yes, with a PBR material | yes |
-| Wireframe meshes | no | no | no | no | yes (their visible edges) |
-| Point clouds | no | no | no | no | yes |
-| Raymarched fields | yes | yes | no | yes, with a PBR finish | yes |
-| 2D drawing placed in depth | no | no | no | no | yes |
+| | Casts shadows | Receives shadows | Appears in ray-traced reflections | Can mirror the scene (ray-traced) | Appears in screen-space reflections | Gathers bounce light (GI) |
+| --- | --- | --- | --- | --- | --- | --- |
+| Solid / textured meshes | yes | yes | yes | yes, with a PBR material | yes | yes |
+| Wireframe meshes | no | no | no | no | yes (their visible edges) | no |
+| Point clouds | no | no | no | no | yes | no |
+| Raymarched fields | yes | yes | no | yes, with a PBR finish | yes | yes |
+| 2D drawing placed in depth | no | no | no | no | yes | no |
 
-The two asymmetries that surprise people:
+The asymmetries that surprise people:
 
 - **Screen-space reflections mirror the *picture*, so everything visible appears in them**, point clouds and wireframes included. Ray-traced reflections trace the *mesh geometry*, so only solid meshes appear inside a traced mirror image.
 - **A raymarched field can show traced reflections on its own surface** (give it a PBR finish), but it doesn't *appear* in another object's traced reflection, because it isn't part of the mesh index the rays test. If you need a merged-blob sculpture visible in a chrome sphere, build it from meshes instead.
+- **Bounce light travels via meshes only, but lands on fields too.** The probe rays bounce off the mesh geometry (a field neither reflects bounce light onto its neighbors nor blocks it), while a field's own surface still gathers the probes' light like any mesh. And a surface seen *inside* a traced mirror keeps its direct-only shading, the same mirror-interior envelope glass and the layered lobes have.
 
 And [glass](./3D.md#glass) adds two of its own: a glass mesh still **casts a solid shadow** (the shadow passes don't read transmission), and glass **appears opaque inside a mirror or through other glass** (a traced hit shades as the surface it struck without re-entering the transmission math). The view *through* a glass surface you look at directly is the full story: the environment everywhere, and the actual scene on a ray-tracing GPU with `rayTracedReflections()` on. The layered [clearcoat and sheen](./3D.md#clearcoat-sheen) lobes share the mirror half of that envelope: a coated or sheened surface seen *inside* a traced reflection shades as its base material there.
 

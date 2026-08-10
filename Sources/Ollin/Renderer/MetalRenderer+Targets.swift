@@ -211,6 +211,11 @@ extension MetalRenderer {
         /// mesh buffer. Set only when `rayTracedReflections()` is on and the device can trace.
         var reflectAccel: MTLAccelerationStructure?
         var reflectGeoOffsets: MTLBuffer?
+        /// Global illumination: the same acceleration structure + offsets for the probe
+        /// trace (one build serves shadows, reflections, and GI). Set only when
+        /// `globalIllumination()` is on and the device can trace.
+        var giAccel: MTLAccelerationStructure?
+        var giGeoOffsets: MTLBuffer?
     }
 
     /// Render the scene's mesh geometry into the shadow map from the casting light's
@@ -236,8 +241,12 @@ extension MetalRenderer {
         // then would be per-frame GPU work nothing consumes.
         let wantReflect = drawer.rayTracedReflectionsEnabled && rayTracedShadows
             && drawer.environment != nil
+        // Global illumination wants the same accel with neither of the above conditions:
+        // the probe trace needs no environment (misses just read black) and no caster.
+        let wantGI = drawer.globalIlluminationEnabled && rayTracedShadows
+            && drawer.camera3D != nil
         guard lighting.enabled != 0, !meshVertices.isEmpty, let meshBuffer,
-              lighting.shadowLight >= 0 || wantReflect else { return ShadowMaps() }
+              lighting.shadowLight >= 0 || wantReflect || wantGI else { return ShadowMaps() }
 
         meshVertices.withUnsafeBytes { raw in
             meshBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
@@ -251,7 +260,9 @@ extension MetalRenderer {
                let built = buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer) {
                 return ShadowMaps(accel: built.accel,
                                   reflectAccel: wantReflect ? built.accel : nil,
-                                  reflectGeoOffsets: wantReflect ? built.offsets : nil)
+                                  reflectGeoOffsets: wantReflect ? built.offsets : nil,
+                                  giAccel: wantGI ? built.accel : nil,
+                                  giGeoOffsets: wantGI ? built.offsets : nil)
             }
             let cube = encodePointShadowPass(drawer, lighting: lighting,
                                              into: commandBuffer, meshBuffer: meshBuffer)
@@ -267,22 +278,31 @@ extension MetalRenderer {
            let built = buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer) {
             return ShadowMaps(accel: built.accel,
                               reflectAccel: wantReflect ? built.accel : nil,
-                              reflectGeoOffsets: wantReflect ? built.offsets : nil)
+                              reflectGeoOffsets: wantReflect ? built.offsets : nil,
+                              giAccel: wantGI ? built.accel : nil,
+                              giGeoOffsets: wantGI ? built.offsets : nil)
         }
 
-        // Reflections with no shadow-casting light: build only the reflection accel.
+        // Reflections and/or GI with no shadow-casting light: build only the accel.
         if lighting.shadowLight < 0 {
             guard let built = buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer)
             else { return ShadowMaps() }
-            return ShadowMaps(reflectAccel: built.accel, reflectGeoOffsets: built.offsets)
+            return ShadowMaps(reflectAccel: wantReflect ? built.accel : nil,
+                              reflectGeoOffsets: wantReflect ? built.offsets : nil,
+                              giAccel: wantGI ? built.accel : nil,
+                              giGeoOffsets: wantGI ? built.offsets : nil)
         }
 
-        // A directional/spot caster's 2D map below, plus a reflection accel when reflections
-        // are on (both precede the main geometry pass, so trace order is satisfied either way).
-        let reflect = wantReflect ? buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer) : nil
+        // A directional/spot caster's 2D map below, plus a reflection/GI accel when either
+        // is on (both precede the main geometry pass, so trace order is satisfied either way).
+        let reflect = (wantReflect || wantGI)
+            ? buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer) : nil
         guard let shadowMap = ensureShadowMap(),
               let shadowPipeline = try? pipeline(.meshShadow) else {
-            return ShadowMaps(reflectAccel: reflect?.accel, reflectGeoOffsets: reflect?.offsets)
+            return ShadowMaps(reflectAccel: wantReflect ? reflect?.accel : nil,
+                              reflectGeoOffsets: wantReflect ? reflect?.offsets : nil,
+                              giAccel: wantGI ? reflect?.accel : nil,
+                              giGeoOffsets: wantGI ? reflect?.offsets : nil)
         }
         let pass = MTLRenderPassDescriptor()
         pass.depthAttachment.texture = shadowMap
@@ -305,7 +325,11 @@ extension MetalRenderer {
         encodeFieldShadowCasters(drawer, encoder: encoder, lighting: lighting,
                                  groupBuffer: sdf3DGroupBuffer, nodeBuffer: sdf3DNodeBuffer)
         encoder.endEncoding()
-        return ShadowMaps(twoD: shadowMap, reflectAccel: reflect?.accel, reflectGeoOffsets: reflect?.offsets)
+        return ShadowMaps(twoD: shadowMap,
+                          reflectAccel: wantReflect ? reflect?.accel : nil,
+                          reflectGeoOffsets: wantReflect ? reflect?.offsets : nil,
+                          giAccel: wantGI ? reflect?.accel : nil,
+                          giGeoOffsets: wantGI ? reflect?.offsets : nil)
     }
 
     /// Render the marched 3D fields into the active 2D shadow map (directional/spot). Each field
@@ -684,7 +708,8 @@ extension MetalRenderer {
     /// raymarch pre-pass so a marched field shades identically at half resolution. `shadowAccel`
     /// is the frame's acceleration structure (RT point shadows), nil otherwise.
     func resolveFieldLighting(_ drawer: Drawer, shadowMap: MTLTexture?, shadowCube: MTLTexture?,
-                                      shadowAccelPresent: Bool, reflectAccelPresent: Bool = false)
+                                      shadowAccelPresent: Bool, reflectAccelPresent: Bool = false,
+                                      gi: GIResolved? = nil)
         -> (lighting: OllinLighting, shadowTexture: MTLTexture?, shadowCubeTexture: MTLTexture?) {
         var lighting = drawer.makeLighting()
         if shadowMap == nil && shadowCube == nil && !shadowAccelPresent && drawer.sdf3DGroups.isEmpty {
@@ -728,6 +753,9 @@ extension MetalRenderer {
             lighting.cookieEnabled = ensureCookieArray(drawer.usedLightCookies) ? 1 : 0
         }
         if reflectAccelPresent { lighting.rtReflections = 1 }
+        // Global illumination, same mirroring: a field marched at half resolution takes
+        // the same probe-sampled bounce light as the full-res inline march.
+        packGI(gi, into: &lighting, intensity: drawer.giIntensity)
         // Atmosphere, same mirroring: the reduced-res field pass fogs its hits and marches
         // its shafts with the same step budget as the main pass.
         if lighting.fogColor.w > 0 {
@@ -760,6 +788,7 @@ extension MetalRenderer {
                                        traceAccel: MTLAccelerationStructure? = nil,
                                        meshBuffer: MTLBuffer? = nil,
                                        reflectGeoOffsets: MTLBuffer? = nil,
+                                       giTextures: (irradiance: MTLTexture, depth: MTLTexture, offsets: MTLTexture)? = nil,
                                        fullWidth: Int, fullHeight: Int)
         -> (color: MTLTexture, depth: MTLTexture, region: SIMD4<Float>)? {
         let baseScale = resolveRaymarchScale(drawer.raymarchQualitySetting)
@@ -842,6 +871,13 @@ extension MetalRenderer {
         // The sheen directional-albedo LUT (tex 12), matching the main pass; a
         // never-sampled stand-in unless a material carries sheen.
         enc.setFragmentTexture(sheenLUT ?? strip, index: 12)
+        // The GI probe atlases (tex 13/14), matching the main pass; never-sampled
+        // stand-ins unless the frame resolved a probe field (`giOrigin.w` gates).
+        if rayTracedShadows {
+            enc.setFragmentTexture(giTextures?.irradiance ?? strip, index: 13)
+            enc.setFragmentTexture(giTextures?.depth ?? strip, index: 14)
+            enc.setFragmentTexture(giTextures?.offsets ?? strip, index: 15)
+        }
         // The mesh acceleration structure at buffer 5, matching the main pass: RT point
         // shadows received by the field, and the reflection trace when `rtReflections`
         // is set. A dummy when neither is active, never traced.
@@ -1238,6 +1274,283 @@ extension MetalRenderer {
         case .default:     return 8
         case .detail:      return 16
         }
+    }
+
+    // MARK: - Global illumination (the probe-field update)
+
+    /// Fixed probe grid resolution (v1): 8 per axis, 512 probes. The volume auto-fits
+    /// the frame's caster geometry, so density adapts through spacing, not count.
+    private static let giProbesPerAxis = 8
+    /// Probe tiles per atlas row. The blend/sample shaders re-derive it from the atlas
+    /// width (width / tile), so the layout constant lives only here.
+    private static let giTilesPerRow = 32
+
+    /// The frame's mesh-geometry world bounds, folded over the same caster batches the
+    /// acceleration structure is built from, so the probe volume covers exactly what
+    /// the probe rays can hit. Nil when the frame has no eligible mesh.
+    private func giSceneBounds(_ drawer: Drawer) -> (lo: SIMD3<Float>, hi: SIMD3<Float>)? {
+        var lo = SIMD3<Float>(repeating: .greatestFiniteMagnitude)
+        var hi = SIMD3<Float>(repeating: -.greatestFiniteMagnitude)
+        var found = false
+        let batches = drawer.batches
+        let count = drawer.meshVertices.count
+        drawer.meshVertices.withUnsafeBufferPointer { verts in
+            for i in batches.indices {
+                let batch = batches[i]
+                guard batch.kind == .mesh3D, batch.target == nil,
+                      !batch.meshWireframe, !batch.meshGrid else { continue }
+                let next = i + 1 < batches.count ? batches[i + 1] : nil
+                let end = next?.meshStart ?? count
+                guard end > batch.meshStart else { continue }
+                for v in batch.meshStart..<end {
+                    let p = verts[v].position
+                    lo = simd_min(lo, SIMD3<Float>(p.x, p.y, p.z))
+                    hi = simd_max(hi, SIMD3<Float>(p.x, p.y, p.z))
+                }
+                found = true
+            }
+        }
+        return found ? (lo, hi) : nil
+    }
+
+    /// The self-shadow bias magnitude for a probe spacing (the published constants:
+    /// 0.75 of the minimum axial spacing times the 0.3 tunable's default).
+    private func giBiasScale(_ spacing: SIMD3<Float>) -> Float {
+        0.75 * min(spacing.x, min(spacing.y, spacing.z)) * 0.3
+    }
+
+    /// Rays per probe per update, resolved through the automatic tier and scaled to the
+    /// GPU like the shadow rays (software ray tracing pays several times more per ray).
+    private func resolveGIRays() -> Int {
+        switch effectiveQuality(.default) {
+        case .performance: return hasHardwareRayTracing ? 64 : 32
+        case .default:     return hasHardwareRayTracing ? 96 : 64
+        case .detail:      return hasHardwareRayTracing ? 192 : 96
+        }
+    }
+
+    /// Whole trace+blend iterations for the historyless (headless/export) path: each
+    /// deepens the bounce recursion by one and averages the noise down (the blend runs
+    /// a progressive mean), so a single frame converges deterministically with no
+    /// history, and a video export cannot flicker.
+    private func resolveGIIterations() -> Int {
+        switch effectiveQuality(.default) {
+        case .performance: return 8
+        case .default:     return 12
+        case .detail:      return 16
+        }
+    }
+
+    /// Pack a resolved GI field into a lighting struct: the one packing every consumer
+    /// shares (the main encode, `resolveFieldLighting`, and the probe trace itself), so
+    /// the carriers and the recursion describe the same grid. `intensity` is the
+    /// sketch's artistic dial; the probe trace packs 1 so recursion can't compound it.
+    func packGI(_ gi: GIResolved?, into lighting: inout OllinLighting, intensity: Double) {
+        guard let gi else { return }
+        lighting.giOrigin = SIMD4<Float>(gi.origin, 1)
+        lighting.giSpacing = SIMD4<Float>(gi.spacing, Float(intensity))
+        lighting.giCounts = SIMD4<Float>(Float(gi.counts.x), Float(gi.counts.y),
+                                         Float(gi.counts.z), gi.biasScale)
+    }
+
+    /// One blend pass: fold the traced surfels into an atlas's back texture against its
+    /// front (the previous update), whole-atlas (gutter texels recompute their wrapped
+    /// interior source in-shader, so no separate border pass).
+    private func encodeGIBlend(_ pipe: MTLRenderPipelineState, surfels: MTLTexture,
+                               previous: MTLTexture, output: MTLTexture,
+                               params: [SIMD4<Float>], into cb: MTLCommandBuffer) {
+        let pass = MTLRenderPassDescriptor()
+        pass.colorAttachments[0].texture = output
+        pass.colorAttachments[0].loadAction = .dontCare
+        pass.colorAttachments[0].storeAction = .store
+        guard let enc = cb.makeRenderCommandEncoder(descriptor: pass) else { return }
+        enc.setRenderPipelineState(pipe)
+        params.withUnsafeBytes { raw in
+            enc.setFragmentBytes(raw.baseAddress!, length: raw.count, index: 0)
+        }
+        enc.setFragmentTexture(surfels, index: 0)
+        enc.setFragmentTexture(previous, index: 1)
+        enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        enc.endEncoding()
+    }
+
+    /// Update the global-illumination probe field and hand back the atlases the lit
+    /// carriers sample. Live: one trace+blend update per frame, hysteresis 0.97 (plus
+    /// the per-texel convergence heuristics in the blend shader), into the persistent
+    /// ping-ponged state; a same-frame repeat (the frame-grab re-render) serves the
+    /// already-advanced front, like the other stateful passes. Headless/export
+    /// (`supersample`): the volume refits from this frame's own bounds and K whole
+    /// iterations run from scratch with a progressive-mean hysteresis and seed = the
+    /// iteration index, so the result is a pure function of the frame (byte-stable
+    /// snapshots, flicker-free video) and multi-bounce converges within it.
+    ///
+    /// The probe *volume* otherwise holds across live frames (probes must not move for
+    /// the hysteresis to mean anything): it refits only when the scene's raw bounds
+    /// escape it or shrink to a fraction of it, and a refit restarts the field.
+    func encodeGIPass(_ drawer: Drawer, into cb: MTLCommandBuffer,
+                      meshBuffer: MTLBuffer?,
+                      accel: MTLAccelerationStructure?, geoOffsets: MTLBuffer?,
+                      supersample: Bool, pooled: Bool) -> GIResolved? {
+        guard drawer.globalIlluminationEnabled, rayTracedShadows,
+              let accel, let geoOffsets, let meshBuffer else { return nil }
+        var lighting = drawer.makeLighting()
+        guard lighting.enabled != 0 else { return nil }
+
+        // Same-frame repeat (live): the field already advanced this frame.
+        if !supersample, statefulEncodeIsRepeat, let s = giState, s.valid,
+           let sampled = s.lastTraceOffsets {
+            return GIResolved(irradiance: s.irrFront, depth: s.depFront, offsets: sampled,
+                              origin: s.origin, spacing: s.spacing, counts: s.counts,
+                              biasScale: giBiasScale(s.spacing))
+        }
+
+        guard let bounds = giSceneBounds(drawer) else { return nil }
+        let n = Self.giProbesPerAxis
+        let counts = SIMD3<Int32>(repeating: Int32(n))
+        let probeCount = n * n * n
+        let state: GIProbeState
+        if let existing = giState {
+            state = existing
+        } else {
+            let perRow = Self.giTilesPerRow
+            let rows = (probeCount + perRow - 1) / perRow
+            guard let iA = makeFloatResolve(width: perRow * 10, height: rows * 10),
+                  let iB = makeFloatResolve(width: perRow * 10, height: rows * 10),
+                  let dA = makeFloatResolve(width: perRow * 18, height: rows * 18),
+                  let dB = makeFloatResolve(width: perRow * 18, height: rows * 18),
+                  let oA = makeFloatResolve(width: probeCount, height: 1),
+                  let oB = makeFloatResolve(width: probeCount, height: 1)
+            else { return nil }
+            state = GIProbeState(irrA: iA, irrB: iB, depA: dA, depB: dB, offA: oA, offB: oB)
+            giState = state
+        }
+        // Headless: a pure function of this frame, so never inherit a live volume
+        // or its half-converged field.
+        if supersample { state.valid = false }
+        var needFit = !state.valid
+        if !needFit {
+            let gridMax = state.origin + state.spacing * Float(n - 1)
+            if bounds.lo.x < state.origin.x || bounds.lo.y < state.origin.y
+                || bounds.lo.z < state.origin.z || bounds.hi.x > gridMax.x
+                || bounds.hi.y > gridMax.y || bounds.hi.z > gridMax.z {
+                needFit = true
+            } else {
+                let heldExt = gridMax - state.origin
+                let rawExt = simd_max(bounds.hi - bounds.lo, SIMD3<Float>(repeating: 1e-6))
+                let heldVol = heldExt.x * heldExt.y * heldExt.z
+                let targetVol = rawExt.x * rawExt.y * rawExt.z * (1.3 * 1.3 * 1.3)
+                if heldVol > targetVol * 6 { needFit = true }
+            }
+        }
+        if needFit {
+            var ext = bounds.hi - bounds.lo
+            // Floor degenerate axes (a flat ground plane) so spacing never collapses.
+            let maxExt = max(max(ext.x, ext.y), max(ext.z, 0.001))
+            ext = simd_max(ext, SIMD3<Float>(repeating: maxExt * 0.05))
+            let center = (bounds.hi + bounds.lo) * 0.5
+            ext *= 1.3   // 15% pad each side: boundary surfaces sit inside the outer cage
+            state.origin = center - ext * 0.5
+            state.spacing = ext / Float(n - 1)
+            state.counts = counts
+            state.valid = false
+            // Relocation offsets belong to a grid; a new grid starts from zero.
+            let clear = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
+            clearFloatTexture(state.offA, color: clear, into: cb)
+            clearFloatTexture(state.offB, color: clear, into: cb)
+        }
+
+        // The trace shades hits with the same exposure/table state the main pass will
+        // use (the reflection pass's mirroring rule), plus its own field for the
+        // bounce recursion, at intensity 1.
+        if drawer.environment != nil, currentIBL != nil {
+            lighting.iblEnabled = 1
+            lighting.iblIntensity = Float(drawer.environment?.intensity ?? 1) * currentIBLNormalization
+            lighting.iblMaxMip = Float(currentIBLMaxMip)
+            lighting.iblRotation = Float(drawer.environment?.rotation ?? 0)
+        }
+        if lighting.ltcEnabled == 0,
+           drawer.lights.contains(where: { $0.kind == .rect || $0.kind == .disk || $0.kind == .tube }) {
+            lighting.ltcEnabled = ensureLTCTables() ? 1 : 0
+        }
+        if lighting.iesEnabled == 0, !drawer.usedIESProfiles.isEmpty {
+            lighting.iesEnabled = ensureIESArray(drawer.usedIESProfiles) ? 1 : 0
+        }
+        if lighting.cookieEnabled == 0, !drawer.usedLightCookies.isEmpty {
+            lighting.cookieEnabled = ensureCookieArray(drawer.usedLightCookies) ? 1 : 0
+        }
+        packGI(GIResolved(irradiance: state.irrFront, depth: state.depFront,
+                          offsets: state.offFront,
+                          origin: state.origin, spacing: state.spacing, counts: counts,
+                          biasScale: giBiasScale(state.spacing)),
+               into: &lighting, intensity: 1)
+
+        let farCap = 2 * simd_length(state.spacing * Float(n - 1))
+        // The visibility moments cap at cage scale (1.5x the largest axial spacing, the
+        // reference's rule): the Chebyshev test only ever asks about a probe's own cage,
+        // and far geometry in the statistics collapses near-surface variance.
+        let depthCap = 1.5 * max(state.spacing.x, max(state.spacing.y, state.spacing.z))
+        let rays = resolveGIRays()
+        let iterations = supersample ? resolveGIIterations() : 1
+        guard let tracePipe = try? pipeline(.effect("ollin_gi_trace")),
+              let blendIrrPipe = try? pipeline(.effect("ollin_gi_blend_irradiance")),
+              let blendDepPipe = try? pipeline(.effect("ollin_gi_blend_depth")),
+              let relocatePipe = try? pipeline(.effect("ollin_gi_relocate")),
+              let surfels = acquireFilterTexture(width: rays, height: probeCount, pooled: pooled)
+        else { return nil }
+        if iblPlaceholderCube == nil { iblPlaceholderCube = makeCubeTexture(face: 1, mipped: false) }
+        let stand = gradientStripTexture(for: drawer.gradientRows)
+
+        for i in 0..<iterations {
+            let seed: Float = supersample ? Float(i) : Float(frameComputeUniforms.frameCount % 4096)
+            let prevValid: Float = (state.valid || i > 0) ? 1 : 0
+            let hysteresis: Float = supersample ? Float(i) / Float(i + 1) : 0.97
+
+            let tracePass = MTLRenderPassDescriptor()
+            tracePass.colorAttachments[0].texture = surfels
+            tracePass.colorAttachments[0].loadAction = .dontCare
+            tracePass.colorAttachments[0].storeAction = .store
+            guard let trace = cb.makeRenderCommandEncoder(descriptor: tracePass) else { return nil }
+            trace.setRenderPipelineState(tracePipe)
+            let traceParams = [SIMD4<Float>(Float(rays), seed, farCap, Float(probeCount)),
+                               SIMD4<Float>(prevValid, farCap, 0, 0)]
+            traceParams.withUnsafeBytes { raw in
+                trace.setFragmentBytes(raw.baseAddress!, length: raw.count, index: 0)
+            }
+            trace.setFragmentBytes(&lighting, length: MemoryLayout<OllinLighting>.stride, index: 1)
+            trace.useResource(accel, usage: .read, stages: .fragment)
+            trace.setFragmentAccelerationStructure(accel, bufferIndex: 3)
+            trace.setFragmentBuffer(meshBuffer, offset: 0, index: 6)
+            trace.setFragmentBuffer(geoOffsets, offset: 0, index: 7)
+            trace.setFragmentTexture(currentIBLPrefilter ?? iblPlaceholderCube, index: 5)
+            trace.setFragmentTexture(ltcAmpTexture ?? stand, index: 9)
+            trace.setFragmentTexture(iesArrayTexture ?? shapingStandIn(), index: 10)
+            trace.setFragmentTexture(cookieArrayTexture ?? shapingStandIn(), index: 11)
+            trace.setFragmentTexture(state.irrFront, index: 13)
+            trace.setFragmentTexture(state.depFront, index: 14)
+            trace.setFragmentTexture(state.offFront, index: 15)
+            trace.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+            trace.endEncoding()
+            state.lastTraceOffsets = state.offFront
+
+            let blendParams = [SIMD4<Float>(Float(rays), seed, hysteresis, Float(probeCount)),
+                               SIMD4<Float>(prevValid, depthCap, 0, 0)]
+            encodeGIBlend(blendIrrPipe, surfels: surfels, previous: state.irrFront,
+                          output: state.irrBack, params: blendParams, into: cb)
+            encodeGIBlend(blendDepPipe, surfels: surfels, previous: state.depFront,
+                          output: state.depBack, params: blendParams, into: cb)
+            // Relocation: walk embedded probes out through this update's surfel
+            // statistics (the next trace starts from the moved positions).
+            let relocateParams = [SIMD4<Float>(Float(rays), seed, Float(probeCount), farCap),
+                                  SIMD4<Float>(state.spacing, 0)]
+            encodeGIBlend(relocatePipe, surfels: surfels, previous: state.offFront,
+                          output: state.offBack, params: relocateParams, into: cb)
+            state.flipped.toggle()   // the just-written backs are the next fronts
+            state.valid = true
+        }
+        return GIResolved(irradiance: state.irrFront, depth: state.depFront,
+                          offsets: state.lastTraceOffsets ?? state.offFront,
+                          origin: state.origin, spacing: state.spacing, counts: counts,
+                          biasScale: giBiasScale(state.spacing))
     }
 
     func encodeFieldShadowHalfRes(_ drawer: Drawer, into cb: MTLCommandBuffer,

@@ -1751,6 +1751,7 @@ extension MetalRenderer {
                         halfResField: (color: MTLTexture, depth: MTLTexture, region: SIMD4<Float>)? = nil,
                         halfResFieldShadow: MTLTexture? = nil,
                         deferredReflection: MTLTexture? = nil,
+                        gi: GIResolved? = nil,
                         target passTarget: RenderTarget? = nil) {
         let vertices = drawer.vertices
         let instances = drawer.sdfInstances
@@ -1934,6 +1935,11 @@ extension MetalRenderer {
             lighting.rtReflectionDeferred = 1
             lighting.rtReflectionScale = 1.0
         }
+        // Global illumination: the probe field this frame's GI pass resolved (nil keeps
+        // `giOrigin.w` 0 and every carrier's GI branch untaken, byte-identical). The
+        // renderer owns the hardware check, so this is set only when that pass actually
+        // updated the atlases on a tracing device.
+        packGI(gi, into: &lighting, intensity: drawer.giIntensity)
         // A directional/spot caster has each field render into the 2D map (so meshes receive it
         // from there); a point/ray-traced caster has no map a field can render into, so the lit
         // mesh fragments resolve the cast another way. `fieldCasterCount` > 0 turns that on (only
@@ -2183,6 +2189,14 @@ extension MetalRenderer {
                 // The sheen directional-albedo LUT (tex 12); a never-sampled stand-in
                 // unless a material carries sheen (its sheen color gates the read).
                 encoder.setFragmentTexture(sheenLUT ?? strip, index: 12)
+                // The GI probe atlases + relocation offsets (tex 13/14/15), matching the
+                // mesh path; never-sampled stand-ins unless the frame resolved a probe
+                // field (`giOrigin.w` gates).
+                if rayTracedShadows {
+                    encoder.setFragmentTexture(gi?.irradiance ?? strip, index: 13)
+                    encoder.setFragmentTexture(gi?.depth ?? strip, index: 14)
+                    encoder.setFragmentTexture(gi?.offsets ?? strip, index: 15)
+                }
                 // The mesh acceleration structure at buffer 5 so a marched field receives a mesh's
                 // cast shadow under a ray-traced point caster (it traces toward the light, the
                 // reverse of the cast). A dummy when shadowKind != 2, never traced; the cube path
@@ -2352,6 +2366,12 @@ extension MetalRenderer {
                     // read). Only part of the RT-compiled fragment signature.
                     if rayTracedShadows {
                         encoder.setFragmentTexture(deferredReflection ?? strip, index: 7)
+                        // The GI probe atlases + relocation offsets (tex 13/14/15);
+                        // never-sampled stand-ins unless the frame resolved a probe
+                        // field (`giOrigin.w` gates).
+                        encoder.setFragmentTexture(gi?.irradiance ?? strip, index: 13)
+                        encoder.setFragmentTexture(gi?.depth ?? strip, index: 14)
+                        encoder.setFragmentTexture(gi?.offsets ?? strip, index: 15)
                     }
                 }
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)

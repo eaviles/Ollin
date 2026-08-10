@@ -215,6 +215,7 @@ let package = Package(
         example("3D/Camera/SceneViews"),
         example("3D/Lighting/Lighting"),
         example("3D/Lighting/AreaLights"),
+        example("3D/Lighting/GlobalIllumination"),
         example("3D/Lighting/AreaShadows"),
         example("3D/Lighting/LightShaping",
                 resources: [.copy("downlight.ies"), .copy("batwing.ies"), .copy("wallwash.ies")]),

@@ -571,6 +571,11 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
                                                  // mesh does, so its reflection shows the scene too.
                                                  , const device OllinMeshVertex *meshVerts [[buffer(6)]]
                                                  , const device uint *meshGeoOffsets [[buffer(7)]]
+                                                 // The GI probe atlases, so a marched field receives the
+                                                 // same bounce light a mesh does (`light.giOrigin.w` gates).
+                                                 , texture2d<float> giIrradianceTex [[texture(13)]]
+                                                 , texture2d<float> giDepthTex [[texture(14)]]
+                                                 , texture2d<float> giOffsetsTex [[texture(15)]]
 #endif
                                                  ) {
     RaymarchFragOut miss;
@@ -731,6 +736,14 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
     // active); the other lit materials take the diffuse irradiance as their ambient
     // (Gooch excepted, keeping its own tone ramp). Gated on `iblEnabled`, so a frame
     // with no environment is byte-identical.
+#if OLLIN_RT_SHADOWS
+    // Probe-field bounce light, as on the mesh carriers.
+    float3 gi = float3(0.0);
+    if (light.giOrigin.w > 0.0 && mat.shadingModel != 2) {
+        float3 giView = normalize(light.cameraPosition.xyz - pw);
+        gi = ollin_gi_sample(pw, n, giView, light, giIrradianceTex, giDepthTex, giOffsetsTex);
+    }
+#endif
     if (mat.shadingModel == 3 && light.iblEnabled != 0) {
         float3 viewDir = normalize(light.cameraPosition.xyz - pw);
         lit.rgb += ollin_pbr_ibl_ambient(baseRGB, n, viewDir, mat, light,
@@ -739,12 +752,25 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
                                          // Fields always trace inline (their lighting never sets
                                          // rtReflectionDeferred), so no deferred sample to pass.
                                          , pw, accel, meshVerts, meshGeoOffsets, float4(0.0),
-                                         ltcAmp, iesProfiles, cookies
+                                         ltcAmp, iesProfiles, cookies, gi
 #endif
                                          );
     } else if (light.iblEnabled != 0 && mat.shadingModel != 2) {
+#if OLLIN_RT_SHADOWS
+        if (light.giOrigin.w > 0.0) {
+            lit.rgb += gi * baseRGB;
+        } else {
+            lit.rgb += ollin_ibl_flat_ambient(baseRGB, n, light, iblIrradiance);
+        }
+#else
         lit.rgb += ollin_ibl_flat_ambient(baseRGB, n, light, iblIrradiance);
+#endif
     }
+#if OLLIN_RT_SHADOWS
+    else if (light.giOrigin.w > 0.0 && mat.shadingModel != 2) {
+        lit.rgb += gi * baseRGB * (mat.shadingModel == 3 ? (1.0 - mat.metallic) : 1.0);
+    }
+#endif
 
     // Atmosphere: fog the shaded hit to its own depth, the mesh fragments' rule, so a
     // field and a mesh at the same distance haze identically. The march's pixel jitter

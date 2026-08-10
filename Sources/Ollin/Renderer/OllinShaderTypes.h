@@ -594,6 +594,18 @@ typedef struct {
                                   // [2][2], y = its [3][2], z = 1 for a perspective (spot) map /
                                   // 0 for the orthographic directional box, w unused. All zero
                                   // when there is no punctual 2D caster (x == 0 skips the term).
+    simd_float4 giOrigin;         // global illumination (`globalIllumination()`, ray-tracing
+                                  // devices): xyz = the world-space corner of the probe volume
+                                  // (the grid's first probe); w = 1 while the frame's probe
+                                  // atlases are bound at fragment textures 13/14 (the gate:
+                                  // 0 leaves every carrier's GI branch untaken, byte-identical).
+    simd_float4 giSpacing;        // xyz = the per-axis distance between neighbouring probes;
+                                  // w = the sketch's GI intensity (a multiplier on the sampled
+                                  // bounce light, 1 = physical).
+    simd_float4 giCounts;         // xyz = probes per axis (as floats, for grid math); w = the
+                                  // self-shadow bias magnitude in world units, precomputed as
+                                  // 0.75 · min axial spacing · the tunable 0.3 (the visibility
+                                  // query's offset away from the surface).
 } OllinLighting;
 
 // Per-frame constants auto-injected into every compute dispatch (bound at buffer

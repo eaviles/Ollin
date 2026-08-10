@@ -2423,6 +2423,123 @@ static inline float3 ollin_env_refraction(float3 n, float3 viewDir,
     return t;
 }
 
+// MARK: - Global illumination probes
+//
+// Real-time bounce light (`globalIllumination()`, ray-tracing devices): a uniform 3D grid
+// of irradiance probes over the scene, each storing its spherical incoming light in a small
+// octahedrally-mapped tile of a shared atlas (fragment texture 13) beside a matching
+// mean-distance / mean-squared-distance tile (texture 14, at higher angular resolution)
+// that makes the lookup visibility-aware. The renderer re-traces the probes every frame
+// (`ollin_gi_trace`/`ollin_gi_blend_*` in ShaderGI.metal); the lit carriers sample them
+// here. Written from the published probe-field technique (Techniques list); the sampling
+// weights below are its four terms: trilinear cage x soft backface x a Chebyshev
+// variance-shadow visibility test taken from a self-shadow-biased point, with small
+// combined weights perceptually crushed so a barely-trusted probe cannot tint a leak in.
+//
+// Units: an irradiance texel stores (E/pi)^(1/5), the perceptual encoding that makes the
+// hysteresis converge visually linearly; sampling decodes pow 2.5 per probe (leaving a
+// gamma-2 tail so the weighted blend stays roughly perceptual) and squares the blended
+// result back to linear. E/pi is the same convention as the IBL irradiance cube, so the
+// sampled value drops into `diffuse = irradiance * base` unchanged.
+
+// Octahedral mapping, unit sphere <-> unit square: fold the lower hemisphere's pyramid
+// out over the upper one's corners. The equal-ish-area parameterization the probe tiles
+// store their spherical data in (simpler seams than a cube map).
+static inline float2 ollin_gi_oct_encode(float3 v) {
+    float2 p = v.xy * (1.0 / (abs(v.x) + abs(v.y) + abs(v.z)));
+    if (v.z < 0.0) {
+        p = (1.0 - abs(p.yx)) * float2(p.x >= 0.0 ? 1.0 : -1.0, p.y >= 0.0 ? 1.0 : -1.0);
+    }
+    return p * 0.5 + 0.5;
+}
+
+static inline float3 ollin_gi_oct_decode(float2 uv) {
+    float2 p = uv * 2.0 - 1.0;
+    float3 v = float3(p.x, p.y, 1.0 - abs(p.x) - abs(p.y));
+    if (v.z < 0.0) {
+        v.xy = (1.0 - abs(v.yx)) * float2(v.x >= 0.0 ? 1.0 : -1.0, v.y >= 0.0 ? 1.0 : -1.0);
+    }
+    return normalize(v);
+}
+
+// The atlas UV of `dir` inside probe `probeIndex`'s tile. `interior` is the tile's
+// payload width (8 irradiance / 16 depth); each tile adds a 1-texel gutter on every side
+// whose texels the blend passes fill with the octahedrally-wrapped interior values, so
+// this plain bilinear sample filters correctly across tile seams. The tiles-per-row
+// derives from the atlas's own width (the layout constant lives nowhere else).
+static inline float2 ollin_gi_atlas_uv(int probeIndex, float3 dir, int interior,
+                                       texture2d<float> atlas) {
+    int tile = interior + 2;
+    int perRow = max(int(atlas.get_width()) / tile, 1);
+    float2 corner = float2((probeIndex % perRow) * tile, (probeIndex / perRow) * tile);
+    float2 inTile = ollin_gi_oct_encode(dir) * float(interior) + 1.0;
+    return (corner + inTile) / float2(atlas.get_width(), atlas.get_height());
+}
+
+// Sample the probe field at a lit surface point: the eight surrounding probes, each
+// weighted by trilinear position x soft backface (a wrap term, never zero, so the cage
+// can't collapse) x the Chebyshev visibility test against the probe's stored distance
+// moments. The visibility query runs from a point offset off the surface along the
+// normal and toward the viewer (`light.giCounts.w`, the precomputed self-shadow bias)
+// because the variance is largest exactly at the surface. Returns E/pi in display-linear
+// units, scaled by the sketch's GI intensity; the caller multiplies by albedo.
+static inline float3 ollin_gi_sample(float3 worldPos, float3 n, float3 viewDir,
+                                     constant OllinLighting &light,
+                                     texture2d<float> giIrradiance,
+                                     texture2d<float> giDepth,
+                                     texture2d<float> giProbeOffsets) {
+    constexpr sampler giSamp(filter::linear, address::clamp_to_edge);
+    float3 origin = light.giOrigin.xyz;
+    float3 spacing = max(light.giSpacing.xyz, float3(1e-6));
+    int3 counts = int3(light.giCounts.xyz);
+    float3 biased = worldPos + (n * 0.2 + viewDir * 0.8) * light.giCounts.w;
+    float3 grid = (biased - origin) / spacing;
+    int3 base = clamp(int3(floor(grid)), int3(0), max(counts - 2, int3(0)));
+    float3 t = clamp(grid - float3(base), 0.0, 1.0);
+    float3 sum = float3(0.0);
+    float wsum = 0.0;
+    for (int i = 0; i < 8; i++) {
+        int3 off = int3(i & 1, (i >> 1) & 1, (i >> 2) & 1);
+        int3 g = min(base + off, counts - 1);
+        int probe = g.x + g.y * counts.x + g.z * counts.x * counts.y;
+        // The cage and trilinear come from the unmoved grid; the probe's world
+        // position (for the direction, backface, and visibility terms) honors its
+        // relocation offset, matching where its rays were actually traced from.
+        float3 probePos = origin + float3(g) * spacing
+                        + giProbeOffsets.read(uint2(uint(probe), 0u)).xyz;
+        // Soft backface: a probe behind the tangent plane fades, never to zero.
+        float wrap = (dot(normalize(probePos - worldPos), n) + 1.0) * 0.5;
+        float w = wrap * wrap + 0.2;
+        // Chebyshev visibility from the biased point (variance shadow mapping over the
+        // probe's mean / mean-squared distance in this direction), cubed to sharpen,
+        // floored at 0.05 so a fully "shadowed" probe still steadies the blend.
+        float3 toBiased = biased - probePos;
+        float dist = length(toBiased);
+        float2 moments = giDepth.sample(giSamp,
+            ollin_gi_atlas_uv(probe, toBiased / max(dist, 1e-6), 16, giDepth)).rg;
+        if (dist > moments.x) {
+            float variance = abs(moments.y - moments.x * moments.x) + 1e-6;
+            float delta = dist - moments.x;
+            float cheb = variance / (variance + delta * delta);
+            w *= max(cheb * cheb * cheb, 0.05);
+        }
+        w = max(w, 1e-6);
+        // Perceptually crush small weights before the trilinear term: a barely-trusted
+        // probe's residual leak is far more visible than the energy it carries.
+        const float crush = 0.2;
+        if (w < crush) { w *= (w * w) / (crush * crush); }
+        float3 tri = mix(1.0 - float3(off), float3(off), t);
+        w *= max(tri.x * tri.y * tri.z, 1e-5);
+        float3 probeIrr = giIrradiance.sample(giSamp,
+            ollin_gi_atlas_uv(probe, n, 8, giIrradiance)).rgb;
+        sum += w * pow(probeIrr, 2.5);
+        wsum += w;
+    }
+    if (wsum <= 1e-6) { return float3(0.0); }
+    float3 irr = sum / wsum;
+    return irr * irr * light.giSpacing.w;
+}
+
 // The image-based-lighting ambient for a physically-based surface: the split-sum
 // approximation (Karis), gathering the environment's diffuse irradiance and its
 // GGX-prefiltered specular reflection, recombined through the BRDF integration LUT. Added
@@ -2432,8 +2549,11 @@ static inline float3 ollin_env_refraction(float3 n, float3 viewDir,
 // 2D BRDF LUT. `base` is the linear albedo. A transmissive material swaps its diffuse
 // term for the refracted view through the body (`ollin_env_refraction`, upgraded to the
 // traced scene under ray-traced reflections), tinted by the albedo and weighted by the
-// energy the specular lobe leaves over. Written from the published technique (README
-// Techniques list).
+// energy the specular lobe leaves over. With the probe field active (`light.giOrigin.w`),
+// the diffuse irradiance comes from the probes instead of the environment cube: the
+// probes already integrate the environment through their miss rays, occlusion included,
+// so the swap is strictly more correct (the specular prefilter is untouched, GI being
+// diffuse-only). Written from the published technique (README Techniques list).
 static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir,
                                            constant OllinMaterial &mat,
                                            constant OllinLighting &light,
@@ -2461,7 +2581,12 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
                                            // The light-shaping arrays, so a shaped light's
                                            // pattern survives into the inline hit shade.
                                            texture2d_array<float> iesProfiles,
-                                           texture2d_array<float> cookies
+                                           texture2d_array<float> cookies,
+                                           // The probe-sampled bounce irradiance (display-
+                                           // linear), pre-sampled by the carrier; replaces
+                                           // the irradiance-cube diffuse when the probe
+                                           // field is active (`light.giOrigin.w`).
+                                           float3 giIrradiance
 #endif
                                            ) {
     constexpr sampler cubeSamp(filter::linear, mip_filter::linear, address::clamp_to_edge);
@@ -2481,6 +2606,13 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
     float3 F = F0 + (max(float3(1.0 - rough), F0) - F0) * pow(1.0 - NoV, 5.0);
     float3 kD = (float3(1.0) - F) * (1.0 - mat.metallic);
     float3 irradiance = irradianceTex.sample(cubeSamp, rot * n).rgb;
+#if OLLIN_RT_SHADOWS
+    // Probe-field bounce light stands in for the environment's diffuse irradiance (the
+    // probes integrate that environment themselves, with the scene's occlusion and its
+    // bounced light on top). Pre-divided by the IBL exposure because this whole ambient
+    // scales by it on return; the probes store display-linear radiance.
+    if (light.giOrigin.w > 0.0) { irradiance = giIrradiance / max(light.iblIntensity, 1e-3); }
+#endif
     float3 diffuse = irradiance * base;
     float3 prefiltered = prefilterTex.sample(cubeSamp, rot * R, level(rough * light.iblMaxMip)).rgb;
 #if OLLIN_RT_SHADOWS
@@ -2600,6 +2732,11 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                     // `light.rtReflectionDeferred` is set; a never-sampled stand-in
                                     // otherwise.
                                     , texture2d<float> rtReflectionTex [[texture(7)]]
+                                    // The GI probe atlases (irradiance + distance moments);
+                                    // never-sampled stand-ins unless `light.giOrigin.w` is set.
+                                    , texture2d<float> giIrradianceTex [[texture(13)]]
+                                    , texture2d<float> giDepthTex [[texture(14)]]
+                                    , texture2d<float> giOffsetsTex [[texture(15)]]
 #endif
                                     ) {
     // Linearize the surface color so the present pass's sRGB re-encode lands the
@@ -2631,6 +2768,17 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
 #endif
     // Physically-based surfaces gather their ambient + reflections from the environment;
     // the other lit materials take the diffuse irradiance as their ambient (Gooch excepted).
+#if OLLIN_RT_SHADOWS
+    // Probe-field bounce light, sampled once per fragment while active: it stands in
+    // for the environment's diffuse irradiance below, or is the whole ambient when no
+    // environment is set. Gooch keeps its own light-independent tone ramp.
+    float3 gi = float3(0.0);
+    if (light.giOrigin.w > 0.0 && mat.shadingModel != 2) {
+        float3 giView = normalize(light.cameraPosition.xyz - in.worldPos);
+        gi = ollin_gi_sample(in.worldPos, normalize(in.normal), giView, light,
+                             giIrradianceTex, giDepthTex, giOffsetsTex);
+    }
+#endif
     if (mat.shadingModel == 3 && light.iblEnabled != 0) {
         float3 viewDir = normalize(light.cameraPosition.xyz - in.worldPos);
 #if OLLIN_RT_SHADOWS
@@ -2649,12 +2797,29 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                        iblIrradiance, iblPrefilter, iblBRDF, sheenLUT
 #if OLLIN_RT_SHADOWS
                                        , in.worldPos, shadowAccel, meshVerts, meshGeoOffsets,
-                                       deferredRefl, ltcAmp, iesProfiles, cookies
+                                       deferredRefl, ltcAmp, iesProfiles, cookies, gi
 #endif
                                        );
     } else if (light.iblEnabled != 0 && mat.shadingModel != 2) {
+#if OLLIN_RT_SHADOWS
+        if (light.giOrigin.w > 0.0) {
+            // The probes integrate the environment themselves (occlusion included), so
+            // their sample replaces the flat env ambient rather than adding to it.
+            c.rgb += gi * base;
+        } else {
+            c.rgb += ollin_ibl_flat_ambient(base, normalize(in.normal), light, iblIrradiance);
+        }
+#else
         c.rgb += ollin_ibl_flat_ambient(base, normalize(in.normal), light, iblIrradiance);
+#endif
     }
+#if OLLIN_RT_SHADOWS
+    else if (light.giOrigin.w > 0.0 && mat.shadingModel != 2) {
+        // No environment: the probes' bounce is the scene's ambient, on top of whatever
+        // flat ambient the sketch set (a PBR metal keeps no diffuse, per its model).
+        c.rgb += gi * base * (mat.shadingModel == 3 ? (1.0 - mat.metallic) : 1.0);
+    }
+#endif
     // Atmosphere last: fog dims the fully shaded surface (reflections and ambient
     // included) along the eye path, then the marched in-scatter adds the air's glow.
     if (light.fogColor.w > 0.0) {
@@ -2820,6 +2985,9 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                              , const device OllinMeshVertex *meshVerts [[buffer(6)]]
                                              , const device uint *meshGeoOffsets [[buffer(7)]]
                                              , texture2d<float> rtReflectionTex [[texture(7)]]
+                                             , texture2d<float> giIrradianceTex [[texture(13)]]
+                                             , texture2d<float> giDepthTex [[texture(14)]]
+                                             , texture2d<float> giOffsetsTex [[texture(15)]]
 #endif
                                              ) {
     // The base-color texture is sRGB, so the sample comes back already linear and
@@ -2849,6 +3017,15 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                             ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT,
                             -1.0, meshFieldShadow);
 #endif
+#if OLLIN_RT_SHADOWS
+    // Probe-field bounce light, as on the solid path.
+    float3 gi = float3(0.0);
+    if (light.giOrigin.w > 0.0 && mat.shadingModel != 2) {
+        float3 giView = normalize(light.cameraPosition.xyz - in.worldPos);
+        gi = ollin_gi_sample(in.worldPos, normalize(in.normal), giView, light,
+                             giIrradianceTex, giDepthTex, giOffsetsTex);
+    }
+#endif
     if (mat.shadingModel == 3 && light.iblEnabled != 0) {
         float3 viewDir = normalize(light.cameraPosition.xyz - in.worldPos);
 #if OLLIN_RT_SHADOWS
@@ -2865,12 +3042,25 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                        iblIrradiance, iblPrefilter, iblBRDF, sheenLUT
 #if OLLIN_RT_SHADOWS
                                        , in.worldPos, shadowAccel, meshVerts, meshGeoOffsets,
-                                       deferredRefl, ltcAmp, iesProfiles, cookies
+                                       deferredRefl, ltcAmp, iesProfiles, cookies, gi
 #endif
                                        );
     } else if (light.iblEnabled != 0 && mat.shadingModel != 2) {
+#if OLLIN_RT_SHADOWS
+        if (light.giOrigin.w > 0.0) {
+            c.rgb += gi * base;
+        } else {
+            c.rgb += ollin_ibl_flat_ambient(base, normalize(in.normal), light, iblIrradiance);
+        }
+#else
         c.rgb += ollin_ibl_flat_ambient(base, normalize(in.normal), light, iblIrradiance);
+#endif
     }
+#if OLLIN_RT_SHADOWS
+    else if (light.giOrigin.w > 0.0 && mat.shadingModel != 2) {
+        c.rgb += gi * base * (mat.shadingModel == 3 ? (1.0 - mat.metallic) : 1.0);
+    }
+#endif
     // Atmosphere last, as on the solid path.
     if (light.fogColor.w > 0.0) {
         c.rgb = ollin_apply_fog(c.rgb, in.worldPos, in.position.xy, light,

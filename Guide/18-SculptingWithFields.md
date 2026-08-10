@@ -255,6 +255,30 @@ There's one behavior worth expecting rather than being puzzled by. Reflections a
 
 When you want the map of which finish applies to which kind of geometry, meshes and fields differing in a few places, the [combining reference](../Docs/3D/Combining.md) is the table for it.
 
+## Light that bounces
+
+Every light in the last two chapters worked the same way: it left the lamp, hit a surface, and stopped. Real light doesn't stop. The sun patch on your floor lights your ceiling from below, a red wall tints the white shelf beside it, and the dark side of everything in the room is filled in by light arriving second-hand. **Direct light only ever explains half a picture**; the other half has bounced at least once. One call turns that half on:
+
+```swift
+spotLight(.white, at: Vector3(0, 3.8, 0), direction: Vector3(0, -1, 0), intensity: 3)
+castShadows()
+globalIllumination()        // needs a ray-tracing GPU; a no-op elsewhere
+```
+
+<img src="Images/18-SculptingWithFields/BouncedLight.jpg" alt="A room with an orange left wall, a teal right wall, and white floor, ceiling, and back, holding a white box and a white sphere. The only light is a spot pool on the floor, but the whole room is softly lit: the ceiling glows from below, the walls carry their colors into the room, and the sphere's shadow side is filled with pale floor-light" width="680">
+
+Everything in this room except the pool itself is bounce. The spot never touches the ceiling, and the ceiling glows anyway, lit from below by the floor. The walls were never lit directly either, yet the orange one reads orange, because floor-light reached it and came back stained. The sphere's shadow side isn't black; it's filled by the bright floor beside it. Cover the figure with your hand except the pool, and you're looking at what the direct-only version showed.
+
+Under the hood, Ollin scatters a grid of invisible **light probes** through the scene and re-asks them, every frame, what light is arriving from every direction, by firing rays at the actual geometry. Lit surfaces then read their neighborhood's probes for the light the lamps couldn't deliver directly. Because the probes are re-traced live, a swinging lamp or a moving shape keeps bouncing correctly, and nothing is baked ahead of time. Three practical notes fall out of that:
+
+- **It composes with what you already know.** With `castShadows()` on, bounce respects the same shadows the direct light does, so light doesn't sneak through a wall on the second hop (a sealed box stays dark inside). With an `environment(_:)`, the probes carry the sky in *with occlusion*, so a room lit through a doorway darkens with distance from the door instead of glowing evenly, which the plain environment ambient can't do.
+- **It's the diffuse half.** Matte surfaces gather bounce; a mirror's sharp image of the scene is `rayTracedReflections()`, the specular half from the previous section, and the two are made to run together.
+- **`intensity` is an artistic dial, not a lie detector.** `1` is physical. The figure runs `1.6` because the picture wanted it, and that's the whole job of the knob.
+
+Like the reflections, the probe field settles over a few frames live (a sudden lighting change fades in, like your eyes adjusting) and converges fully inside each frame on export, so a still or a video reproduces exactly. And like the reflections, it needs a ray-tracing GPU and does nothing at all elsewhere, so the call can stay in the sketch.
+
+The [`GlobalIllumination` example](../Examples/3D/Lighting/GlobalIllumination/Sketch.swift) is this room with the lamp swinging, and the space bar toggles the bounce, which is the clearest before-and-after you can give yourself. One honest edge: bounce is gathered by meshes and marched fields on the canvas itself, so a surface seen *inside a mirror* keeps its direct-only shading there.
+
 ## Glass
 
 There has been a way to make a surface see-through since Chapter 17: give the `fill` some alpha, and the surface fades. Glass is a different thing. The surface stays fully there, with its highlights and reflections, and the *light* comes through instead, bent and tinted on the way. That's transmission, and it's one material call:

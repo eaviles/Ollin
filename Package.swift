@@ -478,6 +478,7 @@ let package = Package(
                 .copy("Renderer/ShaderRaymarch.metal"),
                 .copy("Renderer/ShaderEffects.metal"),
                 .copy("Renderer/ShaderCombine.metal"),
+                .copy("Renderer/ShaderGI.metal"),
                 .copy("Renderer/ShaderSim.metal"),
                 .copy("Renderer/ShaderPatterns.metal"),
                 .copy("Renderer/ShaderIBL.metal"),

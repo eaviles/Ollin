@@ -972,6 +972,24 @@ open class Sketch {
     /// environment reflection remains. Pass `false` to turn it back off.
     public func rayTracedReflections(_ on: Bool = true) { drawer.rayTracedReflections(on) }
 
+    /// Gather real-time global illumination this frame, so light *bounces*: a red wall
+    /// tints the white floor beside it, a bright floor fills in an overhang's shadow, and
+    /// a room lit through a doorway glows with light the sun never touches directly. The
+    /// renderer keeps a grid of light probes over the scene, re-traces them every frame
+    /// against the actual geometry (so moving shapes and moving lights keep bouncing
+    /// correctly), and every lit surface adds the bounce light the probes saw. With an
+    /// `environment(_:)` the probes also carry sky light into the scene, occlusion
+    /// included. `intensity` scales the bounce (1 = physical; higher is an artistic
+    /// crank). Per-frame state like the lights and camera, so call it in `draw()`, after
+    /// the camera and lights. Needs a ray-tracing GPU (Apple silicon); a no-op otherwise.
+    /// Pass `false`, or call `noGlobalIllumination()`, to turn it back off.
+    public func globalIllumination(_ on: Bool = true, intensity: Double = 1) {
+        on ? drawer.globalIllumination(true, intensity: intensity) : drawer.noGlobalIllumination()
+    }
+
+    /// Stop gathering global illumination (the default).
+    public func noGlobalIllumination() { drawer.noGlobalIllumination() }
+
     /// Set the soft-shadow quality (how many rays the ray-traced point caster traces per
     /// pixel) as a **hardware-relative** tier: the dial to trade frame rate for nicer
     /// shadows. The tier scales with the GPU, like a game's quality presets: `.default` is

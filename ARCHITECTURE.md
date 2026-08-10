@@ -2368,6 +2368,102 @@ and a hit below the ramp is untouched: the near-mirror snapshots
 
 ---
 
+## Global illumination (the probe field)
+
+`globalIllumination()` is dynamic diffuse GI in the probe-field form (the DDGI
+papers; Techniques list): a fixed 8×8×8 grid of irradiance probes over the
+scene, re-traced every frame against the same acceleration structure the
+shadows and reflections share, and sampled by every lit carrier as the diffuse
+ambient. The pipeline is four fragment passes in `encodeGIPass`
+(`MetalRenderer+Targets.swift`), all in `ShaderGI.metal` (a new segment after
+ShaderCombine: it reuses Shader3D's RT surface fetch and ShaderEffects'
+`PresentOut`), compiled only under `OLLIN_RT_SHADOWS`:
+
+1. **Trace** (`ollin_gi_trace`): one texel per (ray, probe) into a transient
+   surfel texture. Directions are a spherical-Fibonacci fan under a
+   per-update random rotation (Shoemake quaternion from the hashed seed, so an
+   update is a pure function of its seed). A hit shades as direct light
+   (Lambert over the punctual kinds, the exact LTC diffuse for panels, light
+   shaping applied) *times one visibility ray to the casting light* (without
+   that shadow ray, bounce light walks through the very wall whose shadow the
+   primary shading draws), plus the *previous* update's probe field at the hit
+   (each update deepens the bounce by one). A miss samples the environment's
+   radiance times the IBL exposure (sky light with occlusion, for free); a
+   backface hit stores zero radiance and a **negated, 80%-shortened** distance
+   (the sign is the relocation pass's flag, the shortening the leak guard).
+2. **Blend irradiance** (`ollin_gi_blend_irradiance`): per octahedral texel,
+   the cosine-weighted mean of the fan's radiances (`Σ wL / Σ w`, which is
+   E/π, the IBL irradiance cube's own convention, so the sample drops into
+   `diffuse = irradiance * base` unchanged), encoded `pow(x, 1/5)` (the 2021
+   paper's perceptual gamma) and hysteresis-blended into the previous atlas.
+   Per-texel convergence heuristics (change > 25% of range → hysteresis −0.15,
+   > 80% → 0) keep lighting changes from lagging.
+3. **Blend depth** (`ollin_gi_blend_depth`): mean distance + mean squared
+   distance under a power-50 cosine lobe, at 16×16 per probe against the
+   irradiance's 8×8.
+4. **Relocate** (`ollin_gi_relocate`): per-probe statistics off the surfels
+   walk a probe seeing >25% backfaces out through its closest backface, and
+   back a surface-pressed probe away along its farthest frontface; offsets
+   clamp to 0.45× spacing per axis and live in a probeCount×1 ping-ponged
+   texture the trace and samplers both read.
+
+Sampling (`ollin_gi_sample`, Shader3D, textures 13/14/15 on every lit carrier)
+is the papers' four-term weight: trilinear cage × soft backface wrap ×
+Chebyshev variance visibility from a self-shadow-biased point
+(`(0.2·n + 0.8·ω_o) · 0.75·minSpacing · 0.3`, precomputed into
+`giCounts.w`), small weights perceptually crushed; decode is `pow 2.5` per
+probe with the blended result squared (interpolation stays in roughly
+perceptual space). Where it lands: under an environment the probe sample
+*replaces* the irradiance-cube diffuse inside `ollin_pbr_ibl_ambient` and the
+flat env ambient (the probes integrate the same environment, occlusion
+included); with no environment it adds a GI ambient the scene never had.
+Specular is untouched (GI is diffuse; mirrors are the RT reflections' job).
+
+**The volume is auto-fitted and held.** The caster batches' vertex AABB
+(folded beside the accel build), padded 15% per side, defines the grid; live it
+*holds* until the raw bounds escape it or shrink well inside (probes must not
+move for hysteresis to mean anything), and a refit restarts the field.
+Headless/export ignores the held state entirely: the volume refits from the
+frame's own bounds and `resolveGIIterations()` whole trace+blend+relocate
+iterations (8/12/16 by tier) run from scratch with a progressive-mean
+hysteresis (`i/(i+1)`) and seed = the iteration index, so a frame is a pure
+function of itself: byte-stable snapshots (`gi-3d`), flicker-free video, and
+the frame-grab re-render can't double-step the live accumulation
+(`statefulEncodeIsRepeat` guards the live path like the other stateful
+passes). Rays per probe resolve per GPU like the shadow rays (hardware RT
+64/96/192, software 32/64/96).
+
+Three bugs from the first render session, each now a pinned rule:
+
+- **Never `mix` toward an unread history.** The first update ran hysteresis 0
+  against the uninitialized previous atlas, and `mix(fresh, old, 0)` is
+  `fresh + 0·(old − fresh)`: NaN wherever the garbage was NaN. The whole
+  field poisoned in two channels (the pool read green); the blends now never
+  read `previous` without history.
+- **Cap the visibility moments at cage scale.** Distances stored raw to the
+  volume's far cap let far geometry dominate a texel's variance so completely
+  that near-surface statistics collapsed into a hard step at the mean,
+  printing a dark blob under every probe near a wall. The reference's rule
+  (clamp stored distance to 1.5× spacing: the Chebyshev test only ever asks
+  about a probe's own cage) is load-bearing, not an optimization.
+- **Relocation is not optional.** A room built from wall slabs parks whole
+  probe rows *inside* the slabs (the smoke test's ceiling row sat at y 4.04
+  in a 4.0–4.2 slab), and an embedded probe's backface statistics darken a
+  blotch of every surface its cage touches. The 2021 optimizer walks them
+  out in a few updates; diagnosing it was a textbook counterfactual chain
+  (Chebyshev off → *brighter dots* at probes, trilinear-only → smooth but
+  dark → the weights were fine and the probes were wrong).
+
+Behavioral net: `GlobalIlluminationTests` (bounce-fills-the-unlit-ceiling,
+red-wall dye vs a repainted twin, no leak into a sealed box vs a light moved
+inside, intensity scaling, on-then-off byte-equality, two-render
+byte-determinism), all RT-gated. The envelope: solid meshes + raymarched
+fields on the main canvas gather; mirror interiors, render targets, point
+clouds, and particles don't (each a deliberate v1 edge, documented in
+`Docs/3D/3D.md#global-illumination`).
+
+---
+
 ## User-supplied shaders
 
 A sketch writes its own fragment shader and runs it through the effect graph.

@@ -767,6 +767,56 @@ final class MetalRenderer {
     /// one queue serialize the writes and reads).
     var rtReflectGBuf: (normal: MTLTexture, material: MTLTexture, depth: MTLTexture, w: Int, h: Int)?
 
+    /// The global-illumination probe field's persistent state (the `rtReflectHistory`
+    /// shape, doubled): ping-ponged irradiance + visibility atlases and the *held* probe
+    /// volume. The volume holds until the scene's geometry escapes it or shrinks well
+    /// inside it, so probe positions stay put across frames and the hysteresis has a
+    /// stable field to converge into; a refit moves every probe, so it invalidates the
+    /// history (the next update writes fresh values at full weight).
+    final class GIProbeState {
+        let irrA: MTLTexture, irrB: MTLTexture
+        let depA: MTLTexture, depB: MTLTexture
+        /// Per-probe relocation offsets (probeCount x 1), ping-ponged like the atlases:
+        /// the trace reads the front, the relocation pass writes the back from this
+        /// update's surfels, so a probe that landed inside geometry walks out over the
+        /// next few updates.
+        let offA: MTLTexture, offB: MTLTexture
+        var flipped = false
+        var valid = false
+        var origin = SIMD3<Float>.zero
+        var spacing = SIMD3<Float>(repeating: 1)
+        var counts = SIMD3<Int32>(repeating: 2)
+        /// The offsets the most recent trace actually used: what the carriers must
+        /// sample probe positions with (the freshly relocated front is one step ahead
+        /// of the atlas content).
+        var lastTraceOffsets: MTLTexture?
+        init(irrA: MTLTexture, irrB: MTLTexture, depA: MTLTexture, depB: MTLTexture,
+             offA: MTLTexture, offB: MTLTexture) {
+            self.irrA = irrA; self.irrB = irrB; self.depA = depA; self.depB = depB
+            self.offA = offA; self.offB = offB
+        }
+        var irrFront: MTLTexture { flipped ? irrB : irrA }
+        var irrBack: MTLTexture { flipped ? irrA : irrB }
+        var depFront: MTLTexture { flipped ? depB : depA }
+        var depBack: MTLTexture { flipped ? depA : depB }
+        var offFront: MTLTexture { flipped ? offB : offA }
+        var offBack: MTLTexture { flipped ? offA : offB }
+    }
+    var giState: GIProbeState?
+
+    /// What a frame's GI pass resolved: the atlases + probe offsets the carriers sample
+    /// plus the volume the lighting struct describes them with (packed identically at
+    /// every consumer by `packGI`, the `resolveFieldLighting`-mirroring rule).
+    struct GIResolved {
+        var irradiance: MTLTexture
+        var depth: MTLTexture
+        var offsets: MTLTexture
+        var origin: SIMD3<Float>
+        var spacing: SIMD3<Float>
+        var counts: SIMD3<Int32>
+        var biasScale: Float
+    }
+
     /// The subsurface-scatter mask pass's cached targets (the per-pixel step/depth
     /// mask plus its own depth attachment), reallocated on a size change; rewritten
     /// whole by the pass each frame like the reflection G-buffer above.
@@ -1027,6 +1077,14 @@ final class MetalRenderer {
             sdf3DNode: sdf3DNodeBuffer(at: frameIndex, for: drawer.sdf3DNodes.count))
         encodeEffectTargets(drawer, into: commandBuffer, buffers: buffers, pooled: true)
 
+        // Global illumination (live): one probe-field update, hysteresis-accumulated
+        // into the persistent atlases. Nil when GI isn't active this frame; the
+        // carriers' GI branches then stay untaken (byte-identical).
+        let gi = encodeGIPass(drawer, into: commandBuffer, meshBuffer: meshBuf,
+                              accel: renderedShadow.giAccel,
+                              geoOffsets: renderedShadow.giGeoOffsets,
+                              supersample: false, pooled: true)
+
         // Half-res raymarch pre-pass (the `.performance` tier): sphere-trace the fields at half
         // resolution into a sampleable color+depth that the main pass upsamples + composites.
         // `nil` on the full-res tiers or a frame with no fields, so those stay byte-identical.
@@ -1034,13 +1092,15 @@ final class MetalRenderer {
             let fieldLight = resolveFieldLighting(drawer, shadowMap: renderedShadow.twoD,
                                                   shadowCube: renderedShadow.cube,
                                                   shadowAccelPresent: renderedShadow.accel != nil,
-                                                  reflectAccelPresent: renderedShadow.reflectAccel != nil)
+                                                  reflectAccelPresent: renderedShadow.reflectAccel != nil,
+                                                  gi: gi)
             return encodeRaymarchHalfRes(drawer, into: commandBuffer,
                 groupBuffer: buffers.sdf3DGroup, nodeBuffer: buffers.sdf3DNode,
                 uniforms3D: u3, lighting: fieldLight.lighting,
                 shadowTexture: fieldLight.shadowTexture, shadowCubeTexture: fieldLight.shadowCubeTexture,
                 traceAccel: renderedShadow.accel ?? renderedShadow.reflectAccel,
                 meshBuffer: buffers.mesh, reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
+                giTextures: gi.map { ($0.irradiance, $0.depth, $0.offsets) },
                 fullWidth: width, fullHeight: height)
         }
         // Half-res field-cast shadow pre-pass (the live RenderQuality path): the point/RT field
@@ -1084,7 +1144,8 @@ final class MetalRenderer {
                reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
                halfResField: halfResField,
                halfResFieldShadow: halfResFieldShadow,
-               deferredReflection: deferredReflection)
+               deferredReflection: deferredReflection,
+               gi: gi)
         geomEncoder.endEncoding()
 
         // The subsurface-scattering diffusion (returns `resolve` untouched when no
@@ -1383,6 +1444,16 @@ final class MetalRenderer {
             sdf3DNode: exportSDF3DNodeBuffer(for: drawer.sdf3DNodes.count))
         encodeEffectTargets(drawer, into: commandBuffer, buffers: buffers, pooled: false)
 
+        // Global illumination, historyless: the volume fits this frame's own bounds and
+        // K whole trace+blend iterations converge the field within the frame (seed = the
+        // iteration index), so the result is a pure function of the frame: byte-stable
+        // snapshots, flicker-free video, and the frame-grab re-render can't double-step
+        // the live accumulation.
+        let gi = encodeGIPass(drawer, into: commandBuffer, meshBuffer: meshBuf,
+                              accel: renderedShadow.giAccel,
+                              geoOffsets: renderedShadow.giGeoOffsets,
+                              supersample: true, pooled: false)
+
         // Half-res raymarch pre-pass: honours the resolution tier on export too, so an
         // explicit `.performance`/`.default` raymarch quality downscales here as it does live.
         // At `.detail` (the export default) the scale is 1 and this is nil (full resolution).
@@ -1390,13 +1461,15 @@ final class MetalRenderer {
             let fieldLight = resolveFieldLighting(drawer, shadowMap: renderedShadow.twoD,
                                                   shadowCube: renderedShadow.cube,
                                                   shadowAccelPresent: renderedShadow.accel != nil,
-                                                  reflectAccelPresent: renderedShadow.reflectAccel != nil)
+                                                  reflectAccelPresent: renderedShadow.reflectAccel != nil,
+                                                  gi: gi)
             return encodeRaymarchHalfRes(drawer, into: commandBuffer,
                 groupBuffer: buffers.sdf3DGroup, nodeBuffer: buffers.sdf3DNode,
                 uniforms3D: u3, lighting: fieldLight.lighting,
                 shadowTexture: fieldLight.shadowTexture, shadowCubeTexture: fieldLight.shadowCubeTexture,
                 traceAccel: renderedShadow.accel ?? renderedShadow.reflectAccel,
                 meshBuffer: buffers.mesh, reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
+                giTextures: gi.map { ($0.irradiance, $0.depth, $0.offsets) },
                 fullWidth: width, fullHeight: height)
         }
         // Half-res field-cast shadow pre-pass: same tier gating as the raymarch one. `.detail`
@@ -1435,7 +1508,8 @@ final class MetalRenderer {
                reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
                halfResField: halfResField,
                halfResFieldShadow: halfResFieldShadow,
-               deferredReflection: deferredReflection)
+               deferredReflection: deferredReflection,
+               gi: gi)
         encoder.endEncoding()
 
         // Tone-map the resolved float frame (after the subsurface-scattering
@@ -1519,19 +1593,27 @@ final class MetalRenderer {
                 drawer, into: cb, meshBuffer: meshBuf,
                 sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode)
             encodeEffectTargets(drawer, into: cb, buffers: buffers, pooled: false)
+            // Global illumination (the live one-update path), so the benchmark measures
+            // the same cost a live frame pays. nil when GI isn't active.
+            let gi = encodeGIPass(drawer, into: cb, meshBuffer: meshBuf,
+                                  accel: renderedShadow.giAccel,
+                                  geoOffsets: renderedShadow.giGeoOffsets,
+                                  supersample: false, pooled: false)
             // Half-res raymarch pre-pass (the `.performance` tier), so the benchmark measures
             // the same cost the live path pays. nil otherwise.
             let halfResField = makeRaymarchUniforms3D(drawer, viewport: viewport).flatMap { u3 in
                 let fieldLight = resolveFieldLighting(drawer, shadowMap: renderedShadow.twoD,
                                                       shadowCube: renderedShadow.cube,
                                                       shadowAccelPresent: renderedShadow.accel != nil,
-                                                      reflectAccelPresent: renderedShadow.reflectAccel != nil)
+                                                      reflectAccelPresent: renderedShadow.reflectAccel != nil,
+                                                      gi: gi)
                 return encodeRaymarchHalfRes(drawer, into: cb,
                     groupBuffer: buffers.sdf3DGroup, nodeBuffer: buffers.sdf3DNode,
                     uniforms3D: u3, lighting: fieldLight.lighting,
                     shadowTexture: fieldLight.shadowTexture, shadowCubeTexture: fieldLight.shadowCubeTexture,
                     traceAccel: renderedShadow.accel ?? renderedShadow.reflectAccel,
                     meshBuffer: buffers.mesh, reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
+                    giTextures: gi.map { ($0.irradiance, $0.depth, $0.offsets) },
                     fullWidth: width, fullHeight: height)
             }
             let halfResFieldShadow = makeRaymarchUniforms3D(drawer, viewport: viewport).flatMap { u3 -> MTLTexture? in
@@ -1555,7 +1637,8 @@ final class MetalRenderer {
                    reflectAccel: renderedShadow.reflectAccel,
                    reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
                    halfResField: halfResField,
-                   halfResFieldShadow: halfResFieldShadow)
+                   halfResFieldShadow: halfResFieldShadow,
+                   gi: gi)
             encoder.endEncoding()
             let scattered = applySubsurfaceScattering(drawer, resolved: resolveTexture, meshBuffer: meshBuf,
                                                       into: cb, width: width, height: height, pooled: false)

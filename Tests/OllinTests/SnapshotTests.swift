@@ -563,6 +563,9 @@ private let snapshotRaytracingCases: [SnapshotCase] = [
     SnapshotCase("area-reflections",
                  note: "A panel-lit white wall seen in a near-mirror metal floor with rayTracedReflections() on: pins the exact LTC diffuse in the traced hit shade (ollin_ltc_diffuse through ollin_rt_direct), the deferred trace pass's amp-table bind and LTC resolve, and the panel's glow carrying into the mirror with the same spread as the direct view. Fixed camera, bundled environment, no time.",
                  make: { AreaReflectionsScene() }),
+    SnapshotCase("gi-3d",
+                 note: "A Cornell-style room lit by one spot pool with globalIllumination() on: the ceiling and walls carry only bounce light, the colored walls dye the white statue from either side. Pins the whole probe-field pipeline end to end: the auto-fitted volume, the deterministic in-frame convergence (iteration-indexed seeds, progressive-mean hysteresis), probe relocation walking the embedded slab-row probes out, the cage-capped visibility moments, and the perceptually-encoded sampling in the lit carriers. RT-gated, so it only runs (and is recorded) on a ray-tracing GPU.",
+                 make: { GlobalIlluminationScene() }),
 ]
 
 // MARK: - Fixtures
@@ -963,6 +966,35 @@ private final class RayTracedReflectionsScene: Sketch {
             material(.polishedMetal); fill(Color(hex: 0xe2e6f0))
             translate(0, 1.1, -1.2); drawBox(width: 0.9, height: 2.2, depth: 0.9)
         }
+    }
+}
+
+/// A Cornell-style room whose only light is a spot pool on the floor, with
+/// `globalIllumination()` on: everything outside the pool is the probes' bounce.
+/// Fixed camera, no time.
+private final class GlobalIlluminationScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(.black)
+        camera(.orbiting(target: Vector3(0, 1.9, 0), radius: 9.5,
+                         azimuth: 0, elevation: 0.03, fieldOfView: .pi / 3.2,
+                         near: 1, far: 40))
+        spotLight(.white, at: Vector3(0, 3.8, 0.4), direction: Vector3(0, -1, -0.1),
+                  angle: .pi / 3.4, penumbra: 0.5, intensity: 3)
+        castShadows()
+        globalIllumination()
+        withState { fill(Color(white: 0.88)); translate(0, -0.1, 0); drawBox(width: 8.4, height: 0.2, depth: 8.4) }
+        withState { fill(Color(white: 0.88)); translate(0, 4.1, 0); drawBox(width: 8.4, height: 0.2, depth: 8.4) }
+        withState { fill(Color(white: 0.88)); translate(0, 2, -4.3); drawBox(width: 8.4, height: 4.4, depth: 0.2) }
+        withState { fill(Color(hex: 0xd4622a)); translate(-4.3, 2, 0); drawBox(width: 0.2, height: 4.4, depth: 8.4) }
+        withState { fill(Color(hex: 0x2a9d9d)); translate(4.3, 2, 0); drawBox(width: 0.2, height: 4.4, depth: 8.4) }
+        withState {
+            fill(Color(white: 0.9))
+            translate(-1.2, 1.1, 0.4); rotateY(0.42)
+            drawBox(width: 1.5, height: 2.2, depth: 1.5)
+        }
+        withState { fill(Color(white: 0.9)); translate(1.7, 0.75, -0.9); drawSphere(radius: 0.75) }
     }
 }
 

@@ -368,6 +368,16 @@ final class Drawer {
     /// non-ray-tracing GPU (the IBL-prefilter reflection remains).
     private(set) var rayTracedReflectionsEnabled = false
 
+    /// Whether this frame gathers real-time global illumination (see `globalIllumination`).
+    /// Per-frame state like the lights. When on (and the device can trace), the renderer
+    /// keeps a grid of irradiance probes over the scene, re-traced each frame, and the lit
+    /// surfaces sample bounce light from them. A no-op on a non-ray-tracing GPU.
+    private(set) var globalIlluminationEnabled = false
+
+    /// The GI intensity: a multiplier on the sampled bounce light (1 = physical).
+    /// Per-frame state, set alongside `globalIlluminationEnabled`.
+    private(set) var giIntensity: Double = 1
+
     /// The soft-shadow quality knob (`shadowQuality`/`shadowSamples`) — a persistent setting
     /// (not reset each frame, like `toneMap`): more rays give a smoother ray-traced penumbra
     /// at proportional GPU cost. A `Quality` tier scales with the GPU (the renderer resolves
@@ -1713,6 +1723,18 @@ final class Drawer {
     /// a no-op without a ray-tracing device or an environment to fall back to on a miss.
     func rayTracedReflections(_ enabled: Bool = true) { rayTracedReflectionsEnabled = enabled }
 
+    /// Gather real-time global illumination this frame: bounce light between the scene's
+    /// surfaces through a re-traced probe grid. Per-frame state like the lights; set it
+    /// in `draw()`. `intensity` scales the bounce (1 = physical). A no-op without a
+    /// ray-tracing device, a camera, or lights.
+    func globalIllumination(_ enabled: Bool = true, intensity: Double = 1) {
+        globalIlluminationEnabled = enabled
+        giIntensity = max(0, intensity)
+    }
+
+    /// Stop gathering global illumination (the default). Per-frame state.
+    func noGlobalIllumination() { globalIlluminationEnabled = false }
+
     /// Set the soft-shadow quality to a hardware-relative tier (the renderer picks the ray
     /// count for the GPU). Persistent (set once, in `setup()` or `draw()`).
     func shadowQuality(_ quality: RenderQuality) { shadowQualitySetting = .tier(quality) }
@@ -2433,6 +2455,8 @@ final class Drawer {
         environment = nil
         castsShadows = false
         rayTracedReflectionsEnabled = false
+        globalIlluminationEnabled = false
+        giIntensity = 1
         // Atmosphere is per-frame like the lights (the quality setting persists).
         fogColor = nil
         fogDensity = 0
