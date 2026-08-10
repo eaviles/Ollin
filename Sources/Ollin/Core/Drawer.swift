@@ -1903,6 +1903,11 @@ final class Drawer {
                 // no perspective linearization).
                 u.shadowDepthA = lightSizeTexels
                 u.shadowDepthB = 0
+                // Depth→world-distance constants for the transmittance thickness read:
+                // an orthographic map's depth is already linear, so the shader only
+                // needs the projection's own scale to speak world units (z = 0 flags
+                // the orthographic form).
+                u.shadowLinearize = SIMD4<Float>(proj.columns.2.z, proj.columns.3.z, 0, 0)
             } else if let caster = (0..<count).first(where: { activeLights[$0].kind == .spot }) {
                 // Spot: a perspective frustum from the light's position, aimed down its
                 // cone axis, the vertical field of view set to the full cone angle (a
@@ -1929,6 +1934,10 @@ final class Drawer {
                 // (the [3][2] term cancels). It's negative, which also flags the spot path.
                 u.shadowDepthA = lightSizeTexels
                 u.shadowDepthB = proj.columns.2.z
+                // Both projection constants, for the transmittance thickness read: an
+                // absolute world distance (unlike the penumbra ratio) needs [3][2] too
+                // (z = 1 flags the perspective form).
+                u.shadowLinearize = SIMD4<Float>(proj.columns.2.z, proj.columns.3.z, 1, 0)
             } else if let caster = (0..<count).first(where: { activeLights[$0].kind == .point }) {
                 // Point: an omnidirectional caster. The renderer renders the scene into a
                 // six-face cube from the light, each face storing the nearest occluder's

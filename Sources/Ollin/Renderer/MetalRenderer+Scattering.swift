@@ -58,6 +58,10 @@ extension MetalRenderer {
     /// accounts for, so it is dropped. Weights normalize to unit sum per channel and
     /// the un-scattered share folds back into the center tap, so the kernel conserves
     /// energy at any strength: at strength 0 it is exactly the identity.
+    ///
+    /// The transmittance profile `ollin_sss_transmit` (Shader3D.metal) is the
+    /// closed-form slab integral of this same Gaussian table; a change to either
+    /// lands in both (the `ollin_sdf_distance` hand-sync rule).
     nonisolated static func scatterKernel(falloff: SIMD3<Float>, strength: Float) -> [SIMD4<Float>] {
         let n = scatterTapCount
         let range: Float = 3

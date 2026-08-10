@@ -305,6 +305,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("subsurface-scattering",
                  note: "Real subsurface scattering (the separable screen-space diffusion): a skin sphere beside its bare twin and a marble torus over a plain floor. Pins the scatter-mask pass (projected step, depth, profile index; the plain floor and twin as occluders writing mark 0), the CPU kernel build for two distinct profiles in one frame, the two-direction blur with its per-pixel early-out, and the radius-relative depth-gap guard. Fixed camera + light, no time.",
                  make: { SubsurfaceScatteringScene() }),
+    SnapshotCase("subsurface-transmittance",
+                 note: "The scattering transmittance (shadow-map translucency): a thin skin slab beside a deep twin and a sphere, backlit by a directional caster with castShadows() on, so the visible faces are the bodies' dark sides. Pins the 2D-map thickness read (the shrink along the normal, the bilinear linearized depth, the orthographic shadowLinearize constants), the slab-integral transmittance profile (the thin face floods deep red, the deep face keeps only its short-crossing rim, the sphere a warm crescent), and the reversed-normal wrap irradiance. Fixed camera + light, no time.",
+                 make: { SubsurfaceTransmittanceScene() }),
     SnapshotCase("area-lights",
                  note: "A rect panel, a disk, and a tube (the LTC area lights) over a glossy floor and a roughness row: pins the bundled LTC table load, the horizon-clipped rect integral, the disk's ellipse/cubic path, the tube's line integral, the physical falloff, and the Blinn-Phong shininess-to-roughness mapping on the standard-material box. Fixed camera, no time.",
                  make: { AreaLightsScene() }),
@@ -1653,6 +1656,31 @@ private final class SubsurfaceScatteringScene: Sketch {
         }
         withState {
             translate(0, -0.85, 0); fill(Color(white: 0.4)); material(.roughPlastic)
+            drawBox(width: 22, height: 0.3, depth: 14)
+        }
+    }
+}
+
+/// A thin slab, a deep slab, and a sphere, all skin, backlit by a directional
+/// caster: the transmittance still (the thin body floods red, the deep one keeps
+/// its rim, the sphere its crescent).
+private final class SubsurfaceTransmittanceScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.04))
+        camera(.orbiting(target: Vector3(0, 0.7, 0), radius: 8, azimuth: 0.1,
+                         elevation: 0.08, fieldOfView: .pi / 4, near: 1, far: 30))
+        directionalLight(.white, direction: Vector3(0.2, -0.25, 1), intensity: 1.4)
+        castShadows()
+        noStroke()
+        fill(Color(red: 0.92, green: 0.72, blue: 0.62))
+        material(.skin(radius: 0.12))
+        withState { translate(-1.9, 0.9, 0); drawBox(width: 1.6, height: 2.0, depth: 0.18) }
+        withState { translate(0.1, 0.9, 0); drawBox(width: 1.6, height: 2.0, depth: 1.6) }
+        withState { translate(2.1, 0.35, 0.8); drawSphere(radius: 0.55) }
+        withState {
+            translate(0, -0.35, 0); fill(Color(white: 0.35)); material(.roughPlastic)
             drawBox(width: 22, height: 0.3, depth: 14)
         }
     }

@@ -302,6 +302,100 @@ static inline float shadowFactorCube(float3 worldPos, float3 n, float3 lightPos,
     return lit / 20.0;
 }
 
+// MARK: - Scattering transmittance (translucency)
+//
+// The through-body half of `Material.scattering`: where the shadow-casting light
+// strikes the far side of a thin body, the fraction that survives the crossing
+// re-emerges on this side (an ear against the sun, a leaf, a candle's wall).
+// Written from the published shadow-map translucency technique (see
+// ATTRIBUTION.md): the caster's depth already stores, along each of its rays, the
+// first surface the light met, so the gap between that and the receiver *is* the
+// distance the light traveled inside the body, and a physically-based T(s) turns
+// it into transmitted light.
+
+// The fraction of light that crosses a slab `s` profile-units thick, per channel:
+// the closed-form slab integral of the same Gaussian sum the diffusion kernel
+// tabulates (`MetalRenderer.scatterKernel`: same weights, same variances, same
+// per-channel falloff stretch; integrating each normalized 2D Gaussian over the
+// plane at depth s leaves w·e^(−s²/2v)). **Kept in sync with the kernel by hand**
+// (the `ollin_sdf_distance` rule): a change to either Gaussian table lands in
+// both. The fit's dropped narrowest term is direct bounce, which a slab does not
+// transmit, and is why T(0) < 1.
+static inline float3 ollin_sss_transmit(float s, float3 falloff) {
+    float3 sc = s / (0.001 + falloff);
+    float3 s2 = sc * sc;
+    return float3(0.100) * exp(s2 / -0.0968)
+         + float3(0.118) * exp(s2 / -0.374)
+         + float3(0.113) * exp(s2 / -1.134)
+         + float3(0.358) * exp(s2 / -3.98)
+         + float3(0.078) * exp(s2 / -14.82);
+}
+
+// World-space thickness the caster's light crossed inside the body before reaching
+// this receiver, from the 2D (directional/spot) depth map: project the receiver,
+// shrunk along its normal so the sample can't slip off the silhouette into
+// background texels (the receiver-side mirror of growing the caster's vertices,
+// sized by the map texel like the shadow biases, so it's scale-invariant), into
+// the caster's clip space, read the stored nearest-to-light depth through the
+// plain sampler, and convert both depths to world distance along the light via the
+// projection's own constants (`lin` = `OllinLighting.shadowLinearize`). Returns -1
+// outside the caster's box: no estimate, the same "shades as lit" envelope the
+// shadow factors use, so the term simply skips there. A texel holding the far
+// clear (nothing nearer the light) comes back as zero-or-negative separation,
+// clamped to zero: an unoccluded back face is an open sheet the light reaches
+// directly, the leaf case.
+static inline float transmitThickness2D(float3 worldPos, float3 n, float4x4 lightVP,
+                                        float texelWorld, float4 lin,
+                                        depth2d<float> shadowMap, sampler depthSamp) {
+    float3 inner = worldPos - n * (texelWorld * 2.0);
+    float4 lc = lightVP * float4(inner, 1.0);
+    if (lc.w <= 0.0) return -1.0;
+    float3 ndc = lc.xyz / lc.w;
+    if (ndc.x < -1.0 || ndc.x > 1.0 || ndc.y < -1.0 || ndc.y > 1.0 || ndc.z > 1.0) return -1.0;
+    float2 uv = ndc.xy * float2(0.5, -0.5) + 0.5;
+    // One manual bilinear over the four neighboring texels: the plain sampler is
+    // nearest (shared with the cube, which can't filter), and a single nearest tap
+    // quantizes the thickness to map texels, terracing a steep gradient into
+    // bands. Each corner linearizes *before* the blend, since blending perspective
+    // depths first would bend the ramp; across a silhouette in the map the blend
+    // ramps the thickness over one texel instead of stepping.
+    float2 dims = float2(shadowMap.get_width(), shadowMap.get_height());
+    float2 texel = 1.0 / dims;
+    float2 tc = uv * dims - 0.5;
+    float2 f = fract(tc);
+    float2 corner = (floor(tc) + 0.5) / dims;
+    float4 z = float4(shadowMap.sample(depthSamp, corner),
+                      shadowMap.sample(depthSamp, corner + float2(texel.x, 0.0)),
+                      shadowMap.sample(depthSamp, corner + float2(0.0, texel.y)),
+                      shadowMap.sample(depthSamp, corner + texel));
+    float dRecv;
+    float4 d;
+    if (lin.z > 0.5) {   // perspective (spot): d = [3][2] / (ndc.z + [2][2])
+        dRecv = lin.y / (ndc.z + lin.x);
+        d = lin.y / (z + lin.x);
+    } else {             // orthographic (directional): d = ([3][2] − ndc.z) / [2][2]
+        dRecv = (lin.y - ndc.z) / lin.x;
+        d = (lin.y - z) / lin.x;
+    }
+    float dOcc = mix(mix(d.x, d.y, f.x), mix(d.z, d.w, f.x), f.y);
+    return max(dRecv - dOcc, 0.0);
+}
+
+// The same thickness from a point caster's cube map, which already stores the
+// nearest occluder's *linear* distance to the light (normalized by the far plane):
+// the receiver's own distance minus the stored one is the crossing, no
+// linearization needed. A direction holding the far clear reads as zero thickness
+// (the open-sheet rule above).
+static inline float transmitThicknessCube(float3 worldPos, float3 n, float3 lightPos,
+                                          float farPlane, float texelWorld,
+                                          texturecube<float> shadowCube, sampler samp) {
+    float3 inner = worldPos - n * (texelWorld * 2.0);
+    float3 v = inner - lightPos;
+    float nearest = shadowCube.sample(samp, v).r;
+    if (nearest >= 0.999) return 0.0;
+    return max(length(v) - nearest * farPlane, 0.0);
+}
+
 // MARK: - Light shaping (IES profiles + cookies)
 //
 // A point/spot light can carry an IES photometric profile (a real fixture's
@@ -739,6 +833,38 @@ static inline float meshRTShadow(float3 worldPos, float3 normal,
                                  caster.position.xyz,
                                  light.shadowDepthB, light.shadowTexelWorld,
                                  light.shadowSamples, accel);
+}
+
+// The transmittance thickness on the ray-traced point caster (`shadowKind` 2, the
+// caster a point light): from just inside the surface (the same normal shrink the
+// map paths use), the first triangle toward the light is where the light entered
+// the body, so the committed closest hit's distance is the exact crossing. No map
+// resolution, no linearization; a miss is an open sheet, zero thickness (the cube
+// path's rule). Computed by the solid/textured fragments only when the material
+// scatters (a closest-hit walk costs more than a shadow ray, so it never runs on
+// a surface that won't read it) and handed to `meshLitColor` beside `rtShadow`.
+static inline float meshRTThickness(float3 worldPos, float3 normal,
+                                    constant OllinLighting &light,
+                                    primitive_acceleration_structure accel) {
+    OllinLight caster = light.lights[light.shadowLight];
+    float3 n = normalize(normal);
+    float3 origin = worldPos - n * (light.shadowTexelWorld * 2.0);
+    float3 sv = caster.position.xyz - origin;
+    float sd = length(sv);
+    ray r;
+    r.origin = origin;
+    r.direction = sv / max(sd, 1e-5);
+    r.min_distance = 0.0;
+    r.max_distance = sd;
+    intersection_params params;
+    intersection_query<triangle_data> q;
+    q.reset(r, accel, params);
+    while (q.next()) {
+        if (q.get_candidate_intersection_type() == intersection_type::triangle)
+            q.commit_triangle_intersection();
+    }
+    if (q.get_committed_intersection_type() == intersection_type::none) return 0.0;
+    return q.get_committed_distance();
 }
 
 // A ray-traced scene reflection for a physically-based surface: the hybrid-rendering
@@ -1777,6 +1903,11 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                                   // SDF fields under a point/RT caster (1.0 = lit / none, the
                                   // byte-identical default; the raymarch caller leaves it 1.0).
                                   , float meshFieldShadow = 1.0
+                                  // World-units thickness for the scattering transmittance on a
+                                  // ray-traced point caster, traced by the solid/textured
+                                  // fragments (`meshRTThickness`); every other carrier leaves
+                                  // the default (unread unless `shadowKind` is 2).
+                                  , float rtThickness = 0.0
                                   ) {
     float3 n = normalize(normal);
     if (light.enabled == 0) {
@@ -1788,6 +1919,13 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
     int model = mat.shadingModel;            // 0 standard, 1 toon, 2 Gooch
     float bands = max(mat.toonBands, 1.0);
     bool wantsSSS = mat.subsurfaceColor.a > 0.0;
+    // Real-scattering translucency: the material asked for the diffusion
+    // (`Material.scattering`) and the frame has a caster whose depth can say how
+    // thick the body is. Field carriers pass their own `fieldShadow` and keep
+    // plain shading, so the term is mesh-only like the blur; at strength 0 or with
+    // no caster the branch is never taken, byte-identical.
+    bool transmits = mat.scatterStrength > 0.0 && mat.scatter.w > 0.0
+                  && light.shadowLight >= 0 && fieldShadow < 0.0;
     // Transmission swaps the physically-based diffuse body for the transmitted lobe the
     // IBL ambient adds, so the direct lights' diffuse scales down with it. Only when an
     // environment supplies that lobe: with no IBL, transmission is inert (the surface
@@ -1964,6 +2102,39 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
             // Gated per frame; a featureless frame never enters.
             if (light.iesEnabled != 0 || light.cookieEnabled != 0) {
                 ollin_apply_light_shaping(L, light, toLight, worldPos, iesProfiles, cookies);
+            }
+        }
+        // Transmittance: the light this caster pours onto the body's far side, seen
+        // through it (the translucency half of `Material.scattering`; the shadow-map
+        // technique, see ATTRIBUTION.md). Only the casting light can say how thick
+        // the body is here, so only it transmits. The term sits *before* the shadow
+        // dim on purpose: a backlit surface stands in its own body's shadow, and
+        // dimming by that factor would erase exactly the light being transported.
+        // It rides the shaped/tinted local light copy and the cone attenuation, and
+        // lands ahead of the screen-space blur, which diffuses it together with the
+        // reflectance (the published treatment). The reversed-normal irradiance
+        // keeps it off lit faces (no double count with the diffuse), its 0.3 wrap
+        // easing the handoff across the terminator.
+        if (transmits && i == light.shadowLight) {
+            float t = -1.0;   // world-units thickness; < 0 = no estimate, term skips
+#if OLLIN_RT_SHADOWS
+            if (light.shadowKind == 2) t = rtThickness;
+            else
+#endif
+            if (light.shadowKind == 1)
+                t = transmitThicknessCube(worldPos, n, L.position.xyz, light.shadowDepthA,
+                                          light.shadowTexelWorld, shadowCube, shadowCubeSamp);
+            else if (light.shadowLinearize.x != 0.0)
+                t = transmitThickness2D(worldPos, n, light.lightViewProjection,
+                                        light.shadowTexelWorld, light.shadowLinearize,
+                                        shadowMap, shadowCubeSamp);
+            if (t >= 0.0) {
+                // World thickness → profile units: the diffusion kernel spans ±3
+                // units over the scattering radius, so both halves share one ruler.
+                float3 T = ollin_sss_transmit(t * 3.0 / mat.scatter.w, mat.scatter.xyz);
+                float E = max(0.3 + dot(-n, toLight), 0.0);
+                float kill = (model == 3) ? (1.0 - mat.metallic) * diffKeep : 1.0;
+                lit += T * L.color.rgb * base * (E * mat.scatterStrength * atten * kill);
             }
         }
         // Dim only the casting light where this surface is in shadow (ambient stays).
@@ -2439,11 +2610,18 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                                             light, fields, fieldNodes, fieldShadowTex);
 #if OLLIN_RT_SHADOWS
     float rtShadow = meshRTShadow(in.worldPos, in.normal, light, shadowAccel);
+    // The transmittance thickness on a traced point caster: one closest-hit ray,
+    // gated exactly like the term itself so a non-scattering surface never traces.
+    float rtThickness = 0.0;
+    if (light.shadowKind == 2 && mat.scatterStrength > 0.0 && mat.scatter.w > 0.0
+        && light.shadowLight >= 0 && light.lights[light.shadowLight].kind == 1) {
+        rtThickness = meshRTThickness(in.worldPos, in.normal, light, shadowAccel);
+    }
     float4 c = meshLitColor(base, in.color.a, in.normal,
                             in.worldPos, mat, light, shadowMap, shadowSamp,
                             shadowCube, shadowCubeSamp, ltcMat, ltcAmp,
                             iesProfiles, cookies, sheenLUT,
-                            rtShadow, -1.0, meshFieldShadow);
+                            rtShadow, -1.0, meshFieldShadow, rtThickness);
 #else
     float4 c = meshLitColor(base, in.color.a, in.normal,
                             in.worldPos, mat, light, shadowMap, shadowSamp,
@@ -2655,10 +2833,16 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                                             light, fields, fieldNodes, fieldShadowTex);
 #if OLLIN_RT_SHADOWS
     float rtShadow = meshRTShadow(in.worldPos, in.normal, light, shadowAccel);
+    // The traced transmittance thickness, gated as on the solid path.
+    float rtThickness = 0.0;
+    if (light.shadowKind == 2 && mat.scatterStrength > 0.0 && mat.scatter.w > 0.0
+        && light.shadowLight >= 0 && light.lights[light.shadowLight].kind == 1) {
+        rtThickness = meshRTThickness(in.worldPos, in.normal, light, shadowAccel);
+    }
     float4 c = meshLitColor(base, alpha, in.normal, in.worldPos, mat, light,
                             shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
                             ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT,
-                            rtShadow, -1.0, meshFieldShadow);
+                            rtShadow, -1.0, meshFieldShadow, rtThickness);
 #else
     float4 c = meshLitColor(base, alpha, in.normal, in.worldPos, mat, light,
                             shadowMap, shadowSamp, shadowCube, shadowCubeSamp,

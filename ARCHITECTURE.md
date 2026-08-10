@@ -2212,10 +2212,49 @@ material returns the resolved texture untouched and encodes nothing.
 - **`OllinMaterial` grew 192 → 224** (`scatter` float4: falloff ratios raw, not
   linearized, since they're relative widths, floored 0.001 against the kernel's
   per-channel divide; radius in w; plus `scatterStrength` and explicit tail
-  pads). The lit mesh fragments never read the new fields, so every existing
-  shading path is untouched; the batch's `finish` is how the mask pass and the
+  pads). The lit mesh fragments read the fields only inside the transmittance
+  branch below (gated on `scatterStrength > 0`, so every existing shading path
+  is untouched); the batch's `finish` is how the mask pass and the
   kernel collection see them, and the existing material-change batch break means
   no new break rule.
+- **The transmittance term** (the translucency half: light through a thin backlit
+  body, written from the published shadow-map translucency technique, credited in
+  `ATTRIBUTION.md`) lives in `meshLitColor`'s punctual loop, not the blur: only
+  the shadow-casting light transmits, because its depth is the one thickness
+  gauge the frame has. Thickness per caster kind: a **2D map** projects the
+  receiver shrunk two map texels along its normal (the silhouette fix, made
+  scale-invariant the way the shadow biases are), reads the stored depth through
+  one manual bilinear whose corners linearize *before* blending (the plain
+  sampler is nearest, and a nearest tap terraces a steep thickness gradient into
+  bands; blending perspective depths first bends the ramp), and converts both
+  depths to world distance via `OllinLighting.shadowLinearize`, the caster
+  projection's [2][2]/[3][2] packed by `makeLighting` (the PCSS ratio needs only
+  [2][2]; an absolute distance needs both); a **cube** caster subtracts its
+  stored linear distance; a **ray-traced point** caster traces one closest-hit
+  ray from just inside the surface (`meshRTThickness`, computed by the
+  solid/textured fragments under the same material gate so a non-scattering
+  surface never pays it). The profile `ollin_sss_transmit` is the **closed-form
+  slab integral of the same Gaussian sum the diffusion kernel tabulates**
+  (integrating each normalized 2D Gaussian over the plane at depth s leaves
+  w·e^(−s²/2v)), kept in sync with `scatterKernel` by hand, with world thickness
+  entering in the kernel's own units (×3/radius, the ±3-unit span). The
+  irradiance is the paper's reversed-normal wrap `max(0.3 + dot(−N, L), 0)`, so
+  lit faces take nothing (no double count with the diffuse) and the handoff
+  crosses the terminator smoothly. Three placements are load-bearing: the term
+  reads the **pre-shadow attenuation** (a backlit surface stands in its own
+  body's shadow, and dimming by that factor would erase exactly the light being
+  transported) while still riding the cone gate and the shaped/tinted light
+  copy; it lands **before the screen-space blur**, which diffuses it together
+  with the reflectance (the published treatment); and it multiplies by
+  `scatterStrength`, the PBR metallic kill, and `diffKeep`, so every gate that
+  makes the blur inert makes the term inert too (no caster, strength 0, a field
+  carrier's own `fieldShadow`, an area-panel caster: each path byte-identical,
+  probe- and suite-pinned). One practical note: the transmitted rim on a deep
+  body is a tight bright feature, so an overdriven radius prints the blur's tap
+  comb around it exactly as it does around a tight highlight; at documented
+  radii it cannot show (measured on the slab probe: ripple period matched the
+  kernel's outer-tap spacing, and an honest radius flattened it to the dither
+  floor).
 - **Envelope:** solid and textured meshes on the main canvas. A mesh drawn into a
   render target and a raymarched SDF field each degrade to their plain shading
   with a one-time note (the RT-reflections main-canvas precedent); 2D content

@@ -15,7 +15,12 @@ import Ollin
 /// `scatteringRadius` names the one scene-dependent number (a head-sized form wants
 /// roughly 1% of its width; too large reads as wax), and `scatteringColor` shapes
 /// how far each channel travels: the default lets red run farthest, the warm halo
-/// of skin, while near-equal channels read as neutral stone. **Hold the space bar**
+/// of skin, while near-equal channels read as neutral stone.
+///
+/// With `castShadows()` on, the same material also *transmits*: the caster's depth
+/// says how thick the body is at every point, so when the key light crosses behind
+/// the row, light comes through wherever a form is thin; the torus tubes rim-light
+/// from inside, the way a hand glows red against the sun. **Hold the space bar**
 /// to switch the scattering off and compare against the plain surfaces.
 @main
 final class Subsurface: Sketch {
@@ -32,6 +37,9 @@ final class Subsurface: Sketch {
         directionalLight(.white, direction: Vector3(-cos(a), -0.3, -sin(a) * 0.8),
                          intensity: 1.3)
         pointLight(Color(hex: 0xdfe8ff), at: Vector3(-4, 3, 4), intensity: 0.3)
+        // The caster is what lets the scattering transmit: its depth map is the
+        // thickness gauge, so thin parts glow through when the key swings behind.
+        castShadows()
         noStroke()
 
         let comparing = isKeyDown(" ")

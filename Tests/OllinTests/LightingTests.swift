@@ -190,6 +190,32 @@ struct LightingTests {
         #expect(u.shadowDepthB < 0)
     }
 
+    @Test func casterPacksItsDepthLinearizeConstants() {
+        // The transmittance thickness needs absolute world distance from a map
+        // depth, so a punctual 2D caster packs both projection constants: the
+        // directional box flags orthographic (z = 0), the spot perspective (z = 1),
+        // both with the negative [2][2]/[3][2] Metal projections produce; with no
+        // caster the field stays zero, the shader's skip sentinel.
+        let dir = freshDrawer()
+        dir.addLight(.directional(.white, direction: Vector3(0, -1, 0.3)))
+        dir.castShadows()
+        let a = dir.makeLighting().shadowLinearize
+        #expect(a.x < 0 && a.y < 0 && a.z == 0)
+
+        let spot = freshDrawer()
+        spot.addLight(.spot(.white, at: Vector3(0, 4, 0), direction: Vector3(0, -1, 0)))
+        spot.castShadows()
+        let b = spot.makeLighting().shadowLinearize
+        #expect(b.x < 0 && b.y < 0 && b.z == 1)
+        // The x term matches what the PCSS ratio already carries for a spot.
+        #expect(b.x == spot.makeLighting().shadowDepthB)
+
+        let none = freshDrawer()
+        none.addLight(.directional(.white, direction: Vector3(0, -1, 0.3)))
+        let c = none.makeLighting().shadowLinearize
+        #expect(c.x == 0 && c.y == 0 && c.z == 0)
+    }
+
     @Test func panelExtentSizesThePenumbra() {
         // The PCSS penumbra radius comes from the panel's own extent, so doubling
         // the panel doubles the packed texel radius (same position, same frustum;

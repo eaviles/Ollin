@@ -410,9 +410,11 @@ typedef struct {
                                   // rgb = per-channel falloff ratios (raw, not linearized; they
                                   // stretch the diffusion profile per channel, red widest for skin);
                                   // w = the scattering radius in world units (0 = off). Read by the
-                                  // scatter-mask pass and the CPU kernel build, never by the lit
-                                  // mesh fragments, so every existing shading path is untouched.
-    float scatterStrength;        // 0…1 fraction of the surface's light the blur diffuses (0 = off)
+                                  // scatter-mask pass, the CPU kernel build, and the lit fragments'
+                                  // transmittance branch (gated on `scatterStrength > 0`, so every
+                                  // non-scattering shading path is untouched).
+    float scatterStrength;        // 0…1 fraction of the surface's light the blur diffuses, and the
+                                  // scale on the transmittance term (0 = both off)
     float scatterPad0, scatterPad1, scatterPad2;
 } OllinMaterial;
 
@@ -586,6 +588,12 @@ typedef struct {
     simd_float4 fogParams2;       // x = the shaft march's step budget (a RenderQuality tier the
                                   // renderer resolves; the drawer packs 0), y = the camera's far
                                   // plane (the air backdrop's march cap), z/w reserved.
+    simd_float4 shadowLinearize;  // a punctual 2D-map caster's depth→world-distance constants,
+                                  // read by the scattering transmittance term (the thickness the
+                                  // light crossed inside the body): x = the shadow projection's
+                                  // [2][2], y = its [3][2], z = 1 for a perspective (spot) map /
+                                  // 0 for the orthographic directional box, w unused. All zero
+                                  // when there is no punctual 2D caster (x == 0 skips the term).
 } OllinLighting;
 
 // Per-frame constants auto-injected into every compute dispatch (bound at buffer
