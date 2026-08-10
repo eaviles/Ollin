@@ -2371,8 +2371,9 @@ and a hit below the ramp is untouched: the near-mirror snapshots
 ## Global illumination (the probe field)
 
 `globalIllumination()` is dynamic diffuse GI in the probe-field form (the DDGI
-papers; Techniques list): a fixed 8×8×8 grid of irradiance probes over the
-scene, re-traced every frame against the same acceleration structure the
+papers; Techniques list): a grid of irradiance probes over the scene (a fixed
+512-probe budget spread per axis by the fitted volume's aspect, see below),
+re-traced every frame against the same acceleration structure the
 shadows and reflections share, and sampled by every lit carrier as the diffuse
 ambient. The pipeline is four fragment passes in `encodeGIPass`
 (`MetalRenderer+Targets.swift`), all in `ShaderGI.metal` (a new segment after
@@ -2419,19 +2420,38 @@ flat env ambient (the probes integrate the same environment, occlusion
 included); with no environment it adds a GI ambient the scene never had.
 Specular is untouched (GI is diffuse; mirrors are the RT reflections' job).
 
-**The volume is auto-fitted and held.** The caster batches' vertex AABB
-(folded beside the accel build), padded 15% per side, defines the grid; live it
-*holds* until the raw bounds escape it or shrink well inside (probes must not
-move for hysteresis to mean anything), and a refit restarts the field.
-Headless/export ignores the held state entirely: the volume refits from the
-frame's own bounds and `resolveGIIterations()` whole trace+blend+relocate
-iterations (8/12/16 by tier) run from scratch with a progressive-mean
-hysteresis (`i/(i+1)`) and seed = the iteration index, so a frame is a pure
-function of itself: byte-stable snapshots (`gi-3d`), flicker-free video, and
-the frame-grab re-render can't double-step the live accumulation
-(`statefulEncodeIsRepeat` guards the live path like the other stateful
-passes). Rays per probe resolve per GPU like the shadow rays (hardware RT
-64/96/192, software 32/64/96).
+**The volume is auto-fitted and held, and the grid's shape follows it.** The
+mesh batches' vertex AABB (folded over the same batch walk the accel build
+uses, target-drawn meshes included, so the volume covers exactly what the
+probe rays can hit and a scene drawn entirely inside a render target still
+gets a field), padded 15% per side, defines the volume. The per-axis probe
+counts derive from that volume at fit time (`giAxisCounts`): a binary search
+for the smallest near-isotropic spacing whose counts, each clamped to 2…16,
+multiply to at most the 512 budget, so a cube resolves to the original 8×8×8
+while a flat tabletop spends the same budget as 16×2×16 instead of stacking
+unused vertical rows. Counts are held with the volume (probes must not move
+for hysteresis to mean anything), the atlases allocate once at the 512-probe
+capacity so a refit never reallocates, and the sampler/blend shaders were
+grid-shape-generic from the start (`giCounts.xyz` drives all index math).
+Live, the volume *holds* until the raw bounds escape it or shrink well inside,
+and a refit restarts the field. Headless/export ignores the held state
+entirely: the volume refits from the frame's own bounds and
+`resolveGIIterations()` whole trace+blend+relocate iterations (8/12/16 by
+tier) run from scratch with a progressive-mean hysteresis (`i/(i+1)`) and
+seed = the iteration index, so a frame is a pure function of itself:
+byte-stable snapshots (`gi-3d`), flicker-free video, and the frame-grab
+re-render can't double-step the live accumulation (`statefulEncodeIsRepeat`
+guards the live path like the other stateful passes; `beginStatefulEncode`
+runs the frame-scoped reset ahead of the GI pass, which now precedes the
+effect-target encode so layers sample the same update). Rays per probe
+resolve per GPU like the shadow rays (hardware RT 64/96/192, software
+32/64/96), through the sketch's `globalIlluminationQuality(_:)` tier (a
+persistent `RenderQuality` setting, `.default` following the automatic
+live/export split; the headless iteration count rides the same tier). The
+grid deliberately does *not* ride the tier: more rays refine the same
+estimator, but a tier-driven grid would move the probes themselves, and
+`.default`'s automatic export lift would then light an export differently
+from the live window.
 
 Three bugs from the first render session, each now a pinned rule:
 
@@ -2454,13 +2474,30 @@ Three bugs from the first render session, each now a pinned rule:
   (Chebyshev off → *brighter dots* at probes, trilinear-only → smooth but
   dark → the weights were fine and the probes were wrong).
 
+**Mirror interiors and render targets gather too.** The traced hit shade
+(`ollin_rt_hit_radiance`, shared by the reflection and refraction walks) swaps
+its irradiance-cube diffuse for a probe-field sample at the *hit* when the
+field is active, pre-divided by the IBL exposure because the whole traced
+radiance is scaled by it on composite (the `ollin_pbr_ibl_ambient` rule), so a
+surface seen in a mirror or through glass carries the same bounce as its
+direct view; the atlases ride into the deferred trace pass (textures 13/14/15
+in `encodeReflectionPass`, whose lighting packs the field like the LTC/shaping
+mirroring) and thread through `ollin_pbr_ibl_ambient` into the inline trace.
+This is distinct from the recorded flat-pastel-blobs dead end above, which was
+about substituting irradiance for the *specular* second bounce; the traced
+specular stays traced. Render targets take the resolved field through
+`encodeEffectTargets(gi:)` (the GI pass now encodes ahead of the effect
+layers, so a layer samples the same update the main pass does).
+
 Behavioral net: `GlobalIlluminationTests` (bounce-fills-the-unlit-ceiling,
 red-wall dye vs a repainted twin, no leak into a sealed box vs a light moved
 inside, intensity scaling, on-then-off byte-equality, two-render
-byte-determinism), all RT-gated. The envelope: solid meshes + raymarched
-fields on the main canvas gather; mirror interiors, render targets, point
-clouds, and particles don't (each a deliberate v1 edge, documented in
-`Docs/3D/3D.md#global-illumination`).
+byte-determinism, the mirror-interior and render-target counterfactuals, the
+quality knob's export-tier bytes, and the exact per-axis-count derivation),
+all RT-gated except the count unit test, the toggle/mirror/target/knob claims
+each verified red by sabotage. The remaining envelope: GPU point clouds and
+particles don't gather (they barely have surfaces to), documented in
+`Docs/3D/3D.md#global-illumination`.
 
 ---
 

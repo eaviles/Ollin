@@ -1008,6 +1008,16 @@ static inline float3 ollin_rt_env_lobe(texturecube<float> prefilterTex, sampler 
     return prefilterTex.sample(cubeSamp, rot * dir, level(grazeRough * maxMip)).rgb;
 }
 
+// The probe-field sampler, defined with the GI section further down this segment;
+// declared here so the hit shade above it can light a traced hit with the same
+// bounce field the direct view of that surface reads (one concatenated compile unit,
+// declaration-before-use).
+static inline float3 ollin_gi_sample(float3 worldPos, float3 n, float3 viewDir,
+                                     constant OllinLighting &light,
+                                     texture2d<float> giIrradiance,
+                                     texture2d<float> giDepth,
+                                     texture2d<float> giProbeOffsets);
+
 // The hit-or-miss half of the reflection: trace one closest-hit ray and shade the hit,
 // returning (radiance, 1) on a hit or (0, 0, 0, 0) on a miss — premultiplied by the hit
 // flag, so an average over jittered rays carries the fractional hit coverage in alpha
@@ -1042,7 +1052,16 @@ static inline float3 ollin_rt_hit_radiance(OllinRTSurface s1, float3 rayOrigin, 
                                            sampler cubeSamp, float3x3 rot,
                                            texture2d<float> ltcAmp,
                                            texture2d_array<float> iesProfiles,
-                                           texture2d_array<float> cookies) {
+                                           texture2d_array<float> cookies,
+                                           // The GI probe atlases: with the field active
+                                           // (`light.giOrigin.w`), a hit's diffuse
+                                           // irradiance comes from the probes instead of
+                                           // the cube, so a surface seen in a mirror or
+                                           // through glass carries the same bounce light
+                                           // as its direct view. Never sampled otherwise.
+                                           texture2d<float> giIrradiance,
+                                           texture2d<float> giDepth,
+                                           texture2d<float> giOffsets) {
     float3 F0 = mix(float3(0.04), s1.albedo, s1.metal);
     float NoV = max(dot(s1.N, -rayDir), 0.0);
     float3 F = F0 + (max(float3(1.0 - s1.rough), F0) - F0) * pow(1.0 - NoV, 5.0);
@@ -1064,7 +1083,14 @@ static inline float3 ollin_rt_hit_radiance(OllinRTSurface s1, float3 rayOrigin, 
         float3 Fb = F0b + (max(float3(1.0 - s2.rough), F0b) - F0b) * pow(1.0 - NoVb, 5.0);
         float3 env2 = ollin_rt_env_lobe(prefilterTex, cubeSamp, rot, reflect(secDir, s2.N),
                                         s2.rough, NoVb, light.iblMaxMip);
-        float3 diffuse2 = s2.albedo * irradianceTex.sample(cubeSamp, rot * s2.N).rgb
+        // The hit's ambient: the probe field where it's active (pre-divided by the IBL
+        // exposure, since this whole radiance is scaled by it on composite and the
+        // probes store display-linear, the `ollin_pbr_ibl_ambient` rule), else the cube.
+        float3 irr2 = (light.giOrigin.w > 0.0)
+            ? ollin_gi_sample(s2.P, s2.N, -secDir, light, giIrradiance, giDepth, giOffsets)
+              / max(light.iblIntensity, 1e-3)
+            : irradianceTex.sample(cubeSamp, rot * s2.N).rgb;
+        float3 diffuse2 = s2.albedo * irr2
                         + ollin_rt_direct(s2, light, -secDir, ltcAmp, iesProfiles, cookies);
         envAtHit = env2 * Fb + diffuse2 * (1.0 - s2.metal);
         // A rough first hit cannot show a sharp mirror. One traced ray carries no lobe
@@ -1086,9 +1112,14 @@ static inline float3 ollin_rt_hit_radiance(OllinRTSurface s1, float3 rayOrigin, 
 
     // First hit: specular (the traced second bounce, F0-tinted, so a metal reads as a
     // colour-tinted mirror rather than a flat blob) + diffuse (the environment's
-    // irradiance + the scene's direct lights as Lambert, faded out as metalness rises).
+    // irradiance, or the probe field's bounce where it's active, + the scene's direct
+    // lights as Lambert, faded out as metalness rises).
     float3 col = envAtHit * F;
-    float3 diffuse = s1.albedo * irradianceTex.sample(cubeSamp, rot * s1.N).rgb
+    float3 irr1 = (light.giOrigin.w > 0.0)
+        ? ollin_gi_sample(s1.P, s1.N, -rayDir, light, giIrradiance, giDepth, giOffsets)
+          / max(light.iblIntensity, 1e-3)
+        : irradianceTex.sample(cubeSamp, rot * s1.N).rgb;
+    float3 diffuse = s1.albedo * irr1
                    + ollin_rt_direct(s1, light, -rayDir, ltcAmp, iesProfiles, cookies);
     col += diffuse * (1.0 - s1.metal);
     // Atmosphere: the reflected leg crosses the same medium, so the hit's radiance
@@ -1116,7 +1147,10 @@ static inline float4 ollin_rt_reflection_trace(float3 worldPos, float3 n, float3
                                                sampler cubeSamp, float3x3 rot,
                                                texture2d<float> ltcAmp,
                                                texture2d_array<float> iesProfiles,
-                                               texture2d_array<float> cookies) {
+                                               texture2d_array<float> cookies,
+                                               texture2d<float> giIrradiance,
+                                               texture2d<float> giDepth,
+                                               texture2d<float> giOffsets) {
     float eps = max(light.rtReflectionBias, 1e-4);
     ray r;
     r.origin = worldPos + n * eps;        // lift off the surface (self-hit guard)
@@ -1136,7 +1170,8 @@ static inline float4 ollin_rt_reflection_trace(float3 worldPos, float3 n, float3
     OllinRTSurface s1 = ollin_rt_fetch_surface(q, verts, geoOffsets, r.origin, R);
     float3 col = ollin_rt_hit_radiance(s1, r.origin, R, eps, accel, verts, geoOffsets,
                                        light, irradianceTex, prefilterTex, cubeSamp, rot,
-                                       ltcAmp, iesProfiles, cookies);
+                                       ltcAmp, iesProfiles, cookies,
+                                       giIrradiance, giDepth, giOffsets);
     return float4(col, 1.0);
 }
 
@@ -1156,10 +1191,14 @@ static inline float3 ollin_rt_reflection(float3 worldPos, float3 n, float3 R, fl
                                          float3 envReflection,
                                          texture2d<float> ltcAmp,
                                          texture2d_array<float> iesProfiles,
-                                         texture2d_array<float> cookies) {
+                                         texture2d_array<float> cookies,
+                                         texture2d<float> giIrradiance,
+                                         texture2d<float> giDepth,
+                                         texture2d<float> giOffsets) {
     float4 hit = ollin_rt_reflection_trace(worldPos, n, R, accel, verts, geoOffsets,
                                            light, irradianceTex, prefilterTex, cubeSamp, rot,
-                                           ltcAmp, iesProfiles, cookies);
+                                           ltcAmp, iesProfiles, cookies,
+                                           giIrradiance, giDepth, giOffsets);
     float3 col = mix(envReflection, hit.rgb, hit.a);
     return mix(col, envReflection, smoothstep(0.12, 0.55, rough));
 }
@@ -1198,7 +1237,10 @@ static inline float3 ollin_rt_refraction(float3 worldPos, float3 n, float3 viewD
                                          float3 envTransmitted,
                                          texture2d<float> ltcAmp,
                                          texture2d_array<float> iesProfiles,
-                                         texture2d_array<float> cookies) {
+                                         texture2d_array<float> cookies,
+                                         texture2d<float> giIrradiance,
+                                         texture2d<float> giDepth,
+                                         texture2d<float> giOffsets) {
     float eps = max(light.rtReflectionBias, 1e-4);
     float rough = clamp((float)mat.roughness, 0.045, 1.0);
     float3 col = envTransmitted;
@@ -1236,7 +1278,8 @@ static inline float3 ollin_rt_refraction(float3 worldPos, float3 n, float3 viewD
                                                                r2.origin, exitDir);
                     col = ollin_rt_hit_radiance(s2, r2.origin, exitDir, eps, accel, verts,
                                                 geoOffsets, light, irradianceTex, prefilterTex,
-                                                cubeSamp, rot, ltcAmp, iesProfiles, cookies);
+                                                cubeSamp, rot, ltcAmp, iesProfiles, cookies,
+                                                giIrradiance, giDepth, giOffsets);
                 } else {
                     col = prefilterTex.sample(cubeSamp, rot * exitDir,
                                               level(rough * light.iblMaxMip)).rgb;
@@ -1246,7 +1289,8 @@ static inline float3 ollin_rt_refraction(float3 worldPos, float3 n, float3 viewD
                 // entry interface alone.
                 col = ollin_rt_hit_radiance(s, r.origin, rr, eps, accel, verts, geoOffsets,
                                             light, irradianceTex, prefilterTex, cubeSamp, rot,
-                                            ltcAmp, iesProfiles, cookies);
+                                            ltcAmp, iesProfiles, cookies,
+                                            giIrradiance, giDepth, giOffsets);
             }
         } else {
             // Nothing along the interior ray at all (an open mesh posing as a solid):
@@ -1278,7 +1322,8 @@ static inline float3 ollin_rt_refraction(float3 worldPos, float3 n, float3 viewD
             }
             col = ollin_rt_hit_radiance(s, origin, dir, eps, accel, verts, geoOffsets,
                                         light, irradianceTex, prefilterTex, cubeSamp, rot,
-                                        ltcAmp, iesProfiles, cookies);
+                                        ltcAmp, iesProfiles, cookies,
+                                        giIrradiance, giDepth, giOffsets);
             break;
         }
     }
@@ -2586,7 +2631,15 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
                                            // linear), pre-sampled by the carrier; replaces
                                            // the irradiance-cube diffuse when the probe
                                            // field is active (`light.giOrigin.w`).
-                                           float3 giIrradiance
+                                           float3 giIrradiance,
+                                           // The probe atlases themselves, for the traced
+                                           // reflection/refraction hit shades (a surface
+                                           // seen in a mirror samples the field at the
+                                           // *hit*, not at this fragment). Never sampled
+                                           // while the field is inactive.
+                                           texture2d<float> giIrradianceTex,
+                                           texture2d<float> giDepthTex,
+                                           texture2d<float> giOffsetsTex
 #endif
                                            ) {
     constexpr sampler cubeSamp(filter::linear, mip_filter::linear, address::clamp_to_edge);
@@ -2630,7 +2683,8 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
             prefiltered = ollin_rt_reflection(worldPos, n, R, rough, reflAccel, meshVerts,
                                               meshGeoOffsets, light, irradianceTex, prefilterTex,
                                               cubeSamp, rot, prefiltered, ltcAmp,
-                                              iesProfiles, cookies);
+                                              iesProfiles, cookies,
+                                              giIrradianceTex, giDepthTex, giOffsetsTex);
         }
     }
 #endif
@@ -2647,7 +2701,8 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
         if (light.rtReflections != 0) {
             Ft = ollin_rt_refraction(worldPos, n, viewDir, mat, reflAccel, meshVerts,
                                      meshGeoOffsets, light, irradianceTex, prefilterTex,
-                                     cubeSamp, rot, Ft, ltcAmp, iesProfiles, cookies);
+                                     cubeSamp, rot, Ft, ltcAmp, iesProfiles, cookies,
+                                     giIrradianceTex, giDepthTex, giOffsetsTex);
         }
 #endif
         float3 E = F0 * brdf.x + brdf.y;   // the specular lobe's share of the energy
@@ -2797,7 +2852,8 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                        iblIrradiance, iblPrefilter, iblBRDF, sheenLUT
 #if OLLIN_RT_SHADOWS
                                        , in.worldPos, shadowAccel, meshVerts, meshGeoOffsets,
-                                       deferredRefl, ltcAmp, iesProfiles, cookies, gi
+                                       deferredRefl, ltcAmp, iesProfiles, cookies, gi,
+                                       giIrradianceTex, giDepthTex, giOffsetsTex
 #endif
                                        );
     } else if (light.iblEnabled != 0 && mat.shadingModel != 2) {
@@ -3042,7 +3098,8 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                        iblIrradiance, iblPrefilter, iblBRDF, sheenLUT
 #if OLLIN_RT_SHADOWS
                                        , in.worldPos, shadowAccel, meshVerts, meshGeoOffsets,
-                                       deferredRefl, ltcAmp, iesProfiles, cookies, gi
+                                       deferredRefl, ltcAmp, iesProfiles, cookies, gi,
+                                       giIrradianceTex, giDepthTex, giOffsetsTex
 #endif
                                        );
     } else if (light.iblEnabled != 0 && mat.shadingModel != 2) {

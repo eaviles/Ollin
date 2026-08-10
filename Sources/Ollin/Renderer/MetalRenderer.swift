@@ -1075,15 +1075,17 @@ final class MetalRenderer {
             sdfNode: sdfNodeBuffer(at: frameIndex, for: drawer.sdfNodes.count),
             sdf3DGroup: sdf3DGroupBuffer(at: frameIndex, for: drawer.sdf3DGroups.count),
             sdf3DNode: sdf3DNodeBuffer(at: frameIndex, for: drawer.sdf3DNodes.count))
-        encodeEffectTargets(drawer, into: commandBuffer, buffers: buffers, pooled: true)
-
+        beginStatefulEncode(drawer)
         // Global illumination (live): one probe-field update, hysteresis-accumulated
         // into the persistent atlases. Nil when GI isn't active this frame; the
-        // carriers' GI branches then stay untaken (byte-identical).
+        // carriers' GI branches then stay untaken (byte-identical). Encoded ahead of
+        // the effect layers: the field is world-space and frame-wide, so a target
+        // drawing 3D samples the same update the main pass does.
         let gi = encodeGIPass(drawer, into: commandBuffer, meshBuffer: meshBuf,
                               accel: renderedShadow.giAccel,
                               geoOffsets: renderedShadow.giGeoOffsets,
                               supersample: false, pooled: true)
+        encodeEffectTargets(drawer, into: commandBuffer, buffers: buffers, pooled: true, gi: gi)
 
         // Half-res raymarch pre-pass (the `.performance` tier): sphere-trace the fields at half
         // resolution into a sampleable color+depth that the main pass upsamples + composites.
@@ -1122,7 +1124,8 @@ final class MetalRenderer {
             drawer, into: commandBuffer, meshBuffer: meshBuf,
             reflectAccel: renderedShadow.reflectAccel,
             reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
-            width: width, height: height, supersample: false, pooled: true)
+            width: width, height: height, supersample: false, pooled: true,
+            gi: gi)
 
         guard let geomEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: geomPass) else {
             frameBoundary.signal()   // nothing encoded; hand the slot back
@@ -1442,17 +1445,18 @@ final class MetalRenderer {
             sdfNode: exportSDFNodeBuffer(for: drawer.sdfNodes.count),
             sdf3DGroup: exportSDF3DGroupBuffer(for: drawer.sdf3DGroups.count),
             sdf3DNode: exportSDF3DNodeBuffer(for: drawer.sdf3DNodes.count))
-        encodeEffectTargets(drawer, into: commandBuffer, buffers: buffers, pooled: false)
-
+        beginStatefulEncode(drawer)
         // Global illumination, historyless: the volume fits this frame's own bounds and
         // K whole trace+blend iterations converge the field within the frame (seed = the
         // iteration index), so the result is a pure function of the frame: byte-stable
         // snapshots, flicker-free video, and the frame-grab re-render can't double-step
-        // the live accumulation.
+        // the live accumulation. Ahead of the effect layers, so a target drawing 3D
+        // samples the converged field.
         let gi = encodeGIPass(drawer, into: commandBuffer, meshBuffer: meshBuf,
                               accel: renderedShadow.giAccel,
                               geoOffsets: renderedShadow.giGeoOffsets,
                               supersample: true, pooled: false)
+        encodeEffectTargets(drawer, into: commandBuffer, buffers: buffers, pooled: false, gi: gi)
 
         // Half-res raymarch pre-pass: honours the resolution tier on export too, so an
         // explicit `.performance`/`.default` raymarch quality downscales here as it does live.
@@ -1490,7 +1494,8 @@ final class MetalRenderer {
             drawer, into: commandBuffer, meshBuffer: meshBuf,
             reflectAccel: renderedShadow.reflectAccel,
             reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
-            width: width, height: height, supersample: true, pooled: false)
+            width: width, height: height, supersample: true, pooled: false,
+            gi: gi)
 
         guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
 
@@ -1592,13 +1597,14 @@ final class MetalRenderer {
             let renderedShadow = encodeShadowPass(
                 drawer, into: cb, meshBuffer: meshBuf,
                 sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode)
-            encodeEffectTargets(drawer, into: cb, buffers: buffers, pooled: false)
+            beginStatefulEncode(drawer)
             // Global illumination (the live one-update path), so the benchmark measures
             // the same cost a live frame pays. nil when GI isn't active.
             let gi = encodeGIPass(drawer, into: cb, meshBuffer: meshBuf,
                                   accel: renderedShadow.giAccel,
                                   geoOffsets: renderedShadow.giGeoOffsets,
                                   supersample: false, pooled: false)
+            encodeEffectTargets(drawer, into: cb, buffers: buffers, pooled: false, gi: gi)
             // Half-res raymarch pre-pass (the `.performance` tier), so the benchmark measures
             // the same cost the live path pays. nil otherwise.
             let halfResField = makeRaymarchUniforms3D(drawer, viewport: viewport).flatMap { u3 in

@@ -1,6 +1,8 @@
 import CoreGraphics
 import Foundation
+import ImageIO
 import Testing
+import UniformTypeIdentifiers
 @testable import Ollin
 
 /// Behavioral probes for the global-illumination probe field. Each claim is measured
@@ -120,6 +122,101 @@ struct GlobalIlluminationTests {
                 "an on-then-off frame must be byte-identical to never-on")
     }
 
+    /// A mirror interior carries the bounce: the polished strip reflects the upper back
+    /// wall, whose ambient the GI toggle swaps between the honest occluded bounce and
+    /// the unoccluded environment cube. The strip is pure metal (no diffuse of its
+    /// own), so before the hit shade sampled the field its image was untouched by the
+    /// toggle; a substantial on/off difference *inside the reflection* is exactly the
+    /// mirror-interior term.
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func aMirrorInteriorCarriesTheBounce() throws {
+        func strip(gi: Bool) throws -> Double {
+            let image = try #require(OllinApp.image(of: GIMirrorProbe.make(gi: gi), frame: 1))
+            let m = bandMean(image, x: 0.35...0.65, y: 0.90...0.98)
+            return (m.r + m.g + m.b) / 3
+        }
+        let on = try strip(gi: true)
+        let off = try strip(gi: false)
+        #expect(abs(on - off) > 25,
+                "the mirrored wall's ambient must follow the GI toggle: on \(on), off \(off)")
+    }
+
+    /// A render target's meshes gather the field: the bounce-only-ceiling claim, with
+    /// the whole scene drawn inside `withTarget` and composited back (the
+    /// depth-of-field shape, geometry existing only in the layer).
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func aRenderTargetGathersTheField() throws {
+        func ceiling(gi: Bool) throws -> Double {
+            let image = try #require(OllinApp.image(of: GITargetProbe.make(gi: gi), frame: 1))
+            let m = bandMean(image, x: 0.35...0.65, y: 0.16...0.26)
+            return (m.r + m.g + m.b) / 3
+        }
+        let lit = try ceiling(gi: true)
+        let dark = try ceiling(gi: false)
+        #expect(dark < 8, "a target's ceiling must be unlit without bounce: \(dark)")
+        #expect(lit - dark > 40,
+                "expected bounce light on the target's ceiling: on \(lit), off \(dark)")
+    }
+
+    /// The quality knob is plumbed end to end: on the export path `.default` resolves
+    /// to `.detail` (the automatic lift), so the two are byte-identical, while
+    /// `.performance` traces fewer rays and iterations and lands on different bytes.
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func theQualityKnobResolvesTheExportTiers() throws {
+        func render(_ quality: RenderQuality?) throws -> [UInt8] {
+            let image = try #require(OllinApp.image(of: GIRoomProbe.make(gi: true, quality: quality),
+                                                    frame: 1))
+            return pixels(image).data
+        }
+        let automatic = try render(nil)
+        let detail = try render(.detail)
+        let performance = try render(.performance)
+        #expect(automatic == detail,
+                "an export's automatic tier must be .detail, byte-identically")
+        #expect(automatic != performance,
+                "`.performance` must actually trace a lighter update than `.detail`")
+    }
+
+    /// The per-axis probe counts follow the fitted volume's aspect under the fixed
+    /// 512 budget: a cube keeps the shipped 8x8x8, a pancake spends its rows
+    /// horizontally, and no extent can exceed the budget or drop an axis below a
+    /// trilinear cage. Pure CPU (the derivation is a pure function of the extent).
+    @Test
+    func probeCountsFollowTheVolumesAspect() {
+        #expect(MetalRenderer.giAxisCounts(for: SIMD3(10, 10, 10)) == SIMD3(8, 8, 8),
+                "a cubic volume must keep the shipped 8x8x8")
+        let pancake = MetalRenderer.giAxisCounts(for: SIMD3(100, 5, 100))
+        #expect(pancake == SIMD3(16, 2, 16),
+                "a flat scene must spend its probes horizontally: \(pancake)")
+        let beam = MetalRenderer.giAxisCounts(for: SIMD3(100, 5, 10))
+        #expect(beam.x == 16 && beam.y < beam.z,
+                "counts must order by extent: \(beam)")
+        // Budget + floor + cap over a deterministic sweep of aspect ratios.
+        for i in 0..<64 {
+            let ext = SIMD3<Float>(Float(1 + i % 8) * 3.7,
+                                   Float(1 + (i / 8) % 8) * 1.3,
+                                   Float(1 + i / 16) * 9.1)
+            let c = MetalRenderer.giAxisCounts(for: ext)
+            #expect(Int(c.x) * Int(c.y) * Int(c.z) <= 512, "budget exceeded at \(ext): \(c)")
+            #expect(c.min() >= 2 && c.max() <= 16, "axis out of range at \(ext): \(c)")
+        }
+    }
+
+    /// The new gathering paths are as deterministic as the main one: two renders of
+    /// the mirror frame (GI + deferred supersampled reflections) and of the target
+    /// frame (GI + an effect layer) are byte-identical.
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func theNewPathsExportDeterministically() throws {
+        let mirrorA = try #require(OllinApp.image(of: GIMirrorProbe.make(gi: true), frame: 1))
+        let mirrorB = try #require(OllinApp.image(of: GIMirrorProbe.make(gi: true), frame: 1))
+        #expect(pixels(mirrorA).data == pixels(mirrorB).data,
+                "two renders of the mirror frame must be byte-identical")
+        let targetA = try #require(OllinApp.image(of: GITargetProbe.make(gi: true), frame: 1))
+        let targetB = try #require(OllinApp.image(of: GITargetProbe.make(gi: true), frame: 1))
+        #expect(pixels(targetA).data == pixels(targetB).data,
+                "two renders of the target frame must be byte-identical")
+    }
+
     /// Headless determinism: the export path converges the field within the frame from
     /// iteration-indexed seeds, so two renders of the same frame are byte-identical
     /// (the promise every snapshot and video export stands on).
@@ -132,6 +229,88 @@ struct GlobalIlluminationTests {
     }
 }
 
+/// The mirror room: sealed, spot-pooled like `GIRoomProbe`, with a polished-metal
+/// strip on the floor reflecting the bounce-only ceiling, an environment (traced
+/// reflections require one) and `rayTracedReflections()` on. A pure metal carries no
+/// diffuse of its own, so the strip's image changes under the GI toggle only through
+/// the *hit shade's* ambient: exactly the term the mirror-interior wiring adds.
+private final class GIMirrorProbe: Sketch {
+    var gi = true
+
+    static func make(gi: Bool) -> GIMirrorProbe {
+        let probe = GIMirrorProbe()
+        probe.gi = gi
+        return probe
+    }
+
+    override var canvasSize: CanvasSize { .square(192) }
+
+    override func draw() {
+        background(.black)
+        perspective(eye: Vector3(0, 2.3, 4.0), target: Vector3(0, 1.4, -1),
+                    fieldOfView: .pi / 3.2, near: 0.5, far: 40)
+        environment(.sky().lightingOnly())
+        spotLight(.white, at: Vector3(0, 3.8, -2.0), direction: Vector3(0, -1, 0),
+                  angle: .pi / 3, penumbra: 0.4, intensity: 3)
+        castShadows()
+        rayTracedReflections()
+        if gi { globalIllumination() }
+        // A sealed room, interior 8 x 4.2 x 8, camera inside its front half.
+        withState { fill(Color(white: 0.9)); translate(0, -0.1, 0); drawBox(width: 8.4, height: 0.2, depth: 9.4) }
+        withState { fill(Color(white: 0.9)); translate(0, 4.3, 0); drawBox(width: 8.4, height: 0.2, depth: 9.4) }
+        withState { fill(Color(white: 0.9)); translate(0, 2.1, -4.1); drawBox(width: 8.4, height: 4.6, depth: 0.2) }
+        withState { fill(Color(white: 0.9)); translate(0, 2.1, 4.8); drawBox(width: 8.4, height: 4.6, depth: 0.2) }
+        withState { fill(Color(white: 0.9)); translate(-4.1, 2.1, 0); drawBox(width: 0.2, height: 4.6, depth: 9.4) }
+        withState { fill(Color(white: 0.9)); translate(4.1, 2.1, 0); drawBox(width: 0.2, height: 4.6, depth: 9.4) }
+        // The mirror strip, flat on the floor between the camera and the pool: the
+        // camera sees the upper back wall (bounce-only) in it.
+        withState {
+            fill(Color(white: 0.95))
+            material(.metal(roughness: 0.05))
+            translate(0, 0.08, 1.0)
+            drawBox(width: 3.4, height: 0.16, depth: 2.4)
+        }
+    }
+}
+
+/// The target room: the same bounce-only-ceiling claim as `GIRoomProbe`, but with the
+/// whole 3D scene drawn *inside* a render target and composited back, so it pins the
+/// field reaching a `withTarget` layer's meshes (and the volume fitting geometry that
+/// exists only in a target, the depth-of-field shape).
+private final class GITargetProbe: Sketch {
+    var gi = true
+
+    static func make(gi: Bool) -> GITargetProbe {
+        let probe = GITargetProbe()
+        probe.gi = gi
+        return probe
+    }
+
+    override var canvasSize: CanvasSize { .square(192) }
+
+    override func draw() {
+        background(.black)
+        camera(.orbiting(target: Vector3(0, 2, 0), radius: 9.5,
+                         azimuth: 0, elevation: 0.02, fieldOfView: .pi / 3.2,
+                         near: 1, far: 40))
+        spotLight(.white, at: Vector3(0, 3.8, 0), direction: Vector3(0, -1, 0),
+                  angle: .pi / 3, penumbra: 0.4, intensity: 3)
+        castShadows()
+        if gi { globalIllumination() }
+        let scene = renderTarget()
+        withTarget(scene) {
+            background(.black)
+            withState { fill(Color(white: 0.9)); translate(0, -0.1, 0); drawBox(width: 8, height: 0.2, depth: 8) }
+            withState { fill(Color(white: 0.9)); translate(0, 4.1, 0); drawBox(width: 8, height: 0.2, depth: 8) }
+            withState { fill(Color(white: 0.9)); translate(0, 2, -4.1); drawBox(width: 8, height: 4.4, depth: 0.2) }
+            withState { fill(Color(white: 0.9)); translate(-4.1, 2, 0); drawBox(width: 0.2, height: 4.4, depth: 8) }
+            withState { fill(Color(white: 0.9)); translate(4.1, 2, 0); drawBox(width: 0.2, height: 4.4, depth: 8) }
+            withState { fill(Color(white: 0.85)); translate(1.6, 0.7, -1.0); drawSphere(radius: 0.7) }
+        }
+        drawImage(scene.image, 0, 0)
+    }
+}
+
 /// The probe room: a Cornell-style box whose only light is a spot pool on the floor,
 /// with one wall red (or repainted white for the bleed counterfactual).
 private final class GIRoomProbe: Sketch {
@@ -139,14 +318,16 @@ private final class GIRoomProbe: Sketch {
     var redWall = true
     var intensity = 1.0
     var toggle = false
+    var quality: RenderQuality? = nil
 
     static func make(gi: Bool, redWall: Bool = true, intensity: Double = 1,
-                     toggle: Bool = false) -> GIRoomProbe {
+                     toggle: Bool = false, quality: RenderQuality? = nil) -> GIRoomProbe {
         let probe = GIRoomProbe()
         probe.gi = gi
         probe.redWall = redWall
         probe.intensity = intensity
         probe.toggle = toggle
+        probe.quality = quality
         return probe
     }
 
@@ -161,6 +342,7 @@ private final class GIRoomProbe: Sketch {
                   angle: .pi / 3, penumbra: 0.4, intensity: 3)
         castShadows()
         if gi { globalIllumination(intensity: intensity) }
+        if let quality { globalIlluminationQuality(quality) }
         if toggle { globalIllumination(); noGlobalIllumination() }
         withState { fill(Color(white: 0.9)); translate(0, -0.1, 0); drawBox(width: 8, height: 0.2, depth: 8) }
         withState { fill(Color(white: 0.9)); translate(0, 4.1, 0); drawBox(width: 8, height: 0.2, depth: 8) }

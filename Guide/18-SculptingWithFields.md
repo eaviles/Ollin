@@ -277,7 +277,7 @@ Under the hood, Ollin scatters a grid of invisible **light probes** through the 
 
 Like the reflections, the probe field settles over a few frames live (a sudden lighting change fades in, like your eyes adjusting) and converges fully inside each frame on export, so a still or a video reproduces exactly. And like the reflections, it needs a ray-tracing GPU and does nothing at all elsewhere, so the call can stay in the sketch.
 
-The [`GlobalIllumination` example](../Examples/3D/Lighting/GlobalIllumination/Sketch.swift) is this room with the lamp swinging, and the space bar toggles the bounce, which is the clearest before-and-after you can give yourself. One honest edge: bounce is gathered by meshes and marched fields on the canvas itself, so a surface seen *inside a mirror* keeps its direct-only shading there.
+The [`GlobalIllumination` example](../Examples/3D/Lighting/GlobalIllumination/Sketch.swift) is this room with the lamp swinging, and the space bar toggles the bounce, which is the clearest before-and-after you can give yourself. The bounce follows the picture wherever it goes: a wall seen *inside a mirror* carries the same second-hand light as the wall itself, and a scene drawn into a layer for depth of field gathers it like the canvas does. If a heavy scene stutters while you sketch, `globalIlluminationQuality(.performance)` trades a grainier bounce for frame rate, the same kind of dial shadows have; exports always take the fine end on their own.
 
 ## Glass
 

@@ -35,17 +35,17 @@ extension MetalRenderer {
     /// pass (and later filters) can sample it. A no-op when the frame used no
     /// targets, so the ordinary path is byte-identical. `pooled` reuses per-frame
     /// textures on the live ring; the headless paths allocate fresh and wait.
-    func encodeEffectTargets(_ drawer: Drawer, into cb: MTLCommandBuffer,
-                                     buffers: GeometryBuffers, pooled: Bool) {
-        // Reset the user-shader error state for this frame; any failing shader below
+    /// Frame-scoped state for one encode drive: the user-shader error channel, the
+    /// texture-pool cursors, and the same-frame repeat stamp. Called exactly once per
+    /// drive (render / image / benchmark), ahead of every pass that acquires pooled
+    /// textures or reads `statefulEncodeIsRepeat`: the GI probe update and the
+    /// deferred reflection pass both do, and both may run on frames that use no
+    /// effect layers, so this cannot live inside `encodeEffectTargets`'s early-out.
+    func beginStatefulEncode(_ drawer: Drawer) {
+        // Reset the user-shader error state for this frame; any failing shader
         // sets it, and the host reads it afterward to drive the error overlay.
         currentUserShaderError = nil
         frameComputeUniforms = drawer.computeUniforms   // for user-shader ShaderInfo
-        // Frame-scoped state, reset before the no-targets early-out: the deferred
-        // reflection pass acquires from the same pool and reads the same repeat stamp
-        // on frames that use no effect layers, so gating these on effects work would
-        // grow the pool by one texture per frame (and leave the stamp stale) in a
-        // reflections-only sketch.
         targetTexNext = 0
         filterTexNext = 0
         targetDepthNext = 0
@@ -56,6 +56,11 @@ extension MetalRenderer {
         statefulEncodeIsRepeat = lastStatefulEncode?.drawer == stamp.drawer
             && lastStatefulEncode?.frame == stamp.frame
         if !statefulEncodeIsRepeat { lastStatefulEncode = stamp }
+    }
+
+    func encodeEffectTargets(_ drawer: Drawer, into cb: MTLCommandBuffer,
+                                     buffers: GeometryBuffers, pooled: Bool,
+                                     gi: GIResolved? = nil) {
         guard !drawer.renderTargets.isEmpty || !drawer.filterOps.isEmpty
             || !drawer.frameFilters.isEmpty else { return }
         // Generators read no input, so fill them first (a filter may sample one),
@@ -104,7 +109,7 @@ extension MetalRenderer {
                    sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
                    sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
                    depthFormat: depthResolve != nil ? depthPixelFormat : nil,
-                   stencil: passHasStencil, target: target)
+                   stencil: passHasStencil, gi: gi, target: target)
             enc.endEncoding()
             target.texture = tex.resolve
             // Expose the scene's depth as a gray layer when the sketch read `.depth`:
@@ -169,7 +174,7 @@ extension MetalRenderer {
                    glyphBuffer: buffers.glyph, pointBuffer: buffers.point, meshBuffer: buffers.mesh,
                    sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
                    sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
-                   depthFormat: nil, stencil: passHasStencil, target: target)
+                   depthFormat: nil, stencil: passHasStencil, gi: gi, target: target)
             enc.endEncoding()
             target.texture = back                // `image` resolves to this frame
             feedbackUsedThisFrame.insert(ObjectIdentifier(fb))
@@ -218,7 +223,7 @@ extension MetalRenderer {
                        glyphBuffer: buffers.glyph, pointBuffer: buffers.point, meshBuffer: buffers.mesh,
                    sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
                    sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
-                       depthFormat: nil, stencil: passHasStencil, target: target)
+                       depthFormat: nil, stencil: passHasStencil, gi: gi, target: target)
                 enc.endEncoding()
             }
             if let config = sf.sim.watercolorConfig {

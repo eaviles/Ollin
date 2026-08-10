@@ -990,6 +990,19 @@ open class Sketch {
     /// Stop gathering global illumination (the default).
     public func noGlobalIllumination() { drawer.noGlobalIllumination() }
 
+    /// Set the global-illumination quality (how many rays each light probe traces per
+    /// update) as a **hardware-relative** tier, the `shadowQuality` dial's GI sibling:
+    /// `.performance` favors frame rate with a grainier, slower-converging bounce,
+    /// `.detail` traces more rays for a smoother one, and `.default` is the balanced
+    /// choice for the GPU (lifted to `.detail` automatically on `--export`/headless,
+    /// where it also deepens the in-frame convergence). The probe grid itself stays the
+    /// same size on every tier, so the light field's structure never shifts between
+    /// tiers, only how finely it is sampled. A persistent setting; set it once in
+    /// `setup()` or `draw()`. Read only while `globalIllumination()` is on.
+    public func globalIlluminationQuality(_ quality: RenderQuality = .default) {
+        drawer.globalIlluminationQuality(quality)
+    }
+
     /// Set the soft-shadow quality (how many rays the ray-traced point caster traces per
     /// pixel) as a **hardware-relative** tier: the dial to trade frame rate for nicer
     /// shadows. The tier scales with the GPU, like a game's quality presets: `.default` is

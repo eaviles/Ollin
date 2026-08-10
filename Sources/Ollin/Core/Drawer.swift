@@ -378,6 +378,15 @@ final class Drawer {
     /// Per-frame state, set alongside `globalIlluminationEnabled`.
     private(set) var giIntensity: Double = 1
 
+    /// The global-illumination quality knob (`globalIlluminationQuality`): a persistent
+    /// `RenderQuality` tier (not reset each frame, like `shadowQualitySetting`) the renderer
+    /// resolves to rays per probe per update (per GPU, like the shadow rays) and, on the
+    /// headless path, whole in-frame convergence iterations. The probe *grid* stays at its
+    /// fixed budget on every tier: more rays refine the same estimate, but a tier-driven
+    /// grid would move the probes themselves, and `.default`'s automatic lift on export
+    /// would then light an export differently from the live window.
+    private(set) var giQualitySetting: RenderQuality = .default
+
     /// The soft-shadow quality knob (`shadowQuality`/`shadowSamples`) — a persistent setting
     /// (not reset each frame, like `toneMap`): more rays give a smoother ray-traced penumbra
     /// at proportional GPU cost. A `Quality` tier scales with the GPU (the renderer resolves
@@ -1734,6 +1743,11 @@ final class Drawer {
 
     /// Stop gathering global illumination (the default). Per-frame state.
     func noGlobalIllumination() { globalIlluminationEnabled = false }
+
+    /// Set the global-illumination quality to a hardware-relative tier (the renderer picks
+    /// the rays per probe for the GPU, and the headless convergence depth). Persistent
+    /// (set once, in `setup()` or `draw()`).
+    func globalIlluminationQuality(_ quality: RenderQuality) { giQualitySetting = quality }
 
     /// Set the soft-shadow quality to a hardware-relative tier (the renderer picks the ray
     /// count for the GPU). Persistent (set once, in `setup()` or `draw()`).

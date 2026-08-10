@@ -835,6 +835,14 @@ fragment float4 ollin_rt_reflect_trace(PresentOut in [[stage_in]],
                                        texture2d<float> ltcAmp [[texture(9)]],
                                        texture2d_array<float> iesProfiles [[texture(10)]],
                                        texture2d_array<float> cookies [[texture(11)]],
+                                       // The GI probe atlases (the lit carriers' 13/14/15
+                                       // binding), so a surface seen in a deferred-traced
+                                       // mirror carries the same bounce light as its
+                                       // direct view; never-sampled stand-ins while the
+                                       // field is inactive (`light.giOrigin.w` gates).
+                                       texture2d<float> giIrradianceTex [[texture(13)]],
+                                       texture2d<float> giDepthTex [[texture(14)]],
+                                       texture2d<float> giOffsetsTex [[texture(15)]],
                                        sampler samp [[sampler(0)]],
                                        constant float4 *params [[buffer(0)]],
                                        constant OllinLighting &light [[buffer(1)]],
@@ -882,7 +890,8 @@ fragment float4 ollin_rt_reflect_trace(PresentOut in [[stage_in]],
         // needs a spatial resolve/denoise stage first (a follow-up).
         acc += ollin_rt_reflection_trace(P, n, R, accel, verts, geoOffsets, light,
                                          irradianceTex, prefilterTex, cubeSamp, rot, ltcAmp,
-                                         iesProfiles, cookies);
+                                         iesProfiles, cookies,
+                                         giIrradianceTex, giDepthTex, giOffsetsTex);
     }
     return acc / float(samples);
 }

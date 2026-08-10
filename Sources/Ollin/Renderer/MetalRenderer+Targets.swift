@@ -1093,7 +1093,8 @@ extension MetalRenderer {
                                       reflectAccel: MTLAccelerationStructure?,
                                       reflectGeoOffsets: MTLBuffer?,
                                       width: Int, height: Int,
-                                      supersample: Bool, pooled: Bool) -> MTLTexture? {
+                                      supersample: Bool, pooled: Bool,
+                                      gi: GIResolved? = nil) -> MTLTexture? {
         guard let camera = drawer.camera3D, let meshBuffer,
               let accel = reflectAccel, let geoOffsets = reflectGeoOffsets,
               let irradiance = currentIBLIrradiance, let prefilter = currentIBLPrefilter,
@@ -1132,6 +1133,11 @@ extension MetalRenderer {
         if lighting.cookieEnabled == 0, !drawer.usedLightCookies.isEmpty {
             lighting.cookieEnabled = ensureCookieArray(drawer.usedLightCookies) ? 1 : 0
         }
+        // The probe field, the same mirroring: without it a bounce-lit surface would go
+        // direct-only in its deferred reflection while staying bounce-lit inline (and in
+        // the direct view). Nil keeps `giOrigin.w` 0 and the hit shade's GI branch
+        // untaken, byte-identical.
+        packGI(gi, into: &lighting, intensity: drawer.giIntensity)
 
         // 1. The G-buffer: re-render the main canvas's solid meshes (the same batch walk
         // as the mesh-normal pass; wireframes and the grid chrome carry no reflective
@@ -1206,6 +1212,12 @@ extension MetalRenderer {
         // light's pattern; the array stand-in otherwise (the gates guard the reads).
         trace.setFragmentTexture(iesArrayTexture ?? shapingStandIn(), index: 10)
         trace.setFragmentTexture(cookieArrayTexture ?? shapingStandIn(), index: 11)
+        // The GI probe atlases (tex 13/14/15), so a hit's diffuse carries the bounce
+        // field; never-sampled stand-ins while the field is inactive.
+        let giStand = gradientStripTexture(for: drawer.gradientRows)
+        trace.setFragmentTexture(gi?.irradiance ?? giStand, index: 13)
+        trace.setFragmentTexture(gi?.depth ?? giStand, index: 14)
+        trace.setFragmentTexture(gi?.offsets ?? giStand, index: 15)
         trace.setFragmentSamplerState(imageSampler, index: 0)
         var traceParams = SIMD4<Float>(1 / Float(width), 1 / Float(height), Float(samples), seed)
         trace.setFragmentBytes(&traceParams, length: MemoryLayout<SIMD4<Float>>.stride, index: 0)
@@ -1278,16 +1290,53 @@ extension MetalRenderer {
 
     // MARK: - Global illumination (the probe-field update)
 
-    /// Fixed probe grid resolution (v1): 8 per axis, 512 probes. The volume auto-fits
-    /// the frame's caster geometry, so density adapts through spacing, not count.
-    private static let giProbesPerAxis = 8
+    /// The probe budget: the per-axis counts adapt to the fitted volume's aspect (a
+    /// flat scene spends its probes horizontally instead of stacking unused vertical
+    /// rows) but their product never exceeds this, so the atlases allocate once at
+    /// this capacity and a refit never reallocates. 512 is the shipped 8x8x8's total,
+    /// which a cubic volume still resolves to exactly.
+    private static let giProbeBudget = 512
+    /// The per-axis probe cap: 16x16x2 spends the whole budget on a pancake, and a
+    /// still-more-extreme aspect gains nothing from thinner slabs of probes.
+    private static let giAxisCap: Int32 = 16
     /// Probe tiles per atlas row. The blend/sample shaders re-derive it from the atlas
     /// width (width / tile), so the layout constant lives only here.
     private static let giTilesPerRow = 32
 
+    /// Per-axis probe counts for a fitted volume: near-isotropic spacing (counts
+    /// proportional to extent) under the fixed total budget, each axis at least 2 (a
+    /// trilinear cage needs both walls) and at most `giAxisCap`. A binary search for
+    /// the smallest isotropic spacing whose (clamped) counts fit the budget; counts
+    /// are non-increasing in the spacing, so the search is sound, and the whole
+    /// derivation is a pure function of the extent (exports reproduce; internal so
+    /// the unit tests can pin it exactly).
+    static func giAxisCounts(for ext: SIMD3<Float>) -> SIMD3<Int32> {
+        func counts(at h: Float) -> SIMD3<Int32> {
+            let raw = SIMD3<Int32>(Int32((ext.x / h).rounded()) + 1,
+                                   Int32((ext.y / h).rounded()) + 1,
+                                   Int32((ext.z / h).rounded()) + 1)
+            return raw.clamped(lowerBound: SIMD3(repeating: 2),
+                               upperBound: SIMD3(repeating: giAxisCap))
+        }
+        func product(_ c: SIMD3<Int32>) -> Int { Int(c.x) * Int(c.y) * Int(c.z) }
+        // Bracket: at `hi` every axis floors to 2 (8 probes); walk `lo` down only
+        // while it still overflows the budget, then bisect to the smallest fitting h.
+        var hi = max(ext.x, max(ext.y, ext.z))
+        var lo = hi / 32
+        if product(counts(at: lo)) <= Self.giProbeBudget { return counts(at: lo) }
+        for _ in 0..<40 {
+            let mid = (lo + hi) * 0.5
+            if product(counts(at: mid)) <= Self.giProbeBudget { hi = mid } else { lo = mid }
+        }
+        return counts(at: hi)
+    }
+
     /// The frame's mesh-geometry world bounds, folded over the same caster batches the
-    /// acceleration structure is built from, so the probe volume covers exactly what
-    /// the probe rays can hit. Nil when the frame has no eligible mesh.
+    /// acceleration structure is built from (target-drawn meshes included, matching
+    /// `buildShadowAccel`'s walk), so the probe volume covers exactly what the probe
+    /// rays can hit; that parity is also what gives a scene drawn entirely inside a
+    /// render target (the depth-of-field shape) a field at all. Nil when the frame has
+    /// no eligible mesh.
     private func giSceneBounds(_ drawer: Drawer) -> (lo: SIMD3<Float>, hi: SIMD3<Float>)? {
         var lo = SIMD3<Float>(repeating: .greatestFiniteMagnitude)
         var hi = SIMD3<Float>(repeating: -.greatestFiniteMagnitude)
@@ -1297,7 +1346,7 @@ extension MetalRenderer {
         drawer.meshVertices.withUnsafeBufferPointer { verts in
             for i in batches.indices {
                 let batch = batches[i]
-                guard batch.kind == .mesh3D, batch.target == nil,
+                guard batch.kind == .mesh3D,
                       !batch.meshWireframe, !batch.meshGrid else { continue }
                 let next = i + 1 < batches.count ? batches[i + 1] : nil
                 let end = next?.meshStart ?? count
@@ -1319,10 +1368,12 @@ extension MetalRenderer {
         0.75 * min(spacing.x, min(spacing.y, spacing.z)) * 0.3
     }
 
-    /// Rays per probe per update, resolved through the automatic tier and scaled to the
-    /// GPU like the shadow rays (software ray tracing pays several times more per ray).
-    private func resolveGIRays() -> Int {
-        switch effectiveQuality(.default) {
+    /// Rays per probe per update, resolved through the sketch's GI quality tier
+    /// (`globalIlluminationQuality`; `.default` follows the automatic path) and scaled
+    /// to the GPU like the shadow rays (software ray tracing pays several times more
+    /// per ray).
+    private func resolveGIRays(_ quality: RenderQuality) -> Int {
+        switch effectiveQuality(quality) {
         case .performance: return hasHardwareRayTracing ? 64 : 32
         case .default:     return hasHardwareRayTracing ? 96 : 64
         case .detail:      return hasHardwareRayTracing ? 192 : 96
@@ -1332,9 +1383,10 @@ extension MetalRenderer {
     /// Whole trace+blend iterations for the historyless (headless/export) path: each
     /// deepens the bounce recursion by one and averages the noise down (the blend runs
     /// a progressive mean), so a single frame converges deterministically with no
-    /// history, and a video export cannot flicker.
-    private func resolveGIIterations() -> Int {
-        switch effectiveQuality(.default) {
+    /// history, and a video export cannot flicker. Resolved through the same GI
+    /// quality tier as the rays.
+    private func resolveGIIterations(_ quality: RenderQuality) -> Int {
+        switch effectiveQuality(quality) {
         case .performance: return 8
         case .default:     return 12
         case .detail:      return 16
@@ -1405,21 +1457,21 @@ extension MetalRenderer {
         }
 
         guard let bounds = giSceneBounds(drawer) else { return nil }
-        let n = Self.giProbesPerAxis
-        let counts = SIMD3<Int32>(repeating: Int32(n))
-        let probeCount = n * n * n
         let state: GIProbeState
         if let existing = giState {
             state = existing
         } else {
+            // Allocated once at the full probe budget (the per-axis counts vary with
+            // the fitted volume, their product never past the budget), so a refit
+            // never reallocates the atlases.
             let perRow = Self.giTilesPerRow
-            let rows = (probeCount + perRow - 1) / perRow
+            let rows = (Self.giProbeBudget + perRow - 1) / perRow
             guard let iA = makeFloatResolve(width: perRow * 10, height: rows * 10),
                   let iB = makeFloatResolve(width: perRow * 10, height: rows * 10),
                   let dA = makeFloatResolve(width: perRow * 18, height: rows * 18),
                   let dB = makeFloatResolve(width: perRow * 18, height: rows * 18),
-                  let oA = makeFloatResolve(width: probeCount, height: 1),
-                  let oB = makeFloatResolve(width: probeCount, height: 1)
+                  let oA = makeFloatResolve(width: Self.giProbeBudget, height: 1),
+                  let oB = makeFloatResolve(width: Self.giProbeBudget, height: 1)
             else { return nil }
             state = GIProbeState(irrA: iA, irrB: iB, depA: dA, depB: dB, offA: oA, offB: oB)
             giState = state
@@ -1429,7 +1481,7 @@ extension MetalRenderer {
         if supersample { state.valid = false }
         var needFit = !state.valid
         if !needFit {
-            let gridMax = state.origin + state.spacing * Float(n - 1)
+            let gridMax = state.origin + state.spacing * SIMD3<Float>(state.counts &- 1)
             if bounds.lo.x < state.origin.x || bounds.lo.y < state.origin.y
                 || bounds.lo.z < state.origin.z || bounds.hi.x > gridMax.x
                 || bounds.hi.y > gridMax.y || bounds.hi.z > gridMax.z {
@@ -1449,15 +1501,20 @@ extension MetalRenderer {
             ext = simd_max(ext, SIMD3<Float>(repeating: maxExt * 0.05))
             let center = (bounds.hi + bounds.lo) * 0.5
             ext *= 1.3   // 15% pad each side: boundary surfaces sit inside the outer cage
+            // Per-axis counts from the padded volume's aspect: a flat scene spends its
+            // probes horizontally instead of stacking unused vertical rows. Derived at
+            // fit time and held with the volume, so probes stay put between refits.
+            state.counts = Self.giAxisCounts(for: ext)
             state.origin = center - ext * 0.5
-            state.spacing = ext / Float(n - 1)
-            state.counts = counts
+            state.spacing = ext / SIMD3<Float>(state.counts &- 1)
             state.valid = false
             // Relocation offsets belong to a grid; a new grid starts from zero.
             let clear = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
             clearFloatTexture(state.offA, color: clear, into: cb)
             clearFloatTexture(state.offB, color: clear, into: cb)
         }
+        let counts = state.counts
+        let probeCount = Int(counts.x) * Int(counts.y) * Int(counts.z)
 
         // The trace shades hits with the same exposure/table state the main pass will
         // use (the reflection pass's mirroring rule), plus its own field for the
@@ -1484,13 +1541,13 @@ extension MetalRenderer {
                           biasScale: giBiasScale(state.spacing)),
                into: &lighting, intensity: 1)
 
-        let farCap = 2 * simd_length(state.spacing * Float(n - 1))
+        let farCap = 2 * simd_length(state.spacing * SIMD3<Float>(counts &- 1))
         // The visibility moments cap at cage scale (1.5x the largest axial spacing, the
         // reference's rule): the Chebyshev test only ever asks about a probe's own cage,
         // and far geometry in the statistics collapses near-surface variance.
         let depthCap = 1.5 * max(state.spacing.x, max(state.spacing.y, state.spacing.z))
-        let rays = resolveGIRays()
-        let iterations = supersample ? resolveGIIterations() : 1
+        let rays = resolveGIRays(drawer.giQualitySetting)
+        let iterations = supersample ? resolveGIIterations(drawer.giQualitySetting) : 1
         guard let tracePipe = try? pipeline(.effect("ollin_gi_trace")),
               let blendIrrPipe = try? pipeline(.effect("ollin_gi_blend_irradiance")),
               let blendDepPipe = try? pipeline(.effect("ollin_gi_blend_depth")),
