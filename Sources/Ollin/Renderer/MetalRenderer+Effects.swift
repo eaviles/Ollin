@@ -1757,7 +1757,8 @@ extension MetalRenderer {
                         halfResFieldShadow: MTLTexture? = nil,
                         deferredReflection: MTLTexture? = nil,
                         gi: GIResolved? = nil,
-                        target passTarget: RenderTarget? = nil) {
+                        target passTarget: RenderTarget? = nil,
+                        taaJitter: SIMD2<Float> = .zero) {
         let vertices = drawer.vertices
         let instances = drawer.sdfInstances
         let imageVertices = drawer.imageVertices
@@ -1832,7 +1833,10 @@ extension MetalRenderer {
         // one are undisturbed. Built from the camera and the viewport's aspect.
         var uniforms3D: Uniforms3D? = nil
         if let camera = drawer.camera3D {
-            var u3 = makeUniforms3D(drawer, camera: camera, viewport: viewport)
+            // `taaJitter` is the main canvas's sub-pixel offset under temporal AA
+            // (zero otherwise, and always zero for a render-target pass, which has
+            // no accumulation to resolve a jitter with).
+            var u3 = makeUniforms3D(drawer, camera: camera, viewport: viewport, jitter: taaJitter)
             encoder.setVertexBytes(&u3, length: MemoryLayout<Uniforms3D>.stride, index: 2)
             uniforms3D = u3   // the raymarch fragment also reads it (the ray + depth + step budget)
         }

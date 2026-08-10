@@ -378,6 +378,14 @@ final class Drawer {
     /// Per-frame state, set alongside `globalIlluminationEnabled`.
     private(set) var giIntensity: Double = 1
 
+    /// Whether this frame temporally anti-aliases the 3D scene (see
+    /// `temporalAntialiasing`). Per-frame state like the lights. When on (and a 3D
+    /// camera is active), the renderer jitters the projection sub-pixel each frame
+    /// and accumulates the resolved frames, so edges refine past MSAA; the
+    /// headless/export path instead averages N deterministically jittered renders
+    /// within each frame. Works on any Metal GPU (no ray tracing involved).
+    private(set) var temporalAAEnabled = false
+
     /// The global-illumination quality knob (`globalIlluminationQuality`): a persistent
     /// `RenderQuality` tier (not reset each frame, like `shadowQualitySetting`) the renderer
     /// resolves to rays per probe per update (per GPU, like the shadow rays) and, on the
@@ -1744,6 +1752,15 @@ final class Drawer {
     /// Stop gathering global illumination (the default). Per-frame state.
     func noGlobalIllumination() { globalIlluminationEnabled = false }
 
+    /// Temporally anti-alias the 3D scene this frame: jitter the projection
+    /// sub-pixel and accumulate across frames (live), or average N deterministic
+    /// jittered renders within the frame (export). Per-frame state like the lights;
+    /// set it in `draw()`. A no-op without an active 3D camera.
+    func temporalAntialiasing(_ enabled: Bool = true) { temporalAAEnabled = enabled }
+
+    /// Stop temporally anti-aliasing (the default). Per-frame state.
+    func noTemporalAntialiasing() { temporalAAEnabled = false }
+
     /// Set the global-illumination quality to a hardware-relative tier (the renderer picks
     /// the rays per probe for the GPU, and the headless convergence depth). Persistent
     /// (set once, in `setup()` or `draw()`).
@@ -2471,6 +2488,7 @@ final class Drawer {
         rayTracedReflectionsEnabled = false
         globalIlluminationEnabled = false
         giIntensity = 1
+        temporalAAEnabled = false
         // Atmosphere is per-frame like the lights (the quality setting persists).
         fogColor = nil
         fogDensity = 0

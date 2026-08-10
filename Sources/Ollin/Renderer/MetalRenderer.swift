@@ -761,6 +761,17 @@ final class MetalRenderer {
     /// touches it (it supersamples within the frame instead), so a live recording's
     /// off-screen re-render can't double-step the accumulation.
     var rtReflectHistory: SSRHistorySlot?
+
+    /// The temporal anti-aliasing history (the live on-screen path): the same
+    /// ping-pong-plus-previous-view·projection slot shape as `rtReflectHistory`, but
+    /// over the whole resolved frame. The headless/export path never touches it (it
+    /// averages N deterministically jittered renders within the frame instead), so a
+    /// live recording's off-screen re-render can't double-step the accumulation.
+    var taaHistory: SSRHistorySlot?
+    /// The single-sample depth the main geometry pass resolves (`.min`, the front
+    /// surface) when temporal AA is on, read by the resolve's camera reprojection.
+    /// Cached by size; a TAA-off frame attaches no resolve and stays byte-identical.
+    var mainDepthResolve: MTLTexture?
     /// The reflection G-buffer's cached targets (world normal + coverage, metal/rough,
     /// own depth), reallocated on a size change. GPU-private and fully rewritten by the
     /// pass each frame, so reuse across in-flight frames is safe (command buffers on
@@ -1025,7 +1036,10 @@ final class MetalRenderer {
 
         // A 3D camera *or* a depth scene adds a depth attachment, paired to mainMSAA
         // (allocated lazily; a plain 2D sketch never allocates one). Memoryless,
-        // cleared to the far plane.
+        // cleared to the far plane. Temporal AA additionally resolves the depth
+        // (`.min`, the front surface) for its reprojection; a TAA-off frame attaches
+        // no resolve and stays byte-identical.
+        let taaActive = temporalAAActive(drawer)
         var passDepthFormat: MTLPixelFormat? = nil
         if drawer.usesDepthBuffer {
             if mainDepth?.width != width || mainDepth?.height != height {
@@ -1037,6 +1051,16 @@ final class MetalRenderer {
                 geomPass.depthAttachment.clearDepth = 1.0
                 geomPass.depthAttachment.storeAction = .dontCare
                 passDepthFormat = depthPixelFormat
+                if taaActive {
+                    if mainDepthResolve?.width != width || mainDepthResolve?.height != height {
+                        mainDepthResolve = makeDepthResolve(width: width, height: height)
+                    }
+                    if let resolve = mainDepthResolve {
+                        geomPass.depthAttachment.resolveTexture = resolve
+                        geomPass.depthAttachment.storeAction = .multisampleResolve
+                        geomPass.depthAttachment.depthResolveFilter = .min
+                    }
+                }
             }
         }
         // A clipping frame (`withClip` on the canvas) adds a stencil attachment the
@@ -1076,6 +1100,14 @@ final class MetalRenderer {
             sdf3DGroup: sdf3DGroupBuffer(at: frameIndex, for: drawer.sdf3DGroups.count),
             sdf3DNode: sdf3DNodeBuffer(at: frameIndex, for: drawer.sdf3DNodes.count))
         beginStatefulEncode(drawer)
+        // The frame's temporal-AA sub-pixel jitter (zero when TAA is off): the live
+        // path cycles the sequence by frame count, and every main-canvas 3D pass
+        // below carries the same offset so nothing misaligns. A same-frame repeat
+        // reads the same frame count, so it re-renders under the same jitter.
+        let taaJitter: SIMD2<Float> = taaActive
+            ? taaJitterNDC(index: Int(frameComputeUniforms.frameCount % 8),
+                           width: width, height: height)
+            : .zero
         // Global illumination (live): one probe-field update, hysteresis-accumulated
         // into the persistent atlases. Nil when GI isn't active this frame; the
         // carriers' GI branches then stay untaken (byte-identical). Encoded ahead of
@@ -1090,7 +1122,8 @@ final class MetalRenderer {
         // Half-res raymarch pre-pass (the `.performance` tier): sphere-trace the fields at half
         // resolution into a sampleable color+depth that the main pass upsamples + composites.
         // `nil` on the full-res tiers or a frame with no fields, so those stay byte-identical.
-        let halfResField = makeRaymarchUniforms3D(drawer, viewport: viewport).flatMap { u3 in
+        // Carries the frame's TAA jitter so a reduced-res field shifts with the meshes.
+        let halfResField = makeRaymarchUniforms3D(drawer, viewport: viewport, jitter: taaJitter).flatMap { u3 in
             let fieldLight = resolveFieldLighting(drawer, shadowMap: renderedShadow.twoD,
                                                   shadowCube: renderedShadow.cube,
                                                   shadowAccelPresent: renderedShadow.accel != nil,
@@ -1108,7 +1141,7 @@ final class MetalRenderer {
         // Half-res field-cast shadow pre-pass (the live RenderQuality path): the point/RT field
         // cast onto meshes is per-pixel-marched, so compute it once at reduced resolution and let
         // the mesh pass sample it. `nil` at the full-res tier / no point-RT caster (inline → byte-identical).
-        let halfResFieldShadow = makeRaymarchUniforms3D(drawer, viewport: viewport).flatMap { u3 -> MTLTexture? in
+        let halfResFieldShadow = makeRaymarchUniforms3D(drawer, viewport: viewport, jitter: taaJitter).flatMap { u3 -> MTLTexture? in
             var fl = resolveFieldLighting(drawer, shadowMap: renderedShadow.twoD, shadowCube: renderedShadow.cube,
                                           shadowAccelPresent: renderedShadow.accel != nil).lighting
             fl.fieldCasterCount = resolveFieldCasterCount(fl, drawer)
@@ -1125,7 +1158,7 @@ final class MetalRenderer {
             reflectAccel: renderedShadow.reflectAccel,
             reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
             width: width, height: height, supersample: false, pooled: true,
-            gi: gi)
+            gi: gi, taaJitter: taaJitter)
 
         guard let geomEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: geomPass) else {
             frameBoundary.signal()   // nothing encoded; hand the slot back
@@ -1148,16 +1181,24 @@ final class MetalRenderer {
                halfResField: halfResField,
                halfResFieldShadow: halfResFieldShadow,
                deferredReflection: deferredReflection,
-               gi: gi)
+               gi: gi,
+               taaJitter: taaJitter)
         geomEncoder.endEncoding()
 
         // The subsurface-scattering diffusion (returns `resolve` untouched when no
-        // material asked for it), then the whole-frame postProcess filters, run over
-        // the resolved frame before present.
+        // material asked for it), then the temporal-AA accumulation resolve (which
+        // returns its input untouched when TAA is off), then the whole-frame
+        // postProcess filters, run over the resolved frame before present. TAA sits
+        // ahead of the filters so a bloom or grade reads the stabilized frame, not
+        // the jittered one.
         let scattered = applySubsurfaceScattering(drawer, resolved: resolve, meshBuffer: meshBuf,
                                                   into: commandBuffer, width: width, height: height,
-                                                  pooled: true)
-        let presented = applyFrameFilters(drawer, resolved: scattered, width: width, height: height,
+                                                  pooled: true, taaJitter: taaJitter)
+        let stabilized = applyTemporalAA(drawer, resolved: scattered,
+                                         depth: taaActive ? mainDepthResolve : nil,
+                                         jitter: taaJitter, into: commandBuffer,
+                                         width: width, height: height)
+        let presented = applyFrameFilters(drawer, resolved: stabilized, width: width, height: height,
                                           into: commandBuffer, pooled: true)
         if let presentEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: presentPass(into: drawable.texture)) {
             encodePresent(from: presented, drawer: drawer, into: presentEncoder)
@@ -1490,6 +1531,9 @@ final class MetalRenderer {
         // averaged within this one frame, so a single export is anti-aliased with no
         // warmup, a video export can't flicker, and the live frame-grab re-render
         // (which routes through here) never double-steps the on-screen accumulation.
+        // Encoded once, outside any TAA sample loop (it is already supersampled
+        // internally; the composite reads it at most half a pixel off, which the
+        // average absorbs).
         let deferredReflection = encodeReflectionPass(
             drawer, into: commandBuffer, meshBuffer: meshBuf,
             reflectAccel: renderedShadow.reflectAccel,
@@ -1497,34 +1541,84 @@ final class MetalRenderer {
             width: width, height: height, supersample: true, pooled: false,
             gi: gi)
 
-        guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
-
-        encode(drawer, viewport: viewport, into: encoder,
-               triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,
-               imageBuffer: buffers.image, glyphBuffer: buffers.glyph,
-               pointBuffer: buffers.point, meshBuffer: buffers.mesh,
-                   sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
-                   sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
-               depthFormat: passDepthFormat, stencil: passHasStencil,
-               shadowMap: renderedShadow.twoD,
-               shadowCube: renderedShadow.cube,
-               shadowAccel: renderedShadow.accel,
-               reflectAccel: renderedShadow.reflectAccel,
-               reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
-               halfResField: halfResField,
-               halfResFieldShadow: halfResFieldShadow,
-               deferredReflection: deferredReflection,
-               gi: gi)
-        encoder.endEncoding()
-
-        // Tone-map the resolved float frame (after the subsurface-scattering
-        // diffusion and the whole-frame postProcess filters) into the sRGB display
-        // texture.
-        let scattered = applySubsurfaceScattering(drawer, resolved: resolveTexture, meshBuffer: meshBuf,
-                                                  into: commandBuffer, width: width, height: height,
-                                                  pooled: false)
-        let presented = applyFrameFilters(drawer, resolved: scattered, width: width, height: height,
+        // Temporal AA, historyless: render the geometry N times under the fixed
+        // jitter sequence and average within this one frame, the deterministic
+        // within-frame equivalent of the live accumulation (the deferred-reflection
+        // precedent), so a single export is anti-aliased with no warmup, a video
+        // can't flicker, and two renders of one frame are byte-identical. The
+        // pre-passes above (shadows, GI, effect layers, sims) run once: they are
+        // viewpoint-fixed or world-space, and only the camera's rasterization
+        // jitters. TAA off (or no camera) takes the single-sample path unchanged.
+        let taaSamples = temporalAAActive(drawer) ? resolveTAASamples() : 1
+        let presented: MTLTexture
+        if taaSamples > 1,
+           var accFront = makeFloatResolve(width: width, height: height),
+           var accBack = makeFloatResolve(width: width, height: height) {
+            clearFloatTexture(accFront, color: MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0),
+                              into: commandBuffer)
+            for s in 0..<taaSamples {
+                let jitter = taaJitterNDC(index: s, width: width, height: height)
+                guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
+                encode(drawer, viewport: viewport, into: encoder,
+                       triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,
+                       imageBuffer: buffers.image, glyphBuffer: buffers.glyph,
+                       pointBuffer: buffers.point, meshBuffer: buffers.mesh,
+                       sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
+                       sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
+                       depthFormat: passDepthFormat, stencil: passHasStencil,
+                       shadowMap: renderedShadow.twoD,
+                       shadowCube: renderedShadow.cube,
+                       shadowAccel: renderedShadow.accel,
+                       reflectAccel: renderedShadow.reflectAccel,
+                       reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
+                       halfResField: halfResField,
+                       halfResFieldShadow: halfResFieldShadow,
+                       deferredReflection: deferredReflection,
+                       gi: gi,
+                       taaJitter: jitter)
+                encoder.endEncoding()
+                let scattered = applySubsurfaceScattering(drawer, resolved: resolveTexture,
+                                                          meshBuffer: meshBuf, into: commandBuffer,
+                                                          width: width, height: height,
+                                                          pooled: false, taaJitter: jitter)
+                // acc += sample / N (ping-ponged; a linear-light mean, unbiased).
+                encodeEffectFragment("ollin_fx_weighted_sum", inputs: [accFront, scattered],
+                                     output: accBack,
+                                     params: [SIMD4(1 / Float(taaSamples), 0, 0, 0)],
+                                     into: commandBuffer)
+                swap(&accFront, &accBack)
+            }
+            presented = applyFrameFilters(drawer, resolved: accFront, width: width, height: height,
                                           into: commandBuffer, pooled: false)
+        } else {
+            guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
+            encode(drawer, viewport: viewport, into: encoder,
+                   triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,
+                   imageBuffer: buffers.image, glyphBuffer: buffers.glyph,
+                   pointBuffer: buffers.point, meshBuffer: buffers.mesh,
+                       sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
+                       sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
+                   depthFormat: passDepthFormat, stencil: passHasStencil,
+                   shadowMap: renderedShadow.twoD,
+                   shadowCube: renderedShadow.cube,
+                   shadowAccel: renderedShadow.accel,
+                   reflectAccel: renderedShadow.reflectAccel,
+                   reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
+                   halfResField: halfResField,
+                   halfResFieldShadow: halfResFieldShadow,
+                   deferredReflection: deferredReflection,
+                   gi: gi)
+            encoder.endEncoding()
+
+            // Tone-map the resolved float frame (after the subsurface-scattering
+            // diffusion and the whole-frame postProcess filters) into the sRGB
+            // display texture.
+            let scattered = applySubsurfaceScattering(drawer, resolved: resolveTexture, meshBuffer: meshBuf,
+                                                      into: commandBuffer, width: width, height: height,
+                                                      pooled: false)
+            presented = applyFrameFilters(drawer, resolved: scattered, width: width, height: height,
+                                          into: commandBuffer, pooled: false)
+        }
         guard let presentEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: presentPass(into: displayTexture)) else { return nil }
         encodePresent(from: presented, drawer: drawer, into: presentEncoder)
         presentEncoder.endEncoding()
@@ -1581,12 +1675,25 @@ final class MetalRenderer {
             pass.colorAttachments[0].clearColor = drawer.backgroundColor.mtlClearColor
             pass.colorAttachments[0].storeAction = .multisampleResolve
             var passDepthFormat: MTLPixelFormat? = nil
+            let taaActive = temporalAAActive(drawer)
             if let depthTexture {
                 pass.depthAttachment.texture = depthTexture
                 pass.depthAttachment.loadAction = .clear
                 pass.depthAttachment.clearDepth = 1.0
                 pass.depthAttachment.storeAction = .dontCare
                 passDepthFormat = depthPixelFormat
+                // Temporal AA (the live one-update shape): resolve the depth for
+                // the reprojection, so the benchmark carries the live frame's cost.
+                if taaActive {
+                    if mainDepthResolve?.width != width || mainDepthResolve?.height != height {
+                        mainDepthResolve = makeDepthResolve(width: width, height: height)
+                    }
+                    if let resolve = mainDepthResolve {
+                        pass.depthAttachment.resolveTexture = resolve
+                        pass.depthAttachment.storeAction = .multisampleResolve
+                        pass.depthAttachment.depthResolveFilter = .min
+                    }
+                }
             }
             let passHasStencil = attachClipStencil(to: pass, active: drawer.usesClipStencil,
                                                    width: width, height: height)
@@ -1598,6 +1705,10 @@ final class MetalRenderer {
                 drawer, into: cb, meshBuffer: meshBuf,
                 sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode)
             beginStatefulEncode(drawer)
+            let taaJitter: SIMD2<Float> = taaActive
+                ? taaJitterNDC(index: Int(frameComputeUniforms.frameCount % 8),
+                               width: width, height: height)
+                : .zero
             // Global illumination (the live one-update path), so the benchmark measures
             // the same cost a live frame pays. nil when GI isn't active.
             let gi = encodeGIPass(drawer, into: cb, meshBuffer: meshBuf,
@@ -1644,11 +1755,17 @@ final class MetalRenderer {
                    reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
                    halfResField: halfResField,
                    halfResFieldShadow: halfResFieldShadow,
-                   gi: gi)
+                   gi: gi,
+                   taaJitter: taaJitter)
             encoder.endEncoding()
             let scattered = applySubsurfaceScattering(drawer, resolved: resolveTexture, meshBuffer: meshBuf,
-                                                      into: cb, width: width, height: height, pooled: false)
-            let presented = applyFrameFilters(drawer, resolved: scattered, width: width,
+                                                      into: cb, width: width, height: height, pooled: false,
+                                                      taaJitter: taaJitter)
+            let stabilized = applyTemporalAA(drawer, resolved: scattered,
+                                             depth: taaActive ? mainDepthResolve : nil,
+                                             jitter: taaJitter, into: cb,
+                                             width: width, height: height)
+            let presented = applyFrameFilters(drawer, resolved: stabilized, width: width,
                                               height: height, into: cb, pooled: false)
             if let presentEncoder = cb.makeRenderCommandEncoder(descriptor: presentPass(into: displayTexture)) {
                 encodePresent(from: presented, drawer: drawer, into: presentEncoder)

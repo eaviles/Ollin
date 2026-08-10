@@ -129,7 +129,8 @@ extension MetalRenderer {
     /// read: the input itself when the frame carries no scattering material.
     func applySubsurfaceScattering(_ drawer: Drawer, resolved: MTLTexture,
                                    meshBuffer: MTLBuffer?, into cb: MTLCommandBuffer,
-                                   width: Int, height: Int, pooled: Bool) -> MTLTexture {
+                                   width: Int, height: Int, pooled: Bool,
+                                   taaJitter: SIMD2<Float> = .zero) -> MTLTexture {
         let batches = drawer.batches
         // Honest degrades, named once: the blur reads the main canvas's mesh mask,
         // so a layer's meshes and the raymarched fields keep their plain shading.
@@ -202,7 +203,11 @@ extension MetalRenderer {
                                     height: Double(height), znear: 0, zfar: 1))
         enc.setRenderPipelineState(maskPipe)
         enc.setDepthStencilState(depthTestState)
-        var u3 = makeUniforms3D(drawer, camera: camera, viewport: SIMD2(Float(width), Float(height)))
+        // The mask re-renders the frame's meshes, so under temporal AA it carries the
+        // frame's jitter and stays aligned with the jittered geometry it gates.
+        var u3 = makeUniforms3D(drawer, camera: camera,
+                                viewport: SIMD2(Float(width), Float(height)),
+                                jitter: taaJitter)
         enc.setVertexBytes(&u3, length: MemoryLayout<Uniforms3D>.stride, index: 2)
         enc.setFragmentBytes(&u3, length: MemoryLayout<Uniforms3D>.stride, index: 2)
 

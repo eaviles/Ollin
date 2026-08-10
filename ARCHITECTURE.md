@@ -2532,6 +2532,121 @@ particles don't gather (they barely have surfaces to), documented in
 
 ---
 
+## Temporal anti-aliasing
+
+`temporalAntialiasing()` is the frame-wide form of the accumulation the
+deferred-reflection pass already did: jitter the 3D projection by a sub-pixel
+offset each frame and integrate the resolved frames, so edges refine past the
+fixed MSAA sample positions and the screen-space/traced effects' residual
+shimmer is absorbed with them. Written from the published treatments (the
+jittered-supersampling resolve with neighborhood rectification, moment-based
+history clipping, and the luminance-compressed blend; Techniques list in
+ATTRIBUTION.md). Per-frame state like `rayTracedReflections()`, main canvas
+only, any Metal GPU.
+
+**The jitter is one NDC translate premultiplied onto the projection**
+(`MetalRenderer.jittered(_:by:)`: clip.xy += jitter · clip.w), which is exact
+for perspective, orthographic, *and* intrinsic projections where the classic
+add-to-`[2][0]` trick is perspective-only, and touches neither z nor w, so
+depth values, `depth(at:)`, and every depth test are unchanged. The offsets
+are the low-discrepancy (2,3) radical-inverse sequence
+(`taaJitterOffsets`, built from the public `halton`), the live path cycling
+the first 8 by frame count, the export supersample taking the first N in
+order. One `taaJitter` parameter threads it through every main-canvas 3D
+pass so nothing misaligns: `encode`'s `makeUniforms3D`, the reflection
+G-buffer, the scatter mask, and both half-res field pre-passes; render
+targets always pass zero (a target has no accumulation to resolve a jitter
+with), and `encodeMeshNormals` stays unjittered with them.
+
+**Live** (`applyTemporalAA`, between the subsurface diffusion and the frame
+filters): the main pass gains a `.min` depth resolve (memoryless MSAA depth
+resolves from tile memory; a TAA-off frame attaches none), and the resolve
+shader (`ollin_fx_taa_resolve`) reprojects the history by camera motion with
+closest-depth 3×3 dilation, resamples it with a 9-tap Catmull-Rom (bilinear
+alone re-blurs the accumulation every frame), rectifies it against the
+current 3×3's moments in luminance-compressed YCoCg, and blends it as an
+adaptive EMA into an `SSRHistorySlot` twin (`taaHistory`), guarded by
+`statefulEncodeIsRepeat` like the other stateful passes. A frame's current
+sample is first reconstructed at the *unjittered* pixel center (a 3×3
+Gaussian, the published Blackman-Harris fit e^−2.29r², weighted by each
+tap's distance from that center), which re-centers the shifted render and
+keeps the nonzero-mean jitter sequence from wobbling the whole image.
+
+**Headless/export** never touches the history (the deferred-reflection
+precedent): `image(of:)` renders the geometry N times under the fixed
+sequence (4/8/16 by tier via `resolveTAASamples`; export's automatic tier is
+`.detail`, so 16) and averages them in linear light through
+`ollin_fx_weighted_sum` ping-pong passes, the pre-passes (shadows, GI,
+effect layers, sims, the deferred reflection) running once outside the loop.
+A single export is anti-aliased with no warmup, a video can't flicker, two
+renders are byte-identical, and the live frame-grab re-render can't
+double-step the on-screen accumulation. The benchmark path takes the live
+shape (cost parity).
+
+Three live defects were found and fixed by frame-diff measurement (the
+static-trellis scene in an OllinLive window, screencapture bursts diffed
+frame-to-frame, statistics at the scale of the question), and each is now a
+pinned rule:
+
+- **Remove the jitter from the reprojection entirely.** The first cut
+  reconstructed through the current *jittered* inverse view-projection,
+  reasoning the unjitter "falls out of the matrix math". It does not: a
+  static camera then reprojects the history at uv − j every frame, the
+  history is Catmull-Rom-resampled at a different sub-pixel offset per frame,
+  and its content random-walks with variance Var(jitter)/(1 − feedback²),
+  which read as px-scale oscillation on every hairline edge (trellis
+  frame-to-frame p99 14–33/255). Both reprojection matrices are unjittered
+  (the published remove-the-jitter velocity rule); the jittered depth makes
+  the reconstruction at most half a pixel off, which only perturbs the
+  velocity under camera motion, never the still case. The same fix went into
+  `ollin_rt_reflect_temporal`, whose G-buffer `u3` now carries the frame's
+  jitter under TAA.
+- **The rectification box must widen when the pixel is still.** At a fixed
+  γ = 1 the μ ± σ box is rebuilt from each jittered frame, so the box itself
+  oscillates with the jitter phase and drags a perfectly converged hairline
+  edge back and forth (the clamp-sawtooth failure the survey literature
+  documents). The clip's γ is velocity-adaptive (2.5 at rest easing to 0.75
+  by 15 px/frame of motion): a still pixel's reprojection is exact, so its
+  history deserves the wide box; a fast mover gets the tight one.
+- **Key the adaptive feedback to the clamp, not the sample.** Feedback keyed
+  to the luminance difference between the history and the *instantaneous
+  jittered sample* permanently distrusts exactly the pixels that need the
+  longest memory (a hairline edge's sample disagrees with its own converged
+  mean every frame by construction). It keys instead on how far the clip
+  just moved the history (untouched → 0.97, dragged a full σ → 0.88), so a
+  converged edge holds still and a real change still refreshes fast.
+
+The verification record (the artificial-life honesty rule: the live loop
+restarts under every deterministic probe, so these numbers *are* the test):
+TAA-off control diffs exactly 0.0000 mean / 0 max frame-to-frame; converged
+TAA-on canvas mean 0.06–0.19/255 (p99 2–7), the pathological hairline-rod
+crop mean 0.17–0.49 (p99 3–11, over-8/255 fraction 0.4–1.7%, down from
+0.74–2.2 mean and 8–33 p99 before the three fixes), flat regions exactly 0,
+and a moving camera shows no ghost trails while a 2D overlay stays within
+1/255. The deterministic net is `TAATests`: the kernel-discrimination probe
+(the export average must match its own analytic construction, built by
+box-reducing an 8× reference at each declared offset, and match it *better*
+than the plain box kernel, which pins offsets, signs, sequence, and weights
+at once; margins set so even a full sign flip, whose point-reflected set has
+a similar kernel, reads red), flat-interior energy conservation (a wrong 1/N
+is 4 quantization steps), on-then-off byte-equality, two-render export
+determinism, the 2D no-op gate, and the exact-pixel-shift/depth-untouched
+jitter unit test; the discrimination and conservation claims verified red by
+sabotage. A deliberate measurement note: a *box-filtered* ground truth is
+not the export average's limit (its kernel is the pixel box convolved with
+the jitter set, slightly wider than the pixel), and judging AA against a
+gamma-space downsample is the classic linear-light trap; the test's
+reference is built in linear light with the matching kernel.
+
+Envelope: render targets and the accumulation surface keep plain MSAA; 2D
+overlays over a *moving* 3D scene ride the scene's reprojection (measured
+within 1/255 in the static and moving checks); per-object motion vectors
+(exact history for fast movers, the substrate motion blur shares) are the
+recorded next step in DESIGN-NOTES.md, and camera-only reprojection with
+neighborhood rectification is the production-lineage first stage.
+
+---
+
 ## User-supplied shaders
 
 A sketch writes its own fragment shader and runs it through the effect graph.

@@ -542,6 +542,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("fractal-flame",
                  note: "A seeded random fractal flame accumulated to a fixed sample count and developed once. Pins the chaos-game loop (weighted picks, the fuse), the variation formulas and their theta convention, structural coloring, and the log-density display with gamma and vibrancy. Seeded, and the sample count is fixed, so the render is deterministic.",
                  make: { FractalFlameScene() }),
+    SnapshotCase("taa",
+                 note: "Thin tilted slats and a sphere under temporalAntialiasing(): pins the deterministic export path (N jittered geometry renders under the fixed sequence, averaged within the frame), the jittered-projection plumbing on the mesh path, and the weighted-sum normalization. Fixed camera, no time; runs on any Metal GPU.",
+                 make: { TAAScene() }),
 ]
 
 /// The ray-tracing-gated snapshots: on a ray-tracing GPU a point caster resolves to the RT
@@ -569,6 +572,37 @@ private let snapshotRaytracingCases: [SnapshotCase] = [
 ]
 
 // MARK: - Fixtures
+
+/// Thin bright slats at slight tilts plus a sphere, with `temporalAntialiasing()`
+/// on: the geometry where the export supersample's refinement is largest (and
+/// where a broken jitter or average shows immediately). No ray-traced features,
+/// so it runs on any Metal GPU.
+private final class TAAScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.04))
+        perspective(eye: Vector3(0, 1.4, 4.4), target: Vector3(0, 0.6, 0),
+                    fieldOfView: .pi / 3.2, near: 0.5, far: 30)
+        ambientLight(Color(white: 0.10))
+        directionalLight(.white, direction: Vector3(-0.4, -1, -0.6), intensity: 0.9)
+        temporalAntialiasing()
+        fill(Color(white: 0.95))
+        for i in 0..<5 {
+            withState {
+                translate(0, 0.15 + Double(i) * 0.32, 0)
+                rotate(0.04 + Double(i) * 0.015, axis: .unitZ)
+                drawBox(width: 4.6, height: 0.04, depth: 0.05)
+            }
+        }
+        withState {
+            fill(Color(red: 0.75, green: 0.35, blue: 0.25))
+            translate(1.2, 0.7, 0.8)
+            drawSphere(radius: 0.55)
+        }
+        withState { fill(Color(white: 0.3)); translate(0, -0.1, 0); drawPlane(width: 9, depth: 9) }
+    }
+}
 
 /// A ring of solids on a ground plane, viewed through a `.turntable` cinematic move
 /// captured at frame 30, pinning the `cameraMove()` rig (its pose feeding

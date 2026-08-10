@@ -691,10 +691,11 @@ extension MetalRenderer {
     /// Build the per-frame 3D camera constants (used by the points/mesh/raymarch pipelines),
     /// including the dial-resolved march-step budget. `nil` when no 3D camera is active. Shared
     /// by the main `encode` and the half-res raymarch pre-pass so they can't drift.
-    func makeRaymarchUniforms3D(_ drawer: Drawer, viewport: SIMD2<Float>) -> Uniforms3D? {
+    func makeRaymarchUniforms3D(_ drawer: Drawer, viewport: SIMD2<Float>,
+                                jitter: SIMD2<Float> = .zero) -> Uniforms3D? {
         guard let camera = drawer.camera3D else { return nil }
         let aspect = viewport.y > 0 ? Double(viewport.x / viewport.y) : 1
-        let proj = camera.projectionMatrix(aspect: aspect)
+        let proj = MetalRenderer.jittered(camera.projectionMatrix(aspect: aspect), by: jitter)
         let steps = resolveRaymarchSteps(drawer.raymarchQualitySetting)
         return Uniforms3D(view: camera.viewMatrix, projection: proj,
                           inverseViewProjection: simd_inverse(proj * camera.viewMatrix),
@@ -954,15 +955,136 @@ extension MetalRenderer {
     /// view / projection / inverse the geometry pass binds at vertex index 2. Shared with
     /// the inline build in `encode` so the auxiliary mesh passes (the normal G-buffer)
     /// build them identically.
-    func makeUniforms3D(_ drawer: Drawer, camera: Camera3D, viewport: SIMD2<Float>) -> Uniforms3D {
+    func makeUniforms3D(_ drawer: Drawer, camera: Camera3D, viewport: SIMD2<Float>,
+                        jitter: SIMD2<Float> = .zero) -> Uniforms3D {
         let aspect = viewport.y > 0 ? Double(viewport.x / viewport.y) : 1
-        let proj = camera.projectionMatrix(aspect: aspect)
+        let proj = MetalRenderer.jittered(camera.projectionMatrix(aspect: aspect), by: jitter)
         let steps = resolveRaymarchSteps(drawer.raymarchQualitySetting)
         return Uniforms3D(view: camera.viewMatrix, projection: proj,
                           inverseViewProjection: simd_inverse(proj * camera.viewMatrix),
                           viewport: viewport,
                           raymarchSteps: SIMD2<Float>(Float(steps.march), Float(steps.shadow)),
                           raymarchScale: SIMD2<Float>(1, 0))
+    }
+
+    // MARK: - Temporal anti-aliasing
+
+    /// Premultiply an NDC translate onto a projection: clip.xy += jitter · clip.w, a
+    /// constant sub-pixel shift after the perspective divide, exact for perspective,
+    /// orthographic, and intrinsic projections alike (the z and w rows are untouched,
+    /// so depth values and `depth(at:)` are unchanged). Zero jitter returns the
+    /// projection untouched, so a TAA-off frame is byte-identical by construction.
+    static func jittered(_ proj: simd_float4x4, by ndc: SIMD2<Float>) -> simd_float4x4 {
+        guard ndc != .zero else { return proj }
+        var j = matrix_identity_float4x4
+        j.columns.3.x = ndc.x
+        j.columns.3.y = ndc.y
+        return j * proj
+    }
+
+    /// The sub-pixel jitter sequence: a low-discrepancy progressive 2D set (radical
+    /// inverses in bases 2 and 3), offsets in [-0.5, 0.5]² pixels. The live path
+    /// cycles the first 8 by frame count; the export supersample takes the first N
+    /// by tier. One shared table so live and export sample the same positions.
+    static let taaJitterOffsets: [SIMD2<Float>] = (0..<16).map {
+        SIMD2(Float(halton($0 + 1, base: 2)) - 0.5, Float(halton($0 + 1, base: 3)) - 0.5)
+    }
+
+    /// The jitter for sequence position `index`, as the NDC offset
+    /// `makeUniforms3D(jitter:)` applies (pixel offsets scaled onto the ±1 NDC span;
+    /// NDC y runs up while pixel y runs down, hence the sign).
+    func taaJitterNDC(index: Int, width: Int, height: Int) -> SIMD2<Float> {
+        let px = MetalRenderer.taaJitterOffsets[index % MetalRenderer.taaJitterOffsets.count]
+        return SIMD2(2 * px.x / Float(width), -2 * px.y / Float(height))
+    }
+
+    /// Whether temporal AA runs this frame: the sketch asked and a 3D camera is
+    /// active. Notes once when asked without a camera (a 2D frame has nothing to
+    /// jitter; its primitives carry analytic AA already).
+    func temporalAAActive(_ drawer: Drawer) -> Bool {
+        guard drawer.temporalAAEnabled else { return false }
+        guard drawer.camera3D != nil else {
+            drawer.noteOnce("temporalAntialiasing() applies to the 3D scene; without an active camera the frame is unchanged.")
+            return false
+        }
+        return true
+    }
+
+    /// Samples for the historyless (headless/export) temporal-AA supersample: the
+    /// within-one-frame equivalent of the live accumulation, deterministic (the fixed
+    /// jitter sequence, in order), so exports and snapshots reproduce bit-exactly.
+    func resolveTAASamples() -> Int {
+        switch effectiveQuality(.default) {
+        case .performance: return 4
+        case .default:     return 8
+        case .detail:      return 16
+        }
+    }
+
+    /// Temporal anti-aliasing resolve (the live path): reproject last frame's
+    /// accumulation by the camera's motion (per-pixel resolved depth through the
+    /// previous frame's unjittered view·projection), rectify it against the current
+    /// 3×3 neighborhood (a moment-based clip in luma-compressed YCoCg), and blend as
+    /// an adaptive exponential moving average into the history's back buffer, which
+    /// becomes the presented frame. Returns `resolved` untouched when TAA isn't
+    /// active this frame or the depth resolve is missing (byte-identical); a
+    /// same-frame repeat serves the already-accumulated front rather than stepping
+    /// the average again, like the other stateful passes. `jitter` must be the NDC
+    /// offset this frame's 3D projection rasterized under, so the reconstruction
+    /// matrix matches the depth buffer.
+    func applyTemporalAA(_ drawer: Drawer, resolved: MTLTexture, depth: MTLTexture?,
+                         jitter: SIMD2<Float>, into cb: MTLCommandBuffer,
+                         width: Int, height: Int) -> MTLTexture {
+        guard temporalAAActive(drawer), let camera = drawer.camera3D, let depth else {
+            return resolved
+        }
+        if statefulEncodeIsRepeat, let slot = taaHistory, slot.valid,
+           slot.w == width, slot.h == height {
+            return slot.flipped ? slot.b : slot.a
+        }
+        let slot: SSRHistorySlot
+        if let existing = taaHistory, existing.w == width, existing.h == height {
+            slot = existing
+        } else {
+            guard let a = makeFloatResolve(width: width, height: height),
+                  let b = makeFloatResolve(width: width, height: height) else { return resolved }
+            let clear = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
+            clearFloatTexture(a, color: clear, into: cb)
+            clearFloatTexture(b, color: clear, into: cb)
+            slot = SSRHistorySlot(a: a, b: b, w: width, h: height)
+            taaHistory = slot
+        }
+        let front = slot.flipped ? slot.b : slot.a
+        let back = slot.flipped ? slot.a : slot.b
+        let aspect = height > 0 ? Double(width) / Double(height) : 1
+        // Both reprojection matrices are UNJITTERED: the jitter must be removed
+        // from the velocity computation entirely (the published rule). Reconstruct
+        // through the jittered inverse instead and a static camera reprojects the
+        // history at uv minus this frame's jitter, so the history is sub-pixel
+        // resampled by a different offset every frame and its content random-walks
+        // with variance Var(jitter)/(1-feedback²), which read as a measured
+        // px-scale live oscillation on every hairline edge. Unjittered on both
+        // ends, a still pixel reprojects to exactly itself; the jittered depth
+        // makes the reconstruction at most half a pixel off, which only perturbs
+        // the *velocity* under camera motion, never the still case.
+        let viewProjection = camera.projectionMatrix(aspect: aspect) * camera.viewMatrix
+        let invVP = simd_inverse(viewProjection)
+        var params = [SIMD4<Float>](repeating: .zero, count: 12)
+        params[0] = SIMD4(1 / Float(width), 1 / Float(height), slot.valid ? 1 : 0, 0)
+        // The jitter back in pixels (the resolve re-centers the current frame's
+        // reconstruction on the unjittered pixel; NDC y runs opposite pixel y).
+        params[1] = SIMD4(jitter.x * Float(width) / 2, -jitter.y * Float(height) / 2, 0, 0)
+        params[4] = invVP.columns.0; params[5] = invVP.columns.1
+        params[6] = invVP.columns.2; params[7] = invVP.columns.3
+        let pv = slot.previousViewProjection
+        params[8] = pv.columns.0; params[9] = pv.columns.1
+        params[10] = pv.columns.2; params[11] = pv.columns.3
+        encodeEffectFragment("ollin_fx_taa_resolve", inputs: [resolved, depth, front],
+                             output: back, params: params, into: cb)
+        slot.previousViewProjection = viewProjection
+        slot.valid = true
+        slot.flipped.toggle()   // the just-written back is next frame's (and any repeat's) front
+        return back
     }
 
     /// The mesh-normal G-buffer pass: re-render a target's meshes MSAA + depth-tested,
@@ -1094,7 +1216,8 @@ extension MetalRenderer {
                                       reflectGeoOffsets: MTLBuffer?,
                                       width: Int, height: Int,
                                       supersample: Bool, pooled: Bool,
-                                      gi: GIResolved? = nil) -> MTLTexture? {
+                                      gi: GIResolved? = nil,
+                                      taaJitter: SIMD2<Float> = .zero) -> MTLTexture? {
         guard let camera = drawer.camera3D, let meshBuffer,
               let accel = reflectAccel, let geoOffsets = reflectGeoOffsets,
               let irradiance = currentIBLIrradiance, let prefilter = currentIBLPrefilter,
@@ -1171,7 +1294,12 @@ extension MetalRenderer {
                                     height: Double(height), znear: 0, zfar: 1))
         enc.setRenderPipelineState(gbufPipe)
         enc.setDepthStencilState(depthTestState)
-        var u3 = makeUniforms3D(drawer, camera: camera, viewport: SIMD2(Float(width), Float(height)))
+        // Under temporal AA the G-buffer carries the frame's jitter, so the traced
+        // reflection lands exactly where the jittered geometry pass composites it
+        // (and the reflection temporal's own reprojection unjitters like the frame's).
+        var u3 = makeUniforms3D(drawer, camera: camera,
+                                viewport: SIMD2(Float(width), Float(height)),
+                                jitter: taaJitter)
         enc.setVertexBytes(&u3, length: MemoryLayout<Uniforms3D>.stride, index: 2)
         let meshStride = MemoryLayout<OllinMeshVertex>.stride
         let meshCount = drawer.meshVertices.count
@@ -1250,7 +1378,11 @@ extension MetalRenderer {
         let back = slot.flipped ? slot.a : slot.b
         let aspect = height > 0 ? Double(width) / Double(height) : 1
         let viewProjection = camera.projectionMatrix(aspect: aspect) * camera.viewMatrix
-        let invVP = u3.inverseViewProjection
+        // Unjittered, never `u3.inverseViewProjection`: under temporal AA the
+        // G-buffer's u3 carries the frame's jitter, and a jittered reconstruction
+        // feeds the reprojection a per-frame sub-pixel offset that random-walks
+        // the accumulated reflection (the TAA resolve's remove-the-jitter rule).
+        let invVP = simd_inverse(viewProjection)
         let alpha = slot.valid ? Float(resolveRTReflectionAlpha()) : 0
         var params = [SIMD4<Float>](repeating: .zero, count: 12)
         params[0] = SIMD4(1 / Float(width), 1 / Float(height), alpha, slot.valid ? 1 : 0)

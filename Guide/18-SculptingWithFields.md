@@ -279,6 +279,19 @@ Like the reflections, the probe field settles over a few frames live (a sudden l
 
 The [`GlobalIllumination` example](../Examples/3D/Lighting/GlobalIllumination/Sketch.swift) is this room with the lamp swinging, and the space bar toggles the bounce, which is the clearest before-and-after you can give yourself. The bounce follows the picture wherever it goes: a wall seen *inside a mirror* carries the same second-hand light as the wall itself, and a scene drawn into a layer for depth of field gathers it like the canvas does. If a heavy scene stutters while you sketch, `globalIlluminationQuality(.performance)` trades a grainier bounce for frame rate, the same kind of dial shadows have; exports always take the fine end on their own.
 
+## Edges that settle
+
+The last two sections shared a trick worth naming: render a slightly different estimate every frame, and average. The reflections jitter their rays; the probes rotate their fans. `temporalAntialiasing()` applies the same idea to **every edge in the 3D picture**:
+
+```swift
+camera(.orbiting(target: .zero, radius: 8, azimuth: time * 0.05, elevation: 0.3))
+temporalAntialiasing()      // any Metal GPU; edges refine as frames accumulate
+```
+
+Every 3D frame already takes eight samples per pixel, but always at the *same* eight positions, so a thin bright edge at a shallow angle still lands as a fixed staircase, and the steps crawl when the camera drifts. With the call on, the camera's projection is nudged by a sub-pixel offset that changes every frame and the frames fold into a running average, so each pixel has soon been sampled at dozens of positions instead of eight: the staircase melts into a gradient, the crawling stops, and the leftover shimmer of the traced effects above calms down with it. It follows the camera (orbiting keeps the accumulated detail), leaves 2D drawing untouched (that path is already exact), and, like everything in this chapter, an export doesn't wait for frames: it renders the scene several times at fixed offsets inside each frame and averages, so a still is finished immediately and a video can't flicker. Unlike the mirrors and the bounce, it doesn't need a ray-tracing GPU; any Mac that runs Ollin can do it.
+
+The [`TemporalAA` example](../Examples/3D/Effects/TemporalAA/Sketch.swift) is a trellis of thin tilted rods under a slow camera sway, with the toggle on a knob; flip it mid-motion and watch the rods' edges stop crawling. The scenes where it makes the most difference are exactly that kind: hairline geometry, high contrast, slow cameras.
+
 ## Glass
 
 There has been a way to make a surface see-through since Chapter 17: give the `fill` some alpha, and the surface fades. Glass is a different thing. The surface stays fully there, with its highlights and reflections, and the *light* comes through instead, bent and tinted on the way. That's transmission, and it's one material call:

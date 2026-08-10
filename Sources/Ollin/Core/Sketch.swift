@@ -990,6 +990,24 @@ open class Sketch {
     /// Stop gathering global illumination (the default).
     public func noGlobalIllumination() { drawer.noGlobalIllumination() }
 
+    /// Temporally anti-alias the 3D scene this frame, refining edges past what MSAA
+    /// alone reaches: the renderer nudges the camera's projection by a sub-pixel
+    /// offset that changes every frame and folds the resolved frames into a running
+    /// average, so a high-contrast silhouette or a thin bright edge settles into a
+    /// clean gradient instead of a fixed stair-step, and the residual shimmer of the
+    /// screen-space and traced effects calms with it. Exports and snapshots stay
+    /// deterministic: a headless frame renders the scene several times at the same
+    /// fixed offsets and averages them within the frame, so a video cannot flicker
+    /// and two exports of one frame are byte-identical. Per-frame state like the
+    /// lights and camera, so call it in `draw()` after the camera; it applies to the
+    /// main canvas (not layers or the accumulation surface) and needs an active 3D
+    /// camera (a 2D frame is already analytically anti-aliased). Works on any Metal
+    /// GPU. Pass `false`, or call `noTemporalAntialiasing()`, to turn it back off.
+    public func temporalAntialiasing(_ on: Bool = true) { drawer.temporalAntialiasing(on) }
+
+    /// Stop temporally anti-aliasing (the default).
+    public func noTemporalAntialiasing() { drawer.noTemporalAntialiasing() }
+
     /// Set the global-illumination quality (how many rays each light probe traces per
     /// update) as a **hardware-relative** tier, the `shadowQuality` dial's GI sibling:
     /// `.performance` favors frame rate with a grainier, slower-converging bounce,

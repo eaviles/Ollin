@@ -941,6 +941,219 @@ fragment float4 ollin_rt_reflect_temporal(PresentOut in [[stage_in]],
     return mix(current, hist, alpha);             // exponential moving average
 }
 
+// MARK: - Temporal anti-aliasing (the 3D path's whole-frame accumulation)
+//
+// The frame-wide form of the accumulation the reflection passes already do:
+// the 3D projection carries a sub-pixel jitter that changes every frame, and
+// this resolve folds the jittered renders into a running average, so edges
+// refine past what the fixed MSAA sample positions can express. History is
+// reprojected by the camera's motion (per-pixel depth through the previous
+// frame's *unjittered* view·projection, which is also what removes the jitter
+// from the history's frame of reference), rectified against the current 3x3
+// neighborhood, and blended as an adaptive exponential moving average.
+// Written from the published treatments (jittered temporal supersampling with
+// neighborhood rectification, moment-based history clipping, the
+// luminance-compressed blend); see ATTRIBUTION.md Techniques.
+
+// RGB <-> YCoCg, the rectification box's color basis: local contrast lives
+// almost entirely in luma, so an axis-aligned box in YCoCg hugs an edge's
+// color distribution where the same box in RGB leaves diagonal slack for a
+// stale history to hide in.
+static inline float3 ollin_taa_ycocg(float3 c) {
+    return float3( 0.25 * c.r + 0.5 * c.g + 0.25 * c.b,
+                   0.5  * c.r             - 0.5  * c.b,
+                  -0.25 * c.r + 0.5 * c.g - 0.25 * c.b);
+}
+static inline float3 ollin_taa_rgb(float3 c) {
+    return float3(c.x + c.y - c.z, c.x + c.z, c.x - c.y - c.z);
+}
+
+// Luminance-compressed YCoCg (alpha rides linearly): the blend runs on
+// x/(1+luma) so one HDR spark cannot dominate the average and flash. The
+// average of compressed values weights samples by 1/(1+luma), and the inverse
+// (1/(1-luma')) restores the range afterward.
+static inline float4 ollin_taa_compress(float4 c) {
+    float3 y = ollin_taa_ycocg(max(c.rgb, 0.0));
+    return float4(y / (1.0 + y.x), c.a);
+}
+static inline float4 ollin_taa_decompress(float4 c) {
+    float3 y = c.xyz / max(1.0 - c.x, 1e-4);
+    return float4(ollin_taa_rgb(y), c.a);
+}
+
+// Clip toward the box center (not a per-component clamp, which collects
+// rejected history in the box corners): scale the center-to-history vector
+// back until it sits on the box face.
+static inline float4 ollin_taa_clip(float4 lo, float4 hi, float4 p) {
+    float4 center = 0.5 * (hi + lo);
+    float4 extent = 0.5 * (hi - lo) + 1e-5;
+    float4 v = p - center;
+    float4 unit = abs(v / extent);
+    float ma = max(max(unit.x, unit.y), max(unit.z, unit.w));
+    return ma > 1.0 ? center + v / ma : p;
+}
+
+// Catmull-Rom history resampling via 9 bilinear fetches (the separable weights
+// collapse the 4x4 footprint onto a 3x3 of taps). Bilinear alone convolves a
+// tent filter into the history every frame and the accumulation goes soft in a
+// few dozen frames; the negative lobes keep it sharp under repeated resampling.
+static inline float4 ollin_taa_history(texture2d<float> tex, sampler samp,
+                                       float2 uv, float2 texel) {
+    float2 pos = uv / texel;
+    float2 center = floor(pos - 0.5) + 0.5;
+    float2 f = pos - center;
+    float2 f2 = f * f, f3 = f2 * f;
+    float2 w0 = f2 - 0.5 * (f3 + f);
+    float2 w1 = 1.5 * f3 - 2.5 * f2 + 1.0;
+    float2 w3 = 0.5 * (f3 - f2);
+    float2 w2 = 1.0 - w0 - w1 - w3;
+    float2 w12 = w1 + w2;
+    float2 tc0 = (center - 1.0) * texel;
+    float2 tc12 = (center + w2 / w12) * texel;
+    float2 tc3 = (center + 2.0) * texel;
+    return tex.sample(samp, float2(tc0.x,  tc0.y))  * (w0.x  * w0.y)
+         + tex.sample(samp, float2(tc12.x, tc0.y))  * (w12.x * w0.y)
+         + tex.sample(samp, float2(tc3.x,  tc0.y))  * (w3.x  * w0.y)
+         + tex.sample(samp, float2(tc0.x,  tc12.y)) * (w0.x  * w12.y)
+         + tex.sample(samp, float2(tc12.x, tc12.y)) * (w12.x * w12.y)
+         + tex.sample(samp, float2(tc3.x,  tc12.y)) * (w3.x  * w12.y)
+         + tex.sample(samp, float2(tc0.x,  tc3.y))  * (w0.x  * w3.y)
+         + tex.sample(samp, float2(tc12.x, tc3.y))  * (w12.x * w3.y)
+         + tex.sample(samp, float2(tc3.x,  tc3.y))  * (w3.x  * w3.y);
+}
+
+// The resolve. Inputs: the frame's resolved color (rendered under this frame's
+// jitter), the `.min`-resolved scene depth, and the history front.
+// params[0] = (texel.xy, hasHistory, 0); params[1] = (jitter in pixels, 0, 0);
+// params[4..7] = the current inverse view-projection columns and
+// params[8..11] = the previous view·projection columns, both UNJITTERED: the
+// jitter is removed from the reprojection entirely (the published rule), so a
+// still pixel reprojects to exactly itself and only the *color samples* carry
+// the sub-pixel offsets the average integrates. Reconstructing through the
+// jittered inverse instead resamples the history at a different sub-pixel
+// offset every frame and its content random-walks (a measured live defect:
+// px-scale oscillation on every hairline edge).
+fragment float4 ollin_fx_taa_resolve(PresentOut in [[stage_in]],
+                                     texture2d<float> current [[texture(0)]],
+                                     depth2d<float> depthTex [[texture(1)]],
+                                     texture2d<float> history [[texture(2)]],
+                                     sampler samp [[sampler(0)]],
+                                     constant float4 *params [[buffer(0)]]) {
+    float2 texel = params[0].xy;
+    bool hasHistory = params[0].z > 0.5;
+    float2 jitterPx = params[1].xy;
+
+    // Reconstruct this frame's estimate at the *unjittered* pixel center: weight
+    // the 3x3 by a Gaussian (the published Blackman-Harris fit, e^-2.29r²) of each
+    // tap's distance from that center. A tap at offset d holds content whose
+    // unjittered position is d minus the jitter, so the weights re-center the
+    // shifted render (the jitter sequence's mean is not exactly zero, so an
+    // uncentered current would bias the whole image a fraction of a pixel) and
+    // trim the jitter-to-jitter variance the blend has to absorb.
+    float4 cur = 0.0;
+    float wsum = 0.0;
+    for (int y = -1; y <= 1; y++) {
+        for (int x = -1; x <= 1; x++) {
+            float2 d = float2(float(x), float(y)) - jitterPx;
+            float w = exp(-2.29 * dot(d, d));
+            cur += current.sample(samp, in.uv + float2(float(x), float(y)) * texel) * w;
+            wsum += w;
+        }
+    }
+    cur /= wsum;
+    if (!hasHistory) return cur;
+
+    // Closest-depth dilation: reproject by the front-most surface in the 3x3,
+    // so a silhouette pixel follows the foreground it belongs to. A moving
+    // edge otherwise samples the background's motion on half its pixels and
+    // loses its accumulated AA exactly where it matters.
+    constexpr sampler dsamp(filter::nearest);
+    float bestD = 1.0;
+    float2 bestUV = in.uv;
+    for (int y = -1; y <= 1; y++) {
+        for (int x = -1; x <= 1; x++) {
+            float2 uvn = in.uv + float2(float(x), float(y)) * texel;
+            float d = depthTex.sample(dsamp, uvn);
+            if (d < bestD) { bestD = d; bestUV = uvn; }
+        }
+    }
+    float2 prevUV = in.uv;
+    if (bestD < 1.0) {
+        float2 ndc = float2(bestUV.x * 2.0 - 1.0, 1.0 - bestUV.y * 2.0);
+        float4x4 invVP = float4x4(params[4], params[5], params[6], params[7]);
+        float4x4 prevVP = float4x4(params[8], params[9], params[10], params[11]);
+        float4 wp = invVP * float4(ndc, bestD, 1.0);
+        float4 clip = prevVP * float4(wp.xyz / wp.w, 1.0);
+        if (clip.w <= 0.0) return cur;                 // behind the previous camera
+        float2 pndc = clip.xy / clip.w;
+        float2 pUV = float2(pndc.x * 0.5 + 0.5, 0.5 - pndc.y * 0.5);
+        prevUV = in.uv + (pUV - bestUV);               // the dilated neighbor's motion, applied here
+        if (any(prevUV < 0.0) || any(prevUV > 1.0)) return cur;   // disoccluded / off-frame
+    }
+    // Screen-space motion in pixels: what the velocity-adaptive rectification
+    // below keys on (a camera-still pixel reprojects exactly, so its history
+    // deserves a wide box; a fast-moving one gets a tight one).
+    float motionPx = length((prevUV - in.uv) / texel);
+    // A 3x3 of pure far-plane depth is background: 2D content and the clear
+    // color sit still (identity is exact for them), and under a static camera
+    // the jittered sky still converges its average through the identity.
+
+    float4 hist = max(ollin_taa_history(history, samp, prevUV, texel), 0.0);
+
+    // Moment-based rectification in compressed YCoCg: the mean +/- one standard
+    // deviation of the current 3x3 bounds what the history may claim, so a
+    // stale value (a mover with no motion vector, a shading change) is pulled
+    // into this frame's local distribution instead of trailing. Moments ignore
+    // the single outlier tap that would inflate a min/max box.
+    float4 m1 = 0.0, m2 = 0.0;
+    for (int y = -1; y <= 1; y++) {
+        for (int x = -1; x <= 1; x++) {
+            float4 s = ollin_taa_compress(
+                current.sample(samp, in.uv + float2(float(x), float(y)) * texel));
+            m1 += s;
+            m2 += s * s;
+        }
+    }
+    float4 mu = m1 / 9.0;
+    float4 sigma = sqrt(max(m2 / 9.0 - mu * mu, 0.0));
+    // Velocity-adaptive box width (the production form of the moment clip): a
+    // still pixel's reprojection is exact, so the box opens to 2.5 sigma and a
+    // converged history rides untouched; under motion it tightens toward 0.75
+    // sigma, where stale history is the risk. At a fixed 1 sigma the box
+    // *itself* oscillates with the jitter phase and drags a converged hairline
+    // edge back and forth every frame (the clamp-sawtooth failure, measured
+    // live at 14-33/255 frame-to-frame on the static trellis).
+    float gamma = mix(2.5, 0.75, saturate((motionPx - 2.0) / 13.0));
+    float4 cc = ollin_taa_compress(cur);
+    float4 hcRaw = ollin_taa_compress(hist);
+    float4 hc = ollin_taa_clip(mu - gamma * sigma, mu + gamma * sigma, hcRaw);
+
+    // Adaptive feedback keyed to how far the clip just moved the history: a
+    // converged history sits inside the neighborhood's distribution (the clip
+    // untouched), keeps near-full trust, and the accumulated sub-pixel detail
+    // holds still; a history the clip had to drag (a real change, a
+    // disocclusion the reprojection missed) refreshes fast. Keying on the
+    // instantaneous jittered sample instead is a measured mistake: a hairline
+    // edge's sample disagrees with its own converged mean every frame by
+    // construction, so that form permanently distrusts exactly the pixels that
+    // need the longest memory, and the static trellis oscillated at 15-17/255.
+    float moved = abs(hcRaw.x - hc.x) / max(sigma.x, 1e-3);
+    float feedback = mix(0.97, 0.88, saturate(moved));
+    return ollin_taa_decompress(mix(cc, hc, feedback));
+}
+
+// Weighted running sum for the historyless export supersample: out = A + B*w.
+// The deterministic in-frame average over the jitter sequence (N renders at
+// w = 1/N): the within-one-frame equivalent of the live accumulation, so a
+// video export cannot flicker and a snapshot is byte-stable.
+fragment float4 ollin_fx_weighted_sum(PresentOut in [[stage_in]],
+                                      texture2d<float> accum [[texture(0)]],
+                                      texture2d<float> add [[texture(1)]],
+                                      sampler samp [[sampler(0)]],
+                                      constant float4 *params [[buffer(0)]]) {
+    return accum.sample(samp, in.uv) + add.sample(samp, in.uv) * params[0].x;
+}
+
 // MARK: - Separable subsurface scattering (the diffusion blur)
 //
 // Two fullscreen passes (horizontal, then vertical over the first's output) that
