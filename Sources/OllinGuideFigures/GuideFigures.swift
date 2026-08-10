@@ -225,24 +225,48 @@ enum GuideFigures {
         let previous = loadCache(cachePath)
         var cache = previous
         let frameworkChanged = cache.framework != digest
+        var renderAll = force
         if frameworkChanged || cache.version != Cache.currentVersion {
-            if !cache.figures.isEmpty {
-                print("guide-figures: the framework changed, so every figure is re-rendered")
+            if only == nil || cache.version != Cache.currentVersion {
+                if !cache.figures.isEmpty {
+                    print("guide-figures: the framework changed, so every figure is re-rendered")
+                }
+                cache = Cache(version: Cache.currentVersion, framework: digest, figures: [:])
+            } else {
+                // A filtered run keeps the cache exactly as it was: adopting
+                // the new digest while recording only the matches would leave
+                // the next full run with no `previous` entries, so the
+                // unstable figures' committed images would be rewritten, the
+                // very thing `verifyOnly` exists to prevent. The old digest
+                // stays, so that full run still re-renders the world.
+                print("guide-figures: the framework changed; a filtered run"
+                      + " renders its matches but leaves the cache alone, so"
+                      + " the next full run still re-renders everything")
+                renderAll = true
             }
-            cache = Cache(version: Cache.currentVersion, framework: digest, figures: [:])
         }
 
-        let staleFigures = force ? figures : figures.filter {
+        let staleFigures = renderAll ? figures : figures.filter {
             isStale($0, cache: cache, figuresDir: figuresDir, imagesDir: imagesDir)
         }
         // An `unstable` figure whose own source is unchanged is only being
         // redone because the framework moved, so verify it without touching its
         // committed image (see `Work`). This reads the pre-reset cache, since a
-        // framework change is exactly the case it is here to handle.
-        let stale = staleFigures.map { figure in
-            Work(figure: figure,
-                 verifyOnly: previous.figures[figure]?.unstable == true
-                     && unchanged(figure, cache: previous, figuresDir: figuresDir))
+        // framework change is exactly the case it is here to handle. With no
+        // entry at all (the cache is gitignored, so a fresh clone or a cleared
+        // cache), the figure's own directive is the fallback: `render` only
+        // verifies when the committed image exists, so a brand-new unstable
+        // figure still gets its image written, and re-recording an edited one
+        // with no cache entry means deleting its image first.
+        let stale = staleFigures.map { figure -> Work in
+            let verifyOnly: Bool
+            if let entry = previous.figures[figure] {
+                verifyOnly = entry.unstable
+                    && unchanged(figure, cache: previous, figuresDir: figuresDir)
+            } else {
+                verifyOnly = directiveIsUnstable(figure, figuresDir: figuresDir)
+            }
+            return Work(figure: figure, verifyOnly: verifyOnly)
         }
         let skipped = figures.count - stale.count
         guard !stale.isEmpty else {
@@ -507,6 +531,15 @@ enum GuideFigures {
 
     // MARK: - Staleness
 
+    /// Whether a figure's own source carries the `unstable` directive, read
+    /// directly when the cache has no entry to say so.
+    private static func directiveIsUnstable(_ relative: String,
+                                            figuresDir: String) -> Bool {
+        guard let data = FileManager.default.contents(atPath: figuresDir + "/" + relative),
+              let source = String(data: data, encoding: .utf8) else { return false }
+        return Directive(source: source).unstable
+    }
+
     /// Whether a figure's own source still matches what the cache recorded,
     /// regardless of the framework digest that may have invalidated the entry.
     private static func unchanged(_ relative: String, cache: Cache,
@@ -654,7 +687,9 @@ enum GuideFigures {
         Unchanged figures are skipped using Guide/.figure-cache.json, which is
         keyed on each figure's source, its rendered image, and a digest of the
         framework. Editing anything under Sources/ or External/ re-renders
-        everything, since that can change what any figure draws.
+        everything, since that can change what any figure draws. A --only run
+        after such an edit renders just its matches and leaves the cache
+        untouched, so the next full run still re-renders everything.
 
         A figure whose first line carries `// figure: unstable` is cached on its
         source alone: its render is genuinely not reproducible, so its committed
