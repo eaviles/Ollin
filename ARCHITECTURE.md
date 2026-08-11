@@ -2770,6 +2770,106 @@ clamp absorbs it as before.
 
 ---
 
+## Motion blur
+
+`motionBlur(shutter:)` is the velocity buffer's second customer: the published
+plausible-motion-blur reconstruction filter (the TileMax/NeighborMax
+dominant-velocity pyramid plus a classified per-pixel gather; Techniques list
+in ATTRIBUTION.md), run as four fullscreen effect passes over the resolved
+linear frame, after the temporal-AA resolve and before the frame filters, so
+the blur reads settled edges and a bloom or grade reads the streaks. Per-frame
+state like TAA, the same envelope (main canvas, active 3D camera, any Metal
+GPU), and a photographic dial: `shutter` is the fraction of a frame interval
+the virtual shutter stays open, 0.5 the film-standard 180-degree look, the
+half of which enters the math because the published spread is the
+*half*-velocity (a streak centers on the instant rather than trailing it).
+
+**The chain.** Pass 1 (`ollin_mb_fill`) builds the full-screen velocity field
+the paper assumes: where the mover pass wrote a texel that per-object motion
+wins, everywhere else the pixel's world position (reconstructed from the
+`.min`-resolved depth through the unjittered inverse view-projection)
+reprojects through last frame's view-projection, which is the temporal
+resolve's own fallback math per-pixel. The result is scaled by the
+half-shutter and magnitude-clamped to the published `[0.5px, k]` (a whisper of
+motion rounds up to half a pixel so the gather's center weight stays bounded;
+nothing streaks past the tile radius the pyramid assumes), and the pixel's
+camera-space depth rides the same texel's z. This fill is, incidentally, the
+full-screen motion texture MetalFX's scaler needs, minus the shutter scale and
+clamp: the camera-baseline-fill prerequisite exists once this runs. Passes 2
+and 3 reduce that field to each k-pixel tile's largest velocity, then each
+tile's 3x3-neighborhood largest, so every pixel knows about any mover whose
+streak can reach it (velocities are clamped to k, one tile, so 3x3 suffices).
+Pass 4 gathers S taps along the neighborhood's dominant velocity and weighs
+each by the paper's three continuous cases: a blurry tap in *front* of the
+pixel streaks over it (its cone says whether its spread reaches this far), a
+tap *behind* a blurry pixel estimates the background the streak uncovers, and
+two taps blurring together share a cylinder weight. All classification is
+continuous (soft depth compare over an extent, cones and cylinders over
+distances), so there is no sorting and no tap ordering; the center pixel opens
+the sum at the inverse of its own velocity magnitude, which is what keeps a
+sharp pixel heavy and a fast one light. k is resolution-relative
+(`height/36`, clamped 16...64, reproducing the published 20 px at 720 tall)
+and S resolves 9/15/27 from the frame-wide automatic quality (the TAA
+no-per-knob rule, so export's automatic `.detail` lifts it).
+
+**Where the cross-frame state lives is the design decision.** The previous
+camera is kept on the *Drawer* (`previousCamera3D`, saved in `beginFrame`
+before the per-frame reset), not on a renderer history slot, because
+`beginFrame` runs once per `draw()` on every path: live, the same-frame
+repeat, and the headless export drive, which already calls `performDraw()`
+for every warmup frame, all read the same value with no new machinery. That
+is what makes the export deterministic for free (exported frame k reads frame
+k-1's camera and movers exactly like the live window) and what makes repeats
+correct: by the time a repeat re-encodes, the TAA slot's stored matrix has
+already advanced to *this* frame's, so the blur re-encodes the mover pass
+itself through the shared `encodeMoverVelocity` core against the drawer's
+matrix (the identical value the slot held when the first encode ran). The TAA
+entry point (`encodeVelocityPass`) keeps its exact gates and its slot matrix,
+so the shipped TAA path is untouched down to the byte; when both features run
+on a live frame the blur simply reuses the TAA pass's texture, and the two
+sources cannot disagree because the matrices are equal by construction.
+
+**Byte-identity is layered.** Off, nothing runs (the guards return the
+resolved frame). On but still, the chain skips on the CPU: the previous and
+current view-projections compare float-equal and no mover range was recorded,
+so a static scene with the blur on renders byte-identically to one without
+it. On with a still *mover*, the mover pass writes zero motion, every
+neighborhood's dominant velocity sits under the half-pixel floor, and the
+reconstruction's early-out copies each pixel through by nearest-sample read,
+which is value-exact. Frame 0 has no previous camera and returns unblurred by
+definition. The backdrop rule is deliberate: a pixel at depth exactly 1 (2D
+drawing, the clear color, the environment skybox) writes zero velocity, the
+temporal resolve's own background treatment, so captions and overlays never
+smear under a camera move; the cost is that the sky does not streak under a
+pan, the documented envelope. The soft-depth extent is 1% of the eye-to-target
+distance (the `sceneScale` proxy the sparkle cells and RT bias already ride),
+not a fixed world constant: the published 1mm-10cm figures assume meter-scale
+scenes, and a tuned screen-space constant hiding a scale assumption is the
+subsurface-scattering lesson repeated.
+
+Degenerate-input guards in the shaders are epsilon-shaped rather than
+branched: a zero-velocity tap's cone divides by a floored magnitude (else
+0/0), the cylinder's smoothstep edges are held apart (edge0 == edge1 divides
+by zero at the boundary), and a tap that rounds onto the center pixel
+contributes benignly instead of NaN-ing the sum. The gather jitter is
+`hash12` of the pixel position, the dither's position-pure rule, so two
+renders of one frame are byte-identical and video exports cannot shimmer.
+
+Verification (`MotionBlurTests`, 12, over 1:1 orthographic scenes so
+expectations are exact pixels): streak-direction twins (a horizontal mover
+streaks along x and not y, the vertical twin the reverse), the tile-pyramid
+reach (a background pixel in the tile *next to* a small fast mover, whose own
+tile max is zero, still gathers the streak), camera-only blur with no
+`withMotion` in sight, shutter scaling at a pixel only the wide spread
+reaches, the still-frame / still-mover / frame-0 / 2D byte-identity gates,
+backdrop stillness under a pan, and two-render determinism. The neighbor-max
+skip, velocity-axis swap, and mover-texture drop sabotages each read red
+exactly where expected (the mover drop failing the mover streak while the
+camera streak stays green). The snapshot `motion-blur` pins the whole chain at
+frame 2 on any Metal GPU.
+
+---
+
 ## User-supplied shaders
 
 A sketch writes its own fragment shader and runs it through the effect graph.

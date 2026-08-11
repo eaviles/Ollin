@@ -545,6 +545,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("taa",
                  note: "Thin tilted slats and a sphere under temporalAntialiasing(): pins the deterministic export path (N jittered geometry renders under the fixed sequence, averaged within the frame), the jittered-projection plumbing on the mesh path, and the weighted-sum normalization. Fixed camera, no time; runs on any Metal GPU.",
                  make: { TAAScene() }),
+    SnapshotCase("motion-blur", frame: 2,
+                 note: "A sphere mover crossing a still colonnade under a panning camera with motionBlur() on, captured at frame 2 (frame k reads frame k-1's camera and movers, so the streak is a pure function of the frame pair). Pins the whole chain: the full-screen velocity fill (the mover texture over the depth-reprojected camera motion), the tile/neighbor dominant-velocity pyramid, the three-case reconstruction gather with its position-pure jitter, and the shutter scale. Runs on any Metal GPU.",
+                 make: { MotionBlurScene() }),
 ]
 
 /// The ray-tracing-gated snapshots: on a ray-tracing GPU a point caster resolves to the RT
@@ -599,6 +602,39 @@ private final class TAAScene: Sketch {
             fill(Color(red: 0.75, green: 0.35, blue: 0.25))
             translate(1.2, 0.7, 0.8)
             drawSphere(radius: 0.55)
+        }
+        withState { fill(Color(white: 0.3)); translate(0, -0.1, 0); drawPlane(width: 9, depth: 9) }
+    }
+}
+
+/// A fast sphere mover and a still colonnade under a panning camera with
+/// `motionBlur()` on: the sphere streaks along its own declared motion, the
+/// columns pick up the camera's, and the backdrop holds still. Motion is a pure
+/// function of `frameCount`, so frame 2 always reads the same frame-1 state.
+private final class MotionBlurScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.04))
+        let pan = 0.12 * Double(frameCount)
+        perspective(eye: Vector3(pan, 1.4, 4.6), target: Vector3(pan, 0.7, 0),
+                    fieldOfView: .pi / 3.2, near: 0.5, far: 30)
+        ambientLight(Color(white: 0.10))
+        directionalLight(.white, direction: Vector3(-0.4, -1, -0.6), intensity: 0.9)
+        motionBlur(shutter: 1)
+        fill(Color(white: 0.6))
+        for i in 0..<5 {
+            withState {
+                translate(-2.0 + Double(i), 0.7, -0.8)
+                drawBox(width: 0.16, height: 1.8, depth: 0.16)
+            }
+        }
+        withMotion {
+            withState {
+                fill(Color(red: 0.85, green: 0.62, blue: 0.2))
+                translate(-1.6 + 0.55 * Double(frameCount), 0.85, 0.7)
+                drawSphere(radius: 0.4)
+            }
         }
         withState { fill(Color(white: 0.3)); translate(0, -0.1, 0); drawPlane(width: 9, depth: 9) }
     }

@@ -322,6 +322,15 @@ final class Drawer {
     /// through it; a 2D-only frame leaves it `nil` and is untouched.
     private(set) var camera3D: Camera3D?
 
+    /// Last frame's camera, kept across `beginFrame`: the cross-frame half of the
+    /// motion-blur velocity computation (the mover registry's camera sibling). It
+    /// lives here rather than on a renderer history slot so the live, repeat, and
+    /// headless-export paths all read the same value: `beginFrame` runs once per
+    /// `draw()` on every path, so exported frame k sees frame k-1's camera exactly
+    /// like the live window does. `nil` before the first frame that draws a camera;
+    /// with no previous camera nothing has moved yet, so there is nothing to blur.
+    private(set) var previousCamera3D: Camera3D?
+
     /// One declared mover's mesh range this frame (`withMotion`): the vertices
     /// `[start, start + count)` of `meshVertices`, plus the transform that takes
     /// their baked *current* world-space positions back to where last frame's
@@ -437,6 +446,18 @@ final class Drawer {
     /// headless/export path instead averages N deterministically jittered renders
     /// within each frame. Works on any Metal GPU (no ray tracing involved).
     private(set) var temporalAAEnabled = false
+
+    /// Whether this frame motion-blurs the 3D scene (see `motionBlur`). Per-frame
+    /// state like `temporalAAEnabled`. When on (and a 3D camera is active), the
+    /// renderer streaks the resolved frame along per-pixel screen motion: camera
+    /// motion from the depth buffer, per-object motion from `withMotion` blocks.
+    private(set) var motionBlurEnabled = false
+
+    /// The blur's shutter: the fraction of a frame interval the virtual shutter
+    /// stays open, so 0.5 is the film-standard 180-degree shutter (a streak half
+    /// the frame-to-frame travel), 1 a full-interval smear, and values past 1 an
+    /// artistic overdrive. Meaningful while `motionBlurEnabled` is set.
+    private(set) var motionBlurShutter: Double = 0.5
 
     /// The global-illumination quality knob (`globalIlluminationQuality`): a persistent
     /// `RenderQuality` tier (not reset each frame, like `shadowQualitySetting`) the renderer
@@ -1818,6 +1839,20 @@ final class Drawer {
     /// Stop temporally anti-aliasing (the default). Per-frame state.
     func noTemporalAntialiasing() { temporalAAEnabled = false }
 
+    /// Motion-blur the 3D scene this frame: streak each pixel along its screen
+    /// motion, camera motion read from the depth buffer and per-object motion from
+    /// `withMotion` blocks. `shutter` is the fraction of a frame the virtual
+    /// shutter stays open (0.5 = the film-standard 180-degree look). Per-frame
+    /// state like the lights; set it in `draw()`. A no-op without an active 3D
+    /// camera, and on the very first frame (nothing has moved yet).
+    func motionBlur(shutter: Double = 0.5) {
+        motionBlurEnabled = true
+        motionBlurShutter = max(0, shutter)
+    }
+
+    /// Stop motion-blurring (the default). Per-frame state.
+    func noMotionBlur() { motionBlurEnabled = false }
+
     /// Set the global-illumination quality to a hardware-relative tier (the renderer picks
     /// the rays per probe for the GPU, and the headless convergence depth). Persistent
     /// (set once, in `setup()` or `draw()`).
@@ -2254,9 +2289,10 @@ final class Drawer {
     /// The drawer remembers each draw's model matrix under a call-site identity
     /// and, from the second frame on, records the range with the transform back
     /// to last frame's placement; the renderer's velocity pass turns that into
-    /// per-pixel screen motion. Purely additive: without `temporalAntialiasing()`
-    /// (or before a mover's second frame) nothing changes, and geometry outside
-    /// any block keeps the camera-only reprojection it has today.
+    /// per-pixel screen motion, which temporal AA reprojects by and motion blur
+    /// streaks along. Purely additive: without `temporalAntialiasing()` or
+    /// `motionBlur()` (or before a mover's second frame) nothing changes, and
+    /// geometry outside any block keeps the camera-only reprojection it has today.
     func withMotion(source: String, _ body: () -> Void) {
         let occurrence = moverOccurrence[source, default: 0]
         moverOccurrence[source] = occurrence + 1
@@ -2577,6 +2613,10 @@ final class Drawer {
         batches.removeAll(keepingCapacity: true)
         dispatches.removeAll(keepingCapacity: true)
         currentKind = nil
+        // Keep last frame's camera for the motion-blur velocity fill before the
+        // slot resets; a frame that set none leaves the previous one in place so
+        // one camera-less frame doesn't erase the cross-frame memory.
+        previousCamera3D = camera3D ?? previousCamera3D
         camera3D = nil
         // The mover registry: ranges and occurrence counters are per-frame; the
         // history persists (it's the cross-frame memory) but drops entries not
@@ -2601,6 +2641,8 @@ final class Drawer {
         globalIlluminationEnabled = false
         giIntensity = 1
         temporalAAEnabled = false
+        motionBlurEnabled = false
+        motionBlurShutter = 0.5
         // Atmosphere is per-frame like the lights (the quality setting persists).
         fogColor = nil
         fogDensity = 0

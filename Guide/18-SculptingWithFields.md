@@ -294,6 +294,27 @@ One thing the average can't know on its own is where a *moving object* was last 
 
 The [`TemporalAA` example](../Examples/3D/Effects/TemporalAA/Sketch.swift) is a trellis of thin tilted rods under a slow camera sway, with the toggle on a knob, plus an orbiting bar whose `withMotion` has a knob of its own; flip them mid-motion and watch the edges stop crawling. The scenes where it makes the most difference are exactly that kind: hairline geometry, high contrast, movement.
 
+## The streak a shutter leaves
+
+A rendered frame is an instant: everything in it is perfectly sharp, no matter how fast it was going. A film frame is not. A real camera's shutter stays open for a slice of each frame, and anything that moved during that slice smears along its path. Your eye has spent a lifetime learning that fast things streak, which is why rendered motion can feel like a strobe: the picture keeps saying *is* when it should sometimes say *was going*. A sharp frame says where things are; a streak says where they're going.
+
+```swift
+motionBlur()                 // the film-standard 180-degree shutter
+withMotion {
+    rotate(time * 2.5, axis: .unitY)
+    translate(2.5, 1, 0)
+    drawSphere(radius: 0.4)  // streaks along its orbit
+}
+```
+
+<img src="Images/18-SculptingWithFields/MotionStreak.jpg" alt="Three colored spheres orbiting a ring of gray columns. The fast yellow sphere draws a long horizontal streak, the middle orange one a short smear, the slow blue one is nearly crisp, and the columns stay perfectly sharp" width="640">
+
+The figure is one still frame, and it already tells you who is moving and how fast: the fast sphere draws a long streak along its orbit, the middle one a short smear, the slow one barely softens, and the columns stay razor sharp. That's the whole contract. Each pixel streaks along *its own* motion: the camera's movement is read from the depth buffer with no declaration at all (pan past a still scene and the whole scene smears by exactly how far it slid), and an object moving on its own declares itself with the same `withMotion { }` block temporal AA already uses, one wrapper serving both systems.
+
+`shutter` is the photographic dial. The default `0.5` is the film standard (the shutter open for half of each frame, the look every movie trained you on); drop it toward `0.1` and motion turns crisp and staccato, the action-movie look; raise it to `1` for a full frame of smear, and past it for a streak no real camera could make. Because the blur reads the motion *between frames*, an export carries it deterministically: frame k streaks by exactly how things moved since frame k-1, a video export looks like the live window, and the very first frame, with nothing before it, is honestly sharp.
+
+The [`MotionBlur` example](../Examples/3D/Effects/MotionBlur/Sketch.swift) is the figure's scene live, with the toggle and the shutter on knobs; slide the shutter while the spheres orbit and watch the same motion go from strobe to smear. Captions, 2D overlays, and the environment backdrop never streak, so the interface stays still while the world moves.
+
 ## Glass
 
 There has been a way to make a surface see-through since Chapter 17: give the `fill` some alpha, and the surface fades. Glass is a different thing. The surface stays fully there, with its highlights and reflections, and the *light* comes through instead, bent and tinted on the way. That's transmission, and it's one material call:

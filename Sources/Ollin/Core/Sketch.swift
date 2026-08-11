@@ -1008,6 +1008,28 @@ open class Sketch {
     /// Stop temporally anti-aliasing (the default).
     public func noTemporalAntialiasing() { drawer.noTemporalAntialiasing() }
 
+    /// Motion-blur the 3D scene this frame, the cinematic streak a real camera's
+    /// open shutter leaves: each pixel smears along its own screen motion, with
+    /// camera movement read from the depth buffer (so panning past a still scene
+    /// streaks the whole frame) and per-object movement from the same
+    /// `withMotion { }` blocks temporal AA uses (so a mesh flying through a still
+    /// frame streaks alone, exactly along its path). `shutter` is the fraction of
+    /// a frame interval the virtual shutter stays open: the 0.5 default is the
+    /// film-standard 180-degree shutter, smaller values are crisper, 1 smears a
+    /// full frame of travel, and values past 1 overdrive the streak for effect.
+    /// Exports carry it deterministically (frame k reads the motion from frame
+    /// k-1's camera and movers, so a video export streaks exactly like the live
+    /// window and two exports of one frame are byte-identical). Per-frame state
+    /// like the lights and camera, so call it in `draw()` after the camera; it
+    /// applies to the main canvas (not layers or the accumulation surface), needs
+    /// an active 3D camera, and does nothing on the very first frame (nothing has
+    /// moved yet). The environment backdrop and 2D drawing hold still by design.
+    /// Works on any Metal GPU. Call `noMotionBlur()` to turn it back off.
+    public func motionBlur(shutter: Double = 0.5) { drawer.motionBlur(shutter: shutter) }
+
+    /// Stop motion-blurring (the default).
+    public func noMotionBlur() { drawer.noMotionBlur() }
+
     /// Set the global-illumination quality (how many rays each light probe traces per
     /// update) as a **hardware-relative** tier, the `shadowQuality` dial's GI sibling:
     /// `.performance` favors frame rate with a grainier, slower-converging bounce,
@@ -1384,18 +1406,19 @@ open class Sketch {
     }
 
     /// Declare that the meshes drawn inside the block move together as one thing,
-    /// so `temporalAntialiasing()` follows them exactly while they move. Temporal
-    /// AA accumulates each pixel across frames; camera motion is already followed
-    /// per pixel, but a mesh that moves in *world* space (a spun `rotate`, a
-    /// physics body, an animated scene) leaves no trail of where it was, so its
-    /// moving edges fall back to a conservative blend and lose their refinement.
-    /// Inside the block, Ollin remembers each draw's placement from frame to
-    /// frame under the call site's identity and hands the renderer its exact
-    /// screen motion. Two same-line blocks (a loop) keep separate identities by
-    /// occurrence order; use the named form to pin identity explicitly when call
-    /// order varies. Purely additive: with temporal AA off (or for a still mesh)
-    /// nothing changes, and wireframes, point clouds, and raymarched fields keep
-    /// the default handling.
+    /// so `temporalAntialiasing()` follows them exactly while they move and
+    /// `motionBlur()` streaks them along their own path. Both read per-pixel
+    /// motion; camera motion is already followed per pixel, but a mesh that
+    /// moves in *world* space (a spun `rotate`, a physics body, an animated
+    /// scene) leaves no trail of where it was, so under temporal AA its moving
+    /// edges fall back to a conservative blend, and under motion blur it takes
+    /// only the camera's streak. Inside the block, Ollin remembers each draw's
+    /// placement from frame to frame under the call site's identity and hands
+    /// the renderer its exact screen motion. Two same-line blocks (a loop) keep
+    /// separate identities by occurrence order; use the named form to pin
+    /// identity explicitly when call order varies. Purely additive: with both
+    /// features off (or for a still mesh) nothing changes, and wireframes,
+    /// point clouds, and raymarched fields keep the default handling.
     public func withMotion(file: String = #fileID, line: Int = #line,
                            _ body: () -> Void) {
         drawer.withMotion(source: "\(file):\(line)", body)

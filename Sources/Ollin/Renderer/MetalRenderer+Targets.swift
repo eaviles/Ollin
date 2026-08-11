@@ -1037,9 +1037,24 @@ extension MetalRenderer {
     func encodeVelocityPass(_ drawer: Drawer, into cb: MTLCommandBuffer,
                             meshBuffer: MTLBuffer?, width: Int, height: Int) -> MTLTexture? {
         guard temporalAAActive(drawer), !statefulEncodeIsRepeat,
-              let camera = drawer.camera3D, let meshBuffer,
+              let slot = taaHistory, slot.valid, slot.w == width, slot.h == height
+        else { return nil }
+        return encodeMoverVelocity(drawer, into: cb, meshBuffer: meshBuffer,
+                                   width: width, height: height,
+                                   previousViewProjection: slot.previousViewProjection)
+    }
+
+    /// The mover-velocity encode core, shared by the temporal-AA pass above (which
+    /// reprojects through its history slot's stored matrix) and the motion-blur
+    /// chain (which reprojects through the drawer's previous camera, so it also
+    /// runs on repeats and on the headless export path, where no slot exists).
+    /// Same pipelines, same cached target, byte-identical encoding for a given
+    /// previous view projection.
+    private func encodeMoverVelocity(_ drawer: Drawer, into cb: MTLCommandBuffer,
+                                     meshBuffer: MTLBuffer?, width: Int, height: Int,
+                                     previousViewProjection: simd_float4x4) -> MTLTexture? {
+        guard let camera = drawer.camera3D, let meshBuffer,
               !drawer.moverRanges.isEmpty,
-              let slot = taaHistory, slot.valid, slot.w == width, slot.h == height,
               let velPipe = try? pipeline(.meshVelocity(depth: depthPixelFormat)),
               let occPipe = try? pipeline(.meshVelocityOccluder(depth: depthPixelFormat))
         else { return nil }
@@ -1076,7 +1091,7 @@ extension MetalRenderer {
         enc.setDepthStencilState(depthTestState)
         // Unjittered on both ends (the resolve's own rule): `makeUniforms3D`'s
         // default zero jitter leaves the projection untouched, and the previous
-        // view·projection is the slot's, stored unjittered by the resolve.
+        // view projection arrives unjittered from either caller.
         var u3 = makeUniforms3D(drawer, camera: camera,
                                 viewport: SIMD2(Float(width), Float(height)))
         enc.setVertexBytes(&u3, length: MemoryLayout<Uniforms3D>.stride, index: 2)
@@ -1111,7 +1126,7 @@ extension MetalRenderer {
         // Phase 2: the movers, each carried back through last frame's matrices.
         enc.setRenderPipelineState(velPipe)
         for r in ranges {
-            var vu = OllinVelocityUniforms(previousViewProjection: slot.previousViewProjection,
+            var vu = OllinVelocityUniforms(previousViewProjection: previousViewProjection,
                                            previousOfCurrent: r.previousOfCurrent)
             enc.setVertexBytes(&vu, length: MemoryLayout<OllinVelocityUniforms>.stride, index: 3)
             enc.setVertexBuffer(meshBuffer, offset: r.start * meshStride, index: 0)
@@ -1249,6 +1264,113 @@ extension MetalRenderer {
         slot.valid = true
         slot.flipped.toggle()   // the just-written back is next frame's (and any repeat's) front
         return back
+    }
+
+    // MARK: - Motion blur
+
+    /// Whether motion blur runs this frame: the sketch asked (with a nonzero
+    /// shutter) and a 3D camera is active. Notes once when asked without a
+    /// camera (a 2D frame has no depth to read motion from, and its content
+    /// holds still by design).
+    func motionBlurActive(_ drawer: Drawer) -> Bool {
+        guard drawer.motionBlurEnabled, drawer.motionBlurShutter > 0 else { return false }
+        guard drawer.camera3D != nil else {
+            drawer.noteOnce("motionBlur() applies to the 3D scene; without an active camera the frame is unchanged.")
+            return false
+        }
+        return true
+    }
+
+    /// Reconstruction taps per pixel along the dominant velocity, resolved from
+    /// the frame-wide automatic quality (the temporal-AA sample rule: no
+    /// per-feature knob; export's automatic `.detail` lifts it). Odd, so the
+    /// tap comb is symmetric about the center pixel.
+    func resolveMotionBlurSamples() -> Int {
+        switch effectiveQuality(.default) {
+        case .performance: return 9
+        case .default:     return 15
+        case .detail:      return 27
+        }
+    }
+
+    /// The blur's tile size and maximum streak radius k, in pixels: resolution-
+    /// relative so a streak covers the same fraction of the frame at any canvas
+    /// size (h/36 reproduces the published 20 px at 720 tall), floored so tiles
+    /// stay meaningful on tiny canvases and capped where a huge k would thrash
+    /// the gather's texture locality.
+    static func motionBlurTileSize(height: Int) -> Int {
+        min(64, max(16, Int((Double(height) / 36).rounded())))
+    }
+
+    /// Apply the motion-blur reconstruction to the resolved linear frame,
+    /// returning the texture the frame filters should read: the input itself
+    /// when the blur isn't active, there's no depth resolve, no frame has gone
+    /// before (nothing has moved), or the frame is exactly still (the camera
+    /// float-equal to last frame's and no mover recorded), so a static scene
+    /// with the blur on stays byte-identical to one without it.
+    ///
+    /// `moverVelocity` is the temporal-AA velocity texture when that pass
+    /// already rendered this frame; otherwise (blur without TAA, a same-frame
+    /// repeat, the headless export) the chain encodes its own through the same
+    /// core against the drawer's previous camera, which is the same matrix the
+    /// TAA slot carries when both are on, so the two sources cannot disagree.
+    func applyMotionBlur(_ drawer: Drawer, resolved: MTLTexture, depth: MTLTexture?,
+                         moverVelocity: MTLTexture?, meshBuffer: MTLBuffer?,
+                         into cb: MTLCommandBuffer, width: Int, height: Int,
+                         pooled: Bool) -> MTLTexture {
+        guard motionBlurActive(drawer), let camera = drawer.camera3D, let depth,
+              let previous = drawer.previousCamera3D else { return resolved }
+        let aspect = height > 0 ? Double(width) / Double(height) : 1
+        let curVP = camera.projectionMatrix(aspect: aspect) * camera.viewMatrix
+        let prevVP = previous.projectionMatrix(aspect: aspect) * previous.viewMatrix
+        if prevVP == curVP && drawer.moverRanges.isEmpty { return resolved }
+
+        let mover = moverVelocity ?? encodeMoverVelocity(
+            drawer, into: cb, meshBuffer: meshBuffer,
+            width: width, height: height, previousViewProjection: prevVP)
+        let k = MetalRenderer.motionBlurTileSize(height: height)
+        let tilesW = (width + k - 1) / k
+        let tilesH = (height + k - 1) / k
+        guard let fill = acquireFilterTexture(width: width, height: height, pooled: pooled),
+              let tileMax = acquireFilterTexture(width: tilesW, height: tilesH, pooled: pooled),
+              let neighborMax = acquireFilterTexture(width: tilesW, height: tilesH, pooled: pooled),
+              let output = acquireFilterTexture(width: width, height: height, pooled: pooled)
+        else { return resolved }
+
+        let invVP = simd_inverse(curVP)
+        let eye = camera.eye.simd3
+        let fwd = simd_normalize(camera.target.simd3 - eye)
+        // The soft-depth extent scales with the scene (the eye-to-target framing
+        // proxy every scale-dependent constant here rides), so "how close is a
+        // depth tie" means the same thing in a hand-sized scene and a terrain.
+        let sceneScale = max(simd_distance(camera.eye.simd3, camera.target.simd3), 1)
+        var params = [SIMD4<Float>](repeating: .zero, count: 12)
+        params[0] = SIMD4(1 / Float(width), 1 / Float(height),
+                          Float(0.5 * drawer.motionBlurShutter), Float(k))
+        params[1] = SIMD4(mover != nil ? 1 : 0, 0, 0, 0)
+        params[2] = invVP.columns.0; params[3] = invVP.columns.1
+        params[4] = invVP.columns.2; params[5] = invVP.columns.3
+        params[6] = prevVP.columns.0; params[7] = prevVP.columns.1
+        params[8] = prevVP.columns.2; params[9] = prevVP.columns.3
+        params[10] = SIMD4(eye, 0)
+        params[11] = SIMD4(fwd, 0)
+        encodeEffectFragment("ollin_mb_fill", inputs: [depth, mover ?? resolved],
+                             output: fill, params: params, into: cb)
+        encodeEffectFragment("ollin_mb_tilemax", inputs: [fill], output: tileMax,
+                             params: [SIMD4(1 / Float(width), 1 / Float(height), Float(k), 0)],
+                             into: cb)
+        encodeEffectFragment("ollin_mb_neighbormax", inputs: [tileMax], output: neighborMax,
+                             params: [SIMD4(1 / Float(tilesW), 1 / Float(tilesH), 0, 0)],
+                             into: cb)
+        let taps = resolveMotionBlurSamples()
+        encodeEffectFragment("ollin_mb_reconstruct", inputs: [resolved, fill, neighborMax],
+                             output: output,
+                             params: [SIMD4(1 / Float(width), 1 / Float(height),
+                                            Float(k), Float(taps)),
+                                      SIMD4(0.01 * sceneScale,
+                                            1 / Float(tilesW), 1 / Float(tilesH), 0)],
+                             into: cb)
+        return output
     }
 
     /// The mesh-normal G-buffer pass: re-render a target's meshes MSAA + depth-tested,

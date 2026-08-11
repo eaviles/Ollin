@@ -192,6 +192,7 @@ let package = Package(
         example("3D/Effects/AmbientOcclusion"),
         example("3D/Effects/ScreenSpaceReflections"),
         example("3D/Effects/Fog"),
+        example("3D/Effects/MotionBlur"),
         example("3D/Effects/TemporalAA"),
         example("3D/Effects/RayTracedReflections"),
         example("3D/Geometry/TexturedMesh"),

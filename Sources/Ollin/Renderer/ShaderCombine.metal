@@ -1173,6 +1173,204 @@ fragment float4 ollin_fx_weighted_sum(PresentOut in [[stage_in]],
     return accum.sample(samp, in.uv) + add.sample(samp, in.uv) * params[0].x;
 }
 
+// MARK: - Motion blur (the velocity-buffer reconstruction filter)
+//
+// Four fullscreen passes over the resolved linear pre-tonemap frame, written
+// from the published plausible-motion-blur reconstruction technique (see
+// ATTRIBUTION.md): a full-screen velocity fill (per-object motion where the
+// mover pass wrote it, depth-reprojected camera motion everywhere else, the
+// magnitude clamped to [0.5px, k]), a tile pyramid reducing that to each
+// k-pixel tile's dominant velocity (the per-tile max, then the 3x3 neighbor
+// max, so a mover's blur can reach every pixel its streak covers), and the
+// reconstruction gather: S taps along the neighborhood's dominant velocity,
+// each classified continuously by relative depth and blurriness (cone /
+// cylinder / soft depth compare), so a moving surface streaks past its own
+// silhouette, a sharp background stays sharp behind it, and a blurry
+// foreground lets the background it uncovers show through. Velocities are
+// pixels; camera-space depth rides the fill's z as small negative values (the
+// published convention: nearer is larger). The per-pixel gather jitter is a
+// pure function of pixel position (the dither's rule), so exports reproduce.
+
+// Is X inside Y's own point-spread (a tap can only contribute where its blur
+// reaches)? The max keeps a zero-velocity tap from dividing by zero: 1 - d/0
+// would be -inf (clamped fine), but d = 0 over len = 0 would be NaN.
+static inline float ollin_mb_cone(float dist, float len) {
+    return clamp(1.0 - dist / max(len, 1e-3), 0.0, 1.0);
+}
+
+// Do X and Y blur together (both inside each other's velocity spread)? The
+// epsilon keeps smoothstep's edges apart when a tap's velocity is zero
+// (edge0 == edge1 divides by zero at the boundary).
+static inline float ollin_mb_cylinder(float dist, float len) {
+    return 1.0 - smoothstep(0.95 * len, 1.05 * len + 1e-3, dist);
+}
+
+// Is zb closer to the camera than za (continuously, over a soft extent in
+// world units)? Camera-space z is negative ahead, so closer = larger.
+static inline float ollin_mb_soft_depth(float za, float zb, float extent) {
+    return clamp(1.0 - (za - zb) / extent, 0.0, 1.0);
+}
+
+// Pass 1, the velocity fill: one full-screen velocity per pixel, in pixels,
+// pointing along this frame's travel (current minus previous, times the
+// half-shutter), plus camera-space depth in z. Where the mover pass wrote a
+// texel that motion wins; everywhere else the pixel's world position (through
+// the unjittered inverse view-projection) reprojects through last frame's
+// view-projection, the temporal resolve's own fallback math. Depth 1.0 is the
+// backdrop (2D drawing, the clear, the environment): held still by design,
+// exactly as the temporal resolve treats it. The magnitude clamp to
+// [0.5px, k] is the published form: a whisper of motion still rounds up to a
+// half-pixel spread (so the reconstruction's center weight stays bounded)
+// and nothing streaks past the tile radius the pyramid assumes.
+//
+// params[0] = (texel.x, texel.y, halfShutter, k); params[1].x = mover texture
+// bound; params[2..5] = inverse view-projection columns; params[6..9] =
+// previous view-projection columns; params[10].xyz = eye; params[11].xyz =
+// the view forward axis.
+fragment float4 ollin_mb_fill(PresentOut in [[stage_in]],
+                              depth2d<float> depthTex [[texture(0)]],
+                              texture2d<float> mover [[texture(1)]],
+                              sampler samp [[sampler(0)]],
+                              constant float4 *params [[buffer(0)]]) {
+    constexpr sampler dsamp(filter::nearest);
+    float2 texel = params[0].xy;
+    float d = depthTex.sample(dsamp, in.uv);
+    float2 ndc = float2(in.uv.x * 2.0 - 1.0, 1.0 - in.uv.y * 2.0);
+    float4x4 invVP = float4x4(params[2], params[3], params[4], params[5]);
+    float4 wp4 = invVP * float4(ndc, d, 1.0);
+    float3 wp = wp4.xyz / wp4.w;
+    float viewZ = dot(wp - params[10].xyz, params[11].xyz);
+    if (d >= 1.0) { return float4(0.0, 0.0, -viewZ, 0.0); }
+    float2 q = 0.0;
+    bool wrote = false;
+    if (params[1].x > 0.5) {
+        float2 v = mover.sample(dsamp, in.uv).xy;
+        if (v.x > 0.5 * OLLIN_VELOCITY_NONE) { q = v; wrote = true; }
+    }
+    if (!wrote) {
+        float4x4 prevVP = float4x4(params[6], params[7], params[8], params[9]);
+        float4 clip = prevVP * float4(wp, 1.0);
+        if (clip.w > 0.0) {
+            float2 pndc = clip.xy / clip.w;
+            float2 pUV = float2(pndc.x * 0.5 + 0.5, 0.5 - pndc.y * 0.5);
+            q = (pUV - in.uv) / texel;   // previous minus current, pixels, y-down
+        }
+    }
+    // The stored motion points backward (previous minus current); the shutter is
+    // centered on the instant, so the spread is half the frame's travel times
+    // the shutter fraction, pointing forward like the published half-velocity.
+    q *= -params[0].z;
+    float len = length(q);
+    float2 v = q * max(0.5, min(len, params[0].w)) / (len + 1e-4);
+    return float4(v, -viewZ, 0.0);
+}
+
+// Pass 2, the tile max: reduce the fill to one dominant (largest-magnitude)
+// velocity per k-by-k tile. Each output fragment is one tile; the clamp
+// sampler lets a right/bottom edge tile re-read border pixels, which a max
+// ignores. params[0] = (fill texel.x, fill texel.y, k, 0).
+fragment float4 ollin_mb_tilemax(PresentOut in [[stage_in]],
+                                 texture2d<float> fill [[texture(0)]],
+                                 sampler samp [[sampler(0)]],
+                                 constant float4 *params [[buffer(0)]]) {
+    constexpr sampler csamp(filter::nearest, address::clamp_to_edge);
+    float2 texel = params[0].xy;
+    int k = int(params[0].z);
+    float2 base = floor(in.position.xy) * float(k);
+    float2 best = 0.0;
+    float bestLen = -1.0;
+    for (int y = 0; y < k; y++) {
+        for (int x = 0; x < k; x++) {
+            float2 uv = (base + float2(float(x), float(y)) + 0.5) * texel;
+            float2 v = fill.sample(csamp, uv).xy;
+            float l = dot(v, v);
+            if (l > bestLen) { bestLen = l; best = v; }
+        }
+    }
+    return float4(best, 0.0, 0.0);
+}
+
+// Pass 3, the neighbor max: each tile takes the dominant velocity of its 3x3
+// tile neighborhood, so a pixel knows about any mover whose streak can reach
+// it (a velocity is clamped to k, one tile's width, so 3x3 suffices).
+// params[0] = (tile texel.x, tile texel.y, 0, 0).
+fragment float4 ollin_mb_neighbormax(PresentOut in [[stage_in]],
+                                     texture2d<float> tiles [[texture(0)]],
+                                     sampler samp [[sampler(0)]],
+                                     constant float4 *params [[buffer(0)]]) {
+    constexpr sampler csamp(filter::nearest, address::clamp_to_edge);
+    float2 texel = params[0].xy;
+    float2 best = 0.0;
+    float bestLen = -1.0;
+    for (int y = -1; y <= 1; y++) {
+        for (int x = -1; x <= 1; x++) {
+            float2 v = tiles.sample(csamp, in.uv + float2(float(x), float(y)) * texel).xy;
+            float l = dot(v, v);
+            if (l > bestLen) { bestLen = l; best = v; }
+        }
+    }
+    return float4(best, 0.0, 0.0);
+}
+
+// Pass 4, the reconstruction: gather S taps along the neighborhood's dominant
+// velocity and weigh each by the published three-case classification. Case 1:
+// a blurry tap in front of this pixel streaks over it (its cone says whether
+// its blur reaches this far). Case 2: this pixel is itself blurry, so any tap
+// behind it estimates the background its streak uncovers. Case 3: both blur
+// together and lie inside each other's spread. The center pixel opens the sum
+// at 1/max(its own velocity, 0.5px), the inverse-magnitude weight that keeps a
+// sharp pixel heavy and a fast one light; alpha rides with the color (the
+// frame is premultiplied linear). All classifications are continuous, so no
+// sorting and no ordering between taps. The gather jitter de-bands the tap
+// comb; a whole-neighborhood dominant velocity under half a pixel returns the
+// frame untouched.
+//
+// params[0] = (texel.x, texel.y, k, S); params[1] = (soft depth extent,
+// tile texel.x, tile texel.y, 0).
+fragment float4 ollin_mb_reconstruct(PresentOut in [[stage_in]],
+                                     texture2d<float> color [[texture(0)]],
+                                     texture2d<float> fill [[texture(1)]],
+                                     texture2d<float> nmax [[texture(2)]],
+                                     sampler samp [[sampler(0)]],
+                                     constant float4 *params [[buffer(0)]]) {
+    constexpr sampler csamp(filter::nearest, address::clamp_to_edge);
+    float2 texel = params[0].xy;
+    float k = params[0].z;
+    int S = int(params[0].w);
+    float extent = params[1].x;
+    float2 X = in.position.xy;
+    float4 cx = color.sample(csamp, in.uv);
+    float2 tileUV = (floor(X / k) + 0.5) * params[1].yz;
+    float2 vN = nmax.sample(csamp, tileUV).xy;
+    if (length(vN) <= 0.5 + 1e-3) { return cx; }
+
+    float4 fx = fill.sample(csamp, in.uv);
+    float zx = fx.z;
+    float lenX = length(fx.xy);
+    float weight = 1.0 / max(lenX, 0.5);
+    float4 sum = cx * weight;
+    float j = hash12(X) - 0.5;
+    int center = (S - 1) / 2;
+    for (int i = 0; i < S; i++) {
+        if (i == center) { continue; }   // the center tap opened the sum
+        // Evenly placed taps along +/- vN, the whole comb jittered together.
+        float t = mix(-1.0, 1.0, (float(i) + j + 1.0) / (float(S) + 1.0));
+        float2 Y = floor(X + vN * t) + 0.5;   // snap to the tap's pixel center
+        float2 Yuv = Y * texel;
+        float4 fy = fill.sample(csamp, Yuv);
+        float dist = length(Y - X);
+        float front = ollin_mb_soft_depth(zx, fy.z, extent);   // tap in front of X
+        float behind = ollin_mb_soft_depth(fy.z, zx, extent);  // tap behind X
+        float alpha = front * ollin_mb_cone(dist, length(fy.xy))
+                    + behind * ollin_mb_cone(dist, lenX)
+                    + ollin_mb_cylinder(dist, length(fy.xy))
+                    * ollin_mb_cylinder(dist, lenX) * 2.0;
+        weight += alpha;
+        sum += alpha * color.sample(csamp, Yuv);
+    }
+    return sum / weight;
+}
+
 // MARK: - Separable subsurface scattering (the diffusion blur)
 //
 // Two fullscreen passes (horizontal, then vertical over the first's output) that
