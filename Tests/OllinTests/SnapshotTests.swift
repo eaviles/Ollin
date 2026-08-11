@@ -311,6 +311,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("parallax-relief",
                  note: "One authored crater height map read three ways on generated spheres: parallax occlusion (the tangent-space march + secant refinement in the surface-mapped fragment, round silhouette), CPU displacement (displaced(by:scale:), really cratered rim, weld-aware move + recomputed normals), and the bare color-mapped control. Oblique fixed camera so the parallax shift shows. Authored maps, no time, no rng.",
                  make: { ParallaxScene() }),
+    SnapshotCase("triplanar",
+                 note: "Triplanar projection on meshes with no uvs: a two-ball metaball skin and an abutting box pair wearing one authored vein texture plus its normal map, projected along the world axes and blended by the normal. Pins the fourth-power weight blend, the per-axis u sign flip, the projected whiteout normal combine, the world anchoring (the boxes continue each other's pattern), and the triplanar gate on the surface-mapped pipeline. Authored maps, fixed camera + light, no time, no rng.",
+                 make: { TriplanarScene() }),
     SnapshotCase("coat-sheen",
                  note: "The layered physically-based lobes over a bundled environment plus a point light: a coated red metal beside its bare twin (the clear-coat Cook-Torrance lobe, the Kelemen visibility, the coat-interface F0 remap, and the coat's smooth IBL gather), a piano-black lacquer, a white-sheen felt beside its bare twin (the inverted-alpha sine sheen lobe, the cloth visibility, the sheen-LUT energy scaling, and the sheen's own prefiltered gather), and a two-tone velvet. Fixed camera + environment, no time.",
                  make: { CoatSheenScene() }),
@@ -2022,6 +2025,75 @@ private final class ParallaxScene: Sketch {
         material(.dielectric(roughness: 0.75))
         for (mesh, x) in zip([parallaxSphere, displacedSphere, bare], [-2.4, 0.0, 2.4]) {
             withState { translate(x, 0.25, 0); drawMesh(mesh) }
+        }
+    }
+}
+
+private final class TriplanarScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    /// The vein field the maps derive from: thin dark seams over open stone,
+    /// tiling both ways. Pure math, no rng.
+    private func veinField(_ u: Double, _ v: Double) -> Double {
+        let warp = 0.09 * sin(v * 2 * .tau) + 0.05 * sin(u * 3 * .tau + 1.7)
+        let a = 0.5 + 0.5 * sin((u * 3 + warp) * .tau)
+        let b = 0.5 + 0.5 * sin((v * 4 + 0.14 * sin(u * 2 * .tau) + 0.31) * .tau)
+        return min(pow(a, 0.16), pow(b, 0.22))
+    }
+
+    private var stone = Image(width: 1, height: 1, color: .white)
+    private var veins = Image(width: 1, height: 1, color: .white)
+
+    override func setup() {
+        let size = 128
+        var color = [UInt8](repeating: 255, count: size * size * 4)
+        var normal = [UInt8](repeating: 255, count: size * size * 4)
+        let d = 1.0 / Double(size)
+        for y in 0..<size {
+            for x in 0..<size {
+                let u = (Double(x) + 0.5) * d, v = (Double(y) + 0.5) * d
+                let h = veinField(u, v)
+                let t = 0.45 + 0.55 * h
+                let i = (y * size + x) * 4
+                color[i] = UInt8(214 * t); color[i + 1] = UInt8(196 * t); color[i + 2] = UInt8(168 * t)
+                let dx = (veinField(u + d, v) - veinField(u - d, v)) / (2 * d) * 0.3
+                let dy = (veinField(u, v + d) - veinField(u, v - d)) / (2 * d) * 0.3
+                let len = (dx * dx + dy * dy + 1).squareRoot()
+                normal[i] = UInt8((-dx / len * 0.5 + 0.5) * 255)
+                normal[i + 1] = UInt8((dy / len * 0.5 + 0.5) * 255)
+                normal[i + 2] = UInt8((1 / len * 0.5 + 0.5) * 255)
+            }
+        }
+        stone = Image(width: size, height: size, premultipliedRGBA: color)!
+        veins = Image(width: size, height: size, premultipliedRGBA: normal)!
+    }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        camera(.orbiting(target: .zero, radius: 9, azimuth: 0.35, elevation: 0.18,
+                         fieldOfView: .pi / 3.4))
+        environment(.studio)
+        directionalLight(Color(white: 0.9), direction: Vector3(-0.5, -0.6, -0.55))
+        fill(.white)
+        material(.dielectric(roughness: 0.65))
+        // A no-uv marched skin, and two abutting boxes continuing one pattern.
+        var balls = Metaballs()
+        balls.add(at: Vector3(-0.5, 0, 0), radius: 1)
+        balls.add(at: Vector3(0.7, 0.35, 0.2), radius: 0.75)
+        withState {
+            translate(-1.9, 0.3, 0)
+            drawMesh(balls.mesh(resolution: 48)
+                .triplanarTextured(stone, normal: veins, scale: 1.1))
+        }
+        withState {
+            translate(2.1, -0.3, 0)
+            for (w, y) in [(2.0, 0.0), (1.3, 0.85)] {
+                withState {
+                    translate(0, y, 0)
+                    drawMesh(Mesh.box(width: w, height: 0.9, depth: 1.4)
+                        .triplanarTextured(stone, normal: veins, scale: 1.1))
+                }
+            }
         }
     }
 }

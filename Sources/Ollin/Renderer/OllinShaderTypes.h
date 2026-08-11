@@ -475,8 +475,13 @@ typedef struct {
                                   // the surface, as a fraction of the uv tile
                                   // (`MeshMaterial.heightScale`). 0 = no map (the gate; every
                                   // other mesh keeps this zero, so unmapped frames are untouched).
-    float _matPad0;               // pads the tail row to 16 bytes
-    float _matPad1;
+    float triplanar;              // > 0 = the base texture (and normal map, if bound) project
+                                  // along the three world axes, blended by the surface normal,
+                                  // for meshes with no uvs at all. The value is tiles per world
+                                  // unit (1 / `MeshMaterial.triplanarScale`). 0 = uv mapping
+                                  // (the gate; every other mesh keeps this zero, so uv-mapped
+                                  // frames are untouched).
+    float _matPad1;               // pads the tail row to 16 bytes
     float _matPad2;
 } OllinMaterial;
 

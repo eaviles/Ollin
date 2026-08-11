@@ -90,6 +90,14 @@ public struct MeshMaterial: @unchecked Sendable {
     /// tile (0.05 = the deepest point sits 5% of the tile below the surface).
     /// 0 turns the map off.
     public var heightScale: Double
+    /// The size of one texture tile in world units when the mesh has no `uvs`
+    /// to map through: > 0 projects the base `texture` (and `normalTexture`,
+    /// if set) flat along each of the three world axes, blended by the surface
+    /// normal, so a marched or grown surface with no uv layout can wear a
+    /// picture. 0 (the default) maps through `uvs` as usual. Set with
+    /// `Mesh.triplanarTextured(_:normal:scale:)`; the other surface maps stay
+    /// uv-mapped.
+    public var triplanarScale: Double
     /// The emissive tint and strength: black (the default) emits nothing;
     /// with an `emissiveTexture` it scales the map, without one it emits as a
     /// constant color.
@@ -121,6 +129,7 @@ public struct MeshMaterial: @unchecked Sendable {
                 occlusionTexture: Image? = nil, occlusionStrength: Double = 1,
                 emissiveTexture: Image? = nil, emissiveFactor: Color = .black,
                 heightTexture: Image? = nil, heightScale: Double = 0.05,
+                triplanarScale: Double = 0,
                 metallic: Double = 0, roughness: Double = 0.5, opacity: Double = 1,
                 ior: Double = 1.5, clearcoat: Double = 0, clearcoatRoughness: Double = 0.01) {
         self.baseColor = baseColor
@@ -134,6 +143,7 @@ public struct MeshMaterial: @unchecked Sendable {
         self.emissiveFactor = emissiveFactor
         self.heightTexture = heightTexture
         self.heightScale = heightScale
+        self.triplanarScale = triplanarScale
         self.metallic = metallic
         self.roughness = roughness
         self.opacity = opacity

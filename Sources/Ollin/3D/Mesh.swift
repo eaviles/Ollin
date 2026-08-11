@@ -184,6 +184,41 @@ public extension Mesh {
         return copy
     }
 
+    /// A copy wearing `image` projected onto the surface from the three world
+    /// axes (triplanar projection), for a mesh with **no uvs at all**: a
+    /// marched isosurface or metaball skin, a grown or reconstructed shell, a
+    /// subdivision result. Each axis projects the picture flat and the surface
+    /// blends the three by how squarely it faces each, so any shape is covered
+    /// with no unwrap and no seam line. `scale` is the size of one texture
+    /// tile in world units. An optional `normal` map rides the same projection
+    /// (no tangent basis needed), its relief bent per projection plane and
+    /// blended the same way; `normalScale` is its strength, like
+    /// `normalMapped(_:scale:)`'s.
+    ///
+    /// The projection is anchored to the *world*: two abutting meshes continue
+    /// each other's pattern seamlessly, and a mesh animated through the
+    /// transform stack slides through the pattern, so give a moving mesh uvs
+    /// and `textured(_:)` instead. The rest of the surface-map set
+    /// (metallic-roughness, occlusion, emissive, height) stays uv-mapped.
+    ///
+    /// ```swift
+    /// drawMesh(blob.mesh(resolution: 56).triplanarTextured(rock, normal: rockBumps, scale: 90))
+    /// ```
+    func triplanarTextured(_ image: Image, normal: Image? = nil, scale: Double = 100,
+                           normalScale: Double = 1, baseColor: Color = .white) -> Mesh {
+        var copy = self
+        var m = copy.material ?? MeshMaterial()
+        m.baseColor = baseColor
+        m.texture = image
+        if let normal {
+            m.normalTexture = normal
+            m.normalScale = normalScale
+        }
+        m.triplanarScale = scale
+        copy.material = m
+        return copy
+    }
+
     /// A copy with area-weighted smooth normals computed from the positions and
     /// triangle indices, replacing whatever normals it had. For a mesh built from raw
     /// geometry with no normals (a deforming face mesh, a marching-cubes surface) so it

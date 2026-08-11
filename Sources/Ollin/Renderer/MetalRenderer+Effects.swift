@@ -15,11 +15,12 @@ extension OllinMaterial {
     /// Whether any of the PBR map-set gates the drawer packs are up, which is
     /// what routes a mesh batch to the surface-mapped pipeline: a
     /// metallic-roughness map, an occlusion map, an emissive map, a constant
-    /// emissive factor (rgb with no map), or a height map (parallax).
+    /// emissive factor (rgb with no map), a height map (parallax), or a
+    /// triplanar projection.
     var usesSurfaceMaps: Bool {
         mrGate > 0 || occlusionStrength > 0 || emissive.w > 0
             || emissive.x > 0 || emissive.y > 0 || emissive.z > 0
-            || parallax > 0
+            || parallax > 0 || triplanar > 0
     }
 }
 

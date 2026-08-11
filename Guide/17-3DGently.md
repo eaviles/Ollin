@@ -511,6 +511,24 @@ There is a fourth driver, `.chemical`, that runs a reaction-diffusion pattern in
 
 Growth is slow on purpose: a form takes hundreds of steps, and stepping once a frame while you watch it develop is most of the pleasure. `maxVertices` is the ceiling that keeps it interactive, and it also decides how far a form gets before it settles.
 
+## A picture from three sides
+
+The last two sections left you holding a small problem. A texture maps through uv coordinates, a little address on every vertex saying where on the picture it sits, and the surfaces you just made have none: nobody unwrapped the grown ball, a subdivided cage comes back without its uvs, and the marched blobs of the next chapter are the same way. `textured(_:)` has nothing to hold onto.
+
+`triplanarTextured` sidesteps the question instead of answering it. Rather than asking the mesh where the picture goes, it projects the picture through the world three times, once along each axis, like three slide projectors aimed down x, y, and z, and every point on the surface blends the three by how squarely it faces each projector. A wall takes nearly everything from the projector facing it; a 45-degree slope takes half and half, and the handoff is gradual enough that you cannot find the line.
+
+```swift
+drawMesh(grown.triplanarTextured(stone, normal: veins, scale: 0.9))
+```
+
+<img src="Images/17-3DGently/TriplanarSkin.jpg" alt="Two sand-colored carved forms against black: a grown, folded ball completely covered in a continuous engraved vein pattern with no visible seam, and a cairn of three stacked boxes whose shared pattern runs unbroken across all three" width="680">
+
+`scale` is the size of one tile in world units, and a `normal:` map rides the same projection, so the veins in the figure are engraved relief, not just darker paint. Notice what you did *not* do: no uvs, no tangent basis, no unwrapping, and the projection works on any mesh you can make or load.
+
+The picture stands still and the surface moves through it. That is the one thing to understand about triplanar, and it cuts both ways. The cairn is three separate boxes drawn one after another, and the pattern runs unbroken across all three, because they stand in the same standing field, the reason the technique is beloved for terrain and rockwork. But a mesh you animate through the transform stack slides through the pattern rather than carrying it along, so a body that travels should wear uvs, and a form that grows or morphs in place, like the blob in the `3D/Materials/Triplanar` example, flows through the pattern like a shape turning under falling light, which is its own kind of beautiful.
+
+The projection carries the base texture and a normal map; the rest of the map set stays with uvs, and the [reference page](../Docs/3D/3D.md#triplanar) has the edges of the envelope. The example puts the tile size and the relief on knobs.
+
 ## A landscape you grow
 
 Loading a mesh gets you a shape somebody else made. Generating one gets you a shape nobody has seen. Terrain is the friendliest place to start, because a landscape is just a height for every point on a grid, and Ollin has a type for exactly that.

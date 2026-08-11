@@ -56,7 +56,7 @@ It's opt-in, so a 2D sketch never pays for a depth buffer or a perspective divid
 
 The high-end, well-curated realism tier, opt-in on the existing PBR, IBL, ray-traced shadows and reflections, and SDF raymarching, so a 2D or stylized 3D sketch never pays. The techniques that separate a polished product render or film still from "CG," each Metal-native and written from the published technique (credited in `ATTRIBUTION.md`'s Techniques list):
 
-- **Advanced materials.** Surface detail: triplanar projection, detail and decal maps.
+- **Advanced materials.** Surface detail: detail and decal maps.
 
 See the [design notes](DESIGN-NOTES.md#photorealistic-3d).
 

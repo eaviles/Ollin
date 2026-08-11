@@ -2536,13 +2536,29 @@ final class Drawer {
         let wireframe = wireframeEnabled
         let matcap = !wireframe ? currentMatcap : nil
         let uvsAligned = mesh.uvs.count == mesh.positions.count
+        // Triplanar projection: the base texture (and any normal map) read by
+        // world position instead of uvs, so a mesh with none at all (a marched
+        // isosurface, a grown or reconstructed shell) can wear a picture. It
+        // needs no uvs and no tangents. The rest of the surface-map set stays
+        // uv-mapped, the named cut, so a triplanar mesh carrying one draws
+        // without it and says so once.
+        var triplanar = false
+        if !wireframe, matcap == nil, let mat = material, mat.triplanarScale > 0,
+           mat.texture != nil || (mat.normalTexture != nil && mat.normalScale > 0) {
+            triplanar = true
+            if mat.metallicRoughnessTexture != nil || mat.occlusionTexture != nil
+                || mat.emissiveTexture != nil || mat.heightTexture != nil {
+                noteOnce("a triplanar mesh projects its base texture and normal map only; the other surface maps (metallic-roughness / occlusion / emissive / height) stay uv-mapped and were skipped.")
+            }
+        }
         // A normal map needs the whole basis: matching uvs *and* matching
         // tangents. Attached without either, it degrades honestly (the mesh
         // draws with its geometric normals) and says so once. `normalScale == 0`
         // is the documented off switch, taking the plain textured path so the
-        // frame is byte-identical to a mapless one.
+        // frame is byte-identical to a mapless one. (A triplanar mesh's normal
+        // map projects instead, needing neither, so it skips this gate.)
         var normalMapped = false
-        if !wireframe, matcap == nil, let mat = material, mat.normalTexture != nil,
+        if !triplanar, !wireframe, matcap == nil, let mat = material, mat.normalTexture != nil,
            mat.normalScale > 0 {
             if uvsAligned && mesh.tangents.count == mesh.positions.count {
                 normalMapped = true
@@ -2557,7 +2573,7 @@ final class Drawer {
         // and tangents. Attached without either it degrades honestly, like the
         // normal map; `heightScale == 0` is the documented off switch.
         var heightMapped = false
-        if !wireframe, matcap == nil, let mat = material, mat.heightTexture != nil,
+        if !triplanar, !wireframe, matcap == nil, let mat = material, mat.heightTexture != nil,
            mat.heightScale > 0 {
             if uvsAligned && mesh.tangents.count == mesh.positions.count {
                 heightMapped = true
@@ -2581,7 +2597,10 @@ final class Drawer {
         if !wireframe, matcap == nil, let mat = material {
             emissiveOn = mat.emissiveFactor.red > 0 || mat.emissiveFactor.green > 0
                 || mat.emissiveFactor.blue > 0
-            if uvsAligned {
+            if triplanar {
+                // The sampled surface maps stay uv-mapped (the cut noted above);
+                // a constant emissive factor needs no sampling and still adds.
+            } else if uvsAligned {
                 mrMapped = mat.metallicRoughnessTexture != nil
                 occlusionMapped = mat.occlusionTexture != nil && mat.occlusionStrength > 0
                 emissiveMapped = mat.emissiveTexture != nil && emissiveOn
@@ -2596,7 +2615,7 @@ final class Drawer {
         // A height map routes here too: the parallax march lives in the
         // surface-mapped fragment, where the shifted uv reaches every map.
         let surfaceMapped = mrMapped || occlusionMapped || emissiveMapped || heightMapped
-            || (emissiveOn && (uvsAligned || material?.texture == nil))
+            || triplanar || (emissiveOn && (uvsAligned || material?.texture == nil))
         let writesUV = textured || (surfaceMapped && uvsAligned)
         if wireframe {
             beginMeshBatch(material: nil, finish: OllinMaterial(), wireframe: true)
@@ -2612,6 +2631,15 @@ final class Drawer {
                 finish.normalScale = Float(mat.normalScale)
             }
             if let mat = material {
+                if triplanar {
+                    // The gate carries tiles per world unit; the projected
+                    // normal map needs no tangent basis, so its gate rides the
+                    // map alone (the drawing-state finish never sets either).
+                    finish.triplanar = Float(1 / mat.triplanarScale)
+                    if mat.normalTexture != nil, mat.normalScale > 0 {
+                        finish.normalScale = Float(mat.normalScale)
+                    }
+                }
                 if mrMapped {
                     finish.mrGate = 1
                     finish.metallic *= Float(mat.metallic)

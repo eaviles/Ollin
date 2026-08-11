@@ -2620,6 +2620,78 @@ the normal-map rule.
 
 ---
 
+## Triplanar projection
+
+The fourth slice of the advanced-materials arc: texture for meshes that have
+no uvs at all (a marched isosurface or metaball skin, a grown or reconstructed
+shell, a subdivision result). The base texture is projected flat along each of
+the three world axes and the three reads blend by how squarely the surface
+faces each axis; `MeshMaterial.triplanarScale` is the tile's world size, and
+`Mesh.triplanarTextured(_:normal:scale:)` is the whole attach (no uvs, no
+tangents, none generated).
+
+**It rides the surface-mapped fragment, not a new twin.** The projection lives
+in `ollin_triplanar_surface` and a `mat.triplanar`-gated branch at the top of
+`ollin_mesh_maps_fragment`; that fragment is slice-2 code, exempt from the
+verbatim rule, and the exemption was re-verified empirically after this growth
+(the full snapshot suite holds unrecorded and a guide-figures run has zero
+churn). The gate packs as tiles per world unit (`1 / triplanarScale`) into the
+`OllinMaterial` tail pad the parallax slice left, so the struct's stride is
+unchanged and every gate-off batch keeps its exact codegen. The drawer routes
+a triplanar mesh to the surface-mapped pipeline unconditionally (no uv or
+tangent verification, the point of the feature), forces the uv-mapped gates
+off, and refuses the rest of the map set with a one-time note: v1 projects
+the base color and the normal map only, and parallax is the technique-level
+cut (its march walks one uv space; a triplanar surface has three). The
+fragment samples through its own repeat-addressing constexpr sampler, since
+the mesh sampler clamps.
+
+**The sampling space is world space, decided rather than inherited.** The
+drawer bakes the model matrix into vertex positions CPU-side, so the fragment
+only has post-transform `worldPos`; carrying a pre-transform position would
+mean widening the 64-byte mesh vertex or a per-batch inverse matrix, and the
+world anchor is also the technique's classic behavior (abutting meshes
+continue one another's pattern, which the example's box cairn teaches). The
+envelope is stated everywhere it matters: a mesh animated through the
+transform stack slides through the standing pattern, and
+`theProjectionIsAnchoredToTheWorldNotTheMesh` pins it as a test. A `space:`
+parameter can widen the API later without breaking it.
+
+**The per-axis frames are derived in Ollin's own conventions, not
+transliterated.** Each axis's uv is chosen so the picture reads upright and
+unmirrored from either side of the surface: v runs *down* the image (the
+top-left texture origin, so both wall projections take `-y` and the top one
+takes `+z`), and u flips with the sign of the normal's axis component (the
+back of a wall would otherwise mirror). Each frame is right-handed
+(right x up = facing), which is what lets the normal map keep its ordinary
+green-up decode. The blend weights are the normal's components to the fourth
+power, renormalized: a fixed sharpening, so a glancing projection (whose
+texture smears into streaks) hands over quickly. The normal map combines per
+plane by expressing the geometric normal in the plane's own frame, adding the
+map's tangent-plane push onto it, and multiplying the height components (the
+whiteout combine), then carrying the result back to world space; a flat map
+hands back exactly the geometric normal on every plane, so the bend vanishes
+where the map does. One sign here was a probe-caught lesson: the u flip keys
+on the *normal's* side, not the viewer's, so the back of a single-sided quad
+(interpolated normal still facing away) legitimately mirrors, and the
+unmirror test had to author a genuinely back-facing wall, the closed-mesh
+case the flip exists for.
+
+**Neither glTF nor USD has a triplanar slot** (checked core + ratified
+extensions on one side, the preview-surface schema on the other; it's a
+rendering technique, not a material property), so the projection is
+Ollin-authored API only, and the spatial exporter's recorder notes that the
+projected maps stayed behind and strips them, exporting the surface in its
+plain color. `TriplanarTests` pins the feature against counterfactuals (the
+no-uv mesh wears the picture, both wall orientations and the top frame read
+upright and unmirrored, the 45-degree seam *mixes* the two projections
+instead of hard-picking one, the projected normal map pushes lighting along
+the frame axes with no tangent basis anywhere, the world anchor, the off
+switch, determinism), with the sign flips, the hard-pick, the top-frame v,
+and the green direction each sabotage-verified red.
+
+---
+
 ## Deferred ray-traced reflection AA
 
 The ray-traced reflection is one closest-hit ray per reflective pixel, which makes

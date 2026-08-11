@@ -40,6 +40,18 @@ final class SpatialRecorder {
         var material = Self.previewSurface(finish, surface: surface,
                                            base: mesh.material, notes: &notes)
 
+        // A triplanar projection is a way of drawing (three world-axis
+        // projections blended by the normal), and neither file format has a
+        // slot for one: the maps it projected stay behind, said plainly, and
+        // the surface exports in its own color.
+        if (mesh.material?.triplanarScale ?? 0) > 0 {
+            if material.texture != nil || material.normalTexture != nil {
+                note("a triplanar projection stayed behind: a file's material maps through uvs, which this surface has none of; it exported in its plain color.")
+            }
+            material.texture = nil
+            material.normalTexture = nil
+        }
+
         // The renderer multiplies the fill, the material's base color, and any
         // per-vertex color together. A preview surface has one diffuse slot, so
         // whichever of the last two is present carries the composed product and

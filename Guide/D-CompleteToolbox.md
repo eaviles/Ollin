@@ -206,7 +206,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Environments | HDRI image-based lighting (eight bundled, twelve downloading) plus a zero-asset procedural sky; the surroundings become the light | [Ch 18](18-SculptingWithFields.md) | [3D](../Docs/3D/3D.md#environment-lighting) |
 | Shadows | Contact-hardening cast shadows with a softness dial, ray-traced for point lights on capable GPUs | [Ch 17](17-3DGently.md) | [3D](../Docs/3D/3D.md#shadows) |
 | Ray-traced reflections | Metals that reflect the actual scene, off-screen parts included | [Ch 18](18-SculptingWithFields.md) | [3D](../Docs/3D/3D.md) |
-| Wireframe and textures | Any mesh as its triangle edges (which do not light); any mesh wrapped in an image through its UVs | [Ch 17](17-3DGently.md) | [3D](../Docs/3D/3D.md#textures) |
+| Wireframe and textures | Any mesh as its triangle edges (which do not light); any mesh wrapped in an image through its UVs, or with no UVs at all through a triplanar projection | [Ch 17](17-3DGently.md) | [3D](../Docs/3D/3D.md#textures) |
 | Point clouds | Instanced splats by the hundred thousand, camera-facing | [Ch 19](19-DepthAndThePhone.md) | [3D](../Docs/3D/3D.md) |
 | Camera control and moves | Viewer orbiting, cinematic `CameraMove`s, the self-driving showcase, snap views | [Ch 17](17-3DGently.md) | [Camera](../Docs/3D/Camera.md) |
 | Scene chrome | The axis widget and ground grid, live-only, never exported | [Ch 17](17-3DGently.md) | [Camera](../Docs/3D/Camera.md) |

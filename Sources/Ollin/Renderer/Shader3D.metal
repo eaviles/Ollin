@@ -4269,9 +4269,10 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
 // a metallic-roughness map (glTF packing: roughness in g, metallic in b), an
 // occlusion map (r), an emissive map, or a constant emissive factor, with the
 // normal-map bend folded in behind its own gate so one pipeline serves every
-// combination. New code, so it may branch freely; the shipped textured/nm
-// fragments stay verbatim and unmapped frames keep their exact codegen (the
-// verbatim-plus-twin rule).
+// combination. A triplanar projection (texture for meshes with no uvs) rides
+// here too, behind its own gate. New code, so it may branch freely; the
+// shipped textured/nm fragments stay verbatim and unmapped frames keep their
+// exact codegen (the verbatim-plus-twin rule).
 //
 // The sampled channels compose with the per-batch finish: metallic/roughness
 // multiply the finish's own values (`mat.metallic`/`mat.roughness` arrive
@@ -4344,6 +4345,94 @@ static inline float2 ollin_parallax_uv(float2 uv, float3 worldPos, float3 rawNor
     return mix(cur, cur - delta, w);
 }
 
+// Triplanar projection, for meshes with no uvs at all (a marched isosurface or
+// metaball skin, a grown or reconstructed shell): the base texture is projected
+// flat along each of the three world axes and the three reads blend by how
+// squarely the surface faces each axis, so any shape is covered with no unwrap
+// and no seam line. `tiles` is 1 / the tile's world size; the weights sharpen
+// by a fixed fourth power so a glancing projection (whose texture smears into
+// streaks) hands over to the facing ones quickly; each axis flips its u with
+// the surface's side so the picture reads unmirrored from either direction.
+// The projection is anchored to the *world* (the vertex positions arrive with
+// the model transform baked in, so the fragment has no other space): abutting
+// meshes continue each other's pattern, and a mesh animated through the
+// transform stack slides through it, the documented envelope.
+static inline float3 ollin_triplanar_weights(float3 g) {
+    float3 w = g * g;
+    w *= w;
+    return w / max(w.x + w.y + w.z, 1e-8);
+}
+
+struct TriplanarSurface {
+    float4 color;    // the blended base-texture read
+    float3 normal;   // the world-space shading normal (bent when a map is bound)
+};
+
+static inline TriplanarSurface ollin_triplanar_surface(float3 worldPos, float3 rawNormal,
+                                                       float tiles, float normalScale,
+                                                       texture2d<float> baseTex,
+                                                       texture2d<float> normalTex) {
+    constexpr sampler tri(filter::linear, address::repeat);
+    float3 g = normalize(rawNormal);
+    float3 w = ollin_triplanar_weights(g);
+    float3 s = sign(g);
+    float3 p = worldPos * tiles;
+    // One frame per axis: u along the frame's `right`, v *down* the image (the
+    // top-left texture origin), image-up the direction v decreases. Each frame
+    // is right-handed (right x up = facing), which is what lets the normal map
+    // decode in its usual green-up convention below.
+    float2 uvX = float2(-s.x * p.z, -p.y);   // right (0,0,-s.x), up +y, facing (s.x,0,0)
+    float2 uvY = float2( s.y * p.x,  p.z);   // right (s.y,0,0), up -z, facing (0,s.y,0)
+    float2 uvZ = float2( s.z * p.x, -p.y);   // right (s.z,0,0), up +y, facing (0,0,s.z)
+    TriplanarSurface out;
+    out.color = baseTex.sample(tri, uvX) * w.x
+              + baseTex.sample(tri, uvY) * w.y
+              + baseTex.sample(tri, uvZ) * w.z;
+    out.normal = g;
+    if (normalScale <= 0.0) { return out; }
+    // The normal map rides the same three projections, combined per plane: the
+    // geometric normal is expressed in the plane's own frame, the map's
+    // tangent-plane push adds onto it and the height components multiply (the
+    // "whiteout" combine, which keeps the map's punch where the surface
+    // already leans), and the result carries back to world space. A flat map
+    // hands back exactly the geometric normal on every plane, so the bend
+    // vanishes where the map does.
+    float3 blended = float3(0.0);
+    {
+        const float3 right = float3(0.0, 0.0, -s.x);
+        const float3 up = float3(0.0, 1.0, 0.0);
+        const float3 facing = float3(s.x, 0.0, 0.0);
+        float3 t = normalTex.sample(tri, uvX).xyz * 2.0 - 1.0;
+        t.xy *= normalScale;
+        float3 gp = float3(dot(g, right), dot(g, up), fabs(g.x));
+        float3 c = float3(gp.xy + t.xy, gp.z * t.z);
+        blended += (c.x * right + c.y * up + c.z * facing) * w.x;
+    }
+    {
+        const float3 right = float3(s.y, 0.0, 0.0);
+        const float3 up = float3(0.0, 0.0, -1.0);
+        const float3 facing = float3(0.0, s.y, 0.0);
+        float3 t = normalTex.sample(tri, uvY).xyz * 2.0 - 1.0;
+        t.xy *= normalScale;
+        float3 gp = float3(dot(g, right), dot(g, up), fabs(g.y));
+        float3 c = float3(gp.xy + t.xy, gp.z * t.z);
+        blended += (c.x * right + c.y * up + c.z * facing) * w.y;
+    }
+    {
+        const float3 right = float3(s.z, 0.0, 0.0);
+        const float3 up = float3(0.0, 1.0, 0.0);
+        const float3 facing = float3(0.0, 0.0, s.z);
+        float3 t = normalTex.sample(tri, uvZ).xyz * 2.0 - 1.0;
+        t.xy *= normalScale;
+        float3 gp = float3(dot(g, right), dot(g, up), fabs(g.z));
+        float3 c = float3(gp.xy + t.xy, gp.z * t.z);
+        blended += (c.x * right + c.y * up + c.z * facing) * w.z;
+    }
+    float len = length(blended);
+    out.normal = (len > 1e-6) ? blended / len : g;
+    return out;
+}
+
 fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
                                          constant OllinLighting &light [[buffer(0)]],
                                          constant OllinMaterial &mat [[buffer(1)]],
@@ -4389,23 +4478,38 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
         uv = ollin_parallax_uv(in.uv, in.worldPos, in.normal, in.tangent,
                                light.cameraPosition.xyz, mat.parallax, heightTex);
     }
-    float4 tex = baseColorTex.sample(samp, uv);
+    // Triplanar first: with that gate up (a mesh with no uvs to map through),
+    // the base color and any normal map read by world position instead of uv,
+    // and the bend needs no tangent basis (the projection carries its own
+    // frames). Per-batch state, so the branch is uniform across the draw;
+    // every uv-mapped mesh keeps the path below.
+    float4 tex;
+    float3 N;
+    if (mat.triplanar > 0.0) {
+        TriplanarSurface triSurf = ollin_triplanar_surface(in.worldPos, in.normal, mat.triplanar,
+                                                           mat.normalScale, baseColorTex,
+                                                           normalMapTex);
+        tex = triSurf.color;
+        N = triSurf.normal;
+    } else {
+        tex = baseColorTex.sample(samp, uv);
+        // The normal-map bend, exactly the nm twin's math but behind its gate: this
+        // pipeline also serves meshes whose only map is metallic-roughness or
+        // emissive, whose tangent slots are zero and must never be read.
+        N = normalize(in.normal);
+        if (mat.normalScale > 0.0) {
+            float3 gn = in.normal;
+            float3 t = in.tangent.xyz;
+            float3 b = cross(gn, t) * in.tangent.w;
+            float3 nmS = normalMapTex.sample(samp, uv).xyz * 2.0 - 1.0;
+            nmS.xy *= mat.normalScale;
+            float3 bent = t * nmS.x + b * nmS.y + gn * nmS.z;
+            float bentLen = length(bent);
+            N = (bentLen > 1e-6) ? bent / bentLen : normalize(gn);
+        }
+    }
     float3 base = tex.rgb * srgbToLinear(in.color.rgb);
     float alpha = in.color.a * tex.a;
-    // The normal-map bend, exactly the nm twin's math but behind its gate: this
-    // pipeline also serves meshes whose only map is metallic-roughness or
-    // emissive, whose tangent slots are zero and must never be read.
-    float3 N = normalize(in.normal);
-    if (mat.normalScale > 0.0) {
-        float3 gn = in.normal;
-        float3 t = in.tangent.xyz;
-        float3 b = cross(gn, t) * in.tangent.w;
-        float3 nmS = normalMapTex.sample(samp, uv).xyz * 2.0 - 1.0;
-        nmS.xy *= mat.normalScale;
-        float3 bent = t * nmS.x + b * nmS.y + gn * nmS.z;
-        float bentLen = length(bent);
-        N = (bentLen > 1e-6) ? bent / bentLen : normalize(gn);
-    }
     // Resolve the per-pixel surface: the composed metallic/roughness factors in
     // `mat` times the sampled channels, the occlusion ramp 1 + s·(ao − 1), and
     // the emissive factor times its map when one is bound.
