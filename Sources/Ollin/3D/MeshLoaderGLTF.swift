@@ -7,13 +7,14 @@ import simd
 // Ollin's world space: right-handed, y-up, meters, so positions and normals carry over
 // with no axis flip; only the node hierarchy's transforms need baking in. This reads
 // the common mesh subset (POSITION + NORMAL + TEXCOORD_0 + triangle indices, float
-// positions/normals/UVs, embedded or external buffers) plus the base-color material
-// (factor + texture), the node TRS keyframe animations the scene loader plays, and
-// the deforming tier the scene loader poses: skins (JOINTS_0/WEIGHTS_0 + inverse
-// bind matrices) and morph targets (sparse-accessor displacements included). The
-// other PBR channels (metallic/roughness, normal, emissive) are not read, and the
-// merged `Mesh.loadGLTF` below keeps its bind-pose bake (deformation is the
-// structure-preserving Scene path's job).
+// positions/normals/UVs, embedded or external buffers) plus the full PBR material
+// surface (base-color factor + texture, the normal map with its scale and authored
+// TANGENTs, the packed metallic-roughness map with its factors, occlusion with its
+// strength, emissive map × factor), the node TRS keyframe animations the scene
+// loader plays, and the deforming tier the scene loader poses: skins
+// (JOINTS_0/WEIGHTS_0 + inverse bind matrices) and morph targets (sparse-accessor
+// displacements included). The merged `Mesh.loadGLTF` below keeps its bind-pose
+// bake (deformation is the structure-preserving Scene path's job).
 //
 // The file-and-buffer plumbing lives in `GLTFDocument`, shared by two consumers with
 // different contracts: `Mesh.loadGLTF` below bakes every node's world transform in and
@@ -616,17 +617,22 @@ struct GLTFDocument {
 
     /// Resolve a glTF material to a `MeshMaterial`: the base-color factor (linear,
     /// so re-encode to the sRGB `Color` the surface bakes), the base-color
-    /// texture image, and the tangent-space normal map with its scale (the map's
+    /// texture image, the tangent-space normal map with its scale (the map's
     /// bytes are data, sampled through the linear texture path, so the image
-    /// decodes untouched). Other PBR channels (metallic/roughness, emissive) are
-    /// the later PBR tier. Returns nil when the material carries none of them.
+    /// decodes untouched), and the rest of the PBR map set: the packed
+    /// metallic-roughness map with its factors (the format's defaults, 1, when
+    /// a `pbrMetallicRoughness` block is authored; Ollin's carried defaults
+    /// otherwise), the occlusion map with its strength, and the emissive map ×
+    /// factor (the factor defaults to black per the format, so a material must
+    /// author it for its emissive map to show, which every exporter does).
+    /// Returns nil when the material carries none of them.
     func resolveMaterial(_ matIndex: Int) -> MeshMaterial? {
         let materials = gltf.materials ?? []
         guard matIndex >= 0, matIndex < materials.count else { return nil }
         let pbr = materials[matIndex].pbrMetallicRoughness
+        func enc(_ x: Double) -> Double { Color.linearToSrgb(min(max(x, 0), 1)) }
         var baseColor = Color.white
         if let f = pbr?.baseColorFactor, f.count == 4 {
-            func enc(_ x: Double) -> Double { Color.linearToSrgb(min(max(x, 0), 1)) }
             baseColor = Color(red: enc(f[0]), green: enc(f[1]), blue: enc(f[2]),
                               alpha: min(max(f[3], 0), 1))
         }
@@ -646,9 +652,36 @@ struct GLTFDocument {
             normalTexture = textureImage(normal.index)
             normalScale = normal.scale ?? 1
         }
-        if texture == nil, normalTexture == nil, pbr?.baseColorFactor == nil { return nil }
+        var mrTexture: Image?
+        var metallic = 0.0, roughness = 0.5   // the carried defaults with no PBR block
+        if let pbr {
+            if let ti = pbr.metallicRoughnessTexture?.index { mrTexture = textureImage(ti) }
+            metallic = pbr.metallicFactor ?? 1
+            roughness = pbr.roughnessFactor ?? 1
+        }
+        var occlusionTexture: Image?
+        var occlusionStrength = 1.0
+        if let occlusion = materials[matIndex].occlusionTexture {
+            occlusionTexture = textureImage(occlusion.index)
+            occlusionStrength = occlusion.strength ?? 1
+        }
+        var emissiveTexture: Image?
+        var emissiveFactor = Color.black
+        if let f = materials[matIndex].emissiveFactor, f.count == 3 {
+            emissiveFactor = Color(red: enc(f[0]), green: enc(f[1]), blue: enc(f[2]))
+        }
+        if let ti = materials[matIndex].emissiveTexture?.index {
+            emissiveTexture = textureImage(ti)
+        }
+        let emissiveOn = emissiveFactor.red > 0 || emissiveFactor.green > 0 || emissiveFactor.blue > 0
+        if texture == nil, normalTexture == nil, pbr == nil,
+           occlusionTexture == nil, emissiveTexture == nil, !emissiveOn { return nil }
         return MeshMaterial(baseColor: baseColor, texture: texture,
-                            normalTexture: normalTexture, normalScale: normalScale)
+                            normalTexture: normalTexture, normalScale: normalScale,
+                            metallicRoughnessTexture: mrTexture,
+                            occlusionTexture: occlusionTexture, occlusionStrength: occlusionStrength,
+                            emissiveTexture: emissiveTexture, emissiveFactor: emissiveFactor,
+                            metallic: metallic, roughness: roughness)
     }
 
     /// One glTF mesh (all its triangle primitives merged) as a `Mesh` in the node's
@@ -983,13 +1016,20 @@ struct GLTF: Decodable {
     struct Material: Decodable {
         var pbrMetallicRoughness: PBRMetallicRoughness?
         var normalTexture: NormalTextureInfo?
+        var occlusionTexture: OcclusionTextureInfo?
+        var emissiveTexture: TextureInfo?
+        var emissiveFactor: [Double]?
     }
     struct PBRMetallicRoughness: Decodable {
         var baseColorFactor: [Double]?
         var baseColorTexture: TextureInfo?
+        var metallicRoughnessTexture: TextureInfo?
+        var metallicFactor: Double?
+        var roughnessFactor: Double?
     }
     struct TextureInfo: Decodable { var index: Int; var texCoord: Int? }
     struct NormalTextureInfo: Decodable { var index: Int; var texCoord: Int?; var scale: Double? }
+    struct OcclusionTextureInfo: Decodable { var index: Int; var texCoord: Int?; var strength: Double? }
     struct TextureDef: Decodable { var source: Int?; var sampler: Int? }
     struct ImageDef: Decodable { var uri: String?; var bufferView: Int?; var mimeType: String? }
     struct Accessor: Decodable {

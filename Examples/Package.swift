@@ -228,6 +228,7 @@ let package = Package(
         example("3D/Lighting/LightingPresets"),
         example("3D/Materials/Materials"),
         example("3D/Materials/NormalMaps"),
+        example("3D/Materials/SurfaceMaps"),
         example("3D/Materials/PhysicalMaterials"),
         example("3D/Materials/CoatAndCloth"),
         example("3D/Materials/Glass"),

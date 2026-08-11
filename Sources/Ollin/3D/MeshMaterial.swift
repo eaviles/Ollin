@@ -23,9 +23,18 @@ import Foundation
 /// that bends the lighting normal so a flat triangle shades like a detailed
 /// surface. It needs the mesh to carry `tangents` beside its `uvs`
 /// (`Mesh.normalMapped(_:scale:)` and the model loaders set both up).
-/// Emissive and metallic/roughness *maps* are a later tier. The finish values
-/// below (how metallic, how rough, how clear) are carried for export rather
-/// than drawn, since Ollin shades a mesh through `material(_:)`.
+///
+/// The rest of the standard surface-map set rides alongside: a
+/// `metallicRoughnessTexture` varies the physically-based finish per pixel
+/// (the sampled channels *multiply* `material(_:)`'s metallic/roughness and
+/// the factors below, so `material(.physicallyBased(metallic: 1, roughness: 1))`
+/// shows a model's maps as authored), an `occlusionTexture` dims the ambient
+/// and environment light in crevices, and an `emissiveTexture` /
+/// `emissiveFactor` make the surface add light of its own. All map through the
+/// mesh's `uvs`. The finish *values* below (how metallic, how rough, how
+/// clear) are otherwise carried for export rather than drawn, since Ollin
+/// shades a mesh through `material(_:)`; with a metallic-roughness map bound,
+/// `metallic`/`roughness` act as that map's factors, the standard convention.
 public struct MeshMaterial: @unchecked Sendable {
     // `@unchecked Sendable`: the only stored reference is an `Image`, which a
     // material uses read-only for texturing (handed to the renderer's
@@ -50,6 +59,29 @@ public struct MeshMaterial: @unchecked Sendable {
     /// scale applies to the sampled tangent-space x/y before renormalizing,
     /// glTF's `normalTexture.scale` convention).
     public var normalScale: Double
+    /// A metallic-roughness map in the standard packing: roughness in the
+    /// green channel, metallic in the blue (occlusion often shares the red;
+    /// point `occlusionTexture` at the same image). Sampled as raw data at
+    /// each pixel and multiplied by the `metallic`/`roughness` factors below
+    /// and the drawing-state finish. `nil` means the finish values apply
+    /// uniformly.
+    public var metallicRoughnessTexture: Image?
+    /// An ambient-occlusion map (its red channel; 1 = open, 0 = fully
+    /// occluded), dimming only the *indirect* light (the flat ambient, the
+    /// environment, the probe bounce), never a light shining directly on the
+    /// surface. `nil` means no baked occlusion.
+    public var occlusionTexture: Image?
+    /// How much of the occlusion map applies: 1 as authored (the default),
+    /// down to 0 for none. The sampled value becomes `1 + strength·(ao − 1)`.
+    public var occlusionStrength: Double
+    /// An emissive map: color the surface adds as its own light, multiplied by
+    /// `emissiveFactor`. Sampled as color (sRGB). `nil` means the factor alone
+    /// emits (and a black factor, the default, emits nothing).
+    public var emissiveTexture: Image?
+    /// The emissive tint and strength: black (the default) emits nothing;
+    /// with an `emissiveTexture` it scales the map, without one it emits as a
+    /// constant color.
+    public var emissiveFactor: Color
 
     // The finish below is carried, not rendered. Ollin shades a mesh through
     // `material(_:)`, which is drawing state rather than something the mesh
@@ -73,12 +105,20 @@ public struct MeshMaterial: @unchecked Sendable {
 
     public init(baseColor: Color = .white, texture: Image? = nil,
                 normalTexture: Image? = nil, normalScale: Double = 1,
+                metallicRoughnessTexture: Image? = nil,
+                occlusionTexture: Image? = nil, occlusionStrength: Double = 1,
+                emissiveTexture: Image? = nil, emissiveFactor: Color = .black,
                 metallic: Double = 0, roughness: Double = 0.5, opacity: Double = 1,
                 ior: Double = 1.5, clearcoat: Double = 0, clearcoatRoughness: Double = 0.01) {
         self.baseColor = baseColor
         self.texture = texture
         self.normalTexture = normalTexture
         self.normalScale = normalScale
+        self.metallicRoughnessTexture = metallicRoughnessTexture
+        self.occlusionTexture = occlusionTexture
+        self.occlusionStrength = occlusionStrength
+        self.emissiveTexture = emissiveTexture
+        self.emissiveFactor = emissiveFactor
         self.metallic = metallic
         self.roughness = roughness
         self.opacity = opacity

@@ -79,7 +79,35 @@ extension Scene {
         }
         let physics = resolveUSDPhysics(stage)
         if !physics.isEmpty { scene.physicsDescription = physics }
+        attachUSDTangents(in: &scene.nodes)
         return scene
+    }
+
+    /// Generate tangents for every normal-mapped mesh in the tree: USD has no
+    /// standard authored-tangent attribute (glTF's `TANGENT`), so a mesh whose
+    /// bound preview surface connects a normal map gets the MikkTSpace basis
+    /// over its own uvs, the `loadGLTF` rule. Runs after the skinning pass so
+    /// the one guard can see everything, and it's glTF's guard verbatim:
+    /// generation may *split* a vertex at a mirrored-UV seam, and a node's
+    /// skin/morph/part arrays all ride the vertex order, so a splitting result
+    /// is accepted only when nothing else is aligned to it (a model that loses
+    /// the map this way still draws, with its geometry normals and a one-time
+    /// note at draw).
+    private static func attachUSDTangents(in nodes: inout [SceneNode]) {
+        for i in nodes.indices {
+            if let mesh = nodes[i].mesh, mesh.tangents.count != mesh.positions.count,
+               !mesh.uvs.isEmpty,
+               mesh.material?.normalTexture != nil
+                   || nodes[i].meshParts.contains(where: { $0.material?.normalTexture != nil }) {
+                let generated = mesh.generatingTangents()
+                let hasAligned = nodes[i].skinIndex != nil || !nodes[i].vertexJoints.isEmpty
+                    || !nodes[i].morphTargets.isEmpty || !nodes[i].meshParts.isEmpty
+                if generated.positions.count == mesh.positions.count || !hasAligned {
+                    nodes[i].mesh = generated
+                }
+            }
+            attachUSDTangents(in: &nodes[i].children)
+        }
     }
 
     // MARK: - The walk
@@ -513,28 +541,193 @@ extension Scene {
         return out
     }
 
+    /// A connected preview-surface input resolved to the `UsdUVTexture` it
+    /// taps: the file's image, the output channel the connection names
+    /// (`outputs:r`/`g`/`b`/`a`, or -1 for `rgb`), and the texture shader's
+    /// own `scale`/`bias` multipliers.
+    private struct USDTextureTap {
+        var image: Image
+        var channel: Int
+        var scale: [Double]?
+        var bias: [Double]?
+
+        /// The scale on the tapped channel, the slot a preview surface keeps a
+        /// factor in (1 when none is authored).
+        var channelScale: Double {
+            guard let scale, scale.count == 4 else { return 1 }
+            return scale[max(0, min(channel, 3))]
+        }
+    }
+
     /// The first `UsdPreviewSurface` shader in the material's subtree
     /// (authored order, which covers the flattened export shapes: the shader
-    /// directly under the material, or nested in a NodeGraph).
+    /// directly under the material, or nested in a NodeGraph), read
+    /// spec-correctly across the whole surface: the diffuse color or texture,
+    /// the normal map (its `scale`/`bias` decode carrying the map strength),
+    /// metallic/roughness/occlusion as constants or connected textures (single
+    /// taps repacked into the standard occlusion-roughness-metallic channel
+    /// layout when they aren't already), the emissive color or map, and the
+    /// carried finish constants the spatial exporter writes.
     private static func resolvePreviewSurface(_ material: USDPrim,
                                               build: inout USDBuild) -> MeshMaterial? {
         guard let shader = firstPreviewSurface(in: material) else { return nil }
-        let diffuse = shader.attribute("inputs:diffuseColor") ?? shader.attribute("diffuseColor")
+        func input(_ name: String) -> USDAttribute? {
+            shader.attribute("inputs:" + name) ?? shader.attribute(name)
+        }
+        func tap(_ attr: USDAttribute?) -> USDTextureTap? {
+            guard let connection = attr?.connections.first,
+                  let texture = build.stage.prim(atPath: usdPrimPath(ofPropertyPath: connection)),
+                  texture.attribute("info:id")?.authoredValue?.usdToken == "UsdUVTexture",
+                  case .asset(let file)? = (texture.attribute("inputs:file")
+                      ?? texture.attribute("file"))?.authoredValue,
+                  let image = build.assets.image(atAssetPath: file) else { return nil }
+            let output = connection.split(separator: ".").last.map(String.init) ?? ""
+            let channel: Int = switch output {
+            case "outputs:r": 0
+            case "outputs:g": 1
+            case "outputs:b": 2
+            case "outputs:a": 3
+            default: -1
+            }
+            func four(_ name: String) -> [Double]? {
+                (texture.attribute("inputs:" + name) ?? texture.attribute(name))?
+                    .authoredValue?.usdComponents(count: 4)
+            }
+            return USDTextureTap(image: image, channel: channel,
+                                 scale: four("scale"), bias: four("bias"))
+        }
+        func scalar(_ attr: USDAttribute?) -> Double? {
+            switch attr?.authoredValue {
+            case .double(let d): d
+            case .int(let i): Double(i)
+            case .uint(let u): Double(u)
+            default: nil
+            }
+        }
 
-        // A connected diffuse input names a texture shader; follow it to the
-        // file asset.
-        if let connection = diffuse?.connections.first,
-           let texture = build.stage.prim(atPath: usdPrimPath(ofPropertyPath: connection)),
-           texture.attribute("info:id")?.authoredValue?.usdToken == "UsdUVTexture",
-           case .asset(let file)? = (texture.attribute("inputs:file")
-               ?? texture.attribute("file"))?.authoredValue,
-           let image = build.assets.image(atAssetPath: file) {
-            return MeshMaterial(baseColor: .white, texture: image)
+        var out = MeshMaterial()
+        var any = false
+
+        let diffuse = input("diffuseColor")
+        if let t = tap(diffuse) {
+            out.texture = t.image
+            any = true
+        } else if let c = diffuse?.authoredValue?.usdComponents(count: 3) {
+            out.baseColor = encodedColor(c[0], c[1], c[2])
+            any = true
         }
-        if let c = diffuse?.authoredValue?.usdComponents(count: 3) {
-            return MeshMaterial(baseColor: encodedColor(c[0], c[1], c[2]))
+
+        // The normal map: its strength rides the texture's decode, which our
+        // writer authors as scale (2s, 2s, 2, 1) / bias (−s, −s, −1, 0), so
+        // half the first scale component recovers it (the plain (2, 2, 2, 1)
+        // decode, and an unauthored one, both read back as 1).
+        if let t = tap(input("normal")) {
+            out.normalTexture = t.image
+            if let s = t.scale, s.count == 4, s[0] != 0 { out.normalScale = abs(s[0]) / 2 }
+            any = true
         }
-        return nil
+
+        // Metallic / roughness / occlusion: a connected input replaces the
+        // constant (its factor is the tap's own channel scale); the taps
+        // resolve to the packed map the renderer samples, reused directly in
+        // the standard layout and repacked channel-by-channel otherwise.
+        let metallicTap = tap(input("metallic"))
+        let roughnessTap = tap(input("roughness"))
+        let occlusionTap = tap(input("occlusion"))
+        if let m = scalar(input("metallic")) { out.metallic = m; any = true }
+        if let r = scalar(input("roughness")) { out.roughness = r; any = true }
+        if metallicTap != nil || roughnessTap != nil {
+            out.metallicRoughnessTexture = packedMetallicRoughness(metallic: metallicTap,
+                                                                   roughness: roughnessTap)
+            if out.metallicRoughnessTexture != nil {
+                out.metallic = metallicTap.map(\.channelScale) ?? 1
+                out.roughness = roughnessTap.map(\.channelScale) ?? 1
+                any = true
+            }
+        }
+        if let t = occlusionTap {
+            out.occlusionTexture = t.channel == 0 || t.channel == -1
+                ? t.image
+                : repackedChannels(r: t, g: nil, b: nil)
+            if out.occlusionTexture != nil {
+                out.occlusionStrength = t.channelScale
+                any = true
+            }
+        }
+
+        // Emissive: a value is the constant factor; a map emits scaled by its
+        // own `scale` multiplier (white when none is authored).
+        let emissive = input("emissiveColor")
+        if let t = tap(emissive) {
+            out.emissiveTexture = t.image
+            if let s = t.scale, s.count == 4 {
+                out.emissiveFactor = encodedColor(s[0], s[1], s[2])
+            } else {
+                out.emissiveFactor = .white
+            }
+            any = true
+        } else if let c = emissive?.authoredValue?.usdComponents(count: 3),
+                  c[0] > 0 || c[1] > 0 || c[2] > 0 {
+            out.emissiveFactor = encodedColor(c[0], c[1], c[2])
+            any = true
+        }
+
+        // The carried finish constants, the writer's round trip.
+        if let v = scalar(input("opacity")) { out.opacity = v; any = true }
+        if let v = scalar(input("ior")) { out.ior = v; any = true }
+        if let v = scalar(input("clearcoat")) { out.clearcoat = v; any = true }
+        if let v = scalar(input("clearcoatRoughness")) { out.clearcoatRoughness = v; any = true }
+
+        return any ? out : nil
+    }
+
+    /// The packed metallic-roughness map for a pair of texture taps: the
+    /// source image itself when the taps already read the standard packing
+    /// (roughness g, metallic b of one image), else a repack of the tapped
+    /// channels into that layout, the untapped channel filled white (the
+    /// multiply identity, so the authored constant factor carries it).
+    private static func packedMetallicRoughness(metallic: USDTextureTap?,
+                                                roughness: USDTextureTap?) -> Image? {
+        if let m = metallic, let r = roughness, m.image === r.image,
+           m.channel == 2, r.channel == 1 {
+            return m.image
+        }
+        if metallic == nil, roughness == nil { return nil }
+        return repackedChannels(r: nil, g: roughness, b: metallic)
+    }
+
+    /// An RGBA image built channel-by-channel from optional texture taps
+    /// (nearest-sampled when sizes differ; a channel with no source reads
+    /// white, the multiply identity). Nil when no source has CPU pixels.
+    private static func repackedChannels(r: USDTextureTap?, g: USDTextureTap?,
+                                         b: USDTextureTap?) -> Image? {
+        let taps = [r, g, b].compactMap { $0 }
+        let sources = taps.compactMap { t -> (tap: USDTextureTap, pixels: [UInt8])? in
+            guard let px = t.image.premultipliedPixels() else { return nil }
+            return (t, px)
+        }
+        guard !sources.isEmpty, sources.count == taps.count else { return nil }
+        let width = sources.map(\.tap.image.width).max() ?? 1
+        let height = sources.map(\.tap.image.height).max() ?? 1
+        guard width > 0, height > 0 else { return nil }
+        var out = [UInt8](repeating: 255, count: width * height * 4)
+        func write(_ tap: USDTextureTap?, into slot: Int) {
+            guard let tap,
+                  let source = sources.first(where: { $0.tap.image === tap.image }) else { return }
+            let sw = tap.image.width, sh = tap.image.height
+            let channel = max(0, min(tap.channel, 3))
+            for y in 0..<height {
+                let sy = sh == height ? y : min(sh - 1, y * sh / height)
+                for x in 0..<width {
+                    let sx = sw == width ? x : min(sw - 1, x * sw / width)
+                    out[(y * width + x) * 4 + slot] = source.pixels[(sy * sw + sx) * 4 + channel]
+                }
+            }
+        }
+        write(r, into: 0)
+        write(g, into: 1)
+        write(b, into: 2)
+        return Image(width: width, height: height, premultipliedRGBA: out)
     }
 
     private static func firstPreviewSurface(in prim: USDPrim) -> USDPrim? {
@@ -670,6 +863,12 @@ struct USDAssetStore {
     private let archive: USDZipArchive?
     private let layerDirectory: String
     private let baseURL: URL
+    /// Decoded images by authored path, so two inputs naming one file share
+    /// one `Image` instance: identity is what tells an already-packed
+    /// metallic-roughness texture from channels that need repacking, and what
+    /// the writer's texture dedupe keys on for the round trip.
+    private final class ImageCache { var images: [String: Image] = [:] }
+    private let cache = ImageCache()
 
     init(fileURL: URL, opened: USDStage.Opened) {
         archive = opened.archive
@@ -684,6 +883,13 @@ struct USDAssetStore {
     /// falls back to the sole entry sharing its file name, which forgives the
     /// exporters that flatten directory layouts.
     func image(atAssetPath path: String) -> Image? {
+        if let cached = cache.images[path] { return cached }
+        guard let decoded = decodeImage(atAssetPath: path) else { return nil }
+        cache.images[path] = decoded
+        return decoded
+    }
+
+    private func decodeImage(atAssetPath path: String) -> Image? {
         var relative = path
         if relative.hasPrefix("./") { relative.removeFirst(2) }
         guard !relative.isEmpty, !relative.contains("://"), !relative.hasPrefix("/")

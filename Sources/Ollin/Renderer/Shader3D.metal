@@ -2576,6 +2576,486 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
     return float4(lit, alpha);
 }
 
+// The surface-mapped twin of `meshLitColor`, for the PBR-map pipeline: identical
+// except that the base layer's metallic/roughness arrive as the per-pixel values
+// the maps resolved (`pxMetal`/`pxRough`, replacing every `mat.metallic`/
+// `mat.roughness` read) and the flat ambient terms scale by the occlusion factor
+// `pxAO` (indirect light only, the glTF convention). KEPT IN SYNC BY HAND (the
+// `ollin_sdf_distance` rule): edit `meshLitColor`, then re-copy the body here and
+// re-apply exactly those substitutions; never grow the shipped original, whose
+// codegen unmapped frames depend on.
+static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
+                                  float3 worldPos,
+                                  // The per-pixel surface values the maps resolved: the
+                                  // composed metallic/roughness (finish x map) and the
+                                  // occlusion factor for the indirect (ambient) terms.
+                                  float pxMetal, float pxRough, float pxAO,
+                                  constant OllinMaterial &mat,
+                                  constant OllinLighting &light,
+                                  depth2d<float> shadowMap, sampler shadowSamp,
+                                  texturecube<float> shadowCube, sampler shadowCubeSamp,
+                                  // The two LTC lookup tables (fragment textures 8/9),
+                                  // read only by the area light kinds.
+                                  texture2d<float> ltcMat, texture2d<float> ltcAmp,
+                                  // The light-shaping arrays (fragment textures 10/11):
+                                  // baked IES profiles + cookie images, read only when
+                                  // the frame's gates are up (stand-ins otherwise).
+                                  texture2d_array<float> iesProfiles,
+                                  texture2d_array<float> cookies,
+                                  // The sheen directional-albedo LUT (fragment texture 12),
+                                  // read only by a physically-based material with sheen.
+                                  texture2d<float> sheenLUT
+#if OLLIN_RT_SHADOWS
+                                  , float rtShadow
+#endif
+                                  // A marched SDF field passes its own self-shadow factor
+                                  // (0…1) here since it isn't in the shadow maps; a mesh
+                                  // passes -1 to sample the maps as usual (byte-identical).
+                                  , float fieldShadow
+                                  // A mesh receiver also folds in its occlusion by the marched
+                                  // SDF fields under a point/RT caster (1.0 = lit / none, the
+                                  // byte-identical default; the raymarch caller leaves it 1.0).
+                                  , float meshFieldShadow = 1.0
+                                  // World-units thickness for the scattering transmittance on a
+                                  // ray-traced point caster, traced by the solid/textured
+                                  // fragments (`meshRTThickness`); every other carrier leaves
+                                  // the default (unread unless `shadowKind` is 2).
+                                  , float rtThickness = 0.0
+                                  ) {
+    float3 n = normalize(normal);
+    if (light.enabled == 0) {
+        return float4(base, alpha);
+    }
+    float3 viewDir = normalize(light.cameraPosition.xyz - worldPos);
+    float specStrength = mat.specular;
+    float shininess = max(mat.shininess, 1.0);
+    int model = mat.shadingModel;            // 0 standard, 1 toon, 2 Gooch
+    float bands = max(mat.toonBands, 1.0);
+    bool wantsSSS = mat.subsurfaceColor.a > 0.0;
+    // Real-scattering translucency: the material asked for the diffusion
+    // (`Material.scattering`) and the frame has a caster whose depth can say how
+    // thick the body is. Field carriers pass their own `fieldShadow` and keep
+    // plain shading, so the term is mesh-only like the blur; at strength 0 or with
+    // no caster the branch is never taken, byte-identical.
+    bool transmits = mat.scatterStrength > 0.0 && mat.scatter.w > 0.0
+                  && light.shadowLight >= 0 && fieldShadow < 0.0;
+    // Transmission swaps the physically-based diffuse body for the transmitted lobe the
+    // IBL ambient adds, so the direct lights' diffuse scales down with it. Only when an
+    // environment supplies that lobe: with no IBL, transmission is inert (the surface
+    // shades as the plain dielectric it would otherwise be), and at transmission 0 the
+    // factor is exactly 1 (byte-identical).
+    float diffKeep = (model == 3 && light.iblEnabled != 0)
+                   ? (1.0 - mat.transmission * (1.0 - pxMetal)) : 1.0;
+    // The layered physically-based lobes, resolved once per pixel: the coat intensity
+    // and roughness, and the sheen's directional albedo E (from the baked LUT), which
+    // both scales the base down and sets the sheen's own strength. Zero coat and zero
+    // sheen skip every new term, so existing materials shade byte-identically.
+    float coat = (model == 3) ? mat.clearcoat : 0.0;
+    float coatRough = clamp((float)mat.clearcoatRoughness, 0.045, 1.0);
+    float3 sheenTint = mat.sheenColor.rgb;
+    bool hasSheen = (model == 3) && (sheenTint.x + sheenTint.y + sheenTint.z > 0.0);
+    float sheenRough = 1.0, sheenE = 0.0, sheenScale = 1.0;
+    if (hasSheen) {
+        constexpr sampler sheenSamp(filter::linear, address::clamp_to_edge);
+        sheenRough = clamp((float)mat.sheenColor.w, 0.045, 1.0);
+        float sheenNoV = saturate(dot(n, viewDir));
+        sheenE = sheenLUT.sample(sheenSamp, float2(sheenNoV, sheenRough)).r;
+        sheenScale = 1.0 - max(sheenTint.x, max(sheenTint.y, sheenTint.z)) * sheenE;
+    }
+
+    // Gooch sets its own diffuse tone below; the others start from the flat ambient term.
+    // A physically-based metal has no diffuse, so its flat ambient is killed by metalness
+    // (its environment reflection is the IBL specular term, added once an environment is set).
+    float3 lit;
+    if (model == 2)      lit = float3(0.0);
+    else if (model == 3) lit = (light.iblEnabled != 0)
+                             ? float3(0.0)   // the IBL ambient is added by the mesh fragment
+                             : light.ambient.rgb * base * ((1.0 - pxMetal) * pxAO);
+    else                 lit = light.ambient.rgb * base * pxAO;
+    float3 incoming = light.ambient.rgb;     // light reaching the surface (drives the sheen)
+    float3 sssAccum = float3(0.0);           // accumulated back-translucency
+    float3 keyToLight = float3(0.0, 1.0, 0.0);   // the primary light dir (Gooch tone axis)
+    bool haveKey = false;
+
+    for (int i = 0; i < light.lightCount; i++) {
+        OllinLight L = light.lights[i];
+
+        // Area kinds (rect / disk / tube) shade through the LTC integrals and skip the
+        // whole punctual path below, so a frame with no area light is byte-identical.
+        // Gated on the tables being bound (`ltcEnabled`; the loader logs a failure once).
+        if (L.kind >= 3) {
+            if (light.ltcEnabled == 0) continue;
+            float3 toCenter = normalize(L.position.xyz - worldPos);
+            if (!haveKey) { keyToLight = toCenter; haveKey = true; }
+
+            // Dim the casting panel where the receiver is occluded, mirroring the
+            // punctual casters below: the traced path samples the panel's own surface
+            // (shadowKind 2); the 2D path reads the spot-style map from the panel's
+            // center through PCSS with the penumbra sized by the panel's extent.
+            // Ambient stays; only this light's integrals dim.
+            float atten = 1.0;
+            if (i == light.shadowLight) {
+                float lit01;
+                if (fieldShadow >= 0.0) {
+                    lit01 = fieldShadow;   // a marched field self-shadows (it isn't in the maps)
+                } else {
+#if OLLIN_RT_SHADOWS
+                    if (light.shadowKind == 2) lit01 = rtShadow;
+                    else
+#endif
+                    lit01 = (light.shadowDepthA > 0.0)
+                        ? shadowFactorPCSS(worldPos, n, toCenter, light.lightViewProjection,
+                                           light.shadowTexelWorld, light.shadowDepthA,
+                                           light.shadowDepthB, light.shadowSamples,
+                                           shadowMap, shadowSamp, shadowCubeSamp)
+                        : shadowFactor(worldPos, n, toCenter, light.lightViewProjection,
+                                       light.shadowTexelWorld, shadowMap, shadowSamp);
+                    lit01 *= meshFieldShadow;   // also occluded by the marched fields (RT; 1.0 otherwise)
+                }
+                atten = mix(1.0, lit01, light.shadowStrength);
+            }
+
+            // The LUT texel for this surface: the physically-based model brings its own
+            // perceptual roughness; the Blinn-Phong models map their exponent onto the
+            // equivalent GGX lobe width (alpha = sqrt(2/(shininess + 2)), so perceptual
+            // roughness is its square root).
+            float rough = (model == 3) ? clamp(pxRough, 0.045, 1.0)
+                                       : clamp(sqrt(sqrt(2.0 / (shininess + 2.0))), 0.045, 1.0);
+            float NoV = saturate(dot(n, viewDir));
+            float2 ltcUV = ollin_ltc_uv(rough, NoV);
+            float4 lt1 = ltcMat.sample(ollinLTCSampler, ltcUV);
+            float4 lt2 = ltcAmp.sample(ollinLTCSampler, ltcUV);
+            float3x3 Minv = float3x3(float3(lt1.x, 0.0, lt1.y),
+                                     float3(0.0,  1.0, 0.0),
+                                     float3(lt1.z, 0.0, lt1.w));
+
+            float diffI = 0.0, specI = 0.0;
+            ollin_ltc_light(L, n, viewDir, worldPos, Minv, ltcAmp, diffI, specI);
+            // The shadow scales both integrals (and `incoming` below picks it up), so
+            // every shading model's area term dims consistently; 1.0 with no caster.
+            diffI *= atten;
+            specI *= atten;
+
+            if (model == 1) {
+                // Toon: cel bands on the area diffuse; the highlight stays smooth (a
+                // soft light's stretched blob has no hard cel edge to snap to).
+                float d = ceil(saturate(diffI) * bands) / bands;
+                lit += L.color.rgb * base * d + L.specular.rgb * (specI * lt2.x * specStrength);
+            } else if (model == 2) {
+                // Gooch: the tone comes from the key axis after the loop; the light
+                // still adds its highlight, like the punctual path.
+                lit += L.specular.rgb * (specI * lt2.x * specStrength);
+            } else if (model == 3) {
+                // Physically based: the fitted norm + Fresnel split reconstructs the
+                // GGX response (F0 blends the two channels); diffuse is the exact
+                // Lambert integral over the shape, with the usual metallic kill. Both
+                // ride the light's diffuse color, like the punctual microfacet path.
+                float3 F0 = mix(float3(mat.f0), base, pxMetal);
+                if (coat > 0.0) F0 = mix(F0, ollin_pbr_coat_f0(F0), coat);
+                float3 spec = (F0 * lt2.x + (float3(1.0) - F0) * lt2.y) * specI;
+                float3 diff = base * ((1.0 - pxMetal) * diffI * diffKeep);
+                float3 term = diff + spec;
+                // Sheen under a panel: the lobe is broad, so its response is its
+                // directional albedo times the panel's exact cosine integral.
+                if (hasSheen) term = term * sheenScale + sheenTint * (sheenE * diffI);
+                if (coat > 0.0) {
+                    // The coat runs its own LTC fetch at the coat roughness (a second,
+                    // narrower lobe over the same panel); its norm + average-Fresnel
+                    // split carries the film's fixed 0.04 reflectance, and the base
+                    // dims by the coat's view Fresnel like the punctual path.
+                    float2 uvC = ollin_ltc_uv(coatRough, NoV);
+                    float4 c1 = ltcMat.sample(ollinLTCSampler, uvC);
+                    float4 c2 = ltcAmp.sample(ollinLTCSampler, uvC);
+                    float3x3 MinvC = float3x3(float3(c1.x, 0.0, c1.y),
+                                              float3(0.0, 1.0, 0.0),
+                                              float3(c1.z, 0.0, c1.w));
+                    float diffC = 0.0, specC = 0.0;
+                    ollin_ltc_light(L, n, viewDir, worldPos, MinvC, ltcAmp, diffC, specC);
+                    float Fc = (0.04 + 0.96 * pow(1.0 - NoV, 5.0)) * coat;
+                    term = term * (1.0 - Fc)
+                         + float3((0.04 * c2.x + 0.96 * c2.y) * (specC * atten) * coat);
+                }
+                lit += term * L.color.rgb;
+            } else {
+                // Standard: Lambert diffuse through the exact integral; the highlight
+                // takes the norm channel scaled by the material's specular strength
+                // (inert at 0, the finish rule) in the light's specular tint.
+                lit += L.color.rgb * base * diffI + L.specular.rgb * (specI * lt2.x * specStrength);
+            }
+            incoming += L.color.rgb * diffI;
+
+            // Subsurface: what the panel pours onto the *back* face, seen through the
+            // body. The flipped-normal integral is the area analogue of the punctual
+            // wrap term and carries the panel's real falloff with it.
+            if (wantsSSS) {
+                float back = pow(max(dot(viewDir, -toCenter), 0.0), 3.0);
+                float diffBack = 0.0, specBack = 0.0;
+                ollin_ltc_light(L, n, viewDir, worldPos, Minv, ltcAmp, diffBack, specBack, true);
+                sssAccum += atten * L.color.rgb * (back * diffBack);
+            }
+            continue;
+        }
+
+        float3 toLight;     // unit vector from the surface toward the light
+        float atten = 1.0;
+        if (L.kind == 0) {
+            toLight = L.direction.xyz;            // directional: already the dir to the light
+        } else {
+            toLight = normalize(L.position.xyz - worldPos);
+            if (L.kind == 2) {
+                // Spot: gate by the cone. The axis is the light's travel direction,
+                // so the direction from the light to this surface is -toLight; its
+                // cosine against the axis fades over the inner→outer penumbra.
+                float cosA = dot(-toLight, L.direction.xyz);
+                atten = smoothstep(L.cosOuter, L.cosInner, cosA);
+            }
+            // Light shaping: an IES profile scales this light's intensity by the
+            // emission angle, a spot cookie tints it by the projected image texel
+            // (both on the local copy, so every shading model below picks it up).
+            // Gated per frame; a featureless frame never enters.
+            if (light.iesEnabled != 0 || light.cookieEnabled != 0) {
+                ollin_apply_light_shaping(L, light, toLight, worldPos, iesProfiles, cookies);
+            }
+        }
+        // Transmittance: the light this caster pours onto the body's far side, seen
+        // through it (the translucency half of `Material.scattering`; the shadow-map
+        // technique, see ATTRIBUTION.md). Only the casting light can say how thick
+        // the body is here, so only it transmits. The term sits *before* the shadow
+        // dim on purpose: a backlit surface stands in its own body's shadow, and
+        // dimming by that factor would erase exactly the light being transported.
+        // It rides the shaped/tinted local light copy and the cone attenuation, and
+        // lands ahead of the screen-space blur, which diffuses it together with the
+        // reflectance (the published treatment). The reversed-normal irradiance
+        // keeps it off lit faces (no double count with the diffuse), its 0.3 wrap
+        // easing the handoff across the terminator.
+        if (transmits && i == light.shadowLight) {
+            float t = -1.0;   // world-units thickness; < 0 = no estimate, term skips
+            bool haveT = false;
+            float3 T = float3(0.0);
+#if OLLIN_RT_SHADOWS
+            if (light.shadowKind == 2) t = rtThickness;
+            else
+#endif
+            if (light.shadowKind == 1)
+                t = transmitThicknessCube(worldPos, n, L.position.xyz, light.shadowDepthA,
+                                          light.shadowTexelWorld, shadowCube, shadowCubeSamp);
+            else if (light.shadowLinearize.x != 0.0)
+                // The 2D map gathers the transmittance over the diffusion's entry
+                // footprint (banding treatment; the cube/ray paths keep the single
+                // thickness read below).
+                haveT = transmitGather2D(worldPos, n, light.lightViewProjection,
+                                         light.shadowTexelWorld, light.shadowLinearize,
+                                         mat.scatter, shadowMap, shadowCubeSamp, T);
+            if (t >= 0.0) {
+                // World thickness → profile units: the diffusion kernel spans ±3
+                // units over the scattering radius, so both halves share one ruler.
+                T = ollin_sss_transmit(t * 3.0 / mat.scatter.w, mat.scatter.xyz);
+                haveT = true;
+            }
+            if (haveT) {
+                float E = max(0.3 + dot(-n, toLight), 0.0);
+                float kill = (model == 3) ? (1.0 - pxMetal) * diffKeep : 1.0;
+                lit += T * L.color.rgb * base * (E * mat.scatterStrength * atten * kill);
+            }
+        }
+        // Dim only the casting light where this surface is in shadow (ambient stays).
+        // A directional/spot caster samples the 2D map; a point caster the cube.
+        if (i == light.shadowLight) {
+            float lit01;
+            if (fieldShadow >= 0.0) {
+                lit01 = fieldShadow;   // a marched field self-shadows (it isn't in the maps)
+            } else {
+#if OLLIN_RT_SHADOWS
+                // shadowKind 2 = ray-traced point caster (computed in the fragment).
+                if (light.shadowKind == 2) lit01 = rtShadow;
+                else
+#endif
+                lit01 = (light.shadowKind == 1)
+                    ? shadowFactorCube(worldPos, n, L.position.xyz, light.shadowDepthA,
+                                       light.shadowTexelWorld, shadowCube, shadowCubeSamp)
+                    // shadowDepthA > 0 = a soft (PCSS) directional/spot caster; 0 = the legacy
+                    // hard 3x3 (so `shadowSoftness(0)` is byte-identical to before).
+                    : (light.shadowDepthA > 0.0)
+                        ? shadowFactorPCSS(worldPos, n, toLight, light.lightViewProjection,
+                                           light.shadowTexelWorld, light.shadowDepthA,
+                                           light.shadowDepthB, light.shadowSamples,
+                                           shadowMap, shadowSamp, shadowCubeSamp)
+                        : shadowFactor(worldPos, n, toLight, light.lightViewProjection,
+                                       light.shadowTexelWorld, shadowMap, shadowSamp);
+                lit01 *= meshFieldShadow;   // also occluded by the marched fields (point/RT; 1.0 otherwise)
+            }
+            atten *= mix(1.0, lit01, light.shadowStrength);
+        }
+        if (!haveKey) { keyToLight = toLight; haveKey = true; }
+
+        // Diffuse N·L, softened by a wrap term (softness 0 = plain max(N·L, 0), so the
+        // shading is byte-identical; higher wraps the light a little past the terminator).
+        float raw = dot(n, toLight);
+        float ndl = max((raw + L.softness) / (1.0 + L.softness), 0.0);
+        float3 h = normalize(toLight + viewDir);
+        float specRaw = (ndl > 0.0) ? pow(max(dot(n, h), 0.0), shininess) : 0.0;
+        // The highlight takes the light's own specular tint (defaults to its diffuse
+        // color, so a single-color light is unchanged).
+        float3 specCol = L.specular.rgb * (specRaw * specStrength);
+
+        if (model == 1) {
+            // Toon: hard cel bands on the diffuse, the specular snapped to a blob.
+            float d = ceil(ndl * bands) / bands;
+            float spec = (specRaw > 0.5) ? specStrength : 0.0;
+            lit += atten * (L.color.rgb * base * d + L.specular.rgb * spec);
+        } else if (model == 2) {
+            // Gooch tone is set after the loop; each light still adds a highlight.
+            lit += atten * specCol;
+        } else if (model == 3) {
+            // Physically-based: Cook-Torrance microfacet specular + Lambert diffuse, the
+            // (1−metallic) diffuse-kill folded once into kD. `base` is the albedo, the
+            // light's `color` the (intensity-premultiplied, linear) radiance.
+            float NoL = max(raw, 0.0);
+            if (NoL > 0.0) {
+                float rough = clamp(pxRough, 0.045, 1.0);
+                float NoV = max(dot(n, viewDir), 1e-4);
+                float NoH = max(dot(n, h), 0.0);
+                float VoH = max(dot(viewDir, h), 0.0);
+                float3 F0 = mix(float3(mat.f0), base, pxMetal);
+                // Under a coat the base's reflectance re-derives for the film interface.
+                if (coat > 0.0) F0 = mix(F0, ollin_pbr_coat_f0(F0), coat);
+                float  D   = ollin_pbr_D_GGX(NoH, rough);
+                float  Vis = ollin_pbr_V_SmithGGX(NoV, NoL, rough);
+                float3 F   = ollin_pbr_F_Schlick(VoH, F0);
+                float3 spec = D * Vis * F;
+                float3 kD   = (float3(1.0) - F) * (1.0 - pxMetal);
+                float3 diff = kD * base * (diffKeep / 3.14159265);
+                float3 term = diff + spec;
+                // Layering order: sheen over the base (the base scaled by 1 - max(tint)·E
+                // to conserve energy), then the coat over both, dimming them by its own
+                // Fresnel while adding the film's polished highlight.
+                if (hasSheen) {
+                    term = term * sheenScale
+                         + sheenTint * (ollin_pbr_D_Charlie(NoH, sheenRough)
+                                        * ollin_pbr_V_Neubelt(NoV, NoL));
+                }
+                if (coat > 0.0) {
+                    float Fc = (0.04 + 0.96 * pow(1.0 - VoH, 5.0)) * coat;
+                    term = term * (1.0 - Fc)
+                         + ollin_pbr_D_GGX(NoH, coatRough) * ollin_pbr_V_Kelemen(VoH) * Fc;
+                }
+                lit += term * L.color.rgb * (atten * NoL);
+            }
+        } else {
+            // Standard Lambert diffuse + Blinn-Phong specular.
+            lit += atten * (L.color.rgb * base * ndl + specCol);
+        }
+        incoming += atten * L.color.rgb * ndl;
+
+        // Subsurface: light seen coming through thin geometry from behind (a wrap term).
+        if (wantsSSS) {
+            float back = pow(max(dot(viewDir, -toLight), 0.0), 3.0);
+            sssAccum += atten * L.color.rgb * back;
+        }
+    }
+
+    // Gooch warm–cool tone from the key light (replaces the ambient + Lambert diffuse).
+    // The raw signed dot sends back faces to the cool tone, the lit side to the warm one.
+    if (model == 2) {
+        float t = dot(n, keyToLight) * 0.5 + 0.5;
+        lit += mix(mat.goochCool.rgb, mat.goochWarm.rgb, t) * base;
+    }
+
+    // Subsurface glow: a soft translucent bleed in the tint, modulated by the body color.
+    if (wantsSSS) {
+        lit += mat.subsurfaceColor.a * mat.subsurfaceColor.rgb * base * sssAccum;
+    }
+
+    // Iridescent sheen (thin-film-style): a view-angle rainbow that strengthens toward
+    // grazing angles, the hue cycling through a cosine palette. It's a reflected-
+    // light effect, so it's scaled by the light reaching the surface (with a faint floor
+    // so it still reads in shadow), not pure emission. Inert when strength is 0.
+    if (mat.iridescence > 0.0) {
+        float fres = pow(1.0 - clamp(dot(n, viewDir), 0.0, 1.0), 3.0);
+        float irrad = dot(incoming, float3(0.299, 0.587, 0.114));
+        if (mat.iridescenceFlow > 0.0) {
+            // Soap-film mode: the sheen's color comes from a *film thickness*, the way
+            // a real bubble's does, so the marbling falls out of the physics instead
+            // of a hue wheel. The thickness field is (a) drainage, gravity stacking
+            // the film toward the bottom of the surface (the local "down" read off
+            // the normal's y), quadratic so the interference contours crowd into
+            // fine bands near the bottom while the upper body stays broad, plus
+            // (b) a domain-warped *fractal* drifting swirl in scene-scaled cells:
+            // a fbm field displaced by a vector of two more fbm reads (the classic
+            // marble warp), so the contours shear into layered wisps across several
+            // scales instead of smooth single-octave blobs, advected by the
+            // material's own phase clock (no hidden time: exports reproduce).
+            // The color is the reflected two-beam interference evaluated per RGB
+            // wavelength (rates lambdaR/lambda for ~685/564/472 nm): zero thickness
+            // goes dark (the black film of a bubble about to pop), the first orders
+            // give the straw/magenta/cyan Newton series, and a broadband coherence
+            // rolloff washes thick film toward pale, which is what a real film
+            // under white light does. `iridescenceScale` sets how many orders the
+            // field spans; `iridescenceFlow` the swirl's share of the thickness.
+            float cell = max(light.sceneScale, 1e-4) * 0.35 * mat.iridescenceFlowSize;
+            float3 q = worldPos / cell;
+            float t = mat.iridescencePhase;
+            float3 d1 = float3(0.12 * t, -0.30 * t, 0.0);
+            float3 d2 = float3(-0.22 * t, -0.50 * t, 0.09 * t);
+            float wa = fbm(q * 1.2 + d1) * 2.0 - 1.0;
+            float wb = fbm(q * 1.2 + d1 + float3(4.7, 9.1, 2.3)) * 2.0 - 1.0;
+            float wm = fbm(q * 2.3 + d2 + float3(wa, wb, 0.5 * (wa - wb)) * 3.2) * 2.0 - 1.0;
+            float head = 0.5 - 0.5 * clamp(n.y, -1.0, 1.0);      // 0 top ... 1 bottom
+            float d = mat.iridescenceScale
+                    * max(0.18 + 1.1 * head * head
+                              + mat.iridescenceFlow * (0.35 * wa + 0.55 * wm), 0.0);
+            float3 rate = float3(1.0, 1.2146, 1.4513);           // lambdaR / lambda(R,G,B)
+            float3 wave = 0.5 - 0.5 * cos(6.2831853 * d * rate);
+            float coh = exp(-0.18 * d);
+            float3 filmC = mix(float3(0.5), wave, coh);
+            float body = mix(0.35, 1.0, fres);
+            lit += mat.iridescence * body * filmC * (0.15 + 0.85 * irrad);
+        } else {
+            // The plain finish: a view-angle rim sheen through a cosine palette.
+            float phase = fres * mat.iridescenceScale;
+            float3 rainbow = 0.5 + 0.5 * cos(6.2831853 * (phase + float3(0.0, 0.3333, 0.6667)));
+            lit += mat.iridescence * fres * rainbow * (0.15 + 0.85 * irrad);
+        }
+    }
+
+    // Sparkle (metallic flake): the surface is peppered with tiny mirror flakes, one
+    // per world-space hash cell, each tilted off the surface normal by its cell's
+    // random vector. A flake lights up when its tilted normal happens to face the
+    // viewer (a sharp power of that alignment), so flecks flash in and out as the
+    // view, object, or light moves. Cells are sized from the camera's framing
+    // (`sceneScale`, the eye-to-target distance), so the default flake size reads
+    // alike at any scene scale. A reflected-light effect like the sheen above,
+    // scaled by the light reaching the surface with a faint floor so it still reads
+    // in shadow. Inert when strength is 0.
+    if (mat.sparkleColor.a > 0.0) {
+        float cell = max(light.sceneScale, 1e-4) * 0.0022 * mat.sparkleSize;
+        float3 q = worldPos / cell;
+        float3 rnd = hash33(floor(q));
+        // Round each flake: fade by the distance from its cell's center, so a chip
+        // reads as a paillette instead of a cube-cut square (cells the surface
+        // slices far from center lose their flake, which varies the sizes). The
+        // edge band narrows as flakes grow: a dust-sized flake wants a soft edge
+        // (its whole width is a few pixels), a sequin-sized one a crisp rim.
+        float soft = max(0.05, 0.26 / mat.sparkleSize);
+        float mask = smoothstep(0.5, 0.5 - soft, length(fract(q) - 0.5));
+        float3 flakeN = normalize(n + (rnd * 2.0 - 1.0) * 0.7);
+        float align = clamp(dot(flakeN, viewDir), 0.0, 1.0);
+        // Two lobes: the sharp flash of a flake facing the viewer, plus a faint wide
+        // sheen so the off-flash flakes still read as a field of dim mirrors.
+        float flash = pow(align, mat.sparkleSharpness) + 0.18 * pow(align, mat.sparkleSharpness * 0.12);
+        float irrad = dot(incoming, float3(0.299, 0.587, 0.114));
+        lit += mat.sparkleColor.a * 1.6 * flash * mask * mat.sparkleColor.rgb * (0.15 + 0.85 * irrad);
+    }
+
+    // Rim (Fresnel edge) glow: a bright halo at grazing angles in the rim color.
+    if (mat.rimColor.a > 0.0) {
+        float rim = pow(1.0 - clamp(dot(n, viewDir), 0.0, 1.0), mat.rimPower);
+        lit += mat.rimColor.a * rim * mat.rimColor.rgb;
+    }
+
+    return float4(lit, alpha);
+}
+
 // Depth-only vertex for the shadow pass: transform a mesh vertex into the caster's
 // clip space (the light view-projection bound at index 2). The pipeline has no
 // fragment — the pass writes only depth, which the lit mesh fragments above sample.
@@ -3012,6 +3492,157 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
     // environment (or the traced scene), tinted by the albedo and weighted by the
     // energy the specular lobe leaves over. Metals transmit nothing. Inert at 0.
     float trans = mat.transmission * (1.0 - mat.metallic);
+    if (trans > 0.0) {
+        float3 Ft = ollin_env_refraction(n, viewDir, mat, light, prefilterTex, cubeSamp, rot);
+#if OLLIN_RT_SHADOWS
+        if (light.rtReflections != 0) {
+            Ft = ollin_rt_refraction(worldPos, n, viewDir, mat, reflAccel, meshVerts,
+                                     meshGeoOffsets, light, irradianceTex, prefilterTex,
+                                     cubeSamp, rot, Ft, ltcAmp, iesProfiles, cookies,
+                                     giIrradianceTex, giDepthTex, giOffsetsTex);
+        }
+#endif
+        float3 E = F0 * brdf.x + brdf.y;   // the specular lobe's share of the energy
+        diffusePart = mix(diffusePart, Ft * (float3(1.0) - E) * base, trans);
+    }
+    float3 color = diffusePart + specular;
+    // Sheen: its own broad prefiltered gather at the sheen roughness, weighted by the
+    // directional albedo E, with the base scaled down by 1 - max(tint)·E to conserve
+    // energy. The sheen lobe keeps the environment sample even under ray-traced
+    // reflections: it's wide enough that the prefiltered env is the honest integral.
+    float3 sheenTint = mat.sheenColor.rgb;
+    if (sheenTint.x + sheenTint.y + sheenTint.z > 0.0) {
+        float sheenRough = clamp((float)mat.sheenColor.w, 0.045, 1.0);
+        float sheenE = sheenLUT.sample(lutSamp, float2(NoV, sheenRough)).r;
+        float3 sheenRad = prefilterTex.sample(cubeSamp, rot * R,
+                                              level(sheenRough * light.iblMaxMip)).rgb;
+        color = color * (1.0 - max(sheenTint.x, max(sheenTint.y, sheenTint.z)) * sheenE)
+              + sheenTint * (sheenE * sheenRad);
+    }
+    // Clear coat: a second, smoother gather along the same reflection ray, added by the
+    // coat's view Fresnel, with everything beneath dimmed by what the coat reflected
+    // away. Under ray-traced reflections the coat reuses the traced radiance (the same
+    // mirror direction; the coat is usually the smoother lobe, so the traced scene is
+    // the better answer than a second prefiltered env sample would be).
+    if (mat.clearcoat > 0.0) {
+        float coatRough = clamp((float)mat.clearcoatRoughness, 0.045, 1.0);
+        float Fc = (0.04 + 0.96 * pow(1.0 - NoV, 5.0)) * mat.clearcoat;
+#if OLLIN_RT_SHADOWS
+        float3 coatRad = (light.rtReflections != 0)
+            ? prefiltered
+            : prefilterTex.sample(cubeSamp, rot * R, level(coatRough * light.iblMaxMip)).rgb;
+#else
+        float3 coatRad = prefilterTex.sample(cubeSamp, rot * R,
+                                             level(coatRough * light.iblMaxMip)).rgb;
+#endif
+        color = color * (1.0 - Fc) + coatRad * Fc;
+    }
+    return color * light.iblIntensity;
+}
+
+// The surface-mapped twin of `ollin_pbr_ibl_ambient`: identical except the
+// per-pixel `pxMetal`/`pxRough` replace every `mat.metallic`/`mat.roughness`
+// read (the coat and sheen keep their own fields). The caller scales the whole
+// returned ambient by the occlusion factor. KEPT IN SYNC BY HAND, like
+// `meshLitColorMapped` above: edit the original, re-copy, re-substitute.
+static inline float3 ollin_pbr_ibl_ambient_mapped(float3 base, float3 n, float3 viewDir,
+                                           // Per-pixel metallic/roughness (finish x map).
+                                           float pxMetal, float pxRough,
+                                           constant OllinMaterial &mat,
+                                           constant OllinLighting &light,
+                                           texturecube<float> irradianceTex,
+                                           texturecube<float> prefilterTex,
+                                           texture2d<float> brdfTex,
+                                           // The sheen directional-albedo LUT (texture 12),
+                                           // read only when the material carries sheen.
+                                           texture2d<float> sheenLUT
+#if OLLIN_RT_SHADOWS
+                                           // The reflection trace's inputs (see ollin_rt_reflection):
+                                           // the world position + the caster accel + the flat mesh
+                                           // buffer + its per-geometry base-vertex offsets. Inert
+                                           // unless `light.rtReflections != 0`. `deferredReflection`
+                                           // is the pre-traced screen-space sample (premultiplied
+                                           // radiance, alpha = hit coverage) the caller read when
+                                           // `light.rtReflectionDeferred` is set; zero otherwise.
+                                           // `ltcAmp` feeds the hit shade's exact area-light diffuse.
+                                           , float3 worldPos,
+                                           primitive_acceleration_structure reflAccel,
+                                           const device OllinMeshVertex *meshVerts,
+                                           const device uint *meshGeoOffsets,
+                                           float4 deferredReflection,
+                                           texture2d<float> ltcAmp,
+                                           // The light-shaping arrays, so a shaped light's
+                                           // pattern survives into the inline hit shade.
+                                           texture2d_array<float> iesProfiles,
+                                           texture2d_array<float> cookies,
+                                           // The probe-sampled bounce irradiance (display-
+                                           // linear), pre-sampled by the carrier; replaces
+                                           // the irradiance-cube diffuse when the probe
+                                           // field is active (`light.giOrigin.w`).
+                                           float3 giIrradiance,
+                                           // The probe atlases themselves, for the traced
+                                           // reflection/refraction hit shades (a surface
+                                           // seen in a mirror samples the field at the
+                                           // *hit*, not at this fragment). Never sampled
+                                           // while the field is inactive.
+                                           texture2d<float> giIrradianceTex,
+                                           texture2d<float> giDepthTex,
+                                           texture2d<float> giOffsetsTex
+#endif
+                                           ) {
+    constexpr sampler cubeSamp(filter::linear, mip_filter::linear, address::clamp_to_edge);
+    constexpr sampler lutSamp(filter::linear, address::clamp_to_edge);
+    float NoV = max(dot(n, viewDir), 1e-4);
+    float rough = clamp(pxRough, 0.045, 1.0);
+    float3 R = reflect(-viewDir, n);
+    // Spin the sample directions about Y by the environment rotation.
+    float cs = cos(light.iblRotation), sn = sin(light.iblRotation);
+    float3x3 rot = float3x3(float3(cs, 0.0, -sn), float3(0.0, 1.0, 0.0), float3(sn, 0.0, cs));
+    // Normal-incidence reflectance comes packed from the material's IOR (bit-equal to
+    // the old hard-coded 0.04 at the default 1.5). Under a clear coat the base's
+    // reflectance re-derives for the film interface, blended by the coat intensity.
+    float3 F0 = mix(float3(mat.f0), base, pxMetal);
+    if (mat.clearcoat > 0.0) F0 = mix(F0, ollin_pbr_coat_f0(F0), mat.clearcoat);
+    // Roughness-aware Fresnel so rough grazing angles don't blow out.
+    float3 F = F0 + (max(float3(1.0 - rough), F0) - F0) * pow(1.0 - NoV, 5.0);
+    float3 kD = (float3(1.0) - F) * (1.0 - pxMetal);
+    float3 irradiance = irradianceTex.sample(cubeSamp, rot * n).rgb;
+#if OLLIN_RT_SHADOWS
+    // Probe-field bounce light stands in for the environment's diffuse irradiance (the
+    // probes integrate that environment themselves, with the scene's occlusion and its
+    // bounced light on top). Pre-divided by the IBL exposure because this whole ambient
+    // scales by it on return; the probes store display-linear radiance.
+    if (light.giOrigin.w > 0.0) { irradiance = giIrradiance / max(light.iblIntensity, 1e-3); }
+#endif
+    float3 diffuse = irradiance * base;
+    float3 prefiltered = prefilterTex.sample(cubeSamp, rot * R, level(rough * light.iblMaxMip)).rgb;
+#if OLLIN_RT_SHADOWS
+    // Trade the environment reflection for a traced reflection of the actual scene (the
+    // environment remains the miss fallback) when ray-traced reflections are on. The
+    // deferred form composites the pre-traced screen-space sample: premultiplied hit
+    // radiance over the environment by the accumulated hit coverage, so a temporally
+    // converged reflection edge blends smoothly between scene and sky, then the same
+    // primary-roughness glossy blend as the inline path (identical when coverage is 0/1).
+    if (light.rtReflections != 0) {
+        if (light.rtReflectionDeferred != 0) {
+            float3 hit = deferredReflection.rgb + prefiltered * (1.0 - deferredReflection.a);
+            prefiltered = mix(hit, prefiltered, smoothstep(0.12, 0.55, rough));
+        } else {
+            prefiltered = ollin_rt_reflection(worldPos, n, R, rough, reflAccel, meshVerts,
+                                              meshGeoOffsets, light, irradianceTex, prefilterTex,
+                                              cubeSamp, rot, prefiltered, ltcAmp,
+                                              iesProfiles, cookies,
+                                              giIrradianceTex, giDepthTex, giOffsetsTex);
+        }
+    }
+#endif
+    float2 brdf = brdfTex.sample(lutSamp, float2(NoV, rough)).rg;
+    float3 specular = prefiltered * (F0 * brdf.x + brdf.y);
+    float3 diffusePart = kD * diffuse;
+    // Transmission swaps the diffuse body for the view through it: the refracted
+    // environment (or the traced scene), tinted by the albedo and weighted by the
+    // energy the specular lobe leaves over. Metals transmit nothing. Inert at 0.
+    float trans = mat.transmission * (1.0 - pxMetal);
     if (trans > 0.0) {
         float3 Ft = ollin_env_refraction(n, viewDir, mat, light, prefilterTex, cubeSamp, rot);
 #if OLLIN_RT_SHADOWS
@@ -3622,6 +4253,178 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
         c.rgb += gi * base * (mat.shadingModel == 3 ? (1.0 - mat.metallic) : 1.0);
     }
 #endif
+    if (light.fogColor.w > 0.0) {
+        c.rgb = (light.fogColor.w > 1.5)
+            ? ollin_apply_aerial(c.rgb, in.worldPos, in.position.xy, light,
+                                 shadowMap, shadowSamp, iesProfiles, cookies)
+            : ollin_apply_fog(c.rgb, in.worldPos, in.position.xy, light,
+                              shadowMap, shadowSamp, iesProfiles, cookies);
+    }
+    return c;
+}
+
+// MARK: - Surface-mapped textured 3D mesh
+//
+// The textured path's second twin, for meshes carrying any of the PBR map set:
+// a metallic-roughness map (glTF packing: roughness in g, metallic in b), an
+// occlusion map (r), an emissive map, or a constant emissive factor, with the
+// normal-map bend folded in behind its own gate so one pipeline serves every
+// combination. New code, so it may branch freely; the shipped textured/nm
+// fragments stay verbatim and unmapped frames keep their exact codegen (the
+// verbatim-plus-twin rule).
+//
+// The sampled channels compose with the per-batch finish: metallic/roughness
+// multiply the finish's own values (`mat.metallic`/`mat.roughness` arrive
+// carrying the composed factors), occlusion dims only the *indirect* terms
+// (flat ambient, IBL ambient, GI bounce; direct light is untouched, the glTF
+// convention), and emissive adds the surface's own light after shading, before
+// the atmosphere. The metallic-roughness and occlusion maps are data (non-sRGB
+// texture views); the emissive map is color (sRGB, sampled back linear).
+// Per-pixel metallic/roughness reach the shading tail through the hand-synced
+// twins `meshLitColorMapped` / `ollin_pbr_ibl_ambient_mapped`.
+
+fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
+                                         constant OllinLighting &light [[buffer(0)]],
+                                         constant OllinMaterial &mat [[buffer(1)]],
+                                         texture2d<float> baseColorTex [[texture(0)]],
+                                         sampler samp [[sampler(0)]],
+                                         depth2d<float> shadowMap [[texture(1)]],
+                                         sampler shadowSamp [[sampler(1)]],
+                                         texturecube<float> shadowCube [[texture(2)]],
+                                         sampler shadowCubeSamp [[sampler(2)]],
+                                         const device SDF3DGroupInstance *fields [[buffer(4)]],
+                                         const device SDFNode3D *fieldNodes [[buffer(5)]],
+                                         texture2d<float> fieldShadowTex [[texture(3)]],
+                                         texturecube<float> iblIrradiance [[texture(4)]],
+                                         texturecube<float> iblPrefilter [[texture(5)]],
+                                         texture2d<float> iblBRDF [[texture(6)]],
+                                         texture2d<float> ltcMat [[texture(8)]],
+                                         texture2d<float> ltcAmp [[texture(9)]],
+                                         texture2d_array<float> iesProfiles [[texture(10)]],
+                                         texture2d_array<float> cookies [[texture(11)]],
+                                         texture2d<float> sheenLUT [[texture(12)]],
+                                         texture2d<float> contactShadowTex [[texture(16)]],
+                                         texture2d<float> normalMapTex [[texture(17)]],
+                                         texture2d<float> mrTex [[texture(18)]],
+                                         texture2d<float> occlusionTex [[texture(19)]],
+                                         texture2d<float> emissiveTex [[texture(20)]]
+#if OLLIN_RT_SHADOWS
+                                         , primitive_acceleration_structure shadowAccel [[buffer(3)]]
+                                         , const device OllinMeshVertex *meshVerts [[buffer(6)]]
+                                         , const device uint *meshGeoOffsets [[buffer(7)]]
+                                         , texture2d<float> rtReflectionTex [[texture(7)]]
+                                         , texture2d<float> giIrradianceTex [[texture(13)]]
+                                         , texture2d<float> giDepthTex [[texture(14)]]
+                                         , texture2d<float> giOffsetsTex [[texture(15)]]
+#endif
+                                         ) {
+    float4 tex = baseColorTex.sample(samp, in.uv);
+    float3 base = tex.rgb * srgbToLinear(in.color.rgb);
+    float alpha = in.color.a * tex.a;
+    // The normal-map bend, exactly the nm twin's math but behind its gate: this
+    // pipeline also serves meshes whose only map is metallic-roughness or
+    // emissive, whose tangent slots are zero and must never be read.
+    float3 N = normalize(in.normal);
+    if (mat.normalScale > 0.0) {
+        float3 gn = in.normal;
+        float3 t = in.tangent.xyz;
+        float3 b = cross(gn, t) * in.tangent.w;
+        float3 nmS = normalMapTex.sample(samp, in.uv).xyz * 2.0 - 1.0;
+        nmS.xy *= mat.normalScale;
+        float3 bent = t * nmS.x + b * nmS.y + gn * nmS.z;
+        float bentLen = length(bent);
+        N = (bentLen > 1e-6) ? bent / bentLen : normalize(gn);
+    }
+    // Resolve the per-pixel surface: the composed metallic/roughness factors in
+    // `mat` times the sampled channels, the occlusion ramp 1 + s·(ao − 1), and
+    // the emissive factor times its map when one is bound.
+    float pxMetal = mat.metallic;
+    float pxRough = mat.roughness;
+    float pxAO = 1.0;
+    if (mat.mrGate > 0.0) {
+        float4 mr = mrTex.sample(samp, in.uv);
+        pxRough = mat.roughness * mr.g;
+        pxMetal = mat.metallic * mr.b;
+    }
+    if (mat.occlusionStrength > 0.0) {
+        float occ = occlusionTex.sample(samp, in.uv).r;
+        pxAO = 1.0 + mat.occlusionStrength * (occ - 1.0);
+    }
+    float3 emissive = mat.emissive.rgb;
+    if (mat.emissive.w > 0.0) emissive *= emissiveTex.sample(samp, in.uv).rgb;
+    float meshFieldShadow = ollin_resolve_mesh_field_shadow(in.position.xy, in.worldPos, in.normal,
+                                                            light, fields, fieldNodes, fieldShadowTex);
+    if (light.contactShadow.x > 0.0) {
+        constexpr sampler contactSamp(filter::linear, address::clamp_to_edge);
+        float2 cts = float2(contactShadowTex.get_width(), contactShadowTex.get_height());
+        meshFieldShadow *= contactShadowTex.sample(contactSamp,
+            in.position.xy * light.contactShadow.y / max(cts, float2(1.0))).r;
+    }
+#if OLLIN_RT_SHADOWS
+    float rtShadow = meshRTShadow(in.worldPos, in.normal, light, shadowAccel);
+    float rtThickness = 0.0;
+    if (light.shadowKind == 2 && mat.scatterStrength > 0.0 && mat.scatter.w > 0.0
+        && light.shadowLight >= 0 && light.lights[light.shadowLight].kind == 1) {
+        rtThickness = meshRTThickness(in.worldPos, in.normal, light, shadowAccel);
+    }
+    float4 c = meshLitColorMapped(base, alpha, N, in.worldPos, pxMetal, pxRough, pxAO, mat, light,
+                            shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
+                            ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT,
+                            rtShadow, -1.0, meshFieldShadow, rtThickness);
+#else
+    float4 c = meshLitColorMapped(base, alpha, N, in.worldPos, pxMetal, pxRough, pxAO, mat, light,
+                            shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
+                            ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT,
+                            -1.0, meshFieldShadow);
+#endif
+#if OLLIN_RT_SHADOWS
+    float3 gi = float3(0.0);
+    if (light.giOrigin.w > 0.0 && mat.shadingModel != 2) {
+        float3 giView = normalize(light.cameraPosition.xyz - in.worldPos);
+        gi = ollin_gi_sample_cascaded(in.worldPos, N, giView, light,
+                             giIrradianceTex, giDepthTex, giOffsetsTex);
+    }
+#endif
+    if (mat.shadingModel == 3 && light.iblEnabled != 0) {
+        float3 viewDir = normalize(light.cameraPosition.xyz - in.worldPos);
+#if OLLIN_RT_SHADOWS
+        float4 deferredRefl = float4(0.0);
+        if (light.rtReflections != 0 && light.rtReflectionDeferred != 0) {
+            constexpr sampler reflSamp(filter::linear, address::clamp_to_edge);
+            float2 rts = float2(rtReflectionTex.get_width(), rtReflectionTex.get_height());
+            deferredRefl = rtReflectionTex.sample(reflSamp,
+                in.position.xy * light.rtReflectionScale / max(rts, float2(1.0)));
+        }
+#endif
+        // The whole environment ambient is indirect light, so the occlusion map
+        // dims all of it (diffuse and specular alike, the real-time treatment).
+        c.rgb += pxAO * ollin_pbr_ibl_ambient_mapped(base, N, viewDir, pxMetal, pxRough, mat, light,
+                                       iblIrradiance, iblPrefilter, iblBRDF, sheenLUT
+#if OLLIN_RT_SHADOWS
+                                       , in.worldPos, shadowAccel, meshVerts, meshGeoOffsets,
+                                       deferredRefl, ltcAmp, iesProfiles, cookies, gi,
+                                       giIrradianceTex, giDepthTex, giOffsetsTex
+#endif
+                                       );
+    } else if (light.iblEnabled != 0 && mat.shadingModel != 2) {
+#if OLLIN_RT_SHADOWS
+        if (light.giOrigin.w > 0.0) {
+            c.rgb += gi * base * pxAO;
+        } else {
+            c.rgb += ollin_ibl_flat_ambient(base, N, light, iblIrradiance) * pxAO;
+        }
+#else
+        c.rgb += ollin_ibl_flat_ambient(base, N, light, iblIrradiance) * pxAO;
+#endif
+    }
+#if OLLIN_RT_SHADOWS
+    else if (light.giOrigin.w > 0.0 && mat.shadingModel != 2) {
+        c.rgb += gi * base * ((mat.shadingModel == 3 ? (1.0 - pxMetal) : 1.0) * pxAO);
+    }
+#endif
+    // The surface's own light: on before the atmosphere (emission is radiance
+    // leaving the surface, so distance fogs it like everything else).
+    c.rgb += emissive;
     if (light.fogColor.w > 0.0) {
         c.rgb = (light.fogColor.w > 1.5)
             ? ollin_apply_aerial(c.rgb, in.worldPos, in.position.xy, light,

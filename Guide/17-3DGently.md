@@ -414,6 +414,28 @@ All three spheres are the same 96-segment sphere; only the middle of the picture
 
 Where do maps come from? Anywhere images do, and one particularly satisfying place: math. Start with a height function, take its slopes, and encode them; the `3D/Materials/NormalMaps` example builds hammered metal, woven cloth, and engraved rings this way in a couple dozen lines, no files involved. The one convention to know when authoring by hand: green marks the slope that faces *up the image* (if a map from elsewhere lights upside down, its green channel is inverted; flip it and it's home).
 
+## What the surface is, per texel
+
+A normal map changes how light lands. The rest of the standard map set changes what the surface *is* from texel to texel, and `surfaceMapped(...)` hangs any of them on a mesh:
+
+<img src="Images/17-3DGently/SurfaceMaps.jpg" alt="Four spheres under one studio environment: coppery paint worn through to polished metal in soft patches, a pale coffered grid with shadow settled into its grooves, a near-black sphere crossed by glowing cyan seams, and a bare matte control" width="680">
+
+```swift
+let panel = Mesh.sphere(radius: 1)
+    .textured(paint)
+    .surfaceMapped(metallicRoughness: wear,   // roughness in g, metallic in b
+                   occlusion: cavity,         // its red channel
+                   emissive: seams)           // an ordinary color image
+```
+
+A **metallic-roughness map** packs two dials into one image (roughness rides green, metallic rides blue, the packing every glTF exporter uses), and per pixel it multiplies the finish you draw under, so `material(.physicallyBased(metallic: 1, roughness: 1))` shows the map as authored. That multiply is the whole trick of the first sphere: one map says where the paint has rubbed through to bare polished metal, and the base texture colors the same patches silver.
+
+An **occlusion map** is baked shadow for the crevices geometry doesn't have, and it dims only the *steady* light: the ambient, the environment. A lamp shining straight into a groove still lights it, which is exactly how real crevices behave and why the convention exists. The second sphere pairs it with a normal map made from the same height field, the usual recipe: the relief catches the light, the occlusion keeps its grooves dark.
+
+An **emissive map** makes texels give off light of their own, tinted and dimmed by an `emissiveColor` factor. It works with no lights at all, which is what the third sphere leans on: a nearly black shell whose engraved seams glow. Emission is the surface's own radiance, so fog veils it with distance like everything else, and one line of housekeeping is worth knowing: a glowing surface doesn't light its neighbors unless global illumination is on, at which point it does.
+
+Loaded glTF and USD models carry all of these in and out without being asked; the round trip through `saveScene` keeps them. Like the normal maps above, every map in the figure is authored from a function in `setup()`, and the `3D/Materials/SurfaceMaps` example is the worked version with a glow knob.
+
 ## Smooth from a cage
 
 There is a third way to get a mesh, and it's the one character artists live in: build something crude out of a few boxes and extrusions, then let the computer round it. `subdivided(levels:)` takes any mesh as a **control cage**, splits every face, and eases every vertex toward its neighbors, once per level.

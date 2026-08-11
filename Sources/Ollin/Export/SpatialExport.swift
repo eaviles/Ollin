@@ -43,9 +43,17 @@ final class SpatialRecorder {
         // The renderer multiplies the fill, the material's base color, and any
         // per-vertex color together. A preview surface has one diffuse slot, so
         // whichever of the last two is present carries the composed product and
-        // the other steps aside.
+        // the other steps aside. Surface maps sample through the uvs, so a mesh
+        // without them keeps only the constant emissive factor.
         let hasVertexColors = mesh.colors.count == mesh.positions.count
-        let textured = material.texture != nil && mesh.uvs.count == mesh.positions.count
+        let uvsAligned = mesh.uvs.count == mesh.positions.count
+        if !uvsAligned {
+            material.normalTexture = nil
+            material.metallicRoughnessTexture = nil
+            material.occlusionTexture = nil
+            material.emissiveTexture = nil
+        }
+        let textured = material.texture != nil && uvsAligned
         if textured {
             if hasVertexColors {
                 note("a textured mesh's per-vertex colors stayed behind: a preview surface can tint a texture, but not per vertex.")
@@ -120,9 +128,30 @@ final class SpatialRecorder {
         var out = MeshMaterial(baseColor: color, texture: base?.texture)
         out.opacity = color.alpha
 
+        // The surface maps ride through as drawn: the relief, the packed
+        // metallic-roughness channels, the baked occlusion, the emissive map
+        // and its factor (the caller strips the textures when the mesh has no
+        // uvs to map them with).
+        if let base {
+            out.normalTexture = base.normalTexture
+            out.normalScale = base.normalScale
+            out.metallicRoughnessTexture = base.metallicRoughnessTexture
+            out.occlusionTexture = base.occlusionTexture
+            out.occlusionStrength = base.occlusionStrength
+            out.emissiveTexture = base.emissiveTexture
+            out.emissiveFactor = base.emissiveFactor
+        }
+
         if finish.shading == .physicallyBased {
             out.metallic = finish.metallic
             out.roughness = finish.roughness
+            // With a metallic-roughness map bound, what rendered per pixel is
+            // finish × the mesh material's factors × the sampled channels, so
+            // the written factors carry the composed product.
+            if base?.metallicRoughnessTexture != nil {
+                out.metallic = finish.metallic * (base?.metallic ?? 1)
+                out.roughness = finish.roughness * (base?.roughness ?? 1)
+            }
             out.ior = finish.ior
             out.clearcoat = finish.clearcoat
             out.clearcoatRoughness = finish.clearcoatRoughness

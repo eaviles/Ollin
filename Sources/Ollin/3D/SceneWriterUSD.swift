@@ -100,7 +100,12 @@ struct USDSceneWriter {
         """
     }
 
-    private mutating func note(_ text: String) { notes.append(text) }
+    /// Deduped: several maps on one material hit the same "textures can't
+    /// travel in a bare layer" note, and once says it.
+    private mutating func note(_ text: String) {
+        guard !notes.contains(text) else { return }
+        notes.append(text)
+    }
 
     // MARK: - Nodes and meshes
 
@@ -206,12 +211,22 @@ struct USDSceneWriter {
     private mutating func materialPath(_ material: MeshMaterial, hint: String,
                                        perVertexColor: Bool) -> String {
         let texture = material.texture.map { ordinal(of: $0) }
+        let normal = material.normalTexture.map { ordinal(of: $0) }
+        let mr = material.metallicRoughnessTexture.map { ordinal(of: $0) }
+        let occlusion = material.occlusionTexture.map { ordinal(of: $0) }
+        let emissive = material.emissiveTexture.map { ordinal(of: $0) }
         let key = [num(material.baseColor.red), num(material.baseColor.green),
                    num(material.baseColor.blue), num(material.baseColor.alpha),
                    num(material.metallic), num(material.roughness), num(material.opacity),
                    num(material.ior), num(material.clearcoat), num(material.clearcoatRoughness),
                    perVertexColor ? "vc" : "-",
-                   texture.map(String.init) ?? "-"]
+                   texture.map(String.init) ?? "-",
+                   normal.map(String.init) ?? "-", num(material.normalScale),
+                   mr.map(String.init) ?? "-",
+                   occlusion.map(String.init) ?? "-", num(material.occlusionStrength),
+                   emissive.map(String.init) ?? "-",
+                   num(material.emissiveFactor.red), num(material.emissiveFactor.green),
+                   num(material.emissiveFactor.blue)]
             .joined(separator: "/")
         if let found = materials.first(where: { $0.key == key }) { return found.path }
 
@@ -223,35 +238,45 @@ struct USDSceneWriter {
         return path
     }
 
-    /// One material: a UsdPreviewSurface, plus the reader shaders a texture or
-    /// per-vertex color needs to feed it.
+    /// One material: a UsdPreviewSurface, plus the reader shaders a texture, a
+    /// surface map, or per-vertex color needs to feed it. Every map's encoding
+    /// is the stated inverse of the reader's: the normal map's strength rides
+    /// its decode as scale (2s, 2s, 2, 1) / bias (−s, −s, −1, 0) (an exact
+    /// spelling of `s · (2c − 1)` on x/y), the metallic/roughness factors ride
+    /// the packed map's per-channel scale (b and g, the standard packing), the
+    /// occlusion strength rides its channel as scale s / bias 1 − s (exactly
+    /// `1 + s·(ao − 1)`), and the emissive factor rides its map's scale.
     private mutating func materialUSDA(_ material: MeshMaterial, name: String, path: String,
                                        perVertexColor: Bool) -> String {
         var shaders = ""
+        var needsST = false
         var diffuse = "  color3f inputs:diffuseColor = \(linearTuple(material.baseColor))\n"
+        var mapInputs = ""
+
+        /// A `UsdUVTexture` shader block reading `file` through the shared st
+        /// reader, with an optional raw color space and scale/bias decode.
+        func textureShader(_ shaderName: String, file: String, raw: Bool,
+                           scale: String? = nil, bias: String? = nil,
+                           outputs: [String]) -> String {
+            needsST = true
+            var s = "   def Shader \"\(shaderName)\"\n   {\n"
+            s += "    uniform token info:id = \"UsdUVTexture\"\n"
+            s += "    asset inputs:file = @\(file)@\n"
+            s += "    float2 inputs:st.connect = <\(path)/st.outputs:result>\n"
+            s += "    token inputs:wrapS = \"repeat\"\n"
+            s += "    token inputs:wrapT = \"repeat\"\n"
+            if raw { s += "    token inputs:sourceColorSpace = \"raw\"\n" }
+            if let scale { s += "    float4 inputs:scale = \(scale)\n" }
+            if let bias { s += "    float4 inputs:bias = \(bias)\n" }
+            for output in outputs { s += "    \(output)\n" }
+            s += "   }\n\n"
+            return s
+        }
 
         if let texture = material.texture, let file = textureFile(texture) {
-            shaders += """
-                   def Shader "st"
-                   {
-                    uniform token info:id = "UsdPrimvarReader_float2"
-                    string inputs:varname = "st"
-                    float2 outputs:result
-                   }
-
-                   def Shader "texture"
-                   {
-                    uniform token info:id = "UsdUVTexture"
-                    asset inputs:file = @\(file)@
-                    float2 inputs:st.connect = <\(path)/st.outputs:result>
-                    token inputs:wrapS = "repeat"
-                    token inputs:wrapT = "repeat"
-                    float4 inputs:scale = \(linearScale(material.baseColor))
-                    float3 outputs:rgb
-                   }
-
-
-                """
+            shaders += textureShader("texture", file: file, raw: false,
+                                     scale: linearScale(material.baseColor),
+                                     outputs: ["float3 outputs:rgb"])
             // Both a value and a connection: a renderer follows the connection,
             // and a reader that only looks at values still gets the tint rather
             // than nothing. The tint itself rides the texture's own scale, which
@@ -274,6 +299,73 @@ struct USDSceneWriter {
             diffuse += "  color3f inputs:diffuseColor.connect = <\(path)/vertexColor.outputs:result>\n"
         }
 
+        if let normal = material.normalTexture, let file = textureFile(normal) {
+            let s = material.normalScale
+            shaders += textureShader("normalMap", file: file, raw: true,
+                                     scale: "(\(num(2 * s)), \(num(2 * s)), 2, 1)",
+                                     bias: "(\(num(-s)), \(num(-s)), -1, 0)",
+                                     outputs: ["float3 outputs:rgb"])
+            mapInputs += "  normal3f inputs:normal.connect = <\(path)/normalMap.outputs:rgb>\n"
+        }
+
+        // The metallic-roughness map and the occlusion map: one shader when
+        // occlusion shares the packed image (the r channel is its slot), two
+        // otherwise. Data either way, never color.
+        let sharedORM = material.occlusionTexture != nil
+            && material.occlusionTexture === material.metallicRoughnessTexture
+        if let mr = material.metallicRoughnessTexture, let file = textureFile(mr) {
+            let s = material.occlusionStrength
+            let scale = sharedORM
+                ? "(\(num(s)), \(num(material.roughness)), \(num(material.metallic)), 1)"
+                : "(1, \(num(material.roughness)), \(num(material.metallic)), 1)"
+            let bias = sharedORM ? "(\(num(1 - s)), 0, 0, 0)" : nil
+            var outputs = ["float outputs:g", "float outputs:b"]
+            if sharedORM { outputs.insert("float outputs:r", at: 0) }
+            shaders += textureShader("mrTexture", file: file, raw: true,
+                                     scale: scale, bias: bias, outputs: outputs)
+            mapInputs += "  float inputs:metallic.connect = <\(path)/mrTexture.outputs:b>\n"
+            mapInputs += "  float inputs:roughness.connect = <\(path)/mrTexture.outputs:g>\n"
+            if sharedORM {
+                mapInputs += "  float inputs:occlusion.connect = <\(path)/mrTexture.outputs:r>\n"
+            }
+        }
+        if !sharedORM, let occlusion = material.occlusionTexture,
+           let file = textureFile(occlusion) {
+            let s = material.occlusionStrength
+            shaders += textureShader("occlusionTexture", file: file, raw: true,
+                                     scale: "(\(num(s)), \(num(s)), \(num(s)), 1)",
+                                     bias: "(\(num(1 - s)), \(num(1 - s)), \(num(1 - s)), 0)",
+                                     outputs: ["float outputs:r"])
+            mapInputs += "  float inputs:occlusion.connect = <\(path)/occlusionTexture.outputs:r>\n"
+        }
+
+        let emissiveOn = material.emissiveFactor.red > 0 || material.emissiveFactor.green > 0
+            || material.emissiveFactor.blue > 0
+        if emissiveOn, let emissive = material.emissiveTexture, let file = textureFile(emissive) {
+            shaders += textureShader("emissiveTexture", file: file, raw: false,
+                                     scale: linearScale(material.emissiveFactor),
+                                     outputs: ["float3 outputs:rgb"])
+            mapInputs += "  color3f inputs:emissiveColor = \(linearTuple(material.emissiveFactor))\n"
+            mapInputs += "  color3f inputs:emissiveColor.connect = <\(path)/emissiveTexture.outputs:rgb>\n"
+        } else if emissiveOn {
+            mapInputs += "  color3f inputs:emissiveColor = \(linearTuple(material.emissiveFactor))\n"
+        }
+
+        if needsST {
+            shaders = """
+                   def Shader "st"
+                   {
+                    uniform token info:id = "UsdPrimvarReader_float2"
+                    string inputs:varname = "st"
+                    float2 outputs:result
+                   }
+
+
+                """ + shaders
+        }
+
+        let inputs = (diffuse + mapInputs).trimmingCharacters(in: .newlines)
+            .replacingOccurrences(of: "\n", with: "\n  ")
         return """
           def Material "\(name)"
           {
@@ -283,7 +375,7 @@ struct USDSceneWriter {
            {
             uniform token info:id = "UsdPreviewSurface"
             int inputs:useSpecularWorkflow = 0
-          \(diffuse.trimmingCharacters(in: .newlines).replacingOccurrences(of: "\n", with: "\n  "))
+          \(inputs)
             float inputs:metallic = \(num(material.metallic))
             float inputs:roughness = \(num(material.roughness))
             float inputs:opacity = \(num(material.opacity))

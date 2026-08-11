@@ -289,8 +289,16 @@ extension Mesh {
         for node in scene.nodes { visit(node, parent: matrix_identity_float4x4) }
 
         guard !positions.isEmpty, !indices.isEmpty else { return nil }
-        return Mesh(positions: positions, normals: normals, indices: indices,
-                    uvs: allHaveUV ? uvs : [], material: material)
+        var mesh = Mesh(positions: positions, normals: normals, indices: indices,
+                        uvs: allHaveUV ? uvs : [], material: material)
+        // A normal-mapped material generates the standard basis over the
+        // merged uvs (the loadGLTF rule); the merged mesh carries nothing
+        // aligned to its vertex order, so a seam split is always safe here.
+        if mesh.material?.normalTexture != nil, mesh.tangents.count != mesh.positions.count,
+           !mesh.uvs.isEmpty {
+            mesh = mesh.generatingTangents()
+        }
+        return mesh
     }
 }
 

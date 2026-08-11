@@ -2463,6 +2463,86 @@ stays put on a bent limb.
 
 ---
 
+## The PBR map set (surface maps)
+
+The second slice of the advanced-materials arc: metallic-roughness, occlusion,
+and emissive maps on `MeshMaterial`, sampled per pixel on the mesh path. One
+pipeline serves the whole set (`ollin_mesh_maps_fragment`, sharing
+`ollin_mesh_nm_vertex`), with the normal-map bend folded in behind its own
+`normalScale` gate, so map combinations don't multiply pipelines.
+
+**Per-pixel metallic/roughness forced the tail question, and the answer is the
+biggest hand-synced twin in the codebase.** `meshLitColor` (~470 lines) and
+`ollin_pbr_ibl_ambient` (~140) read `mat.metallic`/`mat.roughness` from the
+per-batch constant buffer at a dozen sites spread through the LTC area
+lights, the punctual Cook-Torrance branch, the transmission diffKeep, and the
+IBL split-sum; a per-pixel value cannot ride a `constant` reference, and growing
+the shipped functions with override parameters is the fast-math re-contract
+gamble the codegen rule exists to forbid. So `meshLitColorMapped` and
+`ollin_pbr_ibl_ambient_mapped` are *mechanical substitution copies*: the body
+verbatim, every `mat.metallic` read replaced by `pxMetal`, every
+`clamp((float)mat.roughness, …)` by `clamp(pxRough, …)`, and the flat ambient
+terms scaled by `pxAO`. The sync rule is stated at both definitions (edit the
+original, re-copy, re-substitute) and the copies were made by scripted
+extraction + diff review, not retyping. The cost is real and was taken
+knowingly: the alternative (parameterizing the shipped tail) risks ulp movement
+across every 3D frame ever rendered, and the aerial/GI precedents both paid the
+twin price for the same reason.
+
+**Composition semantics are glTF's.** The sampled channels *multiply* factors:
+`px = finish(material(_:)) × MeshMaterial.metallic/roughness × map`, with the
+drawer folding the mesh material's own factors into the batch finish only when
+the map is bound (`mrGate`), so a loaded file's `metallicFactor × texture`
+intent survives under the sketch's `material(.physicallyBased(metallic: 1,
+roughness: 1))` and lower finish values stay an artistic scale on top.
+Occlusion is indirect-only (`1 + strength·(ao − 1)` on the flat ambient inside
+the twin tail, and on the IBL ambient / GI bounce / flat-IBL adds at the
+fragment level; direct light untouched, the spec's rule, probe-pinned by the
+direct-light byte-equality counterfactual). Emissive is `factor × sRGB map`,
+added after all lighting and before the atmosphere, so fog veils emission like
+any other surface radiance; a constant factor with no map routes down the same
+pipeline against a white stand-in, which is also how a black emissive factor
+with an emissive texture correctly emits nothing (the glTF default). The gates
+ride the finish uniform like `normalScale` (`mrGate`, `occlusionStrength`, and
+an `emissive` float4 claiming the last two tail pads plus one appended row),
+zero on every other batch, so unmapped frames keep their exact codegen by
+construction.
+
+**Sampling color spaces split by meaning.** Metallic-roughness and occlusion
+are data (`Image.linearTexture(for:)`, the raw-bytes cache slot the normal map
+introduced); emissive is color (`texture(for:)`, sRGB-decoded). All four map
+slots are always bound on the maps pipeline (real texture or the white
+stand-in), the gates keeping unbound slots unsampled and validation happy.
+
+**USD reads the set through connections, with a repack fallback.** A preview
+surface's `metallic`/`roughness`/`occlusion` inputs resolve to `UsdUVTexture`
+taps (image + the tapped output channel + the texture's own scale/bias). Taps
+already in the standard ORM layout (one image, roughness at g, metallic at b)
+reuse the image directly (the `USDAssetStore` now caches decoded images by
+authored path precisely so two taps at one file compare `===`), and anything
+else repacks channel-by-channel into that layout at load (untapped channels
+white, the multiply identity, so an authored constant factor still carries).
+Factors round-trip through the taps' per-channel `scale`, occlusion strength
+through scale s / bias 1 − s on its channel (exactly `1 + s·(ao − 1)`), and the
+normal map's strength through its decode: scale (2s, 2s, 2, 1) / bias (−s, −s,
+−1, 0) is the exact spelling of `s·(2c − 1)` on x/y, so `normalScale` survives
+a round trip losslessly and the plain (2, 2, 2, 1) decode reads back as 1. USD
+normal maps also fold in here (there is no authored-tangent attribute in USD),
+generating the MikkTSpace basis after the skinning pass with glTF's
+vertex-split guard: a generation that would split a mirrored-UV seam is
+accepted only on nodes with nothing (skin/morph/part arrays) aligned to the
+vertex order. The writer mirrors every one of these encodings, the reader's
+stated inverse, and `usdchecker --arkit` accepts a package carrying the full
+set (test-pinned).
+
+**Envelope.** The maps live on the primary surface: a reflection hit still
+shades from the per-vertex metalness/roughness the `OllinMeshVertex` w slots
+carry (constant per batch), and emission isn't seen in mirrors, the same
+per-hit envelope every surface map has. Matcap and wireframe ignore the set
+(one bakes its lighting, the other draws edges).
+
+---
+
 ## Deferred ray-traced reflection AA
 
 The ray-traced reflection is one closest-hit ray per reflective pixel, which makes

@@ -11,6 +11,17 @@ import CoreGraphics
 import COllinShaders
 import MetalPerformanceShaders   // tuned image kernels (Gaussian blur) behind the effect filters
 
+extension OllinMaterial {
+    /// Whether any of the PBR map-set gates the drawer packs are up, which is
+    /// what routes a mesh batch to the surface-mapped pipeline: a
+    /// metallic-roughness map, an occlusion map, an emissive map, or a
+    /// constant emissive factor (rgb with no map).
+    var usesSurfaceMaps: Bool {
+        mrGate > 0 || occlusionStrength > 0 || emissive.w > 0
+            || emissive.x > 0 || emissive.y > 0 || emissive.z > 0
+    }
+}
+
 extension MetalRenderer {
     // MARK: Layered effects (render targets + filters)
 
@@ -2070,18 +2081,27 @@ extension MetalRenderer {
             let meshWireframe = batch.kind == .mesh3D && batch.meshWireframe
             let meshGrid = batch.kind == .mesh3D && batch.meshGrid
             let meshMatcap = batch.kind == .mesh3D && !batch.meshWireframe && !meshGrid && batch.matcap != nil
+            // A surface-mapped batch (any of the PBR map-set gates the drawer verified
+            // and packed into the finish: metallic-roughness, occlusion, an emissive
+            // map or constant emissive factor) takes the textured path's second twin.
+            let meshSurfaceMapped = batch.kind == .mesh3D && !batch.meshWireframe && !meshGrid
+                && !meshMatcap && batch.finish.usesSurfaceMaps
             // A normal-mapped batch (nonzero `finish.normalScale`, set only when the
             // drawer verified uvs + tangents) takes the textured path's twin pipeline;
             // a normal map alone is enough to be "textured" (the base slot then binds
-            // a 1×1 white stand-in, so the fragment's multiply is the identity).
+            // a 1×1 white stand-in, so the fragment's multiply is the identity). A
+            // batch that also carries surface maps takes the second twin instead,
+            // which folds the bend in behind the same gate.
             let meshNormalMapped = batch.kind == .mesh3D && !batch.meshWireframe && !meshGrid
-                && !meshMatcap && batch.material?.normalTexture != nil && batch.finish.normalScale > 0
+                && !meshMatcap && !meshSurfaceMapped
+                && batch.material?.normalTexture != nil && batch.finish.normalScale > 0
             let meshTextured = batch.kind == .mesh3D && !batch.meshWireframe && !meshGrid && !meshMatcap
-                && (batch.material?.texture != nil || meshNormalMapped)
+                && (batch.material?.texture != nil || meshNormalMapped || meshSurfaceMapped)
             var pipelineKey = PipelineKey.forBatch(batch.kind, batch.blendMode, depth: depthFormat,
                                                    textured: meshTextured, wireframe: meshWireframe,
                                                    matcap: meshMatcap, grid: meshGrid,
-                                                   normalMapped: meshNormalMapped)
+                                                   normalMapped: meshNormalMapped,
+                                                   surfaceMapped: meshSurfaceMapped)
             // A stencil-carrying pass (clipping active) needs every pipeline in it
             // to declare the stencil format, clipped or not.
             if hasStencil { pipelineKey.stencilFormat = .stencil8 }
@@ -2331,8 +2351,8 @@ extension MetalRenderer {
                 // A textured or matcap mesh needs its texture at fragment index 0; if it
                 // can't be built, skip rather than draw against the wrong pipeline.
                 if meshTextured {
-                    // Base color at 0 (a 1×1 white stand-in for a normal-map-only
-                    // mesh, the multiply identity); the normal map, sampled as raw
+                    // Base color at 0 (a 1×1 white stand-in for a map-only mesh,
+                    // the multiply identity); the normal map, sampled as raw
                     // data (no sRGB decode), at 17 on the normal-mapped twin. Like
                     // the base texture, a map that can't build skips the batch
                     // rather than drawing against the wrong pipeline.
@@ -2344,6 +2364,36 @@ extension MetalRenderer {
                         guard let nm = batch.material?.normalTexture?.linearTexture(for: device)
                         else { continue }
                         encoder.setFragmentTexture(nm, index: 17)
+                    }
+                    if meshSurfaceMapped {
+                        // The second twin declares all four map slots; each binds
+                        // its real texture when that gate is up (skipping the
+                        // batch if it can't build, like the base texture) and the
+                        // white stand-in otherwise: the gates keep an unbound
+                        // slot unsampled, the stand-in keeps validation happy.
+                        // Metallic-roughness and occlusion are data (the raw
+                        // texture view); emissive is color (sRGB).
+                        var normal: MTLTexture? = whiteStandIn()
+                        if batch.finish.normalScale > 0 {
+                            normal = batch.material?.normalTexture?.linearTexture(for: device)
+                        }
+                        var mr: MTLTexture? = whiteStandIn()
+                        if batch.finish.mrGate > 0 {
+                            mr = batch.material?.metallicRoughnessTexture?.linearTexture(for: device)
+                        }
+                        var occ: MTLTexture? = whiteStandIn()
+                        if batch.finish.occlusionStrength > 0 {
+                            occ = batch.material?.occlusionTexture?.linearTexture(for: device)
+                        }
+                        var emit: MTLTexture? = whiteStandIn()
+                        if batch.finish.emissive.w > 0 {
+                            emit = batch.material?.emissiveTexture?.texture(for: device)
+                        }
+                        guard let normal, let mr, let occ, let emit else { continue }
+                        encoder.setFragmentTexture(normal, index: 17)
+                        encoder.setFragmentTexture(mr, index: 18)
+                        encoder.setFragmentTexture(occ, index: 19)
+                        encoder.setFragmentTexture(emit, index: 20)
                     }
                 } else if meshMatcap {
                     guard let texture = batch.matcap?.texture(for: device) else { continue }

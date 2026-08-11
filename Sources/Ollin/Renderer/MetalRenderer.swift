@@ -215,6 +215,15 @@ final class MetalRenderer {
             PipelineKey(vertex: "ollin_mesh_nm_vertex", fragment: "ollin_mesh_nm_fragment",
                         blend: blend, depthFormat: depth)
         }
+        // surface-mapped textured mesh: the textured path's second twin, for the PBR
+        // map set (metallic-roughness / occlusion / emissive, the normal-map bend
+        // folded in behind its own gate). Shares the nm vertex (it just passes the
+        // packed tangent through); the fragment samples the maps and shades through
+        // the hand-synced `meshLitColorMapped` tail.
+        static func meshSurfaceMapped(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
+            PipelineKey(vertex: "ollin_mesh_nm_vertex", fragment: "ollin_mesh_maps_fragment",
+                        blend: blend, depthFormat: depth)
+        }
         // wireframe 3D triangle mesh: triangle edges only (barycentric edge-shading),
         // unlit, depth-tested.
         static func meshWireframe(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
@@ -330,7 +339,8 @@ final class MetalRenderer {
         static func forBatch(_ kind: GeometryKind, _ blend: BlendMode,
                              depth: MTLPixelFormat? = nil, textured: Bool = false,
                              wireframe: Bool = false, matcap: Bool = false,
-                             grid: Bool = false, normalMapped: Bool = false) -> PipelineKey {
+                             grid: Bool = false, normalMapped: Bool = false,
+                             surfaceMapped: Bool = false) -> PipelineKey {
             switch kind {
             case .triangles:  return .solid(blend, depth: depth)
             case .fringe:     return .fringe(blend, depth: depth)
@@ -342,12 +352,13 @@ final class MetalRenderer {
             case .particles:  return .points(blend, depth: depth)
             case .points3D:   return .pointCloud(blend, depth: depth)
             case .mesh3D:
-                return grid         ? .grid(blend, depth: depth)
-                     : wireframe    ? .meshWireframe(blend, depth: depth)
-                     : matcap       ? .meshMatcap(blend, depth: depth)
-                     : normalMapped ? .meshNormalMapped(blend, depth: depth)
-                     : textured     ? .meshTextured(blend, depth: depth)
-                                    : .mesh(blend, depth: depth)
+                return grid          ? .grid(blend, depth: depth)
+                     : wireframe     ? .meshWireframe(blend, depth: depth)
+                     : matcap        ? .meshMatcap(blend, depth: depth)
+                     : surfaceMapped ? .meshSurfaceMapped(blend, depth: depth)
+                     : normalMapped  ? .meshNormalMapped(blend, depth: depth)
+                     : textured      ? .meshTextured(blend, depth: depth)
+                                     : .mesh(blend, depth: depth)
             case .depthScene: return .depthScene(blend, depth: depth)
             case .clipPush:   return .clipWrite(depth: depth)
             case .clipPop:    return .clipCover(depth: depth)

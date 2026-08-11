@@ -305,6 +305,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("normal-maps",
                  note: "Tangent-space normal maps on generated spheres beside a bare control: pins the normal-mapped textured twin pipeline (packed half4 vertex tangents, the raw-data linear texture read, the sign * cross(N, T) bitangent, the glTF-sign MikkTSpace basis from generatingTangents, and normalScale). Authored green-up maps from height functions, fixed camera + light, no time, no rng.",
                  make: { NormalMapScene() }),
+    SnapshotCase("surface-maps",
+                 note: "The PBR map set on generated spheres beside a bare control, over a bundled environment: a packed metallic-roughness map (worn paint turning to polished metal), an occlusion map paired with a normal map from one height field, and an emissive map on a dark shell. Pins the surface-mapped twin pipeline (the hand-synced meshLitColorMapped / mapped IBL ambient tails), the factor x sample composition, the indirect-only occlusion dimming, and the emissive add ahead of the atmosphere. Authored maps, fixed camera, no time, no rng.",
+                 make: { SurfaceMapScene() }),
     SnapshotCase("coat-sheen",
                  note: "The layered physically-based lobes over a bundled environment plus a point light: a coated red metal beside its bare twin (the clear-coat Cook-Torrance lobe, the Kelemen visibility, the coat-interface F0 remap, and the coat's smooth IBL gather), a piano-black lacquer, a white-sheen felt beside its bare twin (the inverted-alpha sine sheen lobe, the cloth visibility, the sheen-LUT energy scaling, and the sheen's own prefiltered gather), and a two-tone velvet. Fixed camera + environment, no time.",
                  make: { CoatSheenScene() }),
@@ -1850,6 +1853,101 @@ private final class NormalMapScene: Sketch {
         withState { translate(-2.1, 0.3, 0); drawMesh(base.normalMapped(rings)) }
         withState { translate(0, 0.3, 0); drawMesh(base.normalMapped(weave, scale: 1.6)) }
         withState { translate(2.1, 0.3, 0); drawMesh(base) }
+        withState {
+            translate(0, -1.3, 0); fill(Color(white: 0.4))
+            drawBox(width: 20, height: 0.3, depth: 20)
+        }
+    }
+}
+
+private final class SurfaceMapScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    /// An RGBA data map authored per texel from a function of (u, v). Pure
+    /// math, no rng, so the render is a fixed function of nothing.
+    private func map(_ texel: (Double, Double) -> (Double, Double, Double)) -> Image {
+        let size = 128
+        var bytes = [UInt8](repeating: 255, count: size * size * 4)
+        let d = 1.0 / Double(size)
+        for y in 0..<size {
+            for x in 0..<size {
+                let (r, g, b) = texel((Double(x) + 0.5) * d, (Double(y) + 0.5) * d)
+                let i = (y * size + x) * 4
+                bytes[i]     = UInt8(max(0, min(255, r * 255)))
+                bytes[i + 1] = UInt8(max(0, min(255, g * 255)))
+                bytes[i + 2] = UInt8(max(0, min(255, b * 255)))
+            }
+        }
+        return Image(width: size, height: size, premultipliedRGBA: bytes)!
+    }
+
+    private func normalMap(strength: Double, height: @escaping (Double, Double) -> Double) -> Image {
+        let d = 1.0 / 128.0
+        return map { u, v in
+            let dx = (height(u + d, v) - height(u - d, v)) / (2 * d) * strength
+            let dy = (height(u, v + d) - height(u, v - d)) / (2 * d) * strength
+            let len = (dx * dx + dy * dy + 1).squareRoot()
+            return (-dx / len * 0.5 + 0.5, dy / len * 0.5 + 0.5, 1 / len * 0.5 + 0.5)
+        }
+    }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        camera(.orbiting(target: .zero, radius: 8.6, azimuth: 0.2, elevation: 0.12,
+                         fieldOfView: .pi / 3.4))
+        environment(.studio)
+        let base = Mesh.sphere(radius: 1, segments: 64, rings: 32)
+
+        // Worn paint over metal: one packed map (roughness g, metallic b).
+        func wear(_ u: Double, _ v: Double) -> Double {
+            let a = sin(u * 5 * .tau) * sin(v * 3 * .tau + 1.3)
+            return a > 0.45 ? 1 : 0
+        }
+        let worn = base.textured(map { u, v in
+            let bare = wear(u, v)
+            return (0.68 + 0.22 * bare, 0.34 + 0.56 * bare, 0.22 + 0.66 * bare)
+        }).surfaceMapped(metallicRoughness: map { u, v in
+            let bare = wear(u, v)
+            return (1, 0.72 - 0.5 * bare, bare)
+        })
+
+        // A coffered grid: one height field authoring relief + occlusion.
+        func coffer(_ u: Double, _ v: Double) -> Double {
+            let a = min(abs(u * 6 - (u * 6).rounded()), abs(v * 6 - (v * 6).rounded()))
+            return min(max((a - 0.06) / 0.14, 0), 1)
+        }
+        var grooved = base.normalMapped(normalMap(strength: 0.12, height: coffer))
+            .surfaceMapped(occlusion: map { u, v in
+                let ao = 0.25 + 0.75 * coffer(u, v)
+                return (ao, ao, ao)
+            })
+        grooved.material?.baseColor = Color(red: 0.75, green: 0.73, blue: 0.7)
+
+        // Emissive seams on a dark shell, factor at half strength.
+        var lit = base.surfaceMapped(
+            emissive: map { u, v in
+                func band(_ t: Double) -> Double {
+                    let f = abs(t - t.rounded())
+                    return f < 0.04 ? 1 : (f < 0.09 ? 1 - (f - 0.04) / 0.05 : 0)
+                }
+                let seam = max(band(u * 5), band(v * 3))
+                return (seam * 0.25, seam * 0.85, seam)
+            })
+        lit.material?.baseColor = Color(red: 0.09, green: 0.1, blue: 0.12)
+        lit.material?.emissiveFactor = Color(white: 0.5)
+
+        let placed: [(Mesh, Material, Double)] = [
+            (worn, .physicallyBased(metallic: 1, roughness: 1), -3.15),
+            (grooved, .dielectric(roughness: 0.55), -1.05),
+            (lit, .dielectric(roughness: 0.85), 1.05),
+            (base, .physicallyBased(metallic: 1, roughness: 1), 3.15),
+        ]
+        fill(.white)
+        for (mesh, finish, x) in placed {
+            material(finish)
+            withState { translate(x, 0.3, 0); drawMesh(mesh) }
+        }
+        material(Material())
         withState {
             translate(0, -1.3, 0); fill(Color(white: 0.4))
             drawBox(width: 20, height: 0.3, depth: 20)

@@ -2554,10 +2554,64 @@ final class Drawer {
         }
         let textured = !wireframe && matcap == nil && uvsAligned
             && (material?.texture != nil || normalMapped)
+        // The rest of the surface-map set (a metallic-roughness map, an occlusion
+        // map, an emissive map, or a constant emissive factor) routes to the
+        // textured path's second twin. The map textures need per-vertex uvs like
+        // the base texture (degrading honestly without them); a constant emissive
+        // factor alone needs none. The gates ride the per-batch finish (the
+        // `normalScale` pattern), doubling as the encode-side pipeline pick and
+        // the shader-side sampling gates.
+        var mrMapped = false, occlusionMapped = false, emissiveMapped = false
+        var emissiveOn = false
+        if !wireframe, matcap == nil, let mat = material {
+            emissiveOn = mat.emissiveFactor.red > 0 || mat.emissiveFactor.green > 0
+                || mat.emissiveFactor.blue > 0
+            if uvsAligned {
+                mrMapped = mat.metallicRoughnessTexture != nil
+                occlusionMapped = mat.occlusionTexture != nil && mat.occlusionStrength > 0
+                emissiveMapped = mat.emissiveTexture != nil && emissiveOn
+            } else if mat.metallicRoughnessTexture != nil || mat.occlusionTexture != nil
+                        || (mat.emissiveTexture != nil && emissiveOn) {
+                noteOnce("a surface map (metallic-roughness / occlusion / emissive) needs per-vertex uvs; drawing the mesh without it.")
+            }
+        }
+        // A texture-wearing mesh whose uvs are missing draws flat on the solid
+        // path; keep it there rather than let an emissive factor route it to a
+        // sampling pipeline (which would read the base texture at uv 0).
+        let surfaceMapped = mrMapped || occlusionMapped || emissiveMapped
+            || (emissiveOn && (uvsAligned || material?.texture == nil))
+        let writesUV = textured || (surfaceMapped && uvsAligned)
         if wireframe {
             beginMeshBatch(material: nil, finish: OllinMaterial(), wireframe: true)
         } else if let matcap {
             beginMeshBatch(material: nil, finish: OllinMaterial(), matcap: matcap)
+        } else if surfaceMapped {
+            // The gates ride the finish like `normalScale` below; the mesh
+            // material's own metallic/roughness fold in as the map's factors
+            // (the file's intent), composing with the drawing-state finish the
+            // shader then multiplies by the sampled channels.
+            var finish = currentMaterial.gpuMaterial()
+            if normalMapped, let mat = material {
+                finish.normalScale = Float(mat.normalScale)
+            }
+            if let mat = material {
+                if mrMapped {
+                    finish.mrGate = 1
+                    finish.metallic *= Float(mat.metallic)
+                    finish.roughness *= Float(mat.roughness)
+                }
+                if occlusionMapped {
+                    finish.occlusionStrength = Float(mat.occlusionStrength)
+                }
+                if emissiveOn {
+                    let f = mat.emissiveFactor
+                    finish.emissive = SIMD4<Float>(Float(Color.srgbToLinear(f.red)),
+                                                   Float(Color.srgbToLinear(f.green)),
+                                                   Float(Color.srgbToLinear(f.blue)),
+                                                   emissiveMapped ? 1 : 0)
+                }
+            }
+            beginMeshBatch(material: material, finish: finish)
         } else if textured {
             // The map's strength rides the per-batch finish uniform: it's
             // per-mesh state (the drawing-state `material(_:)` knows nothing of
@@ -2624,7 +2678,7 @@ final class Drawer {
                 v.normal = SIMD4<Float>(wn.x, wn.y, wn.z, metalW)
             }
             v.color = vertexColored ? color * mesh.colors[i].simd4 : color
-            if textured {
+            if writesUV {
                 let uv = mesh.uvs[i]
                 v.uv = SIMD2<Float>(Float(uv.x), Float(uv.y))
             }

@@ -479,6 +479,15 @@ public extension Material {
     // surface *color* is still the current `fill`; these set the `metallic`/`roughness`
     // that drive the Cook-Torrance shading (and, with an environment, the reflections).
 
+    /// The physically-based finish with explicit `metallic`/`roughness` factors
+    /// (the defaults are the neutral dielectric). With a metallic-roughness
+    /// *map* on the mesh, the sampled channels multiply these, so
+    /// `.physicallyBased(metallic: 1, roughness: 1)` shows a model's maps as
+    /// authored (1 is the map factors' identity).
+    static func physicallyBased(metallic: Double = 0, roughness: Double = 0.5) -> Material {
+        Material(shading: .physicallyBased, metallic: metallic, roughness: roughness)
+    }
+
     /// A physically-based **metal** of the given roughness (`0` mirror-smooth … `1` fully
     /// rough). The reflection is tinted by the surface `fill`. `Material.metal(roughness:
     /// 0.2)` is a lightly-brushed steel; pair with a gold/copper `fill` for those metals.

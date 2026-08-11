@@ -140,6 +140,50 @@ public extension Mesh {
         return copy
     }
 
+    /// A copy wearing the rest of the standard surface-map set: a
+    /// metallic-roughness map (roughness in green, metallic in blue, the
+    /// standard packing), an ambient-occlusion map (red channel), and an
+    /// emissive map or constant emissive color. Only the maps you pass change;
+    /// the others keep whatever the material already carried, so this composes
+    /// with `textured(_:)` and `normalMapped(_:scale:)` in any order.
+    ///
+    /// The metallic-roughness samples *multiply* the drawing-state finish, so
+    /// draw under `material(.physicallyBased(metallic: 1, roughness: 1))` to
+    /// show the maps as authored (attaching one here sets the mesh material's
+    /// own factors to 1 for the same reason). An emissive map with no
+    /// `emissiveColor` emits at full strength (white); pass a color to tint or
+    /// dim it, or alone to emit a constant glow. The maps ride the mesh's
+    /// `uvs`, like a texture.
+    ///
+    /// ```swift
+    /// drawMesh(.sphere(radius: 200).textured(paint).surfaceMapped(metallicRoughness: wear))
+    /// ```
+    func surfaceMapped(metallicRoughness: Image? = nil,
+                       occlusion: Image? = nil, occlusionStrength: Double = 1,
+                       emissive: Image? = nil, emissiveColor: Color? = nil) -> Mesh {
+        var copy = self
+        var m = copy.material ?? MeshMaterial()
+        if let metallicRoughness {
+            m.metallicRoughnessTexture = metallicRoughness
+            // The map's factors: 1 shows the sampled channels as authored (the
+            // carried defaults, 0 and 0.5, would kill or halve the map).
+            m.metallic = 1
+            m.roughness = 1
+        }
+        if let occlusion {
+            m.occlusionTexture = occlusion
+            m.occlusionStrength = occlusionStrength
+        }
+        if let emissive {
+            m.emissiveTexture = emissive
+            m.emissiveFactor = emissiveColor ?? .white
+        } else if let emissiveColor {
+            m.emissiveFactor = emissiveColor
+        }
+        copy.material = m
+        return copy
+    }
+
     /// A copy with area-weighted smooth normals computed from the positions and
     /// triangle indices, replacing whatever normals it had. For a mesh built from raw
     /// geometry with no normals (a deforming face mesh, a marching-cubes surface) so it

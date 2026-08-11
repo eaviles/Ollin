@@ -456,7 +456,20 @@ typedef struct {
                                   // (glTF's normalTexture.scale). Set per batch from the mesh's
                                   // `MeshMaterial.normalScale` when its normal map draws, not from
                                   // the drawing-state `material(_:)` finish.
-    float scatterPad1, scatterPad2;
+    // The surface-map gates below follow `normalScale`'s pattern: per-mesh state set
+    // only when the surface-mapped pipeline draws a mesh whose maps verified, zero on
+    // every other batch, doubling as the encode-side and shader-side gates.
+    float mrGate;                 // 1 = a metallic-roughness map is bound (glTF packing:
+                                  // roughness g, metallic b); the sampled channels multiply
+                                  // `metallic`/`roughness` above, which then carry the composed
+                                  // factors (drawing-state finish × the mesh material's own)
+    float occlusionStrength;      // > 0 = an occlusion map is bound (its r channel); the sample
+                                  // dims the *indirect* terms only (ambient/IBL/GI) as
+                                  // 1 + strength·(ao − 1), the glTF convention. 0 = no map.
+    simd_float4 emissive;         // rgb = linear emissive factor (the surface adds this much
+                                  // light of its own; 0,0,0 = none, the gate for the constant
+                                  // term); w = 1 when an emissive map is bound (sampled sRGB,
+                                  // multiplied by the factor), 0 = factor alone
 } OllinMaterial;
 
 // Parameters for the live ground-grid overlay (`ollin_grid_fragment`): a shader-drawn
