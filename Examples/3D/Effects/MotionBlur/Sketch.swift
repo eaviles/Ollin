@@ -49,9 +49,9 @@ final class MotionBlur: Sketch {
         // its motion with `withMotion`, so the streak follows the sphere's own
         // path even while the camera moves the other way.
         let orbits: [(speed: Double, radius: Double, height: Double, size: Double, color: Color)] = [
-            (2.6, 2.1, 1.9, 0.30, Color(hex: 0xE0B040)),
-            (1.1, 2.6, 1.1, 0.38, Color(hex: 0xC05A3E)),
-            (0.35, 1.5, 0.55, 0.46, Color(hex: 0x4E8FB0)),
+            (7.8, 2.1, 1.9, 0.30, Color(hex: 0xE0B040)),
+            (3.3, 2.6, 1.1, 0.38, Color(hex: 0xC05A3E)),
+            (1.05, 1.5, 0.55, 0.46, Color(hex: 0x4E8FB0)),
         ]
         for (i, orbit) in orbits.enumerated() {
             withMotion("sphere-\(i)") {
