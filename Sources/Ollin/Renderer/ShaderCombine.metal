@@ -1244,8 +1244,13 @@ fragment float4 ollin_mb_fill(PresentOut in [[stage_in]],
     float2 q = 0.0;
     bool wrote = false;
     if (params[1].x > 0.5) {
+        // params[1].yz rescale a mover texture rendered at a different pixel
+        // size than this fill (the temporal upscaler's render-resolution
+        // texture feeding a full-resolution blur); (1, 1) otherwise, which
+        // multiplies exactly and keeps the plain path byte-identical. The
+        // sentinel test reads the raw value, before any rescale.
         float2 v = mover.sample(dsamp, in.uv).xy;
-        if (v.x > 0.5 * OLLIN_VELOCITY_NONE) { q = v; wrote = true; }
+        if (v.x > 0.5 * OLLIN_VELOCITY_NONE) { q = v * params[1].yz; wrote = true; }
     }
     if (!wrote) {
         float4x4 prevVP = float4x4(params[6], params[7], params[8], params[9]);
@@ -1263,6 +1268,41 @@ fragment float4 ollin_mb_fill(PresentOut in [[stage_in]],
     float len = length(q);
     float2 v = q * max(0.5, min(len, params[0].w)) / (len + 1e-4);
     return float4(v, -viewZ, 0.0);
+}
+
+// The temporal upscaler's velocity fill: the same full-screen field as
+// ollin_mb_fill, kept raw. Previous minus current, in pixels, y-down, no
+// shutter scale and no magnitude clamp, which is what the scaler consumes at
+// motion-vector scale 1. Where the mover pass wrote a texel that motion wins;
+// everywhere else the pixel's world position reprojects through last frame's
+// view-projection, and the backdrop (depth 1: 2D drawing, the clear, the
+// environment) holds still, the temporal resolve's own background treatment.
+// params[0] = (texel.x, texel.y, 0, 0); params[1].x = mover texture bound;
+// params[2..5] = inverse view-projection columns; params[6..9] = previous
+// view-projection columns. Both view-projections arrive unjittered (the
+// remove-the-jitter rule).
+fragment float4 ollin_fx_velocity_fill(PresentOut in [[stage_in]],
+                                       depth2d<float> depthTex [[texture(0)]],
+                                       texture2d<float> mover [[texture(1)]],
+                                       sampler samp [[sampler(0)]],
+                                       constant float4 *params [[buffer(0)]]) {
+    constexpr sampler dsamp(filter::nearest);
+    float d = depthTex.sample(dsamp, in.uv);
+    if (d >= 1.0) { return float4(0.0); }
+    if (params[1].x > 0.5) {
+        float2 v = mover.sample(dsamp, in.uv).xy;
+        if (v.x > 0.5 * OLLIN_VELOCITY_NONE) { return float4(v, 0.0, 0.0); }
+    }
+    float2 ndc = float2(in.uv.x * 2.0 - 1.0, 1.0 - in.uv.y * 2.0);
+    float4x4 invVP = float4x4(params[2], params[3], params[4], params[5]);
+    float4 wp4 = invVP * float4(ndc, d, 1.0);
+    float3 wp = wp4.xyz / wp4.w;
+    float4x4 prevVP = float4x4(params[6], params[7], params[8], params[9]);
+    float4 clip = prevVP * float4(wp, 1.0);
+    if (clip.w <= 0.0) { return float4(0.0); }
+    float2 pndc = clip.xy / clip.w;
+    float2 pUV = float2(pndc.x * 0.5 + 0.5, 0.5 - pndc.y * 0.5);
+    return float4((pUV - in.uv) / params[0].xy, 0.0, 0.0);
 }
 
 // Pass 2, the tile max: reduce the fill to one dominant (largest-magnitude)

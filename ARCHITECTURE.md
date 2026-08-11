@@ -2894,6 +2894,85 @@ frame 2 on any Metal GPU.
 
 ---
 
+## Temporal upscaling
+
+`temporalUpscaling(_ quality:)` is the velocity buffer's third customer and the
+jitter machinery's second: the live window renders the whole frame at a reduced
+size and Apple's MetalFX temporal scaler (`MTLFXTemporalScaler`) reconstructs
+the full-size canvas from the sub-pixel-jittered history. The tier maps to a
+render fraction (`.performance` half size per axis, `.default` two-thirds,
+`.detail` three-quarters, clamped to the device-reported scale range), so
+per-pixel cost falls by the square while the scaler's own accumulation keeps
+edges temporally anti-aliased. Per-frame state like `temporalAntialiasing()`,
+main canvas + active 3D camera only, and gated on
+`MTLFXTemporalScalerDescriptor.supportsDevice` (elsewhere a one-time note and a
+normal full-resolution frame).
+
+**The integration point is the resolve chain, not a post-process.** In the live
+`render()`, every geometry-side pass sizes to the render (input) size: the MSAA
+target and resolve, the depth buffer and its forced `.min` resolve, the clip
+stencil, the reflection G-buffer, GI, contact shadows, the half-res field
+pre-passes, the subsurface diffusion, and the mover-velocity pass. The scaler
+then replaces `applyTemporalAA` (the scaler *is* the jittered accumulation;
+feeding it Ollin's already-averaged output would integrate twice), bridging to
+the drawable's full size, and everything downstream (motion blur, the frame
+filters, the present) runs at the output size unchanged. The logical canvas
+(`viewport`) never changes, and the geometry encode sets no explicit
+`MTLViewport`, so shrinking the attachments is the whole resolution change: no
+coordinate math anywhere is touched, and with the feature off the two sizes are
+equal and the frame is byte-identical by construction.
+
+**The scaler's inputs are the contracts already shipped.** The motion texture
+is a full-screen fill (`ollin_fx_velocity_fill`): the `ollin_mb_fill` recipe
+with the shutter scale and magnitude clamp removed, compositing the mover
+pass's texture over depth-reprojected camera motion as *raw* previous-minus-
+current pixels, y-down, both view-projections unjittered, which is the scaler's
+documented convention at `motionVectorScale = 1` (the velocity buffer was
+designed to it). The jitter offsets handed to the scaler are the pixel shifts
+the jittered projection applied to the content (x right, y down, the table's
+own units: "the offset to sample to return to the reference frame"); the
+sequence is the shared Halton table extended from 16 to 32 entries, cycling
+`min(32, ceil(8·s²))` phases for scale s (a scaler reconstructing s× the pixels
+per axis needs ~8·s² distinct sub-pixel positions), while TAA keeps cycling its
+first 8 and the export supersample its first ≤16, so both are untouched
+(`theJitterTableKeepsItsShippedPrefix` pins the prefix). Depth is the same
+`.min` resolve TAA reads (0 near, 1 far, `isDepthReversed` false), color the
+linear pre-tonemap resolve with auto-exposure metering the HDR range.
+
+**Cross-feature seams, each explicit:** while the scaler runs, `taaHistory` is
+dropped (a later TAA-only frame must not reproject through a stale matrix);
+motion blur runs at the output size reading the render-resolution depth and
+mover texture by normalized coordinates, with the mover's pixel values rescaled
+by the size ratio through a `moverScale` parameter whose (1, 1) default
+multiplies exactly (the plain path stays byte-identical); a same-frame repeat
+returns the slot's existing output without re-encoding, because the scaler's
+internal history must advance exactly once per frame (the `taaHistory` rule);
+and scaler creation failing flips the support flag so the note prints once
+instead of retrying every frame. **Headless never touches the scaler**: a
+sketch asking for upscaling exports as the full-resolution temporal-AA
+supersample (`headlessTemporalAAActive`), pinned byte-identical to asking for
+`temporalAntialiasing()`. The export is the deterministic full-quality
+equivalent of the live preview, and the GPU benchmark keeps measuring the
+full-resolution cost.
+
+Verification splits along the honesty rule: the deterministic pieces
+(`UpscalingTests`, 9) pin the gating, the tier mapping, the jitter-table
+prefix, the fill's three behaviors over crafted textures
+(`debugUpscaleFillReadback`: raw mover passthrough with no shutter scale,
+exact camera reprojection, depth-1 backdrop zero), and the headless
+equivalence; the fill and gate sabotages each read red. The live scaler is a
+stateful platform object, so its verification is measurement (2026-08-11, the
+TAA frame-diff protocol: a static RT-reflection scene in OllinLive, window
+captures diffed over the canvas crop): converged frame-to-frame mean
+0.08-0.11/255 (max ~30), inside the shipped TAA-on stillness band, i.e. no
+jitter-sign shimmer, and *stiller* than the same scene un-upscaled (max ~120),
+because the scaler absorbs the deferred reflection's residual sparkle the way
+TAA does; hot-toggling off, then `.detail`, then `.performance` through a
+reload swaps slots cleanly; and the FPS A/B on that scene read 28.6-30.6 fps
+at full resolution vs 57.7-60.2 (vsync-capped) at `.performance`.
+
+---
+
 ## User-supplied shaders
 
 A sketch writes its own fragment shader and runs it through the effect graph.

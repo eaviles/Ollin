@@ -459,6 +459,21 @@ final class Drawer {
     /// within each frame. Works on any Metal GPU (no ray tracing involved).
     private(set) var temporalAAEnabled = false
 
+    /// Whether this frame temporally upscales the 3D scene (see
+    /// `temporalUpscaling`). Per-frame state like `temporalAAEnabled`. When on
+    /// (and a 3D camera is active, on a supporting GPU), the live renderer draws
+    /// the whole frame at a reduced resolution and reconstructs the full-size
+    /// canvas from the jittered history: quality headroom for a heavy scene.
+    /// The headless/export path never upscales: it renders at full resolution
+    /// with the deterministic temporal-AA supersample instead, so an export is
+    /// always full quality and byte-stable.
+    private(set) var temporalUpscalingEnabled = false
+
+    /// The upscaling tier (`temporalUpscaling(_:)`): the renderer maps it to a
+    /// render-resolution fraction, clamped to what the GPU supports. Meaningful
+    /// while `temporalUpscalingEnabled` is set.
+    private(set) var temporalUpscalingQuality: RenderQuality = .default
+
     /// Whether this frame motion-blurs the 3D scene (see `motionBlur`). Per-frame
     /// state like `temporalAAEnabled`. When on (and a 3D camera is active), the
     /// renderer streaks the resolved frame along per-pixel screen motion: camera
@@ -1868,6 +1883,22 @@ final class Drawer {
     /// Stop temporally anti-aliasing (the default). Per-frame state.
     func noTemporalAntialiasing() { temporalAAEnabled = false }
 
+    /// Temporally upscale the 3D scene this frame: live, the whole canvas renders
+    /// at a reduced resolution and is reconstructed full-size from the jittered
+    /// history, buying performance headroom on a heavy scene. `quality` picks the
+    /// render fraction (`.performance` half-size, `.default` two-thirds,
+    /// `.detail` three-quarters), clamped to what the GPU supports. Per-frame
+    /// state like the lights; set it in `draw()`. A no-op without an active 3D
+    /// camera or on a GPU without temporal-scaling support; the headless/export
+    /// path renders full-resolution with the temporal-AA supersample instead.
+    func temporalUpscaling(_ quality: RenderQuality = .default) {
+        temporalUpscalingEnabled = true
+        temporalUpscalingQuality = quality
+    }
+
+    /// Stop temporally upscaling (the default). Per-frame state.
+    func noTemporalUpscaling() { temporalUpscalingEnabled = false }
+
     /// Motion-blur the 3D scene this frame: streak each pixel along its screen
     /// motion, camera motion read from the depth buffer and per-object motion from
     /// `withMotion` blocks. `shutter` is the fraction of a frame the virtual
@@ -2681,6 +2712,8 @@ final class Drawer {
         globalIlluminationEnabled = false
         giIntensity = 1
         temporalAAEnabled = false
+        temporalUpscalingEnabled = false
+        temporalUpscalingQuality = .default
         motionBlurEnabled = false
         motionBlurShutter = 0.5
         // Atmosphere is per-frame like the lights (the quality setting persists).

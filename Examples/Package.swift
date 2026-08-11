@@ -195,6 +195,7 @@ let package = Package(
         example("3D/Effects/ContactShadows"),
         example("3D/Effects/MotionBlur"),
         example("3D/Effects/TemporalAA"),
+        example("3D/Effects/Upscaling"),
         example("3D/Effects/RayTracedReflections"),
         example("3D/Geometry/TexturedMesh"),
         example("3D/Geometry/Wireframe"),

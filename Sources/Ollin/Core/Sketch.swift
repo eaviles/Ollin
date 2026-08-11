@@ -1024,6 +1024,29 @@ open class Sketch {
     /// Stop temporally anti-aliasing (the default).
     public func noTemporalAntialiasing() { drawer.noTemporalAntialiasing() }
 
+    /// Temporally upscale the 3D scene this frame: the live window renders the
+    /// whole canvas at a reduced resolution and reconstructs the full-size frame
+    /// from the sub-pixel-jittered history, so a heavy scene keeps its frame rate
+    /// (or spends the headroom on richer content) while edges stay temporally
+    /// anti-aliased. `quality` picks the render fraction: `.performance` renders
+    /// at half size, `.default` at two-thirds, `.detail` at three-quarters, each
+    /// clamped to what the GPU supports. Movers declared with `withMotion { }`
+    /// reconstruct exactly, like temporal AA. Exports, snapshots, and frame grabs
+    /// never upscale: the headless path renders at full resolution with the
+    /// deterministic temporal-AA supersample, so what you keep is always full
+    /// quality and byte-stable, and what you see live is the fast preview of it.
+    /// Per-frame state like the lights and camera, so call it in `draw()` after
+    /// the camera; it applies to the main canvas (not layers or the accumulation
+    /// surface), needs an active 3D camera, and needs a GPU with temporal-scaling
+    /// support (Apple silicon; elsewhere the frame renders normally with a
+    /// one-time note). Call `noTemporalUpscaling()` to turn it back off.
+    public func temporalUpscaling(_ quality: RenderQuality = .default) {
+        drawer.temporalUpscaling(quality)
+    }
+
+    /// Stop temporally upscaling (the default).
+    public func noTemporalUpscaling() { drawer.noTemporalUpscaling() }
+
     /// Motion-blur the 3D scene this frame, the cinematic streak a real camera's
     /// open shutter leaves: each pixel smears along its own screen motion, with
     /// camera movement read from the depth buffer (so panning past a still scene

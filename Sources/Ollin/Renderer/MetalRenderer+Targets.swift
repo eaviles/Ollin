@@ -998,10 +998,13 @@ extension MetalRenderer {
     }
 
     /// The sub-pixel jitter sequence: a low-discrepancy progressive 2D set (radical
-    /// inverses in bases 2 and 3), offsets in [-0.5, 0.5]² pixels. The live path
+    /// inverses in bases 2 and 3), offsets in [-0.5, 0.5]² pixels. The live TAA path
     /// cycles the first 8 by frame count; the export supersample takes the first N
-    /// by tier. One shared table so live and export sample the same positions.
-    static let taaJitterOffsets: [SIMD2<Float>] = (0..<16).map {
+    /// by tier; the temporal upscaler cycles up to all 32 (a scaler reconstructing
+    /// s× the pixels needs about 8·s² distinct phases to visit every output
+    /// position). One shared table so every consumer samples the same positions,
+    /// and a progressive sequence so a prefix is itself well distributed.
+    static let taaJitterOffsets: [SIMD2<Float>] = (0..<32).map {
         SIMD2(Float(halton($0 + 1, base: 2)) - 0.5, Float(halton($0 + 1, base: 3)) - 0.5)
     }
 
@@ -1065,9 +1068,9 @@ extension MetalRenderer {
     /// runs on repeats and on the headless export path, where no slot exists).
     /// Same pipelines, same cached target, byte-identical encoding for a given
     /// previous view projection.
-    private func encodeMoverVelocity(_ drawer: Drawer, into cb: MTLCommandBuffer,
-                                     meshBuffer: MTLBuffer?, width: Int, height: Int,
-                                     previousViewProjection: simd_float4x4) -> MTLTexture? {
+    func encodeMoverVelocity(_ drawer: Drawer, into cb: MTLCommandBuffer,
+                             meshBuffer: MTLBuffer?, width: Int, height: Int,
+                             previousViewProjection: simd_float4x4) -> MTLTexture? {
         guard let camera = drawer.camera3D, let meshBuffer,
               !drawer.moverRanges.isEmpty,
               let velPipe = try? pipeline(.meshVelocity(depth: depthPixelFormat)),
@@ -1329,10 +1332,14 @@ extension MetalRenderer {
     /// repeat, the headless export) the chain encodes its own through the same
     /// core against the drawer's previous camera, which is the same matrix the
     /// TAA slot carries when both are on, so the two sources cannot disagree.
+    /// `moverScale` rescales a mover texture rendered at a different pixel size
+    /// than this blur (the temporal upscaler's render-resolution velocity feeding
+    /// a full-resolution blur); (1, 1) otherwise, which multiplies exactly and
+    /// keeps the plain path byte-identical.
     func applyMotionBlur(_ drawer: Drawer, resolved: MTLTexture, depth: MTLTexture?,
                          moverVelocity: MTLTexture?, meshBuffer: MTLBuffer?,
                          into cb: MTLCommandBuffer, width: Int, height: Int,
-                         pooled: Bool) -> MTLTexture {
+                         pooled: Bool, moverScale: SIMD2<Float> = SIMD2(1, 1)) -> MTLTexture {
         guard motionBlurActive(drawer), let camera = drawer.camera3D, let depth,
               let previous = drawer.previousCamera3D else { return resolved }
         let aspect = height > 0 ? Double(width) / Double(height) : 1
@@ -1362,7 +1369,7 @@ extension MetalRenderer {
         var params = [SIMD4<Float>](repeating: .zero, count: 12)
         params[0] = SIMD4(1 / Float(width), 1 / Float(height),
                           Float(0.5 * drawer.motionBlurShutter), Float(k))
-        params[1] = SIMD4(mover != nil ? 1 : 0, 0, 0, 0)
+        params[1] = SIMD4(mover != nil ? 1 : 0, moverScale.x, moverScale.y, 0)
         params[2] = invVP.columns.0; params[3] = invVP.columns.1
         params[4] = invVP.columns.2; params[5] = invVP.columns.3
         params[6] = prevVP.columns.0; params[7] = prevVP.columns.1

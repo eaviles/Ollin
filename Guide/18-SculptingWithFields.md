@@ -315,6 +315,19 @@ The figure is one still frame, and it already tells you who is moving and how fa
 
 The [`MotionBlur` example](../Examples/3D/Effects/MotionBlur/Sketch.swift) is the figure's scene live, with the toggle and the shutter on knobs; slide the shutter while the spheres orbit and watch the same motion go from strobe to smear. Captions, 2D overlays, and the environment backdrop never streak, so the interface stays still while the world moves.
 
+## Rendering fewer pixels
+
+Almost everything in this chapter charges by the pixel: the mirrors trace one ray per pixel, the fields march per pixel, the bounce is gathered per pixel. When a scene gets heavy, the honest lever is to render fewer of them. `temporalUpscaling()` pulls it without giving up the full-size picture:
+
+```swift
+rayTracedReflections()
+temporalUpscaling()      // render at two-thirds size, reconstruct the full canvas
+```
+
+The live window draws the whole frame at a fraction of the canvas, and the platform's temporal scaler rebuilds the full-size image from the same jittered history that "Edges that settle" accumulates. You render fewer pixels; the history remembers the rest. The tier picks how few: `.performance` renders at half size per side (a quarter of the pixels), `.default` at two-thirds, `.detail` at three-quarters. It replaces `temporalAntialiasing()` while it runs, since it *is* that accumulation aimed at resolution, and it reads the same `withMotion { }` declarations, so a mover reconstructs cleanly mid-flight. It needs Apple silicon; anywhere else the call renders normally, with a note.
+
+What you keep is never the preview. Exports and snapshots render at full resolution with the deterministic average, so upscaling is purely a live-window trade: the same sketch previews fast and exports full. The [`Upscaling` example](../Examples/3D/Effects/Upscaling/Sketch.swift) is a mirror floor tracing a ring of columns, with the toggle and the tier on knobs; watch the FPS readout while you flip them (that scene runs about twice as fast at `.performance` on an M2). Like temporal AA, the win is temporal and a still can't show it, so the example carries the demonstration.
+
 ## Glass
 
 There has been a way to make a surface see-through since Chapter 17: give the `fill` some alpha, and the surface fades. Glass is a different thing. The surface stays fully there, with its highlights and reflections, and the *light* comes through instead, bent and tinted on the way. That's transmission, and it's one material call:

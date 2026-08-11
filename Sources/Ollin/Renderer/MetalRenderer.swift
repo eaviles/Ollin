@@ -810,6 +810,17 @@ final class MetalRenderer {
     /// frame that runs the pass (live TAA + declared movers), so a frame without
     /// `withMotion` costs nothing.
     var velocityCache: (tex: MTLTexture, depth: MTLTexture, w: Int, h: Int)?
+    /// The temporal upscaler's persistent state (the live on-screen path): the
+    /// platform scaler object (whose accumulation history lives inside it), the
+    /// sizes it was built for, its full-screen motion fill and full-resolution
+    /// output textures, and the last presented output for same-frame repeats
+    /// (a repeat must not step the scaler's internal history, the `taaHistory`
+    /// rule). Rebuilt when the render or output size changes; the headless
+    /// path never touches it (it renders full-resolution instead).
+    var fxSlot: FXScalerSlot?
+    /// Whether this GPU supports the platform temporal scaler, resolved once.
+    var fxSupportChecked = false
+    var fxSupported = false
     /// The reflection G-buffer's cached targets (world normal + coverage, metal/rough,
     /// own depth), reallocated on a size change. GPU-private and fully rewritten by the
     /// pass each frame, so reuse across in-flight frames is safe (command buffers on
@@ -1090,12 +1101,24 @@ final class MetalRenderer {
         let height = Int(view.drawableSize.height.rounded())
         guard width > 0, height > 0, let drawable = view.currentDrawable else { return }
 
+        // The temporal upscaler renders the whole frame at a reduced size and
+        // reconstructs the full canvas from the jittered history, so every
+        // geometry-side pass below uses the render size; the scaler bridges
+        // back to the drawable's full size ahead of the motion blur, the frame
+        // filters, and the present. Off, the two sizes are equal and the frame
+        // is byte-identical by construction.
+        let fxActive = temporalUpscalingActive(drawer)
+        let (renderWidth, renderHeight) = fxActive
+            ? upscaleInputSize(width: width, height: height,
+                               quality: drawer.temporalUpscalingQuality)
+            : (width, height)
+
         // (Re)allocate the cached float geometry targets on a size change. The MSAA
         // target is memoryless (tile-only); the resolve is sampled by the present pass.
-        if mainSize != (width, height) || mainMSAA == nil || mainResolve == nil {
-            guard let msaa = makeFloatMSAA(width: width, height: height, storage: .memoryless),
-                  let resolve = makeFloatResolve(width: width, height: height) else { return }
-            mainMSAA = msaa; mainResolve = resolve; mainSize = (width, height)
+        if mainSize != (renderWidth, renderHeight) || mainMSAA == nil || mainResolve == nil {
+            guard let msaa = makeFloatMSAA(width: renderWidth, height: renderHeight, storage: .memoryless),
+                  let resolve = makeFloatResolve(width: renderWidth, height: renderHeight) else { return }
+            mainMSAA = msaa; mainResolve = resolve; mainSize = (renderWidth, renderHeight)
         }
         guard let msaa = mainMSAA, let resolve = mainResolve else { return }
 
@@ -1122,8 +1145,8 @@ final class MetalRenderer {
         let blurActive = motionBlurActive(drawer)
         var passDepthFormat: MTLPixelFormat? = nil
         if drawer.usesDepthBuffer {
-            if mainDepth?.width != width || mainDepth?.height != height {
-                mainDepth = makeDepthMSAA(width: width, height: height)
+            if mainDepth?.width != renderWidth || mainDepth?.height != renderHeight {
+                mainDepth = makeDepthMSAA(width: renderWidth, height: renderHeight)
             }
             if let depth = mainDepth {
                 geomPass.depthAttachment.texture = depth
@@ -1131,9 +1154,9 @@ final class MetalRenderer {
                 geomPass.depthAttachment.clearDepth = 1.0
                 geomPass.depthAttachment.storeAction = .dontCare
                 passDepthFormat = depthPixelFormat
-                if taaActive || blurActive {
-                    if mainDepthResolve?.width != width || mainDepthResolve?.height != height {
-                        mainDepthResolve = makeDepthResolve(width: width, height: height)
+                if taaActive || blurActive || fxActive {
+                    if mainDepthResolve?.width != renderWidth || mainDepthResolve?.height != renderHeight {
+                        mainDepthResolve = makeDepthResolve(width: renderWidth, height: renderHeight)
                     }
                     if let resolve = mainDepthResolve {
                         geomPass.depthAttachment.resolveTexture = resolve
@@ -1146,7 +1169,7 @@ final class MetalRenderer {
         // A clipping frame (`withClip` on the canvas) adds a stencil attachment the
         // same lazy way; an unclipped frame allocates none and stays byte-identical.
         let passHasStencil = attachClipStencil(to: geomPass, active: drawer.usesClipStencil,
-                                               width: width, height: height)
+                                               width: renderWidth, height: renderHeight)
 
         guard let commandBuffer = commandQueue.makeCommandBuffer() else {
             frameBoundary.signal()   // nothing encoded; hand the slot back
@@ -1180,13 +1203,19 @@ final class MetalRenderer {
             sdf3DGroup: sdf3DGroupBuffer(at: frameIndex, for: drawer.sdf3DGroups.count),
             sdf3DNode: sdf3DNodeBuffer(at: frameIndex, for: drawer.sdf3DNodes.count))
         beginStatefulEncode(drawer)
-        // The frame's temporal-AA sub-pixel jitter (zero when TAA is off): the live
-        // path cycles the sequence by frame count, and every main-canvas 3D pass
-        // below carries the same offset so nothing misaligns. A same-frame repeat
-        // reads the same frame count, so it re-renders under the same jitter.
-        let taaJitter: SIMD2<Float> = taaActive
-            ? taaJitterNDC(index: Int(frameComputeUniforms.frameCount % 8),
-                           width: width, height: height)
+        // The frame's temporal sub-pixel jitter (zero when neither temporal AA
+        // nor the upscaler is on): the live path cycles the sequence by frame
+        // count, and every main-canvas 3D pass below carries the same offset so
+        // nothing misaligns. A same-frame repeat reads the same frame count, so
+        // it re-renders under the same jitter. The upscaler cycles more phases
+        // than TAA's 8 (it reconstructs more output pixels per rendered one)
+        // and expresses the offsets on the *render* pixel grid.
+        let jitterPhases = fxActive
+            ? fxJitterPhaseCount(inputWidth: renderWidth, outputWidth: width)
+            : 8
+        let jitterIndex = Int(frameComputeUniforms.frameCount % UInt32(jitterPhases))
+        let taaJitter: SIMD2<Float> = (taaActive || fxActive)
+            ? taaJitterNDC(index: jitterIndex, width: renderWidth, height: renderHeight)
             : .zero
         // Global illumination (live): one probe-field update, hysteresis-accumulated
         // into the persistent atlases. Nil when GI isn't active this frame; the
@@ -1216,7 +1245,7 @@ final class MetalRenderer {
                 traceAccel: renderedShadow.accel ?? renderedShadow.reflectAccel,
                 meshBuffer: buffers.mesh, reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
                 giTextures: gi.map { ($0.irradiance, $0.depth, $0.offsets) },
-                fullWidth: width, fullHeight: height)
+                fullWidth: renderWidth, fullHeight: renderHeight)
         }
         // Half-res field-cast shadow pre-pass (the live RenderQuality path): the point/RT field
         // cast onto meshes is per-pixel-marched, so compute it once at reduced resolution and let
@@ -1227,7 +1256,7 @@ final class MetalRenderer {
             fl.fieldCasterCount = resolveFieldCasterCount(fl, drawer)
             return encodeFieldShadowHalfRes(drawer, into: commandBuffer, meshBuffer: buffers.mesh,
                 groupBuffer: buffers.sdf3DGroup, nodeBuffer: buffers.sdf3DNode,
-                uniforms3D: u3, lighting: fl, fullWidth: width, fullHeight: height)
+                uniforms3D: u3, lighting: fl, fullWidth: renderWidth, fullHeight: renderHeight)
         }
         // Deferred ray-traced reflections (live): trace one jittered ray per pixel and
         // temporally accumulate it, so the reflection edges (a pillar's mirror image on a
@@ -1237,7 +1266,7 @@ final class MetalRenderer {
             drawer, into: commandBuffer, meshBuffer: meshBuf,
             reflectAccel: renderedShadow.reflectAccel,
             reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
-            width: width, height: height, supersample: false, pooled: true,
+            width: renderWidth, height: renderHeight, supersample: false, pooled: true,
             gi: gi, taaJitter: taaJitter)
         // Contact shadows: march the scene's own depth toward the caster once per
         // frame; the mesh fragments sample the verdict by screen position. nil when
@@ -1245,7 +1274,7 @@ final class MetalRenderer {
         // jitter so the mask stays aligned under temporal AA (the scatter-mask rule).
         let contactShadow = encodeContactShadowPass(
             drawer, into: commandBuffer, meshBuffer: buffers.mesh,
-            width: width, height: height, taaJitter: taaJitter)
+            width: renderWidth, height: renderHeight, taaJitter: taaJitter)
 
         guard let geomEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: geomPass) else {
             frameBoundary.signal()   // nothing encoded; hand the slot back
@@ -1280,26 +1309,48 @@ final class MetalRenderer {
         // ahead of the filters so a bloom or grade reads the stabilized frame, not
         // the jittered one.
         let scattered = applySubsurfaceScattering(drawer, resolved: resolve, meshBuffer: meshBuf,
-                                                  into: commandBuffer, width: width, height: height,
+                                                  into: commandBuffer, width: renderWidth, height: renderHeight,
                                                   pooled: true, taaJitter: taaJitter)
-        // The mover-velocity pass (nil without TAA + declared movers + history),
-        // encoded before the resolve updates the slot's previous view·projection
-        // so both reproject through the same matrices.
-        let velocity = encodeVelocityPass(drawer, into: commandBuffer, meshBuffer: meshBuf,
-                                          width: width, height: height)
-        let stabilized = applyTemporalAA(drawer, resolved: scattered,
+        // The temporal upscaler replaces TAA's own resolve when it runs (the
+        // scaler *is* the jittered accumulation, and it bridges the render size
+        // back to the drawable's full size); otherwise the plain TAA chain.
+        let stabilized: MTLTexture
+        var blurMover: MTLTexture?
+        var blurMoverScale = SIMD2<Float>(1, 1)
+        if fxActive, let fx = applyTemporalUpscaling(drawer, resolved: scattered,
+                                                     depth: mainDepthResolve,
+                                                     meshBuffer: meshBuf, into: commandBuffer,
+                                                     inputWidth: renderWidth, inputHeight: renderHeight,
+                                                     outputWidth: width, outputHeight: height,
+                                                     jitterIndex: jitterIndex) {
+            stabilized = fx.output
+            blurMover = fx.mover
+            blurMoverScale = SIMD2(Float(width) / Float(renderWidth),
+                                   Float(height) / Float(renderHeight))
+        } else {
+            // The mover-velocity pass (nil without TAA + declared movers + history),
+            // encoded before the resolve updates the slot's previous view·projection
+            // so both reproject through the same matrices.
+            let velocity = encodeVelocityPass(drawer, into: commandBuffer, meshBuffer: meshBuf,
+                                              width: renderWidth, height: renderHeight)
+            stabilized = applyTemporalAA(drawer, resolved: scattered,
                                          depth: taaActive ? mainDepthResolve : nil,
                                          velocity: velocity,
                                          jitter: taaJitter, into: commandBuffer,
-                                         width: width, height: height)
+                                         width: renderWidth, height: renderHeight)
+            blurMover = velocity
+        }
         // Motion blur streaks the stabilized frame (after the temporal resolve,
         // so the blur reads settled edges; before the filters, so a bloom or
-        // grade reads the streaks). Returns its input untouched when off.
+        // grade reads the streaks). Returns its input untouched when off. Under
+        // the upscaler it runs at the full output size, reading the
+        // render-resolution depth and mover velocity by normalized coordinates
+        // (the mover's pixel values rescaled by `moverScale`).
         let blurred = applyMotionBlur(drawer, resolved: stabilized,
                                       depth: blurActive ? mainDepthResolve : nil,
-                                      moverVelocity: velocity, meshBuffer: meshBuf,
+                                      moverVelocity: blurMover, meshBuffer: meshBuf,
                                       into: commandBuffer, width: width, height: height,
-                                      pooled: true)
+                                      pooled: true, moverScale: blurMoverScale)
         let presented = applyFrameFilters(drawer, resolved: blurred, width: width, height: height,
                                           into: commandBuffer, pooled: true)
         if let presentEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: presentPass(into: drawable.texture)) {
@@ -1668,7 +1719,10 @@ final class MetalRenderer {
         // pre-passes above (shadows, GI, effect layers, sims) run once: they are
         // viewpoint-fixed or world-space, and only the camera's rasterization
         // jitters. TAA off (or no camera) takes the single-sample path unchanged.
-        let taaSamples = temporalAAActive(drawer) ? resolveTAASamples() : 1
+        // A sketch that asked for temporal *upscaling* supersamples here too: an
+        // export never upscales (it renders full-resolution), and the supersample
+        // is the deterministic full-quality equivalent of the live scaler.
+        let taaSamples = headlessTemporalAAActive(drawer) ? resolveTAASamples() : 1
         let presented: MTLTexture
         if taaSamples > 1,
            var accFront = makeFloatResolve(width: width, height: height),
