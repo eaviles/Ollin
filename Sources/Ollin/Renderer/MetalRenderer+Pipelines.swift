@@ -120,6 +120,33 @@ extension MetalRenderer {
             }
             return try device.makeRenderPipelineState(descriptor: d)
         }
+        if key.isVelocity {
+            // The mover-velocity pass: one rg16Float attachment (a signed pixel
+            // delta, so blending stays off and the write replaces the sentinel
+            // clear), single-sample, depth-tested + writing into its own depth.
+            // The occluder phase is the same pass with no fragment: Metal requires
+            // every color write mask empty when the fragment function is nil, which
+            // is exactly the depth-only behavior it exists for.
+            guard let v = library.makeFunction(name: key.vertex) else {
+                throw RendererError.shaderFunctions
+            }
+            let d = MTLRenderPipelineDescriptor()
+            d.vertexFunction = v
+            if key.isVelocityOccluder {
+                d.colorAttachments[0].writeMask = []
+            } else {
+                guard let f = library.makeFunction(name: key.fragment) else {
+                    throw RendererError.shaderFunctions
+                }
+                d.fragmentFunction = f
+            }
+            d.rasterSampleCount = 1
+            d.colorAttachments[0].pixelFormat = .rg16Float
+            if let depthFormat = key.depthFormat {
+                d.depthAttachmentPixelFormat = depthFormat
+            }
+            return try device.makeRenderPipelineState(descriptor: d)
+        }
         if key.isGBuffer {
             // The reflection G-buffer: the one MRT pipeline; two float attachments
             // (world normal + coverage, metalness/roughness), blending off (the

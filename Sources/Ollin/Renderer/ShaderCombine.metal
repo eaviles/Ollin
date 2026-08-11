@@ -1024,7 +1024,7 @@ static inline float4 ollin_taa_history(texture2d<float> tex, sampler samp,
 
 // The resolve. Inputs: the frame's resolved color (rendered under this frame's
 // jitter), the `.min`-resolved scene depth, and the history front.
-// params[0] = (texel.xy, hasHistory, 0); params[1] = (jitter in pixels, 0, 0);
+// params[0] = (texel.xy, hasHistory, 0); params[1] = (jitter in pixels, hasVelocity, 0);
 // params[4..7] = the current inverse view-projection columns and
 // params[8..11] = the previous view·projection columns, both UNJITTERED: the
 // jitter is removed from the reprojection entirely (the published rule), so a
@@ -1037,11 +1037,15 @@ fragment float4 ollin_fx_taa_resolve(PresentOut in [[stage_in]],
                                      texture2d<float> current [[texture(0)]],
                                      depth2d<float> depthTex [[texture(1)]],
                                      texture2d<float> history [[texture(2)]],
+                                     texture2d<float> velocity [[texture(3)]],
                                      sampler samp [[sampler(0)]],
                                      constant float4 *params [[buffer(0)]]) {
     float2 texel = params[0].xy;
     bool hasHistory = params[0].z > 0.5;
     float2 jitterPx = params[1].xy;
+    // params[1].z: whether this frame rendered a mover-velocity texture (a frame
+    // with no declared movers binds a stand-in and never samples it).
+    bool hasVelocity = params[1].z > 0.5;
 
     // Reconstruct this frame's estimate at the *unjittered* pixel center: weight
     // the 3x3 by a Gaussian (the published Blackman-Harris fit, e^-2.29r²) of each
@@ -1078,7 +1082,22 @@ fragment float4 ollin_fx_taa_resolve(PresentOut in [[stage_in]],
         }
     }
     float2 prevUV = in.uv;
-    if (bestD < 1.0) {
+    // Exact mover motion (the velocity pass, `withMotion`): sample the buffer at
+    // the dilated closest-depth neighbor (the closest-fetch rule, so a mover's
+    // AA halo follows the mover), pixels y-down, previous minus current. A
+    // written texel replaces the camera reprojection below with the mover's own
+    // motion; the sentinel clear (and a NaN from a degenerate mover transform,
+    // whose comparison reads false) keeps the fallback path untouched.
+    bool exactMotion = false;
+    if (hasVelocity) {
+        float2 v = velocity.sample(dsamp, bestUV).xy;
+        if (v.x > 0.5 * OLLIN_VELOCITY_NONE) {
+            prevUV = in.uv + v * texel;
+            exactMotion = true;
+            if (any(prevUV < 0.0) || any(prevUV > 1.0)) return cur;   // disoccluded / off-frame
+        }
+    }
+    if (!exactMotion && bestD < 1.0) {
         float2 ndc = float2(bestUV.x * 2.0 - 1.0, 1.0 - bestUV.y * 2.0);
         float4x4 invVP = float4x4(params[4], params[5], params[6], params[7]);
         float4x4 prevVP = float4x4(params[8], params[9], params[10], params[11]);

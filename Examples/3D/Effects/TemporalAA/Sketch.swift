@@ -18,6 +18,13 @@ final class TemporalAA: Sketch {
     @Param(icon: "sparkles", group: "Image")
     var temporalAA = true
 
+    /// Movers only: with this off, the orbiting bar falls back to the
+    /// conservative history blend and its thin edges stay rawer while it moves;
+    /// with it on, `withMotion` hands the renderer its exact screen motion and
+    /// the edges keep their accumulated refinement mid-flight.
+    @Param(icon: "arrow.triangle.swap", group: "Image")
+    var exactMotion = true
+
     override func draw() {
         background(Color(white: 0.045))
 
@@ -53,6 +60,24 @@ final class TemporalAA: Sketch {
             material(.dielectric(roughness: 0.3))
             translate(1.7, 0.85, 1.0)
             drawSphere(radius: 0.62)
+        }
+
+        // A world-space mover: a thin bright bar orbiting the trellis. Camera
+        // motion reprojects from depth already, but this bar moves on its own,
+        // so only `withMotion` gives its history the exact place to look.
+        let orbit = {
+            self.withState {
+                self.fill(Color(white: 0.95))
+                self.rotate(self.time * 0.35, axis: .unitY)
+                self.translate(2.6, 1.6, 0)
+                self.rotate(0.10, axis: .unitZ)
+                self.drawBox(width: 1.6, height: 0.028, depth: 0.05)
+            }
+        }
+        if exactMotion {
+            withMotion("orbiter", orbit)
+        } else {
+            orbit()
         }
 
         withState {

@@ -92,6 +92,24 @@ typedef struct {
                                // `viewport.y * 1` is exact). .y unused.
 } Uniforms3D;
 
+// The mover-velocity pass (temporal AA): per-draw constants bound at vertex
+// buffer index 3, beside the frame's `Uniforms3D` at 2. `previousViewProjection`
+// is last frame's unjittered view·projection (the temporal history's own
+// reprojection matrix, so the two never disagree); `previousOfCurrent` takes a
+// mover's baked *current* world-space vertex back to where last frame's model
+// matrix put it (prevModel · inverse(curModel)), the identity for a mover that
+// held still, so a stationary mover writes exactly the camera's own motion.
+typedef struct {
+    simd_float4x4 previousViewProjection;
+    simd_float4x4 previousOfCurrent;
+} OllinVelocityUniforms;
+
+// The velocity texture's "nothing written here" sentinel (its clear color's red
+// channel). Real velocities are screen-pixel deltas, orders of magnitude
+// smaller; the resolve treats any red above half this as a written texel, so a
+// NaN (a degenerate mover transform) also reads as unwritten and falls back.
+#define OLLIN_VELOCITY_NONE -16384.0f
+
 // One vertex of a textured quad (the image pipeline). Position is already in
 // sketch space (the CTM is applied on the CPU, like OllinVertex), `uv` samples
 // the image (0,0 top-left … 1,1 bottom-right), and `tint` multiplies the

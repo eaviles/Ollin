@@ -1383,6 +1383,31 @@ open class Sketch {
         }
     }
 
+    /// Declare that the meshes drawn inside the block move together as one thing,
+    /// so `temporalAntialiasing()` follows them exactly while they move. Temporal
+    /// AA accumulates each pixel across frames; camera motion is already followed
+    /// per pixel, but a mesh that moves in *world* space (a spun `rotate`, a
+    /// physics body, an animated scene) leaves no trail of where it was, so its
+    /// moving edges fall back to a conservative blend and lose their refinement.
+    /// Inside the block, Ollin remembers each draw's placement from frame to
+    /// frame under the call site's identity and hands the renderer its exact
+    /// screen motion. Two same-line blocks (a loop) keep separate identities by
+    /// occurrence order; use the named form to pin identity explicitly when call
+    /// order varies. Purely additive: with temporal AA off (or for a still mesh)
+    /// nothing changes, and wireframes, point clouds, and raymarched fields keep
+    /// the default handling.
+    public func withMotion(file: String = #fileID, line: Int = #line,
+                           _ body: () -> Void) {
+        drawer.withMotion(source: "\(file):\(line)", body)
+    }
+
+    /// The named form of `withMotion(_:)`: the block's cross-frame identity is
+    /// `name` (plus occurrence order among same-name blocks in one frame), so a
+    /// mover keeps its history even when the code path that draws it moves.
+    public func withMotion(_ name: String, _ body: () -> Void) {
+        drawer.withMotion(source: "named:\(name)", body)
+    }
+
     /// Run a compute `kernel` that writes `texture` — one thread per texel, over a
     /// 2-D grid. The write texture binds at **texture index 0**; the kernel takes
     /// `texture2d<float, access::write> [[texture(0)]]` and a `uint2 gid

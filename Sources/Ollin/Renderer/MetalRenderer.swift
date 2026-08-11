@@ -95,6 +95,14 @@ final class MetalRenderer {
         /// off (the mask's alpha channel carries a profile index, which alpha blending
         /// would corrupt), single-sample, depth-tested into its own depth.
         var isScatterMask = false
+        /// The mover-velocity pass (temporal AA): one `rg16Float` attachment written
+        /// with blending off (the fragment's value is a signed pixel delta, not a
+        /// color), single-sample, depth-tested + writing into its own depth.
+        var isVelocity = false
+        /// The velocity pass's occluder phase: the same pass shape drawn depth-only
+        /// (nil fragment, color writes masked off), so geometry in front of a mover
+        /// keeps it from writing velocity through its occluder.
+        var isVelocityOccluder = false
         /// Set (to `.stencil8`) when the pass carries a stencil attachment (clipping is
         /// active on that surface). Part of the key because *every* pipeline drawn into
         /// a stencil-carrying pass must declare the format, clipped or not; a pass with
@@ -246,6 +254,22 @@ final class MetalRenderer {
         static func scatterMask(depth: MTLPixelFormat) -> PipelineKey {
             PipelineKey(vertex: "ollin_mesh_scatter_vertex", fragment: "ollin_mesh_scatter_fragment",
                         depthFormat: depth, isScatterMask: true)
+        }
+        // mover velocity (temporal AA): re-render this frame's declared movers
+        // single-sample into an rg16Float screen-motion texture with its own depth,
+        // so the resolve reprojects their history exactly. Only encoded when TAA is
+        // live and the frame declared movers (`withMotion`).
+        static func meshVelocity(depth: MTLPixelFormat) -> PipelineKey {
+            PipelineKey(vertex: "ollin_mesh_velocity_vertex",
+                        fragment: "ollin_mesh_velocity_fragment",
+                        depthFormat: depth, isVelocity: true)
+        }
+        // the velocity pass's depth-only occluder phase: everything that is not a
+        // mover, rasterized for depth alone (the plain mesh vertex, no fragment,
+        // color masked off) so a hidden mover loses the depth test.
+        static func meshVelocityOccluder(depth: MTLPixelFormat) -> PipelineKey {
+            PipelineKey(vertex: "ollin_mesh_vertex", fragment: "",
+                        depthFormat: depth, isVelocity: true, isVelocityOccluder: true)
         }
         // depth-scene backdrop: a textured quad that also writes per-pixel depth from
         // a depth map (premultiplied color, like the image path; outputs [[depth]]).
@@ -772,6 +796,11 @@ final class MetalRenderer {
     /// surface) when temporal AA is on, read by the resolve's camera reprojection.
     /// Cached by size; a TAA-off frame attaches no resolve and stays byte-identical.
     var mainDepthResolve: MTLTexture?
+    /// The mover-velocity pass's texture pair (rg16Float screen motion + its own
+    /// depth), cached by size like `scatterMaskCache`. Only allocated the first
+    /// frame that runs the pass (live TAA + declared movers), so a frame without
+    /// `withMotion` costs nothing.
+    var velocityCache: (tex: MTLTexture, depth: MTLTexture, w: Int, h: Int)?
     /// The reflection G-buffer's cached targets (world normal + coverage, metal/rough,
     /// own depth), reallocated on a size change. GPU-private and fully rewritten by the
     /// pass each frame, so reuse across in-flight frames is safe (command buffers on
@@ -1234,8 +1263,14 @@ final class MetalRenderer {
         let scattered = applySubsurfaceScattering(drawer, resolved: resolve, meshBuffer: meshBuf,
                                                   into: commandBuffer, width: width, height: height,
                                                   pooled: true, taaJitter: taaJitter)
+        // The mover-velocity pass (nil without TAA + declared movers + history),
+        // encoded before the resolve updates the slot's previous view·projection
+        // so both reproject through the same matrices.
+        let velocity = encodeVelocityPass(drawer, into: commandBuffer, meshBuffer: meshBuf,
+                                          width: width, height: height)
         let stabilized = applyTemporalAA(drawer, resolved: scattered,
                                          depth: taaActive ? mainDepthResolve : nil,
+                                         velocity: velocity,
                                          jitter: taaJitter, into: commandBuffer,
                                          width: width, height: height)
         let presented = applyFrameFilters(drawer, resolved: stabilized, width: width, height: height,
@@ -1801,8 +1836,12 @@ final class MetalRenderer {
             let scattered = applySubsurfaceScattering(drawer, resolved: resolveTexture, meshBuffer: meshBuf,
                                                       into: cb, width: width, height: height, pooled: false,
                                                       taaJitter: taaJitter)
+            // The mover-velocity pass, so the benchmark pays what a live frame pays.
+            let velocity = encodeVelocityPass(drawer, into: cb, meshBuffer: meshBuf,
+                                              width: width, height: height)
             let stabilized = applyTemporalAA(drawer, resolved: scattered,
                                              depth: taaActive ? mainDepthResolve : nil,
+                                             velocity: velocity,
                                              jitter: taaJitter, into: cb,
                                              width: width, height: height)
             let presented = applyFrameFilters(drawer, resolved: stabilized, width: width,

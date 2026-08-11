@@ -145,6 +145,49 @@ vertex MeshOut ollin_mesh_vertex(uint vid [[vertex_id]],
     return out;
 }
 
+// MARK: - Mover velocity (temporal AA)
+//
+// The velocity pass re-renders this frame's declared movers (`withMotion`) into
+// an rg16Float screen-motion texture: per pixel, where the surface was last
+// frame minus where it is now, in pixels, y-down (the texture's own
+// orientation). Positions are already baked world space, so the previous
+// position is `previousOfCurrent * p` (back through this frame's model matrix,
+// forward through last frame's), projected by last frame's unjittered
+// view·projection; the current side uses this frame's unjittered one. Both
+// clip positions interpolate and divide per fragment, so the delta is
+// perspective-exact along a triangle. A surface behind the previous camera has
+// no previous screen position, so it writes the sentinel and the resolve keeps
+// its depth-reprojection fallback there.
+
+struct VelocityOut {
+    float4 position [[position]];
+    float4 curClip;
+    float4 prevClip;
+};
+
+vertex VelocityOut ollin_mesh_velocity_vertex(uint vid [[vertex_id]],
+                                              const device OllinMeshVertex *verts [[buffer(0)]],
+                                              constant Uniforms3D &u [[buffer(2)]],
+                                              constant OllinVelocityUniforms &vu [[buffer(3)]]) {
+    float4 wp = float4(verts[vid].position.xyz, 1.0);
+    VelocityOut out;
+    out.position = u.projection * (u.view * wp);
+    out.curClip = out.position;
+    out.prevClip = vu.previousViewProjection * (vu.previousOfCurrent * wp);
+    return out;
+}
+
+fragment float4 ollin_mesh_velocity_fragment(VelocityOut in [[stage_in]],
+                                             constant Uniforms3D &u [[buffer(2)]]) {
+    if (in.prevClip.w <= 0.0) { return float4(OLLIN_VELOCITY_NONE, 0.0, 0.0, 0.0); }
+    float2 cur = in.curClip.xy / in.curClip.w;
+    float2 prev = in.prevClip.xy / in.prevClip.w;
+    // NDC (y-up) -> pixels (y-down): previous minus current, so the value points
+    // at where the pixel's content came from (history = pixel + velocity).
+    float2 v = (prev - cur) * float2(0.5, -0.5) * u.viewport;
+    return float4(v, 0.0, 0.0);
+}
+
 // Shadow factor for the one casting light: 1 fully lit, 0 fully shadowed. Projects
 // the receiver into the caster's clip space and PCF-compares against the depth the
 // shadow pass stored. A normal-offset bias (scaled by the shadow texel's world size,

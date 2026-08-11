@@ -1021,6 +1021,166 @@ extension MetalRenderer {
         }
     }
 
+    /// The mover-velocity pass (live temporal AA): re-render this frame's declared
+    /// movers (`withMotion` ranges) into an rg16Float screen-motion texture, in
+    /// pixels, y-down, previous minus current (the value points at where the
+    /// pixel's content came from), both view·projections **unjittered** like the
+    /// resolve's own reprojection. Two phases in one encoder: everything that is
+    /// *not* a mover draws depth-only first, so geometry in front of a mover keeps
+    /// it from writing velocity through its occluder; then each mover range draws
+    /// with its `previousOfCurrent` transform. Unwritten texels keep the sentinel
+    /// clear, which the resolve reads as "use the depth-reprojection fallback", so
+    /// the shipped camera path is untouched wherever no mover rendered. Returns
+    /// nil (encoding nothing) when TAA isn't running, the frame declared no
+    /// movers, there's no history yet, or on a same-frame repeat (the resolve
+    /// serves its accumulated front and reads no velocity).
+    func encodeVelocityPass(_ drawer: Drawer, into cb: MTLCommandBuffer,
+                            meshBuffer: MTLBuffer?, width: Int, height: Int) -> MTLTexture? {
+        guard temporalAAActive(drawer), !statefulEncodeIsRepeat,
+              let camera = drawer.camera3D, let meshBuffer,
+              !drawer.moverRanges.isEmpty,
+              let slot = taaHistory, slot.valid, slot.w == width, slot.h == height,
+              let velPipe = try? pipeline(.meshVelocity(depth: depthPixelFormat)),
+              let occPipe = try? pipeline(.meshVelocityOccluder(depth: depthPixelFormat))
+        else { return nil }
+        let target: (tex: MTLTexture, depth: MTLTexture, w: Int, h: Int)
+        if let cached = velocityCache, cached.w == width, cached.h == height {
+            target = cached
+        } else {
+            let colorDesc = MTLTextureDescriptor.texture2DDescriptor(
+                pixelFormat: .rg16Float, width: width, height: height, mipmapped: false)
+            colorDesc.usage = [.renderTarget, .shaderRead]
+            colorDesc.storageMode = .private
+            let depthDesc = MTLTextureDescriptor.texture2DDescriptor(
+                pixelFormat: depthPixelFormat, width: width, height: height, mipmapped: false)
+            depthDesc.usage = .renderTarget
+            depthDesc.storageMode = .private
+            guard let tex = device.makeTexture(descriptor: colorDesc),
+                  let depth = device.makeTexture(descriptor: depthDesc) else { return nil }
+            target = (tex, depth, width, height)
+            velocityCache = target
+        }
+        let pass = MTLRenderPassDescriptor()
+        pass.colorAttachments[0].texture = target.tex
+        pass.colorAttachments[0].loadAction = .clear
+        pass.colorAttachments[0].clearColor = MTLClearColor(
+            red: Double(OLLIN_VELOCITY_NONE), green: 0, blue: 0, alpha: 0)
+        pass.colorAttachments[0].storeAction = .store
+        pass.depthAttachment.texture = target.depth
+        pass.depthAttachment.loadAction = .clear
+        pass.depthAttachment.clearDepth = 1.0
+        pass.depthAttachment.storeAction = .dontCare
+        guard let enc = cb.makeRenderCommandEncoder(descriptor: pass) else { return nil }
+        enc.setViewport(MTLViewport(originX: 0, originY: 0, width: Double(width),
+                                    height: Double(height), znear: 0, zfar: 1))
+        enc.setDepthStencilState(depthTestState)
+        // Unjittered on both ends (the resolve's own rule): `makeUniforms3D`'s
+        // default zero jitter leaves the projection untouched, and the previous
+        // view·projection is the slot's, stored unjittered by the resolve.
+        var u3 = makeUniforms3D(drawer, camera: camera,
+                                viewport: SIMD2(Float(width), Float(height)))
+        enc.setVertexBytes(&u3, length: MemoryLayout<Uniforms3D>.stride, index: 2)
+        enc.setFragmentBytes(&u3, length: MemoryLayout<Uniforms3D>.stride, index: 2)
+        let meshStride = MemoryLayout<OllinMeshVertex>.stride
+        let meshCount = drawer.meshVertices.count
+        let batches = drawer.batches
+        let ranges = drawer.moverRanges
+        // Phase 1: the occluders, depth only. Wireframes skip (their faces are
+        // see-through, the normal G-buffer's rule) and a render target's meshes
+        // never join (TAA is main-canvas only); mover ranges are cut out of their
+        // batches' runs, which stays exact because ranges record in append order.
+        enc.setRenderPipelineState(occPipe)
+        for i in batches.indices {
+            let batch = batches[i]
+            guard batch.kind == .mesh3D, batch.target == nil, !batch.meshWireframe else { continue }
+            let next = i + 1 < batches.count ? batches[i + 1] : nil
+            let end = next?.meshStart ?? meshCount
+            var cursor = batch.meshStart
+            for r in ranges where r.start >= batch.meshStart && r.start < end {
+                if r.start > cursor {
+                    enc.setVertexBuffer(meshBuffer, offset: cursor * meshStride, index: 0)
+                    enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: r.start - cursor)
+                }
+                cursor = r.start + r.count
+            }
+            if cursor < end {
+                enc.setVertexBuffer(meshBuffer, offset: cursor * meshStride, index: 0)
+                enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: end - cursor)
+            }
+        }
+        // Phase 2: the movers, each carried back through last frame's matrices.
+        enc.setRenderPipelineState(velPipe)
+        for r in ranges {
+            var vu = OllinVelocityUniforms(previousViewProjection: slot.previousViewProjection,
+                                           previousOfCurrent: r.previousOfCurrent)
+            enc.setVertexBytes(&vu, length: MemoryLayout<OllinVelocityUniforms>.stride, index: 3)
+            enc.setVertexBuffer(meshBuffer, offset: r.start * meshStride, index: 0)
+            enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: r.count)
+        }
+        enc.endEncoding()
+        return target.tex
+    }
+
+    /// TEST SEAM: run the mover-velocity pass for `drawer`'s recorded frame
+    /// against an explicit previous view·projection and read the texture back as
+    /// row-major (width × height) pixel deltas. Uploads the mesh vertices itself
+    /// and fabricates a valid history slot, so a test can drive the live-only
+    /// pass deterministically; nil when the pass declines to run (the same gates
+    /// a live frame applies). Tests only.
+    func debugVelocityReadback(_ drawer: Drawer, width: Int, height: Int,
+                               previousViewProjection: simd_float4x4) -> [SIMD2<Float>]? {
+        guard let meshBuffer = exportMeshBuffer(for: drawer.meshVertices.count) else { return nil }
+        if !drawer.meshVertices.isEmpty {
+            drawer.meshVertices.withUnsafeBytes { raw in
+                meshBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+            }
+        }
+        let slot: SSRHistorySlot
+        if let existing = taaHistory, existing.w == width, existing.h == height {
+            slot = existing
+        } else {
+            guard let a = makeFloatResolve(width: width, height: height),
+                  let b = makeFloatResolve(width: width, height: height) else { return nil }
+            slot = SSRHistorySlot(a: a, b: b, w: width, h: height)
+            taaHistory = slot
+        }
+        slot.valid = true
+        slot.previousViewProjection = previousViewProjection
+        guard let cb = commandQueue.makeCommandBuffer(),
+              let tex = encodeVelocityPass(drawer, into: cb, meshBuffer: meshBuffer,
+                                           width: width, height: height) else { return nil }
+        let bytesPerRow = width * 4
+        guard let readback = device.makeBuffer(length: bytesPerRow * height,
+                                               options: .storageModeShared),
+              let blit = cb.makeBlitCommandEncoder() else { return nil }
+        blit.copy(from: tex, sourceSlice: 0, sourceLevel: 0,
+                  sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+                  sourceSize: MTLSize(width: width, height: height, depth: 1),
+                  to: readback, destinationOffset: 0,
+                  destinationBytesPerRow: bytesPerRow,
+                  destinationBytesPerImage: bytesPerRow * height)
+        blit.endEncoding()
+        cb.commit()
+        cb.waitUntilCompleted()
+        // Decode the rg16Float halves by bit pattern (portable half -> float).
+        func half(_ h: UInt16) -> Float {
+            let sign = Float((h & 0x8000) != 0 ? -1 : 1)
+            let exponent = Int((h >> 10) & 0x1F)
+            let mantissa = Int(h & 0x3FF)
+            if exponent == 0 {
+                return sign * Float(mantissa) * exp2(Float(-24))
+            }
+            if exponent == 0x1F {
+                return mantissa == 0 ? sign * .infinity : .nan
+            }
+            return sign * (1 + Float(mantissa) / 1024) * exp2(Float(exponent - 15))
+        }
+        let words = readback.contents().bindMemory(to: UInt16.self, capacity: width * height * 2)
+        return (0..<(width * height)).map {
+            SIMD2(half(words[$0 * 2]), half(words[$0 * 2 + 1]))
+        }
+    }
+
     /// Temporal anti-aliasing resolve (the live path): reproject last frame's
     /// accumulation by the camera's motion (per-pixel resolved depth through the
     /// previous frame's unjittered view·projection), rectify it against the current
@@ -1033,6 +1193,7 @@ extension MetalRenderer {
     /// offset this frame's 3D projection rasterized under, so the reconstruction
     /// matrix matches the depth buffer.
     func applyTemporalAA(_ drawer: Drawer, resolved: MTLTexture, depth: MTLTexture?,
+                         velocity: MTLTexture? = nil,
                          jitter: SIMD2<Float>, into cb: MTLCommandBuffer,
                          width: Int, height: Int) -> MTLTexture {
         guard temporalAAActive(drawer), let camera = drawer.camera3D, let depth else {
@@ -1073,13 +1234,16 @@ extension MetalRenderer {
         params[0] = SIMD4(1 / Float(width), 1 / Float(height), slot.valid ? 1 : 0, 0)
         // The jitter back in pixels (the resolve re-centers the current frame's
         // reconstruction on the unjittered pixel; NDC y runs opposite pixel y).
-        params[1] = SIMD4(jitter.x * Float(width) / 2, -jitter.y * Float(height) / 2, 0, 0)
+        // params[1].z: whether a mover-velocity texture rendered this frame.
+        params[1] = SIMD4(jitter.x * Float(width) / 2, -jitter.y * Float(height) / 2,
+                          velocity != nil ? 1 : 0, 0)
         params[4] = invVP.columns.0; params[5] = invVP.columns.1
         params[6] = invVP.columns.2; params[7] = invVP.columns.3
         let pv = slot.previousViewProjection
         params[8] = pv.columns.0; params[9] = pv.columns.1
         params[10] = pv.columns.2; params[11] = pv.columns.3
-        encodeEffectFragment("ollin_fx_taa_resolve", inputs: [resolved, depth, front],
+        encodeEffectFragment("ollin_fx_taa_resolve",
+                             inputs: [resolved, depth, front, velocity ?? front],
                              output: back, params: params, into: cb)
         slot.previousViewProjection = viewProjection
         slot.valid = true

@@ -322,6 +322,58 @@ final class Drawer {
     /// through it; a 2D-only frame leaves it `nil` and is untouched.
     private(set) var camera3D: Camera3D?
 
+    /// One declared mover's mesh range this frame (`withMotion`): the vertices
+    /// `[start, start + count)` of `meshVertices`, plus the transform that takes
+    /// their baked *current* world-space positions back to where last frame's
+    /// model matrix put them (prevModel · inverse(curModel)). The renderer's
+    /// velocity pass re-renders these ranges to give temporal AA exact history
+    /// for world-space movers; everything else keeps the depth-reprojection
+    /// fallback. Recorded in draw order (the determinism rule).
+    struct MoverRange {
+        var start: Int
+        var count: Int
+        var previousOfCurrent: simd_float4x4
+    }
+
+    /// A mover's cross-frame identity: the `withMotion` call site, its occurrence
+    /// index among same-site calls this frame, and the draw's index within that
+    /// block. The `SSRSlotKey` rule applies: a call-site key, never a frame-wide
+    /// ordinal, or a sketch that only conditionally opens an *earlier*
+    /// `withMotion` block would shift every later block onto another mover's
+    /// history.
+    private struct MoverKey: Hashable {
+        let source: String
+        let occurrence: Int
+        let draw: Int
+    }
+
+    /// The open `withMotion` blocks (innermost last): call-site identity plus a
+    /// running draw count, so each mesh draw inside a block gets its own key.
+    private struct MoverContext {
+        let source: String
+        let occurrence: Int
+        var draws = 0
+    }
+
+    /// Mover ranges recorded this frame, in draw order. The renderer's velocity
+    /// pass iterates this array directly (never a Dictionary, the determinism
+    /// rule); reset each frame.
+    private(set) var moverRanges: [MoverRange] = []
+
+    /// Each mover key's model matrix from the frame it was last drawn. Persists
+    /// across frames (it *is* the cross-frame memory); entries not refreshed for
+    /// a frame are pruned in `beginFrame`, so a mover that skips a frame starts
+    /// over rather than computing a two-frame delta as if it were one.
+    private var moverHistory: [MoverKey: (matrix: simd_float4x4, frame: UInt64)] = [:]
+
+    /// The recording frame index the mover history keys against, advanced once
+    /// per `beginFrame` (so a frame-grab re-render, which re-encodes without
+    /// re-recording, can't double-advance it).
+    private var moverFrame: UInt64 = 0
+
+    private var moverStack: [MoverContext] = []
+    private var moverOccurrence: [String: Int] = [:]
+
     /// Lights for the 3D mesh material, set this frame (see `Light`). Per-frame
     /// state like the camera — reset each frame, accumulated by `addLight`.
     private(set) var lights: [Light] = []
@@ -1455,6 +1507,11 @@ final class Drawer {
         glyphVertices.removeAll(keepingCapacity: true)
         points.removeAll(keepingCapacity: true)
         meshVertices.removeAll(keepingCapacity: true)
+        // Mover ranges index the mesh list the wipe just emptied; a range left
+        // behind would send the velocity pass past the frame's vertex buffer.
+        // (The history keeps its entries: a redrawn block this frame takes a
+        // fresh occurrence key, and unmatched entries prune next frame.)
+        moverRanges.removeAll(keepingCapacity: true)
         sdfGroups.removeAll(keepingCapacity: true)
         sdfNodes.removeAll(keepingCapacity: true)
         sdf3DGroups.removeAll(keepingCapacity: true)
@@ -2192,6 +2249,48 @@ final class Drawer {
         }
     }
 
+    /// Declare that the meshes drawn inside `body` move together as one thing, so
+    /// temporal anti-aliasing can reproject their history exactly while they move.
+    /// The drawer remembers each draw's model matrix under a call-site identity
+    /// and, from the second frame on, records the range with the transform back
+    /// to last frame's placement; the renderer's velocity pass turns that into
+    /// per-pixel screen motion. Purely additive: without `temporalAntialiasing()`
+    /// (or before a mover's second frame) nothing changes, and geometry outside
+    /// any block keeps the camera-only reprojection it has today.
+    func withMotion(source: String, _ body: () -> Void) {
+        let occurrence = moverOccurrence[source, default: 0]
+        moverOccurrence[source] = occurrence + 1
+        moverStack.append(MoverContext(source: source, occurrence: occurrence))
+        defer { moverStack.removeLast() }
+        body()
+    }
+
+    /// The `drawMesh` tail hook: record the just-appended vertex range as a mover
+    /// when a `withMotion` block is open. Main canvas only (temporal AA never runs
+    /// on a render target) and never for a wireframe (the velocity pass rasterizes
+    /// solid triangles, which would fill a wireframe's see-through interior).
+    /// First sighting of a key records nothing: with no previous matrix there is
+    /// no motion to state, and the resolve's fallback handles the frame.
+    private func recordMoverRange(from start: Int, wireframe: Bool) {
+        guard !moverStack.isEmpty, currentTarget == nil, !wireframe else { return }
+        let count = meshVertices.count - start
+        guard count > 0 else { return }
+        let top = moverStack.count - 1
+        let key = MoverKey(source: moverStack[top].source,
+                           occurrence: moverStack[top].occurrence,
+                           draw: moverStack[top].draws)
+        moverStack[top].draws += 1
+        let m = modelMatrix
+        let previous = moverHistory[key]
+        moverHistory[key] = (matrix: m, frame: moverFrame)
+        guard moverFrame > 0, let previous, previous.frame == moverFrame - 1 else { return }
+        // World now -> world last frame. A degenerate (non-invertible) transform
+        // yields non-finite velocities, which the resolve's sentinel test reads
+        // as unwritten, so it degrades to the fallback rather than mis-drawing.
+        let delta = previous.matrix * simd_inverse(m)
+        moverRanges.append(MoverRange(start: start, count: count, previousOfCurrent: delta))
+    }
+
     /// Record a solid 3D mesh, drawn through the active camera with depth testing.
     /// World-aware geometry (it rides the camera and the 3D transform stack, not the
     /// 2D affine): the model matrix bakes into each position and its normal matrix
@@ -2279,6 +2378,7 @@ final class Drawer {
         // `positions` is ignored too (the `uvs` rule). An empty `colors` takes the
         // constant-color path untouched, byte for byte.
         let vertexColored = !wireframe && mesh.colors.count == mesh.positions.count
+        let moverStart = meshVertices.count
         meshVertices.reserveCapacity(meshVertices.count + mesh.indices.count)
         for idx in mesh.indices {
             let i = Int(idx)
@@ -2303,6 +2403,7 @@ final class Drawer {
             }
             meshVertices.append(v)
         }
+        recordMoverRange(from: moverStart, wireframe: wireframe)
     }
 
     /// Draw every node of a loaded `Scene` at its authored place: walk the node
@@ -2477,6 +2578,17 @@ final class Drawer {
         dispatches.removeAll(keepingCapacity: true)
         currentKind = nil
         camera3D = nil
+        // The mover registry: ranges and occurrence counters are per-frame; the
+        // history persists (it's the cross-frame memory) but drops entries not
+        // refreshed last frame, so a mover that skipped a frame starts over.
+        moverFrame += 1
+        moverRanges.removeAll(keepingCapacity: true)
+        moverOccurrence.removeAll(keepingCapacity: true)
+        moverStack.removeAll(keepingCapacity: true)
+        if !moverHistory.isEmpty {
+            let cutoff = moverFrame - 1
+            moverHistory = moverHistory.filter { $0.value.frame >= cutoff }
+        }
         // Lights are per-frame like the camera (set in `draw()` each frame). They
         // reset here but *not* in `background()`, which only wipes geometry mid-frame
         // while the camera/lights stay — matching the camera's lifetime.

@@ -2689,12 +2689,84 @@ the jitter set, slightly wider than the pixel), and judging AA against a
 gamma-space downsample is the classic linear-light trap; the test's
 reference is built in linear light with the matching kernel.
 
+**The mover-velocity buffer (`withMotion`)** gives world-space movers exact
+history. Camera motion already reprojects per pixel from depth, but a mesh
+that moves on its own (a spun `rotate`, a physics body, an animated scene)
+leaves no record of where it was, so its pixels reprojected to stale content
+and only the rectification clamp stood between them and ghosting, at the
+price of the moving edges' refinement. The wrinkle is immediate mode: a
+sketch re-records geometry every frame with baked world-space vertices and no
+persistent identity, so there is no model matrix to diff. `withMotion { }`
+supplies the identity: the block's call site plus its occurrence index among
+same-site calls this frame plus the draw index within the block (the
+`SSRSlotKey` rule; a frame-wide ordinal cross-wires histories the moment an
+earlier block goes conditional), or an explicit name via `withMotion("…")`.
+The drawer remembers each keyed draw's model matrix across frames
+(`moverHistory`, pruned when a key skips a frame so a two-frame-old placement
+is never read as one frame of motion) and, from a mover's second frame on,
+records its vertex range with `previousOfCurrent = prevModel ·
+inverse(curModel)`: the transform that takes this frame's baked world
+positions back to last frame's placement.
+
+The buffer itself is designed once for its three consumers (TAA now, MetalFX
+temporal upscaling and motion blur ahead): **rg16Float at render resolution,
+value = previous − current in pixels, y-down, both view·projections
+unjittered**, which is the MetalFX motion-texture contract verbatim (scale 1,
+and the convention Karis/Playdead compute; jitter does *not* cancel in the
+difference, the same remove-the-jitter rule as the reprojection), and the
+pixel units McGuire's motion-blur tile pyramid wants. Population is **sparse,
+movers-only, with the depth-reprojection fallback for everything else** (the
+UE-lineage pattern, vs the full-screen camera-baseline pass Playdead/Unity
+write): every pixel no mover wrote keeps the shipped, live-measured camera
+path *verbatim* (`ollin_fx_taa_resolve`'s fallback block is untouched), and a
+frame with no declared movers encodes nothing at all, so the off path is
+byte-identical by construction. The full-screen camera-baseline fill is the
+recorded MetalFX prerequisite (that consumer sees only the texture and can't
+run our depth fallback). The pass (`encodeVelocityPass`, right before the
+resolve so both read the same previous view·projection off the history slot)
+is single-sample with its own depth, two phases in one encoder: everything
+that is *not* a mover draws depth-only first (nil fragment, color writes
+masked off; wireframes skip, the normal-G-buffer rule), so a hidden mover
+loses the depth test instead of writing velocity through its occluder; then
+each mover range draws with its `previousOfCurrent`, the fragment
+differencing the two interpolated clip positions after the divide
+(perspective-exact). Unwritten texels keep a sentinel clear
+(`OLLIN_VELOCITY_NONE`; a NaN from a degenerate mover transform compares
+false and reads as unwritten too). The resolve samples the buffer at its
+existing 3×3 closest-depth neighbor (the closest-fetch dilation rule, so a
+mover's AA halo follows the mover), and a written texel replaces the matrix
+reprojection with `prevUV = uv + v · texel`. A stationary mover under a
+moving camera writes the camera's own motion (the total-motion contract,
+probe-pinned), so written-vs-fallback never disagree about what motion *is*.
+
+Verification: the registry, the pass, and the resolve's velocity branch are
+pure functions of their inputs, so unlike the accumulation loop they carry a
+deterministic net (`VelocityBufferTests`, 13): the call-site/occurrence/named
+identity rules, skip-a-frame pruning, wireframe and render-target gates, and
+render probes reading the texture back over a 1:1 orthographic scene (the
+exact pixel delta with the exact sign, sentinel elsewhere, written-zero vs
+sentinel, the camera term riding a still mover, the occluder holding a hidden
+mover back), plus a crafted-texture probe of the resolve branch itself
+(velocity toward the history's white half vs its black half vs the sentinel's
+identity fallback). The velocity-sign, occluder-drop, and resolve-sign
+sabotages each read red exactly where expected. What has no deterministic
+probe is the live *payoff* (a mover's edges keeping their accumulated
+refinement mid-flight): that is the same screencapture frame-diff protocol as
+the three live defects above, queued behind an unlocked screen alongside the
+GI cascade-scroll measurement; until it lands, the honest statement is that
+the buffer's contents are pinned and the perceptual benefit is not yet
+measured.
+
 Envelope: render targets and the accumulation surface keep plain MSAA; 2D
 overlays over a *moving* 3D scene ride the scene's reprojection (measured
-within 1/255 in the static and moving checks); per-object motion vectors
-(exact history for fast movers, the substrate motion blur shares) are the
-recorded next step in DESIGN-NOTES.md, and camera-only reprojection with
-neighborhood rectification is the production-lineage first stage.
+within 1/255 in the static and moving checks). `withMotion` covers solid /
+textured / matcap meshes on the main canvas; a skinned or otherwise
+vertex-deforming mesh is approximated by its node's rigid motion (exact
+per-vertex history needs a previous-position stream, the engines' skinned
+answer), wireframes, point clouds, GPU particles, and raymarched fields write
+no velocity (and fields don't occlude the velocity pass), and a mover hidden
+by one of those non-mesh occluders can still write velocity there, where the
+clamp absorbs it as before.
 
 ---
 
