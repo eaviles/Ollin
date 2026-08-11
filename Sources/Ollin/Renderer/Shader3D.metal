@@ -374,35 +374,15 @@ static inline float3 ollin_sss_transmit(float s, float3 falloff) {
          + float3(0.078) * exp(s2 / -14.82);
 }
 
-// World-space thickness the caster's light crossed inside the body before reaching
-// this receiver, from the 2D (directional/spot) depth map: project the receiver,
-// shrunk along its normal so the sample can't slip off the silhouette into
-// background texels (the receiver-side mirror of growing the caster's vertices,
-// sized by the map texel like the shadow biases, so it's scale-invariant), into
-// the caster's clip space, read the stored nearest-to-light depth through the
-// plain sampler, and convert both depths to world distance along the light via the
-// projection's own constants (`lin` = `OllinLighting.shadowLinearize`). Returns -1
-// outside the caster's box: no estimate, the same "shades as lit" envelope the
-// shadow factors use, so the term simply skips there. A texel holding the far
-// clear (nothing nearer the light) comes back as zero-or-negative separation,
-// clamped to zero: an unoccluded back face is an open sheet the light reaches
-// directly, the leaf case.
-static inline float transmitThickness2D(float3 worldPos, float3 n, float4x4 lightVP,
-                                        float texelWorld, float4 lin,
-                                        depth2d<float> shadowMap, sampler depthSamp) {
-    float3 inner = worldPos - n * (texelWorld * 2.0);
-    float4 lc = lightVP * float4(inner, 1.0);
-    if (lc.w <= 0.0) return -1.0;
-    float3 ndc = lc.xyz / lc.w;
-    if (ndc.x < -1.0 || ndc.x > 1.0 || ndc.y < -1.0 || ndc.y > 1.0 || ndc.z > 1.0) return -1.0;
-    float2 uv = ndc.xy * float2(0.5, -0.5) + 0.5;
-    // One manual bilinear over the four neighboring texels: the plain sampler is
-    // nearest (shared with the cube, which can't filter), and a single nearest tap
-    // quantizes the thickness to map texels, terracing a steep gradient into
-    // bands. Each corner linearizes *before* the blend, since blending perspective
-    // depths first would bend the ramp; across a silhouette in the map the blend
-    // ramps the thickness over one texel instead of stepping.
-    float2 dims = float2(shadowMap.get_width(), shadowMap.get_height());
+// The occluder's world distance along the light at one map position: one manual
+// bilinear over the four neighboring texels (the plain sampler is nearest, shared
+// with the cube, which can't filter; a single nearest tap quantizes the thickness
+// to map texels, terracing a steep gradient into bands). Each corner linearizes
+// *before* the blend, since blending perspective depths first would bend the
+// ramp; across a silhouette in the map the blend ramps the thickness over one
+// texel instead of stepping. `lin` = `OllinLighting.shadowLinearize`.
+static inline float transmitOccluderDistance(float2 uv, float2 dims, float4 lin,
+                                             depth2d<float> shadowMap, sampler depthSamp) {
     float2 texel = 1.0 / dims;
     float2 tc = uv * dims - 0.5;
     float2 f = fract(tc);
@@ -411,17 +391,115 @@ static inline float transmitThickness2D(float3 worldPos, float3 n, float4x4 ligh
                       shadowMap.sample(depthSamp, corner + float2(texel.x, 0.0)),
                       shadowMap.sample(depthSamp, corner + float2(0.0, texel.y)),
                       shadowMap.sample(depthSamp, corner + texel));
-    float dRecv;
-    float4 d;
-    if (lin.z > 0.5) {   // perspective (spot): d = [3][2] / (ndc.z + [2][2])
-        dRecv = lin.y / (ndc.z + lin.x);
-        d = lin.y / (z + lin.x);
-    } else {             // orthographic (directional): d = ([3][2] − ndc.z) / [2][2]
-        dRecv = (lin.y - ndc.z) / lin.x;
-        d = (lin.y - z) / lin.x;
+    // Perspective (spot): d = [3][2] / (z + [2][2]); orthographic (directional):
+    // d = ([3][2] − z) / [2][2].
+    float4 d = (lin.z > 0.5) ? lin.y / (z + lin.x) : (lin.y - z) / lin.x;
+    return mix(mix(d.x, d.y, f.x), mix(d.z, d.w, f.x), f.y);
+}
+
+// The transmitted fraction through the body from the 2D (directional/spot) map,
+// gathered over the diffusion's own entry footprint (the published translucent-
+// shadow-map treatment, see ATTRIBUTION.md). Light leaving this point did not
+// enter the body at one point: it entered over a neighborhood about a scattering
+// radius wide, so the gather reads the caster's depth at a fixed spiral of taps
+// laterally spread in *profile units* (the transmit profile spans 0…3 over the
+// scattering radius) and sums the same five Gaussians as `ollin_sss_transmit`
+// over each tap's 3D path (depth² + lateral²), normalized per Gaussian so a
+// constant-thickness slab reduces exactly to the slab form. **Load-bearing:**
+// the footprint is sized by the scattering radius in world units, never in map
+// texels: that is what keeps the read from re-exposing the caster mesh's own
+// tessellation, whose facets the steep transmit exponential otherwise terraces
+// into bands at grazing light angles (the smooth interpolated normal hides the
+// facets everywhere else; a depth difference does not); and each tap keeps the
+// bilinear per-corner-linearized read, so the small-radius limit degenerates to
+// one smooth bilinear read, not to nearest-texel terracing.
+//
+// The receiver is projected shrunk along its normal so the sample can't slip off
+// the silhouette into background texels (the receiver-side mirror of growing the
+// caster's vertices, sized by the map texel like the shadow biases, so it's
+// scale-invariant). Returns false outside the caster's box: no estimate, the
+// same "shades as lit" envelope the shadow factors use, so the term simply skips
+// there. A tap holding the far clear (nothing nearer the light) reads as
+// zero-or-negative separation, clamped to zero: an unoccluded back face is an
+// open sheet the light reaches directly, the leaf case. Taps landing outside the
+// map drop from numerator and denominator together; the center tap is always
+// inside, so the weights can't sum to zero.
+static inline bool transmitGather2D(float3 worldPos, float3 n, float4x4 lightVP,
+                                    float texelWorld, float4 lin, float4 scatter,
+                                    depth2d<float> shadowMap, sampler depthSamp,
+                                    thread float3 &T) {
+    float3 inner = worldPos - n * (texelWorld * 2.0);
+    float4 lc = lightVP * float4(inner, 1.0);
+    if (lc.w <= 0.0) return false;
+    float3 ndc = lc.xyz / lc.w;
+    if (ndc.x < -1.0 || ndc.x > 1.0 || ndc.y < -1.0 || ndc.y > 1.0 || ndc.z > 1.0) return false;
+    float2 uv = ndc.xy * float2(0.5, -0.5) + 0.5;
+    float2 dims = float2(shadowMap.get_width(), shadowMap.get_height());
+    float dRecv = (lin.z > 0.5) ? lin.y / (ndc.z + lin.x) : (lin.y - ndc.z) / lin.x;
+    // The same five-Gaussian fit as `ollin_sss_transmit` (weights, 2·variance
+    // denominators), kept in sync by hand with it and `MetalRenderer.scatterKernel`
+    // (the `ollin_sdf_distance` rule); the slab form stays verbatim beside this for
+    // the cube/ray paths, so its instruction stream never moves.
+    const float weights[5] = {0.100, 0.118, 0.113, 0.358, 0.078};
+    const float denoms[5] = {0.0968, 0.374, 1.134, 3.98, 14.82};
+    // A fixed equal-area spiral in profile units, center tap first. Deterministic
+    // (no frame or pixel dependence), so exports reproduce.
+    const float2 taps[13] = {
+        float2( 0.000000,  0.000000),
+        float2(-0.510864,  0.467993),
+        float2( 0.085659, -0.976044),
+        float2( 0.730127,  0.952321),
+        float2(-1.364459, -0.241354),
+        float2( 1.307140, -0.831496),
+        float2(-0.440563,  1.638873),
+        float2(-0.844857, -1.626720),
+        float2( 1.840686,  0.672216),
+        float2(-1.921216,  0.793050),
+        float2( 0.928600, -1.984364),
+        float2( 0.687702,  2.192502),
+        float2(-2.076507, -1.203378),
+    };
+    float3 falloff = 0.001 + scatter.xyz;
+    // Profile units → world: one profile unit is a third of the scattering
+    // radius; world → map uv through the map's own texel size (for the spot's
+    // perspective map, `texelWorld` is the frustum at the scene center, the same
+    // approximation every shadow bias uses).
+    float profileWorld = scatter.w / 3.0;
+    // A per-point rotation of the spiral, hashed from the world position at a
+    // fraction of the footprint's own scale (scene-scale-invariant): thirteen
+    // taps quadrature a depth field with facet steps in it, and a fixed spiral
+    // leaves that quadrature error spatially structured (a blocky moire against
+    // the caster mesh's tessellation); rotating it per point turns the structure
+    // into fine surface-glued noise the screen-space diffusion blur absorbs.
+    // World-anchored, not screen-anchored, so it neither crawls under camera
+    // motion nor differs between two renders of one frame (the export promise).
+    float ang = hash13(worldPos * (64.0 / max(profileWorld, 1e-5))) * 6.2831853;
+    float ca = cos(ang), sa = sin(ang);
+    float3 num[5] = {float3(0.0), float3(0.0), float3(0.0), float3(0.0), float3(0.0)};
+    float3 den[5] = {float3(0.0), float3(0.0), float3(0.0), float3(0.0), float3(0.0)};
+    for (int i = 0; i < 13; i++) {
+        float2 tp = float2(taps[i].x * ca - taps[i].y * sa,
+                           taps[i].x * sa + taps[i].y * ca);
+        float2 tuv = uv + tp * (profileWorld / (texelWorld * dims));
+        if (tuv.x < 0.0 || tuv.x > 1.0 || tuv.y < 0.0 || tuv.y > 1.0) continue;
+        float dOcc = transmitOccluderDistance(tuv, dims, lin, shadowMap, depthSamp);
+        float tW = max(dRecv - dOcc, 0.0);
+        // Depth and lateral offset in per-channel profile units (the falloff
+        // stretch: red diffuses farthest laterally too).
+        float3 s = float3(tW / profileWorld) / falloff;
+        float3 s2 = s * s;
+        float3 r2 = float3(dot(tp, tp)) / (falloff * falloff);
+        for (int k = 0; k < 5; k++) {
+            float3 lateral = exp(r2 / -denoms[k]);
+            num[k] += lateral * exp(s2 / -denoms[k]);
+            den[k] += lateral;
+        }
     }
-    float dOcc = mix(mix(d.x, d.y, f.x), mix(d.z, d.w, f.x), f.y);
-    return max(dRecv - dOcc, 0.0);
+    T = float3(0.0);
+    for (int k = 0; k < 5; k++) {
+        T += float3(weights[k]) * num[k] / max(den[k], 1e-6);
+    }
+    return true;
 }
 
 // The same thickness from a point caster's cube map, which already stores the
@@ -2210,6 +2288,8 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
         // easing the handoff across the terminator.
         if (transmits && i == light.shadowLight) {
             float t = -1.0;   // world-units thickness; < 0 = no estimate, term skips
+            bool haveT = false;
+            float3 T = float3(0.0);
 #if OLLIN_RT_SHADOWS
             if (light.shadowKind == 2) t = rtThickness;
             else
@@ -2218,13 +2298,19 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                 t = transmitThicknessCube(worldPos, n, L.position.xyz, light.shadowDepthA,
                                           light.shadowTexelWorld, shadowCube, shadowCubeSamp);
             else if (light.shadowLinearize.x != 0.0)
-                t = transmitThickness2D(worldPos, n, light.lightViewProjection,
-                                        light.shadowTexelWorld, light.shadowLinearize,
-                                        shadowMap, shadowCubeSamp);
+                // The 2D map gathers the transmittance over the diffusion's entry
+                // footprint (banding treatment; the cube/ray paths keep the single
+                // thickness read below).
+                haveT = transmitGather2D(worldPos, n, light.lightViewProjection,
+                                         light.shadowTexelWorld, light.shadowLinearize,
+                                         mat.scatter, shadowMap, shadowCubeSamp, T);
             if (t >= 0.0) {
                 // World thickness → profile units: the diffusion kernel spans ±3
                 // units over the scattering radius, so both halves share one ruler.
-                float3 T = ollin_sss_transmit(t * 3.0 / mat.scatter.w, mat.scatter.xyz);
+                T = ollin_sss_transmit(t * 3.0 / mat.scatter.w, mat.scatter.xyz);
+                haveT = true;
+            }
+            if (haveT) {
                 float E = max(0.3 + dot(-n, toLight), 0.0);
                 float kill = (model == 3) ? (1.0 - mat.metallic) * diffKeep : 1.0;
                 lit += T * L.color.rgb * base * (E * mat.scatterStrength * atten * kill);

@@ -275,6 +275,71 @@ struct TransmittanceRenderProbes {
         let b = try #require(OllinApp.image(of: TransmitProbe.make(kind: .thin), frame: 1))
         #expect(pixels(of: a) == pixels(of: b))
     }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func grazingLightLeavesTheTerminatorSmooth() throws {
+        // A default-tessellation sphere under a near-grazing directional caster:
+        // the single-tap thickness read terraced the caster mesh's facets into
+        // hard bands across the terminator glow (the steep transmit exponential
+        // re-exposes tessellation the smooth interpolated normal hides), while
+        // the entry-footprint gather reads a spread of entries and stays smooth.
+        // The pin: row means across the glow band, detrended by a running mean;
+        // banding shows as residual (measured 1.36 mean / 3.8 peak striped
+        // against 0.44 / 1.6 gathered, with a 96x48 sphere at 0.15 / 0.5).
+        let img = try #require(OllinApp.image(of: GrazingTransmitProbe(), frame: 1))
+        let data = pixels(of: img)
+        let w = img.width
+        let x0 = 112, x1 = 148, y0 = 215, y1 = 305
+        var prof: [Double] = []
+        for py in y0..<y1 {
+            var s = 0.0
+            for px in x0..<x1 { s += Double(data[(py * w + px) * 4]) }
+            prof.append(s / Double(x1 - x0))
+        }
+        let half = 10
+        var resid = 0.0, peak = 0.0
+        var n = 0
+        for i in half..<(prof.count - half) {
+            var m = 0.0
+            for j in (i - half)...(i + half) { m += prof[j] }
+            m /= Double(2 * half + 1)
+            let r = abs(prof[i] - m)
+            resid += r; peak = max(peak, r); n += 1
+        }
+        let mean = resid / Double(n)
+        #expect(mean < 0.8, "terminator banding: mean detrended residual \(mean)")
+        #expect(peak < 2.5, "terminator banding: peak detrended residual \(peak)")
+    }
+}
+
+/// The grazing-transmittance probe: a default-tessellation skin sphere and a wide
+/// floor under a directional caster swung nearly edge-on (the failing example's
+/// configuration distilled and pinned), framed so the terminator glow band lands
+/// at a known place for the smoothness pin above.
+private final class GrazingTransmitProbe: Sketch {
+    override var canvasSize: CanvasSize { .square(540) }
+
+    override func draw() {
+        background(Color(hex: 0x101014))
+        camera(.orbiting(target: Vector3(0, 0.4, 0), radius: 9.5, elevation: 0.14,
+                         fieldOfView: .pi / 4, near: 1, far: 40))
+        let a = 401.0 / 60.0 * 0.35
+        directionalLight(.white, direction: Vector3(-cos(a), -0.3, -sin(a) * 0.8),
+                         intensity: 1.3)
+        castShadows()
+        noStroke()
+        withState {
+            translate(-2.6, 0.55, 0)
+            fill(Color(red: 0.92, green: 0.72, blue: 0.62))
+            material(.skin(radius: 0.4))
+            drawSphere(radius: 1.2)
+        }
+        withState {
+            translate(0, -0.75, 0)
+            fill(Color(white: 0.35)); material(.roughPlastic)
+            drawBox(width: 26, height: 0.3, depth: 16)
+        }
+    }
 }
 
 /// The transmittance probe scene: one upright slab facing the camera, the light

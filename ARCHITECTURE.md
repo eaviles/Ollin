@@ -2221,19 +2221,55 @@ material returns the resolved texture untouched and encodes nothing.
   body, written from the published shadow-map translucency technique, credited in
   `ATTRIBUTION.md`) lives in `meshLitColor`'s punctual loop, not the blur: only
   the shadow-casting light transmits, because its depth is the one thickness
-  gauge the frame has. Thickness per caster kind: a **2D map** projects the
-  receiver shrunk two map texels along its normal (the silhouette fix, made
-  scale-invariant the way the shadow biases are), reads the stored depth through
-  one manual bilinear whose corners linearize *before* blending (the plain
-  sampler is nearest, and a nearest tap terraces a steep thickness gradient into
-  bands; blending perspective depths first bends the ramp), and converts both
-  depths to world distance via `OllinLighting.shadowLinearize`, the caster
-  projection's [2][2]/[3][2] packed by `makeLighting` (the PCSS ratio needs only
-  [2][2]; an absolute distance needs both); a **cube** caster subtracts its
-  stored linear distance; a **ray-traced point** caster traces one closest-hit
-  ray from just inside the surface (`meshRTThickness`, computed by the
-  solid/textured fragments under the same material gate so a non-scattering
-  surface never pays it). The profile `ollin_sss_transmit` is the **closed-form
+  gauge the frame has. Thickness per caster kind: a **2D map** (directional/spot)
+  projects the receiver shrunk two map texels along its normal (the silhouette
+  fix, made scale-invariant the way the shadow biases are) and **gathers the
+  transmittance over the diffusion's own entry footprint** (`transmitGather2D`;
+  the light-space gathering of the translucent-shadow-maps work, credited in
+  `ATTRIBUTION.md`): a fixed 13-tap equal-area spiral spread laterally in
+  *profile units* (one unit = a third of the scattering radius, taps out to 2.4),
+  each tap's occluder depth read through the manual bilinear whose corners
+  linearize *before* blending (`transmitOccluderDistance`; the plain sampler is
+  nearest, and a nearest tap terraces a steep thickness gradient into texel
+  bands; blending perspective depths first bends the ramp; depths convert to
+  world via `OllinLighting.shadowLinearize`, the caster projection's
+  [2][2]/[3][2] packed by `makeLighting`, of which the PCSS ratio needs only
+  [2][2] and an absolute distance both), and the same five Gaussians as the slab
+  profile summed over each tap's 3D through-body path (depth² + lateral², both
+  per-channel falloff-stretched), **normalized per Gaussian so a
+  constant-thickness slab reduces exactly to the slab form** (which is why the
+  flat-slab probes and snapshots did not move). The gather exists because a
+  single-tap read **re-exposes the caster mesh's own tessellation** at grazing
+  light angles: the smooth interpolated normal hides the facets in every N·L
+  term, but a depth *difference* through the steep transmit exponential does
+  not, and near the light-space silhouette the facet-truth error is amplified to
+  a visible fraction of the scattering radius (the 2026-08-11 audit's
+  "transmittance stripes", first misattributed to shadow-texel quantization
+  until a 3x-tessellated twin erased the bands while the texel math said 0.6
+  px/texel). Two details are load-bearing: the footprint is sized by the
+  **scattering radius in world units, never in map texels** (a texel-sized
+  filter cannot span a facet), and the spiral **rotates per point by a
+  world-anchored hash** at a fraction of the footprint scale (13 taps quadrature
+  a depth field with facet steps in it, and a fixed spiral leaves that error
+  spatially structured, a blocky moire against the tessellation; the rotation
+  turns it into fine surface-glued noise the screen-space diffusion blur
+  absorbs, and world-anchoring keeps it still under a static camera and
+  identical between two renders of one frame). Measured on the distilled audit
+  scene (row-mean detrended residual over the terminator band): 1.36 mean / 3.8
+  peak striped, 0.44 / 1.6 gathered, a 96x48-tessellated reference at 0.15-0.33
+  either way, pinned red-first by `grazingLightLeavesTheTerminatorSmooth`. What
+  remains after the gather is the polyhedron's *own* translucency at the
+  profile's genuine lateral resolution: the narrow Gaussians (the thin-body
+  transport) have footprints a fraction of the scattering radius and cannot
+  smooth entry structure wider than themselves, so a coarsely faceted body under
+  a tight radius keeps soft facet shading, and the answer there is tessellation
+  (the fine-tessellated twin is the reference, not a wider filter). A
+  **cube** caster subtracts its stored linear distance; a **ray-traced point**
+  caster traces one closest-hit ray from just inside the surface
+  (`meshRTThickness`, computed by the solid/textured fragments under the same
+  material gate so a non-scattering surface never pays it); both keep the single
+  read (the audit measured the 2D path; the same gather ports if either shows
+  the exposure). The profile `ollin_sss_transmit` is the **closed-form
   slab integral of the same Gaussian sum the diffusion kernel tabulates**
   (integrating each normalized 2D Gaussian over the plane at depth s leaves
   w·e^(−s²/2v)), kept in sync with `scatterKernel` by hand, with world thickness
