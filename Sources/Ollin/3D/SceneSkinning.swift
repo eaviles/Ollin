@@ -111,6 +111,10 @@ extension SceneNode {
 
         var copy = base
         let hasNormals = base.normals.count == n
+        // Tangents pose with the positions (the blended joint matrix's linear
+        // part; a surface direction, not the normal's inverse-transpose), so a
+        // normal map keeps lighting correctly on a bent limb.
+        let hasTangents = base.tangents.count == n
         for i in 0..<n {
             let vj = vertexJoints[i]
             let vw = vertexWeights[i]
@@ -137,6 +141,18 @@ extension SceneNode {
                 let hn = nm * SIMD3<Float>(Float(bn.x), Float(bn.y), Float(bn.z))
                 let v = Vector3(Double(hn.x), Double(hn.y), Double(hn.z))
                 copy.normals[i] = v.lengthSquared > 1e-12 ? v.normalized : bn
+            }
+            if hasTangents {
+                let bt = base.tangents[i]
+                let lin = simd_float3x3(SIMD3(m.columns.0.x, m.columns.0.y, m.columns.0.z),
+                                        SIMD3(m.columns.1.x, m.columns.1.y, m.columns.1.z),
+                                        SIMD3(m.columns.2.x, m.columns.2.y, m.columns.2.z))
+                let ht = lin * SIMD3<Float>(Float(bt.direction.x), Float(bt.direction.y),
+                                            Float(bt.direction.z))
+                let v = Vector3(Double(ht.x), Double(ht.y), Double(ht.z))
+                if v.lengthSquared > 1e-12 {
+                    copy.tangents[i] = MeshTangent(v.normalized, handedness: bt.handedness)
+                }
             }
         }
         return copy

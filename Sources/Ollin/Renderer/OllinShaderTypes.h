@@ -35,6 +35,17 @@ typedef float4x4 simd_float4x4;
 #include <simd/simd.h>
 #endif
 
+// A half-precision float4 shared across the boundary: Metal reads it as a
+// native half4; the CPU side stores the four Float16 bit patterns in a
+// simd_ushort4 (same 8-byte size and alignment), packed with
+// `Float16.bitPattern`. Used where 8 bytes must carry a direction + sign
+// (a mesh vertex's tangent) without widening the stride.
+#ifdef __METAL_VERSION__
+typedef half4 OllinHalf4;
+#else
+typedef simd_ushort4 OllinHalf4;
+#endif
+
 // One vertex of tessellated (triangle-path) geometry: float2 @0, float2 @8,
 // float4 @16, for a stride of 32 — `aa` lives in what was the float2→float4
 // alignment padding, so the stride (and the triangle buffer/ring) is unchanged.
@@ -358,13 +369,19 @@ typedef struct {
 // slots exist for the *per-hit* lookups a per-batch uniform can't serve (a reflection
 // ray lands on someone else's batch). Triangle indices are expanded into a flat
 // list on the CPU (no index buffer), matching the 2D triangle path. Stride 64 (four
-// 16-byte rows): float4 @0, float4 @16, float4 @32, float2 @48 (+ 8 bytes pad, a reserved
-// slot, e.g. a tangent for anisotropic shading later).
+// 16-byte rows): float4 @0, float4 @16, float4 @32, float2 @48, half4 @56; the
+// tangent lives in what was the tail padding, so the stride is unchanged.
+// `tangent` carries the world-space tangent basis for normal mapping as four
+// Float16s: xyz = the surface's +u direction (model's linear part baked in,
+// normalized), w = the bitangent handedness (±1, glTF's convention:
+// bitangent = w · cross(normal, tangent)). Only the normal-mapped textured
+// pipeline reads it; every other mesh leaves it zero and is unaffected.
 typedef struct {
     simd_float4 position;   // world-space xyz (model matrix baked in); w = wireframe line width (unused when lit)
     simd_float4 normal;     // world-space normal (normal matrix baked in); w unused
     simd_float4 color;      // straight RGBA diffuse; rgb = surface color, a = opacity
     simd_float2 uv;         // texture coordinates, 0…1 (textured-mesh pipeline; 0 when untextured)
+    OllinHalf4 tangent;     // packed world tangent xyz + handedness w (normal-mapped pipeline only)
 } OllinMeshVertex;
 
 // The surface *finish* of a 3D mesh: how it responds to light, separate from the surface
@@ -433,7 +450,13 @@ typedef struct {
                                   // non-scattering shading path is untouched).
     float scatterStrength;        // 0…1 fraction of the surface's light the blur diffuses, and the
                                   // scale on the transmittance term (0 = both off)
-    float scatterPad0, scatterPad1, scatterPad2;
+    float normalScale;            // normal-map strength: 0 = no map bound (the gate; every other
+                                  // mesh keeps this zero, so unmapped frames are untouched),
+                                  // > 0 scales the sampled tangent-space x/y before renormalizing
+                                  // (glTF's normalTexture.scale). Set per batch from the mesh's
+                                  // `MeshMaterial.normalScale` when its normal map draws, not from
+                                  // the drawing-state `material(_:)` finish.
+    float scatterPad1, scatterPad2;
 } OllinMaterial;
 
 // Parameters for the live ground-grid overlay (`ollin_grid_fragment`): a shader-drawn

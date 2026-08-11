@@ -3468,6 +3468,170 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
     return c;
 }
 
+// MARK: - Normal-mapped textured 3D mesh
+//
+// The textured path's twin for meshes carrying a tangent-space normal map: the
+// vertex passes the packed world tangent through, and the fragment bends the
+// lighting normal by the sampled map before the shared shading tail. A separate
+// function pair rather than a branch in the shipped textured fragment, so
+// unmapped frames keep their exact codegen (the verbatim-plus-twin rule).
+//
+// The transform follows the tangent-space reference the generator defines: the
+// *interpolated, unnormalized* tangent/normal, the bitangent rebuilt per pixel
+// as sign * cross(N, T), and one normalize of the bent result, the exact
+// inverse of what a MikkTSpace-targeting baker does, so a baked map lights
+// without seams. Shading uses the bent normal; the ray/offset machinery (field
+// shadows, traced shadows, transmittance thickness) keeps the geometric one, a
+// map being surface *detail*, not surface *position*.
+
+struct MeshTexturedNMOut {
+    float4 position [[position]];
+    float3 normal;
+    float3 worldPos;
+    float4 color;
+    float2 uv;
+    float4 tangent;   // world tangent xyz + bitangent handedness w
+};
+
+vertex MeshTexturedNMOut ollin_mesh_nm_vertex(uint vid [[vertex_id]],
+                                              const device OllinMeshVertex *verts [[buffer(0)]],
+                                              constant Uniforms3D &u [[buffer(2)]]) {
+    OllinMeshVertex v = verts[vid];
+    MeshTexturedNMOut out;
+    out.worldPos = v.position.xyz;
+    out.position = u.projection * (u.view * float4(v.position.xyz, 1.0));
+    out.normal = v.normal.xyz;
+    out.color = v.color;
+    out.uv = v.uv;
+    out.tangent = float4(v.tangent);
+    return out;
+}
+
+fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
+                                       constant OllinLighting &light [[buffer(0)]],
+                                       constant OllinMaterial &mat [[buffer(1)]],
+                                       texture2d<float> baseColorTex [[texture(0)]],
+                                       sampler samp [[sampler(0)]],
+                                       depth2d<float> shadowMap [[texture(1)]],
+                                       sampler shadowSamp [[sampler(1)]],
+                                       texturecube<float> shadowCube [[texture(2)]],
+                                       sampler shadowCubeSamp [[sampler(2)]],
+                                       const device SDF3DGroupInstance *fields [[buffer(4)]],
+                                       const device SDFNode3D *fieldNodes [[buffer(5)]],
+                                       texture2d<float> fieldShadowTex [[texture(3)]],
+                                       texturecube<float> iblIrradiance [[texture(4)]],
+                                       texturecube<float> iblPrefilter [[texture(5)]],
+                                       texture2d<float> iblBRDF [[texture(6)]],
+                                       texture2d<float> ltcMat [[texture(8)]],
+                                       texture2d<float> ltcAmp [[texture(9)]],
+                                       texture2d_array<float> iesProfiles [[texture(10)]],
+                                       texture2d_array<float> cookies [[texture(11)]],
+                                       texture2d<float> sheenLUT [[texture(12)]],
+                                       texture2d<float> contactShadowTex [[texture(16)]],
+                                       texture2d<float> normalMapTex [[texture(17)]]
+#if OLLIN_RT_SHADOWS
+                                       , primitive_acceleration_structure shadowAccel [[buffer(3)]]
+                                       , const device OllinMeshVertex *meshVerts [[buffer(6)]]
+                                       , const device uint *meshGeoOffsets [[buffer(7)]]
+                                       , texture2d<float> rtReflectionTex [[texture(7)]]
+                                       , texture2d<float> giIrradianceTex [[texture(13)]]
+                                       , texture2d<float> giDepthTex [[texture(14)]]
+                                       , texture2d<float> giOffsetsTex [[texture(15)]]
+#endif
+                                       ) {
+    float4 tex = baseColorTex.sample(samp, in.uv);
+    float3 base = tex.rgb * srgbToLinear(in.color.rgb);
+    float alpha = in.color.a * tex.a;
+    // Bend the shading normal by the map: raw data (the texture is non-sRGB),
+    // decoded 2c-1, x/y scaled by the map strength (glTF's scale convention),
+    // pushed through the interpolated frame. A degenerate frame (a seam's
+    // zero-length tangent) falls back to the geometric normal.
+    float3 gn = in.normal;
+    float3 t = in.tangent.xyz;
+    float3 b = cross(gn, t) * in.tangent.w;
+    float3 nmS = normalMapTex.sample(samp, in.uv).xyz * 2.0 - 1.0;
+    nmS.xy *= mat.normalScale;
+    float3 bent = t * nmS.x + b * nmS.y + gn * nmS.z;
+    float bentLen = length(bent);
+    float3 N = (bentLen > 1e-6) ? bent / bentLen : normalize(gn);
+    float meshFieldShadow = ollin_resolve_mesh_field_shadow(in.position.xy, in.worldPos, in.normal,
+                                                            light, fields, fieldNodes, fieldShadowTex);
+    if (light.contactShadow.x > 0.0) {
+        constexpr sampler contactSamp(filter::linear, address::clamp_to_edge);
+        float2 cts = float2(contactShadowTex.get_width(), contactShadowTex.get_height());
+        meshFieldShadow *= contactShadowTex.sample(contactSamp,
+            in.position.xy * light.contactShadow.y / max(cts, float2(1.0))).r;
+    }
+#if OLLIN_RT_SHADOWS
+    float rtShadow = meshRTShadow(in.worldPos, in.normal, light, shadowAccel);
+    float rtThickness = 0.0;
+    if (light.shadowKind == 2 && mat.scatterStrength > 0.0 && mat.scatter.w > 0.0
+        && light.shadowLight >= 0 && light.lights[light.shadowLight].kind == 1) {
+        rtThickness = meshRTThickness(in.worldPos, in.normal, light, shadowAccel);
+    }
+    float4 c = meshLitColor(base, alpha, N, in.worldPos, mat, light,
+                            shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
+                            ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT,
+                            rtShadow, -1.0, meshFieldShadow, rtThickness);
+#else
+    float4 c = meshLitColor(base, alpha, N, in.worldPos, mat, light,
+                            shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
+                            ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT,
+                            -1.0, meshFieldShadow);
+#endif
+#if OLLIN_RT_SHADOWS
+    float3 gi = float3(0.0);
+    if (light.giOrigin.w > 0.0 && mat.shadingModel != 2) {
+        float3 giView = normalize(light.cameraPosition.xyz - in.worldPos);
+        gi = ollin_gi_sample_cascaded(in.worldPos, N, giView, light,
+                             giIrradianceTex, giDepthTex, giOffsetsTex);
+    }
+#endif
+    if (mat.shadingModel == 3 && light.iblEnabled != 0) {
+        float3 viewDir = normalize(light.cameraPosition.xyz - in.worldPos);
+#if OLLIN_RT_SHADOWS
+        float4 deferredRefl = float4(0.0);
+        if (light.rtReflections != 0 && light.rtReflectionDeferred != 0) {
+            constexpr sampler reflSamp(filter::linear, address::clamp_to_edge);
+            float2 rts = float2(rtReflectionTex.get_width(), rtReflectionTex.get_height());
+            deferredRefl = rtReflectionTex.sample(reflSamp,
+                in.position.xy * light.rtReflectionScale / max(rts, float2(1.0)));
+        }
+#endif
+        c.rgb += ollin_pbr_ibl_ambient(base, N, viewDir, mat, light,
+                                       iblIrradiance, iblPrefilter, iblBRDF, sheenLUT
+#if OLLIN_RT_SHADOWS
+                                       , in.worldPos, shadowAccel, meshVerts, meshGeoOffsets,
+                                       deferredRefl, ltcAmp, iesProfiles, cookies, gi,
+                                       giIrradianceTex, giDepthTex, giOffsetsTex
+#endif
+                                       );
+    } else if (light.iblEnabled != 0 && mat.shadingModel != 2) {
+#if OLLIN_RT_SHADOWS
+        if (light.giOrigin.w > 0.0) {
+            c.rgb += gi * base;
+        } else {
+            c.rgb += ollin_ibl_flat_ambient(base, N, light, iblIrradiance);
+        }
+#else
+        c.rgb += ollin_ibl_flat_ambient(base, N, light, iblIrradiance);
+#endif
+    }
+#if OLLIN_RT_SHADOWS
+    else if (light.giOrigin.w > 0.0 && mat.shadingModel != 2) {
+        c.rgb += gi * base * (mat.shadingModel == 3 ? (1.0 - mat.metallic) : 1.0);
+    }
+#endif
+    if (light.fogColor.w > 0.0) {
+        c.rgb = (light.fogColor.w > 1.5)
+            ? ollin_apply_aerial(c.rgb, in.worldPos, in.position.xy, light,
+                                 shadowMap, shadowSamp, iesProfiles, cookies)
+            : ollin_apply_fog(c.rgb, in.worldPos, in.position.xy, light,
+                              shadowMap, shadowSamp, iesProfiles, cookies);
+    }
+    return c;
+}
+
 // MARK: - Matcap 3D mesh
 //
 // A "material capture": the whole surface look — clay, brushed metal, waxy skin — is

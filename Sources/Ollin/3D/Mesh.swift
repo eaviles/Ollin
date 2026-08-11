@@ -47,19 +47,29 @@ public struct Mesh: Sendable {
     /// surface drawn in the current `fill`. Set with `textured(_:)` or read from a
     /// model file. The texture maps through `uvs`.
     public var material: MeshMaterial?
+    /// Per-vertex tangents, paired with `positions` by index: the surface's +u
+    /// direction plus a bitangent handedness, the basis a normal map perturbs
+    /// against. Empty (the default) for every mesh that doesn't need them; a
+    /// normal-mapped material needs a full aligned set (the `uvs` rule) or the
+    /// map is skipped with a note. `normalMapped(_:scale:)` and the model loaders
+    /// fill them in (generated with MikkTSpace when the file authors none), or
+    /// call `generatingTangents()` after a rebuild that dropped them.
+    public var tangents: [MeshTangent]
 
     /// A mesh from explicit arrays. `normals` should match `positions` by index
     /// (defaulting empty leaves the surface flat-normaled toward +z); `indices`
     /// are a triangle list (length a multiple of 3); `uvs` and `colors`, when
     /// present, match `positions` by index.
     public init(positions: [Vector3], normals: [Vector3] = [], indices: [UInt32],
-                uvs: [Vector2] = [], colors: [Color] = [], material: MeshMaterial? = nil) {
+                uvs: [Vector2] = [], colors: [Color] = [], material: MeshMaterial? = nil,
+                tangents: [MeshTangent] = []) {
         self.positions = positions
         self.normals = normals
         self.indices = indices
         self.uvs = uvs
         self.colors = colors
         self.material = material
+        self.tangents = tangents
     }
 
     /// Number of triangles (index count ÷ 3).
@@ -107,7 +117,7 @@ public extension Mesh {
         let factor = longest > 1e-12 ? scale / longest : 1
         return Mesh(positions: positions.map { ($0 - c) * factor },
                     normals: normals, indices: indices, uvs: uvs, colors: colors,
-                    material: material)
+                    material: material, tangents: tangents)
     }
 
     /// A copy wearing `image` as its texture (tinted by `baseColor`, default white).
@@ -121,7 +131,12 @@ public extension Mesh {
     /// ```
     func textured(_ image: Image, baseColor: Color = .white) -> Mesh {
         var copy = self
-        copy.material = MeshMaterial(baseColor: baseColor, texture: image)
+        // Keep an already-attached normal map: `textured` sets the color side of
+        // the material, so `.normalMapped(bumps).textured(wood)` composes.
+        var m = copy.material ?? MeshMaterial()
+        m.baseColor = baseColor
+        m.texture = image
+        copy.material = m
         return copy
     }
 

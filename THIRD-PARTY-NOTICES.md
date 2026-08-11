@@ -128,6 +128,24 @@ redistributed inside this repository.
 
 ---
 
+## MikkTSpace
+
+- **Used for:** generating vertex tangents (`Mesh.tangents`) for normal-mapped meshes that don't carry authored ones: the tangent-space standard the glTF 2.0 spec names for exactly that case, and the basis normal-map bakers target so a generated basis matches a baked texture. Wrapped behind Ollin's own API; the C symbols are not part of Ollin's public surface.
+- **Location in this repo:** [`External/CMikkTSpace/`](External/CMikkTSpace/)
+- **Upstream:** https://github.com/mmikk/MikkTSpace, by Morten S. Mikkelsen
+- **Version:** commit `3e895b49d05ea07e4c2133156cfa94369e19e409` (vendored 2026-08-11)
+- **License:** zlib-style per-file notice (upstream ships no standalone LICENSE file); reproduced at [`External/CMikkTSpace/LICENSE.txt`](External/CMikkTSpace/LICENSE.txt) and kept intact in both source files, as the notice requires.
+
+> Copyright (C) 2011 by Morten S. Mikkelsen
+>
+> This software is provided 'as-is', without any express or implied warranty.
+> Permission is granted to anyone to use this software for any purpose, including
+> commercial applications, and to alter it and redistribute it freely, subject to
+> the notice's three conditions (origin not misrepresented, altered versions
+> marked, notice retained; see `LICENSE.txt` for the full text).
+
+---
+
 ## Cozette
 
 - **Used for:** the bundled default bitmap font (`BitmapFont.builtin`), loaded at runtime from its BDF by the font loader and rendered by `drawText`.

@@ -2070,10 +2070,18 @@ extension MetalRenderer {
             let meshWireframe = batch.kind == .mesh3D && batch.meshWireframe
             let meshGrid = batch.kind == .mesh3D && batch.meshGrid
             let meshMatcap = batch.kind == .mesh3D && !batch.meshWireframe && !meshGrid && batch.matcap != nil
-            let meshTextured = batch.kind == .mesh3D && !batch.meshWireframe && !meshGrid && !meshMatcap && batch.material?.texture != nil
+            // A normal-mapped batch (nonzero `finish.normalScale`, set only when the
+            // drawer verified uvs + tangents) takes the textured path's twin pipeline;
+            // a normal map alone is enough to be "textured" (the base slot then binds
+            // a 1×1 white stand-in, so the fragment's multiply is the identity).
+            let meshNormalMapped = batch.kind == .mesh3D && !batch.meshWireframe && !meshGrid
+                && !meshMatcap && batch.material?.normalTexture != nil && batch.finish.normalScale > 0
+            let meshTextured = batch.kind == .mesh3D && !batch.meshWireframe && !meshGrid && !meshMatcap
+                && (batch.material?.texture != nil || meshNormalMapped)
             var pipelineKey = PipelineKey.forBatch(batch.kind, batch.blendMode, depth: depthFormat,
                                                    textured: meshTextured, wireframe: meshWireframe,
-                                                   matcap: meshMatcap, grid: meshGrid)
+                                                   matcap: meshMatcap, grid: meshGrid,
+                                                   normalMapped: meshNormalMapped)
             // A stencil-carrying pass (clipping active) needs every pipeline in it
             // to declare the stencil format, clipped or not.
             if hasStencil { pipelineKey.stencilFormat = .stencil8 }
@@ -2323,9 +2331,20 @@ extension MetalRenderer {
                 // A textured or matcap mesh needs its texture at fragment index 0; if it
                 // can't be built, skip rather than draw against the wrong pipeline.
                 if meshTextured {
-                    guard let texture = batch.material?.texture?.texture(for: device) else { continue }
+                    // Base color at 0 (a 1×1 white stand-in for a normal-map-only
+                    // mesh, the multiply identity); the normal map, sampled as raw
+                    // data (no sRGB decode), at 17 on the normal-mapped twin. Like
+                    // the base texture, a map that can't build skips the batch
+                    // rather than drawing against the wrong pipeline.
+                    let base = batch.material?.texture?.texture(for: device) ?? whiteStandIn()
+                    guard let texture = base else { continue }
                     encoder.setFragmentTexture(texture, index: 0)
                     encoder.setFragmentSamplerState(imageSampler, index: 0)
+                    if meshNormalMapped {
+                        guard let nm = batch.material?.normalTexture?.linearTexture(for: device)
+                        else { continue }
+                        encoder.setFragmentTexture(nm, index: 17)
+                    }
                 } else if meshMatcap {
                     guard let texture = batch.matcap?.texture(for: device) else { continue }
                     encoder.setFragmentTexture(texture, index: 0)

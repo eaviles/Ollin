@@ -216,6 +216,20 @@ let package = Package(
             exclude: ["LICENSE", "README.md"],
             publicHeadersPath: "Include"
         ),
+        // Vendored MikkTSpace (Morten S. Mikkelsen's tangent-space generator),
+        // the standard the glTF 2.0 spec names for computing vertex tangents
+        // when a normal-mapped model authors none, and the basis normal-map
+        // bakers target, so generated tangents match baked textures. Bundled
+        // third-party C source under its zlib-style per-file notice; see
+        // External/CMikkTSpace/README.md and the repo-root
+        // THIRD-PARTY-NOTICES.md. Wrapped behind Ollin's own API; the C symbols
+        // are not part of Ollin's public surface.
+        .target(
+            name: "CMikkTSpace",
+            path: "External/CMikkTSpace",
+            exclude: ["LICENSE.txt", "README.md"],
+            publicHeadersPath: "Include"
+        ),
         // Vendored Clipper2 (Angus Johnson's polygon clipping + offsetting
         // library, C++), the engine behind `Shape`'s booleans (union/
         // intersection/subtracting/symmetricDifference) and `offset(by:join:)`.
@@ -455,7 +469,7 @@ let package = Package(
         ),
         .target(
             name: "Ollin",
-            dependencies: ["CLibtess2", "CClipper2", "COllinShaders", "CHosekWilkie"],
+            dependencies: ["CLibtess2", "CClipper2", "COllinShaders", "CHosekWilkie", "CMikkTSpace"],
             // Declaring the `.metal` files as resources makes SwiftPM copy them
             // into the target's resource bundle and synthesize `Bundle.module`,
             // which MetalRenderer.loadLibrary reads and concatenates (ShaderCore

@@ -62,6 +62,11 @@ extension Mesh {
         // *any* primitive supplied them.
         var colors: [Color] = []
         var anyHaveColor = false
+        // Authored tangents follow the UV rule (all primitives or none): a
+        // partial set would leave part of a normal-mapped surface with no basis.
+        var tangents: [MeshTangent] = []
+        var allHaveTangent = true
+        var sawTangent = false
         // The material the merged mesh wears: the first primitive's material, but
         // preferring the first one that carries a base-color texture (the visible part).
         var chosenMaterial: Int?
@@ -110,6 +115,28 @@ extension Mesh {
                     colors.append(contentsOf: repeatElement(Color.white, count: localPos.count))
                 }
 
+                // Authored tangents: xyz transforms with the positions (the world's
+                // linear part, like a surface direction, not the normal matrix),
+                // w (the bitangent handedness) rides through untouched.
+                if let tanIndex = prim.attributes["TANGENT"], let localTan = doc.readVec4(tanIndex),
+                   localTan.count == localPos.count {
+                    sawTangent = true
+                    let lin = simd_float3x3(SIMD3(inst.world.columns.0.x, inst.world.columns.0.y, inst.world.columns.0.z),
+                                            SIMD3(inst.world.columns.1.x, inst.world.columns.1.y, inst.world.columns.1.z),
+                                            SIMD3(inst.world.columns.2.x, inst.world.columns.2.y, inst.world.columns.2.z))
+                    for t in localTan {
+                        var d = lin * SIMD3<Float>(t.x, t.y, t.z)
+                        let len = simd_length(d)
+                        if len > 1e-8 { d /= len }
+                        tangents.append(MeshTangent(Vector3(Double(d.x), Double(d.y), Double(d.z)),
+                                                    handedness: Double(t.w < 0 ? -1 : 1)))
+                    }
+                } else {
+                    allHaveTangent = false
+                    tangents.append(contentsOf: repeatElement(MeshTangent(Vector3(1, 0, 0)),
+                                                              count: localPos.count))
+                }
+
                 // Pick the material to carry: the first one seen, upgraded to the first
                 // that has a base-color texture.
                 if let mi = prim.material {
@@ -132,6 +159,14 @@ extension Mesh {
         var mesh = Mesh(positions: positions, normals: normals, indices: indices,
                         uvs: allHaveUV ? uvs : [], material: chosenMaterial.flatMap(doc.resolveMaterial))
         if anyHaveColor { mesh.colors = colors }
+        // Authored tangents attach when complete (the UV rule); a normal-mapped
+        // material that arrived without them gets the spec's answer, a MikkTSpace
+        // generation over the mesh's own uvs.
+        if sawTangent, allHaveTangent, allHaveUV { mesh.tangents = tangents }
+        if mesh.material?.normalTexture != nil, mesh.tangents.count != mesh.positions.count,
+           !mesh.uvs.isEmpty {
+            mesh = mesh.generatingTangents()
+        }
         return mesh
     }
 
@@ -580,9 +615,11 @@ struct GLTFDocument {
     }
 
     /// Resolve a glTF material to a `MeshMaterial`: the base-color factor (linear,
-    /// so re-encode to the sRGB `Color` the surface bakes) and the base-color
-    /// texture image. Other PBR channels (metallic/roughness, normal, emissive) are
-    /// the later PBR tier. Returns nil when the material carries neither.
+    /// so re-encode to the sRGB `Color` the surface bakes), the base-color
+    /// texture image, and the tangent-space normal map with its scale (the map's
+    /// bytes are data, sampled through the linear texture path, so the image
+    /// decodes untouched). Other PBR channels (metallic/roughness, emissive) are
+    /// the later PBR tier. Returns nil when the material carries none of them.
     func resolveMaterial(_ matIndex: Int) -> MeshMaterial? {
         let materials = gltf.materials ?? []
         guard matIndex >= 0, matIndex < materials.count else { return nil }
@@ -593,16 +630,25 @@ struct GLTFDocument {
             baseColor = Color(red: enc(f[0]), green: enc(f[1]), blue: enc(f[2]),
                               alpha: min(max(f[3], 0), 1))
         }
+        func textureImage(_ ti: Int) -> Image? {
+            let textures = gltf.textures ?? []
+            guard ti >= 0, ti < textures.count, let src = textures[ti].source,
+                  let data = imageData(src) else { return nil }
+            return Image(data: data)
+        }
         var texture: Image?
         if let ti = pbr?.baseColorTexture?.index {
-            let textures = gltf.textures ?? []
-            if ti >= 0, ti < textures.count, let src = textures[ti].source,
-               let data = imageData(src) {
-                texture = Image(data: data)
-            }
+            texture = textureImage(ti)
         }
-        if texture == nil, pbr?.baseColorFactor == nil { return nil }
-        return MeshMaterial(baseColor: baseColor, texture: texture)
+        var normalTexture: Image?
+        var normalScale = 1.0
+        if let normal = materials[matIndex].normalTexture {
+            normalTexture = textureImage(normal.index)
+            normalScale = normal.scale ?? 1
+        }
+        if texture == nil, normalTexture == nil, pbr?.baseColorFactor == nil { return nil }
+        return MeshMaterial(baseColor: baseColor, texture: texture,
+                            normalTexture: normalTexture, normalScale: normalScale)
     }
 
     /// One glTF mesh (all its triangle primitives merged) as a `Mesh` in the node's
@@ -654,6 +700,9 @@ struct GLTFDocument {
         var joints: [SIMD4<UInt16>] = []
         var weights: [SIMD4<Float>] = []
         var allHaveSkin = true
+        var tangents: [MeshTangent] = []
+        var allHaveTangent = true
+        var sawTangent = false
         // Every primitive of a morphing mesh must declare the same target count
         // (the format's rule); a mismatch drops the morph data whole rather than
         // misaligning it.
@@ -692,6 +741,21 @@ struct GLTFDocument {
                 anyHaveColor = true
             } else {
                 colors.append(contentsOf: repeatElement(Color.white, count: localPos.count))
+            }
+
+            // Authored tangents, node-local like everything here (the walk's
+            // transform applies at draw); the UV rule (all primitives or none).
+            if let tanIndex = prim.attributes["TANGENT"], let localTan = readVec4(tanIndex),
+               localTan.count == localPos.count {
+                sawTangent = true
+                for t in localTan {
+                    tangents.append(MeshTangent(Vector3(Double(t.x), Double(t.y), Double(t.z)),
+                                                handedness: Double(t.w < 0 ? -1 : 1)))
+                }
+            } else {
+                allHaveTangent = false
+                tangents.append(contentsOf: repeatElement(MeshTangent(Vector3(1, 0, 0)),
+                                                          count: localPos.count))
             }
 
             // Skin attributes, all-or-nothing like UVs: a primitive missing either
@@ -780,9 +844,28 @@ struct GLTFDocument {
             }
         }
 
-        let mesh = Mesh(positions: positions, normals: normals, indices: indices,
+        var mesh = Mesh(positions: positions, normals: normals, indices: indices,
                         uvs: allHaveUV ? uvs : [], colors: anyHaveColor ? colors : [],
                         material: resolved(chosenMaterial))
+        // Authored tangents attach when complete; a normal-mapped material
+        // without them generates the standard basis (the loadGLTF rule). A
+        // multi-material mesh checks every part's material, since the merged
+        // mesh wears only the first. One guard: generation may *split* a vertex
+        // at a mirrored-UV seam, and the skin/morph/part arrays here all ride
+        // the merged vertex order, so a splitting result is accepted only when
+        // nothing else is aligned to it. (A split-free result, the usual case,
+        // is always safe.) A model that loses the map this way still draws,
+        // with its geometry normals and a one-time note at draw.
+        if sawTangent, allHaveTangent, allHaveUV { mesh.tangents = tangents }
+        let anyNormalMap = mesh.material?.normalTexture != nil
+            || parts.contains { $0.material?.normalTexture != nil }
+        if anyNormalMap, mesh.tangents.count != mesh.positions.count, !mesh.uvs.isEmpty {
+            let generated = mesh.generatingTangents()
+            let hasAligned = (allHaveSkin && !joints.isEmpty) || targetsAgree || !parts.isEmpty
+            if generated.positions.count == mesh.positions.count || !hasAligned {
+                mesh = generated
+            }
+        }
         var data = LocalMeshData(mesh: mesh)
         data.parts = parts
         if allHaveSkin, !joints.isEmpty {
@@ -899,12 +982,14 @@ struct GLTF: Decodable {
     }
     struct Material: Decodable {
         var pbrMetallicRoughness: PBRMetallicRoughness?
+        var normalTexture: NormalTextureInfo?
     }
     struct PBRMetallicRoughness: Decodable {
         var baseColorFactor: [Double]?
         var baseColorTexture: TextureInfo?
     }
     struct TextureInfo: Decodable { var index: Int; var texCoord: Int? }
+    struct NormalTextureInfo: Decodable { var index: Int; var texCoord: Int?; var scale: Double? }
     struct TextureDef: Decodable { var source: Int?; var sampler: Int? }
     struct ImageDef: Decodable { var uri: String?; var bufferView: Int?; var mimeType: String? }
     struct Accessor: Decodable {

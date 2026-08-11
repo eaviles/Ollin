@@ -398,6 +398,22 @@ withState { fill(.white); drawMesh(globe.textured(checker)) }    // wrapped in a
 
 Both are ordinary drawing state, saved by `withState`, so one frame holds all three treatments (the figure is a single render).
 
+## Relief from a picture
+
+A texture changes a surface's color. A **normal map** changes how it catches light: each texel stores a surface direction instead of a color, and at shading time the lighting normal bends by it. The result is relief without geometry.
+
+<img src="Images/17-3DGently/SurfaceRelief.jpg" alt="Three gray spheres under the same warm light: one hammered with soft dents, one engraved with concentric rings, and one bare, all with perfectly circular silhouettes" width="680">
+
+```swift
+let hammered = Mesh.sphere(radius: 1).normalMapped(dents)
+```
+
+All three spheres are the same 96-segment sphere; only the middle of the picture knows about dents and rings. Look at the silhouettes: perfect circles. That's the tell, and the trade. The bumps exist only in how the light lands, so they cost a texture sample instead of a million triangles, and the edge of the object never learns about them. Games have leaned on this for twenty years, which is why a cobblestone street in one can be six polygons.
+
+**`normalMapped(_:scale:)`** hangs a map on any mesh that carries texture coordinates, and quietly sets up the frame of reference the map's directions are expressed in (a *tangent basis*; the same standard one other tools bake maps against, so a map made elsewhere lights the same way here). `scale` is a relief dial: 0 flattens it off, 1 is as authored, more exaggerates. Loaded models bring their own normal maps along without being asked.
+
+Where do maps come from? Anywhere images do, and one particularly satisfying place: math. Start with a height function, take its slopes, and encode them; the `3D/Materials/NormalMaps` example builds hammered metal, woven cloth, and engraved rings this way in a couple dozen lines, no files involved. The one convention to know when authoring by hand: green marks the slope that faces *up the image* (if a map from elsewhere lights upside down, its green channel is inverted; flip it and it's home).
+
 ## Smooth from a cage
 
 There is a third way to get a mesh, and it's the one character artists live in: build something crude out of a few boxes and extrusions, then let the computer round it. `subdivided(levels:)` takes any mesh as a **control cage**, splits every face, and eases every vertex toward its neighbors, once per level.

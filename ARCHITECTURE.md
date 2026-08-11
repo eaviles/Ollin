@@ -2393,6 +2393,76 @@ material returns the resolved texture untouched and encodes nothing.
 
 ---
 
+## Normal mapping (the surface-map tier's foundation)
+
+The first slice of the advanced-materials arc: a tangent-space normal map on the
+textured-mesh path, plus the tangent machinery every later surface map (parallax
+occlusion, detail maps) rides.
+
+**The pipeline is a twin, not a branch.** `ollin_mesh_nm_vertex` /
+`ollin_mesh_nm_fragment` mirror the textured pair verbatim with the perturbation
+added, selected by a `normalMapped` variant on the mesh `PipelineKey`. The shipped
+textured functions are untouched, so unmapped textured frames are byte-identical
+*by construction* rather than by a verified gate (the fast-math codegen rule:
+growing a shipped function's control flow re-contracts its expressions and moves
+ulps; a twin can't). The cost is ~40 duplicated fragment lines, taken knowingly.
+
+**The vertex tangent rides the spare 8 bytes.** `OllinMeshVertex` had 8 bytes of
+tail padding reserved since the 3D work; the tangent packs into it as four
+Float16s (`OllinHalf4`: `half4` under `__METAL_VERSION__`, `simd_ushort4` of bit
+patterns on the CPU side), so the stride stays 64 and every existing path is
+layout-identical. Direction xyz + handedness w, world-space (the model's linear
+part baked in at `drawMesh`, like a surface direction, not the normal's
+inverse-transpose), renormalized in the fragment after interpolation.
+
+**Tangents are MikkTSpace, vendored, with the glTF sign.** `External/CMikkTSpace`
+(zlib-style notice) is the reference generator the glTF spec names and normal-map
+bakers target; matching its exact basis is the point, which is why it's bundled
+rather than reimplemented. `Mesh.generatingTangents()` runs it over the indexed
+mesh through corner callbacks and folds the per-corner results back per vertex by
+exact bit equality (MikkTSpace welds internally, so grouped corners return
+bit-identical values); a genuine disagreement at a shared vertex (a mirrored-UV
+seam) splits it, retargeting the indices, deterministically (face-order
+processing, encounter-order appends).
+
+**The handedness sign was measured, not assumed, and it's the arc's one real
+finding.** MikkTSpace's raw `fSign` makes `fSign · cross(N, T)` point along
+**+∂p/∂v** (down the map image) on every surface (measured on a hand-built quad
+and the sphere generator's front, both `b·∂p/∂v ≈ +1`). The glTF spec's normal
+maps are explicitly green-up (+Y), which needs the shader bitangent pointing
+image-*up*, so the ecosystem stores `w = −fSign` in files (the flip the
+mikktspace-wasm / glTF-transform docs warn about). Ollin stores the negation too,
+so authored glTF `TANGENT`s pass through unchanged and generated tangents land in
+the same convention. Verified three ways: the Khronos `NormalTangentTest` +
+`NormalTangentMirrorTest` render with every mirrored-handedness tile matching the
+real-geometry reference column; a green-up dome map on a plain generated quad
+reads as raised domes; and `MeshTangentTests` pins the green-direction contract
+as a render probe. Two dead ends worth remembering: a "missing terminator" chased
+for an hour was perspective parallax between spheres at ±x (byte-identical when
+re-rendered at matched positions), and a winding-vs-normals-inconsistent
+hand-built test quad flips `fSign` and will gaslight any convention probe built
+on it.
+
+**The map is data, not color.** `Image.linearTexture(for:)` is the raw-bytes twin
+of the color texture cache (`.SRGB: false`, or a plain `.rgba8Unorm` upload for
+authored pixels): decoding a normal map's bytes as sRGB color bends every stored
+direction (127 would decode to 0.187 and tilt the whole surface by −0.6 along
+t+b). Separate cache slot, so one `Image` can serve both reads.
+
+**Gates.** `MeshMaterial.normalScale` doubles as the off switch and the per-batch
+gate: the drawer sets the finish uniform's `normalScale` (a claimed
+`OllinMaterial` tail pad) only after verifying aligned uvs *and* tangents, encode
+keys the twin pipeline off it, and 0 routes down the plain textured pipeline
+byte-identically (probe-pinned). A map attached without its basis degrades
+honestly: geometric normals plus a one-time note. Shading uses the bent normal
+everywhere (all shading models, punctual + area lights, IBL, GI); the ray/offset
+machinery (field shadows, traced shadows, transmittance thickness) keeps the
+geometric normal, a map being surface detail, not surface position. Skinned
+meshes pose tangents with the blended joint matrix's linear part, so relief
+stays put on a bent limb.
+
+---
+
 ## Deferred ray-traced reflection AA
 
 The ray-traced reflection is one closest-hit ray per reflective pixel, which makes

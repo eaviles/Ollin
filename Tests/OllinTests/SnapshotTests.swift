@@ -302,6 +302,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("glass-materials",
                  note: "Transmissive (glass) physically-based spheres over a bundled environment, no ray tracing: pins the environment-refraction base path every GPU gets (the entry refract + analytic interior span + curvature-blended exit for a solid, the parallel thin exit, the IOR-remapped frosting lod, Beer-Lambert absorption, the f0-from-IOR packing, and the transmitted-for-diffuse swap in the IBL ambient and the direct-light diffKeep). Fixed camera + environment, no time.",
                  make: { GlassScene() }),
+    SnapshotCase("normal-maps",
+                 note: "Tangent-space normal maps on generated spheres beside a bare control: pins the normal-mapped textured twin pipeline (packed half4 vertex tangents, the raw-data linear texture read, the sign * cross(N, T) bitangent, the glTF-sign MikkTSpace basis from generatingTangents, and normalScale). Authored green-up maps from height functions, fixed camera + light, no time, no rng.",
+                 make: { NormalMapScene() }),
     SnapshotCase("coat-sheen",
                  note: "The layered physically-based lobes over a bundled environment plus a point light: a coated red metal beside its bare twin (the clear-coat Cook-Torrance lobe, the Kelemen visibility, the coat-interface F0 remap, and the coat's smooth IBL gather), a piano-black lacquer, a white-sheen felt beside its bare twin (the inverted-alpha sine sheen lobe, the cloth visibility, the sheen-LUT energy scaling, and the sheen's own prefiltered gather), and a two-tone velvet. Fixed camera + environment, no time.",
                  make: { CoatSheenScene() }),
@@ -1798,6 +1801,57 @@ private final class GlassScene: Sketch {
         }
         withState {
             translate(0, -0.6, 0); fill(Color(white: 0.5)); material(.roughPlastic)
+            drawBox(width: 20, height: 0.3, depth: 20)
+        }
+    }
+}
+
+private final class NormalMapScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    /// A tiling green-up normal map authored from a height function: engraved
+    /// rings on the left sphere, a diagonal weave on the right. Pure math, no
+    /// rng, so the render is a fixed function of nothing.
+    private func map(strength: Double, height: (Double, Double) -> Double) -> Image {
+        let size = 128
+        var bytes = [UInt8](repeating: 0, count: size * size * 4)
+        let d = 1.0 / Double(size)
+        for y in 0..<size {
+            for x in 0..<size {
+                let u = (Double(x) + 0.5) * d, v = (Double(y) + 0.5) * d
+                let dx = (height(u + d, v) - height(u - d, v)) / (2 * d) * strength
+                let dy = (height(u, v + d) - height(u, v - d)) / (2 * d) * strength
+                let len = (dx * dx + dy * dy + 1).squareRoot()
+                let i = (y * size + x) * 4
+                bytes[i]     = UInt8((-dx / len * 0.5 + 0.5) * 255)
+                bytes[i + 1] = UInt8((dy / len * 0.5 + 0.5) * 255)
+                bytes[i + 2] = UInt8((1 / len * 0.5 + 0.5) * 255)
+                bytes[i + 3] = 255
+            }
+        }
+        return Image(width: size, height: size, premultipliedRGBA: bytes)!
+    }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        camera(.orbiting(target: .zero, radius: 6.4, azimuth: 0.2, elevation: 0.1,
+                         fieldOfView: .pi / 3.4))
+        directionalLight(.white, direction: Vector3(-0.6, -0.7, -0.5), intensity: 1.1)
+        ambientLight(Color(white: 0.08))
+        let rings = map(strength: 0.1) { u, v in
+            let r = ((u - 0.5) * (u - 0.5) + (v - 0.5) * (v - 0.5)).squareRoot()
+            return sin(r * 14 * .tau) * 0.5 + 0.5
+        }
+        let weave = map(strength: 0.06) { u, v in
+            (sin(u * 10 * .tau) * 0.5 + 0.5) * (sin(v * 10 * .tau) * 0.5 + 0.5)
+        }
+        fill(Color(hex: 0xBFC3CC))
+        let base = Mesh.sphere(radius: 1, segments: 64, rings: 32)
+        withState { translate(-2.1, 0.3, 0); drawMesh(base.normalMapped(rings)) }
+        withState { translate(0, 0.3, 0); drawMesh(base.normalMapped(weave, scale: 1.6)) }
+        withState { translate(2.1, 0.3, 0); drawMesh(base) }
+        withState {
+            translate(0, -1.3, 0); fill(Color(white: 0.4))
             drawBox(width: 20, height: 0.3, depth: 20)
         }
     }

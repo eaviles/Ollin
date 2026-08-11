@@ -59,6 +59,11 @@ public final class Image {
     /// handing back a foreign texture.
     private var cachedTexture: MTLTexture?
     private var cachedDeviceID: ObjectIdentifier?
+    // The linear (data) twin of the cache above, for images sampled as *values*
+    // rather than colors: a normal map's bytes must reach the shader raw, with
+    // no sRGB decode on read. Kept separate so one image can serve both reads.
+    private var cachedLinearTexture: MTLTexture?
+    private var cachedLinearDeviceID: ObjectIdentifier?
 
     /// A live, externally-owned texture this image wraps directly (see
     /// `init(texture:)`). When set, the image *is* this texture: `texture(for:)`
@@ -299,6 +304,68 @@ public final class Image {
         return texture
     }
 
+    /// The Metal texture for this image sampled as *data* rather than color:
+    /// the bytes reach the shader raw, with no sRGB decode on read. This is what
+    /// a normal map (or any value-encoding map) must sample through, since
+    /// decoding its bytes as color would bend every stored direction. Built and
+    /// cached on first use, separately from the color texture, so one image can
+    /// serve both reads. GPU-backed images pass their live texture through
+    /// unchanged (a compute-written float texture is already linear data).
+    func linearTexture(for device: MTLDevice) -> MTLTexture? {
+        if let externalTexture { return externalTexture }
+        if let computeTextureSource { return computeTextureSource.metalTexture(for: device) }
+        if let renderTargetSource { return renderTargetSource.texture }
+
+        let id = ObjectIdentifier(device)
+        if let cachedLinearTexture, cachedLinearDeviceID == id { return cachedLinearTexture }
+
+        // Edited or authored pixels upload straight from the buffer, exactly like
+        // the color path, but into the non-sRGB format so the bytes read back as
+        // the values that were written.
+        if pixelsModified, let pixelBytes,
+           let direct = Image.linearTexture(rgba: pixelBytes, width: width,
+                                            height: height, on: device) {
+            cachedLinearTexture = direct
+            cachedLinearDeviceID = id
+            return direct
+        }
+
+        let source = (pixelsModified ? bufferBackedCGImage() : nil) ?? cgImage
+        let loader = MTKTextureLoader(device: device)
+        // `.SRGB: false` asks for the raw-bytes format. Unlike the color path,
+        // a context-made CGImage needs no self-heal here: the loader's linear
+        // format holding the file's bytes is exactly the data read we want.
+        let options: [MTKTextureLoader.Option: Any] = [
+            .SRGB: false,
+            .textureUsage: NSNumber(value: MTLTextureUsage.shaderRead.rawValue),
+            .textureStorageMode: NSNumber(value: MTLStorageMode.private.rawValue),
+        ]
+        guard let texture = try? loader.newTexture(cgImage: source, options: options) else {
+            return nil
+        }
+        cachedLinearTexture = texture
+        cachedLinearDeviceID = id
+        return texture
+    }
+
+    /// Upload RGBA8 `bytes` as a plain `.rgba8Unorm` texture: the bytes pass
+    /// through verbatim and read back as the same values. The data twin of
+    /// `sRGBTexture(premultipliedRGBA:...)` below.
+    private static func linearTexture(rgba bytes: [UInt8], width: Int,
+                                      height: Int, on device: MTLDevice) -> MTLTexture? {
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .rgba8Unorm, width: width, height: height, mipmapped: false)
+        descriptor.usage = .shaderRead
+        descriptor.storageMode = .managed
+        guard let texture = device.makeTexture(descriptor: descriptor) else { return nil }
+        bytes.withUnsafeBytes { raw in
+            guard let base = raw.baseAddress else { return }
+            texture.replace(region: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0,
+                            withBytes: base, bytesPerRow: width * 4)
+        }
+        return texture
+    }
+
     /// Upload premultiplied RGBA8 `bytes` as an `.rgba8Unorm_srgb` texture: the
     /// bytes pass through verbatim, and each sample decodes sRGB → linear on
     /// read. The fast path for buffer-backed pixels — no decode, no redraw.
@@ -379,6 +446,8 @@ public final class Image {
             pixelsModified = true
             cachedTexture = nil
             cachedDeviceID = nil
+            cachedLinearTexture = nil
+            cachedLinearDeviceID = nil
         }
     }
 

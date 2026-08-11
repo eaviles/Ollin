@@ -2535,14 +2535,39 @@ final class Drawer {
         let material = mesh.material
         let wireframe = wireframeEnabled
         let matcap = !wireframe ? currentMatcap : nil
-        let textured = !wireframe && matcap == nil && material?.texture != nil
-            && mesh.uvs.count == mesh.positions.count
+        let uvsAligned = mesh.uvs.count == mesh.positions.count
+        // A normal map needs the whole basis: matching uvs *and* matching
+        // tangents. Attached without either, it degrades honestly (the mesh
+        // draws with its geometric normals) and says so once. `normalScale == 0`
+        // is the documented off switch, taking the plain textured path so the
+        // frame is byte-identical to a mapless one.
+        var normalMapped = false
+        if !wireframe, matcap == nil, let mat = material, mat.normalTexture != nil,
+           mat.normalScale > 0 {
+            if uvsAligned && mesh.tangents.count == mesh.positions.count {
+                normalMapped = true
+            } else if !uvsAligned {
+                noteOnce("a normal map needs per-vertex uvs; drawing the mesh without it.")
+            } else {
+                noteOnce("a normal map needs per-vertex tangents (normalMapped(_:) or generatingTangents() sets them up); drawing the mesh without it.")
+            }
+        }
+        let textured = !wireframe && matcap == nil && uvsAligned
+            && (material?.texture != nil || normalMapped)
         if wireframe {
             beginMeshBatch(material: nil, finish: OllinMaterial(), wireframe: true)
         } else if let matcap {
             beginMeshBatch(material: nil, finish: OllinMaterial(), matcap: matcap)
         } else if textured {
-            beginMeshBatch(material: material, finish: currentMaterial.gpuMaterial())
+            // The map's strength rides the per-batch finish uniform: it's
+            // per-mesh state (the drawing-state `material(_:)` knows nothing of
+            // it), and nonzero only when the map actually draws, so it doubles
+            // as the encode-side and shader-side gate.
+            var finish = currentMaterial.gpuMaterial()
+            if normalMapped, let mat = material {
+                finish.normalScale = Float(mat.normalScale)
+            }
+            beginMeshBatch(material: material, finish: finish)
         } else {
             ensureSolidMeshBatch(currentMaterial)
         }
@@ -2602,6 +2627,29 @@ final class Drawer {
             if textured {
                 let uv = mesh.uvs[i]
                 v.uv = SIMD2<Float>(Float(uv.x), Float(uv.y))
+            }
+            if normalMapped {
+                // The tangent transforms by the model's linear part (it's a
+                // surface direction, covariant with positions, unlike the
+                // normal's inverse-transpose), then packs as four Float16 bit
+                // patterns into the vertex's spare 8 bytes; the shader reads
+                // them back as a native half4 and renormalizes after
+                // interpolation.
+                let t = mesh.tangents[i]
+                var d = SIMD3<Float>(Float(t.direction.x), Float(t.direction.y),
+                                     Float(t.direction.z))
+                if !modelIsIdentity {
+                    let lin = simd_float3x3(SIMD3<Float>(m.columns.0.x, m.columns.0.y, m.columns.0.z),
+                                            SIMD3<Float>(m.columns.1.x, m.columns.1.y, m.columns.1.z),
+                                            SIMD3<Float>(m.columns.2.x, m.columns.2.y, m.columns.2.z))
+                    d = lin * d
+                }
+                let len = simd_length(d)
+                if len > 1e-8 { d /= len }
+                v.tangent = SIMD4<UInt16>(Float16(d.x).bitPattern,
+                                          Float16(d.y).bitPattern,
+                                          Float16(d.z).bitPattern,
+                                          Float16(Float(t.handedness)).bitPattern)
             }
             meshVertices.append(v)
         }

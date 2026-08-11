@@ -206,6 +206,15 @@ final class MetalRenderer {
             PipelineKey(vertex: "ollin_mesh_textured_vertex", fragment: "ollin_mesh_textured_fragment",
                         blend: blend, depthFormat: depth)
         }
+        // normal-mapped textured mesh: the textured path's twin whose fragment bends
+        // the lighting normal by a tangent-space normal map (its vertex carries the
+        // packed tangent through). A separate function pair rather than a branch in
+        // the shipped fragment, so unmapped textured frames stay byte-identical by
+        // construction (the codegen rule: control-flow growth re-contracts fast-math).
+        static func meshNormalMapped(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
+            PipelineKey(vertex: "ollin_mesh_nm_vertex", fragment: "ollin_mesh_nm_fragment",
+                        blend: blend, depthFormat: depth)
+        }
         // wireframe 3D triangle mesh: triangle edges only (barycentric edge-shading),
         // unlit, depth-tested.
         static func meshWireframe(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
@@ -321,7 +330,7 @@ final class MetalRenderer {
         static func forBatch(_ kind: GeometryKind, _ blend: BlendMode,
                              depth: MTLPixelFormat? = nil, textured: Bool = false,
                              wireframe: Bool = false, matcap: Bool = false,
-                             grid: Bool = false) -> PipelineKey {
+                             grid: Bool = false, normalMapped: Bool = false) -> PipelineKey {
             switch kind {
             case .triangles:  return .solid(blend, depth: depth)
             case .fringe:     return .fringe(blend, depth: depth)
@@ -333,11 +342,12 @@ final class MetalRenderer {
             case .particles:  return .points(blend, depth: depth)
             case .points3D:   return .pointCloud(blend, depth: depth)
             case .mesh3D:
-                return grid      ? .grid(blend, depth: depth)
-                     : wireframe ? .meshWireframe(blend, depth: depth)
-                     : matcap    ? .meshMatcap(blend, depth: depth)
-                     : textured  ? .meshTextured(blend, depth: depth)
-                                  : .mesh(blend, depth: depth)
+                return grid         ? .grid(blend, depth: depth)
+                     : wireframe    ? .meshWireframe(blend, depth: depth)
+                     : matcap       ? .meshMatcap(blend, depth: depth)
+                     : normalMapped ? .meshNormalMapped(blend, depth: depth)
+                     : textured     ? .meshTextured(blend, depth: depth)
+                                    : .mesh(blend, depth: depth)
             case .depthScene: return .depthScene(blend, depth: depth)
             case .clipPush:   return .clipWrite(depth: depth)
             case .clipPop:    return .clipCover(depth: depth)
@@ -996,6 +1006,26 @@ final class MetalRenderer {
     /// with the gates down). The 2D `strip` stand-in can't serve here: the slot's
     /// declared type is an array, and Metal validation rejects a plain 2D texture.
     var lightShapingStandIn: MTLTexture?
+    /// A 1×1 white texture for the base-color slot of a normal-map-only mesh: the
+    /// textured fragment multiplies its sample onto the surface color, so white is
+    /// the identity and the mesh draws in its plain base color under the bent
+    /// normals. Built lazily, kept for the session (the `iblPlaceholderCube` shape).
+    var whiteStandInTexture: MTLTexture?
+
+    /// The 1×1 white stand-in, built on first use.
+    func whiteStandIn() -> MTLTexture? {
+        if let whiteStandInTexture { return whiteStandInTexture }
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .rgba8Unorm_srgb, width: 1, height: 1, mipmapped: false)
+        desc.usage = .shaderRead
+        desc.storageMode = .managed
+        guard let tex = device.makeTexture(descriptor: desc) else { return nil }
+        var white: [UInt8] = [255, 255, 255, 255]
+        tex.replace(region: MTLRegionMake2D(0, 0, 1, 1), mipmapLevel: 0,
+                    withBytes: &white, bytesPerRow: 4)
+        whiteStandInTexture = tex
+        return tex
+    }
     /// Processed equirect pixels ready to bake, keyed by source. A heavy `.url` HDRI decodes
     /// off the render thread (live) and lands here for the next frame to upload + bake; the
     /// bundled placeholder shows meanwhile. Locked because the background decode writes it.
