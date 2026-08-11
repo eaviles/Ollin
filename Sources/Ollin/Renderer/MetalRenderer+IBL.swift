@@ -20,6 +20,15 @@ struct IBLCacheEntry {
     var lastUse: UInt64
 }
 
+/// The bake-cache key: an environment's pixels plus, for the procedural sky, the
+/// cloudscape baked into them (clouds change every baked map, so they must key the
+/// cache; a non-sky source ignores clouds and keys on its source alone, so an HDRI
+/// with a stray clouds value never fragments its slot).
+struct IBLKey: Hashable {
+    let source: Environment.Source
+    let clouds: Clouds?
+}
+
 /// The baked image-based-lighting maps for one environment, cached by source. The
 /// `envCube` is the environment itself (for a skybox and mirror reflections), `irradiance`
 /// the cosine-convolved diffuse cube, `prefilter` the GGX-prefiltered specular mip-cube.
@@ -91,12 +100,21 @@ extension MetalRenderer {
     /// source so the bake runs once; the raw float pixels are freed once baked into textures.
     private func bakeReady(_ env: Environment, blocking: Bool,
                            commandBuffer cb: MTLCommandBuffer) -> IBLMaps? {
-        // A static sky (or an HDRI) keys on its exact source, so it bakes once and then reuses
-        // the cache every frame. An animated sky is a fresh source each frame, so it re-bakes
-        // entirely on the GPU (no CPU read-back), which a smoothly moving sun needs.
-        if var entry = iblCache[env.source] {
+        // A static sky (or an HDRI) keys on its exact source (clouds included, for the
+        // sky), so it bakes once and then reuses the cache every frame. An animated sky
+        // is a fresh key each frame, so it re-bakes entirely on the GPU (no CPU
+        // read-back), which a smoothly moving sun or a drifting cloudscape needs.
+        let isSkySource = { if case .sky = env.source { return true } else { return false } }()
+        let key = IBLKey(source: env.source, clouds: isSkySource ? env.clouds : nil)
+        if env.clouds != nil, !isSkySource {
+            let fresh = Self.warnedCloudsOnHDRI.withLock { warned in
+                warned ? false : { warned = true; return true }()
+            }
+            if fresh { print("Ollin: clouds ride the procedural .sky environment only; an HDRI's clouds are already in its pixels") }
+        }
+        if var entry = iblCache[key] {
             entry.lastUse = iblResolveTick
-            iblCache[env.source] = entry
+            iblCache[key] = entry
             return entry.maps
         }
 
@@ -104,7 +122,8 @@ extension MetalRenderer {
         let isSky: Bool
         if case .sky(let t, let e, let a) = env.source {
             guard let sky = generateSkyEquirectTexture(turbidity: t, sunElevation: e,
-                                                       groundAlbedo: a, commandBuffer: cb) else { return nil }
+                                                       groundAlbedo: a, clouds: key.clouds,
+                                                       commandBuffer: cb) else { return nil }
             (loaded, avg) = sky
             isSky = true
         } else {
@@ -116,19 +135,22 @@ extension MetalRenderer {
         }
         guard let maps = bakeIBL(env, equirectTexture: loaded, avgLuminance: avg,
                                  fastSky: isSky, commandBuffer: cb) else { return nil }
-        // An animated sky makes a fresh source each frame; drop the previous sky bake so its GPU
+        // An animated sky makes a fresh key each frame; drop the previous sky bake so its GPU
         // textures don't accumulate over the animation (a static sky keeps its one entry).
-        if case .sky = env.source {
-            for k in iblCache.keys where k != env.source {
-                if case .sky = k { iblCache[k] = nil }
+        if isSky {
+            for k in iblCache.keys where k != key {
+                if case .sky = k.source { iblCache[k] = nil }
             }
         }
         let bytes = Self.textureFootprint(maps.irradiance) + Self.textureFootprint(maps.prefilter)
             + Self.textureFootprint(maps.envCube) + Self.textureFootprint(maps.equirect)
-        iblCache[env.source] = IBLCacheEntry(maps: maps, bytes: bytes, lastUse: iblResolveTick)
-        evictIBLOverBudget(keeping: env.source)
+        iblCache[key] = IBLCacheEntry(maps: maps, bytes: bytes, lastUse: iblResolveTick)
+        evictIBLOverBudget(keeping: key)
         return maps
     }
+
+    /// Once-only note for a clouds value on a non-sky environment (ignored by design).
+    private static let warnedCloudsOnHDRI = OSAllocatedUnfairLock(initialState: false)
 
     /// The baked-map budget: enough for a handful of high-resolution environments (a 4K
     /// HDRI's maps are ~85 MB, an 8K's ~270 MB) while keeping a gallery that cycles many
@@ -137,8 +159,8 @@ extension MetalRenderer {
     private static let iblCacheBudgetBytes = 512 << 20
 
     /// Evict least-recently-used baked maps until the cache fits the budget, never
-    /// touching `current` (the source just baked or reused for this frame).
-    private func evictIBLOverBudget(keeping current: Environment.Source) {
+    /// touching `current` (the key just baked or reused for this frame).
+    private func evictIBLOverBudget(keeping current: IBLKey) {
         let budget = iblCacheBudgetOverride ?? Self.iblCacheBudgetBytes
         var total = iblCache.values.reduce(0) { $0 + $1.bytes }
         while total > budget,
@@ -495,9 +517,13 @@ extension MetalRenderer {
     /// (a cheap CPU sphere sum), so an animated sun re-bakes entirely on the GPU with no stall.
     /// 1024x512 is ample for the lighting and a smooth backdrop.
     private func generateSkyEquirectTexture(turbidity: Double, sunElevation: Double,
-                                            groundAlbedo: Double, commandBuffer cb: MTLCommandBuffer)
+                                            groundAlbedo: Double, clouds: Clouds?,
+                                            commandBuffer cb: MTLCommandBuffer)
         -> (texture: MTLTexture, avgLuminance: Float)? {
-        let width = 1024, height = 512
+        // A cloudy sky doubles the bake resolution: the clouds ARE the backdrop's
+        // content, and 1K spreads a formation over too few texels to keep its billows.
+        let width = clouds == nil ? 1024 : 2048
+        let height = width / 2
         let turb = min(max(turbidity, 1), 10)
         let albedo = min(max(groundAlbedo, 0), 1)
         let elevation = min(max(sunElevation, 0.001), Double.pi / 2 - 0.001)
@@ -510,7 +536,8 @@ extension MetalRenderer {
         }
         // Pack 11 float4s (see ollin_ibl_sky_gen): 9 coefficient rows (rgb = the R/G/B value of
         // coefficient i), the per-channel radiance + ground albedo, the sun direction + radius.
-        var sky = [SIMD4<Float>](repeating: .zero, count: 11)
+        // A cloudscape appends two more rows (read only by the clouds twin fragment).
+        var sky = [SIMD4<Float>](repeating: .zero, count: clouds == nil ? 11 : 13)
         for i in 0..<9 {
             sky[i] = SIMD4<Float>(Float(configs[i]), Float(configs[9 + i]), Float(configs[18 + i]), 0)
         }
@@ -519,6 +546,13 @@ extension MetalRenderer {
         let solarRadius: Float = 0.0255   // ~1.5 deg disc, a touch wider than the sun for visible reflections
         let sunDir = SIMD3<Float>(0, Float(sin(elevation)), Float(cos(elevation)))
         sky[10] = SIMD4<Float>(sunDir.x, sunDir.y, sunDir.z, solarRadius)
+        var noise: (base: MTLTexture, detail: MTLTexture)?
+        if let clouds {
+            sky[11] = SIMD4<Float>(Float(clouds.coverage), Float(clouds.density),
+                                   Float(clouds.scale), Float(clouds.phase))
+            sky[12] = SIMD4<Float>(Float(clouds.tallness), 0, 0, 0)
+            noise = ensureCloudNoise(commandBuffer: cb)
+        }
 
         // Render the sky equirect on the frame's command buffer (no read-back), mipmapped so the
         // cube bake and the skybox blur sample valid levels (makeEnvCube generates the mips).
@@ -526,8 +560,10 @@ extension MetalRenderer {
                                                             width: width, height: height, mipmapped: true)
         desc.usage = [.renderTarget, .shaderRead]
         desc.storageMode = .private
+        let fragment = (clouds != nil && noise != nil) ? "ollin_ibl_sky_gen_clouds"
+                                                       : "ollin_ibl_sky_gen"
         guard let tex = device.makeTexture(descriptor: desc),
-              let pipe = try? pipeline(.ibl("ollin_ibl_sky_gen")) else { return nil }
+              let pipe = try? pipeline(.ibl(fragment)) else { return nil }
         let rp = MTLRenderPassDescriptor()
         rp.colorAttachments[0].texture = tex
         rp.colorAttachments[0].loadAction = .dontCare
@@ -535,11 +571,53 @@ extension MetalRenderer {
         guard let enc = cb.makeRenderCommandEncoder(descriptor: rp) else { return nil }
         enc.setRenderPipelineState(pipe)
         enc.setFragmentBytes(&sky, length: sky.count * MemoryLayout<SIMD4<Float>>.stride, index: 0)
+        if let noise {
+            enc.setFragmentTexture(noise.base, index: 0)
+            enc.setFragmentTexture(noise.detail, index: 1)
+        }
         enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         enc.endEncoding()
         let avg = Self.skyAverageLuminance(configs: configs, radiances: radiances,
                                            albedo: albedo, sunDir: sunDir)
         return (tex, avg)
+    }
+
+    /// The two tiling 3D noise fields the cloud march samples, baked once per process by
+    /// two compute dispatches on the frame's command buffer and kept for its lifetime
+    /// (the sheen-LUT discipline): a 128-cube base whose red is the billow-carved fog
+    /// (the low-frequency lattice noise remapped by the cellular field) with three rising
+    /// cellular octaves in gba, and a 32-cube of three cellular octaves that erode edges.
+    /// Both are pure functions of a fixed internal lattice (no seed, no clock), so every
+    /// bake on every machine samples identical fields and exports reproduce.
+    private func ensureCloudNoise(commandBuffer cb: MTLCommandBuffer)
+        -> (base: MTLTexture, detail: MTLTexture)? {
+        if let t = cloudNoiseTextures { return t }
+        guard let baseFn = library.makeFunction(name: "ollin_cloud_noise_base"),
+              let detailFn = library.makeFunction(name: "ollin_cloud_noise_detail"),
+              let basePipe = try? device.makeComputePipelineState(function: baseFn),
+              let detailPipe = try? device.makeComputePipelineState(function: detailFn)
+        else { return nil }
+        func volume(_ edge: Int) -> MTLTexture? {
+            let d = MTLTextureDescriptor()
+            d.textureType = .type3D
+            d.pixelFormat = .rgba8Unorm    // 0…1 noise; 8 bits is the field's own precision
+            d.width = edge; d.height = edge; d.depth = edge
+            d.usage = [.shaderRead, .shaderWrite]
+            d.storageMode = .private
+            return device.makeTexture(descriptor: d)
+        }
+        guard let base = volume(128), let detail = volume(32),
+              let enc = cb.makeComputeCommandEncoder() else { return nil }
+        let tg = MTLSize(width: 4, height: 4, depth: 4)
+        enc.setComputePipelineState(basePipe)
+        enc.setTexture(base, index: 0)
+        enc.dispatchThreads(MTLSize(width: 128, height: 128, depth: 128), threadsPerThreadgroup: tg)
+        enc.setComputePipelineState(detailPipe)
+        enc.setTexture(detail, index: 0)
+        enc.dispatchThreads(MTLSize(width: 32, height: 32, depth: 32), threadsPerThreadgroup: tg)
+        enc.endEncoding()
+        cloudNoiseTextures = (base, detail)
+        return (base, detail)
     }
 
     /// The solid-angle-weighted average luminance of the procedural sky, integrated on the CPU

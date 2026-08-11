@@ -73,10 +73,15 @@ public struct Environment: Equatable, Hashable, Sendable {
     /// The bundled resource name for a built-in (the 1K placeholder); nil for the
     /// download-on-demand built-ins, loaded files, and user URLs.
     public var bundledResource: String?
+    /// The cloudscape baked over a `.sky` source, or nil for a clear sky. Set it with
+    /// the `clouds(_:)` modifier; a non-sky source ignores it (an HDRI's clouds are
+    /// already in its pixels).
+    public var clouds: Clouds?
 
     public init(source: Source, intensity: Double = 1, rotation: Double = 0,
                 showsBackground: Bool = true, backgroundBlur: Double? = nil,
-                polyHavenSlug: String? = nil, bundledResource: String? = nil) {
+                polyHavenSlug: String? = nil, bundledResource: String? = nil,
+                clouds: Clouds? = nil) {
         self.source = source
         self.intensity = max(0, intensity)
         self.rotation = rotation
@@ -84,6 +89,7 @@ public struct Environment: Equatable, Hashable, Sendable {
         self.backgroundBlur = backgroundBlur.map { min(1, max(0, $0)) }
         self.polyHavenSlug = polyHavenSlug
         self.bundledResource = bundledResource
+        self.clouds = clouds
     }
 
     // MARK: - Adjustments
@@ -108,6 +114,25 @@ public struct Environment: Equatable, Hashable, Sendable {
     /// overriding the auto default.
     public func backgroundBlur(_ amount: Double) -> Environment {
         var e = self; e.backgroundBlur = min(1, max(0, amount)); return e
+    }
+
+    /// A copy with a raymarched cloudscape over the procedural sky. Only a `.sky`
+    /// environment can carry clouds (an HDRI's clouds are already in its pixels; a
+    /// non-sky source ignores this with a one-time note). The clouds bake into the
+    /// environment itself, so the backdrop, the lighting, and the reflections all
+    /// see the same weather: raise the coverage toward overcast and the whole
+    /// scene's light dims and diffuses with it.
+    public func clouds(_ clouds: Clouds) -> Environment {
+        var e = self; e.clouds = clouds; return e
+    }
+
+    /// The knob form of `clouds(_:)`: a cloudscape described by its dials. `phase`
+    /// is the wind's clock; advance it (`phase: time * 0.01`) and the weather
+    /// drifts, deterministically, so an export reproduces.
+    public func clouds(coverage: Double = 0.45, density: Double = 1, scale: Double = 1,
+                       tallness: Double = 0.6, phase: Double = 0) -> Environment {
+        self.clouds(Clouds(coverage: coverage, density: density, scale: scale,
+                           tallness: tallness, phase: phase))
     }
 
     /// A copy of a built-in at a higher resolution, downloaded from Poly Haven on first use
@@ -293,4 +318,47 @@ extension Environment {
         guard let src = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
         return CGImageSourceCreateImageAtIndex(src, 0, nil)
     }
+}
+
+/// A raymarched cloudscape carried by the procedural `.sky` environment (the
+/// `clouds(_:)` modifier). The clouds bake into the environment itself, so the
+/// backdrop, the image-based lighting, and the reflections all see one weather:
+/// a scattered fair-weather sky keeps the scene bright, an overcast one dims and
+/// diffuses everything under it. The whole cloudscape is a pure function of these
+/// dials, so a still sky bakes once and costs nothing per frame, and an export
+/// reproduces exactly; `phase` is the wind's clock, advanced by the sketch.
+public struct Clouds: Equatable, Hashable, Sendable {
+    /// How much of the sky the weather claims, `0…1`: 0.2 is a few fair-weather
+    /// puffs, 0.45 a scattered sky, 0.7 broken cloud, 0.9+ overcast.
+    public var coverage: Double
+    /// The clouds' optical thickness dial (1 = the standard look; lower reads
+    /// thin and vaporous, higher dense and heavy).
+    public var density: Double
+    /// The weather systems' feature size (1 = the standard look; larger values
+    /// mean broader, calmer formations, smaller a busier sky).
+    public var scale: Double
+    /// How tall the formations build, `0…1`: low values keep flat stratus
+    /// sheets, high ones let cumulus towers rise.
+    public var tallness: Double
+    /// The wind's clock. Advance it (`phase: time * 0.02`) and the weather
+    /// drifts and evolves; the same phase always shows the same sky.
+    public var phase: Double
+
+    public init(coverage: Double = 0.45, density: Double = 1, scale: Double = 1,
+                tallness: Double = 0.6, phase: Double = 0) {
+        self.coverage = min(1, max(0, coverage))
+        self.density = max(0, density)
+        self.scale = min(4, max(0.25, scale))
+        self.tallness = min(1, max(0, tallness))
+        self.phase = phase
+    }
+
+    /// A few fair-weather puffs in a mostly clear sky.
+    public static let fair = Clouds(coverage: 0.25, tallness: 0.5)
+    /// The default scattered sky: real blue between real clouds.
+    public static let scattered = Clouds(coverage: 0.45, tallness: 0.6)
+    /// Broken cloud: more sky claimed than clear, towers building.
+    public static let broken = Clouds(coverage: 0.68, tallness: 0.75)
+    /// A gray lid: the sun reads as a bright patch, the light goes soft.
+    public static let overcast = Clouds(coverage: 0.92, density: 1.2, tallness: 0.35)
 }

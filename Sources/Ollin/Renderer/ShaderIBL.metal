@@ -199,6 +199,258 @@ fragment float4 ollin_ibl_sky_gen(OllinIBLVaryings in [[stage_in]],
     return float4(max(col, 0.0), 1.0);
 }
 
+// 1c) Volumetric clouds over the procedural sky. The cloudscape bakes into the same
+// equirect the clear sky fills, so the backdrop, the IBL chain, and every reflection
+// see one weather. `ollin_ibl_sky_gen` above stays verbatim (a cloudless sky must be
+// byte-identical); this twin reproduces its clear sky, then marches the cloud shell
+// over it. The density model layers a weather field (where formations sit), a
+// height-shaping pair (rounded bases, tapering tops), a tiling billow-carved base
+// volume, and an eroding detail volume; the lighting walks a short march toward the
+// sun with the classic transmittance shaping (a floor under the attenuation so
+// undersides stay readable, a forward lobe plus a sun halo for silver linings, and a
+// depth-driven darkening that keeps the billow edges drawn). The whole cloudscape is
+// a pure function of the packed dials, so a bake reproduces anywhere.
+
+constant float OLLIN_CLOUD_BASE  = 1500.0;      // shell altitudes, meters
+constant float OLLIN_CLOUD_TOP   = 4000.0;
+constant float OLLIN_CLOUD_EARTH = 6371000.0;   // shell curvature (the horizon compression)
+
+static inline float ollin_cloud_remap(float v, float lo, float ho, float ln, float hn) {
+    return ln + (v - lo) * (hn - ln) / max(ho - lo, 1e-5);
+}
+
+// Wrapped-lattice hash: cells c and c + period agree on every axis, so the sampled
+// volume tiles seamlessly under repeat addressing.
+static inline float3 ollin_cloud_cell_hash(int3 c, int period) {
+    c = ((c % period) + period) % period;
+    uint h = uint(c.x) + (uint(c.y) << 9) + (uint(c.z) << 18);
+    h = h * 0x9E3779B9u; h ^= h >> 16; h *= 0x85EBCA6Bu; h ^= h >> 13;
+    h *= 0xC2B2AE35u; h ^= h >> 16;
+    return float3(float(h & 1023u), float((h >> 10) & 1023u),
+                  float((h >> 20) & 1023u)) / 1023.0;
+}
+
+// Periodic cellular field over the unit torus at `freq` cells per side, inverted so
+// billow cores read bright; the erosion and the base carve both build on it.
+static inline float ollin_cloud_worley(float3 p, float freq) {
+    p *= freq;
+    int3 base = int3(floor(p));
+    float dmin = 1e9;
+    for (int z = -1; z <= 1; z++)
+        for (int y = -1; y <= 1; y++)
+            for (int x = -1; x <= 1; x++) {
+                int3 cell = base + int3(x, y, z);
+                float3 d = p - (float3(cell) + ollin_cloud_cell_hash(cell, int(freq)));
+                dmin = min(dmin, dot(d, d));
+            }
+    return 1.0 - clamp(sqrt(dmin), 0.0, 1.0);
+}
+
+// Three cellular octaves in the classic 0.625/0.25/0.125 weighting.
+static inline float ollin_cloud_worley_fbm(float3 p, float freq) {
+    return ollin_cloud_worley(p, freq) * 0.625
+         + ollin_cloud_worley(p, freq * 2.0) * 0.25
+         + ollin_cloud_worley(p, freq * 4.0) * 0.125;
+}
+
+// Periodic gradient-lattice noise on the same torus (the fog-like half of the base).
+static inline float ollin_cloud_gnoise(float3 p, float freq) {
+    p *= freq;
+    int3 i = int3(floor(p));
+    float3 f = fract(p);
+    float3 u = f * f * (3.0 - 2.0 * f);
+    int per = int(freq);
+    float n = 0.0;
+    for (int z = 0; z <= 1; z++)
+        for (int y = 0; y <= 1; y++)
+            for (int x = 0; x <= 1; x++) {
+                float3 g = ollin_cloud_cell_hash(i + int3(x, y, z), per) * 2.0 - 1.0;
+                float3 off = f - float3(x, y, z);
+                float w = (x == 1 ? u.x : 1.0 - u.x)
+                        * (y == 1 ? u.y : 1.0 - u.y)
+                        * (z == 1 ? u.z : 1.0 - u.z);
+                n += w * dot(g, off);
+            }
+    return n * 0.5 + 0.5;
+}
+
+static inline float ollin_cloud_gnoise_fbm(float3 p, float freq, int octaves) {
+    float sum = 0.0, amp = 0.5, norm = 0.0;
+    for (int i = 0; i < octaves; i++) {
+        sum += amp * ollin_cloud_gnoise(p, freq);
+        norm += amp;
+        freq *= 2.0;   // the period doubles with it, so every octave still tiles
+        amp *= 0.5;
+    }
+    return sum / max(norm, 1e-5);
+}
+
+// The 128-cube base volume: red is the billow-carved fog (gradient fbm remapped by the
+// low cellular field), gba three rising cellular octaves the density recipe folds in.
+kernel void ollin_cloud_noise_base(texture3d<float, access::write> out [[texture(0)]],
+                                   uint3 id [[thread_position_in_grid]]) {
+    if (id.x >= 128 || id.y >= 128 || id.z >= 128) return;
+    float3 p = (float3(id) + 0.5) / 128.0;
+    float perlin = ollin_cloud_gnoise_fbm(p, 8.0, 3);
+    float wLow = ollin_cloud_worley_fbm(p, 4.0);
+    float pw = saturate(ollin_cloud_remap(perlin, 0.0, 1.0, wLow, 1.0));
+    out.write(float4(pw,
+                     ollin_cloud_worley_fbm(p, 8.0),
+                     ollin_cloud_worley_fbm(p, 16.0),
+                     ollin_cloud_worley_fbm(p, 32.0)), id);
+}
+
+// The 32-cube detail volume: three cellular octaves that erode cloud edges.
+kernel void ollin_cloud_noise_detail(texture3d<float, access::write> out [[texture(0)]],
+                                     uint3 id [[thread_position_in_grid]]) {
+    if (id.x >= 32 || id.y >= 32 || id.z >= 32) return;
+    float3 p = (float3(id) + 0.5) / 32.0;
+    out.write(float4(ollin_cloud_worley_fbm(p, 4.0),
+                     ollin_cloud_worley_fbm(p, 8.0),
+                     ollin_cloud_worley_fbm(p, 16.0), 1.0), id);
+}
+
+// Cloud density at a world point. `ph` is the height fraction in the shell. The weather
+// (where formations sit, how tall they build) reads the plan position through the shader
+// library's 2D fbm, wind-drifted by the phase dial; the base volume gives the billow
+// forms, and the detail volume erodes their edges (skipped on the `cheap` light-march
+// taps, which only need bulk occlusion). Every term is the published recipe's shape:
+// coverage remaps the carved base so rising coverage lets clouds claim thinner noise,
+// the height pair rounds bases and tapers tops, and the density pair keeps bases
+// fluffy and tops defined.
+static inline float ollin_cloud_density(float3 p, float ph, constant float4 *sky,
+                                        texture3d<float> baseNoise,
+                                        texture3d<float> detailNoise, bool cheap) {
+    float coverage = sky[11].x, gd = sky[11].y, scale = sky[11].z, phase = sky[11].w;
+    float tallness = sky[12].x;
+    float2 wind = float2(0.13, 0.07) * phase;
+    float2 wuv = p.xz / (9000.0 * scale);
+    // The weather field: the reference's hand-drawn map has hard cores and real gaps,
+    // so the procedural stand-in thresholds a billow fbm into blobs, the window sliding
+    // down (and the blobs growing) as coverage rises; the fill field claims the space
+    // between systems on the way to overcast.
+    float w = fbm(wuv * 3.0 + wind);
+    float t0 = 0.72 - coverage * 0.38;
+    float wc0 = saturate(ollin_cloud_remap(w, t0, t0 + 0.07, 0.0, 1.0));
+    float wc1 = saturate(fbm(wuv * 6.0 + wind * 1.3 + 37.0) * 1.25);
+    float wmc = max(wc0, saturate(coverage - 0.5) * wc1 * 2.0);
+    float wh = max(tallness * saturate(0.35 + 0.9 * fbm(wuv * 2.0 - wind + 11.0)), 0.08);
+    float srB = saturate(ollin_cloud_remap(ph, 0.0, 0.07, 0.0, 1.0));
+    float srT = saturate(ollin_cloud_remap(ph, wh * 0.2, wh, 1.0, 0.0));
+    float sa = srB * srT;
+    if (sa <= 0.0) return 0.0;
+    float drB = ph * saturate(ollin_cloud_remap(ph, 0.0, 0.15, 0.0, 1.0));
+    float drT = saturate(ollin_cloud_remap(ph, 0.9, 1.0, 1.0, 0.0));
+    float da = gd * drB * drT * 2.0;
+    constexpr sampler ns(filter::linear, address::repeat);
+    float3 drift = float3(wind.x, 0.018 * phase, wind.y) * 0.4;
+    float4 sn = baseNoise.sample(ns, p / (4200.0 * scale) + drift);
+    float snSample = ollin_cloud_remap(sn.r, (sn.g * 0.625 + sn.b * 0.25 + sn.a * 0.125) - 1.0,
+                                       1.0, 0.0, 1.0);
+    // The weather already carries the coverage dial (its blobs grow with it), so the
+    // carve threshold reads the map with only a soft extra coupling, not the full
+    // product (which would double-penalize a scattered sky into nothing).
+    float snd = saturate(ollin_cloud_remap(snSample * sa, 1.0 - wmc * 0.85, 1.0, 0.0, 1.0));
+    if (cheap || snd <= 0.0) return snd * da;
+    float3 dn = detailNoise.sample(ns, p / (980.0 * scale) + drift * 2.0).rgb;
+    float dnFbm = dn.r * 0.625 + dn.g * 0.25 + dn.b * 0.125;
+    float dnMod = 0.35 * exp(-coverage * 0.75) * mix(dnFbm, 1.0 - dnFbm, saturate(ph * 5.0));
+    return saturate(ollin_cloud_remap(snd, dnMod, 1.0, 0.0, 1.0)) * da;
+}
+
+// The upward crossing of a sphere shell from a point inside it (the positive root).
+static inline float ollin_cloud_shell_t(float3 o, float3 rd, float radius) {
+    float b = dot(o, rd);
+    float c = dot(o, o) - radius * radius;
+    return -b + sqrt(max(b * b - c, 0.0));
+}
+
+fragment float4 ollin_ibl_sky_gen_clouds(OllinIBLVaryings in [[stage_in]],
+                                         constant float4 *sky [[buffer(0)]],
+                                         texture3d<float> baseNoise [[texture(0)]],
+                                         texture3d<float> detailNoise [[texture(1)]]) {
+    // The clear sky, exactly as the plain generator forms it.
+    float3 dir = ollin_ibl_equirect_dir(in.uv);
+    float3 sunDir = sky[10].xyz;
+    float solarRadius = sky[10].w;
+    float albedo = sky[9].a;
+    float ground = 1.0;
+    bool mirrored = false;
+    if (dir.y < 0.0) { dir.y = -dir.y; ground = albedo; mirrored = true; }
+    float cosTheta = dir.y;
+    float gamma = acos(clamp(dot(dir, sunDir), -1.0, 1.0));
+    float3 skyOnly = ollin_sky_radiance(sky, cosTheta, gamma) * ground;
+    float3 col = skyOnly;
+    if (!mirrored) {
+        float disk = 1.0 - smoothstep(solarRadius * 0.6, solarRadius, gamma);
+        float3 sunSky = ollin_sky_radiance(sky, max(sunDir.y, 0.02), 0.0);
+        col += disk * sunSky * OLLIN_SKY_SUN_FACTOR;
+    }
+
+    // The cloud march. Near the horizon the shell crossing runs tens of kilometers and
+    // one texel spans it all, so the contribution fades out and the clear horizon sky
+    // stands (the classic distance blend); the mirrored lower hemisphere marches too,
+    // dimmed like the sky it mirrors, so the bounce floor under an overcast is overcast.
+    float horizonFade = smoothstep(0.03, 0.12, dir.y);
+    if (horizonFade <= 0.0) return float4(max(col, 0.0), 1.0);
+    float3 o = float3(0.0, OLLIN_CLOUD_EARTH, 0.0);
+    float tIn = ollin_cloud_shell_t(o, dir, OLLIN_CLOUD_EARTH + OLLIN_CLOUD_BASE);
+    float tOut = ollin_cloud_shell_t(o, dir, OLLIN_CLOUD_EARTH + OLLIN_CLOUD_TOP);
+    float span = min(tOut - tIn, 24000.0);
+    const int STEPS = 64;
+    float stepLen = span / float(STEPS);
+    float jitter = ollin_ign(in.position.xy);
+    float3 sunCol = ollin_sky_radiance(sky, max(sunDir.y, 0.02), 0.0);
+    float cosView = dot(dir, sunDir);
+    // In/out-scatter: the forward lobe against the soft back lobe, with the sun-halo
+    // term keeping a hard silver lining (the max picks whichever is brighter).
+    float halo = 2.5 * pow(saturate(cosView), 16.0);
+    float ios = mix(max(ollin_hg_phase(cosView, 0.45), halo),
+                    ollin_hg_phase(cosView, -0.2), 0.72);
+    float coverage0 = sky[11].x;
+    float T = 1.0;
+    float3 acc = float3(0.0);
+    for (int i = 0; i < STEPS; i++) {
+        float3 p = o + dir * (tIn + (float(i) + jitter) * stepLen);
+        float alt = length(p) - OLLIN_CLOUD_EARTH;
+        float ph = saturate((alt - OLLIN_CLOUD_BASE) / (OLLIN_CLOUD_TOP - OLLIN_CLOUD_BASE));
+        float d = ollin_cloud_density(p, ph, sky, baseNoise, detailNoise, false);
+        if (d > 1e-3) {
+            // The light march: bulk occlusion toward the sun, cheap taps only.
+            float ds = 0.0;
+            const float lStep = 1100.0 / 5.0;
+            for (int j = 1; j <= 5; j++) {
+                float3 lp = p + sunDir * (float(j) * lStep);
+                float lAlt = length(lp) - OLLIN_CLOUD_EARTH;
+                float lPh = (lAlt - OLLIN_CLOUD_BASE) / (OLLIN_CLOUD_TOP - OLLIN_CLOUD_BASE);
+                if (lPh >= 1.0) break;
+                ds += ollin_cloud_density(lp, saturate(lPh), sky, baseNoise, detailNoise, true)
+                    * (lStep / 1000.0);
+            }
+            // Attenuation with a clamp (undersides stay readable, not black) and a
+            // density floor; the depth-driven darkening keeps billow edges drawn.
+            float atten = max(exp(-12.0 * ds), exp(-12.0 * 0.25));
+            atten = max(d * 0.2, atten);
+            float osAmb = 1.0 - saturate(0.9 * pow(d, ollin_cloud_remap(ph, 0.3, 0.9, 0.5, 1.0)))
+                              * saturate(pow(ollin_cloud_remap(ph, 0.0, 0.3, 0.8, 1.0), 0.8));
+            // The ambient half reads the clear sky behind the cloud, so a heavy
+            // coverage thins it: under a lid the mid-deck no longer sees open sky.
+            float3 sampleL = sunCol * (atten * ios * osAmb) * 1.4
+                           + skyOnly * 0.35 * (0.45 + 0.55 * ph) * (1.0 - 0.55 * coverage0);
+            float aStep = 1.0 - exp(-d * stepLen / 140.0);
+            acc += sampleL * (aStep * T);
+            T *= 1.0 - aStep;
+            if (T < 0.01) break;
+        }
+    }
+    // The mirrored lower hemisphere keeps a calmer share of the deck: the bounce
+    // floor should darken under weather without reading as a literal cloud lake.
+    float share = mirrored ? 0.55 : 1.0;
+    float cover = (1.0 - T) * horizonFade * share;
+    col = col * (1.0 - cover) + acc * horizonFade * share * (mirrored ? albedo : 1.0);
+    return float4(max(col, 0.0), 1.0);
+}
+
 // 2) Diffuse irradiance: cosine-weighted hemisphere convolution of the environment cube.
 fragment float4 ollin_ibl_irradiance(OllinIBLVaryings in [[stage_in]],
                                      constant float4 &params [[buffer(0)]],

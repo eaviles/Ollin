@@ -114,3 +114,4 @@ Not fogged, by design: 2D drawing (fog is a property of the 3D air), point-cloud
 - A frame that draws no geometry at all skips rendering entirely, air included - beams need at least one mesh in the frame (a floor does it).
 - In beams-only mode the beam brightness is referenced to a thin standard haze, so `amount` behaves comparably with and without `fog`.
 - An environment's reflection of the *sky* stays clear in mirrors (only traced geometry fogs); under dense fog prefer dimmer environments.
+- Volumetric **clouds** are the environment's half of the atmosphere: they bake into the procedural sky (`.sky(...).clouds(...)`) rather than marching per frame, so the backdrop, lighting, and reflections share one weather. See [3D ▸ Clouds over the procedural sky](./3D.md#sky-clouds).

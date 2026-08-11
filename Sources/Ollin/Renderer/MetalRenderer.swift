@@ -950,7 +950,11 @@ final class MetalRenderer {
     /// environment-independent (the split-sum scale/bias integral) so it's baked once
     /// globally. `currentIBL` is the set resolved for the frame being encoded, bound to
     /// the mesh fragment.
-    var iblCache: [Environment.Source: IBLCacheEntry] = [:]
+    var iblCache: [IBLKey: IBLCacheEntry] = [:]
+    /// The tiling 3D noise volumes the procedural sky's cloud march samples, baked once
+    /// per process by compute the first time a `.sky` environment carries clouds (a pure
+    /// function of a fixed lattice, so every process bakes identical fields).
+    var cloudNoiseTextures: (base: MTLTexture, detail: MTLTexture)?
     /// Monotonic resolve counter: bumped once per `resolveIBL`, stamped on cache entries
     /// (LRU order) and equirect-pixel requests (staleness pruning).
     var iblResolveTick: UInt64 = 0

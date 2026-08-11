@@ -229,6 +229,17 @@ environment(.sky(sunElevation: 0.35))       // no asset, and the sun can move
 
 It takes a sun elevation and a `turbidity` for how hazy the air is, and because it's computed rather than loaded, you can animate the sun and watch the whole scene's light follow. It's the one to reach for when you want good lighting and don't want to think about assets at all.
 
+The sky can also carry weather. `.clouds(...)` marches real volumetric clouds into the same bake, so the deck behind your scene, the light on every surface, and the picture in every reflection agree about the sky:
+
+```swift
+environment(.sky(sunElevation: 0.5).clouds(.scattered))          // a preset deck
+environment(.sky(sunElevation: 0.5).clouds(coverage: 0.9))       // a gray lid: the light goes soft
+```
+
+<img src="Images/18-SculptingWithFields/Cloudscape.jpg" alt="A chrome ball on a matte plain under a scattered cloud deck: solid white cumulus with shadowed undersides over real blue, the same deck reflected in the ball" width="680">
+
+`coverage` runs from a few fair-weather puffs to overcast, and because the clouds live in the environment, sliding it dims and diffuses the whole scene the way a real gray day does. `tallness` trades flat sheets for building towers, and `phase` is the wind's clock: advance it and the weather drifts, deterministically, so an export plays the same sky. A still sky bakes once and costs nothing per frame. The `3D/Environments/Cloudscape` example puts all of it on knobs.
+
 Two knobs come up immediately in practice. An environment paints itself **behind** your scene as a backdrop, which is usually what you want, since the reflections then match what you can see. When you'd rather keep your own `background(_:)`, `.lightingOnly()` keeps the light and drops the picture. And `.backgroundBlur(_:)` softens just the backdrop, which pushes it back behind the subject; both figures above use a little.
 
 `SDF3D.plane()` is worth knowing about here too, since it's an infinite floor you can merge into the field for true horizon-to-horizon self-shadowing.

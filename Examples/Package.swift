@@ -235,6 +235,7 @@ let package = Package(
         example("3D/Environments/ImageBasedLighting"),
         example("3D/Environments/EnvironmentGallery"),
         example("3D/Environments/ProceduralSky"),
+        example("3D/Environments/Cloudscape"),
         example("3D/Environments/HighResEnvironment"),
         example("3D/Environments/EnvironmentURL"),
         example("3D/Materials/Matcap"),

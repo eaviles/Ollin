@@ -326,6 +326,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("volumetric-light",
                  note: "A window-gobo spot and a bare crossing spot marched as beams through thin haze over a dark set, the props carving shadow shafts. Pins the cone-bounded volumetric march (ray-cone span), the light-leg extinction, cookie/cone/IES shaping evaluated in air, the per-step shadow taps, and the deterministic per-pixel jitter. Fixed camera, no time.",
                  make: { VolumetricLightScene() }),
+    SnapshotCase("sky-clouds",
+                 note: "A raymarched cloudscape baked into the procedural sky: a scattered deck behind a chrome ball and a matte floor, so one bake carries the backdrop, the dimmed-and-diffused lighting, and the reflection. Pins the cloud noise kernels, the weather/height/erosion density chain, the sun-lit march, the clouds-in-the-cache-key rule, and the sharp cloudy-sky backdrop default. Fixed sun + phase, no time, no rng.",
+                 make: { SkyCloudsScene() }),
     SnapshotCase("aerial-perspective",
                  note: "Files of dark ridges receding under a procedural sky with aerial perspective on: near ridges hold their color, far ones veil blue and melt into the horizon, the air brightening toward the sky's own sun. Pins the mode-2 fog gate, the wavelength-split extinction, the closed-form sun in-scatter, the sun resolved from the .sky environment through its rotation, and the air veil stepping aside behind the skybox. Fixed camera + sun, no time, no rng.",
                  make: { AerialPerspectiveScene() }),
@@ -1500,6 +1503,28 @@ private final class FogScene: Sketch {
                 }
             }
         }
+    }
+}
+
+/// A cloudy procedural sky under a fixed camera: the scattered deck, its light on a
+/// matte floor, and its picture in a chrome ball, all from one bake. Fixed phase,
+/// no `time`, no rng.
+private final class SkyCloudsScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(.black)
+        toneMap(.aces)
+        camera(.orbiting(target: Vector3(0, 1.4, 0), radius: 8.5,
+                         azimuth: 0.5, elevation: 0.14, fieldOfView: .pi / 3.2))
+        environment(.sky(turbidity: 2.4, sunElevation: 0.5).rotated(0.7)
+            .clouds(Clouds(coverage: 0.55, phase: 2)))
+        fill(.white)
+        material(.polishedMetal)
+        drawSphere(radius: 1.2)
+        material(.matte)
+        fill(Color(white: 0.55))
+        withState { translate(0, -1.6, 0); drawBox(width: 36, height: 0.4, depth: 36) }
     }
 }
 

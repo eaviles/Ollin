@@ -1901,7 +1901,16 @@ extension MetalRenderer {
             // params.z the backdrop blur as an equirect mip LOD. The blur is the user's value
             // or auto — a gentle soft-focus at 1K easing to sharp at 4K (a magnified low-res
             // backdrop wants softening; the bicubic reconstruction keeps it un-blocky either way).
-            let autoBlur = max(0, min(0.15, 0.15 * (4096 - Float(skyTex.width)) / 3072))
+            // A cloudy procedural sky opts out of the auto soft-focus: its bake is the
+            // content's own resolution (clouds are self-antialiased volume, not a
+            // magnified photograph), so the sharp bicubic read is the right default.
+            // Gated on the source really being a sky: a stray clouds value on an HDRI
+            // is ignored by the bake and must not change its backdrop either.
+            let cloudySky = drawer.environment.map { env in
+                if case .sky = env.source { env.clouds != nil } else { false }
+            } ?? false
+            let autoBlur: Float = cloudySky
+                ? 0 : max(0, min(0.15, 0.15 * (4096 - Float(skyTex.width)) / 3072))
             let blur = drawer.environment?.backgroundBlur.map { Float($0) } ?? autoBlur
             var skyParams = SIMD4<Float>(lighting.iblRotation, lighting.iblIntensity, blur * 4.0, 0)
             encoder.setFragmentBytes(&skyParams, length: MemoryLayout<SIMD4<Float>>.stride, index: 1)

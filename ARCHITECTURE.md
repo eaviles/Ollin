@@ -1999,6 +1999,44 @@ byte-identical), which keeps a moving sun smooth with no quantization stepping.
 `rotated(_:)` spins the sun for free: it is a shade-time uniform, never a
 re-bake.
 
+**Volumetric clouds** (`Environment.clouds(_:)`, the `Clouds` value) bake into
+this same generation, which is the design's whole payoff: the backdrop, the
+IBL chain, and every reflection see one weather, an overcast dims the scene's
+light by construction, exports are deterministic (the cloudscape is a pure
+function of the dials, no temporal history), and a still sky costs nothing per
+frame while a drifting one rides the shipped animated-sky re-bake. The plain
+`ollin_ibl_sky_gen` stays **verbatim** (the fast-math codegen rule) and a
+cloudy sky selects the `ollin_ibl_sky_gen_clouds` twin, which reproduces the
+clear sky and then marches a spherical shell (1.5-4 km over an earth-radius
+floor, so the horizon compresses formations the way a real sky does; 64
+IGN-jittered steps, span capped at 24 km, 5 cheap taps toward the sun per lit
+sample). The density chain is the published recipe: a procedural weather field
+(the reference hand-draws its map, so the stand-in **thresholds a billow fbm
+into blobs with hard cores and real gaps**, the window sliding down as coverage
+rises - the soft field read as thin veil everywhere, a real first-render
+defect), the rounded-base/tapered-top height pair, a **tiling** 128-cube
+billow-carved base volume and 32-cube eroding detail volume (periodic
+gradient-lattice + cellular kernels, `ollin_cloud_noise_*`, dispatched once per
+process and held - a fixed lattice, so every machine bakes identical fields),
+and the transmittance shaping trio (attenuation clamp, forward lobe + sun-halo
+against a soft back lobe, depth-driven edge darkening). Three tunings were
+measured, not guessed: the view extinction's mean free path at ~140 m (550 m
+read as vapor), the clear-sky ambient inside the march thinning with coverage
+(without it an overcast barely dimmed the floor the probes measure), and the
+IGN jitter keyed on the fragment's **own pixel position** (a hardcoded texel
+scale left pairs of texels sharing offsets when the cloudy bake doubled to
+2048×1024, printing stripe combs across the deck). The bake-cache key widened
+from `Environment.Source` to `IBLKey` (source + clouds, clouds nil for non-sky
+sources so a stray value can't fragment an HDRI's slot), and the skybox's auto
+soft-focus turns off for a *cloudy sky specifically* (its bake is the content's
+own resolution; the gate checks the source is really `.sky`, a rule the
+HDRI-ignores-clouds probe caught as a live defect when it keyed on the clouds
+value alone). Verification: `CloudStateTests` + `CloudRenderProbes` (coverage
+claims more sky by a measured blue-lead-ratio classifier, overcast dims the
+floor, phase moves the weather, an HDRI ignores clouds byte-identically, two
+bakes match byte-identically - the cache-key sabotage verified red), plus the
+`sky-clouds` snapshot.
+
 ### Shadows
 
 `castShadows()` routes by light type: directional/spot render a 2D shadow map;
