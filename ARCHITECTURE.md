@@ -2545,7 +2545,23 @@ their pre-cascade references, a full snapshot re-record matches a clean-HEAD
 re-record on all 180 reference files byte-for-byte, and the vast-scene
 counterfactual (the test seam forcing the single volume on the same frame)
 moves the near structure's bounce by up to 149/255 where the fine cascades
-resolve the floor's light.
+resolve the floor's light. The live scroll behavior was measured by the
+screencapture frame-diff protocol (2026-08-11): a 160-unit sunlit gallery
+(three-rung ladder, spacings 6.9/3.5/1.7) under a camera advancing in 6-unit
+steps with 2.6 s holds between them, 150 captures binned by an on-canvas hold
+marker, an env-guarded debug print confirming every step scrolled all three
+rungs (45 scroll events; a repeat-position control hold scrolled nothing).
+Within-hold consecutive diffs: steady-state floor 0.05-0.09/255 mean (p99 =
+1), the no-scroll control hold identical to it, post-scroll first pairs
+0.1-0.6/255 typical with one worst case of 1.8/255 (p99 28), every hold back
+at the floor within one to two seconds and never re-elevated. The worst
+transient localizes to a single near-camera bounce-lit face (the amplified
+diff shows one box side, no probe-plane-shaped band, no scene-wide term):
+that face swung ~8/255 (~6%) over the first third of a second after a scroll
+and crept back at the rate-limited pace, which is the asymmetric
+temporal-response pair behaving as designed, a one-shot settle rather than an
+oscillation. Continuous slow drift (1.5 u/s, the finest rung scrolling a
+plane every ~1.2 s) shows no fade seams or banding in the stills.
 
 **Mirror interiors and render targets gather too.** The traced hit shade
 (`ollin_rt_hit_radiance`, shared by the reflection and refraction walks) swaps
@@ -2749,13 +2765,21 @@ sentinel, the camera term riding a still mover, the occluder holding a hidden
 mover back), plus a crafted-texture probe of the resolve branch itself
 (velocity toward the history's white half vs its black half vs the sentinel's
 identity fallback). The velocity-sign, occluder-drop, and resolve-sign
-sabotages each read red exactly where expected. What has no deterministic
-probe is the live *payoff* (a mover's edges keeping their accumulated
-refinement mid-flight): that is the same screencapture frame-diff protocol as
-the three live defects above, queued behind an unlocked screen alongside the
-GI cascade-scroll measurement; until it lands, the honest statement is that
-the buffer's contents are pinned and the perceptual benefit is not yet
-measured.
+sabotages each read red exactly where expected. The live *payoff* (a mover's
+edges keeping their accumulated refinement mid-flight) has no deterministic
+probe, so it was measured by the same screencapture protocol as the three
+live defects above (2026-08-11): a static-camera probe scene ran the example's
+orbiting thin bar with `withMotion` on and off (an env-var branch, two
+launches of one binary), 30 window captures each, and per-frame edge metrics
+over the bar. The median high-pass residual of the column-coverage profile
+(spatial aliasing) read 0.006 with exact motion vs 0.048 without, 3-10x apart
+at every matched bar length (0.007 vs 0.024 at the longest, ~0.005 vs ~0.065
+at the shortest usable), and the centerline's second-difference RMS 0.16 vs
+0.54; a static control rod in the same frames read identically in both runs
+(0.006-0.008), and neither mode showed any ghost trail (the fallback's cost
+is refinement, never a smear: the clamp holds). The crops match the numbers:
+the exact-motion bar mid-flight reads like the converged static rod, the
+fallback bar is visibly sawtoothed along both silhouettes.
 
 Envelope: render targets and the accumulation surface keep plain MSAA; 2D
 overlays over a *moving* 3D scene ride the scene's reprojection (measured
