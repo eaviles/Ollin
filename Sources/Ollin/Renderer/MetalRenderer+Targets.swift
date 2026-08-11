@@ -493,6 +493,21 @@ extension MetalRenderer {
         q == .default ? automaticQuality : q
     }
 
+    /// The contact-shadow march's step budget, by the automatic quality tier (the
+    /// TAA/motion-blur rule: no per-feature knob, `.default` resolves per context and
+    /// export lifts it to `.detail`). Hardware-independent: a step is one depth-texture
+    /// tap plus a few multiplies, cheap on any GPU (the `resolveShadowTaps2D` shape).
+    /// More steps turn the start-jitter dither finer over the same ray length.
+    /// Measured M2 release 1080² (the example scene, `--bench --gpu`): the whole term,
+    /// depth pre-pass + 16-step march + carrier sample, costs ~1.0 ms GPU (3.5 → 4.5).
+    func resolveContactShadowSteps() -> Int {
+        switch effectiveQuality(.default) {
+        case .performance: return 8
+        case .default: return 16
+        case .detail: return 32
+        }
+    }
+
     /// Resolve a `.ambientOcclusion` quality tier to a gather sample count. Fewer samples
     /// than the bokeh gather (each reconstructs a view-space position and accumulates a
     /// scalar, not a colour), distributed over the same smooth golden-angle spiral so the
@@ -2332,6 +2347,100 @@ extension MetalRenderer {
         }
         enc.endEncoding()
         return color
+    }
+
+    /// Contact shadows (`contactShadows()`): march a short screen-space ray from each
+    /// pixel toward the casting light through the scene's own depth, so a resting
+    /// object's fine contact darkens where the shadow map's resolution and bias leave
+    /// a gap. Two stages in one command buffer: the frame's solid canvas meshes
+    /// re-rendered depth-only from the camera (the shadow-map pipeline fed the
+    /// camera's view-projection, jittered with the frame so the mask stays aligned
+    /// under temporal AA), then a fullscreen march (`ollin_contact_shadow`) writing
+    /// the per-pixel visibility mask the mesh fragments sample by screen position.
+    /// Returns nil when the frame has no caster, no camera, or no meshes; the
+    /// carriers' gate then zeroes and their sample branch is untaken (byte-identical).
+    /// Only what the camera sees can occlude (the screen-space envelope); marched
+    /// fields and target-drawn meshes are outside it by design.
+    func encodeContactShadowPass(_ drawer: Drawer, into cb: MTLCommandBuffer,
+                                 meshBuffer: MTLBuffer?,
+                                 width: Int, height: Int,
+                                 taaJitter: SIMD2<Float> = .zero) -> MTLTexture? {
+        guard drawer.contactShadowsEnabled, let camera = drawer.camera3D, let meshBuffer,
+              !drawer.meshVertices.isEmpty,
+              drawer.batches.contains(where: {
+                  $0.kind == .mesh3D && $0.target == nil && !$0.meshWireframe && !$0.meshGrid
+              }) else { return nil }
+        var lighting = drawer.makeLighting()
+        let rayLen = lighting.contactShadow.x
+        guard lighting.enabled != 0, lighting.shadowLight >= 0, rayLen > 0 else { return nil }
+
+        if contactShadowSize != (width, height) || contactShadowMaskTex == nil || contactShadowDepthTex == nil {
+            guard let m = makeFilterTexture(width: width, height: height),
+                  let d = makeDepthResolve(width: width, height: height) else { return nil }
+            contactShadowMaskTex = m; contactShadowDepthTex = d; contactShadowSize = (width, height)
+        }
+        guard let mask = contactShadowMaskTex, let depth = contactShadowDepthTex,
+              let depthPipe = try? pipeline(.meshShadow),
+              let marchPipe = try? pipeline(.effect("ollin_contact_shadow")) else { return nil }
+
+        // Stage 1: the scene's depth as the camera sees it. The main pass's own depth
+        // is a memoryless MSAA attachment, so the march renders its own single-sample
+        // copy (the scatter-mask precedent), reusing the depth-only shadow pipeline
+        // with the camera's view-projection in the light-matrix slot.
+        var u3 = makeUniforms3D(drawer, camera: camera,
+                                viewport: SIMD2(Float(width), Float(height)),
+                                jitter: taaJitter)
+        var vp = u3.projection * u3.view
+        let pass = MTLRenderPassDescriptor()
+        pass.depthAttachment.texture = depth
+        pass.depthAttachment.loadAction = .clear
+        pass.depthAttachment.clearDepth = 1.0
+        pass.depthAttachment.storeAction = .store
+        guard let enc = cb.makeRenderCommandEncoder(descriptor: pass) else { return nil }
+        enc.setViewport(MTLViewport(originX: 0, originY: 0, width: Double(width),
+                                    height: Double(height), znear: 0, zfar: 1))
+        enc.setRenderPipelineState(depthPipe)
+        enc.setDepthStencilState(depthTestState)
+        enc.setVertexBytes(&vp, length: MemoryLayout<simd_float4x4>.stride, index: 2)
+        let meshStride = MemoryLayout<OllinMeshVertex>.stride
+        let meshCount = drawer.meshVertices.count
+        let batches = drawer.batches
+        for i in batches.indices {
+            let batch = batches[i]
+            // Every solid canvas mesh occludes (wireframes have no surface, the grid
+            // is live chrome, and a target-drawn mesh isn't on this canvas): the
+            // scatter-mask walk's filter.
+            guard batch.kind == .mesh3D, batch.target == nil,
+                  !batch.meshWireframe, !batch.meshGrid else { continue }
+            let next = i + 1 < batches.count ? batches[i + 1] : nil
+            let end = next?.meshStart ?? meshCount
+            let count = end - batch.meshStart
+            guard count > 0 else { continue }
+            enc.setVertexBuffer(meshBuffer, offset: batch.meshStart * meshStride, index: 0)
+            enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
+        }
+        enc.endEncoding()
+
+        // Stage 2: the march. One fullscreen pass; the config rides params row 0
+        // (w is the camera-ward ray-start lift as a fraction of the eye distance,
+        // the no-normals self-occlusion guard; the acceptance band derives in the
+        // shader from the ray's own projected span, so the one knob stays one),
+        // the caster comes from the packed lighting, the matrices from Uniforms3D.
+        let marchPass = MTLRenderPassDescriptor()
+        marchPass.colorAttachments[0].texture = mask
+        marchPass.colorAttachments[0].loadAction = .dontCare
+        marchPass.colorAttachments[0].storeAction = .store
+        guard let menc = cb.makeRenderCommandEncoder(descriptor: marchPass) else { return nil }
+        menc.setRenderPipelineState(marchPipe)
+        menc.setFragmentTexture(depth, index: 0)
+        var params = SIMD4<Float>(rayLen, 0,
+                                  Float(resolveContactShadowSteps()), 0.002)
+        menc.setFragmentBytes(&params, length: MemoryLayout<SIMD4<Float>>.stride, index: 0)
+        menc.setFragmentBytes(&lighting, length: MemoryLayout<OllinLighting>.stride, index: 1)
+        menc.setFragmentBytes(&u3, length: MemoryLayout<Uniforms3D>.stride, index: 2)
+        menc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        menc.endEncoding()
+        return mask
     }
 
     /// A half-resolution sampleable linear-float color target for the raymarch pre-pass.

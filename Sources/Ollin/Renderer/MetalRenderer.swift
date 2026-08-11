@@ -627,6 +627,15 @@ final class MetalRenderer {
     var halfResFieldShadowDepth: MTLTexture?
     var halfResFieldShadowSize = (width: 0, height: 0)
 
+    /// The contact-shadow pre-pass targets (`contactShadows()`): the frame's solid canvas
+    /// meshes re-rendered depth-only from the camera, then the fullscreen march writes the
+    /// per-pixel visibility toward the caster into `mask` (R holds the factor, 1 = lit),
+    /// which the mesh fragments sample by screen position. Cached by size, rewritten whole
+    /// each frame the feature is on.
+    var contactShadowMaskTex: MTLTexture?
+    var contactShadowDepthTex: MTLTexture?
+    var contactShadowSize = (width: 0, height: 0)
+
     /// Per-frame-ring pools of effects-layer textures, reused across frames so a
     /// sketch that uses render targets every frame allocates them once. Keyed by the
     /// ring slot (`frameIndex`) so a texture is never reused while an in-flight frame
@@ -1230,6 +1239,13 @@ final class MetalRenderer {
             reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
             width: width, height: height, supersample: false, pooled: true,
             gi: gi, taaJitter: taaJitter)
+        // Contact shadows: march the scene's own depth toward the caster once per
+        // frame; the mesh fragments sample the verdict by screen position. nil when
+        // inactive (their gate then zeroes, byte-identical). Carries the frame's
+        // jitter so the mask stays aligned under temporal AA (the scatter-mask rule).
+        let contactShadow = encodeContactShadowPass(
+            drawer, into: commandBuffer, meshBuffer: buffers.mesh,
+            width: width, height: height, taaJitter: taaJitter)
 
         guard let geomEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: geomPass) else {
             frameBoundary.signal()   // nothing encoded; hand the slot back
@@ -1252,6 +1268,7 @@ final class MetalRenderer {
                halfResField: halfResField,
                halfResFieldShadow: halfResFieldShadow,
                deferredReflection: deferredReflection,
+               contactShadow: contactShadow,
                gi: gi,
                taaJitter: taaJitter)
         geomEncoder.endEncoding()
@@ -1636,6 +1653,12 @@ final class MetalRenderer {
             reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
             width: width, height: height, supersample: true, pooled: false,
             gi: gi)
+        // Contact shadows, encoded once outside any TAA sample loop (the deferred-
+        // reflection rule: the mask is screen-space and unjittered; a jittered
+        // composite reads it at most half a pixel off, which the average absorbs).
+        let contactShadow = encodeContactShadowPass(
+            drawer, into: commandBuffer, meshBuffer: buffers.mesh,
+            width: width, height: height)
 
         // Temporal AA, historyless: render the geometry N times under the fixed
         // jitter sequence and average within this one frame, the deterministic
@@ -1670,6 +1693,7 @@ final class MetalRenderer {
                        halfResField: halfResField,
                        halfResFieldShadow: halfResFieldShadow,
                        deferredReflection: deferredReflection,
+                       contactShadow: contactShadow,
                        gi: gi,
                        taaJitter: jitter)
                 encoder.endEncoding()
@@ -1711,6 +1735,7 @@ final class MetalRenderer {
                    halfResField: halfResField,
                    halfResFieldShadow: halfResFieldShadow,
                    deferredReflection: deferredReflection,
+                   contactShadow: contactShadow,
                    gi: gi)
             encoder.endEncoding()
 
@@ -1850,6 +1875,10 @@ final class MetalRenderer {
                     groupBuffer: buffers.sdf3DGroup, nodeBuffer: buffers.sdf3DNode,
                     uniforms3D: u3, lighting: fl, fullWidth: width, fullHeight: height)
             }
+            // Contact shadows, so the benchmark pays what a live frame pays.
+            let contactShadow = encodeContactShadowPass(
+                drawer, into: cb, meshBuffer: buffers.mesh,
+                width: width, height: height, taaJitter: taaJitter)
             guard let encoder = cb.makeRenderCommandEncoder(descriptor: pass) else { continue }
             encode(drawer, viewport: viewport, into: encoder,
                    triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,
@@ -1864,6 +1893,7 @@ final class MetalRenderer {
                    reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
                    halfResField: halfResField,
                    halfResFieldShadow: halfResFieldShadow,
+                   contactShadow: contactShadow,
                    gi: gi,
                    taaJitter: taaJitter)
             encoder.endEncoding()

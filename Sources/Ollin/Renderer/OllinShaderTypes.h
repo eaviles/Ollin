@@ -650,6 +650,14 @@ typedef struct {
                                   // room-scale frame is byte-identical to the pre-cascade path.
     simd_float4 giCascadeInfo;    // x = total cascade count including the scene volume (1 = no
                                   // camera cascades, the shipped single-volume path); y/z/w unused.
+    simd_float4 contactShadow;    // contact shadows (`contactShadows()`): x = the screen-space
+                                  // ray's length in world units (the gate: 0 leaves every mesh
+                                  // carrier's sample branch untaken, byte-identical; the renderer
+                                  // zeroes it when the mask pass didn't run); y = the mask
+                                  // texture's uv scale (screen position * y / texture size, the
+                                  // fieldShadowScale rule; 1 at full resolution); z = the march's
+                                  // step budget (a RenderQuality tier the renderer resolves; the
+                                  // drawer packs 0); w unused.
 } OllinLighting;
 
 // Per-frame constants auto-injected into every compute dispatch (bound at buffer

@@ -1756,6 +1756,7 @@ extension MetalRenderer {
                         halfResField: (color: MTLTexture, depth: MTLTexture, region: SIMD4<Float>)? = nil,
                         halfResFieldShadow: MTLTexture? = nil,
                         deferredReflection: MTLTexture? = nil,
+                        contactShadow: MTLTexture? = nil,
                         gi: GIResolved? = nil,
                         target passTarget: RenderTarget? = nil,
                         taaJitter: SIMD2<Float> = .zero) {
@@ -1960,6 +1961,17 @@ extension MetalRenderer {
         if halfResFieldShadow != nil {
             lighting.fieldShadowMode = 1
             lighting.fieldShadowScale = Float(resolveRaymarchScale(drawer.raymarchQualitySetting))
+        }
+        // Contact shadows: the mask the pre-pass marched this frame, sampled by the
+        // mesh fragments by screen position. nil = the pass didn't run (no caster,
+        // no camera, or a pass that never runs pre-passes: targets, accumulation,
+        // texture handoff), so the gate zeroes and the fragments' sample branch is
+        // untaken, byte-identical. The scale is 1 while the mask renders full-res.
+        if contactShadow != nil {
+            lighting.contactShadow.y = 1.0
+            lighting.contactShadow.z = Float(resolveContactShadowSteps())
+        } else {
+            lighting.contactShadow.x = 0
         }
         let shadowTexture = shadowMap ?? ensureDummyShadowMap()
         let shadowCubeTexture = shadowCube ?? ensureDummyPointShadowMap()
@@ -2370,6 +2382,9 @@ extension MetalRenderer {
                     // The sheen directional-albedo LUT (tex 12); a never-sampled stand-in
                     // unless a material carries sheen (its sheen color gates the read).
                     encoder.setFragmentTexture(sheenLUT ?? strip, index: 12)
+                    // The contact-shadow mask (tex 16), sampled by screen position when
+                    // `lighting.contactShadow.x` is set; a never-sampled stand-in otherwise.
+                    encoder.setFragmentTexture(contactShadow ?? strip, index: 16)
                     // The pre-traced reflection layer (tex 7) when the deferred path is on;
                     // a never-sampled stand-in otherwise (`rtReflectionDeferred` gates the
                     // read). Only part of the RT-compiled fragment signature.

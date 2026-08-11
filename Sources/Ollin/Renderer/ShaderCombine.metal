@@ -1437,3 +1437,108 @@ fragment float4 ollin_sss_blur(PresentOut in [[stage_in]],
     }
     return blurred;
 }
+
+// MARK: - Contact shadows
+
+// The contact-shadow march (`contactShadows()`): one short screen-space ray per
+// pixel, from the surface the depth pre-pass saw toward the casting light, looking
+// for scene depth crossing in front of it. Writes the visibility factor (R: 1 = lit,
+// 0 = occluded) the mesh fragments fold into the caster's shadow attenuation.
+// The mechanics, each load-bearing:
+// - The ray start is pulled a small fraction of its view distance toward the
+//   camera (params[0].w, 0.002 of the eye distance). Without the lift, a convex
+//   body's own limb holds the marching ray just barely behind its visible surface
+//   and a static speckled crescent forms along every lit silhouette (a real
+//   first-render defect); the lift clears the surface with no normal needed.
+// - The march interpolates the projected (uv, device z) segment directly (a
+//   world-space line projects to a straight NDC segment, so the set of sampled
+//   points is exact; only the spacing is non-uniform), and the occlusion test is
+//   a *band* around a threshold derived from the device-z span a view-axis ray of
+//   the same length would cover, scaled by the step: the acceptance window then
+//   tracks both the ray's slope and the sampling density, so a thin foreground
+//   edge cannot smear an infinitely deep streak across what passes behind it.
+// - The start offset dithers by interleaved gradient noise, a pure function of
+//   pixel position (the dither rule: reproducible exports, no temporal crawl),
+//   trading the step count's banding for fine static noise.
+// - A verdict fades through a clip-space vignette as the evidence approaches the
+//   screen edge, and the march stops where the segment leaves the screen: past
+//   that line the depth buffer holds no answer, and guessing paints false shadow.
+fragment float4 ollin_contact_shadow(PresentOut in [[stage_in]],
+                                     constant float4 *params [[buffer(0)]],
+                                     constant OllinLighting &light [[buffer(1)]],
+                                     constant Uniforms3D &u [[buffer(2)]],
+                                     depth2d<float> sceneDepth [[texture(0)]]) {
+    float rayLen = params[0].x;
+    int steps = int(max(2.0, params[0].z));
+    float biasFraction = params[0].w;
+    if (light.shadowLight < 0 || rayLen <= 0.0) return float4(1.0);
+
+    constexpr sampler dsamp(filter::nearest, address::clamp_to_edge);
+    float z = sceneDepth.sample(dsamp, in.uv);
+    if (z >= 1.0) return float4(1.0);   // background: nothing to shadow
+
+    // The pixel's world position from its depth (uv is top-left origin, NDC y up).
+    float2 ndc = float2(in.uv.x * 2.0 - 1.0, 1.0 - in.uv.y * 2.0);
+    float4 wh = u.inverseViewProjection * float4(ndc, z, 1.0);
+    float3 world = wh.xyz / wh.w;
+
+    // March direction: toward the caster. A directional caster's stored direction
+    // already points to the light; a positional kind (point/spot/area) aims at its
+    // position, the ray capped short of arriving so the light itself never occludes.
+    constant OllinLight &cl = light.lights[light.shadowLight];
+    float3 toLight;
+    if (cl.kind == 0) {
+        toLight = normalize(cl.direction.xyz);
+    } else {
+        float3 d = cl.position.xyz - world;
+        float dist = length(d);
+        if (dist < 1e-4) return float4(1.0);
+        toLight = d / dist;
+        rayLen = min(rayLen, 0.9 * dist);
+    }
+
+    // The camera-ward lift, then both ray ends and the view-axis reference point
+    // projected into clip space once; the loop is pure segment interpolation.
+    float3 startWS = world + (light.cameraPosition.xyz - world) * biasFraction;
+    float4x4 vp = u.projection * u.view;
+    float4 startClip = vp * float4(startWS, 1.0);
+    float4 endClip = vp * float4(startWS + toLight * rayLen, 1.0);
+    if (startClip.w <= 1e-4 || endClip.w <= 1e-4) return float4(1.0);
+    float3 startNDC = startClip.xyz / startClip.w;
+    float3 endNDC = endClip.xyz / endClip.w;
+    // The same-length ray pointed straight down the view axis: its device-z span
+    // is the slope-independent ruler the acceptance band is measured against.
+    float4 viewStart = u.view * float4(startWS, 1.0);
+    float4 orthoClip = u.projection * float4(viewStart.xy, viewStart.z - rayLen, viewStart.w);
+    float zSpan = abs(orthoClip.z / orthoClip.w - startNDC.z);
+    float stepT = 1.0 / float(steps);
+    float threshold = zSpan * 1.5 * max(0.07, stepT);
+
+    float3 rayStart = float3(startNDC.x * 0.5 + 0.5, 0.5 - startNDC.y * 0.5, startNDC.z);
+    float3 rayDir = float3((endNDC.x - startNDC.x) * 0.5,
+                           (startNDC.y - endNDC.y) * 0.5,
+                           endNDC.z - startNDC.z);
+
+    float dither = ollin_ign(in.position.xy) - 0.5;
+    float t = stepT + dither * stepT;
+    float occluded = 0.0;
+    for (int i = 0; i < steps; i++) {
+        float3 s = rayStart + t * rayDir;
+        if (any(s.xy < 0.0) || any(s.xy > 1.0)) break;
+        float sceneZ = sceneDepth.sample(dsamp, s.xy);
+        float depthDiff = s.z - sceneZ;   // positive: the ray is behind the visible surface
+        if (depthDiff > 0.0 && abs(threshold - depthDiff) < threshold
+            && s.z > 0.0 && s.z < 1.0) {
+            occluded = 1.0;
+            break;
+        }
+        t += stepT;
+    }
+
+    // The clip-space vignette: a verdict resting on evidence near the screen edge
+    // fades out instead of cutting.
+    float2 exitNDC = startNDC.xy + (endNDC.xy - startNDC.xy) * t;
+    float2 vig = max(6.0 * abs(exitNDC) - 5.0, 0.0);
+    float occlusion = occluded * saturate(1.0 - dot(vig, vig));
+    return float4(1.0 - occlusion);
+}

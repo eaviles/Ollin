@@ -961,6 +961,22 @@ open class Sketch {
     /// Stop casting shadows (the default).
     public func noShadows() { drawer.noShadows() }
 
+    /// Add contact shadows this frame: a short screen-space ray marched from each mesh
+    /// pixel toward the casting light through the scene's own depth, darkening the fine
+    /// seam where a shadow map's resolution and bias leave a resting object floating.
+    /// A refinement over `castShadows()`, which picks the caster; call both in `draw()`
+    /// (a no-op without a caster or a camera). `length` is the ray's reach in world
+    /// units; leave it nil to derive a short reach from the scene scale. Works with
+    /// every caster kind on any Metal GPU, and only what the camera sees can occlude
+    /// (the screen-space envelope). Pass `false`, or call `noContactShadows()`, to
+    /// turn it back off.
+    public func contactShadows(_ on: Bool = true, length: Double? = nil) {
+        on ? drawer.contactShadows(length: length) : drawer.noContactShadows()
+    }
+
+    /// Stop adding contact shadows (the default).
+    public func noContactShadows() { drawer.noContactShadows() }
+
     /// Ray-trace reflections of the scene off its physically-based (metallic-roughness)
     /// surfaces this frame, so a metal mirrors the *actual scene around it*: other meshes,
     /// the floor, even geometry off the edge of the screen, instead of only its environment.

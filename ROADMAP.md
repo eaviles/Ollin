@@ -58,7 +58,7 @@ The high-end, well-curated realism tier, opt-in on the existing PBR, IBL, ray-tr
 
 - **Volumetrics and atmosphere.** Atmospheric / aerial-perspective scattering (distant objects desaturating into the sky, the depth cue that sells scale), and raymarched volumetric clouds over the procedural sky.
 - **Advanced materials.** Surface detail: parallax-occlusion and displacement mapping, triplanar projection, detail and decal maps.
-- **Image quality and motion.** **MetalFX** temporal upscaling for quality and headroom, and **contact shadows** (short-range screen-space) to seat objects on surfaces.
+- **Image quality and motion.** **MetalFX** temporal upscaling for quality and headroom.
 
 See the [design notes](DESIGN-NOTES.md#photorealistic-3d).
 

@@ -2944,7 +2944,8 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                     texture2d<float> ltcAmp [[texture(9)]],
                                     texture2d_array<float> iesProfiles [[texture(10)]],
                                     texture2d_array<float> cookies [[texture(11)]],
-                                    texture2d<float> sheenLUT [[texture(12)]]
+                                    texture2d<float> sheenLUT [[texture(12)]],
+                                    texture2d<float> contactShadowTex [[texture(16)]]
 #if OLLIN_RT_SHADOWS
                                     , primitive_acceleration_structure shadowAccel [[buffer(3)]]
                                     // The flat mesh buffer + its per-geometry base-vertex offsets, so a
@@ -2969,6 +2970,16 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
     float3 base = srgbToLinear(in.color.rgb);
     float meshFieldShadow = ollin_resolve_mesh_field_shadow(in.position.xy, in.worldPos, in.normal,
                                                             light, fields, fieldNodes, fieldShadowTex);
+    // Contact shadows: the pre-marched screen-space visibility toward the caster,
+    // sampled by screen position (the fieldShadowScale rule) and folded into the
+    // same caster dimmer the marched fields ride, so it lands in `lit01` at both
+    // shadow sites with no shading-tail change. x == 0 leaves the branch untaken.
+    if (light.contactShadow.x > 0.0) {
+        constexpr sampler contactSamp(filter::linear, address::clamp_to_edge);
+        float2 cts = float2(contactShadowTex.get_width(), contactShadowTex.get_height());
+        meshFieldShadow *= contactShadowTex.sample(contactSamp,
+            in.position.xy * light.contactShadow.y / max(cts, float2(1.0))).r;
+    }
 #if OLLIN_RT_SHADOWS
     float rtShadow = meshRTShadow(in.worldPos, in.normal, light, shadowAccel);
     // The transmittance thickness on a traced point caster: one closest-hit ray,
@@ -3204,7 +3215,8 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                              texture2d<float> ltcAmp [[texture(9)]],
                                              texture2d_array<float> iesProfiles [[texture(10)]],
                                              texture2d_array<float> cookies [[texture(11)]],
-                                             texture2d<float> sheenLUT [[texture(12)]]
+                                             texture2d<float> sheenLUT [[texture(12)]],
+                                             texture2d<float> contactShadowTex [[texture(16)]]
 #if OLLIN_RT_SHADOWS
                                              , primitive_acceleration_structure shadowAccel [[buffer(3)]]
                                              , const device OllinMeshVertex *meshVerts [[buffer(6)]]
@@ -3224,6 +3236,13 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
     float alpha = in.color.a * tex.a;
     float meshFieldShadow = ollin_resolve_mesh_field_shadow(in.position.xy, in.worldPos, in.normal,
                                                             light, fields, fieldNodes, fieldShadowTex);
+    // Contact shadows, folded into the caster dimmer exactly as on the solid path.
+    if (light.contactShadow.x > 0.0) {
+        constexpr sampler contactSamp(filter::linear, address::clamp_to_edge);
+        float2 cts = float2(contactShadowTex.get_width(), contactShadowTex.get_height());
+        meshFieldShadow *= contactShadowTex.sample(contactSamp,
+            in.position.xy * light.contactShadow.y / max(cts, float2(1.0))).r;
+    }
 #if OLLIN_RT_SHADOWS
     float rtShadow = meshRTShadow(in.worldPos, in.normal, light, shadowAccel);
     // The traced transmittance thickness, gated as on the solid path.

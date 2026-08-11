@@ -190,6 +190,18 @@ The three kinds of light cast by different routes, which mostly matters because 
 
 If a penumbra looks grainy rather than smooth, that's the sample count, not the softness: `shadowQuality(.detail)` asks for more samples relative to whatever GPU is running, and `shadowSamples(16)` sets an exact number.
 
+There is one place even a good shadow map falls short, and it is the most important few pixels in the picture: the exact line where an object touches the ground. A map has finite resolution, and the bias that keeps its speckle off nudges its shadow slightly away from the caster, so the last sliver of contact opens up and a resting box can read as floating a hair above the floor. **`contactShadows()`** closes that seam. For each pixel the renderer walks a short ray toward the casting light through the scene's own depth and darkens the pixel where something nearby blocks the way, which draws the fine dark line a map can't hold at any resolution.
+
+```swift
+castShadows()
+shadowSoftness(0.9)   // a wide, soft look: lovely, but every base goes loose
+contactShadows()      // the short march that seats them again
+```
+
+<img src="Images/17-3DGently/Seated.jpg" alt="An orange box, a blue sphere, and a yellow cylinder resting on a pale floor under wide soft shadows, each base hugged by a fine dark seam that pins it to the ground. A small white sphere hovers at the upper left with only a soft detached blob of shadow on the floor below it, and no seam" width="680">
+
+The three resting solids each get the tight dark line at their base; the hovering sphere, the one thing genuinely off the ground, gets only the soft drifted blob a real gap produces. That difference is the whole feature. It refines whatever caster `castShadows()` picked, works on any Mac, and takes one optional dial: `contactShadows(length: 8)` sets the ray's reach in world units, and with no length a short reach comes from the scene's own scale. The honest limit is that the march can only consult what the camera sees, so off-screen geometry casts no contact shadow and a curved surface can pick up a touch of extra shading just inside its silhouette. For the seam under a resting thing, which is what it's for, it simply works.
+
 ## A light with a body
 
 The three kinds above are infinitesimal points. A fourth family gives light a *body*: `rectLight` is a glowing panel (a softbox, a window), `diskLight` a glowing circle, `tubeLight` a glowing cylinder strung between two points (a neon). `intensity` means something different here, and it's worth a moment: it is the glow of the surface itself, so brightness falls off with distance on its own, a bigger panel pours more light at the same glow, and a thin neon needs an intensity in the tens because a thin tube is a small piece of sky.

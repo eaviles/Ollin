@@ -421,6 +421,18 @@ final class Drawer {
     /// fragment dims that light where a receiver is occluded.
     private(set) var castsShadows = false
 
+    /// Whether this frame adds contact shadows (see `contactShadows`). Per-frame state
+    /// like the lights. When on (and a caster is active via `castShadows()`), the
+    /// renderer marches a short screen-space ray from each mesh pixel toward the
+    /// casting light through a scene-depth pre-pass, darkening the fine contact the
+    /// shadow map's resolution and bias miss.
+    private(set) var contactShadowsEnabled = false
+
+    /// The contact-shadow ray's length in world units. nil = derive from the scene
+    /// scale (2.5% of the camera's eye-to-target distance), so the default seats
+    /// objects at any scene size. Per-frame state, set alongside `contactShadowsEnabled`.
+    private(set) var contactShadowLength: Double?
+
     /// Whether this frame ray-traces scene reflections off its physically-based surfaces
     /// (see `rayTracedReflections`). Per-frame state like the lights. When on (and the
     /// device can trace from the render stages), a PBR metal's environment reflection is
@@ -1812,6 +1824,23 @@ final class Drawer {
     /// Stop casting shadows (the default). Per-frame state.
     func noShadows() { castsShadows = false }
 
+    /// Add contact shadows this frame: a short screen-space ray marched from each mesh
+    /// pixel toward the casting light through the scene's depth, darkening the fine
+    /// contact where a shadow map's resolution and bias leave a gap (the seam under a
+    /// resting object). Per-frame state like the lights; set it in `draw()` beside
+    /// `castShadows()`, which it refines (a no-op without a caster or a camera).
+    /// `length` is the ray's reach in world units; nil derives it from the scene scale.
+    func contactShadows(length: Double? = nil) {
+        contactShadowsEnabled = true
+        contactShadowLength = length.map { max(0, $0) }
+    }
+
+    /// Stop adding contact shadows (the default). Per-frame state.
+    func noContactShadows() {
+        contactShadowsEnabled = false
+        contactShadowLength = nil
+    }
+
     /// Ray-trace reflections of the scene off its physically-based surfaces this frame.
     /// Per-frame state like the lights; set it in `draw()`. Every solid mesh reflects (the
     /// renderer reuses the shadow-caster acceleration structure, which already covers them all);
@@ -2160,6 +2189,15 @@ final class Drawer {
                 // On a ray-tracing device the renderer overwrites this with the traced
                 // panel's sampling scale when it flips `shadowKind` to 2.
                 u.shadowDepthB = proj.columns.2.z
+            }
+            // Contact shadows refine whichever caster the frame resolved: pack the
+            // screen-space ray's world length (the gate the mesh carriers and the
+            // march pass read; the renderer zeroes it if the mask pass didn't run).
+            // A nil length derives from the eye-to-target scene scale, so the
+            // default seats objects at any scene size (the world-units-not-tuned-
+            // constants rule).
+            if contactShadowsEnabled && u.shadowLight >= 0 {
+                u.contactShadow.x = Float(contactShadowLength ?? Double(r) * 0.025)
             }
         }
         return u
@@ -2637,6 +2675,8 @@ final class Drawer {
         lightingMode = .auto
         environment = nil
         castsShadows = false
+        contactShadowsEnabled = false
+        contactShadowLength = nil
         rayTracedReflectionsEnabled = false
         globalIlluminationEnabled = false
         giIntensity = 1

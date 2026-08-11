@@ -278,6 +278,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("point-shadows",
                  note: "Boxes around a central point light (no directional/spot, so the point light is the caster) with castShadows() on, pinning the omnidirectional path: the six-face cube depth pass and the cube depth-compare in the lit fragment, the shadows radiating outward from the light.",
                  make: { PointShadowsScene() }),
+    SnapshotCase("contact-shadows",
+                 note: "Three solids resting flush on a floor under a low directional caster with a wide soft (PCSS) map and contactShadows() on. Pins the screen-space contact term: the depth pre-pass, the march toward the caster (dithered by static interleaved gradient noise), and the mask sample folded into the caster's shadow attenuation, drawing the dark seam that seats each base where the soft map alone leaves it loose.",
+                 make: { ContactShadowsScene() }),
     SnapshotCase("lighting-presets",
                  note: "A still life lit by the .goldenHour LightingPreset. Pins the preset path (ambient + warm/cool directionals, the light colors from Color(kelvin:)) through the lit-mesh pipeline.",
                  make: { LightingPresetScene() }),
@@ -1131,6 +1134,41 @@ private final class TexturedMesh3DScene: Sketch {
 /// through a fixed camera — pins the shadow pass (the depth render from the light) and
 /// the shadow sample in the lit mesh fragment (the cast shadows on the floor and the
 /// sphere's shadow reaching toward the box). No `time`, so it's deterministic.
+/// Three solids resting flush on a floor, a deliberately wide soft shadow map
+/// (softness 0.8, so the map alone leaves every base loose), and the contact
+/// march closing the seam. Fixed camera, no `time`: deterministic.
+private final class ContactShadowsScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        camera(.orbiting(target: Vector3(0, 0.5, 0), radius: 8,
+                         azimuth: 0.4, elevation: 0.3))
+        ambientLight(Color(white: 0.2))
+        directionalLight(.white, direction: Vector3(-0.7, -0.55, -0.3), intensity: 1.0)
+        castShadows()
+        shadowSoftness(0.8)
+        contactShadows()
+        fill(Color(white: 0.85))
+        drawPlane(width: 20, depth: 20)
+        withState {
+            fill(Color(hue: 0.03, saturation: 0.55, brightness: 0.9))
+            translate(-0.8, 0.7, 0)
+            drawBox(size: 1.4)
+        }
+        withState {
+            fill(Color(hue: 0.55, saturation: 0.5, brightness: 0.9))
+            translate(1.2, 0.62, 0.8)
+            drawSphere(radius: 0.62)
+        }
+        withState {
+            fill(Color(hue: 0.12, saturation: 0.55, brightness: 0.9))
+            translate(0.6, 0.5, -1.4)
+            drawCylinder(radius: 0.5, height: 1.0)
+        }
+    }
+}
+
 private final class MeshShadowsScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 

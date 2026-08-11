@@ -345,6 +345,44 @@ struct LightingTests {
         #expect(close(u.cameraPosition.x, 1) && close(u.cameraPosition.y, 2) && close(u.cameraPosition.z, 3))
     }
 
+    // MARK: Contact shadows
+
+    @Test func contactShadowsPackTheRayLengthWithTheCaster() {
+        // The default length derives from the eye-to-target distance (2.5%), so
+        // the one-liner seats objects at any scene scale; an explicit length
+        // passes through in world units.
+        let d = freshDrawer()   // eye (0,0,5), target zero → r = 5
+        d.addLight(.directional(.white, direction: Vector3(0, -1, 0.3)))
+        d.castShadows()
+        d.contactShadows()
+        let u = d.makeLighting()
+        #expect(close(u.contactShadow.x, 0.125))
+        d.contactShadows(length: 3)
+        #expect(close(d.makeLighting().contactShadow.x, 3))
+    }
+
+    @Test func contactShadowsAreInertWithoutACaster() {
+        // The march refines the caster's shadow, so without `castShadows()` (or
+        // with no light qualifying) the gate stays zero and the carriers'
+        // sample branch is untaken.
+        let d = freshDrawer()
+        d.addLight(.directional(.white, direction: Vector3(0, -1, 0.3)))
+        d.contactShadows()
+        #expect(d.makeLighting().contactShadow.x == 0)
+    }
+
+    @Test func contactShadowsResetEachFrame() {
+        let d = freshDrawer()
+        d.addLight(.directional(.white, direction: Vector3(0, -1, 0.3)))
+        d.castShadows()
+        d.contactShadows()
+        d.beginFrame()
+        d.camera(Camera3D(eye: Vector3(0, 0, 5), target: .zero))
+        d.addLight(.directional(.white, direction: Vector3(0, -1, 0.3)))
+        d.castShadows()
+        #expect(d.makeLighting().contactShadow.x == 0)   // per-frame, like the lights
+    }
+
     // MARK: Material on the batch
 
     @Test func materialRidesTheBatchUniform() {
@@ -900,5 +938,149 @@ private final class LightShapingProbe: Sketch {
                                   Vector3(1, 1, 0), Vector3(-1, 1, 0)],
                       normals: [.unitZ, .unitZ, .unitZ, .unitZ],
                       indices: [0, 1, 2, 0, 2, 3]))
+    }
+}
+
+/// Behavioral probes for contact shadows (`contactShadows()`): the same scene
+/// rendered with only the march flipped, so a pixel difference isolates the
+/// screen-space term (the map's own shadow is on in both). The A/B idiom of
+/// `AreaShadowRenderProbes`; `hasMetal` only, since the march runs on any GPU.
+@Suite
+@MainActor
+struct ContactShadowRenderProbes {
+
+    private func pixels(_ sketch: Sketch) throws -> [UInt8] {
+        let image = try #require(OllinApp.image(of: sketch, frame: 1))
+        let w = image.width, h = image.height
+        var data = [UInt8](repeating: 0, count: w * h * 4)
+        let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
+                            bytesPerRow: w * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+        return data
+    }
+
+    /// Red-channel lit-minus-marched difference (the scene is near-grayscale).
+    private func contactDiff(caster: ContactShadowProbe.Caster) throws -> [Int] {
+        let plain = try pixels(ContactShadowProbe.make(caster: caster, contact: false))
+        let marched = try pixels(ContactShadowProbe.make(caster: caster, contact: true))
+        return stride(from: 0, to: plain.count, by: 4).map { Int(plain[$0]) - Int(marched[$0]) }
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func theMarchSeatsARestingBox() throws {
+        let diff = try contactDiff(caster: .directional)
+        let darkened = diff.filter { $0 > 10 }.count
+        #expect(darkened > 15, "expected a contact seam at the box's base, got \(darkened) darkened pixels")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aPointCasterSeatsToo() throws {
+        // The positional branch: the march direction is per pixel, toward the
+        // light's position.
+        let diff = try contactDiff(caster: .point)
+        let darkened = diff.filter { $0 > 10 }.count
+        #expect(darkened > 15, "expected a contact seam under a point caster, got \(darkened)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aSpotCasterSeatsToo() throws {
+        let diff = try contactDiff(caster: .spot)
+        let darkened = diff.filter { $0 > 10 }.count
+        #expect(darkened > 15, "expected a contact seam under a spot caster, got \(darkened)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func withoutACasterTheMarchIsInert() throws {
+        // `contactShadows()` without `castShadows()`: the gate stays zero and the
+        // frame is byte-identical to one that never asked.
+        let off = ContactShadowProbe.make(caster: .directional, contact: false)
+        off.casts = false
+        let on = ContactShadowProbe.make(caster: .directional, contact: true)
+        on.casts = false
+        #expect(try pixels(off) == pixels(on))
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func anEmptyFloorHoldsNoFalseShadow() throws {
+        // A lone floor with nothing resting on it: every ray marches into open
+        // air, the mask stays all-lit (multiplying by exactly 1.0), and the frame
+        // is byte-identical. A regression canary for marching acne on the ground
+        // plane; the curved-surface acne treatment is pinned by the march's
+        // camera-ward lift (see the shader comment), which a whole-frame probe
+        // can't isolate.
+        let off = ContactShadowProbe.make(caster: .directional, contact: false)
+        off.floorOnly = true
+        let on = ContactShadowProbe.make(caster: .directional, contact: true)
+        on.floorOnly = true
+        #expect(try pixels(off) == pixels(on))
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func twoRendersAgreeByteForByte() throws {
+        // The dither is a pure function of pixel position, so the whole term is
+        // deterministic: two fresh renders agree exactly.
+        let a = try pixels(ContactShadowProbe.make(caster: .directional, contact: true))
+        let b = try pixels(ContactShadowProbe.make(caster: .directional, contact: true))
+        #expect(a == b)
+    }
+}
+
+/// The contact probe scene: a gray floor, a box resting flush on it, one caster.
+/// `contact` flips `contactShadows()` with everything else identical (the map's
+/// shadow stays on), so a pixel difference is the screen-space term alone.
+private final class ContactShadowProbe: Sketch {
+    enum Caster { case directional, point, spot }
+    var caster: Caster = .directional
+    var contact = true
+    var casts = true
+    var floorOnly = false
+
+    static func make(caster: Caster, contact: Bool) -> ContactShadowProbe {
+        let probe = ContactShadowProbe()
+        probe.caster = caster
+        probe.contact = contact
+        return probe
+    }
+
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(.black)
+        camera(.orbiting(target: Vector3(0, 0.5, 0), radius: 8,
+                         azimuth: 0.4, elevation: 0.3))
+        ambientLight(Color(white: 0.2))
+        switch caster {
+        case .directional:
+            directionalLight(.white, direction: Vector3(-0.7, -0.55, -0.3), intensity: 1.0)
+        case .point:
+            pointLight(.white, at: Vector3(4, 3, 2), intensity: 1.0)
+        case .spot:
+            spotLight(.white, at: Vector3(4, 4, 2),
+                      direction: Vector3(-4, -4, -2).normalized,
+                      angle: .pi / 2.5, intensity: 1.0)
+        }
+        if casts { castShadows() }
+        shadowSoftness(0.8)
+        if contact { contactShadows() }
+        fill(Color(white: 0.85))
+        drawPlane(width: 20, depth: 20)
+        if !floorOnly {
+            withState {
+                fill(Color(white: 0.75))
+                translate(-0.8, 0.7, 0)
+                drawBox(size: 1.4)
+            }
+            withState {
+                fill(Color(white: 0.75))
+                translate(1.2, 0.62, 0.8)
+                drawSphere(radius: 0.62)
+            }
+            withState {
+                fill(Color(white: 0.75))
+                translate(0.6, 0.5, -1.4)
+                drawCylinder(radius: 0.5, height: 1.0)
+            }
+        }
     }
 }
