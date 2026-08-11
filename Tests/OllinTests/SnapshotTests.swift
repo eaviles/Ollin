@@ -326,6 +326,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("volumetric-light",
                  note: "A window-gobo spot and a bare crossing spot marched as beams through thin haze over a dark set, the props carving shadow shafts. Pins the cone-bounded volumetric march (ray-cone span), the light-leg extinction, cookie/cone/IES shaping evaluated in air, the per-step shadow taps, and the deterministic per-pixel jitter. Fixed camera, no time.",
                  make: { VolumetricLightScene() }),
+    SnapshotCase("aerial-perspective",
+                 note: "Files of dark ridges receding under a procedural sky with aerial perspective on: near ridges hold their color, far ones veil blue and melt into the horizon, the air brightening toward the sky's own sun. Pins the mode-2 fog gate, the wavelength-split extinction, the closed-form sun in-scatter, the sun resolved from the .sky environment through its rotation, and the air veil stepping aside behind the skybox. Fixed camera + sun, no time, no rng.",
+                 make: { AerialPerspectiveScene() }),
     SnapshotCase("matcap-mesh",
                  note: "Three spheres wearing built-in matcaps (chrome/clay/toon). Pins the matcap pipeline: the view-space normal sampled into the sphere texture, bypassing the scene lights and material model, tinted by fill(.white). No time.",
                  make: { MatcapMeshScene() }),
@@ -1494,6 +1497,37 @@ private final class FogScene: Sketch {
                     translate(Double(i - 2) * 3.0, h / 2, Double(j - 2) * 3.0)
                     fill(Color(white: 0.4 + Double((i + j) % 4) * 0.1))
                     drawCylinder(radius: 0.32, height: h)
+                }
+            }
+        }
+    }
+}
+
+/// Aerial perspective under a fixed camera: files of jagged dark ridges receding
+/// beneath a procedural sky, the sky's own sun (through the environment rotation)
+/// feeding the wavelength-split veil. Deterministic heights, no `time`, no rng.
+private final class AerialPerspectiveScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(.black)
+        toneMap(.aces)
+        camera(.orbiting(target: Vector3(0, 5, -55), radius: 70,
+                         azimuth: 0, elevation: 0.055, fieldOfView: .pi / 3.8))
+        environment(.sky(turbidity: 2.4, sunElevation: 0.35).rotated(4.4))
+        aerialPerspective(density: 0.007, haziness: 0.3)
+        fill(Color(hex: 0x2E332C))
+        for i in 0 ..< 6 {
+            withState {
+                translate(0, 0, -2 - Double(i) * 18)
+                for k in -24 ... 24 {
+                    let a = Double(k) * 0.83 + Double(i) * 2.7
+                    let h = 1.5 + Double(i) * 1.6
+                          + 3.0 * abs(sin(a)) + 1.6 * abs(sin(a * 2.6))
+                    withState {
+                        translate(Double(k) * 5, h / 2, 0)
+                        drawBox(width: 5.1, height: h, depth: 5)
+                    }
                 }
             }
         }

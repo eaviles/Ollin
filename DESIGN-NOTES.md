@@ -58,7 +58,7 @@ The realism tier that builds on the physically-based core (PBR metallic-roughnes
 
 - **Advanced materials.** Surface detail: parallax-occlusion and displacement mapping, triplanar projection, detail and decal maps. These slot into `meshLitColor`'s shading-model switch the way the PBR finish did, so non-using materials stay byte-identical.
 
-Sequencing: the remaining atmosphere legs are their own passes and can come independently. All Apple-silicon Metal, the realism direction's "build Ollin APIs for anything Metal offers that enriches 3D."
+Sequencing: the remaining atmosphere leg (volumetric clouds over the procedural sky) is its own pass and can come independently. All Apple-silicon Metal, the realism direction's "build Ollin APIs for anything Metal offers that enriches 3D."
 
 ## AR mode and templates (the Meta Spark gap)
 

@@ -523,6 +523,20 @@ final class Drawer {
     /// How the fog thins with world height y (density is `fogDensity · e^(−falloff·y)`);
     /// 0 = the same thickness everywhere.
     private(set) var fogHeightFalloff: Double = 0
+    /// Aerial perspective (`aerialPerspective`): true while this frame chose the
+    /// wavelength-split atmosphere over classic fog. Per-frame state like the lights;
+    /// the two models are exclusive, so setting either clears the other.
+    private(set) var aerialActive = false
+    /// The aerial extinction density (the green channel's, in inverse world units), or
+    /// nil to derive it from the camera framing at pack time so a bare call reads
+    /// alike at any scene scale (the contact-shadow default's rule).
+    private(set) var aerialDensity: Double? = nil
+    /// The aerosol (haze) fraction of the aerial extinction, 0…1: 0 is the pure
+    /// molecular blue-shift, 1 a gray haze with a strong forward halo.
+    private(set) var aerialHaziness: Double = 0.3
+    /// An explicit world direction toward the sun, or nil to resolve one from the
+    /// `.sky` environment, the first directional light, or a default elevation.
+    private(set) var aerialSun: Vector3? = nil
     /// Volumetric light (`volumetricLight`): the in-scatter gain on the shaft march; 0 = no
     /// march. Per-frame like the lights.
     private(set) var volumetricAmount: Double = 0
@@ -1951,6 +1965,7 @@ final class Drawer {
         fogColor = color
         fogDensity = max(0, density)
         fogHeightFalloff = max(0, heightFalloff)
+        aerialActive = false
     }
 
     /// Clear the fog (the default). Per-frame state.
@@ -1959,6 +1974,24 @@ final class Drawer {
         fogDensity = 0
         fogHeightFalloff = 0
     }
+
+    /// Wrap this frame's 3D scene in aerial perspective: the fog integral split by
+    /// wavelength, so a far surface warms as the short wavelengths scatter out of its
+    /// light while the air in front of it adds the sun's light scattered toward the
+    /// eye (blue side-on, whiter and brighter looking sunward). Replaces `fog`; the
+    /// two are exclusive and the last call wins. Per-frame state like the lights.
+    func aerialPerspective(density: Double?, haziness: Double, heightFalloff: Double,
+                           sun: Vector3?) {
+        aerialActive = true
+        fogColor = nil
+        aerialDensity = density.map { max(0, $0) }
+        aerialHaziness = min(1, max(0, haziness))
+        fogHeightFalloff = max(0, heightFalloff)
+        aerialSun = sun
+    }
+
+    /// Turn aerial perspective back off (the default). Per-frame state.
+    func noAerialPerspective() { aerialActive = false }
 
     /// Make this frame's directional and spot lights visible in the air: a per-pixel march
     /// accumulates the light scattered toward the eye, so cones, cookies, IES profiles, and
@@ -1980,6 +2013,53 @@ final class Drawer {
     /// (hardware-independent). Persistent.
     func volumetricSteps(_ count: Int) { volumetricQualitySetting = .absolute(max(8, min(count, 128))) }
 
+    /// The molecular (Rayleigh) extinction's RGB ratios, normalized to the green
+    /// channel: the 1/wavelength^4 law at the measured sea-level coefficients
+    /// (5.802, 13.558, 33.1) e-6 per meter, so blue extincts ~2.4x green and red
+    /// ~0.43x. Normalizing to green keeps `density` meaning what fog's does: the
+    /// (green) optical depth per world unit. The shader mirrors these by hand
+    /// (`OLLIN_AERIAL_RAYLEIGH`); keep the two in step.
+    static let aerialRayleighRatios = SIMD3<Double>(0.428, 1.0, 2.442)
+    /// The aerosol phase's forward anisotropy (the standard atmospheric value): the
+    /// bright halo leaning into the sun. Fixed rather than a knob; `haziness` decides
+    /// how much of the extinction that lobe owns.
+    static let aerialMieAnisotropy = 0.76
+
+    /// The world direction toward the sun the aerial in-scatter uses: the sketch's
+    /// explicit override, else the `.sky` environment's sun carried through its
+    /// rotation (the skybox samples the environment at R_y(rotation) times the view
+    /// ray, so content sits at R_y(-rotation) in the world), else the first
+    /// directional light (whose `direction` is the light's travel, so the sun is its
+    /// negation), else a default 35-degree elevation facing +z.
+    private func resolvedAerialSun() -> Vector3 {
+        if let s = aerialSun, s.length > 1e-6 { return s.normalized }
+        if let env = environment, case .sky(_, let elevation, _) = env.source {
+            let ce = cos(elevation)
+            return Vector3(-sin(env.rotation) * ce, sin(elevation), cos(env.rotation) * ce)
+        }
+        if let d = activeLights.first(where: { $0.kind == .directional }),
+           d.direction.length > 1e-6 {
+            return (-d.direction).normalized
+        }
+        let e = 35.0 * .pi / 180
+        return Vector3(0, sin(e), cos(e))
+    }
+
+    /// The sun radiance feeding the aerial in-scatter: white dimmed by the molecular
+    /// extinction along the slant path down through the atmosphere (airmass roughly
+    /// 1/sin(elevation)), so a low sun feeds the haze warm light and a sunset run
+    /// reddens the whole aerial term, times a gain calibrated so a far surface under
+    /// the defaults settles near the procedural sky's own horizon tone.
+    static func aerialSunRadiance(elevationSine: Double) -> SIMD3<Float> {
+        let airmass = 1.0 / max(elevationSine, 0.03)
+        let depth = 0.12 * airmass
+        let gain = 2.0
+        let r = aerialRayleighRatios
+        return SIMD3<Float>(Float(exp(-r.x * depth) * gain),
+                            Float(exp(-r.y * depth) * gain),
+                            Float(exp(-r.z * depth) * gain))
+    }
+
     /// Pack this frame's effective lighting into the GPU uniform. The mode decides
     /// the source: `.off` shades nothing (flat unlit, `enabled == 0`), `.auto` uses
     /// the default rig (the out-of-box shaded look), `.custom` uses the sketch's own
@@ -1998,7 +2078,24 @@ final class Drawer {
         // (w = 0 leaves it untaken, byte-identical). Packed ahead of the `.off` early
         // return below on purpose: fog is a property of the air, so an unlit
         // (`noLights()`) scene still fogs; only the shaft march needs the lights.
-        if fogColor != nil || volumetricAmount > 0 {
+        if aerialActive {
+            // Aerial perspective rides the same slots under mode 2 (every fog gate
+            // checks w > 0, so the carriers stay armed and pick the model with one
+            // compare), plus the sun and the wavelength split in the two tail fields.
+            // A nil density derives from the camera framing (the contact-shadow
+            // default's rule), so a bare call reads alike at any scene scale.
+            let radius = camera3D.map { max(($0.eye - $0.target).length, 1e-4) } ?? 1000
+            let density = aerialDensity ?? 0.35 / radius
+            let sun = resolvedAerialSun()
+            u.fogColor = SIMD4<Float>(0, 0, 0, 2)
+            u.fogParams = SIMD4<Float>(Float(density), Float(fogHeightFalloff),
+                                       Float(volumetricAmount), Float(volumetricAnisotropy))
+            u.fogParams2 = SIMD4<Float>(0, Float(camera3D?.far ?? 0), 0, 0)
+            u.aerialSun = SIMD4<Float>(Float(sun.x), Float(sun.y), Float(sun.z),
+                                       Float(Drawer.aerialMieAnisotropy))
+            let tint = Drawer.aerialSunRadiance(elevationSine: sun.y)
+            u.aerialLight = SIMD4<Float>(tint.x, tint.y, tint.z, Float(aerialHaziness))
+        } else if fogColor != nil || volumetricAmount > 0 {
             let c = fogColor ?? .black
             u.fogColor = SIMD4<Float>(Float(Color.srgbToLinear(c.red)),
                                       Float(Color.srgbToLinear(c.green)),
@@ -2720,6 +2817,10 @@ final class Drawer {
         fogColor = nil
         fogDensity = 0
         fogHeightFalloff = 0
+        aerialActive = false
+        aerialDensity = nil
+        aerialHaziness = 0.3
+        aerialSun = nil
         volumetricAmount = 0
         volumetricAnisotropy = 0.5
         hasDepthScene = false

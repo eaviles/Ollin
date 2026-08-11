@@ -1845,6 +1845,53 @@ height ordering, the air wash, unlit fog, cone confinement, the carved shaft via
 on/off differencing, beams-only leaving off-beam surfaces alone), and the `fog` +
 `volumetric-light` snapshots.
 
+**Aerial perspective** (`aerialPerspective(density:haziness:heightFalloff:sun:)`)
+is the fog integral split by wavelength: the classic real-time outdoor-scattering
+model (Hoffman-Preetham, credited in `ATTRIBUTION.md`), riding the same slots
+under **mode 2 on the fog gate** (`fogColor.w` = 0 off / 1 fog / 2 aerial, so
+every existing `> 0` gate stays armed and the carriers pick the model with one
+compare against 1.5). The shared `ollin_fog_optical_depth` computes one scalar τ
+(the green channel's; height falloff included), and `ollin_aerial_split`
+exponentiates it per channel through the Rayleigh RGB ratios normalized to green
+(`OLLIN_AERIAL_RAYLEIGH` = 0.428/1.0/2.442, the measured sea-level coefficients'
+1/λ⁴ ratios, mirrored by hand from `Drawer.aerialRayleighRatios`) mixed with a
+gray aerosol fraction (`haziness`), then forms the in-scatter's closed form
+`(βR·Φ_R(θ) + βM·Φ_HG(θ))/β_ext · E_sun` per channel, with Φ_R the molecular
+phase `0.75(1+cos²θ)` and Φ_HG the shipped `ollin_hg_phase` at g = 0.76 - so the
+final composite is `rgb·T₃ + L_in·(1−T₃) + marched beams`, the same shape as
+fog's. **The codegen rule from the GI work applies:** `ollin_apply_fog` stays
+verbatim and aerial is a *twin function beside it* (`ollin_apply_aerial`), the
+call sites branching, because a grown fragment re-contracts under fast math -
+verified by recording all 182 snapshot references with the feature in the tree
+against a clean-HEAD worktree record: **pixel-identical across the board**. Two
+appended `OllinLighting` tail fields carry the rest (`aerialSun` = world sun +
+g, `aerialLight` = sun radiance + haziness); the sun resolves at pack time
+(explicit → the `.sky` environment's sun through its rotation - the skybox
+samples at R_y(rotation)·ray, so content sits at R_y(−rotation) in the world,
+sign confirmed against the drawn sun disc → the first directional light negated
+→ a default 35° elevation), and its radiance is white dimmed by the molecular
+slant-path extinction (airmass ≈ 1/sin e), so a horizon sun feeds the veil
+sunset color with no extra knob. A nil `density` derives as 0.35 / the
+eye-to-target distance (the contact-shadow default's rule). **The air veil steps
+aside behind a skybox** (the renderer flags `fogParams2.z` when the skybox drew;
+the air fragment then adds only the marched beams): the sky already is this
+scattering integral carried to infinity, so painting the scene-scale veil over
+it would double-count - with no backdrop the air paints the implied horizon
+glow, its three-channel transmittance necessarily flattened to a mean alpha
+(exact over the usual flat clear). Long paths *saturate* toward the sky tone by
+design (the closed form's equilibrium); the veil on a mid-distance silhouette
+runs blue because blue accumulates fastest at small τ, while the saturated limit
+tends toward the phase-mixed sun color - both ends verified against the Hosek
+horizon (silhouettes melt into the sky with no seam). Verification:
+`AerialStateTests` (mode packing, clamps, the framing-derived density, the
+three-way sun resolution with the rotation formula pinned, last-call-wins,
+per-frame reset, the warm low-sun radiance, the ratio constants) and
+`AerialRenderProbes` (off restores byte-identity, the blue-leaning veil,
+distance ordering, sunward brightening, haziness graying, height falloff, the
+sky-pixel byte-hold behind a skybox, the bare-air glow, beams riding the aerial
+density, determinism - the sky-skip, flat-ratio, and flipped-lobe sabotages each
+verified red), plus the `aerial-perspective` snapshot.
+
 ### The IBL bake
 
 `environment(_:)` lights the PBR materials from a surrounding HDRI via the

@@ -260,6 +260,17 @@ fog(Color(hex: 0xB4BDC9), density: 0.16, heightFalloff: 0.55)
 
 `fog` fades every surface toward its color with distance, so near things stay crisp while far things dissolve, and depth reads at a glance. `density` is the thickness; the `heightFalloff` thins it with altitude, which is the morning-mist look, mist pooling low while tall things rise clear of it. It costs almost nothing (the fade is an exact formula, not a blur pass), so animating the density is just a number moving. The `3D/Effects/Fog` example is a colonnade standing in exactly this mist.
 
+Fog paints every distance toward one color, which is right for a room. Outdoor air is choosier: it takes the blue out of a far ridge's own light, and it adds sunlight scattered into the path, blue from the side, brighter and whiter toward the sun. That is aerial perspective, the cue that makes mountains read as mountains, and it is one call:
+
+```swift
+environment(.sky(turbidity: 2.4, sunElevation: 0.34))
+aerialPerspective()
+```
+
+<img src="Images/17-3DGently/DistantAir.jpg" alt="A file of dark ridgelines stepping away under a pale sky, each silhouette a step paler and bluer than the one in front, the farthest melting into the horizon, the air brightening toward the sun on the right" width="680">
+
+With a `.sky` environment it follows the sky's own sun, rotation and all, so dropping the sun to the horizon reddens the haze by itself. `density` is how much air the scene spans (bare, it sizes itself to the camera framing); `haziness` trades the crisp blue of a clear day for the gray veil and sun halo of a humid one. It replaces `fog` for the frame, the last call wins, and the beams below ride it exactly as they ride fog. The `3D/Effects/AerialPerspective` example puts all of it on knobs.
+
 ```swift
 castShadows()
 volumetricLight()

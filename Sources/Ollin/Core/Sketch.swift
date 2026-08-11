@@ -1155,6 +1155,30 @@ open class Sketch {
     /// Clear the fog (the default).
     public func noFog() { drawer.noFog() }
 
+    /// Wrap this frame's 3D scene in **aerial perspective**: fog's physical cousin, the
+    /// depth cue that sells scale outdoors. The air's extinction is split by wavelength
+    /// (short wavelengths scatter out first, so a far silhouette warms and desaturates)
+    /// while the sun's light scatters *into* the view path (blue looking across the
+    /// scene, brighter and whiter looking toward the sun), so distant geometry recedes
+    /// into the sky instead of into a flat color. `density` is the optical depth per
+    /// world unit, like fog's; leave it nil and it derives from the camera framing so a
+    /// bare call reads alike at any scene scale. `haziness` (0…1) is how much of the
+    /// air is aerosol: 0 the crisp molecular blue-shift, 1 a gray haze with a strong
+    /// halo around the sun. `heightFalloff` thins the air with altitude, as in `fog`.
+    /// `sun` points **toward** the sun; leave it nil to follow the `.sky` environment
+    /// (rotation included), else the first directional light, else a default elevation.
+    /// Replaces `fog` (the last call wins); `volumetricLight()` beams ride it the same
+    /// way. Per-frame state, so call it in `draw()`; `noAerialPerspective()` turns it
+    /// back off. 2D drawing is never touched.
+    public func aerialPerspective(density: Double? = nil, haziness: Double = 0.3,
+                                  heightFalloff: Double = 0, sun: Vector3? = nil) {
+        drawer.aerialPerspective(density: density, haziness: haziness,
+                                 heightFalloff: heightFalloff, sun: sun)
+    }
+
+    /// Turn aerial perspective back off (the default).
+    public func noAerialPerspective() { drawer.noAerialPerspective() }
+
     /// Make this frame's directional and spot lights visible **in the air**: a per-pixel
     /// march accumulates the light scattered toward the eye, so a spot's cone becomes a
     /// stage beam, a cookie projects lace through the haze, an IES profile's throw shows

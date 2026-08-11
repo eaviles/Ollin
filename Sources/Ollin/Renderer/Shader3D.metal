@@ -827,6 +827,61 @@ static inline float3 ollin_apply_fog(float3 rgb, float3 worldPos, float2 pixel,
     return rgb * T + light.fogColor.rgb * (1.0 - T) + inscatter;
 }
 
+// MARK: - Aerial perspective (fogColor.w = 2)
+//
+// The fog integral split by wavelength: the classic outdoor-scattering model, kept as
+// a twin beside `ollin_apply_fog` rather than a branch inside it (a grown fragment
+// re-contracts under fast math, and classic fog must stay byte-identical). The scalar
+// optical depth from the shared helper is the green channel's; red extincts less and
+// blue more (the 1/wavelength^4 law), so a far silhouette warms while the air in
+// front of it adds the sun's light scattered toward the eye: blue side-on (the
+// molecular phase), whiter and brighter leaning into the sun (the aerosol lobe).
+
+// The molecular extinction's RGB ratios, normalized to green. Mirrored by hand from
+// `Drawer.aerialRayleighRatios`; keep the two in step.
+constant float3 OLLIN_AERIAL_RAYLEIGH = float3(0.428, 1.0, 2.442);
+
+// Per-channel transmittance and saturated in-scatter radiance for a view ray `rd`
+// whose (green) optical depth is `tau`. The in-scatter's closed form: along a
+// uniformly lit path, added light accumulates as (beta_sc * phase / beta_ex) *
+// E * (1 - e^(-beta_ex * s)) per channel; at small depths blue accumulates fastest
+// (the haze on a mid-distance ridge), while the saturated limit tends toward the
+// phase-mixed sun color. Phases are normalized so isotropic = 1, with the 1/4pi
+// folded into the packed sun radiance.
+static inline void ollin_aerial_split(float tau, float3 rd,
+                                      constant OllinLighting &light,
+                                      thread float3 &T3, thread float3 &Lin) {
+    float haze = light.aerialLight.w;
+    float3 betaR = OLLIN_AERIAL_RAYLEIGH * (1.0 - haze);
+    float3 k = betaR + haze;                          // per-channel extinction, green = 1
+    T3 = exp(-k * tau);
+    float c = dot(rd, light.aerialSun.xyz);
+    float phaseR = 0.75 * (1.0 + c * c);              // molecular phase, isotropic = 1
+    float phaseM = ollin_hg_phase(c, light.aerialSun.w);
+    Lin = (betaR * phaseR + haze * phaseM) / k * light.aerialLight.rgb;
+}
+
+// Aerial perspective over a shaded surface fragment: `ollin_apply_fog`'s twin, one
+// shared optical depth exponentiated per channel, the saturated in-scatter standing
+// where the fog color stood, and the same volumetric march riding on top.
+static inline float3 ollin_apply_aerial(float3 rgb, float3 worldPos, float2 pixel,
+                                        constant OllinLighting &light,
+                                        depth2d<float> shadowMap, sampler shadowSamp,
+                                        texture2d_array<float> iesProfiles,
+                                        texture2d_array<float> cookies) {
+    float3 o = light.cameraPosition.xyz;
+    float3 v = worldPos - o;
+    float t = length(v);
+    if (t <= 1e-5) return rgb;
+    float3 r = v / t;
+    float tau = ollin_fog_optical_depth(o, r, t, light.fogParams.x, light.fogParams.y);
+    float3 T3, Lin;
+    ollin_aerial_split(tau, r, light, T3, Lin);
+    float3 inscatter = ollin_fog_inscatter(o, r, t, pixel, light, shadowMap, shadowSamp,
+                                           iesProfiles, cookies);
+    return rgb * T3 + Lin * (1.0 - T3) + inscatter;
+}
+
 #if OLLIN_RT_SHADOWS
 // One shadow ray from `origin` toward `target`: 1 if that light point is visible, 0 if an
 // occluder lies between. The structure is built opaque, so an opaque triangle hit commits
@@ -1254,7 +1309,14 @@ static inline float3 ollin_rt_hit_radiance(OllinRTSurface s1, float3 rayOrigin, 
     // so a mirror never shows a crisply un-fogged copy of a hazed scene. The primary
     // eye-to-surface leg is fogged by the receiving fragment on its composed color;
     // an environment miss keeps the environment's clarity (the documented envelope).
-    if (light.fogColor.w > 0.0) {
+    if (light.fogColor.w > 1.5) {
+        float tHit = length(s1.P - rayOrigin);
+        float tau = ollin_fog_optical_depth(rayOrigin, rayDir, tHit,
+                                            light.fogParams.x, light.fogParams.y);
+        float3 T3, Lin;
+        ollin_aerial_split(tau, rayDir, light, T3, Lin);
+        col = col * T3 + Lin * (1.0 - T3);
+    } else if (light.fogColor.w > 0.0) {
         float tHit = length(s1.P - rayOrigin);
         float T = exp(-ollin_fog_optical_depth(rayOrigin, rayDir, tHit,
                                                light.fogParams.x, light.fogParams.y));
@@ -3145,8 +3207,11 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
     // Atmosphere last: fog dims the fully shaded surface (reflections and ambient
     // included) along the eye path, then the marched in-scatter adds the air's glow.
     if (light.fogColor.w > 0.0) {
-        c.rgb = ollin_apply_fog(c.rgb, in.worldPos, in.position.xy, light,
-                                shadowMap, shadowSamp, iesProfiles, cookies);
+        c.rgb = (light.fogColor.w > 1.5)
+            ? ollin_apply_aerial(c.rgb, in.worldPos, in.position.xy, light,
+                                 shadowMap, shadowSamp, iesProfiles, cookies)
+            : ollin_apply_fog(c.rgb, in.worldPos, in.position.xy, light,
+                              shadowMap, shadowSamp, iesProfiles, cookies);
     }
     return c;
 }
@@ -3394,8 +3459,11 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
 #endif
     // Atmosphere last, as on the solid path.
     if (light.fogColor.w > 0.0) {
-        c.rgb = ollin_apply_fog(c.rgb, in.worldPos, in.position.xy, light,
-                                shadowMap, shadowSamp, iesProfiles, cookies);
+        c.rgb = (light.fogColor.w > 1.5)
+            ? ollin_apply_aerial(c.rgb, in.worldPos, in.position.xy, light,
+                                 shadowMap, shadowSamp, iesProfiles, cookies)
+            : ollin_apply_fog(c.rgb, in.worldPos, in.position.xy, light,
+                              shadowMap, shadowSamp, iesProfiles, cookies);
     }
     return c;
 }

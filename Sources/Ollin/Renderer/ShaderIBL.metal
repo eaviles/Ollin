@@ -405,6 +405,25 @@ fragment float4 ollin_fog_air_fragment(OllinSkyboxOut in [[stage_in]],
     // path through the air really is longer than the center's).
     float tEnd = length(farW - ro);
     float3 rd = (farW - ro) / max(tEnd, 1e-5);
+    if (light.fogColor.w > 1.5) {
+        // Aerial perspective: the air's own veil over the backdrop, plus the marched
+        // beams. Behind a skybox (fogParams2.z, set by the renderer) the veil steps
+        // aside: the backdrop is the world at infinity with its atmosphere already in
+        // it, so only the beams add. Over the bare 2D clear the veil paints the
+        // implied horizon glow; the wavelength-split transmittance has three channels
+        // and the blend one alpha, so the mean stands in (over the usual flat clear
+        // the rgb term carries the color exactly and the alpha only meters the
+        // backdrop).
+        float3 inscatterA = ollin_fog_inscatter(ro, rd, tEnd, in.position.xy, light,
+                                                shadowMap, shadowSamp, iesProfiles, cookies);
+        if (light.fogParams2.z > 0.5) return float4(inscatterA, 0.0);
+        float tau = ollin_fog_optical_depth(ro, rd, tEnd,
+                                            light.fogParams.x, light.fogParams.y);
+        float3 T3, Lin;
+        ollin_aerial_split(tau, rd, light, T3, Lin);
+        float cover = 1.0 - dot(T3, float3(1.0 / 3.0));
+        return float4(Lin * (1.0 - T3) + inscatterA, cover);
+    }
     float T = exp(-ollin_fog_optical_depth(ro, rd, tEnd,
                                            light.fogParams.x, light.fogParams.y));
     float3 inscatter = ollin_fog_inscatter(ro, rd, tEnd, in.position.xy, light,

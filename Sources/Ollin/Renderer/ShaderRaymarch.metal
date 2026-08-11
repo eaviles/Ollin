@@ -779,8 +779,11 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
     // uses this pass's own pixel grid (full-res inline or the reduced pre-pass), which
     // the upsample then magnifies with the rest of the image.
     if (light.fogColor.w > 0.0) {
-        lit.rgb = ollin_apply_fog(lit.rgb, pw, in.position.xy, light,
-                                  shadowMap, shadowSamp, iesProfiles, cookies);
+        lit.rgb = (light.fogColor.w > 1.5)
+            ? ollin_apply_aerial(lit.rgb, pw, in.position.xy, light,
+                                 shadowMap, shadowSamp, iesProfiles, cookies)
+            : ollin_apply_fog(lit.rgb, pw, in.position.xy, light,
+                              shadowMap, shadowSamp, iesProfiles, cookies);
     }
 
     // Depth: the world hit point through the *same* view-projection the meshes use, so

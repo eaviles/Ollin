@@ -614,8 +614,11 @@ typedef struct {
                                   // default 0, textures always bound (real or stand-in), the branch
                                   // skipped so a featureless frame executes the prior instructions.
     simd_float4 fogColor;         // atmosphere (`fog` / `volumetricLight`): the fog's linear ambient
-                                  // in-scatter color; w = 1 while the frame set either (the gate:
-                                  // 0 leaves every carrier's fog branch untaken, byte-identical).
+                                  // in-scatter color; w is the gate AND the model: 0 leaves every
+                                  // carrier's fog branch untaken (byte-identical), 1 = classic fog,
+                                  // 2 = aerial perspective (the wavelength-split twin; still > 0,
+                                  // so every existing fog gate holds and the carriers pick the
+                                  // model with one compare against 1.5).
     simd_float4 fogParams;        // x = extinction density at height 0 (inverse world units; 0 = no
                                   // dimming, beams only), y = height falloff (density is
                                   // x·e^(−y·height); 0 = uniform), z = the volumetric in-scatter
@@ -623,7 +626,10 @@ typedef struct {
                                   // anisotropy g, −1…1 (forward-leaning positive).
     simd_float4 fogParams2;       // x = the shaft march's step budget (a RenderQuality tier the
                                   // renderer resolves; the drawer packs 0), y = the camera's far
-                                  // plane (the air backdrop's march cap), z/w reserved.
+                                  // plane (the air backdrop's march cap), z = 1 while a skybox
+                                  // backdrop was drawn (renderer-set; the aerial air veil steps
+                                  // aside behind it, beams still add; read only by the air
+                                  // fragment), w reserved.
     simd_float4 shadowLinearize;  // a punctual 2D-map caster's depth→world-distance constants,
                                   // read by the scattering transmittance term (the thickness the
                                   // light crossed inside the body): x = the shadow projection's
@@ -658,6 +664,16 @@ typedef struct {
                                   // fieldShadowScale rule; 1 at full resolution); z = the march's
                                   // step budget (a RenderQuality tier the renderer resolves; the
                                   // drawer packs 0); w unused.
+    simd_float4 aerialSun;        // aerial perspective (`aerialPerspective()`, fogColor.w = 2):
+                                  // xyz = the world-space unit direction toward the sun (explicit,
+                                  // or the `.sky` environment's sun through its rotation, or the
+                                  // first directional light, or a default elevation); w = the
+                                  // aerosol phase's forward anisotropy g. Unread while
+                                  // fogColor.w < 2, so classic fog never touches it.
+    simd_float4 aerialLight;      // rgb = the sun's in-scatter radiance (linear; carries the
+                                  // low-elevation reddening and the overall in-scatter gain);
+                                  // w = the aerosol (haze) fraction of the extinction, 0…1
+                                  // (0 = pure molecular blue-shift, 1 = gray haze).
 } OllinLighting;
 
 // Per-frame constants auto-injected into every compute dispatch (bound at buffer

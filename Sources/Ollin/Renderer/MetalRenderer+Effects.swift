@@ -1887,9 +1887,11 @@ extension MetalRenderer {
         // matches what's behind it. The per-batch loop resets the pipeline + depth state.
         var skyKey = PipelineKey.skybox(depth: depthFormat)
         if hasStencil { skyKey.stencilFormat = .stencil8 }
+        var skyboxDrawn = false
         if lighting.iblEnabled != 0, drawer.environment?.showsBackground == true,
            var skyUniforms = uniforms3D, let skyTex = currentIBLSkyboxTexture,
            let skyPipe = try? pipeline(skyKey) {
+            skyboxDrawn = true
             encoder.setRenderPipelineState(skyPipe)
             // Always-pass, no write. The explicit state, not nil: the Metal
             // validation layer rejects a nil depth-stencil state.
@@ -1994,6 +1996,15 @@ extension MetalRenderer {
         // The per-batch loop resets the pipeline + depth state, like the skybox.
         var airKey = PipelineKey.fogAir(depth: depthFormat)
         if hasStencil { airKey.stencilFormat = .stencil8 }
+        // Aerial perspective's air veil steps aside behind a skybox: the backdrop is
+        // the world at infinity with its own atmosphere in it (the procedural sky
+        // literally *is* this scattering integral to infinity), so painting the
+        // scene-scale veil over it would double-count; only the marched beams still
+        // add. The flag rides the reserved fogParams2.z, read by the air fragment
+        // alone (no surface path touches it). Classic fog keeps painting over the
+        // sky: fog is an occluding medium, and a fogged frame should swallow its
+        // backdrop too.
+        if lighting.fogColor.w > 1.5 { lighting.fogParams2.z = skyboxDrawn ? 1 : 0 }
         if lighting.fogColor.w > 0, var airUniforms = uniforms3D,
            let airPipe = try? pipeline(airKey) {
             encoder.setRenderPipelineState(airPipe)

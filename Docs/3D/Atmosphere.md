@@ -2,9 +2,9 @@
 
 ---
 
-## Atmosphere: fog & volumetric light
+## Atmosphere: fog, aerial perspective & volumetric light
 
-A rendered scene's air is normally a vacuum: every surface arrives at the eye untouched, however far away it is. Two calls give the air a presence. [`fog`](#fog) makes distance visible - surfaces fade toward the fog color the farther the light travels, so depth reads at a glance and far geometry recedes into atmosphere. [`volumetricLight`](#volumetric) makes the *lights* visible in the air itself - a spot's cone becomes a stage beam, a [cookie](./3D.md#lights) projects patterns through haze, and cast shadows carve crepuscular shafts. Both are per-frame state like the lights and camera: call them in `draw()`, and a frame that calls neither renders exactly as before.
+A rendered scene's air is normally a vacuum: every surface arrives at the eye untouched, however far away it is. Three calls give the air a presence. [`fog`](#fog) makes distance visible - surfaces fade toward the fog color the farther the light travels, so depth reads at a glance and far geometry recedes into atmosphere. [`aerialPerspective`](#aerial) is fog's physical cousin for outdoor scale: the fade is split by wavelength and lit by the sun, so far ridges veil blue and melt into the sky instead of into one flat color. [`volumetricLight`](#volumetric) makes the *lights* visible in the air itself - a spot's cone becomes a stage beam, a [cookie](./3D.md#lights) projects patterns through haze, and cast shadows carve crepuscular shafts. All are per-frame state like the lights and camera: call them in `draw()`, and a frame that calls none renders exactly as before.
 
 ```swift
 override func draw() {
@@ -17,6 +17,7 @@ override func draw() {
 ### Contents
 
 - [Fog](#fog) - `fog(_:density:heightFalloff:)` / `noFog()`
+- [Aerial perspective](#aerial) - `aerialPerspective(density:haziness:heightFalloff:sun:)` / `noAerialPerspective()`
 - [Volumetric light](#volumetric) - `volumetricLight(_:anisotropy:)` / `noVolumetricLight()`
 - [Quality](#quality) - `volumetricQuality(_:)` / `volumetricSteps(_:)`
 - [What participates](#scope)
@@ -38,6 +39,27 @@ noFog()
 The fog color is also the air's own glow (the ambient light the mist scatters toward you), so empty sky washes toward it with distance. The air backdrop draws in the same slot as the environment skybox: behind everything 3D, underneath anything 2D you draw.
 
 The example `3D/Effects/Fog` is a colonnade in pooled mist; a new `variation` re-scatters it.
+
+<a id="aerial"></a>
+### Aerial perspective
+
+```swift
+aerialPerspective()                                  // scale-aware defaults
+aerialPerspective(density: 0.008, haziness: 0.3)     // your own air
+aerialPerspective(density: 0.01, sun: Vector3(1, 0.3, 0))
+noAerialPerspective()
+```
+
+Fog paints every distance the same color; real outdoor air does two different things at once. The light *from* a far surface loses its short wavelengths first (the 1/λ⁴ law), so a distant ridge warms and darkens; and sunlight scatters *into* the view path along the way, veiling the same ridge in blue from the side and in a bright whiter glow toward the sun. `aerialPerspective()` computes both in closed form - the same exact integral as fog, split by wavelength - which is the depth cue that makes a landscape read as kilometers instead of meters. It replaces `fog` for the frame (the last call wins), and `volumetricLight` beams ride it exactly as they ride fog.
+
+- **`density`** is the optical depth per world unit, like fog's, except it decides *where the scale illusion sits*: at `0.008` a surface 60 units away is about 40% veiled, so a 200-unit scene reads like a mountain range. Leave it `nil` and a default derives from the camera framing (a fraction of the eye-to-target distance), so a bare call reads alike at any scene scale.
+- **`haziness`** (0…1, default 0.3) is how much of the air is aerosol rather than molecules: at 0 the veil is the crisp Rayleigh blue-shift of a clear day, at 1 a gray haze whose forward-scattering lobe puts a strong halo around the sun.
+- **`heightFalloff`** thins the air with altitude exactly as in `fog` - valley haze under clear peaks.
+- **`sun`** points **toward** the sun. Leave it `nil` and it resolves from the [`.sky` environment](./3D.md#environment) (rotation included, so the haze follows the sky's own sun), else the first directional light, else a pleasant default. The sun's light warms automatically as it drops: a horizon sun feeds the air sunset color.
+
+Two behaviors worth knowing. Over long paths the veil *saturates* toward the sky's own tone, so a silhouette at great distance melts seamlessly into the horizon - that convergence is the effect working, not washout; if the whole frame looks milky, the density is high for the framing. And behind an environment skybox the air veil deliberately steps aside (the sky already *is* this scattering carried to infinity, so painting more would double-count); with no environment, the air paints its own implied horizon glow over the 2D clear.
+
+The example `3D/Effects/AerialPerspective` is a file of ridgelines stepping away under a procedural sky, with the density, haziness, and sun on knobs.
 
 <a id="volumetric"></a>
 ### Volumetric light
@@ -77,7 +99,7 @@ The march is deterministic: its per-pixel jitter is a pure function of pixel pos
 <a id="scope"></a>
 ### What participates
 
-Fog applies to the lit 3D surfaces (solid and textured meshes), the raymarched [SDF fields](../Drawing/Combinators.md), the environment skybox behind them, and the empty air. Ray-traced [reflections](./3D.md#ray-traced-reflections) see a fogged scene too: the reflected leg dims through the same medium, so a mirror never shows a crisply clear copy of a hazed room.
+Fog applies to the lit 3D surfaces (solid and textured meshes), the raymarched [SDF fields](../Drawing/Combinators.md), the environment skybox behind them, and the empty air. Ray-traced [reflections](./3D.md#ray-traced-reflections) see a fogged scene too: the reflected leg dims through the same medium, so a mirror never shows a crisply clear copy of a hazed room. Aerial perspective reaches the same carriers (with the skybox exception above: the sky keeps its own color).
 
 Beams come from **directional and spot** lights. Point and area lights keep lighting surfaces but do not glow in the air: Ollin's punctual lights have no distance falloff, which is fine on a surface but gives an omnidirectional glow no shape to march. Only the shadow-casting light's beam is carved by shadows (the same one-caster rule as the surfaces).
 
