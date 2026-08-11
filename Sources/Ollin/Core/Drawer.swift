@@ -401,6 +401,17 @@ final class Drawer {
     /// order (`shaping.y`); the cookie-array sibling of `usedIESProfiles`.
     private(set) var usedLightCookies: [LightCookie] = []
 
+    /// The frame's placed decals as packed GPU structs, in call order (a later
+    /// decal composites over an earlier one), capped at `OLLIN_MAX_DECALS`.
+    /// Per-frame state like `lights`; the encode routes every solid/textured
+    /// mesh batch through the surface-mapped pipeline while any are placed.
+    private(set) var placedDecals: [OllinDecal] = []
+
+    /// The distinct decal images the frame's placements reference, in layer
+    /// order (a placement's `params.x` indexes this list); the renderer bakes
+    /// its decal texture array from it, the `usedLightCookies` arrangement.
+    private(set) var usedDecals: [Decal] = []
+
     /// How the 3D mesh material is lit this frame.
     enum LightingMode {
         case auto    // nothing set → the default rig (solids look shaded out of the box)
@@ -1799,6 +1810,70 @@ final class Drawer {
     /// replaces the default rig (an ambient alone is a flat, unshaded fill).
     func ambientLight(_ color: Color) { ambientLightColor = color; lightingMode = .custom }
 
+    /// Place a decal for this frame: a projection box centered at `position`,
+    /// stamping the picture along `direction` onto whatever mesh surfaces sit
+    /// inside it. Per-frame like a light; the box's world→box rows are built
+    /// once here so the fragment pays one matrix row-dot per axis. `height`
+    /// defaults to the picture's own proportions, `depth` to the smaller of
+    /// the two sides. Capped at `OLLIN_MAX_DECALS` per frame with a one-time
+    /// note; repeated placements of one `Decal` share a texture layer.
+    func placeDecal(_ decal: Decal, at position: Vector3, direction: Vector3,
+                    width: Double, height: Double?, depth: Double?,
+                    roll: Double, opacity: Double) {
+        guard placedDecals.count < Int(OLLIN_MAX_DECALS) else {
+            noteOnce("a frame holds up to \(Int(OLLIN_MAX_DECALS)) decals; the extras were skipped.")
+            return
+        }
+        let h = height ?? width * decal.aspect
+        let dp = depth ?? min(width, h)
+        let axisLength = direction.length
+        guard width > 0, h > 0, dp > 0, axisLength > 1e-9, opacity > 0 else { return }
+        let axis = direction / axisLength
+        // The projector frame, the light-cookie convention exactly (the
+        // measured `right = axis × ref` order): +up in box space reads as the
+        // image's top, and `roll` spins the picture about the projection axis.
+        let ref = abs(axis.y) > 0.99 ? Vector3(0, 0, 1) : Vector3(0, 1, 0)
+        var right = axis.cross(ref).normalized
+        var up = right.cross(axis)
+        if roll != 0 {
+            let c = cos(roll), s = sin(roll)
+            let spun = right * c + up * s
+            up = up * c - right * s
+            right = spun
+        }
+        func row(_ a: Vector3, _ size: Double) -> SIMD4<Float> {
+            SIMD4<Float>(Float(a.x / size), Float(a.y / size), Float(a.z / size),
+                         Float(-(a.x * position.x + a.y * position.y + a.z * position.z) / size))
+        }
+        let layer: Int
+        if let found = usedDecals.firstIndex(of: decal) {
+            layer = found
+        } else {
+            usedDecals.append(decal)
+            layer = usedDecals.count - 1
+        }
+        var gpu = OllinDecal()
+        gpu.row0 = row(right, width)
+        gpu.row1 = row(up, h)
+        gpu.row2 = row(axis, dp)
+        gpu.axis = SIMD4<Float>(Float(axis.x), Float(axis.y), Float(axis.z), 0)
+        gpu.params = SIMD4<Float>(Float(layer), 0, 0, Float(min(opacity, 1)))
+        placedDecals.append(gpu)
+    }
+
+    /// The frame's decal list packed for fragment buffer 2 (`OllinDecals`):
+    /// the placements in call order behind their count, zero-filled past it.
+    func decalsUniform() -> OllinDecals {
+        var u = OllinDecals()
+        let n = min(placedDecals.count, Int(OLLIN_MAX_DECALS))
+        u.count = Int32(n)
+        withUnsafeMutableBytes(of: &u.decals) { raw in
+            let buf = raw.bindMemory(to: OllinDecal.self)
+            for i in 0..<n { buf[i] = placedDecals[i] }
+        }
+        return u
+    }
+
     func environment(_ env: Environment) { environment = env }
     func noEnvironment() { environment = nil }
 
@@ -2547,8 +2622,9 @@ final class Drawer {
            mat.texture != nil || (mat.normalTexture != nil && mat.normalScale > 0) {
             triplanar = true
             if mat.metallicRoughnessTexture != nil || mat.occlusionTexture != nil
-                || mat.emissiveTexture != nil || mat.heightTexture != nil {
-                noteOnce("a triplanar mesh projects its base texture and normal map only; the other surface maps (metallic-roughness / occlusion / emissive / height) stay uv-mapped and were skipped.")
+                || mat.emissiveTexture != nil || mat.heightTexture != nil
+                || mat.detailTexture != nil || mat.detailNormalTexture != nil {
+                noteOnce("a triplanar mesh projects its base texture and normal map only; the other surface maps (metallic-roughness / occlusion / emissive / height / detail) stay uv-mapped and were skipped.")
             }
         }
         // A normal map needs the whole basis: matching uvs *and* matching
@@ -2583,6 +2659,29 @@ final class Drawer {
                 noteOnce("a height map needs per-vertex tangents (parallaxMapped(_:) or generatingTangents() sets them up); drawing the mesh without it.")
             }
         }
+        // Detail maps tile a finer second texture pair across the base one.
+        // The color half needs uvs like the base texture; the normal half
+        // needs the full tangent basis like a normal map. Each degrades
+        // honestly on its own; `detailStrength == 0` (or `detailScale == 0`)
+        // is the documented off switch, keeping the frame byte-identical to
+        // one with no detail maps at all.
+        var detailColorMapped = false, detailNormalMapped = false
+        if !triplanar, !wireframe, matcap == nil, let mat = material,
+           mat.detailScale > 0, mat.detailStrength > 0,
+           mat.detailTexture != nil || mat.detailNormalTexture != nil {
+            if uvsAligned {
+                detailColorMapped = mat.detailTexture != nil
+                if mat.detailNormalTexture != nil {
+                    if mesh.tangents.count == mesh.positions.count {
+                        detailNormalMapped = true
+                    } else {
+                        noteOnce("a detail normal map needs per-vertex tangents (detailMapped(_:normal:) or generatingTangents() sets them up); drawing the mesh without it.")
+                    }
+                }
+            } else {
+                noteOnce("detail maps need per-vertex uvs; drawing the mesh without them.")
+            }
+        }
         let textured = !wireframe && matcap == nil && uvsAligned
             && (material?.texture != nil || normalMapped)
         // The rest of the surface-map set (a metallic-roughness map, an occlusion
@@ -2615,6 +2714,7 @@ final class Drawer {
         // A height map routes here too: the parallax march lives in the
         // surface-mapped fragment, where the shifted uv reaches every map.
         let surfaceMapped = mrMapped || occlusionMapped || emissiveMapped || heightMapped
+            || detailColorMapped || detailNormalMapped
             || triplanar || (emissiveOn && (uvsAligned || material?.texture == nil))
         let writesUV = textured || (surfaceMapped && uvsAligned)
         if wireframe {
@@ -2650,6 +2750,12 @@ final class Drawer {
                 }
                 if heightMapped {
                     finish.parallax = Float(mat.heightScale)
+                }
+                if detailColorMapped || detailNormalMapped {
+                    finish.detailScale = Float(mat.detailScale)
+                    finish.detailStrength = Float(mat.detailStrength)
+                    finish.detailGates = SIMD4<Float>(detailColorMapped ? 1 : 0,
+                                                      detailNormalMapped ? 1 : 0, 0, 0)
                 }
                 if emissiveOn {
                     let f = mat.emissiveFactor
@@ -2730,14 +2836,15 @@ final class Drawer {
                 let uv = mesh.uvs[i]
                 v.uv = SIMD2<Float>(Float(uv.x), Float(uv.y))
             }
-            if normalMapped || heightMapped {
+            if normalMapped || heightMapped || detailNormalMapped {
                 // The tangent transforms by the model's linear part (it's a
                 // surface direction, covariant with positions, unlike the
                 // normal's inverse-transpose), then packs as four Float16 bit
                 // patterns into the vertex's spare 8 bytes; the shader reads
                 // them back as a native half4 and renormalizes after
-                // interpolation. A height map rides the same basis: the
-                // parallax march projects the eye ray through it.
+                // interpolation. A height map rides the same basis (the
+                // parallax march projects the eye ray through it), and a
+                // detail normal map bends through it too.
                 let t = mesh.tangents[i]
                 var d = SIMD3<Float>(Float(t.direction.x), Float(t.direction.y),
                                      Float(t.direction.z))
@@ -2952,6 +3059,9 @@ final class Drawer {
         lights.removeAll(keepingCapacity: true)
         ambientLightColor = nil
         lightingMode = .auto
+        // Decals are per-frame like the lights: place them each `draw()`.
+        placedDecals.removeAll(keepingCapacity: true)
+        usedDecals.removeAll(keepingCapacity: true)
         environment = nil
         castsShadows = false
         contactShadowsEnabled = false

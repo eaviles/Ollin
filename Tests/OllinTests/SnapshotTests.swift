@@ -314,6 +314,12 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("triplanar",
                  note: "Triplanar projection on meshes with no uvs: a two-ball metaball skin and an abutting box pair wearing one authored vein texture plus its normal map, projected along the world axes and blended by the normal. Pins the fourth-power weight blend, the per-axis u sign flip, the projected whiteout normal combine, the world anchoring (the boxes continue each other's pattern), and the triplanar gate on the surface-mapped pipeline. Authored maps, fixed camera + light, no time, no rng.",
                  make: { TriplanarScene() }),
+    SnapshotCase("detail-maps",
+                 note: "Detail maps on a close-up textured sphere beside its undetailed twin: a fine speckle color map (data read, 128-gray neutral, the x2 multiply) and a fine bump normal map reoriented onto the base normal map's relief (the RNM blend), tiled at the detail scale through the repeat sampler. Pins the tiling, the neutral, the reorientation, and the detail gates on the surface-mapped pipeline. Authored maps, fixed camera + light, no time, no rng.",
+                 make: { DetailMapScene() }),
+    SnapshotCase("decals",
+                 note: "Projected decals: a roundel stamped down across a floor and a crate at once (one box conforming over two meshes, the crate's vertical faces fading edge-on), a striped tag stamped sideways onto the crate's front with a roll, and a half-opacity ring overlapping the roundel (call-order compositing, premultiplied blend). Pins the world-to-box rows, the cookie-rule orientation, the facing fade, and the routed surface-mapped pipeline serving plain solid meshes. Authored images, fixed camera + light, no time, no rng.",
+                 make: { DecalScene() }),
     SnapshotCase("coat-sheen",
                  note: "The layered physically-based lobes over a bundled environment plus a point light: a coated red metal beside its bare twin (the clear-coat Cook-Torrance lobe, the Kelemen visibility, the coat-interface F0 remap, and the coat's smooth IBL gather), a piano-black lacquer, a white-sheen felt beside its bare twin (the inverted-alpha sine sheen lobe, the cloth visibility, the sheen-LUT energy scaling, and the sheen's own prefiltered gather), and a two-tone velvet. Fixed camera + environment, no time.",
                  make: { CoatSheenScene() }),
@@ -2095,6 +2101,148 @@ private final class TriplanarScene: Sketch {
                 }
             }
         }
+    }
+}
+
+private final class DetailMapScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    private var base = Image(width: 1, height: 1, color: .white)
+    private var baseBumps = Image(width: 1, height: 1, color: .white)
+    private var grain = Image(width: 1, height: 1, color: .white)
+    private var grainBumps = Image(width: 1, height: 1, color: .white)
+
+    /// Broad blotches for the base, a fine deterministic speckle for the
+    /// detail, and a normal map derived from each. Pure math, no rng.
+    private func blotch(_ u: Double, _ v: Double) -> Double {
+        0.5 + 0.25 * sin(u * 2 * .tau + 1.3) * sin(v * 2 * .tau)
+            + 0.25 * sin((u + v) * 3 * .tau)
+    }
+
+    private func speckle(_ u: Double, _ v: Double) -> Double {
+        let a = sin(u * 9 * .tau) * sin(v * 7 * .tau)
+        let b = sin((u * 5 + v * 6) * .tau + 2.1)
+        return 0.5 + 0.28 * a + 0.22 * b
+    }
+
+    private func makeMap(_ size: Int, field: (Double, Double) -> Double,
+                         tint: (Double) -> (UInt8, UInt8, UInt8)) -> (Image, Image) {
+        var color = [UInt8](repeating: 255, count: size * size * 4)
+        var normal = [UInt8](repeating: 255, count: size * size * 4)
+        let d = 1.0 / Double(size)
+        for y in 0..<size {
+            for x in 0..<size {
+                let u = (Double(x) + 0.5) * d, v = (Double(y) + 0.5) * d
+                let h = min(max(field(u, v), 0), 1)
+                let i = (y * size + x) * 4
+                let (r, g, b) = tint(h)
+                color[i] = r; color[i + 1] = g; color[i + 2] = b
+                let dx = (field(u + d, v) - field(u - d, v)) / (2 * d) * 0.2
+                let dy = (field(u, v + d) - field(u, v - d)) / (2 * d) * 0.2
+                let len = (dx * dx + dy * dy + 1).squareRoot()
+                normal[i] = UInt8((-dx / len * 0.5 + 0.5) * 255)
+                normal[i + 1] = UInt8((dy / len * 0.5 + 0.5) * 255)
+                normal[i + 2] = UInt8((1 / len * 0.5 + 0.5) * 255)
+            }
+        }
+        return (Image(width: size, height: size, premultipliedRGBA: color)!,
+                Image(width: size, height: size, premultipliedRGBA: normal)!)
+    }
+
+    override func setup() {
+        (base, baseBumps) = makeMap(128, field: blotch) { h in
+            (UInt8(120 + 100 * h), UInt8(96 + 80 * h), UInt8(70 + 60 * h))
+        }
+        // The detail color map is data with 128 the neutral: speckle around it.
+        (grain, grainBumps) = makeMap(64, field: speckle) { h in
+            let v = UInt8(min(max(88 + 80 * h, 0), 255))
+            return (v, v, v)
+        }
+    }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        camera(.orbiting(target: .zero, radius: 4.6, azimuth: 0.3, elevation: 0.12,
+                         fieldOfView: .pi / 3.6))
+        directionalLight(Color(white: 0.95), direction: Vector3(-0.6, -0.5, -0.6))
+        ambientLight(Color(white: 0.12))
+        fill(.white)
+        let dressed = Mesh.sphere(radius: 1.05, segments: 48, rings: 24)
+            .textured(base).normalMapped(baseBumps, scale: 0.8)
+        withState {
+            translate(-1.2, 0, 0)
+            drawMesh(dressed)
+        }
+        withState {
+            translate(1.2, 0, 0)
+            drawMesh(dressed.detailMapped(grain, normal: grainBumps, scale: 7, strength: 0.9))
+        }
+    }
+}
+
+private final class DecalScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    private var roundel = Decal(Image(width: 1, height: 1, color: .white))!
+    private var ring = Decal(Image(width: 1, height: 1, color: .white))!
+    private var tag = Decal(Image(width: 1, height: 1, color: .white))!
+
+    override func setup() {
+        // A roundel (solid disc in two rings), a bare ring, and a striped tag,
+        // all authored in pixels; the transparent surrounds stamp nothing.
+        let size = 96
+        func authored(_ paint: (Double, Double) -> (UInt8, UInt8, UInt8, UInt8)) -> Decal {
+            var bytes = [UInt8](repeating: 0, count: size * size * 4)
+            for y in 0..<size {
+                for x in 0..<size {
+                    let u = (Double(x) + 0.5) / Double(size) - 0.5
+                    let v = (Double(y) + 0.5) / Double(size) - 0.5
+                    let (r, g, b, a) = paint(u, v)
+                    let i = (y * size + x) * 4
+                    let k = Double(a) / 255
+                    bytes[i] = UInt8(Double(r) * k); bytes[i + 1] = UInt8(Double(g) * k)
+                    bytes[i + 2] = UInt8(Double(b) * k); bytes[i + 3] = a
+                }
+            }
+            return Decal(Image(width: size, height: size, premultipliedRGBA: bytes)!)!
+        }
+        roundel = authored { u, v in
+            let r = (u * u + v * v).squareRoot()
+            if r > 0.48 { return (0, 0, 0, 0) }
+            return r > 0.34 ? (200, 40, 40, 255)
+                : (r > 0.2 ? (235, 225, 205, 255) : (40, 60, 140, 255))
+        }
+        ring = authored { u, v in
+            let r = (u * u + v * v).squareRoot()
+            return (r > 0.28 && r < 0.46) ? (250, 200, 40, 255) : (0, 0, 0, 0)
+        }
+        tag = authored { u, v in
+            guard abs(u) < 0.45, abs(v) < 0.3 else { return (0, 0, 0, 0) }
+            let stripe = Int(((u + v * 0.6) * 7).rounded(.down)) % 2 == 0
+            return stripe ? (20, 20, 20, 255) : (240, 190, 40, 255)
+        }
+    }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        camera(.orbiting(target: Vector3(0, 0.3, 0), radius: 6.4, azimuth: 0.5,
+                         elevation: 0.5, fieldOfView: .pi / 3.6))
+        directionalLight(Color(white: 0.95), direction: Vector3(-0.4, -0.8, -0.4))
+        ambientLight(Color(white: 0.14))
+        fill(Color(white: 0.75))
+        drawMesh(Mesh.plane(width: 6, depth: 6))
+        withState {
+            translate(0.7, 0.5, -0.4)
+            drawMesh(Mesh.box(width: 1.4, height: 1, depth: 1.2))
+        }
+        // One box conforming over floor and crate at once; the crate's
+        // vertical faces sit edge-on to the downward projection and fade.
+        decal(roundel, at: Vector3(0, 0.4, 0.4), width: 2.4, depth: 2)
+        // A half-opacity ring composited over the roundel, later in call order.
+        decal(ring, at: Vector3(-0.7, 0.2, 0.9), width: 1.8, opacity: 0.5)
+        // A tag stamped sideways onto the crate's front face, rolled a little.
+        decal(tag, at: Vector3(0.6, 0.55, 0.25), direction: Vector3(0, 0, -1),
+              width: 1.1, depth: 1.6, roll: 0.18)
     }
 }
 

@@ -231,6 +231,8 @@ let package = Package(
         example("3D/Materials/Parallax"),
         example("3D/Materials/SurfaceMaps"),
         example("3D/Materials/Triplanar"),
+        example("3D/Materials/Detail"),
+        example("3D/Materials/Decals"),
         example("3D/Materials/PhysicalMaterials"),
         example("3D/Materials/CoatAndCloth"),
         example("3D/Materials/Glass"),

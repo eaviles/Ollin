@@ -4458,7 +4458,11 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
                                          texture2d<float> mrTex [[texture(18)]],
                                          texture2d<float> occlusionTex [[texture(19)]],
                                          texture2d<float> emissiveTex [[texture(20)]],
-                                         texture2d<float> heightTex [[texture(21)]]
+                                         texture2d<float> heightTex [[texture(21)]],
+                                         texture2d<float> detailColorTex [[texture(22)]],
+                                         texture2d<float> detailNormalTex [[texture(23)]],
+                                         constant OllinDecals &decals [[buffer(2)]],
+                                         texture2d_array<float> decalTex [[texture(24)]]
 #if OLLIN_RT_SHADOWS
                                          , primitive_acceleration_structure shadowAccel [[buffer(3)]]
                                          , const device OllinMeshVertex *meshVerts [[buffer(6)]]
@@ -4510,6 +4514,81 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
     }
     float3 base = tex.rgb * srgbToLinear(in.color.rgb);
     float alpha = in.color.a * tex.a;
+    // Detail maps: a finer texture pair tiled `mat.detailScale` times across
+    // the base uv (repeat-sampled; the shared sampler clamps). The drawer
+    // packs the gates only for a verified uv-mapped mesh, never with
+    // triplanar, so every other batch keeps `detailScale` zero and skips this
+    // whole block.
+    if (mat.detailScale > 0.0) {
+        constexpr sampler detailSamp(filter::linear, address::repeat);
+        float2 duv = uv * mat.detailScale;
+        if (mat.detailGates.x > 0.0) {
+            // The color map is data with 128 gray the neutral: the sample × 2
+            // multiplies the base color, eased in by `detailStrength`.
+            float3 d = detailColorTex.sample(detailSamp, duv).rgb;
+            base *= mix(float3(1.0), d * 2.0, mat.detailStrength);
+        }
+        if (mat.detailGates.y > 0.0) {
+            // Reoriented normal mapping (the quaternion-rotation blend): the
+            // detail normal is rotated to follow the surface the base normal
+            // map describes, so the fine grain rides the base relief instead
+            // of overwriting it. The bent normal is recomputed from scratch
+            // here (one extra base sample, paid only when detail is on) so
+            // the shipped resolve above stays textually untouched.
+            float3 gn = in.normal;
+            float3 t = in.tangent.xyz;
+            float3 b = cross(gn, t) * in.tangent.w;
+            float3 nb = float3(0.0, 0.0, 1.0);
+            if (mat.normalScale > 0.0) {
+                nb = normalMapTex.sample(samp, uv).xyz * 2.0 - 1.0;
+                nb.xy *= mat.normalScale;
+                float nbLen = length(nb);
+                if (nbLen > 1e-6) { nb /= nbLen; }
+            }
+            float3 nd = detailNormalTex.sample(detailSamp, duv).xyz * 2.0 - 1.0;
+            nd.xy *= mat.detailStrength;
+            float ndLen = length(nd);
+            if (ndLen > 1e-6) { nd /= ndLen; }
+            // The half-vector construction: with the detail flat (0,0,1) the
+            // result is exactly the base normal, so the blend vanishes where
+            // the detail map does.
+            float3 tq = float3(nb.xy, nb.z + 1.0);
+            float3 uq = float3(-nd.xy, nd.z);
+            float3 r = tq * dot(tq, uq) - uq * tq.z;
+            float3 bent = t * r.x + b * r.y + gn * r.z;
+            float bentLen = length(bent);
+            N = (bentLen > 1e-6) ? bent / bentLen : normalize(gn);
+        }
+    }
+    // Projected decals: each of the frame's decal boxes whose volume holds
+    // this fragment stamps its picture over the base color before lighting,
+    // so the shading treats it as paint (it takes the surface's own finish).
+    // In call order, a later decal composites over an earlier one. `count` is
+    // the gate: a frame that places none skips the loop entirely.
+    if (decals.count > 0) {
+        constexpr sampler decalSamp(filter::linear, address::clamp_to_edge);
+        float4 wp1 = float4(in.worldPos, 1.0);
+        float3 gN = normalize(in.normal);
+        for (int i = 0; i < decals.count; ++i) {
+            constant OllinDecal &d = decals.decals[i];
+            float3 p = float3(dot(d.row0, wp1), dot(d.row1, wp1), dot(d.row2, wp1));
+            if (fabs(p.x) > 0.5 || fabs(p.y) > 0.5 || fabs(p.z) > 0.5) { continue; }
+            // A surface turned edge-on to the projection fades the decal out
+            // instead of smearing it down the surface; the box's depth ends
+            // soften too, so a receiver near the far planes never hard-clips.
+            float facing = dot(gN, -d.axis.xyz);
+            float fade = smoothstep(0.05, 0.35, facing)
+                       * (1.0 - smoothstep(0.4, 0.5, fabs(p.z)));
+            if (fade <= 0.0) { continue; }
+            // +y in box space reads as the image's top (the cookie rule).
+            float2 duv = float2(p.x + 0.5, 0.5 - p.y);
+            float4 s = decalTex.sample(decalSamp, duv, (uint)max(d.params.x, 0.0));
+            // Premultiplied compositing with one scale on both halves, so
+            // opacity and the fades dim the stamp without fringing its edges.
+            float k = d.params.w * fade;
+            base = base * (1.0 - s.a * k) + s.rgb * k;
+        }
+    }
     // Resolve the per-pixel surface: the composed metallic/roughness factors in
     // `mat` times the sampled channels, the occlusion ramp 1 + s·(ao − 1), and
     // the emissive factor times its map when one is bound.

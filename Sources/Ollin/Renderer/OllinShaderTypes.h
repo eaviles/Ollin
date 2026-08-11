@@ -481,9 +481,54 @@ typedef struct {
                                   // unit (1 / `MeshMaterial.triplanarScale`). 0 = uv mapping
                                   // (the gate; every other mesh keeps this zero, so uv-mapped
                                   // frames are untouched).
-    float _matPad1;               // pads the tail row to 16 bytes
-    float _matPad2;
+    float detailScale;            // > 0 = detail maps bound (the gate for the pair): the tile
+                                  // count of the detail uv relative to the base uv
+                                  // (`MeshMaterial.detailScale`); the detail maps repeat that
+                                  // many times across one base tile. 0 = no detail (every other
+                                  // mesh keeps this zero, so detail-less frames are untouched).
+    float detailStrength;         // how strongly the detail pair applies: scales the color map's
+                                  // push away from its 128-gray neutral and the detail normal's
+                                  // tangent-plane tilt. Packed only while detailScale > 0.
+    simd_float4 detailGates;      // x = 1 when a detail color map is bound (texture 22, sampled
+                                  // as data: 128-gray neutral, the sample × 2 multiplies the
+                                  // base color); y = 1 when a detail normal map is bound
+                                  // (texture 23, data; reoriented onto the base normal);
+                                  // z, w pad the row.
 } OllinMaterial;
+
+// A projected decal (see `Sketch.decal(_:at:...)`): a picture stamped onto whatever
+// 3D surfaces sit inside its oriented box, composited over the surface's base color
+// before lighting, so the shading treats it as paint on the surface (it takes the
+// surface's own finish). The frame's decals ride one small uniform (`OllinDecals`,
+// fragment buffer 2 on the surface-mapped mesh pipeline) beside a shared
+// `texture2d_array` (texture 24), the light-cookie arrangement. The rows carry the
+// world→box transform: p = (dot(row0, w1), dot(row1, w1), dot(row2, w1)) with
+// w1 = (worldPos, 1) lands inside the box when every |component| <= 0.5; +y in box
+// space reads as the image's top (the cookie orientation rule).
+typedef struct {
+    simd_float4 row0;        // world→decal-box rows (the box's inverse frame over its size)
+    simd_float4 row1;
+    simd_float4 row2;
+    simd_float4 axis;        // xyz = the projection direction (unit, world space), for the
+                             // facing fade: surfaces turned past ~edge-on to the projection
+                             // fade the decal out instead of smearing it. w unused.
+    simd_float4 params;      // x = layer in the decal texture array; w = opacity 0…1;
+                             // y, z unused
+} OllinDecal;
+
+#define OLLIN_MAX_DECALS 8
+
+// The frame's decal list, packed CPU-side each frame (`Drawer.placedDecals` order,
+// which is call order: a later decal composites over an earlier one). `count == 0`
+// is the gate: the fragment's decal loop is skipped entirely and the texture slot
+// holds a stand-in, so a frame that places no decal renders byte-identically.
+typedef struct {
+    int count;
+    int _decPad0;
+    int _decPad1;
+    int _decPad2;
+    OllinDecal decals[OLLIN_MAX_DECALS];
+} OllinDecals;
 
 // Parameters for the live ground-grid overlay (`ollin_grid_fragment`): a shader-drawn
 // reference floor at y=0, host chrome shown in the live preview only, never in an

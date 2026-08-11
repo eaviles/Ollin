@@ -413,6 +413,36 @@ extension MetalRenderer {
         return true
     }
 
+    /// Upload the frame's distinct decal images (from `Drawer.usedDecals`, the
+    /// `params.x` layer order) into an sRGB `texture2d_array`; each `Decal`
+    /// already resampled itself to the shared square at init, so a layer is one
+    /// byte copy. Same fresh-texture cache discipline as the cookies.
+    func ensureDecalArray(_ decals: [Decal]) -> Bool {
+        guard !decals.isEmpty else { return false }
+        let key = decals.map(\.contentHash)
+        if key == decalArrayKey, decalArrayTexture != nil { return true }
+        let side = Decal.resolution
+        let desc = MTLTextureDescriptor()
+        desc.textureType = .type2DArray
+        desc.pixelFormat = .rgba8Unorm_srgb
+        desc.width = side
+        desc.height = side
+        desc.arrayLength = decals.count
+        desc.usage = .shaderRead
+        desc.storageMode = .shared
+        guard let texture = device.makeTexture(descriptor: desc) else { return false }
+        for (layer, decal) in decals.enumerated() {
+            decal.pixels.withUnsafeBytes { raw in
+                texture.replace(region: MTLRegionMake2D(0, 0, side, side), mipmapLevel: 0,
+                                slice: layer, withBytes: raw.baseAddress!,
+                                bytesPerRow: side * 4, bytesPerImage: side * side * 4)
+            }
+        }
+        decalArrayTexture = texture
+        decalArrayKey = key
+        return true
+    }
+
     /// The never-sampled 1×1×1 array stand-in for the light-shaping texture slots
     /// (10/11) when a frame has no profile or cookie bound there.
     func shapingStandIn() -> MTLTexture? {

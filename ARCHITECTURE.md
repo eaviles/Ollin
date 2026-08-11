@@ -2692,6 +2692,102 @@ and the green direction each sabotage-verified red.
 
 ---
 
+## Detail maps
+
+The advanced-materials arc's fifth slice, and the smallest by construction:
+a finer second texture pair (`MeshMaterial.detailTexture` /
+`detailNormalTexture`, attached by `Mesh.detailMapped(_:normal:scale:strength:)`)
+tiled `detailScale` times across the base uv and applied in the surface-mapped
+fragment behind its own gates, using the branch-freely exemption the parallax
+and triplanar slices established (the shipped textured/nm fragments stay
+verbatim; growing `ollin_mesh_maps_fragment` held the whole snapshot suite
+unrecorded again).
+
+**The color map is data with 128 gray the neutral.** The sample multiplies the
+base as `mix(1, d·2, strength)`; sampled through `linearTexture` (no sRGB
+decode), byte 128 reads 0.502 and the multiplier sits within half an 8-bit
+step of the identity, so an author's mid-gray from any paint app is the
+neutral. Reading it as color would put the neutral at sRGB ~188, which nobody
+would guess. (A flat-128 map is therefore *near*-identity, within the
+dither's step; the exact byte-identity switch is `strength: 0`, which the
+drawer treats as "never raise the gates," routing down the plain textured
+pipeline.)
+
+**The normal blends by Reoriented Normal Mapping** (Barré-Brisebois/Hill),
+so the fine grain follows the surface the base normal map describes instead
+of overwriting it: with the detail flat, the algebra collapses to exactly the
+base normal (the identity the overwrite blend fails, and the probe pins).
+The detail branch *recomputes* the bent normal from scratch (one redundant
+base-map sample, paid only when detail is on) rather than restructuring the
+shipped base-normal resolve above it, keeping that code textually untouched.
+Strength scales the detail's tangent-space xy before renormalizing, the
+standard fade.
+
+**Packing:** `detailScale`/`detailStrength` claimed the two free tail pads
+and `detailGates` (color-bound / normal-bound flags) appended one row,
+growing `OllinMaterial` 256 → 272 (offsets 248/252/256; the drawer packs
+them only for a verified uv-mapped mesh, never with triplanar, so the union
+gate is just `detailScale > 0` in `usesSurfaceMaps`). Textures 22 (detail
+color) and 23 (detail normal) joined the mesh path, both data reads, white
+stand-ins bound when a gate is down. The maps carry no mips, like the whole
+mesh texture path, so a very high tile count shimmers under minification:
+the documented envelope, with the example keeping its default in the range
+the framing shows. Neither glTF nor USD has a detail slot; the spatial
+exporter notes-and-strips (the triplanar treatment). `DetailMapTests` pins
+tiling-at-scale, the 128 neutral, the RNM identity and composition, and the
+strength-0 byte-identity, with the tiling and reorientation
+sabotage-verified red.
+
+---
+
+## Projected decals
+
+A picture stamped through an oriented box onto whatever lit mesh surfaces
+sit inside it: `Decal` (the LightCookie construction: one 512-square
+premultiplied resample at wrap time, content hash, plus the source aspect so
+a placement can default its height) and the per-frame `decal(_:at:...)`
+placement, capped at `OLLIN_MAX_DECALS` (8) with repeated placements of one
+image sharing a texture layer. The CPU builds each box's world→unit-box
+transform once (`Drawer.placeDecal`: the light-cookie projector frame with
+its measured `right = axis × ref` order, three rows over the box size), so a
+fragment pays one row-dot per axis, an inside test, a facing fade, and one
+array sample per decal.
+
+**The routing is the design's crux, and it keeps byte-identity by
+construction.** The decal loop lives only in the surface-mapped fragment
+(the branch-freely one); a frame with placed decals routes *every* lit mesh
+batch through that pipeline at encode time (`meshSurfaceMapped ||=
+placedDecals present`; wireframe, matcap, and the grid keep their own), so a
+plain solid or textured mesh receives a stamp with its map gates all zero,
+and a frame with no decals keeps its exact prior routing, no shipped
+fragment grown at all. The trade, stated in the docs: a frame *with* decals
+shades its plain meshes through the maps fragment (equivalent shading,
+different codegen), which is the feature's own envelope, not a regression
+surface. Solid meshes ride the nm vertex safely because `OllinMeshVertex()`
+zero-fills, so unwritten uv/tangent fields are deterministic.
+
+**In the fragment,** box space is `[-0.5, 0.5]³` with +y the image's top
+(the cookie orientation rule; v = 0.5 − p.y), the composite is premultiplied
+with one scale on both halves (`base·(1 − s.a·k) + s.rgb·k`, k = opacity ×
+fades) so a fade can't fringe the sticker's edge, and two fades guard the
+box's own geometry: a facing fade (`smoothstep(0.05, 0.35, N·−axis)`) that
+melts the stamp off surfaces edge-on to the projection instead of smearing
+it down them, and a depth-end fade over the last tenth of the box so a
+receiver near the far planes never hard-clips. The decal list rides its own
+small uniform (`OllinDecals`, fragment buffer 2, count-gated) beside a
+content-hash-cached `rgba8Unorm_srgb` texture array at texture 24 (the
+cookie array's twin, `shapingStandIn()` when empty). Decals modify albedo
+only, before the per-pixel surface resolve, so the stamp takes the surface's
+finish and every shading model downstream is untouched; reflections show the
+undecaled base (the surface-map envelope), and fields/particles/point clouds
+sit outside by design. `DecalTests` pins placement against the renderer's
+own projection (a drawn marker at the same world position), the depth bound,
+the edge-on fade, call-order compositing, the solid-mesh routing, and
+transparency, with the translation sign, the depth clip (both guards at
+once), the facing fade, and the loop order each sabotage-verified red.
+
+---
+
 ## Deferred ray-traced reflection AA
 
 The ray-traced reflection is one closest-hit ray per reflective pixel, which makes

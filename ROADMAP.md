@@ -54,9 +54,7 @@ It's opt-in, so a 2D sketch never pays for a depth buffer or a perspective divid
 
 ## Photorealistic 3D
 
-The high-end, well-curated realism tier, opt-in on the existing PBR, IBL, ray-traced shadows and reflections, and SDF raymarching, so a 2D or stylized 3D sketch never pays. The techniques that separate a polished product render or film still from "CG," each Metal-native and written from the published technique (credited in `ATTRIBUTION.md`'s Techniques list):
-
-- **Advanced materials.** Surface detail: detail and decal maps.
+The high-end, well-curated realism tier, opt-in on the existing PBR, IBL, ray-traced shadows and reflections, and SDF raymarching, so a 2D or stylized 3D sketch never pays. It grows the way the SDF shape catalog does: when a technique that separates a polished product render or film still from "CG" finds a good fit, it lands Metal-native, written from the published technique and credited in `ATTRIBUTION.md`'s Techniques list. The deeper levers (a path-traced export, GPU-driven rendering, wide-gamut and HDR output) live under [rendering and color frontier](#rendering-and-color-frontier).
 
 See the [design notes](DESIGN-NOTES.md#photorealistic-3d).
 

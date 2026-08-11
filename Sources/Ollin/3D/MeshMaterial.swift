@@ -31,10 +31,14 @@ import Foundation
 /// shows a model's maps as authored), an `occlusionTexture` dims the ambient
 /// and environment light in crevices, and an `emissiveTexture` /
 /// `emissiveFactor` make the surface add light of its own. All map through the
-/// mesh's `uvs`. The finish *values* below (how metallic, how rough, how
-/// clear) are otherwise carried for export rather than drawn, since Ollin
-/// shades a mesh through `material(_:)`; with a metallic-roughness map bound,
-/// `metallic`/`roughness` act as that map's factors, the standard convention.
+/// mesh's `uvs`. A detail pair (`detailTexture` / `detailNormalTexture`)
+/// tiles a much finer second texture across the base one, so a surface keeps
+/// texture when the camera gets close; see
+/// `Mesh.detailMapped(_:normal:scale:strength:)`. The finish *values* below
+/// (how metallic, how rough, how clear) are otherwise carried for export
+/// rather than drawn, since Ollin shades a mesh through `material(_:)`; with
+/// a metallic-roughness map bound, `metallic`/`roughness` act as that map's
+/// factors, the standard convention.
 public struct MeshMaterial: @unchecked Sendable {
     // `@unchecked Sendable`: the only stored reference is an `Image`, which a
     // material uses read-only for texturing (handed to the renderer's
@@ -102,6 +106,25 @@ public struct MeshMaterial: @unchecked Sendable {
     /// with an `emissiveTexture` it scales the map, without one it emits as a
     /// constant color.
     public var emissiveFactor: Color
+    /// A detail color map: a second, much finer texture tiled `detailScale`
+    /// times across each base tile, multiplying the base color so a surface
+    /// keeps texture when the camera gets close. Sampled as raw data with
+    /// 128 gray the neutral (the sample × 2 multiplies, so darker values
+    /// darken and lighter ones lighten). `nil` means no color detail. Set
+    /// with `Mesh.detailMapped(_:normal:scale:strength:)`.
+    public var detailTexture: Image?
+    /// A detail normal map, tiled like `detailTexture` and reoriented onto
+    /// the base normal (the map's relief rides whatever the base `normalTexture`
+    /// already shapes), for fine surface grain. Sampled as raw data. Needs the
+    /// mesh to carry `tangents` beside its `uvs`. `nil` means no normal detail.
+    public var detailNormalTexture: Image?
+    /// How many times the detail maps tile across one base uv tile (8 = the
+    /// detail repeats 8 × 8 per base tile). Applies to both detail maps.
+    public var detailScale: Double
+    /// How strongly the detail pair applies: 1 as authored, smaller fades the
+    /// detail out, 0 turns it off (the frame is then byte-identical to one
+    /// with no detail maps at all).
+    public var detailStrength: Double
 
     // The finish below is carried, not rendered. Ollin shades a mesh through
     // `material(_:)`, which is drawing state rather than something the mesh
@@ -130,6 +153,8 @@ public struct MeshMaterial: @unchecked Sendable {
                 emissiveTexture: Image? = nil, emissiveFactor: Color = .black,
                 heightTexture: Image? = nil, heightScale: Double = 0.05,
                 triplanarScale: Double = 0,
+                detailTexture: Image? = nil, detailNormalTexture: Image? = nil,
+                detailScale: Double = 8, detailStrength: Double = 1,
                 metallic: Double = 0, roughness: Double = 0.5, opacity: Double = 1,
                 ior: Double = 1.5, clearcoat: Double = 0, clearcoatRoughness: Double = 0.01) {
         self.baseColor = baseColor
@@ -144,6 +169,10 @@ public struct MeshMaterial: @unchecked Sendable {
         self.heightTexture = heightTexture
         self.heightScale = heightScale
         self.triplanarScale = triplanarScale
+        self.detailTexture = detailTexture
+        self.detailNormalTexture = detailNormalTexture
+        self.detailScale = detailScale
+        self.detailStrength = detailStrength
         self.metallic = metallic
         self.roughness = roughness
         self.opacity = opacity

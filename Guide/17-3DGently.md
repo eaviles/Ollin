@@ -529,6 +529,46 @@ The picture stands still and the surface moves through it. That is the one thing
 
 The projection carries the base texture and a normal map; the rest of the map set stays with uvs, and the [reference page](../Docs/3D/3D.md#triplanar) has the edges of the envelope. The example puts the tile size and the relief on knobs.
 
+## Texture that survives a close look
+
+Every texture has a budget. A picture sized to cover a whole boulder spends all its texels on the big shapes, so the moment the camera leans in, the surface runs out of information and dissolves into soft nothing. Real rock does not do that: get closer and there is always another scale of grain waiting.
+
+`detailMapped` fakes that second scale honestly. It tiles a much finer texture pair across the base one, a color map and a normal map, repeating them several times per base tile, so the close look finds grain the base never carried.
+
+```swift
+drawMesh(boulder
+    .textured(rock)
+    .normalMapped(rockBumps)
+    .detailMapped(grain, normal: grainBumps, scale: 12))
+```
+
+<img src="Images/17-3DGently/SurfaceGrain.jpg" alt="Two warm-toned spheres side by side against black, seen close: the left one smooth and soft where its texture has run out of resolution, the right one carrying fine woven grain across the same large forms" width="680">
+
+Two conventions make the pair behave. The detail color map multiplies the base with middle gray as its neutral, value 128 in the image, so darker speckles darken, lighter ones lighten, and a flat gray image changes nothing: author it as texture swinging around gray and the overall tone of your surface holds. And the detail normal map is *reoriented onto* the base relief rather than replacing it, so the fine bumps ride the large forms the base map already shaped, the way real grain follows the rock it is part of.
+
+`scale` is how many times the pair repeats across the base, and `strength` fades it out, with zero the honest off switch. The one caution: the detail maps carry no mips, so a very high tile count can shimmer when the surface gets small on screen. Keep the scale in the range your framing actually shows, which is what the `3D/Materials/Detail` example is for: the same base maps on two spheres, the detail pair on one of them, the tile count and strength on knobs while the camera sways close.
+
+## A picture stamped onto the scene
+
+Everything so far dressed one mesh. A sticker does not care about meshes: slap it on a crate and it wraps whatever it lands on, the crate, the pallet under it, half of the wall behind.
+
+A `Decal` works like that. Wrap an image once, then place it each frame as a small projection box, and every surface inside the box receives the picture, composited over the surface's own color before lighting, so it shades like paint rather than a glowing overlay.
+
+```swift
+let sticker = Decal(loadImage("label.png")!)!
+
+override func draw() {
+    // camera, lights, floor, crates ...
+    decal(sticker, at: dropPoint, width: 140)   // projects straight down by default
+}
+```
+
+<img src="Images/17-3DGently/Stamped.jpg" alt="A gray floor with two tan crates: a red, white, and blue roundel stamped across the floor and continuing up over a crate's top, a black and yellow striped tag on the crate's front face, and a half-transparent yellow ring overlapping the roundel on the floor" width="680">
+
+The box has a direction, a width and height, and a depth, and the placement is per-frame state like a light, which is the quietly powerful part: move `at:` and the stamp slides across the scene, crossing from the floor up onto a crate and over its far edge, conforming to whatever it touches. Transparency in the image is honored, later decals composite over earlier ones, and a surface standing edge-on to the projection fades the stamp out instead of smearing it down the side, which is the failure you would otherwise get on every wall.
+
+A decal is paint, so it takes the finish of the surface it lands on: stamp a rough floor and the mark is matte, stamp polished metal and it sits under the shine. The [reference page](../Docs/3D/3D.md#decals) has the envelope (eight per frame, which surfaces receive them, what mirrors show); the `3D/Materials/Decals` example slides a roundel across floor and crates on a loop, with the size, a roll, and a see-through ring on knobs.
+
 ## A landscape you grow
 
 Loading a mesh gets you a shape somebody else made. Generating one gets you a shape nobody has seen. Terrain is the friendliest place to start, because a landscape is just a height for every point on a grid, and Ollin has a type for exactly that.

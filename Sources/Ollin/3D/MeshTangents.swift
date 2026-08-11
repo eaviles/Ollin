@@ -245,4 +245,37 @@ public extension Mesh {
         }
         return copy
     }
+
+    /// A copy wearing detail maps: a second, much finer texture pair tiled
+    /// `scale` times across each base uv tile, so the surface keeps texture
+    /// when the camera gets close instead of dissolving into blur. `color`
+    /// multiplies the base color (sampled as raw data with 128 gray the
+    /// neutral: darker values darken, lighter ones lighten), and `normal` adds
+    /// fine grain to the lighting, reoriented onto whatever the base normal
+    /// map already shapes so the two reliefs compose rather than fight.
+    /// `strength` fades the pair (1 as authored, 0 off). Either map may be
+    /// `nil`; a normal detail needs the tangent basis, generated here
+    /// (MikkTSpace) if the mesh doesn't already carry one. Composes with
+    /// `textured(_:)` / `normalMapped(_:scale:)` / the rest of the map set in
+    /// any order.
+    ///
+    /// ```swift
+    /// drawMesh(.sphere(radius: 200).textured(rock)
+    ///     .detailMapped(grain, normal: grainBumps, scale: 12))
+    /// ```
+    func detailMapped(_ color: Image? = nil, normal: Image? = nil,
+                      scale: Double = 8, strength: Double = 1) -> Mesh {
+        var copy = self
+        var m = copy.material ?? MeshMaterial()
+        m.detailTexture = color
+        m.detailNormalTexture = normal
+        m.detailScale = scale
+        m.detailStrength = strength
+        copy.material = m
+        if normal != nil, copy.tangents.count != copy.positions.count,
+           copy.uvs.count == copy.positions.count {
+            copy = copy.generatingTangents()
+        }
+        return copy
+    }
 }

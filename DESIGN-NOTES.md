@@ -54,9 +54,7 @@ OPENRNDR-style effects that compose in layers: draw into off-screen layers, run 
 
 ## Photorealistic 3D
 
-The realism tier that builds on the physically-based core (PBR metallic-roughness, split-sum IBL from HDRI or the Hosek-Wilkie sky, ray-traced shadows and reflections, SSAO, SSR, raymarched SDF fields) toward the look of a curated product render or film still. Every item is opt-in so 2D and stylized 3D stay untaxed, every one is Metal-native (no engine vendored), and each is implemented from the published technique and credited in `ATTRIBUTION.md`'s Techniques. This is the "anything Metal offers that enriches 3D" tier, after the foundational [3D mode](#3d-mode) buildout.
-
-- **Advanced materials.** Surface detail: detail and decal maps. These ride the textured path's twin pipelines the way the normal and PBR map sets did, so non-using materials stay byte-identical.
+The realism tier that builds on the physically-based core (PBR metallic-roughness, split-sum IBL from HDRI or the Hosek-Wilkie sky, ray-traced shadows and reflections, SSAO, SSR, raymarched SDF fields) toward the look of a curated product render or film still. Every item is opt-in so 2D and stylized 3D stay untaxed, every one is Metal-native (no engine vendored), and each is implemented from the published technique and credited in `ATTRIBUTION.md`'s Techniques. This is the "anything Metal offers that enriches 3D" tier, after the foundational [3D mode](#3d-mode) buildout: as a new realism technique finds a good fit, it rides the textured path's twin pipelines (or a gated branch of the surface-mapped fragment, which may branch freely) so non-using materials stay byte-identical.
 
 All Apple-silicon Metal, the realism direction's "build Ollin APIs for anything Metal offers that enriches 3D."
 

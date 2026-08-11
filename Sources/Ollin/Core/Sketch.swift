@@ -878,6 +878,32 @@ open class Sketch {
     /// counts as lighting the scene (a flat, unshaded fill of the surface color).
     public func ambientLight(_ color: Color) { drawer.ambientLight(color) }
 
+    /// Stamp a `Decal` onto the 3D scene: a projection box centered at `position`,
+    /// `width x height` across and `depth` deep along `direction`, and every solid,
+    /// textured, or mapped mesh surface inside it receives the picture, composited
+    /// over its base color before lighting (the stamp is shaded as paint, taking
+    /// the surface's own finish). Per-frame state like a light, so place it each
+    /// `draw()`; move `position` and it slides across the scene.
+    ///
+    /// ```swift
+    /// decal(sticker, at: Vector3(0, 120, 0), width: 140)          // stamps down onto the floor
+    /// decal(poster, at: wall, direction: Vector3(0, 0, -1), width: 300)
+    /// ```
+    ///
+    /// `height` defaults to the picture's own proportions, `depth` to the smaller
+    /// of the two sides; `roll` spins the picture about the projection axis, and a
+    /// later decal composites over an earlier one. Surfaces turned edge-on to the
+    /// projection fade the stamp out rather than smearing it. Up to 8 decals per
+    /// frame; wireframe and matcap surfaces, point clouds, and raymarched fields
+    /// don't receive them.
+    public func decal(_ decal: Decal, at position: Vector3,
+                      direction: Vector3 = Vector3(0, -1, 0),
+                      width: Double, height: Double? = nil, depth: Double? = nil,
+                      roll: Double = 0, opacity: Double = 1) {
+        drawer.placeDecal(decal, at: position, direction: direction, width: width,
+                          height: height, depth: depth, roll: roll, opacity: opacity)
+    }
+
     /// Light this frame's scene with a ready-made `LightingPreset` — `.threePoint`,
     /// `.goldenHour`, `.noir`, `.studio`, `.moonlight`, or `.standard` — in one call
     /// instead of placing lights by hand. Per-frame state like the individual light

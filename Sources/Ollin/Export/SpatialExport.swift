@@ -52,6 +52,15 @@ final class SpatialRecorder {
             material.normalTexture = nil
         }
 
+        // Detail maps are a drawing-time refinement too (a finer pair tiled
+        // over the base at its own scale), and neither format has a slot for
+        // a second tiled texture set.
+        if mesh.material?.detailTexture != nil || mesh.material?.detailNormalTexture != nil {
+            note("a detail-map pair stayed behind: neither file format has a slot for a second, tiled detail texture.")
+            material.detailTexture = nil
+            material.detailNormalTexture = nil
+        }
+
         // The renderer multiplies the fill, the material's base color, and any
         // per-vertex color together. A preview surface has one diffuse slot, so
         // whichever of the last two is present carries the composed product and
@@ -211,6 +220,9 @@ extension OllinApp {
             sketch.performDraw()
         }
         sketch.drawer.spatialRecorder = nil
+        if !sketch.drawer.placedDecals.isEmpty {
+            recorder.skip("a projected decal")
+        }
         if recorder.isEmpty {
             print("Ollin: frame \(frame) drew no 3D geometry, so the model is empty. Spatial export writes meshes (drawMesh, drawScene, and the solid primitives).")
         }

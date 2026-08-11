@@ -1012,6 +1012,10 @@ final class MetalRenderer {
     /// The cookie sibling (`Drawer.usedLightCookies` order), bound at texture 11.
     var cookieArrayTexture: MTLTexture?
     var cookieArrayKey: [Int] = []
+    /// The decal sibling (`Drawer.usedDecals` order, a placement's `params.x` the
+    /// layer), bound at mesh fragment texture 24; same fresh-texture cache rule.
+    var decalArrayTexture: MTLTexture?
+    var decalArrayKey: [Int] = []
     /// A 1×1×1 `texture2d_array` stand-in for the two light-shaping slots when a frame
     /// carries none (the declared array samplers must always be bound; never sampled
     /// with the gates down). The 2D `strip` stand-in can't serve here: the slot's

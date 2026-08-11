@@ -15,12 +15,12 @@ extension OllinMaterial {
     /// Whether any of the PBR map-set gates the drawer packs are up, which is
     /// what routes a mesh batch to the surface-mapped pipeline: a
     /// metallic-roughness map, an occlusion map, an emissive map, a constant
-    /// emissive factor (rgb with no map), a height map (parallax), or a
-    /// triplanar projection.
+    /// emissive factor (rgb with no map), a height map (parallax), a triplanar
+    /// projection, or a detail-map pair.
     var usesSurfaceMaps: Bool {
         mrGate > 0 || occlusionStrength > 0 || emissive.w > 0
             || emissive.x > 0 || emissive.y > 0 || emissive.z > 0
-            || parallax > 0 || triplanar > 0
+            || parallax > 0 || triplanar > 0 || detailScale > 0
     }
 }
 
@@ -2086,8 +2086,13 @@ extension MetalRenderer {
             // A surface-mapped batch (any of the PBR map-set gates the drawer verified
             // and packed into the finish: metallic-roughness, occlusion, an emissive
             // map or constant emissive factor) takes the textured path's second twin.
+            // A frame with placed decals routes *every* lit mesh batch there: the
+            // decal loop lives only in that fragment, so a plain solid or textured
+            // mesh can receive a stamp too (its map gates all stay zero, so it
+            // shades as before, and a frame with no decals keeps its exact routing).
             let meshSurfaceMapped = batch.kind == .mesh3D && !batch.meshWireframe && !meshGrid
-                && !meshMatcap && batch.finish.usesSurfaceMaps
+                && !meshMatcap
+                && (batch.finish.usesSurfaceMaps || !drawer.placedDecals.isEmpty)
             // A normal-mapped batch (nonzero `finish.normalScale`, set only when the
             // drawer verified uvs + tangents) takes the textured path's twin pipeline;
             // a normal map alone is enough to be "textured" (the base slot then binds
@@ -2395,12 +2400,40 @@ extension MetalRenderer {
                         if batch.finish.parallax > 0 {
                             height = batch.material?.heightTexture?.linearTexture(for: device)
                         }
-                        guard let normal, let mr, let occ, let emit, let height else { continue }
+                        // The detail pair (both data: the color map's 128-gray
+                        // neutral must reach the shader as stored values, and a
+                        // normal map never decodes as color).
+                        var detailColor: MTLTexture? = whiteStandIn()
+                        if batch.finish.detailScale > 0, batch.finish.detailGates.x > 0 {
+                            detailColor = batch.material?.detailTexture?.linearTexture(for: device)
+                        }
+                        var detailNormal: MTLTexture? = whiteStandIn()
+                        if batch.finish.detailScale > 0, batch.finish.detailGates.y > 0 {
+                            detailNormal = batch.material?.detailNormalTexture?.linearTexture(for: device)
+                        }
+                        guard let normal, let mr, let occ, let emit, let height,
+                              let detailColor, let detailNormal else { continue }
                         encoder.setFragmentTexture(normal, index: 17)
                         encoder.setFragmentTexture(mr, index: 18)
                         encoder.setFragmentTexture(occ, index: 19)
                         encoder.setFragmentTexture(emit, index: 20)
                         encoder.setFragmentTexture(height, index: 21)
+                        encoder.setFragmentTexture(detailColor, index: 22)
+                        encoder.setFragmentTexture(detailNormal, index: 23)
+                        // The frame's decals: their packed uniform at buffer 2
+                        // and the shared image array at texture 24 (`count == 0`
+                        // gates the loop, the array stand-in then never sampled).
+                        // The array bake is content-hash cached, so repeated
+                        // batches reuse it.
+                        var decalsU = drawer.decalsUniform()
+                        encoder.setFragmentBytes(&decalsU, length: MemoryLayout<OllinDecals>.stride,
+                                                 index: 2)
+                        var decalArray: MTLTexture? = shapingStandIn()
+                        if !drawer.usedDecals.isEmpty, ensureDecalArray(drawer.usedDecals) {
+                            decalArray = decalArrayTexture
+                        }
+                        guard let decalArray else { continue }
+                        encoder.setFragmentTexture(decalArray, index: 24)
                     }
                 } else if meshMatcap {
                     guard let texture = batch.matcap?.texture(for: device) else { continue }
