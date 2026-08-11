@@ -14,11 +14,12 @@ import MetalPerformanceShaders   // tuned image kernels (Gaussian blur) behind t
 extension OllinMaterial {
     /// Whether any of the PBR map-set gates the drawer packs are up, which is
     /// what routes a mesh batch to the surface-mapped pipeline: a
-    /// metallic-roughness map, an occlusion map, an emissive map, or a
-    /// constant emissive factor (rgb with no map).
+    /// metallic-roughness map, an occlusion map, an emissive map, a constant
+    /// emissive factor (rgb with no map), or a height map (parallax).
     var usesSurfaceMaps: Bool {
         mrGate > 0 || occlusionStrength > 0 || emissive.w > 0
             || emissive.x > 0 || emissive.y > 0 || emissive.z > 0
+            || parallax > 0
     }
 }
 
@@ -2389,11 +2390,16 @@ extension MetalRenderer {
                         if batch.finish.emissive.w > 0 {
                             emit = batch.material?.emissiveTexture?.texture(for: device)
                         }
-                        guard let normal, let mr, let occ, let emit else { continue }
+                        var height: MTLTexture? = whiteStandIn()
+                        if batch.finish.parallax > 0 {
+                            height = batch.material?.heightTexture?.linearTexture(for: device)
+                        }
+                        guard let normal, let mr, let occ, let emit, let height else { continue }
                         encoder.setFragmentTexture(normal, index: 17)
                         encoder.setFragmentTexture(mr, index: 18)
                         encoder.setFragmentTexture(occ, index: 19)
                         encoder.setFragmentTexture(emit, index: 20)
+                        encoder.setFragmentTexture(height, index: 21)
                     }
                 } else if meshMatcap {
                     guard let texture = batch.matcap?.texture(for: device) else { continue }

@@ -215,6 +215,7 @@ struct USDSceneWriter {
         let mr = material.metallicRoughnessTexture.map { ordinal(of: $0) }
         let occlusion = material.occlusionTexture.map { ordinal(of: $0) }
         let emissive = material.emissiveTexture.map { ordinal(of: $0) }
+        let heightMap = material.heightTexture.map { ordinal(of: $0) }
         let key = [num(material.baseColor.red), num(material.baseColor.green),
                    num(material.baseColor.blue), num(material.baseColor.alpha),
                    num(material.metallic), num(material.roughness), num(material.opacity),
@@ -226,7 +227,8 @@ struct USDSceneWriter {
                    occlusion.map(String.init) ?? "-", num(material.occlusionStrength),
                    emissive.map(String.init) ?? "-",
                    num(material.emissiveFactor.red), num(material.emissiveFactor.green),
-                   num(material.emissiveFactor.blue)]
+                   num(material.emissiveFactor.blue),
+                   heightMap.map(String.init) ?? "-", num(material.heightScale)]
             .joined(separator: "/")
         if let found = materials.first(where: { $0.key == key }) { return found.path }
 
@@ -337,6 +339,21 @@ struct USDSceneWriter {
                                      bias: "(\(num(1 - s)), \(num(1 - s)), \(num(1 - s)), 0)",
                                      outputs: ["float outputs:r"])
             mapInputs += "  float inputs:occlusion.connect = <\(path)/occlusionTexture.outputs:r>\n"
+        }
+
+        // The height map feeds the preview surface's `displacement` input as
+        // scale s / bias −s, the exact spelling of s·(h − 1): white sits at
+        // the authored surface and darker carves in below it (the parallax
+        // datum), so a renderer that really displaces carves the same relief
+        // and the reader recovers `heightScale` from the channel scale.
+        if material.heightScale > 0, let heightMap = material.heightTexture,
+           let file = textureFile(heightMap) {
+            let s = material.heightScale
+            shaders += textureShader("heightMap", file: file, raw: true,
+                                     scale: "(\(num(s)), \(num(s)), \(num(s)), 1)",
+                                     bias: "(\(num(-s)), \(num(-s)), \(num(-s)), 0)",
+                                     outputs: ["float outputs:r"])
+            mapInputs += "  float inputs:displacement.connect = <\(path)/heightMap.outputs:r>\n"
         }
 
         let emissiveOn = material.emissiveFactor.red > 0 || material.emissiveFactor.green > 0

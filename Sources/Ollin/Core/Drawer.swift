@@ -2552,6 +2552,21 @@ final class Drawer {
                 noteOnce("a normal map needs per-vertex tangents (normalMapped(_:) or generatingTangents() sets them up); drawing the mesh without it.")
             }
         }
+        // A height map (parallax occlusion) marches the eye ray in tangent
+        // space, so it needs the same basis a normal map does: per-vertex uvs
+        // and tangents. Attached without either it degrades honestly, like the
+        // normal map; `heightScale == 0` is the documented off switch.
+        var heightMapped = false
+        if !wireframe, matcap == nil, let mat = material, mat.heightTexture != nil,
+           mat.heightScale > 0 {
+            if uvsAligned && mesh.tangents.count == mesh.positions.count {
+                heightMapped = true
+            } else if !uvsAligned {
+                noteOnce("a height map needs per-vertex uvs; drawing the mesh without it.")
+            } else {
+                noteOnce("a height map needs per-vertex tangents (parallaxMapped(_:) or generatingTangents() sets them up); drawing the mesh without it.")
+            }
+        }
         let textured = !wireframe && matcap == nil && uvsAligned
             && (material?.texture != nil || normalMapped)
         // The rest of the surface-map set (a metallic-roughness map, an occlusion
@@ -2578,7 +2593,9 @@ final class Drawer {
         // A texture-wearing mesh whose uvs are missing draws flat on the solid
         // path; keep it there rather than let an emissive factor route it to a
         // sampling pipeline (which would read the base texture at uv 0).
-        let surfaceMapped = mrMapped || occlusionMapped || emissiveMapped
+        // A height map routes here too: the parallax march lives in the
+        // surface-mapped fragment, where the shifted uv reaches every map.
+        let surfaceMapped = mrMapped || occlusionMapped || emissiveMapped || heightMapped
             || (emissiveOn && (uvsAligned || material?.texture == nil))
         let writesUV = textured || (surfaceMapped && uvsAligned)
         if wireframe {
@@ -2602,6 +2619,9 @@ final class Drawer {
                 }
                 if occlusionMapped {
                     finish.occlusionStrength = Float(mat.occlusionStrength)
+                }
+                if heightMapped {
+                    finish.parallax = Float(mat.heightScale)
                 }
                 if emissiveOn {
                     let f = mat.emissiveFactor
@@ -2682,13 +2702,14 @@ final class Drawer {
                 let uv = mesh.uvs[i]
                 v.uv = SIMD2<Float>(Float(uv.x), Float(uv.y))
             }
-            if normalMapped {
+            if normalMapped || heightMapped {
                 // The tangent transforms by the model's linear part (it's a
                 // surface direction, covariant with positions, unlike the
                 // normal's inverse-transpose), then packs as four Float16 bit
                 // patterns into the vertex's spare 8 bytes; the shader reads
                 // them back as a native half4 and renormalizes after
-                // interpolation.
+                // interpolation. A height map rides the same basis: the
+                // parallax march projects the eye ray through it.
                 let t = mesh.tangents[i]
                 var d = SIMD3<Float>(Float(t.direction.x), Float(t.direction.y),
                                      Float(t.direction.z))

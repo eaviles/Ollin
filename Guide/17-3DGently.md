@@ -436,6 +436,25 @@ An **emissive map** makes texels give off light of their own, tinted and dimmed 
 
 Loaded glTF and USD models carry all of these in and out without being asked; the round trip through `saveScene` keeps them. Like the normal maps above, every map in the figure is authored from a function in `setup()`, and the `3D/Materials/SurfaceMaps` example is the worked version with a glow knob.
 
+## Depth from a picture
+
+A normal map tilts the light; a **height map** goes one further and stores the depth itself: the red channel is height, white is the surface, darker is carved in below it. One image, and Ollin reads it two ways.
+
+<img src="Images/17-3DGently/HeightRelief.jpg" alt="Three cratered tan spheres seen slightly from the side: a parallax-mapped one whose craters sink deep yet whose outline is a perfect circle, a displaced one with a genuinely bumpy cratered rim, and a bare control with flat dark spots" width="680">
+
+```swift
+let moon = base.textured(dust).parallaxMapped(craterHeights, scale: 0.06)
+let rock = base.displaced(by: craterHeights, scale: 0.13).textured(dust)
+```
+
+**`parallaxMapped(_:scale:)`** is the shading read. At every pixel the renderer marches your line of sight down into the height field and finds where it lands, then reads the base texture, the normal map, and every other map *there* instead of at the flat surface. Crevices sink, slide against their rims as the view moves, and hide their far walls, everything real carving does, and still not one vertex has moved. `scale` is the depth of the relief as a fraction of the picture's tile; it needs the same texture coordinates and tangent basis a normal map does, and sets the basis up itself the same way.
+
+**`displaced(by:scale:)`** is the geometry read: every vertex really moves along its normal by the height at its spot on the picture, normals are recomputed, and the relief becomes true of the mesh, `scale` now in the mesh's own units. It's honest work done once, so do it in `setup()` and keep the result, and the detail you get is the *mesh's* to give: a plane with more `segments` carves finer.
+
+Look at the outlines in the figure, because they are the entire lesson. The parallax sphere's silhouette is a perfect circle however deep the craters read; the shading is fiction, and the outline, the cast shadow, and a mirror all keep telling the geometric truth. The displaced sphere's rim is genuinely cratered, in shadow and reflection too. Inside the outline the two are nearly twins, which is exactly why parallax is worth having: all of the depth, none of the triangles. When the edge matters, displace; when it doesn't, march.
+
+White stays put in both readings, one convention doing quiet work: a height map's white regions *are* the authored surface, so the two spheres agree about where the relief lives, and you can hand one map to both calls. The `3D/Materials/Parallax` example is the worked version with the parallax depth on a knob; USD files carry the map in and out (`saveScene` writes it to the preview surface's displacement slot), while glTF simply has no place to put one.
+
 ## Smooth from a cage
 
 There is a third way to get a mesh, and it's the one character artists live in: build something crude out of a few boxes and extrusions, then let the computer round it. `subdivided(levels:)` takes any mesh as a **control cage**, splits every face, and eases every vertex toward its neighbors, once per level.

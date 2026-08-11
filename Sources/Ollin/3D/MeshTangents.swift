@@ -211,4 +211,38 @@ public extension Mesh {
         }
         return copy
     }
+
+    /// A copy wearing `image` as its height map, read as parallax occlusion:
+    /// the map's red channel is per-pixel depth (white the surface itself,
+    /// darker carved in), and the fragment marches the eye ray through that
+    /// relief so every other map, the base texture included, shifts the way a
+    /// really carved surface would. `scale` is how deep the relief runs, as a
+    /// fraction of the texture tile (the default recesses the darkest point 5%
+    /// of the tile below the surface).
+    ///
+    /// Parallax shifts *shading only*: the silhouette, the cast shadow, and a
+    /// reflection all keep the flat geometry. When the outline itself should
+    /// change, read the same image as real geometry with
+    /// `displaced(by:scale:)`.
+    ///
+    /// Like a normal map, the effect rides the mesh's `uvs` plus a tangent
+    /// basis, generated here (MikkTSpace) if the mesh doesn't already carry
+    /// one. Composes with `textured(_:)` / `normalMapped(_:scale:)` in any
+    /// order.
+    ///
+    /// ```swift
+    /// drawMesh(.sphere(radius: 200).textured(brick).parallaxMapped(brickHeight))
+    /// ```
+    func parallaxMapped(_ image: Image, scale: Double = 0.05) -> Mesh {
+        var copy = self
+        var m = copy.material ?? MeshMaterial()
+        m.heightTexture = image
+        m.heightScale = scale
+        copy.material = m
+        if copy.tangents.count != copy.positions.count,
+           copy.uvs.count == copy.positions.count {
+            copy = copy.generatingTangents()
+        }
+        return copy
+    }
 }

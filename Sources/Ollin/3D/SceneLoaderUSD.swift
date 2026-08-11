@@ -97,8 +97,10 @@ extension Scene {
         for i in nodes.indices {
             if let mesh = nodes[i].mesh, mesh.tangents.count != mesh.positions.count,
                !mesh.uvs.isEmpty,
-               mesh.material?.normalTexture != nil
-                   || nodes[i].meshParts.contains(where: { $0.material?.normalTexture != nil }) {
+               mesh.material?.normalTexture != nil || mesh.material?.heightTexture != nil
+                   || nodes[i].meshParts.contains(where: {
+                       $0.material?.normalTexture != nil || $0.material?.heightTexture != nil
+                   }) {
                 let generated = mesh.generatingTangents()
                 let hasAligned = nodes[i].skinIndex != nil || !nodes[i].vertexJoints.isEmpty
                     || !nodes[i].morphTargets.isEmpty || !nodes[i].meshParts.isEmpty
@@ -651,6 +653,24 @@ extension Scene {
                 : repackedChannels(r: t, g: nil, b: nil)
             if out.occlusionTexture != nil {
                 out.occlusionStrength = t.channelScale
+                any = true
+            }
+        }
+
+        // The height map: the preview surface's `displacement` input (surface
+        // displacement along the normal, in scene units), which our writer
+        // authors as scale s / bias −s on the tapped channel, the exact
+        // spelling of s·(h − 1): white sits at the authored surface, darker
+        // carves in below it, Ollin's parallax datum. The tap's channel scale
+        // recovers the depth, so `heightScale` round-trips losslessly; a
+        // constant (unconnected) displacement is a uniform offset with no
+        // relief in it and stays unread.
+        if let t = tap(input("displacement")) {
+            out.heightTexture = t.channel == 0 || t.channel == -1
+                ? t.image
+                : repackedChannels(r: t, g: nil, b: nil)
+            if out.heightTexture != nil {
+                out.heightScale = t.channelScale
                 any = true
             }
         }

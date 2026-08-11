@@ -78,6 +78,18 @@ public struct MeshMaterial: @unchecked Sendable {
     /// `emissiveFactor`. Sampled as color (sRGB). `nil` means the factor alone
     /// emits (and a black factor, the default, emits nothing).
     public var emissiveTexture: Image?
+    /// A height map (its red channel, sampled as raw data): white is the
+    /// surface itself, darker carves relief in below it. The renderer reads it
+    /// as parallax occlusion, per-pixel depth that shifts what every other map
+    /// shows so a flat triangle reads as carved; `Mesh.displaced(by:scale:)`
+    /// reads the same image as real geometry. Needs the mesh to carry
+    /// `tangents` beside its `uvs` (see `Mesh.parallaxMapped(_:scale:)`).
+    /// `nil` means a flat surface.
+    public var heightTexture: Image?
+    /// How deep the height map's relief runs, as a fraction of the texture
+    /// tile (0.05 = the deepest point sits 5% of the tile below the surface).
+    /// 0 turns the map off.
+    public var heightScale: Double
     /// The emissive tint and strength: black (the default) emits nothing;
     /// with an `emissiveTexture` it scales the map, without one it emits as a
     /// constant color.
@@ -108,6 +120,7 @@ public struct MeshMaterial: @unchecked Sendable {
                 metallicRoughnessTexture: Image? = nil,
                 occlusionTexture: Image? = nil, occlusionStrength: Double = 1,
                 emissiveTexture: Image? = nil, emissiveFactor: Color = .black,
+                heightTexture: Image? = nil, heightScale: Double = 0.05,
                 metallic: Double = 0, roughness: Double = 0.5, opacity: Double = 1,
                 ior: Double = 1.5, clearcoat: Double = 0, clearcoatRoughness: Double = 0.01) {
         self.baseColor = baseColor
@@ -119,6 +132,8 @@ public struct MeshMaterial: @unchecked Sendable {
         self.occlusionStrength = occlusionStrength
         self.emissiveTexture = emissiveTexture
         self.emissiveFactor = emissiveFactor
+        self.heightTexture = heightTexture
+        self.heightScale = heightScale
         self.metallic = metallic
         self.roughness = roughness
         self.opacity = opacity

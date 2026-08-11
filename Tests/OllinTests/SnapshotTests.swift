@@ -308,6 +308,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("surface-maps",
                  note: "The PBR map set on generated spheres beside a bare control, over a bundled environment: a packed metallic-roughness map (worn paint turning to polished metal), an occlusion map paired with a normal map from one height field, and an emissive map on a dark shell. Pins the surface-mapped twin pipeline (the hand-synced meshLitColorMapped / mapped IBL ambient tails), the factor x sample composition, the indirect-only occlusion dimming, and the emissive add ahead of the atmosphere. Authored maps, fixed camera, no time, no rng.",
                  make: { SurfaceMapScene() }),
+    SnapshotCase("parallax-relief",
+                 note: "One authored crater height map read three ways on generated spheres: parallax occlusion (the tangent-space march + secant refinement in the surface-mapped fragment, round silhouette), CPU displacement (displaced(by:scale:), really cratered rim, weld-aware move + recomputed normals), and the bare color-mapped control. Oblique fixed camera so the parallax shift shows. Authored maps, no time, no rng.",
+                 make: { ParallaxScene() }),
     SnapshotCase("coat-sheen",
                  note: "The layered physically-based lobes over a bundled environment plus a point light: a coated red metal beside its bare twin (the clear-coat Cook-Torrance lobe, the Kelemen visibility, the coat-interface F0 remap, and the coat's smooth IBL gather), a piano-black lacquer, a white-sheen felt beside its bare twin (the inverted-alpha sine sheen lobe, the cloth visibility, the sheen-LUT energy scaling, and the sheen's own prefiltered gather), and a two-tone velvet. Fixed camera + environment, no time.",
                  make: { CoatSheenScene() }),
@@ -1951,6 +1954,74 @@ private final class SurfaceMapScene: Sketch {
         withState {
             translate(0, -1.3, 0); fill(Color(white: 0.4))
             drawBox(width: 20, height: 0.3, depth: 20)
+        }
+    }
+}
+
+private final class ParallaxScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    private var parallaxSphere = Mesh(positions: [], normals: [], indices: [])
+    private var displacedSphere = Mesh(positions: [], normals: [], indices: [])
+    private var bare = Mesh(positions: [], normals: [], indices: [])
+
+    /// An RGBA map authored per texel; pure math, no rng.
+    private func map(_ texel: (Double, Double) -> (Double, Double, Double)) -> Image {
+        let size = 128
+        var bytes = [UInt8](repeating: 255, count: size * size * 4)
+        let d = 1.0 / Double(size)
+        for y in 0..<size {
+            for x in 0..<size {
+                let (r, g, b) = texel((Double(x) + 0.5) * d, (Double(y) + 0.5) * d)
+                let i = (y * size + x) * 4
+                bytes[i]     = UInt8(max(0, min(255, r * 255)))
+                bytes[i + 1] = UInt8(max(0, min(255, g * 255)))
+                bytes[i + 2] = UInt8(max(0, min(255, b * 255)))
+            }
+        }
+        return Image(width: size, height: size, premultipliedRGBA: bytes)!
+    }
+
+    /// A wrapping crater field: 1 at the surface, dipping toward 0 in bowls.
+    private func craters(_ u: Double, _ v: Double) -> Double {
+        var h = 1.0
+        for p in haltonPoints(count: 30, in: Rectangle(x: 0, y: 0, width: 1, height: 1)) {
+            var dx = abs(u - p.x); dx = min(dx, 1 - dx)
+            var dy = abs(v - p.y); dy = min(dy, 1 - dy)
+            let d = (dx * dx + dy * dy).squareRoot() / 0.085
+            if d < 1 {
+                let bowl = 1 - (1 - d * d) * (1 - d * d)
+                h = min(h, bowl)
+            }
+        }
+        return h
+    }
+
+    override func setup() {
+        let heightMap = map { u, v in
+            let h = craters(u, v)
+            return (h, h, h)
+        }
+        let colorMap = map { u, v in
+            let t = 0.55 + 0.45 * craters(u, v)
+            return (0.72 * t, 0.6 * t, 0.5 * t)
+        }
+        let base = Mesh.sphere(radius: 1, segments: 64, rings: 32)
+        parallaxSphere = base.textured(colorMap).parallaxMapped(heightMap, scale: 0.07)
+        displacedSphere = base.displaced(by: heightMap, scale: 0.13).textured(colorMap)
+        bare = base.textured(colorMap)
+    }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        camera(.orbiting(target: .zero, radius: 8.6, azimuth: 0.45, elevation: 0.12,
+                         fieldOfView: .pi / 3.4))
+        environment(.studio)
+        directionalLight(Color(white: 0.9), direction: Vector3(-0.5, -0.6, -0.6))
+        fill(.white)
+        material(.dielectric(roughness: 0.75))
+        for (mesh, x) in zip([parallaxSphere, displacedSphere, bare], [-2.4, 0.0, 2.4]) {
+            withState { translate(x, 0.25, 0); drawMesh(mesh) }
         }
     }
 }

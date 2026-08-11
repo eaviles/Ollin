@@ -4282,6 +4282,67 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
 // texture views); the emissive map is color (sRGB, sampled back linear).
 // Per-pixel metallic/roughness reach the shading tail through the hand-synced
 // twins `meshLitColorMapped` / `ollin_pbr_ibl_ambient_mapped`.
+// A height map (also data) adds parallax occlusion: the fragment marches the
+// eye ray through the map's relief and shifts the uv every other map reads,
+// so a flat triangle reads as carved. Shading only, by construction: depth,
+// silhouettes, shadow rays, and reflections all keep the flat surface.
+
+// The parallax march. The height map's r channel is height (1 = the surface
+// plane, darker = carved in); the ray descends the normalized relief volume,
+// depth 0 at the plane to 1 at the deepest point, `scale` being that full
+// depth as a fraction of the uv tile. A linear search finds the first sample
+// below the height field, then one secant step (treating the field between
+// the last two samples as a straight line) lands the crossing.
+//
+// The uv step per unit depth projects the eye ray onto the tangent frame.
+// With e = (V·T, V·B, V·N), one unit of depth moves the visible surface point
+// by scale/e.z tangent units: u against the eye (content deeper in a recess
+// appears from the far side, so the sample shifts away from the camera), and
+// the v component with the *opposite* sign because the frame's bitangent
+// (w · cross(N, T), the stored glTF handedness) points up the map image while
+// v grows down it. Same basis as the normal-map bend; the sign was measured
+// there, not assumed.
+static inline float2 ollin_parallax_uv(float2 uv, float3 worldPos, float3 rawNormal,
+                                       float4 rawTangent, float3 cameraPos,
+                                       float scale, texture2d<float> heightTex) {
+    constexpr sampler heightSamp(filter::linear, address::clamp_to_edge);
+    float3 N = normalize(rawNormal);
+    float3 T = rawTangent.xyz;
+    float tLen = length(T);
+    float3 V = normalize(cameraPos - worldPos);
+    float cosView = dot(V, N);
+    // A degenerate frame (a seam's zero-length tangent) or a ray at/behind the
+    // surface's own plane has nothing to march.
+    if (tLen < 1e-6 || cosView <= 0.0) { return uv; }
+    T /= tLen;
+    float3 B = normalize(cross(N, T)) * rawTangent.w;
+    float3 e = float3(dot(V, T), dot(V, B), cosView);
+    // The divide is floored so a grazing ray stretches boundedly instead of
+    // smearing without limit (the technique's known silhouette envelope).
+    float2 stepUV = scale * float2(-e.x, e.y) / max(e.z, 0.1);
+    // More layers at grazing angles, where each step crosses more texels.
+    float layers = mix(32.0, 8.0, saturate(e.z));
+    float layer = 1.0 / layers;
+    float2 delta = stepUV * layer;
+    // Explicit lod: the loop's exit varies per pixel, where implicit
+    // derivatives are undefined (the map carries no mips anyway).
+    float2 cur = uv;
+    float surf = 1.0 - heightTex.sample(heightSamp, cur, level(0.0)).r;
+    if (surf <= 0.0) { return uv; }   // the plane itself: nothing carved here
+    float depth = 0.0;
+    float prevSurf = surf;
+    for (int i = 0; i < 32 && depth < surf; ++i) {
+        cur += delta;
+        depth += layer;
+        prevSurf = surf;
+        surf = 1.0 - heightTex.sample(heightSamp, cur, level(0.0)).r;
+    }
+    float after = surf - depth;                  // <= 0: how far below the field the ray ended
+    if (after > 0.0) { return cur; }             // no crossing within the march (depth 1 bounds it)
+    float before = prevSurf - (depth - layer);   // > 0: the previous sample's clearance
+    float w = saturate(after / (after - before));
+    return mix(cur, cur - delta, w);
+}
 
 fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
                                          constant OllinLighting &light [[buffer(0)]],
@@ -4307,7 +4368,8 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
                                          texture2d<float> normalMapTex [[texture(17)]],
                                          texture2d<float> mrTex [[texture(18)]],
                                          texture2d<float> occlusionTex [[texture(19)]],
-                                         texture2d<float> emissiveTex [[texture(20)]]
+                                         texture2d<float> emissiveTex [[texture(20)]],
+                                         texture2d<float> heightTex [[texture(21)]]
 #if OLLIN_RT_SHADOWS
                                          , primitive_acceleration_structure shadowAccel [[buffer(3)]]
                                          , const device OllinMeshVertex *meshVerts [[buffer(6)]]
@@ -4318,7 +4380,16 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
                                          , texture2d<float> giOffsetsTex [[texture(15)]]
 #endif
                                          ) {
-    float4 tex = baseColorTex.sample(samp, in.uv);
+    // Parallax occlusion first: with a height map bound (and the tangent basis
+    // the drawer verified), shift the uv every map below reads to where the
+    // eye ray meets the carved relief. Gated on `mat.parallax`, zero on every
+    // batch without a height map, so those keep sampling at the raw uv.
+    float2 uv = in.uv;
+    if (mat.parallax > 0.0) {
+        uv = ollin_parallax_uv(in.uv, in.worldPos, in.normal, in.tangent,
+                               light.cameraPosition.xyz, mat.parallax, heightTex);
+    }
+    float4 tex = baseColorTex.sample(samp, uv);
     float3 base = tex.rgb * srgbToLinear(in.color.rgb);
     float alpha = in.color.a * tex.a;
     // The normal-map bend, exactly the nm twin's math but behind its gate: this
@@ -4329,7 +4400,7 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
         float3 gn = in.normal;
         float3 t = in.tangent.xyz;
         float3 b = cross(gn, t) * in.tangent.w;
-        float3 nmS = normalMapTex.sample(samp, in.uv).xyz * 2.0 - 1.0;
+        float3 nmS = normalMapTex.sample(samp, uv).xyz * 2.0 - 1.0;
         nmS.xy *= mat.normalScale;
         float3 bent = t * nmS.x + b * nmS.y + gn * nmS.z;
         float bentLen = length(bent);
@@ -4342,16 +4413,16 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
     float pxRough = mat.roughness;
     float pxAO = 1.0;
     if (mat.mrGate > 0.0) {
-        float4 mr = mrTex.sample(samp, in.uv);
+        float4 mr = mrTex.sample(samp, uv);
         pxRough = mat.roughness * mr.g;
         pxMetal = mat.metallic * mr.b;
     }
     if (mat.occlusionStrength > 0.0) {
-        float occ = occlusionTex.sample(samp, in.uv).r;
+        float occ = occlusionTex.sample(samp, uv).r;
         pxAO = 1.0 + mat.occlusionStrength * (occ - 1.0);
     }
     float3 emissive = mat.emissive.rgb;
-    if (mat.emissive.w > 0.0) emissive *= emissiveTex.sample(samp, in.uv).rgb;
+    if (mat.emissive.w > 0.0) emissive *= emissiveTex.sample(samp, uv).rgb;
     float meshFieldShadow = ollin_resolve_mesh_field_shadow(in.position.xy, in.worldPos, in.normal,
                                                             light, fields, fieldNodes, fieldShadowTex);
     if (light.contactShadow.x > 0.0) {

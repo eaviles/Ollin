@@ -2543,6 +2543,83 @@ per-hit envelope every surface map has. Matcap and wireframe ignore the set
 
 ---
 
+## Height maps: parallax occlusion and displacement
+
+The third slice of the advanced-materials arc: a height map on `MeshMaterial`
+(`heightTexture`/`heightScale`), read two ways from one datum (**white is the
+authored surface, darker carves in below it**), so the shading fake and the
+real geometry agree about where the relief lives.
+
+**Parallax occlusion rides the maps fragment, not a new twin.** The march
+lives in `ollin_parallax_uv` and a `mat.parallax`-gated branch at the top of
+`ollin_mesh_maps_fragment`; that fragment is slice-2 code, exempt from the
+verbatim rule (its own header says it may branch freely), so no third copy of
+the shading tail was needed. The shifted uv feeds *every* map sample below it
+(base color, normal, metallic-roughness, occlusion, emissive), which is the
+whole point: the maps move together the way a carved surface's would. The
+drawer routes a height-mapped mesh to the surface-mapped pipeline
+(`usesSurfaceMaps` gained `parallax > 0`), verifies uvs + tangents like the
+normal map (degrading honestly without them), and packs `finish.parallax`
+only then, so the gate doubles as the encode and shader switch and mapless
+frames keep their codegen. Verified empirically after the growth: the full
+snapshot suite holds unrecorded and a guide-figures run has zero churn, so
+the branch didn't move ulps on gate-off frames. Texture slot 21, sampled as
+data (`linearTexture`), white stand-in otherwise.
+
+**The march is the published two-phase intersection.** A linear search steps
+the eye ray down through the normalized relief volume (8…32 layers by view
+angle, more at grazing where each step crosses more texels), then one secant
+step treats the field between the last two samples as a straight line and
+lands the crossing. Height samples inside the loop use explicit `level(0)`:
+the loop's exit varies per pixel, where implicit derivatives are undefined
+(the data texture carries no mips anyway). A white entry sample returns the
+uv untouched (the exact null, probe-pinned byte-identical on the same
+pipeline), and the `1/e.z` stretch is floored at 0.1 so grazing rays smear
+boundedly (the technique's silhouette envelope, documented rather than
+hidden).
+
+**The uv step's signs are the tangent-frame fact from slice 1, derived rather
+than assumed.** With the eye projected onto the frame as
+`e = (V·T, V·B, V·N)`, one unit of relief depth shifts the sample by
+`scale/e.z · (−e.x, +e.y)`: `u` *against* the eye (a recess shows its far
+side), and `v` with the **opposite** sign because the stored-handedness
+bitangent `w·cross(N, T)` points up the map image while `v` grows down it,
+the same green-up convention the normal map measured. The direction probe
+pins both axes against a flat control (a recessed dot must shift toward the
+camera on screen), and a sign-flip sabotage fails each axis independently.
+
+**Parallax is shading only, and the tests state it.** Depth, silhouettes,
+shadow rays, transmittance thickness, and reflections all keep the flat
+surface; `parallaxNeverMovesTheSilhouette` pins the coverage mask equal
+against the flat control, which is also the teaching contrast with
+displacement.
+
+**Displacement is the weld-aware CPU sibling.** `Mesh.displaced(by:scale:)`
+samples the same image at the uvs (clamp-to-edge bilinear over the red
+channel, mirroring the GPU sampler) and moves vertices along averaged
+normals by `(h − 1) · scale`, white pinned at the authored surface, the
+shared datum. It works per *welded position group* (the `MeshWelding` seam):
+one averaged normal and one averaged height per group, so the flat-shaded
+generators' coincident corners move as one and a uv seam cannot tear the
+mesh open (the sabotage that samples per-vertex instead fails the seam
+test). Smooth normals recompute over the welded displaced surface and
+republish per original vertex; a carried tangent basis regenerates
+(MikkTSpace) for the new shape.
+
+**USD carries the map; glTF cannot.** glTF core and the ratified
+`KHR_materials_*` extensions have no height-map slot, so the map is
+Ollin-authored API on that side. The USD writer feeds the preview surface's
+`displacement` input from a `UsdUVTexture` tap authored as scale `s` / bias
+`−s`, the exact spelling of `s·(h − 1)`, so a renderer that really
+displaces carves the same relief, and the reader recovers
+`heightScale` from the tap's channel scale (a lossless round trip,
+validator-checked with `usdchecker --arkit`; a constant, unconnected
+`displacement` is a uniform offset with no relief in it and stays unread).
+The reader also generates tangents for a displacement-connected material,
+the normal-map rule.
+
+---
+
 ## Deferred ray-traced reflection AA
 
 The ray-traced reflection is one closest-hit ray per reflective pixel, which makes

@@ -470,6 +470,14 @@ typedef struct {
                                   // light of its own; 0,0,0 = none, the gate for the constant
                                   // term); w = 1 when an emissive map is bound (sampled sRGB,
                                   // multiplied by the factor), 0 = factor alone
+    float parallax;               // > 0 = a height map is bound (its r channel, sampled as data):
+                                  // the relief depth the fragment's parallax march carves below
+                                  // the surface, as a fraction of the uv tile
+                                  // (`MeshMaterial.heightScale`). 0 = no map (the gate; every
+                                  // other mesh keeps this zero, so unmapped frames are untouched).
+    float _matPad0;               // pads the tail row to 16 bytes
+    float _matPad1;
+    float _matPad2;
 } OllinMaterial;
 
 // Parameters for the live ground-grid overlay (`ollin_grid_fragment`): a shader-drawn
