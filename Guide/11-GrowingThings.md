@@ -239,6 +239,26 @@ let grid = wfc(tiles: tiles, columns: 11, rows: 11)   // [[Int]] of tile indices
 
 `wfc` is seeded like everything else, and `drawWFC` walks the solved grid cell by cell handing you the tile index to draw (the figure above draws a stroke from each cell's center to every edge whose socket is `1`, which is the entire renderer for a pipe network). One draw block covers a tile *and* its rotations, because you draw from the sockets, not from a picture per tile. The `Patterns/WaveFunctionCollapse` example re-rolls a fresh legal network every few seconds.
 
+## Or hand it a picture instead
+
+Declaring tiles and sockets is most of the work, and some textures don't come apart into tiles at all. So there's a second way to run the same solver: give it a small picture and let it work the rules out itself.
+
+It cuts the sample into every little square the sample contains, counts how often each one turns up, and notes which squares can overlap which. Then it fills a much larger grid so that every overlap agrees. The guarantee is this: **every square of the result is a square the sample already contained.**
+
+<img src="Images/11-GrowingThings/LearnedFromAPicture.jpg" alt="Left, a sixteen by sixteen hand-drawn plan of thick black walls; right, a forty-eight by thirty picture in the same style, with the same wall thickness and the same corners, arranged completely differently" width="680">
+
+The sample is sixteen pixels square. You pass it in and ask for a size:
+
+```swift
+let texture = wfc(from: sample, width: 48, height: 30)   // an Image, or nil
+```
+
+Three knobs matter. `patternSize` is how big those squares are: `2` keeps only the loosest sense of the sample, `3` is the usual answer and holds on to corners and junctions, and larger reproduces whole motifs but leaves less room to invent. `symmetry` decides whether the turned and mirrored copies of the sample are learned too, which multiplies what the solver has to work with, but costs you which way is up: a sample of flowers standing on ground wants `symmetry: .none` or they'll come back sideways. And `wrapsSample` decides whether the sample is read as joining its own edges, which is on by default and is the one that surprises people, because it joins the bottom row to the top: ground under sky becomes a legal square, and your ground repeats in bands up the picture. Turn it off for a sample with a real top and bottom.
+
+Two constraints matter. The sample has to be **small and few-colored**, because squares are matched by exact color; hand it a photograph and every square is unique, so there's nothing to recombine. And a solve **can fail**: it may paint itself into a corner where some cell has no square that fits, in which case it starts over, and past roughly fifty pixels a side that starts happening often enough to matter. `wfc` hands back `nil` when it gives up. The general problem is NP-hard, and the tilesets that can never fail tend to be the ones too loose to produce interesting structure.
+
+The `Patterns/TextureSynthesis` example has three samples authored right in its source as rows of characters, so you can edit one and watch the texture change.
+
 ## Putting it together: a garden
 
 Time to plant everything at once. The garden grows three systems in one bed, and one `seed(5)` at the top makes the whole thing a single reproducible organism. Make `MySketches/Garden.swift`:
@@ -347,10 +367,10 @@ The chance games have their own shelf. Iterated function systems and the chaos g
 - [L-systems](../Docs/Generators/LSystem.md): the grammar type, the turtle alphabet, and all thirteen presets.
 - [Space colonization](../Docs/Generators/SpaceColonization.md): every knob, plus recipes for venation, lightning, and multi-root plantings.
 - [Diffusion-limited aggregation](../Docs/Generators/DiffusionLimitedAggregation.md): stickiness, cages, and drawing the skeleton.
-- [Wave Function Collapse](../Docs/Generators/WaveFunctionCollapse.md): sockets, weights, rotations, and what to do when a solve fails.
+- [Wave Function Collapse](../Docs/Generators/WaveFunctionCollapse.md): sockets, weights, rotations, learning from a picture instead, and what to do when a solve fails.
 - [Blue noise](../Docs/Generators/BlueNoise.md): the even scatter the tree's crown was carved from, properly explained in Chapter 13.
 - [Fractals](../Docs/Generators/Fractals.md): the `IFS` type and its presets, the whole `FractalFlame` surface including the progressive renderer, inversion limit sets, the Kleinian trace presets, the Schottky circle orbit with both of its family builders, and `fitted` for placing any point cloud.
-- Worked examples: [`Examples/Patterns/LSystem`](../Examples/Patterns/LSystem/Sketch.swift) (the preset contact sheet), [`Examples/Patterns/Venation`](../Examples/Patterns/Venation/Sketch.swift), [`Examples/Patterns/Dendrite`](../Examples/Patterns/Dendrite/Sketch.swift), [`Examples/Patterns/WaveFunctionCollapse`](../Examples/Patterns/WaveFunctionCollapse/Sketch.swift), [`Examples/Patterns/IteratedFunctions`](../Examples/Patterns/IteratedFunctions/Sketch.swift), [`Examples/Patterns/FractalFlame`](../Examples/Patterns/FractalFlame/Sketch.swift), [`Examples/Patterns/InversionFractal`](../Examples/Patterns/InversionFractal/Sketch.swift), and [`Examples/Patterns/Kleinian`](../Examples/Patterns/Kleinian/Sketch.swift).
+- Worked examples: [`Examples/Patterns/LSystem`](../Examples/Patterns/LSystem/Sketch.swift) (the preset contact sheet), [`Examples/Patterns/Venation`](../Examples/Patterns/Venation/Sketch.swift), [`Examples/Patterns/Dendrite`](../Examples/Patterns/Dendrite/Sketch.swift), [`Examples/Patterns/WaveFunctionCollapse`](../Examples/Patterns/WaveFunctionCollapse/Sketch.swift), [`Examples/Patterns/TextureSynthesis`](../Examples/Patterns/TextureSynthesis/Sketch.swift), [`Examples/Patterns/IteratedFunctions`](../Examples/Patterns/IteratedFunctions/Sketch.swift), [`Examples/Patterns/FractalFlame`](../Examples/Patterns/FractalFlame/Sketch.swift), [`Examples/Patterns/InversionFractal`](../Examples/Patterns/InversionFractal/Sketch.swift), and [`Examples/Patterns/Kleinian`](../Examples/Patterns/Kleinian/Sketch.swift).
 
 ---
 

@@ -6406,6 +6406,60 @@ irreproducible and the snapshot flaky. Sugar `wfc(...)` +
 draw block covers a tile and all its rotations. Example
 `Patterns/WaveFunctionCollapse`; snapshot `wave-function-collapse`.
 
+`Geometry/OverlappingWFC.swift` is the overlapping model, which learns its
+constraints from an example `Image` instead of declared tiles. Colors are
+indexed first-met in scan order; patches are cut at every position (the
+sample read as wrapping) or only where a whole patch fits, augmented by the
+dihedral variants `WFCSymmetry` keeps, and counted by content into weights.
+Six pieces are load-bearing, and each is a way the algorithm goes wrong
+rather than merely slow:
+
+- **Propagation runs over the four unit offsets only**, not the `(2N-1)²`
+  offsets the 2016 formulation used. It is sound because in a complete
+  assignment the intervening cell holds *some* pattern and the two overlaps
+  chain by transitivity, so the long-range arcs are redundant. This is the
+  20x that made the model practical.
+- **The support counters are the propagator, not a recompute.**
+  `compatible[cell][pattern][d]` counts the patterns still standing in the
+  neighbor *opposite* `d` that would allow `pattern` here, so it initializes
+  to `propagatorCount[opposite[d]][p]`. Using `d` there compiles, runs, and
+  is quietly wrong. A counter reaching zero means nothing over there can sit
+  beside that pattern, which is what bans it in O(1). `ban` zeroes all four
+  of a pattern's counters so later decrements go negative and it can never
+  be banned twice.
+- **Entropy is Shannon over the weights**, `log(S) - Σw·log w / S`, updated
+  incrementally in `ban`. A plain count of survivors treats a cell holding
+  two equally likely patterns the same as one holding two at 1000:1, which
+  is nearly decided. The scan's sentinel is `.infinity`, never a magic
+  constant a large pattern set could exceed.
+- **A bounded output's last `N-1` columns and rows are outside the solve
+  entirely**: never observed, and never propagated into. A ban spreading
+  into one would empty a cell nobody asked about and read as a
+  contradiction. The read-out then recovers those pixels from the last cell
+  that covers them (the `dx`/`dy` offset in `render`), which is why the
+  output needs `2N-2` pixels a side.
+- **Patterns with no legal neighbor in a direction that exists are banned
+  before anything is settled.** Propagation can never eliminate one (nothing
+  ever withdraws support from it), so it survives to be chosen and the
+  output is quietly illegal rather than contradictory. These appear when the
+  sample is read as bounded, where its edge patches may have nothing that
+  can follow them.
+- **Determinism** follows the catalog rule: patterns are appended in scan
+  order and the content dictionary is lookup-only, the noise that breaks
+  entropy ties is drawn in a fixed cell order, and the weighted pick walks
+  the survivors in index order.
+
+Deliberate cuts: no seeding constraints (the reference's `ground` names a
+pattern by index, which is an artifact of extraction order and silently
+means something else when the sample or symmetry changes) and no
+backtracking (a contradiction restarts the whole solve, `attempts` times,
+as upstream does). Caps at 256 colors and 1024 patterns refuse a photograph
+rather than grinding on it. Sugar `wfc(from:...)` + `wfc(_ model:...)`;
+example `Patterns/TextureSynthesis`; snapshot `texture-synthesis`;
+`OverlappingWFCTests` pins extraction against hand-derived counts, the
+rotation closure, local legality in all three output modes, and
+determinism.
+
 ### Cellular automata and turmites
 
 `Geometry/CellularAutomata.swift` + `Geometry/Turmite.swift`.

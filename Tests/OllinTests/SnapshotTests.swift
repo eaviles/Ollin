@@ -449,6 +449,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("wave-function-collapse",
                  note: "A pipe network solved by Wave Function Collapse over a blank + straight/elbow/tee/cross tileset. Pins the solver: min-entropy observation, weighted collapse, and arc-consistency propagation reach a fully legal grid (every internal pipe meets a matching pipe). Seeded, no time, so the layout is deterministic (the sorted-candidate guard keeps the Set-based solve reproducible).",
                  make: { WaveFunctionCollapseScene() }),
+    SnapshotCase("texture-synthesis",
+                 note: "Wave Function Collapse's overlapping model: a 16x16 sample authored in the test teaches its own 3x3 patches, and a larger texture is built out of them so every overlap agrees. Pins the whole chain (pattern extraction with the sample read as wrapping, symmetry augmentation, the overlap rule, the support-counter propagation, and the boundary read-out) end to end; drawn as one rect per pixel, so the picture is the solved grid exactly. Seeded, no time, so it is deterministic.",
+                 make: { TextureSynthesisScene() }),
     SnapshotCase("shape-packing",
                  note: "A bag of polygons and a star packed by their bounding circles: big shapes first, smaller ones filling the gaps, each a random pick, rotated and scaled to its packed circle. Pins packShapes (the bounding-circle placement over the circle packer, the random rotation, the fit). Seeded, no time, so the layout is deterministic.",
                  make: { ShapePackingScene() }),
@@ -3422,6 +3425,57 @@ private final class WaveFunctionCollapseScene: Sketch {
                         Vector2(cell.x, cell.center.y)]
             for edge in 0 ..< 4 where sockets[edge] != 0 {
                 drawLine(cell.center, mids[edge])
+            }
+        }
+    }
+}
+
+/// A texture synthesized from a small authored sample by the overlapping model.
+/// Pins pattern extraction, the overlap rule, propagation, and the read-out in
+/// one picture: every 3x3 square of the result is one the sample held. Drawn a
+/// pixel at a time (`drawImage` would smooth it), seeded and `time`-free, so
+/// it's deterministic.
+private final class TextureSynthesisScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    private static let rows = [
+        "................",
+        "..######..####..",
+        "..#....#..#..#..",
+        "..#....####..#..",
+        "..#..........#..",
+        "..#..####....#..",
+        "..####..#..###..",
+        "........#..#....",
+        "..#######..#....",
+        "..#.....#..#....",
+        "..#.....####....",
+        "..#######.......",
+        "................",
+        "..####..######..",
+        "..#..#..#....#..",
+        "..#..####....#..",
+    ]
+
+    override func draw() {
+        background(Color(hex: 0x0E1116))
+        seed(4)
+
+        let sample = Image(width: 16, height: 16)
+        for (y, row) in Self.rows.enumerated() {
+            for (x, ch) in row.enumerated() {
+                sample[x, y] = Color(hex: ch == "#" ? 0x8FB8DE : 0x11151C)
+            }
+        }
+        guard let texture = wfc(from: sample, width: 32, height: 32, patternSize: 3) else { return }
+
+        let cell = 232.0 / 32
+        noStroke()
+        for y in 0 ..< texture.height {
+            for x in 0 ..< texture.width {
+                fill(texture[x, y])
+                drawRect(corner: Vector2(12 + Double(x) * cell, 12 + Double(y) * cell),
+                         width: cell, height: cell)
             }
         }
     }

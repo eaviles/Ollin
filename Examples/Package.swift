@@ -369,6 +369,7 @@ let package = Package(
         example("Patterns/LSystem"),
         example("Patterns/DifferentialGrowth"),
         example("Patterns/WaveFunctionCollapse"),
+        example("Patterns/TextureSynthesis"),
         example("Patterns/ElementaryCA"),
         example("Patterns/Turmites"),
         example("Patterns/ShapePacking"),
