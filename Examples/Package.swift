@@ -32,6 +32,7 @@ import PackageDescription
 enum Satellite: String, CaseIterable {
     case audio = "OllinAudio"
     case osc = "OllinOSC"
+    case dmx = "OllinDMX"
     case midi = "OllinMIDI"
     case physics = "OllinPhysics"
     case vision = "OllinVision"
@@ -445,6 +446,11 @@ let package = Package(
         // Listens for OSC and prints/draws every message — point a phone or any
         // OSC source at this Mac to discover what its controls send.
         example("Integration/OSCMonitor", [.osc]),
+        // Self-contained: a DMX sender drives a drawn rig of pars over sACN on
+        // loopback and the receiver lights them from what arrives, so the stage
+        // you see is the round trip (like OSCLoopback). Point it at a real
+        // node's IP and the same universe drives real lights.
+        example("Integration/DMXLoopback", [.dmx]),
         // Self-contained: a virtual-source output sends animated MIDI to itself and
         // the input draws it back, so it runs with no hardware (like OSCLoopback).
         example("Integration/MIDILoopback", [.midi]),

@@ -6,7 +6,7 @@
 
 <img src="Images/22-SharingAndPerforming/Finale.jpg" alt="A bold posterized field of nested contour bands, electric blue and green at the edges through lilac and olive to a small lime core, like a printed topographic map of a wave" width="560">
 
-Twenty-one chapters of pieces have lived on your screen. This last chapter is about everywhere else they can go: out as files (a poster, a video, a GIF, a plotter drawing), out as live feeds (into a VJ rig, into a video call), and out on a stage, where writing the code is the performance. The piece above is the final state of a live-coded set you'll build in five evaluations, and every road out of the framework starts from the same place, the sketch you already have.
+Twenty-one chapters of pieces have lived on your screen. This last chapter is about everywhere else they can go: out as files (a poster, a video, a GIF, a plotter drawing), out as live feeds (into a VJ rig, into a video call), out as light on a real rig, and out on a stage, where writing the code is the performance. The piece above is the final state of a live-coded set you'll build in five evaluations, and every road out of the framework starts from the same place, the sketch you already have.
 
 ## Leaving as files
 
@@ -212,6 +212,29 @@ Two facts about the frame will save you a confused minute:
 
 And when the picture looks wrong, suspect the *viewer* first. Photo Booth mirrors every camera preview like a selfie mirror, so text in your sketch reads backwards there exactly as it would on the built-in camera, and it crops, because its preview pane isn't 16:9. Conferencing apps usually mirror your self-view while sending the unmirrored picture to everyone else. QuickTime's File ▸ New Movie Recording shows the frame as published, uncropped and unmirrored, so it's the fastest way to see what other apps are really receiving.
 
+## Light instead of pixels
+
+A lighting rig is a display with very few, very bright pixels, and a sketch can render for it too. Stage lighting speaks **DMX**, the protocol that has told dimmers, LED pars, and moving heads what to do since 1986, and it travels over ordinary Ethernet in two dialects, **Art-Net** and **sACN**. The model is small enough to hold in one sentence: a *universe* is 512 channels of one byte each, a *fixture* listens at an address and reads a few consecutive channels, and what each channel means (red, green, blue, a dimmer, a pan motor) is printed in the fixture's manual. You fill 512 bytes, you send them, the room changes.
+
+```swift
+import OllinDMX
+
+let dmx = DMXSender()                           // sACN multicast: zero config
+let par = DMXFixture.rgb(at: 1)                 // an RGB par on channels 1-3
+
+override func draw() {
+    var rig = DMXUniverse()
+    rig.set(par, color: Color(hue: fract(time * 0.1), saturation: 1, brightness: 1))
+    dmx.send(rig)                               // universe 1, every frame
+}
+```
+
+`DMXSender()` with no address multicasts sACN, which any listening node on the network picks up with no addressing at all; `DMXSender(artNet: "192.168.1.60")` unicasts Art-Net to a node that wants it. Either way you send every frame, like a second `draw()` aimed at the room, and the sender handles the wire's own etiquette (changed data only, capped near DMX's own refresh rate, keep-alives while nothing moves), so a 60 fps sketch makes a perfectly polite lighting console. The fixture sugar keeps the addressing in one place: patch a `DMXFixture` per lamp with the roles its manual lists, chain them with `nextAddress`, and `rig.set(par, color:)` lands on whatever channels the layout names.
+
+<img src="Images/22-SharingAndPerforming/LampsAndBytes.jpg" alt="A diagram in two rows: six colored pars hanging over a dark stage throwing red through violet light, and below them the same universe's first eighteen channels as meter bars bracketed into fixtures, with the fourth par dim in both views" width="680">
+
+It works the other way around too. A `DMXReceiver` turns the sketch into a fixture: a real console fades channel 1 and `draw()` reads it as `dmx.level(1)`, or `dmx.bind(channel: 1, to: $radius)` puts the fader on the same knob the inspector slider moves, exactly like Chapter 20's MIDI and OSC bindings. The `Integration/DMXLoopback` example runs both ends on `127.0.0.1`, a sender chasing colors across a drawn rig that is lit from what the receiver reads back, so the whole path runs with no console and no hardware. When you do reach for real lights, two practical notes: macOS asks once for Local Network permission, attributed to the terminal you launched from, and a free sACN monitor app will show you every universe on the wire while you find your fixture's address.
+
 ## Adding behavior without touching the sketch
 
 One more piece is worth knowing about once you have several sketches, because it answers a question that comes up as soon as you want the same extra behavior in all of them: how do you add something to a sketch's life cycle without editing the sketch?
@@ -289,8 +312,9 @@ Live coding as a performance practice was organized by TOPLAP (founded 2004), wh
 - [Fabrication](../Docs/Output/Fabrication.md): writing a mesh as STL, OBJ, or 3MF, real-world sizing, and what makes a surface printable.
 - [Syphon](../Docs/Integration/Syphon.md): publishing, receiving, discovery, and the loopback.
 - [Virtual camera](../Docs/Integration/VirtualCamera.md): the one-time install, publishing, the test card.
+- [DMX](../Docs/Integration/DMX.md): universes and fixtures, Art-Net and sACN, the send cadence, and the console-drives-the-sketch direction.
 - [Live coding](../Docs/Tools/LiveCoding.md): the evaluate loop, errors, recovery, and the keyboard reference.
-- Worked examples: [`Examples/Export/VectorExport`](../Examples/Export/VectorExport/Sketch.swift), [`Examples/Export/Hatching`](../Examples/Export/Hatching/Sketch.swift), [`Examples/Integration/SyphonLoopback`](../Examples/Integration/SyphonLoopback/Sketch.swift), [`Examples/Integration/SyphonViewer`](../Examples/Integration/SyphonViewer/Sketch.swift), and [`Examples/Integration/VirtualCamera`](../Examples/Integration/VirtualCamera/Sketch.swift).
+- Worked examples: [`Examples/Export/VectorExport`](../Examples/Export/VectorExport/Sketch.swift), [`Examples/Export/Hatching`](../Examples/Export/Hatching/Sketch.swift), [`Examples/Integration/SyphonLoopback`](../Examples/Integration/SyphonLoopback/Sketch.swift), [`Examples/Integration/SyphonViewer`](../Examples/Integration/SyphonViewer/Sketch.swift), [`Examples/Integration/DMXLoopback`](../Examples/Integration/DMXLoopback/Sketch.swift), and [`Examples/Integration/VirtualCamera`](../Examples/Integration/VirtualCamera/Sketch.swift).
 
 ---
 

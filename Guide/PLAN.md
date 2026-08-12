@@ -208,11 +208,11 @@ Figures: tracker-flow diagram; landmark-map figures; a flow-field-from-motion fi
 Draws from: `Docs/Vision/Vision.md`, `Docs/Video/Video.md`; `Examples/Vision/`, `Examples/Video/`.
 
 **22. Sharing and performing.**
-Teaches: exporting stills, sequences, video, GIF; SVG for plotters (closing Ch 13's loop); publishing to other apps (Syphon) and as a system camera; the live-coding host (`OllinLiveCoding`): evaluate-on-command, code over visuals, performing a set; reproducibility as a sharing feature (seeds, params).
+Teaches: exporting stills, sequences, video, GIF; SVG for plotters (closing Ch 13's loop); publishing to other apps (Syphon) and as a system camera; DMX light on a real rig (and a console driving the sketch back); the live-coding host (`OllinLiveCoding`): evaluate-on-command, code over visuals, performing a set; reproducibility as a sharing feature (seeds, params).
 Assumes: everything before it, lightly.
 Payoff: a short performed piece, live-coded, recorded, and shared.
-Figures: export-formats map; a Syphon-into-another-app screenshot; the performance host annotated; frames from the performance.
-Draws from: `Docs/Output/Export.md`, `Docs/Integration/Syphon.md`, `Docs/Integration/VirtualCamera.md`, `Docs/Tools/LiveCoding.md`; `Examples/Export/`, `Examples/Live/`.
+Figures: export-formats map; a Syphon-into-another-app screenshot; the lamps-and-bytes DMX diagram; the performance host annotated; frames from the performance.
+Draws from: `Docs/Output/Export.md`, `Docs/Integration/Syphon.md`, `Docs/Integration/VirtualCamera.md`, `Docs/Integration/DMX.md`, `Docs/Tools/LiveCoding.md`; `Examples/Export/`, `Examples/Live/`.
 
 ### Appendices
 
@@ -386,6 +386,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | `Video/Video.md` (playback as texture) | Ch 21 | taught |
 | `Integration/Syphon.md` | Ch 22 | taught |
 | `Integration/VirtualCamera.md` | Ch 22 | taught ("The sketch as a webcam": why the browser needs a camera and Syphon cannot cross that line, the system extension and its one-time approval, the test card, the fixed 1280x720 letterbox and 30 fps, and suspecting the viewer first when the picture looks mirrored or cropped) |
+| `Integration/DMX.md` (`DMXUniverse`, `DMXFixture`, `DMXSender`, `DMXReceiver`) | Ch 22 | taught ("Light instead of pixels" with the LampsAndBytes figure: the universe/fixture/channel model in one sentence, sACN multicast as the zero-config default vs Art-Net unicast, send-every-frame with the wire cadence handled, and the reverse direction where a console fader binds onto a `@Param` like Ch 20's MIDI and OSC; the loopback example and the Local Network permission note) |
 | `Integration/ScreenCapture.md` | Ch 21 | taught ("The screen as material": the third frame source beside the camera and a clip, so every tracker in the chapter reads it too; naming a display, app, or window as a written value and waiting for one not open yet; the backing-resolution `scale` knob; the feedback tunnel with a figure; and the permission attributed to the launching terminal rather than the sketch) |
 | `Output/Export.md` (PNG, sequence, video, GIF, SVG, PDF) | Ch 3 (GIF), Ch 13 (SVG), Ch 22 (all) | taught |
 | Reproducibility metadata in exports (`Output/Export.md`) | Ch 22 | taught (what the recipe holds, where it lives and why that slot exists, reading it back with `exiftool`, the recover-a-past-render scenario, and the GIF and missing-code limits) |
@@ -430,7 +431,7 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | Photorealistic 3D tier | Ch 17/18, likely a new chapter when substantial |
 | Sound: physical models, spatial audio, sound in an export | Ch 20, likely splitting into its own chapter |
 | Tempo sync: Ableton Link | Ch 20 |
-| Live rigs (serial/BLE, DMX/LED, NDI) | Ch 22, or a future installations chapter |
+| Live rigs (serial/BLE, LED mapping, NDI) | Ch 22, or a future installations chapter |
 | New input sources | Ch 20/21 |
 | New output surfaces (haptics, screensaver, USDZ, performance capture) | Ch 22 |
 | Rendering/color frontier (P3/HDR out, GPU-driven, path tracing) | Ch 14/22 |

@@ -20,6 +20,7 @@ import PackageDescription
 enum Satellite: String, CaseIterable {
     case audio = "OllinAudio"
     case osc = "OllinOSC"
+    case dmx = "OllinDMX"
     case midi = "OllinMIDI"
     case physics = "OllinPhysics"
     case vision = "OllinVision"
@@ -51,6 +52,12 @@ let package = Package(
         // Network.framework (UDP); the OSC wire format is implemented from the
         // spec. Kept out of `Ollin` so the drawing core stays free of networking.
         .library(name: "OllinOSC", targets: ["OllinOSC"]),
+        // DMX lighting as a satellite library: `import OllinDMX` to drive stage
+        // lights and dimmers from `draw()` over Art-Net or sACN (ANSI E1.31),
+        // and to let a lighting console drive a sketch. Both wire formats are
+        // implemented from their published specs over Network.framework (UDP).
+        // Kept out of `Ollin` so the drawing core stays free of networking.
+        .library(name: "OllinDMX", targets: ["OllinDMX"]),
         // MIDI as a satellite library: `import OllinMIDI` to receive from and send
         // to MIDI gear (control surfaces, keyboards, sequencers) over Core MIDI.
         // Kept out of `Ollin` so the drawing core stays free of Core MIDI.
@@ -356,6 +363,16 @@ let package = Package(
             name: "OllinOSC",
             dependencies: ["Ollin"]
         ),
+        // DMX: drive lighting rigs over Art-Net and sACN (ANSI E1.31), both
+        // wire formats written from their published specs (no vendored
+        // library), via Network.framework UDP. A satellite (like OllinOSC) so
+        // the drawing core stays free of networking; sketches opt in with
+        // `import OllinDMX`. Depends on Ollin for `Color` and to bind an
+        // incoming channel onto a `@Param` knob.
+        .target(
+            name: "OllinDMX",
+            dependencies: ["Ollin"]
+        ),
         // MIDI: receive from and send to MIDI gear over Core MIDI, with the MIDI
         // 1.0 message format parsed/encoded from the spec (no vendored library). A
         // satellite library (like OllinOSC) so the drawing core stays free of Core
@@ -550,6 +567,16 @@ let package = Package(
         .testTarget(
             name: "OllinOSCTests",
             dependencies: ["OllinOSC"]
+        ),
+        // DMX correctness: golden-byte encodes against the published packet
+        // layouts, decode round-trips, malformed input rejected without
+        // trapping, the pure send cadence (change detection, repeats,
+        // keep-alives), receiver priority/sequence/terminate rules over
+        // crafted datagrams, plus an in-process UDP loopback. GPU-independent,
+        // so it runs in CI too.
+        .testTarget(
+            name: "OllinDMXTests",
+            dependencies: ["OllinDMX"]
         ),
         // MIDI correctness: MIDI 1.0 / UMP parse+encode round-trips (every message
         // kind, malformed/non-1.0 words rejected without trapping) — Core MIDI-free,
