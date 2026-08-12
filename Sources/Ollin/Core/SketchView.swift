@@ -1472,9 +1472,9 @@ public extension Sketch {
 public extension OllinApp {
     /// Handle the shared headless command-line surface (the export flags
     /// `--export`, `--export-sequence`, `--export-video`, `--export-gif`,
-    /// `--export-loop`, `--export-svg`, `--export-pdf`, `--export-usdz`,
-    /// `--export-grid`, `--export-sweep`, `--export-separations` with their
-    /// options, `--seed` on any of them,
+    /// `--export-loop`, `--export-spatial`, `--export-svg`, `--export-pdf`,
+    /// `--export-usdz`, `--export-grid`, `--export-sweep`,
+    /// `--export-separations` with their options, `--seed` on any of them,
     /// plus `--bench`) against a sketch supplied on demand.
     ///
     /// Returns `true` when a headless flag was recognized (the work ran, or a
@@ -1624,6 +1624,40 @@ public extension OllinApp {
             OllinApp.exportVideo(make(), to: args[i + 1], frames: frames, fps: fps,
                                  codec: codec, bitsPerSecond: bitrate, quality: quality,
                                  renderQuality: renderQuality, skipSeconds: skip)
+            return true
+        }
+        // `--export-spatial <path.mov> (--frames N | --seconds S) [--fps F] [--skip S]
+        // [--interocular X] [--convergence D] [--meters-per-unit U] [--bitrate MBPS]
+        // [--quality 0..1]` writes stereo spatial video and exits.
+        if let i = args.firstIndex(of: "--export-spatial"), i + 1 < args.count {
+            func value(_ flag: String) -> String? {
+                guard let j = args.firstIndex(of: flag), j + 1 < args.count else { return nil }
+                return args[j + 1]
+            }
+            let fps = value("--fps").flatMap(Double.init) ?? 30
+            var frames = value("--frames").flatMap(Int.init) ?? 0
+            if frames <= 0, let seconds = value("--seconds").flatMap(Double.init) {
+                frames = Int((seconds * fps).rounded())
+            }
+            let skip = value("--skip").flatMap(Double.init) ?? 0
+            let bitrate = value("--bitrate").flatMap(Double.init).map { Int($0 * 1_000_000) }
+            let quality = value("--quality").flatMap(Double.init)
+            let metersPerUnit = value("--meters-per-unit").flatMap(Double.init) ?? 1
+            // Either number given on the command line overrides what the sketch
+            // declares; neither given leaves the sketch's own declaration alone.
+            let interocular = value("--interocular").flatMap(Double.init)
+            let convergence = value("--convergence").flatMap(Double.init)
+            let stereo = (interocular == nil && convergence == nil)
+                ? nil : StereoGeometry(interocular: interocular, convergence: convergence)
+            guard frames > 0 else {
+                FileHandle.standardError.write(Data(
+                    "usage: --export-spatial <path.mov> (--frames N | --seconds S) [--fps F] [--skip S] [--interocular X] [--convergence D] [--meters-per-unit U] [--bitrate MBPS] [--quality 0..1]\n".utf8))
+                return true
+            }
+            OllinApp.exportSpatialVideo(make(), to: args[i + 1], frames: frames, fps: fps,
+                                        stereo: stereo, metersPerUnit: metersPerUnit,
+                                        bitsPerSecond: bitrate, quality: quality,
+                                        renderQuality: renderQuality, skipSeconds: skip)
             return true
         }
         // `--export-gif <path> (--frames N | --seconds S) [--fps F] [--skip S]

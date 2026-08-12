@@ -1786,6 +1786,28 @@ final class Drawer {
     /// and draws 3D geometry through it. A 2D-only frame never calls this.
     func camera(_ camera: Camera3D) { camera3D = camera }
 
+    /// Re-aim the frame's camera after `draw()` has run, for the two renders the
+    /// spatial-video export makes of a single drawn frame.
+    ///
+    /// A stereo pair has to come out of **one** `draw()`. Running it twice would
+    /// roll the sketch's randomness twice and step every simulation twice, and the
+    /// sims that document themselves as not reproducible frame for frame would
+    /// hand the two eyes genuinely different content. So the frame is drawn once
+    /// and rendered twice, with the camera swapped in between. `previous` moves
+    /// with it because motion blur measures against the last frame's camera, and
+    /// left against right would read the eye separation itself as a sideways
+    /// lurch of the whole world.
+    ///
+    /// What this cannot re-aim is anything the sketch already flattened during
+    /// `draw()`: a `project()`, a `depth(at:)` placement, a billboard. Those keep
+    /// the centre camera's answer in both eyes, which puts them flat on the
+    /// screen plane, and for the notices and overlays that use them that is
+    /// usually what you want anyway.
+    func aimStereoEye(_ camera: Camera3D?, previous: Camera3D?) {
+        camera3D = camera
+        previousCamera3D = previous
+    }
+
     /// A perspective 3D camera looking from `eye` at `target` (sugar over `camera`).
     func perspective(eye: Vector3, target: Vector3 = .zero, up: Vector3 = .unitY,
                      fieldOfView: Double = .pi / 3, near: Double = 0.1, far: Double = 1000) {

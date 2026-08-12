@@ -112,9 +112,88 @@ A `.usdz` is a ZIP with rules: no compression, every file starting on a 64-byte 
 | `SceneFileFormat` | `.usdz` (package) or `.usda` (text layer) |
 | `--export-usdz <path>` | the CLI flag, with `--frame N` and `--meters-per-unit U` |
 
+## Spatial video
+
+A model sends the geometry and lets a viewer walk around it. **Spatial video** sends the motion instead, recorded from two eyes at once, which is the only way an animation reads as three-dimensional in a headset. It is the same format Apple's platforms record and play: stereo MV-HEVC with the metadata that says what shot it.
+
+```sh
+swift run Example-3D-Geometry-SpatialVideo --export-spatial piece.mov --seconds 8
+```
+
+The frame is drawn **once** and rendered twice, from two cameras a little way apart. That matters more than it sounds: drawing twice would roll the sketch's randomness twice and step every simulation twice, and the sims that are honest about not reproducing frame for frame would hand the two eyes genuinely different worlds. One draw, two renders, and both eyes see the same instant.
+
+### The two numbers
+
+A stereo pair needs exactly two numbers, and both are decisions about the piece rather than settings to get right.
+
+**Convergence** is the distance at which the two eyes agree. Whatever sits there lands on the screen; nearer things come out of it, farther things sit behind it. Choosing it is choosing what the viewer is looking *into* rather than *out at*. Unset, it is the camera's own target, on the reasoning that you are already pointing at the thing the piece is about.
+
+**Interocular** is how far apart the eyes stand, in world units, and it is the depth dial: half reads flatter, twice reads deeper and starts to strain. Unset, the eyes sit **1% of the frame width apart, measured at the convergence plane**. For a camera with a vanishing point that one sentence is also the classic comfort rule, because 1% of the frame width apart at the convergence plane works out to 1% of the frame width apart at infinity: the far background separates by less than a viewer's own eyes do, so nothing ever asks them to point outward.
+
+A sketch declares them, the way it declares a loop or its inks:
+
+```swift
+override var stereoGeometry: StereoGeometry {
+    StereoGeometry(interocular: 0.1, convergence: 6)
+}
+```
+
+Either number can be left out and derived, and either can be overridden per export (`--interocular X`, `--convergence D`) without disturbing the other. `StereoGeometry.resolved(for:)` hands back what they come to for a given camera, which is how a sketch can show the spacing it is about to export with, or take the derived figure as the thing to scale:
+
+```swift
+let spacing = StereoGeometry.automatic.resolved(for: shot).interocular
+```
+
+### What the two cameras do
+
+The eyes step sideways along the camera's own right axis and keep looking **parallel**, and the projection leans back in so the two agree exactly at the convergence distance. That is the rig a stereo film is shot on. Toeing two cameras in at the subject instead, which sounds equivalent, tilts their frames against each other and leaves a vertical misalignment at the corners that no viewer can fuse away.
+
+Everything else about the camera is untouched, so a pair renders through the ordinary path: same lens, same clipping, same everything one frame would have used.
+
+### How big is a world unit
+
+```sh
+--meters-per-unit 0.01     # the sketch draws in centimetres
+```
+
+The file records the distance between the eyes that shot it, in real units, and a player scales the depth it shows from that. `metersPerUnit` is the same declaration the model exporter takes, and the same one applies: nothing is scaled on the way out, this just says how to read the numbers that are there. A scene drawn in meters wants the default of 1.
+
+### What it does not do
+
+- **An accumulating sketch reads flat**, and says so once. The pile lives in one persistent surface, and there is only one of it, so both eyes are handed the same picture. A screen-space pile has no depth to give anyway.
+- **A 2D sketch reads flat** for the same reason, and also says so.
+- **Anything the sketch flattened itself during `draw()`** stays where it was flattened: a `project()`, a `depth(at:)` placement, a billboard. Those land on the screen plane in both eyes, which for the notices and overlays that use them is usually what you want.
+- Sound rides along exactly as it does in an ordinary video export.
+
+### Checking a file
+
+The reading that matters is the system's own, the one Photos and Quick Look take:
+
+```swift
+let options = await AVAssetPlaybackAssistant(asset: AVURLAsset(url: url))
+    .playbackConfigurationOptions
+options.contains(.spatialVideo)      // true
+```
+
+Careful with the near neighbours: `.stereoMultiviewVideo` is true for any two-layer file, spatial metadata or not, so it is not the test. On the command line, `ffprobe -show_entries stream_side_data` prints the baseline, the field of view, and which eye is the hero.
+
+### Reference
+
+| | |
+|---|---|
+| `OllinApp.exportSpatialVideo(_:to:frames:fps:stereo:metersPerUnit:…)` | render a sketch as spatial video |
+| `--export-spatial <path.mov>` | the CLI flag, with `--frames`/`--seconds`, `--fps`, `--skip`, `--interocular`, `--convergence`, `--meters-per-unit`, `--bitrate`, `--quality` |
+| `Sketch.stereoGeometry` | the sketch's own declaration; `.automatic` by default |
+| `StereoGeometry(interocular:convergence:)` | the two numbers, either one derivable |
+| `StereoGeometry.resolved(for:aspect:)` | what they come to for a camera |
+| `Camera3D.stereoPair(_:aspect:)` | the two cameras a pair renders through |
+| `Camera3D.stereoEye(_:interocular:convergence:)` | one of them, by name |
+
 ### See also
 
 - [Scenes](../3D/Scenes.md) reads models in, which is the same tree this writes out.
 - [Fabrication](./Fabrication.md) writes a single `Mesh` for a 3D printer.
-- [Export](./Export.md) covers frames, video, and the vector formats.
+- [Export](./Export.md) covers frames, ordinary video, and the vector formats.
+- [3D](../3D/3D.md) and [Camera](../3D/Camera.md) cover the scene and the shot a stereo pair is taken from.
 - `Examples/3D/Geometry/SpatialExport` is a ring of solids you can write out and open.
+- `Examples/3D/Geometry/SpatialVideo` is a colonnade built for depth, with the two stereo numbers on knobs.

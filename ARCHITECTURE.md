@@ -6893,6 +6893,95 @@ CLAUDE.md's *Live coding* block.
 
 ---
 
+## Spatial video (the stereo pair and its file)
+
+`--export-spatial` writes stereo MV-HEVC, the format Apple's platforms play with
+real depth. Two things carry the weight: how the pair is made, and what the file
+has to say about itself before the system will call it spatial.
+
+**One draw, two renders.** The pair comes out of a single `performDraw()`, with
+`Drawer.aimStereoEye(_:previous:)` swapping the camera between the two
+`renderer.image(of:)` calls (`renderStereoFrames` in
+`Sources/Ollin/Export/SpatialVideoExport.swift`). Drawing twice was the obvious
+alternative and is wrong: it would roll the sketch's randomness twice and step
+every simulation twice, and the artificial-life tier documents itself as not
+reproducible frame for frame even at one seed, so the two eyes would get
+genuinely different worlds. Rendering twice is already a supported shape: the
+renderer's `statefulEncodeIsRepeat` stamp (keyed on drawer identity plus frame
+count) exists for the live frame grab, so the second eye advances no feedback
+slot, no sim, and no GI history. Two consequences fall out and are documented
+rather than fixed: anything the sketch flattened during `draw()` (a `project()`,
+a `depth(at:)` placement, a billboard) keeps the centre camera's answer in both
+eyes and therefore lands on the screen plane, and an accumulating sketch has one
+persistent surface, so both eyes are handed the same picture with a note. The
+`previous:` half of the seam is not decoration: motion blur measures against the
+last frame's camera, and left against right would read the eye separation itself
+as the whole world lurching sideways every frame.
+
+**The lean is one matrix entry, for two different reasons.** `stereoEye` steps
+the eye and its target sideways along the camera's own right axis (parallel axes,
+the film rig; toeing in tilts the two frames against each other and leaves
+vertical misalignment at the corners). The convergence correction then lands
+entirely in `[2][0]`, the term mixing view z into clip x, and that one entry is
+right for all three projections by two separate routes that happen to meet. For a
+perspective or intrinsic frustum, clip w *is* the view distance, so premultiplying
+a constant shift of the flattened image collapses into `[2][0]`, which is exactly
+the asymmetric frustum a parallel rig is defined by (the same identity
+`MetalRenderer.jittered` uses for TAA). An orthographic camera has no such w, and
+sliding it sideways moves the whole picture with no parallax at all, so what it
+needs is a shear proportional to depth; working the convergence condition through
+gives the same entry the same value. `stereoLateral` defaults to 0, so an
+ordinary camera's projection is untouched by construction.
+
+**The derivation is a stated criterion, not a constant.** Unset, the eyes sit 1%
+of the frame width apart measured at the convergence plane. For a camera with a
+vanishing point that is *also* the classic comfort rule, because the two work out
+to the same number: far-field separation equals `p00 · e / convergence`, and
+`e = frameWidth/100` at that distance makes it 1% of the frame, under the figure
+a viewer's own eyes span. The frame width is read off the built projection's
+`[0][0]` rather than off the field of view, so an intrinsic lens and an angled one
+are measured the same way and an intrinsic camera's letterboxing is already in
+the number. Orthographic reuses the expression with the distance factor dropped,
+since its frame is the same width wherever you measure it.
+
+**The file's five load-bearing numbers.** MV-HEVC alone gives a two-layer video
+that plays in stereo; the system calls it *spatial* only with
+`HasLeftStereoEyeView`, `HasRightStereoEyeView`, `HorizontalFieldOfView`
+(millidegrees), `StereoCameraBaseline` (micrometres), and
+`HorizontalDisparityAdjustment` all present. Drop any one and
+`AVAssetPlaybackAssistant` reports `.stereoMultiviewVideo` but not
+`.spatialVideo`, which is why the near-neighbour options are not the test. The
+disparity adjustment is 0 because convergence is already in the pictures: the
+eyes were aimed when the frame was drawn rather than left parallel for a player
+to slide together. The layer/view keys are written as all three of
+`MVHEVCVideoLayerIDs`, `MVHEVCViewIDs`, and `MVHEVCLeftAndRightViewIDs`; naming
+the middle one without the last is the one combination that *hangs* the encoder
+rather than refusing. Buffers come from the receiver's own pool and must be
+IOSurface-backed. The write path uses the macOS 26 `TaggedPixelBufferGroupReceiver`
+with its synchronous `appendImmediately`, not the adaptor whose
+`appendTaggedBuffers` is already deprecated at the deployment floor. Settings are
+built at frame 0 rather than up front, because the field of view and the eye
+spacing are only known once the sketch has set its camera in `draw()`, and a
+writer takes its settings before it starts (the same deferral the ordinary video
+export makes for the seed in its recipe).
+
+**The video input must be `expectsMediaDataInRealTime = true`**, which the
+ordinary video export does not need and which is not about the data arriving in
+real time. A file-paced input is interleaved in chunks of about a second, and a
+multi-layer input under that pacing stops accepting frames at the end of the
+first chunk and never becomes ready again: measured at exactly frame 36 of a
+30 fps export, with `AVAssetWriter.status` still `.writing`, `error` nil,
+`isReadyForMoreMediaData` false forever and `appendImmediately` returning false
+forever. A realtime input is exempt from the pacing. This is the same escape,
+for the same class of reason, that the soundtrack input already takes in the
+ordinary video export, and it costs only a less tidily interleaved file, which
+for one video track is nothing. A sound-carrying spatial export is therefore two
+realtime inputs and interleaves without either gating the other (verified: a
+6 second clip and a 3 second sound-carrying one, both complete and both read as
+spatial).
+
+---
+
 ## Camera rig: showcase orbit, view snaps, and scene chrome
 
 `cameraShowcase(_:)` (the default the 3D examples use) is an auto-orbit the viewer can

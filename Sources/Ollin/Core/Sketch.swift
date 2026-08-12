@@ -211,6 +211,20 @@ open class Sketch {
     /// See `Docs/Output/PrintSeparations.md`.
     open var printInks: [Ink]? { nil }
 
+    /// How far apart the two eyes stand when this sketch is exported as spatial
+    /// video, and how far away they agree. Both numbers are worked out from the
+    /// camera by default, which is usually enough; declare them when the piece
+    /// wants a particular depth:
+    ///
+    /// ```swift
+    /// override var stereoGeometry: StereoGeometry {
+    ///     StereoGeometry(interocular: 0.1, convergence: 6)
+    /// }
+    /// ```
+    ///
+    /// See `Docs/Output/Spatial.md`.
+    open var stereoGeometry: StereoGeometry { .automatic }
+
     // MARK: Lifecycle (override in subclasses)
 
     /// Called once, after the canvas size is known, before the first `draw()`.

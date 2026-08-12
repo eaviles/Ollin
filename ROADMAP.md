@@ -93,7 +93,6 @@ Ways a sketch leaves the window:
 
 - **Haptics.** A `draw()` that also emits a felt pattern synced to the visuals, on Force Touch trackpads and on the phone.
 - **The OS as a canvas.** Wrap a sketch as a macOS screen saver, a dynamic wallpaper, a desktop widget, or a menu-bar piece, so the output lives in the system rather than a window.
-- **Spatial video.** Export a stereo pair as MV-HEVC, so motion stays three-dimensional the way a still model already can.
 - **Performance capture.** Real-time recording of a live session with audio, since the offline exporters re-render on a fixed clock and can't capture an improvised run. The OllinLiveCoding performance host and VJ sets are the obvious customers.
 
 See the [design notes](DESIGN-NOTES.md#new-output-surfaces).

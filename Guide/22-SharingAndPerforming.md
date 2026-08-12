@@ -156,6 +156,40 @@ A model file records how big one scene unit is, and nothing is scaled on the way
 
 Lighting is the one place a spatial export deliberately gives something up. The lights travel, but an [environment](../Docs/3D/3D.md#environment-lighting) does not, because a viewer supplies its own, and in AR that viewer is a camera looking at your actual room. A metal surface exported this way reflects wherever it ends up, which is a better answer than the studio it was made in. [Spatial](../Docs/Output/Spatial.md) has the full list of what carries, and `Examples/3D/Geometry/SpatialExport` is a ring of solids with a save key.
 
+## Something you can look into
+
+A model hands over a scene and lets someone choose an angle. That works because the scene is still. Motion cannot be handed over that way, so it gets handed over differently: recorded from two eyes at once, the way you already see the room you are sitting in.
+
+```sh
+swift run Example-3D-Geometry-SpatialVideo --export-spatial piece.mov --seconds 8
+```
+
+That writes **spatial video**, which is the format Apple's platforms record and play with real depth. Everything about the drive is the export you already know, the same fixed clock and the same determinism, except each frame is rendered twice, from two cameras a little way apart, and the two views travel together in one file.
+
+Two numbers decide what that looks like, and neither is a setting you get right or wrong. They are composition.
+
+<img src="Images/22-SharingAndPerforming/StereoPair.jpg" alt="A plan-view diagram: two eyes at the bottom looking parallel, a horizontal line labeled the screen, and three objects whose sight lines land on the screen as paired marks, crossed for the near object, coincident at the screen, spread apart for the far one" width="680">
+
+**Convergence** is the distance at which the two eyes agree, and the diagram is what that means. Follow a line from each eye through an object to the screen: those two landing places are where each eye sees it. For something sitting at the convergence distance they land together, so it appears *on* the screen. For something nearer, the lines have already crossed by the time they get there, and the marks come out the wrong way round: your eyes read that as an object in front of the screen, poking out. Farther away, the marks spread apart the ordinary way and the object sits behind. So choosing the convergence distance is choosing what the viewer is looking *into* rather than *out at*.
+
+**Interocular** is how far apart the eyes stand, in world units, and it is the depth dial. Half reads flatter. Twice reads deeper, then starts to hurt. Left alone, Ollin puts the eyes 1% of the frame width apart, which is a rule with a reason: it works out to the far background separating by 1% of the frame too, less than a viewer's own eyes span, so nothing ever asks them to point outward, which is the one thing stereo must never do.
+
+A sketch declares both the way it declares a loop:
+
+```swift
+override var stereoGeometry: StereoGeometry {
+    StereoGeometry(interocular: 0.1, convergence: 6)
+}
+```
+
+Leave either one out and it is worked out from the camera: the convergence distance defaults to whatever the camera is already pointing at, on the reasoning that you are looking at the thing the piece is about. Either can also be overridden for one export with `--interocular` and `--convergence`, which is the fastest way to find out what they do. Push the near pillar of that example until it stops being pleasant, and you will have learned more than this section can tell you.
+
+One detail is worth knowing because it explains something that could otherwise look like a bug. The frame is **drawn once and rendered twice**. Not drawn twice: drawing again would roll the sketch's randomness a second time and step every simulation a second time, and some of them are honest about not repeating exactly, so the two eyes would end up looking at different worlds. One draw, two cameras, and both eyes see the same instant.
+
+The consequences of that are worth reading as rules. Anything the sketch already flattened while drawing, a `project()`, a `depth(at:)` placement, a billboard, keeps its one answer and therefore lands flat on the screen plane in both eyes, which for captions and overlays is usually what you want. A 2D sketch has nothing to disagree about and comes out flat, and says so. So does an accumulating sketch, because its pile lives in one surface and there is only one of it.
+
+Finally, the file records how far apart the eyes that shot it really were, so a player can scale the depth it shows. `--meters-per-unit` is how you say what a world unit is, exactly as for a model. [Spatial](../Docs/Output/Spatial.md#spatial-video) has the rest, and `Examples/3D/Geometry/SpatialVideo` is a colonnade built to have depth worth recording, with both numbers on knobs.
+
 ## Reproducibility is part of the piece
 
 A shared render is better when it can be *re-made*. Three habits from earlier chapters do the work here. Seed the randomness (`seed(…)` in `setup()`, Chapter 4), so the export and the re-export are the same artwork, not siblings. Copy tuned `@Param` values back into their declarations once they feel right, because a headless export reads the defaults written in code, not the inspector. And share the `.swift` file alongside the render when you can, because in Ollin the sketch is the artifact, and a reader holding the source holds the whole piece, seeds, knobs, and all.

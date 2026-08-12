@@ -19,6 +19,7 @@ swift run OllinLive MySketches/Loop.swift --export poster.png --frame 90
 - [Render quality](#render-quality) - `--render-quality`, the live vs. export default
 - [Sound](#sound) - a sketch's own music, in the file
 - [Video](#video) - `--export-video`, `OllinApp.exportVideo`
+- [Spatial video](Spatial.md#spatial-video) - `--export-spatial`, a stereo pair per frame for a headset (its own page)
 - [Animated GIF](#animated-gif) - `--export-gif`, `OllinApp.exportGIF`
 - [Perfect loops](#perfect-loops) - `--export-loop`, `Sketch.loopDuration`
 - [Vector: SVG](#vector-svg) - `--export-svg`, `OllinApp.svg` / `exportSVG`
@@ -94,6 +95,8 @@ The flags:
 **Size and quality.** Without `--bitrate` the encoder picks its own (generous) rate. With it, the file size is predictable, since a clip's size is roughly `bitrate × seconds`. As a starting point, a 1080×1080 clip at 60 fps looks clean around 10 to 15 Mbit/s in `h264` and 6 to 9 in `hevc`. Halve those for slow, flat-color motion, and raise them for full-frame noise or grain. On Apple silicon, `--quality` (0…1) targets a constant quality and lets the rate float instead, closer to how `crf` works in `ffmpeg`. The encoders are the hardware ones (fast and power-efficient), so if you want a specific software encoder or two-pass tuning, `--export-sequence` still hands you lossless frames and prints the `ffmpeg` line.
 
 Exported tracks are tagged Rec. 709, so what players show matches what the canvas rendered.
+
+**In depth.** A 3D sketch can leave as [spatial video](Spatial.md#spatial-video) instead: the same fixed-clock drive, but each frame rendered from two eyes and muxed into the stereo format Apple's platforms play with real depth.
 
 ### Sound
 

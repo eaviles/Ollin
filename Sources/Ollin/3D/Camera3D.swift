@@ -48,6 +48,13 @@ public struct Camera3D: Equatable, Sendable {
     /// Perspective or orthographic, with its parameter.
     public var projection: Projection
 
+    /// How far this camera has already stepped sideways off the centre line of a
+    /// stereo pair, in world units, and the distance at which the two eyes agree.
+    /// Zero for every ordinary camera, which is what leaves the projection of one
+    /// untouched. Set by `stereoEye(lateral:convergence:)`; see `Stereo.swift`.
+    var stereoLateral: Double = 0
+    var stereoConvergence: Double = 1
+
     public init(eye: Vector3, target: Vector3, up: Vector3 = .unitY,
                 near: Double = 0.1, far: Double = 1000,
                 projection: Projection = .perspective(fieldOfView: .pi / 3)) {
@@ -155,7 +162,28 @@ extension Camera3D {
     /// The projection matrix (camera → clip space) for the given viewport
     /// `aspect` ratio (width ÷ height), column-major, with Metal's clip-space
     /// z ∈ [0, 1].
+    ///
+    /// An eye of a stereo pair carries one extra term. Having stepped sideways by
+    /// `stereoLateral`, it must lean back in so both eyes agree at
+    /// `stereoConvergence`, and the lean is a single entry: `[2][0]`, the term that
+    /// mixes view-space z into clip-space x. That one entry covers all three
+    /// projections, for two reasons that meet in the same place. A perspective (or
+    /// intrinsic) frustum's clip w is the view distance, so premultiplying a
+    /// constant shift of the flattened image lands entirely in `[2][0]`, which is
+    /// exactly the asymmetric frustum a parallel stereo rig is defined by. An
+    /// orthographic camera has no such w, and moving it sideways slides the whole
+    /// image with no parallax at all, so what it needs is a shear: disparity
+    /// proportional to depth. That is the same entry, and working the convergence
+    /// condition through gives it the same value.
     func projectionMatrix(aspect: Double) -> simd_float4x4 {
+        var m = symmetricProjectionMatrix(aspect: aspect)
+        guard stereoLateral != 0, stereoConvergence > 0 else { return m }
+        m.columns.2.x -= Float(Double(m.columns.0.x) * stereoLateral / stereoConvergence)
+        return m
+    }
+
+    /// The projection this camera would have were it not one eye of a pair.
+    private func symmetricProjectionMatrix(aspect: Double) -> simd_float4x4 {
         let a = Float(aspect <= 0 ? 1 : aspect)
         switch projection {
         case .perspective(let fov):
