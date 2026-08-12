@@ -35,14 +35,6 @@ A tier of classic generative-art building blocks that emit vector geometry (poin
 
 The hand-drawn, mark-making axis, built on the variable-width stroke renderer (a width per vertex, shaped by a `strokeProfile`), the recorded marks that drive it from the hand, and the brushes that stamp a shape along a path. What's ahead: Apple Pencil tilt and azimuth as further drivers, which wait on the iOS leg under [new input sources](#new-input-sources). Painterly simulation (the generative-watercolor family) stays a [technique-catalog](#technique-and-algorithm-helpers) recipe rather than a brush-engine feature. See the [design notes](DESIGN-NOTES.md#expressive-brushes-and-strokes).
 
-## Sketches from an existing artifact
-
-The [project generator](Docs/Tools/ProjectGenerator.md) makes a project from a template, and [`--from-shader`](Docs/Tools/ShaderImport.md) makes one from a fragment shader somebody already wrote. The same direction has one more source worth reading:
-
-- **A 3D scene file** (glTF/USD) as placed `drawMesh` / `camera` / light calls. The lossy, one-way companion to the runtime `loadScene` import: `loadScene` keeps the file as a live, re-loadable asset, while this hands over source the sketch then owns. Both are worth having, for the same design-tool-to-code loop with different end states.
-
-See the [design notes](DESIGN-NOTES.md#sketches-from-an-existing-artifact).
-
 ## iPhone as a sensor array
 
 A Mac has no depth camera, inertial sensors, or spare Neural Engine for live perception; a tethered iPhone has all three. The idea: let the phone act as a sensor and on-device ML co-processor for a sketch that still renders on the Mac, capturing and perceiving (LiDAR point clouds, face and body tracking, segmentation, device motion, and more) and streaming typed results the sketch reads in `draw()`. Both a recorded RGBD clip and a tethered phone's live USB RGBD stream already reconstruct on the Mac as point clouds (see [`Docs/3D/Record3D.md`](Docs/3D/Record3D.md)), the kind of world-facing depth feed an Intel RealSense once gave openFrameworks, and a sweep of the phone's depth frames fuses by camera pose into one world cloud (see [`Docs/3D/Phone.md`](Docs/3D/Phone.md)). The work ahead grows that stream into the rest of the phone's senses (scene mesh, richer face and body data) over Ollin's own iPhone capture app, and drift-corrects a long sweep so its fused cloud stays registered. The wire protocol, the sensor catalog, and the build order are in the [design notes](DESIGN-NOTES.md#iphone-as-a-sensor-array).

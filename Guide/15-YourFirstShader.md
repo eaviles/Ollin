@@ -233,6 +233,32 @@ Then make it yours:
 - Feed `info.mouse` into the palette so the colors follow your hand.
 - Chain it. `generate(sky).filtered(.bloom())` glows the curtains, and a `Visual` reading `.layer(generate(sky))` can kaleidoscope the whole night.
 
+## Somebody else's shader
+
+You now know the shape well enough to read other people's. Shadertoy holds tens of thousands of fragment shaders. Nearly all of them are the two moves you just made: a pixel position in, a color out. Only the spelling differs. Theirs is called `mainImage`, it takes the position in pixels rather than a 0-to-1 `uv`, and it reads the clock from a global named `iTime`. Ollin will do that translation for you:
+
+```sh
+ollin new Plasma --from-shader plasma.glsl
+```
+
+<img src="Images/15-YourFirstShader/ImportedShader.jpg" alt="Left, a nine-line GLSL shader as pasted, with mod, iResolution and iTime picked out in dark ink. Right, the ring pattern it draws once translated, tiling evenly across the whole frame" width="680">
+
+That writes a project with the translated shader in `imported.metal` beside the sketch, ready to build. A shader you have just copied can go straight in with `pbpaste | ollin new Plasma --from-shader -`. How many inputs it reads decides what it becomes. One that reads nothing is a generator. One that reads `iChannel0` is a filter over a layer, which is Chapter 14's vocabulary again.
+
+Most of the translation is renaming. `vec3` becomes `float3`, `atan(y, x)` becomes `atan2(y, x)`. Three of the changes are worth knowing, because they change what you *see* rather than whether the file compiles.
+
+**`mod` rounds the other way.** GLSL floors the quotient where Metal truncates it, so the two disagree the moment either side goes negative. That is the ordinary case. Tiling a plane that reaches left of the origin is the first thing this kind of shader does. So the translation writes the flooring version out by hand instead of calling Metal's built-in.
+
+**The vertical axis turns over.** A texture is measured from its bottom edge and an Ollin layer from its top. Any shader that reads a layer gets its coordinate flipped on the way in, or it arrives upside down.
+
+**`iTime` is a global, and Metal has none.** Any function in a GLSL shader can reach for the clock. In Metal, `info` has to be handed along as a parameter. The translation adds it to the functions that read the clock, and to the functions that call those. Helpers that only do arithmetic, like the distance functions, are left alone.
+
+Whatever cannot come over is written into the file as a comment. A `NOTE(ollin)` tells you something changed on the way. A `TODO(ollin)` marks something left for you, and the shader will not compile until you deal with it. A shader built on four buffer passes gets one of those, since only the image pass comes across.
+
+Then there is the part no tool can decide for you. **A shader belongs to whoever wrote it.** Shadertoy's default is CC BY-NC-SA, and many authors write their own terms into a comment at the top. So the translated file keeps a header naming the shader, its author, and the address it came from. Leave that header where it is, and read the terms before you publish anything made from it.
+
+What you get back is Metal source sitting in your own project, with Ollin's shader library already spliced in. You can call `palette` or `fbm` inside somebody else's plasma and watch what happens. That is the difference between bringing a shader over and admiring it in a browser tab.
+
 ## Where this comes from
 
 Shaders come out of computer graphics research and the demoscene, but the reason a creative coder in this century can learn them at all is largely two projects. *The Book of Shaders*, by Patricio Gonzalez Vivo and Jen Lowe, taught a generation the per-pixel mental model (this chapter's distance-and-smoothstep sentence is its heart, and if you want a deeper, GLSL-flavored second pass, it remains wonderful). And Shadertoy, built by Inigo Quilez and Pol Jeremias, made shaders a shared, remixable culture. Quilez's articles are also the source of half the techniques in Ollin's shader library, including the cosine `palette` and the `sd*` distance functions. The fractal noise behind `fbm` descends from Ken Perlin's Oscar-winning noise. The chain idiom of `Visual` is inspired by Olivia Jack's Hydra, the browser live-coding instrument whose patching model made combining visuals feel like playing an instrument. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).

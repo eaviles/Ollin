@@ -43,6 +43,10 @@ public enum ProjectGenerator {
         if request.resolvedCapabilities.contains(where: { $0.id == Capability.shaders.id }) {
             files.append(GeneratedFile(path: "effect.metal", contents: shaderStub))
         }
+        if let file = request.importedScene?.sourceFile,
+           let name = request.importedScene?.resourceFileName {
+            files.append(GeneratedFile(path: name, contents: "", copiedFrom: file))
+        }
         for resource in request.example?.resources ?? [] {
             files.append(GeneratedFile(
                 path: resource,
@@ -82,6 +86,14 @@ public enum ProjectGenerator {
             files.append(GeneratedFile(path: "\(sourceDir)/\(ImportedShader.resourceName).metal",
                                        contents: shader.metalSource))
             resources.append(".copy(\"\(ImportedShader.resourceName).metal\")")
+        }
+
+        // The scene file itself, copied flat so `Scene(resource:extension:in:)`
+        // finds it at the bundle root the way a copied `.metal` is found.
+        if let file = request.importedScene?.sourceFile,
+           let name = request.importedScene?.resourceFileName {
+            files.append(GeneratedFile(path: "\(sourceDir)/\(name)", contents: "", copiedFrom: file))
+            resources.append(".copy(\"\(name)\")")
         }
 
         // An example's own material (a picture, a mesh, a clip, its shader) is
@@ -173,6 +185,12 @@ public enum ProjectGenerator {
             resources.append(".copy(\"\(ImportedShader.resourceName).metal\")")
         }
 
+        if let file = request.importedScene?.sourceFile,
+           let name = request.importedScene?.resourceFileName {
+            files.append(GeneratedFile(path: "\(folder)/\(name)", contents: "", copiedFrom: file))
+            resources.append(".copy(\"\(name)\")")
+        }
+
         if let example = request.example {
             for resource in example.resources {
                 files.append(GeneratedFile(
@@ -259,8 +277,20 @@ public enum ProjectGenerator {
     /// running exactly this, rather than showing a picture of it.
     public static func sketchSource(_ request: ProjectRequest) -> String {
         if let shader = request.importedShader { return importedShaderSource(request, shader) }
+        if let scene = request.importedScene { return importedSceneSource(request, scene) }
         if let example = request.example { return exampleSource(request, example) }
         return templateSource(request)
+    }
+
+    /// The sketch that draws a scene brought over from a file.
+    private static func importedSceneSource(_ request: ProjectRequest, _ scene: ImportedScene) -> String {
+        var source = "import Ollin\n\n"
+            + ImportedSceneSource.body(scene, className: request.typeName)
+            + "\n"
+        if let expression = request.canvas.expression {
+            source = insertCanvas(expression, into: source, typeName: request.typeName)
+        }
+        return source
     }
 
     /// The sketch that runs a shader brought over from GLSL. A single loose file

@@ -13,6 +13,8 @@ public struct ProjectRequest: Sendable {
     /// A shader brought over from GLSL. Like an example, it decides the sketch
     /// rather than filling a template in.
     public var importedShader: ImportedShader?
+    /// A 3D scene brought over from a file. Like a shader, it decides the sketch.
+    public var importedScene: ImportedScene?
     /// Capabilities asked for beyond the ones the starting point needs itself.
     public var capabilities: [Capability]
     public var canvas: CanvasChoice
@@ -33,6 +35,7 @@ public struct ProjectRequest: Sendable {
         template: ProjectTemplate = .blank,
         example: ExampleSource.Example? = nil,
         importedShader: ImportedShader? = nil,
+        importedScene: ImportedScene? = nil,
         capabilities: [Capability] = [],
         canvas: CanvasChoice = .default,
         threeD: ThreeDRecipe? = nil,
@@ -45,6 +48,7 @@ public struct ProjectRequest: Sendable {
         self.template = template
         self.example = example
         self.importedShader = importedShader
+        self.importedScene = importedScene
         self.capabilities = capabilities
         self.canvas = canvas
         self.threeD = threeD
@@ -68,7 +72,11 @@ public struct ProjectRequest: Sendable {
     }
 
     /// What the starting point is called, for a message or a list row.
-    public var startingPointTitle: String { example?.path ?? template.title }
+    public var startingPointTitle: String {
+        if let example { return example.path }
+        if let name = importedScene?.resourceFileName { return name }
+        return template.title
+    }
 
     /// The project name reduced to something that can be a Swift type name.
     /// Mirrors what the command line does for a loose file, so both faces of the

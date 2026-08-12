@@ -90,6 +90,99 @@ struct GeneratedProjectBuildTests {
         #expect(result.succeeded, "an imported-shader sketch stopped compiling:\n\(result.output)")
     }
 
+    /// A sketch written from a scene calls into the 3D surface by name: a camera
+    /// initializer, six light factories, the transform stack, and the scene
+    /// loader. Every one of those labels has to be the one the framework takes,
+    /// and only a compiler can say so. Three of them were wrong the first time.
+    @Test("A sketch written from a scene compiles, with every light kind in it")
+    func aSceneSketchCompiles() throws {
+        let repository = try #require(Self.repositoryRoot(), "could not find the Ollin folder from the test file")
+        let root = try Self.temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let everyLight: [ImportedLight] = [
+            ImportedLight(kind: .directional, colorHex: 0xFFFFFF, intensity: 1,
+                          direction: ImportedVector(-0.3, -0.8, -0.5)),
+            ImportedLight(kind: .point, colorHex: 0xFFD9A0, intensity: 0.6,
+                          position: ImportedVector(2, 3, 1)),
+            ImportedLight(kind: .spot, colorHex: 0xFFFAF0, intensity: 2,
+                          position: ImportedVector(1, 4, 1), direction: ImportedVector(0, -1, 0),
+                          coneAngle: 0.6, penumbra: 0.25),
+            ImportedLight(kind: .rect, colorHex: 0x88AAFF, intensity: 3,
+                          position: ImportedVector(-2, 2, 0), direction: ImportedVector(1, 0, 0),
+                          width: 1.5, height: 0.8, up: ImportedVector(0, 1, 0), twoSided: true),
+            ImportedLight(kind: .disk, colorHex: 0xFF9955, intensity: 4,
+                          position: ImportedVector(0, 3, -2), direction: ImportedVector(0, -1, 0),
+                          radius: 0.7),
+            ImportedLight(kind: .tube, colorHex: 0xFFFFFF, intensity: 8,
+                          radius: 0.05,
+                          endA: ImportedVector(-1, 2.5, 0), endB: ImportedVector(1, 2.5, 0)),
+        ]
+
+        // A nested group, a turn about a world axis, a turn about a tilted one,
+        // and a non-uniform scale: every move the emitter can print.
+        let tree = [
+            ImportedSceneNode(
+                name: "yard",
+                translation: ImportedVector(0, 0.5, 0),
+                children: [
+                    ImportedSceneNode(name: "shed", part: "shed",
+                                      rotation: ImportedRotation(angle: 0.4,
+                                                                 axis: ImportedVector(0, 1, 0)),
+                                      scale: ImportedVector(1, 2, 1)),
+                    ImportedSceneNode(name: "vane", part: "vane",
+                                      translation: ImportedVector(0, 2, 0),
+                                      rotation: ImportedRotation(angle: 0.9,
+                                                                 axis: ImportedVector(0.577, 0.577, 0.577)),
+                                      note: "wears several materials"),
+                ]),
+        ]
+
+        let cases: [String: ImportedScene] = [
+            "SceneFull": ImportedScene(
+                resourceName: "yard", resourceExtension: "usdz",
+                origin: "Made from yard.usdz.",
+                camera: ImportedCamera(eye: ImportedVector(4, 3, 6), target: ImportedVector(0, 1, 0),
+                                       up: ImportedVector(0, 1, 0), near: 0.1, far: 100,
+                                       projection: .perspective(fieldOfView: 0.69)),
+                lights: everyLight, roots: tree, partNames: ["shed", "vane"],
+                notes: ["One part wears more than one material."]),
+            // The other shape: no geometry, an orthographic camera, no file.
+            "SceneRig": ImportedScene(
+                camera: ImportedCamera(eye: ImportedVector(0, 0, 5), target: .zero,
+                                       up: ImportedVector(0, 1, 0), near: 0.1, far: 50,
+                                       projection: .orthographic(height: 4)),
+                lights: [everyLight[0]]),
+        ]
+
+        var targets: [String] = []
+        var resources: [String: [String]] = [:]
+        for target in cases.keys.sorted() {
+            let scene = cases[target]!
+            let request = ProjectRequest(name: target, importedScene: scene,
+                                         destination: root, framework: .localPath(repository))
+            let directory = root.appendingPathComponent("Sources/\(target)")
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try ProjectGenerator.sketchSource(request)
+                .write(to: directory.appendingPathComponent("Sketch.swift"),
+                       atomically: true, encoding: .utf8)
+            // The sketch reads its geometry through `Bundle.module`, which only
+            // exists for a target that declares a resource, so the stand-in has
+            // to be declared exactly as the generated manifest declares the real
+            // file. Its contents never matter to the compiler.
+            if let file = scene.resourceFileName {
+                try Data().write(to: directory.appendingPathComponent(file))
+                resources[target] = [file]
+            }
+            targets.append(target)
+        }
+
+        try Self.writeManifest(named: "SceneImportCheck", targets: targets, at: root,
+                               repository: repository, resources: resources)
+        let result = try Self.swiftBuild(in: root)
+        #expect(result.succeeded, "a sketch written from a scene stopped compiling:\n\(result.output)")
+    }
+
     @Test("Every 3D combination the rules allow compiles")
     func everyValidThreeDRecipeCompiles() throws {
         let repository = try #require(Self.repositoryRoot(), "could not find the Ollin folder from the test file")

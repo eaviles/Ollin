@@ -189,7 +189,11 @@ let package = Package(
         // links for the same reasons OllinLive does (figures load as dylibs).
         .executableTarget(
             name: "OllinGuideFigures",
-            dependencies: ["Ollin", "OllinRuntime"] + Satellite.allCases.map(\.dependency),
+            // The generator's own targets ride along so a figure can show what it
+            // produces: the shader and scene import figures both run the real
+            // thing and draw its output, rather than a result pasted in by hand.
+            dependencies: ["Ollin", "OllinRuntime", "OllinProjects", "OllinSceneImport"]
+                + Satellite.allCases.map(\.dependency),
             path: "Sources/OllinGuideFigures",
             linkerSettings: [
                 .unsafeFlags(["-Xlinker", "-export_dynamic"])
@@ -203,11 +207,19 @@ let package = Package(
         .target(
             name: "OllinProjects"
         ),
+        // Reads a 3D scene file into the generator's plain description. It is its
+        // own target because it needs both the framework (for the loader) and
+        // OllinProjects (for the description), and OllinProjects must keep
+        // depending on nothing. Both faces of the generator share it.
+        .target(
+            name: "OllinSceneImport",
+            dependencies: ["Ollin", "OllinProjects"]
+        ),
         // The generator's command line, behind `ollin new`. Making a project is
         // one command, and `--list` says what can be made.
         .executableTarget(
             name: "OllinNew",
-            dependencies: ["OllinProjects"]
+            dependencies: ["OllinProjects", "OllinSceneImport"]
         ),
         // The generator's window. Shows each starting point by *running* it, so
         // what you pick is what you get; it compiles a template through the same
@@ -577,7 +589,7 @@ let package = Package(
         // `OLLIN_RECORD_SNAPSHOTS=1 swift test`. Skips when no Metal device.
         .testTarget(
             name: "OllinTests",
-            dependencies: ["Ollin", "COllinShaders", "OllinProjects"],
+            dependencies: ["Ollin", "COllinShaders", "OllinProjects", "OllinSceneImport"],
             resources: [.copy("References")]
         ),
         // DSP correctness for the audio analyzer: feed synthesized signals and

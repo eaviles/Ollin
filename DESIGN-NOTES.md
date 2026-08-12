@@ -258,10 +258,6 @@ A standing track, not a one-time task: keep mining Swift idioms to make the API 
 - **`@Param` disclosure groups.** The inspector's parameter group cards are flat; a sketch with many knobs wants an advanced tier folded behind a disclosure row (collapsed by default, remembered per sketch), so the everyday knobs stay one glance. Rides the existing group metadata; the per-param keyframe affordance belongs to the record-and-replay direction below.
 - **More `@Param` value kinds.** Two catalog types still sit outside the menu tier because `ParamChoices` needs `Equatable` to find the current selection: `Easing` (a closure wrapper with no equality; joining would take a named-curve identity, say a case-backed wrapper over the closure) and the `Material` finishes (parameterized builders, so a curated subset would have to freeze representative values). A `Palette`/`Ramp` knob is a different shape entirely, a swatch-strip row rather than a menu. Each rides the existing `ParamValue`/`ParamControl` seam when it comes.
 
-## Sketches from an existing artifact
-
-The generator makes a project from a template. The other direction is emitting a sketch *from something that already exists*, which is a different job: it hands over editable source the sketch then owns, rather than a live asset it loads. It rides the shipped `ProjectTemplate` seam (a template is source plus the capabilities it needs), so the work is the translation, not the scaffolding.
-
-- **A scene-to-sketch variant.** From a 3D scene file (glTF/USD): the authored camera as a `camera(...)` / `perspective(...)` call, each node as a `withState { translate/rotate/scale; drawMesh(...) }` block, lights as `directionalLight(...)` and friends. This is the one-way, lossy companion to the runtime `loadScene` import (`Docs/3D/Scenes.md`): `loadScene` keeps the file as a live, re-loadable asset, while this hands over source. Same design-tool-to-code loop, different end state, so offer both.
+## Project-generator kinds that are gated
 
 The platform kinds the generator names but cannot emit (an iOS app, a Vision app, a screen saver, an AR effect) are each gated on their own platform leg rather than on the generator: opening one is a new emitter plus a changed availability, and the reasons live with those items.

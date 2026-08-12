@@ -1,5 +1,6 @@
 import Foundation
 import OllinProjects
+import OllinSceneImport
 
 /// The command-line face of the project generator, behind `ollin new`.
 ///
@@ -39,6 +40,7 @@ enum OllinNewCommand {
         let templateName = arguments.takeValue("--template")
         let exampleName = arguments.takeValue("--from")
         let shaderSource = arguments.takeValue("--from-shader")
+        let scenePath = arguments.takeValue("--from-scene")
         let capabilityNames = arguments.takeValue("--with")
         let canvasName = arguments.takeValue("--canvas")
         let threeDNames = arguments.takeValue("--3d")
@@ -142,6 +144,31 @@ enum OllinNewCommand {
             report(result)
         }
 
+        // A 3D scene brought over from a file. Like a shader, it decides the
+        // sketch, so it rules out the other starting points.
+        var importedScene: ImportedScene?
+        if let scenePath {
+            if exampleName != nil || shaderSource != nil {
+                fail("--from-scene, --from-shader and --from each decide the whole sketch, "
+                    + "so pass one of them.")
+            }
+            if threeDNames != nil {
+                fail("--3d fills in a template, and --from-scene writes the sketch from the file "
+                    + "instead, so the options would go nowhere. Pass one or the other.")
+            }
+            let url = URL(fileURLWithPath: scenePath).standardizedFileURL
+            guard FileManager.default.fileExists(atPath: url.path) else {
+                fail("no file at \(url.path).")
+            }
+            guard let read = SceneImport.read(url) else {
+                fail("could not read \(url.lastPathComponent) as a 3D scene. Ollin opens glTF "
+                    + "(.gltf, .glb), USD (.usd, .usda, .usdc, .usdz), and the formats listed in "
+                    + "Docs/3D/Scenes.md.")
+            }
+            importedScene = read
+            report(read)
+        }
+
         // The 3D pieces, checked against each other before anything is written:
         // a combination that cannot work is worth saying so rather than
         // generating a sketch where half the calls quietly do nothing.
@@ -182,7 +209,7 @@ enum OllinNewCommand {
 
         let request = ProjectRequest(
             name: name, kind: kind, template: template, example: example,
-            importedShader: importedShader,
+            importedShader: importedShader, importedScene: importedScene,
             capabilities: capabilities, canvas: canvas, threeD: threeD,
             packageHost: host, destination: destination, framework: framework
         )
@@ -236,6 +263,21 @@ enum OllinNewCommand {
         if !unsupported.isEmpty {
             print("  The shader file marks each of these TODO(ollin). It will not compile until they are dealt with.")
         }
+    }
+
+    /// What the scene turned into, and what stayed behind. Printed before
+    /// anything is written, so the list is read before the project exists.
+    static func report(_ scene: ImportedScene) {
+        let parts = scene.partNames.count
+        let lights = scene.lights.count
+        print("ollin: the scene holds \(parts) \(parts == 1 ? "part" : "parts") and "
+            + "\(lights) \(lights == 1 ? "light" : "lights").")
+        if let name = scene.resourceFileName {
+            print("  \(name) is copied in beside the sketch, which loads it for the geometry.")
+        } else {
+            print("  It carries no geometry, so the sketch needs no file alongside it.")
+        }
+        for note in scene.notes { print("  note: \(note)") }
     }
 
     static let remoteURL = "https://github.com/eaviles/Ollin.git"
@@ -302,6 +344,8 @@ enum OllinNewCommand {
           --from-shader <src>    start from a GLSL fragment shader, translated to Metal:
                                  a file, `-` for what you paste on standard input, or a
                                  web address (which needs SHADERTOY_API_KEY set)
+          --from-scene <file>    start from a 3D scene file (glTF or USD), written out as
+                                 the camera, lights and placement calls that draw it
           --with <a,b>           extra libraries and folders to wire in
           --canvas <id>          the canvas size to declare
           --in <dir>             where to put it (default: here)
