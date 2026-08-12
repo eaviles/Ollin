@@ -16,6 +16,9 @@ public struct ProjectRequest: Sendable {
     /// Which 3D pieces are in play, for the starting point that draws in 3D.
     /// Ignored by every other one.
     public var threeD: ThreeDRecipe?
+    /// The package the sketch will join, when the caller has already found it.
+    /// Left nil, the generator looks for the nearest one itself.
+    public var packageHost: PackageHost?
     /// The folder the project is created *in*.
     public var destination: URL
     /// How the generated manifest reaches the framework.
@@ -29,6 +32,7 @@ public struct ProjectRequest: Sendable {
         capabilities: [Capability] = [],
         canvas: CanvasChoice = .default,
         threeD: ThreeDRecipe? = nil,
+        packageHost: PackageHost? = nil,
         destination: URL,
         framework: FrameworkSource
     ) {
@@ -39,6 +43,7 @@ public struct ProjectRequest: Sendable {
         self.capabilities = capabilities
         self.canvas = canvas
         self.threeD = threeD
+        self.packageHost = packageHost
         self.destination = destination
         self.framework = framework
     }

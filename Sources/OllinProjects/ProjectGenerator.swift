@@ -21,6 +21,7 @@ public enum ProjectGenerator {
         switch request.kind.id {
         case ProjectKind.singleFile.id: return planSingleFile(request)
         case ProjectKind.macSketch.id:  return planMacSketch(request)
+        case ProjectKind.inPackage.id:  return try planInPackage(request)
         default:
             throw ProjectGeneratorError.kindUnavailable(request.kind)
         }
@@ -133,6 +134,106 @@ public enum ProjectGenerator {
                 "The sketch and everything it loads live in \(sourceDir)/.",
             ]
         )
+    }
+
+    /// A sketch folder inside a package that already exists, plus one target in
+    /// its manifest.
+    ///
+    /// The manifest is somebody's own code, so this is the one path that changes
+    /// a file rather than only creating them, and it is deliberately timid: it
+    /// refuses a package that cannot reach Ollin, and when it cannot find the
+    /// target list unambiguously it writes the sketch anyway and hands the
+    /// stanza over to be pasted instead of guessing.
+    private static func planInPackage(_ request: ProjectRequest) throws -> GeneratedProject {
+        guard let host = request.packageHost ?? PackageHost.nearest(from: request.destination) else {
+            throw ProjectGeneratorError.noPackageHere(request.destination)
+        }
+        guard host.linksOllin else {
+            throw ProjectGeneratorError.packageDoesNotLinkOllin(host)
+        }
+
+        let target = request.typeName
+        let folder = request.folderName
+        var files: [GeneratedFile] = [
+            GeneratedFile(path: "\(folder)/Sketch.swift", contents: sketchSource(request))
+        ]
+        var resources: [String] = []
+
+        if let example = request.example {
+            for resource in example.resources {
+                files.append(GeneratedFile(
+                    path: "\(folder)/\(resource)",
+                    contents: "",
+                    copiedFrom: example.directory.appendingPathComponent(resource)
+                ))
+                resources.append(".copy(\"\(resource)\")")
+            }
+        }
+        for capability in request.resolvedCapabilities {
+            if capability.id == Capability.shaders.id {
+                files.append(GeneratedFile(path: "\(folder)/effect.metal", contents: shaderStub))
+                resources.append(".copy(\"effect.metal\")")
+                continue
+            }
+            for asset in capability.assetFolders {
+                files.append(GeneratedFile(
+                    path: "\(folder)/\(asset.name)/\(asset.name).md",
+                    contents: "# \(asset.name)\n\n\(asset.note)\n"
+                ))
+                resources.append(".process(\"\(asset.name)\")")
+            }
+        }
+
+        // The target's own path, from the package root, so the sketch can live
+        // wherever the folders already put it rather than in a fixed layout.
+        let inside = host.relativePath(of: request.destination.appendingPathComponent(folder))
+        let stanza = targetStanza(request, target: target, path: inside, resources: resources)
+
+        var edits: [GeneratedEdit] = []
+        var steps: [String] = []
+        if let manifestText = try? String(contentsOf: host.manifest, encoding: .utf8),
+           let updated = PackageHost.inserting(stanza, intoTargetsOf: manifestText) {
+            edits.append(GeneratedEdit(
+                file: host.manifest,
+                updated: updated,
+                summary: "one target added to \(host.name)'s Package.swift"
+            ))
+            steps.append("Run it:  cd \(host.root.path) && swift run \(target)")
+        } else {
+            steps.append("Could not read \(host.name)'s target list, so nothing was changed there.")
+            steps.append("Add this target by hand:\n\(stanza)")
+        }
+        steps.append("Edit while it runs:  ollin \(request.destination.appendingPathComponent(folder).path)/Sketch.swift")
+        steps.append("The framework builds once for the whole package, so this sketch is a one-file compile.")
+
+        return GeneratedProject(
+            root: request.destination,
+            files: files.sorted { $0.path < $1.path },
+            edits: edits,
+            runCommand: "swift run --package-path \(host.root.path) \(target)",
+            nextSteps: steps
+        )
+    }
+
+    static func targetStanza(_ request: ProjectRequest, target: String,
+                             path: String, resources: [String]) -> String {
+        let known = request.resolvedCapabilities.compactMap(\.module)
+        let fromExample = (request.example?.modules ?? []).filter { !known.contains($0) }
+        let products = (["Ollin"] + (known + fromExample).sorted())
+            .map { "                .product(name: \"\($0)\", package: \"Ollin\")," }
+            .joined(separator: "\n")
+        let resourceLine = resources.isEmpty
+            ? ""
+            : ",\n            resources: [\n" + resources.map { "                \($0)," }.joined(separator: "\n") + "\n            ]"
+        return """
+                .executableTarget(
+                    name: "\(target)",
+                    dependencies: [
+        \(products)
+                    ],
+                    path: "\(path)"\(resourceLine)
+                ),
+        """
     }
 
     // MARK: - Source assembly
@@ -400,6 +501,13 @@ public enum ProjectGenerator {
                 try manager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: url.path)
             }
         }
+
+        // Edits last: everything they refer to is on disk by now, so a failure
+        // here leaves a folder that is merely unlisted rather than a manifest
+        // pointing at nothing.
+        for edit in project.edits {
+            try edit.updated.write(to: edit.file, atomically: true, encoding: .utf8)
+        }
         return project.root
     }
 }
@@ -410,16 +518,40 @@ public struct GeneratedProject: Sendable {
     /// The folder the paths are relative to.
     public let root: URL
     public let files: [GeneratedFile]
+    /// Changes to files that already exist, which is a different promise from
+    /// creating one and is kept separate so it can be shown as such.
+    public let edits: [GeneratedEdit]
     /// The one command that runs the result.
     public let runCommand: String
     /// Lines to print, or show, after writing.
     public let nextSteps: [String]
 
-    public init(root: URL, files: [GeneratedFile], runCommand: String, nextSteps: [String]) {
+    public init(root: URL, files: [GeneratedFile], edits: [GeneratedEdit] = [],
+                runCommand: String, nextSteps: [String]) {
         self.root = root
         self.files = files
+        self.edits = edits
         self.runCommand = runCommand
         self.nextSteps = nextSteps
+    }
+}
+
+/// A change to a file that is already there.
+///
+/// Creating a file can promise never to destroy anything; changing one cannot,
+/// so an edit carries the whole new text (worked out while planning, so the
+/// window can show it before anything happens) and one line saying what it does.
+public struct GeneratedEdit: Sendable, Hashable {
+    public let file: URL
+    /// The file's full contents after the change.
+    public let updated: String
+    /// What changed, in a few words.
+    public let summary: String
+
+    public init(file: URL, updated: String, summary: String) {
+        self.file = file
+        self.updated = updated
+        self.summary = summary
     }
 }
 
@@ -445,6 +577,8 @@ public enum ProjectGeneratorError: Error, CustomStringConvertible, Equatable {
     case kindUnavailable(ProjectKind)
     case templateDoesNotFit(ProjectTemplate, ProjectKind)
     case fileExists(URL)
+    case noPackageHere(URL)
+    case packageDoesNotLinkOllin(PackageHost)
 
     public var description: String {
         switch self {
@@ -457,6 +591,10 @@ public enum ProjectGeneratorError: Error, CustomStringConvertible, Equatable {
             return "The \(template.title) template does not fit a \(kind.title.lowercased()) project."
         case .fileExists(let url):
             return "\(url.path) already exists; nothing was written."
+        case .noPackageHere(let url):
+            return "no Package.swift at or above \(url.path), so there is nothing to add the sketch to."
+        case .packageDoesNotLinkOllin(let host):
+            return "\(host.name) does not depend on Ollin yet, so a target added to it could not import the framework. Add the dependency, or make a self-contained project instead."
         }
     }
 }

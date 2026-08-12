@@ -49,26 +49,37 @@ enum OllinNewCommand {
         }
         let destination = URL(fileURLWithPath: destinationPath ?? FileManager.default.currentDirectoryPath)
 
-        // With no name given, take the next dated serial in the destination, so
-        // starting something never begins with naming it.
-        let rawName = arguments.rest.first ?? ProjectNaming.nextSerial(
-            in: destination,
-            year: Calendar.current.component(.year, from: Date())
-        ) + ".swift"
-
         // A name ending in .swift asks for one loose file, which is what this
-        // command has always made; anything else makes a project folder.
-        let asksForFile = rawName.hasSuffix(".swift")
-        let name = asksForFile ? String(rawName.dropLast(6)) : rawName
+        // command has always made; anything else makes a folder. With no name at
+        // all, the next dated serial, so starting something never begins with
+        // naming it.
+        let typed = arguments.rest.first
+        let asksForFile = typed?.hasSuffix(".swift") ?? false
+        let name = asksForFile
+            ? String(typed!.dropLast(6))
+            : typed ?? ProjectNaming.nextSerial(
+                in: destination,
+                year: Calendar.current.component(.year, from: Date()))
 
+        let host = PackageHost.nearest(from: destination)
         let kind: ProjectKind
         if let kindName {
             guard let found = ProjectKind.named(kindName) else {
                 fail("no kind called \(kindName). Run `ollin new --list`.")
             }
             kind = found
+        } else if asksForFile {
+            kind = .singleFile
+        } else if let host, host.linksOllin {
+            // A folder already inside a package almost always wants a target in
+            // it rather than a package of its own: the framework then builds
+            // once for every sketch there instead of once each.
+            kind = .inPackage
+            print("ollin: \(destination.path) is inside \(host.name), so the sketch joins it. Pass --kind mac-sketch for a project of its own.")
+        } else if typed == nil {
+            kind = .singleFile
         } else {
-            kind = asksForFile ? .singleFile : .macSketch
+            kind = .macSketch
         }
 
         guard let template = ProjectTemplate.named(templateName ?? "blank") else {
@@ -153,7 +164,7 @@ enum OllinNewCommand {
         let request = ProjectRequest(
             name: name, kind: kind, template: template, example: example,
             capabilities: capabilities, canvas: canvas, threeD: threeD,
-            destination: destination, framework: framework
+            packageHost: host, destination: destination, framework: framework
         )
 
         do {
@@ -163,6 +174,9 @@ enum OllinNewCommand {
             print("ollin: made \(request.folderName) (\(kind.title.lowercased()), from \(request.startingPointTitle))")
             for file in project.files {
                 print("  \(project.root.appendingPathComponent(file.path).path)")
+            }
+            for edit in project.edits {
+                print("  \(edit.file.path)  (\(edit.summary))")
             }
             print("")
             for step in project.nextSteps { print("  \(step)") }
@@ -229,7 +243,9 @@ enum OllinNewCommand {
                ollin new --examples          every example that can be started from
 
         options:
-          --kind <id>            what to make (default: mac-sketch, or single-file for a .swift name)
+          --kind <id>            what to make (default: a target in the package you are
+                                 already inside, else mac-sketch, or single-file for a
+                                 .swift name)
           --template <id>        which ready-made starting point (default: blank)
           --from <Group/Name>    start from an example instead, material and all
           --with <a,b>           extra libraries and folders to wire in

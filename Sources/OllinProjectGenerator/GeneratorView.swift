@@ -43,6 +43,9 @@ struct GeneratorView: View {
     @State private var threeD = ThreeDRecipe.realistic
     @State private var hovered: ThreeDOption?
     @State private var wiringExpanded = false
+    /// The package the chosen folder already sits in, if any. Found when the
+    /// folder changes rather than on every keystroke.
+    @State private var host: PackageHost?
 
     @State private var preview: PreviewState = .idle
     @State private var previewCache: [String: Sketch] = [:]
@@ -145,7 +148,7 @@ struct GeneratorView: View {
             .help(sidebarShown ? "Hide starting points" : "Show starting points")
 
             Menu {
-                ForEach(ProjectKind.available) { option in
+                ForEach(offeredKinds) { option in
                     Button { kind = option } label: {
                         Text(option.title)
                         Text(option.summary)
@@ -169,6 +172,12 @@ struct GeneratorView: View {
         }
         .padding(.leading, 8)
         .frame(maxHeight: .infinity)
+    }
+
+    /// Joining a package is offered only where there is one to join, since it
+    /// is the only kind whose availability depends on where you are pointing.
+    private var offeredKinds: [ProjectKind] {
+        ProjectKind.available.filter { $0.id != ProjectKind.inPackage.id || host?.linksOllin == true }
     }
 
     private var trailingChrome: some View {
@@ -696,6 +705,18 @@ struct GeneratorView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
+                    ForEach(plan.edits, id: \.file) { edit in
+                        HStack(alignment: .top, spacing: 6) {
+                            SwiftUI.Image(systemName: "pencil")
+                                .font(.system(size: 9))
+                                .foregroundStyle(.tertiary)
+                                .padding(.top, 2)
+                            Text(edit.summary)
+                                .font(.system(size: 10))
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
                     HStack(alignment: .top, spacing: 6) {
                         Circle().fill(OllinInspector.green).frame(width: 6, height: 6).padding(.top, 4)
                         Text(guarantee)
@@ -710,7 +731,10 @@ struct GeneratorView: View {
     }
 
     private var guarantee: String {
-        example == nil
+        if kind.id == ProjectKind.inPackage.id {
+            return "The sketch folder is new. The only file changed is the manifest, and only to list it."
+        }
+        return example == nil
             ? "Nothing is written until you press Create, and Create refuses rather than overwriting."
             : "Copied from the example and declared, so it runs before you change a line. The header comment travels with it."
     }
@@ -764,6 +788,7 @@ struct GeneratorView: View {
             capabilities: Capability.all.filter { chosen.contains($0.id) },
             canvas: canvas,
             threeD: threeD,
+            packageHost: host,
             destination: destination,
             framework: .localPath(Self.frameworkRoot())
         )
@@ -797,6 +822,19 @@ struct GeneratorView: View {
             destinationPath = url.path
             outcome = nil
             suggestName()
+            findHost()
+        }
+    }
+
+    /// A folder inside a package almost always wants a target in it rather than
+    /// a package of its own, so that becomes the offer the moment one is found,
+    /// and stops being the kind the moment it is not.
+    private func findHost() {
+        host = PackageHost.nearest(from: destination)
+        if kind.id == ProjectKind.inPackage.id, host?.linksOllin != true {
+            kind = .macSketch
+        } else if kind.id == ProjectKind.macSketch.id, host?.linksOllin == true {
+            kind = .inPackage
         }
     }
 
@@ -846,6 +884,7 @@ struct GeneratorView: View {
             threeD = recipe
         }
         suggestName()
+        findHost()
     }
 
     /// Compile the very source the generator would write, then run it. What you

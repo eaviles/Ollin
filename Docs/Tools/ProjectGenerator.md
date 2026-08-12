@@ -22,10 +22,29 @@ A **kind** is what the thing you get *is*.
 |---|---|
 | `single-file` | One `.swift` file, executable, run with `ollin`. The smallest thing that is a whole sketch. |
 | `mac-sketch` | A folder with its own manifest, sources, and assets, built with `swift run`. |
+| `in-package` | A sketch folder plus one target in the `Package.swift` already above it. |
 
 `ollin new --list` shows more kinds than these two, each carrying the reason it is not ready: an iPhone app, a Vision app, a screen saver, an AR effect. They are named rather than hidden because that is the map of where this goes, and each waits on a platform leg rather than on the generator.
 
 A name ending in `.swift` asks for one loose file; any other name makes a folder. That is the only difference in how you ask.
+
+## When you are already inside a package
+
+A folder of sketches is usually **one package with a target each**, not a package each: the framework then builds once for all of them and every sketch is a one-file compile. So if the folder you are pointing at already sits inside a Swift package that depends on Ollin, the generator joins it rather than making another:
+
+```sh
+cd sketchbook/2026/08
+ollin new Nightfall          # a sketch folder here, and one target in sketchbook/Package.swift
+```
+
+It says so when it does, and `--kind mac-sketch` overrides it for a project of its own. In the window the kind menu gains **Add to this package** whenever there is one to join, and the file list names the manifest edit beside the files being created.
+
+This is the only thing the generator does that changes a file you already had, so it is deliberately timid:
+
+- It refuses a package that does not depend on Ollin yet, because a target added there could not import the framework.
+- It inserts one target at the end of the existing `targets:` list, matching that list's own brackets rather than the first `]` it finds.
+- If it cannot read the target list confidently, it writes the sketch, leaves the manifest untouched, and prints the stanza for you to paste.
+- The target's `path:` is wherever your folders actually put the sketch, so any layout works.
 
 ## What it starts from
 

@@ -60,6 +60,17 @@ extension ProjectKind {
         availability: .available
     )
 
+    /// A sketch added to the Swift package the chosen folder already sits in,
+    /// rather than a package of its own. A folder of sketches is usually one
+    /// package with a target each, so this is the right answer whenever there
+    /// is a manifest above the destination.
+    public static let inPackage = ProjectKind(
+        id: "in-package",
+        title: "Add to this package",
+        summary: "A sketch folder plus one target in the Package.swift already above it, so the framework builds once for all of them.",
+        availability: .available
+    )
+
     public static let iOSApp = ProjectKind(
         id: "ios-app",
         title: "iPhone and iPad app",
@@ -91,7 +102,7 @@ extension ProjectKind {
     /// Every kind the generator knows about, ready or not, in the order a menu
     /// should show them.
     public static let all: [ProjectKind] = [
-        .singleFile, .macSketch, .iOSApp, .visionOSApp, .screenSaver, .arEffect,
+        .singleFile, .macSketch, .inPackage, .iOSApp, .visionOSApp, .screenSaver, .arEffect,
     ]
 
     /// The kinds that can be generated today.
