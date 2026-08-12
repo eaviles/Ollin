@@ -6751,6 +6751,67 @@ demo layout); snapshot `print-separation`; `PrintSeparationTests`.
 
 ---
 
+## Wide gamut and HDR output (`colorOutput`)
+
+The mechanism is small: `ColorOutput` picks the drawable's pixel format and the
+present pass's encoding, and the renderer carries both for its lifetime.
+`.standard` keeps the 8-bit sRGB drawable and the shipped
+`ollin_present_fragment`; `.wide` and `.extended` present into `rgba16Float`
+through `ollin_present_wide_fragment`, a twin kept beside the original rather
+than a branch inside it, because that fragment's exact codegen is what every
+dithered 8-bit frame reproduces and growing it re-contracts under fast math.
+
+The whole difference between `.wide` and `.extended` at the pixel level is one
+uniform: the ceiling the twin clamps to. `.wide` stops at 1.0, `.extended`
+starts unbounded (so an off-screen render keeps the highlights an exported HDR
+video is for) and a live host pulls it down to the display's reported headroom
+every frame, since the system grants and withdraws that as brightness and
+surrounding content change.
+
+### Naming a color outside sRGB needed no shader change
+
+`Color(displayP3:green:blue:)` converts to linear sRGB and re-encodes, which
+puts some components outside 0…1. That value has to survive the ordinary vertex
+path, where the fragment applies the shipped `srgbToLinear`. It does, exactly:
+below the curve's knee that function is the straight line `c/12.92`, and the CPU
+`linearToSrgb` is its exact inverse there, so the pipeline's decode of a
+negative component is precisely the encode's inverse. Extending the shader's
+transfer function to the mirrored form was the obvious alternative and would
+have re-contracted every 2D fragment for no gain.
+
+### The float drawable is not slower (measured)
+
+The expectation going in was that `.wide` would cost bandwidth: eight bytes per
+pixel against four. Measured, it is **cheaper**, because the standard present
+fragment pays more arithmetic than the wider one saves in bytes. `finalizeColor`
+runs `linearToSrgb`, two hash calls for the dither, and `srgbToLinear` per
+pixel; the wide twin runs a 3x3 matrix and a clamp.
+
+M2, release, a near-empty frame so the present pass dominates, ten paired runs
+(the two settings measured back to back so thermal drift cancels within a pair,
+the rule that a single A/B run can otherwise invert):
+
+| canvas | `.standard` | `.wide` | difference |
+| --- | --- | --- | --- |
+| 540² | 0.17 ms | 0.12 ms | 0.05 ms cheaper |
+| 1080² | 0.44 ms | 0.23 ms | 0.21 ms cheaper, ±0.01 over ten pairs |
+| 2160² | 0.88 ms | 0.83 ms | noisy, break-even to slightly cheaper |
+
+`.extended` measures identically to `.wide` (same shader, same format). The
+saving shrinks at 2160² as bandwidth starts to matter against the fixed
+per-pixel arithmetic.
+
+What this does *not* measure: the harness renders off-screen, so the window
+compositor's own cost for a float layer, and for an EDR layer in particular, is
+outside it. The render cost is settled; the system cost is not.
+
+The measurement is why the case against `.wide` as a future default is about
+what leaves the window (a P3 file read by a consumer that ignores the tag reads
+oversaturated; Syphon and the virtual camera feed such consumers) and about
+re-recording every reference and figure, rather than about speed.
+
+---
+
 ## Live reload and the live-coding hosts
 
 `swift run OllinLive <path/to/Sketch.swift>` opens a window, watches the file,

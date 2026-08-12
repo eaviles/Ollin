@@ -17,16 +17,29 @@ import UniformTypeIdentifiers
 /// regressions while staying robust across machines (test sketches keep large
 /// flat regions to hold the edge fraction down).
 ///
+/// A passing snapshot also reports how close it came: a reference above
+/// `driftWarningFraction` of the tolerance prints a line naming itself, so a
+/// change that moves the render a little is visible in the run that makes it
+/// rather than years later, when something unrelated finally tips it past the
+/// bar. See `warnIfDrifting`.
+///
 /// **Recording references.** Set `OLLIN_RECORD_SNAPSHOTS=1` and run the tests
 /// to (re)write the reference PNGs into `Tests/OllinTests/References/` from the
 /// current render, then commit them. Do this on a known-good build, since the
-/// references are the source of truth thereafter.
+/// references are the source of truth thereafter, and only once the reason they
+/// moved is understood: the metric is a mean, so it hides a large local
+/// difference behind a small average, and "the tests still pass" is not by
+/// itself evidence that nothing changed.
 enum Snapshot {
 
     /// Mean per-channel difference (0…255) allowed before a snapshot is a
     /// regression. Comfortably above cross-GPU AA jitter, well below any
     /// structural change.
     static let tolerance = 2.0
+
+    /// The fraction of `tolerance` a reference may drift to before the run says
+    /// so out loud (see the drift warning below).
+    static let driftWarningFraction = 0.25
 
     /// Whether a Metal device exists — gates the tests so they skip (rather than
     /// fail) on a machine or CI runner without a usable GPU.
@@ -81,7 +94,29 @@ enum Snapshot {
 
         // On a real divergence, drop the actual frame somewhere inspectable.
         if mean >= tolerance { try? writeActual(actual, named: name) }
+        warnIfDrifting(mean, named: name)
         return mean
+    }
+
+    /// Say so when a reference is passing but on its way to failing.
+    ///
+    /// A passing snapshot reports nothing about *how* passing it was, and the
+    /// metric is a mean, which averages a local difference away: a reference
+    /// once sat at 93% of the tolerance, with a quarter of its pixels differing
+    /// by up to 230 levels, and passed every run for five hundred commits. The
+    /// point of this line is that the drift shows up while it is still small,
+    /// in the run that introduces it, rather than as a mystery on the day
+    /// something unrelated finally tips it over.
+    ///
+    /// It never fails a test. A warning means "find out why, then either fix it
+    /// or re-record deliberately", and re-recording without understanding the
+    /// cause is exactly the thing to avoid.
+    private static func warnIfDrifting(_ mean: Double, named name: String) {
+        let warnAt = tolerance * driftWarningFraction
+        guard mean >= warnAt else { return }
+        let percent = Int((mean / tolerance * 100).rounded())
+        print(String(format: "Ollin: snapshot '%@' is drifting: mean %.3f is %d%% of the %.1f tolerance. "
+                     + "Find the cause before re-recording.", name, mean, percent, tolerance))
     }
 
     // MARK: Pixels

@@ -1460,8 +1460,13 @@ public enum OllinApp {
             guard let device = MTLCreateSystemDefaultDevice() else {
                 fatalError("Ollin requires a Metal-capable GPU.")
             }
-            guard let renderer = try? MetalRenderer(device: device, pixelFormat: ollinColorPixelFormat,
-                                                    sampleCount: ollinPreferredSampleCount(device)) else {
+            // Built for the sketch's own `colorOutput`, so the number measures
+            // what this sketch actually renders rather than the standard path's
+            // cost with the sketch's name on it.
+            guard let renderer = try? MetalRenderer(device: device,
+                                                    pixelFormat: sketch.colorOutput.drawablePixelFormat,
+                                                    sampleCount: ollinPreferredSampleCount(device),
+                                                    encoding: sketch.colorOutput.presentEncoding) else {
                 fatalError("Ollin: failed to initialize the Metal renderer.")
             }
             let w = size.width, h = size.height
