@@ -1,0 +1,15 @@
+# Long sentences (Guide/AUTHORING.md, "keep a sentence under 25 words"). A
+# sentence past this is almost always two sentences with a semicolon, a colon,
+# or a parenthesis holding them together; splitting it is nearly always an
+# improvement and never a loss.
+#
+# Warning, not error: a table row, a list of API names, and the occasional
+# genuinely long sentence are fine. The value is the count per page, not the
+# individual hit. Converts file by file as pages get edited, like the em-dash
+# rule before it.
+extends: occurrence
+message: "Long sentence (over 25 words): split it, or drop the aside that padded it."
+level: warning
+scope: sentence
+max: 25
+token: '\b\w+\b'

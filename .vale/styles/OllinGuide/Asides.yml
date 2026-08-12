@@ -1,0 +1,19 @@
+# The aside budget (Guide/AUTHORING.md, "one aside per paragraph"). Ollin's
+# prose is aside-heavy: a good sentence with two more sentences pushed inside
+# it in parentheses. One aside per paragraph reads as a voice; three read as a
+# footnote pile, and the reader loses the thread of the sentence they were in.
+#
+# This counts opening parentheses per paragraph. Vale's markdown scope already
+# skips fenced code, so a `Swift(_:)` signature inside a fence never counts;
+# an inline `drawCircle(x, y, r)` in running prose does, which is correct,
+# since it costs the reader the same interruption.
+#
+# The budget is one aside per paragraph; the lint fires at three, so that a
+# paragraph naming two APIs by signature passes. Warning, not error: check the
+# flagged paragraph before rewriting it.
+extends: occurrence
+message: "Three or more asides in this paragraph: keep one, promote the rest to their own sentence."
+level: warning
+scope: paragraph
+max: 2
+token: '\('

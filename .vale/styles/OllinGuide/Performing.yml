@@ -12,6 +12,14 @@ tokens:
   - 'effortlessly'
   - 'magically'
   - 'exquisite(ly)?'
+  # Judging the technique for the reader instead of describing it. Say what it
+  # does and let them find it handy. ("cheap" and "free" stay, since in this
+  # repo they are cost claims, usually measured ones.)
+  - 'handy'
+  - 'elegant(ly)?'
+  - 'clever(ly)?'
+  - 'trivial(ly)?'
+  - 'a nice (way|touch|property)'
   - 'earn(s|ed|ing)? (its|their) keep'
   - 'pays? the debt'
   # Framing the reader's learning as a wager or an investment return
