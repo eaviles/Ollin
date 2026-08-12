@@ -211,6 +211,36 @@ public struct ThreeDRecipe: Sendable, Hashable {
         }
     }
 
+    /// Which chosen option is blocking `option`, or nil when nothing is (or
+    /// when what is missing is a requirement rather than a clash).
+    ///
+    /// The edge of the constraint graph, named. It lets a blocked choice carry
+    /// its cause where it can be seen, instead of the reason living only in a
+    /// tooltip on the thing that cannot be clicked.
+    public func blocker(of option: ThreeDOption) -> ThreeDOption? {
+        switch option.slot {
+        case .geometry:
+            return nil
+        case .finish:
+            return clash(option, geometry) == nil ? nil : geometry
+        case .extra:
+            if clash(option, geometry) != nil { return geometry }
+            if clash(option, finish) != nil { return finish }
+            return nil
+        }
+    }
+
+    /// How many other options this one currently rules out. What a chip needs
+    /// to report its own reach.
+    public func blocks(_ option: ThreeDOption) -> Int {
+        ThreeDOption.all.filter { blocker(of: $0)?.id == option.id }.count
+    }
+
+    /// What `option` needs before it can be chosen, for the same reason.
+    public func missingRequirements(of option: ThreeDOption) -> [ThreeDOption] {
+        option.requires.filter { !chosen.contains($0) }.compactMap(ThreeDOption.named)
+    }
+
     private func clash(_ option: ThreeDOption, _ other: ThreeDOption) -> String? {
         if option.conflicts.contains(other.id) { return option.rule }
         if other.conflicts.contains(option.id) { return other.rule }

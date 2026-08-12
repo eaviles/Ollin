@@ -25,9 +25,10 @@ struct OllinProjectGeneratorApp: App {
         Window("New Ollin Project", id: "main") {
             GeneratorView()
         }
-        .defaultSize(width: GeneratorView.templatesWidth + GeneratorView.stageSide + GeneratorView.optionsWidth,
-                     height: GeneratorView.stageSide)
-        .windowResizability(.contentSize)
+        // Resizable, unlike its sibling hosts: the stage is the reason to open
+        // this window rather than type the command, so it should take the slack
+        // instead of holding a fixed size.
+        .defaultSize(width: 1280, height: 760)
         .windowToolbarStyle(.unified(showsTitle: false))
     }
 }

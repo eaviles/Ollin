@@ -63,7 +63,9 @@ What is deliberately *not* changed is the file's header comment. For a ported sk
 
 3D is the one part of the framework where the pieces genuinely do not all stack, and the rule is never obvious from the call itself: a matcap quietly swallows your lighting, traced reflections quietly do nothing without an environment, a wireframe has no surface to shade at all. The generator surfaces that map instead of leaving you to find out by rendering.
 
-Pick the `3d` template and the options appear as three groups: **Geometry** (what is on screen), **Finish** (how its surface is done), and **On top** (everything added over both). Anything that cannot be combined is greyed out and says why.
+Pick the `3d` template and a strip appears **under the stage it governs**, laid along the direction of the constraint: **Geometry** (what is on screen), then **Finish** (how its surface is done), then **On top** (everything added over both), left to right with arrows between them. The reading order is the rule. What sits left of a thing can block it; what sits right cannot, so the shape of the constraint is visible before you click anything.
+
+A blocked chip is dimmed, marked, and **names its cause** on the chip itself; the choice doing the blocking reports its reach (`blocks 3`). Hovering any chip, blocked or not, explains it in the line under the strip.
 
 ```sh
 ollin new --3d-options                  # every piece and the rule it carries
@@ -97,11 +99,17 @@ ollin new Listening --with audio,images,params
 
 `ollin generate` opens the same choices with one addition worth having: the starting point in the middle is **actually running**. It is compiled and instantiated exactly as the examples gallery compiles an example, so what you watch is what you get, and a starting point that stopped compiling shows up there rather than in your new project.
 
-Templates and examples are the two tabs on the left, and the preview works the same for both, so an example can be chosen by watching it rather than by remembering what it was called.
+Three columns, and the window resizes: the stage takes the slack, because watching the thing run is the reason to open a window rather than type the command.
 
-The right column previews the file list before anything is written. Nothing is written until you press Create, and Create refuses rather than overwriting a file that is already there.
+**Left, one list.** Templates as a group at the top, then the examples grouped the way the folders already group them, and one filter over both that matches group names as well as sketch names. Ten curated starting points and 350 catalogued ones are a short list and a long one, not two modes.
 
-The folder you last chose is remembered, and the suggested name is the next serial in *that* folder, so making several in a row is Create, Create, Create.
+**Middle, the stage.** The starting point running, with a line under it saying what it is, how fast it is going, and whether it was just built or came from the cache. For the 3D template, the options strip sits under that (see below).
+
+**Right, the project.** Name, where, canvas, and everything else behind one **Wire in** row that still reports what the starting point brought. The file list sits above the fold with the guarantee under it: nothing is written until you press Create, and Create refuses rather than overwriting.
+
+The folder you last chose is remembered, and the name field *suggests* the next serial in that folder rather than filling it in, so making several in a row is Create, Create, Create, and naming one properly is typing over a suggestion.
+
+The kind menu lives in the title bar, since it scopes the whole window. The kinds that are not ready sit under a divider inside it, dimmed, each with what it waits on.
 
 ## What a project folder looks like
 
