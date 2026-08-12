@@ -1031,9 +1031,17 @@ typedef struct {
 // per `toneMapMode`, then dithers + sRGB-encodes to the 8-bit drawable. Not a
 // per-shape value — one operation over the whole resolved frame (see
 // `Drawer.toneMapMode` / `Sketch.toneMap`).
+// The two fields the 8-bit path reads sit first and never move: the shipped
+// `ollin_present_fragment` reads only those, so the wide-gamut/HDR fields below
+// are appended and its codegen is untouched (see `ollin_present_wide_fragment`,
+// the twin that reads them).
 typedef struct {
     int   toneMapMode;   // ToneMap.shaderIndex: 0 clamp (SDR), 1 reinhard, 2 aces
     float exposure;      // linear multiplier applied before the tone-map (1 = none)
+    int   outputSpace;   // PresentEncoding: 0 sRGB 8-bit, 1 linear Display P3, 2 PQ Rec. 2020
+    float ceiling;       // linear-P3 clamp: 1 = SDR white, higher = the display's headroom
+    float referenceNits; // what 1.0 means in cd/m² when PQ-encoding (BT.2408 reference white)
+    float peakNits;      // brightest luminance carried, in cd/m² (the mastering peak)
 } OllinPresentUniforms;
 
 #endif /* OLLIN_SHADER_TYPES_H */

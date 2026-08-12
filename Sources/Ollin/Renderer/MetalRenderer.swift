@@ -372,9 +372,22 @@ final class MetalRenderer {
     let device: MTLDevice
     let commandQueue: MTLCommandQueue
     var library: MTLLibrary
-    /// The display/drawable format — sRGB 8-bit. The final present pass writes
-    /// here; it's never a geometry render target anymore.
+    /// The display/drawable format. sRGB 8-bit by default; a wide-gamut or
+    /// high-dynamic-range sketch presents into `rgba16Float` instead (see
+    /// `ColorOutput`). The final present pass writes here; it's never a geometry
+    /// render target anymore.
     let pixelFormat: MTLPixelFormat
+    /// How the present pass encodes for that format: 8-bit sRGB (the shipped
+    /// path), linear Display P3, or PQ Rec. 2020 for an HDR video frame. Fixed
+    /// for the renderer's lifetime, like `pixelFormat`, which it pairs with.
+    let presentEncoding: PresentEncoding
+    /// The brightest value the present pass will send, as a multiple of SDR
+    /// white. 1 is standard range and stays that way; an `extended` sketch's
+    /// host raises it each frame to the display's reported headroom, so nothing
+    /// is sent that the panel would only clip anyway (the host applies
+    /// `ColorOutput.ceiling(displayHeadroom:)`, so `wide` stays at 1 whatever
+    /// the screen can do). Unused by the 8-bit and PQ paths.
+    var presentCeiling: Float
     /// The compositing substrate: a linear `rgba16Float` intermediate every
     /// geometry pipeline renders into, so values can exceed 1.0 (additive light)
     /// and many translucent blends don't band the way an 8-bit target would. The
@@ -1107,10 +1120,17 @@ final class MetalRenderer {
     var gradientStrip: MTLTexture?
     var gradientStripRows: [[UInt8]] = []
 
-    init(device: MTLDevice, pixelFormat: MTLPixelFormat, sampleCount: Int) throws {
+    init(device: MTLDevice, pixelFormat: MTLPixelFormat, sampleCount: Int,
+         encoding: PresentEncoding = .srgb8) throws {
         self.device = device
         self.pixelFormat = pixelFormat
         self.sampleCount = sampleCount
+        self.presentEncoding = encoding
+        // An extended frame starts unbounded, so an off-screen render keeps its
+        // highlights; a live host pulls this down to the display's real headroom
+        // every frame. Every other encoding stops at white.
+        self.presentCeiling = encoding == .linearDisplayP3Extended
+            ? .greatestFiniteMagnitude : 1
 
         guard let queue = device.makeCommandQueue() else {
             throw RendererError.commandQueue
@@ -1474,6 +1494,17 @@ final class MetalRenderer {
     /// GIF) — call it once per frame in order and the pile builds across the run.
     /// Synchronous: waits for the GPU before reading back.
     func accumulatedImage(of drawer: Drawer, viewport: SIMD2<Float>, width: Int, height: Int) -> CGImage? {
+        guard let frame = accumulatedFrame(of: drawer, viewport: viewport, width: width, height: height)
+        else { return nil }
+        return displayImage(from: frame.buffer, width: width, height: height)
+    }
+
+    /// `accumulatedImage(of:…)` stopping one step earlier, at the read-back
+    /// buffer. The HDR video writer takes this instead of the image: its frames
+    /// are PQ code values, which no `CGImage` color space names, so the bytes
+    /// themselves are the only honest form.
+    func accumulatedFrame(of drawer: Drawer, viewport: SIMD2<Float>,
+                          width: Int, height: Int) -> (buffer: MTLBuffer, bytesPerRow: Int)? {
         guard width > 0, height > 0,
               let pass = accumulationPass(drawer, width: width, height: height),
               let resolve = accumResolve, let display = accumDisplay,
@@ -1504,7 +1535,7 @@ final class MetalRenderer {
             presentEncoder.endEncoding()
         }
 
-        let bytesPerRow = width * 4, byteCount = bytesPerRow * height
+        let bytesPerRow = width * displayBytesPerPixel, byteCount = bytesPerRow * height
         guard let readbackBuffer = device.makeBuffer(length: byteCount, options: .storageModeShared),
               let blit = commandBuffer.makeBlitCommandEncoder() else { return nil }
         blit.copy(from: display, sourceSlice: 0, sourceLevel: 0,
@@ -1515,7 +1546,7 @@ final class MetalRenderer {
         blit.endEncoding()
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
-        return MetalRenderer.cgImage(fromBGRA8: readbackBuffer, width: width, height: height)
+        return (readbackBuffer, bytesPerRow)
     }
 
     /// Read the current accumulated canvas back as a `CGImage` without re-rendering
@@ -1594,7 +1625,7 @@ final class MetalRenderer {
     /// command buffer already produced (the live accumulation grab).
     private func readback(_ texture: MTLTexture, width: Int, height: Int) -> CGImage? {
         guard width > 0, height > 0 else { return nil }
-        let bytesPerRow = width * 4, byteCount = bytesPerRow * height
+        let bytesPerRow = width * displayBytesPerPixel, byteCount = bytesPerRow * height
         guard let buffer = device.makeBuffer(length: byteCount, options: .storageModeShared),
               let commandBuffer = commandQueue.makeCommandBuffer(),
               let blit = commandBuffer.makeBlitCommandEncoder() else { return nil }
@@ -1606,7 +1637,23 @@ final class MetalRenderer {
         blit.endEncoding()
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
-        return MetalRenderer.cgImage(fromBGRA8: buffer, width: width, height: height)
+        return displayImage(from: buffer, width: width, height: height)
+    }
+
+    /// How many bytes one pixel of the display texture takes: four for the 8-bit
+    /// sRGB drawable, eight for the float one a wide-gamut or HDR sketch
+    /// presents into.
+    var displayBytesPerPixel: Int { pixelFormat == .rgba16Float ? 8 : 4 }
+
+    /// The read-back display bytes as a `CGImage`, in whatever form the present
+    /// pass left them. The 8-bit path is untouched; a float display texture
+    /// comes back as half-float components tagged extended-linear Display P3,
+    /// so the wide gamut (and, in an `extended` frame, the values above 1)
+    /// survive into the image.
+    func displayImage(from buffer: MTLBuffer, width: Int, height: Int) -> CGImage? {
+        pixelFormat == .rgba16Float
+            ? MetalRenderer.cgImage(fromRGBA16Float: buffer, width: width, height: height)
+            : MetalRenderer.cgImage(fromBGRA8: buffer, width: width, height: height)
     }
 
     /// Build an opaque BGRA8 `CGImage` from a shared buffer of `width*height*4`
@@ -1624,11 +1671,40 @@ final class MetalRenderer {
                        shouldInterpolate: false, intent: .defaultIntent)
     }
 
+    /// Build an opaque half-float `CGImage` from a shared buffer of
+    /// `width*height*8` bytes, tagged **extended-linear Display P3**: the space
+    /// the wide-gamut present pass writes. Extended-linear is what carries a
+    /// component above 1.0, so an `extended` frame's highlights are still in
+    /// here; writing it to a PNG or HEIC is where they meet the file format's
+    /// own ceiling.
+    private static func cgImage(fromRGBA16Float buffer: MTLBuffer, width: Int, height: Int) -> CGImage? {
+        let bytesPerRow = width * 8, byteCount = bytesPerRow * height
+        let data = Data(bytes: buffer.contents(), count: byteCount)
+        guard let provider = CGDataProvider(data: data as CFData),
+              let space = CGColorSpace(name: CGColorSpace.extendedLinearDisplayP3) else { return nil }
+        let bitmapInfo = CGBitmapInfo(rawValue: CGBitmapInfo.floatComponents.rawValue
+                                      | CGBitmapInfo.byteOrder16Little.rawValue
+                                      | CGImageAlphaInfo.noneSkipLast.rawValue)
+        return CGImage(width: width, height: height, bitsPerComponent: 16, bitsPerPixel: 64,
+                       bytesPerRow: bytesPerRow, space: space,
+                       bitmapInfo: bitmapInfo, provider: provider, decode: nil,
+                       shouldInterpolate: false, intent: .defaultIntent)
+    }
+
     /// Render `drawer`'s geometry off-screen to a `CGImage` of `width`×`height`
     /// pixels — same pipeline, MSAA, and blending as on-screen — for frame export
     /// (PNG, and later PNG sequences for video). Headless: needs no view or
     /// window. Synchronous: waits for the GPU before reading back.
     func image(of drawer: Drawer, viewport: SIMD2<Float>, width: Int, height: Int) -> CGImage? {
+        guard let frame = renderedFrame(of: drawer, viewport: viewport, width: width, height: height)
+        else { return nil }
+        return displayImage(from: frame.buffer, width: width, height: height)
+    }
+
+    /// `image(of:…)` stopping at the read-back buffer instead of building an
+    /// image (see `accumulatedFrame` for why the HDR video writer needs this).
+    func renderedFrame(of drawer: Drawer, viewport: SIMD2<Float>,
+                       width: Int, height: Int) -> (buffer: MTLBuffer, bytesPerRow: Int)? {
         guard width > 0, height > 0 else { return nil }
 
         // Float MSAA target + float resolve for the geometry, plus an sRGB display
@@ -1669,7 +1745,7 @@ final class MetalRenderer {
         let passHasStencil = attachClipStencil(to: pass, active: drawer.usesClipStencil,
                                                width: width, height: height)
 
-        let bytesPerRow = width * 4
+        let bytesPerRow = width * displayBytesPerPixel
         let byteCount = bytesPerRow * height
 
         guard let readback = device.makeBuffer(length: byteCount, options: .storageModeShared),
@@ -1872,8 +1948,7 @@ final class MetalRenderer {
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
 
-        // BGRA8 bytes -> CGImage. Frames are opaque, so skip the alpha channel.
-        return MetalRenderer.cgImage(fromBGRA8: readback, width: width, height: height)
+        return (readback, bytesPerRow)
     }
 
     /// Render `drawer`'s already-recorded scene `iterations` times into off-screen targets

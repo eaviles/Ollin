@@ -96,6 +96,8 @@ The flags:
 
 Exported tracks are tagged Rec. 709, so what players show matches what the canvas rendered.
 
+**HDR.** A sketch that declares [`colorOutput`](../Drawing/ColorOutput.md) `.extended` is written as **HDR10** instead, with nothing else to pass: Rec. 2020 primaries, the PQ transfer, 10-bit HEVC, and the mastering-display and content-light metadata the format expects. The codec is forced to `hevc` if it was left at the h264 default, since eight bits cannot carry it. A `.wide` sketch's track is tagged P3-D65, the same standard range through wider primaries.
+
 **In depth.** A 3D sketch can leave as [spatial video](Spatial.md#spatial-video) instead: the same fixed-clock drive, but each frame rendered from two eyes and muxed into the stereo format Apple's platforms play with real depth.
 
 ### Sound

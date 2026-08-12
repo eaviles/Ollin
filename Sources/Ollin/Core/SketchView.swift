@@ -86,7 +86,8 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             // in the renderer's float intermediate, so pass the MSAA count directly.
             self.renderer = try MetalRenderer(device: device,
                                               pixelFormat: view.colorPixelFormat,
-                                              sampleCount: ollinPreferredSampleCount(device))
+                                              sampleCount: ollinPreferredSampleCount(device),
+                                              encoding: sketch.colorOutput.presentEncoding)
         } catch {
             fatalError("Ollin: failed to initialize the Metal renderer: \(error)")
         }
@@ -184,6 +185,14 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             clockCarry = sketch.time      // continue `time` from here (see draw)
         } else {
             clockCarry = nil
+        }
+        // The drawable and the present pipeline were built for the running
+        // sketch's `colorOutput` and can't be swapped under a live frame, so an
+        // edited one is honoured on the next launch. Said out loud, because
+        // silently ignoring it looks like the setting doesn't work.
+        if newSketch.colorOutput != sketch.colorOutput {
+            print("Ollin: colorOutput changed to .\(newSketch.colorOutput.rawValue); "
+                  + "relaunch to see it (the window's drawable is built once)")
         }
         wireLoopControl(newSketch)
         sketch = newSketch
@@ -403,6 +412,16 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
                 sketch.drawer.drawGroundGrid(params, center: cam.target, halfExtent: fadeEnd * 1.15)
             }
         }
+
+        // How bright this frame is allowed to go, read fresh each frame: the
+        // system grants and withdraws headroom as the display's brightness and
+        // the surrounding content change, so a value fixed at launch would
+        // either clip highlights or send more than the panel can show. A
+        // standard or wide sketch stops at white whatever the screen reports.
+        let headroom = view.window?.screen?
+            .maximumExtendedDynamicRangeColorComponentValue ?? 1
+        renderer.presentCeiling = sketch.colorOutput.ceiling(displayHeadroom: Float(headroom))
+        sketch.setDisplayHeadroom(Double(headroom))
 
         renderer.render(sketch.drawer,
                         viewport: SIMD2<Float>(Float(sketch.width), Float(sketch.height)),
@@ -830,10 +849,12 @@ private extension KeyCode {
     }
 }
 
-/// The color format every render target uses: 8-bit BGRA, **sRGB-encoded**, so
-/// the GPU blends and resolves MSAA in linear light (the shaders output linear
-/// color and the target encodes on store). Shared by the live view and the
-/// off-screen export paths so their pixels match.
+/// The standard display format: 8-bit BGRA, **sRGB-encoded**, so the GPU blends
+/// and resolves MSAA in linear light (the shaders output linear color and the
+/// target encodes on store). What a sketch presents into unless it declares a
+/// deeper `colorOutput`, in which case `ColorOutput.drawablePixelFormat` names
+/// the float drawable instead. Shared by the live view and the off-screen export
+/// paths so their pixels match.
 let ollinColorPixelFormat: MTLPixelFormat = .bgra8Unorm_srgb
 
 /// MSAA sample count for the triangle path — 8× where the device supports it (it
@@ -868,7 +889,21 @@ private final class CanvasKeyFocus {
 private func makeOllinMTKView(device: MTLDevice, size: CGSize, sketch: Sketch) -> OllinMTKView {
     let view = OllinMTKView(frame: CGRect(origin: .zero, size: size), device: device)
     view.sketch = sketch
-    view.colorPixelFormat = ollinColorPixelFormat
+    // The drawable's format and color space follow what the sketch asked to
+    // carry out (see `ColorOutput`). A `.standard` sketch takes the 8-bit sRGB
+    // drawable and leaves the color space nil, exactly as before; the wider
+    // outputs present into a float drawable, which has no encoding of its own,
+    // so the space has to be stated. `extended` additionally asks the system for
+    // brightness above SDR white, which is what makes the compositor grant this
+    // layer headroom.
+    let output = sketch.colorOutput
+    view.colorPixelFormat = output.drawablePixelFormat
+    if let space = output.displayColorSpace {
+        view.colorspace = space
+    }
+    if let layer = view.layer as? CAMetalLayer {
+        layer.wantsExtendedDynamicRangeContent = output.wantsExtendedDynamicRange
+    }
     // The drawable is the present target: single-sample. MSAA is done in the
     // renderer's float intermediate, then resolved before the present pass.
     view.sampleCount = 1
@@ -1165,8 +1200,10 @@ public enum OllinApp {
     public static func image(of sketch: Sketch, frame: Int = 0, fps: Double = 60,
                              quality: RenderQuality = .detail) -> CGImage? {
         guard let device = MTLCreateSystemDefaultDevice(),
-              let renderer = try? MetalRenderer(device: device, pixelFormat: ollinColorPixelFormat,
-                                                sampleCount: ollinPreferredSampleCount(device)) else {
+              let renderer = try? MetalRenderer(device: device,
+                                                pixelFormat: sketch.colorOutput.drawablePixelFormat,
+                                                sampleCount: ollinPreferredSampleCount(device),
+                                                encoding: sketch.colorOutput.presentEncoding) else {
             return nil
         }
         isRenderingHeadless = true
@@ -1266,13 +1303,13 @@ public enum OllinApp {
         print("Ollin: exporting \(frames) frames at \(Int(fps)) fps\(skipNote) → \(directory) (\(size.width)×\(size.height))")
 
         let elapsed = renderFrames(sketch, frames: frames, fps: fps, skipSeconds: skipSeconds,
-                                   quality: quality) { cgImage, index in
+                                   quality: quality) { frame, index in
             // Captured per frame (cheap: the git lookup is cached) so each
             // file's recipe names the sketch-clock frame it shows.
             let recipe = ExportMetadata.capture(from: sketch, frame: skipFrames + index, fps: fps).recipe
             let name = String(format: "frame-%05d.png", startFrame + index)
             let path = (directory as NSString).appendingPathComponent(name)
-            guard writePNG(cgImage, to: path, recipe: recipe) else {
+            guard let cgImage = frame.image, writePNG(cgImage, to: path, recipe: recipe) else {
                 fatalError("Ollin: failed to write \(path)")
             }
         }
@@ -1292,17 +1329,49 @@ public enum OllinApp {
     /// `skipSeconds` runs the sketch that long *before* capturing (the captured
     /// clock continues from there), and a single rewriting progress line shows
     /// pct done · render throughput. Returns the elapsed wall-clock seconds.
+    /// One frame on its way out of the headless drive.
+    ///
+    /// Most consumers want `image`: a PNG, a GIF frame, a video frame drawn
+    /// through Core Graphics. The HDR video writer takes `pixels` instead,
+    /// because its frames are PQ code values, which no `CGImage` color space
+    /// names, so the bytes themselves are the only honest form. Both describe
+    /// the same read-back, and both are valid only while the callback runs.
+    @MainActor
+    struct RenderedFrame {
+        let renderer: MetalRenderer
+        let buffer: MTLBuffer
+        let bytesPerRow: Int
+        let width: Int
+        let height: Int
+
+        /// The frame as an image, in whatever space the sketch's `colorOutput`
+        /// presents into.
+        var image: CGImage? {
+            renderer.displayImage(from: buffer, width: width, height: height)
+        }
+
+        /// The presented bytes themselves, `bytesPerRow * height` of them.
+        var pixels: UnsafeRawPointer { UnsafeRawPointer(buffer.contents()) }
+    }
+
     @discardableResult
     static func renderFrames(_ sketch: Sketch, frames: Int, fps: Double,
                              skipSeconds: Double, quality: RenderQuality = .detail,
-                             write: (CGImage, Int) -> Void) -> Double {
+                             encoding: PresentEncoding? = nil,
+                             write: (RenderedFrame, Int) -> Void) -> Double {
         guard let device = MTLCreateSystemDefaultDevice() else {
             fatalError("Ollin requires a Metal-capable GPU.")
         }
         let renderer: MetalRenderer
         do {
-            renderer = try MetalRenderer(device: device, pixelFormat: ollinColorPixelFormat,
-                                         sampleCount: ollinPreferredSampleCount(device))
+            // A frame leaves at whatever depth the sketch asked to carry, and
+            // `encoding` may be overridden by the caller: the HDR video export
+            // drives the same loop but wants PQ-encoded frames rather than the
+            // linear Display P3 the screen and the still export take.
+            renderer = try MetalRenderer(device: device,
+                                         pixelFormat: sketch.colorOutput.drawablePixelFormat,
+                                         sampleCount: ollinPreferredSampleCount(device),
+                                         encoding: encoding ?? sketch.colorOutput.presentEncoding)
         } catch {
             fatalError("Ollin: failed to initialize the Metal renderer: \(error)")
         }
@@ -1326,11 +1395,11 @@ public enum OllinApp {
             // frame — including warmup — so render into it always; otherwise warmup
             // frames skip the render entirely.
             let accumulates = sketch.drawer.accumulates
-            var rendered: CGImage?
+            var rendered: (buffer: MTLBuffer, bytesPerRow: Int)?
             if accumulates || k >= skipFrames {
                 rendered = accumulates
-                    ? renderer.accumulatedImage(of: sketch.drawer, viewport: viewport, width: width, height: height)
-                    : renderer.image(of: sketch.drawer, viewport: viewport, width: width, height: height)
+                    ? renderer.accumulatedFrame(of: sketch.drawer, viewport: viewport, width: width, height: height)
+                    : renderer.renderedFrame(of: sketch.drawer, viewport: viewport, width: width, height: height)
             } else {
                 // Non-accumulating warmup frame: not captured, but a stateful compute
                 // sim still needs its steps run on the GPU so the field evolves into
@@ -1344,11 +1413,13 @@ public enum OllinApp {
                 continue
             }
 
-            guard let cgImage = rendered else {
+            guard let rendered else {
                 fatalError("Ollin: failed to render frame \(k)")
             }
             let done = k - skipFrames + 1                  // 1-based count of written frames
-            write(cgImage, done - 1)
+            write(RenderedFrame(renderer: renderer, buffer: rendered.buffer,
+                                bytesPerRow: rendered.bytesPerRow,
+                                width: width, height: height), done - 1)
 
             // A single rewriting progress line: pct done · render throughput.
             let elapsed = CACurrentMediaTime() - wallStart

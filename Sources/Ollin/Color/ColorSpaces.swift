@@ -28,6 +28,65 @@ extension Color {
     }
 }
 
+// MARK: - Wide gamut
+
+public extension Color {
+
+    /// A color named in **Display P3**, the wider gamut every modern Apple
+    /// screen can show: the same 0…1 components a color picker set to "Display
+    /// P3" gives you.
+    ///
+    /// P3 reaches saturations sRGB cannot hold, so the stored components come
+    /// out beyond 0…1 (a pure P3 red is about `(1.079, -0.077, -0.021)` in
+    /// sRGB terms). That is not a bug to clamp: the whole pipeline carries the
+    /// out-of-range value through, and it lands as the color that was asked for
+    /// on a sketch whose `colorOutput` is `.wide` or `.extended`. On a
+    /// `.standard` sketch the same color simply clips back to the nearest sRGB
+    /// one at the very end, so naming a P3 color is always safe.
+    ///
+    /// ```swift
+    /// override var colorOutput: ColorOutput { .wide }
+    /// // a red no sRGB screen can make
+    /// fill(Color(displayP3: 1, green: 0, blue: 0))
+    /// ```
+    init(displayP3 red: Double, green: Double, blue: Double, alpha: Double = 1) {
+        // Display P3 carries the sRGB transfer curve, so the components decode
+        // with the same function; only the primaries differ.
+        let r = Color.srgbToLinear(red)
+        let g = Color.srgbToLinear(green)
+        let b = Color.srgbToLinear(blue)
+        // Linear P3 to linear sRGB (both D65, so this is a change of primaries
+        // with no chromatic adaptation). Each row sums to 1, so white stays
+        // white exactly.
+        let lr =  1.2249402 * r - 0.2249402 * g
+        let lg = -0.0420570 * r + 1.0420570 * g
+        let lb = -0.0196376 * r - 0.0786360 * g + 1.0982736 * b
+        self.init(red: Color.linearToSrgb(lr), green: Color.linearToSrgb(lg),
+                  blue: Color.linearToSrgb(lb), alpha: alpha)
+    }
+
+    /// This color back in Display P3 components, the inverse of
+    /// `init(displayP3:green:blue:)`. Values outside 0…1 mean the color is
+    /// outside the P3 gamut too.
+    var displayP3Components: (red: Double, green: Double, blue: Double) {
+        let r = Color.srgbToLinear(red)
+        let g = Color.srgbToLinear(green)
+        let b = Color.srgbToLinear(blue)
+        let pr = 0.8224620 * r + 0.1775380 * g
+        let pg = 0.0331942 * r + 0.9668058 * g
+        let pb = 0.0170826 * r + 0.0723974 * g + 0.9105199 * b
+        return (Color.linearToSrgb(pr), Color.linearToSrgb(pg), Color.linearToSrgb(pb))
+    }
+
+    /// Whether this color asks for more than sRGB can show: true when any
+    /// component falls outside 0…1, which is what a wide-gamut or
+    /// brighter-than-white color looks like in sRGB terms.
+    var isOutsideSRGB: Bool {
+        let outside = { (c: Double) in c < -0.0001 || c > 1.0001 }
+        return outside(red) || outside(green) || outside(blue)
+    }
+}
+
 // MARK: - OKLab
 
 /// A color in the OKLab perceptual space: lightness plus two opponent axes.

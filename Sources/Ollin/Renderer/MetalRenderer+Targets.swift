@@ -2667,7 +2667,11 @@ extension MetalRenderer {
         encoder.setFragmentTexture(source, index: 0)
         encoder.setFragmentSamplerState(imageSampler, index: 0)
         var present = OllinPresentUniforms(toneMapMode: drawer.toneMapMode.shaderIndex,
-                                           exposure: Float(drawer.toneMapExposure))
+                                           exposure: Float(drawer.toneMapExposure),
+                                           outputSpace: presentEncoding.rawValue,
+                                           ceiling: max(1, presentCeiling),
+                                           referenceNits: Float(ColorOutput.referenceWhiteNits),
+                                           peakNits: Float(ColorOutput.peakNits))
         encoder.setFragmentBytes(&present, length: MemoryLayout<OllinPresentUniforms>.stride, index: 0)
         encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
     }

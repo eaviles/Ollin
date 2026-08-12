@@ -252,6 +252,32 @@ That `toneMap(.aces, exposure: 1.5)` line needs its own moment, because it solve
 
 Same lamps, same brightness, one line different. `.aces` runs the frame through the S-shaped response of film, which rolls highlights off gradually instead of chopping them, keeping color alive inside the glare. Set it once in `setup()`, and `exposure` is the brightness dial applied before the curve, like a camera's. For any glow, accumulation, or additive piece, `toneMap(.aces)` is the difference between light and chalk. The details live in the [HDR reference](../Docs/Drawing/HDR.md).
 
+## Or: let it actually be brighter
+
+Tone-mapping is what you do when the screen cannot go any higher. Sometimes it can.
+
+A modern Apple display holds two things back from an ordinary sketch. It can show colors more saturated than sRGB describes, and it can, for a while, make small areas genuinely brighter than white. Both are switched on by one declared line:
+
+```swift
+final class Lamps: Sketch {
+    override var colorOutput: ColorOutput { .extended }
+}
+```
+
+Now the too-bright values stop being a problem to solve. A value of 2.0 is drawn twice as bright as white, and the caption beside it stays white while the lamp core glows. Leave `toneMap` alone here: `.aces` exists to squash those values back under 1.0, which is exactly what you no longer want.
+
+The other half is the color. `Color` stays an sRGB type, and a color outside that gamut is named in the wider one:
+
+```swift
+fill(Color(displayP3: 1, green: 0, blue: 0))    // a red sRGB cannot make
+```
+
+Its stored components come out slightly outside 0…1, which is how a color says "further than sRGB goes". Nothing clamps it on the way through, and on a `.standard` sketch it simply lands on the nearest sRGB red at the end, so naming one is always safe.
+
+Two honest limits. The brightness half depends on the display having headroom to spare at that moment, and the system gives and takes it as screen brightness changes: read `displayHeadroom` to see what you actually got (1.0 means none). And an exported PNG keeps the wide color but not the brightness, because still formats have nowhere to put it. Video does: an `.extended` sketch's `--export-video` is written as HDR10 with no extra flags.
+
+You cannot see either one in this page's figures, which is the point. Run [`Examples/Rendering/ColorOutput`](../Examples/Rendering/ColorOutput/Sketch.swift) on a recent Mac laptop instead, and turn the screen brightness down while you watch.
+
 ## The canvas that remembers itself
 
 Accumulation piles new marks onto a canvas that otherwise sits still. **Feedback** is stranger and livelier. Each frame you get last frame's *finished picture* back as an image, transform it however you like, draw it into the new frame, and add this frame's marks on top. The transformed past becomes the new present, over and over. Point a camera at its own monitor and you've built one out of hardware, and the fade-zoom-rotate you choose is the whole personality of the effect:
@@ -361,6 +387,7 @@ Off-screen layers are as old as computer graphics has had memory to spare, and t
 
 - [Layered effects](../Docs/Drawing/Effects.md): every filter, generator, combine op, and the full `compose` grammar.
 - [Accumulation](../Docs/Drawing/Accumulation.md) and [HDR & tone-mapping](../Docs/Drawing/HDR.md): the persistent canvas and the float pipeline underneath it.
+- [Wide gamut & HDR output](../Docs/Drawing/ColorOutput.md): `colorOutput`, colors outside sRGB, and what each export format carries.
 - [Blend modes](../Docs/Drawing/Drawing.md#blendMode): the arithmetic of each mode.
 - Worked examples: [`Examples/Effects/Bloom`](../Examples/Effects/Bloom/Sketch.swift), [`Examples/Effects/Compose`](../Examples/Effects/Compose/Sketch.swift), [`Examples/Effects/Feedback`](../Examples/Effects/Feedback/Sketch.swift), [`Examples/Effects/Relight`](../Examples/Effects/Relight/Sketch.swift), [`Examples/Rendering/Accumulation`](../Examples/Rendering/Accumulation/Sketch.swift), and [`Examples/Rendering/ToneMapping`](../Examples/Rendering/ToneMapping/Sketch.swift).
 

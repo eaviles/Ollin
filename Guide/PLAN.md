@@ -320,6 +320,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | Feedback (`Drawing/Effects.md`) | Ch 14 | taught |
 | `Drawing/Accumulation.md` (noClear) | Ch 14; used in Ch 16 | taught |
 | `Drawing/HDR.md` (toneMap) | Ch 14 | taught |
+| `Drawing/ColorOutput.md` (colorOutput, `Color(displayP3:)`, HDR10 export) | Ch 14 | shown ("Or: let it actually be brighter" plus the `Rendering/ColorOutput` example; no figure by nature, since neither the wider gamut nor the brightness above white survives an SDR page, and the section says so) |
 | Design patterns + design filters (`Drawing/Effects.md`) | Ch 14 | taught ("The design family" with a six-tile two-row figure: the generator set and the phase-is-a-number rule that keeps exports reproducible, then the filters split into the alpha-shape readers (draw a shape, then filter it) and the picture transformers, plus the tuned-for-full-canvas caveat and the `edges` knob) |
 | Relight, two-tone dither, warp centers (`Drawing/Effects.md`) | Ch 14 | taught ("Filters that read the layer as something else" with a three-panel figure: brightness as height and the five finishes, brightness as tone with `pixelSize` grain, and `center:` in 0…1 layer coordinates as the knob that makes a warp a composition) |
 | Pattern fields (`Drawing/Effects.md`) | Ch 15 | taught ("The pattern fields" with a six-field catalog plus a hand-rolled gyroid beside the built-in: closed form as the defining property and its three consequences, all six named, reading a 3D field at a moving slice, and the sRGB palette convention) |
@@ -435,7 +436,7 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | Live rigs (serial/BLE, LED mapping, NDI) | Ch 22, or a future installations chapter |
 | New input sources | Ch 20/21 |
 | New output surfaces (haptics, screensaver, USDZ, performance capture) | Ch 22 |
-| Rendering/color frontier (P3/HDR out, GPU-driven, path tracing) | Ch 14/22 |
+| Rendering/color frontier (GPU-driven, path tracing) | Ch 14/22 |
 | Authoring/editor tooling | Ch 22 |
 | Collaboration and multi-device | future chapter beside Ch 22 |
 | Installation mode | future installations chapter |

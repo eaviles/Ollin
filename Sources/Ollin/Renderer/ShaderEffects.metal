@@ -52,6 +52,76 @@ fragment float4 ollin_present_fragment(PresentOut in [[stage_in]],
     return finalizeColor(float4(c, 1.0), in.position.xy);
 }
 
+// MARK: - Present: wide gamut and high dynamic range
+//
+// The twin of `ollin_present_fragment` for a *float* destination (see
+// `ColorOutput`). It is a separate function rather than a branch in the one
+// above on purpose: that fragment's exact codegen is what every dithered 8-bit
+// frame reproduces, and growing it re-contracts under fast math.
+//
+// Two things differ from the 8-bit path. There is no dither and no sRGB encode,
+// because a float target has no quantization step to break up. And the frame's
+// linear sRGB primaries are converted to the destination's, which is the whole
+// point: a color that sits outside sRGB (a negative component, the way
+// `Color(displayP3:)` stores one) comes back positive in the wider space.
+
+// Linear sRGB (Rec. 709 primaries, D65) to linear Display P3 (D65). A change of
+// primaries only, both being D65, so no chromatic adaptation and each row sums
+// to 1: white maps to white exactly.
+static inline float3 ollin_srgb_to_display_p3(float3 c) {
+    return float3(dot(c, float3( 0.8224620,  0.1775380,  0.0)),
+                  dot(c, float3( 0.0331942,  0.9668058,  0.0)),
+                  dot(c, float3( 0.0170826,  0.0723974,  0.9105199)));
+}
+
+// Linear sRGB to linear Rec. 2020 (D65), the primaries an HDR10 file declares.
+static inline float3 ollin_srgb_to_rec2020(float3 c) {
+    return float3(dot(c, float3( 0.6274039,  0.3292830,  0.0433131)),
+                  dot(c, float3( 0.0690973,  0.9195404,  0.0113623)),
+                  dot(c, float3( 0.0163914,  0.0880133,  0.8955953)));
+}
+
+// The PQ (perceptual quantizer) transfer function, SMPTE ST 2084, written from
+// the published equations: absolute luminance in cd/m² to a 0…1 code value,
+// with 10000 cd/m² the top of the scale.
+static inline float3 ollin_pq_encode(float3 nits) {
+    const float m1 = 2610.0 / 16384.0;
+    const float m2 = 2523.0 / 4096.0 * 128.0;
+    const float c1 = 3424.0 / 4096.0;
+    const float c2 = 2413.0 / 4096.0 * 32.0;
+    const float c3 = 2392.0 / 4096.0 * 32.0;
+    float3 y = clamp(nits * (1.0 / 10000.0), 0.0, 1.0);
+    float3 ym = pow(y, m1);
+    return pow((c1 + c2 * ym) / (1.0 + c3 * ym), m2);
+}
+
+fragment float4 ollin_present_wide_fragment(PresentOut in [[stage_in]],
+                                            texture2d<float> src [[texture(0)]],
+                                            sampler samp [[sampler(0)]],
+                                            constant OllinPresentUniforms &u [[buffer(0)]]) {
+    float3 c = src.sample(samp, in.uv).rgb * u.exposure;
+    if (u.toneMapMode == 1) {
+        c = c / (1.0 + c);              // Reinhard: x / (1 + x), per channel
+    } else if (u.toneMapMode == 2) {
+        c = toneMapACES(c);             // ACES filmic
+    }
+
+    if (u.outputSpace == 2) {
+        // HDR video: absolute luminance in Rec. 2020, PQ-encoded. 1.0 is the
+        // standard's reference white, so an exported clip's paper white lands
+        // where every other HDR file's does, and the peak is what the file
+        // declares it was mastered for.
+        float3 wide = max(ollin_srgb_to_rec2020(c), 0.0);
+        return float4(ollin_pq_encode(min(wide * u.referenceNits, u.peakNits)), 1.0);
+    }
+    // Screen: linear Display P3, clamped at what the display can actually show
+    // (1.0 for a standard-range frame, the reported headroom for an extended
+    // one). The negative floor is for the subtractive blend modes, which are the
+    // one way the composite can go below zero.
+    float3 wide = ollin_srgb_to_display_p3(c);
+    return float4(clamp(wide, 0.0, u.ceiling), 1.0);
+}
+
 // MARK: - Effects filters (texture -> texture, linear-float intermediate)
 //
 // These run between resolves on the off-screen effects layers, reusing the

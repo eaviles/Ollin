@@ -84,18 +84,25 @@ extension OllinApp {
                                     tiles: [(label: String, prepare: (Sketch) -> Void)],
                                     frame: Int, fps: Double, columns: Int?,
                                     tileWidth: Int, quality: RenderQuality) -> CGImage? {
-        guard !tiles.isEmpty, let device = MTLCreateSystemDefaultDevice(),
-              let renderer = try? MetalRenderer(device: device, pixelFormat: ollinColorPixelFormat,
-                                                sampleCount: ollinPreferredSampleCount(device)) else {
+        guard !tiles.isEmpty, let device = MTLCreateSystemDefaultDevice() else { return nil }
+
+        // The first tile's instance doubles as the probe for everything the
+        // sheet needs to know up front: its canvas aspect and its declared
+        // `colorOutput` (every tile is the same sketch class, so one covers the
+        // sheet). It must not be an extra instance, since the caller's factory
+        // is expected to run exactly once per tile.
+        let first = make()
+        let output = first.colorOutput
+        guard let renderer = try? MetalRenderer(device: device,
+                                                pixelFormat: output.drawablePixelFormat,
+                                                sampleCount: ollinPreferredSampleCount(device),
+                                                encoding: output.presentEncoding) else {
             return nil
         }
         renderer.automaticQuality = quality
         isRenderingHeadless = true
         defer { isRenderingHeadless = false }
 
-        // Grid geometry, from the canvas aspect of the first tile's instance
-        // (every tile is the same sketch class, so one probe covers the sheet).
-        let first = make()
         let canvas = first.canvasSize
         let tileW = max(64, tileWidth)
         let tileH = max(1, Int((Double(tileW) * Double(canvas.height) / Double(canvas.width)).rounded()))
@@ -108,7 +115,9 @@ extension OllinApp {
         let sheetWidth = margin * 2 + cols * tileW + (cols - 1) * gutter
         let sheetHeight = margin * 2 + rows * cellHeight + (rows - 1) * gutter
 
-        guard let space = CGColorSpace(name: CGColorSpace.sRGB),
+        // The sheet is composited in the sketch's own gamut, so a wide-gamut
+        // sketch's tiles aren't clipped back to sRGB on the way onto it.
+        guard let space = CGColorSpace(name: output == .standard ? CGColorSpace.sRGB : CGColorSpace.displayP3),
               let context = CGContext(data: nil, width: sheetWidth, height: sheetHeight,
                                       bitsPerComponent: 8, bytesPerRow: 0, space: space,
                                       bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else {

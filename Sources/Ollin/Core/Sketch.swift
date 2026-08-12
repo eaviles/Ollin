@@ -185,6 +185,31 @@ open class Sketch {
     /// itself lives in the host, so this stays pure data with no screen dependency.
     open var windowMode: WindowMode { .auto }
 
+    /// How far above white the display can currently go, as a multiple of it:
+    /// 1 means no headroom (an ordinary screen, or a window that never asked
+    /// for any), 2 means values up to 2.0 are shown as highlights brighter than
+    /// white. Read it to tell whether an `.extended` sketch is actually getting
+    /// the range it asked for, since the system grants headroom and takes it
+    /// back as the display's brightness and the surrounding content change.
+    ///
+    /// Live only: a headless render has no display, so it reads 1.
+    public private(set) var displayHeadroom: Double = 1
+
+    /// How much color the finished frame carries out of the sketch. Defaults to
+    /// `.standard` (8-bit sRGB, what every screen and file handles). Declare
+    /// `.wide` to present through Display P3 in a floating-point drawable, so
+    /// colors named outside sRGB reach the screen and gradients stop banding, or
+    /// `.extended` to also keep values above 1.0 as highlights brighter than
+    /// white, with an exported video written as HDR10:
+    ///
+    /// ```swift
+    /// override var colorOutput: ColorOutput { .extended }
+    /// ```
+    ///
+    /// Declared rather than called, because the window's drawable is built from
+    /// it once. See `ColorOutput` for what each step changes.
+    open var colorOutput: ColorOutput { .standard }
+
     /// The length of the sketch's loop in seconds, when it has one. A sketch
     /// whose motion repeats exactly (driven by `loopProgress`/`pingPong`,
     /// looping noise, or any phase built from `time`) declares its period here,
@@ -2586,6 +2611,10 @@ open class Sketch {
     func setMouse(x: Double, y: Double) {
         mouseX = x
         mouseY = y
+    }
+
+    func setDisplayHeadroom(_ headroom: Double) {
+        displayHeadroom = headroom
     }
 
     func setRightMousePressed(_ pressed: Bool) {

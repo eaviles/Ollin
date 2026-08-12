@@ -138,6 +138,7 @@ let package = Package(
         example("Shaders/VisualSynth"),
         example("Shaders/DomainWarp"),
         example("Rendering/ToneMapping"),
+        example("Rendering/ColorOutput"),
         example("Rendering/DepthOfField"),
         example("Rendering/RetainedBatch"),
         example("Compute/CurlField"),

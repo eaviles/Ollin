@@ -41,6 +41,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Stroke dynamics | `StrokeMark`/`drawMark`: width and opacity driven by how fast and how hard a mark is being made, rather than where you are along it; `pressure` reads a Force Touch trackpad or tablet | [Ch 13](13-ShapesAsMaterial.md) | [Marks](../Docs/Drawing/Marks.md) |
 | Retained batches | `makeBatch { }` records heavy static drawing once into a `Batch`; `drawBatch` replays it each frame for (almost) nothing, placed or stamped by the transform in force | [Ch 13](13-ShapesAsMaterial.md) | [Retained batches](../Docs/Drawing/Batches.md) |
 | HDR and tone mapping | Light past full brightness, brought back by `toneMap` (clamp, Reinhard, ACES) | [Ch 14](14-LayersAndEffects.md) | [HDR](../Docs/Drawing/HDR.md) |
+| Wide gamut and HDR output | `colorOutput`: Display P3 on screen, highlights brighter than white, HDR10 video; `Color(displayP3:)` for colors outside sRGB | [Ch 14](14-LayersAndEffects.md) | [Wide gamut & HDR output](../Docs/Drawing/ColorOutput.md) |
 | Gradient paint | Linear, radial, and along-path gradients on any shape's fill or stroke | [Ch 2](02-Color.md) | [Color](../Docs/Drawing/Color.md) |
 
 ## Color

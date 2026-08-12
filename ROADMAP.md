@@ -54,7 +54,7 @@ It's opt-in, so a 2D sketch never pays for a depth buffer or a perspective divid
 
 ## Photorealistic 3D
 
-The high-end, well-curated realism tier, opt-in on the existing PBR, IBL, ray-traced shadows and reflections, and SDF raymarching, so a 2D or stylized 3D sketch never pays. It grows the way the SDF shape catalog does: when a technique that separates a polished product render or film still from "CG" finds a good fit, it lands Metal-native, written from the published technique and credited in `ATTRIBUTION.md`'s Techniques list. The deeper levers (a path-traced export, GPU-driven rendering, wide-gamut and HDR output) live under [rendering and color frontier](#rendering-and-color-frontier).
+The high-end, well-curated realism tier, opt-in on the existing PBR, IBL, ray-traced shadows and reflections, and SDF raymarching, so a 2D or stylized 3D sketch never pays. It grows the way the SDF shape catalog does: when a technique that separates a polished product render or film still from "CG" finds a good fit, it lands Metal-native, written from the published technique and credited in `ATTRIBUTION.md`'s Techniques list. The deeper levers (a path-traced export, GPU-driven rendering) live under [rendering and color frontier](#rendering-and-color-frontier).
 
 See the [design notes](DESIGN-NOTES.md#photorealistic-3d).
 
@@ -101,7 +101,7 @@ See the [design notes](DESIGN-NOTES.md#new-output-surfaces).
 
 Deeper use of the Metal core and Apple displays, all opt-in so the 2D path stays untaxed:
 
-- **Wide-gamut and HDR.** Composite and present through Display P3 (and Rec. 2020) end to end, and export true HDR video (HDR10 / Dolby Vision) from the float pipeline that already exists, for richer color than an 8-bit sRGB target can hold.
+- **Dolby Vision.** Dynamic per-scene HDR metadata, where the static HDR10 metadata a video carries describes the whole file at once. It needs the licensed encoder path rather than AVFoundation's plain HDR writer, so it is a licensing question before it is an API one.
 - **GPU-driven rendering.** Indirect command buffers and mesh shaders to scale past instancing: many more distinct, GPU-encoded or GPU-generated objects with the CPU out of the per-object loop.
 - **Film-quality export.** An offline path-traced render path a sketch can switch to for gallery-grade stills and sequences, from the same scene tuned live (an extension of the ray-tracing direction noted under [3D mode](#3d-mode)).
 

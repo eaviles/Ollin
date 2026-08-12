@@ -101,18 +101,48 @@ public extension OllinApp {
             fatalError("Ollin: failed to create the video writer for \(path): \(error)")
         }
 
+        // What the sketch asked to carry out decides how the track is tagged and
+        // what the encoder is handed. An `extended` sketch is written as HDR10:
+        // Rec. 2020 primaries, PQ transfer, ten bits per component, with the
+        // frames PQ-encoded on the GPU rather than converted here.
+        let output = sketch.colorOutput
+        var codec = codec
+        if output == .extended, codec == .h264 {
+            print("Ollin: HDR needs ten bits per component, which h264 here does not carry; using hevc")
+            codec = .hevc
+        }
+        let colorProperties: [String: Any]
+        switch output {
+        case .standard:
+            // The canvas is sRGB-encoded; tag the track Rec. 709 (the video
+            // convention for those bytes) so players show it as rendered.
+            colorProperties = [
+                AVVideoColorPrimariesKey: AVVideoColorPrimaries_ITU_R_709_2,
+                AVVideoTransferFunctionKey: AVVideoTransferFunction_ITU_R_709_2,
+                AVVideoYCbCrMatrixKey: AVVideoYCbCrMatrix_ITU_R_709_2,
+            ]
+        case .wide:
+            // Wider primaries, same standard-range curve: the P3-D65 tagging
+            // every wide-gamut SDR clip uses.
+            colorProperties = [
+                AVVideoColorPrimariesKey: AVVideoColorPrimaries_P3_D65,
+                AVVideoTransferFunctionKey: AVVideoTransferFunction_ITU_R_709_2,
+                AVVideoYCbCrMatrixKey: AVVideoYCbCrMatrix_ITU_R_709_2,
+            ]
+        case .extended:
+            colorProperties = [
+                AVVideoColorPrimariesKey: AVVideoColorPrimaries_ITU_R_2020,
+                AVVideoTransferFunctionKey: AVVideoTransferFunction_SMPTE_ST_2084_PQ,
+                AVVideoYCbCrMatrixKey: AVVideoYCbCrMatrix_ITU_R_2020,
+            ]
+        }
+
         let size = sketch.canvasSize
         var settings: [String: Any] = [
             AVVideoCodecKey: codec.avCodec,
             AVVideoWidthKey: size.width,
             AVVideoHeightKey: size.height,
-            // The canvas is sRGB-encoded; tag the track Rec. 709 (the video
-            // convention for those bytes) so players show it as rendered.
-            AVVideoColorPropertiesKey: [
-                AVVideoColorPrimariesKey: AVVideoColorPrimaries_ITU_R_709_2,
-                AVVideoTransferFunctionKey: AVVideoTransferFunction_ITU_R_709_2,
-                AVVideoYCbCrMatrixKey: AVVideoYCbCrMatrix_ITU_R_709_2,
-            ],
+            AVVideoColorPropertiesKey: colorProperties,
         ]
         if !codec.requiresQuickTime {
             var compression: [String: Any] = [AVVideoExpectedSourceFrameRateKey: fps]
@@ -121,13 +151,27 @@ public extension OllinApp {
             } else if let bitsPerSecond {
                 compression[AVVideoAverageBitRateKey] = bitsPerSecond
             }
+            if output == .extended, codec == .hevc {
+                // Ten-bit HEVC, and let the encoder work out the mastering
+                // display and content light level the file declares from the
+                // frames it is given.
+                compression[kVTCompressionPropertyKey_ProfileLevel as String] =
+                    kVTProfileLevel_HEVC_Main10_AutoLevel
+                compression[kVTCompressionPropertyKey_HDRMetadataInsertionMode as String] =
+                    kVTHDRMetadataInsertionMode_Auto
+            }
             settings[AVVideoCompressionPropertiesKey] = compression
         }
 
         let input = AVAssetWriterInput(mediaType: .video, outputSettings: settings)
         input.expectsMediaDataInRealTime = false
+        // HDR frames arrive as half-float PQ codes straight from the present
+        // pass, so they are handed over as they are; everything else goes
+        // through Core Graphics into an 8-bit buffer.
+        let sourceFormat = output == .extended
+            ? kCVPixelFormatType_64RGBAHalf : kCVPixelFormatType_32BGRA
         let adaptor = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: input, sourcePixelBufferAttributes: [
-            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+            kCVPixelBufferPixelFormatTypeKey as String: sourceFormat,
             kCVPixelBufferWidthKey as String: size.width,
             kCVPixelBufferHeightKey as String: size.height,
         ])
@@ -138,7 +182,8 @@ public extension OllinApp {
 
         print("Ollin: exporting \(frames) frames at \(Int(fps)) fps → \(path) (\(size.width)×\(size.height), \(codec.rawValue))")
         let elapsed = renderFrames(sketch, frames: frames, fps: fps, skipSeconds: skipSeconds,
-                                   quality: renderQuality) { cgImage, index in
+                                   quality: renderQuality,
+                                   encoding: output == .extended ? .pqRec2020 : nil) { frame, index in
             if index == 0 {
                 // Writing starts on the first frame, after the sketch has run
                 // `setup()`, so the reproduction recipe can carry the seed it
@@ -185,17 +230,47 @@ public extension OllinApp {
             guard let buffer = pixelBuffer else {
                 fatalError("Ollin: failed to allocate a frame buffer")
             }
-            CVPixelBufferLockBaseAddress(buffer, [])
-            if let context = CGContext(data: CVPixelBufferGetBaseAddress(buffer),
-                                       width: size.width, height: size.height,
-                                       bitsPerComponent: 8,
-                                       bytesPerRow: CVPixelBufferGetBytesPerRow(buffer),
-                                       space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                                       bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue
-                                           | CGBitmapInfo.byteOrder32Little.rawValue) {
-                context.draw(cgImage, in: CGRect(x: 0, y: 0, width: size.width, height: size.height))
+            if output == .extended {
+                // Already PQ-encoded Rec. 2020 half-floats: say so on the buffer
+                // and copy them in row by row (the pool's stride is its own).
+                CVBufferSetAttachment(buffer, kCVImageBufferColorPrimariesKey,
+                                      kCVImageBufferColorPrimaries_ITU_R_2020, .shouldPropagate)
+                CVBufferSetAttachment(buffer, kCVImageBufferTransferFunctionKey,
+                                      kCVImageBufferTransferFunction_SMPTE_ST_2084_PQ, .shouldPropagate)
+                CVBufferSetAttachment(buffer, kCVImageBufferYCbCrMatrixKey,
+                                      kCVImageBufferYCbCrMatrix_ITU_R_2020, .shouldPropagate)
+                CVPixelBufferLockBaseAddress(buffer, [])
+                if let base = CVPixelBufferGetBaseAddress(buffer) {
+                    let destinationStride = CVPixelBufferGetBytesPerRow(buffer)
+                    let rowBytes = min(frame.bytesPerRow, destinationStride)
+                    for y in 0..<size.height {
+                        base.advanced(by: y * destinationStride)
+                            .copyMemory(from: frame.pixels.advanced(by: y * frame.bytesPerRow),
+                                        byteCount: rowBytes)
+                    }
+                }
+                CVPixelBufferUnlockBaseAddress(buffer, [])
+            } else {
+                guard let cgImage = frame.image else {
+                    fatalError("Ollin: failed to read frame \(index) back")
+                }
+                // A wide-gamut frame is drawn into a Display P3 buffer, so the
+                // colors it named outside sRGB survive the trip; a standard one
+                // takes the sRGB path it always did.
+                let space = output == .wide
+                    ? CGColorSpace(name: CGColorSpace.displayP3)! : CGColorSpace(name: CGColorSpace.sRGB)!
+                CVPixelBufferLockBaseAddress(buffer, [])
+                if let context = CGContext(data: CVPixelBufferGetBaseAddress(buffer),
+                                           width: size.width, height: size.height,
+                                           bitsPerComponent: 8,
+                                           bytesPerRow: CVPixelBufferGetBytesPerRow(buffer),
+                                           space: space,
+                                           bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue
+                                               | CGBitmapInfo.byteOrder32Little.rawValue) {
+                    context.draw(cgImage, in: CGRect(x: 0, y: 0, width: size.width, height: size.height))
+                }
+                CVPixelBufferUnlockBaseAddress(buffer, [])
             }
-            CVPixelBufferUnlockBaseAddress(buffer, [])
             let time = CMTime(value: Int64(index) * 1000, timescale: timescale)
             if !adaptor.append(buffer, withPresentationTime: time) {
                 fatalError("Ollin: failed to encode frame \(index): \(writer.error?.localizedDescription ?? "unknown error")")
@@ -266,7 +341,10 @@ public extension OllinApp {
 
         print("Ollin: exporting \(effectiveFrames) frames at \(Int(effectiveFPS.rounded())) fps → \(path) (\(outWidth)×\(outHeight), gif)")
         let elapsed = renderFrames(sketch, frames: effectiveFrames, fps: effectiveFPS,
-                                   skipSeconds: skipSeconds, quality: renderQuality) { cgImage, index in
+                                   skipSeconds: skipSeconds, quality: renderQuality) { rendered, index in
+            guard let cgImage = rendered.image else {
+                fatalError("Ollin: failed to read frame \(index) back")
+            }
             var frame = cgImage
             if outWidth != size.width {
                 guard let context = CGContext(data: nil, width: outWidth, height: outHeight,
