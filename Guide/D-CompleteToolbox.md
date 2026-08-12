@@ -25,6 +25,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Live reload | `swift run OllinLive Sketch.swift`: save the file, the window swaps the change in | [Ch 1](01-HelloOllin.md) | [Sketch](../Docs/Core/Sketch.md) |
 | Single-file sketches | `ollin new` and `ollin <file>.swift`: one loose file is a whole sketch, runnable from anywhere | [Ch 1](01-HelloOllin.md) | [SingleFile](../Docs/Tools/SingleFile.md) |
 | Project generator | `ollin new <Name>` and `ollin generate`: a ready-to-run folder from a template you can watch running first | [Ch 1](01-HelloOllin.md) | [ProjectGenerator](../Docs/Tools/ProjectGenerator.md) |
+| Bringing a shader over | `ollin new --from-shader`: a GLSL fragment shader translated into Metal, with a project written around it | [Ch 15](15-YourFirstShader.md) | [ShaderImport](../Docs/Tools/ShaderImport.md) |
 | The examples gallery | `swift run OllinExamples`: every example browsable in a tree, running, with its knobs beside it | [Ch 1](01-HelloOllin.md) | [`Examples/`](../Examples/README.md) |
 | Swift itself | The language at sketch speed | [Appendix A](A-JustEnoughSwift.md) | [Swift quick reference](../Docs/Swift.md) |
 

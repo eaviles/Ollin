@@ -76,6 +76,14 @@ public enum ProjectGenerator {
         files.append(GeneratedFile(path: "\(sourceDir)/Sketch.swift",
                                    contents: sketchSource(request)))
 
+        // A shader brought over from GLSL keeps its own file, kept as a flat
+        // copied resource for the same reason the stub below is.
+        if let shader = request.importedShader {
+            files.append(GeneratedFile(path: "\(sourceDir)/\(ImportedShader.resourceName).metal",
+                                       contents: shader.metalSource))
+            resources.append(".copy(\"\(ImportedShader.resourceName).metal\")")
+        }
+
         // An example's own material (a picture, a mesh, a clip, its shader) is
         // copied over beside the sketch and declared, or the copy would compile
         // and then fail to find what it loads.
@@ -158,6 +166,12 @@ public enum ProjectGenerator {
             GeneratedFile(path: "\(folder)/Sketch.swift", contents: sketchSource(request))
         ]
         var resources: [String] = []
+
+        if let shader = request.importedShader {
+            files.append(GeneratedFile(path: "\(folder)/\(ImportedShader.resourceName).metal",
+                                       contents: shader.metalSource))
+            resources.append(".copy(\"\(ImportedShader.resourceName).metal\")")
+        }
 
         if let example = request.example {
             for resource in example.resources {
@@ -244,8 +258,24 @@ public enum ProjectGenerator {
     /// Public because the generator window previews a template by compiling and
     /// running exactly this, rather than showing a picture of it.
     public static func sketchSource(_ request: ProjectRequest) -> String {
+        if let shader = request.importedShader { return importedShaderSource(request, shader) }
         if let example = request.example { return exampleSource(request, example) }
         return templateSource(request)
+    }
+
+    /// The sketch that runs a shader brought over from GLSL. A single loose file
+    /// carries the shader inline, because there is no target to declare a
+    /// resource on; every other kind keeps it in its own `.metal` file, where it
+    /// reloads on its own without a Swift build.
+    private static func importedShaderSource(_ request: ProjectRequest, _ shader: ImportedShader) -> String {
+        var source = "import Ollin\n\n"
+            + ImportedShaderSource.body(shader, className: request.typeName,
+                                        inlineShader: request.kind == .singleFile)
+            + "\n"
+        if let expression = request.canvas.expression {
+            source = insertCanvas(expression, into: source, typeName: request.typeName)
+        }
+        return source
     }
 
     /// The 3D template writes itself out of the recipe, since which pieces are

@@ -577,7 +577,7 @@ let package = Package(
         // `OLLIN_RECORD_SNAPSHOTS=1 swift test`. Skips when no Metal device.
         .testTarget(
             name: "OllinTests",
-            dependencies: ["Ollin", "COllinShaders"],
+            dependencies: ["Ollin", "COllinShaders", "OllinProjects"],
             resources: [.copy("References")]
         ),
         // DSP correctness for the audio analyzer: feed synthesized signals and

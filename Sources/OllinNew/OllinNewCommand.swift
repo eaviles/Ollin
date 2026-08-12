@@ -38,6 +38,7 @@ enum OllinNewCommand {
         let kindName = arguments.takeValue("--kind")
         let templateName = arguments.takeValue("--template")
         let exampleName = arguments.takeValue("--from")
+        let shaderSource = arguments.takeValue("--from-shader")
         let capabilityNames = arguments.takeValue("--with")
         let canvasName = arguments.takeValue("--canvas")
         let threeDNames = arguments.takeValue("--3d")
@@ -123,6 +124,24 @@ enum OllinNewCommand {
             example = found
         }
 
+        // A shader brought over from GLSL. It decides the sketch, so it rules out
+        // starting from an example at the same time.
+        var importedShader: ImportedShader?
+        if let shaderSource {
+            if exampleName != nil {
+                fail("--from-shader and --from each decide the whole sketch, so pass one or the other.")
+            }
+            let fetched: ShaderSourceReader.Fetched
+            do {
+                fetched = try ShaderSourceReader.read(shaderSource)
+            } catch {
+                fail("\(error)")
+            }
+            let result = ShaderImport.translate(glsl: fetched.glsl, provenance: fetched.provenance)
+            importedShader = ImportedShader(result, origin: origin(of: fetched.provenance))
+            report(result)
+        }
+
         // The 3D pieces, checked against each other before anything is written:
         // a combination that cannot work is worth saying so rather than
         // generating a sketch where half the calls quietly do nothing.
@@ -163,6 +182,7 @@ enum OllinNewCommand {
 
         let request = ProjectRequest(
             name: name, kind: kind, template: template, example: example,
+            importedShader: importedShader,
             capabilities: capabilities, canvas: canvas, threeD: threeD,
             packageHost: host, destination: destination, framework: framework
         )
@@ -184,6 +204,37 @@ enum OllinNewCommand {
             fail(error.description)
         } catch {
             fail("\(error)")
+        }
+    }
+
+    // MARK: - Bringing a shader over
+
+    /// A one-line note of where a shader came from, for the sketch's own comment.
+    static func origin(of provenance: ShaderImport.Provenance) -> String? {
+        var parts: [String] = []
+        if let title = provenance.title, !title.isEmpty { parts.append(title) }
+        if let author = provenance.author, !author.isEmpty { parts.append("by \(author)") }
+        if let url = provenance.url, !url.isEmpty { parts.append("(\(url))") }
+        return parts.isEmpty ? nil : parts.joined(separator: " ")
+    }
+
+    /// Says what the translation could and could not do, before any file is
+    /// written, so the reader is never surprised by a shader that will not build.
+    static func report(_ result: ShaderImport.Result) {
+        let shape: String
+        switch result.routing {
+        case .generator: shape = "reads no input, so it runs as a generator"
+        case .filter:    shape = "reads one input, so it runs as a filter over a layer"
+        case .combine:   shape = "reads two inputs, so it runs as a combine over two layers"
+        }
+        print("ollin: the shader \(shape).")
+
+        let unsupported = result.diagnostics.filter { $0.severity == .unsupported }
+        let notes = result.diagnostics.filter { $0.severity == .note }
+        for note in notes { print("  note: \(note.message)") }
+        for item in unsupported { print("  needs you: \(item.message)") }
+        if !unsupported.isEmpty {
+            print("  The shader file marks each of these TODO(ollin). It will not compile until they are dealt with.")
         }
     }
 
@@ -248,6 +299,9 @@ enum OllinNewCommand {
                                  .swift name)
           --template <id>        which ready-made starting point (default: blank)
           --from <Group/Name>    start from an example instead, material and all
+          --from-shader <src>    start from a GLSL fragment shader, translated to Metal:
+                                 a file, `-` for what you paste on standard input, or a
+                                 web address (which needs SHADERTOY_API_KEY set)
           --with <a,b>           extra libraries and folders to wire in
           --canvas <id>          the canvas size to declare
           --in <dir>             where to put it (default: here)

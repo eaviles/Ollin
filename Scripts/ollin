@@ -32,6 +32,9 @@ usage: ollin <path/to/Sketch.swift> [flags]   run the sketch (live window)
                                               --export-video, --export-svg, ...)
        ollin new [name.swift]                 write a starter sketch file
        ollin new <Name> [--template ...]      make a project folder
+       ollin new <Name> --from-shader <src>   translate a GLSL fragment shader
+                                              (a file, `-` for standard input,
+                                              or a web address) into a project
        ollin new --list                       every kind, template, and extra
        ollin generate                         the same, in a window
        ollin install [dir]                    symlink ollin onto your PATH

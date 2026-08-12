@@ -400,6 +400,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | `Tools/LiveCoding.md` (OllinLiveCoding) | Ch 22; OllinLive workflow in Ch 1 | taught |
 | Single-file sketches (the `ollin` command, hashbang files; `Tools/SingleFile.md`) | Ch 1 | taught ("A shorter way to run things": `install`/`new`/run, what it means that a sketch is one file, export flags on a loose file, and the hashbang form) |
 | Project generator (`ollin new <Name>`, `ollin generate`, kinds/templates/capabilities; `Tools/ProjectGenerator.md`) | Ch 1 | taught ("When one file isn't enough": the moment a folder is wanted and why you should not build one by hand, `ollin new` writing sketch plus manifest plus material folders, the live-window loop preserved by opening the generated file with `ollin`, a template read as a small sketch that already works rather than an empty file, `ollin generate` doing the one thing the terminal cannot by running each template while you choose, and the reassurance that the `.swift` file is still the artifact; the gated kinds, `--canvas`/`--remote`, and adding a template pointed at the reference) |
+| Bringing a GLSL shader over (`ollin new --from-shader`; `Tools/ShaderImport.md`) | Ch 15 | pointed (Ch 15 "Go deeper" links the page; the section owed is "Somebody else's shader": the pasted shader has the shape the chapter just taught twice, the three renames that need more than a new name (`mod` rounding, the flipped vertical axis, `iTime` as a global Metal has none of), the TODO comments for what cannot come over, and the license header) |
 | Examples gallery (`swift run OllinExamples`) | Ch 1 | taught ("The gallery" with a layout diagram: the three panes, the filter field, hiding the knobs, why arrow keys move the list rather than reaching the sketch, and that every entry is an ordinary sketch file to open and copy) |
 | Extension seam (`Sketch.extend`, `SketchExtension`) | Ch 22 | taught ("Adding behavior without touching the sketch": why cross-cutting behavior does not belong in `draw()`, the built-in stats extension as the example, and the opt-in frame readback) |
 | Headless capture (`OllinApp.image(of:)`) | Ch 22; used by the Guide's own figure runner | taught ("Rendering from code": the flags are a wrapper around one call, what it does step by step, the batch cases it unlocks, a figure that renders another sketch four times to demonstrate itself, and the Guide's own figure runner as the worked example) |
@@ -410,10 +411,11 @@ Capabilities that shipped in the framework without a Guide section yet. An entry
 
 Add an entry only when a session genuinely cannot teach the feature it just shipped, and say so in the commit message. Then the *next* session touching that chapter clears it. `Scripts/guide-coverage.sh` prints every entry on every run, and fails the build for a `pointed` row that has no entry.
 
-No entries. The one that stood here, Schottky circle orbits owed to Chapter 11, was cleared on 2026-08-01.
+One entry. The previous one, Schottky circle orbits owed to Chapter 11, was cleared on 2026-08-01.
 
 | Capability (Docs page) | Owed to | Since |
 |---|---|---|
+| Bringing a GLSL shader over (`ollin new --from-shader`; `Tools/ShaderImport.md`) | Ch 15, as "Somebody else's shader" | 2026-08-12 |
 
 ## Roadmap parking lot
 

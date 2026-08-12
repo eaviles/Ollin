@@ -39,6 +39,57 @@ struct GeneratedProjectBuildTests {
         #expect(result.succeeded, "a template stopped compiling:\n\(result.output)")
     }
 
+    /// A sketch written around an imported shader has to compile too, and the
+    /// three shapes differ: one draws the shader straight, one draws a layer for
+    /// it to read, one draws a pair. Only the first was ever checked by hand.
+    @Test("Every shape of imported-shader sketch compiles")
+    func everyImportedShaderSketchCompiles() throws {
+        let repository = try #require(Self.repositoryRoot(), "could not find the Ollin folder from the test file")
+        let root = try Self.temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let shaders = [
+            "Generated": "void mainImage(out vec4 c, in vec2 f) { c = vec4(f / iResolution.xy, 0.0, 1.0); }",
+            "Filtered": "void mainImage(out vec4 c, in vec2 f) { c = texture(iChannel0, f / iResolution.xy); }",
+            "Combined": """
+            void mainImage(out vec4 c, in vec2 f) {
+                vec2 uv = f / iResolution.xy;
+                c = mix(texture(iChannel0, uv), texture(iChannel1, uv), uv.x);
+            }
+            """,
+        ]
+
+        var targets: [String] = []
+        var resources: [String: [String]] = [:]
+        for target in shaders.keys.sorted() {
+            let translated = ShaderImport.translate(glsl: shaders[target]!)
+            let request = ProjectRequest(
+                name: target,
+                importedShader: ImportedShader(translated),
+                destination: root,
+                framework: .localPath(repository)
+            )
+            let directory = root.appendingPathComponent("Sources/\(target)")
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try ProjectGenerator.sketchSource(request)
+                .write(to: directory.appendingPathComponent("Sketch.swift"),
+                       atomically: true, encoding: .utf8)
+            // The sketch loads the shader by name, so the file has to be there
+            // and declared, exactly as the generated manifest declares it.
+            let shaderFile = "\(ImportedShader.resourceName).metal"
+            try translated.metalSource
+                .write(to: directory.appendingPathComponent(shaderFile),
+                       atomically: true, encoding: .utf8)
+            resources[target] = [shaderFile]
+            targets.append(target)
+        }
+
+        try Self.writeManifest(named: "ShaderImportCheck", targets: targets, at: root,
+                               repository: repository, resources: resources)
+        let result = try Self.swiftBuild(in: root)
+        #expect(result.succeeded, "an imported-shader sketch stopped compiling:\n\(result.output)")
+    }
+
     @Test("Every 3D combination the rules allow compiles")
     func everyValidThreeDRecipeCompiles() throws {
         let repository = try #require(Self.repositoryRoot(), "could not find the Ollin folder from the test file")
@@ -129,18 +180,25 @@ struct GeneratedProjectBuildTests {
     /// One package with a target per sketch, so the framework is built once
     /// rather than once per sketch under test.
     static func writeManifest(named name: String, targets: [String],
-                              at root: URL, repository: URL) throws {
+                              at root: URL, repository: URL,
+                              resources: [String: [String]] = [:]) throws {
         let products = ["Ollin", "OllinVision", "OllinAudio", "OllinPhysics"]
             .map { "                .product(name: \"\($0)\", package: \"Ollin\")," }
             .joined(separator: "\n")
         let stanzas = targets.map { target in
-            """
+            // A target with no declared resource has no `Bundle.module`, so a
+            // sketch that loads one would fail to compile here for a reason the
+            // real generated manifest does not have.
+            let declared = (resources[target] ?? []).map { "                    .copy(\"\($0)\")," }
+                .joined(separator: "\n")
+            let block = declared.isEmpty ? "" : "\n                resources: [\n\(declared)\n                ],"
+            return """
                     .executableTarget(
                         name: "\(target)",
                         dependencies: [
             \(products)
                         ],
-                        path: "Sources/\(target)"
+                        path: "Sources/\(target)",\(block)
                     ),
             """
         }.joined(separator: "\n")

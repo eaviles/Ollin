@@ -10,6 +10,9 @@ public struct ProjectRequest: Sendable {
     /// An example to start from instead of the template. When set it wins, since
     /// it is a whole working sketch and the template would only be in its way.
     public var example: ExampleSource.Example?
+    /// A shader brought over from GLSL. Like an example, it decides the sketch
+    /// rather than filling a template in.
+    public var importedShader: ImportedShader?
     /// Capabilities asked for beyond the ones the starting point needs itself.
     public var capabilities: [Capability]
     public var canvas: CanvasChoice
@@ -29,6 +32,7 @@ public struct ProjectRequest: Sendable {
         kind: ProjectKind = .macSketch,
         template: ProjectTemplate = .blank,
         example: ExampleSource.Example? = nil,
+        importedShader: ImportedShader? = nil,
         capabilities: [Capability] = [],
         canvas: CanvasChoice = .default,
         threeD: ThreeDRecipe? = nil,
@@ -40,6 +44,7 @@ public struct ProjectRequest: Sendable {
         self.kind = kind
         self.template = template
         self.example = example
+        self.importedShader = importedShader
         self.capabilities = capabilities
         self.canvas = canvas
         self.threeD = threeD
