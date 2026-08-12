@@ -4,7 +4,7 @@
 
 ## DMX
 
-Drive stage lights from `draw()`. DMX is the 512-channels-per-universe protocol behind theatrical dimmers, LED pars, and moving heads, and it travels over ordinary Ethernet as **Art-Net** or **sACN** (ANSI E1.31), the two wire protocols lighting nodes and consoles speak. A sketch fills a universe of channels every frame and puts it on the network; the same machinery in reverse lets a lighting console drive a sketch. It lives in a separate library so the drawing core stays free of networking. Add `import OllinDMX` alongside `import Ollin` to reach it.
+Drive stage lights from `draw()`. DMX is the 512-channels-per-universe protocol behind theatrical dimmers, LED pars, and moving heads, and it travels over ordinary Ethernet as **Art-Net** or **sACN** (ANSI E1.31), the two wire protocols lighting nodes and consoles speak. A sketch fills a universe of channels every frame and puts it on the network; an [`LEDMap`](#ledmap) goes further and sends the canvas's own pixels to LED strips and matrices; and the same machinery in reverse lets a lighting console drive a sketch. It lives in a separate library so the drawing core stays free of networking. Add `import OllinDMX` alongside `import Ollin` to reach it.
 
 Both wire formats are written from their published specifications (the Art-Net 4 protocol document and ANSI E1.31-2018) over Apple's `Network.framework`, so nothing is vendored. Art-Net™ Designed by and Copyright Artistic Licence.
 
@@ -31,6 +31,7 @@ The usual shape is to make the sender (or receiver) once, then fill and send a `
 - [DMXUniverse](#dmxuniverse) - the 512-channel value you fill and send
 - [DMXFixture](#dmxfixture) - patch by name instead of raw channel numbers
 - [DMXSender](#dmxsender) - put universes on the wire, Art-Net or sACN
+- [LEDMap](#ledmap) - the canvas itself onto LED strips and matrices
 - [DMXReceiver](#dmxreceiver) - let a console drive the sketch
 - [Binding to a `@Param`](#binding-to-a-param) - a console fader as a knob
 - [Testing without hardware](#testing-without-hardware) - loopback and monitors
@@ -94,6 +95,52 @@ Call `send` every frame with whatever the sketch computed; the sender takes care
 `close()` on an sACN sender says goodbye first: three stream-terminated packets per universe, the standard's clean ending, so receivers drop the look immediately instead of waiting out a timeout.
 
 Sending to hardware on the local network makes macOS ask for **Local Network** permission once. Like screen recording, the permission is attributed to the launching terminal (a `swift run` sketch has no bundle identity of its own); loopback to `127.0.0.1` needs nothing.
+
+<a name="ledmap"></a>
+
+### LEDMap
+
+```swift
+let dmx = DMXSender()                            // or unicast to your controller
+let leds = LEDMap(sender: dmx)
+
+override func setup() {
+    leds.addStrip(from: Vector2(100, 540), to: Vector2(980, 540), leds: 144)
+    leds.addMatrix(in: Rectangle(x: 390, y: 150, width: 300, height: 300),
+                   columns: 16, rows: 16, universe: 2)
+    extend(leds)                                 // it runs itself after every frame
+}
+```
+
+An `LEDMap` sends regions of the canvas to addressable LEDs: lay strips and matrices over the picture, register the map as an extension, and draw normally. Every frame it samples the *rendered* pixels under each LED on the GPU (a small compute pass over a few hundred points, not a full-frame readback) and sends them as universes through its `DMXSender`, whose pacer keeps the wire cadence polite. The byte sent is the display byte: what you see at that pixel is what the lamp is told.
+
+```swift
+func addStrip(along points: [Vector2], leds: Int, closed: Bool = false,
+              universe: Int = 1, address: Int = 1,
+              layout: [DMXFixture.Role] = [.red, .green, .blue],
+              sampleRadius: Double? = nil) -> Fixture
+func addStrip(from: Vector2, to: Vector2, leds: Int, ...) -> Fixture
+func addMatrix(in rect: Rectangle, columns: Int, rows: Int,
+               serpentine: Bool = false, ...) -> Fixture
+func addPoints(_ points: [Vector2], ...) -> Fixture
+
+var brightness: Double               // master level, 0…1, over every LED
+var positions: [Vector2]             // every sample point, wire order
+var colors: [Color]                  // what each LED read last frame
+var universes: [Int]                 // every universe the map writes
+```
+
+Where the LEDs sit:
+
+- A **strip** spaces its LEDs evenly *by walked length* along the polyline (corners don't bunch them), endpoints included; `closed: true` spaces them around the loop instead, for an LED ring. `addStrip(from:to:)` is the straight-run shorthand.
+- A **matrix** reads one LED per cell, at the cell's center, in straight rows from the top left. `serpentine: true` reverses every other row for a zigzag-wired panel addressed directly; the default is straight because pixel controllers are usually configured with the panel's wiring and expect straight rows on the wire.
+- `addPoints` maps loose lamps at arbitrary positions, in the order given.
+
+Each LED averages a small patch of canvas around its point, **in linear light**, so a patch half black and half white reads as the gray that actually looks halfway. The default `sampleRadius` is the patch the LED stands for (half the LED spacing on a strip, half the cell on a matrix, kept between 1 and 32 pixels); pass an explicit radius to override it.
+
+On the wire, universes pack **whole LEDs**: an LED's channels never straddle a universe boundary, so 170 RGB pixels (or 128 RGBW) fill a universe, the straddle channels stay dark, and a longer run continues on the next universe number up, which is the layout pixel controllers expect. Patch the controller to the numbers `universes` reports. Per-LED channels follow `layout`, and colors land through the fixture path, so an `[.red, .green, .blue, .white]` layout gets the RGBW white split and `brightness` scales the light either way. The returned `Fixture` tells you where everything landed: its `positions`, its `universes`, and `address(ofLED:)` for reading one LED back off the wire (what the example's drawn preview uses).
+
+The map drives lights, so it's live-only: a headless export renders no frames to a window and sends nothing, the same way frame-sharing sits out an export. The **LEDMapping** example (`Examples/Integration/LEDMapping`) runs the whole path on loopback, lighting a drawn strip and panel from what a receiver reads back.
 
 <a name="dmxreceiver"></a>
 
@@ -163,4 +210,4 @@ What's covered, and what deliberately isn't: this is the streaming-level tier (A
 
 Credits: this implementation is written from the published specifications. Art-Net™ Designed by and Copyright Artistic Licence. sACN is ANSI E1.31, published by ESTA's Technical Standards Program.
 
-See the **DMXLoopback** example for a self-contained send-and-receive sketch that needs no console or hardware to run.
+See the **DMXLoopback** example for a self-contained send-and-receive sketch that needs no console or hardware to run, and **LEDMapping** for the canvas sampled onto a drawn strip and panel the same way.

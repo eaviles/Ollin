@@ -451,6 +451,7 @@ let package = Package(
         // you see is the round trip (like OSCLoopback). Point it at a real
         // node's IP and the same universe drives real lights.
         example("Integration/DMXLoopback", [.dmx]),
+        example("Integration/LEDMapping", [.dmx]),
         // Self-contained: a virtual-source output sends animated MIDI to itself and
         // the input draws it back, so it runs with no hardware (like OSCLoopback).
         example("Integration/MIDILoopback", [.midi]),

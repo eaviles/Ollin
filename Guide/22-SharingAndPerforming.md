@@ -235,6 +235,24 @@ override func draw() {
 
 It works the other way around too. A `DMXReceiver` turns the sketch into a fixture: a real console fades channel 1 and `draw()` reads it as `dmx.level(1)`, or `dmx.bind(channel: 1, to: $radius)` puts the fader on the same knob the inspector slider moves, exactly like Chapter 20's MIDI and OSC bindings. The `Integration/DMXLoopback` example runs both ends on `127.0.0.1`, a sender chasing colors across a drawn rig that is lit from what the receiver reads back, so the whole path runs with no console and no hardware. When you do reach for real lights, two practical notes: macOS asks once for Local Network permission, attributed to the terminal you launched from, and a free sACN monitor app will show you every universe on the wire while you find your fixture's address.
 
+The rig's big sibling is the LED wall, and for that you stop filling channels by hand. An `LEDMap` lays the fixtures over the canvas itself: a strip is a run of sample points along a line or a curve, a matrix is a grid of them, and every frame the map reads the rendered pixels under each LED (on the GPU, a few hundred points, never a whole-frame readback) and ships them through a `DMXSender`. The wall is just the canvas, somewhere else.
+
+```swift
+let dmx = DMXSender()                     // or unicast to your pixel controller
+let leds = LEDMap(sender: dmx)
+
+override func setup() {
+    leds.addStrip(from: Vector2(100, 540), to: Vector2(980, 540), leds: 144)
+    leds.addMatrix(in: Rectangle(x: 390, y: 150, width: 300, height: 300),
+                   columns: 16, rows: 16, universe: 2)
+    extend(leds)                          // from here on it feeds itself
+}
+```
+
+After `extend(leds)` you draw as if the wall didn't exist; whatever lands under the mapped points is what the wall shows. Each LED averages the little patch of canvas it stands for, so a strip over fine detail glows steadily instead of flickering, and on the wire the map packs whole LEDs into universes (170 RGB pixels per universe, longer runs continuing on the next number up), which is exactly the layout pixel controllers expect: patch yours to the numbers `leds.universes` reports and you're done. The `Integration/LEDMapping` example runs it all on loopback, the drawn strip and panel lit from what a receiver reads back off the wire.
+
+<img src="Images/22-SharingAndPerforming/LEDWall.jpg" alt="A diagram in two rows: a colorful gradient picture with a wavy strip of small rings and a bracketed grid of rings mapped over it, and below, the same LEDs lit for real: the strip laid out straight in wire order and the panel beside it, each labeled with the universe it occupies" width="680">
+
 ## Adding behavior without touching the sketch
 
 One more piece is worth knowing about once you have several sketches, because it answers a question that comes up as soon as you want the same extra behavior in all of them: how do you add something to a sketch's life cycle without editing the sketch?

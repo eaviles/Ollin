@@ -572,11 +572,13 @@ let package = Package(
         // layouts, decode round-trips, malformed input rejected without
         // trapping, the pure send cadence (change detection, repeats,
         // keep-alives), receiver priority/sequence/terminate rules over
-        // crafted datagrams, plus an in-process UDP loopback. GPU-independent,
-        // so it runs in CI too.
+        // crafted datagrams, plus an in-process UDP loopback. GPU-independent
+        // (so it runs in CI) except the LED map's one end-to-end frame pin,
+        // which is Metal-gated. Ollin is named for the geometry types the LED
+        // map speaks (`Vector2`, `Rectangle`, `Color`).
         .testTarget(
             name: "OllinDMXTests",
-            dependencies: ["OllinDMX"]
+            dependencies: ["Ollin", "OllinDMX"]
         ),
         // MIDI correctness: MIDI 1.0 / UMP parse+encode round-trips (every message
         // kind, malformed/non-1.0 words rejected without trapping) — Core MIDI-free,

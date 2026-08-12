@@ -3489,6 +3489,58 @@ at full resolution vs 57.7-60.2 (vsync-capped) at `.performance`.
 
 ---
 
+## The canvas sample pass (`CanvasSampler`)
+
+The seam behind LED mapping (and anything else that turns rendered pixels into
+a few hundred output values a frame): a `package`-access `CanvasSampler` in
+`Sources/Ollin/Renderer/CanvasSampler.swift` that samples N points from the
+rendered display texture with one small compute dispatch and reads back an
+N-entry byte buffer. It rides the rendered-*texture* extension hook
+(`wantsRenderedTexture` / `frameRendered(_:texture:)`, the frame-sharing seam),
+so the off-screen re-render is only paid while a consumer is registered, and a
+headless export (which never fires the hook) costs nothing. The design point is
+the readback size: the whole-frame `CGImage` grab moves megabytes per frame
+where a map of a few hundred LEDs needs a few hundred bytes, so the CPU never
+touches the frame, only the sampled results.
+
+Mechanics, and the decisions inside them:
+
+- **Self-contained kernel, compiled from an inline source string** on first use
+  (`makeLibrary(source:)` on the texture's device), deliberately *outside* the
+  shader segment concatenation: it shares no helpers or types with the drawing
+  shaders, and passing plain `float4` / `uchar4` buffers on both sides leaves no
+  shared struct layout to drift (the one-header rule exists for structs spelled
+  twice; here nothing is spelled twice).
+- **Per-point box radius.** Each point is `(x, y, radius, 0)`; the kernel
+  averages the `(2r+1)²` texel patch with clamped taps, so off-canvas points
+  read the nearest edge texel and every LED can carry the patch it stands for.
+  Radius is clamped to 256 so a wild value can't stall the GPU.
+- **Linear-light averaging, display bytes out.** Reads on the sRGB texture
+  decode to linear, the mean runs on linear values, and the result re-encodes
+  through the sRGB curve to bytes, so a half-black half-white patch reads as
+  the gray that *looks* halfway (the compositing rule), and a radius-0 sample
+  round-trips the stored byte exactly (`CanvasSamplerTests` pins both, with
+  the sRGB-space average as the counterfactual). Alpha averages and quantizes
+  straight; it carries no gamma.
+- **Synchronous by design.** The pass runs on its own queue and waits for
+  completion before returning, for the same reason frame-sharing does: the
+  renderer re-renders into the handed-out texture in place next frame on its
+  own queue, and Metal's hazard tracking doesn't span queues. The wait is a
+  few hundred threads deep and lands on the render loop that was already
+  paused for the off-screen re-render.
+- **Buffers persist; points re-upload only on change.** The point list is
+  uploaded when assigned (a static map costs one upload total), and the output
+  buffer is reused across frames.
+
+The first consumer is `OllinDMX`'s `LEDMap` (`package` access reaches it
+because the satellites live in the same package), which owns the mapping
+question: where strips/matrices/loose points sit, each LED's default radius
+(half its spacing or cell, banded 1...32), the whole-LED universe packing, and
+the fixture-path color conversion. A future serial/laser tier can reach the
+same seam; promoting it to public API is cheap if a sketch-facing use appears.
+
+---
+
 ## User-supplied shaders
 
 A sketch writes its own fragment shader and runs it through the effect graph.
