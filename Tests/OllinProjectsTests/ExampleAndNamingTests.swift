@@ -91,6 +91,40 @@ struct ExampleAndNamingTests {
         #expect(ExampleSource.modules(in: "import Ollin").isEmpty)
     }
 
+    @Test("A library the catalog has never heard of is still linked")
+    func unknownSatellitesSurvive() throws {
+        // The failure this prevents: an `import` line is copied verbatim into
+        // the new sketch, so a module the catalog filtered out would be imported
+        // by the copy and absent from its manifest, and the project would not
+        // build. It is the shape of the first day a new satellite ships.
+        let source = "import Ollin\nimport OllinAudio\nimport OllinSerial\n"
+        #expect(ExampleSource.modules(in: source) == ["OllinAudio", "OllinSerial"])
+
+        let root = try stagedExamples()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let future = root.appendingPathComponent("Rigs/Serial")
+        try FileManager.default.createDirectory(at: future, withIntermediateDirectories: true)
+        try """
+        import Ollin
+        import OllinSerial
+
+        @main
+        final class Serial: Sketch {
+            override func draw() { background(.black) }
+        }
+        """.write(to: future.appendingPathComponent("Sketch.swift"), atomically: true, encoding: .utf8)
+
+        let request = ProjectRequest(
+            name: "Wired",
+            example: ExampleSource.named("Rigs/Serial", in: root),
+            destination: URL(fileURLWithPath: "/tmp"),
+            framework: .localPath(URL(fileURLWithPath: "/somewhere/Ollin"))
+        )
+        let project = try ProjectGenerator.plan(request)
+        let manifest = try #require(project.files.first { $0.path == "Package.swift" })
+        #expect(manifest.contents.contains("\"OllinSerial\""))
+    }
+
     @Test("Every example under a folder is found, with what sits beside it")
     func discovery() throws {
         let root = try stagedExamples()

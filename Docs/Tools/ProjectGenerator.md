@@ -166,6 +166,11 @@ The path form is the right default while the framework is unpublished. Switch to
 
 The catalogs are data. A new template is one value in `ProjectTemplate.all` carrying its source, the capabilities its code needs, and the kinds it fits; a new capability is one value in `Capability.all`; a new kind is one value in `ProjectKind.all` plus an emitter. Every template is compiled against the framework by the test suite, so one that falls behind an API change fails there rather than in someone's new project.
 
+Two of the lists keep themselves up to date and one does not, which is worth knowing:
+
+- **The examples list is discovered**, not declared. Anything under `Examples/` with a `Sketch.swift` appears, grouped by the folders it sits in, with the libraries it imports read off its own `import` lines. Ship an example and it is a starting point, with nothing to register. A library the capability list has never heard of is still linked, so a brand-new satellite works the day it lands. The scan runs at launch, so a folder added while the window is open needs a relaunch.
+- **The 3D options are hand-kept**, because they are a map of which features combine rather than a list of what exists, and only a person can say that. They mirror [Combining 3D features](../3D/Combining.md), so a 3D capability that changes what stacks with what updates both. Once an option is added, the test suite compiles every combination the rules allow, so a rule that permits something impossible fails there.
+
 ## See also
 
 - [Single-file sketches](SingleFile.md) for the loose-file workflow the `single-file` kind produces.

@@ -72,8 +72,16 @@ public enum ExampleSource {
         discover(in: folder).first { $0.path.lowercased() == path.lowercased() }
     }
 
-    /// The satellite modules a sketch imports, in the order the catalog lists
-    /// them so a manifest reads the same way every time.
+    /// Every satellite module a sketch imports: the ones the catalog knows in
+    /// its own order, then anything else alphabetically, so a manifest reads the
+    /// same way every time.
+    ///
+    /// Deliberately **not** filtered to the capability catalog. A sketch's
+    /// `import` lines are copied verbatim, so a module dropped here would be
+    /// imported by the copy and missing from its manifest, and the new project
+    /// would not compile. That is exactly what would happen the first time a
+    /// satellite ships without a `Capability` entry, so the catalog is treated
+    /// as an ordering, never as a filter.
     static func modules(in source: String) -> [String] {
         let imported = Set(source.split(separator: "\n").compactMap { line -> String? in
             let trimmed = line.trimmingCharacters(in: .whitespaces)
@@ -81,7 +89,9 @@ public enum ExampleSource {
             let module = trimmed.dropFirst(7).trimmingCharacters(in: .whitespaces)
             return module.hasPrefix("Ollin") && module != "Ollin" ? module : nil
         })
-        return Capability.satellites.compactMap { $0.module }.filter { imported.contains($0) }
+        let known = Capability.satellites.compactMap(\.module).filter { imported.contains($0) }
+        let unknown = imported.subtracting(known).sorted()
+        return known + unknown
     }
 
     /// The example's source with its type renamed after the new project.

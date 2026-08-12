@@ -249,7 +249,11 @@ public enum ProjectGenerator {
     // MARK: - Supporting files
 
     private static func manifest(_ request: ProjectRequest, target: String, resources: [String]) -> String {
-        let modules = ["Ollin"] + request.resolvedCapabilities.compactMap(\.module).sorted()
+        // The union, so a library an example imports is linked even when the
+        // capability catalog has never heard of it.
+        let known = request.resolvedCapabilities.compactMap(\.module)
+        let fromExample = (request.example?.modules ?? []).filter { !known.contains($0) }
+        let modules = ["Ollin"] + (known + fromExample).sorted()
         let products = modules
             .map { "                .product(name: \"\($0)\", package: \"Ollin\")," }
             .joined(separator: "\n")

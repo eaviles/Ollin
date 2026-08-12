@@ -25,7 +25,7 @@ public struct ThreeDOption: Sendable, Hashable, Identifiable {
             switch self {
             case .geometry: "Geometry"
             case .finish: "Finish"
-            case .extra: "On top"
+            case .extra: "Extras"
             }
         }
     }
