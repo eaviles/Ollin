@@ -31,6 +31,9 @@ usage: ollin <path/to/Sketch.swift> [flags]   run the sketch (live window)
                                               headless export (--export-gif,
                                               --export-video, --export-svg, ...)
        ollin new [name.swift]                 write a starter sketch file
+       ollin new <Name> [--template ...]      make a project folder
+       ollin new --list                       every kind, template, and extra
+       ollin generate                         the same, in a window
        ollin install [dir]                    symlink ollin onto your PATH
        ollin help                             show this help
 
@@ -40,51 +43,20 @@ surface, --keep-clock for reloads that keep the clock).
 EOF
 }
 
-# ollin new [name.swift]: write a starter sketch, executable, non-destructive.
+# ollin new [...]: hand over to the generator, which decides every file. A name
+# ending in .swift still writes one loose starter file, exactly as before; any
+# other name makes a project folder. `--list` says what can be made.
+#
+# The generator is its own small target that links nothing but Foundation, so
+# building it is a second or two rather than a framework build.
 cmd_new() {
-    local target="${1:-Sketch.swift}"
-    [[ "$target" == *.swift ]] || target="$target.swift"
-    if [[ -e "$target" ]]; then
-        echo "ollin: $target already exists; pick another name" >&2
-        exit 1
-    fi
-    # Class name from the file name: strip non-identifier characters, uppercase
-    # the first letter, and fall back to MySketch for names a type can't take.
-    local base="${${target:t}%.swift}"
-    local class="${base//[^a-zA-Z0-9_]/}"
-    if [[ -z "$class" || "$class" == [0-9]* ]]; then
-        class="MySketch"
-    else
-        class="${(U)class[1]}${class[2,-1]}"
-    fi
-    mkdir -p "${target:h}"
-    cat > "$target" <<EOF
-#!/usr/bin/env ollin
-import Ollin
-
-/// A starter sketch: a circle breathing on white. Run it, then edit and save;
-/// the window hot-reloads. Delete \`+ sin(time) * 40\` and it holds still.
-@main
-final class $class: Sketch {
-    override func setup() {
-        // runs once, before the first frame
-    }
-
-    override func draw() {
-        background(.white)
-        noFill()
-        stroke(.black)
-        strokeWeight(3)
-        drawCircle(width / 2, height / 2, 120 + sin(time) * 40)
-    }
+    swift run -c "${OLLIN_CONFIG:-debug}" --package-path "$repo" OllinNew "$@"
 }
-EOF
-    chmod +x "$target"
-    local shown="$target"
-    [[ "$shown" == /* ]] || shown="./$shown"
-    echo "ollin: wrote $target"
-    echo "  run it:    ollin $target"
-    echo "  or, since it's executable:    $shown"
+
+# ollin generate: the same generator, in a window. Shows each starting point by
+# running it, so it needs the framework built.
+cmd_generate() {
+    exec swift run -c "${OLLIN_CONFIG:-release}" --package-path "$repo" OllinProjectGenerator "$@"
 }
 
 # ollin install [dir]: symlink this script (symlink-resolved) onto the PATH.
@@ -121,6 +93,8 @@ cmd_install() {
 case "${1:-}" in
     new)
         shift; cmd_new "$@" ;;
+    generate)
+        shift; cmd_generate "$@" ;;
     install)
         shift; cmd_install "$@" ;;
     help|--help|-h)

@@ -195,6 +195,32 @@ let package = Package(
                 .unsafeFlags(["-Xlinker", "-export_dynamic"])
             ]
         ),
+        // The project generator's model: the kinds of project it can make, the
+        // ready-made templates, the capabilities each one wires in, and the files
+        // they turn into. Depends on nothing at all, not even Ollin, because it
+        // only ever produces text; that keeps it quick to build and quick to test,
+        // and lets both faces of the generator share one implementation.
+        .target(
+            name: "OllinProjects"
+        ),
+        // The generator's command line, behind `ollin new`. Making a project is
+        // one command, and `--list` says what can be made.
+        .executableTarget(
+            name: "OllinNew",
+            dependencies: ["OllinProjects"]
+        ),
+        // The generator's window. Shows each starting point by *running* it, so
+        // what you pick is what you get; it compiles a template through the same
+        // loader the gallery uses, hence the satellite links and -export_dynamic
+        // that every sketch-loading host needs.
+        .executableTarget(
+            name: "OllinProjectGenerator",
+            dependencies: ["Ollin", "OllinRuntime", "OllinProjects"] + Satellite.allCases.map(\.dependency),
+            path: "Sources/OllinProjectGenerator",
+            linkerSettings: [
+                .unsafeFlags(["-Xlinker", "-export_dynamic"])
+            ]
+        ),
         // Vendored libtess2 (GLU-tessellator lineage), the polygon triangulator
         // behind concave/holed `Shape` fills. Bundled third-party C source under
         // its own SGI-B license — see Sources/CLibtess2/README.md and the
@@ -661,6 +687,14 @@ let package = Package(
         .testTarget(
             name: "OllinPhoneTests",
             dependencies: ["Ollin", "OllinPhone", "OllinUSBMux"]
+        ),
+        // The project generator: what each kind and template emits, and that the
+        // emitted thing actually builds. The build check is the load-bearing one,
+        // since a generated sketch that does not compile is worse than none, and
+        // it runs headlessly with no GPU.
+        .testTarget(
+            name: "OllinProjectsTests",
+            dependencies: ["OllinProjects"]
         ),
     ],
     // The whole package builds in the Swift 6 language mode, so data-race safety

@@ -101,6 +101,27 @@ If you want to go one step further, putting `#!/usr/bin/env ollin` on the first 
 
 The guide keeps writing the full `swift run OllinLive` form so everything works whether or not you installed the shortcut. [Single-file sketches](../Docs/Tools/SingleFile.md) covers the rest.
 
+## When one file isn't enough
+
+A file stops being enough the moment the sketch needs things next to it: photographs, a font, a shader, a second file's worth of code. At that point you want a folder, and you should not have to build one by hand.
+
+```sh
+ollin new MyPiece                                  # a folder that builds and runs
+ollin new MyPiece --template shader --with audio   # wired for a shader and the microphone
+```
+
+That writes a small project: the sketch, a manifest that already knows where the framework is, a place to put your material, and a README with the commands in it. `swift run MyPiece` runs it, and `ollin Sources/MyPiece/Sketch.swift` opens that same file in the live window, so you keep the edit-and-save loop you just learned.
+
+The `--template` part is worth knowing about early. A template is not an empty file; it is a small sketch that already does something, so you start by changing something that works instead of facing a blank `draw()`. There are ten, from a plain breathing circle to pen-ready line work to a lit 3D solid.
+
+```sh
+ollin generate
+```
+
+This is the same thing in a window, and it does one thing the terminal cannot: it *runs* each template while you look at it. Pick a starting point by watching it move, tick what the sketch should be wired for, and press Create.
+
+Nothing about this changes what a sketch is. It is still your `.swift` file, still readable on its own, and the folder is just somewhere to keep it and its material. [The project generator](../Docs/Tools/ProjectGenerator.md) has the whole list of templates and options.
+
 ## Once, then every frame
 
 `draw()` is one of two functions Ollin calls for you. The other is `setup()`, and it runs a single time, before the first frame is drawn:
@@ -302,6 +323,7 @@ The `setup()` and `draw()` sketch model comes from [Processing](https://processi
 - [Sketch](../Docs/Core/Sketch.md): the full lifecycle, `noLoop()` for stills, and running a sketch as its own standalone program with `@main`.
 - [Canvas](../Docs/Core/Canvas.md): canvas sizes and presets, the preview window, and writing sketches that hold up at any resolution (`scale` for sizes, and `uv(u, v)` for placing things as 0…1 fractions of the canvas).
 - [Drawing](../Docs/Drawing/Drawing.md): every shape and the complete ink state.
+- [The project generator](../Docs/Tools/ProjectGenerator.md): every template and option behind `ollin new` and `ollin generate`, what a generated folder holds, and how to add a template of your own.
 - [Input](../Docs/Helpers/Input.md): the keyboard, click hooks, and the rest of the mouse.
 - [Parameters](../Docs/Helpers/Parameters.md): the full knob family (toggles, menus, pads, and friends), grouping knobs into cards, icons, smoothing, and driving knobs from MIDI or OSC hardware.
 - [The Swift quick reference](../Docs/Swift.md): just enough of the language, for whenever a construct here felt mysterious.

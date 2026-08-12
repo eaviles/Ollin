@@ -24,6 +24,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | `@Param` knobs | Properties as live inspector controls, typed per value (slider, color well, pad, …) | [Ch 1](01-HelloOllin.md), [Ch 20](20-SoundAndControl.md) | [Parameters](../Docs/Helpers/Parameters.md) |
 | Live reload | `swift run OllinLive Sketch.swift`: save the file, the window swaps the change in | [Ch 1](01-HelloOllin.md) | [Sketch](../Docs/Core/Sketch.md) |
 | Single-file sketches | `ollin new` and `ollin <file>.swift`: one loose file is a whole sketch, runnable from anywhere | [Ch 1](01-HelloOllin.md) | [SingleFile](../Docs/Tools/SingleFile.md) |
+| Project generator | `ollin new <Name>` and `ollin generate`: a ready-to-run folder from a template you can watch running first | [Ch 1](01-HelloOllin.md) | [ProjectGenerator](../Docs/Tools/ProjectGenerator.md) |
 | The examples gallery | `swift run OllinExamples`: every example browsable in a tree, running, with its knobs beside it | [Ch 1](01-HelloOllin.md) | [`Examples/`](../Examples/README.md) |
 | Swift itself | The language at sketch speed | [Appendix A](A-JustEnoughSwift.md) | [Swift quick reference](../Docs/Swift.md) |
 

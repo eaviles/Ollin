@@ -159,6 +159,15 @@ ollin dots.swift --export-gif dots.gif --seconds 4
 
 See [Single-file sketches](Docs/Tools/SingleFile.md) for assets, satellite imports, and growing a file into a package.
 
+When a piece outgrows one file, the [project generator](Docs/Tools/ProjectGenerator.md) makes the folder for you, wired for what you're about to use:
+
+```sh
+ollin new MyPiece --template shader --with audio   # a folder that builds and runs
+ollin generate                                     # the same, in a window
+```
+
+`ollin generate` shows each starting point by *running* it, so you pick a template by watching it rather than by reading its name.
+
 There are other ways to iterate. Tweak and re-run an example (`swift run --package-path Examples Example-Motion-Breathing`, where incremental builds keep it snappy), or open the package in Xcode (`open Package.swift`) for ⌘R, breakpoints, and the debugger.
 
 ## Export

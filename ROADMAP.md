@@ -35,9 +35,14 @@ A tier of classic generative-art building blocks that emit vector geometry (poin
 
 The hand-drawn, mark-making axis, built on the variable-width stroke renderer (a width per vertex, shaped by a `strokeProfile`), the recorded marks that drive it from the hand, and the brushes that stamp a shape along a path. What's ahead: Apple Pencil tilt and azimuth as further drivers, which wait on the iOS leg under [new input sources](#new-input-sources). Painterly simulation (the generative-watercolor family) stays a [technique-catalog](#technique-and-algorithm-helpers) recipe rather than a brush-engine feature. See the [design notes](DESIGN-NOTES.md#expressive-brushes-and-strokes).
 
-## Project generator
+## Sketches from an existing artifact
 
-An openFrameworks-style generator that scaffolds a ready-to-run sketch folder from a few questions (which capabilities, which canvas size), instead of hand-copying boilerplate. Beyond a blank scaffold, it could also emit a sketch *from an existing artifact*: a 3D scene file (glTF/USD) as placed `drawMesh`/`camera`/light calls, or a Shadertoy URL/GLSL shader translated into an Ollin sketch plus shader code. See the [design notes](DESIGN-NOTES.md#project-generator--sketch-scaffolding).
+The [project generator](Docs/Tools/ProjectGenerator.md) makes a project from a template; the other direction is a sketch generated *from something that already exists*, handing over editable source rather than a live asset:
+
+- **A 3D scene file** (glTF/USD) as placed `drawMesh` / `camera` / light calls. The lossy, one-way companion to the runtime `loadScene` import: `loadScene` keeps the file as a live, re-loadable asset, while this hands over source the sketch then owns. Both are worth having, for the same design-tool-to-code loop with different end states.
+- **A fragment shader** pasted as a Shadertoy URL or GLSL source, emitted as a ready-to-run sketch wired to Ollin's user-shader path. The on-ramp is huge (a vast public corpus), so it is a strong teaching lever, and the load-bearing work is honest GLSL-to-MSL translation rather than the scaffolding around it.
+
+See the [design notes](DESIGN-NOTES.md#sketches-from-an-existing-artifact).
 
 ## iPhone as a sensor array
 
