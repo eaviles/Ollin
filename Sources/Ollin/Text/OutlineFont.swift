@@ -55,6 +55,10 @@ public struct OutlineFont: @unchecked Sendable {
     /// quad. A reference type so value copies share it (like the caches above).
     let atlas: GlyphAtlas
 
+    /// Shared, lazily-filled cache of the glyphs a font draws as pictures rather
+    /// than outlines (emoji). Another reference type shared by value copies.
+    let colorGlyphs: ColorGlyphCache
+
     // MARK: Construction
 
     /// Wrap an existing `CTFont` (assumed to be at point size 1).
@@ -67,6 +71,7 @@ public struct OutlineFont: @unchecked Sendable {
         self.cache = GlyphPathCache()
         self.geometryCache = GlyphGeometryCache()
         self.atlas = GlyphAtlas()
+        self.colorGlyphs = ColorGlyphCache()
     }
 
     /// Load an installed font by name — a family (`"Helvetica Neue"`), full name,
@@ -212,13 +217,64 @@ public struct OutlineFont: @unchecked Sendable {
     func scale(for size: Double) -> Double { size }
 
     /// The advance width of `string`'s widest line, in points, at `size`.
-    func width(of string: String, size: Double) -> Double {
+    func width(of string: String, size: Double, direction: TextDirection) -> Double {
         guard size > 0 else { return 0 }
         var widest = 0.0
         for line in string.split(separator: "\n", omittingEmptySubsequences: false) {
-            widest = Swift.max(widest, layoutLine(String(line)).width)
+            widest = Swift.max(widest, layoutLine(String(line), direction: direction).width)
         }
         return widest * size
+    }
+
+    // MARK: What the font could and did draw
+
+    /// The names of the faces that actually drew `string`.
+    ///
+    /// Asking a Latin font for Japanese does not fail: the system quietly borrows a
+    /// face that has the letters, which is why text in any script draws at all.
+    /// This is how to see that happening, and which faces a line really used.
+    ///
+    /// ```swift
+    /// print(font.fontsUsed(for: "Ollin 日本語 👋"))
+    /// // ["System Font Regular", ".PingFang UI Text SC Regular Text", ".Apple Color Emoji UI"]
+    /// ```
+    public func fontsUsed(for string: String) -> [String] {
+        var names: [String] = []
+        for line in string.split(separator: "\n", omittingEmptySubsequences: false) {
+            for glyph in layoutLine(String(line), direction: .automatic).glyphs {
+                let name = CTFontCopyFullName(glyph.font) as String
+                if !names.contains(name) { names.append(name) }
+            }
+        }
+        return names
+    }
+
+    /// The characters in `string` that no font on this machine can draw, in the
+    /// order they appear.
+    ///
+    /// A character nobody can draw is not dropped. It lands on the system's last
+    /// resort face, which draws a box, so it is visible rather than silently
+    /// missing. Ask this when you want to know before drawing.
+    public func missingCharacters(in string: String) -> [Character] {
+        var missing: [Character] = []
+        for line in string.split(separator: "\n", omittingEmptySubsequences: false) {
+            let text = String(line)
+            let glyphs = layoutLine(text, direction: .automatic).glyphs
+            for cluster in TextClusters.group(glyphs, in: text) {
+                guard cluster.glyphs.contains(where: OutlineFont.isUndrawable) else { continue }
+                missing.append(contentsOf: cluster.text)
+            }
+        }
+        return missing
+    }
+
+    /// Whether a shaped glyph stands for a character nothing could draw: either the
+    /// font's own "no such glyph" id, or a glyph from the last resort face, which
+    /// exists only to draw a box where a character should have been.
+    private static func isUndrawable(_ glyph: ShapedGlyph) -> Bool {
+        if glyph.glyph == 0 { return true }
+        let name = (CTFontCopyPostScriptName(glyph.font) as String)
+        return name.hasSuffix("LastResort")
     }
 
     // MARK: Glyph geometry
@@ -233,14 +289,20 @@ public struct OutlineFont: @unchecked Sendable {
         let origin: Vector2
         let localContours: [Contour]
         let localFill: [Vector2]
+        /// Set for a glyph the font stores as a picture rather than an outline (an
+        /// emoji): the rasterized image and the canvas rect it covers. The contours
+        /// and fill are empty in that case.
+        let picture: Image?
+        let pictureRect: Rectangle
     }
 
     /// The glyphs of `string`, each placed (origin + cached local geometry) as if
     /// drawn at `origin` with `size`, `alignH`, and `alignV`. The shared layout
-    /// behind `drawText`'s fast fill path and `glyphShapes`. Glyphs with no
-    /// contours (spaces) are skipped.
+    /// behind `drawText`'s fast fill path and `glyphShapes`. Glyphs with neither
+    /// contours nor a picture (spaces) are skipped.
     func placedGlyphs(for string: String, size: Double,
                       alignH: TextAlignH, alignV: TextAlignV,
+                      direction: TextDirection,
                       at origin: Vector2) -> [PlacedGlyphGeometry] {
         guard size > 0, !string.isEmpty else { return [] }
         let ascentP = ascent * size
@@ -248,7 +310,7 @@ public struct OutlineFont: @unchecked Sendable {
         let lineHeightP = (ascent + descent + leading) * size
 
         let rawLines = string.split(separator: "\n", omittingEmptySubsequences: false)
-        let laidOut = rawLines.map { layoutLine(String($0)) }
+        let laidOut = rawLines.map { layoutLine(String($0), direction: direction) }
         let blockHeight = Double(rawLines.count - 1) * lineHeightP + ascentP + descentP
 
         // Top edge of the first line, from the vertical anchor.
@@ -271,13 +333,27 @@ public struct OutlineFont: @unchecked Sendable {
             case .right:  startX = origin.x - lineWidth
             }
             for placed in line.glyphs {
-                let local = geometry(for: placed.glyph, font: placed.font, size: size)
-                if local.contours.isEmpty { continue }
                 let glyphOriginX = startX + placed.x * size
                 let glyphOriginY = baselineY - placed.y * size
+                let local = geometry(for: placed.glyph, font: placed.font, size: size)
+                if local.contours.isEmpty {
+                    // No outline: either a glyph the font draws as a picture, or
+                    // something with no ink at all (a space).
+                    guard let color = colorGlyphs.glyph(placed.glyph, font: placed.font) else { continue }
+                    placedGlyphs.append(PlacedGlyphGeometry(
+                        origin: Vector2(glyphOriginX, glyphOriginY),
+                        localContours: [], localFill: [],
+                        picture: color.image,
+                        pictureRect: Rectangle(x: glyphOriginX + color.emRect.x * size,
+                                               y: glyphOriginY + color.emRect.y * size,
+                                               width: color.emRect.width * size,
+                                               height: color.emRect.height * size)))
+                    continue
+                }
                 placedGlyphs.append(PlacedGlyphGeometry(
                     origin: Vector2(glyphOriginX, glyphOriginY),
-                    localContours: local.contours, localFill: local.fill))
+                    localContours: local.contours, localFill: local.fill,
+                    picture: nil, pictureRect: Rectangle(x: 0, y: 0, width: 0, height: 0)))
             }
         }
         return placedGlyphs
@@ -300,6 +376,7 @@ public struct OutlineFont: @unchecked Sendable {
     /// the atlas. Spaces are kept (the atlas returns no slot for them).
     func placedAtlasGlyphs(for string: String, size: Double,
                            alignH: TextAlignH, alignV: TextAlignV,
+                           direction: TextDirection,
                            at origin: Vector2) -> [PlacedAtlasGlyph] {
         guard size > 0, !string.isEmpty else { return [] }
         let ascentP = ascent * size
@@ -307,7 +384,7 @@ public struct OutlineFont: @unchecked Sendable {
         let lineHeightP = (ascent + descent + leading) * size
 
         let rawLines = string.split(separator: "\n", omittingEmptySubsequences: false)
-        let laidOut = rawLines.map { layoutLine(String($0)) }
+        let laidOut = rawLines.map { layoutLine(String($0), direction: direction) }
         let blockHeight = Double(rawLines.count - 1) * lineHeightP + ascentP + descentP
 
         let topY0: Double
@@ -345,11 +422,20 @@ public struct OutlineFont: @unchecked Sendable {
     /// translating each glyph's cached local contours, so it shares the cache.
     func glyphShapes(for string: String, size: Double,
                      alignH: TextAlignH, alignV: TextAlignV,
+                     direction: TextDirection,
                      at origin: Vector2) -> [Shape] {
-        placedGlyphs(for: string, size: size, alignH: alignH, alignV: alignV, at: origin).map { g in
+        OutlineFont.shapes(of: placedGlyphs(for: string, size: size, alignH: alignH,
+                                            alignV: alignV, direction: direction, at: origin))
+    }
+
+    /// The canvas-space `Shape` of each placed glyph that has one. A glyph the font
+    /// stores as a picture has no geometry, so it is left out.
+    static func shapes(of placed: [PlacedGlyphGeometry]) -> [Shape] {
+        placed.compactMap { glyph in
+            guard !glyph.localContours.isEmpty else { return nil }
             // Glyph outlines are authored for nonzero winding.
-            Shape(contours: g.localContours.map {
-                Contour($0.points.map { $0 + g.origin }, closed: $0.isClosed)
+            return Shape(contours: glyph.localContours.map {
+                Contour($0.points.map { $0 + glyph.origin }, closed: $0.isClosed)
             }, winding: .nonZero)
         }
     }
@@ -402,86 +488,127 @@ public struct OutlineFont: @unchecked Sendable {
 
     // MARK: Core Text layout
 
-    /// One glyph placed on a line: its source font (after fallback), glyph id, pen
-    /// position in em units (y-up, baseline at 0, x increasing from the line's
-    /// start), and the source character's UTF-16 offset in the string.
-    private struct PlacedGlyph {
-        let font: CTFont; let glyph: CGGlyph; let x: Double; let y: Double; let stringIndex: Int
-    }
-
-    /// A single-line run of glyphs for per-glyph drawing and text-on-a-path: each
-    /// glyph's character, pen metrics in canvas units (at `size`), and geometry in
-    /// a local frame (pen origin at the origin, baseline at `y = 0`). Newlines are
-    /// treated as spaces — these effects are single-line by nature.
-    func glyphRun(for string: String, size: Double) -> [GlyphRunItem] {
+    /// A single-line run of **clusters** for per-glyph drawing and text-on-a-path:
+    /// each cluster's source characters, pen metrics in canvas units (at `size`),
+    /// and geometry in a local frame (pen origin at the origin, baseline at
+    /// `y = 0`). Newlines are treated as spaces, since these effects are
+    /// single-line by nature.
+    ///
+    /// The unit is a cluster rather than a glyph because a glyph is the wrong unit
+    /// for anything a person would call a letter: see `ShapedCluster`.
+    func glyphRun(for string: String, size: Double, direction: TextDirection) -> [GlyphRunItem] {
         guard size > 0, !string.isEmpty else { return [] }
         let line = string.replacingOccurrences(of: "\n", with: " ")
-        let (placed, width) = layoutLine(line)
+        let (placed, _) = layoutLine(line, direction: direction)
         guard !placed.isEmpty else { return [] }
 
         var items: [GlyphRunItem] = []
-        items.reserveCapacity(placed.count)
-        for (i, g) in placed.enumerated() {
-            let penX = g.x * size
-            let nextX = (i + 1 < placed.count) ? placed[i + 1].x * size : width * size
-            let advance = Swift.max(0, nextX - penX)
+        for cluster in TextClusters.group(placed, in: line) {
+            let penX = cluster.originX * size
             var shapes: [Shape] = []
-            if let path = cache.path(for: g.glyph, font: g.font) {
-                let contours = OutlineFont.flatten(path, scale: size, originX: 0, originY: 0)
-                if !contours.isEmpty { shapes = [Shape(contours: contours, winding: .nonZero)] }
+            var picture: Image? = nil
+            var pictureRect = Rectangle(x: 0, y: 0, width: 0, height: 0)
+            for glyph in cluster.glyphs {
+                // Each glyph keeps its own place inside the cluster: a mark sits
+                // over its letter and a reordered vowel sign sits before it.
+                let localX = (glyph.x - cluster.originX) * size
+                let localY = -glyph.y * size
+                if let path = cache.path(for: glyph.glyph, font: glyph.font) {
+                    let contours = OutlineFont.flatten(path, scale: size,
+                                                       originX: localX, originY: localY)
+                    if !contours.isEmpty { shapes.append(Shape(contours: contours, winding: .nonZero)) }
+                } else if let color = colorGlyphs.glyph(glyph.glyph, font: glyph.font) {
+                    picture = color.image
+                    pictureRect = Rectangle(x: localX + color.emRect.x * size,
+                                            y: localY + color.emRect.y * size,
+                                            width: color.emRect.width * size,
+                                            height: color.emRect.height * size)
+                }
             }
-            items.append(GlyphRunItem(character: OutlineFont.character(in: line, atUTF16: g.stringIndex),
-                                      penX: penX, advance: advance, localShapes: shapes))
+            items.append(GlyphRunItem(text: cluster.text, penX: penX,
+                                      advance: cluster.advance * size,
+                                      localShapes: shapes,
+                                      picture: picture, localPictureRect: pictureRect))
         }
         return items
     }
 
-    /// The `Character` at a UTF-16 offset in `string` (a space if out of range) —
-    /// maps a Core Text glyph's string index back to a Swift character.
-    private static func character(in string: String, atUTF16 offset: Int) -> Character {
-        let u = string.utf16
-        guard offset >= 0,
-              let idx = u.index(u.startIndex, offsetBy: offset, limitedBy: u.endIndex),
-              idx < u.endIndex, let s = idx.samePosition(in: string) else { return " " }
-        return string[s]
-    }
-
     /// One laid-out line: its glyphs (em units) and typographic advance width (em).
-    private func layoutLine(_ string: String) -> (glyphs: [PlacedGlyph], width: Double) {
+    private func layoutLine(_ string: String,
+                            direction: TextDirection) -> (glyphs: [ShapedGlyph], width: Double) {
         guard !string.isEmpty else { return ([], 0) }
-        let attributes = [kCTFontAttributeName: ctFont] as CFDictionary
-        guard let attributed = CFAttributedStringCreate(nil, string as CFString, attributes) else {
+        var attributes: [CFString: Any] = [kCTFontAttributeName: ctFont]
+        if let style = OutlineFont.paragraphStyle(direction) {
+            attributes[kCTParagraphStyleAttributeName] = style
+        }
+        guard let attributed = CFAttributedStringCreate(nil, string as CFString,
+                                                        attributes as CFDictionary) else {
             return ([], 0)
         }
         let ctLine = CTLineCreateWithAttributedString(attributed)
         let width = CTLineGetTypographicBounds(ctLine, nil, nil, nil)
 
-        var glyphs: [PlacedGlyph] = []
+        var glyphs: [ShapedGlyph] = []
         let runs = CTLineGetGlyphRuns(ctLine)
         for runIndex in 0..<CFArrayGetCount(runs) {
             let run = unsafeBitCast(CFArrayGetValueAtIndex(runs, runIndex), to: CTRun.self)
             let count = CTRunGetGlyphCount(run)
             guard count > 0 else { continue }
 
-            // The run's own font (Core Text substitutes a fallback face for glyphs
-            // the base font lacks — e.g. emoji in a Latin font).
+            // The run's own font. The system substitutes a fallback face for glyphs
+            // the base font lacks, which is how one line can carry Latin, Japanese
+            // and an emoji at once.
             let attrs = CTRunGetAttributes(run)
             let fontPtr = CFDictionaryGetValue(attrs, Unmanaged.passUnretained(kCTFontAttributeName).toOpaque())
             let runFont = fontPtr.map { unsafeBitCast($0, to: CTFont.self) } ?? ctFont
 
             var gids = [CGGlyph](repeating: 0, count: count)
             var positions = [CGPoint](repeating: .zero, count: count)
+            var advances = [CGSize](repeating: .zero, count: count)
             var indices = [CFIndex](repeating: 0, count: count)
             CTRunGetGlyphs(run, CFRange(location: 0, length: 0), &gids)
             CTRunGetPositions(run, CFRange(location: 0, length: 0), &positions)
+            CTRunGetAdvances(run, CFRange(location: 0, length: 0), &advances)
             CTRunGetStringIndices(run, CFRange(location: 0, length: 0), &indices)
             for k in 0..<count {
-                glyphs.append(PlacedGlyph(font: runFont, glyph: gids[k],
+                glyphs.append(ShapedGlyph(font: runFont, glyph: gids[k],
                                           x: Double(positions[k].x), y: Double(positions[k].y),
+                                          advance: Double(advances[k].width),
                                           stringIndex: indices[k]))
             }
         }
         return (glyphs, width)
+    }
+
+    /// The paragraph style that forces a base direction, or `nil` for `.automatic`
+    /// (no style at all, so the layout engine reads the direction off the text).
+    /// Built once per direction: the two styles are immutable and shared.
+    private static func paragraphStyle(_ direction: TextDirection) -> CTParagraphStyle? {
+        switch direction {
+        case .automatic:    return nil
+        case .leftToRight:  return forcedLeftToRight
+        case .rightToLeft:  return forcedRightToLeft
+        }
+    }
+
+    // Immutable once created, and Core Text reads them from any thread.
+    private nonisolated(unsafe) static let forcedLeftToRight = makeDirectionStyle(.leftToRight)
+    private nonisolated(unsafe) static let forcedRightToLeft = makeDirectionStyle(.rightToLeft)
+
+    /// A paragraph style carrying one base writing direction. The setting holds a
+    /// *pointer* to the value, so both must stay alive until `CTParagraphStyleCreate`
+    /// has copied them; nesting the two `withUnsafePointer` calls is what guarantees
+    /// that (letting the pointer escape its closure reads freed stack memory and the
+    /// direction silently does nothing).
+    private static func makeDirectionStyle(_ value: CTWritingDirection) -> CTParagraphStyle {
+        var direction = value
+        return withUnsafePointer(to: &direction) { pointer in
+            var setting = CTParagraphStyleSetting(
+                spec: .baseWritingDirection,
+                valueSize: MemoryLayout<CTWritingDirection>.size,
+                value: UnsafeRawPointer(pointer))
+            return withUnsafePointer(to: &setting) { CTParagraphStyleCreate($0, 1) }
+        }
     }
 
     /// Flatten a glyph's `CGPath` (em units, y-up, origin at the glyph's pen) into

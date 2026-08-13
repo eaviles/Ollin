@@ -123,8 +123,11 @@ private func inkCoverage(of character: Character, in font: ActiveFont) -> Double
         return Double(lit) / Double(f.pixelHeight * f.pixelHeight)
     case .outline(let f):
         let size = 100.0
+        // One character on its own has no direction to resolve, so the automatic
+        // reading is the right one here whatever the sketch set.
         let shapes = f.glyphShapes(for: String(character), size: size,
-                                   alignH: .left, alignV: .baseline, at: .zero)
+                                   alignH: .left, alignV: .baseline,
+                                   direction: .automatic, at: .zero)
         var area = 0.0
         for shape in shapes {
             // Holes wind opposite the outer contour, so the signed areas cancel.

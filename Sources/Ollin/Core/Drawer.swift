@@ -227,6 +227,7 @@ final class Drawer {
     var textAlignH: TextAlignH = .left           // horizontal text anchor (see textAlign)
     var textAlignV: TextAlignV = .baseline       // vertical text anchor (see textAlign)
     var textRenderMode: TextMode = .outline      // outline vs SDF-atlas text (see textMode)
+    var textWritingDirection: TextDirection = .automatic   // base line direction (see textDirection)
     var tintColor: Color? = nil                  // multiplies drawImage texels; nil = untinted (see tint / noTint)
     var currentBlend: BlendMode = .normal        // how shapes combine with the canvas (see blendMode)
     var currentDepth: Float? = nil               // clip-z for 2D draws in a 3D scene; nil = draw over (see depth(at:))
@@ -1540,6 +1541,7 @@ final class Drawer {
         var textAlignH: TextAlignH
         var textAlignV: TextAlignV
         var textRenderMode: TextMode
+        var textWritingDirection: TextDirection
         var tintColor: Color?
         var currentBlend: BlendMode
         var currentDepth: Float?
@@ -1776,6 +1778,9 @@ final class Drawer {
     /// per-glyph vector fill) or `.atlas` (the SDF-atlas scale path). A no-op for
     /// bitmap and stroke fonts.
     func textMode(_ mode: TextMode) { textRenderMode = mode }
+
+    /// Set the base direction a line of text runs in (see `TextDirection`).
+    func textDirection(_ direction: TextDirection) { textWritingDirection = direction }
 
     // MARK: 3D camera & point clouds
 
@@ -3298,6 +3303,7 @@ final class Drawer {
                                      currentFont: currentFont, textPixelSize: textPixelSize,
                                      textAlignH: textAlignH, textAlignV: textAlignV,
                                      textRenderMode: textRenderMode,
+                                     textWritingDirection: textWritingDirection,
                                      tintColor: tintColor,
                                      currentBlend: currentBlend,
                                      currentDepth: currentDepth,
@@ -3331,6 +3337,7 @@ final class Drawer {
         textAlignH = s.textAlignH
         textAlignV = s.textAlignV
         textRenderMode = s.textRenderMode
+        textWritingDirection = s.textWritingDirection
         tintColor = s.tintColor
         currentBlend = s.currentBlend
         currentDepth = s.currentDepth

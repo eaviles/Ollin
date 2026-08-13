@@ -29,6 +29,9 @@ The default font is `OutlineFont.systemMedium`, the system UI face (San Francisc
 - [Box layout](#box) - wrap a paragraph into a rectangle
 - [textToShapes](#texttoshapes) - text as first-class geometry
 - [Metrics](#metrics) - `textAscent` / `textDescent` / `textLeading` / `textBounds`
+- [Every script](#scripts) - Arabic, Devanagari, Thai, Japanese, emoji, and what changes
+- [textDirection](#textdirection) - which way a line runs
+- [textMissingCharacters](#missing) - what the font cannot draw
 - [BitmapFont](#bitmapfont) - the bitmap font value type, and authoring your own
 
 <a name="drawtext"></a>
@@ -294,11 +297,16 @@ drawText("ollin", at: center) { g in
 }
 ```
 
+The closure runs once per **piece**. A piece is one character in Latin, a whole syllable in Devanagari, or a ligature. See [Every script](#scripts).
+
 A `TextGlyph` carries:
 
-- `character` is the source `Character`, `index` and `count` its place in the run, and `t` the normalized position `0...1` across the run (handy for a gradient or a phase).
+- `text` is the source characters of the piece, and `character` the first of them.
+- `index` and `count` are its place in the run, and `t` the normalized position `0...1` across it.
+- The order runs left to right on the canvas, even for a right-to-left script that reads the other way.
 - `position` is the pen origin (left edge, on the baseline) in canvas space, `center` the natural pivot for rotating the glyph in place, and `bounds` its advance box.
 - `shapes` is the glyph geometry in canvas space, for text-as-geometry per letter.
+- `isPicture` marks an emoji stored as a bitmap in the font; shapes are empty, but `draw()` still stamps it.
 - `draw()` stamps the glyph with the current `fill` / `stroke`, through your transform.
 
 To rotate a glyph about its own center, pivot on `center`:
@@ -353,6 +361,8 @@ drawText(paragraph, in: box)
 
 Measuring and wrapping happen every frame, so the text reflows live if the box (or the size) changes. Text taller than the box overflows below it (no vertical clip yet).
 
+Where a line may break comes from the system's own rules, not from the spaces in the string. So a Japanese paragraph breaks between characters and a Thai one between words, both of which are written with no spaces at all. See [Every script](#scripts).
+
 <a name="texttoshapes"></a>
 
 ### textToShapes
@@ -380,6 +390,8 @@ for shape in textToShapes("ollin", width / 2, height / 2) {
 
 > [!WARNING]
 > Displacing outline points by a *large or uneven* amount can fold a contour over itself, which the fill renders as a spike. Keep warps **bounded and smooth** (for example `signedNoise`, which stays in `-1...1`) rather than raw `curlNoise`, whose magnitude is unbounded. See the `OutlineText` example.
+
+An emoji has no geometry to hand back, since the font stores it as a bitmap. It is left out, with a note printed once. `drawText` still draws it. See [Every script](#scripts).
 
 One more thing to know about the returned geometry is that the outline points come back **unevenly spaced**, the raw layout vertices, dense on curves and sparse on straights. That's fine for warping and filling, but marks placed one-per-point (dots, dashes, particles) would clump. Respace a glyph first with [`resampled(spacing:)`](Geometry.md#contour), as `shape.resampled(spacing: 8)` or per contour, and the marks spread evenly. The `PointShimmer` and `GlyphContours` examples do exactly this.
 
@@ -410,6 +422,83 @@ textBounds(_ string: String, at position: Vector2) -> Rectangle
 ```
 
 All in points at the current `textFont` / `textSize`, for every font kind. `textBounds` returns the box `string` would occupy if drawn at `(x, y)` with the current alignment, handy for backings, layout, and hit-testing.
+
+<a name="scripts"></a>
+
+### Every script
+
+An outline font lays text out through the system's own shaping engine, so a string in any script draws with no setup:
+
+```swift
+drawText("مرحبا بالعالم", 80, 200)      // Arabic, right to left, letters joined
+drawText("क्षि नमस्ते", 80, 300)          // Devanagari
+drawText("ที่นี่มีคนอยู่", 80, 400)          // Thai, marks stacked
+drawText("日本語のテキスト", 80, 500)     // Japanese
+drawText("hi 👋", 80, 100)              // and a picture the font carries
+```
+
+What is worth knowing is where the English assumptions stop, because four of them do:
+
+**One glyph is not one letter.** A Devanagari syllable is several glyphs, one of which the shaper moves to the *left* of the letter it follows. An Arabic letter carrying a vowel mark is two glyphs at almost the same place. A ligature is the opposite: one glyph standing for two characters. So [per-glyph `drawText`](#perglyph) hands you a **piece a reader would point at**, not a glyph, and `TextGlyph.text` is a `String` for exactly that reason. `character` is still there for the one-character case.
+
+**A line does not always run left to right.** Arabic and Hebrew run right to left, and a line can hold both directions at once. The pieces still come out **left to right on the canvas**, so `g.index` sweeps across the drawing rather than through the reading. Where the base direction matters, name it: see [`textDirection`](#textdirection).
+
+**Not every script marks its word ends with a space.** Japanese and Chinese write without spaces and may break between almost any two characters; Thai writes without spaces and breaks only between words. [Box layout](#box) asks the system where a line may break rather than splitting on spaces, so a paragraph in any script fits its box. (The finer rules of Japanese typesetting, the characters that may not open or close a line, are not applied.)
+
+**An emoji is a picture, not an outline.** The color emoji font stores each one as bitmaps, so there are no contours to fill. `drawText` rasterizes it and places it as an image. Three things follow. It carries its own colors and takes neither `fill` nor `stroke`. `textToShapes` leaves it out, with a note printed once, since there is no geometry to hand back. An SVG or PDF export skips it like any other image. In a per-glyph closure, `TextGlyph.isPicture` marks those pieces. Their `shapes` are empty, and `draw()` still works.
+
+The picture is rasterized once at the largest size the font actually carries. For Apple Color Emoji that is 160 pixels per em, read from the font's own table. So one raster serves every `textSize`, and an emoji drawn much larger softens. That is the format's limit rather than Ollin's.
+
+**Font fallback happens whether you ask or not.** Asking a Latin font for Japanese does not fail: the system borrows a face that has the letters. `OutlineFont.fontsUsed(for:)` shows which faces a line really used.
+
+```swift
+print(OutlineFont.system.fontsUsed(for: "Ollin 日本語 👋"))
+// ["System Font Regular", ".PingFang UI Text SC Regular Text", ".Apple Color Emoji UI"]
+```
+
+Bitmap and stroke fonts have no shaping engine and no fallback. They lay out character by character, left to right, from the glyphs in their own file. That is the right model for a pixel font or a plotter pen. It is also why [`textMissingCharacters`](#missing) matters more there.
+
+Worked example: `Examples/Text/Scripts`.
+
+<a name="textdirection"></a>
+
+### textDirection
+
+```swift
+textDirection(_ direction: TextDirection)     // .automatic (default) / .leftToRight / .rightToLeft
+```
+
+The *base* direction of a line: the one the line as a whole runs in. It decides where the neutral characters (spaces, brackets, digits) land, and which end the line starts at.
+
+`.automatic` reads the direction off the text, taking it from the first letter that has one. That is right for a paragraph in one language and wrong when the line opens with something neutral:
+
+```swift
+textDirection(.leftToRight)
+drawText("(1) مرحبا", 80, 100)      // (1) on the left
+
+textDirection(.rightToLeft)
+drawText("(1) مرحبا", 80, 200)      // (1) on the right
+```
+
+Direction reorders a line; it never changes how wide it is. It is drawing state, so it rides `withState { }` like `fill` and `textSize`, and it applies to outline fonts only.
+
+<a name="missing"></a>
+
+### textMissingCharacters
+
+```swift
+textMissingCharacters(_ string: String) -> [Character]
+```
+
+The characters the current font cannot draw, in the order they appear.
+
+For an **outline** font this asks the whole system. It is empty unless no installed face has the character at all, in which case the character draws as a box rather than vanishing. For a **bitmap** or **stroke** font it is the question that matters. Those have only the glyphs in their own file, and anything else advances the pen and draws nothing.
+
+```swift
+textFont(BitmapFont.builtin)
+print(textMissingCharacters("日本語"))     // [] - Cozette has the kanji
+print(textMissingCharacters("नमस्ते"))      // the Devanagari, which it does not
+```
 
 <a name="bitmapfont"></a>
 

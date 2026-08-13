@@ -419,6 +419,7 @@ let package = Package(
         example("Text/GlyphContours"),
         example("Text/PointShimmer"),
         example("Text/JitterType"),
+        example("Text/Scripts"),
         example("Images/GlyphMosaic"),
         example("Images/Halftone"),
         example("Images/LuminanceMelt"),

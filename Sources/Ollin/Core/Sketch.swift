@@ -2433,6 +2433,12 @@ open class Sketch {
     /// paragraphs and large glyph counts — far cheaper per glyph, still crisp under
     /// magnification, fill-only). A no-op for bitmap and stroke fonts. See `TextMode`.
     public func textMode(_ mode: TextMode) { drawer.textMode(mode) }
+    /// Set the base direction a line of text runs in: `.automatic` (default, read
+    /// from the text itself), `.leftToRight`, or `.rightToLeft`. It decides where
+    /// the neutral characters (spaces, brackets, digits) land on a line that mixes
+    /// scripts, and which end the line starts at. Outline fonts only, since bitmap
+    /// and stroke fonts have no shaping engine. See `TextDirection`.
+    public func textDirection(_ direction: TextDirection) { drawer.textDirection(direction) }
     /// Draw `string` at `(x, y)` using the active `textFont`/`textSize`/`textAlign`.
     /// How it paints follows the font kind: an **outline** (`.ttf`/`.otf`) font
     /// (the default, `OutlineFont.systemMedium`) takes `fill` *and* `stroke`; a
@@ -2449,6 +2455,20 @@ open class Sketch {
     /// The on-screen width of `string`'s widest line, in points, at the current
     /// `textFont`/`textSize` — for laying text out.
     public func textWidth(_ string: String) -> Double { drawer.textWidth(string) }
+    /// The characters in `string` the current font cannot draw, in the order they
+    /// appear. An **outline** font asks the whole system, so this is empty unless no
+    /// installed face has the character at all (it then draws as a box rather than
+    /// vanishing). A **bitmap** or **stroke** font has only the glyphs in its own
+    /// file, and anything else advances the pen and draws nothing, so this is the
+    /// way to find out before you draw.
+    ///
+    /// ```swift
+    /// textFont(BitmapFont.builtin)
+    /// print(textMissingCharacters("日本語"))     // ["日", "本", "語"]
+    /// ```
+    public func textMissingCharacters(_ string: String) -> [Character] {
+        drawer.textMissingCharacters(string)
+    }
     /// The glyphs of `string` as vector `Shape`s positioned at `(x, y)` with the
     /// current `textFont`/`textSize`/`textAlign` — text as first-class geometry to
     /// fill, stroke, warp, sample, or animate. An outline font returns one `Shape`

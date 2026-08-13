@@ -25,6 +25,37 @@ public enum TextAlignV: Sendable {
     public static var center: TextAlignV { .middle }
 }
 
+/// The base direction a line of text is laid out in (see `textDirection`).
+///
+/// A line can hold both directions at once: an Arabic sentence quoting a Latin
+/// product name, a Hebrew caption with a number in it. The *base* direction is
+/// the one the line as a whole runs in. It decides where the neutral characters
+/// (spaces, brackets, punctuation) land, and which end the line starts at.
+///
+/// `.automatic` (the default) takes the direction from the text itself: the first
+/// letter with a direction of its own wins, which is what a paragraph of one
+/// language wants. Name a direction when that answer is wrong. A line opening
+/// with a bracket or a digit has no direction of its own to read.
+///
+/// ```swift
+/// textDirection(.rightToLeft)
+/// drawText("(١) مرحبا", 40, 100)     // the bracket goes on the right
+/// ```
+///
+/// Shaping and reordering come from the system's own layout engine, so this
+/// applies to an `OutlineFont`. A bitmap or stroke font has no shaping engine and
+/// always runs left to right.
+public enum TextDirection: Sendable {
+    /// Read the direction from the text: the first directional letter decides.
+    case automatic
+    /// Lay the line out left to right whatever it holds.
+    case leftToRight
+    /// Lay the line out right to left whatever it holds.
+    case rightToLeft
+}
+
+extension TextDirection: CaseIterable, ParamOption {}
+
 /// How outline (`.ttf`/`.otf`) text is rendered (see `textMode`). `.outline`
 /// (default) fills each glyph as a vector `Shape` — highest quality, takes `fill`
 /// *and* `stroke`. `.atlas` draws each glyph as one textured quad sampling a

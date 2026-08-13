@@ -114,6 +114,26 @@ There's a related fact worth knowing when you want marks *along* the letters rat
 
 > **Swift note.** `.map { }` builds a new list by transforming every element of an old one: `c.points.map { p in ... }` reads "a new list of points, each computed from `p`". It's the loop from Chapter 1 wearing a shorter coat, and you'll see it wherever a whole list changes at once.
 
+## Not every language works like English
+
+One glyph per letter is an English idea.
+
+Every call above works for any script without configuration. Paste in Arabic, Japanese, Devanagari or Thai and it draws. The system's layout engine shapes it. It finds a font that has the right letters. The figure shows four assumptions that stop being true.
+
+<img src="Images/07-WordsAndPictures/EveryScript.jpg" alt="Four panels. A Devanagari syllable inside one box, labelled one call of the closure. An Arabic word with its pieces numbered zero to four from the left, noting that zero is the last letter read. The letter O and a waving-hand emoji drawn twice: once filled, once as outlines where only the O has any. A Japanese paragraph wrapped inside a thin box" width="680">
+
+**A glyph is smaller than a letter, and sometimes larger.** The top-left panel is one Devanagari syllable. It is written with four characters and drawn with three glyphs. One glyph sits to the *left* of the letter it follows. So the closure hands you a **piece**: one thing a reader would point at. `g.text` is therefore a `String`, holding all four characters here. `g.character` still returns a single `Character` for the common case.
+
+**Direction is a property of the line, not the font.** The top-right panel numbers an Arabic word as the closure sees it. The pieces come out left to right *on the canvas*. So `g.index` 0 is the letter read last. Use that order when sweeping across the drawing. Count backwards to follow the reading.
+
+A line can hold both directions at once. Then the neutral characters (spaces, brackets, digits) land wherever the *base* direction says. Usually the text answers that for itself. A line opening with a bracket cannot. `textDirection(.leftToRight)` or `.rightToLeft` says which you meant.
+
+**Some of what you type has no outline.** The bottom-left panel draws `O 👋` twice: with `drawText`, then through `textToShapes`. Only the `O` comes back as geometry. The emoji font stores each one as a bitmap, so there are no contours. `drawText` still puts it on the canvas as a picture with its own colors. That is why `fill` does not touch it. In a closure, `g.isPicture` marks those, and `g.draw()` works for them.
+
+**A space is not how most writing ends a word.** The bottom-right panel is a Japanese paragraph in a box. Japanese may break between almost any two characters, and Thai only between words. No space tells you either. So box layout asks the system instead of splitting on spaces.
+
+Two more calls help when you go looking. `OutlineFont.fontsUsed(for:)` names the faces a line borrowed. That is how you catch a Latin font handing your Japanese to somebody else. `textMissingCharacters` lists what the current font cannot draw at all. For an outline font it is almost always empty. For bitmap and plotter fonts it matters: those hold only their own glyphs. Anything else draws nothing.
+
 ## Pictures
 
 Images follow the pattern you already know from fonts: load once in `setup()`, keep the result, draw it in `draw()`.
@@ -411,9 +431,9 @@ The picture-as-marks tools each come from a named piece of work. Halftone screen
 
 ## Go deeper
 
-- [Text](../Docs/Drawing/Text.md): the full reference, including text on a path, box wrapping, metrics (`textWidth`, `textBounds`), variable-font axes, and loading bitmap, outline, and stroke faces of your own.
+- [Text](../Docs/Drawing/Text.md): the full reference, including text on a path, box wrapping, metrics (`textWidth`, `textBounds`), variable-font axes, [every script](../Docs/Drawing/Text.md#scripts) with `textDirection` and `textMissingCharacters`, and loading bitmap, outline, and stroke faces of your own.
 - [Images](../Docs/Drawing/Images.md): the complete `Image` surface, including `Image(resource:in:)` for bundled assets and the bulk pixel initializer.
-- Worked examples, in [`Examples/Text/`](../Examples/Text/): `GlyphWave` and `JitterType` (per-glyph motion), `TextOnPath`, `TextBox`, `VariableFont`, `OutlineText` (the warp, live), `StrokeText` and `PlaydateFont` (the other two font kinds in action), and `TextVolume` (the atlas mode at paragraph scale).
+- Worked examples, in [`Examples/Text/`](../Examples/Text/): `GlyphWave` and `JitterType` (per-glyph motion), `TextOnPath`, `TextBox`, `VariableFont`, `OutlineText` (the warp, live), `StrokeText` and `PlaydateFont` (the other two font kinds in action), `TextVolume` (the atlas mode at paragraph scale), and `Scripts` (five scripts on one sheet, with the base direction as a live knob).
 - [`Examples/Images/PixelField`](../Examples/Images/PixelField/Sketch.swift): authoring an image pixel by pixel and reading it back, under an animated tint.
 - [Glyph mosaic](../Docs/Drawing/GlyphMosaic.md) and [halftone](../Docs/Drawing/Halftone.md): the measured-ink ramp, the curated glyph sets, screen angles, and the data forms that let you draw your own marks.
 - [Stippling](../Docs/Generators/Stippling.md), [single line](../Docs/Generators/SingleLine.md), and [spanning tree](../Docs/Generators/SpanningTree.md): dot placement and the two ways to join it, with the `cutoff` and point-count guidance.

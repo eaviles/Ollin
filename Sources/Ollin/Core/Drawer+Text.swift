@@ -109,10 +109,20 @@ extension Drawer {
         let hasStroke = strokePaint != nil && strokeWidth > 0
         guard hasFill || hasStroke else { return }
 
+        let placed = font.placedGlyphs(for: string, size: textPixelSize,
+                                       alignH: textAlignH, alignV: textAlignV,
+                                       direction: textWritingDirection, at: Vector2(x, y))
+
         if svgRecorder != nil {
-            for shape in font.glyphShapes(for: string, size: textPixelSize,
-                                          alignH: textAlignH, alignV: textAlignV, at: Vector2(x, y)) {
-                drawShape(shape)
+            for glyph in placed {
+                // A picture glyph has no outline to write into a vector file. It
+                // goes through the image path, which is what counts it as a skipped
+                // image in the export's own report.
+                if let picture = glyph.picture {
+                    drawImage(picture, in: glyph.pictureRect)
+                    continue
+                }
+                OutlineFont.shapes(of: [glyph]).forEach(drawShape)
             }
             return
         }
@@ -121,8 +131,13 @@ extension Drawer {
         // around the text anchor.
         let fillVP = fillPaint.map { vertexPaint($0, anchor: Vector2(x, y)) }
         let strokeVP = strokePaint.map { vertexPaint($0, anchor: Vector2(x, y)) }
-        for glyph in font.placedGlyphs(for: string, size: textPixelSize,
-                                       alignH: textAlignH, alignV: textAlignV, at: Vector2(x, y)) {
+        for glyph in placed {
+            // Emoji carry their own colors, so they are drawn as pictures and take
+            // neither the fill nor the stroke.
+            if let picture = glyph.picture {
+                drawImage(picture, in: glyph.pictureRect)
+                continue
+            }
             let origin = glyph.origin
             if let vp = fillVP {
                 let tri = glyph.localFill
@@ -155,16 +170,30 @@ extension Drawer {
     private func drawAtlasText(_ string: String, _ x: Double, _ y: Double, font: OutlineFont) {
         guard let fill = fillPaint else { return }
         let placed = font.placedAtlasGlyphs(for: string, size: textPixelSize,
-                                            alignH: textAlignH, alignV: textAlignV, at: Vector2(x, y))
+                                            alignH: textAlignH, alignV: textAlignV,
+                                            direction: textWritingDirection, at: Vector2(x, y))
         guard !placed.isEmpty else { return }
+
+        // A distance field holds one channel, so an emoji cannot ride the atlas and
+        // is drawn as an ordinary picture instead. The atlas has no slot for a space
+        // either, so asking the color cache only where a slot is missing keeps the
+        // volume path paying nothing per ordinary glyph.
+        var slots = [GlyphAtlas.Slot?]()
+        slots.reserveCapacity(placed.count)
+        for g in placed {
+            let slot = font.atlas.slot(for: g.glyph, font: g.font)
+            slots.append(slot)
+            guard slot == nil, let color = font.colorGlyphs.glyph(g.glyph, font: g.font) else { continue }
+            drawImage(color.image, in: color.rect(at: g.origin, size: textPixelSize))
+        }
 
         // The tint carries the fill: per-corner for a gradient (glyph quads are
         // small, so corner interpolation tracks the paint), constant for a color.
         let vp = vertexPaint(fill, anchor: Vector2(x, y))
         beginGlyphBatch(font.atlas)
         replicated {
-            for g in placed {
-                guard let slot = font.atlas.slot(for: g.glyph, font: g.font) else { continue }   // space / unplaced
+            for (index, g) in placed.enumerated() {
+                guard let slot = slots[index] else { continue }   // space / picture / unplaced
                 // Cell rect (em, y-up) → canvas: x grows with em-x, canvas-y falls as
                 // em-y rises (font y-up vs Ollin y-down).
                 let left = Float(g.origin.x + slot.emLeft * textPixelSize)
@@ -244,8 +273,13 @@ extension Drawer {
         guard textPixelSize > 0, !string.isEmpty else { return [] }
         switch currentFont {
         case .outline(let font):
-            return font.glyphShapes(for: string, size: textPixelSize,
-                                    alignH: textAlignH, alignV: textAlignV, at: Vector2(x, y))
+            let placed = font.placedGlyphs(for: string, size: textPixelSize,
+                                           alignH: textAlignH, alignV: textAlignV,
+                                           direction: textWritingDirection, at: Vector2(x, y))
+            if placed.contains(where: { $0.picture != nil }) {
+                noteOnce("an emoji is a picture in the font, not an outline, so textToShapes left it out; drawText still draws it.")
+            }
+            return OutlineFont.shapes(of: placed)
         case .bitmap(let font):
             var squares: [Contour] = []
             forEachBitmapPixel(string, x, y, font: font) { center, module in
@@ -276,9 +310,25 @@ extension Drawer {
             let module = textPixelSize / Double(font.pixelHeight)
             return Double(font.inkWidth(of: string)) * module
         case .outline(let font):
-            return font.width(of: string, size: textPixelSize)
+            return font.width(of: string, size: textPixelSize, direction: textWritingDirection)
         case .stroke(let font):
             return font.width(of: string, size: textPixelSize)
+        }
+    }
+
+    /// The characters in `string` the active font cannot draw, in the order they
+    /// appear. An **outline** font asks the whole system, so this is empty unless no
+    /// installed face has the character at all (it then draws as a box). A
+    /// **bitmap** or **stroke** font has only the glyphs in its own file, and
+    /// anything else advances the pen and draws nothing, so this is how to find out
+    /// before you draw.
+    func textMissingCharacters(_ string: String) -> [Character] {
+        switch currentFont {
+        case .outline(let font): return font.missingCharacters(in: string)
+        case .bitmap(let font):
+            return string.filter { $0 != "\n" && font.glyph(for: $0) == nil }
+        case .stroke(let font):
+            return string.filter { $0 != "\n" && $0 != " " && font.glyph(for: $0) == nil }
         }
     }
 
@@ -372,25 +422,42 @@ extension Drawer {
     }
 
     /// Greedily break `string` into lines no wider than `maxWidth` at the current
-    /// font/size, breaking on spaces (a word wider than the box keeps its own
-    /// line). Existing `\n`s are kept as paragraph breaks. Returns the rewrapped
+    /// font/size. Existing `\n`s are kept as paragraph breaks. Returns the rewrapped
     /// string for the normal `drawText` to lay out.
-    private func wrapToWidth(_ string: String, _ maxWidth: Double) -> String {
+    ///
+    /// Where a line may break comes from the system's own rules rather than from
+    /// the spaces in the text (`LineBreaks`), because most of the world does not
+    /// mark word ends with a space: Japanese breaks between characters and Thai
+    /// between words that nothing in the string separates. A piece wider than the
+    /// box on its own keeps its line and overflows.
+    ///
+    /// The finer rules of Japanese typesetting (the characters that may not open or
+    /// close a line) are not applied; this is the break set, greedily filled.
+    func wrapToWidth(_ string: String, _ maxWidth: Double) -> String {
         var lines: [String] = []
         for paragraph in string.split(separator: "\n", omittingEmptySubsequences: false) {
             var current = ""
-            for word in paragraph.split(separator: " ", omittingEmptySubsequences: true) {
-                let candidate = current.isEmpty ? String(word) : current + " " + String(word)
-                if current.isEmpty || textWidth(candidate) <= maxWidth {
+            for piece in LineBreaks.pieces(of: String(paragraph)) {
+                let candidate = current + piece
+                // Trailing spaces belong to the line that ends there, so they are
+                // not measured against the box.
+                if current.isEmpty || textWidth(trimmedTrailing(candidate)) <= maxWidth {
                     current = candidate
                 } else {
-                    lines.append(current)
-                    current = String(word)
+                    lines.append(trimmedTrailing(current))
+                    current = piece
                 }
             }
-            lines.append(current)
+            lines.append(trimmedTrailing(current))
         }
         return lines.joined(separator: "\n")
+    }
+
+    /// `string` without its trailing whitespace.
+    private func trimmedTrailing(_ string: String) -> String {
+        var out = string
+        while let last = out.last, last.isWhitespace { out.removeLast() }
+        return out
     }
 
     /// Draw `string` glyph by glyph, handing each to `perGlyph` so you can give it
@@ -426,11 +493,19 @@ extension Drawer {
             let shapes = item.localShapes.map { shifted($0, by: origin) }
             let bounds = Rectangle(x: origin.x, y: origin.y - ascent,
                                    width: item.advance, height: ascent + descent)
-            let glyph = TextGlyph(character: item.character, index: index, count: run.count,
+            let picture = item.picture
+            let pictureRect = Rectangle(x: origin.x + item.localPictureRect.x,
+                                        y: origin.y + item.localPictureRect.y,
+                                        width: item.localPictureRect.width,
+                                        height: item.localPictureRect.height)
+            let glyph = TextGlyph(text: item.text, index: index, count: run.count,
                                   position: origin, bounds: bounds, shapes: shapes,
+                                  isPicture: picture != nil,
                                   drawThunk: { [weak self] in
                                       guard let self else { return }
-                                      if strokesGlyphs {
+                                      if let picture {
+                                          self.drawImage(picture, in: pictureRect)
+                                      } else if strokesGlyphs {
                                           shapes.forEach { $0.contours.forEach { self.drawPolyline($0.points) } }
                                       } else {
                                           shapes.forEach { self.drawShape($0) }
@@ -466,6 +541,18 @@ extension Drawer {
             guard distance >= 0, distance <= total else { continue }   // off the path: skip
             let (anchor, angle) = pointAndTangent(points: points, cumulative: cumulative, at: distance)
             let cosA = cos(angle), sinA = sin(angle)
+            if let picture = item.picture {
+                // A picture cannot bend, so it rides the curve upright, centered on
+                // its own point like every other piece.
+                let rect = item.localPictureRect
+                let lx = rect.center.x - item.advance / 2, ly = rect.center.y
+                let center = Vector2(anchor.x + lx * cosA - ly * sinA,
+                                     anchor.y + lx * sinA + ly * cosA)
+                drawImage(picture, in: Rectangle(x: center.x - rect.width / 2,
+                                                 y: center.y - rect.height / 2,
+                                                 width: rect.width, height: rect.height))
+                continue
+            }
             for shape in item.localShapes {
                 let placed = shape.mapPoints { q in
                     // Center the glyph on its anchor, then rotate to the tangent.
@@ -504,7 +591,8 @@ extension Drawer {
     /// the font kind.
     private func glyphRun(_ string: String) -> [GlyphRunItem] {
         switch currentFont {
-        case .outline(let font): return font.glyphRun(for: string, size: textPixelSize)
+        case .outline(let font):
+            return font.glyphRun(for: string, size: textPixelSize, direction: textWritingDirection)
         case .bitmap(let font):  return bitmapGlyphRun(string, font: font)
         case .stroke(let font):  return strokeGlyphRun(string, font: font)
         }
@@ -525,8 +613,10 @@ extension Drawer {
                 }
             }
             let advance = font.advanceUnits(for: ch) * scale
-            items.append(GlyphRunItem(character: ch, penX: penX, advance: advance,
-                                      localShapes: contours.isEmpty ? [] : [Shape(contours: contours)]))
+            items.append(GlyphRunItem(text: String(ch), penX: penX, advance: advance,
+                                      localShapes: contours.isEmpty ? [] : [Shape(contours: contours)],
+                                      picture: nil,
+                                      localPictureRect: Rectangle(x: 0, y: 0, width: 0, height: 0)))
             penX += advance
         }
         return items
@@ -558,8 +648,10 @@ extension Drawer {
                 }
             }
             let advance = Double(font.advance(for: ch)) * module
-            items.append(GlyphRunItem(character: ch, penX: penX, advance: advance,
-                                      localShapes: squares.isEmpty ? [] : [Shape(contours: squares)]))
+            items.append(GlyphRunItem(text: String(ch), penX: penX, advance: advance,
+                                      localShapes: squares.isEmpty ? [] : [Shape(contours: squares)],
+                                      picture: nil,
+                                      localPictureRect: Rectangle(x: 0, y: 0, width: 0, height: 0)))
             penX += advance
             previous = ch
         }

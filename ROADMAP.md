@@ -144,7 +144,7 @@ Ollin sits on a GPU core and pitches the rendering ceiling, but it doesn't yet h
 
 ## Accessibility and inclusive text
 
-Making Ollin and the work people make with it more inclusive, on the platform's native support. What a sketch can already do for color, motion and describing itself is in [Accessibility](Docs/Helpers/Accessibility.md). What remains is **robust complex-script text**: verifying and surfacing Core Text's handling of CJK, right-to-left scripts, emoji, and combining marks, so the text system serves a global audience. See the [design notes](DESIGN-NOTES.md#accessibility-and-inclusive-text).
+Making Ollin and the work people make with it more inclusive, on the platform's native support. What a sketch can already do for color, motion, describing itself, and text in any script is in [Accessibility](Docs/Helpers/Accessibility.md) and [Text](Docs/Drawing/Text.md#scripts). What remains is **vertical writing**: Japanese, Chinese and Mongolian set top to bottom, which needs vertical glyph substitution, a rotated advance, and columns that fill right to left. See the [design notes](DESIGN-NOTES.md#accessibility-and-inclusive-text).
 
 ## Further out / exploratory
 
