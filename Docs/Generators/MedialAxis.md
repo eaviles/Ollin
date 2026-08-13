@@ -4,7 +4,7 @@
 
 ## Medial axis
 
-**`medialAxis`** reduces a shape to its skeleton: the curve traced by the centers of every disk that fits inside the region while touching the boundary in two or more places (Blum's medial axis). A blob collapses to its centerline veins, a letterform to the stroke of the pen that could have written it. Every skeleton point carries the radius of its inscribed disk, so the skeleton knows how fat the shape is everywhere along it: stroke the branches for pure line work, size marks by the radii, or draw the disks themselves for a packed, cellular fill.
+**`medialAxis`** reduces a shape to its skeleton. That skeleton is traced by the centers of every disk that fits inside the region and touches its boundary twice or more. Blum called it the medial axis. A blob collapses to its centerline veins, a letterform to the stroke of the pen that could have written it. Every skeleton point carries the radius of its inscribed disk, so the skeleton knows how fat the shape is everywhere along it. Stroke the branches for pure line work, size marks by the radii, or draw the disks themselves for a packed, cellular fill.
 
 ```
   the shape                its medial axis
@@ -17,7 +17,7 @@
    \_________/              \______/
 ```
 
-The skeleton comes back as polyline branches (open runs between branch points; a closed ring around a hole), so it feeds `drawPolyline`, [hatching and SVG export](../Output/Export.md) directly: each branch is one pen-down stroke on a plotter.
+The skeleton comes back as polyline branches. Open runs join branch points, and a closed ring goes around each hole. That feeds `drawPolyline` and [hatching and SVG export](../Output/Export.md) directly, with each branch one pen-down stroke on a plotter.
 
 ### Contents
 
@@ -33,9 +33,9 @@ The skeleton comes back as polyline branches (open runs between branch points; a
 medialAxis(of shape: Shape, spacing: Double = 4, prune: Double = 0) -> MedialAxis
 ```
 
-The skeleton of `shape`, approximated the standard way: the boundary is sampled every `spacing` units, and the Voronoi diagram of the samples keeps exactly the edges that run between non-neighboring samples without leaving the region, which converges to the true axis as `spacing` shrinks. Finer spacing, more faithful skeleton, more setup work.
+The skeleton of `shape`, approximated the standard way. The boundary is sampled every `spacing` units. From the Voronoi diagram of those samples, the extraction keeps exactly the edges that run between non-neighboring samples without leaving the region. That converges to the true axis as `spacing` shrinks, so finer spacing buys a more faithful skeleton for more setup work.
 
-`prune` trims the whiskers: terminal twigs shorter than it (in shape units) are removed, which cleans the side branches that boundary corners and sampling noise grow. A couple of spacings is a good starting value; 0 keeps the exact approximation, corner branches and all.
+`prune` trims the whiskers. Terminal twigs shorter than it, measured in shape units, are removed, which cleans the side branches that boundary corners and sampling noise grow. A couple of spacings is a good starting value. Passing 0 keeps the exact approximation, corner branches and all.
 
 ```swift
 let skeleton = medialAxis(of: blob, spacing: 3, prune: 6)
@@ -46,7 +46,7 @@ for branch in skeleton.branches {
 }
 ```
 
-Holes are honored (their skeleton rings survive as closed branches), a multi-contour shape skeletonizes region by region, and glyph shapes from [`textToShapes`](../Drawing/Text.md) work as-is, counters included. Extraction is setup-time-shaped: run it once in `setup()` and hold the result.
+Holes are honored, and their skeleton rings survive as closed branches. A multi-contour shape skeletonizes region by region, and glyph shapes from [`textToShapes`](../Drawing/Text.md) work as-is, counters included. Extraction is setup-time-shaped, so run it once in `setup()` and hold the result.
 
 <a name="types"></a>
 
@@ -61,15 +61,15 @@ Holes are honored (their skeleton rings survive as closed branches), a multi-con
 | `branch.isClosed` | whether the branch loops (a hole's ring does) |
 | `branch.contour` | the branch as a `Contour`, ready for `drawPolyline`, smoothing, or export |
 
-The radii are what make the skeleton more than a line drawing. The largest radius marks the shape's deepest point (the biggest disk that fits anywhere); walking a branch and drawing `drawCircle(center: p, radius: r)` reconstructs the shape as a train of inscribed disks.
+The radii are what make the skeleton more than a line drawing. The largest radius marks the shape's deepest point, where the biggest disk fits. Walk a branch drawing `drawCircle(center: p, radius: r)` and the shape comes back as a train of inscribed disks.
 
 <a name="notes"></a>
 
 #### Practical notes
 
-- **Prune with a couple of spacings.** The raw approximation grows a twig into every convex corner (that's the true axis, not a bug) plus whiskers from sampling noise; `prune: 2 * spacing` keeps the trunk lines and drops the fuzz. A whole branch that is its own component never prunes away, so small regions keep their skeletons.
-- **Spacing sets cost and fidelity together.** The Delaunay build over the boundary samples dominates; a 1000-sample boundary extracts in well under a second, so per-glyph or per-blob use in `setup()` is comfortable. Halving `spacing` roughly quadruples the work.
-- **The radii are exact clearances** to the sampled boundary (each skeleton vertex is a Voronoi vertex, equidistant from its nearest samples), so disks drawn from them kiss the outline instead of crossing it.
+- **Prune with a couple of spacings.** The raw approximation grows a twig into every convex corner, which is the true axis rather than a bug. Sampling noise adds more whiskers on top. Set `prune: 2 * spacing` to keep the trunk lines and drop the fuzz. A whole branch that is its own component never prunes away, so small regions keep their skeletons.
+- **Spacing sets cost and fidelity together.** The Delaunay build over the boundary samples dominates the cost. A 1000-sample boundary extracts in well under a second, so per-glyph or per-blob use in `setup()` is comfortable. Halving `spacing` roughly quadruples the work.
+- **The radii are exact clearances** to the sampled boundary. Each skeleton vertex is a Voronoi vertex, equidistant from its nearest samples. Disks drawn from them therefore kiss the outline instead of crossing it.
 - **Deterministic** given the shape: same shape, same knobs, same branches in the same order, on any run.
 
 ---

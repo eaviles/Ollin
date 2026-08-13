@@ -4,7 +4,7 @@
 
 ## Random walks
 
-Paths built one random step at a time. Three members of the family, three very different marks:
+Paths built one random step at a time. The family has three members, and they make very different marks.
 
 ```
   randomWalk                levyFlight                 selfAvoidingWalk
@@ -18,7 +18,7 @@ Paths built one random step at a time. Three members of the family, three very d
   that drifts slowly         together by rare jumps     that never crosses
 ```
 
-All three draw from the seeded `random`, so [`seed`](./Random.md#seed) reproduces the path, and all three return plain `[Vector2]` ready for `drawPolyline`, `Contour`, hatching, or [SVG export](../Output/Export.md).
+All three draw from the seeded `random`, so [`seed`](./Random.md#seed) reproduces the path. All three return plain `[Vector2]`, ready for `drawPolyline`, `Contour`, hatching, or [SVG export](../Output/Export.md).
 
 ### Contents
 
@@ -37,7 +37,7 @@ randomWalk(from start: Vector2? = nil,     // canvas center by default
            stepLength: Double) -> [Vector2]
 ```
 
-The plain isotropic walk: every step is the same length in a uniformly random direction. It's *diffusive*, so after N steps it has typically drifted only √N step lengths from home, which is exactly its charm: a dense, tangled scribble that stays local.
+The plain isotropic walk, where every step is the same length in a uniformly random direction. It's *diffusive*, so after N steps it has typically drifted only √N step lengths from home. That is exactly its charm, giving a dense, tangled scribble that stays local.
 
 ```swift
 seed(3)
@@ -59,11 +59,11 @@ levyFlight(from start: Vector2? = nil,
            exponent: Double = 2) -> [Vector2]
 ```
 
-A walk whose step lengths follow a heavy-tailed **power law** p(l) ∝ l^(−exponent) on [`minStep`, `maxStep`]: mostly tiny steps that grind away inside a cluster, with rare enormous leaps that start a new cluster somewhere else. It's how foraging animals search and how eyes scan a scene, and as a mark it reads as islands of texture strung together by long strokes.
+A walk whose step lengths follow a heavy-tailed **power law** p(l) ∝ l^(−exponent) on [`minStep`, `maxStep`]. Most steps are tiny and grind away inside a cluster, while rare enormous leaps start a new cluster somewhere else. It's how foraging animals search and how eyes scan a scene. As a mark it reads as islands of texture strung together by long strokes.
 
-`exponent` sets the temperament: near 1 the jumps dominate, near 3 it approaches an ordinary walk, and 2 (the default) is the classic balance. `minStep` must be positive; the power law diverges at zero, so a floor is part of the definition.
+`exponent` sets the temperament. Near 1 the jumps dominate, near 3 it approaches an ordinary walk, and the default of 2 is the classic balance. `minStep` must be positive. The power law diverges at zero, so a floor is part of the definition.
 
-A flight wanders wherever it likes, so fit the finished path to your frame by scaling the *points* (min/max the coordinates, then map), not with `scale()`, which would fatten the stroke too. See the `LevyFlight` example.
+A flight wanders wherever it likes, so fit the finished path to your frame by scaling the *points* rather than calling `scale()`. Take the minimum and maximum of the coordinates, then map. Using `scale()` would fatten the stroke as well. See the `LevyFlight` example.
 
 <a name="selfAvoidingWalk"></a>
 
@@ -76,9 +76,9 @@ selfAvoidingWalk(in bounds: Rectangle? = nil,
                  maxLength: Int? = nil) -> [Vector2]
 ```
 
-One unbroken path over a `cellSize` lattice (centered in `bounds`) that never revisits a cell. A naive self-avoiding walk boxes itself in almost immediately; this one is grown depth-first with **backtracking**, retreating out of dead ends while the abandoned cells stay blocked, so the line winds long and dense, filling the frame like a maze made of a single stroke. That single-stroke property is what makes it a plotter favorite.
+One unbroken path over a `cellSize` lattice, centered in `bounds`, that never revisits a cell. A naive self-avoiding walk boxes itself in almost immediately. This one is grown depth-first with **backtracking**, retreating out of dead ends while the abandoned cells stay blocked. The line therefore winds long and dense, filling the frame like a maze made of a single stroke. That single-stroke property is what makes it a plotter favorite.
 
-The longest path found is returned (its points are cell centers, each step one orthogonal lattice move); pass `maxLength` to stop as soon as the path reaches that many points.
+The longest path found is returned. Its points are cell centers, and each step is one orthogonal lattice move. Pass `maxLength` to stop as soon as the path reaches that many points.
 
 ```swift
 seed(12)
