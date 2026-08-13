@@ -156,5 +156,6 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 - [`Live coding`](./Tools/LiveCoding.md) - the OllinLiveCoding performance host: write and evaluate sketch code live, with the code shown over the visuals
 - [`Bringing a shader over`](./Tools/ShaderImport.md) - `ollin new --from-shader`: translate a GLSL fragment shader into Metal and get a project around it
 - [`Bringing a scene over`](./Tools/SceneImport.md) - `ollin new --from-scene`: a glTF or USD scene written out as the camera, lights and placement calls that draw it
+- [`Writing an extension`](./Tools/Extensions.md) - `ollin new --kind extension`: a library other sketches import, the `ollinx-` naming convention, and the seams to build on
 
 Coordinates use a **top-left origin with y increasing downward**, the same as p5, Processing, and OPENRNDR.

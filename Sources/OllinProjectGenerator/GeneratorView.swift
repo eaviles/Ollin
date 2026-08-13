@@ -176,8 +176,18 @@ struct GeneratorView: View {
 
     /// Joining a package is offered only where there is one to join, since it
     /// is the only kind whose availability depends on where you are pointing.
+    ///
+    /// An extension package is left out for a different reason: this window
+    /// previews a starting point by *running* it, and a library has nothing to
+    /// run. Offering it here would show a template list and a run button for
+    /// something that is neither, so it stays on the command line
+    /// (`ollin new <name> --kind extension`) until the stage can show source
+    /// rather than a frame.
     private var offeredKinds: [ProjectKind] {
-        ProjectKind.available.filter { $0.id != ProjectKind.inPackage.id || host?.linksOllin == true }
+        ProjectKind.available.filter {
+            $0.id != ProjectKind.extensionPackage.id
+                && ($0.id != ProjectKind.inPackage.id || host?.linksOllin == true)
+        }
     }
 
     private var trailingChrome: some View {

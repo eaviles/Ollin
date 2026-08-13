@@ -301,6 +301,38 @@ The reason this exists rather than you just adding lines to `draw()` is that som
 
 The one detail worth flagging is that hearing about the rendered image is opt-in, through a property the extension sets, because reading pixels back from the GPU costs real time. An extension that only watches timing pays nothing. The [extension seam](../Docs/Core/Sketch.md#extensions) has the hook list.
 
+## Giving it to somebody else
+
+Say you have written a drawing call you keep copying between pieces. How does somebody else get it?
+
+An Ollin extension is a Swift package that depends on Ollin. That is the whole format. Somebody adds your package, writes one `import`, and your call sits beside `drawCircle`.
+
+<img src="Images/22-SharingAndPerforming/ExtensionShape.jpg" alt="Two cards side by side: on the left a package called ollinx-halftone holding one file that adds drawSpiral to Sketch, on the right a sketch that imports it and calls drawSpiral, with the spiral it draws underneath. An arrow between them is labelled import" width="680">
+
+It is straightforward because `drawCircle` is a method on `Sketch`. Yours is too:
+
+```swift
+extension Sketch {
+    public func drawSpiral(center: Vector2, radius: Double) {
+        drawPolyline(points)
+    }
+}
+```
+
+The rest follows from `drawPolyline`. The current `stroke` applies. The transform stack applies. Clipping, `symmetry`, and SVG export apply. You write none of it.
+
+The command that made your first folder makes this one too:
+
+```sh
+ollin new Halftone --kind extension
+```
+
+The package is named the shared way. The folder is `ollinx-halftone` and the module is `OllinxHalftone`. The prefix follows openFrameworks' addon naming and OPENRNDR's own. No enforcement exists, but with no catalog to look in, a shared prefix is how packages get found.
+
+Inside is a worked starter, tests that check something real, and a list of what to fix before publishing. One item on that list catches everybody. The generated manifest points at the copy of Ollin on *your* machine.
+
+Pick what the starter is built on with `--seam`. A drawing call, as above. A GPU effect, written as a shader and wrapped so `layer.filtered(.vignette())` reads like a built-in. A source of frames, which any tracker from Chapter 21 then accepts. Or a lifecycle extension, which is the section you have just read, packaged. [Writing an extension](../Docs/Tools/Extensions.md) covers all four, and the parts of Ollin that are deliberately closed.
+
 ## Performing the code itself
 
 The last output is a stage. `swift run OllinLiveCoding` opens the performance host, where the sketch fills the window and the code rides over it as translucent text, part of the show:
@@ -366,6 +398,7 @@ Live coding as a performance practice was organized by TOPLAP (founded 2004), wh
 - [Virtual camera](../Docs/Integration/VirtualCamera.md): the one-time install, publishing, the test card.
 - [DMX](../Docs/Integration/DMX.md): universes and fixtures, Art-Net and sACN, the send cadence, and the console-drives-the-sketch direction.
 - [Live coding](../Docs/Tools/LiveCoding.md): the evaluate loop, errors, recovery, and the keyboard reference.
+- [Writing an extension](../Docs/Tools/Extensions.md): the four seams, the naming convention, the publishing checklist, and what is deliberately closed.
 - Worked examples: [`Examples/Export/VectorExport`](../Examples/Export/VectorExport/Sketch.swift), [`Examples/Export/Hatching`](../Examples/Export/Hatching/Sketch.swift), [`Examples/Integration/SyphonLoopback`](../Examples/Integration/SyphonLoopback/Sketch.swift), [`Examples/Integration/SyphonViewer`](../Examples/Integration/SyphonViewer/Sketch.swift), [`Examples/Integration/DMXLoopback`](../Examples/Integration/DMXLoopback/Sketch.swift), and [`Examples/Integration/VirtualCamera`](../Examples/Integration/VirtualCamera/Sketch.swift).
 
 ---

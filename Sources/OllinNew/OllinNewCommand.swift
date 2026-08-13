@@ -44,6 +44,7 @@ enum OllinNewCommand {
         let capabilityNames = arguments.takeValue("--with")
         let canvasName = arguments.takeValue("--canvas")
         let threeDNames = arguments.takeValue("--3d")
+        let seamName = arguments.takeValue("--seam")
         let destinationPath = arguments.takeValue("--in")
         let frameworkPath = arguments.takeValue("--framework-path")
 
@@ -87,6 +88,34 @@ enum OllinNewCommand {
 
         guard let template = ProjectTemplate.named(templateName ?? "blank") else {
             fail("no template called \(templateName ?? "blank"). Run `ollin new --list`.")
+        }
+
+        // An extension package is a library rather than a sketch, so it takes the
+        // seam axis and nothing from the sketch ones. Saying so beats writing a
+        // package where half the options went nowhere.
+        let makesExtension = kind.id == ProjectKind.extensionPackage.id
+        var seam: ExtensionSeam?
+        if makesExtension {
+            guard let found = ExtensionSeam.named(seamName ?? ExtensionSeam.drawCall.id) else {
+                fail("no seam called \(seamName!). Run `ollin new --list`.")
+            }
+            seam = found
+
+            let ignored = [
+                ("--template", templateName != nil),
+                ("--from", exampleName != nil),
+                ("--from-shader", shaderSource != nil),
+                ("--from-scene", scenePath != nil),
+                ("--3d", threeDNames != nil),
+                ("--canvas", canvasName != nil),
+                ("--with", capabilityNames != nil),
+            ].filter(\.1).map(\.0)
+            if let first = ignored.first {
+                fail("\(first) describes a sketch, and an extension package is a library that "
+                    + "sketches import. Pass --seam <id> instead, or drop --kind extension.")
+            }
+        } else if seamName != nil {
+            fail("--seam picks what an extension package is built on, so it needs --kind extension.")
         }
 
         var capabilities: [Capability] = []
@@ -210,7 +239,7 @@ enum OllinNewCommand {
         let request = ProjectRequest(
             name: name, kind: kind, template: template, example: example,
             importedShader: importedShader, importedScene: importedScene,
-            capabilities: capabilities, canvas: canvas, threeD: threeD,
+            capabilities: capabilities, canvas: canvas, threeD: threeD, seam: seam,
             packageHost: host, destination: destination, framework: framework
         )
 
@@ -332,7 +361,8 @@ enum OllinNewCommand {
         usage: ollin new <name>              a folder that builds and runs
                ollin new <name>.swift        one loose file
                ollin new                     one loose file, named by the next dated serial
-               ollin new --list              every kind, template, and extra
+               ollin new <name> --kind extension   a library other sketches import
+               ollin new --list              every kind, template, seam, and extra
                ollin new --examples          every example that can be started from
 
         options:
@@ -346,6 +376,8 @@ enum OllinNewCommand {
                                  web address (which needs SHADERTOY_API_KEY set)
           --from-scene <file>    start from a 3D scene file (glTF or USD), written out as
                                  the camera, lights and placement calls that draw it
+          --seam <id>            what an extension package is built on, with
+                                 --kind extension (default: draw-call)
           --with <a,b>           extra libraries and folders to wire in
           --canvas <id>          the canvas size to declare
           --in <dir>             where to put it (default: here)
@@ -406,6 +438,11 @@ enum OllinNewCommand {
         print("Templates (--template):")
         for template in ProjectTemplate.all {
             print("    \(pad(template.id, 14))\(template.summary)")
+        }
+
+        print("\nSeams (--seam), used with `--kind extension`:")
+        for seam in ExtensionSeam.all {
+            print("    \(pad(seam.id, 14))\(seam.summary)")
         }
 
         print("\nExtras (--with a,b):")

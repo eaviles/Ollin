@@ -228,6 +228,65 @@ struct GeneratedProjectBuildTests {
         #expect(result.succeeded, "a 3D combination does not compile:\n\(result.output)")
     }
 
+    /// An extension package is offered on four seams, and each one is a different
+    /// piece of the framework's public surface. A seam that does not compile is
+    /// the worst failure here, since the generator would offer it; the *tests* it
+    /// ships have to compile too, or the first thing an author runs fails.
+    @Test("Every extension seam compiles, tests and all")
+    func everyExtensionSeamCompiles() throws {
+        let repository = try #require(Self.repositoryRoot(), "could not find the Ollin folder from the test file")
+        let root = try Self.temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        var modules: [String] = []
+        for seam in ExtensionSeam.all {
+            // Each seam gets its own name so the module names cannot collide.
+            let name = seam.id.split(separator: "-").map(\.capitalized).joined()
+            let module = ExtensionNaming.moduleName(for: name)
+
+            let source = root.appendingPathComponent("Sources/\(module)")
+            let tests = root.appendingPathComponent("Tests/\(module)Tests")
+            try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
+            try FileManager.default.createDirectory(at: tests, withIntermediateDirectories: true)
+
+            try seam.source(named: name, module: module)
+                .write(to: source.appendingPathComponent("\(name).swift"),
+                       atomically: true, encoding: .utf8)
+            try seam.test(named: name, module: module)
+                .write(to: tests.appendingPathComponent("\(name)Tests.swift"),
+                       atomically: true, encoding: .utf8)
+            modules.append(module)
+        }
+
+        try Self.writeLibraryManifest(named: "SeamCheck", modules: modules,
+                                      at: root, repository: repository)
+        let result = try Self.swiftBuild(in: root, buildingTests: true)
+        #expect(result.succeeded, "an extension seam stopped compiling:\n\(result.output)")
+    }
+
+    /// The manifest an extension package gets is its own shape: a library
+    /// product and a test target rather than something to run. Only a real
+    /// resolve says whether it is a manifest the package manager accepts.
+    @Test("A generated extension package builds and its tests pass")
+    func aGeneratedExtensionPackageBuilds() throws {
+        let repository = try #require(Self.repositoryRoot(), "could not find the Ollin folder from the test file")
+        let destination = try Self.temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: destination) }
+
+        let request = ProjectRequest(
+            name: "Halftone",
+            kind: .extensionPackage,
+            seam: .drawCall,
+            destination: destination,
+            framework: .localPath(repository)
+        )
+        let project = try ProjectGenerator.plan(request)
+        try ProjectGenerator.write(project)
+
+        let result = try Self.swiftTest(in: project.root)
+        #expect(result.succeeded, "a generated extension package did not build or test:\n\(result.output)")
+    }
+
     @Test("A generated project builds exactly as it was written")
     func aGeneratedProjectBuilds() throws {
         let repository = try #require(Self.repositoryRoot(), "could not find the Ollin folder from the test file")
@@ -316,6 +375,47 @@ struct GeneratedProjectBuildTests {
         """.write(to: root.appendingPathComponent("Package.swift"), atomically: true, encoding: .utf8)
     }
 
+    /// One package with a library and a test target per extension seam, so the
+    /// framework is built once rather than once per seam.
+    static func writeLibraryManifest(named name: String, modules: [String],
+                                     at root: URL, repository: URL) throws {
+        let stanzas = modules.map { module in
+            """
+                    .target(
+                        name: "\(module)",
+                        dependencies: [
+                            .product(name: "Ollin", package: "Ollin"),
+                        ],
+                        path: "Sources/\(module)"
+                    ),
+                    .testTarget(
+                        name: "\(module)Tests",
+                        dependencies: ["\(module)"],
+                        path: "Tests/\(module)Tests"
+                    ),
+            """
+        }.joined(separator: "\n")
+
+        try """
+        // swift-tools-version: 6.0
+        import PackageDescription
+
+        let package = Package(
+            name: "\(name)",
+            platforms: [
+                .macOS("26.0")
+            ],
+            dependencies: [
+                .package(path: "\(repository.path)"),
+            ],
+            targets: [
+        \(stanzas)
+            ],
+            swiftLanguageModes: [.v6]
+        )
+        """.write(to: root.appendingPathComponent("Package.swift"), atomically: true, encoding: .utf8)
+    }
+
     static func temporaryDirectory() throws -> URL {
         let url = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("ollin-build-\(UUID().uuidString)")
@@ -323,10 +423,23 @@ struct GeneratedProjectBuildTests {
         return url
     }
 
-    static func swiftBuild(in directory: URL) throws -> (succeeded: Bool, output: String) {
+    static func swiftBuild(in directory: URL,
+                           buildingTests: Bool = false) throws -> (succeeded: Bool, output: String) {
+        var arguments = ["swift", "build", "--package-path", directory.path]
+        if buildingTests { arguments.append("--build-tests") }
+        return try run(arguments)
+    }
+
+    /// Build *and* run a package's own tests, for the case where what the
+    /// generator wrote includes tests an author is about to run.
+    static func swiftTest(in directory: URL) throws -> (succeeded: Bool, output: String) {
+        try run(["swift", "test", "--package-path", directory.path])
+    }
+
+    private static func run(_ arguments: [String]) throws -> (succeeded: Bool, output: String) {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        process.arguments = ["swift", "build", "--package-path", directory.path]
+        process.arguments = arguments
         let pipe = Pipe()
         process.standardOutput = pipe
         process.standardError = pipe

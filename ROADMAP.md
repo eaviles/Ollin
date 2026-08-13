@@ -130,7 +130,13 @@ The concerns of a piece that runs unattended for days in a gallery rather than f
 
 ## A third-party extension ecosystem
 
-**Near-term.** The framework grows past the core team only when other people can publish and find extensions, the contributed-addon ecosystems p5.js, openFrameworks (`ofx*`), and OPENRNDR (`orx-*`) all have. SwiftPM already makes the mechanics free (a package that depends on `Ollin`), so the work is *convention and discovery*: a naming convention (an `ollinx-*` prefix in the `ofx*` spirit), a documented set of stable extension points (the `SketchExtension` seam, custom `Filter` / `Generator` / `Sim` / `Shader` types, the `FrameSource` protocol, the satellite-package pattern), a starter template for a new extension, and a curated list so they are findable. Deciding the conventions early keeps the ecosystem consistent. The same discovery concern applies to Ollin itself: publishing the API reference as a DocC catalog and listing the package on the Swift Package Index puts the framework behind the Swift community's default front doors. See the [design notes](DESIGN-NOTES.md#a-third-party-extension-ecosystem).
+The framework grows past the core team only when other people can publish and find extensions, the contributed-addon ecosystems p5.js, openFrameworks (`ofx*`), and OPENRNDR (`orx-*`) all have. The naming convention, the seams, and the starter are in [Writing an extension](Docs/Tools/Extensions.md). What remains is discovery, and most of it waits on the repository being public:
+
+- **A curated index.** An awesome-list-style page of published extensions, so they are findable without a registry of our own. There is nobody to list yet.
+- **Ollin's own front door.** The API reference as a DocC catalog (hosted through the Swift Package Index's documentation support or GitHub Pages) and a Swift Package Index listing, the places Swift developers look first. Both need a public repository. The hand-written [`Docs/`](Docs/) stays the curated reference; DocC is the API-completeness net under it.
+- **The extension kind in the generator window.** `ollin new --kind extension` writes a package from the command line. The window previews a starting point by *running* it, and a library has nothing to run, so it needs a stage that shows source instead of a frame before it can be offered there.
+
+See the [design notes](DESIGN-NOTES.md#a-third-party-extension-ecosystem).
 
 ## Performance profiling and GPU debugging
 

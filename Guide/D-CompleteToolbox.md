@@ -285,6 +285,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Screen capture | Any display, app, or window on the Mac as a live frame source, whether or not it cooperates the way Syphon needs; a tracker reads it like a camera, and leaving your own window in gives you the feedback tunnel | [Ch 21](21-Seeing.md) | [ScreenCapture](../Docs/Integration/ScreenCapture.md) |
 | Live coding | `swift run OllinLiveCoding`: code over visuals, evaluate mid-motion, perform | [Ch 22](22-SharingAndPerforming.md) | [LiveCoding](../Docs/Tools/LiveCoding.md) |
 | Extensions | `Sketch.extend`: hooks before, during, and after each frame, for recorders and chrome | [Ch 22](22-SharingAndPerforming.md) | [Sketch](../Docs/Core/Sketch.md#extensions) |
+| Writing an extension | `ollin new --kind extension`: a library other sketches import, the `ollinx-` naming convention, and the four seams to build on | [Ch 22](22-SharingAndPerforming.md) | [Extensions](../Docs/Tools/Extensions.md) |
 
 ---
 

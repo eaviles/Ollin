@@ -14,6 +14,14 @@ public enum ProjectGenerator {
         guard request.kind.isAvailable else {
             throw ProjectGeneratorError.kindUnavailable(request.kind)
         }
+
+        // An extension package is a library, not a sketch, so it takes the seam
+        // axis instead of the template one and never asks whether a template
+        // fits.
+        if request.kind.id == ProjectKind.extensionPackage.id {
+            return planExtension(request)
+        }
+
         guard request.template.fits(request.kind) else {
             throw ProjectGeneratorError.templateDoesNotFit(request.template, request.kind)
         }
@@ -245,6 +253,144 @@ public enum ProjectGenerator {
             runCommand: "swift run --package-path \(host.root.path) \(target)",
             nextSteps: steps
         )
+    }
+
+    /// A library other people's sketches import.
+    ///
+    /// The mechanics of an extension are already free: any package that depends
+    /// on Ollin is one. What this writes is the *convention*, so the packages
+    /// look alike and can be found: the `ollinx-` name, the module inside it, a
+    /// worked starter on one real seam, and tests that check something.
+    private static func planExtension(_ request: ProjectRequest) -> GeneratedProject {
+        let name = request.typeName
+        let module = request.extensionModuleName
+        let package = request.extensionPackageName
+        let seam = request.seam ?? .drawCall
+        let root = request.destination.appendingPathComponent(package)
+
+        let files: [GeneratedFile] = [
+            GeneratedFile(path: "Sources/\(module)/\(name).swift",
+                          contents: seam.source(named: name, module: module)),
+            GeneratedFile(path: "Tests/\(module)Tests/\(name)Tests.swift",
+                          contents: seam.test(named: name, module: module)),
+            GeneratedFile(path: "Package.swift",
+                          contents: extensionManifest(request, module: module, package: package)),
+            GeneratedFile(path: "README.md",
+                          contents: extensionReadme(request, name: name, module: module,
+                                                    package: package, seam: seam)),
+            GeneratedFile(path: ".gitignore", contents: gitignore),
+        ]
+
+        return GeneratedProject(
+            root: root,
+            files: files.sorted { $0.path < $1.path },
+            runCommand: "swift build --package-path \(root.path)",
+            nextSteps: [
+                "Build it:  cd \(root.path) && swift build",
+                "Test it:   cd \(root.path) && swift test",
+                "Use it from a sketch:  import \(module), then \(seam.callSite.replacingOccurrences(of: "{{NAME}}", with: name))",
+                "The README lists what to do before anyone else can install it.",
+            ]
+        )
+    }
+
+    private static func extensionManifest(_ request: ProjectRequest,
+                                          module: String, package: String) -> String {
+        """
+        // swift-tools-version: 6.0
+        import PackageDescription
+
+        // \(package): an Ollin extension.
+        //
+        // A library, not a sketch. Someone installs it by URL like any Swift
+        // package, adds `import \(module)`, and what it adds is simply there.
+        //
+        // The framework is reached by path, which builds against the copy of
+        // Ollin already on this machine. Before publishing, point `dependencies`
+        // at the framework's own repository instead, or nobody else can build it.
+        let package = Package(
+            name: "\(package)",
+            platforms: [
+                .macOS("26.0")
+            ],
+            products: [
+                .library(name: "\(module)", targets: ["\(module)"]),
+            ],
+            dependencies: [
+                \(request.framework.manifestEntry),
+            ],
+            targets: [
+                .target(
+                    name: "\(module)",
+                    dependencies: [
+                        .product(name: "Ollin", package: "Ollin"),
+                    ]
+                ),
+                .testTarget(
+                    name: "\(module)Tests",
+                    dependencies: ["\(module)"]
+                ),
+            ],
+            swiftLanguageModes: [.v6]
+        )
+        """
+    }
+
+    private static func extensionReadme(_ request: ProjectRequest, name: String, module: String,
+                                        package: String, seam: ExtensionSeam) -> String {
+        let call = seam.callSite.replacingOccurrences(of: "{{NAME}}", with: name)
+        return """
+        # \(package)
+
+        \(seam.summary)
+
+        An extension for [Ollin](https://github.com/eaviles/Ollin). It is an ordinary Swift package that depends on the framework, so there is nothing to register and no plug-in to install.
+
+        ## Using it
+
+        Add it to a sketch's `Package.swift`:
+
+        ```swift
+        dependencies: [
+            .package(url: "https://example.com/\(package)", from: "0.1.0"),
+        ]
+        ```
+
+        Then import it and the addition is there:
+
+        ```swift
+        import Ollin
+        import \(module)
+
+        @main
+        final class MySketch: Sketch {
+            override func draw() {
+                \(call)
+            }
+        }
+        ```
+
+        ## Working on it
+
+        ```sh
+        swift build
+        swift test
+        ```
+
+        The tests check what can be checked away from a GPU. Anything that draws needs a probe that renders a known frame and reads the pixels back, which is how the framework tests its own drawing.
+
+        ## Before publishing
+
+        - [ ] Point `dependencies` in `Package.swift` at the framework's repository rather than a path on this machine. A path nobody else has is the one thing that stops a package building for them.
+        - [ ] Add a `LICENSE`. An extension is your own work under your own licence, and Ollin bundles nothing of yours, so the choice is entirely yours.
+        - [ ] Name the repository `\(package)`, so it is recognisable and turns up in a search.
+        - [ ] Say in this README which version of Ollin it was built against. The framework is before 1.0 and its API still moves.
+        - [ ] Tag a version, so a dependant can ask for one.
+
+        ## What it hangs off
+
+        This starter is built on one seam: **\(seam.title.lowercased())**. The others, and what each promises, are in the framework's [extension guide](https://github.com/eaviles/Ollin/blob/main/Docs/Tools/Extensions.md).
+        """
     }
 
     static func targetStanza(_ request: ProjectRequest, target: String,

@@ -168,6 +168,12 @@ ollin generate                                     # the same, in a window
 
 `ollin generate` shows each starting point by *running* it, so you pick a template by watching it rather than by reading its name.
 
+The same command starts a library other people's sketches import, laid out the shared way. See [Writing an extension](Docs/Tools/Extensions.md) for the `ollinx-` naming convention and the seams a third party can build on.
+
+```sh
+ollin new Halftone --kind extension --seam filter
+```
+
 There are other ways to iterate. Tweak and re-run an example (`swift run --package-path Examples Example-Motion-Breathing`, where incremental builds keep it snappy), or open the package in Xcode (`open Package.swift`) for ⌘R, breakpoints, and the debugger.
 
 ## Export

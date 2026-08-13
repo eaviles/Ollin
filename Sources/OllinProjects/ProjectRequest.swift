@@ -21,6 +21,9 @@ public struct ProjectRequest: Sendable {
     /// Which 3D pieces are in play, for the starting point that draws in 3D.
     /// Ignored by every other one.
     public var threeD: ThreeDRecipe?
+    /// Which seam the starter demonstrates, for an extension package. Ignored by
+    /// every other kind, which makes a sketch rather than a library.
+    public var seam: ExtensionSeam?
     /// The package the sketch will join, when the caller has already found it.
     /// Left nil, the generator looks for the nearest one itself.
     public var packageHost: PackageHost?
@@ -39,6 +42,7 @@ public struct ProjectRequest: Sendable {
         capabilities: [Capability] = [],
         canvas: CanvasChoice = .default,
         threeD: ThreeDRecipe? = nil,
+        seam: ExtensionSeam? = nil,
         packageHost: PackageHost? = nil,
         destination: URL,
         framework: FrameworkSource
@@ -52,6 +56,7 @@ public struct ProjectRequest: Sendable {
         self.capabilities = capabilities
         self.canvas = canvas
         self.threeD = threeD
+        self.seam = seam
         self.packageHost = packageHost
         self.destination = destination
         self.framework = framework
@@ -73,6 +78,9 @@ public struct ProjectRequest: Sendable {
 
     /// What the starting point is called, for a message or a list row.
     public var startingPointTitle: String {
+        // Only an extension package carries a seam, and for one the seam *is*
+        // the starting point.
+        if let seam { return seam.title.lowercased() }
         if let example { return example.path }
         if let name = importedScene?.resourceFileName { return name }
         return template.title
@@ -88,6 +96,19 @@ public struct ProjectRequest: Sendable {
         var cleaned = String(String.UnicodeScalarView(stripped))
         if cleaned.isEmpty || cleaned.first!.isNumber { cleaned = "MySketch" }
         return cleaned.prefix(1).uppercased() + cleaned.dropFirst()
+    }
+
+    /// The module an extension package builds, `OllinxHalftone` for `Halftone`.
+    /// Derived from `typeName`, so it is a legal Swift identifier by the time it
+    /// gets here.
+    public var extensionModuleName: String {
+        ExtensionNaming.moduleName(for: typeName)
+    }
+
+    /// The folder and repository an extension package takes,
+    /// `ollinx-halftone` for `Halftone`.
+    public var extensionPackageName: String {
+        ExtensionNaming.packageName(for: typeName)
     }
 
     /// The folder name on disk: the name as typed, with the separators a path

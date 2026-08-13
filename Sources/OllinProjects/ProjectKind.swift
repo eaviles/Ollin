@@ -71,6 +71,20 @@ extension ProjectKind {
         availability: .available
     )
 
+    /// A library other people's sketches import, rather than a sketch of your
+    /// own: a package that depends on Ollin and adds to it.
+    ///
+    /// The mechanics are free, since any package that depends on the framework
+    /// is already a working extension. What this kind supplies is the
+    /// convention: the `ollinx-` name, the layout, and a worked starter on one
+    /// of the seams the framework actually opens.
+    public static let extensionPackage = ProjectKind(
+        id: "extension",
+        title: "Extension package",
+        summary: "A library that adds to Ollin for other people's sketches to import, named and laid out by the shared convention.",
+        availability: .available
+    )
+
     public static let iOSApp = ProjectKind(
         id: "ios-app",
         title: "iPhone and iPad app",
@@ -102,7 +116,8 @@ extension ProjectKind {
     /// Every kind the generator knows about, ready or not, in the order a menu
     /// should show them.
     public static let all: [ProjectKind] = [
-        .singleFile, .macSketch, .inPackage, .iOSApp, .visionOSApp, .screenSaver, .arEffect,
+        .singleFile, .macSketch, .inPackage, .extensionPackage,
+        .iOSApp, .visionOSApp, .screenSaver, .arEffect,
     ]
 
     /// The kinds that can be generated today.
