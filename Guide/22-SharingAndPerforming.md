@@ -206,6 +206,47 @@ This matters when you need to recover a past render. You find an image from four
 
 Two limits. GIF has no metadata slot in its format, so a GIF export carries nothing. And a recipe only takes you back to the code if the code still exists, which is another argument for committing your sketches. [The details](../Docs/Output/Export.md#reproducibility-metadata) list every field.
 
+## Saying what it shows
+
+<img src="Images/22-SharingAndPerforming/SayingWhatItShows.jpg" alt="Two columns: on the left a small seascape with a yellow sun high on the left, a blue band of water and a dark sailboat; on the right the four lines the sketch says about itself, a summary followed by the sun, the water and the boat" width="680">
+
+Everything so far has been about the picture. Somebody using a screen reader gets none of it. They arrive at your window, or your exported drawing, and find a rectangle with nothing to say for itself.
+
+One line answers that:
+
+```swift
+describe("A bay at noon, with a small boat crossing the water.")
+```
+
+That sentence becomes the canvas's accessible name. Turn on VoiceOver with ⌘F5 and the window reads it out.
+
+A piece with things in it can name them:
+
+```swift
+describe("the sun", as: "a pale yellow disc high on the left", in: sunBox)
+describe("the boat", as: "a small dark hull with one sail", in: hullBox)
+```
+
+Each named part becomes something a screen reader can move to. The `in:` region is optional, and worth giving: with one, a part can be found by position rather than only in order.
+
+Now the habit that makes this work. **Write the words from the same numbers that draw the picture.** The figure above is one sketch: the sun's position places the disc *and* writes "high on the left". A description written that way cannot drift out of date, because there is nothing to keep in step.
+
+```swift
+let p = Vector2(x, y)
+drawCircle(center: p, radius: r)
+describe("the sun", as: "a yellow disc \(p.y < height / 2 ? "high" : "low")")
+```
+
+Call `describe` every frame. Naming a part again replaces what you said, so the list never grows. Empty text takes a part out when it leaves the picture. Naming it again puts it back in the same place, so the reading order stays put.
+
+Keep the parts few, and describe what is there rather than how it is made. "A red circle drifting left", not "a `drawCircle` driven by `sin(time)`". Texture is not a part: the glow around that sun is worth drawing and not worth naming.
+
+The words travel with the work. An exported SVG carries them as `<title>` and `<desc>`, which is where a browser and a screen reader look. A PDF carries the summary as its document title. PNG, GIF and video have nowhere standard to put it, so they carry nothing.
+
+One thing Ollin will not do is write the description for you. It could list your shapes, and a list of shapes is not a description of what they mean. Only you know which circle is the sun.
+
+[Accessibility](../Docs/Helpers/Accessibility.md) has the rest, and `Examples/Basic/Describing` is a day passing over that bay, saying what it shows as it goes.
+
 ## Live feeds: into other apps
 
 Some pieces shouldn't become files at all. They should stay alive and go *into* something. **Syphon** is the macOS standard for handing GPU frames between running apps, and one line makes a sketch a source every VJ tool can see:

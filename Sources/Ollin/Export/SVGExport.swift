@@ -222,14 +222,20 @@ private func transformed(_ p: Vector2, _ m: simd_float3x3) -> Vector2 {
 /// fills (the conic sweep) fall back to the ramp's midpoint color.
 func serializeSVG(_ commands: [SVGCommand], background: Color,
                   width: Int, height: Int, skippedImages: Int = 0,
-                  recipe: String? = nil) -> String {
+                  recipe: String? = nil,
+                  description: SketchDescription = SketchDescription()) -> String {
     let resolved = approximateAlongPaths(commands)
     let (defs, ids) = gradientDefs(resolved)
     let (clipDefs, clipIDs) = clipPathDefs(resolved)
+    // What the sketch said about itself travels with the file: `<title>` and
+    // `<desc>` are how a drawing carries its description, and the two
+    // attributes are what make a reader treat the whole file as one picture.
+    // A sketch that described nothing writes exactly the file it always did.
+    let (a11yAttributes, a11yElements) = svgDescription(description)
     var out = """
     <?xml version="1.0" encoding="UTF-8"?>
-    <svg xmlns="http://www.w3.org/2000/svg" width="\(width)" height="\(height)" viewBox="0 0 \(width) \(height)">
-
+    <svg xmlns="http://www.w3.org/2000/svg" width="\(width)" height="\(height)" viewBox="0 0 \(width) \(height)"\(a11yAttributes)>
+    \(a11yElements)
     """
     if let recipe {
         // XML comments can't contain "--" (possible only via a text param).
@@ -264,6 +270,44 @@ func serializeSVG(_ commands: [SVGCommand], background: Color,
         out += indent() + "</g>\n"
     }
     out += "</svg>\n"
+    return out
+}
+
+/// The accessible name a drawing carries: the attributes for the `<svg>` tag
+/// and the `<title>`/`<desc>` elements that go directly inside it, which is
+/// where a reader looks for them. Both are empty when the sketch said nothing,
+/// so the file is unchanged.
+private func svgDescription(_ description: SketchDescription) -> (attributes: String, elements: String) {
+    guard !description.isEmpty else { return ("", "") }
+    var ids: [String] = []
+    var elements = ""
+    if let summary = description.summary {
+        ids.append("ollin-title")
+        elements += "  <title id=\"ollin-title\">\(xmlEscaped(summary))</title>\n"
+    }
+    if !description.elements.isEmpty {
+        ids.append("ollin-desc")
+        let body = description.elements.map { xmlEscaped($0.spoken) }.joined(separator: "\n")
+        elements += "  <desc id=\"ollin-desc\">\(body)</desc>\n"
+    }
+    return (" role=\"img\" aria-labelledby=\"\(ids.joined(separator: " "))\"", elements)
+}
+
+/// The five characters XML cannot carry raw. Written out rather than escaped
+/// through a system call so the output is the same text on any machine.
+private func xmlEscaped(_ text: String) -> String {
+    var out = ""
+    out.reserveCapacity(text.count)
+    for character in text {
+        switch character {
+        case "&": out += "&amp;"
+        case "<": out += "&lt;"
+        case ">": out += "&gt;"
+        case "\"": out += "&quot;"
+        case "'": out += "&apos;"
+        default: out.append(character)
+        }
+    }
     return out
 }
 
@@ -577,6 +621,7 @@ struct VectorRecording {
     var pointHeight: Int    // pixels only for a `dpi(_:)`-scaled canvas)
     var skippedImages: Int
     var recipe: String      // the reproduction recipe (see ExportMetadata.swift)
+    var description: SketchDescription   // what the sketch said about itself
 }
 
 extension OllinApp {
@@ -606,7 +651,8 @@ extension OllinApp {
                                width: size.width, height: size.height,
                                pointWidth: size.pointSize.width, pointHeight: size.pointSize.height,
                                skippedImages: recorder.skippedImages,
-                               recipe: ExportMetadata.capture(from: sketch, frame: frame, fps: fps).recipe)
+                               recipe: ExportMetadata.capture(from: sketch, frame: frame, fps: fps).recipe,
+                               description: sketch.accessibleDescription)
     }
 }
 
@@ -630,7 +676,8 @@ public extension OllinApp {
         let recording = recordVectorFrame(of: sketch, frame: frame, fps: fps, hatching: hatching)
         return serializeSVG(recording.commands, background: recording.background,
                             width: recording.width, height: recording.height,
-                            skippedImages: recording.skippedImages, recipe: recording.recipe)
+                            skippedImages: recording.skippedImages, recipe: recording.recipe,
+                            description: recording.description)
     }
 
     /// Render one frame of `sketch` and write it as an SVG file — no window, no GPU.

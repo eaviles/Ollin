@@ -403,7 +403,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | Bringing a GLSL shader over (`ollin new --from-shader`; `Tools/ShaderImport.md`) | Ch 15 | taught ("Somebody else's shader", with the ImportedShader figure) |
 | Bringing a scene over (`ollin new --from-scene`; `Tools/SceneImport.md`) | Ch 17 | taught ("A scene you can take apart", with the SceneAsSource figure) |
 | Writing an extension (`ollin new --kind extension`, the `ollinx-` convention, the four seams; `Tools/Extensions.md`) | Ch 22 | taught ("Giving it to somebody else", with the ExtensionShape figure) |
-| Accessibility (`ColorVision`, `Filter.colorVision`, `Palette.confusions`/`colorblindSafe`, `prefersReducedMotion`; `Helpers/Accessibility.md`) | Ch 2, Ch 3 | taught ("Will everybody see it?" with the ColorVision figure, and "When somebody would rather it stopped" in Ch 3) |
+| Accessibility (`ColorVision`, `Filter.colorVision`, `Palette.confusions`/`colorblindSafe`, `prefersReducedMotion`, `describe(_:)`/`describe(_:as:in:)`/`noDescription()`; `Helpers/Accessibility.md`) | Ch 2, Ch 3, Ch 22 | taught ("Will everybody see it?" with the ColorVision figure, "When somebody would rather it stopped" in Ch 3, and "Saying what it shows" in Ch 22 with the SayingWhatItShows figure: one sentence for the canvas, named parts with a region each, the same-numbers habit that keeps words and picture in step, what an SVG and a PDF carry, and why Ollin will not write the description for you) |
 | Examples gallery (`swift run OllinExamples`) | Ch 1 | taught ("The gallery" with a layout diagram: the three panes, the filter field, hiding the knobs, why arrow keys move the list rather than reaching the sketch, and that every entry is an ordinary sketch file to open and copy) |
 | Extension seam (`Sketch.extend`, `SketchExtension`) | Ch 22 | taught ("Adding behavior without touching the sketch": why cross-cutting behavior does not belong in `draw()`, the built-in stats extension as the example, and the opt-in frame readback) |
 | Headless capture (`OllinApp.image(of:)`) | Ch 22; used by the Guide's own figure runner | taught ("Rendering from code": the flags are a wrapper around one call, what it does step by step, the batch cases it unlocks, a figure that renders another sketch four times to demonstrate itself, and the Guide's own figure runner as the worked example) |
@@ -447,5 +447,5 @@ Where each open `ROADMAP.md` item will live in the Guide once it ships in the fr
 | Learning (user guide, migration guide, tutorials) | this Guide itself; migration guide = Appendix C |
 | Extension ecosystem (ollinx-*) | a future "Extending Ollin" appendix |
 | Profiling and GPU debugging | Appendix D note, future appendix |
-| Accessibility and inclusive text | Ch 2 (palettes), Ch 22 |
+| Accessibility: complex-script text | Ch 7 (words and pictures), when it lands |
 | Swift Playgrounds / iOS, visionOS, AR | a future part or appendix, when the platforms land |

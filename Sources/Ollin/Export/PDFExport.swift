@@ -22,13 +22,16 @@ import simd
 func serializePDF(_ commands: [SVGCommand], background: Color,
                   width: Int, height: Int,
                   pointWidth: Int? = nil, pointHeight: Int? = nil,
-                  recipe: String? = nil) -> Data {
+                  recipe: String? = nil, title: String? = nil) -> Data {
     let pageWidth = pointWidth ?? width
     let pageHeight = pointHeight ?? height
     var mediaBox = CGRect(x: 0, y: 0, width: Double(pageWidth), height: Double(pageHeight))
     let data = NSMutableData()
     var info: [CFString: Any] = [kCGPDFContextCreator: "Ollin"]
     if let recipe { info[kCGPDFContextSubject] = recipe }   // the reproduction recipe
+    // What the sketch said about itself becomes the document title, which is
+    // what a reader announces before it shows the page.
+    if let title { info[kCGPDFContextTitle] = title }
     guard let consumer = CGDataConsumer(data: data as CFMutableData),
           let ctx = CGContext(consumer: consumer, mediaBox: &mediaBox,
                               info as CFDictionary),
@@ -262,7 +265,7 @@ public extension OllinApp {
         return serializePDF(recording.commands, background: recording.background,
                             width: recording.width, height: recording.height,
                             pointWidth: recording.pointWidth, pointHeight: recording.pointHeight,
-                            recipe: recording.recipe)
+                            recipe: recording.recipe, title: recording.description.summary)
     }
 
     /// Render one frame of `sketch` and write it as a PDF file: no window, no
@@ -275,7 +278,7 @@ public extension OllinApp {
         let document = serializePDF(recording.commands, background: recording.background,
                                     width: recording.width, height: recording.height,
                                     pointWidth: recording.pointWidth, pointHeight: recording.pointHeight,
-                                    recipe: recording.recipe)
+                                    recipe: recording.recipe, title: recording.description.summary)
         if recording.skippedImages > 0 {
             print("Ollin: \(recording.skippedImages) image draw(s) skipped (raster is omitted from vector export)")
         }

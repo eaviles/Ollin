@@ -1,8 +1,76 @@
 # Accessibility
 
-Two things a sketch can do for somebody whose eyes or preferences differ from yours: check that its colors still hold apart, and offer a quieter version of its motion.
+A sketch can do three things for somebody whose eyes or preferences differ from yours. It can say what it shows, check that its colors hold apart, and offer quieter motion.
 
-Neither is applied for you. Ollin gives you the reading and the preview, and the sketch decides what to do with them.
+None of it is applied for you. Ollin gives you the reading, the preview and the words, and the sketch decides what to do with them.
+
+## Saying what the sketch shows
+
+A generative piece is a picture with no caption. A screen reader arrives at the window and finds a rectangle of pixels with nothing to say about it. `describe` is how the sketch answers.
+
+```swift
+override func draw() {
+    // ... your sketch ...
+    describe("A pale field with one red circle drifting across it.")
+}
+```
+
+That sentence becomes the canvas's accessible name. Turn on VoiceOver (⌘F5) and the window reads it out.
+
+### Naming the parts
+
+A piece with more than one thing in it can name them.
+
+```swift
+describe("the sun", as: "a yellow disc high on the left")
+describe("the boat", as: "a small dark hull, halfway across", in: hull)
+```
+
+A part is a shape, or a group of shapes that mean one thing together. Each one becomes something a screen reader can move to, read as `name: description`, in the order the parts were first named.
+
+The `in:` region is optional and worth giving. A part that carries one can be found by position rather than only in order. The accessibility inspector draws a box around it too.
+
+### Describing something that moves
+
+Write the description from the same numbers that draw the picture, and it cannot go stale.
+
+```swift
+let p = Vector2(x, y)
+drawCircle(center: p, radius: r)
+describe("the sun", as: "a yellow disc \(p.y < height / 2 ? "high" : "low")",
+         in: Rectangle(center: p, width: r * 2, height: r * 2))
+```
+
+Calling `describe` every frame is the normal case, and it costs one line:
+
+- Naming the same part again **replaces** what you said. The list does not grow.
+- Empty text **takes a part out** of the picture. Naming it again puts it back **in the same place**, so a part that comes and goes does not send the reading order jumping.
+- `noDescription()` clears everything.
+
+A screen reader is told to look again only when the set of parts changes. Rewording a part stays quiet, which is what stops a sketch from interrupting sixty times a second.
+
+### What to write
+
+Describe what is there, not how it is made. One or two sentences, present tense, the way you would tell somebody over the telephone. "A red circle drifting left across a pale field", not "a `drawCircle` driven by `sin(time)`".
+
+Keep the parts few. A list of fifty shapes tells nobody what the piece looks like. Texture is not a part: the glow around a sun and the shimmer on water are worth drawing and not worth naming.
+
+To show the words as well as say them, draw them. `drawCaption(_:)` puts a line on the canvas, and `accessibleDescription.lines` is everything the sketch has said.
+
+### Where the words go
+
+| Where | What carries it |
+|---|---|
+| the window | the canvas's accessible name, and one element per part |
+| `--export-svg` | `<title>` and `<desc>`, which is how a drawing carries its description |
+| `--export-pdf` | the document title |
+| PNG, GIF, video | nothing; there is no standard place to put it |
+
+An export writes what the sketch said on the frame being exported.
+
+### Ollin does not write it for you
+
+There is no call that reads your shapes and produces a description. A list of what was drawn is not a description of what it means, and only the sketch knows which circle is the sun. The words are yours, the same way the colors are.
 
 ## Seeing your colors as somebody else does
 
@@ -96,11 +164,11 @@ Nothing changes on its own. A sketch decides what less movement means, because o
 
 ## What is not here yet
 
-- **A description for a screen reader.** The counterpart of p5's `textOutput()`, so a generative piece is not opaque. See the [roadmap](../../ROADMAP.md#accessibility-and-inclusive-text).
-- **Complex-script text.** Core Text shapes right-to-left scripts, CJK and combining marks correctly, but that path is not yet verified or surfaced here.
+- **Complex-script text.** Core Text shapes right-to-left scripts, CJK and combining marks correctly, but that path is not yet verified or surfaced here. See the [roadmap](../../ROADMAP.md#accessibility-and-inclusive-text).
 
 ## See also
 
+- [Describing](../../Examples/Basic/Describing/Sketch.swift) - a sketch that says what it shows while it shows it
 - [Color](../Drawing/Color.md) - the color type, palettes, ramps and mixing
 - [Effects](../Drawing/Effects.md) - the rest of the filter catalog
 - [Parameters](./Parameters.md) - putting the kind on a knob

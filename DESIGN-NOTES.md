@@ -227,9 +227,9 @@ It builds on the `FrameStats` and extension-seam machinery (the overlay is the f
 
 ## Accessibility and inclusive text
 
-Inclusivity on the platform's native support, split by who it serves. The color and motion half for authors is in [`Docs/Helpers/Accessibility.md`](Docs/Helpers/Accessibility.md); one decision from it carries forward, which is that nothing is applied on a sketch's behalf, since only the sketch knows which of its movements or distinctions is load-bearing. What is left:
+Inclusivity on the platform's native support. What ships is in [`Docs/Helpers/Accessibility.md`](Docs/Helpers/Accessibility.md); one decision from it carries forward, which is that nothing is applied on a sketch's behalf, since only the sketch knows which of its movements, distinctions or shapes is load-bearing. What is left:
 
-- **For viewers (describable output).** The native counterpart to p5.js's `textOutput()` / `gridOutput()`: a way to attach an accessible text description to a sketch (and, where it can be derived, to the drawn structure), so a generative piece is not opaque to a screen reader. The hardest and most valuable part; scope it to author-provided descriptions first, derived ones later.
+- **Descriptions Ollin could derive.** A sketch writes its own words today. The vector recorder holds one frame as typed commands (`SVGCommand`). Shape kinds, positions, sizes and colors are all there, so that is the seam a derived summary would be built on. It stays out for now: a list of what was drawn is not a description of what it means.
 - **Robust complex-script text.** The text system rides Core Text, which shapes CJK, Arabic and other right-to-left scripts, Indic scripts, emoji, and combining marks correctly, but that path needs verifying and surfacing (bidi handling, cluster-aware `textToShapes`, font fallback for missing glyphs) so a global audience is served, not just Latin. Pairs with the existing text system.
 
 ## Examples folder

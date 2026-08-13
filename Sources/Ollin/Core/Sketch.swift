@@ -215,6 +215,13 @@ open class Sketch {
     /// any machine.
     public var prefersReducedMotion: Bool { OllinAccessibility.prefersReducedMotion }
 
+    /// What the sketch has said about itself, for somebody who cannot see it.
+    ///
+    /// Filled in by `describe(_:)` and `describe(_:as:in:)`, and read by the
+    /// window, which hands it to the platform's accessibility layer. It stays
+    /// empty until a sketch says something.
+    public internal(set) var accessibleDescription = SketchDescription()
+
     /// How much color the finished frame carries out of the sketch. Defaults to
     /// `.standard` (8-bit sRGB, what every screen and file handles). Declare
     /// `.wide` to present through Display P3 in a floating-point drawable, so

@@ -367,6 +367,10 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         let cpuMS = (CACurrentMediaTime() - drawStart) * 1000
         smoothedCPUMS = smoothedCPUMS == 0 ? cpuMS : smoothedCPUMS + (cpuMS - smoothedCPUMS) * 0.1
 
+        // Whatever the sketch said about itself this frame goes to the
+        // accessibility layer. A sketch that says nothing pays one comparison.
+        (view as? OllinMTKView)?.refreshDescription()
+
         // Bridge the sketch's cameraAxis()/groundGrid() flags to the Camera-menu
         // prefs, but only on a change, so the sketch sets the default and the menu
         // becomes the authority that can override it (a per-frame `cameraAxis()`
@@ -551,8 +555,10 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
 
 /// An `MTKView` that reports the cursor position to its `Sketch` as
 /// `mouseX`/`mouseY`, in sketch coordinates (points, top-left origin). AppKit's
-/// view space is y-up, so y is flipped.
-private final class OllinMTKView: MTKView {
+/// view space is y-up, so y is flipped. It also carries what the sketch said
+/// about itself to the accessibility layer, which is what the tests reach in
+/// for: the wiring is the whole feature there, so it is checked on a real view.
+final class OllinMTKView: MTKView {
     weak var sketch: Sketch?
 
     /// Whether the view claims keyboard focus the moment it lands in a window
@@ -796,6 +802,78 @@ private final class OllinMTKView: MTKView {
         let y = bh > 0 ? (bh - Double(p.y)) / bh * sketch.height : bh - Double(p.y)
         sketch.setMouse(x: x, y: y)
     }
+
+    // MARK: - What the canvas says about itself
+
+    /// The described parts, as accessibility elements. Kept and reused rather
+    /// than rebuilt on every query: a screen reader follows an element by
+    /// identity, so handing it a new object each time would drop its place.
+    private var describedParts: [NSAccessibilityElement] = []
+    /// The shape of the description these parts were built from, so a reworded
+    /// part costs an update and a new part costs a rebuild.
+    private var describedShape: String?
+
+    /// Bring the accessibility elements in line with what the sketch has said.
+    /// Cheap and safe to call every frame: a sketch that describes nothing
+    /// leaves on the first line, and a sketch that only rewords a part writes
+    /// the new words into the element it already has.
+    func refreshDescription() {
+        guard let sketch else { return }
+        let description = sketch.accessibleDescription
+        if description.isEmpty && describedShape == nil { return }
+
+        let shape = description.isEmpty ? nil : description.shape
+        if shape != describedShape {
+            describedShape = shape
+            describedParts = description.elements.map { _ in
+                let part = NSAccessibilityElement()
+                part.setAccessibilityRole(.image)
+                part.setAccessibilityParent(self)
+                return part
+            }
+            // The set of parts changed, so anything reading the window has to
+            // ask again. Rewording a part posts nothing: it would interrupt.
+            NSAccessibility.post(element: self, notification: .layoutChanged)
+        }
+        // Words and places are refreshed every time, so a part that moves or a
+        // window that is resized still points at the right piece of canvas.
+        let whole = Rectangle(x: 0, y: 0, width: sketch.width, height: sketch.height)
+        for (part, element) in zip(describedParts, description.elements) {
+            part.setAccessibilityLabel(element.spoken)
+            part.setAccessibilityFrameInParentSpace(
+                viewRect(of: element.region ?? whole,
+                         canvasWidth: sketch.width, canvasHeight: sketch.height,
+                         in: bounds))
+        }
+    }
+
+    override func isAccessibilityElement() -> Bool {
+        guard let sketch, !sketch.accessibleDescription.isEmpty else {
+            return super.isAccessibilityElement()
+        }
+        return true
+    }
+
+    override func accessibilityRole() -> NSAccessibility.Role? {
+        guard let sketch, !sketch.accessibleDescription.isEmpty else {
+            return super.accessibilityRole()
+        }
+        // A canvas with no named parts is one picture; a canvas with parts is a
+        // group somebody can move through.
+        return sketch.accessibleDescription.hasParts ? .group : .image
+    }
+
+    override func accessibilityLabel() -> String? {
+        sketch?.accessibleDescription.summary ?? super.accessibilityLabel()
+    }
+
+    override func accessibilityChildren() -> [Any]? {
+        guard let sketch, sketch.accessibleDescription.hasParts else {
+            return super.accessibilityChildren()
+        }
+        refreshDescription()
+        return describedParts
+    }
 }
 
 /// Maps AppKit's modifier flags onto Ollin's platform-neutral `ModifierKeys`.
@@ -886,7 +964,7 @@ private final class CanvasKeyFocus {
 }
 
 @MainActor
-private func makeOllinMTKView(device: MTLDevice, size: CGSize, sketch: Sketch) -> OllinMTKView {
+func makeOllinMTKView(device: MTLDevice, size: CGSize, sketch: Sketch) -> OllinMTKView {
     let view = OllinMTKView(frame: CGRect(origin: .zero, size: size), device: device)
     view.sketch = sketch
     // The drawable's format and color space follow what the sketch asked to
