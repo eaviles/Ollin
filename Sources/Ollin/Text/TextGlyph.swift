@@ -77,8 +77,9 @@ public struct TextGlyph {
 struct GlyphRunItem {
     /// The source characters this piece stands for.
     let text: String
-    /// Pen x at the piece's left edge, canvas units from the run start.
-    let penX: Double
+    /// How far the piece's leading edge sits from the run start, along whichever
+    /// axis the run travels: rightward across a line, downward down a column.
+    let pen: Double
     /// The piece's pen advance, canvas units.
     let advance: Double
     /// Geometry with the pen origin at the origin and the baseline at `y = 0`, so

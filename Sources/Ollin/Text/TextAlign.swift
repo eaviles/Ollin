@@ -52,9 +52,52 @@ public enum TextDirection: Sendable {
     case leftToRight
     /// Lay the line out right to left whatever it holds.
     case rightToLeft
+    /// Set the text in columns that run top to bottom, the columns themselves
+    /// filling **right to left**: Japanese and Chinese tategaki.
+    ///
+    /// This is a different axis, not a third direction, so it changes what the
+    /// other text settings measure. A "line" is now a column, `\n` starts the
+    /// next column to the left, and the two `textAlign` axes swap roles: the
+    /// vertical one says where each column starts, the horizontal one places the
+    /// block of columns. A column is one em across.
+    ///
+    /// The font supplies the sideways forms, so brackets, dashes and long vowel
+    /// marks turn, and a comma moves to the top right of its square. Nothing here
+    /// rotates a glyph: each one is the shape the font itself keeps for vertical
+    /// setting, which is also why the face decides what happens to Latin. A
+    /// Japanese face turns it, so a word inside a column reads sideways; a Latin
+    /// face has no turned form to offer, so its letters stack upright.
+    ///
+    /// ```swift
+    /// textDirection(.topToBottom)
+    /// drawText("春はあけぼの。", 900, 100)
+    /// ```
+    ///
+    /// Mongolian is the writing system this does not serve: it is also vertical,
+    /// but its columns fill left to right.
+    case topToBottom
 }
 
 extension TextDirection: CaseIterable, ParamOption {}
+
+extension TextDirection {
+    /// Whether the text runs down a column rather than across a line.
+    var isVertical: Bool { self == .topToBottom }
+}
+
+/// What a justified block of text is stretched to fit (see `textJustify`).
+///
+/// Only a box says how far a line should run, so this is built by the box form of
+/// `drawText` and lives no longer than that call.
+struct TextJustification {
+    /// How far every stretched line runs along the writing axis, in points.
+    let extent: Double
+    /// The lines that must be left alone, by index in the block: the last of each
+    /// paragraph. Those are short because the writing ended, not because the box ran
+    /// out, and stretching one of them across the box is the mistake everybody
+    /// recognises even when they cannot name it.
+    let naturalLines: Set<Int>
+}
 
 /// How outline (`.ttf`/`.otf`) text is rendered (see `textMode`). `.outline`
 /// (default) fills each glyph as a vector `Shape` — highest quality, takes `fill`

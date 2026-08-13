@@ -420,6 +420,7 @@ let package = Package(
         example("Text/PointShimmer"),
         example("Text/JitterType"),
         example("Text/Scripts"),
+        example("Text/Columns"),
         example("Images/GlyphMosaic"),
         example("Images/Halftone"),
         example("Images/LuminanceMelt"),

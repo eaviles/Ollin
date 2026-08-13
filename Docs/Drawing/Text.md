@@ -31,6 +31,8 @@ The default font is `OutlineFont.systemMedium`, the system UI face (San Francisc
 - [Metrics](#metrics) - `textAscent` / `textDescent` / `textLeading` / `textBounds`
 - [Every script](#scripts) - Arabic, Devanagari, Thai, Japanese, emoji, and what changes
 - [textDirection](#textdirection) - which way a line runs
+- [Writing in columns](#vertical) - Japanese and Chinese set top to bottom
+- [textJustify](#justify) - both edges of the box flush
 - [textMissingCharacters](#missing) - what the font cannot draw
 - [BitmapFont](#bitmapfont) - the bitmap font value type, and authoring your own
 
@@ -443,7 +445,7 @@ What is worth knowing is where the English assumptions stop, because four of the
 
 **A line does not always run left to right.** Arabic and Hebrew run right to left, and a line can hold both directions at once. The pieces still come out **left to right on the canvas**, so `g.index` sweeps across the drawing rather than through the reading. Where the base direction matters, name it: see [`textDirection`](#textdirection).
 
-**Not every script marks its word ends with a space.** Japanese and Chinese write without spaces and may break between almost any two characters; Thai writes without spaces and breaks only between words. [Box layout](#box) asks the system where a line may break rather than splitting on spaces, so a paragraph in any script fits its box. (The finer rules of Japanese typesetting, the characters that may not open or close a line, are not applied.)
+**Not every script marks its word ends with a space.** Japanese and Chinese write without spaces and may break between almost any two characters; Thai writes without spaces and breaks only between words. [Box layout](#box) asks the system where a line may break rather than splitting on spaces, so a paragraph in any script fits its box. The Japanese rules about line edges come with that break set. A full stop, a comma, a closing bracket and a small kana all arrive joined to the character before them. So none of them can open a line, and an opening bracket cannot close one.
 
 **An emoji is a picture, not an outline.** The color emoji font stores each one as bitmaps, so there are no contours to fill. `drawText` rasterizes it and places it as an image. Three things follow. It carries its own colors and takes neither `fill` nor `stroke`. `textToShapes` leaves it out, with a note printed once, since there is no geometry to hand back. An SVG or PDF export skips it like any other image. In a per-glyph closure, `TextGlyph.isPicture` marks those pieces. Their `shapes` are empty, and `draw()` still works.
 
@@ -481,6 +483,66 @@ drawText("(1) مرحبا", 80, 200)      // (1) on the right
 ```
 
 Direction reorders a line; it never changes how wide it is. It is drawing state, so it rides `withState { }` like `fill` and `textSize`, and it applies to outline fonts only.
+
+<a name="vertical"></a>
+
+### Writing in columns
+
+```swift
+textDirection(.topToBottom)
+```
+
+Japanese and Chinese can be written down the page instead of across it. The columns fill right to left. This is a fourth `TextDirection`, and it turns the writing onto its other axis. That changes what the other text settings measure.
+
+```swift
+textDirection(.topToBottom)
+textAlign(.right, .top)
+drawText("春はあけぼの。やうやう白くなりゆく山ぎは、", 980, 120)
+```
+
+Turned characters come from the font. A font carries a second shape for the characters that turn, and vertical setting picks them. Brackets lie down. A comma moves to the top right of its square.
+
+The face therefore decides what happens to Latin in a column. A Japanese face carries turned Latin forms, so an English word reads sideways among the kana. A Latin face has none, so its letters stack upright.
+
+| | across a line | down a column |
+|---|---|---|
+| `\n` | the next line, below | the next column, to the **left** |
+| the vertical `textAlign` | places the block of lines | says where each column **starts** |
+| the horizontal `textAlign` | says where each line **starts** | places the block of columns |
+| `textWidth` | how wide the line is | how **long** the column is |
+| `drawText(_:in:)` wraps against | the box width | the box **height** |
+
+Columns are one em wide, so a block of columns keeps its width as the text changes. Column spacing is `textLeading`.
+
+Two things stay out. Text on a path keeps running along the path, since the curve already says which way the text travels. Bitmap and stroke fonts stay horizontal and say so once, as they do for `.rightToLeft`.
+
+Mongolian is the writing system this does not serve. It is vertical too, but its columns fill left to right.
+
+Example: `Examples/Text/Columns`.
+
+<a name="justify"></a>
+
+### textJustify
+
+```swift
+textJustify(_ on: Bool = true)     // default off
+noTextJustify()
+```
+
+Make wrapped text reach both edges of its box.
+
+```swift
+textJustify()
+drawText(paragraph, in: Rectangle(x: 80, y: 80, width: 400, height: 600))
+```
+
+Only a box says how far a line should run, so this applies to [box layout](#box) and nothing else. Text at a plain position is never stretched.
+
+The last line of each paragraph keeps its natural width. That line is short because the writing ended there, and the box had nothing to do with it. `textAlign` says which way it sits.
+
+The layout engine decides where the extra room goes. English opens the spaces between words. Japanese has none, so it opens the gaps between characters. A column justifies like a line and reaches the bottom of its box.
+
+Justification never squeezes. A line already at or past the box is left alone.
 
 <a name="missing"></a>
 

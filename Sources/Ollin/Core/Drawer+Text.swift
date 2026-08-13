@@ -111,7 +111,8 @@ extension Drawer {
 
         let placed = font.placedGlyphs(for: string, size: textPixelSize,
                                        alignH: textAlignH, alignV: textAlignV,
-                                       direction: textWritingDirection, at: Vector2(x, y))
+                                       direction: textWritingDirection,
+                                       justify: textJustification, at: Vector2(x, y))
 
         if svgRecorder != nil {
             for glyph in placed {
@@ -171,7 +172,8 @@ extension Drawer {
         guard let fill = fillPaint else { return }
         let placed = font.placedAtlasGlyphs(for: string, size: textPixelSize,
                                             alignH: textAlignH, alignV: textAlignV,
-                                            direction: textWritingDirection, at: Vector2(x, y))
+                                            direction: textWritingDirection,
+                                            justify: textJustification, at: Vector2(x, y))
         guard !placed.isEmpty else { return }
 
         // A distance field holds one channel, so an emoji cannot ride the atlas and
@@ -378,10 +380,30 @@ extension Drawer {
     /// The bounding box `string` occupies if drawn at `(x, y)` with the active text
     /// state — width is the widest line, height spans the whole block.
     func textBounds(_ string: String, _ x: Double, _ y: Double) -> Rectangle {
-        let w = textWidth(string)
+        let extent = textWidth(string)   // along the writing axis: line width, or column length
         let ascent = textAscent(), descent = textDescent(), advance = textLeading()
         let lineCount = string.split(separator: "\n", omittingEmptySubsequences: false).count
-        let blockHeight = Double(max(0, lineCount - 1)) * advance + ascent + descent
+        let across = Double(max(0, lineCount - 1)) * advance
+
+        if runsVertically {
+            // Columns fill right to left and each is one em across.
+            let blockWidth = across + textPixelSize
+            let left: Double
+            switch textAlignH {
+            case .left:   left = x
+            case .center: left = x - blockWidth / 2
+            case .right:  left = x - blockWidth
+            }
+            let top: Double
+            switch textAlignV {
+            case .top, .baseline: top = y
+            case .middle:         top = y - extent / 2
+            case .bottom:         top = y - extent
+            }
+            return Rectangle(x: left, y: top, width: blockWidth, height: extent)
+        }
+
+        let blockHeight = across + ascent + descent
         let top: Double
         switch textAlignV {
         case .top:      top = y
@@ -392,10 +414,10 @@ extension Drawer {
         let left: Double
         switch textAlignH {
         case .left:   left = x
-        case .center: left = x - w / 2
-        case .right:  left = x - w
+        case .center: left = x - extent / 2
+        case .right:  left = x - extent
         }
-        return Rectangle(x: left, y: top, width: w, height: blockHeight)
+        return Rectangle(x: left, y: top, width: extent, height: blockHeight)
     }
 
     /// Draw `string` wrapped into `rect`: words break to the next line at the box
@@ -404,8 +426,26 @@ extension Drawer {
     /// `.top`/`.middle`/`.bottom`. Explicit `\n`s start new paragraphs. The text
     /// overflows below the box if it's too tall (no vertical clip yet).
     func drawText(_ string: String, in rect: Rectangle) {
-        guard textPixelSize > 0, !string.isEmpty, rect.width > 0 else { return }
-        let wrapped = wrapToWidth(string, rect.width)
+        guard textPixelSize > 0, !string.isEmpty else { return }
+        let vertical = runsVertically
+        // Text wraps when it runs out of room along the axis it travels: the box's
+        // width across a line, its height down a column.
+        let limit = vertical ? rect.height : rect.width
+        guard limit > 0 else { return }
+        let (lines, paragraphEnds) = wrappedLines(string, limit)
+
+        // Justification lives for this call only. A box is the one thing that says
+        // how far a line should run, so nothing outside it may leave this set.
+        if textJustifies {
+            textJustification = TextJustification(extent: limit, naturalLines: paragraphEnds)
+        }
+        defer { textJustification = nil }
+
+        // Each alignment names a box edge, and the plain `drawText` already reads
+        // those two axes the way the current writing direction needs, so the anchors
+        // themselves do not change: what changes is which one aligns the lines and
+        // which one places the block. Vertical text fills from the right, so
+        // `textAlign(.right, .top)` is what fills a box from its opening corner.
         let anchorX: Double
         switch textAlignH {
         case .left:   anchorX = rect.x
@@ -418,30 +458,45 @@ extension Drawer {
         case .middle:         anchorY = rect.center.y
         case .bottom:         anchorY = rect.y + rect.height
         }
-        drawText(wrapped, anchorX, anchorY)
+        drawText(lines.joined(separator: "\n"), anchorX, anchorY)
     }
 
-    /// Greedily break `string` into lines no wider than `maxWidth` at the current
-    /// font/size. Existing `\n`s are kept as paragraph breaks. Returns the rewrapped
-    /// string for the normal `drawText` to lay out.
+    /// Greedily break `string` into lines that run no further than `maxExtent` along
+    /// the writing axis at the current font and size: the width of a line, the length
+    /// of a column. Existing `\n`s are kept as paragraph breaks. Returns the
+    /// rewrapped string for the normal `drawText` to lay out.
     ///
     /// Where a line may break comes from the system's own rules rather than from
     /// the spaces in the text (`LineBreaks`), because most of the world does not
     /// mark word ends with a space: Japanese breaks between characters and Thai
-    /// between words that nothing in the string separates. A piece wider than the
+    /// between words that nothing in the string separates. A piece longer than the
     /// box on its own keeps its line and overflows.
     ///
-    /// The finer rules of Japanese typesetting (the characters that may not open or
-    /// close a line) are not applied; this is the break set, greedily filled.
-    func wrapToWidth(_ string: String, _ maxWidth: Double) -> String {
+    /// Those rules carry the Japanese ones with them. A piece is the unit that may
+    /// not be split, so a closing bracket, a full stop and a small kana all arrive
+    /// joined to the character they follow, and an opening bracket to the one it
+    /// precedes. Filling greedily by whole pieces is therefore what pushes a
+    /// forbidden character onto the next line along with its neighbour, which is the
+    /// behaviour those rules ask for.
+    func wrapToExtent(_ string: String, _ maxExtent: Double) -> String {
+        wrappedLines(string, maxExtent).lines.joined(separator: "\n")
+    }
+
+    /// The same wrap, keeping which lines end a paragraph rather than a box.
+    ///
+    /// Once the lines are joined the two kinds of break look identical, and only one
+    /// of them may be stretched: a line that ends because the writing ended is short
+    /// on purpose. So the wrap is asked for the distinction while it still knows it.
+    func wrappedLines(_ string: String, _ maxExtent: Double) -> (lines: [String], paragraphEnds: Set<Int>) {
         var lines: [String] = []
+        var paragraphEnds: Set<Int> = []
         for paragraph in string.split(separator: "\n", omittingEmptySubsequences: false) {
             var current = ""
             for piece in LineBreaks.pieces(of: String(paragraph)) {
                 let candidate = current + piece
                 // Trailing spaces belong to the line that ends there, so they are
                 // not measured against the box.
-                if current.isEmpty || textWidth(trimmedTrailing(candidate)) <= maxWidth {
+                if current.isEmpty || textWidth(trimmedTrailing(candidate)) <= maxExtent {
                     current = candidate
                 } else {
                     lines.append(trimmedTrailing(current))
@@ -449,8 +504,9 @@ extension Drawer {
                 }
             }
             lines.append(trimmedTrailing(current))
+            paragraphEnds.insert(lines.count - 1)
         }
-        return lines.joined(separator: "\n")
+        return (lines, paragraphEnds)
     }
 
     /// `string` without its trailing whitespace.
@@ -469,30 +525,52 @@ extension Drawer {
         let run = glyphRun(string)
         guard !run.isEmpty else { return }
 
-        let runWidth = (run.last?.penX ?? 0) + (run.last?.advance ?? 0)
-        let startX: Double
-        switch textAlignH {
-        case .left:   startX = x
-        case .center: startX = x - runWidth / 2
-        case .right:  startX = x - runWidth
-        }
+        let runLength = (run.last?.pen ?? 0) + (run.last?.advance ?? 0)
         let ascent = textAscent(), descent = textDescent()
-        let baselineY: Double
-        switch textAlignV {
-        case .top:      baselineY = y + ascent
-        case .baseline: baselineY = y
-        case .middle:   baselineY = y + (ascent - descent) / 2
-        case .bottom:   baselineY = y - descent
+        let vertical = runsVertically
+
+        // Where the run starts, and the fixed coordinate it holds across its own
+        // axis: the baseline of a line, the centre axis of a column.
+        let runStart: Double, across: Double
+        if vertical {
+            switch textAlignV {
+            case .top, .baseline: runStart = y
+            case .middle:         runStart = y - runLength / 2
+            case .bottom:         runStart = y - runLength
+            }
+            switch textAlignH {
+            case .left:   across = x + textPixelSize / 2
+            case .center: across = x
+            case .right:  across = x - textPixelSize / 2
+            }
+        } else {
+            switch textAlignH {
+            case .left:   runStart = x
+            case .center: runStart = x - runLength / 2
+            case .right:  runStart = x - runLength
+            }
+            switch textAlignV {
+            case .top:      across = y + ascent
+            case .baseline: across = y
+            case .middle:   across = y + (ascent - descent) / 2
+            case .bottom:   across = y - descent
+            }
         }
         // A stroke font's glyph geometry is open pen paths: stroke them rather than
         // fill (the same split `drawText` makes between the font kinds).
         let strokesGlyphs = currentFont.isStroke
 
         for (index, item) in run.enumerated() {
-            let origin = Vector2(startX + item.penX, baselineY)
+            let origin = vertical ? Vector2(across, runStart + item.pen)
+                                  : Vector2(runStart + item.pen, across)
             let shapes = item.localShapes.map { shifted($0, by: origin) }
-            let bounds = Rectangle(x: origin.x, y: origin.y - ascent,
-                                   width: item.advance, height: ascent + descent)
+            // The piece's own cell: the advance box across a line, and down a column
+            // the em-wide square the writing system sets to.
+            let bounds = vertical
+                ? Rectangle(x: origin.x - textPixelSize / 2, y: origin.y,
+                            width: textPixelSize, height: item.advance)
+                : Rectangle(x: origin.x, y: origin.y - ascent,
+                            width: item.advance, height: ascent + descent)
             let picture = item.picture
             let pictureRect = Rectangle(x: origin.x + item.localPictureRect.x,
                                         y: origin.y + item.localPictureRect.y,
@@ -521,10 +599,17 @@ extension Drawer {
     /// the curve). Glyphs that fall before the start or past the end are skipped, so
     /// animating `offset` flows the text on and off the ends. Single-line; takes
     /// `fill` and `stroke` like `drawText`.
+    ///
+    /// The text always runs *along* the path, so `textDirection(.topToBottom)` is
+    /// not honored here: the curve already carries the direction the writing would
+    /// have supplied, and the sideways glyph forms would fight the turn it applies.
     func drawText(_ string: String, along path: Path, offset: Double) {
         guard textPixelSize > 0, !string.isEmpty else { return }
         guard fillPaint != nil || (strokePaint != nil && strokeWidth > 0) else { return }
-        let run = glyphRun(string)
+        if runsVertically {
+            noteOnce("text on a path follows the path, so textDirection(.topToBottom) does not apply to it; the run stays along the curve.")
+        }
+        let run = glyphRun(string, vertical: false)
         let points = path.contour.points
         guard run.count > 0, points.count >= 2 else { return }
 
@@ -537,7 +622,7 @@ extension Drawer {
         let strokesGlyphs = currentFont.isStroke   // stroke open pen paths, don't fill
 
         for item in run {
-            let distance = offset + item.penX + item.advance / 2
+            let distance = offset + item.pen + item.advance / 2
             guard distance >= 0, distance <= total else { continue }   // off the path: skip
             let (anchor, angle) = pointAndTangent(points: points, cumulative: cumulative, at: distance)
             let cosA = cos(angle), sinA = sin(angle)
@@ -589,13 +674,38 @@ extension Drawer {
 
     /// The active font's single-line glyph run (see `GlyphRunItem`), dispatched on
     /// the font kind.
-    private func glyphRun(_ string: String) -> [GlyphRunItem] {
+    private func glyphRun(_ string: String, vertical: Bool = true) -> [GlyphRunItem] {
         switch currentFont {
         case .outline(let font):
-            return font.glyphRun(for: string, size: textPixelSize, direction: textWritingDirection)
+            let along = vertical && runsVertically
+            return font.glyphRun(for: string, size: textPixelSize,
+                                 direction: along ? .topToBottom : horizontalDirection)
         case .bitmap(let font):  return bitmapGlyphRun(string, font: font)
         case .stroke(let font):  return strokeGlyphRun(string, font: font)
         }
+    }
+
+    /// Whether the text being drawn now really runs down a column.
+    ///
+    /// Vertical setting needs the sideways glyph forms and the column positions the
+    /// system's layout engine supplies, which only an outline font goes through. A
+    /// bitmap or stroke font has neither, so it says so once and stays horizontal,
+    /// the way it already does for a right-to-left line.
+    var runsVertically: Bool {
+        guard textWritingDirection.isVertical else { return false }
+        guard case .outline = currentFont else {
+            noteOnce("textDirection(.topToBottom) needs an outline font for the sideways glyph forms, so this text stays horizontal.")
+            return false
+        }
+        return true
+    }
+
+    /// The writing direction with the vertical axis taken out: what a path lays its
+    /// text along. A path already says which way the text travels and how it turns,
+    /// so a column has nothing left to mean there, while left-to-right and
+    /// right-to-left still decide the order the pieces ride in.
+    private var horizontalDirection: TextDirection {
+        textWritingDirection.isVertical ? .automatic : textWritingDirection
     }
 
     /// A stroke font's single-line glyph run — each glyph's pen polylines as local
@@ -613,7 +723,7 @@ extension Drawer {
                 }
             }
             let advance = font.advanceUnits(for: ch) * scale
-            items.append(GlyphRunItem(text: String(ch), penX: penX, advance: advance,
+            items.append(GlyphRunItem(text: String(ch), pen: penX, advance: advance,
                                       localShapes: contours.isEmpty ? [] : [Shape(contours: contours)],
                                       picture: nil,
                                       localPictureRect: Rectangle(x: 0, y: 0, width: 0, height: 0)))
@@ -648,7 +758,7 @@ extension Drawer {
                 }
             }
             let advance = Double(font.advance(for: ch)) * module
-            items.append(GlyphRunItem(text: String(ch), penX: penX, advance: advance,
+            items.append(GlyphRunItem(text: String(ch), pen: penX, advance: advance,
                                       localShapes: squares.isEmpty ? [] : [Shape(contours: squares)],
                                       picture: nil,
                                       localPictureRect: Rectangle(x: 0, y: 0, width: 0, height: 0)))

@@ -35,22 +35,29 @@ struct ShapedCluster {
     let text: String
     /// Its glyphs, in the order the layout engine gave them.
     let glyphs: [ShapedGlyph]
-    /// The leftmost pen position in the cluster, em units.
-    let originX: Double
+    /// Where the cluster sits on the writing axis, in the layout's own frame and
+    /// in em units: the leftmost pen x across a line, the topmost pen y down a
+    /// column. The cluster's local geometry is measured from it.
+    ///
+    /// Note the two axes count opposite ways. Pen x grows in reading order, pen y
+    /// falls, so a column's anchors *decrease* as you read down.
+    let anchor: Double
     /// The pen advance of the whole cluster, em units.
     let advance: Double
 }
 
 enum TextClusters {
     /// Group `glyphs` into clusters against the string they came from, then order
-    /// them **left to right on the canvas**.
+    /// them **the way they are read on the canvas**: left to right across a line,
+    /// top to bottom down a column.
     ///
     /// Visual order is the deliberate choice. A per-glyph effect wants to sweep
     /// across the drawing, and text on a path has to lay its clusters along the
     /// curve in the order they appear. For a right-to-left line that is the
     /// reverse of reading order, which is correct: the word still reads properly,
     /// because each cluster keeps its own place.
-    static func group(_ glyphs: [ShapedGlyph], in string: String) -> [ShapedCluster] {
+    static func group(_ glyphs: [ShapedGlyph], in string: String,
+                      vertical: Bool = false) -> [ShapedCluster] {
         // Where each user-perceived character starts, in UTF-16 offsets.
         var starts: [Int] = []
         var offset = 0
@@ -89,7 +96,8 @@ enum TextClusters {
         func closeCurrent() {
             guard open else { return }
             clusters.append(make(characters: currentCharacters, glyphs: currentGlyphs,
-                                starts: starts, total: total, string: string))
+                                starts: starts, total: total, string: string,
+                                vertical: vertical))
             open = false
         }
 
@@ -107,14 +115,17 @@ enum TextClusters {
         closeCurrent()
 
         // Order by where each cluster sits, tie-broken by build order so a run
-        // reproduces exactly.
-        return clusters.enumerated()
-            .sorted { ($0.element.originX, $0.offset) < ($1.element.originX, $1.offset) }
-            .map(\.element)
+        // reproduces exactly. Reading runs one way along each axis, and pen y falls
+        // as a column is read, so the vertical key is negated.
+        func key(_ entry: (offset: Int, element: ShapedCluster)) -> (Double, Int) {
+            (vertical ? -entry.element.anchor : entry.element.anchor, entry.offset)
+        }
+        return clusters.enumerated().sorted { key($0) < key($1) }.map(\.element)
     }
 
     private static func make(characters: [Int], glyphs: [ShapedGlyph],
-                             starts: [Int], total: Int, string: String) -> ShapedCluster {
+                             starts: [Int], total: Int, string: String,
+                             vertical: Bool) -> ShapedCluster {
         let from = starts[characters.first ?? 0]
         let last = characters.last ?? 0
         let to = last + 1 < starts.count ? starts[last + 1] : total
@@ -122,8 +133,10 @@ enum TextClusters {
         let text = from < to && to <= utf16.count
             ? String(utf16CodeUnits: Array(utf16[from..<to]), count: to - from)
             : ""
-        let originX = glyphs.map(\.x).min() ?? 0
+        // The first edge the cluster presents to the reader: its left across a line,
+        // its top down a column.
+        let anchor = (vertical ? glyphs.map(\.y).max() : glyphs.map(\.x).min()) ?? 0
         let advance = glyphs.reduce(0) { $0 + $1.advance }
-        return ShapedCluster(text: text, glyphs: glyphs, originX: originX, advance: advance)
+        return ShapedCluster(text: text, glyphs: glyphs, anchor: anchor, advance: advance)
     }
 }

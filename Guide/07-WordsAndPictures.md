@@ -132,6 +132,40 @@ A line can hold both directions at once. Then the neutral characters (spaces, br
 
 **A space is not how most writing ends a word.** The bottom-right panel is a Japanese paragraph in a box. Japanese may break between almost any two characters, and Thai only between words. No space tells you either. So box layout asks the system instead of splitting on spaces.
 
+Box layout carries the Japanese rules along with it. A full stop may not open a line, and an opening bracket may not close one. The system's break set already knows, so a comma arrives joined to the character before it and travels with it.
+
+## Down the page
+
+Japanese is also written the other way.
+
+The same sentence can run down the page, in columns that fill right to left. One setting says so:
+
+```swift
+textDirection(.topToBottom)
+drawText("「春」は、あけぼの（をかし）", 820, 80)
+```
+
+<img src="Images/07-WordsAndPictures/WritingInColumns.jpg" alt="Top: one Japanese sentence set across a line, then its opening set down a column. Middle right: an opening bracket, a comma and an opening parenthesis shown upright above their turned forms. Bottom: the same passage set in two identical boxes, justified on the left where every column reaches a red rule, ragged on the right where each stops short of it" width="680">
+
+Every turned character comes from the font. The middle of the figure shows three of them. The bracket lies down. The comma leaves the bottom left of its square and takes the top right. Those shapes are the writing system's own answer, kept in the face, and asking for vertical setting is what picks them.
+
+Which is why the face decides what happens to English inside a column. A Japanese face carries a turned `A`, so a word among the kana reads sideways. A Latin face has none, so its letters stack upright.
+
+Turning the writing turns the settings with it. A `\n` starts the next column, to the left. `textWidth` measures how long the column is. A box wraps against its height, because that is the room a column has to run in. And the two halves of `textAlign` swap jobs: the vertical one says where a column starts, the horizontal one places the block of columns. So vertical text in a box usually wants `textAlign(.right, .top)`, which is the corner the writing opens at.
+
+## Both edges flush
+
+The bottom of the figure is one passage, set twice in the same box. On the left every full column reaches the red rule. On the right each one stops where it happened to stop.
+
+```swift
+textJustify()
+drawText(passage, in: box)
+```
+
+Justification needs to know how far a line should run, and only a box says that. So it applies to the box form of `drawText` and to nothing else. The last line of each paragraph keeps its natural length: that one is short because the writing ended there.
+
+Where the extra room goes is the layout engine's business. English opens the spaces between words. Japanese has no spaces, so it opens the gaps between characters instead. Either way you ask for the same thing.
+
 Two more calls help when you go looking. `OutlineFont.fontsUsed(for:)` names the faces a line borrowed. That is how you catch a Latin font handing your Japanese to somebody else. `textMissingCharacters` lists what the current font cannot draw at all. For an outline font it is almost always empty. For bitmap and plotter fonts it matters: those hold only their own glyphs. Anything else draws nothing.
 
 ## Pictures

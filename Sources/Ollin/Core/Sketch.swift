@@ -2439,6 +2439,25 @@ open class Sketch {
     /// scripts, and which end the line starts at. Outline fonts only, since bitmap
     /// and stroke fonts have no shaping engine. See `TextDirection`.
     public func textDirection(_ direction: TextDirection) { drawer.textDirection(direction) }
+    /// Stretch wrapped text so it runs the full width of its box, both edges flush.
+    ///
+    /// Justification needs to know how far a line should run, and only the box form
+    /// of `drawText` says that, so this applies to `drawText(_:in:)` and nothing
+    /// else. The last line of each paragraph is left at its natural width, because
+    /// it is short for a reason the box had nothing to do with. `textAlign` then
+    /// says which way that last line sits.
+    ///
+    /// The system's layout engine decides where the extra room goes, which is what
+    /// makes this work in any script: between the words in English, between the
+    /// characters in Japanese. It works down a column as readily as across a line.
+    ///
+    /// ```swift
+    /// textJustify()
+    /// drawText(paragraph, in: Rectangle(x: 80, y: 80, width: 400, height: 600))
+    /// ```
+    public func textJustify(_ on: Bool = true) { drawer.textJustify(on) }
+    /// Leave wrapped text at its natural width, the default. See `textJustify`.
+    public func noTextJustify() { drawer.noTextJustify() }
     /// Draw `string` at `(x, y)` using the active `textFont`/`textSize`/`textAlign`.
     /// How it paints follows the font kind: an **outline** (`.ttf`/`.otf`) font
     /// (the default, `OutlineFont.systemMedium`) takes `fill` *and* `stroke`; a

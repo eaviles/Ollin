@@ -22,5 +22,6 @@ Drawing text with `drawText` — bitmap (pixel-grid) and outline (`.ttf`/`.otf`)
 | [PointShimmer](PointShimmer/Sketch.swift) | type dissolved into a point field that wobbles like heat haze — each point pushed sideways by a sine of its height (`textToShapes` → points) |
 | [JitterType](JitterType/Sketch.swift) | letters rattling like a bad photocopy — each glyph's vertices jittered by a pulsing random offset (`textToShapes`, `Shape.mapPoints`, `randomSeed`) |
 | [Scripts](Scripts/Sketch.swift) | one specimen sheet in five scripts: Arabic right to left, Devanagari reordered, Thai with stacked marks, Japanese wrapped in a box with no spaces to break at, and an emoji drawn as the picture the font carries (`textDirection`, per-piece `drawText`, `fontsUsed(for:)`) |
+| [Columns](Columns/Sketch.swift) | the Pillow Book set down the page in columns that fill right to left, justified into its box, with the brackets and comma taking the sideways shapes the font keeps for them (`textDirection(.topToBottom)`, `textJustify`, box layout) |
 
 Run one with `swift run Example-Text-<Name>`, e.g. `swift run Example-Text-HelloText`.

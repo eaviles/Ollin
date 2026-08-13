@@ -43,7 +43,7 @@ struct ComplexTextTests {
         let items = run(word)
         #expect(items.count == word.count)
         #expect(items.map(\.text).joined() == String(word.reversed()))
-        for (a, b) in zip(items, items.dropFirst()) { #expect(a.penX < b.penX) }
+        for (a, b) in zip(items, items.dropFirst()) { #expect(a.pen < b.pen) }
     }
 
     /// Every piece's advance is the pen movement the shaper reported, so the
@@ -80,7 +80,7 @@ struct ComplexTextTests {
             var pieces: [Shape] = []
             for item in run(string) {
                 pieces.append(contentsOf: item.localShapes.map { $0.mapPoints { p in
-                    Vector2(p.x + item.penX, p.y)
+                    Vector2(p.x + item.pen, p.y)
                 } })
             }
             #expect(pieces.count == plain.count, "\(string) piece count")
@@ -258,10 +258,61 @@ struct ComplexTextTests {
         let drawer = Drawer()
         drawer.textSize(32)
         let japanese = String(repeating: "日本語のテキストです", count: 3)
-        let lines = drawer.wrapToWidth(japanese, 300).split(separator: "\n")
+        let lines = drawer.wrapToExtent(japanese, 300).split(separator: "\n")
         #expect(lines.count > 1)
         for line in lines { #expect(drawer.textWidth(String(line)) <= 300.5) }
         #expect(lines.joined() == japanese)
+    }
+
+    /// Japanese typesetting forbids certain characters at the edge of a line: a
+    /// full stop, a comma, a closing bracket or a small kana may not open one, and
+    /// an opening bracket may not close one. Those rules come with the system's
+    /// break set rather than from a table written here, because the piece a line is
+    /// built from is already the unit that may not be split: a comma arrives joined
+    /// to the character it follows, an opening bracket to the one it precedes.
+    /// Filling greedily by whole pieces therefore carries the forbidden character
+    /// onto the next line along with its neighbour, which is what the rules ask for.
+    ///
+    /// The second half of the test is the counterfactual, and it is why the first
+    /// half means anything: the obvious way to wrap a language with no spaces is to
+    /// break between characters, and that *does* strand a comma at the start of a
+    /// line. Widths are swept because a rule about line edges is only tested where a
+    /// line actually ends.
+    @Test func japaneseKeepsForbiddenCharactersOffTheEdgesOfALine() {
+        let drawer = Drawer()
+        drawer.textSize(32)
+        let text = "彼は「ちょっと待って（急いで）ね」と言った。それは、きっと100%の力で!!やる。"
+        let mayNotOpen = Set("、。」）！!%っゃゅょ")
+        let mayNotClose = Set("「（")
+
+        var lineCount = 0
+        for width in stride(from: 140.0, through: 620.0, by: 20.0) {
+            let lines = drawer.wrapToExtent(text, width).split(separator: "\n")
+            #expect(lines.count > 1)
+            for line in lines {
+                guard let first = line.first, let last = line.last else { continue }
+                #expect(!mayNotOpen.contains(first), "\(first) opened a line at width \(width)")
+                #expect(!mayNotClose.contains(last), "\(last) closed a line at width \(width)")
+                lineCount += 1
+            }
+        }
+        #expect(lineCount > 20)
+
+        // Breaking between characters instead, which is what a language with no
+        // spaces invites, strands one of them at least once over the same sweep.
+        var stranded = 0
+        for width in stride(from: 140.0, through: 620.0, by: 20.0) {
+            var line = ""
+            for character in text {
+                if !line.isEmpty, drawer.textWidth(line + String(character)) > width {
+                    if let first = line.first, mayNotOpen.contains(first) { stranded += 1 }
+                    line = ""
+                }
+                line.append(character)
+            }
+            if let first = line.first, mayNotOpen.contains(first) { stranded += 1 }
+        }
+        #expect(stranded > 0)
     }
 
     /// A line broken at a space does not keep that space, so centered text stays
@@ -269,7 +320,7 @@ struct ComplexTextTests {
     @Test func wrappingLeavesNoTrailingSpace() {
         let drawer = Drawer()
         drawer.textSize(32)
-        let wrapped = drawer.wrapToWidth("the quick brown fox jumps over the lazy dog", 300)
+        let wrapped = drawer.wrapToExtent("the quick brown fox jumps over the lazy dog", 300)
         for line in wrapped.split(separator: "\n") {
             #expect(line.last?.isWhitespace != true)
             #expect(drawer.textWidth(String(line)) <= 300.5)
@@ -286,7 +337,7 @@ struct ComplexTextTests {
             #expect(first.count == second.count)
             for (a, b) in zip(first, second) {
                 #expect(a.text == b.text)
-                #expect(a.penX == b.penX)
+                #expect(a.pen == b.pen)
                 #expect(a.advance == b.advance)
             }
         }

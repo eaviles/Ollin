@@ -228,6 +228,11 @@ final class Drawer {
     var textAlignV: TextAlignV = .baseline       // vertical text anchor (see textAlign)
     var textRenderMode: TextMode = .outline      // outline vs SDF-atlas text (see textMode)
     var textWritingDirection: TextDirection = .automatic   // base line direction (see textDirection)
+    var textJustifies: Bool = false              // stretch wrapped lines to the box (see textJustify)
+    /// What the block being drawn right now is stretched to, set by the box form of
+    /// `drawText` for the length of that one call. Nothing else may set it: only a
+    /// box knows how far a line should run.
+    var textJustification: TextJustification? = nil
     var tintColor: Color? = nil                  // multiplies drawImage texels; nil = untinted (see tint / noTint)
     var currentBlend: BlendMode = .normal        // how shapes combine with the canvas (see blendMode)
     var currentDepth: Float? = nil               // clip-z for 2D draws in a 3D scene; nil = draw over (see depth(at:))
@@ -1542,6 +1547,7 @@ final class Drawer {
         var textAlignV: TextAlignV
         var textRenderMode: TextMode
         var textWritingDirection: TextDirection
+        var textJustifies: Bool
         var tintColor: Color?
         var currentBlend: BlendMode
         var currentDepth: Float?
@@ -1781,6 +1787,12 @@ final class Drawer {
 
     /// Set the base direction a line of text runs in (see `TextDirection`).
     func textDirection(_ direction: TextDirection) { textWritingDirection = direction }
+
+    /// Stretch wrapped text so both edges of the box are flush (see `textJustify`).
+    func textJustify(_ on: Bool = true) { textJustifies = on }
+
+    /// Leave wrapped text at its natural width, the default.
+    func noTextJustify() { textJustifies = false }
 
     // MARK: 3D camera & point clouds
 
@@ -3304,6 +3316,7 @@ final class Drawer {
                                      textAlignH: textAlignH, textAlignV: textAlignV,
                                      textRenderMode: textRenderMode,
                                      textWritingDirection: textWritingDirection,
+                                     textJustifies: textJustifies,
                                      tintColor: tintColor,
                                      currentBlend: currentBlend,
                                      currentDepth: currentDepth,
@@ -3338,6 +3351,7 @@ final class Drawer {
         textAlignV = s.textAlignV
         textRenderMode = s.textRenderMode
         textWritingDirection = s.textWritingDirection
+        textJustifies = s.textJustifies
         tintColor = s.tintColor
         currentBlend = s.currentBlend
         currentDepth = s.currentDepth
