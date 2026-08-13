@@ -398,6 +398,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("glyph-mosaic",
                  note: "A painted diagonal gradient with a bright disk, rebuilt as a glyph mosaic in the bundled bitmap font: dense marks in the bright corner and around the disk, a lone dot at the faint edge, true emptiness below the floor. Pins the measured ink ramp, the nearest-coverage selection, the empty floor, and the cell layout. No rng and no time, so it is deterministic.",
                  make: { GlyphMosaicScene() }),
+    SnapshotCase("color-vision",
+                 note: "Two palettes drawn four ways: as most people see them, and through each of the three kinds at full severity. The left pair is a familiar chart set, whose orange, green and red arrive on one olive; the right pair is the published safe set, which holds apart. The lower half puts the same strip through Filter.colorVision, so the CPU call and the GPU filter are in one frame and a drift between them shows. Pins the published matrix table, the linear-light application, and the filter dispatch. No rng and no time, so it is deterministic.",
+                 make: { ColorVisionScene() }),
     SnapshotCase("halftone",
                  note: "A painted tonal study (gradient, solid-ink disk, bare-paper disk) screened as vector halftone dots twice: the dark-ink reading on the left and the inverted light-ink reading on the right, both on a rotated screen. Pins the rotated-cell binning, the area-exact dot sizing through the edge-clipped branch, the printable-dot cutoff, and the inverted mapping. No rng and no time, so it is deterministic.",
                  make: { HalftoneScene() }),
@@ -2925,6 +2928,49 @@ private final class GlyphMosaicScene: Sketch {
 /// A painted tonal study screened as vector halftone dots, the classic
 /// reading beside the inverted one, both on a rotated screen. No rng and no
 /// `time`, so it's deterministic.
+private final class ColorVisionScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    private let chart = Palette([Color(hex: 0x1F77B4), Color(hex: 0xFF7F0E), Color(hex: 0x2CA02C),
+                                 Color(hex: 0xD62728), Color(hex: 0x9467BD), Color(hex: 0x8C564B)])
+
+    private let views: [ColorVision] = [.normal, .protanopia, .deuteranopia, .tritanopia]
+
+    override func draw() {
+        background(Color(white: 0.95))
+        noStroke()
+
+        // Top half: the CPU call, one column per kind, both palettes.
+        for (column, vision) in views.enumerated() {
+            let x = 8.0 + Double(column) * 62
+            strip(chart, vision: vision, x: x, y: 8, width: 26, height: 110)
+            strip(.colorblindSafe, vision: vision, x: x + 30, y: 8, width: 26, height: 110)
+        }
+
+        // Bottom half: the same strip through the GPU filter, drawn into a layer
+        // per kind so one frame holds both paths.
+        for (column, vision) in views.enumerated() {
+            let x = 8.0 + Double(column) * 62
+            let layer = renderTarget()
+            withTarget(layer) {
+                noStroke()
+                strip(chart, vision: .normal, x: x, y: 132, width: 26, height: 110)
+                strip(.colorblindSafe, vision: .normal, x: x + 30, y: 132, width: 26, height: 110)
+            }
+            drawImage(layer.filtered(.colorVision(vision)).image, 0, 0)
+        }
+    }
+
+    private func strip(_ palette: Palette, vision: ColorVision, x: Double, y: Double,
+                       width: Double, height: Double) {
+        let size = height / Double(palette.count)
+        for (i, color) in palette.colors.enumerated() {
+            fill(color.simulated(vision))
+            drawRect(x, y + Double(i) * size, width, size - 1)
+        }
+    }
+}
+
 private final class HalftoneScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 

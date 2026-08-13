@@ -298,6 +298,7 @@ let package = Package(
         example("Motion/NBody"),
         example("Data/Readings", resources: [.copy("readings.csv")]),
         example("Data/Places", resources: [.copy("places.json")]),
+        example("Color/ColorVision"),
         example("Color/ColorWaves"),
         example("Color/HSBWheel"),
         example("Color/Mixing"),

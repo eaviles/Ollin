@@ -227,9 +227,8 @@ It builds on the `FrameStats` and extension-seam machinery (the overlay is the f
 
 ## Accessibility and inclusive text
 
-Inclusivity on the platform's native support, split by who it serves.
+Inclusivity on the platform's native support, split by who it serves. The color and motion half for authors is in [`Docs/Helpers/Accessibility.md`](Docs/Helpers/Accessibility.md); one decision from it carries forward, which is that nothing is applied on a sketch's behalf, since only the sketch knows which of its movements or distinctions is load-bearing. What is left:
 
-- **For authors (color and motion).** Colorblind-safe palette helpers (palettes that stay distinguishable under the common color-vision deficiencies, beside the existing ColorBrewer and harmony builders) and a color-vision **simulation** `Filter` (preview a sketch as it reads under deuteranopia, protanopia, tritanopia, the standard transform, a sibling of the existing stylize filters). Plus reduced-motion awareness: motion is the default, so honor the system Reduce Motion setting (a readable flag a sketch can check, and a sensible default for built-in animation).
 - **For viewers (describable output).** The native counterpart to p5.js's `textOutput()` / `gridOutput()`: a way to attach an accessible text description to a sketch (and, where it can be derived, to the drawn structure), so a generative piece is not opaque to a screen reader. The hardest and most valuable part; scope it to author-provided descriptions first, derived ones later.
 - **Robust complex-script text.** The text system rides Core Text, which shapes CJK, Arabic and other right-to-left scripts, Indic scripts, emoji, and combining marks correctly, but that path needs verifying and surfacing (bidi handling, cluster-aware `textToShapes`, font fallback for missing glyphs) so a global audience is served, not just Latin. Pairs with the existing text system.
 

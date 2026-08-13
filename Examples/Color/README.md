@@ -9,6 +9,7 @@ Palettes, colormaps, and driving color from a value or from time.
 | Example | What it shows |
 |---|---|
 | [Colormaps](Colormaps/Sketch.swift) | the eight perceptual `Colormap` ramps as horizontal bands (value → color) |
+| [ColorVision](ColorVision/Sketch.swift) | two palettes seen four ways, with a bar marking every pair that merges, and `Filter.colorVision` over the whole canvas on a knob |
 | [ColorWaves](ColorWaves/Sketch.swift) | a row of sin-colored circles flowing with `time` |
 | [Dithering](Dithering/Sketch.swift) | one painted gradient reduced to four extracted colors six ways: plain nearest-color, ordered Bayer, blue noise, and three error-diffusion kernels |
 | [Gradients](Gradients/Sketch.swift) | gradient paint everywhere: a linear sky, a radial sun, along-path ramps on a Bézier and a polyline, a conic ring sweep, and per-vertex shading on a star and a curved shape |

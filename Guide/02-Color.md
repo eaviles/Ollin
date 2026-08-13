@@ -169,6 +169,38 @@ There are two families, and they look different on purpose.
 
 A few practical notes. `.none` skips the scattering entirely, which is what the first panel uses and what you reach for to show someone the difference. There's a second form, `dithered(.atkinson, levels: 2)`, that quantizes to evenly spaced steps per channel instead of to a palette, which is the posterizing one. And this is CPU work over every pixel, so do it in `setup()` and hold the result rather than redoing it each frame. [The color reference](../Docs/Drawing/Color.md#dithering) has the full method list, and the `Dithering` example puts six of them side by side.
 
+## Will everybody see it?
+
+Pick two colors that read as clearly different to you, and there is a fair chance somebody cannot tell them apart. About one man in twelve sees color differently from the palette most work is designed against. That is not a rare edge case. In a room of twenty people it is one or two of them.
+
+You can look at your own colors through that difference:
+
+```swift
+let seen = Color.red.simulated(.deuteranopia)
+```
+
+<img src="Images/02-Color/ColorVision.jpg" alt="Two palettes drawn in four columns: as most people see them, then under protanopia, deuteranopia and tritanopia. In the top set the orange, green and red arrive as one olive. The bottom set stays separable" width="680">
+
+The top block is a palette you have met in a hundred charts. Under the two commonest kinds its orange, green and red land on one olive. The bottom block is `Palette.colorblindSafe`, eight colors published for exactly this, and it holds together.
+
+To see a whole sketch rather than a swatch, put the reading over the frame:
+
+```swift
+postProcess(.colorVision(.deuteranopia))
+```
+
+Behind a `@Param` toggle that becomes a switch you flick while you work.
+
+You can also ask, rather than look:
+
+```swift
+if !myPalette.isColorblindSafe() {
+    print(myPalette.confusions())     // worst pair first
+}
+```
+
+Here is the part worth carrying away. Red and green do look alike to a protanope, and the pair is often still fine, because one is much darker than the other. What merges is two colors of the same lightness that differ only in hue. Measured on a matched pair, they sit 0.281 apart for average vision and 0.014 apart under the worst kind. So vary lightness, not only hue, and give a shape or a label to anything that color alone is carrying.
+
 ## Gradients as paint
 
 A `Ramp` can also *be* the paint. Anywhere `fill` or `stroke` accepts a color it will also accept a gradient, laid over the canvas in one of three ways:
@@ -254,7 +286,8 @@ The OKLab family (OKLab, OKLCH, OKHSL) is the work of Björn Ottosson, published
 ## Go deeper
 
 - [Color](../Docs/Drawing/Color.md): the complete reference, including color temperature (`Color(kelvin:)`) and the string-hex grammar.
-- Worked examples, all in [`Examples/Color/`](../Examples/Color/): `Mixing` (the five spaces side by side), `Harmonies`, `Swatchbook`, `Palettes`, `PaletteFile`, `PaletteFromImage`, `Colormaps`, `HSBWheel`, and `Gradients`.
+- Worked examples, all in [`Examples/Color/`](../Examples/Color/): `Mixing` (the five spaces side by side), `Harmonies`, `Swatchbook`, `Palettes`, `PaletteFile`, `PaletteFromImage`, `Colormaps`, `HSBWheel`, `Gradients`, and `ColorVision`.
+- [Accessibility](../Docs/Helpers/Accessibility.md): the color-vision simulation, the palette check, and the reduce-motion setting.
 - [Drawing](../Docs/Drawing/Drawing.md): every place a `Paint` can go.
 
 ---

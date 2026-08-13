@@ -144,7 +144,7 @@ Ollin sits on a GPU core and pitches the rendering ceiling, but it doesn't yet h
 
 ## Accessibility and inclusive text
 
-Making Ollin and the work people make with it more inclusive, on the platform's native support. For **authors**: colorblind-safe palette helpers and a color-vision *simulation* filter (preview a sketch as it reads under deuteranopia and friends), plus reduced-motion awareness for the motion-by-default model. For **viewers**: a describable-output path, the native counterpart to p5's `textOutput()`, so a generative piece can carry an accessible description. And **robust complex-script text**: verifying and surfacing Core Text's handling of CJK, right-to-left scripts, emoji, and combining marks, so the text system serves a global audience. See the [design notes](DESIGN-NOTES.md#accessibility-and-inclusive-text).
+Making Ollin and the work people make with it more inclusive, on the platform's native support. What authors need for color and motion is in [Accessibility](Docs/Helpers/Accessibility.md). What remains serves **viewers**: a describable-output path, the native counterpart to p5's `textOutput()`, so a generative piece can carry an accessible description, scoped to author-provided descriptions first and derived ones later. And **robust complex-script text**: verifying and surfacing Core Text's handling of CJK, right-to-left scripts, emoji, and combining marks, so the text system serves a global audience. See the [design notes](DESIGN-NOTES.md#accessibility-and-inclusive-text).
 
 ## Further out / exploratory
 

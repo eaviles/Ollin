@@ -403,6 +403,10 @@ extension MetalRenderer {
             return pass("ollin_fx_threshold", [input], [f(value, softness, 0, 0)])
         case .sepia(let amount):
             return pass("ollin_fx_sepia", [input], [f(amount, 0, 0, 0)])
+        case .colorVision(let vision):
+            let m = vision.matrix
+            return pass("ollin_fx_color_vision", [input],
+                        [f(m[0], m[1], m[2], 0), f(m[3], m[4], m[5], 0), f(m[6], m[7], m[8], 0)])
         case let .duotone(dark, light, amount):
             return pass("ollin_fx_duotone", [input], [f(amount, 0, 0, 0), dark, light])
         case let .gradientMap(lut, amount):

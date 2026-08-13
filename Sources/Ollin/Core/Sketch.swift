@@ -195,6 +195,26 @@ open class Sketch {
     /// Live only: a headless render has no display, so it reads 1.
     public private(set) var displayHeadroom: Double = 1
 
+    /// Whether the system is set to reduce motion.
+    ///
+    /// Ollin animates by default, which is the point of `draw()` running every
+    /// frame, and for some people that is a problem rather than a feature.
+    /// Reading this is how a sketch offers the quieter version of itself: hold a
+    /// value still, slow a drift, or drop a flash.
+    ///
+    /// ```swift
+    /// let speed = prefersReducedMotion ? 0.1 : 1.0
+    /// ```
+    ///
+    /// Nothing is applied for you. A sketch decides what less movement means,
+    /// because only the sketch knows which of its movements carries the piece
+    /// and which is decoration. The setting is read fresh, so turning it on
+    /// reaches a running sketch on the next frame.
+    ///
+    /// A headless render always reads `false`, so an export is the same file on
+    /// any machine.
+    public var prefersReducedMotion: Bool { OllinAccessibility.prefersReducedMotion }
+
     /// How much color the finished frame carries out of the sketch. Defaults to
     /// `.standard` (8-bit sRGB, what every screen and file handles). Declare
     /// `.wide` to present through Display P3 in a floating-point drawable, so

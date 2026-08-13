@@ -105,6 +105,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 - [`Animation`](./Helpers/Animation.md) - looping progress (`loopProgress`/`pingPong`), the `Easing` curves, `@Eased` (ease toward a target), `@Smoothed` (smooth a noisy signal), `@Sprung` (spring toward a target with momentum), and the `Timeline` keyframe sequencer
 - [`Parameters`](./Helpers/Parameters.md) - `@Param` tunable knobs: typed inspector controls (from sliders and toggles to menus, color wells, text, and geometry fields) in grouped cards, value scrubbing, optional smoothing, and binding from OSC or MIDI
 - [`Input`](./Helpers/Input.md) - mouse and keyboard
+- [`Accessibility`](./Helpers/Accessibility.md) - seeing your colors as the three kinds of color vision do, checking whether a palette holds apart, and reading the system's reduce-motion setting
 - [`Data`](./Helpers/Data.md) - `loadTable` for CSV and TSV files (typed reads by column name) and `loadJSON` for documents you reach through by name and index
 - [`Audio`](./Helpers/Audio.md) - `import OllinAudio` for microphone, file, and oscillator sources, analyzed into `amplitude`/`spectrum`/band values you read in `draw()`
 - [`Listening`](./Helpers/Listening.md) - speech as a caption you can draw and phrases you can act on, plus 300-odd everyday sounds named as they happen, over any audio source

@@ -280,6 +280,16 @@ Then make it yours:
 - Replace the `smoothstep` in `lit` with `step(1 - pulseWidth * 2, wave)` and the glow becomes a hard blink: same window, no shoulders. Put the smoothstep back and appreciate the shoulders.
 - Make all rings run the same `direction`, or give the ramp four colors of your own.
 
+## When somebody would rather it stopped
+
+Motion is the default here, and for some people that is a problem rather than a pleasure. Movement can bring on nausea or a headache, which is why macOS carries a Reduce Motion setting. A sketch can ask for it:
+
+```swift
+let speed = prefersReducedMotion ? 0.1 : 1.0
+```
+
+Nothing changes on its own, and that is deliberate. Only you know which of your movements is the piece and which is decoration. Slow a drift, hold something that was oscillating, drop a flash, and the work still reads. A headless export always reads `false`, so a file you render is the same file anywhere.
+
 ## Where this comes from
 
 The named easing curves are Robert Penner's easing equations, published with his 2002 book *Programming Macromedia Flash MX* and since absorbed into practically every animation system; Ollin's are written from the formulas catalogued at [easings.net](https://easings.net). The craft behind them is older than software, since the animator's principles of slow-in and slow-out grew out of the Disney studio of the 1930s, and "the spacing is the animation" is their lesson. Smoothstep is a small classic of computer graphics shading languages, where it does per-pixel what this chapter does per-frame; [The Book of Shaders](https://thebookofshaders.com) by Patricio Gonzalez Vivo and Jen Lowe teaches that per-pixel world beautifully, and its insistence on *drawing* shaping functions rather than defining them shaped this chapter. Describing a spring by duration and bounce instead of by stiffness and damping is the approach Apple introduced with SwiftUI's spring animations, and it's a good deal kinder to work with than the physical parameters. `@Smoothed` implements the [1€ filter](https://gery.casiez.net/1euro/) by Géry Casiez, Nicolas Roussel, and Daniel Vogel (CHI 2012). Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
@@ -289,6 +299,7 @@ The named easing curves are Robert Penner's easing equations, published with his
 - [Math helpers](../Docs/Helpers/Math.md): `map`, `lerp`, `dist`, the shaping scalars, and the constants.
 - [Animation](../Docs/Helpers/Animation.md): the full easing catalog, `@Eased`, `@Sprung`, `@Smoothed`, and `Timeline`.
 - [Sketch](../Docs/Core/Sketch.md#temporal-state): the clock properties in one table.
+- [Accessibility](../Docs/Helpers/Accessibility.md): `prefersReducedMotion`, and the color half beside it.
 - [Export](../Docs/Output/Export.md): stills, sequences, video, GIF sizing, and render quality.
 - Worked examples, all in [`Examples/Motion/`](../Examples/Motion/): `Breathing` (map on a pulse), `Easing` (four dots racing to a click), `EasingGallery` (all thirty curves), `Springs` (`@Sprung` against a moving target), `Timeline` (a scripted tour of a square, one easing per side), `Smoothing` (the filter chasing a shaky target), `SineSweep`, and `Orbits`.
 

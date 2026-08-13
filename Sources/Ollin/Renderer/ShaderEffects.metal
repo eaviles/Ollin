@@ -244,6 +244,23 @@ fragment float4 ollin_fx_sepia(PresentOut in [[stage_in]],
     return ollin_premul(mix(c, clamp(sep, 0.0, 1.0), params[0].x), s.a);
 }
 
+// colorVision: show the layer as one kind of color vision sees it. The three
+// rows of the transform arrive in params[0..2].xyz. They weight the power of the
+// display primaries, so they belong in linear light, which is what a layer
+// already holds: nothing is decoded on the way in. Only the low end is clamped,
+// since a layer may legitimately carry values above one for the tone map.
+fragment float4 ollin_fx_color_vision(PresentOut in [[stage_in]],
+                                      texture2d<float> src [[texture(0)]],
+                                      sampler samp [[sampler(0)]],
+                                      constant float4 *params [[buffer(0)]]) {
+    float4 s = src.sample(samp, in.uv);
+    float3 c = ollin_unpremul(s);
+    float3 seen = float3(dot(params[0].xyz, c),
+                         dot(params[1].xyz, c),
+                         dot(params[2].xyz, c));
+    return ollin_premul(max(seen, 0.0), s.a);
+}
+
 // duotone: map luminance between two colors (params[1] dark, params[2] light).
 fragment float4 ollin_fx_duotone(PresentOut in [[stage_in]],
                                  texture2d<float> src [[texture(0)]],

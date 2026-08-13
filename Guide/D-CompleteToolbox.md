@@ -286,6 +286,7 @@ Use it two ways: as an index ("I remember the guide showing blur somewhere"), an
 | Live coding | `swift run OllinLiveCoding`: code over visuals, evaluate mid-motion, perform | [Ch 22](22-SharingAndPerforming.md) | [LiveCoding](../Docs/Tools/LiveCoding.md) |
 | Extensions | `Sketch.extend`: hooks before, during, and after each frame, for recorders and chrome | [Ch 22](22-SharingAndPerforming.md) | [Sketch](../Docs/Core/Sketch.md#extensions) |
 | Writing an extension | `ollin new --kind extension`: a library other sketches import, the `ollinx-` naming convention, and the four seams to build on | [Ch 22](22-SharingAndPerforming.md) | [Extensions](../Docs/Tools/Extensions.md) |
+| Accessibility | See your colors through the three kinds of color vision, check whether a palette holds apart, and read the reduce-motion setting | [Ch 2](02-Color.md), [Ch 3](03-MotionAndTime.md) | [Accessibility](../Docs/Helpers/Accessibility.md) |
 
 ---
 

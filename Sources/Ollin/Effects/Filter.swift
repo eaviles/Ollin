@@ -64,6 +64,8 @@ public struct Filter: Sendable {
         case threshold(value: Double, softness: Double)
         /// Blend toward a warm sepia tone by `amount`.
         case sepia(amount: Double)
+        /// Show the layer as somebody with the given color vision sees it.
+        case colorVision(ColorVision)
         /// Map luminance between two colors, blended over the original by `amount`.
         case duotone(dark: SIMD4<Float>, light: SIMD4<Float>, amount: Double)
         /// Map luminance through a baked 256-step color ramp (linear, straight alpha),
@@ -281,6 +283,20 @@ public struct Filter: Sendable {
     /// A warm sepia tone, blended over the original by `amount` (1 = full sepia).
     public static func sepia(amount: Double = 1) -> Filter {
         Filter(kind: .sepia(amount: min(max(amount, 0), 1)))
+    }
+
+    /// The layer as somebody with the given color vision sees it.
+    ///
+    /// Put it on the whole frame with `postProcess(.colorVision(.deuteranopia))`
+    /// to check that a piece still reads. The matrix belongs in linear light,
+    /// which is what a layer already holds, so nothing is encoded on the way in
+    /// or out.
+    ///
+    /// ```swift
+    /// postProcess(.colorVision(.deuteranopia))
+    /// ```
+    public static func colorVision(_ vision: ColorVision) -> Filter {
+        Filter(kind: .colorVision(vision))
     }
 
     /// Duotone: remap the image's luminance between two colors (shadows toward
