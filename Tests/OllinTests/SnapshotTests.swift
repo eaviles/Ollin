@@ -443,6 +443,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("l-system",
                  note: "Four L-system presets in a 2x2: the dragon curve and Hilbert curve (turtle turning and F/G forward, no branching), the fern-like plant (the branch [ ] stack), and the stochastic plant (random productions drawn from the seed). Pins the string expansion, the turtle interpretation, branching, and fit-to-bounds. Seeded, no time, so it is deterministic.",
                  make: { LSystemScene() }),
+    SnapshotCase("parametric-l-system",
+                 note: "Four parametric L-systems in a 2x2, one per thing parameters buy: the subdivision curve (segments at fractions of their parent, which no plain grammar can say), the compound leaf (a counter the turtle never reads, delaying each bud), the tapered tree (a width per branch, drawn as marks so strokeWeight is the trunk), and a weighted stochastic branch. Pins the expression evaluator and its precedence, arity-aware matching, the guard conditions, first-match-wins against weighted choice, the width stack, and fit-to-bounds. Seeded, no time, so it is deterministic.",
+                 make: { ParametricLSystemScene() }),
     SnapshotCase("differential-growth", frame: 130,
                  note: "A seeded ring grown by differential growth to a fixed frame: attraction, alignment, and spatial-hash repulsion per step plus edge-splitting fold it into a brain-coral meander. Pins the stepper (forces, node injection, the spatial hash) at a deterministic frame. Seeded, and the frame is fixed, so the fold is reproducible.",
                  make: { DifferentialGrowthScene() }),
@@ -3369,6 +3372,43 @@ private final class LSystemScene: Sketch {
             for c in lSystem(system, iterations: iterations, in: frame, padding: 8) {
                 drawPolyline(c.points, closed: false)
             }
+        }
+    }
+}
+
+/// Four parametric L-systems in a 2x2, one per thing carrying numbers buys:
+/// fractional lengths, a counter the turtle ignores, a width per branch, and
+/// weighted rules. Seeded and `time`-free, so it's deterministic.
+private final class ParametricLSystemScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0E1013))
+        seed(11)
+        noFill()
+        strokeCap(.round)
+        strokeJoin(.round)
+
+        let tiles: [(ParametricLSystem, Int, Rectangle, UInt32)] = [
+            (.triangleCurve, 5, Rectangle(x: 0, y: 0, width: 128, height: 128), 0x7EC8E3),
+            (.compoundLeaf, 14, Rectangle(x: 128, y: 0, width: 128, height: 128), 0x77DD9B),
+            (.randomBranch, 8, Rectangle(x: 0, y: 128, width: 128, height: 128), 0xD8E06E),
+        ]
+        strokeWeight(0.9)
+        for (system, iterations, frame, hex) in tiles {
+            stroke(Color(hex: hex))
+            for c in lSystem(system, iterations: iterations, in: frame, padding: 8) {
+                drawPolyline(c.points, closed: false)
+            }
+        }
+
+        // The tapered tree carries a width at every point, so it draws as marks
+        // and `strokeWeight` sets the trunk rather than the whole line.
+        stroke(Color(hex: 0xE8A87C))
+        strokeWeight(5)
+        let frame = Rectangle(x: 128, y: 128, width: 128, height: 128)
+        for mark in lSystemMarks(.taperedTree(), iterations: 9, in: frame, padding: 8) {
+            drawMark(mark)
         }
     }
 }

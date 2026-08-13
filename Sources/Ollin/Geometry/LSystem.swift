@@ -185,8 +185,18 @@ public struct LSystem: Sendable {
     /// place, so this is what makes a preset fill the canvas regardless of its
     /// iteration count.
     static func fit(_ contours: [Contour], in bounds: Rectangle, padding: Double) -> [Contour] {
-        let points = contours.flatMap(\.points)
-        guard let first = points.first else { return contours }
+        guard let place = fitTransform(for: contours.flatMap(\.points),
+                                       in: bounds, padding: padding) else { return contours }
+        return contours.map { Contour($0.points.map(place), closed: $0.isClosed) }
+    }
+
+    /// The scale-and-centre map that fits `points` inside `bounds`, or `nil`
+    /// when there are no points to measure. Shared with the parametric
+    /// L-system's own fit, so a grammar of either kind lands the same way in the
+    /// same frame.
+    static func fitTransform(for points: [Vector2], in bounds: Rectangle,
+                             padding: Double) -> ((Vector2) -> Vector2)? {
+        guard let first = points.first else { return nil }
         var minX = first.x, minY = first.y, maxX = first.x, maxY = first.y
         for p in points {
             minX = Swift.min(minX, p.x); maxX = Swift.max(maxX, p.x)
@@ -201,11 +211,10 @@ public struct LSystem: Sendable {
         let scale = Swift.min(scaleX, scaleY).isFinite ? Swift.min(scaleX, scaleY) : 1
         let sourceCenter = Vector2((minX + maxX) / 2, (minY + maxY) / 2)
         let targetCenter = target.center
-        func map(_ p: Vector2) -> Vector2 {
+        return { p in
             Vector2(targetCenter.x + (p.x - sourceCenter.x) * scale,
                     targetCenter.y + (p.y - sourceCenter.y) * scale)
         }
-        return contours.map { Contour($0.points.map(map), closed: $0.isClosed) }
     }
 
     // A best-effort one-time warning when a very growthy rule hits the symbol cap.
