@@ -4,7 +4,7 @@
 
 ## Isolines
 
-**`isolines`** traces the level curves of a scalar field by marching squares: give it any `(Vector2) -> Double` field (noise, image brightness, your own math) and a level, and back come the contours where the field crosses that level. It's the topographic-map reading of a surface, the outline of a metaball blob, and the tone-line rendering of a photograph, all from one call.
+**`isolines`** traces the level curves of a scalar field by marching squares. Give it any `(Vector2) -> Double` field and a level, and back come the contours where the field crosses that level. The field can be noise, image brightness, or your own math. It reads a surface as a topographic map, outlines a metaball blob, and renders a photograph in tone lines, all from one call.
 
 ```
   the field, sampled              isolines(at: 0.5) { field }
@@ -15,7 +15,7 @@
   .1 .2 .3 .4                            ╰┤      off the edge
 ```
 
-A contour that closes inside the bounds comes back as a closed `Contour`; one that runs off the edge comes back open, ending on the boundary (check `isClosed` when drawing). The output feeds `drawPolyline`, `drawCurve` (the rounded reading), `smoothed(iterations:)`, [hatching and SVG export](../Output/Export.md).
+A contour that closes inside the bounds comes back as a closed `Contour`. One that runs off the edge comes back open, ending on the boundary, so check `isClosed` when drawing. The output feeds `drawPolyline`, `drawCurve` for the rounded reading, `smoothed(iterations:)`, and [hatching and SVG export](../Output/Export.md).
 
 ### Contents
 
@@ -35,7 +35,7 @@ isolines(at level: Double,
          field: (Vector2) -> Double) -> [Contour]
 ```
 
-Sample `field` on a grid over `bounds` (the whole canvas by default) and trace every contour at `level`. `resolution` is the number of grid cells across the longer side; raise it for tighter curves, at linearly more field samples.
+Sample `field` on a grid over `bounds`, the whole canvas by default, and trace every contour at `level`. `resolution` is the number of grid cells across the longer side. Raise it for tighter curves, at linearly more field samples.
 
 ```swift
 let rings = isolines(at: 0.5, in: frame) { p in
@@ -46,7 +46,7 @@ stroke(.black)
 for ring in rings { drawPolyline(ring.points, closed: ring.isClosed) }
 ```
 
-Saddle cells (where the curve could pair up two ways) are settled by the cell's average value, the standard marching-squares rule, so metaball necks merge and split cleanly.
+In a saddle cell the curve could pair up two ways. Those cells are settled by the cell's average value, the standard marching-squares rule, so metaball necks merge and split cleanly.
 
 <a name="levels"></a>
 
@@ -59,7 +59,7 @@ isolines(at levels: [Double],
          field: (Vector2) -> Double) -> [[Contour]]
 ```
 
-A stack of levels from a single sampling pass: one `[Contour]` per level, in order. This is the contour-map form; the field is the expensive part, so ten levels cost barely more than one.
+A stack of levels from a single sampling pass: one `[Contour]` per level, in order. This is the contour-map form. The field is the expensive part, so ten levels cost barely more than one.
 
 ```swift
 let levels = Array(stride(from: 0.3, through: 0.7, by: 0.04))
@@ -80,7 +80,7 @@ isolines(of image: Image,
          resolution: Int = 128) -> [Contour]
 ```
 
-The tone lines of a picture: contours traced where its brightness crosses `level`, a tone from `0` (black) to `1` (white). Brightness is read as if the picture sat on white paper, so transparency counts as light, and the sampling is bilinear, so the curves stay smooth past the pixel grid. The image is stretched over `bounds`; pass a `Rectangle(fitting:in:)` of the image's size to keep its aspect. A stack of levels turns a photograph into a topographic map of its lighting.
+The tone lines of a picture: contours traced where its brightness crosses `level`. The tone runs from `0` for black to `1` for white. Brightness is read as if the picture sat on white paper, so transparency counts as light. The sampling is bilinear, so the curves stay smooth past the pixel grid. The image is stretched over `bounds`. Pass a `Rectangle(fitting:in:)` of the image's size to keep its aspect. A stack of levels turns a photograph into a topographic map of its lighting.
 
 ```swift
 for group in isolines(of: portrait, at: [0.25, 0.45, 0.65], in: frame) {
@@ -94,10 +94,10 @@ Needs CPU pixels: read a video frame through its `snapshot()` first.
 
 #### Practical notes
 
-- **Cheap enough to re-trace live.** The trace itself is fast; the field samples are the cost. A drifting field at the default resolution re-traces comfortably every frame, and the levels form shares one sampling across the whole stack.
-- **Resolution follows the features.** Size the grid so the field's features span many cells and the traced chords disappear into the curve; for a coarse grid, one pass of `smoothed(iterations:)` rounds the corners.
+- **Cheap enough to re-trace live.** The trace itself is fast, and the field samples are the cost. A drifting field at the default resolution re-traces comfortably every frame, and the levels form shares one sampling across the whole stack.
+- **Resolution follows the features.** Size the grid so the field's features span many cells and the traced chords disappear into the curve. For a coarse grid, one pass of `smoothed(iterations:)` rounds the corners.
 - **Metaballs are a field.** Sum `strength / distanceSquared` per blob and trace a level: the outlines merge and pinch exactly as metaballs should.
-- **The exact level matters less than its neighbors.** For noise in `0...1`, levels between `0.3` and `0.7` cross the most terrain; a level near the field's extremes traces only a few small islands.
+- **The exact level matters less than its neighbors.** For noise in `0...1`, levels between `0.3` and `0.7` cross the most terrain. A level near the field's extremes traces only a few small islands.
 
 ---
 

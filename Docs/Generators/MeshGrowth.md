@@ -39,7 +39,7 @@ This means *every* driver folds, including the perfectly even one. What a driver
 Two other pieces make the folds behave:
 
 - **Self-avoidance.** Parts of the surface that come near each other without being near *along* the surface push apart, so a fold stacks against its neighbor instead of passing through it.
-- **Bending resistance.** A sheet with no stiffness buckles at the smallest scale available, so the folds come out the size of a triangle and the form reads as crumpled paper. Resisting bending makes small wrinkles expensive, so the same growth gathers into broader waves. That is the `stiffness` knob, and it is the difference between crumpled and ruffled.
+- **Bending resistance.** A sheet with no stiffness buckles at the smallest scale available. The folds then come out the size of a triangle, and the form reads as crumpled paper. Resisting bending makes small wrinkles expensive, so the same growth gathers into broader waves. That is the `stiffness` knob, and it is the difference between crumpled and ruffled.
 
 <a name="drivers"></a>
 
@@ -72,9 +72,9 @@ MeshGrowth(mesh: .icosphere(subdivisions: 3),
 
 `.chemical` is the one that composes two processes. A Gray-Scott reaction runs *in the surface* while the surface grows, and the surface grows where the reaction has collected. The pattern decides where to add area, and the new area gives the pattern more room to spread into.
 
-**`SurfaceChemistry`** carries the reaction's settings, with the well-travelled corners of the parameter space as presets: `.coral` (the default), `.spots`, `.maze`, `.mitosis`, `.worms`. Its `feed` and `kill` are the same two numbers the texture-space [`Sim.reactionDiffusion`](../Drawing/Effects.md) takes, so a pairing that gives a look there gives the same look here.
+**`SurfaceChemistry`** carries the reaction's settings. The well-travelled corners of the parameter space arrive as presets: `.coral`, the default, plus `.spots`, `.maze`, `.mitosis`, and `.worms`. Its `feed` and `kill` are the same two numbers the texture-space [`Sim.reactionDiffusion`](../Drawing/Effects.md) takes. A pairing that gives a look there gives the same look here.
 
-The same reaction runs on a fixed mesh through **`MeshReactionDiffusion`**, which is the surface-texture use rather than the growth one: the pattern develops in the mesh itself, so it has no seam, no stretching, and needs no texture coordinates.
+The same reaction runs on a fixed mesh through **`MeshReactionDiffusion`**, which is the surface-texture use rather than the growth one. The pattern develops in the mesh itself, so it has no seam, no stretching, and needs no texture coordinates.
 
 ```swift
 let pattern = MeshReactionDiffusion(mesh: .icosphere(subdivisions: 5),
@@ -83,11 +83,15 @@ pattern.step(12)
 drawMesh(pattern.displaced(by: 0.06))     // the pattern as relief
 ```
 
-`values` is the concentration at each vertex, matching `mesh.positions` by index, so you can drive anything with it; `displaced(by:)` is the quick way to see it.
+`values` is the concentration at each vertex, matching `mesh.positions` by index, so you can drive anything with it. `displaced(by:)` is the quick way to see it.
 
-Two things about pace are worth knowing. The reaction has to organize into a pattern before it can steer anything, so a chemical growth's opening steps are steered mostly by noise; setting **`settleSteps`** runs that opening chemistry all at once when the first step is taken (the surface is refined to its target triangle size, holding still, and the pattern organizes on it), so the first folds land where the pattern says and `chemistry` reads as a formed pattern from step one. And the pattern only ever covers part of the surface, so at the same `growthAmount` a chemical growth makes area a few times slower than `.uniform`: budget more steps, or raise `growthAmount`, and that is a permanent character of the driver rather than something settling changes.
+Two things about pace are worth knowing.
 
-Both weld coincident vertices first. Ollin's mesh generators emit flat-shaded geometry whose triangles share no vertices, so an icosphere is, by index, thousands of loose triangles: without welding, nothing can spread across it at all.
+The reaction has to organize into a pattern before it can steer anything, so a chemical growth's opening steps are steered mostly by noise. Setting **`settleSteps`** runs that opening chemistry all at once when the first step is taken. The surface is refined to its target triangle size, holding still, and the pattern organizes on it. The first folds then land where the pattern says, and `chemistry` reads as a formed pattern from step one.
+
+The pattern also only ever covers part of the surface. At the same `growthAmount` a chemical growth therefore makes area a few times slower than `.uniform`. Budget more steps, or raise `growthAmount`. That is a permanent character of the driver rather than something settling changes.
+
+Both weld coincident vertices first. Ollin's mesh generators emit flat-shaded geometry whose triangles share no vertices. An icosphere is therefore, by index, thousands of loose triangles. Without welding, nothing can spread across it at all.
 
 <a name="knobs"></a>
 
@@ -102,13 +106,13 @@ Both weld coincident vertices first. Ollin's mesh generators emit flat-shaded ge
 | `maxVertices` | the ceiling | growth stops when reached and the surface only relaxes, so it decides how far a form develops |
 | `settleSteps` | opening chemistry run all at once on the first step | `.chemical` only; the pattern arrives formed instead of organizing mid-growth |
 
-`edgeLength` defaults to the mean edge length of the mesh you start from, so a coarse seed grows coarse folds and a fine one grows fine ones, and passing a starting mesh is usually all the setup needed.
+`edgeLength` defaults to the mean edge length of the mesh you start from. A coarse seed therefore grows coarse folds, and a fine one grows fine ones. Passing a starting mesh is usually all the setup needed.
 
 <a name="boundaries"></a>
 
 #### Open surfaces
 
-A closed surface (a sphere, a torus) grows into a solid form. An open one (a plane, a disc, a ribbon) keeps its rim: the remesher declines to collapse or flip anything touching the boundary, and a rim vertex slides *along* the rim rather than into the surface. So a sheet stays a sheet with its edge intact, and ruffles along it, which is the leaf-margin case.
+A closed surface (a sphere, a torus) grows into a solid form. An open one keeps its rim, whether it is a plane, a disc, or a ribbon. The remesher declines to collapse or flip anything touching the boundary, and a rim vertex slides *along* the rim rather than into the surface. So a sheet stays a sheet with its edge intact, and ruffles along it, which is the leaf-margin case.
 
 <a name="cost"></a>
 
@@ -116,9 +120,9 @@ A closed surface (a sphere, a torus) grows into a solid form. An open one (a pla
 
 Growth is deliberately slow: a form takes hundreds of steps to develop. Stepping once or twice a frame is the usual rate, and watching it happen is part of the point.
 
-The work per step rises with the vertex count, and it is real CPU mesh processing (a full remeshing pass every step), so `maxVertices` is the dial that keeps a sketch interactive. A few thousand vertices steps comfortably in real time; nine thousand costs roughly 30 ms a step on an M2, so it wants one step a frame rather than several.
+The work per step rises with the vertex count, and it is real CPU mesh processing with a full remeshing pass every step. `maxVertices` is therefore the dial that keeps a sketch interactive. A few thousand vertices steps comfortably in real time. Nine thousand costs roughly 30 ms a step on an M2, so it wants one step a frame rather than several.
 
-A seeded growth reproduces exactly: the same seed grows the same form, every pass runs in a fixed order rather than a dictionary's, and the small amount of randomness only breaks the starting symmetry. A perfectly symmetric surface has no reason to buckle one way rather than another, which is why the seed exists at all.
+A seeded growth reproduces exactly. The same seed grows the same form, and every pass runs in a fixed order rather than a dictionary's. The small amount of randomness only breaks the starting symmetry. A perfectly symmetric surface has no reason to buckle one way rather than another, which is why the seed exists at all.
 
 ### See also
 

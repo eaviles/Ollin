@@ -4,9 +4,9 @@
 
 ## Wave Function Collapse
 
-Fill a grid from a small set of tiles so that **every pair of neighbors is legal**. Each cell starts holding *all* tiles at once (a superposition); the solver repeatedly collapses the most-constrained cell to a single tile (a weighted random pick) and propagates that choice to its neighbors, eliminating options that no longer fit, until every cell is decided. It's the constraint-solving, texture-synthesis technique behind procedurally generated tile maps.
+Fill a grid from a small set of tiles so that **every pair of neighbors is legal**. Each cell starts holding *all* tiles at once, a superposition. The solver repeatedly collapses the most-constrained cell to a single tile, by a weighted random pick. It propagates that choice to its neighbors, eliminating options that no longer fit, until every cell is decided. It's the constraint-solving, texture-synthesis technique behind procedurally generated tile maps.
 
-The result is a grid of tile indices, which you draw however you like: each tile is a `Shape` or a small draw block, so it feeds the existing geometry path. A solve is a pure function of the [`seed`](./Random.md#seed), so the same seed always produces the same layout.
+The result is a grid of tile indices, which you draw however you like. Each tile is a `Shape` or a small draw block, so it feeds the existing geometry path. A solve is a pure function of the [`seed`](./Random.md#seed), so the same seed always produces the same layout.
 
 ```
   each cell holds all tiles        collapse the most            propagate: neighbors
@@ -31,7 +31,7 @@ There are two models, and they differ in where the rules come from. The **tiled*
 
 #### Tiles and sockets
 
-A `WFCTile` is four edge **sockets** and a `weight`. Two tiles may sit next to each other when the sockets on their shared edge are *equal*, so a socket is just a label (an `Int`) for what an edge connects to: a pipe versus no pipe, a grass edge versus a water edge, and so on. Sockets are listed clockwise from the top.
+A `WFCTile` is four edge **sockets** and a `weight`. Two tiles may sit next to each other when the sockets on their shared edge are *equal*. A socket is therefore just an `Int` label for what an edge connects to. Examples are a pipe versus no pipe, or a grass edge versus a water edge. Sockets are listed clockwise from the top.
 
 ```swift
 WFCTile(_ sockets: [Int], weight: Double = 1)   // [top, right, bottom, left]
@@ -57,7 +57,7 @@ func drawWFC(_ grid: [[Int]], in bounds: Rectangle? = nil, padding: Insets = 0, 
              tile: (Int, Rectangle) -> Void)
 ```
 
-`wfc` returns the `grid[column][row]` tile indices, or `nil` if it couldn't find a legal filling within `attempts` restarts (a contradiction, a cell left with no legal tile, restarts the whole solve; contradictions are rare with a forgiving tileset, and a blank tile makes one all but impossible). `drawWFC` lays a [`Grid`](../Drawing/Geometry.md) over `bounds` and hands your closure each cell's tile index and frame.
+`wfc` returns the `grid[column][row]` tile indices. It returns `nil` if it couldn't find a legal filling within `attempts` restarts. A contradiction is a cell left with no legal tile, and it restarts the whole solve. Contradictions are rare with a forgiving tileset, and a blank tile makes one all but impossible. `drawWFC` lays a [`Grid`](../Drawing/Geometry.md) over `bounds` and hands your closure each cell's tile index and frame.
 
 ```swift
 if let grid = wfc(tiles: tiles, columns: 18, rows: 18) {
@@ -97,7 +97,7 @@ let tiles = [WFCTile([0, 0, 0, 0], weight: 1.1)]     // blank
 
 #### Learning from a picture: the overlapping model
 
-Declaring tiles and sockets is work, and some textures don't decompose into tiles at all. The overlapping model skips that step: hand it a **small example picture** and it cuts the sample into every `patternSize × patternSize` patch the sample contains, counts how often each one occurs, and works out which patches may overlap. Solving then fills a much larger grid so that every overlap agrees.
+Declaring tiles and sockets is work, and some textures don't decompose into tiles at all. The overlapping model skips that step. Hand it a **small example picture** and it cuts the sample into every `patternSize × patternSize` patch the sample contains. It counts how often each one occurs, and works out which patches may overlap. Solving then fills a much larger grid so that every overlap agrees.
 
 What comes out is new, but locally it's made of nothing that wasn't in the sample. That's the guarantee, and it's worth stating precisely: **every square of the output is a square the sample already contained.**
 
@@ -116,16 +116,16 @@ if let texture = wfc(from: sample, width: 72, height: 44) {
 
 | | |
 |---|---|
-| `patternSize` | How much context a patch carries. `2` keeps only the loosest sense of the sample; `3` is the usual choice and reproduces corners and junctions faithfully; `4` and up reproduce whole motifs, at the cost of variety and a much slower solve. |
-| `symmetry` | Which copies of the sample to learn from as well: `.none` (as drawn), `.rotations` (the four quarter turns), or `.all` (the turns and the mirror of each). |
-| `wrapsSample` | Read the sample as wrapping at its edges, so patches are cut from every position. True suits a sample that tiles; false keeps the sample's own border out of the vocabulary. |
+| `patternSize` | How much context a patch carries. `2` keeps only the loosest sense of the sample. `3` is the usual choice and reproduces corners and junctions faithfully. `4` and up reproduce whole motifs, at the cost of variety and a much slower solve. |
+| `symmetry` | Which copies of the sample to learn from as well. `.none` is the sample as drawn, `.rotations` adds the four quarter turns, and `.all` adds the turns and the mirror of each. |
+| `wrapsSample` | Read the sample as wrapping at its edges, so patches are cut from every position. True suits a sample that tiles, and false keeps the sample's own border out of the vocabulary. |
 | `tileable` | Solve the output as a torus, so the result tiles seamlessly with itself. |
 
 **`symmetry` costs you orientation.** A sample that knows which way is up (a skyline, a waterline, flowers standing on ground) wants `.none`, or it will come back sideways. A texture with no particular orientation wants `.all`, which multiplies what the solver has to work with without asking for a bigger sample.
 
-**`wrapsSample` is subtler than it looks, and the default loses edges.** Reading the sample as wrapping joins its bottom row to its top, so a sample with ground along the bottom teaches patches where ground sits directly under sky. Synthesize from that and the ground repeats in bands up the picture. If your sample has a meaningful top and bottom, pass `wrapsSample: false`.
+**`wrapsSample` is subtler than it looks, and the default loses edges.** Reading the sample as wrapping joins its bottom row to its top. A sample with ground along the bottom then teaches patches where ground sits directly under sky. Synthesize from that and the ground repeats in bands up the picture. If your sample has a meaningful top and bottom, pass `wrapsSample: false`.
 
-Learning is the expensive half and doesn't depend on the output, so a sketch that solves more than once builds the model itself and keeps it:
+Learning is the expensive half, and it doesn't depend on the output. A sketch that solves more than once builds the model itself and keeps it:
 
 ```swift
 let model = OverlappingWFC(learningFrom: sample, patternSize: 3)   // once, in setup
@@ -133,21 +133,21 @@ let model = OverlappingWFC(learningFrom: sample, patternSize: 3)   // once, in s
 let texture = wfc(model, width: 64, height: 64)
 ```
 
-`OverlappingWFC` also reports what it learned, which is worth drawing while you're tuning a sample: `patternCount`, `pattern(_:)` for each patch as its own little image, and `weight(_:)` for how often it occurred.
+`OverlappingWFC` also reports what it learned, which is worth drawing while you're tuning a sample. There is `patternCount`, `pattern(_:)` for each patch as its own little image, and `weight(_:)` for how often it occurred.
 
-Two practical notes. **Draw the result a rectangle at a time rather than with `drawImage`** if you're blowing it up much, because `drawImage` smooths, which turns a 3-pixel wall into a gradient; a rectangle per pixel also exports to SVG and PDF as real rectangles. And **do this once**, in `setup` or guarded so it runs on the first frame; neither half belongs in a frame loop.
+Two practical notes. **Draw the result a rectangle at a time rather than with `drawImage`** if you're blowing it up much. `drawImage` smooths, which turns a 3-pixel wall into a gradient. A rectangle per pixel also exports to SVG and PDF as real rectangles. And **do this once**, in `setup` or guarded so it runs on the first frame. Neither half belongs in a frame loop.
 
 <a name="envelope"></a>
 
 #### What it's for, and what it isn't
 
-**The sample wants to be small and few-colored**: pixel art or a hand-drawn motif, tens of pixels a side, a handful of colors. Patches are matched by exact color equality, so a photograph has a distinct color in nearly every patch, nearly every patch is unique, nothing overlaps anything else, and the solve has nothing to choose between. A sample past 256 colors or 1024 patterns is refused with a note saying so rather than grinding.
+**The sample wants to be small and few-colored**: pixel art or a hand-drawn motif, tens of pixels a side, a handful of colors. Patches are matched by exact color equality. A photograph therefore has a distinct color in nearly every patch, so nearly every patch is unique. Nothing overlaps anything else, and the solve has nothing to choose between. A sample past 256 colors or 1024 patterns is refused with a note saying so rather than grinding.
 
-**A solve can fail, and above about 50 pixels a side it starts to.** A contradiction (a cell left with no pattern that fits) restarts the whole solve, `attempts` times, and then `wfc` returns `nil`. This is the technique, not the implementation: the problem is NP-hard in general, and success rates fall off sharply with output size. Solve a smaller texture, loosen the sample, or drop `patternSize` to `2`.
+**A solve can fail, and above about 50 pixels a side it starts to.** A contradiction is a cell left with no pattern that fits. It restarts the whole solve, `attempts` times, and then `wfc` returns `nil`. This is the technique, not the implementation. The problem is NP-hard in general, and success rates fall off sharply with output size. Solve a smaller texture, loosen the sample, or drop `patternSize` to `2`.
 
-**`tileable` can be impossible rather than merely hard.** If the sample has a repeating structure whose period doesn't divide the output size, no seamless answer exists at that size and every attempt fails. Sizing the output to a multiple of the sample's period fixes it; retrying never will.
+**`tileable` can be impossible rather than merely hard.** If the sample has a repeating structure whose period doesn't divide the output size, no seamless answer exists at that size. Every attempt then fails. Sizing the output to a multiple of the sample's period fixes it, and retrying never will.
 
-**Not here yet:** a way to constrain the solve before it starts, such as pinning the bottom row to ground, fixing a pixel, or seeding a region. The reference implementation has a `ground` flag for the first of these, but it works by nominating a pattern by index, which depends on extraction order and quietly means something different when the sample or the symmetry changes. A version worth having would name a color or a region instead.
+**Not here yet:** a way to constrain the solve before it starts. That would pin the bottom row to ground, fix a pixel, or seed a region. The reference implementation has a `ground` flag for the first of these. It works by nominating a pattern by index, which depends on extraction order. That quietly means something different when the sample or the symmetry changes. A version worth having would name a color or a region instead.
 
 ---
 

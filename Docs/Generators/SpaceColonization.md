@@ -4,9 +4,9 @@
 
 ## Space colonization
 
-**Space colonization** grows branching structure toward a scattered set of attraction points. On every step, each remaining attractor pulls on the single closest branch node within reach, pulled nodes grow one step toward the average of their pulls, and attractors a branch reaches are consumed (the classic venation-and-branching growth model). Veins, roots, lightning, and trees all come from the same loop, and what changes is where you scatter the attractors and where you plant the roots.
+**Space colonization** grows branching structure toward a scattered set of attraction points. On every step, each remaining attractor pulls on the single closest branch node within reach. Pulled nodes grow one step toward the average of their pulls, and attractors a branch reaches are consumed. That is the classic venation-and-branching growth model. Veins, roots, lightning, and trees all come from the same loop. What changes is where you scatter the attractors and where you plant the roots.
 
-`SpaceColonization` is a stateful stepper you hold and `step()` each frame (or run to completion with `grow()`). The algorithm draws no random numbers, so the same attractors and roots always grow the same structure. Scatter the attractors with a seeded generator and the whole piece is reproducible.
+`SpaceColonization` is a stateful stepper you hold and `step()` each frame, or run to completion with `grow()`. The algorithm draws no random numbers, so the same attractors and roots always grow the same structure. Scatter the attractors with a seeded generator and the whole piece is reproducible.
 
 ```swift
 seed(7)
@@ -40,19 +40,19 @@ SpaceColonization(attractors: [Vector2], roots: [Vector2],
 
 The three distances need to sit in a particular relationship. Keep `stepLength` smaller than `killRadius`, because a branch can otherwise step right past the attractor it's chasing, and keep `killRadius` well below `influenceRadius`. Smaller `stepLength` gives smoother, denser curves, while a larger `influenceRadius` lets branches reach across open space toward far attractors.
 
-[`poissonDisk`](./BlueNoise.md) is the natural attractor source (even coverage with no clumps), but any point set works: sample a `Shape`'s interior for growth that fills a silhouette, or a circle's rim for a radial burst.
+[`poissonDisk`](./BlueNoise.md) is the natural attractor source, with even coverage and no clumps. Any point set works: sample a `Shape`'s interior for growth that fills a silhouette, or a circle's rim for a radial burst.
 
 <a name="stepping"></a>
 
 #### Stepping and finishing
 
-`step()` advances one growth round, `step(_:)` advances several, and `grow()` runs to the end. `isFinished` turns true when every reachable attractor is consumed and nothing can grow further (attractors outside every branch's reach are left standing, and the growth still terminates). `nodes` and `attractors` are the live state, so a sketch can draw the un-reached attractors as waiting seeds.
+`step()` advances one growth round, `step(_:)` advances several, and `grow()` runs to the end. `isFinished` turns true when every reachable attractor is consumed and nothing can grow further. Attractors outside every branch's reach are left standing, and the growth still terminates. `nodes` and `attractors` are the live state, so a sketch can draw the un-reached attractors as waiting seeds.
 
 <a name="drawing"></a>
 
 #### Segments and thickness
 
-Each `Node` carries its `position` and the index of its `parent`, so the structure is a tree. `segments` flattens it to `(parent, child)` line pairs for `drawLine`, hatching, or SVG export. For organic weight, `thicknesses(leafWidth:exponent:)` runs the pipe model, where every tip gets `leafWidth` and a parent's width aggregates its children's (raised to `exponent`, then re-rooted), so trunks are thick and twigs are hairline:
+Each `Node` carries its `position` and the index of its `parent`, so the structure is a tree. `segments` flattens it to `(parent, child)` line pairs for `drawLine`, hatching, or SVG export. For organic weight, `thicknesses(leafWidth:exponent:)` runs the pipe model. Every tip gets `leafWidth`, and a parent's width aggregates its children's, raised to `exponent` and then re-rooted. Trunks come out thick and twigs hairline:
 
 ```swift
 let widths = growth.thicknesses(leafWidth: 1.4, exponent: 2.2)
@@ -68,7 +68,7 @@ for (i, node) in growth.nodes.enumerated() {
 #### Shaping the result
 
 - **Leaf venation:** attractors from `poissonDisk` over the canvas, one root at the bottom edge (the `Patterns/Venation` example).
-- **A tree:** attractors scattered in a crown-shaped region up top, the root at the ground, with a small `influenceRadius` to keep branches from shortcutting across the trunk.
+- **A tree:** attractors scattered in a crown-shaped region up top, the root at the ground. Keep `influenceRadius` small so branches don't shortcut across the trunk.
 - **Lightning or roots:** attractors in a tall band below the root, with a raised `stepLength` for jaggedness.
 - **Several plants:** multiple `roots`, where each attractor feeds whichever structure gets there first, so neighbors negotiate territory.
 
