@@ -4,7 +4,7 @@
 
 ## OSC
 
-Talk to the other tools in a performance rig. OSC (Open Sound Control) is the small networked-message protocol that TouchOSC, Max/MSP, TouchDesigner, Ableton, Resolume, and most lighting desks speak, so a sketch can take a fader from a phone or hand a value off to a video mixer. It lives in a separate library so the drawing core stays free of networking. Add `import OllinOSC` alongside `import Ollin` to reach it.
+Talk to the other tools in a performance rig. OSC (Open Sound Control) is a small networked-message protocol. TouchOSC, Max/MSP, TouchDesigner, Ableton, Resolume, and most lighting desks speak it. So a sketch can take a fader from a phone, or hand a value off to a video mixer. It lives in a separate library so the drawing core stays free of networking. Add `import OllinOSC` alongside `import Ollin` to reach it.
 
 A message is an address (a slash path like `/synth/freq`) and a few typed values. You send messages with an [`OSCSender`](#oscsender) and read incoming ones with an [`OSCReceiver`](#oscreceiver). Both go over UDP, built on Apple's `Network.framework`, and the OSC wire format is written from the spec, so nothing is vendored.
 
@@ -52,9 +52,9 @@ OSCMessage("/light", 0.8, 1, "on", true)        // literals build arguments
 OSCMessage("/x", .float(value), .int(count))     // a variable is wrapped by its case
 ```
 
-An `OSCMessage` is an `address` and an array of `arguments`. Literals turn into arguments on their own (`0.8` is a float, `1` an int, `"on"` a string, `true` a bool), so the common case stays terse. A value held in a variable is wrapped by its case (`.float(x)`, `.int(n)`, `.string(s)`), since Swift doesn't convert a `Float` to an argument on its own.
+An `OSCMessage` is an `address` and an array of `arguments`. Literals turn into arguments on their own, so the common case stays terse. `0.8` is a float, `1` an int, `"on"` a string, and `true` a bool. A value held in a variable is wrapped by its case, as `.float(x)`, `.int(n)`, or `.string(s)`. Swift does not convert a `Float` to an argument on its own.
 
-`OSCArgument` covers the OSC 1.0 types: `.int` (32-bit), `.float`, `.string`, `.blob` (raw bytes), plus `.double`, `.int64`, `.bool`, `.null`, and `.impulse` (a bare trigger). Reading back, the coercing accessors save a `switch`, so `.asFloat`, `.asInt`, `.asString`, and `.asBool` convert across the numeric types where it makes sense.
+`OSCArgument` covers the OSC 1.0 types. Those are `.int` at 32 bits, `.float`, `.string`, and `.blob` for raw bytes, plus `.double`, `.int64`, `.bool`, `.null`, and `.impulse` as a bare trigger. Reading back, the coercing accessors save a `switch`, so `.asFloat`, `.asInt`, `.asString`, and `.asBool` convert across the numeric types where it makes sense.
 
 <a name="oscsender"></a>
 
@@ -127,7 +127,7 @@ for note in osc.messages() where note.address == "/note" {
    └────────────┘               └──────────────────┘
 ```
 
-Datagrams arrive on a background queue while the sketch reads on the main thread, and everything shared is held behind locks, so the reads are safe from `draw()`.
+Datagrams arrive on a background queue while the sketch reads on the main thread. Everything shared is held behind locks, so the reads are safe from `draw()`.
 
 <a name="binding-to-a-param"></a>
 
@@ -138,7 +138,7 @@ func bind(_ address: String, to param: Param<Double>, from input: ClosedRange<Do
 func unbind(_ address: String)
 ```
 
-The third way to read is to wire an address straight onto a [`@Param`](../Helpers/Parameters.md) knob, so an incoming value drives the same parameter a live-inspector slider does. Each message's first value is mapped from `input` into the parameter's own range and assigned (clamped):
+The third way to read is to wire an address straight onto a [`@Param`](../Helpers/Parameters.md) knob. An incoming value then drives the same parameter a live-inspector slider does. Each message's first value is mapped from `input` into the parameter's own range and assigned (clamped):
 
 ```swift
 @Param(20...400) var radius = 120.0
@@ -175,10 +175,10 @@ On the receiving side a bundle's messages flow into the same latest-value cache 
 
 ### Testing without hardware
 
-You can exercise OSC with nothing but the Mac in front of you by running both ends on `127.0.0.1`, a sender and a receiver in the same sketch. The **OSCLoopback** example (`Examples/Integration/OSCLoopback`) does exactly that, sending an animated position to itself and drawing the dot from what it reads back, so the picture you see is the round-trip itself.
+You can exercise OSC with nothing but the Mac in front of you. Run both ends on `127.0.0.1`, a sender and a receiver in the same sketch. The **OSCLoopback** example (`Examples/Integration/OSCLoopback`) does exactly that. It sends an animated position to itself, and draws the dot from what it reads back. The picture you see is the round-trip itself.
 
-To bring in real gear, point a phone running TouchOSC (or any OSC source) at this Mac's IP and the receiver's port, sending the addresses your sketch reads. The **OSCMonitor** example (`Examples/Integration/OSCMonitor`) listens on a port and prints and draws every message it receives, so you can discover the addresses each control sends just by touching them. To watch what a sketch emits, aim a monitor like Protokol at the sender's port, or use `oscdump` from the command line.
+To bring in real gear, point a phone running TouchOSC at this Mac's IP and the receiver's port. Any OSC source works, and it sends the addresses your sketch reads. The **OSCMonitor** example (`Examples/Integration/OSCMonitor`) listens on a port, and prints and draws every message it receives. So you can discover the addresses each control sends just by touching them. To watch what a sketch emits, aim a monitor like Protokol at the sender's port, or use `oscdump` from the command line.
 
 ---
 
-See the **OSCLoopback** example for a self-contained send-and-receive sketch that needs no second app to run, and **OSCMonitor** for inspecting messages from a phone or controller.
+See the **OSCLoopback** example for a sketch that sends and receives with no second app. Use **OSCMonitor** to inspect messages from a phone or controller.

@@ -4,7 +4,7 @@
 
 ## Images
 
-Load a raster image and draw it onto the canvas. An image decodes once on the CPU (via ImageIO, so it reads anything Apple does: PNG, JPEG, HEIC, TIFF, GIF) and uploads to the GPU the first time it's drawn. From then on it's a textured quad like any other shape, so it rides the [transform stack](../Drawing/Drawing.md#translate) and composites in draw order with the rest of your drawing.
+Load a raster image and draw it onto the canvas. An image decodes once on the CPU, then uploads to the GPU the first time it is drawn. It reads anything Apple does through ImageIO, which is PNG, JPEG, HEIC, TIFF, and GIF. From then on it is a textured quad like any other shape. It rides the [transform stack](../Drawing/Drawing.md#translate), and composites in draw order with the rest of your drawing.
 
 The typical shape is to load in `setup()`, keep the result in a property, and draw it in `draw()`. Decoding a file every frame is wasteful, and the image holds its GPU texture for as long as you hold the image.
 
@@ -48,7 +48,7 @@ Decode an image file. Returns `nil` if the file can't be read or decoded, so unw
 photo = loadImage("/Users/me/Pictures/leaf.png")
 ```
 
-`loadImage` is sugar over [`Image(contentsOf:)`](#image); reach for the initializer directly when you have a `URL`, raw `Data`, or a bundled resource.
+`loadImage` is sugar over [`Image(contentsOf:)`](#image). Reach for the initializer directly when you have a `URL`, raw `Data`, or a bundled resource.
 
 <a name="drawimage"></a>
 
@@ -60,7 +60,7 @@ drawImage(_ image: Image, _ x: Double, _ y: Double, _ width: Double, _ height: D
 drawImage(_ image: Image, in rect: Rectangle)
 ```
 
-Draw `image` with its top-left corner at `(x, y)`. The first form uses the image's native pixel size, the second stretches it to fill a `width`×`height` box, and the [`Rectangle`](../Drawing/Geometry.md#rectangle) form does the same with a value you can pass around.
+Draw `image` with its top-left corner at `(x, y)`. The first form uses the image's native pixel size, and the second stretches it to fill a `width`×`height` box. The [`Rectangle`](../Drawing/Geometry.md#rectangle) form does the same with a value you can pass around.
 
 ```swift
 drawImage(logo, 40, 40)                       // native size, top-left at (40, 40)
@@ -101,7 +101,7 @@ drawImage(photo, 0, 0)
 noTint()                                          // back to unchanged
 ```
 
-Tint is drawing state like `fill` and `stroke`, so it's saved and restored by [`withState { }`](../Drawing/Drawing.md#withstate) and you can tint one image without leaking the wash onto the next. It only multiplies as the image is drawn; it never edits the image's stored pixels, so [reading them back](#pixels) always returns the original colors.
+Tint is drawing state like `fill` and `stroke`, so [`withState { }`](../Drawing/Drawing.md#withstate) saves and restores it. You can tint one image without leaking the wash onto the next. It only multiplies as the image is drawn, and it never edits the image's stored pixels. So [reading them back](#pixels) always returns the original colors.
 
 ```swift
 withState {
@@ -123,19 +123,19 @@ Image(width: Int, height: Int, color: Color = .clear)
 Image(width: Int, height: Int, premultipliedRGBA: [UInt8])
 ```
 
-`Image` is the typed value `drawImage` takes. It's a reference type, so it owns a GPU texture and is identified by who holds it, not by value. The failable initializers return `nil` when the bytes aren't a decodable image. Every image reports its pixel `width` / `height` (`Int`s) and `size` (the same pair as a `Vector2`, ready for the geometry helpers, so `Rectangle(fitting: image.size, in: bounds)` letterboxes it).
+`Image` is the typed value `drawImage` takes. It's a reference type, so it owns a GPU texture and is identified by who holds it, not by value. The failable initializers return `nil` when the bytes aren't a decodable image. Every image reports its pixel `width` / `height` as `Int`s, and its `size` as the same pair in a `Vector2`. That is ready for the geometry helpers, so `Rectangle(fitting: image.size, in: bounds)` letterboxes it.
 
-`Image(width:height:color:)` makes a blank `width`×`height` image filled with `color` (transparent by default), so you can [author one from scratch](#pixels) pixel by pixel rather than loading a file.
+`Image(width:height:color:)` makes a blank `width`×`height` image filled with `color`, which is transparent by default. So you can [author one from scratch](#pixels) pixel by pixel, rather than loading a file.
 
-`Image(width:height:premultipliedRGBA:)` wraps pixels you've already produced in bulk: `width × height × 4` RGBA bytes, premultiplied alpha, rows top to bottom. The buffer becomes the image's own pixels with no decode or conversion (the GPU texture uploads straight from it), so it's the fast lane for per-frame generated images. Returns `nil` when the byte count doesn't match the dimensions.
+`Image(width:height:premultipliedRGBA:)` wraps pixels you've already produced in bulk: `width × height × 4` RGBA bytes, premultiplied alpha, rows top to bottom. The buffer becomes the image's own pixels with no decode or conversion, because the GPU texture uploads straight from it. That is the fast lane for per-frame generated images. Returns `nil` when the byte count doesn't match the dimensions.
 
-Load a bundled asset with the `resource:` initializer. `in:` has no default on purpose (a default argument would resolve to *Ollin's* bundle, never yours), so pass `.module` from the target that bundles the file:
+Load a bundled asset with the `resource:` initializer. `in:` has no default on purpose, because a default argument would resolve to *Ollin's* bundle and never yours. So pass `.module` from the target that bundles the file:
 
 ```swift
 let texture = Image(resource: "paper", extension: "png", in: .module)
 ```
 
-`Image(cgImage:)` wraps an image you already have in memory (a `CGImage` you rendered yourself, decoded elsewhere, or built procedurally), so anything that can produce a `CGImage` can become drawable.
+`Image(cgImage:)` wraps an image you already have in memory. That can be a `CGImage` you rendered yourself, decoded elsewhere, or built procedurally, so anything that can produce a `CGImage` becomes drawable.
 
 **Transparency works.** A PNG's alpha is respected, so transparent regions let what's behind show through and the edges composite cleanly.
 
@@ -150,7 +150,7 @@ let c = image[x, y]          // read a pixel's Color (a get)
 image[x, y] = .red           // write one (a set)
 ```
 
-Out-of-range access is forgiving so a stray index never crashes a loop, since reading off the edge returns `.clear` and writing off the edge does nothing.
+Out-of-range access is forgiving, so a stray index never crashes a loop. Reading off the edge returns `.clear`, and writing off the edge does nothing.
 
 Pair a write with the blank initializer to author an image from scratch. Make a transparent canvas, paint it, then draw it:
 
@@ -176,7 +176,7 @@ final class PixelArt: Sketch {
 }
 ```
 
-A write shows on the next `drawImage` (the GPU texture rebuilds from the edited pixels), so author in `setup()` when you can rather than rewriting the whole image every frame. Reading is cheap once the first access has decoded the pixels.
+A write shows on the next `drawImage`, where the GPU texture rebuilds from the edited pixels. So author in `setup()` when you can, rather than rewriting the whole image every frame. Reading is cheap once the first access has decoded the pixels.
 
 Colors pass through the image's premultiplied storage, so round-tripping a translucent color can shift it by a step of `1/255`. Reading is independent of [`tint`](#tint), so a get returns the stored color, never the tinted one.
 

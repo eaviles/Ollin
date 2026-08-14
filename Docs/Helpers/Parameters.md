@@ -4,7 +4,7 @@
 
 ## Parameters
 
-A `@Param` is a tunable knob. Declare one on a sketch and read it like a normal property, and the live host discovers it and shows a control for it, so a value you would otherwise hand-edit and recompile becomes something you adjust while the sketch runs. The control follows the property's type, so a `Double` gets a slider, a `Bool` a toggle, and a `Color` a color well. The same knob can also be driven from hardware, since an OSC address or a MIDI controller binds straight onto it.
+A `@Param` is a tunable knob. Declare one on a sketch and read it like a normal property. The live host finds it and shows a control for it. A value you would otherwise hand-edit and recompile becomes something you adjust while the sketch runs. The control follows the property's type, so a `Double` gets a slider, a `Bool` a toggle, and a `Color` a color well. The same knob can also be driven from hardware, since an OSC address or a MIDI controller binds straight onto it.
 
 ```swift
 final class Pulse: Sketch {
@@ -66,11 +66,11 @@ enum Style: String, CaseIterable, ParamOption { case dots, rings, meshLines }
 @Param var style: Style = .dots
 ```
 
-The menu shows humanized case names ("Mesh Lines"), and `optionLabel` overrides the wording. The persisted selection keys on the case *name*, so renaming a case forgets a tuned choice while reordering is safe. Ollin's own mode enums (`BlendMode`, `StrokeCap`, `StrokeJoin`, `Colormap`, `RenderQuality`) already conform, so `@Param var blend: BlendMode = .normal` gets its menu with no declaration at all, and a quality tier (`@Param var quality = RenderQuality.default` feeding `globalIlluminationQuality(quality)` or its shadow/raymarch/volumetric siblings) becomes a live dial the same way.
+The menu shows humanized case names ("Mesh Lines"), and `optionLabel` overrides the wording. The persisted selection keys on the case *name*, so renaming a case forgets a tuned choice while reordering is safe. Ollin's own mode enums already conform, so a mode knob needs no declaration at all. `@Param var blend: BlendMode = .normal` gets its menu directly, and `StrokeCap`, `StrokeJoin`, `Colormap`, and `RenderQuality` do the same. A quality tier becomes a live dial the same way: `@Param var quality = RenderQuality.default` feeds `globalIlluminationQuality(quality)`, or its shadow, raymarch, and volumetric siblings.
 
-A type that isn't an enum but has a fixed roster of named built-ins joins the menu tier through `ParamChoices` instead. Provide `paramChoices`, a list of `(name, value)` pairs, and the inspector shows the humanized names. `LightingPreset` conforms out of the box. The type's `Equatable` is what lets the menu find the current selection, which is also why `Easing` (a closure wrapper, no equality) and the parameterized `Material` finishes don't take this route.
+A type that isn't an enum but has a fixed roster of named built-ins joins the menu tier through `ParamChoices` instead. Provide `paramChoices`, a list of `(name, value)` pairs, and the inspector shows the humanized names. `LightingPreset` conforms out of the box. The type's `Equatable` is what lets the menu find the current selection. That requirement keeps `Easing` (a closure wrapper, no equality) and the parameterized `Material` finishes out of this route.
 
-The color well opens the system color panel, eyedropper included, so a sketch's palette is tunable live. The vector, rectangle, and insets forms take a range per field and clamp each independently, and the min/max pair stays ordered inside its `in:` bounds, with a minimum dragged past the maximum pushing the maximum along.
+The color well opens the system color panel, eyedropper included, so a sketch's palette is tunable live. The vector, rectangle, and insets forms take a range per field, and clamp each field on its own. The min/max pair stays ordered inside its `in:` bounds. Drag the minimum past the maximum, and the maximum moves along.
 
 #### Control styles
 
@@ -83,11 +83,11 @@ A few kinds take a `style:` when the default control isn't the right feel:
 @Param(style: .segmented) var mode: Style = .dots             // every case visible at once
 ```
 
-`.field` drops a numeric control's track, the fit for a precise quantity or a range too wide for a slider to resolve. The XY pad maps its square to the two ranges with the top-left corner at both lower bounds, matching the canvas origin, so dragging the dot feels like dragging on the canvas. A segmented control suits two to four short names. When the segments don't fit beside the label the row wraps them to a full-width control underneath, and longer case lists should stay on the default menu.
+`.field` drops a numeric control's track, the fit for a precise quantity or a range too wide for a slider to resolve. The XY pad maps its square to the two ranges, with the top-left corner at both lower bounds. That matches the canvas origin, so a drag of the dot feels like a drag on the canvas. A segmented control suits two to four short names. When the segments do not fit beside the label, the row wraps them to a full-width control underneath. Keep longer case lists on the default menu.
 
 #### Your own types
 
-`ParamValue` is public, so you conform a type by providing the clamp, the `ParamStored` round-trip, and the `ParamControl` it edits with. The control must be one of the existing kinds (a custom type presents as a slider, menu, fields, and so on; the inspector doesn't take custom rows), so the conformance is really a mapping from your type onto the closest built-in control. `ParamOption` covers the common case (any `CaseIterable` enum) and `ParamChoices` the named-catalog one, both with almost no work, so reach for a full `ParamValue` conformance only when a wrapped scalar or compound type genuinely wants to be a knob.
+`ParamValue` is public, so you conform a type by providing the clamp, the `ParamStored` round-trip, and the `ParamControl` it edits with. The control must be one of the existing kinds. A custom type presents as a slider, a menu, fields, and so on, because the inspector takes no custom rows. The conformance is really a mapping from your type onto the closest built-in control. `ParamOption` covers the common case, any `CaseIterable` enum, and `ParamChoices` covers the named-catalog one. Both take almost no work. Reach for a full `ParamValue` conformance only when a wrapped scalar or compound type genuinely wants to be a knob.
 
 <a name="groups"></a>
 
@@ -107,9 +107,9 @@ Every form takes an optional `icon:` and `group:`:
 
 ### Where the controls appear
 
-Under the live-reload host (`swift run OllinLive path/to/Sketch.swift`), every `@Param` is a control in the inspector sidebar. Tuned values survive a reload, so when you save the file and the sketch hot-swaps, the host re-applies what you dialed in and a knob doesn't snap back to its default mid-session. If an edit changes a property's *type*, the stale tuned value is dropped and the freshly written default wins.
+Under the live-reload host (`swift run OllinLive path/to/Sketch.swift`), every `@Param` is a control in the inspector sidebar. Tuned values survive a reload. When you save the file and the sketch hot-swaps, the host re-applies what you dialed in. A knob does not snap back to its default mid-session. If an edit changes a property's *type*, the stale tuned value is dropped and the freshly written default wins.
 
-A standalone run of an example gets the same controls in the inspector panel, under View ▸ Show Inspector (⌘/), and the examples gallery shows them in its right sidebar.
+A standalone run of an example gets the same controls in the inspector panel, under View ▸ Show Inspector (⌘/). The examples gallery shows them in its right sidebar.
 
 Headless export never opens an inspector, so a render uses the defaults written in code. Once a tuned value feels right, copy it back into the declaration.
 
@@ -128,9 +128,9 @@ Every numeric value box scrubs, so drag horizontally across it to change the val
 @Param(0...1, smoothing: .smoothed) var mix = 0.5             // adaptive 1€ filter
 ```
 
-Pass a `smoothing:` and the knob glides into each new value instead of snapping. `.eased(duration, curve:)` glides over a fixed time along an [`Easing`](../Helpers/Animation.md#easing) curve, crisp and predictable. `.smoothed(minCutoff:beta:)` runs the value through the [1€ filter](../Helpers/Animation.md#smoothed), which stays steady while the knob rests and opens up as it moves, and that tends to feel better under a hand on live hardware.
+Pass a `smoothing:` and the knob glides into each new value instead of snapping. `.eased(duration, curve:)` glides over a fixed time along an [`Easing`](../Helpers/Animation.md#easing) curve, crisp and predictable. `.smoothed(minCutoff:beta:)` runs the value through the [1€ filter](../Helpers/Animation.md#smoothed). The filter stays steady while the knob rests, and opens up as it moves. That tends to feel better under a hand on live hardware.
 
-The softening lives on the parameter, so every source gets it, and a MIDI fader, an OSC message, and a drag of the inspector slider all glide the same way. The sketch advances the glide each frame on its own, like `@Eased` and `@Smoothed`. Smoothing is a `Double` affair, and the other kinds switch instantly.
+The softening lives on the parameter, so every source gets it. A MIDI fader, an OSC message, and a drag of the inspector slider all glide the same way. The sketch advances the glide each frame on its own, like `@Eased` and `@Smoothed`. Smoothing is a `Double` affair, and the other kinds switch instantly.
 
 <a name="binding"></a>
 
@@ -145,7 +145,7 @@ midi.bind(controlChange: 7, to: $radius)    // a MIDI CC knob (OllinMIDI)
 
 Each incoming value is mapped into the parameter's range and assigned, and a bound knob updates on its own as messages arrive. The inspector control, the binding, and plain assignment in code all drive the same value, and whichever moved most recently wins. Bindings target `Double` parameters. The `from:` input ranges and the rest of the details are on the [OSC](../Integration/OSC.md#binding-to-a-param) and [MIDI](../Integration/MIDI.md#binding-to-a-param) pages.
 
-A parameter is safe to read and write from any thread, so the inspector drives it from the main thread while an OSC or MIDI callback writes from its own queue.
+A parameter is safe to read and write from any thread. The inspector drives it from the main thread, while an OSC or MIDI callback writes from its own queue.
 
 <a name="param-object"></a>
 
@@ -160,7 +160,7 @@ $radius.range       // the declared bounds (Double and Int parameters)
 
 Assignment retargets (and glides, when smoothed), while `set(_:)` lands immediately. The live host uses `set` to restore your tuned values across a reload, where gliding in from the default would look wrong.
 
-A knob is also sweepable offline. `--export-sweep` renders a proof sheet along one parameter's range, one tile per value, and every tile is pinned to the same seed, so the knob is the only thing changing across the sheet. Seeds stay what they are on the [Variations](../Core/Variations.md) page, a sketch's identity; a sweep is a tuning tool, the inspector's drag laid out as a sheet:
+A knob is also sweepable offline. `--export-sweep` renders a proof sheet along one parameter's range, one tile per value. Every tile is pinned to the same seed, so the knob is the only thing that changes across the sheet. Seeds stay what they are on the [Variations](../Core/Variations.md) page, a sketch's identity. A sweep is a tuning tool, the inspector's drag laid out as a sheet:
 
 ```sh
 swift run --package-path Examples Example-Live-Parameters --export-sweep sweep.png --param radius --from 40 --to 360
@@ -168,6 +168,6 @@ swift run --package-path Examples Example-Live-Parameters --export-sweep sweep.p
 
 The full flag list is on the [Export](../Output/Export.md#contact-sheets-proofing-a-variation-space) page, and `OllinApp.contactSheet(of:sweeping:values:seed:)` is the code form.
 
-For building your own control surface, `parameters()` returns the sketch's knobs as `[ParamHandle]`: a stable `name` key, a display `label`, the `icon` and `group` metadata, and the type-erased `param`. Its `control` describes the matching UI (kind, ranges, options, and live get/set closures), and `stored` / `restore(_:)` round-trip the value through the small `ParamStored` payload the hosts persist. The live host builds its inspector from exactly this, and most sketches never call it.
+For building your own control surface, `parameters()` returns the sketch's knobs as `[ParamHandle]`. Each handle carries a stable `name` key, a display `label`, the `icon` and `group` metadata, and the type-erased `param`. Its `control` describes the matching UI (kind, ranges, options, and live get/set closures). `stored` and `restore(_:)` round-trip the value through the small `ParamStored` payload the hosts persist. The live host builds its inspector from exactly this, and most sketches never call it.
 
 The [Parameters example](../../Examples/Live/Parameters/Sketch.swift) is the worked demo, a spread of the typed family in three groups driving a ring pattern, made for `swift run OllinLive Examples/Live/Parameters/Sketch.swift`.

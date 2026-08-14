@@ -4,7 +4,7 @@
 
 ## MIDI
 
-Wire a controller into a sketch. MIDI is the protocol every knob box, keyboard, pad grid, and sequencer speaks, so a hardware fader can drive a parameter, a key can trigger an event, and a sketch can send notes and control changes back out. It lives in a separate library so the drawing core stays free of Core MIDI. Add `import OllinMIDI` alongside `import Ollin` to reach it.
+Wire a controller into a sketch. MIDI is the protocol every knob box, keyboard, pad grid, and sequencer speaks. So a hardware fader can drive a parameter, and a key can trigger an event. A sketch can send notes and control changes back out. It lives in a separate library so the drawing core stays free of Core MIDI. Add `import OllinMIDI` alongside `import Ollin` to reach it.
 
 You read incoming MIDI with a [`MIDIInput`](#midiinput) and send it with a [`MIDIOutput`](#midioutput), both over Apple's Core MIDI. A message is a *kind* (a note, a control change, a clock tick) on a *channel* (1 to 16). The MIDI 1.0 format is parsed and encoded from the spec, so nothing is vendored.
 
@@ -57,7 +57,7 @@ default: break
 }
 ```
 
-The everyday kinds are `.noteOn` / `.noteOff` (a key or pad), `.controlChange` (a knob, fader, or pedal), and `.pitchBend`. The set is rounded out by `.programChange`, `.channelPressure`, `.polyPressure`, and the system sync messages `.clock` / `.start` / `.stop` / `.continue` / `.songPosition`. Those last ones carry no channel, so they report `0`, and the [tempo clock](#tempo-sync-tempoclock) reads them for you. A note-on with velocity 0 (what a lot of gear sends for a release) is normalized to `.noteOff`.
+The everyday kinds are `.noteOn` / `.noteOff` (a key or pad), `.controlChange` (a knob, fader, or pedal), and `.pitchBend`. The set is rounded out by `.programChange`, `.channelPressure`, `.polyPressure`, and the system sync messages `.clock` / `.start` / `.stop` / `.continue` / `.songPosition`. Those last ones carry no channel, so they report `0`, and the [tempo clock](#tempo-sync-tempoclock) reads them for you. A note-on with velocity 0 is normalized to `.noteOff`, which is what a lot of gear sends for a release.
 
 The convenience accessors keep the common reads terse, so you rarely switch on `kind` directly:
 
@@ -104,7 +104,7 @@ let radius = Double(midi.controlValue(7, default: 0)) / 127 * 300
 if midi.isNoteOn(60) { sustain() }
 ```
 
-**The event queue**, for discrete things: notes struck, transport, clock. `messages()` hands you everything received since the last call, in arrival order, and clears the queue. Call it once per frame:
+**The event queue**, for discrete things like notes struck, transport, and clock. `messages()` hands you everything received since the last call, in arrival order, and clears the queue. Call it once per frame:
 
 ```swift
 for message in midi.messages() where message.isNoteOn {
@@ -133,7 +133,7 @@ func bind(controlChange controller: Int, to param: Param<Double>,
 func unbind(controlChange controller: Int, channel: Int? = nil)
 ```
 
-The fourth way to read is to wire a control-change knob straight onto a [`@Param`](../Helpers/Parameters.md) knob, so a hardware fader drives the same parameter the inspector slider does. Each incoming value is mapped from `input` (a controller's `0…127` by default) into the parameter's own range and assigned there:
+The fourth way to read is to wire a control-change knob straight onto a [`@Param`](../Helpers/Parameters.md) knob. A hardware fader then drives the same parameter the inspector slider does. Each incoming value is mapped from `input` (a controller's `0…127` by default) into the parameter's own range and assigned there:
 
 ```swift
 @Param(20...400) var radius = 120.0
@@ -146,14 +146,14 @@ override func setup() {
 
 A bound knob updates on its own as messages arrive, so you don't read it each frame. The same parameter still works from the inspector slider and from code, and whichever moved most recently wins.
 
-**Softening the moves.** Give the `@Param` a `smoothing:` and the hardware glides instead of jumping. The same softening applies whether the value comes from MIDI, OSC, or a drag of the inspector slider, because it's a property of the knob:
+**Softening the moves.** Give the `@Param` a `smoothing:` and the hardware glides instead of jumping. The same softening applies whether the value comes from MIDI, OSC, or a drag of the inspector slider. It is a property of the knob:
 
 ```swift
 @Param(20...400, smoothing: .eased(0.3)) var radius = 120.0   // 0.3s glide
 @Param(0...1, smoothing: .smoothed) var mix = 0.5             // adaptive 1€ filter
 ```
 
-`.eased` glides to each value over a fixed time on an `Easing` curve, while `.smoothed` runs it through a `OneEuroFilter`, which stays steady while the knob is still and opens up as it moves, the better feel for a hand on live hardware. Both are documented in [Animation](../Helpers/Animation.md) (the `Easing` curves and the `@Smoothed` 1€ filter).
+`.eased` glides to each value over a fixed time on an `Easing` curve. `.smoothed` runs it through a `OneEuroFilter`, which stays steady while the knob is still and opens up as it moves. That is the better feel for a hand on live hardware. Both are documented in [Animation](../Helpers/Animation.md), with the `Easing` curves and the `@Smoothed` 1€ filter.
 
 <a name="tempo-sync-tempoclock"></a>
 
@@ -175,7 +175,7 @@ var barPhase: Double       // 0…1 through the current bar
 func progress(over length: Double, phase: Double = 0) -> Double   // 0…1 ramp across any beat span
 ```
 
-Lock a sketch's motion to whatever is playing, the way a VJ syncs visuals to a DJ. Anything that sends MIDI clock (a DAW, a drum machine, a hardware sequencer, a DJ mixer) can be the conductor, and a `TempoClock` reads the sync messages off a `MIDIInput` and turns them into musical time you read in `draw()`, so animation falls on the beat instead of near it.
+Lock a sketch's motion to whatever is playing, the way a VJ syncs visuals to a DJ. Anything that sends MIDI clock can be the conductor, whether that is a DAW, a drum machine, a hardware sequencer, or a DJ mixer. A `TempoClock` reads the sync messages off a `MIDIInput`, and turns them into musical time you read in `draw()`. So animation falls on the beat instead of near it.
 
 ```swift
 let midi = MIDIInput()
@@ -191,13 +191,13 @@ override func draw() {
 }
 ```
 
-`beat` is the ready-made pulse (the shape the audio analyzer's `beat` has, so a beat-reactive sketch can swap between hearing the room and reading the wire), `phase` is where you are inside the beat, and `progress(over:)` is the musical-time sibling of `loopProgress(over:)`, a `0…1` ramp across any number of beats, for the moves that span a phrase rather than a beat.
+`beat` is the ready-made pulse. It has the shape the audio analyzer's `beat` has. So a beat-reactive sketch can swap between hearing the room and reading the wire. `phase` is where you are inside the beat. `progress(over:)` is the musical-time sibling of `loopProgress(over:)`. It is a `0…1` ramp across any number of beats, for the moves that span a phrase rather than a beat.
 
-**How it stays honest under real-world clock.** MIDI clock ticks 24 times per beat, and the *position* comes from counting those ticks, so the beat grid can't drift no matter how the tempo wobbles. The *tempo* is a mean over a sliding window of recent tick intervals (about two beats' worth, enough to flatten the millisecond-scale jitter typical of the wire), and it's only used to glide `phase` between ticks, clamped so the position never runs backward when a tick is late. A large tempo jump flushes the window, so the new tempo locks within a beat.
+**How it stays honest under real-world clock.** MIDI clock ticks 24 times per beat. The *position* comes from counting those ticks, so the beat grid cannot drift no matter how the tempo wobbles. The *tempo* is a mean over a sliding window of recent tick intervals. The window holds about two beats' worth, which is enough to flatten the millisecond-scale jitter typical of the wire. The tempo is only used to glide `phase` between ticks, clamped so the position never runs backward when a tick is late. A large tempo jump flushes the window, so the new tempo locks within a beat.
 
-**Transport.** `start` resets the position to zero and the next tick is the downbeat. `stop` freezes the position, though the tempo keeps updating if clock keeps arriving, and `continue` resumes from where it froze, or from a received song position. A master that only sends clock with no transport messages at all (common on DJ gear) free-runs, taking its first tick as beat zero. MIDI clock carries no meter, so you declare `beatsPerBar` (default 4), and bar zero is wherever the count began.
+**Transport.** `start` resets the position to zero and the next tick is the downbeat. `stop` freezes the position, though the tempo keeps updating if clock keeps arriving. `continue` resumes from where it froze, or from a received song position. A master that only sends clock with no transport messages at all (common on DJ gear) free-runs, taking its first tick as beat zero. MIDI clock carries no meter, so you declare `beatsPerBar` (default 4), and bar zero is wherever the count began.
 
-**Keyframes on musical time.** A [`Timeline`](../Helpers/Animation.md) authored with durations in *beats* runs on the clock with one line, following `clock.beats` instead of letting it advance in seconds.
+**Keyframes on musical time.** A [`Timeline`](../Helpers/Animation.md) authored with durations in *beats* runs on the clock with one line. It follows `clock.beats` instead of advancing in seconds.
 
 ```swift
 let swell = Timeline(0.0).to(1.0, in: 3, ease: .easeOut).to(0.0, in: 1)   // durations in beats
@@ -226,7 +226,7 @@ func controlChange(_ controller: Int, value: Int, channel: Int = 1)
 func close()
 ```
 
-`open(to:)` points at a hardware destination (the first one whose name contains the text you pass, or the first available when you pass nothing), then send from `draw()`:
+`open(to:)` points at a hardware destination. It takes the first one whose name contains the text you pass, or the first available when you pass nothing. Then send from `draw()`:
 
 ```swift
 let out = MIDIOutput()
@@ -234,16 +234,16 @@ override func setup() { try? out.open(to: "Grid") }      // first destination ma
 override func draw() { out.controlChange(7, value: Int(level * 127)) }
 ```
 
-`openVirtual(named:)` instead publishes a virtual source other apps (and a `MIDIInput` in this same process) can receive from, which is how the loopback below runs with no hardware.
+`openVirtual(named:)` instead publishes a virtual source other apps can receive from, and a `MIDIInput` in this same process can too. That is how the loopback below runs with no hardware.
 
 <a name="testing-without-hardware"></a>
 
 ### Testing without hardware
 
-You can exercise MIDI with nothing but the Mac in front of you. The **MIDILoopback** example (`Examples/Integration/MIDILoopback`) opens a virtual source, sends control changes to itself, and draws the value it reads back, so the picture you see is the round-trip. It also shows the param softening at work, because the incoming value steps like a knob jumping while the circle glides toward each step.
+You can exercise MIDI with nothing but the Mac in front of you. The **MIDILoopback** example (`Examples/Integration/MIDILoopback`) opens a virtual source, sends control changes to itself, and draws the value it reads back. The picture you see is the round-trip. It also shows the param softening at work, because the incoming value steps like a knob jumping while the circle glides toward each step.
 
-To bring in real gear, connect a controller and run the **MIDIMonitor** example (`Examples/Integration/MIDIMonitor`), which listens to every device and prints and draws each message, so you can discover what a knob or pad sends just by touching it. Many controllers (the endless-encoder kind especially) are reconfigurable in their own editor, and the monitor is how you see what yours is set to.
+To bring in real gear, connect a controller and run the **MIDIMonitor** example (`Examples/Integration/MIDIMonitor`). It listens to every device, and prints and draws each message. So you can discover what a knob or pad sends just by touching it. Many controllers (the endless-encoder kind especially) are reconfigurable in their own editor, and the monitor is how you see what yours is set to.
 
 ---
 
-See the **MIDILoopback** example for a self-contained send-and-receive sketch that needs no hardware, **MIDIMonitor** for inspecting messages from a real controller, and **TempoSync** for visuals locked to MIDI clock.
+See the **MIDILoopback** example for a sketch that sends and receives with no hardware. Use **MIDIMonitor** to inspect messages from a real controller, and **TempoSync** for visuals locked to MIDI clock.

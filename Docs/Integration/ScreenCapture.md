@@ -4,9 +4,9 @@
 
 ## Screen capture
 
-Take the Mac's own screen as material. Any display, any app, any single window arrives as a live image a sketch draws, filters, and analyzes, so anything running on the machine becomes something to work with: a browser, a map, a video call, a terminal, another sketch.
+Take the Mac's own screen as material. Any display, any app, or any single window arrives as a live image. A sketch draws it, filters it, and analyzes it. Anything running on the machine becomes material, whether that is a browser, a map, a video call, a terminal, or another sketch.
 
-This is the counterpart to [Syphon](Syphon.md), and the difference is who has to agree. Syphon carries frames between apps that have both chosen to speak it, which is why it is fast and clean and why it only reaches apps that publish. Screen capture asks nothing of the other app at all. It reaches everything on the screen, and it pays for that with the one thing Syphon never needs: the user's permission to record the screen.
+This is the counterpart to [Syphon](Syphon.md), and the difference is who has to agree. Syphon carries frames between apps that have both chosen to speak it. That is why it is fast and clean, and why it only reaches apps that publish. Screen capture asks nothing of the other app at all. It reaches everything on the screen. It pays for that with the one thing Syphon never needs, which is the user's permission to record the screen.
 
 It lives in a separate library so the drawing core stays free of ScreenCaptureKit, and so the permission belongs to sketches that ask for it. Add `import OllinScreen` alongside `import Ollin`.
 
@@ -26,7 +26,7 @@ final class Mirror: Sketch {
 }
 ```
 
-Frames arrive as GPU textures, the same way a [video](../Video/Video.md) file's do, so drawing one costs no trip through the CPU and every [filter](../Drawing/Effects.md) applies. A capture is also a [`FrameSource`](../Vision/Vision.md), so every tracker in the vision catalog attaches to it exactly the way it attaches to a camera, and reads whatever is on screen instead.
+Frames arrive as GPU textures, the same way a [video](../Video/Video.md) file's do. Drawing one costs no trip through the CPU, and every [filter](../Drawing/Effects.md) applies. A capture is also a [`FrameSource`](../Vision/Vision.md). Every tracker in the vision catalog attaches to it the way it attaches to a camera, and reads whatever is on screen instead.
 
 ### Contents
 
@@ -44,9 +44,9 @@ Frames arrive as GPU textures, the same way a [video](../Video/Video.md) file's 
 
 Recording the screen needs the user's consent, and macOS grants that consent to an *application*, not to a piece of code. That distinction is the whole story for a creative-coding framework, because a sketch is usually not an application.
 
-**A sketch run from the terminal inherits the terminal's permission.** `swift run`, the `ollin` command, `OllinLive`, and the examples gallery all build plain executables with no bundle identifier of their own, and macOS attributes their request to the process that launched them: Terminal, iTerm, Ghostty, whichever you use. So the prompt you see names your terminal, the entry that appears in System Settings is your terminal, and once you have allowed it there, every sketch you ever run from that terminal can capture, with no further prompt. One approval covers all of them.
+**A sketch run from the terminal inherits the terminal's permission.** Ollin builds plain executables with no bundle identifier of their own. That covers `swift run`, the `ollin` command, `OllinLive`, and the examples gallery. So macOS attributes their request to the process that launched them, which is Terminal, iTerm, Ghostty, or whichever you use. The prompt you see names your terminal, and so does the entry in System Settings. Allow it there once, and every sketch you run from that terminal can capture, with no further prompt. One approval covers all of them.
 
-That is convenient and it is worth being clear-eyed about: allowing a terminal to record the screen allows everything you run from it to record the screen. It is the same trade as letting a terminal have Full Disk Access, and it is why Ollin makes the capability something a sketch opts into by importing a library and calling `start()`, rather than something the drawing core carries.
+That is convenient, and it is worth being clear-eyed about. If you allow a terminal to record the screen, everything you run from it can record the screen. It is the same trade as letting a terminal have Full Disk Access. That is why a sketch opts into the capability, by importing a library and calling `start()`. The drawing core never carries it.
 
 Granting the permission **does not reach a process that is already running**. Allow it, then start the sketch again.
 
@@ -56,7 +56,7 @@ ScreenCapture.unavailableReason    // a sentence to draw when it is not
 ScreenCapture.requestAccess()      // ask (the system prompts once, ever)
 ```
 
-`start()` asks for you, so most sketches never call `requestAccess()`. A capture with no permission is not an error and does not throw: it simply has no frames, and `waitingMessage` says why, which `drawFrame` puts on the canvas for you.
+`start()` asks for you, so most sketches never call `requestAccess()`. A capture with no permission is not an error, and it does not throw. It simply has no frames. `waitingMessage` says why, and `drawFrame` puts that on the canvas for you.
 
 ```swift
 override func draw() {
@@ -74,13 +74,13 @@ if let reason = ScreenCapture.unavailableReason {
 }
 ```
 
-If a sketch is going to ship as a real `.app` bundle, it gets its own entry in System Settings and its own prompt, which is the better experience for anything you hand to someone else.
+A sketch that ships as a real `.app` bundle gets its own entry in System Settings, and its own prompt. That is the better experience for anything you hand to someone else.
 
 <a name="choosing-what-to-capture"></a>
 
 ### Choosing what to capture
 
-A `ScreenSource` is a plain value you write in the sketch, so the same line always picks the same thing and the sketch stays the record of what was captured:
+A `ScreenSource` is a plain value you write in the sketch. The same line always picks the same thing, so the sketch stays the record of what was captured:
 
 ```swift
 ScreenCapture(.mainDisplay)                          // the display the menu bar is on
@@ -102,7 +102,7 @@ The source is a live property, so a sketch can switch targets from a knob or a k
 screen.source = .app("Music")
 ```
 
-**A source that names something not on screen yet is not an error.** The capture keeps looking and starts by itself the moment the window appears, so you can name a window and then go open it. `isRunning` stays `true` through the wait (it means "wanted"), and `isReceiving` tells you whether frames are actually arriving.
+**A source that names something not on screen yet is not an error.** The capture keeps looking. It starts by itself the moment the window appears, so you can name a window and then go open it. `isRunning` stays `true` through the wait, where it means "wanted", and `isReceiving` tells you whether frames are actually arriving.
 
 <a name="listing-what-is-there"></a>
 
@@ -128,13 +128,13 @@ override func setup() {
 }
 ```
 
-The intended workflow is to list once, find what you want, and then **write the name into the sketch**, so the piece does not depend on a menu having been clicked. The `ScreenCapture` example prints the listing as the line of code that names each source, ready to paste.
+The intended workflow is to list once, find what you want, and then **write the name into the sketch**. The piece then does not depend on a menu having been clicked. The `ScreenCapture` example prints the listing as the line of code that names each source, ready to paste.
 
 <a name="capturing-the-screen-you-are-drawn-on"></a>
 
 ### Capturing the screen you are drawn on
 
-By default the sketch's own windows are cut out of a display capture, because otherwise a full-screen capture contains the window it is being drawn in and the picture eats itself:
+By default the sketch's own windows are cut out of a display capture. Without that, a full-screen capture contains the window it is drawn in, and the picture eats itself:
 
 ```swift
 screen.excludesOwnWindows = true    // the default
@@ -146,9 +146,9 @@ Turn it off and that is exactly what happens, which is the point:
 screen.excludesOwnWindows = false
 ```
 
-The sketch draws a screen containing a window drawing a screen containing a window, receding until the innermost copy is a few pixels across. It is video feedback, the effect people have been pointing cameras at monitors to get since the 1960s, and here it costs one boolean. How far it recedes depends on how fast the sketch draws relative to the capture, and the recursion drifts and smears as the window moves, which is the good part.
+The sketch draws a screen containing a window drawing a screen containing a window, receding until the innermost copy is a few pixels across. It is video feedback, the effect people have been pointing cameras at monitors to get since the 1960s, and here it costs one boolean. How far it recedes depends on how fast the sketch draws relative to the capture. The recursion drifts and smears as the window moves, which is the good part.
 
-Self-exclusion keys on the process, not the window title, so it holds for a sketch with several windows and for a sketch with no bundle identifier. It has no effect when capturing a single window or another app, where the sketch was never in the picture to begin with.
+Self-exclusion keys on the process, not the window title. So it holds for a sketch with several windows, and for a sketch with no bundle identifier. It has no effect when capturing a single window or another app, where the sketch was never in the picture to begin with.
 
 <a name="settings"></a>
 
@@ -160,7 +160,7 @@ screen.frameRate = 30       // most frames per second (default 60)
 screen.showsCursor = false  // draw the pointer into the frames (default true)
 ```
 
-`scale` is the knob that matters on a large display. At `1` a capture arrives at the display's true backing resolution, which on a Retina screen is twice its size in points: a 5K display is a 5120-pixel-wide texture every frame. Halving it quarters the pixels, and is the cheap way to feed a heavy effect chain.
+`scale` is the knob that matters on a large display. At `1` a capture arrives at the display's true backing resolution. On a Retina screen that is twice its size in points, so a 5K display is a 5120-pixel-wide texture every frame. Halving it quarters the pixels, and is the cheap way to feed a heavy effect chain.
 
 Frames are delivered only when the captured content actually changes, so a still screen costs nothing whatever `frameRate` says. The cap is there to keep a busy screen from outrunning the sketch.
 
@@ -179,7 +179,7 @@ lazy var text = TextRecognizer(screen)
 lazy var faces = FaceTracker(screen)
 ```
 
-So a sketch can read the words on a page as they scroll, find faces in a video call, follow motion across a map, or trace contours out of anything on screen. Map results into the rectangle `drawFrame` returns, exactly as with a camera.
+So a sketch can read the words on a page as they scroll, or find faces in a video call. It can follow motion across a map, or trace contours out of anything on screen. Map results into the rectangle `drawFrame` returns, exactly as with a camera.
 
 The CPU copy a tracker needs is made only while a tap is installed, so a capture that is only drawn never pays for it.
 
@@ -189,7 +189,7 @@ The CPU copy a tracker needs is made only while a tap is installed, so a capture
 
 **System audio.** ScreenCaptureKit can record what the machine is playing, and this does not. It is a capture of pictures only. The audio side belongs with the [audio](../Helpers/Audio.md) analyzer surface rather than bolted to a video frame source, and it has not been built yet.
 
-**The system picker.** macOS offers a Control Center panel for choosing what to share. It is built around an application singleton with an observer protocol, which suits an app with a bundle identity and a settings window rather than a sketch, and choosing through a panel would make the picture depend on a click nobody recorded. Naming the source in code is the reproducible path, and `windows()` gives you the same discovery with no UI in the way.
+**The system picker.** macOS offers a Control Center panel for choosing what to share. It is built around an application singleton with an observer protocol. That suits an app with a bundle identity and a settings window, rather than a sketch. A choice made through a panel would also make the picture depend on a click nobody recorded. Naming the source in code is the reproducible path, and `windows()` gives you the same discovery with no UI in the way.
 
 **Capturing while the screen is locked or asleep**, which the system does not allow, and a capture reports as stopped.
 

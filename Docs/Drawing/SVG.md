@@ -4,7 +4,7 @@
 
 ## SVG import
 
-Read vector artwork into the same `Shape`s and `Contour`s the rest of the framework speaks. A logo traced in a design tool, a scanned drawing auto-traced to paths, or a file exported from another sketch all come in as geometry you can draw as authored, respace into dots, offset, hatch, run through the [shape booleans](./Geometry.md), or send back out through the [SVG export](../Output/Export.md).
+Read vector artwork into the same `Shape`s and `Contour`s the rest of the framework speaks. A logo traced in a design tool comes in as geometry. So does a scanned drawing auto-traced to paths, or a file exported from another sketch. You can draw it as authored, respace it into dots, offset it, or hatch it. You can also run it through the [shape booleans](./Geometry.md), or send it back out through the [SVG export](../Output/Export.md).
 
 ```swift
 @main
@@ -23,9 +23,16 @@ final class Badge: Sketch {
 }
 ```
 
-The importer covers the subset generative work actually meets: `<path>` with the full path grammar (lines, cubic and quadratic Béziers, smooth shorthands, elliptical arcs), the basic shapes (`rect` including rounded corners, `circle`, `ellipse`, `line`, `polyline`, `polygon`), `<g>` groups, `transform` lists, presentation attributes and inline `style`, both fill rules, per-element opacity, and stroke width/join/cap. Curves are flattened to points at import (after transforms, so sampling density matches the final size), exactly like the [`Path`](./Geometry.md) builder.
+The importer covers the subset generative work actually meets:
 
-What it deliberately skips: gradients and patterns (a `url(#…)` paint falls back to mid-gray so the form stays visible), CSS `<style>` blocks, `<use>`/`<symbol>` references, clipping, masks, filters, and text (convert text to outlines when exporting from a design tool). Content inside `<defs>` and friends is ignored whole; the plain geometry in the file still imports.
+- `<path>`, with the full path grammar of lines, cubic and quadratic Béziers, smooth shorthands, and elliptical arcs.
+- The basic shapes `rect` including rounded corners, `circle`, `ellipse`, `line`, `polyline`, and `polygon`.
+- `<g>` groups, `transform` lists, presentation attributes, and inline `style`.
+- Both fill rules, per-element opacity, and stroke width, join, and cap.
+
+Curves are flattened to points at import, after transforms, so sampling density matches the final size. That is exactly like the [`Path`](./Geometry.md) builder.
+
+What it deliberately skips is gradients and patterns, CSS `<style>` blocks, `<use>`/`<symbol>` references, clipping, masks, filters, and text. A `url(#…)` paint falls back to mid-gray, so the form stays visible. Convert text to outlines when exporting from a design tool. Content inside `<defs>` and friends is ignored whole, and the plain geometry in the file still imports.
 
 ### Contents
 
@@ -49,7 +56,7 @@ SVG(data: data)                          // raw bytes (an inline string, a downl
 SVG(resource: "crest", in: .module)      // bundled beside the sketch
 ```
 
-All return `nil` when the file can't be read or holds no importable geometry. The `resource:in:` form follows the font and image loaders: pass the caller's bundle explicitly (`.module` from inside a package target), since a default would resolve to Ollin's own bundle rather than yours.
+All return `nil` when the file can't be read or holds no importable geometry. The `resource:in:` form follows the font and image loaders. Pass the caller's bundle explicitly, such as `.module` from inside a package target. A default would resolve to Ollin's own bundle rather than yours.
 
 <a name="drawing"></a>
 
@@ -62,7 +69,7 @@ drawSVG(_ svg: SVG, in rect: Rectangle)  // scaled uniformly to fit rect
 
 Draws every element in document order with the fill, stroke, stroke width, and join/cap it was authored with. The current transform applies (`translate`/`rotate`/`scale` move the whole artwork), and your sketch's fill/stroke state is untouched afterward. Elements with neither fill nor stroke are skipped.
 
-`drawSVG(_:in:)` letterboxes: the artwork keeps its aspect ratio, scaled to fit and centered in `rect` (the same rule as `Rectangle(fitting:in:)`).
+`drawSVG(_:in:)` letterboxes the artwork. It keeps its aspect ratio, scaled to fit and centered in `rect`, which is the same rule as `Rectangle(fitting:in:)`.
 
 <a name="type"></a>
 
@@ -127,9 +134,9 @@ A multi-contour `<path>` stays one `Shape`, so holes keep cutting (its `fill-rul
 
 #### Gotchas
 
-- **An unfilled, unstroked element is invisible in SVG terms but still parsed.** The default fill is black (the SVG initial value), so most artwork just shows up; only `fill="none"` elements with no stroke are skipped by `drawSVG` (their geometry still rides along in `shapes`/`contours`).
-- **Gradient fills fall back to mid-gray.** The importer resolves flat colors (hex, `rgb()`, the CSS named set, opacity folded into alpha); a gradient or pattern reference keeps the element visible in gray rather than dropping it. Repaint by element when it matters.
-- **Sizes are document units.** Nothing is rescaled at load; a 100-unit viewBox draws 100 pixels wide until you use `drawSVG(_:in:)` or `fitted(in:)`.
+- **An unfilled, unstroked element is invisible in SVG terms but still parsed.** The default fill is black, so most artwork just shows up. That is the SVG initial value. Only `fill="none"` elements with no stroke are skipped by `drawSVG`, and their geometry still rides along in `shapes`/`contours`.
+- **Gradient fills fall back to mid-gray.** The importer resolves flat colors. That covers hex, `rgb()`, the CSS named set, and opacity folded into alpha. A gradient or pattern reference keeps the element visible in gray, rather than dropping it. Repaint by element when it matters.
+- **Sizes are document units.** Nothing is rescaled at load. A 100-unit viewBox draws 100 pixels wide until you use `drawSVG(_:in:)` or `fitted(in:)`.
 - **Text doesn't import.** Convert text to outlines when exporting from the design tool, then it arrives as paths like everything else.
 
 Example: [`Examples/Shapes/SVGImport`](../../Examples/Shapes/SVGImport/Sketch.swift). Export's vector half lives in [`Output/Export.md`](../Output/Export.md).
