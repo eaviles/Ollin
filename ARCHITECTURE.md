@@ -19,14 +19,15 @@ It is deliberately separate from the other docs:
   forward-looking only: what is planned and the design intent behind it.
 
 So the split is: planned work in ROADMAP/DESIGN-NOTES, how to use a shipped
-feature in Docs/, the rules and the index in CLAUDE.md, and the deep internals
-of shipped systems here. When a system in CLAUDE.md's *Current state* needs more
-than its terse invariant, the depth lives here and CLAUDE.md keeps a pointer.
+feature in Docs/, the cross-cutting rules in CLAUDE.md, the capability inventory
+in [`CAPABILITIES.md`](CAPABILITIES.md), and the deep internals of shipped
+systems here. When a capability needs more than its terse invariant there, the
+depth lives here and `CAPABILITIES.md` keeps a pointer.
 
 This document is populated one system at a time, so it is intentionally
 partial. The map below lists Ollin's major systems and where each one's
-internals are documented today; CLAUDE.md's *Current state* section remains the
-complete capability index regardless.
+internals are documented today; `CAPABILITIES.md` remains the complete
+capability index regardless.
 
 ---
 
@@ -7228,11 +7229,11 @@ stacked planes at different heights; do not reintroduce it.
 
 The sections above are the current contents.
 The *Systems map* near the top is the migration checklist: when a system marked
-*pending* there accrues depth that would otherwise swell CLAUDE.md (or that a
-contributor needs and that currently survives only as the memory of past work),
-it moves here under the same convention. CLAUDE.md keeps the terse invariant and
-a pointer; the mechanism, rationale, and measurements live here; CLAUDE.md's
-*Current state* remains the authoritative capability index. The migration is
-deliberately incremental: a system earns a writeup here when its CLAUDE.md bullet
-is carrying mechanism it should not, or when someone is about to work in that
-area, not as a one-time backfill.
+*pending* there accrues depth that would otherwise swell `CAPABILITIES.md` (or
+that a contributor needs and that currently survives only as the memory of past
+work), it moves here under the same convention. `CAPABILITIES.md` keeps the
+terse invariant and a pointer; the mechanism, rationale, and measurements live
+here; `CAPABILITIES.md` remains the authoritative capability index. The
+migration is deliberately incremental: a system earns a writeup here when its
+`CAPABILITIES.md` bullet is carrying mechanism it should not, or when someone is
+about to work in that area, not as a one-time backfill.

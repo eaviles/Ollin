@@ -31,6 +31,7 @@ These come up most often. `CLAUDE.md` has the full reasoning; the short version:
 
 - [`CLAUDE.md`](CLAUDE.md) - the full design intent and conventions (start here)
 - [`README.md`](README.md) - what Ollin is, and how to run it
+- [`CAPABILITIES.md`](CAPABILITIES.md) - everything that ships today, one bullet per capability, with the invariants that must not break
 - [`ROADMAP.md`](ROADMAP.md) - what's planned, and good first contributions
 - [`DESIGN-NOTES.md`](DESIGN-NOTES.md) - the engineering design behind planned work
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) - how the larger shipped systems work inside (the how and why, beyond the conventions)
