@@ -6,11 +6,11 @@
 
 <img src="Images/19-DepthAndThePhone/GhostRoom.jpg" alt="A room rendered as woven scan-lines of glowing points: pale walls and floor, a coral ball, a teal crate, with dark voids where no camera has seen yet" width="560">
 
-A camera flattens the world, while a depth camera keeps one more number per pixel, and that number is enough to un-flatten it. This chapter is about that number: what a depth frame is, how a flat picture stands up into a point cloud, how many pictures fuse into one scanned room, and how a tethered iPhone becomes a live 3D sensor for your sketches. The scan above was made by the chapter's own code, and every figure here runs on any Mac with no phone required. The phone is the upgrade, not the entry fee.
+A camera flattens the world, while a depth camera keeps one more number per pixel, and that number is enough to un-flatten it. This chapter is about that number. It covers what a depth frame is, and how a flat picture stands up into a point cloud. Then it covers how many pictures fuse into one scanned room, and how a tethered iPhone becomes a live 3D sensor for your sketches. The scan above was made by the chapter's own code, and every figure here runs on any Mac with no phone required. The phone is the upgrade, not the entry fee.
 
 ## What a depth camera sees
 
-Every depth source, whatever the hardware, hands you the same three things: a color image, a depth map holding one metric distance per pixel in meters, and the **intrinsics**, which are a handful of numbers describing the lens that took them.
+Every depth source hands you the same three things, whatever the hardware. First a color image, then a depth map holding one metric distance per pixel in meters. Last come the **intrinsics**, a handful of numbers describing the lens that took them.
 
 <img src="Images/19-DepthAndThePhone/Anatomy.jpg" alt="Two panels from the stand-in depth camera: a color image of a small staged room with a coral ball and teal crate, and its depth map, near surfaces bright and far ones dark, with the intrinsics listed below" width="680">
 
@@ -21,13 +21,13 @@ RGBDFrame(color: color, depth: depths, confidence: nil,
           depthWidth: 240, depthHeight: 180, intrinsics: intrinsics)
 ```
 
-Where did this chapter's frames come from, with no depth camera attached? We fake one. The committed figure [`Anatomy.swift`](Figures/19-DepthAndThePhone/Anatomy.swift) ends with `StageCamera`, under eighty lines that march rays through a tiny staged room (Chapter 18's sphere tracing, run on the CPU) and fill exactly those arrays, colors from the scene and depths from how far each ray flew. It's a pretend camera, but the frame it produces is a real `RGBDFrame`, so everything else in this chapter treats it exactly as it would treat a LiDAR. That's the point of the type: whatever fills the arrays, the rest of the pipeline doesn't care.
+Where did this chapter's frames come from, with no depth camera attached? We fake one. The committed figure [`Anatomy.swift`](Figures/19-DepthAndThePhone/Anatomy.swift) ends with `StageCamera`, under eighty lines of it. Those lines march rays through a tiny staged room, which is Chapter 18's sphere tracing run on the CPU. They fill exactly those arrays, colors from the scene and depths from how far each ray flew. It's a pretend camera, but the frame it produces is a real `RGBDFrame`. So everything else in this chapter treats it exactly as it would treat a LiDAR. That's the point of the type. Whatever fills the arrays, the rest of the pipeline doesn't care.
 
 > **Swift note.** `depth` is a plain `[Float]`, row by row from the top left, `0` where the sensor had no answer. Real depth maps are full of those holes, especially along silhouettes, and the API that reads them is built to shrug holes off.
 
 ## Standing the picture up
 
-One pixel plus one depth is a 3D point. The recipe is small enough to say in a sentence: slide the pixel off the image center, scale by depth over focal length, and step out along the ray.
+One pixel plus one depth is a 3D point. The recipe is small enough to say in a sentence. Slide the pixel off the image center, scale by depth over focal length, and step out along the ray.
 
 <img src="Images/19-DepthAndThePhone/Unproject.jpg" alt="A diagram of unprojection: a lens at the left, an image plane with a marked pixel, and a dashed ray extending out to a 3D point, with the recovered-coordinates formula below" width="680">
 
@@ -45,11 +45,11 @@ drawPointCloud(cloud)
 
 <img src="Images/19-DepthAndThePhone/CloudLift.jpg" alt="The flat frame stood up into a point cloud, viewed from a different angle: the room as scan-line points, with black voids stretching behind the ball and crate, and the original flat frame inset at the top left" width="560">
 
-Look at what the new viewpoint reveals. The picture has become geometry you can orbit, and behind the ball and the crate hang black voids: the parts of the room the camera never saw, shadows cast not by light but by *not knowing*. Every real scan has these, and they're the honest signature of the medium. (For one point instead of all of them, `frame.unproject(normalized:)` lifts a single image position to its metric 3D spot, with a median window so a stray hole doesn't spoil it. That's the tool that lifts a tracked 2D skeleton to true depth, and the [RGBD reference](../Docs/3D/RGBD.md) shows it paired with the body tracker.)
+Look at what the new viewpoint reveals. The picture has become geometry you can orbit. Behind the ball and the crate hang black voids, the parts of the room the camera never saw. They are shadows cast not by light but by *not knowing*. Every real scan has these, and they're the honest signature of the medium. (For one point instead of all of them, `frame.unproject(normalized:)` lifts a single image position to its metric 3D spot. A median window keeps a stray hole from spoiling it. That's the tool that lifts a tracked 2D skeleton to true depth, and the [RGBD reference](../Docs/3D/RGBD.md) shows it paired with the body tracker.)
 
 ## Drawing inside the picture
 
-A depth frame isn't only a source of geometry. It's also a *stage you can draw into*. `drawDepthScene(frame)` draws the color image as the backdrop and writes the depth map into the depth buffer, and a camera built from the frame's own lens (`camera(.fromIntrinsics(...))`) puts your 3D drawing in the same metric space, so the scene occludes what you place behind it:
+A depth frame isn't only a source of geometry. It's also a *stage you can draw into*. `drawDepthScene(frame)` draws the color image as the backdrop, and writes the depth map into the depth buffer. A camera built from the frame's own lens, `camera(.fromIntrinsics(...))`, puts your 3D drawing in the same metric space. So the scene occludes what you place behind it:
 
 ```swift
 camera(.fromIntrinsics(frame.intrinsics))
@@ -68,11 +68,11 @@ for i in 0 ..< 6 {
 
 <img src="Images/19-DepthAndThePhone/Inhabit.jpg" alt="The staged room's color frame with six marbles placed into it in meters: four visible, one sliced in half by the crate's edge, the rest hidden behind it" width="560">
 
-Count the marbles. Six were drawn, and the crate's depth swallows the last two and slices one mid-body. Nothing here is compositing trickery: the marbles are ordinary solids from Chapter 17, z-tested against depths that came from a camera (well, our pretend one, and with a phone the real one).
+Count the marbles. Six were drawn, and the crate's depth swallows the last two and slices one mid-body. Nothing here is compositing trickery. The marbles are ordinary solids from Chapter 17, z-tested against depths that came from a camera. That camera is our pretend one here, and the real one with a phone.
 
 ## Flat drawing that knows where it is
 
-Solids were the easy case, because they already live in space. The more useful trick is putting *2D* drawing into the same depth buffer, and it's the one worth learning properly, because labels, tags, halos, and sprites are what you actually want to put into a scanned room.
+Solids were the easy case, because they already live in space. The more useful trick is putting *2D* drawing into the same depth buffer. It's the one worth learning properly, because labels, tags, halos, and sprites are what you actually want to put into a scanned room.
 
 By default, 2D drawing lays over a 3D frame completely. That's right for a caption and wrong for anything that belongs in the scene. Three calls change it:
 
@@ -87,7 +87,7 @@ withState {
 
 <img src="Images/19-DepthAndThePhone/DepthCompositing.jpg" alt="Three colored pillars at increasing distances against a near-black background, each encircled by a white ring of the same size. Every ring passes behind its own pillar and is cut where the pillar covers it, and each pillar top carries a small numbered white tag" width="680">
 
-Those rings are `drawCircle`. Not tubes, not meshes: flat 2D circles that were handed a depth and are now in the queue with everything else, hidden wherever a pillar stands nearer than they do.
+Those rings are `drawCircle`. Not tubes, not meshes, but flat 2D circles that were handed a depth. They are now in the queue with everything else, hidden wherever a pillar stands nearer than they do.
 
 The three calls divide the job cleanly, and keeping them separate in your head saves confusion later:
 
@@ -95,9 +95,9 @@ The three calls divide the job cleanly, and keeping them separate in your head s
 - **`project(worldPoint)`** answers the other half: where does this world point land on the canvas? It returns `nil` when the point is behind the camera, which is a case worth handling rather than forcing.
 - **`withBillboard(at: worldPoint) { }`** does both at once and moves the origin there, so inside the block you draw around `(0, 0)` and it lands on the point at the right depth. The numbered tags above are billboards, and it's the same call that labeled the shapes in Chapter 17's figures.
 
-Notice what the rings do *not* do: they don't get smaller with distance. All three are 96 points across, because a 2D mark keeps its canvas size. Depth changes what hides it, not how big it is. That's usually exactly what you want from a label (readable at any distance, correctly occluded), and it's the thing to remember when a sprite refuses to shrink.
+Notice what the rings do *not* do. They don't get smaller with distance. All three are 96 points across, because a 2D mark keeps its canvas size. Depth changes what hides it, not how big it is. That's usually exactly what you want from a label, readable at any distance and correctly occluded. It's also the thing to remember when a sprite refuses to shrink.
 
-For a depth *feed* rather than 3D geometry you drew, there's no world point to hand `depth(at:)`, so `depth(0.5)` takes a fraction of the map's own near-to-far range instead. Everything else behaves the same.
+A depth *feed* is different from 3D geometry you drew. There's no world point to hand `depth(at:)`, so `depth(0.5)` takes a fraction of the map's own near-to-far range instead. Everything else behaves the same.
 
 Like the camera itself, all of this is per-frame, so it goes in `draw()` after the camera, and without a camera it quietly does nothing. The [depth compositing reference](../Docs/3D/DepthCompositing.md) covers both scene kinds side by side.
 
@@ -129,9 +129,9 @@ final class Replay: Sketch {
 }
 ```
 
-A recorded clip is depth footage you can edit against, re-render, and export deterministically, and it's the medium the "volumetric filmmaking" scene works in. The same app also streams **live over USB**. Plug the phone in and `Record3DDevice` delivers `latestFrame` continuously, so the person in front of the phone becomes a live point cloud in your sketch.
+A recorded clip is depth footage you can edit against, re-render, and export deterministically. It's the medium the "volumetric filmmaking" scene works in. The same app also streams **live over USB**. Plug the phone in and `Record3DDevice` delivers `latestFrame` continuously, so the person in front of the phone becomes a live point cloud in your sketch.
 
-The deeper option is **Ollin Capture**, Ollin's own iPhone app, which runs ARKit on the phone and streams typed results the sketch reads like any other input: a 3D **body skeleton**, up to three **faces** (a deforming mesh plus 52 expression values each), rear-LiDAR **world depth** with the camera's own position and orientation, a **person segmentation** matte, and **device motion**:
+The deeper option is **Ollin Capture**, Ollin's own iPhone app. It runs ARKit on the phone and streams typed results the sketch reads like any other input. Those are a 3D **body skeleton**, and up to three **faces**, each a deforming mesh plus 52 expression values. There is also rear-LiDAR **world depth** with the camera's own position and orientation, a **person segmentation** matte, and **device motion**:
 
 ```swift
 import OllinPhone
@@ -148,7 +148,7 @@ Everything these produce lands in types you've already used this chapter, and th
 
 ## One world from many frames
 
-A single frame is a slice of the world, whatever the lens saw plus voids. The way past that is the last idea of the chapter, and it needs one new ingredient, the **pose**, meaning where the camera stood and which way it looked, written as a transform. Given a frame's cloud (in camera space) and its pose, `transformed(by:)` places the points where they really are in the room, and `WorldCloud` accumulates those placed points, thinning duplicates so overlapping frames don't pile up:
+A single frame is a slice of the world, whatever the lens saw plus voids. The way past that is the last idea of the chapter, and it needs one new ingredient. That is the **pose**, where the camera stood and which way it looked, written as a transform. Given a frame's cloud in camera space, and its pose, `transformed(by:)` places the points where they really are in the room. `WorldCloud` accumulates those placed points, thinning duplicates so overlapping frames don't pile up:
 
 ```swift
 var world = WorldCloud(voxelSize: 0.02)
@@ -162,11 +162,11 @@ drawPointCloud(world.cloud)
 
 <img src="Images/19-DepthAndThePhone/SweepFuse.jpg" alt="Three tinted captures of the staged room fused into one cloud, coral from the left, green from the middle, blue from the right, each camera position marked with a small sphere and a sight line" width="680">
 
-Each capture is tinted (coral, green, blue) so you can see who saw what: three partial views, one room. The small spheres are the three camera positions, and the walls each frame couldn't see are filled in by the frames that could. On a real phone this is exactly the `PhoneWorldScan` example. ARKit supplies the pose (`device.latestPose`), you sweep the room, and the slices stack into a scan. (Over a long sweep, small pose errors slowly build up, and drift correction for long scans is on the [roadmap](../ROADMAP.md#iphone-as-a-sensor-array).)
+Each capture is tinted coral, green, or blue, so you can see who saw what. Three partial views, one room. The small spheres are the three camera positions, and the walls each frame couldn't see are filled in by the frames that could. On a real phone this is exactly the `PhoneWorldScan` example. ARKit supplies the pose in `device.latestPose`, you sweep the room, and the slices stack into a scan. Over a long sweep, small pose errors slowly build up, and drift correction for long scans is on the [roadmap](../ROADMAP.md#iphone-as-a-sensor-array).
 
 ## From the cloud to a surface
 
-A fused cloud is still dust: beautiful, but nothing in it has a face, a shadow, or a material. **`reconstructSurface`** turns the sweep into a solid. It fits a small plane to every point's neighborhood, uses the sweep's own camera positions to decide which side of each plane faces the room, and pulls one mesh out of the whole thing:
+A fused cloud is still dust. It is beautiful, but nothing in it has a face, a shadow, or a material. **`reconstructSurface`** turns the sweep into a solid. It fits a small plane to every point's neighborhood. Then it uses the sweep's own camera positions to decide which side of each plane faces the room. Last it pulls one mesh out of the whole thing:
 
 ```swift
 let mesh = reconstructSurface(of: world.cloud, spacing: world.voxelSize * 2,
@@ -177,13 +177,13 @@ drawMesh(mesh)
 
 <img src="Images/19-DepthAndThePhone/RoomRebuilt.jpg" alt="The staged room corner rebuilt as one solid plaster-like surface, the floor meeting two walls in a crisp crease, the sweep's camera positions floating as small blue spheres, the surface ending in a torn rim where the sweep stopped" width="680">
 
-The torn rim is the honest part: where no camera reached, the surface simply stops, and nothing is guessed. That honesty has a practical reading, and it is the one rule worth carrying to a real scan: **the mesh can only be as complete as the sweep**. A body you only arc in front of keeps an unobserved back, and the rebuilt surface frays just past where its data stops, so walk around the things you care about. When a sweep falls short anyway, `fitting: .robust` swaps the nearest-plane distance for a robust blend of all the nearby samples that re-weights away whatever disagrees with the local consensus; it smooths noise, keeps creases, and trims away nearly all of the fraying that the plane fit sheds at open edges. Doorways and windows stay open either way, which is the truthful shape of a room.
+The torn rim is the honest part. Where no camera reached, the surface simply stops, and nothing is guessed. That honesty is the one rule worth carrying to a real scan. **The mesh can only be as complete as the sweep.** A body you only arc in front of keeps an unobserved back, and the rebuilt surface frays just past where its data stops. So walk around the things you care about. When a sweep falls short anyway, `fitting: .robust` swaps the nearest-plane distance for a robust blend of all the nearby samples. That blend re-weights away whatever disagrees with the local consensus. It smooths noise, keeps creases, and trims away nearly all of the fraying that the plane fit sheds at open edges. Doorways and windows stay open either way, which is the truthful shape of a room.
 
-The camera path does double duty here. Every fitted plane has two sides, and the reconstruction turns each toward the cameras that plausibly saw it, so pass the sweep's positions in `orientedToward:` whenever you have them (they are the same `eyes` the capture loop already collects). Without them, orientation propagates point to point across the cloud, which works on a smooth single surface and struggles exactly where a camera would have known better.
+The camera path does double duty here. Every fitted plane has two sides, and the reconstruction turns each toward the cameras that plausibly saw it. So pass the sweep's positions in `orientedToward:` whenever you have them. They are the same `eyes` the capture loop already collects. Without them, orientation propagates point to point across the cloud. That works on a smooth single surface, and struggles exactly where a camera would have known better.
 
-Because the sketch handed over a `PointCloud` rather than bare positions, the colors ride along: each mesh vertex takes its nearest sample's color, so the room comes back in the colors the camera saw. Per-vertex colors multiply the `fill` (the texture contract), which is why the default white fill shows them untouched and `fill(Color(white: 0.5))` dims the whole scan without touching its hues; the same trick paints any mesh, via `colored(from:)` for a cloud or `colored(by:)` for a rule.
+Because the sketch handed over a `PointCloud` rather than bare positions, the colors ride along. Each mesh vertex takes its nearest sample's color, so the room comes back in the colors the camera saw. Per-vertex colors multiply the `fill`, which is the texture contract. That is why the default white fill shows them untouched, and `fill(Color(white: 0.5))` dims the whole scan without touching its hues. The same trick paints any mesh, via `colored(from:)` for a cloud or `colored(by:)` for a rule.
 
-What comes back is an ordinary `Mesh`, so everything Chapter 17 taught applies: materials, lighting, cast shadows, even `subdivided(_:)` to soften the scan. And when points are not a scan at all but material of their own (a splash, a swarm dense enough to read as a body), the sibling `particleSurface` skins them as one blended form with no cameras involved. The [reference page](../Docs/Generators/SurfaceReconstruction.md) covers both, and the `3D/Geometry/SurfaceFromPoints` example puts the two side by side on one cloud.
+What comes back is an ordinary `Mesh`, so everything Chapter 17 taught applies. That means materials, lighting, cast shadows, even `subdivided(_:)` to soften the scan. Sometimes points are their own material rather than a scan. A splash, say, or a swarm dense enough to read as a body. The sibling `particleSurface` skins them as one blended form, with no cameras involved. The [reference page](../Docs/Generators/SurfaceReconstruction.md) covers both, and the `3D/Geometry/SurfaceFromPoints` example puts the two side by side on one cloud.
 
 ## Putting it together: the ghost room
 
@@ -224,7 +224,7 @@ final class GhostRoom: Sketch {
 
 <img src="Images/19-DepthAndThePhone/GhostRoom.jpg" alt="The finished ghost room: the fused sweep drawn as additive scan-lines of light, walls and floor woven from points, the ball and crate solid amid dark unseen voids" width="560">
 
-The woven texture is the scan lines of nine viewpoints interleaving, the solid patches are where many frames agree, and the voids are what no camera reached. Watch it run live and the room knits itself together, then the orbit lets you wander what was scanned.
+The woven texture is the scan lines of nine viewpoints interleaving. The solid patches are where many frames agree, and the voids are what no camera reached. Watch it run live and the room knits itself together, then the orbit lets you wander what was scanned.
 
 Then make it yours:
 
@@ -236,7 +236,7 @@ Then make it yours:
 
 ## Where this comes from
 
-Depth capture entered art practice when the Microsoft Kinect shipped in 2010 and was promptly opened up by hackers. The point-cloud look it popularized was seeded two years earlier by Radiohead's *House of Cards* video (directed by James Frost with data artist Aaron Koblin), shot entirely with lidar and structured light. Tools like the RGBDToolkit (James George and Jonathan Minard) and the volumetric-film work that followed turned depth footage into an editable medium, the spirit of the `.r3d` clip workflow here (Record3D is Marek Šimoník's iPhone app). The unprojection math is the pinhole camera model, the foundation stone of photogrammetry and computer vision, and fusing posed depth frames into one model descends from SLAM research and KinectFusion (Newcombe and colleagues, 2011), of which `WorldCloud`'s voxel accumulation is the gentlest possible relative. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Depth capture entered art practice when the Microsoft Kinect shipped in 2010 and was promptly opened up by hackers. The point-cloud look it popularized was seeded two years earlier by Radiohead's *House of Cards* video. James Frost directed it with the data artist Aaron Koblin, and it was shot entirely with lidar and structured light. Tools like the RGBDToolkit, by James George and Jonathan Minard, and the volumetric-film work that followed turned depth footage into an editable medium. That is the spirit of the `.r3d` clip workflow here, and Record3D is Marek Šimoník's iPhone app. The unprojection math is the pinhole camera model, the foundation stone of photogrammetry and computer vision. Fusing posed depth frames into one model descends from SLAM research and KinectFusion, by Newcombe and colleagues in 2011. `WorldCloud`'s voxel accumulation is the gentlest possible relative of it. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 

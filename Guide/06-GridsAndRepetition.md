@@ -6,11 +6,11 @@
 
 <img src="Images/06-GridsAndRepetition/Meander.jpg" alt="A dense tangle of rounded strands meandering over a dark ground, colored in drifting patches of coral, cream, and teal" width="560">
 
-Every strand in this tangle is built from one shape, a quarter circle, stamped into a grid a couple hundred times with each copy spun by a coin flip. That's the whole chapter in one image. Grids are how generative art gets its sense of order, repetition is how it gets its rhythm, and a little disorder inside a strict structure (you know this move from Chapter 4) is where the life comes from. By the end you'll have the tangle, a click that re-rolls it forever, and the two tools that carried it, a grid you loop once and transforms that move the paper under your shapes.
+Every strand in this tangle is built from one shape, a quarter circle. It is stamped into a grid a couple hundred times, and each copy is spun by a coin flip. That's the whole chapter in one image. Grids are how generative art gets its sense of order, and repetition is how it gets its rhythm. A little disorder inside a strict structure, the move you know from Chapter 4, is where the life comes from. By the end you'll have the tangle, and a click that re-rolls it forever. You'll also have the two tools that carried it, a grid you loop once and transforms that move the paper under your shapes.
 
 ## One loop, not two
 
-You've already built grids twice, the long way. Chapter 2's color field and Chapter 4's disorder grid both did the same chores: pick a margin, divide the leftover width into cells, run a loop inside a loop, and rebuild each cell's x and y from the indices. Those chores are what `grid` is for:
+You've already built grids twice, the long way. Chapter 2's color field and Chapter 4's disorder grid both did the same chores. Pick a margin, then divide the leftover width into cells. Run a loop inside a loop, and rebuild each cell's x and y from the indices. Those chores are what `grid` is for:
 
 ```swift
 import Ollin
@@ -35,11 +35,11 @@ final class ColorTiles: Sketch {
 
 <img src="Images/06-GridsAndRepetition/ColorTiles.jpg" alt="A twelve-by-twelve grid of square tiles fading from midnight blue to amber along the diagonal" width="560">
 
-One loop. `grid(columns:rows:padding:gutter:)` lays a grid over the canvas, where `padding` is the outer margin and `gutter` the gap between tiles. Its `cells` is a list you loop, and every cell arrives knowing everything about itself: its `frame` (the rectangle to draw), its `center`, and its `column` and `row`. Those indices are the point. The old nested loops existed mostly so you'd have a column number and a row number in hand, and here every cell carries its own, so the indexed tricks (a checkerboard from `(cell.column + cell.row) % 2`, this diagonal fade) stay one-loop simple.
+One loop. `grid(columns:rows:padding:gutter:)` lays a grid over the canvas, where `padding` is the outer margin and `gutter` the gap between tiles. Its `cells` is a list you loop, and every cell arrives knowing everything about itself. It carries its `frame`, the rectangle to draw, plus its `center`, its `column` and its `row`. Those indices are the point. The old nested loops existed mostly so you'd have a column number and a row number in hand. Here every cell carries its own, so the indexed tricks stay one-loop simple. A checkerboard from `(cell.column + cell.row) % 2` is one, and this diagonal fade is another.
 
 <img src="Images/06-GridsAndRepetition/GridAnatomy.jpg" alt="Grid anatomy: cells with padding and gutter labeled and one cell's frame and center called out; beside them, points as a dot per cell and as a lattice spanning the edges" width="680">
 
-The grid offers two things to loop, and you pick by what you're drawing. `cells` are the tiles. `points` are the dots, one per cell center by default, or pass `distribution: .spanning` for a lattice that reaches the edges (the layout you want when the piece *is* a grid of dots). A dot field is two lines:
+The grid offers two things to loop, and you pick by what you're drawing. `cells` are the tiles. `points` are the dots, one per cell center by default. Pass `distribution: .spanning` for a lattice that reaches the edges, the layout you want when the piece *is* a grid of dots. A dot field is two lines:
 
 ```swift
 for p in grid(columns: 12, rows: 12, padding: 70, distribution: .spanning).points {
@@ -47,13 +47,13 @@ for p in grid(columns: 12, rows: 12, padding: 70, distribution: .spanning).point
 }
 ```
 
-Two more things are worth knowing before we move on. `grid(...)` covers the whole canvas, but `Grid(in: someRectangle, ...)` lays one inside any rectangle, and since a cell's `frame` is itself a rectangle, grids nest (a grid where each cell holds a smaller grid is one more loop, and a classic look). And for margins that differ per edge, `padding:` takes more than a bare number: `.symmetric(horizontal: 40, vertical: 20)`, or any mix via `Insets`.
+Two more things are worth knowing before we move on. `grid(...)` covers the whole canvas, but `Grid(in: someRectangle, ...)` lays one inside any rectangle. Since a cell's `frame` is itself a rectangle, grids nest. A grid where each cell holds a smaller grid is one more loop, and a classic look. And for margins that differ per edge, `padding:` takes more than a bare number: `.symmetric(horizontal: 40, vertical: 20)`, or any mix via `Insets`.
 
 > **Swift note.** `grid(...).cells` chains a call and a property, building the grid and then asking for its cells. `cell` in the loop is a small value with named parts you read with a dot (`cell.frame`, `cell.column`), and `drawRect` accepts the frame whole, with no unpacking into x and y. `p.position` is a `Vector2`, a pair of coordinates carried as one value, and `drawCircle(center:radius:)` takes it directly. Chapter 8 makes proper friends with vectors, and until then you can read `Vector2` as "a point".
 
 ## Move the paper
 
-The grid raises a question immediately. How do you draw something *rotated* inside a cell? `drawRect` and friends don't take an angle. The answer is one of the oldest ideas in computer graphics, and it feels backwards for about ten minutes: you don't rotate the shape, you rotate the *paper*.
+The grid raises a question immediately. How do you draw something *rotated* inside a cell? `drawRect` and friends don't take an angle. The answer is one of the oldest ideas in computer graphics, and it feels backwards for about ten minutes. You don't rotate the shape, you rotate the *paper*.
 
 <img src="Images/06-GridsAndRepetition/TransformSteps.jpg" alt="Four panels drawing the same flag with the same call: untransformed at the origin, then translated, then rotated a twelfth of a turn, then scaled up" width="680">
 
@@ -69,7 +69,7 @@ withState {
 }                               // paper snaps back as if nothing happened
 ```
 
-Everything inside the braces draws on the moved paper, and at the closing brace the paper (and any `fill` or `stroke` you changed inside) is restored. This is the cell-drawing recipe you'll use for the rest of the guide: translate to the cell's center, turn or stretch as the piece demands, then draw *around the origin*, using coordinates like `(-40, -40)` that straddle (0, 0). Put the recipe in a grid, add a seeded coin flip from Chapter 4, and identical parts start composing figures nobody drew:
+Everything inside the braces draws on the moved paper. At the closing brace the paper is restored, along with any `fill` or `stroke` you changed inside. This is the cell-drawing recipe you'll use for the rest of the guide. Translate to the cell's center, turn or stretch as the piece demands, then draw *around the origin*. Coordinates like `(-40, -40)` straddle (0, 0). Put the recipe in a grid, add a seeded coin flip from Chapter 4, and identical parts start composing figures nobody drew:
 
 ```swift
 import Ollin
@@ -99,7 +99,7 @@ final class Pinwheels: Sketch {
 
 <img src="Images/06-GridsAndRepetition/Pinwheels.jpg" alt="A ten-by-ten field of black right triangles at random quarter turns, a few in red; pinwheels, hourglasses, and arrows emerge from the repetition" width="560">
 
-One right triangle (half a cell, drawn by handing `drawPolygon` its three corners), four possible spins, and the neighbors do the rest: hourglasses, pinwheels, and arrows assemble themselves wherever the spins happen to agree. Nobody placed those figures. That's the effect this chapter keeps returning to, and it only works because every triangle is *exactly* the same size in *exactly* the same place in its cell, so any two spins fit together. Hold that thought for Truchet.
+One right triangle, half a cell drawn by handing `drawPolygon` its three corners. Four possible spins, and the neighbors do the rest. Hourglasses, pinwheels, and arrows assemble themselves wherever the spins happen to agree. Nobody placed those figures. That's the effect this chapter keeps returning to. It only works because every triangle is *exactly* the same size in *exactly* the same place in its cell, so any two spins fit together. Hold that thought for Truchet.
 
 > **Swift note.** `random() < 0.12 ? accent : ink` is the compact if, which reads as the condition, then the value when true, then the value when false. And notice that `withState { ... }` takes a block of code in braces, like `draw()` itself. Running the block with the paper moved and then restoring it is the whole trick.
 
@@ -142,7 +142,7 @@ final class Rosette: Sketch {
 
 <img src="Images/06-GridsAndRepetition/Rosette.jpg" alt="A twelve-fold rosette: one branching arm with disks at its tips, repeated by rotation into a botanical snowflake" width="560">
 
-This time there's no `withState`, on purpose. Each `rotate(.tau / 12)` *adds* to the last, so the twelve copies of the arm land a twelfth of a turn apart and close the circle exactly. The arm itself is deliberately lopsided (a stem along the x axis, one branch reaching up, disks of different sizes), because a symmetric arm makes a boring rosette. The symmetry comes from the repetition, so the part is free to be as crooked as it likes. Change `12` to `5` or `48`, redraw the arm, drop `time` into the rotation. Every mandala, snowflake, and kaleidoscope pattern you've seen is some cousin of this loop.
+This time there's no `withState`, on purpose. Each `rotate(.tau / 12)` *adds* to the last, so the twelve copies of the arm land a twelfth of a turn apart and close the circle exactly. The arm itself is deliberately lopsided, a stem along the x axis, one branch reaching up, disks of different sizes. A symmetric arm makes a boring rosette. The symmetry comes from the repetition, so the part is free to be as crooked as it likes. Change `12` to `5` or `48`, redraw the arm, drop `time` into the rotation. Every mandala, snowflake, and kaleidoscope pattern you've seen is some cousin of this loop.
 
 > **Swift note.** `func drawArm()` declares a helper function on your sketch, a named block you call like any built-in. Pulling the arm out of the loop keeps `draw()` readable and gives you one obvious place to redesign the arm.
 
@@ -160,7 +160,7 @@ noSymmetry()                 // back to normal
 
 <img src="Images/06-GridsAndRepetition/Kaleidoscope.jpg" alt="Three panels: a single small crooked wedge with a red dot at its tip, the same wedge under eightfold symmetry forming a snowflake, and under mirrored eightfold symmetry forming a denser one with paired reflections" width="680">
 
-The mirrored form is the part worth having. A plain rotation copies your wedge around like a pinwheel, and every copy still leans the same way. Mirroring flips alternate copies, so neighbors face each other and the seams between them close. That's the difference between a pinwheel and an actual kaleidoscope, and doing it by hand means negative scales and reversed winding, which is a mess you now don't have to write.
+The mirrored form is the part worth having. A plain rotation copies your wedge around like a pinwheel, and every copy still leans the same way. Mirroring flips alternate copies, so neighbors face each other and the seams between them close. That's the difference between a pinwheel and an actual kaleidoscope. Doing it by hand means negative scales and reversed winding, a mess you now don't have to write.
 
 The folds are computed around wherever you are when you call it, so `translate` first if the center isn't the canvas center. And because it happens per draw call rather than per shape, a whole composition folds just as easily as a single arm.
 
@@ -176,13 +176,13 @@ withClip(star) {
 
 <img src="Images/06-GridsAndRepetition/ClipRegions.jpg" alt="Three panels of the same diagonal orange stripes: confined to a star, confined to a circle, and confined to both at once so only the overlap of star and circle is striped" width="680">
 
-`withClip` takes a `Shape`, a `Rectangle`, or a `Circle`, and confines everything drawn inside the block to that region. What makes it useful rather than merely convenient is that you don't have to work out the intersection yourself. The stripes in the figure are the same handful of long diagonal lines in all three panels, drawn straight past the edges, and the region decides what survives.
+`withClip` takes a `Shape`, a `Rectangle`, or a `Circle`, and confines everything drawn inside the block to that region. What makes it useful rather than merely convenient is that you don't have to work out the intersection yourself. The stripes in the figure are the same handful of long diagonal lines in all three panels. They are drawn straight past the edges, and the region decides what survives.
 
-Nesting is the other half. A clip inside a clip keeps only what falls in both, which is how the third panel gets the lens-shaped overlap without any geometry on your part. Letters make good clips too, since Chapter 7's `textToShapes` hands back shapes, so you can pour a whole pattern into a word.
+Nesting is the other half. A clip inside a clip keeps only what falls in both. That is how the third panel gets the lens-shaped overlap, with no geometry on your part. Letters make good clips too, since Chapter 7's `textToShapes` hands back shapes, so you can pour a whole pattern into a word.
 
 ## Grids that aren't square
 
-The `Grid` this chapter opened with divides a rectangle into rectangles, which covers a great deal but not everything. Four more shapes of division come with Ollin, and all of them read the same way: ask for the cells, loop over them once.
+The `Grid` this chapter opened with divides a rectangle into rectangles, which covers a great deal but not everything. Four more shapes of division come with Ollin, and all of them read the same way. Ask for the cells, then loop over them once.
 
 <img src="Images/06-GridsAndRepetition/OtherGrids.jpg" alt="Four panels: a honeycomb tinted by ring distance from one cell, a field of alternating up and down triangles, a rectangle split recursively into unequal panels, and a carved maze" width="680">
 
@@ -200,13 +200,13 @@ for cell in subdivide(minSize: 90, chance: 0.75) {
 drawMaze(maze(columns: 24, rows: 24))
 ```
 
-`hexGrid` and `triangleGrid` are the other two regular tilings, the only other shapes that tile a plane with no gaps and no overlaps. Hexagons can't stretch the way a rectangle can, so the block keeps its true proportions and centers itself rather than distorting to fill your bounds. The hex grid also knows its own geometry, so `distance(from:to:)` counts rings between two cells, which is what colors the first panel and is exactly what a board game needs.
+`hexGrid` and `triangleGrid` are the other two regular tilings, the only other shapes that tile a plane with no gaps and no overlaps. Hexagons can't stretch the way a rectangle can. So the block keeps its true proportions and centers itself, rather than distorting to fill your bounds. The hex grid also knows its own geometry, so `distance(from:to:)` counts rings between two cells. That is what colors the first panel, and exactly what a board game needs.
 
-`subdivide` splits a rectangle in two, then splits the halves, and keeps going until the pieces hit `minSize` or a coin says stop. Uneven panels like that are hard to get from a grid and easy to get from recursion, which is why the result reads as a layout rather than a table.
+`subdivide` splits a rectangle in two, then splits the halves, and keeps going until the pieces hit `minSize` or a coin says stop. Uneven panels like that are hard to get from a grid and easy to get from recursion. That is why the result reads as a layout rather than a table.
 
-`maze` carves a **perfect maze**, meaning every cell is reachable and there is exactly one route between any two, so it has no loops and no isolated pockets. The algorithm you choose is a texture control as much as a technical one: `.backtracker` gives long winding corridors, while `.kruskal` gives an even sprawl of short dead ends. `drawMaze` strokes the walls, and the maze can also hand you its longest path, which is the single hardest route through it.
+`maze` carves a **perfect maze**. Every cell is reachable, and there is exactly one route between any two, so it has no loops and no isolated pockets. The algorithm you choose is a texture control as much as a technical one. `.backtracker` gives long winding corridors, while `.kruskal` gives an even sprawl of short dead ends. `drawMaze` strokes the walls, and the maze can also hand you its longest path, which is the single hardest route through it.
 
-One more member of this family is a circle rather than a grid. `apollonianGasket(in:minRadius:)` fills a circle with the classic foam of ever-smaller kissing circles, each one the single circle that exactly touches its three neighbors. There's no randomness in it at all, so the same circle always gives the same foam, and since the circles come back in the order they were created, their index doubles as an age you can color by.
+One more member of this family is a circle rather than a grid. `apollonianGasket(in:minRadius:)` fills a circle with the classic foam of ever-smaller kissing circles, each one the single circle that exactly touches its three neighbors. There's no randomness in it at all, so the same circle always gives the same foam. The circles come back in the order they were created, so their index doubles as an age you can color by.
 
 ## Tiles that agree at their edges
 
@@ -223,21 +223,21 @@ drawTruchet(columns: 8, rows: 8, tile: .arcs)
 
 <img src="Images/06-GridsAndRepetition/TruchetTiles.jpg" alt="Two panels of white line work on dark squares: quarter-circle arcs joining into meandering loops, and corner-to-corner diagonals forming a maze" width="680">
 
-`.arcs` is two quarter circles per cell, while `.diagonals` is a single corner-to-corner stroke, and if you've ever seen the famous one-line maze program from 1982 home computers, that's exactly this tile. Both look far more planned than a coin flip per cell should allow, and the diagram below is the reason:
+`.arcs` is two quarter circles per cell, while `.diagonals` is a single corner-to-corner stroke. If you've ever seen the famous one-line maze program from 1982 home computers, that's exactly this tile. Both look far more planned than a coin flip per cell should allow, and the diagram below is the reason:
 
 <img src="Images/06-GridsAndRepetition/TruchetJoins.jpg" alt="The arc tile's two spins, with dots marking where arcs end at edge midpoints; beside them, six randomly spun tiles whose arcs meet exactly at every shared edge midpoint" width="680">
 
-The arc tile touches its cell's boundary in only four places, the edge midpoints, no matter which way it's spun. Think of the midpoints as doorways: every tile has a doorway in the middle of each wall, so whatever your neighbor did, your marks and theirs meet at the doorway and flow through. Local rule, global order. Each tile only promises to hit its own doorways, and the loops, corridors, and long wandering strands emerge across the whole canvas without any tile knowing about them.
+The arc tile touches its cell's boundary in only four places, the edge midpoints, no matter which way it's spun. Think of the midpoints as doorways. Every tile has a doorway in the middle of each wall. So whatever your neighbor did, your marks and theirs meet at the doorway and flow through. Local rule, global order. Each tile only promises to hit its own doorways. The loops, corridors, and long wandering strands emerge across the whole canvas, with no tile knowing about them.
 
-The tiling is drawn from the seeded `random`, so it's reproducible like everything since Chapter 4. Same seed, same maze. And when the plain white line-work isn't enough, `truchet(columns:rows:tile:)` hands you the raw strands instead of drawing them, one list of points per arc, which is exactly what the finished piece wants.
+The tiling is drawn from the seeded `random`, so it's reproducible like everything since Chapter 4. Same seed, same maze. And when the plain white line-work isn't enough, `truchet(columns:rows:tile:)` hands you the raw strands instead of drawing them. That is one list of points per arc, which is exactly what the finished piece wants.
 
 ## Tiles that never repeat
 
-Everything so far repeats. Slide a hex grid one cell over and it lands on itself; that regularity is most of its charm. But there are tile sets that *cannot* do this: however you lay them, the pattern never repeats, anywhere, ever. Order without repetition is a real, buildable thing.
+Everything so far repeats. Slide a hex grid one cell over and it lands on itself. That regularity is most of its charm. But there are tile sets that *cannot* do this. However you lay them, the pattern never repeats, anywhere, ever. Order without repetition is a real, buildable thing.
 
 <img src="Images/06-GridsAndRepetition/AperiodicTiles.jpg" alt="Four panels: Penrose kites and darts with colored arcs, Penrose rhombs, a teal star pattern woven over a honeycomb, and curved spectre tiles with a few orange ones" width="680">
 
-The famous pair is the **Penrose tiling**: two shapes (kites and darts, or a thick and a thin rhombus) whose edge rules force endless variety with perfect five-fold poise. `penroseTiling` grows one to cover the canvas, and each tile tells you its `kind` and carries two `arcs`, the classic decoration whose ends meet across every edge, so the whole tiling becomes one weave of curves:
+The famous pair is the **Penrose tiling**, two shapes whose edge rules force endless variety with perfect five-fold poise. They are kites and darts, or a thick and a thin rhombus. `penroseTiling` grows one to cover the canvas. Each tile tells you its `kind` and carries two `arcs`, the classic decoration whose ends meet across every edge. So the whole tiling becomes one weave of curves:
 
 ```swift
 for tile in penroseTiling(.rhombs, tileEdge: 36) {
@@ -248,9 +248,9 @@ for tile in penroseTiling(.rhombs, tileEdge: 36) {
 }
 ```
 
-There's no randomness in it: the variety is the geometry's own. And since 2023 there's something stranger, the **spectre**, a *single* shape that tiles the plane and can never repeat (mathematicians called the search for it the einstein problem, "one stone"). `spectreTiling(tileEdge:curve:)` grows a patch; give `curve` about `0.5` and the edges bend so the tile can't even be flipped over. Each tile flags the rare `isOdd` misfits that sit rotated 30° from all the others, which are exactly the accent marks the pattern wants.
+There's no randomness in it. The variety is the geometry's own. And since 2023 there's something stranger, the **spectre**. It is a *single* shape that tiles the plane and can never repeat. Mathematicians called the search for it the einstein problem, "one stone". `spectreTiling(tileEdge:curve:)` grows a patch. Give `curve` about `0.5` and the edges bend, so the tile can't even be flipped over. Each tile flags the rare `isOdd` misfits that sit rotated 30° from all the others, which are exactly the accent marks the pattern wants.
 
-Two more relatives round out the family, both on the [aperiodic tilings](../Docs/Drawing/AperiodicTilings.md) page. **Wang tiles** (`wangTiling`) are squares with colored edges that may only sit together where the colors agree; this is where never-repeating tilings were first discovered, and run the other way, with a seeded fill over a small friendly set, the edge rule turns independent random picks into one connected quilt. And **girih patterns** (`girihPattern`) take the Truchet doorway idea somewhere older and grander: from the midpoint of every tile edge, two rays walk into the tile at a chosen angle and stop where they meet another; keep the crossings, erase the tiles, and an Islamic star pattern remains. It works over *any* edge-to-edge polygons, including your hex grid's cells and the five traditional girih tile shapes, and the contact angle is one dial that morphs the whole design from spiky to woven:
+Two more relatives round out the family, both on the [aperiodic tilings](../Docs/Drawing/AperiodicTilings.md) page. **Wang tiles** (`wangTiling`) are squares with colored edges that may only sit together where the colors agree. This is where never-repeating tilings were first discovered. Run the other way, with a seeded fill over a small friendly set, the edge rule turns independent random picks into one connected quilt. And **girih patterns** (`girihPattern`) take the Truchet doorway idea somewhere older and grander. From the midpoint of every tile edge, two rays walk into the tile at a chosen angle and stop where they meet another. Keep the crossings, erase the tiles, and an Islamic star pattern remains. It works over *any* edge-to-edge polygons, including your hex grid's cells and the five traditional girih tile shapes. The contact angle is one dial that morphs the whole design from spiky to woven:
 
 ```swift
 let cells = hexGrid(columns: 9, rows: 8).cells.map(\.corners)
@@ -260,7 +260,7 @@ drawGirih(over: cells, angle: 60)   // 54° is the classic girih-tile angle
 
 ## Putting it together: a meandering tangle
 
-Now you can build the image at the top. The plan is to lay Truchet arcs over a grid, then stroke every strand twice, a wide pass in a dark rim tone and a narrower colored pass on top, so the strands read as piping with a little depth. For the color, reach back to Chapter 5 and sample `noise` at each strand's midpoint, so neighbors wear neighboring colors and the palette drifts across the tangle like weather, slowly changing with `time`. Make a new file, `MySketches/Meander.swift`:
+Now you can build the image at the top. The plan is to lay Truchet arcs over a grid, then stroke every strand twice. A wide pass in a dark rim tone comes first, then a narrower colored pass on top. The strands then read as piping with a little depth. For the color, reach back to Chapter 5 and sample `noise` at each strand's midpoint. Neighbors then wear neighboring colors, and the palette drifts across the tangle like weather, slowly changing with `time`. Make a new file, `MySketches/Meander.swift`:
 
 ```swift
 import Ollin
@@ -326,7 +326,7 @@ Before moving on, make it yours:
 
 ## Where this comes from
 
-Truchet tiles are named for Sébastien Truchet, a French Carmelite priest who published a memoir in 1704 on the patterns a single diagonally split tile can make, after watching ceramic tiles being laid for a château. The quarter-circle arc tile this chapter leans on is a later refinement by the metallurgist and historian Cyril Stanley Smith, from a 1987 paper revisiting Truchet's work and connecting it to how structure builds hierarchy in materials, and generative artists adopted it so thoroughly that "Truchet tiles" now usually *means* Smith's arcs. The diagonal tile has its own pop-culture monument: the Commodore 64 one-liner `10 PRINT CHR$(205.5+RND(1)); : GOTO 10`, a maze in thirty-eight characters, whose history got an entire (excellent) book, *10 PRINT*, by Nick Montfort and nine co-authors in 2012. The paper-moving transform model goes back to the earliest days of computer graphics and reached creative coding through Processing's `pushMatrix`/`popMatrix`. The pinwheel quilt is older than all of it, pieced by quilters long before anyone had a coordinate system to rotate. The never-repeating tiles have their own lineage: Hao Wang conjectured in 1961 that his edge-matching squares could always be made periodic, his student Robert Berger proved him wrong, Roger Penrose got the tile count down to two in the 1970s, and the one-tile question stayed open until 2023, when David Smith, a retired print technician playing with paper cutouts, found the hat and then the spectre with Joseph Myers, Craig Kaplan, and Chaim Goodman-Strauss. The girih strapwork method is E. H. Hankin's polygons-in-contact technique, formalized for the computer by Craig Kaplan, and the five girih tiles decorate buildings from medieval Isfahan to Istanbul. If the tangle left you wanting more, Christopher Carlson's multi-scale Truchet tiles (arcs at mixed cell sizes that still agree at the edges) are worth a look. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Truchet tiles are named for Sébastien Truchet, a French Carmelite priest. He published a memoir in 1704 on the patterns a single diagonally split tile can make, after watching ceramic tiles being laid for a château. The quarter-circle arc tile this chapter leans on is a later refinement by the metallurgist and historian Cyril Stanley Smith. His 1987 paper revisited Truchet's work, and connected it to how structure builds hierarchy in materials. Generative artists adopted it so thoroughly that "Truchet tiles" now usually *means* Smith's arcs. The diagonal tile has its own pop-culture monument. The Commodore 64 one-liner `10 PRINT CHR$(205.5+RND(1)); : GOTO 10` is a maze in thirty-eight characters. Its history got an entire excellent book, *10 PRINT*, by Nick Montfort and nine co-authors in 2012. The paper-moving transform model goes back to the earliest days of computer graphics and reached creative coding through Processing's `pushMatrix`/`popMatrix`. The pinwheel quilt is older than all of it, pieced by quilters long before anyone had a coordinate system to rotate. The never-repeating tiles have their own lineage. Hao Wang conjectured in 1961 that his edge-matching squares could always be made periodic, and his student Robert Berger proved him wrong. Roger Penrose got the tile count down to two in the 1970s. The one-tile question then stayed open until 2023. David Smith, a retired print technician playing with paper cutouts, found the hat. The spectre followed, with Joseph Myers, Craig Kaplan, and Chaim Goodman-Strauss. The girih strapwork method is E. H. Hankin's polygons-in-contact technique, formalized for the computer by Craig Kaplan. The five girih tiles decorate buildings from medieval Isfahan to Istanbul. If the tangle left you wanting more, Christopher Carlson's multi-scale Truchet tiles are worth a look. They put arcs at mixed cell sizes that still agree at the edges. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 

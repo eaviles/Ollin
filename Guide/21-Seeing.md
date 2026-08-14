@@ -6,7 +6,7 @@
 
 <img src="Images/21-Seeing/MotionBrush.jpg" alt="A dark canvas holding a wreath of thousands of small green and magenta strokes, dense and bright where motion was recent, fading where it was long ago" width="560">
 
-A camera pointed at the world is the richest input a sketch can have, because whoever stands in front of it brings their face, their hands, their whole moving body to the piece. This chapter is about reading that. The Mac already knows how to find faces, hands, bodies, edges, text, and motion in a picture, on the machine, with no cloud in the loop, and Ollin wraps that perception as values you read in `draw()`, the same way you read the mouse. The painting above was made by motion alone, and by the end you'll have built it.
+A camera pointed at the world is the richest input a sketch can have. Whoever stands in front of it brings their face, their hands, their whole moving body to the piece. This chapter is about reading that. The Mac already finds faces, hands, bodies, edges, text, and motion in a picture, on the machine, with no cloud in the loop. Ollin wraps that perception as values you read in `draw()`, the same way you read the mouse. The painting above was made by motion alone, and by the end you'll have built it.
 
 ## The webcam is an image
 
@@ -28,7 +28,7 @@ final class Mirror: Sketch {
 }
 ```
 
-Run it and you're on the canvas. `drawFrame(camera)` draws the latest frame letterboxed into the canvas (fitted without stretching, like a photo in a mat), shows a standard "Waiting for camera…" notice until the first frame arrives, and returns the rectangle the picture landed in. Keep that rectangle, because it matters more than it looks. Using the camera needs permission, like the microphone did, and macOS asks once, the first time `start()` runs. `Camera(.continuity)` uses a nearby iPhone as the camera, and `.external` a USB webcam.
+Run it and you're on the canvas. `drawFrame(camera)` draws the latest frame letterboxed into the canvas, fitted without stretching like a photo in a mat. It shows a standard "Waiting for camera…" notice until the first frame arrives. Then it returns the rectangle the picture landed in. Keep that rectangle, because it matters more than it looks. Using the camera needs permission, like the microphone did, and macOS asks once, the first time `start()` runs. `Camera(.continuity)` uses a nearby iPhone as the camera, and `.external` a USB webcam.
 
 ## Trackers: attach, then read
 
@@ -56,9 +56,9 @@ final class Faces: Sketch {
 }
 ```
 
-That's the whole model, and every tracker follows it. The analysis runs on a background thread, throttled to what the machine keeps up with (analysis frames are skipped under load, never queued, and the *displayed* frame is never dropped), so your `draw()` stays smooth and simply reads the most recent result.
+That's the whole model, and every tracker follows it. The analysis runs on a background thread, throttled to what the machine keeps up with. Under load it skips analysis frames rather than queueing them, and the *displayed* frame is never dropped. So your `draw()` stays smooth and reads the most recent result.
 
-The second half of the diagram is the part that bites everyone once. Trackers report geometry in **normalized** coordinates: `0...1` across the frame, origin at the *lower left*, y pointing *up*. The canvas is pixels from the *top left*, y pointing *down*, and the frame usually landed letterboxed somewhere inside it. So every result must be flipped and scaled into the rectangle you drew the frame in. You never do that math yourself, because every result type carries `in:` helpers (`bounds(in: rect)`, `point(_:in:)`, `landmarks(_:in:)`) that take the rectangle `drawFrame` returned and answer in canvas terms. Pass `mirrored: true` to them when you draw the feed flipped like a bathroom mirror, which is usually what feels right for a piece you stand in front of.
+The second half of the diagram is the part that bites everyone once. Trackers report geometry in **normalized** coordinates: `0...1` across the frame, origin at the *lower left*, y pointing *up*. The canvas is pixels from the *top left*, y pointing *down*, and the frame usually landed letterboxed somewhere inside it. So every result must be flipped and scaled into the rectangle you drew the frame in. You never do that math yourself. Every result type carries `in:` helpers, among them `bounds(in: rect)`, `point(_:in:)`, and `landmarks(_:in:)`. Each takes the rectangle `drawFrame` returned and answers in canvas terms. Pass `mirrored: true` to them when you draw the feed flipped like a bathroom mirror. That is usually what feels right for a piece you stand in front of.
 
 > **Swift note.** `lazy var faces = FaceTracker(camera)` builds the tracker the first time it's touched, which is what lets its declaration mention `camera`, another property of the same class. Plain `let` properties initialize too early for that.
 
@@ -68,13 +68,13 @@ Three trackers carry most interactive pieces, and they all speak in named parts:
 
 <img src="Images/21-Seeing/Landmarks.jpg" alt="Three panels: a hand skeleton of 21 dots wired finger by finger, a face of 76 dots grouped into contour, brows, eyes, nose and lips regions, and a body skeleton of 19 dots" width="680">
 
-**`HandTracker`** finds up to two hands (ask for more with `maximumHandCount:`), each a `Hand` of 21 joints, the wrist plus four joints per finger, base to tip. `hand.point(.indexTip, in: rect)` is a fingertip as a canvas point, `finger(.index, in: rect)` one finger as a polyline, `bones(in: rect)` the whole skeleton as line segments. Gestures fall out of arithmetic on a few joints: thumb tip near index tip is a pinch, five spread tips are an open hand, the index tip alone is a cursor that needs no mouse.
+**`HandTracker`** finds up to two hands, and `maximumHandCount:` asks for more. Each is a `Hand` of 21 joints, the wrist plus four joints per finger, base to tip. `hand.point(.indexTip, in: rect)` is a fingertip as a canvas point. `finger(.index, in: rect)` gives one finger as a polyline, and `bones(in: rect)` the whole skeleton as line segments. Gestures fall out of arithmetic on a few joints. Thumb tip near index tip is a pinch. Five spread tips are an open hand. The index tip alone is a cursor that needs no mouse.
 
 **`FaceTracker`** finds every face with its head pose (`roll`/`yaw`/`pitch`) and 76 landmark points grouped into named regions: `.faceContour`, the brows, the eyes, `.nose`, the lips, the pupils. Each region comes back ready to `drawPolyline`, which is why the five-minute face overlay is a creative-coding classic.
 
 **`BodyTracker`** finds every person as a 19-joint pose skeleton, head to ankles. Joints it can't see are simply absent (often the legs, at a desk), so what you get is what the camera saw.
 
-**`BodyTracker3D`** reads a person as positions in space instead. From the same ordinary webcam it places 17 joints in *meters*, so the sketch knows how far away someone is standing and what their pose looks like from the side. You read it in whichever of three spaces suits what you're drawing. `point(_:in:)` and `bones(in:)` behave exactly like the flat tracker's, for an overlay on the feed. `position(_:)` and the no-argument `bones()` give meters with the pelvis at the origin, so plotting `(z, y)` draws the person from the side and `(x, z)` from above, views no camera was at. And `cameraRelativePosition(_:)` gives meters from the lens, which makes a joint's z its distance, with `body.distance` as the shortcut for the whole person's.
+**`BodyTracker3D`** reads a person as positions in space instead. From the same ordinary webcam it places 17 joints in *meters*. So the sketch knows how far away someone is standing, and what their pose looks like from the side. You read it in whichever of three spaces suits what you're drawing. `point(_:in:)` and `bones(in:)` behave exactly like the flat tracker's, for an overlay on the feed. `position(_:)` and the no-argument `bones()` give meters with the pelvis at the origin. Plotting `(z, y)` then draws the person from the side and `(x, z)` from above, views no camera was at. And `cameraRelativePosition(_:)` gives meters from the lens, which makes a joint's z its distance. `body.distance` is the shortcut for the whole person's.
 
 ```swift
 lazy var pose = BodyTracker3D(camera)
@@ -87,7 +87,7 @@ if let body = pose.body {
 }
 ```
 
-Those meters drop straight into Chapter 17's world, which is what `Examples/Vision/BodyPose3D` does with them. It behaves differently from the flat tracker in ways worth knowing before you reach for it. It follows only one person, so `body` is a single optional rather than a list, and it always places the whole skeleton, guessing at the joints it can't see, with no per-joint confidence. The 2D tracker is the opposite on both counts. There's also `body.height`, an estimate of how tall the person is, and `heightEstimation` tells you whether that came from real depth data or from scaling the skeleton to a standard height, which is all a plain webcam can offer.
+Those meters drop straight into Chapter 17's world, which is what `Examples/Vision/BodyPose3D` does with them. It behaves differently from the flat tracker in ways worth knowing before you reach for it. It follows only one person, so `body` is a single optional rather than a list. It also places the whole skeleton every time, guessing at the joints it can't see, with no per-joint confidence. The 2D tracker is the opposite on both counts. There's also `body.height`, an estimate of how tall the person is. `heightEstimation` says whether that came from real depth data, or from scaling the skeleton to a standard height. Scaling is all a plain webcam can offer.
 
 Two practical notes are worth keeping. These are neural models, and the heavier ones (body pose, segmentation) want Apple silicon. Every tracker exposes `isAvailable` and `unavailableReason`, and `drawStatus(reason, style: .warning)` turns the reason into the standard on-canvas notice instead of a silent nothing. And every tracker also runs one-shot on a still picture with no camera at all. `try await FaceTracker.detect(in: image)` analyzes a loaded `Image`, which is how you analyze photos, and how this chapter's figures were made honest.
 
@@ -99,9 +99,9 @@ Two more trackers see *qualities* of the picture rather than things in it, and b
 
 <img src="Images/21-Seeing/Contours.jpg" alt="Two panels: a black ink study of merged blobs beside a ring, and the same forms traced as orange vector outlines with the ring's hole preserved" width="680">
 
-The picture on the left was built pixel by pixel by the committed figure, standing in for a camera frame, and the shapes on the right are what `ContourDetector.detect(in:)` traced out of it. Once a camera frame is `Shape`s, everything from Chapter 13 applies: boolean it, offset it, hatch it, warp it, export it as SVG for a plotter. A webcam pointed at high-contrast subjects becomes a live vectorizer.
+The picture on the left was built pixel by pixel by the committed figure, standing in for a camera frame. The shapes on the right are what `ContourDetector.detect(in:)` traced out of it. Once a camera frame is `Shape`s, everything from Chapter 13 applies. Boolean it, offset it, hatch it, warp it, or export it as SVG for a plotter. A webcam pointed at high-contrast subjects becomes a live vectorizer.
 
-**`FlowTracker`** measures **optical flow**, meaning how every part of the picture moved since the previous frame. Chapter 12 taught fields as "an answer at every point", and this is that exact idea, except the answers are measured from the world instead of computed from noise:
+**`FlowTracker`** measures **optical flow**, meaning how every part of the picture moved since the previous frame. Chapter 12 taught fields as "an answer at every point", and this is that exact idea. The difference is that the answers are measured from the world, not computed from noise:
 
 <img src="Images/21-Seeing/FlowArrows.jpg" alt="Two panels: a dark frame holding two pale speckled hands, and the same frame with orange arrows on one hand showing its measured motion. The other hand, mid-turnaround, gets no arrows" width="680">
 
@@ -113,9 +113,9 @@ if let field = flow.field {
 }
 ```
 
-`field` is `nil` until the second analyzed frame (flow needs a pair), then you can ask it anywhere: `vector(at:in:)` for the motion under a point, `samples(in:every:)` for a grid of arrows, `averageFlow(in:)` for the whole picture's drift. Look closely at the figure and you'll see that only one hand grew arrows. The other was turning around at that instant, nearly still, and flow reports *motion*, not presence, so a hand at rest is invisible to it.
+`field` is `nil` until the second analyzed frame, because flow needs a pair. After that you can ask it anywhere. `vector(at:in:)` gives the motion under a point, `samples(in:every:)` a grid of arrows, and `averageFlow(in:)` the whole picture's drift. Look closely at the figure and you'll see that only one hand grew arrows. The other was turning around at that instant, nearly still. Flow reports *motion*, not presence, so a hand at rest is invisible to it.
 
-Motion is also only measurable where the picture has texture, and a featureless area (a blank wall, a solid backdrop) doesn't politely read as zero. It reads as noise, because there is nothing to match from one frame to the next. If your scene is mostly flat, give it some texture before trusting the field there. Treat the magnitudes as a signal to scale by a gain of your own rather than a calibrated speed. The measured field has its own name, `MotionField`, so you won't confuse it with Chapter 12's generative `FlowField`: one is a rule you invent, the other is motion the camera actually saw.
+Motion is only measurable where the picture has texture. A featureless area, a blank wall or a solid backdrop, doesn't politely read as zero. It reads as noise, because there is nothing to match from one frame to the next. If your scene is mostly flat, give it some texture before trusting the field there. Treat the magnitudes as a signal to scale by a gain of your own rather than a calibrated speed. The measured field has its own name, `MotionField`, so you won't confuse it with Chapter 12's generative `FlowField`. One is a rule you invent. The other is motion the camera actually saw.
 
 ## Lifting the subject
 
@@ -131,9 +131,9 @@ override func draw() {
 }
 ```
 
-Where the pose trackers reduce a person to joints, these give you their pixels. `matte` is a soft white silhouette whose alpha says how much each pixel belongs to the subject, so `tint(_:)` turns it into a shadow, a glow, or a flat colored figure. `cutout` is the frame's own pixels with the background gone, ready to composite over whatever your sketch has already drawn. Both come back as ordinary `Image`s, so draw them into the same rectangle as the frame and they land exactly on the picture.
+Where the pose trackers reduce a person to joints, these give you their pixels. `matte` is a soft white silhouette, and its alpha says how much each pixel belongs to the subject. `tint(_:)` then turns it into a shadow, a glow, or a flat colored figure. `cutout` is the frame's own pixels with the background gone, ready to composite over whatever your sketch has already drawn. Both come back as ordinary `Image`s, so draw them into the same rectangle as the frame and they land exactly on the picture.
 
-Stamp the matte every frame without clearing and you have a trail of yourself, which is Chapter 14's accumulation with a person as the brush. `PersonSegmenter` takes a `quality:` that trades edge detail for speed, and `SubjectSegmenter` adds a `count` of how many separate subjects it found, going to `nil` and `0` while nothing in the picture stands out. Both need Apple silicon, like the pose trackers.
+Stamp the matte every frame without clearing and you have a trail of yourself. That is Chapter 14's accumulation, with a person as the brush. `PersonSegmenter` takes a `quality:` that trades edge detail for speed. `SubjectSegmenter` adds a `count` of how many separate subjects it found, going to `nil` and `0` while nothing in the picture stands out. Both need Apple silicon, like the pose trackers.
 
 ## Reading what's printed
 
@@ -141,7 +141,7 @@ The next three trackers aren't looking for people. They look for the flat printe
 
 <img src="Images/21-Seeing/ReadingACard.jpg" alt="Two panels: a printed card lying at an angle on a speckled desk, and the same picture with an orange quad on the card's four corners and dark boxes around the two lines of type" width="680">
 
-**`RectangleDetector`** finds rectangular things, a sheet of paper, a screen, a card on a desk, and reports each one's four corners. It works on them at an angle, so the corners come back in perspective rather than as an upright box, which is what a document scanner needs to flatten a page.
+**`RectangleDetector`** finds rectangular things, a sheet of paper, a screen, a card on a desk, and reports each one's four corners. It works on them at an angle, so the corners come back in perspective rather than as an upright box. That is what a document scanner needs to flatten a page.
 
 ```swift
 lazy var cards = RectangleDetector(camera)
@@ -151,19 +151,19 @@ noFill(); stroke(.green)
 for card in cards.rectangles { drawPolygon(card.corners(in: rect)) }
 ```
 
-A `DetectedRectangle` also offers `center(in:)`, `bounds(in:)` (the upright box around those corners) and a `confidence`, and the initializer takes aspect, size and confidence limits when you want to be fussy about what counts as one.
+A `DetectedRectangle` also offers `center(in:)`, `bounds(in:)`, the upright box around those corners, and a `confidence`. The initializer takes aspect, size and confidence limits, for when you want to be fussy about what counts as one.
 
 **`TextRecognizer`** reads text off the feed with Apple's on-device OCR. `reader.lines` is one `DetectedText` per line, each carrying its `text` and its `bounds(in:)`, and `reader.text` joins every line into a single string. The `level:` argument trades speed for thoroughness, so `.fast` keeps up with a live feed while `.accurate` reads more and is the default for a still image.
 
-**`BarcodeScanner`** decodes barcodes and QR codes. A `DetectedBarcode` gives you the decoded `payload`, the `symbology` that says which kind of code it was, and `corners(in:)` for where it sits. Pointing a webcam at a QR code is a friendly way to hand a running installation some input, since anyone in the room can make one on their phone.
+**`BarcodeScanner`** decodes barcodes and QR codes. A `DetectedBarcode` gives you the decoded `payload`, the `symbology` that says which kind of code it was, and `corners(in:)` for where it sits. Pointing a webcam at a QR code is a friendly way to hand a running installation some input. Anyone in the room can make one on their phone.
 
-The figure above used no camera and no photograph. The committed figure [`ReadingACard.swift`](Figures/21-Seeing/ReadingACard.swift) draws the desk, the card and the type into a picture pixel by pixel (the letters are Chapter 7's `textToShapes` outlines, filled in by hand), then hands that picture to the two real detectors through `waitFor`. Its right-hand caption is written from the words that came back, so if the reader ever came back with something else, the figure would say so rather than keep the old claim.
+The figure above used no camera and no photograph. The committed figure [`ReadingACard.swift`](Figures/21-Seeing/ReadingACard.swift) draws the desk, the card and the type into a picture pixel by pixel. The letters are Chapter 7's `textToShapes` outlines, filled in by hand. It then hands that picture to the two real detectors through `waitFor`. Its right-hand caption is written from the words that came back. If the reader ever came back with something else, the figure would say so rather than keep the old claim.
 
 ## Following one thing
 
 Detecting and tracking sound like the same job, and they're not. A detector looks at each frame fresh and finds whatever it has a model for. A tracker is handed one thing and keeps up with it, whether or not anything knows what that thing is.
 
-**`ObjectTracker`** is the second kind. You give it a box and it follows that patch of picture from frame to frame, which is how you keep tabs on something no recognizer has ever heard of.
+**`ObjectTracker`** is the second kind. You give it a box and it follows that patch of picture from frame to frame. That is how you keep tabs on something no recognizer has ever heard of.
 
 ```swift
 lazy var tracker = ObjectTracker(camera)
@@ -183,13 +183,13 @@ override func mousePressed() {
 }
 ```
 
-Click something and the sketch follows it. Alongside its box, `trackedObject` carries a `confidence` that falls as the patch is hidden, leaves the frame, or moves too fast to keep up with. That's a good number to fade an overlay by, and a good one to threshold on so the sketch can decide it has lost the thing and ask for a new box.
+Click something and the sketch follows it. Alongside its box, `trackedObject` carries a `confidence` that falls as the patch is hidden, leaves the frame, or moves too fast to keep up with. That's a good number to fade an overlay by. It is also a good one to threshold on, so the sketch can give up and ask for a new box.
 
-**`TrajectoryTracker`** waits for things that fly. Rather than being pointed at something, it watches for the signature of ballistic motion, so a thrown ball or a bouncing pebble arrives on its own as a `DetectedTrajectory`: a run of sightings, and the parabola fitted through them.
+**`TrajectoryTracker`** waits for things that fly. Rather than being pointed at something, it watches for the signature of ballistic motion. A thrown ball or a bouncing pebble then arrives on its own as a `DetectedTrajectory`. That is a run of sightings, and the parabola fitted through them.
 
 <img src="Images/21-Seeing/Trajectory.jpg" alt="Two panels: six frames of a made-up clip overlaid, showing a bright ball rising in six steps, and the same clip's newest frame with orange dots on the sightings, a fitted arc, and a dashed continuation passing through pale rings" width="680">
 
-The dashed line is the part worth staying with. `equationCoefficients` is that fitted parabola in normalized coordinates, `y = c.x · x² + c.y · x + c.z`, and nothing stops you sampling it past the last sighting, which is a guess about where the thing is going.
+The dashed line is the part worth staying with. `equationCoefficients` is that fitted parabola in normalized coordinates, `y = c.x · x² + c.y · x + c.z`. Nothing stops you sampling it past the last sighting, which is a guess about where the thing is going.
 
 ```swift
 for arc in tracker.trajectories {
@@ -201,9 +201,9 @@ for arc in tracker.trajectories {
 }
 ```
 
-In the figure the detector was shown the first 24 frames of a made-up flight, all of them on the way up, and the pale rings are where the ball actually went in the frames it never saw. The dashed curve runs through them. A parabola has only three numbers in it, so once the detector holds a handful of sightings, the rest of the flight follows.
+In the figure the detector was shown the first 24 frames of a made-up flight, all of them on the way up. The pale rings are where the ball actually went in the frames it never saw. The dashed curve runs through them. A parabola has only three numbers in it, so once the detector holds a handful of sightings, the rest of the flight follows.
 
-It asks two things of you. Hold the camera still, because a moving camera turns the whole scene into motion, and be patient, because an arc is only reported once its object has been seen `trajectoryLength` times (ten by default). Call `reset()` after the scene jumps, like a clip looping back to its start, so the jump isn't read as something flying. Each arc also keeps a stable `id` as more of it comes into view, so you can gather sightings into trails that outlive any single frame. And `detectedPoints(in:)` gives the raw sightings where `projectedPoints(in:)` gives them projected onto the fitted curve, which is the smoother of the two and usually the one to draw.
+It asks two things of you. Hold the camera still, because a moving camera turns the whole scene into motion. And be patient, because an arc is only reported once its object has been seen `trajectoryLength` times, ten by default. Call `reset()` after the scene jumps, like a clip looping back to its start, so the jump isn't read as something flying. Each arc also keeps a stable `id` as more of it comes into view, so you can gather sightings into trails that outlive any single frame. And `detectedPoints(in:)` gives the raw sightings, where `projectedPoints(in:)` puts them on the fitted curve. The projected ones are smoother, and usually the ones to draw.
 
 ## What the picture is about
 
@@ -211,7 +211,7 @@ Two trackers answer a question about the whole picture rather than finding thing
 
 <img src="Images/21-Seeing/AttentionAndLabels.jpg" alt="Two panels: a dimmed picture of the card with an orange saliency glow concentrated on the word SEEING, and a bar chart with document and printed page at 21 percent reaching past a dashed line, and six fainter labels below it starting with sticky note at 8 percent" width="680">
 
-**`ImageClassifier`** names what's in view, from a fixed vocabulary of about 1,300 everyday words. It reports no positions at all, only labels and how confident it is about each, which is the right shape for a sketch that reacts to its surroundings instead of drawing on top of them.
+**`ImageClassifier`** names what's in view, from a fixed vocabulary of about 1,300 everyday words. It reports no positions at all, only labels and how confident it is about each. That is the right shape for a sketch that reacts to its surroundings instead of drawing on top of them.
 
 ```swift
 lazy var classifier = ImageClassifier(camera)
@@ -222,11 +222,11 @@ for (i, found) in classifier.labels.prefix(5).enumerated() {
 }
 ```
 
-The bars on the right of the figure are that list, drawn for the made-up card. The vocabulary is hierarchical, so one clear subject lights up its whole family at once, which is why `document` and `printed page` tie. And the classifier scores every word it knows on every frame, nearly all of them near zero, so `minimumConfidence` (`0.1` by default) is what keeps `labels` down to the few worth reading. The figure asked for a much lower floor so that the tail shows, and the dashed line marks where the default would have cut.
+The bars on the right of the figure are that list, drawn for the made-up card. The vocabulary is hierarchical, so one clear subject lights up its whole family at once, which is why `document` and `printed page` tie. And the classifier scores every word it knows on every frame, nearly all of them near zero. `minimumConfidence`, `0.1` by default, is what keeps `labels` down to the few worth reading. The figure asked for a much lower floor so that the tail shows, and the dashed line marks where the default would have cut.
 
-The other way to read the same result suits knobs better. `confidence(of: "plant")` answers for any word in the vocabulary whether or not it cleared the floor, so "how much does this look like a plant" can drive a color or a speed straight from the room.
+The other way to read the same result suits knobs better. `confidence(of: "plant")` answers for any word in the vocabulary, whether or not it cleared the floor. So "how much does this look like a plant" can drive a color or a speed straight from the room.
 
-**`SaliencyTracker`** maps where an eye would go. `heatMap` is a white image whose alpha is the salience, so a `tint(_:)` turns it into a glow over the picture. `regions` are the boxes it peaks in. And `salience(at:in:)` answers for one canvas point, which is the field-shaped reading of Chapter 12: a density for stippling, a weight for where to spend detail, an attractor for particles.
+**`SaliencyTracker`** maps where an eye would go. `heatMap` is a white image whose alpha is the salience, so a `tint(_:)` turns it into a glow over the picture. `regions` are the boxes it peaks in. And `salience(at:in:)` answers for one canvas point, which is the field-shaped reading of Chapter 12. Use it as a density for stippling, a weight for where to spend detail, or an attractor for particles.
 
 In the figure the attention piles onto the words rather than onto the card as a whole. That's the model doing exactly what it was trained on, since type and contrast are what people look at. There are two flavors, chosen with `mode:`. The default `.attention` predicts human gaze, while `.objectness` highlights regions likely to hold discrete objects whether or not they draw the eye. The mode is fixed when you make the tracker, so read both by making two.
 
@@ -234,7 +234,7 @@ In the figure the attention piles onto the words rather than onto the card as a 
 
 When the built-ins run out, **`ModelTracker`** runs a Core ML model of your own over the same frames, with the same attach-and-read shape. That opens the whole published-model world: depth estimators, object detectors, style transfer, semantic segmentation, anything that converts to Core ML.
 
-It fills whichever read surfaces match what your model puts out. A classifier gives you `labels` and `top` and `confidence(of:)`, over your own vocabulary rather than Apple's. A detector gives you `objects`, labeled boxes you map with `bounds(in:)`. An image-to-image model, a depth estimator say, shows up in two forms at once, since `map` reads its output as a value field (white-alpha and tintable, with `value(at:in:)` for the number under a point) while `outputImage` reads the same output as a picture, which is what you want from a model that paints rather than measures. And a semantic segmenter fills `classMask`, which knows which classes are in frame, which one sits under a point, and how to hand you any of them as a drawable mask.
+It fills whichever read surfaces match what your model puts out. A classifier gives you `labels` and `top` and `confidence(of:)`, over your own vocabulary rather than Apple's. A detector gives you `objects`, labeled boxes you map with `bounds(in:)`. An image-to-image model, a depth estimator say, shows up in two forms at once. `map` reads its output as a value field, white-alpha and tintable, with `value(at:in:)` for the number under a point. `outputImage` reads the same output as a picture, which is what you want from a model that paints rather than measures. And a semantic segmenter fills `classMask`. It knows which classes are in frame, which one sits under a point, and how to hand you any of them as a drawable mask.
 
 ```swift
 lazy var depth = ModelTracker(camera, modelAt: URL(fileURLWithPath:
@@ -249,7 +249,7 @@ override func draw() {
 
 This is the one corner of the chapter with a download step, because Ollin ships no weights. `Scripts/fetch-models.sh` pulls the ones the examples use, and `Examples/Vision/DepthRelief`, `ObjectDetection`, `DigitReader` and `PaintByClass` each show a different one of the four surfaces above. `StyleMirror` is the odd one out and trains its own model from a style image you pick, so nobody's weights are involved.
 
-Loading runs in the background off the frame loop, and `isLoaded` flips when the model is ready, with frames simply passing by until then. Expect the first launch of a freshly built sketch to sit for a few seconds while Core ML specializes the model for your Mac; every later launch of that same build starts immediately. A model file that's missing or won't load reports through the same `isAvailable` and `unavailableReason` pair the built-in trackers use, so you can tell the person in front of the screen what to do about it.
+Loading runs in the background off the frame loop, and `isLoaded` flips when the model is ready, with frames simply passing by until then. Expect the first launch of a freshly built sketch to sit for a few seconds, while Core ML specializes the model for your Mac. Every later launch of that same build starts immediately. A model file that's missing or won't load reports through the same `isAvailable` and `unavailableReason` pair the built-in trackers use. So you can tell the person in front of the screen what to do about it.
 
 ## Footage as material
 
@@ -265,11 +265,11 @@ override func setup() { player.loops = true; player.play() }
 override func draw() { drawFrame(player) }
 ```
 
-Frames arrive as GPU textures (drawing them costs almost nothing), `drawFrame` letterboxes them the same way, trackers analyze the footage as it plays, and `snapshot()` hands you a CPU still for the one-shot `detect(in:)` calls. Chapter 20's `Soundtrack(of: player)` completes the loop: one clip can drive a piece with its pixels *and* its music. The `Video/VideoPlayback` example ships with a short clip of the *Voladores de Papantla* to play with, and `Vision/VideoTrace` runs a contour tracker over it live. One export note is worth carrying forward. Headless exports drive the player deterministically (frame `k` of the export always shows the clip at `k/fps`), but a *tracker* attached to it analyzes nothing during an export, since analysis rides the live clock.
+Frames arrive as GPU textures, so drawing them costs almost nothing. `drawFrame` letterboxes them the same way, and trackers analyze the footage as it plays. `snapshot()` hands you a CPU still for the one-shot `detect(in:)` calls. Chapter 20's `Soundtrack(of: player)` completes the loop. One clip can drive a piece with its pixels *and* its music. The `Video/VideoPlayback` example ships with a short clip of the *Voladores de Papantla* to play with, and `Vision/VideoTrace` runs a contour tracker over it live. One export note is worth carrying forward. Headless exports drive the player deterministically, so frame `k` of the export always shows the clip at `k/fps`. But a *tracker* attached to it analyzes nothing during an export, because analysis rides the live clock.
 
 ## The screen as material
 
-There's a third source of pictures, and it's the one already running on your machine. `ScreenCapture` hands over any display, any app, or any single window as a live image, so a browser, a map, a video call, a terminal, or another sketch becomes something to draw with.
+There's a third source of pictures, and it's the one already running on your machine. `ScreenCapture` hands over any display, any app, or any single window as a live image. A browser, a map, a video call, a terminal, or another sketch becomes something to draw with.
 
 ```swift
 import OllinScreen
@@ -280,7 +280,7 @@ override func setup() { screen.start() }
 override func draw() { drawFrame(screen) }
 ```
 
-It's a frame source like the other two, so everything in this chapter applies unchanged: `drawFrame` letterboxes it, filters work on it, and a tracker attaches to it exactly as it would to a camera.
+It's a frame source like the other two, so everything in this chapter applies unchanged. `drawFrame` letterboxes it, filters work on it, and a tracker attaches to it exactly as it would to a camera.
 
 ```swift
 let screen = ScreenCapture(.app("Safari"))
@@ -297,9 +297,9 @@ ScreenCapture(.app("Safari"))                    // every window one app has ope
 ScreenCapture(.window(title: "Shopping list"))   // one window, by its title
 ```
 
-An app matches on its name or its bundle identifier and has to match in full; a window matches any title *containing* the text, which is what keeps `"Shopping list"` working when the title bar reads `"Notes: Shopping list"`. Naming something that isn't open yet is not an error, it's a wait: the capture keeps looking and starts by itself when the window appears. And a window captured on its own arrives at its own size with nothing in front of it, even when something covers it on screen.
+An app matches on its name or its bundle identifier, and it has to match in full. A window matches any title *containing* the text. That is what keeps `"Shopping list"` working when the title bar reads `"Notes: Shopping list"`. Naming something that isn't open yet is not an error, it's a wait. The capture keeps looking and starts by itself when the window appears. And a window captured on its own arrives at its own size with nothing in front of it, even when something covers it on screen.
 
-Now the part worth playing with. Point a sketch at the screen it is drawn on and it would draw the window it is being drawn in, forever, so by default its own windows are cut out of the picture. Turn that off and the recursion is exactly the point:
+Now the part worth playing with. Point a sketch at the screen it is drawn on and it would draw the window it is being drawn in, forever. So by default its own windows are cut out of the picture. Turn that off and the recursion is exactly the point:
 
 ```swift
 screen.excludesOwnWindows = false
@@ -307,17 +307,17 @@ screen.excludesOwnWindows = false
 
 <img src="Images/21-Seeing/ScreenAsMaterial.jpg" alt="Two panels of a stand-in desktop. Left, a clean capture of a wallpaper with two windows. Right, the same capture with an Ollin sketch window on it showing the same picture, nested four levels deep" width="680">
 
-That is video feedback, the thing people have been getting by pointing a camera at a monitor since the 1960s, and here it costs one boolean. How deep it goes depends on how fast the sketch draws relative to the capture, and it smears and drifts as you move the window, which is the good part. (The figure uses a made-up desktop rather than a real capture, since no committed figure could reproduce your screen. The nesting is what the live one does.)
+That is video feedback, the thing people have been getting by pointing a camera at a monitor since the 1960s. Here it costs one boolean. How deep it goes depends on how fast the sketch draws relative to the capture. It smears and drifts as you move the window, which is the good part. (The figure uses a made-up desktop rather than a real capture, since no committed figure could reproduce your screen. The nesting is what the live one does.)
 
-One thing to know before you point this at a 5K display: at `scale = 1` a capture arrives at the screen's true backing resolution, which on a Retina display is twice its size in points. `screen.scale = 0.5` quarters the pixels and is the knob to reach for when an effect chain starts to labor.
+One thing is worth knowing before you point this at a 5K display. At `scale = 1` a capture arrives at the screen's true backing resolution, which on a Retina display is twice its size in points. `screen.scale = 0.5` quarters the pixels and is the knob to reach for when an effect chain starts to labor.
 
-The catch is permission, and it behaves in a way worth understanding rather than being surprised by. Recording the screen needs the user's consent, and macOS grants that to an *application*. A sketch run from the terminal has no application identity of its own, so the consent is attributed to whatever launched it: Terminal, iTerm, Ghostty, whichever you use. The prompt names your terminal, the entry in System Settings is your terminal, and once you allow it there, every sketch you run from that terminal can capture with no further prompt. Convenient, and worth being clear-eyed about, since it means allowing your terminal to record the screen allows everything you run from it to do the same. Granting it doesn't reach a process already running, so allow it and then start the sketch again. `ScreenCapture.isAvailable` and `unavailableReason` tell you where you stand, and `drawFrame` puts the reason on the canvas for you.
+The catch is permission, and it behaves in a way worth understanding rather than being surprised by. Recording the screen needs the user's consent, and macOS grants that to an *application*. A sketch run from the terminal has no application identity of its own. The consent goes to whatever launched it, which is Terminal, iTerm, Ghostty, or whichever you use. The prompt names your terminal, and the entry in System Settings is your terminal. Once you allow it there, every sketch you run from that terminal can capture with no further prompt. That is convenient, and worth being clear-eyed about. Allowing your terminal to record the screen allows everything you run from it to do the same. Granting it doesn't reach a process already running, so allow it and then start the sketch again. `ScreenCapture.isAvailable` and `unavailableReason` tell you where you stand, and `drawFrame` puts the reason on the canvas for you.
 
 ## The past as material
 
 Everything so far reads the frame in front of you. Keeping the *previous* frames around opens a different technique, and it's one of the oldest tricks in camera art.
 
-A `SlitScan` is a rolling history of frames. You push the newest one every time you draw, it keeps the last few dozen, and then you ask it for a picture in which each pixel comes from a different moment.
+A `SlitScan` is a rolling history of frames. You push the newest one every time you draw, and it keeps the last few dozen. Then you ask it for a picture in which each pixel comes from a different moment.
 
 ```swift
 let history = Ollin.SlitScan(frames: 48)
@@ -330,7 +330,7 @@ override func draw() {
 }
 ```
 
-The closure is the whole idea. It receives a pixel's position as fractions across the picture and returns how far back to read there, where 0 is the newest frame and 1 is the oldest one still held. Returning `uv.x` means the left edge shows a moment ago and the right edge shows now, so time runs left to right across the image.
+The closure is the whole idea. It receives a pixel's position as fractions across the picture, and returns how far back to read there. In that answer, 0 is the newest frame and 1 is the oldest one still held. Returning `uv.x` means the left edge shows a moment ago and the right edge shows now, so time runs left to right across the image.
 
 <img src="Images/21-Seeing/SlitScanDelay.jpg" alt="Two panels: a synthetic clip's newest frame showing horizontal stripes with one bright horizontal band, and the slit-scanned version where that band has become a clean diagonal and the stripes have sheared" width="680">
 
@@ -342,7 +342,7 @@ Two practical notes. The history costs width times height times four bytes per f
 
 ## Putting it together: motion paints
 
-The finished piece is the interactive mirror promised at the top, where you stand in front of the camera and your motion is the brush. Where the picture moved, strokes appear, colored by the direction of the movement and sized by its speed. Stillness paints nothing, and old gestures sink slowly into the dark. Make `MySketches/MotionBrush.swift` (the committed figure [`MotionBrush.swift`](Figures/21-Seeing/MotionBrush.swift) carries `StagePerformer`, the pretend dancer that stands in for a webcam so the figure renders without you, while the listing below is the sketch as you'd run it live):
+The finished piece is the interactive mirror promised at the top, where you stand in front of the camera and your motion is the brush. Where the picture moved, strokes appear, colored by the direction of the movement and sized by its speed. Stillness paints nothing, and old gestures sink slowly into the dark. Make `MySketches/MotionBrush.swift`. The committed figure [`MotionBrush.swift`](Figures/21-Seeing/MotionBrush.swift) carries `StagePerformer`, the pretend dancer that stands in for a webcam. The figure therefore renders without you, while the listing below is the sketch as you'd run it live:
 
 ```swift
 import Ollin
@@ -385,7 +385,7 @@ final class MotionBrush: Sketch {
 
 <img src="Images/21-Seeing/MotionBrush.jpg" alt="The finished motion painting: a swirling wreath of green and magenta strokes tracing where the pretend dancer's hands moved, dense where recent, faded where old" width="560">
 
-The committed figure swaps the camera block for the pretend dancer (`StagePerformer.step()` stands where `flow.field` stands, feeding the same kind of field from a synthesized dance, with nobody to mirror), and the painting code is identical. Chapter 14's accumulation (`noClear` plus the faint veil) is what turns instants of motion into a painting with a memory.
+The committed figure swaps the camera block for the pretend dancer, and the painting code is identical. `StagePerformer.step()` stands where `flow.field` stands, feeding the same kind of field from a synthesized dance, with nobody to mirror. Chapter 14's accumulation, `noClear` plus the faint veil, is what turns instants of motion into a painting with a memory.
 
 Then make it yours:
 
@@ -396,7 +396,7 @@ Then make it yours:
 
 ## Where this comes from
 
-Camera-as-instrument art is older than the personal computer: Myron Krueger's *Videoplace* (mid-1970s) let people play with their own silhouettes, David Rokeby's *Very Nervous System* (1986) turned body motion into sound, and Camille Utterback and Romy Achituv's *Text Rain* (1999) let falling letters rest on your outline. That lineage runs straight through today's interactive mirrors, and Golan Levin's writing on computer vision for artists is a fine map of it. Optical flow goes back to Berthold Horn and Brian Schunck, and Bruce Lucas and Takeo Kanade, in the same year (1981). Slit scanning started as a photographic technique with a physical slit and moving film, gave *2001: A Space Odyssey* its stargate sequence, and became a per-pixel delay map once video was digital; Golan Levin's informal catalogue of slit-scan works is the map of that history. The perception itself here is Apple's Vision framework and Core ML, running on the machine, and Ollin's contribution is the typed, canvas-mapped reading surface. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Camera-as-instrument art is older than the personal computer. Myron Krueger's *Videoplace*, in the mid-1970s, let people play with their own silhouettes. David Rokeby's *Very Nervous System* turned body motion into sound in 1986. And Camille Utterback and Romy Achituv's *Text Rain* let falling letters rest on your outline in 1999. That lineage runs straight through today's interactive mirrors, and Golan Levin's writing on computer vision for artists is a fine map of it. Optical flow goes back to Berthold Horn and Brian Schunck, and to Bruce Lucas and Takeo Kanade, both in 1981. Slit scanning started as a photographic technique with a physical slit and moving film. It gave *2001: A Space Odyssey* its stargate sequence, and became a per-pixel delay map once video was digital. Golan Levin's informal catalogue of slit-scan works is the map of that history. The perception itself is Apple's Vision framework and Core ML, running on the machine. Ollin's contribution is the typed, canvas-mapped reading surface. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
