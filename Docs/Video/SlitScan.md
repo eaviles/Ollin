@@ -4,7 +4,7 @@
 
 ## Slit scan
 
-**`SlitScan`** keeps a rolling history of frames and rebuilds the image with every pixel read from a different moment, chosen by a delay. A left-to-right delay is the classic slit scan (each column a little further into the past); a radial delay ripples time outward; a gray map of any picture becomes a time-displacement lens. Slow motion stretches into ribbons, fast motion shears into combs: time becomes a spatial dimension.
+**`SlitScan`** keeps a rolling history of frames and rebuilds the image with every pixel read from a different moment, chosen by a delay. A left-to-right delay is the classic slit scan, each column a little further into the past. A radial delay ripples time outward. A gray map of any picture becomes a time-displacement lens. Slow motion stretches into ribbons, and fast motion shears into combs. Time becomes a spatial dimension.
 
 ```
   frames, newest → oldest        image(delay: { uv in uv.x })
@@ -34,7 +34,7 @@ history.count                    // frames held so far
 history.clear()                  // drop the history
 ```
 
-Depth times the source frame rate is the reach into the past: 48 frames at 60 fps spans 0.8 seconds. The first push fixes the history's size; frames of any other size are skipped with a one-time note.
+Depth times the source frame rate is the reach into the past. A depth of 48 frames at 60 fps spans 0.8 seconds. The first push fixes the history's size. Frames of any other size are skipped with a one-time note.
 
 <a name="reading"></a>
 
@@ -45,7 +45,7 @@ history.image(delay: (Vector2) -> Double) -> Image?
 history.image(delay map: Image) -> Image?
 ```
 
-The closure form gets each pixel's normalized position (`0...1` each way, top-left origin) and returns how far into the past to read: `0` is the newest frame, `1` the oldest held.
+The closure form gets each pixel's normalized position (`0...1` each way, top-left origin). It returns how far into the past to read. `0` is the newest frame, and `1` is the oldest held.
 
 ```swift
 history.push(frame)
@@ -59,21 +59,21 @@ if let warped = history.image(delay: { uv in uv.x }) {         // the classic sc
 { uv in noise(uv.x * 3, uv.y * 3) }             // turbulent time
 ```
 
-The map form reads a gray image instead: black is now, white is the oldest held, and anything between interpolates, so any picture (a gradient, a face, a generator output snapshot) becomes the lens. The map may be any size; it's sampled across the frame.
+The map form reads a gray image instead. Black is now, white is the oldest held, and anything between interpolates. Any picture then becomes the lens, such as a gradient, a face, or a snapshot of a generator's output. The map may be any size, and it is sampled across the frame.
 
 <a name="feeds"></a>
 
 #### Feeding it video or camera
 
-The history eats CPU-pixel images. A painted `Image` and a `Camera` frame push directly; a `VideoPlayer` frame is texture-backed, so read it through the player's `snapshot()` first and push that. Under a headless export the pushes happen on the export clock, so a video-fed slit scan reproduces frame for frame.
+The history eats CPU-pixel images. A painted `Image` and a `Camera` frame push directly. A `VideoPlayer` frame is texture-backed, so read it through the player's `snapshot()` first and push that. Under a headless export the pushes happen on the export clock, so a video-fed slit scan reproduces frame for frame.
 
 <a name="notes"></a>
 
 #### Practical notes
 
-- **Memory is `width x height x 4 x frames` bytes.** Push modest sizes (a camera feed, a few-hundred-pixel painting), not full canvases; the composed image draws scaled up like any other.
-- **Each pixel reads its nearest frame**, so a shallow history shows visible time-steps (combs). More frames smooth the sweep; the stepping also reads as texture, and many pieces keep it.
-- **Slow motion stretches, fast motion shears.** A subject drifting along the delay axis smears into a long ribbon; motion across it ripples. If everything just blurs, slow the subject or deepen the history.
+- **Memory is `width x height x 4 x frames` bytes.** Push modest sizes, such as a camera feed or a few-hundred-pixel painting, rather than full canvases. The composed image draws scaled up like any other.
+- **Each pixel reads its nearest frame**, so a shallow history shows visible time-steps (combs). More frames smooth the sweep. The stepping also reads as texture, and many pieces keep it.
+- **Slow motion stretches, fast motion shears.** A subject drifting along the delay axis smears into a long ribbon. Motion across it ripples instead. If everything just blurs, slow the subject or deepen the history.
 - **Deterministic given the pushed frames**, so exports reproduce and a painted-source slit scan is snapshot-safe.
 
 ---
