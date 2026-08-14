@@ -6,8 +6,8 @@
 
 Ollin composites every frame in a **linear, high-precision floating-point** buffer, then maps it down to the screen in a final pass. Two things fall out of that:
 
-- **Color can exceed full brightness.** With additive light piling up ([`blendMode(.add)`](../Drawing/Drawing.md#blendmode)), a bright gradient, or overlapping glows, the intermediate holds values above 1.0 instead of clipping them mid-render. What happens to those values when the frame reaches an ordinary 8-bit screen is your choice, set with `toneMap(_:)`.
-- **No 8-bit banding.** Smooth gradients and the many translucent layers a busy sketch stacks composite at float precision, so the gradients that an 8-bit intermediate would step into visible bands stay smooth. This is automatic, with nothing to turn on.
+- **Color can exceed full brightness.** Additive light piling up through [`blendMode(.add)`](../Drawing/Drawing.md#blendmode), a bright gradient, or overlapping glows all push past 1.0. The intermediate holds those values instead of clipping them mid-render. What happens to those values when the frame reaches an ordinary 8-bit screen is your choice, set with `toneMap(_:)`.
+- **No 8-bit banding.** Smooth gradients and the many translucent layers a busy sketch stacks all composite at float precision. Gradients that an 8-bit intermediate would step into visible bands stay smooth. This is automatic, with nothing to turn on.
 
 By default a sketch behaves exactly as a standard renderer, so anything brighter than full clips to white. The interesting part is opting into a curve that *rolls* highlights off instead.
 
@@ -67,12 +67,12 @@ It applies under every mode, including `.clamp` (where it just brightens before 
 | `.reinhard` | `x / (1 + x)` | Squeezes every value under 1.0 so highlights never fully clip. Cheap and gentle, though it tends to desaturate bright areas. |
 | `.aces` | ACES filmic S-curve | Rolls highlights off while holding contrast and saturation in the midtones. The richer choice for glow and light-accumulation looks. |
 
-See the `Rendering/ToneMapping` example, where colored lamps orbit and overlap additively and a key cycles the three mappings so you can watch the bright cores clip, compress, or roll off.
+See the `Rendering/ToneMapping` example. Colored lamps orbit and overlap additively, and a key cycles the three mappings. Watch the bright cores clip, compress, or roll off.
 
 <a id="notes"></a>
 ### Notes
 
-- **`.clamp` is byte-for-byte the old look.** The float pipeline doesn't change a standard-dynamic-range sketch, so with the default `.clamp` and `exposure: 1`, an in-range frame renders the same as it always did. Tone-mapping is purely opt-in.
-- **It's the foundation of the sandpainting look.** Faint samples summed additively on a [`noClear`](../Drawing/Accumulation.md) surface need float precision to accumulate without quantizing away, and a tone-map to bring the built-up light back to the screen. The [depth-of-field particle rendering](../../Examples/Rendering/DepthOfField/Sketch.swift) builds directly on this.
-- **Output is 8-bit unless you ask otherwise.** By default the screen and exported PNGs are 8-bit sRGB, with the float precision living in the *intermediate*, which is why banding disappears and HDR values survive compositing even though the final image is 8-bit. A triangular dither is applied at that 8-bit step to keep gradients smooth. [`colorOutput`](./ColorOutput.md) opens the last step up: `.wide` presents through Display P3 in float, and `.extended` keeps values above 1.0 as highlights brighter than white instead of tone-mapping them down at all.
-- **Exports tone-map identically.** The headless still (`--export`), the sequence/video/GIF exports, and live frame-sharing (Syphon, the virtual camera) all run the same present pass, so what you export and share matches what you see.
+- **`.clamp` is byte-for-byte the old look.** The float pipeline doesn't change a standard-dynamic-range sketch. With the default `.clamp` and `exposure: 1`, an in-range frame renders the same as it always did. Tone-mapping is purely opt-in.
+- **It's the foundation of the sandpainting look.** Faint samples summed additively on a [`noClear`](../Drawing/Accumulation.md) surface need float precision to accumulate without quantizing away. They also need a tone-map to bring the built-up light back to the screen. The [depth-of-field particle rendering](../../Examples/Rendering/DepthOfField/Sketch.swift) builds directly on this.
+- **Output is 8-bit unless you ask otherwise.** The screen and exported PNGs are 8-bit sRGB by default. The float precision lives in the *intermediate*, which is why banding disappears and HDR values survive compositing even though the final image is 8-bit. A triangular dither is applied at that 8-bit step to keep gradients smooth. The last step opens up through [`colorOutput`](./ColorOutput.md), where `.wide` presents through Display P3 in float. Under `.extended`, values above 1.0 stay as highlights brighter than white instead of being mapped down.
+- **Exports tone-map identically.** The headless still `--export`, the sequence, video, and GIF exports, and live frame-sharing all run the same present pass. Frame-sharing covers Syphon and the virtual camera. What you export and share matches what you see.

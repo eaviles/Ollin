@@ -4,7 +4,7 @@
 
 ## Glyph mosaic
 
-**`drawGlyphMosaic`** rebuilds an image as a grid of text glyphs: each cell measures the brightness underneath and shows the character whose ink matches. It's the classic text-mode rendering, generalized. The character set is any string you type, and the ramp is not hand-ordered: every glyph's actual ink coverage is measured in the active font, so quadrant blocks, checkered squares, braille dots, and plain letters all sort themselves correctly, and characters the font doesn't cover simply drop out.
+**`drawGlyphMosaic`** rebuilds an image as a grid of text glyphs. Each cell measures the brightness underneath and shows the character whose ink matches. It's the classic text-mode rendering, generalized. The character set is any string you type, and the ramp is not hand-ordered. Every glyph's actual ink coverage is measured in the active font. So quadrant blocks, checkered squares, braille dots, and plain letters all sort themselves correctly, and characters the font doesn't cover simply drop out.
 
 ```
   the picture              drawGlyphMosaic(picture)
@@ -18,7 +18,7 @@
   and cells below the sparsest glyph stay truly empty
 ```
 
-By default bright cells get dense glyphs (light marks on a dark canvas, the terminal reading); pass `inverted: true` for the paper reading, where dark cells carry the ink. Deterministic given (image, columns, characters, font), so a mosaic is snapshot- and recipe-safe.
+By default bright cells get dense glyphs, which reads as light marks on a dark canvas, the terminal look. Pass `inverted: true` for the paper reading, where dark cells carry the ink. Deterministic given the image, columns, characters, and font, so a mosaic is snapshot- and recipe-safe.
 
 ### Contents
 
@@ -49,7 +49,7 @@ fill(.white)
 drawGlyphMosaic(picture, columns: 72)
 ```
 
-`glyphScale` is the fraction of its cell each glyph draws at. The default leaves a gutter between cells, so even solid blocks read as discrete marks; `1` tiles the full-cell block and shade characters edge to edge for an unbroken mosaic.
+`glyphScale` is the fraction of its cell each glyph draws at. The default leaves a gutter between cells, so even solid blocks read as discrete marks. A value of `1` tiles the full-cell block and shade characters edge to edge for an unbroken mosaic.
 
 <a name="data"></a>
 
@@ -63,7 +63,7 @@ glyphMosaic(of image: Image,
             inverted: Bool = false) -> [GlyphMosaicCell]
 ```
 
-The same mapping as data: one `GlyphMosaicCell` per cell that earned a glyph, carrying `column` / `row`, `center`, `size`, the chosen `character`, and the sampled `brightness` and average `color` underneath. Use it to draw your own way: jitter positions, animate per-cell, color by your own rule, or turn each glyph into vector geometry with [`textToShapes`](./Text.md#texttoshapes) for the plotter and [SVG](../Output/Export.md) paths.
+The same mapping as data. Each cell that earned a glyph gets one `GlyphMosaicCell`, carrying `column` / `row`, `center`, `size`, and the chosen `character`. It also carries the sampled `brightness` and the average `color` underneath. Use it to draw your own way. Jitter positions, animate per-cell, or color by your own rule. Turning each glyph into vector geometry with [`textToShapes`](./Text.md#texttoshapes) feeds the plotter and [SVG](../Output/Export.md) paths.
 
 ```swift
 for cell in glyphMosaic(of: picture, columns: 60) {
@@ -76,23 +76,23 @@ for cell in glyphMosaic(of: picture, columns: 60) {
 
 #### Character sets
 
-Any string is a character set; the measured ramp orders it by ink. Three curated sets ship as `GlyphSet` statics:
+Any string is a character set, and the measured ramp orders it by ink. Three curated sets ship as `GlyphSet` statics:
 
-- **`GlyphSet.technical`** (the default): geometric and technical marks, dots through crosses, fine grids, checkered squares, quadrant blocks, and braille textures, ending in the solid blocks. At its best in the bundled bitmap font, which covers every mark.
-- **`GlyphSet.classic`**: the traditional letterform ramp (`.:-=+*#%@`) for the typewriter look, at home in any outline font.
-- **`GlyphSet.blocks`**: block elements only, for a chunky mosaic with no recognizable characters (pair with `glyphScale: 1` to tile it seamlessly).
+- **`GlyphSet.technical`** is the default, a set of geometric and technical marks. It runs from dots through crosses, fine grids, checkered squares, quadrant blocks, and braille textures, ending in the solid blocks. At its best in the bundled bitmap font, which covers every mark.
+- **`GlyphSet.classic`** is the traditional letterform ramp `.:-=+*#%@` for the typewriter look, at home in any outline font.
+- **`GlyphSet.blocks`** is block elements only, for a chunky mosaic with no recognizable characters. Pair it with `glyphScale: 1` to tile it seamlessly.
 
-The measured ramp is what makes custom sets easy: `"·+x▚█"` works, and so does a set that tops out below solid (drop the blocks and shades and the brightest cells stay discrete marks with gutters, which is often the better look).
+The measured ramp is what makes custom sets easy. A set like `"·+x▚█"` works, and so does one that tops out below solid. Drop the blocks and shades, and the brightest cells stay discrete marks with gutters, which is often the better look.
 
 <a name="notes"></a>
 
 #### Practical notes
 
-- **It re-reads the image every call**, so a mosaic over a live painting or a video frame animates for free; the ramp itself is measured once per (font, characters) and cached.
-- **The empty floor is deliberate.** A cell whose ink target falls below half the sparsest glyph's coverage draws nothing, so shadows read as true voids rather than a field of dots.
+- **It re-reads the image every call**, so a mosaic over a live painting or a video frame animates for free. The ramp itself is measured once per font and character set, then cached.
+- **The empty floor is deliberate.** A cell whose ink target falls below half the sparsest glyph's coverage draws nothing. Shadows read as true voids rather than a field of dots.
 - **Brightness is perceptual.** Cells average their pixels, then map through the same transfer the eye expects, so midtones land midway up the ramp. Transparency carries no ink in either mapping.
 - **Texture-backed images have no CPU pixels.** A video frame or camera image reads through its `snapshot()` first, like every CPU image pass.
-- **Bitmap fonts count lit pixels exactly**; outline fonts integrate the filled glyph area; stroke (plotter) fonts take pen travel. Each kind is consistent within itself, and the ramp normalizes to its densest member.
+- **Bitmap fonts count lit pixels exactly.** Outline fonts integrate the filled glyph area, and stroke fonts for plotters take pen travel. Each kind is consistent within itself, and the ramp normalizes to its densest member.
 
 ---
 
