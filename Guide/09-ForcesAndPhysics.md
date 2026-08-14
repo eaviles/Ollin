@@ -6,7 +6,7 @@
 
 <img src="Images/09-ForcesAndPhysics/Wrecker.jpg" alt="A wrecking ball on a chain of gray links mid-swing, smashing through a tower of colored bricks, four bricks flying to the right while the rest of the column leans" width="560">
 
-In Chapter 8 you moved things yourself. You wrote the velocity, added the gravity, decided what happens at the floor. This chapter is about the layer under that, meaning forces, the pushes that change a velocity. You'll write a few forces by hand first, and find out why mass matters. Then you'll hand the whole job to a physics world that can hold hundreds of bodies at once, connect them with springs and hinges, and let you grab them with the mouse. The wrecking ball above is where it ends up. You get to knock the tower down yourself.
+In Chapter 8 you moved things yourself. You wrote the velocity, added the gravity, decided what happens at the floor. This chapter is about the layer under that, meaning forces, the pushes that change a velocity. You'll write a few forces by hand first, and find out why mass matters. Then you'll hand the whole job to a physics world. It holds hundreds of bodies at once, connects them with springs and hinges, and lets you grab them with the mouse. The wrecking ball above is where it ends up. You get to knock the tower down yourself.
 
 ## A force is a push
 
@@ -23,7 +23,7 @@ When several forces act on a body in the same frame, combining them takes no new
 
 <img src="Images/09-ForcesAndPhysics/ForceAccumulation.jpg" alt="Two panel diagram: left, three labeled arrows for gravity, wind, and drag pushing on one dot; right, the same arrows chained tip to tail with an orange arrow marked as the total" width="680">
 
-The sum is not an acceleration yet, because mass sits in between. **Acceleration is force divided by mass.** The same shove that sends a ping-pong ball flying barely moves a bowling ball. In code, the pattern is to gather the frame's forces into one vector, divide once, and then carry on exactly as before:
+**Acceleration is force divided by mass.** So the sum above is not an acceleration yet, because mass sits in between. The same shove that sends a ping-pong ball flying barely moves a bowling ball. In code, the pattern is to gather the frame's forces into one vector, divide once, and then carry on exactly as before:
 
 ```swift
 var force = Vector2(0, 340) * mass     // gravity
@@ -35,7 +35,7 @@ velocity += acceleration * deltaTime
 position += velocity * deltaTime
 ```
 
-Two of those force lines are worth a second look. Gravity is written `* mass` because the real pull of the earth is stronger on heavier things, in exact proportion. Divide by mass a moment later and it cancels out, which is why a hammer and a feather fall at the same rate in a vacuum. Drag is the reason they don't fall at the same rate in air. It grows with speed, it points backward along the velocity, and it does *not* care about mass, so after the division it slows a light body much more than a heavy one. A feather drifts because drag wins early. A hammer plummets because it barely notices.
+Two of those force lines are worth a second look. Gravity is written `* mass` because the real pull of the earth is stronger on heavier things, in exact proportion. Divide by mass a moment later and it cancels out. That is why a hammer and a feather fall at the same rate in a vacuum. Drag is the reason they don't fall at the same rate in air. It grows with speed, it points backward along the velocity, and it does *not* care about mass. So after the division it slows a light body much more than a heavy one. A feather drifts because drag wins early. A hammer plummets because it barely notices.
 
 You can watch all of this at once. Make `MySketches/Confetti.swift`:
 
@@ -148,11 +148,11 @@ final class Pile: Sketch {
 
 <img src="Images/09-ForcesAndPhysics/Pile.jpg" alt="Hundreds of colored discs of mixed sizes settled into a heap that fills the lower two thirds of a dark canvas, none overlapping" width="560">
 
-Two hundred forty discs fall, land on each other, shuffle for space, and settle into the heap above, like gumballs in a jar. The sketch never mentions a collision. It scatters particles in `setup()`, and in `draw()` it does exactly two things: step the world, then draw what's there.
+Two hundred forty discs fall, land on each other, shuffle for space, and settle into the heap above, like gumballs in a jar. The sketch never mentions a collision. It scatters particles in `setup()`, and in `draw()` it does exactly two things. It steps the world, then draws what's there.
 
 The shape of every physics sketch in this chapter is in those few lines. Build the world once in `setup()`. Each frame, `step(dt: deltaTime)` advances it, and you draw from its bodies wherever they happen to be.
 
-The rules you set at the top deserve a word each. `world.bounds = bounds` gives the world walls (`bounds` is the whole canvas as a `Rectangle`, one of the sketch's built-in properties), and without it bodies are free to leave. `collisions = true` makes particles push each other apart as solid disks. It's off by default because plenty of things you'll build, a cloth, a chain, don't want their own points colliding. There's also `world.gravity`, which you'll change in a moment, `world.bounce`, how much speed survives hitting a wall, and `world.drag`, the same air resistance you wrote by hand a page ago, now built in.
+The rules you set at the top deserve a word each. `world.bounds = bounds` gives the world walls, and without it bodies are free to leave. `bounds` is the whole canvas as a `Rectangle`, one of the sketch's built-in properties. `collisions = true` makes particles push each other apart as solid disks. It's off by default because plenty of things you'll build, a cloth, a chain, don't want their own points colliding. There's also `world.gravity`, which you'll change in a moment. `world.bounce` is how much speed survives hitting a wall. `world.drag` is the same air resistance you wrote by hand a page ago, now built in.
 
 > **Swift note.** `World` is a class, and so are the bodies in it. Where the values you've used so far are copied on assignment, a class value is a *handle to one live thing*. `world.addParticle(...)` returns a handle to the particle it just added, and the world keeps moving that same particle under you every step. Hold onto the handle and you can read its position each frame, or pin it, or pull it around. That's the point of a simulation object: there is exactly one of it, and it changes.
 
@@ -168,7 +168,7 @@ A `Spring` tries to hold its two particles at one fixed distance, its **rest len
 
 <img src="Images/09-ForcesAndPhysics/SpringRestLength.jpg" alt="Three panel diagram of a coil spring between two discs: at rest length with a ruler beneath, stretched with orange arrows pulling the ends back in, and squeezed with orange arrows pushing the ends apart" width="680">
 
-Stretched, it pulls its ends back in. Squeezed, it pushes them apart. At rest length it does nothing at all. A `stiffness` between 0 and 1 sets how sharply it corrects, so at `1` the link behaves like a rigid stick, and lower values stretch and recoil like elastic.
+Stretched, it pulls its ends back in. Squeezed, it pushes them apart. At rest length it does nothing at all. A `stiffness` between 0 and 1 sets how sharply it corrects. At `1` the link behaves like a rigid stick, and lower values stretch and recoil like elastic.
 
 One more tool and you can build something. Any particle can be **pinned**, and `p.pin()` freezes it in place, so everything attached still pulls on it, it just doesn't move. A pinned particle is the nail in the wall. Chain a line of particles to one and you have something to hang. Make `MySketches/Strand.swift`:
 
@@ -215,11 +215,11 @@ final class Strand: Sketch {
 
 Fifteen beads, each connected to the one before, the first pinned. The strand starts laid out on a diagonal, so on launch it swings down and sways until the built-in drag calms it. Hold the mouse anywhere and the last bead sticks to your cursor, so you can drag, let go, and watch the whole strand whip. That's a rope in about thirty lines, and nothing in `draw()` knows anything about ropes.
 
-`place(at:)` is the right way to move a particle by hand, and the reason is worth knowing because it explains how this world moves things at all. A particle here doesn't store a velocity. It remembers where it was last frame, and the gap between then and now *is* its velocity. This style of simulation is called Verlet integration, and it's a big part of why springs and piles hold together so calmly here. But it means "just set the position" would secretly also set a velocity, because you'd be widening that gap. `place(at:)` moves the particle *and* its memory together, so the bead lands at your cursor without picking up any speed from the move. (If you do want to throw a particle, `p.push(_:)` does that.)
+`place(at:)` is the right way to move a particle by hand. The reason is worth knowing, because it explains how this world moves things at all. A particle here doesn't store a velocity. It remembers where it was last frame, and the gap between then and now *is* its velocity. This style of simulation is called Verlet integration, and it's a big part of why springs and piles hold together so calmly here. But it means "just set the position" would secretly also set a velocity, because you'd be widening that gap. `place(at:)` moves the particle *and* its memory together, so the bead lands at your cursor without picking up any speed from the move. (If you do want to throw a particle, `p.push(_:)` does that.)
 
 > **Swift note.** `beads.last` is an optional, because a list might be empty and have no last element. The `?.` after it means "if it's there, do this, and if not, quietly do nothing", which saves an `if let` when nothing needs to happen in the empty case. And `beads.map(\.position)` builds a new list by pulling one property out of every element, so fifteen particles go in and fifteen positions come out, ready for `drawPolyline`.
 
-Springs plus pins go a long way. A grid of particles with springs to their neighbors is cloth. A ring of particles with springs around the rim and spokes to a hub is a squishy blob, and the [Physics documentation](../Docs/Simulation/Physics.md#soft-bodies) builds exactly that in a dozen lines.
+Springs plus pins go a long way. A grid of particles with springs to their neighbors is cloth. A ring of particles with springs around the rim and spokes to a hub is a squishy blob. The [Physics documentation](../Docs/Simulation/Physics.md#soft-bodies) builds exactly that in a dozen lines.
 
 ## Rigid bodies
 
@@ -239,7 +239,7 @@ For bricks, the same `World` holds a second kind of body. A `Body` is rigid, mea
         }
 ```
 
-That's the tower from the top of the chapter, nine boxes stacked with a couple of points of breathing room. The collider can be a `.circle(radius:)`, a `.box(width:height:)`, a `.capsule(from:to:radius:)`, or a convex `.polygon([...])`. A body also takes a `friction` (surface grip, 0 to 1), a `density` (bigger and denser means heavier), and a `restitution` (its bounciness). And where a particle only had a position, a body has a `position` *and* an `angle`, so drawing one takes the transform tools from Chapter 6:
+That's the tower from the top of the chapter, nine boxes stacked with a couple of points of breathing room. The collider can be a `.circle(radius:)`, a `.box(width:height:)`, a `.capsule(from:to:radius:)`, or a convex `.polygon([...])`. A body also takes three numbers. `friction` is surface grip from 0 to 1, `density` sets how heavy it is for its size, and `restitution` is its bounciness. A particle only had a position, and a body has a `position` *and* an `angle`. So drawing one takes the transform tools from Chapter 6:
 
 ```swift
             withState {
@@ -253,7 +253,7 @@ That's the tower from the top of the chapter, nine boxes stacked with a couple o
 
 Move to the body, turn to its angle, draw the shape centered on zero. When a brick tumbles, the rectangle you draw tumbles with it, because the rotation is the simulation's own, not a decoration.
 
-An honest note about what's underneath. The rigid side of the world is not Ollin's own. It's [Box2D](https://box2d.org), Erin Catto's engine, the one that has powered two decades of 2D games, bundled inside `OllinPhysics` and wrapped so you never see it directly. Writing stable stacking from scratch is genuinely hard. Standing on Box2D means a tower of nine bricks just stands there, which is harder than it sounds.
+An honest note about what's underneath. The rigid side of the world is not Ollin's own. It's [Box2D](https://box2d.org), Erin Catto's engine, the one that has powered two decades of 2D games. It is bundled inside `OllinPhysics` and wrapped so you never see it directly. Writing stable stacking from scratch is genuinely hard. Standing on Box2D means a tower of nine bricks just stands there, which is harder than it sounds.
 
 ## Hinges and a handle
 
@@ -263,7 +263,7 @@ Rigid bodies connect too, but not with springs. They use **joints**, and the one
 world.connect(previous, body, .revolute(at: hinge))
 ```
 
-A `.revolute` joint pins two bodies together at one point and lets them rotate freely around it, like a door hinge or a knee. Chain several in a row and you get exactly what it sounds like: a chain. (The other kinds, sliders, welds, and rods, are in the [documentation](../Docs/Simulation/Physics.md#rigid-bodies), and one hinge is enough for today.)
+A `.revolute` joint pins two bodies together at one point and lets them rotate freely around it, like a door hinge or a knee. Chain several in a row and you get exactly what it sounds like, a chain. The other kinds, sliders, welds, and rods, are in the [documentation](../Docs/Simulation/Physics.md#rigid-bodies), and one hinge is enough for today.
 
 The last piece is the mouse. The world can tie any body to a point you control:
 
@@ -273,7 +273,7 @@ held?.target = Vector2(mouseX, mouseY)  // each frame: pull toward the cursor
 held?.remove()                          // let go
 ```
 
-`grab` returns a `Joint` handle. While it exists, the body is dragged toward its `target` like a puppet on a short string, pushing and toppling whatever stands in the way. Call `remove()` and the body is free again, keeping whatever speed you flung it with. Notice that it's a *pull* rather than a teleport, so grabbing a link mid-chain drags the rest of the chain along behind it, still obeying its hinges.
+`grab` returns a `Joint` handle. While it exists, the body is dragged toward its `target` like a puppet on a short string, pushing and toppling whatever stands in the way. Call `remove()` and the body is free again, keeping whatever speed you flung it with. Notice that it's a *pull* rather than a teleport. Grabbing a link mid-chain drags the rest of the chain along behind it, still obeying its hinges.
 
 ## Three ready-made motion systems
 
@@ -281,7 +281,7 @@ The two approaches so far cover most of what you'll build, but there's a third s
 
 <img src="Images/09-ForcesAndPhysics/Articulated.jpg" alt="Three panels: a segmented chain curving so its tip touches a small ringed target while its base stays planted, a double pendulum's two arms with the looping tangle its far bob has traced, and a disk of hundreds of short streaks circling a heavy orange center" width="680">
 
-**`IKChain` is a limb that reaches.** It's a run of rigid segments joined end to end, and it has two verbs. `reach(toward:)` keeps the base planted and bends the chain so the tip strains for a target, which is the arm-and-tentacle move and the left panel above. `drag(to:)` does the opposite, pinning the tip to the target and letting everything else trail behind it, which is the rope move. Read `joints` to draw it, and a `drawPolyline` is usually the whole body:
+**`IKChain` is a limb that reaches.** It's a run of rigid segments joined end to end, and it has two verbs. `reach(toward:)` keeps the base planted and bends the chain so the tip strains for a target. That is the arm-and-tentacle move, and the left panel above. `drag(to:)` does the opposite, pinning the tip to the target and letting everything else trail behind it, which is the rope move. Read `joints` to draw it, and a `drawPolyline` is usually the whole body:
 
 ```swift
 let arm = IKChain(from: Vector2(540, 1040), segments: 14, length: 36)
@@ -291,13 +291,13 @@ arm.reach(toward: Vector2(mouseX, mouseY))
 drawPolyline(arm.joints)
 ```
 
-Two knobs decide the character, and the first is an aesthetic choice rather than a technical one. `solver` picks how the chain thinks about reaching. The default `.fabrik` spreads the bend evenly along the whole chain, which gives smooth, plant-like poses, while `.ccd` favors the joints nearest the tip so the chain whips and curls instead. `maxBend` is the stiffness limit, the sharpest angle any segment may fold against its neighbor, and it's what turns a floppy tentacle into a spine. A target can sit out of reach, either past the chain's `totalLength` or behind its own stiffness, and `reach` reports that by returning `false` rather than spinning.
+Two knobs decide the character, and the first is an aesthetic choice rather than a technical one. `solver` picks how the chain thinks about reaching. The default `.fabrik` spreads the bend evenly along the whole chain, which gives smooth, plant-like poses. `.ccd` favors the joints nearest the tip, so the chain whips and curls instead. `maxBend` is the stiffness limit, the sharpest angle any segment may fold against its neighbor. It's what turns a floppy tentacle into a spine. A target can sit out of reach, either past the chain's `totalLength` or behind its own stiffness. `reach` reports that by returning `false` rather than spinning.
 
-**`DoublePendulum` is the classic chaos machine.** Two weights on two rigid arms, swinging under gravity, and that really is all it takes to get motion nobody can predict. You set the arm lengths, the masses, and the starting angles, then call `step()` each frame and read `bob1` and `bob2`, both measured from the pivot. Tracing `bob2` is where the drama is, and the middle panel above is a few seconds of exactly that.
+**`DoublePendulum` is the classic chaos machine.** Two weights swing on two rigid arms under gravity. That really is all it takes to get motion nobody can predict. You set the arm lengths, the masses, and the starting angles. Then call `step()` each frame and read `bob1` and `bob2`, both measured from the pivot. Tracing `bob2` is where the drama is, and the middle panel above is a few seconds of exactly that.
 
-The part worth pausing on is that this is *deterministic*. `step()` advances one 60 fps frame in fixed substeps, so a run is a pure function of where you started, and the same start replays the same tangle every time. Start a second pendulum a ten-thousandth of a radian away, though, and within a few seconds the two are doing completely different things. That gap between perfectly repeatable and impossible to predict is what chaos actually means, and a fan of near-identical pendulums is the cheapest way to watch it happen.
+The part worth pausing on is that this is *deterministic*. `step()` advances one 60 fps frame in fixed substeps, so a run is a pure function of where you started. The same start replays the same tangle every time. Start a second pendulum a ten-thousandth of a radian away, though, and within a few seconds the two are doing completely different things. That gap between perfectly repeatable and impossible to predict is what chaos actually means. A fan of near-identical pendulums is the cheapest way to watch it happen.
 
-**`NBody` is gravity at scale.** Every body pulls on every other, and that one rule is enough to produce orbits, spiral arms, tidal tails, and mergers. It holds a `bodies` array you can read and rearrange between steps, and `step()` advances the lot:
+**`NBody` is gravity at scale.** Every body pulls on every other. That one rule is enough to produce orbits, spiral arms, tidal tails, and mergers. It holds a `bodies` array you can read and rearrange between steps, and `step()` advances the lot:
 
 ```swift
 let galaxy = NBody.disk(count: 2000, center: center, radius: 380)
@@ -307,13 +307,13 @@ galaxy.step()
 for p in galaxy.positions { drawCircle(center: p, radius: 2) }
 ```
 
-Doing this honestly for a few thousand bodies would mean millions of pairs every frame, so a distant clump gets treated as a single lump once it's far enough away to look like one, and that approximation is what keeps the whole thing cheap. The `theta` knob sets how fussy it is, where `0` forces the exact all-pairs sum and the default `0.7` is fast. `softening` is the other one to know, capping how hard a close encounter pulls so two bodies that nearly touch swing through smoothly instead of slingshotting to infinity.
+Doing this honestly for a few thousand bodies would mean millions of pairs every frame. So a distant clump gets treated as a single lump once it's far enough away to look like one. That approximation is what keeps the whole thing cheap. The `theta` knob sets how fussy it is, where `0` forces the exact all-pairs sum and the default `0.7` is fast. `softening` is the other one to know. It caps how hard a close encounter pulls, so two bodies that nearly touch swing through smoothly instead of slingshotting to infinity.
 
-Two seeded factories stage the usual scenes. `NBody.disk(...)` builds a spinning disk around a heavy center, starting each body on the circular orbit its radius calls for, which is the right panel above drawn as velocity streaks so the circulation shows. `NBody.cluster(...)` drops a motionless swarm that collapses, swings through itself, and puffs back out into a bound cloud. Because the factories roll from a seed and every step is a fixed size, a run reproduces exactly, so a fixed-frame export gives you the same galaxy twice. To stage a collision, build two disks and append one's `bodies` to the other's.
+Two seeded factories stage the usual scenes. `NBody.disk(...)` builds a spinning disk around a heavy center, starting each body on the circular orbit its radius calls for. That is the right panel above, drawn as velocity streaks so the circulation shows. `NBody.cluster(...)` drops a motionless swarm that collapses, swings through itself, and puffs back out into a bound cloud. Because the factories roll from a seed and every step is a fixed size, a run reproduces exactly. A fixed-frame export gives you the same galaxy twice. To stage a collision, build two disks and append one's `bodies` to the other's.
 
 ## A graph that lays itself out
 
-Here's a different job for forces: not motion for its own sake, but *arrangement*. A graph is just nodes and the edges that join them, a friend network, a word web, a subway map, and the hard part has never been drawing it. It's deciding where everything goes. `ForceLayout` answers with the two forces you already know: every node pushes every other node apart, and every edge is a spring pulling its two ends together. Let those argue and the graph untangles itself. Nobody places a node; the forces place them all.
+Here's a different job for forces. It is not motion for its own sake, but *arrangement*. A graph is just nodes and the edges that join them, a friend network, a word web, a subway map. The hard part has never been drawing it. It's deciding where everything goes. `ForceLayout` answers with the two forces you already know. Every node pushes every other node apart, and every edge is a spring pulling its two ends together. Let those argue and the graph untangles itself. Nobody places a node, and the forces place them all.
 
 You describe the graph as a count and index pairs, then step it like every other system in this chapter:
 
@@ -328,17 +328,17 @@ fill(.black)
 drawGraph(layout)
 ```
 
-The one new idea is *temperature*. Each step caps how far a node may move, and that cap cools from generous to zero over a few seconds: big bold swings early, when the tangle needs them, gentle nudges late, when the layout is nearly right, and then a freeze. Watching it run is watching annealing happen, and it's the middle of the figure below. Once settled, `step()` costs nothing, so it can stay in `draw()`.
+The one new idea is *temperature*. Each step caps how far a node may move, and that cap cools from generous to zero over a few seconds. Big bold swings come early, when the tangle needs them. Gentle nudges come late, when the layout is nearly right. Then comes a freeze. Watching it run is watching annealing happen, and it's the middle of the figure below. Once settled, `step()` costs nothing, so it can stay in `draw()`.
 
 <img src="Images/09-ForcesAndPhysics/GraphSettles.jpg" alt="Three panels of the same 26-node graph: a huddle of tangled edges at the seeded random start, the web opening up mid-cooling, and the settled even web, with the highest-degree hub accented in orange" width="680">
 
-Because the freeze is real, change is a deliberate act: `reheat(0.3)` warms the temperature back up so the layout can absorb whatever you did. That's the whole interaction vocabulary. Growing a network is `addNode`, `connect`, reheat, and the web makes room. Dragging is `nearestNode(to:)` to pick one up, `pinned[i] = true` so the solver leaves it in your hand, its position written each frame with a little heat kept on so the neighbors follow, and an unpin on release. `idealDistance` is the size dial (raise it and the web opens up), and the seed picks which of the many equally good untanglings you get, so a graph piece has variations like any other seeded sketch.
+Because the freeze is real, change is a deliberate act: `reheat(0.3)` warms the temperature back up so the layout can absorb whatever you did. That's the whole interaction vocabulary. Growing a network is `addNode`, `connect`, reheat, and the web makes room. Dragging is `nearestNode(to:)` to pick one up, then `pinned[i] = true` so the solver leaves it in your hand. Write its position each frame, with a little heat kept on so the neighbors follow, and unpin on release. `idealDistance` is the size dial, so raise it and the web opens up. The seed picks which of the many equally good untanglings you get, so a graph piece has variations like any other seeded sketch.
 
-The worked example is [`Examples/Patterns/ForceGraph`](../Examples/Patterns/ForceGraph/Sketch.swift), a network that grows node by node with a preference for already-popular nodes, so hubs emerge while the layout reflows live, and any node drags with the web trailing behind.
+The worked example is [`Examples/Patterns/ForceGraph`](../Examples/Patterns/ForceGraph/Sketch.swift), a network that grows node by node with a preference for already-popular nodes. Hubs emerge while the layout reflows live, and any node drags with the web trailing behind.
 
 ## Putting it together: the wrecking ball
 
-Now assemble all of it: a tower of rigid bricks, a chain of hinged links with a heavy ball at the end, and a grab so you can swing it yourself. The chain starts hoisted up to one side, so the first demolition runs on its own. After that it's your turn. Hold the mouse near the ball to take it, drag, release to fling, and press space for a fresh tower. Make `MySketches/Wrecker.swift`:
+Now assemble all of it. The piece has a tower of rigid bricks and a chain of hinged links with a heavy ball at the end. A grab lets you swing it yourself. The chain starts hoisted up to one side, so the first demolition runs on its own. After that it's your turn. Hold the mouse near the ball to take it, drag, release to fling, and press space for a fresh tower. Make `MySketches/Wrecker.swift`:
 
 ```swift
 import Ollin
@@ -467,29 +467,29 @@ final class Wrecker: Sketch {
 
 Run it with `swift run OllinLive MySketches/Wrecker.swift`, watch the first swing land, then take over. A few parts are worth pausing on:
 
-- The sketch keeps its own lists, `bricks` and `links`, next to the world's. The world moves the bodies; the lists remember which body should be drawn as what. The ball and the peg are singled out the same way.
-- The chain is built as a little walk. Each pass places one link a step further along `linkStep`, hinges it to the previous body at the midpoint between them, and moves on. The first body is a `.static` peg, the world's word for "never moves", and that single static body is what the whole swinging chain hangs from. The ball is just the seventh link, drawn rounder and made five times denser.
+- The sketch keeps its own lists, `bricks` and `links`, next to the world's. The world moves the bodies, and the lists remember which body should be drawn as what. The ball and the peg are singled out the same way.
+- The chain is built as a little walk. Each pass places one link a step further along `linkStep`, hinges it to the previous body at the midpoint between them, and moves on. The first body is a `.static` peg, the world's word for "never moves". That single static body is what the whole swinging chain hangs from. The ball is just the seventh link, drawn rounder and made five times denser.
 - Because `linkStep` points up and to the left, the chain is born mid-hoist, and gravity does the first demonstration for you. The committed figure at the top of the chapter is that first swing, caught two-thirds of the way through the tower.
-- `mousePressed()` looks for a body near the cursor and grabs it. The `where` on the loop is a filter, so the body only enters the loop if the condition holds, here that it's within 130 points of the click. `mouseReleased()`, its twin hook, runs when the button comes back up and lets go. `keyPressed()` fires on any key, with `key` holding which one, and space clears the world with `removeAll()` and builds the scene again.
+- `mousePressed()` looks for a body near the cursor and grabs it. The `where` on the loop is a filter, so the body only enters the loop if the condition holds. Here that means within 130 points of the click. `mouseReleased()`, its twin hook, runs when the button comes back up and lets go. `keyPressed()` fires on any key, with `key` holding which one, and space clears the world with `removeAll()` and builds the scene again.
 - `held` is an optional `Joint`, and every use goes through `?.`, so the same `draw()` works whether or not you're holding something. No flags to keep in sync.
 
 Then push it around:
 
-- Aim the first swing yourself by changing the angle inside `linkStep` (try `.pi / 2 + 0.6` for a gentler start, or point it up and to the *right* and watch it wrap around the peg).
+- Aim the first swing yourself by changing the angle inside `linkStep`. Try `.pi / 2 + 0.6` for a gentler start, or point it up and to the *right* and watch it wrap around the peg.
 - Give the ball a `restitution: 0.8` and it bounces off the rubble instead of shoving through it.
 - Two towers, one on each side of the anchor, and the ball becomes a metronome of destruction.
 - Replace the tower with a pyramid (rows that get one brick shorter as they rise, each row offset half a brick). It resists the ball much better, and knocking it flat takes real aim.
 - Put `world.gravity` on a `@Param` knob and try demolition on the moon.
 
-Where does this leave the hand-rolled forces from the start of the chapter? Both are yours now, and they don't compete. When one or two things move and you want full control of the feel, a chase, a flutter, a custom bounce, write the forces yourself, since it's four lines and you own all of them. The moment bodies need to *negotiate*, piling, stacking, hanging, colliding, let a `World` do the negotiating. Plenty of good sketches do both in the same `draw()`, and the three ready-made systems sit alongside both.
+Where does this leave the hand-rolled forces from the start of the chapter? Both are yours now, and they don't compete. When one or two things move and you want full control of the feel, write the forces yourself. That covers a chase, a flutter, or a custom bounce, in four lines you own completely. The moment bodies need to *negotiate*, piling, stacking, hanging, colliding, let a `World` do the negotiating. Plenty of good sketches do both in the same `draw()`, and the three ready-made systems sit alongside both.
 
 ## Where this comes from
 
-The force half of this chapter walks the path Daniel Shiffman's *The Nature of Code* made standard: accumulate forces, divide by mass, let Newton do the rest. The soft half rests on Verlet integration, named for Loup Verlet, who used it to simulate molecules in 1967. Thomas Jakobsen's 2001 talk "Advanced Character Physics" showed game programmers how positions plus relaxation could make cloth, ropes, and ragdolls both simple and stable, and Ollin's particle solver follows that approach. The rigid half is Box2D by Erin Catto, released as open source in 2007 and still the reference 2D engine, which Ollin bundles and wraps in the same `World`.
+The force half of this chapter walks the path Daniel Shiffman's *The Nature of Code* made standard. Accumulate forces, divide by mass, and let Newton do the rest. The soft half rests on Verlet integration, named for Loup Verlet, who used it to simulate molecules in 1967. Thomas Jakobsen's 2001 talk "Advanced Character Physics" showed game programmers how positions plus relaxation could make cloth, ropes, and ragdolls simple and stable. Ollin's particle solver follows that approach. The rigid half is Box2D by Erin Catto, released as open source in 2007 and still the reference 2D engine. Ollin bundles it and wraps it in the same `World`.
 
-The self-arranging graph is the *spring embedder*, an idea Peter Eades published in 1984: replace the vertices with steel rings, the edges with springs, and let go. The version Ollin implements is Thomas Fruchterman and Edward Reingold's 1991 refinement "Graph Drawing by Force-Directed Placement", which added the even-spacing forces and the cooling temperature, and it is still the layout behind most of the network diagrams you've ever seen.
+The self-arranging graph is the *spring embedder*, an idea Peter Eades published in 1984. Replace the vertices with steel rings, the edges with springs, and let go. The version Ollin implements is Thomas Fruchterman and Edward Reingold's 1991 refinement "Graph Drawing by Force-Directed Placement". It added the even-spacing forces and the cooling temperature. It is still the layout behind most of the network diagrams you've ever seen.
 
-The three ready-made systems each have a paper behind them. The default IK solver is FABRIK, from Andreas Aristidou and Joan Lasenby's 2011 paper "FABRIK: A fast, iterative solver for the Inverse Kinematics problem", and its alternative is cyclic coordinate descent, which comes out of robotics (Li-Chun Tommy Wang and Chih Cheng Chen, 1991) and reached graphics through the game-development writing of Jeff Lander and Ryan Juckett. The double pendulum has been the teaching example for chaos since the field got its name, and Ollin integrates the standard equations of motion in the form Erik Neumann documents at myphysicslab, checking itself against the energy it should be conserving. The n-body force approximation is the Barnes-Hut algorithm, published by Josh Barnes and Piet Hut in *Nature* in 1986, which is what took gravity simulations from a few hundred bodies to a few million. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The three ready-made systems each have a paper behind them. The default IK solver is FABRIK. It comes from Andreas Aristidou and Joan Lasenby's 2011 paper "FABRIK: A fast, iterative solver for the Inverse Kinematics problem". Its alternative is cyclic coordinate descent, which comes out of robotics. Li-Chun Tommy Wang and Chih Cheng Chen published it in 1991. It reached graphics through the game-development writing of Jeff Lander and Ryan Juckett. The double pendulum has been the teaching example for chaos since the field got its name. Ollin integrates the standard equations of motion in the form Erik Neumann documents at myphysicslab. It checks itself against the energy it should be conserving. The n-body force approximation is the Barnes-Hut algorithm, published by Josh Barnes and Piet Hut in *Nature* in 1986. It is what took gravity simulations from a few hundred bodies to a few million. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
