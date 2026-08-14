@@ -24,20 +24,20 @@ A **kind** is what the thing you get *is*.
 | `mac-sketch` | A folder with its own manifest, sources, and assets, built with `swift run`. |
 | `in-package` | A sketch folder plus one target in the `Package.swift` already above it. |
 
-`ollin new --list` shows more kinds than these two, each carrying the reason it is not ready: an iPhone app, a Vision app, a screen saver, an AR effect. They are named rather than hidden because that is the map of where this goes, and each waits on a platform leg rather than on the generator.
+`ollin new --list` shows more kinds than these two, and each carries the reason it is not ready. There is an iPhone app, a Vision app, a screen saver, and an AR effect. They are named rather than hidden, because that is the map of where this goes. Each waits on a platform leg rather than on the generator.
 
 A name ending in `.swift` asks for one loose file; any other name makes a folder. That is the only difference in how you ask.
 
 ## When you are already inside a package
 
-A folder of sketches is usually **one package with a target each**, not a package each: the framework then builds once for all of them and every sketch is a one-file compile. So if the folder you are pointing at already sits inside a Swift package that depends on Ollin, the generator joins it rather than making another:
+A folder of sketches is usually **one package with a target each**, not a package each. The framework then builds once for all of them, and every sketch is a one-file compile. So the generator joins a package you are already inside, rather than making another. It does that whenever the folder you point at sits inside a Swift package that depends on Ollin:
 
 ```sh
 cd sketchbook/2026/08
 ollin new Nightfall          # a sketch folder here, and one target in sketchbook/Package.swift
 ```
 
-It says so when it does, and `--kind mac-sketch` overrides it for a project of its own. In the window the kind menu gains **Add to this package** whenever there is one to join, and the file list names the manifest edit beside the files being created.
+It says so when it does, and `--kind mac-sketch` overrides it for a project of its own. In the window the kind menu gains **Add to this package** whenever there is one to join. The file list names the manifest edit beside the files being created.
 
 This is the only thing the generator does that changes a file you already had, so it is deliberately timid:
 
@@ -74,30 +74,30 @@ ollin new --examples                       # every one, grouped as they are file
 ollin new MyPiece --from Patterns/Marbling
 ```
 
-The copy is yours: the type is renamed after your project, the libraries it imports are linked, and everything it loads (a picture, a mesh, a shader, a clip) is copied in beside it and declared, so it builds and runs before you have changed a line.
+The copy is yours. The type is renamed after your project, and the libraries it imports are linked. Everything it loads is copied in beside it and declared, whether that is a picture, a mesh, a shader, or a clip. So it builds and runs before you have changed a line.
 
 What is deliberately *not* changed is the file's header comment. For a ported sketch or a homage that comment is where the credit lives, so it travels with the code. Keep it there if you keep the lineage, and rewrite it when the piece has become yours.
 
 ## The 3D options
 
-3D is the one part of the framework where the pieces genuinely do not all stack, and the rule is never obvious from the call itself: a matcap quietly swallows your lighting, traced reflections quietly do nothing without an environment, a wireframe has no surface to shade at all. The generator surfaces that map instead of leaving you to find out by rendering.
+3D is the one part of the framework where the pieces genuinely do not all stack. The rule is never obvious from the call itself. A matcap quietly swallows your lighting. Traced reflections quietly do nothing without an environment. A wireframe has no surface to shade at all. The generator surfaces that map, instead of leaving you to find out by rendering.
 
-Pick the `3d` template and a strip appears **under the stage it governs**, laid along the direction of the constraint: **Geometry** (what is on screen), then **Finish** (how its surface is done), then **On top** (everything added over both), left to right with arrows between them. The reading order is the rule. What sits left of a thing can block it; what sits right cannot, so the shape of the constraint is visible before you click anything.
+Pick the `3d` template and a strip appears **under the stage it governs**, laid along the direction of the constraint. First comes **Geometry**, what is on screen. Then comes **Finish**, how its surface is done. Last comes **On top**, everything added over both. They run left to right, with arrows between them. The reading order is the rule. What sits left of a thing can block it, and what sits right cannot. So the shape of the constraint is visible before you click anything.
 
-A blocked chip is dimmed, marked, and **names its cause** on the chip itself; the choice doing the blocking reports its reach (`blocks 3`). Hovering any chip, blocked or not, explains it in the line under the strip.
+A blocked chip is dimmed, marked, and **names its cause** on the chip itself. The choice doing the blocking reports its reach (`blocks 3`). Hovering any chip, blocked or not, explains it in the line under the strip.
 
 ```sh
 ollin new --3d-options                  # every piece and the rule it carries
 ollin new MyPiece --template 3d --3d mesh,pbr,environment,shadows,ray-traced,tone-map
 ```
 
-The rules are a hierarchy, which is what makes the panel navigable: **geometry is never blocked**. Picking a wireframe settles the finish and drops whatever a wireframe cannot take, rather than refusing the click. What gets refused is a finish its geometry has no surface for, and an extra that its geometry or finish rules out.
+The rules are a hierarchy, which is what makes the panel navigable. **Geometry is never blocked.** Picking a wireframe settles the finish and drops whatever a wireframe cannot take, rather than refusing the click. What gets refused is a finish its geometry has no surface for, and an extra that its geometry or finish rules out.
 
 That last command is the realism stack from [Combining 3D features](../3D/Combining.md), which is the full map in prose. If the two ever disagree, that page is right and the generator is the bug.
 
 ## Naming
 
-With no name given, the generator uses a dated serial: `Sketch2026001`, then `002`, counting past the highest already in the folder, whether that one is a project folder or a loose file.
+With no name given, the generator uses a dated serial. It writes `Sketch2026001`, then `002`, counting past the highest already in the folder. That highest one can be a project folder or a loose file.
 
 ```sh
 ollin new                  # Sketch2026001.swift, then Sketch2026002.swift
@@ -108,7 +108,7 @@ It exists because naming a piece before making it is the wrong order, and becaus
 
 ## What else to wire in
 
-`--with` (the **Wire in** column in the window) adds anything else: a folder to keep pictures or fonts in, a `.metal` file for a shader, or any of the satellite libraries. Each one adds its `import`, its entry in the manifest, the folder it loads from, and one commented line in `setup()` showing the first call, left as a comment so a freshly made sketch always runs.
+`--with` adds anything else, and it is the **Wire in** column in the window. It can add a folder to keep pictures or fonts in, a `.metal` file for a shader, or any of the satellite libraries. Each one adds its `import`, its manifest entry, the folder it loads from, and one commented line in `setup()` showing the first call. That line stays a comment, so a freshly made sketch always runs.
 
 ```sh
 ollin new Listening --with audio,images,params
@@ -116,17 +116,17 @@ ollin new Listening --with audio,images,params
 
 ## The window
 
-`ollin generate` opens the same choices with one addition worth having: the starting point in the middle is **actually running**. It is compiled and instantiated exactly as the examples gallery compiles an example, so what you watch is what you get, and a starting point that stopped compiling shows up there rather than in your new project.
+`ollin generate` opens the same choices, with one addition worth having. The starting point in the middle is **actually running**. It is compiled and instantiated exactly as the examples gallery compiles an example. So what you watch is what you get. A starting point that stopped compiling shows up there, rather than in your new project.
 
-Three columns, and the window resizes: the stage takes the slack, because watching the thing run is the reason to open a window rather than type the command.
+There are three columns, and the window resizes. The stage takes the slack, because watching the thing run is the reason to open a window rather than type the command.
 
-**Left, one list.** Templates as a group at the top, then the examples grouped the way the folders already group them, and one filter over both that matches group names as well as sketch names. Ten curated starting points and 350 catalogued ones are a short list and a long one, not two modes.
+**Left, one list.** Templates sit as a group at the top. Then come the examples, grouped the way the folders already group them. One filter runs over both, and it matches group names as well as sketch names. Ten curated starting points and 350 catalogued ones are a short list and a long one, not two modes.
 
-**Middle, the stage.** The starting point running, with a line under it saying what it is, how fast it is going, and whether it was just built or came from the cache. For the 3D template, the options strip sits under that (see below).
+**Middle, the stage.** The starting point runs here. A line under it says what it is, how fast it is going, and whether it was just built or came from the cache. For the 3D template, the options strip sits under that (see below).
 
-**Right, the project.** Name, where, canvas, and everything else behind one **Wire in** row that still reports what the starting point brought. The file list sits above the fold with the guarantee under it: nothing is written until you press Create, and Create refuses rather than overwriting.
+**Right, the project.** Name, where, canvas, and everything else behind one **Wire in** row that still reports what the starting point brought. The file list sits above the fold, with the guarantee under it. Nothing is written until you press Create, and Create refuses rather than overwriting.
 
-The folder you last chose is remembered, and the name field *suggests* the next serial in that folder rather than filling it in, so making several in a row is Create, Create, Create, and naming one properly is typing over a suggestion.
+The folder you last chose is remembered. The name field *suggests* the next serial in that folder, rather than filling it in. So making several in a row is Create, Create, Create, and naming one properly is typing over a suggestion.
 
 The kind menu lives in the title bar, since it scopes the whole window. The kinds that are not ready sit under a divider inside it, dimmed, each with what it waits on.
 
@@ -157,7 +157,7 @@ let picture = loadImage(resource: "photo", withExtension: "jpg", in: .module)
 
 ## Where the framework comes from
 
-A generated manifest points at the copy of Ollin the generator was run from, by path, so the project builds straight away with nothing to fetch. Two flags change that:
+A generated manifest points at the copy of Ollin the generator was run from, by path. The project then builds straight away, with nothing to fetch. Two flags change that:
 
 ```sh
 ollin new MyPiece --remote                      # point at the published framework
@@ -183,7 +183,7 @@ The path form is the right default while the framework is unpublished. Switch to
 
 ## Adding to it
 
-The catalogs are data. A new template is one value in `ProjectTemplate.all` carrying its source, the capabilities its code needs, and the kinds it fits; a new capability is one value in `Capability.all`; a new kind is one value in `ProjectKind.all` plus an emitter. Every template is compiled against the framework by the test suite, so one that falls behind an API change fails there rather than in someone's new project.
+The catalogs are data. A new template is one value in `ProjectTemplate.all`, carrying its source, the capabilities its code needs, and the kinds it fits. A new capability is one value in `Capability.all`. A new kind is one value in `ProjectKind.all` plus an emitter. Every template is compiled against the framework by the test suite. One that falls behind an API change fails there, rather than in someone's new project.
 
 Two of the lists keep themselves up to date and one does not, which is worth knowing:
 

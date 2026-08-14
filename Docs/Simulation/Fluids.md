@@ -4,7 +4,7 @@
 
 ## Fluids & soft bodies
 
-Two GPU particle-dynamics systems that ship with `import Ollin`: **`ParticleFluid`**, tens of thousands of particles that pour, splash, and settle like water, and **`SoftBodies`**, squishy blobs that squash on impact and spring back. Both live inside a walled box, run on the [`SpatialHash`](../Shaders/Compute.md#spatialhash) neighbor search, respond to a mouse `pull`/`push`, and follow the same build-in-`setup()`, update-and-draw-in-`draw()` shape as the [artificial-life sims](./ArtificialLife.md).
+Two GPU particle-dynamics systems ship with `import Ollin`. The first is **`ParticleFluid`**, tens of thousands of particles that pour, splash, and settle like water. The second is **`SoftBodies`**, squishy blobs that squash on impact and spring back. Both live inside a walled box, run on the [`SpatialHash`](../Shaders/Compute.md#spatialhash) neighbor search, and respond to a mouse `pull`/`push`. Both follow the same shape as the [artificial-life sims](./ArtificialLife.md), building in `setup()` and updating and drawing in `draw()`.
 
 The shared caveat applies here too: neighbor sums are GPU-race-ordered and the systems are chaotic, so runs are **not** reproducible frame-for-frame. Seed for a repeatable starting layout, not a pixel-identical video.
 
@@ -17,7 +17,7 @@ The shared caveat applies here too: neighbor sums are GPU-race-ordered and the s
 <a id="particle-fluid"></a>
 ### Particle fluid
 
-Smoothed-particle hydrodynamics: each particle measures how crowded it is, crowding becomes pressure, and pressure pushes neighbors apart with equal-and-opposite forces (Müller, Charypar & Gross 2003). A second, sharper, always-repulsive *near-pressure* (Clavet, Beaudoin & Poulin 2005) keeps particles from clumping and gives the free surface its bead-and-filament tension, so drops look like drops. The fluid seeds as a hanging block, so the first seconds are a dam break.
+Smoothed-particle hydrodynamics runs in three steps (Müller, Charypar & Gross 2003). Each particle measures how crowded it is. Crowding becomes pressure, and pressure pushes neighbors apart with equal-and-opposite forces. A second, sharper, always-repulsive *near-pressure* keeps particles from clumping (Clavet, Beaudoin & Poulin 2005). It gives the free surface its bead-and-filament tension, so drops look like drops. The fluid seeds as a hanging block, so the first seconds are a dam break.
 
 ```swift
 var fluid: ParticleFluid!
@@ -35,7 +35,7 @@ override func draw() {
 }
 ```
 
-`count`, `radius` (the interaction range, which is the fluid's resolution and, via the derived `spacing`, its packing), and `bounds` (the box; the canvas by default) are fixed at build. The liquid itself is live:
+Three things are fixed at build. `count` is how many particles there are. `radius` is the interaction range, which is the fluid's resolution and, through the derived `spacing`, its packing. `bounds` is the box, and it defaults to the canvas. The liquid itself is live:
 
 | Knob | Meaning | Default |
 | --- | --- | --- |
@@ -55,7 +55,7 @@ Example: `Examples/Simulation/ParticleFluid`.
 <a id="soft-bodies"></a>
 ### Soft bodies
 
-Meshless shape matching (Müller, Heidelberger, Teschner & Gross 2005): each body is a cloud of particles that remembers its rest shape. Every substep it finds the rotation that best maps the rest layout onto its current one and steers each particle back toward its spot; that one pull is the entire elasticity model, so there are no springs to tune and nothing can blow up (a fully crushed blob springs back). Bodies collide with each other (inelastic contacts through the neighbor hash) and tumble into piles.
+Meshless shape matching drives this one (Müller, Heidelberger, Teschner & Gross 2005). Each body is a cloud of particles that remembers its rest shape. Every substep it finds the rotation that best maps the rest layout onto its current one. Then it steers each particle back toward its spot. That one pull is the entire elasticity model, so there are no springs to tune and nothing can blow up. A fully crushed blob springs back. Bodies collide with each other through inelastic contacts in the neighbor hash, and they tumble into piles.
 
 ```swift
 var blobs: SoftBodies!
@@ -95,7 +95,7 @@ if mouseIsPressed { fluid.pull(at: Vector2(mouseX, mouseY)) }        // grab
 override func keyPressed() { fluid.push(at: Vector2(mouseX, mouseY)) } // splash
 ```
 
-`pull(at:strength:radius:)` fades gravity inside its radius and damps swirl, so held fluid hangs at the cursor instead of orbiting or streaming down; `push` is the same force outward. `strength` is an acceleration in points/s².
+`pull(at:strength:radius:)` fades gravity inside its radius and damps swirl. Held fluid then hangs at the cursor instead of orbiting or streaming down. `push` is the same force outward, and `strength` is an acceleration in points/s².
 
 ### Notes
 

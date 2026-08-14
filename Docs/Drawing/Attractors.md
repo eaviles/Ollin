@@ -4,7 +4,7 @@
 
 ## Strange attractors & chaotic maps
 
-A strange attractor is the shape a chaotic system settles onto: a bounded path that never repeats, tracing wispy, layered forms like the Lorenz butterfly or the Clifford filigree. Ollin gives you two flavors, both of which hand back plain points you draw however you like.
+A strange attractor is the shape a chaotic system settles onto. It is a bounded path that never repeats, and it traces wispy, layered forms like the Lorenz butterfly or the Clifford filigree. Ollin gives you two flavors, and both hand back plain points you draw however you like.
 
 - **`StrangeAttractor`** is a *continuous* system, a velocity field integrated over time with fourth-order Runge-Kutta. Its orbit is a `[Vector3]`, so it rides the [point-cloud](../3D/3D.md) path through the camera. Lorenz, Rössler, Aizawa, and friends.
 - **`ChaoticMap`** is a *discrete* iterated map, a `[Vector2]` orbit you plot as a scatter of points (prettiest accumulated additively into a density field). Clifford, Peter de Jong, Hénon.
@@ -70,7 +70,7 @@ override func draw() {
 
 ### StrangeAttractor (continuous)
 
-A continuous system is its **velocity field**: at a phase-space point it returns the instantaneous rate of change `(dx, dy, dz)/dt`. `orbit(count:settle:)` integrates that field from `start` with fixed-step fourth-order Runge-Kutta, dropping `settle` warmup steps first so the path has reached the attractor before you collect points.
+A continuous system is its **velocity field**. At a phase-space point it returns the instantaneous rate of change `(dx, dy, dz)/dt`. `orbit(count:settle:)` integrates that field from `start` with fixed-step fourth-order Runge-Kutta. It drops `settle` warmup steps first, so the path has reached the attractor before you collect points.
 
 ```swift
 let path = StrangeAttractor.lorenz().orbit(count: 100_000, settle: 1000)
@@ -102,7 +102,7 @@ The orbits live in their own units (Lorenz spans roughly ±25), so center and sc
 
 ### ChaoticMap (discrete)
 
-A discrete map is its **iteration rule**: the next point given the current one. `orbit(count:settle:)` just iterates it from `start`. The output stays bounded (the trigonometric maps within roughly ±2 on each axis), so translate and scale it onto the canvas.
+A discrete map is its **iteration rule**, the next point given the current one. `orbit(count:settle:)` just iterates it from `start`. The output stays bounded (the trigonometric maps within roughly ±2 on each axis), so translate and scale it onto the canvas.
 
 ```swift
 let points = ChaoticMap.clifford(a: -1.4, b: 1.6, c: 1, d: 0.7).orbit(count: 200_000)
@@ -120,7 +120,7 @@ let points = ChaoticMap.clifford(a: -1.4, b: 1.6, c: 1, d: 0.7).orbit(count: 200
 | `.deJong(a:b:c:d:)` | `sin(a·y) - cos(b·x)`, `sin(c·x) - cos(d·y)`. |
 | `.henon(a:b:)` | `1 - a·x² + y`, `b·x`. |
 
-The four constants reshape these maps completely; nudge them to explore. They look their best accumulated additively (`blendMode(.add)` over [`noClear()`](Accumulation.md)) so repeated visits brighten into filaments.
+The four constants reshape these maps completely, so nudge them to explore. They look their best accumulated additively (`blendMode(.add)` over [`noClear()`](Accumulation.md)) so repeated visits brighten into filaments.
 
 <a name="sugar"></a>
 
@@ -177,16 +177,16 @@ override func draw() {
 }
 ```
 
-A flow is 3D and rides the camera, so `drawParticles` is a no-op without one. Measured on an M2 at 1080²: a million particles step and draw at 55 fps, with 0.2 ms of CPU per frame.
+A flow is 3D and rides the camera, so `drawParticles` is a no-op without one. Measured on an M2 at 1080², a million particles step and draw at 55 fps, with 0.2 ms of CPU per frame.
 
-**It sizes and paces itself.** At build the flow integrates one CPU orbit of the same system and reads everything else off it, so a system whose whole shape is a unit and a half across (Aizawa) and one that spans fifty (Lorenz) both open framed, lit, and moving at a sensible speed with no per-system numbers in your sketch:
+**It sizes and paces itself.** At build the flow integrates one CPU orbit of the same system, and reads everything else off it. Aizawa's whole shape is a unit and a half across, and Lorenz spans fifty. Both open framed, lit, and moving at a sensible speed, with no per-system numbers in your sketch:
 
 | Property | What it is |
 | --- | --- |
 | `center: Vector3` | The middle of the attractor. Point a camera here. |
 | `extent: Double` | How far it reaches. A camera radius of about `extent * 3` frames it. |
 
-Both are percentiles of the orbit rather than its outright extremes: several of these systems take rare long excursions, so a maximum keeps growing the longer you watch (the four-wing's reach measures 2.0 over 120,000 points and 3.5 over 400,000), where a percentile settles.
+Both are percentiles of the orbit rather than its outright extremes. Several of these systems take rare long excursions, so a maximum keeps growing the longer you watch. The four-wing's reach measures 2.0 over 120,000 points and 3.5 over 400,000. A percentile settles instead.
 
 | Knob | Meaning |
 | --- | --- |
@@ -197,13 +197,13 @@ Both are percentiles of the orbit rather than its outright extremes: several of 
 | `opacity: Double` | How much light one particle contributes. Low, so density reads as tone. |
 | `maxSubsteps: Int` | The most Runge-Kutta steps one frame may take. |
 
-**Color is speed, brightness is density.** A particle's color comes from how fast it is moving, which is what shows the structure: the fast outer sweeps against the slow, crowded core. The default stops shift hue and hold their brightness roughly level on purpose, because drawn additively the *brightness* already means density. A ramp that also ran dark to light would put two different facts on one channel, and a slow crowded region would come out looking like a fast empty one.
+**Color is speed, brightness is density.** A particle's color comes from how fast it is moving, and that is what shows the structure. You see the fast outer sweeps against the slow, crowded core. The default stops shift hue and hold their brightness roughly level on purpose, because drawn additively the *brightness* already means density. A ramp that also ran dark to light would put two different facts on one channel. A slow crowded region would then come out looking like a fast empty one.
 
-**Particles start on the attractor**, sampled from a settled orbit and nudged off it by a hair. The nudge is what matters: exactly on the orbit every particle rides the same trajectory forever and the picture can only ever be that one curve with dots sliding along it, while a hair off it chaos separates them within a few laps into a million trajectories. Starting them in a box instead would mean watching them fall onto the shape first, and how long that takes is the system's own contraction rate: a fraction of a second for Lorenz, a minute of watching nothing for Aizawa.
+**Particles start on the attractor**, sampled from a settled orbit and nudged off it by a hair. The nudge is what matters. Exactly on the orbit, every particle rides the same trajectory forever. The picture can only ever be that one curve with dots sliding along it. A hair off it, chaos separates them into a million trajectories within a few laps. Starting them in a box instead would mean watching them fall onto the shape first. How long that takes is the system's own contraction rate. It is a fraction of a second for Lorenz, and a minute of watching nothing for Aizawa.
 
-**The step never outruns the system.** Each frame advances `speed` worth of the system's own time, split into as many fourth-order Runge-Kutta steps as it takes to keep every one at or under the step the system was published at. Ask for more pace than `maxSubsteps` allows and the flow runs slower than asked rather than taking a coarser step, because a step past that one is a different system. A particle that leaves the neighborhood altogether (wild constants can push one out) is dropped back into the middle rather than flying off, so a stray can never streak the frame.
+**The step never outruns the system.** Each frame advances `speed` worth of the system's own time. That time is split into fourth-order Runge-Kutta steps. It takes as many as it needs to keep every step at or under the one the system was published at. Ask for more pace than `maxSubsteps` allows and the flow runs slower than asked, rather than taking a coarser step. A step past that one is a different system. A particle can leave the neighborhood altogether, which wild constants can cause. It is dropped back into the middle rather than flying off, so a stray can never streak the frame.
 
-**Reproducibility**, as everywhere on this GPU path: a flow repeats on one machine but is not promised frame-exact across GPUs, and there is no pixel snapshot of one. Every system also answers `.attractor`, the CPU `StrangeAttractor` twin with the same constants, for a still plot or a measurement beside the moving one.
+**Reproducibility** works as it does everywhere on this GPU path. A flow repeats on one machine, but it is not promised frame-exact across GPUs, and there is no pixel snapshot of one. Every system also answers `.attractor`, the CPU `StrangeAttractor` twin with the same constants, for a still plot or a measurement beside the moving one.
 
 See the [`Simulation/Attractor`](../../Examples/Simulation/Attractor) example.
 
@@ -211,7 +211,7 @@ See the [`Simulation/Attractor`](../../Examples/Simulation/Attractor) example.
 
 ### The systems in a shader of your own
 
-The velocity fields and the Runge-Kutta step are part of the [shader library](../Shaders/ShaderLibrary.md), spliced into every compute kernel and user shader, so a sketch can ride a chaotic system in a kernel it wrote itself:
+The velocity fields and the Runge-Kutta step are part of the [shader library](../Shaders/ShaderLibrary.md). They are spliced into every compute kernel and user shader. So a sketch can ride a chaotic system in a kernel it wrote itself:
 
 ```swift
 lazy var motes = Particles(count: 500_000, step: """
@@ -223,7 +223,7 @@ lazy var motes = Particles(count: 500_000, step: """
 """)
 ```
 
-`OLLIN_RK4_STEP(state, h, derivative)` advances a `float3` one step; `derivative` is an expression in the sample point `_p`, which is how a system's constants reach it (Metal has no function pointers here, so this is a macro like the neighbor iteration). Beside the eight flows sit the three maps, `ollin_clifford`, `ollin_de_jong`, and `ollin_henon`, which return the next point outright and need no integration.
+`OLLIN_RK4_STEP(state, h, derivative)` advances a `float3` one step. `derivative` is an expression in the sample point `_p`, which is how a system's constants reach it. Metal has no function pointers here, so this is a macro like the neighbor iteration. Beside the eight flows sit the three maps, `ollin_clifford`, `ollin_de_jong`, and `ollin_henon`, which return the next point outright and need no integration.
 
 ---
 
