@@ -154,6 +154,23 @@ let package = Package(
                 .unsafeFlags(["-Xlinker", "-export_dynamic"])
             ]
         ),
+        // The host that gives one loose `.swift` file its own window.
+        // `swift run OllinRun <path/to/Sketch.swift> --installation` compiles
+        // the file once and hands the sketch to `OllinApp.run`, the same call a
+        // packaged `@main` sketch makes. That is the path where a sketch owns
+        // its window, so it is the only path where what a sketch declares in
+        // its `Installation` is read: a loose file goes on a wall through this
+        // host and nowhere else. It reloads nothing, by design. Needs
+        // -export_dynamic and the satellite links for the same reasons
+        // OllinLive does.
+        .executableTarget(
+            name: "OllinRun",
+            dependencies: ["Ollin", "OllinRuntime"] + Satellite.allCases.map(\.dependency),
+            path: "Sources/OllinRun",
+            linkerSettings: [
+                .unsafeFlags(["-Xlinker", "-export_dynamic"])
+            ]
+        ),
         // The examples gallery: a sidebar list of every Examples/ sketch; click
         // one and it compiles + renders in the detail pane. Reuses OllinRuntime's
         // loader and Ollin's SketchView. Needs -export_dynamic for the same

@@ -91,6 +91,18 @@ ollin dots.swift --seed 10 --export keeper.png
 
 `--debug` as the first flag runs a debug build of the host (faster first build, slower rendering); everything else passes through to the sketch host.
 
+### Leaving one running
+
+A loose file can go on a wall, not only on your desk:
+
+```sh
+ollin piece.swift --installation
+```
+
+The flag hands the sketch a window of its own, full screen, with the pointer hidden and the display kept awake. What the sketch declares in its `Installation` applies there too, from the checkpoint that resumes a run to the corners you line it up by. See [Installation](../Output/Installation.md).
+
+That host does not reload on save. A piece on a wall runs the code it was started with. Work on it with plain `ollin piece.swift`, then put it up.
+
 ### Assets and satellite libraries
 
 Files sitting beside the sketch load the way a packaged example's resources do, with `in: .module` pointing at the sketch's own folder:
@@ -107,4 +119,4 @@ The sketch file is the artifact, and it stays portable. When an idea outgrows on
 
 ### How it works
 
-`ollin` finds its own repository through the symlink, builds the live host there if anything changed, and hands it your file. The host compiles just that file against the built framework and loads it into the running window, which is the same mechanism behind live reload, so only your sketch recompiles, never the framework. Headless flags skip the window entirely.
+`ollin` finds its own repository through the symlink, builds the host there if anything changed, and hands it your file. Which host depends on the flags. The live one runs it normally. The one that gives the sketch its own window takes over when you ask for an installation. Only that file is compiled against the built framework, which is what makes a save quick: your sketch recompiles and the framework never does. Headless flags skip the window entirely.

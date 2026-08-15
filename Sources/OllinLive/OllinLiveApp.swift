@@ -60,12 +60,16 @@ struct OllinLiveApp: App {
         if handled { exit(0) }
 
         // An installation is read by a sketch that opens its own window, and
-        // this host opens its own instead. Said out loud rather than dropped:
-        // a flag that quietly does nothing reads as a broken feature.
+        // this host opens its own instead. Said out loud rather than dropped
+        // (a flag that quietly does nothing reads as a broken feature), and it
+        // names the host that does give the sketch a window, so the answer
+        // arrives with the problem. `ollin <file> --installation` picks that
+        // host on its own.
         if arguments.contains("--installation") {
             let message = "OllinLive: --installation applies to a sketch that opens its own window; "
-                + "this host owns the window, so the flag is ignored here "
-                + "(see Docs/Output/Installation.md)\n"
+                + "this host owns the window, so the flag is ignored here. "
+                + "Put the piece up with `swift run OllinRun \(pathArg) --installation` "
+                + "(or `ollin \(pathArg) --installation`); see Docs/Output/Installation.md\n"
             FileHandle.standardError.write(Data(message.utf8))
         }
 

@@ -157,6 +157,7 @@ ollin new dots.swift        # write a starter sketch
 ollin dots.swift            # live window, hot-reload on save
 ./dots.swift                # the file is directly executable (hashbang + chmod +x)
 ollin dots.swift --export-gif dots.gif --seconds 4
+ollin dots.swift --installation   # put it up: its own window, left running
 ```
 
 See [Single-file sketches](Docs/Tools/SingleFile.md) for assets, satellite imports, and growing a file into a package.

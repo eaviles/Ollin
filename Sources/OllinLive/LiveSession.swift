@@ -100,6 +100,9 @@ final class LiveSession {
     @ObservationIgnored private let shaderDir: String?
     @ObservationIgnored private var watcher: FileWatcher?
     @ObservationIgnored private var didStart = false
+    /// Whether this session has already said that a declared installation does
+    /// not apply here; it is said once, on the first compile that carries one.
+    @ObservationIgnored private var saidInstallationIsIgnored = false
 
     /// Asset extensions whose change re-runs `setup()` (where assets load).
     private static let assetExtensions = ["png", "jpg", "jpeg", "gif", "heic", "bmp", "tiff"]
@@ -207,6 +210,7 @@ final class LiveSession {
             } else {
                 print("OllinLive: running \(type(of: newSketch)).")
             }
+            self.noteDeclaredInstallation(newSketch)
             // The live host names its window "OllinLive - <Sketch>" (the
             // sketch's own `title` is "Ollin - <Sketch>", which the
             // standalone/gallery windows keep).
@@ -218,6 +222,24 @@ final class LiveSession {
             FileHandle.standardError.write(
                 Data("OllinLive: reload skipped (kept running): \(error)\n".utf8))
         }
+    }
+
+    /// Say, once a session, that a sketch which declares an installation is not
+    /// getting one here. The declaration is read where the sketch owns its
+    /// window, and this host owns it instead, so the piece runs in an ordinary
+    /// live window and the reason is invisible. Said on the first successful
+    /// compile rather than on every save, because a reload a second is not a
+    /// place to put an explanation.
+    private func noteDeclaredInstallation(_ sketch: Sketch) {
+        guard !saidInstallationIsIgnored, sketch.installation.runsUnattended else { return }
+        saidInstallationIsIgnored = true
+        FileHandle.standardError.write(Data("""
+            OllinLive: this sketch declares an installation, which is read where the sketch owns \
+            its own window; this host owns the window, so the piece runs here as an ordinary live \
+            sketch. Put it up with `ollin \(displayName) --installation` (see \
+            Docs/Output/Installation.md).
+
+            """.utf8))
     }
 
     private func reloadShaders() {

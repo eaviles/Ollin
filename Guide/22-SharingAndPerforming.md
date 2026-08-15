@@ -441,6 +441,14 @@ swift run --package-path Examples Example-Motion-Orbits --installation          
 swift run --package-path Examples Example-Installation-Unattended --no-installation    # back to a window to work in
 ```
 
+A single file goes up the same way. It has no target of its own, and the host that usually runs it keeps the window. The flag hands the sketch one:
+
+```sh
+ollin piece.swift --installation
+```
+
+That host does not reload on save. On a wall that is what you want: the piece runs the code you started it with. Plain `ollin piece.swift` is still where you work on it.
+
 ### What actually breaks is the clock
 
 The screen saver is the obvious enemy. The clock is the real one, and it goes wrong twice.

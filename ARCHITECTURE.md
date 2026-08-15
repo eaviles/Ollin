@@ -6913,6 +6913,29 @@ regexes the `class ...: Sketch` name and compiles a sibling
 `@_cdecl("ollin_make_sketch")` factory file alongside the user's source, so
 the user file is untouched and its `@main` is harmless under `-emit-library`.
 
+### The loose file on a wall (`OllinRun`)
+
+`swift run OllinRun <file>` uses the same loader for the opposite purpose. It
+compiles the file once and hands the sketch to `OllinApp.run`, the standalone
+path a packaged `@main` sketch takes. That path is the only one that reads a
+sketch's declared `Installation`, so it is how a loose file goes on a wall.
+`Scripts/ollin` routes there when the arguments carry `--installation` or
+`--calibrate`, and the live host prints that command rather than saying only
+that the flag does nothing. There is no watcher here, by design: a wall
+runs the code it was started with.
+
+Two details are load-bearing, and both fall out of the unique `-module-name`
+above. First, the checkpoint file is named from
+`String(describing: type(of: sketch))`, which drops the module. So
+`OllinRuntimeSketch_<token>.Piece` files as `Piece.json`, and a relaunch finds
+yesterday's run rather than starting the piece over every morning.
+`OllinRun --selftest` compiles one file twice and compares the two names,
+printing both qualified ones so the check cannot pass for the wrong reason.
+Second, the compile happens before `OllinApp.run` rather than inside it. `run`
+is where a piece asking for `restarts` becomes its own supervisor. A file that
+does not compile therefore fails once here, with swiftc's own message, instead
+of failing in every child until the watch gives up.
+
 ### Watching, threading, and reload state
 
 Editors save atomically (temp file plus rename), which breaks fd-based

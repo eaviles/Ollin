@@ -196,8 +196,6 @@ Apple-native, low-ceremony ways several machines share one piece.
 
 The needs of a piece running unattended for days in a gallery, which none of the desktop creative-coding frameworks treat as first-class. Anything added here is a field on the declared `Installation` value, beside the window, power, display, clock, checkpoint, restart and schedule fields already there, rather than a switch of its own.
 
-A single-file sketch cannot go up on a wall at all: the live host opens its window, so the sketch never opens its own, and the whole tier applies on the path where the sketch owns that window. The fix is a host that compiles the loose file and hands the sketch to `OllinApp.run`.
-
 The output side of the same audience is **several displays from one machine**: fullscreen output across them, with one canvas spanning the lot or a declared part of it per display. A projection already says which part of the canvas a machine shows, where it lands, and how its edges fade, so what this needs is a window and a drawable per display driven from one canvas render, where the frame loop assumes exactly one of each. Syphon already covers the case where a dedicated mapping app owns the wall.
 
 ## Learning: the Guide

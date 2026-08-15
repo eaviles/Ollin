@@ -122,7 +122,7 @@ Apple-native, low-ceremony ways several machines share one piece: **Multipeer** 
 
 ## Installation mode
 
-The concerns of a piece that runs unattended for days in a gallery rather than for a session at a desk. What is ahead here is one machine driving several displays at once: fullscreen output spanning them, with one canvas across the lot or a part of it per display, so a wall wider than one projector needs one Mac rather than one per beam. Single-file sketches wait on one thing besides: the live host opens their window, so the sketch never opens its own, and everything a sketch declares in its `Installation` ([`Docs/Output/Installation.md`](Docs/Output/Installation.md)) applies on the path where it owns that window. The fix is a host that compiles the file and hands the sketch to `OllinApp.run`. A documented, supported way to run long rather than a hope. See the [design notes](DESIGN-NOTES.md#installation-mode).
+The concerns of a piece that runs unattended for days in a gallery rather than for a session at a desk. What is ahead here is one machine driving several displays at once: fullscreen output spanning them, with one canvas across the lot or a part of it per display, so a wall wider than one projector needs one Mac rather than one per beam. A documented, supported way to run long rather than a hope. See the [design notes](DESIGN-NOTES.md#installation-mode).
 
 ## Learning: the Guide
 

@@ -3,6 +3,7 @@
 # Scripts/ollin: run a single .swift file as a sketch, from anywhere.
 #
 #   ollin Dots.swift                                # live window, hot-reload on save
+#   ollin Dots.swift --installation                 # put it up: its own window, left running
 #   ollin Dots.swift --export-gif dots.gif --seconds 4   # headless export, same flags
 #   ollin new Dots.swift                            # write a starter sketch
 #   ollin install                                   # put `ollin` on your PATH
@@ -27,6 +28,10 @@ repo="${self:h:h}"
 usage() {
     cat <<'EOF'
 usage: ollin <path/to/Sketch.swift> [flags]   run the sketch (live window)
+       ollin <path/to/Sketch.swift> --installation
+                                              put it up: the sketch owns the
+                                              window, so everything it declares
+                                              for a long run applies
        ollin <path/to/Sketch.swift> --export frame.png [...]
                                               headless export (--export-gif,
                                               --export-video, --export-svg, ...)
@@ -119,8 +124,22 @@ case "${1:-}" in
             echo "ollin: file not found: $sketch" >&2
             exit 2
         fi
+        # Which host: the live one, or the one that hands the sketch its own
+        # window. What a sketch declares in its `Installation` (the filled
+        # screen, the hidden pointer, the display kept awake, the checkpoint,
+        # the watch, the hours, the corners it is lined up by) is only read
+        # where the sketch owns the window, and the live host owns its own. So
+        # a flag that asks for a wall picks the host that can give it one. The
+        # live host stays the default, because working on a piece is what a
+        # loose file is usually for.
+        host="OllinLive"
+        for arg in "$@"; do
+            case "$arg" in
+                --installation|--calibrate) host="OllinRun"; break ;;
+            esac
+        done
         # Absolute path: the host build runs with the repo as its package, and
         # must find the sketch regardless of the caller's working directory.
-        exec swift run -c "$config" --package-path "$repo" OllinLive "${sketch:A}" "$@"
+        exec swift run -c "$config" --package-path "$repo" "$host" "${sketch:A}" "$@"
         ;;
 esac

@@ -287,7 +287,15 @@ swift run --package-path Examples Example-Installation-Unattended >> ~/piece.log
 
 ### Where it applies
 
-The declaration is read when a sketch opens its own window, which is the `swift run Example-X` path and any sketch with `@main`. The live host and the examples gallery own their windows and their own chrome, so a sketch under them stays in their window. Tune it there, then run it on its own to put it up.
+The declaration is read when a sketch opens its own window. That is the `swift run Example-X` path, and any sketch with `@main`. The live host and the examples gallery own their windows and their own chrome, so a sketch under them stays in their window. Tune it there, then run it on its own to put it up.
+
+One loose file goes up the same way. A single `.swift` file has no target of its own. The host that usually runs it is the live one, which owns the window. The flag gets the sketch a window of its own:
+
+```sh
+ollin Piece.swift --installation
+```
+
+The file is compiled once, and the sketch is handed the window. Every part in the table above then applies to it. It does not reload on save, and that is the point: a piece on a wall runs the code it was started with. Work on it in the live host (`ollin Piece.swift`, no flag), then put it up. See [Single-file sketches](../Tools/SingleFile.md).
 
 Exports open no window, so none of the window parts apply to them. The clock restart does travel with the piece, because it belongs to the sketch rather than to the window. It lands on a whole lap there too.
 
