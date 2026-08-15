@@ -4,7 +4,7 @@
 
 ## Color
 
-`Color` is an RGBA color with `Double` components in `0...1`. Most of the types below map a single number to a `Color` through the same `color(at:)` call (`Ramp`, `CosinePalette`, and `Colormap` smoothly, the discrete `Palette` in steps), which is the usual way to drive color from a value or from time.
+`Color` is an RGBA color with `Double` components in `0...1`. Most of the types below map a single number to a `Color` through the same `color(at:)` call. `Ramp`, `CosinePalette`, and `Colormap` do it smoothly, and the discrete `Palette` does it in steps. That is the usual way to drive color from a value or from time.
 
 ### Contents
 
@@ -33,11 +33,11 @@ Color(hue: Double, saturation: Double, brightness: Double, alpha: Double = 1)
 Color(kelvin: Double, alpha: Double = 1)  // blackbody color temperature
 ```
 
-Named constants come in two tiers. The essentials are `.white`, `.black`, `.gray`, `.clear`, and the additive primaries `.red`, `.green`, `.blue` (so `green` is pure `(0, 1, 0)`). A fuller set fills in around them, with names and exact sRGB values from the [CSS Color Module Level 4](https://www.w3.org/TR/css-color-4/#named-colors) `<named-color>` list, so common colors read by name:
+Named constants come in two tiers. The essentials are `.white`, `.black`, `.gray`, `.clear`, and the additive primaries `.red`, `.green`, `.blue` (so `green` is pure `(0, 1, 0)`). A fuller set fills in around them, so common colors read by name. The names and exact sRGB values come from the [CSS Color Module Level 4](https://www.w3.org/TR/css-color-4/#named-colors) list:
 
 `.yellow` `.cyan` `.magenta` `.orange` `.purple` `.pink` `.brown` · `.crimson` `.tomato` `.coral` `.salmon` `.gold` · `.darkGreen` `.forestGreen` `.seaGreen` `.olive` `.teal` `.turquoise` · `.navy` `.royalBlue` `.steelBlue` `.skyBlue` `.indigo` · `.violet` `.orchid` `.plum` `.lavender` `.maroon` · `.tan` `.khaki` `.beige` `.ivory` `.silver` `.lightGray` `.darkGray` `.slateGray`
 
-(CSS pins `green` to a darker `#008000`; Ollin keeps `green` as the pure primary, so reach for `.darkGreen` or `.forestGreen` for the deeper tone.)
+(CSS pins `green` to a darker `#008000`. Ollin keeps `green` as the pure primary, so reach for `.darkGreen` or `.forestGreen` for the deeper tone.)
 
 ```swift
 background(.white)
@@ -46,34 +46,34 @@ fill(Color(red: 0.2, green: 0.5, blue: 0.9))
 stroke(Color(white: 0.1))
 ```
 
-**Hex** comes in two forms. The integer form is the one for literals in code: compile-checked, nothing to parse, never optional. An integer carries no digit count (`0xFFF` and `0x000FFF` are the same value), so it's always six digits of RGB, with alpha as its own parameter:
+**Hex** comes in two forms. The integer form is the one for literals in code: compile-checked, nothing to parse, never optional. An integer carries no digit count, since `0xFFF` and `0x000FFF` are the same value. So it's always six digits of RGB, with alpha as its own parameter:
 
 ```swift
 background(Color(hex: 0x14171C))
 fill(Color(hex: 0xFF0066, alpha: 0.5))
 ```
 
-The string form takes the full grammar (`"#RGB"`, `"#RGBA"`, `"#RRGGBB"`, `"#RRGGBBAA"`, the `#` optional, case-insensitive) and returns an optional, so a string from a file or the network fails cleanly instead of trapping:
+The string form takes the full grammar, meaning `"#RGB"`, `"#RGBA"`, `"#RRGGBB"`, and `"#RRGGBBAA"`, with the `#` optional and the case ignored. It returns an optional, so a string from a file or the network fails cleanly instead of trapping:
 
 ```swift
 let brand = Color(hex: "#ff0066")!        // a literal you know is well-formed
 if let c = Color(hex: userString) { fill(c) }
 ```
 
-**Hue, saturation, brightness** are each in `0...1`. Hue wraps (1.2 reads as 0.2), so it can run on `time` or any other unbounded value without bookkeeping; saturation and brightness clamp. The `HSBWheel` example draws the classic wheel with it:
+**Hue, saturation, brightness** are each in `0...1`. Hue wraps (1.2 reads as 0.2), so it can run on `time` or any other unbounded value without bookkeeping. Saturation and brightness clamp. The `HSBWheel` example draws the classic wheel with it:
 
 ```swift
 fill(Color(hue: time * 0.1, saturation: 0.8, brightness: 1))   // cycle the rainbow
 ```
 
-**Color temperature** names light the way a photographer does. `Color(kelvin:)` takes a blackbody temperature, warm (orange) at the low end, cool (blue) at the high end, neutral white around 6600. It's an ordinary sRGB `Color`, so it drops into `fill`, `background`, or a `Light`'s color; the 3D [lighting presets](../3D/3D.md#lights) use it so a rig reads as the temperatures it really is. `kelvin` clamps to `1000...40000`.
+**Color temperature** names light the way a photographer does. `Color(kelvin:)` takes a blackbody temperature. It is warm and orange at the low end, cool and blue at the high end, and neutral white around 6600. It's an ordinary sRGB `Color`, so it drops into `fill`, `background`, or a `Light`'s color. The 3D [lighting presets](../3D/3D.md#lights) use it, so a rig reads as the temperatures it really is. `kelvin` clamps to `1000...40000`.
 
 ```swift
 directionalLight(Color(kelvin: 5600), direction: Vector3(-0.5, -0.8, -0.4))  // daylight key
 fill(Color(kelvin: 3200))                                                    // warm tungsten
 ```
 
-**Two component helpers** round out the type. `withAlpha(_:)` is the everyday fade: the same color at a different opacity, the original untouched. `luminance` is the color's perceived brightness in `0...1`, the Rec. 709 weighted sum of the linearized components, so green counts most and blue least, the way the eye weighs them; it's the handle for image-driven work (sample a pixel with [`Image`](Images.md#pixels)'s subscript, then size or choose marks by `pixel.luminance`).
+**Two component helpers** round out the type. `withAlpha(_:)` is the everyday fade: the same color at a different opacity, the original untouched. `luminance` is the color's perceived brightness in `0...1`. It is the Rec. 709 weighted sum of the linearized components, so green counts most and blue least, the way the eye weighs them. It's the handle for image-driven work. Sample a pixel with [`Image`](Images.md#pixels)'s subscript, then size or choose marks by `pixel.luminance`.
 
 ```swift
 fill(ink.withAlpha(0.3))                  // a translucent version of a held color
@@ -93,7 +93,7 @@ OKHSL(h:s:l:)     OKHSL(_ color: Color)     Color(_ hsl: OKHSL, alpha: Double = 
 ```
 
 - **`OKLab`** is the workhorse for color *math*: `l` is perceived lightness in `0...1`, `a` runs green → red and `b` runs blue → yellow. Mixing through it comes out visually even.
-- **`OKLCH`** is OKLab in polar form (lightness, chroma, hue), the space for hue and chroma *dials*: turning `h` leaves lightness and colorfulness alone. The maximum displayable chroma depends on hue and lightness, so a dialed-up `c` can ask for colors the screen can't show; converting to `Color` maps those back by reducing chroma at constant lightness and hue, so the color stays itself, just as vivid as sRGB allows.
+- **`OKLCH`** is OKLab in polar form (lightness, chroma, hue), the space for hue and chroma *dials*: turning `h` leaves lightness and colorfulness alone. The maximum displayable chroma depends on hue and lightness, so a dialed-up `c` can ask for colors the screen can't show. Converting to `Color` maps those back by reducing chroma at constant lightness and hue. The color stays itself, just as vivid as sRGB allows.
 - **`OKHSL`** squeezes the same model into the sRGB gamut: `s` and `l` run `0...1` and every combination is displayable. It is the space for *generated* color ("random hue, same perceived lightness").
 
 Hue is a turn in `0...1` everywhere, like the HSB initializer, and wraps the same way.
@@ -118,7 +118,7 @@ let complement = Color(lch)
 Color.mix(_ a: Color, _ b: Color, t: Double, in: ColorSpace = .oklab) -> Color
 ```
 
-Interpolates between two colors in a chosen space: `.rgb`, `.hsb`, `.oklab` (the default, perceptually even), `.oklch` (holds hue identity, arcs through chroma), or `.okhsl`. `t` clamps to `0...1` and alpha interpolates linearly. In the polar spaces hue takes the shortest way around the wheel, and an achromatic endpoint (gray, black, white) adopts the other color's hue, so a fade to white doesn't detour through unrelated hues.
+Interpolates between two colors in a chosen space. The spaces are `.rgb`, `.hsb`, `.oklab`, `.oklch`, and `.okhsl`. `.oklab` is the default and is perceptually even, and `.oklch` holds hue identity while arcing through chroma. `t` clamps to `0...1` and alpha interpolates linearly. In the polar spaces hue takes the shortest way around the wheel. An achromatic endpoint, meaning gray, black, or white, adopts the other color's hue. A fade to white therefore doesn't detour through unrelated hues.
 
 ```swift
 let warm = Color(hex: 0xFF5500)
@@ -155,9 +155,9 @@ fill(.radial(center: sun, radius: 260, [.white, .clear]))         // center → 
 stroke(.alongPath(heat))                                          // along the stroke
 ```
 
-Each factory takes a `Ramp` or a plain `[Color]` list (spread evenly, mixed in OKLab by default; pass `in:` for another space). Coordinates are in drawing space, so a gradient rides the transform stack with the shapes it paints, and one gradient laid across many shapes shades them coherently. `t` clamps at the ends, and alpha rides the ramp, so fading a radial gradient to `.clear` makes a soft-edged glow.
+Each factory takes a `Ramp` or a plain `[Color]` list, spread evenly and mixed in OKLab by default. Pass `in:` for another space. Coordinates are in drawing space, so a gradient rides the transform stack with the shapes it paints. One gradient laid across many shapes shades them coherently. `t` clamps at the ends, and alpha rides the ramp, so fading a radial gradient to `.clear` makes a soft-edged glow.
 
-`.alongPath` follows what it paints: on `drawLine`, `drawBezier`, `drawPolyline`, and stroked `drawShape` contours the ramp runs start → end by arc length (each contour runs its own 0…1); on a region shape, including its fill, it sweeps once around the shape's center, starting at 12 o'clock and turning clockwise, so a ring outline becomes a color wheel. A cyclic ramp (matching end colors) hides the seam where the sweep wraps.
+`.alongPath` follows what it paints. On `drawLine`, `drawBezier`, `drawPolyline`, and stroked `drawShape` contours, the ramp runs start → end by arc length, and each contour runs its own 0…1. On a region shape, including its fill, it sweeps once around the shape's center, starting at 12 o'clock and turning clockwise. A ring outline therefore becomes a color wheel. A cyclic ramp (matching end colors) hides the seam where the sweep wraps.
 
 `Paint` carries either kind as one value when you want a variable that's "a color or a gradient":
 
@@ -166,13 +166,13 @@ let paint: Paint = beat > 0 ? .gradient(.radial(center: c, radius: r, heat)) : .
 fill(paint)
 ```
 
-The analytic SDF shapes (circles, rects, stars, lines, …) evaluate gradients per pixel, so they're exact at any size. The tessellated shapes (`drawPolygon`, `drawShape`, elliptical arcs, outline text) shade across their vertices instead: gradient strokes subdivide automatically so ramps track the path, but a fill is only sampled at its outline points, so a radial gradient centered *inside* a large polygon won't show its bullseye there. Where that matters, prefer an SDF shape. Vector export maps linear and radial gradients to native SVG gradients; an along-path stroke exports as short solid runs, and an along-path fill falls back to the ramp's midpoint color.
+The analytic SDF shapes (circles, rects, stars, lines, …) evaluate gradients per pixel, so they're exact at any size. The tessellated shapes shade across their vertices instead, meaning `drawPolygon`, `drawShape`, elliptical arcs, and outline text. Gradient strokes subdivide automatically, so ramps track the path. A fill is only sampled at its outline points, so a radial gradient centered *inside* a large polygon won't show its bullseye there. Where that matters, prefer an SDF shape. Vector export maps linear and radial gradients to native SVG gradients. An along-path stroke exports as short solid runs, and an along-path fill falls back to the ramp's midpoint color.
 
 <a name="palette"></a>
 
 ### `Palette`
 
-A discrete set of colors carried as a unit. `palette[i]` wraps in both directions (so any counter cycles it), `color(at:)` quantizes `0...1` into equal bands (a noise value picks a swatch), and `ramp(in:)` turns the set into a smooth interpolating `Ramp`.
+A discrete set of colors carried as a unit. `palette[i]` wraps in both directions, so any counter cycles it. `color(at:)` quantizes `0...1` into equal bands, so a noise value picks a swatch. `ramp(in:)` turns the set into a smooth interpolating `Ramp`.
 
 ```swift
 let p = Palette(.red, Color(hex: 0x1B9E77), .white)
@@ -190,15 +190,15 @@ Palette.triadic(of: base)                               // thirds of the wheel
 Palette.analogous(of: base, count: 3, spread: 1.0 / 12) // neighbours centered on base
 ```
 
-**Built-in sets**: the eight ColorBrewer qualitative palettes ship as data: `.set1`, `.set2`, `.set3`, `.paired`, `.pastel1`, `.pastel2`, `.dark2`, `.accent` (credited under [Influences & attribution](../../ATTRIBUTION.md#color)).
+**Built-in sets.** The eight ColorBrewer qualitative palettes ship as data. They are `.set1`, `.set2`, `.set3`, `.paired`, `.pastel1`, `.pastel2`, `.dark2`, and `.accent`, credited under [Influences & attribution](../../ATTRIBUTION.md#color).
 
-The `Harmonies` example follows a drifting base color through all four builders; `Swatchbook` lays out the built-in sets.
+The `Harmonies` example follows a drifting base color through all four builders. `Swatchbook` lays out the built-in sets.
 
 <a name="palette-files"></a>
 
 ### Loading palettes from a file
 
-Palettes you collect elsewhere load with one call. `loadPalettes` returns every palette in a file, in file order; `loadPalette` returns the first. A file holding a single palette reads as a one-element array, so `loadPalettes` is the form to reach for when you don't know which you have.
+Palettes you collect elsewhere load with one call. `loadPalettes` returns every palette in a file, in file order, and `loadPalette` returns the first. A file holding a single palette reads as a one-element array. So `loadPalettes` is the form to reach for when you don't know which you have.
 
 ```swift
 let sets = loadPalettes("1000.json")     // many
@@ -219,9 +219,9 @@ Five layouts read, and `.auto` picks between them by looking at the bytes:
 | JSON | `[["#69d2e7", …], …]`, or a flat `["#69d2e7", …]`, or `[{"colors": […]}, …]` | many, or one |
 | ASE | Adobe Swatch Exchange | one palette per swatch group |
 
-The text formats share a parser, because they differ only in what separates the colors on a line. That has two consequences worth knowing. A file whose every line holds exactly one color is read as a single palette rather than a stack of one-color palettes, which is what makes hex-per-line work with no format argument. And a line that yields no colors at all is skipped, so a CSV header row or a line of prose falls away on its own.
+The text formats share a parser, because they differ only in what separates the colors on a line. That has two consequences worth knowing. A file whose every line holds exactly one color is read as a single palette, rather than a stack of one-color palettes. That is what makes hex-per-line work with no format argument. And a line that yields no colors at all is skipped. A CSV header row or a line of prose falls away on its own.
 
-Hex tokens survive the punctuation they pick up in the wild: surrounding quotes from a CSV cell, an `0x` prefix, and the `#RGB` / `#RGBA` / `#RRGGBB` / `#RRGGBBAA` digit forms `Color(hex:)` accepts.
+Hex tokens survive the punctuation they pick up in the wild. That covers surrounding quotes from a CSV cell, an `0x` prefix, and the `#RGB` / `#RGBA` / `#RRGGBB` / `#RRGGBBAA` digit forms `Color(hex:)` accepts.
 
 Name a `PaletteFormat` when the guess goes wrong:
 
@@ -230,11 +230,11 @@ loadPalettes("swatches.txt", format: .hexLines)   // one palette, even with comm
 loadPalettes("grid.csv", format: .csv)
 ```
 
-**ASE** files map swatch groups onto palettes, in document order. Colors that sit outside any group collect into a palette of their own. RGB, Gray, CMYK, and LAB swatches all decode (CMYK through the plain conversion, LAB through CIELAB on the D50 white point these files are written against). A truncated or malformed file yields an empty array rather than trapping, as every loader here does.
+**ASE** files map swatch groups onto palettes, in document order. Colors that sit outside any group collect into a palette of their own. RGB, Gray, CMYK, and LAB swatches all decode. CMYK goes through the plain conversion, and LAB through CIELAB on the D50 white point these files are written against. A truncated or malformed file yields an empty array rather than trapping, as every loader here does.
 
-**Where to find palettes.** Ollin ships the loader, and bundles only palette data whose license permits it (the ColorBrewer sets above), the same way the bitmap-font loader ships beside one permissively licensed default rather than a library of fonts. A good source of ready-made palettes is [nice-color-palettes](https://github.com/Experience-Monks/nice-color-palettes), whose `100.json` / `1000.json` are exactly the JSON array-of-arrays shape above, so `curl` one into your sketch folder and `loadPalettes` reads it as is. Note that its palettes are scraped from COLOURlovers, whose default license is CC BY-NC-SA, which is why Ollin doesn't redistribute them: the MIT license on that repository covers its code, not the palette data. Fetching the file for your own work is your call to make; bundling it into an MIT framework is not.
+**Where to find palettes.** Ollin ships the loader, and bundles only palette data whose license permits it, meaning the ColorBrewer sets above. The bitmap-font loader works the same way, shipping beside one permissively licensed default rather than a library of fonts. A good source of ready-made palettes is [nice-color-palettes](https://github.com/Experience-Monks/nice-color-palettes). Its `100.json` and `1000.json` are exactly the JSON array-of-arrays shape above. So `curl` one into your sketch folder, and `loadPalettes` reads it as is. Note that its palettes are scraped from COLOURlovers, whose default license is CC BY-NC-SA. That is why Ollin doesn't redistribute them. The MIT license on that repository covers its code, not the palette data. Fetching the file for your own work is your call to make. Bundling it into an MIT framework is not.
 
-That set is worth knowing for a second reason. Because so many people reached for it, its first palette (`#69d2e7`, `#a7dbd8`, `#e0e4cc`, `#f38630`, `#fa6900`) turns up in an enormous amount of generative art. If you want your work to look like itself, that is an argument for extracting a palette from an image you chose, or curating your own.
+That set is worth knowing for a second reason. Because so many people reached for it, its first palette (`#69d2e7`, `#a7dbd8`, `#e0e4cc`, `#f38630`, `#fa6900`) turns up in an enormous amount of generative art. If you want your work to look like itself, extract a palette from an image you chose, or curate your own.
 
 The `PaletteFile` example loads a CSV of six palettes and a hex-per-line file, side by side.
 
@@ -250,18 +250,18 @@ let p = Palette(extractedFrom: photo, count: 5)
 fill(p[0])                                     // the color the photo is mostly made of
 ```
 
-The colors come back **most-used first**, so `p[0]` is the one you would name if asked. Clustering runs in OKLab rather than sRGB, because distance in sRGB is not distance to the eye: sRGB clusters split greens nobody can tell apart and merge blues everybody can.
+The colors come back **most-used first**, so `p[0]` is the one you would name if asked. Clustering runs in OKLab rather than sRGB, because distance in sRGB is not distance to the eye. sRGB clusters split greens nobody can tell apart, and merge blues everybody can.
 
-It is **fully deterministic**. The same image, `count`, and `seed` always give the same palette, so an extracted palette is safe to snapshot and to carry in an export's recipe. Pass a different `seed` to shake the clustering out of a local minimum when a result looks off:
+It is **fully deterministic**. The same image, `count`, and `seed` always give the same palette. An extracted palette is therefore safe to snapshot and to carry in an export's recipe. Pass a different `seed` to shake the clustering out of a local minimum when a result looks off:
 
 ```swift
 Palette(extractedFrom: photo, count: 6, seed: 3)
 extractPalette(from: photo, count: 6)          // the same thing, as a bare call
 ```
 
-Three behaviors to expect. Transparent pixels are ignored. An image with fewer distinct colors than `count` yields only the colors it has, rather than inventing filler. And a texture-backed image (a video frame, a Syphon feed) has no readable pixels, so it yields an empty palette; call `snapshot()` on the feed first.
+Three behaviors to expect. Transparent pixels are ignored. An image with fewer distinct colors than `count` yields only the colors it has, rather than inventing filler. And a texture-backed image, like a video frame or a Syphon feed, has no readable pixels, so it yields an empty palette. Call `snapshot()` on the feed first.
 
-Extraction is setup-time work, not per-frame work. A large image is sampled on an even grid rather than read whole, so cost is bounded, but clustering still runs Lloyd's algorithm over the samples. Extract in `setup()` and hold the result.
+Extraction is setup-time work, not per-frame work. A large image is sampled on an even grid rather than read whole, so cost is bounded. Clustering still runs Lloyd's algorithm over the samples. Extract in `setup()` and hold the result.
 
 The `PaletteFromImage` example paints an image from five known colors and then recovers them from the pixels alone.
 
@@ -279,11 +279,11 @@ let poster = photo.dithered(.floydSteinberg, to: p)
 drawImage(poster, in: bounds)
 ```
 
-Snapping each pixel to its nearest palette color on its own gives flat bands where the picture was smooth. Dithering trades those bands for texture: it scatters the two colors that bracket each tone so the eye, blurring them together at normal viewing distance, reads the tone that was there before. Fewer colors, same picture.
+Snapping each pixel to its nearest palette color on its own gives flat bands where the picture was smooth. Dithering trades those bands for texture. It scatters the two colors that bracket each tone. The eye blurs them together at normal viewing distance, and reads the tone that was there before. Fewer colors, same picture.
 
 The methods come in two families.
 
-**Threshold maps** decide each pixel by its position alone, from a repeating tile. Each pixel dithers between the two palette colors whose mix best reproduces it: every pair is considered and scored perceptually, with a preference for quiet, low-contrast pairs, so a gray field near a saturated palette color mixes the colors that average to gray instead of tinting toward the loud neighbor.
+**Threshold maps** decide each pixel by its position alone, from a repeating tile. Each pixel dithers between the two palette colors whose mix best reproduces it. Every pair is considered and scored perceptually, with a preference for quiet, low-contrast pairs. A gray field near a saturated palette color therefore mixes the colors that average to gray, instead of tinting toward the loud neighbor.
 
 - `.ordered(size:)` uses a Bayer matrix, `size` cells across (a power of two in `2...16`). It lays down the visible crosshatch of retro graphics. Larger sizes are finer and less obviously patterned.
 - `.blueNoise` uses a 64×64 tile with no structure in it, giving an even, pattern-free grain. The tile is generated on first use and repeats seamlessly.
@@ -308,11 +308,11 @@ photo.dithered(.atkinson, levels: 2)           // 8 colors: black, white, the pr
 photo.dithered(.ordered(size: 8), levels: 4)   // 64
 ```
 
-Two knobs, each ignored by the family it does not apply to. `amount` (`0...1`) scales the grain of the threshold maps: at `1` they hold the image's tone exactly, and at `0` they band like `.none`. `serpentine` (on by default) reverses every other row of an error-diffusion scan, which breaks up the directional streaks a straight left-to-right pass leaves behind.
+Two knobs, each ignored by the family it does not apply to. `amount` (`0...1`) scales the grain of the threshold maps. At `1` they hold the image's tone exactly, and at `0` they band like `.none`. `serpentine` (on by default) reverses every other row of an error-diffusion scan. That breaks up the directional streaks a straight left-to-right pass leaves behind.
 
-Dithering is per-pixel CPU work, like extraction. Do it in `setup()` and hold the result. Alpha passes through untouched, and a fully transparent pixel passes no error to its neighbors, so a cutout's invisible background never bleeds into the subject's edge. A texture-backed image (a video frame, a Syphon feed, an effects layer) has no readable pixels and comes back unchanged, so call `snapshot()` on it first. It is fully deterministic: the same image, method, and palette always give the same pixels, so a dithered result is safe to snapshot and to export.
+Dithering is per-pixel CPU work, like extraction. Do it in `setup()` and hold the result. Alpha passes through untouched, and a fully transparent pixel passes no error to its neighbors. A cutout's invisible background never bleeds into the subject's edge. A texture-backed image has no readable pixels and comes back unchanged, so call `snapshot()` on it first. That covers a video frame, a Syphon feed, and an effects layer. It is fully deterministic. The same image, method, and palette always give the same pixels, so a dithered result is safe to snapshot and to export.
 
-If what you want is a cheap real-time dither over a whole layer rather than an exact quantization of an image, reach for the `.dither` and `.ditherDuo` [filters](Effects.md) instead. They run on the GPU, and they are a different tool.
+You may want a cheap real-time dither over a whole layer, rather than an exact quantization of an image. Reach for the `.dither` and `.ditherDuo` [filters](Effects.md) instead. They run on the GPU, and they are a different tool.
 
 The `Dithering` example reduces one painted gradient to four extracted colors six ways, side by side.
 
@@ -342,7 +342,7 @@ The `Palettes` example sweeps all seven. The formula is credited under [Influenc
 
 ### `Colormap`
 
-Perceptual colormaps: smooth, perceptually even ramps that map a value in `0...1` to color, the standard choice for turning a number (a height, a density, a field value) into legible color. `color(at:)` linearly interpolates the 256-entry table and clamps `t`.
+Perceptual colormaps are smooth, perceptually even ramps that map a value in `0...1` to color. They are the standard choice for turning a number into legible color, whether that is a height, a density, or a field value. `color(at:)` linearly interpolates the 256-entry table and clamps `t`.
 
 ```swift
 let t = noise(x * 0.01, y * 0.01)            // 0...1

@@ -6,11 +6,11 @@
 
 <img src="Images/20-SoundAndControl/Resonator.jpg" alt="A glowing amber orb wearing a crown of spectrum spokes, magenta at the quiet ends and pale gold at the loud ones, with sparks drifting outward from a recent beat" width="560">
 
-Every sketch so far has listened to two things, the clock and the mouse. This chapter adds ears and hands. The ears come first, so a microphone or a song becomes a handful of numbers you read in `draw()` and the picture moves with the music. Then come the hands, where a hardware knob, a phone fader, or the inspector slider drives the same parameters and a running sketch becomes something you play. The piece above is doing both at once, and by the end you'll have built it.
+Every sketch so far has listened to two things, the clock and the mouse. This chapter adds ears and hands. The ears come first. A microphone or a song becomes a handful of numbers you read in `draw()`, and the picture moves with the music. Then come the hands. A hardware knob, a phone fader, or the inspector slider drives the same parameters, and a running sketch becomes something you play. The piece above is doing both at once, and by the end you'll have built it.
 
 ## The first listening sketch
 
-Sound reaches a sketch through `OllinAudio`, a small library you import alongside the framework. The simplest start is the microphone and one number, `amplitude`, which is how loud things are right now, roughly `0...1`, smoothed so it doesn't flicker.
+Sound reaches a sketch through `OllinAudio`, a small library you import alongside the framework. The simplest start is the microphone and one number, `amplitude`. That is how loud things are right now, roughly `0...1`, smoothed so it doesn't flicker.
 
 ```swift
 import Ollin
@@ -35,7 +35,7 @@ Run it with `swift run OllinLive` like any sketch, say yes when macOS asks about
 
 ## A microphone we can print
 
-A guide has a problem a live sketch doesn't. Every figure in these pages must render the same way on any machine, and no two rooms sound alike. Chapter 19 solved this with a pretend depth camera, and this chapter fakes a microphone. `StageMic`, about thirty lines at the bottom of the committed figure [`Anatomy.swift`](Figures/20-SoundAndControl/Anatomy.swift), synthesizes a little band (a kick drum every half second, a hat between the kicks, a held bass note, a slow four-note arpeggio, a whisper of hiss) and feeds the samples into a real `AudioAnalyzer`, the same analysis engine behind `AudioInput`. Every audio number in this chapter comes out of that analyzer, exactly as it would from the air, and only the air is missing. Swap `StageMic` for `AudioInput()` in any figure and it listens to your room instead.
+A guide has a problem a live sketch doesn't. Every figure in these pages must render the same way on any machine, and no two rooms sound alike. Chapter 19 solved this with a pretend depth camera, and this chapter fakes a microphone. `StageMic` is about thirty lines at the bottom of [`Anatomy.swift`](Figures/20-SoundAndControl/Anatomy.swift), the committed figure. It synthesizes a little band, then feeds the samples into a real `AudioAnalyzer`, the same analysis engine behind `AudioInput`. The band is a kick drum every half second and a hat between the kicks. Over that sit a held bass note, a slow four-note arpeggio, and a whisper of hiss. Every audio number in this chapter comes out of that analyzer, exactly as it would from the air. Only the air is missing. Swap `StageMic` for `AudioInput()` in any figure and it listens to your room instead.
 
 The analyzer is worth meeting directly, because it's also the seam for sounds Ollin hasn't heard of. It's public, so anything that can produce a stream of samples can feed one.
 
@@ -45,11 +45,11 @@ Sound arrives as **samples**, which are measurements of air pressure, 44,100 of 
 
 <img src="Images/20-SoundAndControl/Anatomy.jpg" alt="Three stacked panels from one analyzed instant: the raw waveform wiggle, the spectrum with spikes marked at the kick, bass, and melody frequencies, and 24 normalized band bars" width="680">
 
-The top panel is the **waveform**, the samples themselves, one big slow swell (the kick's low thump mid-decay) with fast wiggles riding on it (the melody). It's the honest raw material, and mostly you'll draw it only when you want an oscilloscope look.
+The top panel is the **waveform**, the samples themselves. One big slow swell, the kick's low thump mid-decay, carries fast wiggles on it, which are the melody. It's the honest raw material, and mostly you'll draw it only when you want an oscilloscope look.
 
-The middle panel is the **spectrum**, and it's the reason audio-reactive visuals work at all. Sound is vibration, and pitch is how fast the vibration is, so a low note shakes the air few times a second (measured in hertz, cycles per second) and a high note many more. The spectrum splits the instant into how much energy sits at each speed, like a prism splitting light into colors. Suddenly the mix is legible: the kick's 55 Hz thump, the bass note at 110 Hz, the melody near 659 Hz, each its own spike you can watch independently. The tool that computes this split is the Fourier transform. The analyzer runs it for you every frame, and `spectrum` is the result, an array of magnitudes from low frequencies to high.
+The middle panel is the **spectrum**, and it's the reason audio-reactive visuals work at all. Sound is vibration, and pitch is how fast the vibration is. A low note shakes the air few times a second, and a high note many more. The rate is measured in hertz, meaning cycles per second. The spectrum splits the instant into how much energy sits at each speed, like a prism splitting light into colors. Suddenly the mix is legible. The kick's 55 Hz thump, the bass note at 110 Hz, and the melody near 659 Hz each get their own spike. The tool that computes this split is the Fourier transform. The analyzer runs it for you every frame, and `spectrum` is the result, an array of magnitudes from low frequencies to high.
 
-Raw spectra are awkward to draw, though. The values are unnormalized, and the interesting musical action crowds into the first few bins because hearing is logarithmic (every doubling of frequency sounds like one equal step, which is what an octave is). So the bottom panel is the read you'll actually use, **`bands(_:)`**:
+Raw spectra are awkward to draw, though. The values are unnormalized, and the interesting musical action crowds into the first few bins. That is because hearing is logarithmic, so every doubling of frequency sounds like one equal step. That step is what an octave is. So the bottom panel is the read you'll actually use, **`bands(_:)`**:
 
 ```swift
 for (i, level) in source.bands(24).enumerated() {
@@ -58,17 +58,17 @@ for (i, level) in source.bands(24).enumerated() {
 }
 ```
 
-`bands(24)` gives 24 bars spread the way hearing is (log-spaced, so the bass isn't crammed into one bar), each normalized to roughly `0...1` by a gain that adapts to the material, each rising fast and falling gently so bars look alive instead of jittery. A bar's height becomes a plain map to pixels, no hand-tuned scaling. Ask once per frame, with a fixed count.
+`bands(24)` gives 24 bars spread the way hearing is, log-spaced, so the bass isn't crammed into one bar. Each is normalized to roughly `0...1` by a gain that adapts to the material. Each rises fast and falls gently, so bars look alive instead of jittery. A bar's height becomes a plain map to pixels, no hand-tuned scaling. Ask once per frame, with a fixed count.
 
-Between the raw spectrum and the shaped bands sit three named conveniences, `bass`, `mid`, and `treble` (energy in the low, middle, and high ranges), and `magnitude(in: 40...120)` for a range you pick yourself. Those are unnormalized like the spectrum, so scale them to taste.
+Between the raw spectrum and the shaped bands sit three named conveniences, `bass`, `mid`, and `treble`. They are the energy in the low, middle, and high ranges. There is also `magnitude(in: 40...120)` for a range you pick yourself. Those are unnormalized like the spectrum, so scale them to taste.
 
 ## Hearing the beat
 
-Loudness and spectrum answer "how much", but the other thing music has is **arrivals**. A drum hit is a moment, not a level, and a visual that flashes on the drum reads as listening in a way a level meter never does.
+Loudness and spectrum answer "how much", but the other thing music has is **arrivals**. A drum hit is a moment, not a level. A visual that flashes on the drum reads as listening in a way a level meter never does.
 
 <img src="Images/20-SoundAndControl/BeatTimeline.jpg" alt="A six-second timeline in three strips: the loudness curve with regular peaks, the beat pulse snapping to one and decaying at each detection, and tick marks where beatCount incremented" width="680">
 
-The detector behind this compares each instant's spectrum with the one just before and adds up the rises. A sudden brightening across many frequencies at once (a drum hit, a plucked string, a note starting) spikes that sum, and the analyzer counts it as a beat. Three reads surface it:
+The detector behind this compares each instant's spectrum with the one just before and adds up the rises. A sudden brightening across many frequencies at once spikes that sum, and the analyzer counts it as a beat. A drum hit, a plucked string, and a note starting all do that. Three reads surface it:
 
 ```swift
 source.beat            // a 0...1 pulse: snaps to 1 on each beat, fades over ~0.25 s
@@ -76,7 +76,7 @@ source.beatCount       // how many beats so far
 source.timeSinceBeat   // seconds of audio since the last one
 ```
 
-`beat` is the ready-made value, so multiply a radius by it and the picture throbs. `beatCount` is for firing something exactly once per beat, by comparing against a stored count, the way the finished piece spawns sparks. Look at the timeline, where every kick lands and so does the quiet off-beat hat, with the same confidence. That's what the detector really is: onset detection hears *arrivals*, sudden changes in the sound, not loudness and not "the beat" a drummer would tap. A soft hat is as sudden as a loud kick, so both count. For most visuals that's exactly what you want; when it isn't, `beatSensitivity` is the knob (higher asks for stronger arrivals before firing), and the detector is deliberately steady the rest of the time, so held chords and drones don't drift into false triggers, and the same recording always beats in the same places.
+`beat` is the ready-made value, so multiply a radius by it and the picture throbs. `beatCount` is for firing something exactly once per beat, by comparing against a stored count, the way the finished piece spawns sparks. Look at the timeline, where every kick lands and so does the quiet off-beat hat, with the same confidence. That's what the detector really is. Onset detection hears *arrivals*, sudden changes in the sound, not loudness and not "the beat" a drummer would tap. A soft hat is as sudden as a loud kick, so both count. For most visuals that's exactly what you want. When it isn't, `beatSensitivity` is the knob, and a higher value asks for stronger arrivals before firing. The detector is deliberately steady the rest of the time, so held chords and drones don't drift into false triggers. The same recording always beats in the same places.
 
 ## Four places sound comes from
 
@@ -89,7 +89,7 @@ let tone = Tone(frequency: 220, waveform: .sine)               // a note of your
 let sound = Soundtrack(of: player)                             // a playing video's audio
 ```
 
-`AudioInput` is the microphone, permission and all. `AudioPlayer` plays a file (`.m4a`, `.mp3`, `.wav`, and friends) and analyzes it as it sounds, and the `Audio/FilePlayer` example ships with a violin recording and shows the shape. It's also the source that survives export, because during a headless render it follows the export clock through the file, so an audio-reactive piece writes the same frames every time (Chapter 22 has the whole export story). `Tone` is a modest oscillator that both sounds and feeds the analyzer, which makes it the self-contained option, and the `Audio/Spectrum` example generates a gliding sawtooth and draws its own harmonics, with no permission and no file. And `Soundtrack` taps the audio of a playing `VideoPlayer` from Chapter 21's territory, so footage can drive visuals with its own music. One habit applies to all four. An audio file you bundle follows the same license care as any asset, so credit what you ship.
+`AudioInput` is the microphone, permission and all. `AudioPlayer` plays a file and analyzes it as it sounds, taking `.m4a`, `.mp3`, `.wav`, and friends. The `Audio/FilePlayer` example ships with a violin recording and shows the shape. It's also the source that survives export. During a headless render it follows the export clock through the file, so an audio-reactive piece writes the same frames every time. Chapter 22 has the whole export story. `Tone` is a modest oscillator that both sounds and feeds the analyzer, which makes it the self-contained option. The `Audio/Spectrum` example generates a gliding sawtooth and draws its own harmonics, with no permission and no file. And `Soundtrack` taps the audio of a playing `VideoPlayer` from Chapter 21's territory, so footage can drive visuals with its own music. One habit applies to all four. An audio file you bundle follows the same license care as any asset, so credit what you ship.
 
 ## Words, and what that noise was
 
@@ -107,13 +107,13 @@ override func setup() {
 }
 ```
 
-That is two things listening to one microphone, which is fine: the source is tapped once and the audio goes to everything attached to it, a `Soundtrack` analyzer included.
+That is two things listening to one microphone, which is fine. The source is tapped once, and the audio goes to everything attached to it, a `Soundtrack` analyzer included.
 
-`SpeechListener` turns talking into words. It runs on your Mac, nothing is uploaded, and it asks for no permission of its own; the microphone asks for its own the first time you start it. The first use of a language may install its model, which takes a moment, and until then `unavailableReason` says so.
+`SpeechListener` turns talking into words. It runs on your Mac, nothing is uploaded, and it asks for no permission of its own. The microphone asks for its own the first time you start it. The first use of a language may install its model, which takes a moment, and until then `unavailableReason` says so.
 
 <img src="Images/20-SoundAndControl/Listening.jpg" alt="A spoken sentence transcribed from growing prefixes of its audio, and three synthesized sounds with the labels the classifier gave them" width="680">
 
-The left half of that figure is the thing worth understanding before you write any of this. Recognition guesses early and corrects itself as it hears more, and each line there is the same recognizer handed a little more of the same sentence. Three quarters of the way through it was sure the fox jumped over the lace. It was not wrong to say so; it just had not heard the rest yet.
+The left half of that figure is the thing worth understanding before you write any of this. Recognition guesses early and corrects itself as it hears more. Each line there is the same recognizer handed a little more of the same sentence. Three quarters of the way through it was sure the fox jumped over the lace. It was not wrong to say so; it just had not heard the rest yet.
 
 So a listener gives you two reads, and they are for different jobs:
 
@@ -124,9 +124,9 @@ for phrase in speech.phrases() {                  // what it committed to
 }
 ```
 
-**Draw the guess, act on the commitment.** `caption` is the running best guess, tail and all, trimmed to its last handful of words so it does not run off the canvas. `phrases()` drains what the recognizer has finished with, each phrase handed out once, which is what makes it safe to trigger from. Trigger from `caption` and you will act on a word that gets taken back.
+**Draw the guess, act on the commitment.** `caption` is the running best guess, tail and all. It is trimmed to its last handful of words, so it does not run off the canvas. `phrases()` drains what the recognizer has finished with, each phrase handed out once, which is what makes it safe to trigger from. Trigger from `caption` and you will act on a word that gets taken back.
 
-The other listener names sounds. `SoundClassifier` knows three hundred everyday ones (`clapping`, `dog_bark`, `knock`, `glass_breaking`, `police_siren`, every instrument family, `silence`), and it too splits into a level and a trigger:
+The other listener names sounds. `SoundClassifier` knows three hundred everyday ones, from `clapping`, `dog_bark`, `knock`, `glass_breaking`, and `police_siren` through every instrument family to `silence`. It too splits into a level and a trigger:
 
 ```swift
 let musical = ears.confidence(of: "music")                   // rises and falls
@@ -135,9 +135,9 @@ for event in ears.events() where event.label == "clapping" { // happens once
 }
 ```
 
-An event fires when a label crosses the threshold from below, so a sound that goes on is one event and not one per moment it is still going. `timeSinceHearing("clapping")` is the read for a mark that fades, since draining is destructive and fading is not.
+An event fires when a label crosses the threshold from below. A sound that goes on is one event, not one per moment it is still going. `timeSinceHearing("clapping")` is the read for a mark that fades, since draining is destructive and fading is not.
 
-The right half of the figure is the caution. Those three sounds are arithmetic, not recordings: a sine wave, a tap every quarter second, and bursts of noise. The classifier called them a tuning fork, a click, and a hammer, which is fair enough. But it always answers, whatever it hears, so a small number means very little. Read the top label, keep a threshold, and treat the rest as opinion.
+The right half of the figure is the caution. Those three sounds are arithmetic, not recordings. They are a sine wave, a tap every quarter second, and bursts of noise. The classifier called them a tuning fork, a click, and a hammer, which is fair enough. But it always answers, whatever it hears, so a small number means very little. Read the top label, keep a threshold, and treat the rest as opinion.
 
 Both of these are live only. Under an export nothing is playing, so nothing is heard, and both will tell you so instead of going quiet. When an exported piece needs words, work them out first:
 
@@ -149,7 +149,7 @@ override func setup() {
 }
 ```
 
-That form is deterministic, which is the same promise the seed made in Chapter 4: the same audio gives the same words every time, so a captioned export renders identically on Tuesday. The `Audio/Listening` example is the live one, with a caption you can talk into and marks you can clap at.
+That form is deterministic, which is the same promise the seed made in Chapter 4. The same audio gives the same words every time, so a captioned export renders identically on Tuesday. The `Audio/Listening` example is the live one, with a caption you can talk into and marks you can clap at.
 
 ## A sketch that plays
 
@@ -163,7 +163,7 @@ override func mousePressed() {
 }
 ```
 
-Nothing was started. The first note starts the engine, because forgetting to is otherwise the most common way to end up staring at a silent sketch. Pitches are written however you already think of them: `"C4"` by name, `60` as a MIDI number, `60.5` for the quarter tone between the keys. And `for:` is how long to hold it, so the note ends without being told to again.
+Nothing was started. The first note starts the engine, because forgetting to is otherwise the most common way to end up staring at a silent sketch. Pitches are written however you already think of them. `"C4"` is a name, `60` a MIDI number, and `60.5` the quarter tone between the keys. And `for:` is how long to hold it, so the note ends without being told to again.
 
 Notes that outlive one call are the other half, which is what a held key wants:
 
@@ -172,7 +172,7 @@ synth.noteOn("C4")     // sounds until told otherwise
 synth.noteOff("C4")
 ```
 
-A `Synth` plays several notes at once, sixteen by default, so chords and overlapping tails work without any bookkeeping from you. When they run out, the next note takes one from whatever is already fading rather than from anything you are still holding, so a melody over a held chord takes its voices from its own earlier notes.
+A `Synth` plays several notes at once, sixteen by default, so chords and overlapping tails work without any bookkeeping from you. When they run out, the next note takes one from whatever is already fading, rather than from anything you are still holding. A melody over a held chord takes its voices from its own earlier notes.
 
 **What a note is made of** is a `Voice`, and the presets are the quick way in: `.pluck`, `.bass`, `.pad`, `.bell`, `.stab`, `.breath`, `.sine`. Assigning a new one leaves sounding notes alone, so you can change instrument between notes:
 
@@ -180,11 +180,11 @@ A `Synth` plays several notes at once, sixteen by default, so chords and overlap
 synth.voice = .bell
 ```
 
-Inside a voice, the part worth understanding first is the envelope, because it is what makes a bell a bell and an organ an organ using the same wave underneath.
+Inside a voice, the part worth understanding first is the envelope. It is what makes a bell a bell and an organ an organ, using the same wave underneath.
 
 <img src="Images/20-SoundAndControl/Voices.jpg" alt="Four envelope curves drawn over three seconds with the key let go at 1.4 seconds: a labelled one showing attack rising, decay falling to a held sustain level, and release falling away, then percussive spiking and vanishing at once, organ holding flat until it is let go, and swell rising and falling slowly" width="680">
 
-Four numbers, and only three of them are times. `attack` is how long the note takes to arrive, `decay` how long it takes to settle, `release` how long it takes to go once let go. `sustain` is the odd one out: it is the *level* the note rests at while held, not a duration. Set it to zero and holding the key adds nothing at all, which is exactly what struck things do, and why `.percussive` sounds like a drum however long you lean on it.
+Four numbers, and only three of them are times. `attack` is how long the note takes to arrive, and `decay` how long it takes to settle. `release` is how long it takes to go once let go. `sustain` is the odd one out. It is the *level* the note rests at while held, not a duration. Set it to zero and holding the key adds nothing at all, which is exactly what struck things do. That is why `.percussive` sounds like a drum however long you lean on it.
 
 You can draw the shape you designed, which is what the figure above does:
 
@@ -192,7 +192,7 @@ You can draw the shape you designed, which is what the figure above does:
 Envelope.swell.level(at: 0.7, heldFor: 1.4)   // where a note has got to
 ```
 
-The other half of a voice is the `filter`, and it is most of what people mean when they say something sounds like a synthesizer. A note that is bright when struck and darkens as it fades is not the wave changing, it is a filter closing over it. `Voice.Filter.sweep(from:by:)` is that gesture, and `.pluck` is built from it.
+The other half of a voice is the `filter`, and it is most of what people mean when they say something sounds like a synthesizer. A note that is bright when struck and darkens as it fades is not the wave changing. It is a filter closing over it. `Voice.Filter.sweep(from:by:)` is that gesture, and `.pluck` is built from it.
 
 Finally, a `Synth` is an `AudioSource` like the microphone is, so everything earlier in this chapter reads off the sketch's own playing:
 
@@ -204,7 +204,7 @@ That closes the loop the chapter opened with. A sketch that listens to the room 
 
 ## Building an instrument instead of choosing one
 
-A `Voice` is a fixed chain: something makes a wave, an envelope shapes it, a filter takes part of it away. Every preset so far is that chain with different numbers in it. The tier underneath is where the wiring itself is the value.
+A `Voice` is a fixed chain. Something makes a wave, an envelope shapes it, and a filter takes part of it away. Every preset so far is that chain with different numbers in it. The tier underneath is where the wiring itself is the value.
 
 ```swift
 let bell = Patch.tone(.sine)
@@ -213,15 +213,15 @@ let bell = Patch.tone(.sine)
 synth.voice = Voice(patch: bell, envelope: .percussive)
 ```
 
-This is the same relationship the drawing side has had since Chapter 1. `drawCircle` sits on a `Drawer` that can do more; the voice presets sit on this. Nothing about `Synth(.pluck)` changes because it exists.
+This is the same relationship the drawing side has had since Chapter 1. `drawCircle` sits on a `Drawer` that can do more, and the voice presets sit on this. Nothing about `Synth(.pluck)` changes because it exists.
 
-An **operator** is one oscillator with a frequency, a level, and possibly something pushing it. Its frequency is a *ratio of the note* rather than a pitch, so a patch is an instrument and not a chord: 1 is the note, 2 the octave above, 3.5 something that is not a note at all.
+An **operator** is one oscillator with a frequency, a level, and possibly something pushing it. Its frequency is a *ratio of the note* rather than a pitch, so a patch is an instrument and not a chord. Ratio 1 is the note, 2 the octave above, and 3.5 something that is not a note at all.
 
-The reason to bother is one sentence. **A filter can only take harmonics away, and a sine has none to take.** Modulation puts them in. Turn `index` up on a sine being pushed by another sine and it becomes brass, and no amount of filtering would have got you there. Move the ratio off a whole number and it becomes metal, because its tones no longer land on the note's own harmonics and so belong to no pitch in particular. That is the whole of why `.bell` uses 3.5.
+The reason to bother is one sentence. **A filter can only take harmonics away, and a sine has none to take.** Modulation puts them in. Turn `index` up on a sine being pushed by another sine and it becomes brass, and no amount of filtering would have got you there. Move the ratio off a whole number and it becomes metal. Its tones no longer land on the note's own harmonics, so they belong to no pitch in particular. That is the whole of why `.bell` uses 3.5.
 
 `Examples/Audio/Patching` puts both knobs under your hand with the graph drawn as it is wired.
 
-There is a constraint worth knowing about, because it explains the one number in the API that looks arbitrary. A patch travels to the audio thread inside a note, through a queue of slots that already exist, so it has to be something copyable a word at a time: no arrays, no references, nothing to allocate. So the operators live in fixed lanes and there are eight. A patch that would need more comes back unchanged and says so, rather than quietly dropping one, because a patch with a piece missing is a different instrument and finding that out by ear is worse than reading it in the log.
+There is a constraint worth knowing about, because it explains the one number in the API that looks arbitrary. A patch travels to the audio thread inside a note, through a queue of slots that already exist. It has to be something copyable a word at a time, with no arrays, no references, and nothing to allocate. So the operators live in fixed lanes and there are eight. A patch that would need more comes back unchanged and says so, rather than quietly dropping one. A patch with a piece missing is a different instrument, and finding that out by ear is worse than reading it in the log.
 
 ### And the rest of the instrument
 
@@ -239,7 +239,7 @@ Order is the point, and it is the reason this is a list and not a pair of switch
 
 `synth.reverb = Reverb(.hall)` still works, and now means "put one room in the chain, or replace the one that is already there". Most sketches never need more than that, and the ones that do are not stuck with two slots.
 
-Changing a setting costs nothing. Changing which effects are in the chain rewires it, and that happens on the running engine rather than around a stop, because measured on this wiring reconnecting while it plays costs nothing you can hear.
+Changing a setting costs nothing. Changing which effects are in the chain rewires it, and that happens on the running engine rather than around a stop. Measured on this wiring, reconnecting while it plays costs nothing you can hear.
 
 ## An instrument somebody recorded
 
@@ -253,7 +253,7 @@ synth.play("C4", for: 1.5)
 
 Ollin bundles one small instrument so you can hear this without downloading anything: a struck bar recorded at five pitches. Playing a note means finding the nearest recording and moving it.
 
-Moving it is the whole model, and it is also the whole limitation. A recording plays at another pitch by being read faster or slower, which moves its pitch and its length *together*, exactly as a tape does. Move it far enough and the instrument audibly changes size: high notes go thin and hurried, low ones slow and heavy. `Examples/Audio/Sampler` has a key that swaps five recordings for one stretched over everything, and the difference is not subtle. That is why real libraries ship hundreds of recordings rather than one, and why the nearest is always chosen.
+Moving it is the whole model, and it is also the whole limitation. A recording plays at another pitch by being read faster or slower, which moves its pitch and its length *together*, exactly as a tape does. Move it far enough and the instrument audibly changes size. High notes go thin and hurried, and low ones slow and heavy. `Examples/Audio/Sampler` has a key that swaps five recordings for one stretched over everything, and the difference is not subtle. That is why real libraries ship hundreds of recordings rather than one, and why the nearest is always chosen.
 
 There is a design detail here worth noticing, because it is the same constraint from a page ago wearing a different hat. The recordings are set on the **synth**, not inside the `Voice`:
 
@@ -262,30 +262,30 @@ synth.instrument = piano          // which recordings
 synth.voice = Voice(sampled: ...) // how to play them
 ```
 
-A `Voice` travels to the audio thread inside a note and has to be copyable a word at a time, which is why a struck body caps at sixteen tones and a patch at eight operators. Recordings are megabytes on the heap and cannot ride along at all. So they stay put and the note carries only a handful of numbers. The constraint did not go away; it decided the shape of the API.
+A `Voice` travels to the audio thread inside a note and has to be copyable a word at a time. That is why a struck body caps at sixteen tones and a patch at eight operators. Recordings are megabytes on the heap and cannot ride along at all. So they stay put and the note carries only a handful of numbers. The constraint did not go away. It decided the shape of the API.
 
-To load a real instrument, the format is **SFZ**: a text file listing which audio file answers which notes, with the audio beside it.
+To load a real instrument, the format is **SFZ**. It is a text file listing which audio file answers which notes, with the audio beside it.
 
 ```swift
 let piano = SampledInstrument(sfz: "Piano.sfz", in: .module)
 ```
 
-Where to find them, and the licences, are on the [Synthesis](../Docs/Helpers/Synthesis.md#where-to-find-instruments) page. The short version: [VCSL](https://github.com/sgossner/VCSL) and [VSCO 2 Community Edition](https://versilian-studios.com/vsco-community/) are CC0, so you can do anything with them including ship them; [Freesound](https://freesound.org/) is per-clip and mixes CC0 with non-commercial, so check each one; and the widely recommended [Philharmonia](https://philharmonia.co.uk/resources/sound-samples/) samples are free to make music with but explicitly not free to pass on as a sampler instrument, which is a distinction worth reading before you build something on them.
+Where to find them, and the licences, are on the [Synthesis](../Docs/Helpers/Synthesis.md#where-to-find-instruments) page. Here is the short version. [VCSL](https://github.com/sgossner/VCSL) and [VSCO 2 Community Edition](https://versilian-studios.com/vsco-community/) are CC0, so you can do anything with them, including ship them. [Freesound](https://freesound.org/) is per-clip and mixes CC0 with non-commercial, so check each one. The [Philharmonia](https://philharmonia.co.uk/resources/sound-samples/) samples are free to make music with, but explicitly not free to pass on as a sampler instrument. That distinction is worth reading before you build something on them.
 
 ## A string, worked out rather than drawn
 
-Every voice so far starts with a wave: a shape an oscillator traces over and over, which you then carve with an envelope and a filter until it sounds like something. That works, and it is what most synthesizers are. But it is a description of a result, and there is another way in.
+Every voice so far starts with a wave, a shape an oscillator traces over and over. You then carve it with an envelope and a filter until it sounds like something. That works, and it is what most synthesizers are. But it is a description of a result, and there is another way in.
 
 ```swift
 let synth = Synth(.steel)
 synth.play("E3", for: 3)
 ```
 
-That is a string. Not a recording of one and not a wave shaped to resemble one: a length of something under tension with a disturbance running up and down it, worked out sample by sample as it goes.
+That is a string. Not a recording of one, and not a wave shaped to resemble one. It is a length of something under tension, with a disturbance running up and down it, worked out sample by sample as it goes.
 
 <img src="Images/20-SoundAndControl/PluckedString.jpg" alt="A block diagram of a delay line whose output loses its top, is tuned, and is fed back round at slightly lower level, and below it four plucks of the same string at different points, each with the shape it leaves and a bar chart of the modes that pluck excites, showing the missing ones as gaps" width="680">
 
-The top of that picture is the whole model. A delay line one period long is the disturbance travelling; a filter in the loop is what the string loses at each end, taking more off the top than the bottom; and a little less comes back each time round than went out. Feed a burst of noise into it and it turns into a note by itself.
+The top of that picture is the whole model. A delay line one period long is the disturbance travelling. A filter in the loop is what the string loses at each end, taking more off the top than the bottom. And a little less comes back each time round than went out. Feed a burst of noise into it and it turns into a note by itself.
 
 What makes this worth the trouble is what you get without asking. The note attacks like a string because that is what a disturbance settling into a loop does. It darkens as it rings, because the top is lost faster than the bottom, so a long note changes color with nothing moving. And it responds to *where you pluck it*:
 
@@ -299,13 +299,13 @@ The lower half of the picture is why. A string held at a point cannot move there
 
 `Examples/Audio/Strings` is six strings you click on, wherever you want to pluck them, and the shape it draws on each one is those same modes.
 
-Three more things are worth knowing. `hardness` is how quickly you let go, which decides how much of the string you set moving; `decay` is how long the note rings; `damping` is how much sooner the bright part goes than the low part. And a string decides its own fade, so the envelope's job is to stay out of the way: ask for a note long enough to let it finish, or the release will cut it off mid-ring.
+Three more things are worth knowing. `hardness` is how quickly you let go, which decides how much of the string you set moving. `decay` is how long the note rings, and `damping` is how much sooner the bright part goes than the low part. And a string decides its own fade, so the envelope's job is to stay out of the way. Ask for a note long enough to let it finish, or the release will cut it off mid-ring.
 
-The tuning is the part you would never think to check and would certainly hear. A loop has to come out exactly one period long, and a whole number of samples cannot do that. At the bottom of the keyboard the rounding error hides in a loop hundreds of samples long. At the top, where a period is ten samples, rounding is out by most of a semitone. So the fraction left over is handled by a filter that supplies a fraction of a sample, and the loop filter's own delay is counted into the same budget, which is why turning `damping` up cannot pull the note flat.
+The tuning is the part you would never think to check and would certainly hear. A loop has to come out exactly one period long, and a whole number of samples cannot do that. At the bottom of the keyboard the rounding error hides in a loop hundreds of samples long. At the top, where a period is ten samples, rounding is out by most of a semitone. So the fraction left over is handled by a filter that supplies a fraction of a sample. The loop filter's own delay is counted into the same budget, which is why turning `damping` up cannot pull the note flat.
 
 ## A shape you can hit
 
-A string is one length of one thing, and its model is one loop. Something struck is different: hit a plate or a bell or a sheet of glass and it does not make a wave at all. It makes a handful of pure tones at once, each fading at its own rate.
+A string is one length of one thing, and its model is one loop. Something struck is different. Hit a plate or a bell or a sheet of glass and it does not make a wave at all. It makes a handful of pure tones at once, each fading at its own rate.
 
 Which tones is the interesting part, because it is decided by the object's shape and by nothing else.
 
@@ -328,19 +328,19 @@ override func mousePressed() {
 
 <img src="Images/20-SoundAndControl/StruckShapes.jpg" alt="Five outlines, each with the frequencies it rings at drawn on a scale from one to four: a circle, a square, a triangle, an oblong, and an irregular blob, where the symmetric ones show pairs of lines sitting together and the asymmetric ones show single lines" width="680">
 
-Nothing in that picture was chosen. Each row is the outline beside it, measured. The circle comes back at 1, 1.59, 2.13, 2.30, which are the zeros of the Bessel functions, which is what a real drumhead rings at. The square comes back at 1, 1.58, 2, 2.24, which is what a real square membrane rings at. The blob comes back at whatever a blob rings at, and nobody has a name for that.
+Nothing in that picture was chosen. Each row is the outline beside it, measured. The circle's ratios are the zeros of the Bessel functions, which is what a real drumhead rings at. They run 1, 1.59, 2.13, and 2.30 in turn. The square comes back at 1, 1.58, 2, 2.24, which is what a real square membrane rings at. The blob comes back at whatever a blob rings at, and nobody has a name for that.
 
-The reason it works is that a flat thing held at its edge can only vibrate in the shapes that fit inside its outline with nothing moving at the rim. Ask which those are and you have asked an eigenvalue problem, and the frequencies are the square roots of its answers. Ollin measures the outline onto a grid and solves it.
+The reason it works is simple. A flat thing held at its edge can only vibrate in the shapes that fit inside its outline, with nothing moving at the rim. Ask which those are and you have asked an eigenvalue problem, and the frequencies are the square roots of its answers. Ollin measures the outline onto a grid and solves it.
 
-Look again at the pairs. The circle, the square, and the triangle each show most of their lines doubled up, and the blob shows none. That is symmetry: a pattern that fits a circle at one rotation fits it at another, so there are two of them and they ring at the same frequency. An outline with no symmetry has nothing to double. A real drum does this too, and because a real drum is never quite round, its pairs sit fractionally apart and beat against each other, which is part of why a drum sounds alive.
+Look again at the pairs. The circle, the square, and the triangle each show most of their lines doubled up, and the blob shows none. That is symmetry. A pattern that fits a circle at one rotation fits it at another. So there are two of them, and they ring at the same frequency. An outline with no symmetry has nothing to double. A real drum does this too, and a real drum is never quite round. Its pairs sit fractionally apart and beat against each other, which is part of why a drum sounds alive.
 
-Two practical things. **Measuring is the expensive part and striking is free**, so measure in `setup()` and keep the `StruckShape`. And **where you hit it decides which tones answer**: a tone that holds still under your finger gets nothing, which is the pick position again in a different costume. Hit a circle exactly in the middle and most of its tones stay silent, because most of them have a line of stillness straight through the center.
+Two practical things. **Measuring is the expensive part and striking is free**, so measure in `setup()` and keep the `StruckShape`. And **where you hit it decides which tones answer**. A tone that holds still under your finger gets nothing, which is the pick position again in a different costume. Hit a circle exactly in the middle and most of its tones stay silent. Most of them have a line of stillness straight through the center.
 
 `Examples/Audio/StruckShapes` is six of these you can click, and the bars under each one move as you move where you hit it.
 
 ## A note you keep playing
 
-The string and the shape have something in common that is easy to miss: both are set going once. You pluck, or you strike, and the whole note is decided at that instant. Everything after is the thing fading.
+The string and the shape have something in common that is easy to miss. Both are set going once. You pluck, or you strike, and the whole note is decided at that instant. Everything after is the thing fading.
 
 A bow is not like that, and neither is a breath. They keep happening, so the note has a middle, and the middle is yours.
 
@@ -353,15 +353,15 @@ override func draw() {
 }
 ```
 
-`drive` is how fast the bow is being drawn, or how hard the tube is being blown. It is read every sample, so moving it moves the note that is already sounding. At zero there is nothing to hear, because nothing is being done. This is the one thing an envelope cannot give you: an envelope is decided when the note starts, and this is whatever you are doing right now.
+`drive` is how fast the bow is being drawn, or how hard the tube is being blown. It is read every sample, so moving it moves the note that is already sounding. At zero there is nothing to hear, because nothing is being done. This is the one thing an envelope cannot give you. An envelope is decided when the note starts, and this is whatever you are doing right now.
 
-Two things fall out of the models rather than being settings, and both are the kind of detail that tells you a model is doing its job.
+Two things fall out of the models rather than being settings. Both are the kind of detail that tells you a model is doing its job.
 
-**Bow too fast for the force and the note breaks.** The string tears loose from the rosin twice per cycle instead of once, and it jumps to the octave. That is exactly what over-bowing sounds like on a real instrument, and nothing in the code puts it there; it is what the friction curve does when you push past it. Press harder or draw slower and it settles back.
+**Bow too fast for the force and the note breaks.** The string tears loose from the rosin twice per cycle instead of once, and it jumps to the octave. That is exactly what over-bowing sounds like on a real instrument, and nothing in the code puts it there. It is what the friction curve does when you push past it. Press harder or draw slower and it settles back.
 
-**The clarinet has no even harmonics.** Not because anything filters them out, but because the tube is stopped at the reed and open at the far end, so it fits a quarter of a wave rather than a half. A tube like that supports the odd harmonics and not the even ones, which is why it sounds hollow and woody, and why it plays an octave and a fifth below an open tube of the same length instead of an octave below. The whole of that is one line deciding the loop is half a period long rather than a whole one.
+**The clarinet has no even harmonics.** Nothing filters them out. The tube is stopped at the reed and open at the far end, so it fits a quarter of a wave rather than a half. A tube like that supports the odd harmonics and not the even ones, which is why it sounds hollow and woody. It also plays an octave and a fifth below an open tube of the same length, instead of an octave below. The whole of that is one line deciding the loop is half a period long rather than a whole one.
 
-`Examples/Audio/Bowing` is both of them under the mouse: hold to play, move up and down to lean on it, and press `B` to swap the bow for a reed.
+`Examples/Audio/Bowing` is both of them under the mouse. Hold to play, move up and down to lean on it, and press `B` to swap the bow for a reed.
 
 ## Music the sketch works out for itself
 
@@ -379,7 +379,7 @@ override func draw() {
 }
 ```
 
-It hands back a range rather than a single step, because at any real tempo a frame lasts longer than a step, and a step that fell inside the frame still has to be played.
+It hands back a range rather than a single step. At any real tempo a frame lasts longer than a step, and a step that fell inside the frame still has to be played.
 
 Keeping the clock outside is what makes the rest portable. `time * 2` today; a beat detected in whatever is playing in the room; a drum machine's own clock arriving over MIDI later in this chapter. None of what follows changes.
 
@@ -392,9 +392,9 @@ if rhythm[step] { synth.play(60, for: 0.1) }
 
 <img src="Images/20-SoundAndControl/Euclidean.jpg" alt="Seven rows showing 2, 3, 4, 5, 7, 9, and 11 strikes spread over sixteen steps, with the gaps between strikes listed beside each row, and below them the tresillo, cinquillo, and bell pattern drawn as the shape between their strikes on a circle" width="680">
 
-Read the gaps column. However many strikes you divide over sixteen steps, the gaps come out in at most two lengths, and those two differ by one. That is the whole idea. What falls out of it is the surprise: `Rhythm(3, in: 8)` is the Cuban tresillo, `Rhythm(5, in: 8)` the cinquillo, and `Rhythm(7, in: 12)` begun three strikes in is the bell pattern played across west Africa and, after it, much of the Americas. An algorithm written for timing pulses in a particle accelerator turns out to produce the rhythms people were already playing.
+Read the gaps column. However many strikes you divide over sixteen steps, the gaps come out in at most two lengths, and those two differ by one. That is the whole idea. What falls out of it is the surprise. `Rhythm(3, in: 8)` is the Cuban tresillo, and `Rhythm(5, in: 8)` the cinquillo. `Rhythm(7, in: 12)` begun three strikes in is the bell pattern played across west Africa and, after it, much of the Americas. An algorithm written for timing pulses in a particle accelerator turns out to produce the rhythms people were already playing.
 
-The named ones are on the type, so you rarely have to remember which numbers: `.tresillo`, `.cinquillo`, `.bellPattern`, `.bossaNova`, `.samba`, `.aksak`, and a few more. Or write one out, which is what you want when the pattern is already in your head:
+The named ones are on the type, so you rarely have to remember which numbers. They are `.tresillo`, `.cinquillo`, `.bellPattern`, `.bossaNova`, `.samba`, `.aksak`, and a few more. Or write one out, which is what you want when the pattern is already in your head:
 
 ```swift
 let clave: Rhythm = "x..x..x...x.x..."
@@ -409,20 +409,20 @@ synth.play(key[step])
 
 Degrees run past both ends: `key[5]` is an octave up, `key[-1]` the note below the root. This is the piece that does the most work for the least code. Feed a wandering number through a scale and it cannot play a wrong note.
 
-When the number came from somewhere that is not music, a mouse position or a sensor reading, `snap` moves it to the nearest note of the scale instead:
+Sometimes the number came from somewhere that is not music, like a mouse position or a sensor reading. Then `snap` moves it to the nearest note of the scale instead:
 
 ```swift
 synth.play(key.snap(Pitch(40 + mouseY / 12)))
 ```
 
-**`Chord` and `Arpeggio` decide what goes together.** A chord can be named, `Chord("A3", .minorSeventh)`, or built out of the scale by taking every other note:
+**`Chord` and `Arpeggio` decide what goes together.** A chord can be named, as `Chord("A3", .minorSeventh)`. It can also be built out of the scale, by taking every other note:
 
 ```swift
 key.chord(on: 0)     // a triad on the root
 key.chord(on: 1)     // a triad on the second degree
 ```
 
-On a major scale those come out major and minor from the same call. That is the point of building a chord out of a key: the quality follows from where in the scale you started, so changing the key changes the chords along with it rather than fighting them.
+On a major scale those come out major and minor from the same call. That is the point of building a chord out of a key. The quality follows from where in the scale you started. Changing the key changes the chords along with it, rather than fighting them.
 
 An `Arpeggio` plays a chord one note at a time, and like a rhythm it answers a step number:
 
@@ -431,7 +431,7 @@ let arp = Arpeggio(Chord("A3", .minorSeventh), .upDown, octaves: 2)
 synth.play(arp[step], for: 0.1)
 ```
 
-Reading it at the step, rather than counting the notes you have played so far, is what keeps the figure in its place in the bar instead of restarting every time the rhythm strikes.
+Read it at the step, rather than counting the notes you have played so far. That keeps the figure in its place in the bar, instead of restarting every time the rhythm strikes.
 
 **`MarkovChain` decides what next.** Show it a phrase and it learns what tends to follow what:
 
@@ -442,7 +442,7 @@ melody.start(at: 0)
 synth.play(key[melody.next() ?? 0])
 ```
 
-`order` is how far back it looks. At 1 each element is picked from whatever followed the one before it; at 2 it looks at the last two, which tracks the source more closely and invents less. It is seeded, and it keeps its own generator rather than borrowing the sketch's, so adding one cannot shift anything else you were drawing at random.
+`order` is how far back it looks. At 1 each element is picked from whatever followed the one before it. At 2 it looks at the last two, which tracks the source more closely and invents less. It is seeded, and it keeps its own generator rather than borrowing the sketch's. Adding one cannot shift anything else you were drawing at random.
 
 Four small pieces, and together they are a piece of music:
 
@@ -453,7 +453,7 @@ for step in counter.steps(upTo: time * 104 / 60) {
 }
 ```
 
-That is `Examples/Audio/Generative`, drawn as three of those rings turning on one step count, with the key and the figure and the tempo as knobs you move while it plays. All of it repeats: the same seed gives the same melody, the same two numbers give the same rhythm. A generated piece is something you can come back to, not something you had to be there to catch.
+That is `Examples/Audio/Generative`, drawn as three of those rings turning on one step count. The key, the figure, and the tempo are knobs you move while it plays. All of it repeats. The same seed gives the same melody, and the same two numbers give the same rhythm. A generated piece is something you can come back to, not something you had to be there to catch.
 
 ## Chords that come out of a key
 
@@ -468,7 +468,7 @@ for step in counter.steps(upTo: time * 2) {
 }
 ```
 
-Degrees, because that is the fact that survives changing key. `I vi IV V` is the same progression in every key there is, and writing it this way means the qualities fall out of the scale instead of having to be said: the same four numbers come out major in a major key and minor in a minor one, with nothing changed. `Examples/Audio/Changes` puts the key on a knob so you can hear that happen while it plays.
+Degrees, because that is the fact that survives changing key. `I vi IV V` is the same progression in every key there is. Writing it this way means the qualities fall out of the scale, instead of having to be said. The same four numbers come out major in a major key and minor in a minor one, with nothing changed. `Examples/Audio/Changes` puts the key on a knob so you can hear that happen while it plays.
 
 There are named ones (`.pop`, `.blues`, `.twoFiveOne`, `.andalusian`), and there is a way to leave the cycle:
 
@@ -476,7 +476,7 @@ There are named ones (`.pop`, `.blues`, `.twoFiveOne`, `.andalusian`), and there
 let changes = Progression("I vi IV V ii V", in: key).wandering(32)
 ```
 
-That is the Markov chain from a few pages back, learned off the progression's own moves. It only ever makes a move the original made, so two bars in it is somewhere the original never went, having got there by steps the original took. Seeded per call, so a wander you like is one you can ask for again.
+That is the Markov chain from a few pages back, learned off the progression's own moves. It only ever makes a move the original made. Two bars in, it is somewhere the original never went, having got there by steps the original took. Seeded per call, so a wander you like is one you can ask for again.
 
 When the chords do not all come from one key, write them out instead:
 
@@ -500,7 +500,7 @@ A `Tuning` is a list of frequency ratios and the interval they repeat over. It h
 
 Equal temperament is a compromise: it makes every key equally usable by making every interval except the octave slightly wrong. Play a held triad in `.equalTemperament` and then the same triad in `.just` and you can hear what that costs. The equal one beats, slowly and audibly; the whole number one locks and sits still. A piece that never changes key gives up nothing by being tuned the second way.
 
-Past that there are more steps rather than different ones (`.nineteen`, `.thirtyOne`, `.quarterTones`), and then there is `.bohlenPierce`, which divides a *third* into thirteen and so contains no octave at all. Doubling a frequency is so familiar that a tuning without it sounds wrong before it sounds strange, and then stops sounding wrong. It works because odd harmonics still line up, which is why it suits the clarinet from earlier in this chapter and suits almost nothing else.
+Past that there are more steps rather than different ones, in `.nineteen`, `.thirtyOne`, and `.quarterTones`. Then there is `.bohlenPierce`, which divides a *third* into thirteen and so contains no octave at all. Doubling a frequency is so familiar that a tuning without it sounds wrong before it sounds strange, and then stops sounding wrong. It works because odd harmonics still line up, which is why it suits the clarinet from earlier in this chapter and suits almost nothing else.
 
 ## Playing along with the room
 
@@ -518,11 +518,11 @@ override func draw() {
 }
 ```
 
-`room.beats` is musical time inferred from what it is hearing, so the same `StepCounter` that ran off `time` now runs off the record playing in the room. `room.rhythm(steps: 16)` hands back the pattern it heard as a `Rhythm`, which you can then play against.
+`room.beats` is musical time inferred from what it is hearing. The same `StepCounter` that ran off `time` now runs off the record playing in the room. `room.rhythm(steps: 16)` hands back the pattern it heard as a `Rhythm`, which you can then play against.
 
-Two things it does that are easy to get wrong if you write this yourself. A detector that fires on every eighth note reports twice the tempo, which is the same music, so anything outside a believable range is halved or doubled until it lands inside one. And the tempo is the *middle* of the recent gaps rather than their average, because one missed beat doubles a gap, and that moves an average where it does not move a middle.
+Two things it does that are easy to get wrong if you write this yourself. A detector that fires on every eighth note reports twice the tempo, which is the same music. So anything outside a believable range is halved or doubled until it lands inside one. And the tempo is the *middle* of the recent gaps rather than their average. One missed beat doubles a gap, and that moves an average where it does not move a middle.
 
-It hears arrivals rather than the beat a drummer would tap, so a steady loop is followed well and rubato is followed badly. `room.steadiness` is how much to trust it.
+It hears arrivals rather than the beat a drummer would tap. A steady loop is followed well, and rubato is followed badly. `room.steadiness` is how much to trust it.
 
 ## Numbers you can hear
 
@@ -543,7 +543,7 @@ That reads a column of a table. The same call reads a line across a terrain, `So
 
 Two decisions inside that call are worth pulling out, because neither is what you would write first and the figure is the argument for both.
 
-**Pitch is spread evenly in semitones, not in hertz.** Hearing is logarithmic. The step from 220 Hz to 440 and the step from 440 to 880 sound like the same distance, though the second is twice the size of the first. Spread a series evenly in hertz and the whole bottom half of your data crushes into the top of the range, which is the middle row of the figure: the same numbers, unreadable. Spread it evenly in semitones and the shape survives.
+**Pitch is spread evenly in semitones, not in hertz.** Hearing is logarithmic. The step from 220 Hz to 440 sounds like the step from 440 to 880, though the second is twice the size. Spread a series evenly in hertz and the whole bottom half of your data crushes into the top of the range. That is the middle row of the figure, the same numbers, unreadable. Spread it evenly in semitones and the shape survives.
 
 **Snapping is what makes it music instead of a signal.** The bottom row is the same reading landing only on notes of the key. Nothing about the data changed; it simply cannot play a wrong note now. This is why `Scale` was worth having before there was anything to read.
 
@@ -553,9 +553,9 @@ One more piece, small and easy to skip:
 marker.play(readings.reference(at: 20), tempo: 120)   // 20 degrees, sounded
 ```
 
-A reference sounds one named value on exactly the same footing as the reading. Without one, a listener needs absolute pitch to know what any note means; with one, every note is heard as above or below something. It is a chart's grid line, in sound, and it is the difference between a noise that rises and falls and a measurement you can actually read.
+A reference sounds one named value on exactly the same footing as the reading. Without one, a listener needs absolute pitch to know what any note means. With one, every note is heard as above or below something. It is a chart's grid line, in sound. It is the difference between a noise that rises and falls and a measurement you can actually read.
 
-Which is the other reason this exists. A sketch that draws a column can read the same column out loud, from the same numbers, in one more line. `Examples/Audio/Sonification` does exactly that: a line across a landscape, drawn as a profile and played as a tune, with the playhead marking the note sounding. The picture and the sound are two views of one series, and one of them works for someone who is not looking.
+Which is the other reason this exists. A sketch that draws a column can read the same column out loud, from the same numbers, in one more line. `Examples/Audio/Sonification` does exactly that. A line across a landscape is drawn as a profile and played as a tune, with the playhead marking the note sounding. The picture and the sound are two views of one series, and one of them works for someone who is not looking.
 
 ## Sound that comes from somewhere, and sound you can keep
 
@@ -570,7 +570,7 @@ guard let eye = activeCamera else { return }
 synth.place(at: Vector3(2, 0, -3), heardFrom: eye)
 ```
 
-Both facts arrive in the same call because neither means anything on its own. A position says nothing until something is listening, and where the sketch is looking from is where it hears from. On headphones this is more than loudness: it is how much later the sound reaches one ear than the other, and what a head does to a sound arriving round it, so something behind you is behind you rather than merely quiet. `Examples/Audio/Spatial` is three chimes standing still and one walking past them.
+Both facts arrive in the same call because neither means anything on its own. A position says nothing until something is listening, and where the sketch is looking from is where it hears from. On headphones this is more than loudness. It is how much later the sound reaches one ear than the other, and what a head does to a sound arriving round it. Something behind you is behind you, rather than merely quiet. `Examples/Audio/Spatial` is three chimes standing still and one walking past them.
 
 The other is that a sketch which plays carries its sound out of the window:
 
@@ -580,17 +580,17 @@ ollin Piece.swift --export-video piece.mp4 --frames 480
 
 The file has the music in it. There is no record button and nothing to switch on.
 
-This is worth a moment, because it is the one place in this chapter where an earlier decision is audible. The exporters drive a sketch on a fixed clock with no window and nothing playing. There are no speakers to send notes to, so the notes are written down as the frames are drawn, and at the end the soundtrack is rendered through the same code that would have fed the speakers. The renderer could be used that way because it takes events and gives back samples and has no clock of its own. An export is that same code with the waiting taken out.
+This is worth a moment, because it is the one place in this chapter where an earlier decision is audible. The exporters drive a sketch on a fixed clock with no window and nothing playing. There are no speakers to send notes to, so the notes are written down as the frames are drawn. At the end the soundtrack is rendered through the same code that would have fed the speakers. The renderer could be used that way because it takes events and gives back samples and has no clock of its own. An export is that same code with the waiting taken out.
 
-Which means the sound reproduces exactly the way the picture does. Export the same piece twice and the audio comes back sample for sample identical, so a generated piece is something you can come back to rather than something you had to be there to catch. That is the same promise the seed made in Chapter 4, arriving in a medium you cannot look at.
+Which means the sound reproduces exactly the way the picture does. Export the same piece twice and the audio comes back sample for sample identical. A generated piece is something you can come back to, rather than something you had to be there to catch. That is the same promise the seed made in Chapter 4, arriving in a medium you cannot look at.
 
-The two halves of this section meet, which is worth saying because it would be easy to assume they don't. Placing works by rewiring the audio graph, and an export has no audio graph to rewire; so where each instrument was and where it was heard from get written down as the frames are drawn, exactly the way the notes are, and the finished soundtrack is rendered through a listener at the end. A chime that walks past your left ear on screen walks past your left ear in the file. Place from the first frame if you want that: the soundtrack machine is built once and its shape is fixed then, so an instrument that starts playing before it is ever placed will tell you it cannot be moved rather than quietly coming out in the middle.
+The two halves of this section meet, which is worth saying because it would be easy to assume they don't. Placing works by rewiring the audio graph, and an export has no audio graph to rewire. So where each instrument was and where it was heard from get written down as the frames are drawn, exactly the way the notes are. The finished soundtrack is rendered through a listener at the end. A chime that walks past your left ear on screen walks past your left ear in the file. Place from the first frame if you want that. The soundtrack machine is built once, and its shape is fixed then. An instrument that starts playing before it is ever placed will tell you so, rather than quietly coming out in the middle.
 
 ## Knobs from anywhere
 
-The hands come next. Since Chapter 1 you've tuned sketches with `@Param` knobs in the inspector, and the news here is that the inspector is only one of the hands that can hold those knobs.
+The hands come next. Since Chapter 1 you've tuned sketches with `@Param` knobs in the inspector. The news here is that the inspector is only one of the hands that can hold those knobs.
 
-**MIDI** is the protocol music hardware has spoken since 1983: knob boxes, fader banks, pad grids, keyboards. A controller sends small messages (a knob is a *control change* carrying a number `0...127`, and a pad is a *note* with a velocity), and `OllinMIDI` reads them:
+**MIDI** is the protocol music hardware has spoken since 1983. Knob boxes, fader banks, pad grids, and keyboards all speak it. A controller sends small messages, and `OllinMIDI` reads them. A knob is a *control change* carrying a number `0...127`, and a pad is a *note* with a velocity:
 
 ```swift
 import OllinMIDI
@@ -606,9 +606,9 @@ override func draw() {
 }
 ```
 
-`start()` connects to every device on the system, including ones plugged in later. Which control sends what is the controller's business, so the first thing to do with new hardware is run the `Integration/MIDIMonitor` example and touch everything. It draws each message as it arrives, and your controller introduces itself.
+`start()` connects to every device on the system, including ones plugged in later. Which control sends what is the controller's business. So with new hardware, first run the `Integration/MIDIMonitor` example and touch everything. It draws each message as it arrives, and your controller introduces itself.
 
-Knobs aren't the only thing MIDI carries. Gear with a play button (a DAW, a drum machine, a DJ mixer) also broadcasts its beat as *MIDI clock*, and a `TempoClock` reads that into musical time, so motion lands on the beat instead of near it.
+Knobs aren't the only thing MIDI carries. Gear with a play button also broadcasts its beat as *MIDI clock*. A DAW, a drum machine, and a DJ mixer all do. A `TempoClock` reads that into musical time, so motion lands on the beat instead of near it.
 
 The wire itself is almost comically simple, and knowing that makes everything else make sense. A MIDI clock master sends one tick, twenty-four times per beat, forever. There is no tempo number in the message, no bar count, no position. Twenty-four ticks per beat is the entire protocol, and everything musical you want is derived by counting them.
 
@@ -621,13 +621,13 @@ let throb = 1 + 0.3 * clock.beat     // snaps on each beat, eases off
 let lap = clock.progress(over: 8)    // a 0...1 ramp every eight beats
 ```
 
-Counting is why the grid can't drift. Each tick is exactly one twenty-fourth of a beat by definition, so the position is arithmetic rather than an estimate, and a sketch left running for an hour is still on the beat. The tempo is estimated (it has to be, since nobody sends it), but that estimate only smooths motion *between* ticks and never moves the grid itself.
+Counting is why the grid can't drift. Each tick is exactly one twenty-fourth of a beat by definition, so the position is arithmetic rather than an estimate. A sketch left running for an hour is still on the beat. The tempo is estimated, because nobody sends it. That estimate only smooths motion *between* ticks, and never moves the grid itself.
 
-The readers in the figure cover most of what you'll want. `beats` is the running count with a fraction, `phase` is where you sit inside the current beat as `0...1`, and `bar` and `barPhase` are the same idea one level up, over however many beats you declare a bar to be. `progress(over:)` is the one to reach for most, giving you a ramp that resets every N beats, which is how you make a slow sweep that lands exactly on the downbeat.
+The readers in the figure cover most of what you'll want. `beats` is the running count with a fraction, and `phase` is where you sit inside the current beat as `0...1`. `bar` and `barPhase` are the same idea one level up, over however many beats you declare a bar to be. `progress(over:)` is the one to reach for most. It gives you a ramp that resets every N beats, which is how you make a slow sweep that lands exactly on the downbeat.
 
-`clock.beat` is the same ready-made pulse the analyzer's `beat` gave you earlier in this chapter, so a beat-reactive sketch can swap between hearing the room and reading the wire, which is worth knowing when the room is loud and the wire is honest.
+`clock.beat` is the same ready-made pulse the analyzer's `beat` gave you earlier in this chapter. A beat-reactive sketch can swap between hearing the room and reading the wire. That is worth knowing when the room is loud and the wire is honest.
 
-Two behaviors to expect from real gear. Pressing play on the master arms the clock and it starts on the *next* tick rather than immediately, which is the MIDI convention and keeps the first beat exact. And some gear, DJ mixers especially, never sends a transport message at all and simply free-runs its clock, so `TempoClock` starts following from the first tick it hears. The `Integration/TempoSync` example rehearses all of this with no hardware, by having the sketch send clock to itself, and [the MIDI reference](../Docs/Integration/MIDI.md#tempo-sync-tempoclock) has the full surface.
+Two behaviors to expect from real gear. Pressing play on the master arms the clock, and it starts on the *next* tick rather than immediately. That is the MIDI convention, and it keeps the first beat exact. And some gear, DJ mixers especially, never sends a transport message at all and simply free-runs its clock. `TempoClock` then starts following from the first tick it hears. The `Integration/TempoSync` example rehearses all of this with no hardware, by having the sketch send clock to itself. [The MIDI reference](../Docs/Integration/MIDI.md#tempo-sync-tempoclock) has the full surface.
 
 **OSC** is the networked cousin, the protocol of TouchOSC, Max/MSP, TouchDesigner, and most of the performance world. Messages are named by slash-paths and travel over the network, which means the fader can be a phone on the same Wi-Fi:
 
@@ -641,7 +641,7 @@ override func draw() {
 }
 ```
 
-Point TouchOSC (or anything that speaks OSC) at your Mac's IP and port 8000, and its controls land in the sketch. There's an `OSCSender` for the other direction, so a sketch can drive a mixer or a lighting desk too. And you can rehearse all of it with no hardware at all, because the `Integration/MIDILoopback` and `Integration/OSCLoopback` examples send to themselves, so the round-trip is visible on any bare Mac.
+Point TouchOSC (or anything that speaks OSC) at your Mac's IP and port 8000, and its controls land in the sketch. There's an `OSCSender` for the other direction, so a sketch can drive a mixer or a lighting desk too. And you can rehearse all of it with no hardware at all. The `Integration/MIDILoopback` and `Integration/OSCLoopback` examples send to themselves, so the round-trip is visible on any bare Mac.
 
 ## One knob, three hands
 
@@ -659,7 +659,7 @@ override func setup() {
 
 <img src="Images/20-SoundAndControl/BindingFlow.jpg" alt="A diagram of three boxes, a MIDI knob, an OSC message, and the inspector slider, with arrows converging on one @Param box, and one arrow onward to a dial labeled: the sketch reads radius" width="680">
 
-Each incoming value is mapped into the parameter's own range and assigned, and the sketch keeps reading plain `radius` without ever knowing who moved it. The inspector slider, the hardware, the phone, and plain assignment in code all stay live at once, and whichever moved most recently wins. One more line makes hardware feel good. Give the parameter a `smoothing:` (`.eased(0.3)` for a fixed glide, `.smoothed` for the adaptive filter that stays steady at rest and opens up under a moving hand), and every source glides instead of stepping, because the softening belongs to the knob rather than to the wire.
+Each incoming value is mapped into the parameter's own range and assigned. The sketch keeps reading plain `radius`, without ever knowing who moved it. The inspector slider, the hardware, the phone, and plain assignment in code all stay live at once, and whichever moved most recently wins. One more line makes hardware feel good. Give the parameter a `smoothing:` and every source glides instead of stepping. `.eased(0.3)` is a fixed glide, and `.smoothed` is the adaptive filter that stays steady at rest and opens up under a moving hand. The softening belongs to the knob rather than to the wire.
 
 ## Something to hold
 
@@ -680,13 +680,13 @@ override func draw() {
 
 <img src="Images/20-SoundAndControl/ReadingAPad.jpg" alt="A schematic game controller with the left stick held up and to the right, the right trigger half pulled, and the bottom face button lit, beside a list of five reads and the value each returns for that pose" width="820">
 
-Three kinds of question, three shapes of answer, and the split is the same one this chapter has been making all along. A stick is a **level**, a number you read every frame like a fader. A button press is a **moment**: `wasPressed` is true on the one frame it went down and false while you keep holding, so a sketch drops one thing per press without counting anything itself. A controller arriving or leaving is both, so `isConnected` is the state and `didConnect` is the moment.
+Three kinds of question, three shapes of answer, and the split is the same one this chapter has been making all along. A stick is a **level**, a number you read every frame like a fader. A button press is a **moment**. `wasPressed` is true on the one frame it went down, and false while you keep holding. A sketch drops one thing per press without counting anything itself. A controller arriving or leaving is both, so `isConnected` is the state and `didConnect` is the moment.
 
-There's no queue to drain here, unlike MIDI, and that's a decision rather than an omission. **A hand can't press and release a button between two frames.** A press lasts something like a tenth of a second, which is several frames; a drum machine can send faster than that, which is why MIDI has `messages()` and this doesn't.
+There's no queue to drain here, unlike MIDI, and that's a decision rather than an omission. **A hand can't press and release a button between two frames.** A press lasts something like a tenth of a second, which is several frames. A drum machine can send faster than that, which is why MIDI has `messages()` and this doesn't.
 
-With nothing plugged in, everything reads centered and nothing is pressed. The sketch still runs, so you can write it on a train and try it later, and there's no check needed at every call site. Ask `isConnected` when you actually want to say "plug one in".
+With nothing plugged in, everything reads centered and nothing is pressed. The sketch still runs, so you can write it on a train and try it later. No check is needed at every call site. Ask `isConnected` when you actually want to say "plug one in".
 
-Two things the figure is really about. The sticks read in canvas terms, so pushing up gives a *negative* y, and `position += controller.leftStick * speed` moves up the screen with no sign to remember. And buttons are named by where they sit rather than by what's printed on them, so `.a` is the bottom face button whether the pad in your hands calls it cross or A, and a sketch written on one controller works on the other.
+Two things the figure is really about. The sticks read in canvas terms, so pushing up gives a *negative* y value. Then `position += controller.leftStick * speed` moves up the screen. And buttons are named by where they sit rather than by what's printed on them. Button `.a` is the bottom face button, whether the pad in your hands calls it cross or A. A sketch written on one controller works on the other.
 
 Motion is worth knowing about before you plan around it. PlayStation and Switch controllers have gyros; Xbox controllers have no motion sensors at all and never will. The sensors also cost battery, so they stay off until you ask:
 
@@ -698,13 +698,13 @@ if controller.hasMotion { rotate(controller.gravity.x * 0.5) }
 
 `hasMotion` is false both when the hardware has none and when nothing has asked for it, so check it rather than assuming. A PlayStation pad also has a touchpad, under `touch` and `isTouching`.
 
-Several people can play: `controller(2)` is player two, and a controller keeps its number while it stays connected, so unplugging player two doesn't turn player three into player two.
+Several people can play. `controller(2)` is player two, and a controller keeps its number while it stays connected. Unplugging player two doesn't turn player three into player two.
 
-Because a controller is live input, an export reads it as centered and says so, the same way the microphone did earlier. The `Integration/ControllerInput` example turns a pad into a drawing instrument, with a `map` knob that draws every stick, trigger and button as it's read, which is the fastest way to tell whether a controller is talking to the machine at all. [The controller reference](../Docs/Integration/Controller.md) has the rest, including the deadzone and running while another window is in front.
+Because a controller is live input, an export reads it as centered and says so, the same way the microphone did earlier. The `Integration/ControllerInput` example turns a pad into a drawing instrument. A `map` knob draws every stick, trigger and button as it's read. That is the fastest way to tell whether a controller is talking to the machine at all. See [the controller reference](../Docs/Integration/Controller.md) for the rest, including the deadzone and running while another window is in front.
 
 ## Putting it together: a playable instrument
 
-The finished piece wires the whole chapter together: `bands` worn as a crown of spokes, a core that throbs on `beatCount`, sparks flung on each arrival, and two `@Param` knobs waiting for whatever hands you have. Make `MySketches/Resonator.swift` (bring `StageMic` along from [`Anatomy.swift`](Figures/20-SoundAndControl/Anatomy.swift); the committed figure with everything together is [`Resonator.swift`](Figures/20-SoundAndControl/Resonator.swift)):
+The finished piece wires the whole chapter together. `bands` is worn as a crown of spokes, and a core throbs on `beatCount`. Sparks are flung on each arrival, and two `@Param` knobs wait for whatever hands you have. Make `MySketches/Resonator.swift`, and bring `StageMic` along from [`Anatomy.swift`](Figures/20-SoundAndControl/Anatomy.swift). The committed figure with everything together is [`Resonator.swift`](Figures/20-SoundAndControl/Resonator.swift):
 
 ```swift
 import Ollin
@@ -811,7 +811,7 @@ final class Resonator: Sketch {
 
 <img src="Images/20-SoundAndControl/Resonator.jpg" alt="The finished Resonator: an amber orb below center wearing a tilted crown of spectrum spokes, sparks scattered around it against the dark" width="560">
 
-Each spoke is a `drawOrientedBox`, which fills a thick bar between two points at whatever angle they happen to lie, so a band level turns straight into a spike pointing out from the center. The additive blend and the ACES tone map from Chapter 14 are what make the glow feel like light instead of paint, and the mirrored bands are an old trick that keeps a spectrum symmetric and calm. Watch it run and the crown breathes with the arpeggio while the core keeps time.
+Each spoke is a `drawOrientedBox`, which fills a thick bar between two points at whatever angle they happen to lie. A band level turns straight into a spike pointing out from the center. The additive blend and the ACES tone map from Chapter 14 are what make the glow feel like light instead of paint. The mirrored bands are an old trick that keeps a spectrum symmetric and calm. Watch it run and the crown breathes with the arpeggio while the core keeps time.
 
 Then make it yours:
 
@@ -822,7 +822,14 @@ Then make it yours:
 
 ## Where this comes from
 
-The idea that any sound splits into pure vibrations is Joseph Fourier's (1822), and the fast algorithm that made it real-time, the FFT, is Cooley and Tukey's (1965), and Ollin runs Apple's implementation. Detecting arrivals by spectral flux is a standard technique from music information retrieval, surveyed well in Bello and colleagues' onset-detection tutorial (2005), and the real-time recipe Ollin follows is Böck, Krebs, and Schedl's online method (2012). Hearing a shape has a mathematical name, from Mark Kac's 1966 question "Can one hear the shape of a drum?", and an answer: not always, since two different outlines can ring identically, but you can certainly hear a great deal of it. Working the frequencies out from the outline is modal synthesis, set out for sound by Jean-Marie Adrien and developed for struck objects by Kees van den Doel and Dinesh Pai. The plucked string is Kevin Karplus and Alex Strong's algorithm (1983), a discovery in the literal sense: they were building a wavetable synthesizer, noticed that a bug which averaged the table as it played turned a burst of noise into a plucked string, and worked out afterwards why. David Jaffe and Julius Smith published the extensions the same year, and it is their version, tuned by an allpass and plucked at a position, that Ollin implements. The even spread behind `Rhythm` is Eric Bjorklund's algorithm for timing pulses in a spallation neutron source, which Godfried Toussaint connected to musical timelines in 2005, along with the names of the rhythms it produces. MIDI was created in 1983 by Dave Smith and Ikutaro Kakehashi so rival instruments could talk to each other, a rare act of industry peace that still works four decades later. Open Sound Control came from Matt Wright and Adrian Freed at CNMAT, Berkeley (1997), built for the networked, higher-resolution rigs MIDI predates. And the audio-reactive visual itself has a long lineage, from Oskar Fischinger's hand-drawn sound films through the oscilloscope and music-visualizer traditions to today's VJ and live-coding scenes. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The idea that any sound splits into pure vibrations is Joseph Fourier's (1822). The fast algorithm that made it real-time, the FFT, is Cooley and Tukey's (1965), and Ollin runs Apple's implementation.
+
+Detecting arrivals by spectral flux is a standard technique from music information retrieval. Bello and colleagues survey it well in their onset-detection tutorial (2005). The real-time recipe Ollin follows is Böck, Krebs, and Schedl's online method (2012).
+
+Hearing a shape has a mathematical name, from Mark Kac's 1966 question "Can one hear the shape of a drum?". It also has an answer. Not always, since two different outlines can ring identically, but you can certainly hear a great deal of it. Working the frequencies out from the outline is modal synthesis. Jean-Marie Adrien set it out for sound, and Kees van den Doel and Dinesh Pai developed it for struck objects.
+
+The plucked string is Kevin Karplus and Alex Strong's algorithm (1983), a discovery in the literal sense. They were building a wavetable synthesizer, and a bug which averaged the table as it played turned a burst of noise into a plucked string. They worked out afterwards why. David Jaffe and Julius Smith published the extensions the same year. It is their version, tuned by an allpass and plucked at a position, that Ollin implements. 
+The even spread behind `Rhythm` is Eric Bjorklund's algorithm for timing pulses in a spallation neutron source. Godfried Toussaint connected it to musical timelines in 2005, along with the names of the rhythms it produces. MIDI was created in 1983 by Dave Smith and Ikutaro Kakehashi so rival instruments could talk to each other. It was a rare act of industry peace that still works four decades later. Open Sound Control came from Matt Wright and Adrian Freed at CNMAT, Berkeley (1997), built for the networked, higher-resolution rigs MIDI predates. And the audio-reactive visual itself has a long lineage. It runs from Oskar Fischinger's hand-drawn sound films through the oscilloscope and music-visualizer traditions to today's VJ and live-coding scenes. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
