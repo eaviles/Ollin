@@ -6811,6 +6811,62 @@ what leaves the window (a P3 file read by a consumer that ignores the tag reads
 oversaturated; Syphon and the virtual camera feed such consumers) and about
 re-recording every reference and figure, rather than about speed.
 
+### A still keeps its highlights in a gain map
+
+PNG stops at white, so `--export frame.png` throws away the one thing
+`.extended` exists for. `--export frame.heic` writes HEIC instead, with an
+ISO 21496-1 gain map beside the picture (`Export/GainMapExport.swift`). The
+picture is the frame clamped at white, which is what the PNG already carries.
+The map records, per pixel and per channel, the ratio between the two. Each
+decision below was settled by measuring, and each one has an obvious wrong
+answer.
+
+**The map is computed here, not by the imaging framework.** Core Image will
+derive one from an SDR/HDR pair (`kCIImageRepresentationHDRImage`), but its
+ceiling comes from the frame's statistics rather than its peak. Measured on a
+synthetic frame peaking at 4x white, varying only how much of it is bright:
+
+| highlight area | peak read back |
+| --- | --- |
+| 0.1% | 0.99x |
+| 1% | 1.75x |
+| 5% | 3.63x |
+| 25% and up | 4.00x |
+
+A sketch's highlights are small by nature (a lamp core, a spark, a specular
+hit), so that behaviour deletes them. Declaring `CIImage.contentHeadroom` does
+not help, though the header says it drives the calculation: the value is live
+(the tone-map filter reads it) and the writer ignores it. Supplying a
+ready-made map through `kCIImageRepresentationHDRGainMapImage` writes the
+legacy Apple auxiliary type rather than the ISO one. So the map, its metadata,
+and the file are built with ImageIO directly.
+
+**The map carries a gain per channel.** Clamping happens per channel, so a
+bright colour clamps unevenly. An amber core of (4.0, 2.2, 0.72) becomes
+(1, 1, 0.72), which needs three different multipliers to undo. Measured with
+one channel for all three: green came back 81% high, blue 300% high. With
+three channels: every channel within 0.6%.
+
+**The base is written losslessly.** `kCGImageDestinationLossyCompressionQuality`
+is 1.0, so a still export stays as faithful as the PNG it replaces. The
+reconstruction error is then the 8-bit base's own quantization, about 0.6% at
+mid grey and under 2% at the peak.
+
+The metadata is the `HDRToneMap` namespace ImageIO reads back: `Version`,
+`BaseHeadroom`, `AlternateHeadroom`, `BaseColorIsWorkingColor`, and one
+`ChannelMetadata` entry per channel carrying `GainMapMin`, `GainMapMax`,
+`Gamma`, `BaseOffset`, and `AlternateOffset`. Reconstruction is
+`(base + offset) * 2^(e * GainMapMax) - offset`, where `e` is the stored byte
+over 255. ImageIO re-encodes the three-channel map as 4:2:0 (`'420f'`), so the
+*differences between* channels are stored at half resolution; the overall gain
+is not.
+
+A frame whose peak is at or below white carries no map at all, and
+`OllinApp.StillExport.keepsHighlights` reports which happened.
+`GainMapExportTests` pins the peak, the colour, the base, the ISO type, and the
+declared ceiling; the per-channel map and the true-peak ceiling were both
+verified red by sabotage.
+
 ---
 
 ## Live reload and the live-coding hosts

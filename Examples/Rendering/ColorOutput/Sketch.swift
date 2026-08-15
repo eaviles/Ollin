@@ -25,9 +25,11 @@ import Ollin
 /// visible. Turn the display brightness down and watch the number climb, since
 /// the system grants headroom relative to how bright white already is.
 ///
-/// Export it and the two halves go their separate ways: `--export-video` writes
-/// HDR10, which keeps the bright core, while a PNG keeps the wide gamut but not
-/// the range (no still format here carries brightness above white).
+/// Export it and both halves survive, as long as the format can hold them.
+/// `--export-video` writes HDR10. `--export lamp.heic` writes a still whose
+/// bright core rides along in a gain map, and reports how far above white it
+/// went. `--export lamp.png` keeps the wide gamut but clips the core, because
+/// PNG has nowhere to put brightness above white.
 @main
 final class ColorOutput_Example: Sketch {
 

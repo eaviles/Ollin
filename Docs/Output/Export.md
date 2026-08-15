@@ -21,7 +21,7 @@ swift run OllinLive MySketches/Loop.swift --export poster.png --frame 90
 
 ### Contents
 
-- [Raster: PNG and sequences](#raster-png-and-sequences) - `--export`, `--export-sequence`
+- [Raster: PNG and sequences](#raster-png-and-sequences) - `--export` (PNG, or HEIC to keep highlights), `--export-sequence`
 - [Render quality](#render-quality) - `--render-quality`, the live vs. export default
 - [Sound](#sound) - a sketch's own music, in the file
 - [Video](#video) - `--export-video`, `OllinApp.exportVideo`
@@ -57,6 +57,14 @@ swift run --package-path Examples Example-Motion-Breathing --export-sequence /tm
 Both render through Metal off-screen, with MSAA and then a resolve, so the pixels match the live window. The same capability is available as `OllinApp.image(of:frame:)`, `OllinApp.export(_:to:frame:)`, and `OllinApp.exportSequence(...)`. The first returns a `CGImage`. For a *reproducible* sequence, seed the sketch with `seed(…)` in `setup()`. Sources that follow the export clock stay reproducible too. A [`VideoPlayer`](../Video/Video.md) decodes by the sketch clock, so frame `k` shows the clip at `k / fps`. An [`AudioPlayer`](../Helpers/Audio.md#audioplayer) feeds its analyzer the same slice of its file each frame. An audio-reactive piece therefore exports with its beats in the same places every run.
 
 The sequence is the raw-material path, keeping every frame as a lossless PNG for an external encoder or an edit. When the goal is just a file to share, the next two sections encode directly and skip the stitching step.
+
+The file name picks the format for a single frame. A `.heic` (or `.heif`) path writes HEIC instead of PNG:
+
+```sh
+swift run --package-path Examples Example-Rendering-ColorOutput --export /tmp/frame.heic
+```
+
+For an ordinary sketch that is the same picture in a smaller file. For a sketch that declared [`colorOutput`](../Drawing/ColorOutput.md) `.extended`, HEIC is the only still format that keeps brightness above white. It stores it in a gain map beside the picture, and PNG has nowhere to put it.
 
 ### Render quality
 

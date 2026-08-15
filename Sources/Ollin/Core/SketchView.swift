@@ -1377,21 +1377,40 @@ public enum OllinApp {
         return renderer.image(of: sketch.drawer, viewport: viewport, width: width, height: height)
     }
 
-    /// Render one frame of `sketch` off-screen and write it as a PNG — no window.
-    /// Drives the sketch headlessly: `setup()`, then `draw()` advanced to `frame`
-    /// at `fps` (so animated/stateful sketches export the right moment). The
-    /// headless frame-grab (`image(of:)`) plus a PNG write, and the basis for PNG
-    /// sequences → video.
+    /// Render one frame of `sketch` off-screen and write it as a still, with no
+    /// window. Drives the sketch headlessly: `setup()`, then `draw()` advanced to
+    /// `frame` at `fps` (so animated/stateful sketches export the right moment).
+    /// The headless frame-grab (`image(of:)`) plus an image write, and the basis
+    /// for PNG sequences → video.
+    ///
+    /// The file name picks the format. A `.heic` (or `.heif`) path writes HEIC,
+    /// which is the one that can keep brightness above white: an `extended`
+    /// sketch's highlights ride along in an ISO gain map. Everything else writes
+    /// a PNG, which stops at white.
     public static func export(_ sketch: Sketch, to path: String, frame: Int = 0, fps: Double = 60,
                               quality: RenderQuality = .detail) {
         guard let cgImage = image(of: sketch, frame: frame, fps: fps, quality: quality) else {
             fatalError("Ollin: failed to render the frame for export (no Metal device?)")
         }
         let recipe = ExportMetadata.capture(from: sketch, frame: frame, fps: fps).recipe
-        guard writePNG(cgImage, to: path, recipe: recipe) else {
-            fatalError("Ollin: failed to write \(path)")
+        let size = "\(cgImage.width)×\(cgImage.height)"
+        switch URL(fileURLWithPath: path).pathExtension.lowercased() {
+        case "heic", "heif":
+            guard let still = writeHEIC(cgImage, to: path, recipe: recipe) else {
+                fatalError("Ollin: failed to write \(path)")
+            }
+            // Say whether the highlights made it, since that is the whole reason
+            // to choose this format and it depends on what the frame drew.
+            let carried = still.keepsHighlights
+                ? String(format: ", highlights to %.2fx white in a gain map", still.peak)
+                : ", nothing above white to keep"
+            print("Ollin: exported frame \(frame) → \(path) (\(size)\(carried))")
+        default:
+            guard writePNG(cgImage, to: path, recipe: recipe) else {
+                fatalError("Ollin: failed to write \(path)")
+            }
+            print("Ollin: exported frame \(frame) → \(path) (\(size))")
         }
-        print("Ollin: exported frame \(frame) → \(path) (\(cgImage.width)×\(cgImage.height))")
     }
 
     /// Render a deterministic PNG sequence of `sketch` into `directory` — no

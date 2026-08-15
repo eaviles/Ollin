@@ -274,7 +274,16 @@ fill(Color(displayP3: 1, green: 0, blue: 0))    // a red sRGB cannot make
 
 Its stored components come out slightly outside 0…1, which is how a color says "further than sRGB goes". Nothing clamps it on the way through. On a `.standard` sketch it simply lands on the nearest sRGB red at the end, so naming one is always safe.
 
-Two honest limits. The brightness half depends on the display having headroom to spare at that moment. The system gives and takes it as screen brightness changes. Read `displayHeadroom` to see what you actually got, where 1.0 means none. And an exported PNG keeps the wide color but not the brightness, because still formats have nowhere to put it. Video has somewhere to put it. An `.extended` sketch's `--export-video` is written as HDR10 with no extra flags.
+One honest limit. The brightness half depends on the display having headroom to spare at that moment. The system gives and takes it as screen brightness changes. Read `displayHeadroom` to see what you actually got, where 1.0 means none.
+
+Getting it out of the window is a question of format. An exported PNG keeps the wide color but not the brightness, because PNG stops at white. Two formats do not. An `.extended` sketch's `--export-video` is written as HDR10 with no extra flags, and a still asked for by name keeps its highlights:
+
+```sh
+swift run --package-path Examples Example-Rendering-ColorOutput --export lamp.heic
+# Ollin: exported frame 0 → lamp.heic (1080×1080, highlights to 2.70x white in a gain map)
+```
+
+The picture inside that file is the PNG, so anything at all can open it. Beside it sits a record of the light that was clipped away, called a gain map. A display with headroom puts it back.
 
 You cannot see either one in this page's figures, which is the point. Run [`Examples/Rendering/ColorOutput`](../Examples/Rendering/ColorOutput/Sketch.swift) on a recent Mac laptop instead, and turn the screen brightness down while you watch.
 

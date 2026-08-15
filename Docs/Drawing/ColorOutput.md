@@ -78,13 +78,31 @@ Two consequences worth knowing before reaching for `.extended`:
 | Export | `.standard` | `.wide` | `.extended` |
 | --- | --- | --- | --- |
 | `--export` (PNG) | 8-bit sRGB | 16-bit Display P3 | 16-bit Display P3, highlights clipped to white |
+| `--export` (HEIC) | 8-bit sRGB | 8-bit Display P3 | Display P3 **plus an ISO gain map**: the highlights ride along |
 | `--export-video` | Rec. 709 | P3-D65 | **HDR10**: Rec. 2020 primaries, PQ transfer, 10-bit HEVC |
 | `--export-gif` | sRGB | converted to sRGB | converted to sRGB |
 | `--export-svg` / `--export-pdf` | unaffected (vector output carries its own color) |
 
 An `.extended` video is written as HDR10 with no further flags. The codec is forced to `hevc` if it was left at the h264 default, because eight bits cannot carry it. The encoder is asked to work out the mastering-display and content-light-level metadata the file declares. In the file, 1.0 is the standard's reference white of 203 cd/m². An exported clip's paper white therefore lands where every other HDR video's does. The peak carried is 1000 cd/m², about 4.9x white.
 
-**Stills keep the gamut but not the range.** PNG and HEIC have nowhere to put brightness above white without a gain map. An `.extended` still is a wide-gamut one with its highlights clipped. If the highlights are the point, export video.
+**A HEIC still keeps the range as well as the gamut.** The file name picks the format: `--export frame.heic` writes HEIC, `--export frame.png` writes PNG. PNG stops at white. HEIC carries a second image beside the picture, a gain map, recording how much light was thrown away making it. A display with headroom multiplies the two and gets the frame back.
+
+```sh
+swift run --package-path Examples Example-Rendering-ColorOutput --export lamp.heic
+# Ollin: exported frame 0 → lamp.heic (1080×1080, highlights to 2.70x white in a gain map)
+```
+
+The line says what travelled. A frame that never went above white carries no gain map, and says so.
+
+What the file guarantees:
+
+- The picture in it is the PNG. A reader that knows nothing of gain maps shows the frame clamped at white.
+- The map's ceiling is the frame's own brightest value, so a small highlight keeps its brightness. A lamp core covers a fraction of a percent of the canvas. A map whose ceiling comes from frame statistics loses such a highlight.
+- The map holds a gain per channel, so a bright amber core stays amber. Reconstruction is accurate to about one percent, the floor set by the 8-bit picture under it.
+
+The format is ISO 21496-1, the cross-vendor gain-map standard, rather than a private arrangement between Ollin and one viewer.
+
+PNG is still the deeper file in one way. It writes 16 bits a channel where HEIC writes 8, so a slow gradient has more levels to work with. Pick HEIC when the highlights matter, and PNG when precision does.
 
 <a id="notes"></a>
 ### Notes
