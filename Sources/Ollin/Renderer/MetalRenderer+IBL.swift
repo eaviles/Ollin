@@ -598,7 +598,7 @@ extension MetalRenderer {
         rp.colorAttachments[0].texture = tex
         rp.colorAttachments[0].loadAction = .dontCare
         rp.colorAttachments[0].storeAction = .store
-        guard let enc = cb.makeRenderCommandEncoder(descriptor: rp) else { return nil }
+        guard let enc = countedEncoder(cb, rp) else { return nil }
         enc.setRenderPipelineState(pipe)
         enc.setFragmentBytes(&sky, length: sky.count * MemoryLayout<SIMD4<Float>>.stride, index: 0)
         if let noise {
@@ -710,7 +710,7 @@ extension MetalRenderer {
         rp.colorAttachments[0].level = level
         rp.colorAttachments[0].loadAction = .dontCare
         rp.colorAttachments[0].storeAction = .store
-        guard let enc = cb.makeRenderCommandEncoder(descriptor: rp) else { return }
+        guard let enc = countedEncoder(cb, rp) else { return }
         enc.setRenderPipelineState(pipeline)
         for (i, t) in inputs.enumerated() { enc.setFragmentTexture(t, index: i) }
         var p = params
@@ -733,7 +733,7 @@ extension MetalRenderer {
         rp.colorAttachments[0].texture = lut
         rp.colorAttachments[0].loadAction = .dontCare
         rp.colorAttachments[0].storeAction = .store
-        guard let enc = cb.makeRenderCommandEncoder(descriptor: rp) else { return }
+        guard let enc = countedEncoder(cb, rp) else { return }
         enc.setRenderPipelineState(pipe)
         enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         enc.endEncoding()
@@ -760,7 +760,7 @@ extension MetalRenderer {
         rp.colorAttachments[0].texture = lut
         rp.colorAttachments[0].loadAction = .dontCare
         rp.colorAttachments[0].storeAction = .store
-        guard let enc = cb.makeRenderCommandEncoder(descriptor: rp) else { return }
+        guard let enc = countedEncoder(cb, rp) else { return }
         enc.setRenderPipelineState(pipe)
         enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         enc.endEncoding()

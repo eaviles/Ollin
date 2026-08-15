@@ -215,16 +215,6 @@ Two facts about the surface constrain anything built on this tier, and both are 
 
 License hygiene carries over: a third-party extension is the author's own package under their own license, not bundled, so it sidesteps the vendoring rules entirely.
 
-## Performance profiling and GPU debugging
-
-Ollin's pitch is the GPU rendering ceiling, but a sketch author has no view into *their own* sketch's cost beyond the FPS and stats overlay (`FrameStats`: fps, CPU frame time, vertex and SDF draw counts). The gap is a real profiler. The renderer's performance model (recorded in `CLAUDE.md`) is that CPU tessellation is the first bottleneck, not the GPU, so the author needs to *see* where the frame goes:
-
-- **A per-frame cost breakdown:** draw calls, vertices, and tessellation cost split by batch kind (SDF vs triangle vs fringe vs image vs glyph vs 3D), so a hot loop is attributable to a primitive.
-- **An honest CPU-versus-GPU frame-time split.** The FPS overlay already learned that timing across the present semaphore measures vsync, not work, so the split times `performDraw()` apart from the GPU submit.
-- **A Metal frame-capture hook** for the deep cases, handing the author off to Xcode's GPU frame debugger on the actual render.
-
-It builds on the `FrameStats` and extension-seam machinery (the overlay is the first reader of the same data), so it's a richer reader plus more counters, not new infrastructure. The audience is anyone whose sketch dropped below 60, which on an immediate-mode GPU framework is a when, not an if.
-
 ## Accessibility and inclusive text
 
 Inclusivity on the platform's native support. What ships is in [`Docs/Helpers/Accessibility.md`](Docs/Helpers/Accessibility.md); one decision from it carries forward, which is that nothing is applied on a sketch's behalf, since only the sketch knows which of its movements, distinctions or shapes is load-bearing. What is left:

@@ -198,7 +198,7 @@ extension MetalRenderer {
         pass.depthAttachment.loadAction = .clear
         pass.depthAttachment.clearDepth = 1.0
         pass.depthAttachment.storeAction = .dontCare
-        guard let enc = cb.makeRenderCommandEncoder(descriptor: pass) else { return resolved }
+        guard let enc = countedEncoder(cb, pass) else { return resolved }
         enc.setViewport(MTLViewport(originX: 0, originY: 0, width: Double(width),
                                     height: Double(height), znear: 0, zfar: 1))
         enc.setRenderPipelineState(maskPipe)

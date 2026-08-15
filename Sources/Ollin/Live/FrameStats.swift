@@ -17,6 +17,10 @@ public enum OllinHUD {
     /// `@AppStorage` key for the "Orthographic" camera-menu toggle, read each frame
     /// by the runner and applied to the rig (perspective when off).
     public static let orthographicKey = "ollin.hud.orthographic"
+    /// `UserDefaults` key the "Capture GPU Frame" command sets. Unlike the
+    /// toggles above this is a one-shot: the runner takes it on the next frame
+    /// and clears it, so the menu item reads as an action rather than a state.
+    public static let captureFrameKey = "ollin.hud.captureFrame"
     /// Window identifier for the floating stats panel, so the standalone app
     /// delegate can tell it apart from the sketch window (and not quit when only
     /// the panel is closed).
@@ -52,6 +56,10 @@ public final class FrameStats {
     /// The sketch's current variation seed, mirrored for the seed-navigation
     /// card (`nil` until the first refresh).
     public internal(set) var variation: Int?
+    /// The frame's cost breakdown: where the time went, and what each drawing
+    /// path did to earn it. The counts above are the headline numbers; this is
+    /// the answer to "why". See `FrameProfile`.
+    public internal(set) var profile = FrameProfile()
 
     public init() {}
 
@@ -61,7 +69,9 @@ public final class FrameStats {
 
     func update(fps: Double, frameTimeMS: Double, frameCount: Int, time: Double,
                 vertexCount: Int, sdfCount: Int, pointCount: Int, particleCount: Int,
-                canvasWidth: Double, canvasHeight: Double, variation: Int) {
+                canvasWidth: Double, canvasHeight: Double, variation: Int,
+                profile: FrameProfile) {
+        self.profile = profile
         self.fps = fps
         self.frameTimeMS = frameTimeMS
         self.frameCount = frameCount
@@ -103,12 +113,13 @@ final class StatsExtension: SketchExtension {
         let pointCount = info.pointCount, particleCount = info.particleCount
         let canvasWidth = sketch.width, canvasHeight = sketch.height
         let variation = sketch.variation
+        let profile = info.profile
         DispatchQueue.main.async {
             stats.update(fps: fps, frameTimeMS: frameTimeMS, frameCount: frameCount,
                          time: time, vertexCount: vertexCount, sdfCount: sdfCount,
                          pointCount: pointCount, particleCount: particleCount,
                          canvasWidth: canvasWidth, canvasHeight: canvasHeight,
-                         variation: variation)
+                         variation: variation, profile: profile)
         }
     }
 }

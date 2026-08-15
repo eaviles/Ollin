@@ -2787,6 +2787,18 @@ open class Sketch {
         for e in extensions { e.afterFrame(self, info) }
     }
 
+    /// A GPU frame capture the sketch asked for (see `captureGPUFrame(to:)`),
+    /// waiting for the runner to take it on the next frame. One at a time: a
+    /// second request before the first is served replaces it.
+    var pendingGPUCapture: URL?
+
+    /// Take the pending capture request, if any, leaving none behind. The runner
+    /// calls this once per frame.
+    func takeGPUCaptureRequest() -> URL? {
+        defer { pendingGPUCapture = nil }
+        return pendingGPUCapture
+    }
+
     /// Whether any registered extension currently wants the rendered frame.
     /// Computed live (not cached), so an extension can arm/disarm capture
     /// between frames; the runner reads it each frame and only pays the

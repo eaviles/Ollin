@@ -19,6 +19,10 @@ public struct FrameInfo: Sendable {
     /// the GPU-resident paths, which aren't in any CPU vertex array.
     public let pointCount: Int
     public let particleCount: Int
+    /// The frame's cost breakdown: the four-way time split and the work each
+    /// drawing path did (see `FrameProfile`). The four times arrive smoothed,
+    /// like `frameRate` and `cpuDrawMS`; the counts are this frame's exactly.
+    public let profile: FrameProfile
 }
 
 /// A pluggable lifecycle participant — Ollin's `extend(...)` seam. Register one

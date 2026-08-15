@@ -138,10 +138,6 @@ The framework grows past the core team only when other people can publish and fi
 
 See the [design notes](DESIGN-NOTES.md#a-third-party-extension-ecosystem).
 
-## Performance profiling and GPU debugging
-
-Ollin sits on a GPU core and pitches the rendering ceiling, but it doesn't yet help a sketch author see *their own* cost. The FPS and stats overlay is the seed; the gap is a real profiler: a per-frame breakdown (draw calls, vertices, tessellation, and SDF vs triangle vs fringe batches), an honest CPU-versus-GPU frame-time split so the CPU-tessellation cost is visible when it bites, and a hook into Metal's frame capture for the deep cases. A framework that's fast should make it easy to find out why a particular sketch isn't. See the [design notes](DESIGN-NOTES.md#performance-profiling-and-gpu-debugging).
-
 ## Accessibility and inclusive text
 
 Making Ollin and the work people make with it more inclusive, on the platform's native support. What a sketch can already do for color, motion, describing itself, and text in any script is in [Accessibility](Docs/Helpers/Accessibility.md) and [Text](Docs/Drawing/Text.md#scripts). Text can be set in columns for Japanese and Chinese, which fill right to left. What remains is **Mongolian**, whose columns fill the other way, and **hanging punctuation**, where a full stop is allowed to sit past the end of a line. See the [design notes](DESIGN-NOTES.md#accessibility-and-inclusive-text).

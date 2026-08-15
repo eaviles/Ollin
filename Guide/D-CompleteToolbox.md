@@ -284,6 +284,7 @@ Use it two ways. It is an index for the moment you remember the guide showing bl
 | Screen capture | Any display, app, or window on the Mac as a live frame source, whether or not it cooperates the way Syphon needs; a tracker reads it like a camera, and leaving your own window in gives you the feedback tunnel | [Ch 21](21-Seeing.md) | [ScreenCapture](../Docs/Integration/ScreenCapture.md) |
 | Live coding | `swift run OllinLiveCoding`: code over visuals, evaluate mid-motion, perform | [Ch 22](22-SharingAndPerforming.md) | [LiveCoding](../Docs/Tools/LiveCoding.md) |
 | Extensions | `Sketch.extend`: hooks before, during, and after each frame, for recorders and chrome | [Ch 22](22-SharingAndPerforming.md) | [Sketch](../Docs/Core/Sketch.md#extensions) |
+| Profiling | The inspector's cost row: CPU against GPU on one frame's scale, the draw, pass and batch counts, and a frame handed to Xcode | [Ch 22](22-SharingAndPerforming.md) | [Profiling](../Docs/Tools/Profiling.md) |
 | Writing an extension | `ollin new --kind extension`: a library other sketches import, the `ollinx-` naming convention, and the four seams to build on | [Ch 22](22-SharingAndPerforming.md) | [Extensions](../Docs/Tools/Extensions.md) |
 | Accessibility | See your colors through the three kinds of color vision, check whether a palette holds apart, and read the reduce-motion setting | [Ch 2](02-Color.md), [Ch 3](03-MotionAndTime.md) | [Accessibility](../Docs/Helpers/Accessibility.md) |
 

@@ -113,7 +113,7 @@ extension MetalRenderer {
             // A clip pushed inside this layer gives its pass a stencil attachment.
             let passHasStencil = attachClipStencil(to: pass, active: target.needsStencil,
                                                    width: pw, height: ph)
-            guard let enc = cb.makeRenderCommandEncoder(descriptor: pass) else { continue }
+            guard let enc = countedEncoder(cb, pass) else { continue }
             // Geometry inside the block used canvas coordinates, so map by the logical
             // size; a fraction-res layer's smaller attachment just downsamples.
             encode(drawer, viewport: SIMD2(Float(target.width), Float(target.height)), into: enc,
@@ -181,7 +181,7 @@ extension MetalRenderer {
             pass.colorAttachments[0].storeAction = .multisampleResolve
             let passHasStencil = attachClipStencil(to: pass, active: target.needsStencil,
                                                    width: pw, height: ph)
-            guard let enc = cb.makeRenderCommandEncoder(descriptor: pass) else { continue }
+            guard let enc = countedEncoder(cb, pass) else { continue }
             encode(drawer, viewport: SIMD2(Float(target.width), Float(target.height)), into: enc,
                    triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf, imageBuffer: buffers.image,
                    glyphBuffer: buffers.glyph, pointBuffer: buffers.point, meshBuffer: buffers.mesh,
@@ -230,7 +230,7 @@ extension MetalRenderer {
             pass.colorAttachments[0].storeAction = .multisampleResolve
             let passHasStencil = attachClipStencil(to: pass, active: target.needsStencil,
                                                    width: pw, height: ph)
-            if let enc = cb.makeRenderCommandEncoder(descriptor: pass) {
+            if let enc = countedEncoder(cb, pass) {
                 encode(drawer, viewport: SIMD2(Float(target.width), Float(target.height)), into: enc,
                        triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf, imageBuffer: buffers.image,
                        glyphBuffer: buffers.glyph, pointBuffer: buffers.point, meshBuffer: buffers.mesh,
@@ -1454,7 +1454,7 @@ extension MetalRenderer {
         pass.colorAttachments[0].texture = output
         pass.colorAttachments[0].loadAction = .dontCare
         pass.colorAttachments[0].storeAction = .store
-        guard let enc = cb.makeRenderCommandEncoder(descriptor: pass) else { return }
+        guard let enc = countedEncoder(cb, pass) else { return }
         enc.setRenderPipelineState(state)
         for (i, tex) in inputs.enumerated() { enc.setFragmentTexture(tex, index: i) }
         enc.setFragmentSamplerState(imageSampler, index: 0)
@@ -1500,7 +1500,7 @@ extension MetalRenderer {
         pass.colorAttachments[0].texture = output
         pass.colorAttachments[0].loadAction = .dontCare
         pass.colorAttachments[0].storeAction = .store
-        guard let enc = cb.makeRenderCommandEncoder(descriptor: pass) else { return }
+        guard let enc = countedEncoder(cb, pass) else { return }
         enc.setRenderPipelineState(state)
         for (i, tex) in inputs.enumerated() { enc.setFragmentTexture(tex, index: i) }
         enc.setFragmentSamplerState(imageSampler, index: 0)
@@ -1683,7 +1683,7 @@ extension MetalRenderer {
         pass.colorAttachments[0].loadAction = .clear
         pass.colorAttachments[0].clearColor = color
         pass.colorAttachments[0].storeAction = .store
-        cb.makeRenderCommandEncoder(descriptor: pass)?.endEncoding()
+        countedEncoder(cb, pass)?.endEncoding()
     }
 
     /// Acquire an MSAA + resolve pair for a geometry target. Pooled: reuse the slot
@@ -1932,6 +1932,7 @@ extension MetalRenderer {
             var skyParams = SIMD4<Float>(lighting.iblRotation, lighting.iblIntensity, blur * 4.0, 0)
             encoder.setFragmentBytes(&skyParams, length: MemoryLayout<SIMD4<Float>>.stride, index: 1)
             encoder.setFragmentTexture(skyTex, index: 0)
+            profile.drawCalls += 1   // the skybox backdrop
             encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         }
         // Shadows only apply when the shadow pass actually populated a map / structure
@@ -2041,6 +2042,7 @@ extension MetalRenderer {
             if let shadowSampler { encoder.setFragmentSamplerState(shadowSampler, index: 1) }
             encoder.setFragmentTexture(iesArrayTexture ?? shapingStandIn(), index: 10)
             encoder.setFragmentTexture(cookieArrayTexture ?? shapingStandIn(), index: 11)
+            profile.drawCalls += 1   // the aerial-perspective air veil
             encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         }
 
@@ -2180,6 +2182,7 @@ extension MetalRenderer {
                 guard count > 0, let triangleBuffer else { continue }
                 encoder.setRenderPipelineState(state)
                 encoder.setVertexBuffer(triangleBuffer, offset: batch.vertexStart * vertexStride, index: 0)
+                profile.countDraw(batch.kind, count)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
             case .sdf:
                 let end = next?.instanceStart ?? instances.count
@@ -2191,6 +2194,7 @@ extension MetalRenderer {
                 // texture at the same index.
                 encoder.setFragmentTexture(strip, index: 0)
                 encoder.setFragmentSamplerState(imageSampler, index: 0)
+                profile.countDraw(batch.kind, count)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: count)
             case .sdfGroup:
                 // Composed SDF fields: each group is a covering quad whose fragment runs
@@ -2207,6 +2211,7 @@ extension MetalRenderer {
                 // field/outline by field position); bound at 0 like the per-shape SDF path.
                 encoder.setFragmentTexture(strip, index: 0)
                 encoder.setFragmentSamplerState(imageSampler, index: 0)
+                profile.countDraw(batch.kind, count)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: count)
             case .sdfGroup3D:
                 // Half-res tier: the fields were already sphere-traced into the half-res
@@ -2223,6 +2228,7 @@ extension MetalRenderer {
                     encoder.setFragmentBytes(&region, length: MemoryLayout<SIMD4<Float>>.stride, index: 0)
                     encoder.setFragmentTexture(hf.color, index: 0)
                     encoder.setFragmentTexture(hf.depth, index: 1)
+                    profile.countDraw(batch.kind, 0)   // the fields were marched in the half-res pre-pass
                     encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
                     continue
                 }
@@ -2296,6 +2302,7 @@ extension MetalRenderer {
                         encoder.setFragmentBuffer(geoOffsetsBuffer, offset: 0, index: 7)
                     }
                 }
+                profile.countDraw(batch.kind, count)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3, instanceCount: count)
             case .image:
                 let end = next?.imageStart ?? imageVertices.count
@@ -2306,6 +2313,7 @@ extension MetalRenderer {
                 encoder.setVertexBuffer(imageBuffer, offset: batch.imageStart * imageStride, index: 0)
                 encoder.setFragmentTexture(texture, index: 0)
                 encoder.setFragmentSamplerState(imageSampler, index: 0)
+                profile.countDraw(batch.kind, count)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
             case .glyphAtlas:
                 let end = next?.glyphStart ?? glyphVertices.count
@@ -2316,6 +2324,7 @@ extension MetalRenderer {
                 encoder.setVertexBuffer(glyphBuffer, offset: batch.glyphStart * imageStride, index: 0)
                 encoder.setFragmentTexture(texture, index: 0)
                 encoder.setFragmentSamplerState(imageSampler, index: 0)
+                profile.countDraw(batch.kind, count)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
             case .particles:
                 // GPU-resident particle buffer (written by a compute dispatch this
@@ -2325,6 +2334,7 @@ extension MetalRenderer {
                       let buffer = batch.particleBuffer?.metalBuffer(for: device) else { continue }
                 encoder.setRenderPipelineState(state)
                 encoder.setVertexBuffer(buffer, offset: 0, index: 0)
+                profile.countDraw(batch.kind, batch.particleCount)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6,
                                        instanceCount: batch.particleCount)
             case .points3D:
@@ -2341,6 +2351,7 @@ extension MetalRenderer {
                           let buffer = gpuBuffer.metalBuffer(for: device) else { continue }
                     encoder.setRenderPipelineState(state)
                     encoder.setVertexBuffer(buffer, offset: 0, index: 0)
+                    profile.countDraw(batch.kind, batch.particleCount)
                     encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6,
                                            instanceCount: batch.particleCount)
                     continue
@@ -2350,6 +2361,7 @@ extension MetalRenderer {
                 guard count > 0, let pointBuffer else { continue }
                 encoder.setRenderPipelineState(state)
                 encoder.setVertexBuffer(pointBuffer, offset: batch.pointStart * pointStride, index: 0)
+                profile.countDraw(batch.kind, count)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: count)
             case .mesh3D:
                 // Solid 3D mesh: a flat triangle list (indices already expanded), drawn
@@ -2531,6 +2543,7 @@ extension MetalRenderer {
                         encoder.setFragmentTexture(gi?.offsets ?? strip, index: 15)
                     }
                 }
+                profile.countDraw(batch.kind, count)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
             case .depthScene:
                 // A backdrop quad (in `imageVertices`, like an image) whose fragment
@@ -2551,6 +2564,7 @@ extension MetalRenderer {
                 encoder.setFragmentTexture(colorTex, index: 0)
                 encoder.setFragmentTexture(depthTex, index: 1)
                 encoder.setFragmentSamplerState(imageSampler, index: 0)
+                profile.countDraw(batch.kind, count)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
             case .clipPush:
                 // The clip region's fill triangles, drawn stencil-only (color masked
@@ -2561,12 +2575,14 @@ extension MetalRenderer {
                 guard count > 0, let triangleBuffer else { continue }
                 encoder.setRenderPipelineState(state)
                 encoder.setVertexBuffer(triangleBuffer, offset: batch.vertexStart * vertexStride, index: 0)
+                profile.countDraw(batch.kind, count)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
             case .clipPop:
                 // One fullscreen triangle decrementing the popped level (state +
                 // reference set above); the vertex stage synthesizes its corners,
                 // so no buffer is bound.
                 encoder.setRenderPipelineState(state)
+                profile.countDraw(batch.kind, 0)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
             case .retained:
                 continue   // handed off before the pipeline lookup above
@@ -2632,6 +2648,7 @@ extension MetalRenderer {
                 guard count > 0, let buffer = resources.triangle else { continue }
                 encoder.setRenderPipelineState(state)
                 encoder.setVertexBuffer(buffer, offset: run.vertexStart * vertexStride, index: 0)
+                profile.countDraw(run.kind, count)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
             case .sdf:
                 let end = next?.instanceStart ?? handle.sdfInstances.count
@@ -2644,6 +2661,7 @@ extension MetalRenderer {
                 // image batch.
                 encoder.setFragmentTexture(strip, index: 0)
                 encoder.setFragmentSamplerState(imageSampler, index: 0)
+                profile.countDraw(run.kind, count)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: count)
             case .sdfGroup:
                 let end = next?.sdfGroupStart ?? handle.sdfGroups.count
@@ -2655,6 +2673,7 @@ extension MetalRenderer {
                 encoder.setFragmentBuffer(nodeBuffer, offset: 0, index: 0)
                 encoder.setFragmentTexture(strip, index: 0)
                 encoder.setFragmentSamplerState(imageSampler, index: 0)
+                profile.countDraw(run.kind, count)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: count)
             case .image:
                 let end = next?.imageStart ?? handle.imageVertices.count
@@ -2665,6 +2684,7 @@ extension MetalRenderer {
                 encoder.setVertexBuffer(buffer, offset: run.imageStart * imageStride, index: 0)
                 encoder.setFragmentTexture(texture, index: 0)
                 encoder.setFragmentSamplerState(imageSampler, index: 0)
+                profile.countDraw(run.kind, count)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
             case .glyphAtlas:
                 let end = next?.glyphStart ?? handle.glyphVertices.count
@@ -2675,6 +2695,7 @@ extension MetalRenderer {
                 encoder.setVertexBuffer(buffer, offset: run.glyphStart * imageStride, index: 0)
                 encoder.setFragmentTexture(texture, index: 0)
                 encoder.setFragmentSamplerState(imageSampler, index: 0)
+                profile.countDraw(run.kind, count)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
             case .points3D:
                 // Recorded world-space splats replay through whatever camera is
@@ -2687,6 +2708,7 @@ extension MetalRenderer {
                 guard count > 0, let buffer = resources.point, drawer.camera3D != nil else { continue }
                 encoder.setRenderPipelineState(state)
                 encoder.setVertexBuffer(buffer, offset: run.pointStart * pointStride, index: 0)
+                profile.countDraw(run.kind, count)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: count)
             default:
                 continue   // unsupported kinds are gated out at record time
@@ -2734,6 +2756,7 @@ extension MetalRenderer {
             let tew = state.threadExecutionWidth
             let groupWidth = max(1, min(dispatch.gridWidth, tew))
             let groupHeight = max(1, min(dispatch.gridHeight, state.maxTotalThreadsPerThreadgroup / tew))
+            profile.computeDispatches += 1
             encoder.dispatchThreads(
                 MTLSize(width: dispatch.gridWidth, height: dispatch.gridHeight, depth: 1),
                 threadsPerThreadgroup: MTLSize(width: groupWidth, height: groupHeight, depth: 1))

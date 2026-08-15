@@ -119,7 +119,14 @@ final class StatsPanelController: NSObject, NSWindowDelegate {
         // auto-place when there's no saved position).
         sizeToFit()
         let autosaveName = "ollin.statsPanel.frame"
-        if !panel.setFrameUsingName(autosaveName) {
+        if panel.setFrameUsingName(autosaveName) {
+            // A saved frame carries the size it was saved at, and the card grows
+            // a row whenever the framework does. Keep the remembered corner, take
+            // the current size, or an older frame clips what was added.
+            let corner = NSPoint(x: panel.frame.minX, y: panel.frame.maxY)
+            sizeToFit()
+            panel.setFrameTopLeftPoint(corner)
+        } else {
             positionBesideSketch(panel)
         }
         panel.setFrameAutosaveName(autosaveName)
@@ -184,6 +191,13 @@ public struct OllinHUDCommands: Commands {
         CommandGroup(after: .toolbar) {
             Toggle("Show Inspector", isOn: $showStats)
                 .keyboardShortcut("/", modifiers: .command)
+            // A one-shot action rather than a toggle: the runner takes the flag
+            // on the next frame, wraps that frame in a Metal capture, and clears
+            // it. The trace lands in the directory the sketch was run from.
+            Button("Capture GPU Frame") {
+                UserDefaults.standard.set(true, forKey: OllinHUD.captureFrameKey)
+            }
+            .keyboardShortcut("g", modifiers: [.command, .shift])
         }
     }
 }

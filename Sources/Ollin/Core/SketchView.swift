@@ -52,6 +52,11 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     private var lastTime: CFTimeInterval = 0
     private var smoothedFrameRate: Double = 0
     private var smoothedCPUMS: Double = 0
+    /// The profiler's other three times, smoothed the same way, so a readout of
+    /// the split doesn't flicker frame to frame.
+    private var smoothedEncodeMS: Double = 0
+    private var smoothedGPUMS: Double = 0
+    private var smoothedWaitMS: Double = 0
 
     /// A camera-view snap requested from the host menu (`OllinCameraCommands`),
     /// applied at the top of the next frame so it rides the rig exactly like a
@@ -301,6 +306,21 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         updateCanvasSize(from: view, drawableSize: size)
     }
 
+    /// One exponential smoothing step, at the factor the frame rate already
+    /// uses. The first sample seeds the value, so a readout opens at the real
+    /// number instead of climbing to it from zero.
+    private func smooth(_ current: Double, _ sample: Double) -> Double {
+        current == 0 ? sample : current + (sample - current) * 0.1
+    }
+
+    /// Where a capture asked for from the host menu goes: the sketch's own name
+    /// and the frame number, in the directory the sketch was run from.
+    private func defaultCaptureURL(for sketch: Sketch) -> URL {
+        let name = "\(String(describing: type(of: sketch)))-frame-\(sketch.frameCount).gputrace"
+        return URL(fileURLWithPath: name,
+                   relativeTo: URL(fileURLWithPath: FileManager.default.currentDirectoryPath))
+    }
+
     public func draw(in view: MTKView) {
         // The drawing runner is the one a host menu command should reach.
         OllinActiveSketch.runner = self
@@ -365,7 +385,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         let drawStart = CACurrentMediaTime()
         sketch.performDraw()
         let cpuMS = (CACurrentMediaTime() - drawStart) * 1000
-        smoothedCPUMS = smoothedCPUMS == 0 ? cpuMS : smoothedCPUMS + (cpuMS - smoothedCPUMS) * 0.1
+        smoothedCPUMS = smooth(smoothedCPUMS, cpuMS)
 
         // Whatever the sketch said about itself this frame goes to the
         // accessibility layer. A sketch that says nothing pays one comparison.
@@ -427,9 +447,22 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         renderer.presentCeiling = sketch.colorOutput.ceiling(displayHeadroom: Float(headroom))
         sketch.setDisplayHeadroom(Double(headroom))
 
+        // A GPU frame capture, asked for by the sketch or by the host's menu
+        // command, wraps exactly this one frame. The capture must bracket the
+        // encode, so it opens here rather than around the whole draw.
+        let capture = sketch.takeGPUCaptureRequest()
+            ?? (UserDefaults.standard.bool(forKey: OllinHUD.captureFrameKey)
+                ? defaultCaptureURL(for: sketch) : nil)
+        if capture != nil {
+            UserDefaults.standard.set(false, forKey: OllinHUD.captureFrameKey)
+        }
+        let capturing = capture.map { renderer.beginGPUCapture(to: $0) } ?? false
+
         renderer.render(sketch.drawer,
                         viewport: SIMD2<Float>(Float(sketch.width), Float(sketch.height)),
                         in: view)
+
+        if capturing, let capture { renderer.endGPUCapture(at: capture) }
 
         // The grid is host chrome for the live window only. It was appended after the
         // sketch's own draw, so pop it back off before anything re-consumes the drawer:
@@ -450,14 +483,27 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             }
         }
 
+        // The profile the renderer just counted, with its three measured times
+        // smoothed like the CPU one (`cpuDrawMS` is timed here, around the draw,
+        // so the renderer never fills it in).
+        var profile = renderer.profile
+        smoothedEncodeMS = smooth(smoothedEncodeMS, profile.cpuEncodeMS)
+        smoothedGPUMS = smooth(smoothedGPUMS, profile.gpuMS)
+        smoothedWaitMS = smooth(smoothedWaitMS, profile.waitMS)
+        profile.cpuDrawMS = smoothedCPUMS
+        profile.cpuEncodeMS = smoothedEncodeMS
+        profile.gpuMS = smoothedGPUMS
+        profile.waitMS = smoothedWaitMS
+
         // Hand the frame's timing to any extensions (the stats observer, a
-        // recorder). Counts are still valid here — the drawer clears next frame.
+        // recorder). Counts are still valid here: the drawer clears next frame.
         sketch.runAfterFrame(FrameInfo(deltaTime: dt, frameRate: smoothedFrameRate,
                                        cpuDrawMS: smoothedCPUMS,
                                        vertexCount: sketch.drawer.vertices.count,
                                        sdfCount: sketch.drawer.sdfInstances.count,
                                        pointCount: sketch.drawer.points.count,
-                                       particleCount: sketch.drawer.particleCount))
+                                       particleCount: sketch.drawer.particleCount,
+                                       profile: profile))
 
         // Frame-grab: if any extension asked for the rendered pixels, render the
         // frame off-screen and hand it over. Gated on `wantsRenderedFrames` so a

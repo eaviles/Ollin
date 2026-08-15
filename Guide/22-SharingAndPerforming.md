@@ -388,6 +388,38 @@ Inside is a worked starter, tests that check something real, and a list of what 
 
 Pick what the starter is built on with `--seam`. A drawing call, as above. A GPU effect, written as a shader and wrapped so `layer.filtered(.vignette())` reads like a built-in. A source of frames, which any tracker from Chapter 21 then accepts. Or a lifecycle extension, which is the section you have just read, packaged. See [writing an extension](../Docs/Tools/Extensions.md) for all four, and for the parts of Ollin that are deliberately closed.
 
+## When it gets slow
+
+A set is a bad time to discover that a piece runs at 24 frames a second. Sooner or later one will, and the useful question is not "is it slow" but "which half is slow".
+
+Press **⌘/** for the inspector. Under the frame rate sit two bars and three counts.
+
+<img src="Images/22-SharingAndPerforming/CostRow.jpg" alt="A diagram of the inspector's cost row: a CPU bar filled a little over half, a GPU bar filled less, and a line of three counts reading 1 draw, 2 passes, 1 batch, with callouts naming what each part means" width="680">
+
+The **CPU** bar is your `draw()` plus the encoding that turns it into GPU commands. Tessellation lives there: every fill and every stroke is cut into triangles before the GPU sees it. The **GPU** bar is what the card spent on the frame, taken from its own clock.
+
+Both bars are drawn to the same scale, which is the length of one frame. At 60 frames a second that is 16.7 ms. So the longer bar is your problem, and two short bars mean you have room.
+
+They are not stacked into one bar on purpose. The CPU is already building the next frame while the GPU draws this one, so the two overlap in time rather than adding up.
+
+The counts underneath say what the frame asked for. **Draws** is the draw calls. **Passes** is the render passes, which is two for a plain sketch and one more for every layer and filter. **Batches** is the runs the drawer recorded, and a run breaks whenever the blend mode, texture, or clip changes.
+
+That last one is the surprise. Ten thousand circles in a row cost one draw call. Ten circles that each change the blend mode cost ten. If the batch count is close to the shape count, group the shapes that share a state.
+
+The rest of the reading is short:
+
+- **CPU bar long?** You are making geometry. Hover Draws for the vertex count. Static geometry belongs in a [retained batch](../Docs/Drawing/Batches.md), recorded once and replayed from the card.
+- **GPU bar long?** You are filling pixels. Look at the pass count, and give soft layers a smaller `renderTarget(scale:)`.
+- **Both short and still slow?** Something outside the drawing is holding the frame, like a file read in the middle of `draw()`.
+
+When you need to know which pass, hand the frame to Xcode:
+
+```sh
+MTL_CAPTURE_ENABLED=1 ollin MySketch.swift
+```
+
+Then **View ▸ Capture GPU Frame (⌘⇧G)**, or `captureGPUFrame()` from your own code. Ollin writes a `.gputrace` file that opens in Xcode's GPU debugger, and prints the frame's passes in order on the way past. Often that printed list is the whole answer.
+
 ## Performing the code itself
 
 The last output is a stage. `swift run OllinLiveCoding` opens the performance host, where the sketch fills the window and the code rides over it as translucent text, part of the show:
@@ -452,6 +484,7 @@ Live coding as a performance practice was organized by TOPLAP (founded 2004), wh
 - [Syphon](../Docs/Integration/Syphon.md): publishing, receiving, discovery, and the loopback.
 - [Virtual camera](../Docs/Integration/VirtualCamera.md): the one-time install, publishing, the test card.
 - [DMX](../Docs/Integration/DMX.md): universes and fixtures, Art-Net and sACN, the send cadence, and the console-drives-the-sketch direction.
+- [Profiling](../Docs/Tools/Profiling.md): reading the cost row, what to do about each answer, and capturing a frame for Xcode.
 - [Live coding](../Docs/Tools/LiveCoding.md): the evaluate loop, errors, recovery, and the keyboard reference.
 - [Writing an extension](../Docs/Tools/Extensions.md): the four seams, the naming convention, the publishing checklist, and what is deliberately closed.
 - Worked examples: [`Examples/Export/VectorExport`](../Examples/Export/VectorExport/Sketch.swift), [`Examples/Export/Hatching`](../Examples/Export/Hatching/Sketch.swift), [`Examples/Integration/SyphonLoopback`](../Examples/Integration/SyphonLoopback/Sketch.swift), [`Examples/Integration/SyphonViewer`](../Examples/Integration/SyphonViewer/Sketch.swift), [`Examples/Integration/DMXLoopback`](../Examples/Integration/DMXLoopback/Sketch.swift), and [`Examples/Integration/VirtualCamera`](../Examples/Integration/VirtualCamera/Sketch.swift).

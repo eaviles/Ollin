@@ -148,7 +148,7 @@ extension MetalRenderer {
             pass.depthAttachment.loadAction = .clear
             pass.depthAttachment.clearDepth = 1.0
             pass.depthAttachment.storeAction = .store
-            cb.makeRenderCommandEncoder(descriptor: pass)?.endEncoding()
+            countedEncoder(cb, pass)?.endEncoding()
             cb.commit()
         }
         dummyShadowMap = texture
@@ -190,7 +190,7 @@ extension MetalRenderer {
             pass.colorAttachments[0].clearColor = MTLClearColor(red: 1, green: 0, blue: 0, alpha: 0)
             pass.colorAttachments[0].storeAction = .store
             pass.renderTargetArrayLength = 6      // clear all six faces at once
-            cb.makeRenderCommandEncoder(descriptor: pass)?.endEncoding()
+            countedEncoder(cb, pass)?.endEncoding()
             cb.commit()
         }
         dummyPointShadowMap = texture
@@ -309,7 +309,7 @@ extension MetalRenderer {
         pass.depthAttachment.loadAction = .clear
         pass.depthAttachment.clearDepth = 1.0
         pass.depthAttachment.storeAction = .store
-        guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return ShadowMaps() }
+        guard let encoder = countedEncoder(commandBuffer, pass) else { return ShadowMaps() }
         encoder.setRenderPipelineState(shadowPipeline)
         encoder.setDepthStencilState(depthTestState)
         // Slope-scaled depth bias on the stored depth keeps self-shadowing acne off
@@ -417,7 +417,7 @@ extension MetalRenderer {
         pass.colorAttachments[0].clearColor = MTLClearColor(red: 1, green: 0, blue: 0, alpha: 0)
         pass.colorAttachments[0].storeAction = .store
         pass.renderTargetArrayLength = 6
-        guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
+        guard let encoder = countedEncoder(commandBuffer, pass) else { return nil }
         faceVP.withUnsafeBytes { encoder.setVertexBytes($0.baseAddress!, length: $0.count, index: 2) }
         var lightPosFar = SIMD4<Float>(lightPos.x, lightPos.y, lightPos.z, far)
         encoder.setFragmentBytes(&lightPosFar, length: MemoryLayout<SIMD4<Float>>.stride, index: 0)
@@ -850,7 +850,7 @@ extension MetalRenderer {
         pass.depthAttachment.loadAction = .clear
         pass.depthAttachment.clearDepth = 1.0
         pass.depthAttachment.storeAction = .store
-        guard let enc = cb.makeRenderCommandEncoder(descriptor: pass) else { return nil }
+        guard let enc = countedEncoder(cb, pass) else { return nil }
         enc.setViewport(MTLViewport(originX: 0, originY: 0, width: Double(w), height: Double(h), znear: 0, zfar: 1))
         enc.setRenderPipelineState(pipe)
         enc.setDepthStencilState(depthTestState)
@@ -1103,7 +1103,7 @@ extension MetalRenderer {
         pass.depthAttachment.loadAction = .clear
         pass.depthAttachment.clearDepth = 1.0
         pass.depthAttachment.storeAction = .dontCare
-        guard let enc = cb.makeRenderCommandEncoder(descriptor: pass) else { return nil }
+        guard let enc = countedEncoder(cb, pass) else { return nil }
         enc.setViewport(MTLViewport(originX: 0, originY: 0, width: Double(width),
                                     height: Double(height), znear: 0, zfar: 1))
         enc.setDepthStencilState(depthTestState)
@@ -1437,7 +1437,7 @@ extension MetalRenderer {
         pass.depthAttachment.loadAction = .clear
         pass.depthAttachment.clearDepth = 1.0
         pass.depthAttachment.storeAction = .store
-        guard let enc = cb.makeRenderCommandEncoder(descriptor: pass) else { return nil }
+        guard let enc = countedEncoder(cb, pass) else { return nil }
         enc.setViewport(MTLViewport(originX: 0, originY: 0, width: Double(width), height: Double(height), znear: 0, zfar: 1))
         enc.setRenderPipelineState(pipe)
         enc.setDepthStencilState(depthTestState)
@@ -1597,7 +1597,7 @@ extension MetalRenderer {
         pass.depthAttachment.loadAction = .clear
         pass.depthAttachment.clearDepth = 1.0
         pass.depthAttachment.storeAction = .store
-        guard let enc = cb.makeRenderCommandEncoder(descriptor: pass) else { return nil }
+        guard let enc = countedEncoder(cb, pass) else { return nil }
         enc.setViewport(MTLViewport(originX: 0, originY: 0, width: Double(width),
                                     height: Double(height), znear: 0, zfar: 1))
         enc.setRenderPipelineState(gbufPipe)
@@ -1633,7 +1633,7 @@ extension MetalRenderer {
         tracePass.colorAttachments[0].texture = traced
         tracePass.colorAttachments[0].loadAction = .dontCare
         tracePass.colorAttachments[0].storeAction = .store
-        guard let trace = cb.makeRenderCommandEncoder(descriptor: tracePass) else { return nil }
+        guard let trace = countedEncoder(cb, tracePass) else { return nil }
         trace.setRenderPipelineState(traceState)
         trace.setFragmentTexture(gbuf.normal, index: 0)
         trace.setFragmentTexture(gbuf.material, index: 1)
@@ -1984,7 +1984,7 @@ extension MetalRenderer {
         pass.colorAttachments[0].texture = output
         pass.colorAttachments[0].loadAction = .dontCare
         pass.colorAttachments[0].storeAction = .store
-        guard let enc = cb.makeRenderCommandEncoder(descriptor: pass) else { return }
+        guard let enc = countedEncoder(cb, pass) else { return }
         enc.setRenderPipelineState(pipe)
         params.withUnsafeBytes { raw in
             enc.setFragmentBytes(raw.baseAddress!, length: raw.count, index: 0)
@@ -2238,7 +2238,7 @@ extension MetalRenderer {
             tracePass.colorAttachments[0].texture = surfels
             tracePass.colorAttachments[0].loadAction = .dontCare
             tracePass.colorAttachments[0].storeAction = .store
-            guard let trace = cb.makeRenderCommandEncoder(descriptor: tracePass) else { return nil }
+            guard let trace = countedEncoder(cb, tracePass) else { return nil }
             trace.setRenderPipelineState(tracePipe)
             let traceParams = [SIMD4<Float>(Float(rays), seed, farCap, Float(probeCount)),
                                SIMD4<Float>(prevValid, farCap, 0, 0)]
@@ -2326,7 +2326,7 @@ extension MetalRenderer {
         pass.depthAttachment.loadAction = .clear
         pass.depthAttachment.clearDepth = 1.0
         pass.depthAttachment.storeAction = .dontCare
-        guard let enc = cb.makeRenderCommandEncoder(descriptor: pass) else { return nil }
+        guard let enc = countedEncoder(cb, pass) else { return nil }
         enc.setViewport(MTLViewport(originX: 0, originY: 0, width: Double(w), height: Double(h), znear: 0, zfar: 1))
         enc.setRenderPipelineState(pipe)
         enc.setDepthStencilState(depthTestState)
@@ -2403,7 +2403,7 @@ extension MetalRenderer {
         pass.depthAttachment.loadAction = .clear
         pass.depthAttachment.clearDepth = 1.0
         pass.depthAttachment.storeAction = .store
-        guard let enc = cb.makeRenderCommandEncoder(descriptor: pass) else { return nil }
+        guard let enc = countedEncoder(cb, pass) else { return nil }
         enc.setViewport(MTLViewport(originX: 0, originY: 0, width: Double(width),
                                     height: Double(height), znear: 0, zfar: 1))
         enc.setRenderPipelineState(depthPipe)
@@ -2437,7 +2437,7 @@ extension MetalRenderer {
         marchPass.colorAttachments[0].texture = mask
         marchPass.colorAttachments[0].loadAction = .dontCare
         marchPass.colorAttachments[0].storeAction = .store
-        guard let menc = cb.makeRenderCommandEncoder(descriptor: marchPass) else { return nil }
+        guard let menc = countedEncoder(cb, marchPass) else { return nil }
         menc.setRenderPipelineState(marchPipe)
         menc.setFragmentTexture(depth, index: 0)
         var params = SIMD4<Float>(rayLen, 0,

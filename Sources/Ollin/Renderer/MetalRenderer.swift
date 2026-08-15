@@ -440,6 +440,40 @@ final class MetalRenderer {
     var frameComputeUniforms = OllinComputeUniforms(
         resolution: .zero, mouse: .zero, time: 0, dt: 0, frameCount: 0, particleCount: 0, custom: .zero)
 
+    /// The frame being encoded, counted as it goes: draw calls, passes, and the
+    /// geometry each path carried, plus the four-way time split. The runner
+    /// reads it right after `render(...)` and hands it to the extensions on
+    /// `FrameInfo`, so a profiler reads the same numbers the renderer acted on.
+    var profile = FrameProfile()
+
+    /// Whether to record the name of each pass as it is encoded. Off by default
+    /// and armed for a single frame by the GPU capture, so a normal frame pays
+    /// one boolean test per pass.
+    var logsPassNames = false
+    /// The names of the passes encoded while `logsPassNames` was on, in order.
+    var passLog: [String] = []
+
+    /// The last finished command buffer's GPU time, in milliseconds. Written
+    /// from the completed handler, which runs off the main actor, so it rides a
+    /// lock rather than the renderer's own (main-actor) state. Read one or two
+    /// frames later, which the smoothing in `FrameStats` hides.
+    let gpuFrameMS = OSAllocatedUnfairLock(initialState: 0.0)
+
+    /// Make a render encoder and count the pass. Every pass in the renderer
+    /// goes through here, so the profile's pass count stays honest as passes
+    /// are added: a new shadow, probe, or filter pass counts itself.
+    func countedEncoder(_ buffer: MTLCommandBuffer,
+                        _ descriptor: MTLRenderPassDescriptor,
+                        caller: String = #function) -> MTLRenderCommandEncoder? {
+        // Naming the caller costs nothing at a call site (the compiler fills it
+        // in), and it turns the pass count into a pass *list* for one frame when
+        // something asks: the GPU capture prints it, so a sketch can see which
+        // passes it is paying for and not only how many.
+        if logsPassNames { passLog.append(caller) }
+        profile.passes += 1
+        return buffer.makeRenderCommandEncoder(descriptor: descriptor)
+    }
+
     /// Triple-buffered vertex storage, gated by a semaphore so the CPU never
     /// overwrites vertices the GPU is still reading. Writing one shared buffer
     /// every frame with no synchronization tears the on-screen geometry (e.g.
@@ -1192,9 +1226,17 @@ final class MetalRenderer {
         guard let msaa = mainMSAA, let resolve = mainResolve else { return }
 
         // Block until a vertex-buffer slot frees up, then advance to the next one
-        // in the ring — so this frame's upload can't stomp a buffer the GPU is
-        // still reading for an in-flight frame.
+        // in the ring, so this frame's upload can't stomp a buffer the GPU is
+        // still reading for an in-flight frame. The wait is timed apart from the
+        // encode: it is the display's pace rather than work, and counting it as
+        // CPU cost pins the number to 1/fps and says nothing (the lesson the
+        // frame-time readout already learned).
+        profile.resetCounts()
+        profile.batches = drawer.batches.count
+        let waitStart = CACurrentMediaTime()
         frameBoundary.wait()
+        let encodeStart = CACurrentMediaTime()
+        profile.waitMS = (encodeStart - waitStart) * 1000
         frameIndex = (frameIndex + 1) % MetalRenderer.maxFramesInFlight
 
         let geomPass = MTLRenderPassDescriptor()
@@ -1345,11 +1387,20 @@ final class MetalRenderer {
             drawer, into: commandBuffer, meshBuffer: buffers.mesh,
             width: renderWidth, height: renderHeight, taaJitter: taaJitter)
 
-        guard let geomEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: geomPass) else {
+        guard let geomEncoder = countedEncoder(commandBuffer, geomPass, caller: "canvas") else {
             frameBoundary.signal()   // nothing encoded; hand the slot back
             return
         }
-        commandBuffer.addCompletedHandler { [frameBoundary] _ in frameBoundary.signal() }
+        // Runs off the main actor when the GPU finishes, so it touches only the
+        // semaphore and the lock. The GPU's own timestamps are the honest half
+        // of the frame split: everything else here is measured on the CPU.
+        commandBuffer.addCompletedHandler { [frameBoundary, gpuFrameMS] buffer in
+            // Read the timestamps out first: the command buffer is not `Sendable`,
+            // so it must not be captured by the lock's own closure.
+            let ms = (buffer.gpuEndTime - buffer.gpuStartTime) * 1000
+            gpuFrameMS.withLock { $0 = ms }
+            frameBoundary.signal()
+        }
 
         encode(drawer, viewport: viewport, into: geomEncoder,
                triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,
@@ -1422,12 +1473,17 @@ final class MetalRenderer {
                                       pooled: true, moverScale: blurMoverScale)
         let presented = applyFrameFilters(drawer, resolved: blurred, width: width, height: height,
                                           into: commandBuffer, pooled: true)
-        if let presentEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: presentPass(into: drawable.texture)) {
+        if let presentEncoder = countedEncoder(commandBuffer, presentPass(into: drawable.texture), caller: "present") {
             encodePresent(from: presented, drawer: drawer, into: presentEncoder)
             presentEncoder.endEncoding()
         }
         commandBuffer.present(drawable)
         commandBuffer.commit()
+        // The encode ends at the commit (the GPU runs on its own clock after it).
+        // The GPU time is the last frame the device finished, one or two frames
+        // back, which the reader's smoothing hides.
+        profile.cpuEncodeMS = (CACurrentMediaTime() - encodeStart) * 1000
+        profile.gpuMS = gpuFrameMS.withLock { $0 }
     }
 
     // MARK: Accumulation surface (noClear)
@@ -1442,7 +1498,12 @@ final class MetalRenderer {
         let height = Int(view.drawableSize.height.rounded())
         guard width > 0, height > 0, let drawable = view.currentDrawable else { return }
 
+        profile.resetCounts()
+        profile.batches = drawer.batches.count
+        let waitStart = CACurrentMediaTime()
         frameBoundary.wait()
+        let encodeStart = CACurrentMediaTime()
+        profile.waitMS = (encodeStart - waitStart) * 1000
         frameIndex = (frameIndex + 1) % MetalRenderer.maxFramesInFlight
 
         guard let pass = accumulationPass(drawer, width: width, height: height),
@@ -1456,11 +1517,15 @@ final class MetalRenderer {
         let passHasStencil = attachClipStencil(to: pass, active: drawer.usesClipStencil,
                                                width: width, height: height)
         encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
-        guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else {
+        guard let encoder = countedEncoder(commandBuffer, pass, caller: "canvas (accumulating)") else {
             frameBoundary.signal()      // nothing encoded; hand the slot back
             return
         }
-        commandBuffer.addCompletedHandler { [frameBoundary] _ in frameBoundary.signal() }
+        commandBuffer.addCompletedHandler { [frameBoundary, gpuFrameMS] buffer in
+            let ms = (buffer.gpuEndTime - buffer.gpuStartTime) * 1000
+            gpuFrameMS.withLock { $0 = ms }
+            frameBoundary.signal()
+        }
 
         encode(drawer, viewport: viewport, into: encoder,
                triangleBuffer: vertexBuffer(at: frameIndex, for: drawer.vertices.count),
@@ -1479,12 +1544,14 @@ final class MetalRenderer {
 
         // Present: tone-map the resolved float pile into the drawable. (The pile
         // itself stays in linear float, so faint samples keep summing next frame.)
-        if let presentEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: presentPass(into: drawable.texture)) {
+        if let presentEncoder = countedEncoder(commandBuffer, presentPass(into: drawable.texture), caller: "present") {
             encodePresent(from: resolve, drawer: drawer, into: presentEncoder)
             presentEncoder.endEncoding()
         }
         commandBuffer.present(drawable)
         commandBuffer.commit()
+        profile.cpuEncodeMS = (CACurrentMediaTime() - encodeStart) * 1000
+        profile.gpuMS = gpuFrameMS.withLock { $0 }
     }
 
     /// Headless accumulation: render this frame's geometry onto the persistent
@@ -1512,7 +1579,7 @@ final class MetalRenderer {
         let passHasStencil = attachClipStencil(to: pass, active: drawer.usesClipStencil,
                                                width: width, height: height)
         encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
-        guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
+        guard let encoder = countedEncoder(commandBuffer, pass, caller: "canvas (accumulating, headless)") else { return nil }
 
         encode(drawer, viewport: viewport, into: encoder,
                triangleBuffer: exportVertexBuffer(for: drawer.vertices.count),
@@ -1530,7 +1597,7 @@ final class MetalRenderer {
         encoder.endEncoding()
 
         // Tone-map the float pile into the sRGB display texture, then read that back.
-        if let presentEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: presentPass(into: display)) {
+        if let presentEncoder = countedEncoder(commandBuffer, presentPass(into: display)) {
             encodePresent(from: resolve, drawer: drawer, into: presentEncoder)
             presentEncoder.endEncoding()
         }
@@ -1572,7 +1639,7 @@ final class MetalRenderer {
     private func accumulatedDisplayTexture(_ drawer: Drawer) -> MTLTexture? {
         guard let resolve = accumResolve, let display = accumDisplay,
               let commandBuffer = commandQueue.makeCommandBuffer(),
-              let presentEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: presentPass(into: display)) else {
+              let presentEncoder = countedEncoder(commandBuffer, presentPass(into: display)) else {
             return nil
         }
         encodePresent(from: resolve, drawer: drawer, into: presentEncoder)
@@ -1706,6 +1773,12 @@ final class MetalRenderer {
     func renderedFrame(of drawer: Drawer, viewport: SIMD2<Float>,
                        width: Int, height: Int) -> (buffer: MTLBuffer, bytesPerRow: Int)? {
         guard width > 0, height > 0 else { return nil }
+
+        // Headless renders count too, so a test (and a batch export) can read the
+        // same profile the live window reports. This path waits for the GPU, so
+        // the timing it leaves behind belongs to the live loop, not to it.
+        profile.resetCounts()
+        profile.batches = drawer.batches.count
 
         // Float MSAA target + float resolve for the geometry, plus an sRGB display
         // texture the present pass tone-maps into and we read back.
@@ -1856,7 +1929,7 @@ final class MetalRenderer {
                               into: commandBuffer)
             for s in 0..<taaSamples {
                 let jitter = taaJitterNDC(index: s, width: width, height: height)
-                guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
+                guard let encoder = countedEncoder(commandBuffer, pass, caller: "canvas (headless)") else { return nil }
                 encode(drawer, viewport: viewport, into: encoder,
                        triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,
                        imageBuffer: buffers.image, glyphBuffer: buffers.glyph,
@@ -1898,7 +1971,7 @@ final class MetalRenderer {
             presented = applyFrameFilters(drawer, resolved: blurred, width: width, height: height,
                                           into: commandBuffer, pooled: false)
         } else {
-            guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
+            guard let encoder = countedEncoder(commandBuffer, pass, caller: "canvas (headless supersample)") else { return nil }
             encode(drawer, viewport: viewport, into: encoder,
                    triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,
                    imageBuffer: buffers.image, glyphBuffer: buffers.glyph,
@@ -1931,7 +2004,7 @@ final class MetalRenderer {
             presented = applyFrameFilters(drawer, resolved: blurred, width: width, height: height,
                                           into: commandBuffer, pooled: false)
         }
-        guard let presentEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: presentPass(into: displayTexture)) else { return nil }
+        guard let presentEncoder = countedEncoder(commandBuffer, presentPass(into: displayTexture)) else { return nil }
         encodePresent(from: presented, drawer: drawer, into: presentEncoder)
         presentEncoder.endEncoding()
 
@@ -2057,7 +2130,7 @@ final class MetalRenderer {
             let contactShadow = encodeContactShadowPass(
                 drawer, into: cb, meshBuffer: buffers.mesh,
                 width: width, height: height, taaJitter: taaJitter)
-            guard let encoder = cb.makeRenderCommandEncoder(descriptor: pass) else { continue }
+            guard let encoder = countedEncoder(cb, pass) else { continue }
             encode(drawer, viewport: viewport, into: encoder,
                    triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,
                    imageBuffer: buffers.image, glyphBuffer: buffers.glyph,
@@ -2093,7 +2166,7 @@ final class MetalRenderer {
                                           pooled: false)
             let presented = applyFrameFilters(drawer, resolved: blurred, width: width,
                                               height: height, into: cb, pooled: false)
-            if let presentEncoder = cb.makeRenderCommandEncoder(descriptor: presentPass(into: displayTexture)) {
+            if let presentEncoder = countedEncoder(cb, presentPass(into: displayTexture)) {
                 encodePresent(from: presented, drawer: drawer, into: presentEncoder)
                 presentEncoder.endEncoding()
             }
@@ -2142,7 +2215,7 @@ final class MetalRenderer {
 
         guard let commandBuffer = commandQueue.makeCommandBuffer() else { return nil }
         encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
-        guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return nil }
+        guard let encoder = countedEncoder(commandBuffer, pass, caller: "canvas (headless)") else { return nil }
 
         encode(drawer, viewport: viewport, into: encoder,
                triangleBuffer: exportVertexBuffer(for: drawer.vertices.count),
@@ -2160,7 +2233,7 @@ final class MetalRenderer {
         encoder.endEncoding()
 
         // Tone-map the resolved float frame into the sRGB display texture handed out.
-        guard let presentEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: presentPass(into: displayTexture)) else { return nil }
+        guard let presentEncoder = countedEncoder(commandBuffer, presentPass(into: displayTexture)) else { return nil }
         encodePresent(from: floatResolve, drawer: drawer, into: presentEncoder)
         presentEncoder.endEncoding()
 

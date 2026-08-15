@@ -235,6 +235,8 @@ public struct MonitorCardView: View {
             MonitorClockRow(time: stats.time, clockSize: clockSize)
             Hairline(palette: palette)
             MonitorStatStrip(stats: stats)
+            Hairline(palette: palette)
+            MonitorCostRow(stats: stats)
         }
         .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
         .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
@@ -406,7 +408,10 @@ private struct MonitorStatStrip: View {
             statCell(value: stats.hasData ? String(format: "%.0f", stats.fps) : "—",
                      label: "FPS", valueColor: OllinInspector.green)
             Hairline(palette: palette, axis: .vertical)
-            statCell(value: stats.hasData ? String(format: "%.1f ms", stats.frameTimeMS) : "—",
+            // The whole CPU cost of the frame, which is what the bar below fills
+            // to. `frameTimeMS` is the sketch's draw alone, so showing it here
+            // would put two different numbers under one name.
+            statCell(value: stats.hasData ? String(format: "%.1f ms", stats.profile.cpuMS) : noReadingYet,
                      label: "CPU", valueColor: .primary)
             Hairline(palette: palette, axis: .vertical)
             statCell(value: canvasLabel, label: "Canvas", valueColor: .primary)
@@ -438,6 +443,173 @@ private struct MonitorStatStrip: View {
         .padding(.horizontal, 8)
         .padding(.top, 8)
         .padding(.bottom, 9)
+        .frame(maxWidth: .infinity)
+    }
+}
+
+// MARK: - Cost row
+
+/// The "no reading yet" placeholder the card already shows before the first
+/// frame. Spelled as an escape so the source carries no em dash while the UI
+/// keeps the glyph the rest of the card uses.
+private let noReadingYet = "\u{2014}"
+
+/// The profiler tier of the card: two bars answering "which side is the frame
+/// waiting on", over an icon-led count of the work behind them.
+///
+/// The bars are drawn against the same scale, the frame's own period, so their
+/// lengths can be compared by eye: the longer one is the bottleneck, and a short
+/// pair means the sketch has headroom. They are deliberately *not* stacked into
+/// one bar, since the CPU builds frame N while the GPU is still drawing N-1, and
+/// a stack would read as though the two times added up.
+private struct MonitorCostRow: View {
+    let stats: FrameStats
+
+    @SwiftUI.Environment(\.colorScheme) private var scheme
+    private var palette: OllinInspector.Palette { .resolve(scheme) }
+
+    /// The frame period the bars are scaled against. It never rounds below the
+    /// numbers it has to hold, so a bar cannot overflow its track.
+    private var budgetMS: Double {
+        let period = stats.fps > 0 ? 1000 / stats.fps : 16.7
+        return max(period, stats.profile.cpuMS, stats.profile.gpuMS, 1)
+    }
+
+    private func ms(_ value: Double) -> String {
+        stats.hasData ? String(format: "%.1f", value) : noReadingYet
+    }
+
+    /// A count, shortened past a thousand so a busy frame keeps its column.
+    private func compact(_ n: Int) -> String {
+        guard stats.hasData else { return noReadingYet }
+        if n >= 1_000_000 { return "\(n / 1_000_000)M" }
+        if n >= 1_000 { return "\(n / 1_000)k" }
+        return "\(n)"
+    }
+
+    private var cpuDetail: String {
+        let p = stats.profile
+        return String(format: """
+            CPU: %.2f ms drawing (your sketch, including tessellation) \
+            + %.2f ms encoding the GPU commands.
+            Waiting for the display: %.2f ms, which is headroom rather than work.
+            """, p.cpuDrawMS, p.cpuEncodeMS, p.waitMS)
+    }
+
+    private var gpuDetail: String {
+        String(format: """
+            GPU: %.2f ms of a %.1f ms frame. Measured from the device's own \
+            timestamps, one frame behind, so it lags a sudden change by a frame.
+            """, stats.profile.gpuMS, budgetMS)
+    }
+
+    private var drawDetail: String {
+        let p = stats.profile
+        var parts: [String] = []
+        func add(_ n: Int, _ name: String) { if n > 0 { parts.append("\(n) \(name)") } }
+        add(p.sdfInstances, "instanced SDF shapes")
+        add(p.triangleVertices, "fill vertices")
+        add(p.fringeVertices, "stroke vertices")
+        add(p.meshVertices, "mesh vertices")
+        add(p.glyphVertices, "glyph vertices")
+        add(p.imageVertices, "image vertices")
+        add(p.fieldQuads, "SDF fields")
+        add(p.pointSplats, "point splats")
+        add(p.particles, "particles")
+        add(p.clipVertices, "clip vertices")
+        add(p.computeDispatches, "compute dispatches")
+        let body = parts.isEmpty ? "nothing" : parts.joined(separator: ", ")
+        return "\(p.drawCalls) draw calls carrying \(body)."
+    }
+
+    private var passDetail: String {
+        "\(stats.profile.passes) render passes: the canvas and the present, plus every "
+            + "effects layer, filter, shadow map, and probe bake the frame asked for."
+    }
+
+    private var batchDetail: String {
+        "\(stats.profile.batches) recorded runs. A run breaks whenever the pipeline, blend mode, "
+            + "texture, or clip level changes, so many runs against few shapes means state is "
+            + "changing per shape."
+    }
+
+    var body: some View {
+        VStack(spacing: 7) {
+            costBar(icon: "cpu", value: stats.profile.cpuMS,
+                    tint: OllinInspector.accent, label: "CPU")
+                .help(cpuDetail)
+            costBar(icon: "memorychip", value: stats.profile.gpuMS,
+                    tint: OllinInspector.green, label: "GPU")
+                .help(gpuDetail)
+
+            HStack(spacing: 0) {
+                countCell(icon: "square.stack.3d.down.right", count: stats.profile.drawCalls,
+                          one: "Draw", many: "Draws")
+                    .help(drawDetail)
+                countCell(icon: "rectangle.on.rectangle", count: stats.profile.passes,
+                          one: "Pass", many: "Passes")
+                    .help(passDetail)
+                countCell(icon: "square.grid.2x2", count: stats.profile.batches,
+                          one: "Batch", many: "Batches")
+                    .help(batchDetail)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 9)
+        .padding(.bottom, 10)
+    }
+
+    /// One labelled bar: icon and name, a track filled to the share of the frame
+    /// this side took, and the number in milliseconds.
+    private func costBar(icon: String, value: Double,
+                         tint: SwiftUI.Color, label: String) -> some View {
+        HStack(spacing: 6) {
+            SwiftUI.Image(systemName: icon)
+                .font(.system(size: 10))
+                .foregroundStyle(palette.textTertiary)
+                .frame(width: 13)
+                .accessibilityHidden(true)
+            Text(label)
+                .font(.system(size: 9, weight: .semibold))
+                .tracking(0.3)
+                .foregroundStyle(palette.textTertiary)
+                .frame(width: 24, alignment: .leading)
+            GeometryReader { geo in
+                let fraction = stats.hasData ? min(1, max(0, value / budgetMS)) : 0
+                ZStack(alignment: .leading) {
+                    Capsule().fill(palette.fieldFill)
+                    Capsule().fill(tint).frame(width: geo.size.width * fraction)
+                }
+            }
+            .frame(height: 5)
+            Text(ms(value))
+                .font(.system(size: 10.5, design: .monospaced))
+                .foregroundStyle(.primary)
+                .frame(width: 30, alignment: .trailing)
+            Text("ms")
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(palette.textTertiary)
+        }
+    }
+
+    /// One icon-led count cell, three to a line. The name follows the count, so
+    /// a frame with one of something does not read "1 draws".
+    private func countCell(icon: String, count: Int, one: String, many: String) -> some View {
+        HStack(spacing: 4) {
+            SwiftUI.Image(systemName: icon)
+                .font(.system(size: 9.5))
+                .foregroundStyle(palette.textTertiary)
+            Text(compact(count))
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundStyle(.primary)
+            Text(count == 1 ? one : many)
+                .font(.system(size: 9, weight: .semibold))
+                .tracking(0.2)
+                .textCase(.uppercase)
+                .foregroundStyle(palette.textTertiary)
+        }
+        .lineLimit(1)
+        .minimumScaleFactor(0.8)
         .frame(maxWidth: .infinity)
     }
 }
