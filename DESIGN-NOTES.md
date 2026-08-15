@@ -192,12 +192,6 @@ Apple-native, low-ceremony ways several machines share one piece.
 - **iPhone as a 6DoF wand.** The phone already streams CoreMotion attitude and the sensor link is in place, so exposing the phone as a spatial input device (its pose driving a cursor or tool in a Mac sketch) is a small addition over the shipped transport, not new plumbing.
 - **SharePlay co-creation.** GroupActivities so two people tune one sketch together over a FaceTime call. The most speculative, listed for the direction, and Apple-unique.
 
-## Installation mode
-
-The needs of a piece running unattended for days in a gallery, which none of the desktop creative-coding frameworks treat as first-class. Anything added here is a field on the declared `Installation` value, beside the window, power, display, clock, checkpoint, restart and schedule fields already there, rather than a switch of its own.
-
-The output side of the same audience is **several displays from one machine**: fullscreen output across them, with one canvas spanning the lot or a declared part of it per display. A projection already says which part of the canvas a machine shows, where it lands, and how its edges fade, so what this needs is a window and a drawable per display driven from one canvas render, where the frame loop assumes exactly one of each. Syphon already covers the case where a dedicated mapping app owns the wall.
-
 ## Learning: the Guide
 
 The narrative-learning tier's design home is the [`Guide/`](Guide/) tree itself: the writing rules and pedagogy live in [`Guide/AUTHORING.md`](Guide/AUTHORING.md), and the chapter queue, per-chapter briefs, feature-coverage matrix, and roadmap parking lot in [`Guide/PLAN.md`](Guide/PLAN.md). Design decisions about the Guide go in those two files, not here.

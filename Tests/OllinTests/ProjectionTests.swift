@@ -368,6 +368,40 @@ struct ProjectionTests {
         #expect(right.at(Vector2(0.42, 0.5)).0 < right.at(Vector2(0.58, 0.5)).0)
     }
 
+    /// Every display of a wall carries its own part of the canvas.
+    ///
+    /// One machine driving several displays presents the same frame once per
+    /// display, and each one has to arrive through its own placement. The claim
+    /// cannot be read off the source, because reading the run's own placement
+    /// instead compiles, runs, and puts the same part on every beam. So the run
+    /// here is fitted to the right half while the left half is asked for: the
+    /// left display must come back red over white, which is the left of the
+    /// canvas, and never green over blue.
+    @Test(.enabled(if: hasMetal))
+    func everyDisplayCarriesItsOwnPart() throws {
+        let wall = try Wall()
+        let left = Installation.Projection(shows: Rectangle(x: 0, y: 0, width: 0.5, height: 1),
+                                           corners: .filling)
+        let right = Installation.Projection(shows: Rectangle(x: 0.5, y: 0, width: 0.5, height: 1),
+                                            corners: .filling)
+
+        let onTheLeft = try wall.present(part: left, whileFittedTo: right)
+        let topLeft = onTheLeft.at(Vector2(0.5, 0.25))
+        #expect(topLeft.0 > 0.5 && topLeft.1 < 0.2 && topLeft.2 < 0.2,
+                "the left display should carry the red quarter, not \(topLeft)")
+        let bottomLeft = onTheLeft.at(Vector2(0.5, 0.75))
+        #expect(bottomLeft.0 > 0.5 && bottomLeft.1 > 0.5 && bottomLeft.2 > 0.5,
+                "the left display should carry the white quarter, not \(bottomLeft)")
+
+        let onTheRight = try wall.present(part: right, whileFittedTo: left)
+        let topRight = onTheRight.at(Vector2(0.5, 0.25))
+        #expect(topRight.1 > 0.5 && topRight.0 < 0.2 && topRight.2 < 0.2,
+                "the right display should carry the green quarter, not \(topRight)")
+        let bottomRight = onTheRight.at(Vector2(0.5, 0.75))
+        #expect(bottomRight.2 > 0.5 && bottomRight.0 < 0.2,
+                "the right display should carry the blue quarter, not \(bottomRight)")
+    }
+
     /// A file has no wall to fit, so nothing here reaches one. The flag rides
     /// the two paths that present into a drawable, and an export re-renders the
     /// canvas through the plain pass whatever the run is fitted with.
@@ -423,6 +457,27 @@ struct ProjectionTests {
             let encoder = try #require(buffer.makeRenderCommandEncoder(descriptor: pass))
             renderer.encodePresent(from: source, drawer: sketch.drawer,
                                    into: encoder, projected: true)
+            encoder.endEncoding()
+            buffer.commit()
+            buffer.waitUntilCompleted()
+            return Pixels(display)
+        }
+
+        /// Present the canvas onto one display of a wall: the part travels with
+        /// the display, while the run's own fitting is another display's.
+        ///
+        /// That is exactly the arrangement a wall is in, and the one that tells
+        /// the two apart: reading the run's own placement would put the same
+        /// part of the canvas on every beam.
+        func present(part: Installation.Projection,
+                     whileFittedTo other: Installation.Projection) throws -> Pixels {
+            renderer.projection = placement(other)
+            let display = try Wall.makeDisplay(device: device, format: renderer.pixelFormat)
+            let buffer = try #require(renderer.commandQueue.makeCommandBuffer())
+            let pass = renderer.presentPass(into: display)
+            let encoder = try #require(buffer.makeRenderCommandEncoder(descriptor: pass))
+            renderer.encodePresent(from: source, drawer: sketch.drawer, into: encoder,
+                                   projected: true, placement: placement(part))
             encoder.endEncoding()
             buffer.commit()
             buffer.waitUntilCompleted()

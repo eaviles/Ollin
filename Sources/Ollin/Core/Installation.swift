@@ -69,6 +69,10 @@ public struct Installation: Sendable, Equatable {
     /// fades into the machine beside it. See ``Projection``.
     public var projection: Projection = .direct
 
+    /// Which displays this machine puts the piece on, and what each one
+    /// carries. See ``Displays``.
+    public var displays: Displays = .one
+
     /// When the clock a shader reads starts counting from zero again.
     ///
     /// A sketch reads `time` as a `Double`, which stays exact for centuries. A
@@ -152,7 +156,8 @@ public struct Installation: Sendable, Equatable {
                 checkpoint: Checkpointing = .off,
                 restarts: Restarting = .never,
                 schedule: Schedule = .always,
-                projection: Projection = .direct) {
+                projection: Projection = .direct,
+                displays: Displays = .one) {
         self.fillsScreen = fillsScreen
         self.hidesPointer = hidesPointer
         self.keepsDisplayAwake = keepsDisplayAwake
@@ -161,6 +166,7 @@ public struct Installation: Sendable, Equatable {
         self.restarts = restarts
         self.schedule = schedule
         self.projection = projection
+        self.displays = displays
     }
 
     /// The private form behind ``off``, the one value that is not running.
@@ -171,15 +177,29 @@ public struct Installation: Sendable, Equatable {
     /// What the run actually uses: what the sketch declares, unless the command
     /// line overrules it. `--installation` puts any sketch on a wall without
     /// editing it, and `--no-installation` gets an installation piece back into
-    /// an ordinary window to work on it.
+    /// an ordinary window to work on it. `--displays` says which displays it
+    /// goes on, and `--rehearse` lays that wall out on one desk instead.
     @MainActor
     static func resolved(for sketch: Sketch,
                          arguments: [String] = CommandLine.arguments) -> Installation {
         if arguments.contains("--no-installation") { return .off }
-        if arguments.contains("--installation") {
-            return sketch.installation.runsUnattended ? sketch.installation : .on
+        let rehearsing = WallFlags.rehearsal(arguments) != nil
+        var resolved = sketch.installation
+        if arguments.contains("--installation") || rehearsing {
+            if !resolved.runsUnattended { resolved = .on }
         }
-        return sketch.installation
+        guard resolved.runsUnattended else { return resolved }
+        if let declared = WallFlags.displays(arguments) { resolved.displays = declared }
+        if rehearsing {
+            // A rehearsal is a look at the wall from a desk, so the desk keeps
+            // its pointer and its other windows. A piece that declared one
+            // display is asking to see a wall by asking for one at all, so the
+            // canvas is spread across the parts.
+            resolved.fillsScreen = false
+            resolved.hidesPointer = false
+            if resolved.displays.isOne { resolved.displays = .spanning }
+        }
+        return resolved
     }
 
     /// How many seconds the shader clock runs before it starts over, resolved

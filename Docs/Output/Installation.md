@@ -37,13 +37,15 @@ override var installation: Installation {
 }
 ```
 
-### The two flags
+### The flags
 
 You do not have to edit a sketch to try it on a wall, or to get a wall piece back onto your desk.
 
 ```sh
 swift run --package-path Examples Example-Motion-Orbits --installation        # any sketch, full screen, left running
 swift run --package-path Examples Example-Installation-Unattended --no-installation   # back to an ordinary window
+swift run --package-path Examples Example-Motion-Orbits --displays spanning   # across every display this machine has
+swift run --package-path Examples Example-Motion-Orbits --rehearse 3          # that wall, laid out on one desk
 ```
 
 `--no-installation` is the one to work in. Everything else about the sketch is unchanged, so what you tune at your desk is what goes up.
@@ -262,6 +264,64 @@ The pointer takes the warp backwards, so a piece being lined up still reads `mou
 Exports are never warped. A file has no wall to fit, and the frames a piece writes out are the canvas itself. The same goes for a Syphon feed, since the software receiving it does its own mapping.
 
 The canvas renders at its own proportions, as large as fits the display. Dragging the corners wider than that stretches what has already been drawn. A piece meant for a wide wall is better off declaring a wide canvas.
+
+### Several displays, one machine
+
+A wall wider than one projector needs more than one beam. A machine with two outputs can carry both of them itself.
+
+```swift
+override var installation: Installation {
+    Installation(displays: .spanning)
+}
+```
+
+That spreads one canvas over every display the machine has, in the arrangement they are actually in. Two monitors side by side carry a half each. One above the other carries a band each. A display twice as wide as the one beside it carries twice as much. You declare no numbers, because the desk already says all of it.
+
+The gap between two monitors carries part of the canvas that nobody sees. That is what the arrangement looks like from in front of it. The alternative is a picture with a piece cut out of the middle.
+
+The piece itself knows none of this. It draws one canvas. The wall decides which part of that canvas each display carries.
+
+| Value | What it does |
+|---|---|
+| `.one` | The display the piece opens on. The default |
+| `.spanning` | One canvas over every display, in the arrangement they are in |
+| `.mirroring` | The whole canvas on every display, for a row of screens or a corridor |
+| `.parts([...])` | One declaration per display, left to right and then top to bottom |
+
+`.parts` is the form for a wall that is not a plain arrangement of monitors. Two projectors overlapping in the middle is the usual one, and it is the two-machine declaration above with both halves on one machine:
+
+```swift
+Installation(displays: .parts([
+    .init(shows: Rectangle(x: 0, y: 0, width: 0.6, height: 1), blend: Insets(right: 0.2)),
+    .init(shows: Rectangle(x: 0.4, y: 0, width: 0.6, height: 1), blend: Insets(left: 0.2)),
+]))
+```
+
+A display past the end of the list stays dark. A declaration past the end of the displays is ignored.
+
+Both can be combined. A machine that carries part of a longer wall divides that part between its own displays. Four projectors on two machines is then two declarations of two parts each. `shows` on the machine's own `projection` is the piece it carries; the wall divides that piece rather than the whole canvas.
+
+#### Lining up a wall
+
+**Command-K** raises the handles on every display at once, since a wall is lined up as one thing. The keys that move a corner go to the display you last clicked on. Each display's corners are kept under its own identifier. A wall lined up once opens square for every piece shown on it.
+
+#### Rehearsing a wall you have not built
+
+A wall is usually met for the first time in the room it is going up in. You can see what each display will carry before then:
+
+```sh
+swift run --package-path Examples Example-Installation-ManyDisplays --rehearse 3
+```
+
+That opens one window per part on the desk you are at, side by side, each carrying its own part of the canvas. It shows the layout rather than the light. Two beams sharing a band add up to one coat; two windows sharing one would only hide each other. Nothing dragged in a rehearsal is kept, because those windows stand for displays that are not here.
+
+#### What it costs
+
+The piece is drawn once a frame however many displays it goes on. What grows is the size it is drawn at. A projector carrying half the canvas at its own resolution needs the whole canvas drawn at twice that. Four displays across ask for four times the canvas one of them would. The canvas is capped at what a texture can be, and the cap is said out loud in the log when a wall reaches it.
+
+The run is paced by the display the piece is drawn in. A display of a different refresh rate shows the frames as they arrive. The pointer belongs to that display too, so a piece that reads `mouseX` reads it there.
+
+When a mapping application already owns the wall, [Syphon](../Integration/Syphon.md) is the other way round: the piece sends its frames out and that application places them.
 
 ### Displays that change under you
 

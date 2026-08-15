@@ -402,6 +402,15 @@ final class MetalRenderer {
     /// `Installation.Projection`. Set by the host that owns the window, and read
     /// only where the frame goes to a drawable, so no export carries it.
     var projection: ProjectionPlacement?
+    /// How large the canvas has to be drawn to feed every display it goes on,
+    /// when it goes on more than one. Nil for the ordinary run, where the one
+    /// drawable it is presented into says how large it needs to be.
+    ///
+    /// A wall asks for more than the display drawing it: a projector carrying
+    /// half the canvas at its own resolution needs the whole canvas drawn at
+    /// twice that. Set by the host that owns the windows, once the displays are
+    /// known and again when they change.
+    var wallDemand: CGSize?
     /// The compositing substrate: a linear `rgba16Float` intermediate every
     /// geometry pipeline renders into, so values can exceed 1.0 (additive light)
     /// and many translucent blends don't band the way an 8-bit target would. The
@@ -1217,9 +1226,14 @@ final class MetalRenderer {
     /// as fits the drawable, which is the same count of pixels a window holding
     /// the canvas's shape hands over.
     func pictureSize(_ drawableSize: CGSize, canvas: SIMD2<Float>) -> (Int, Int) {
-        let output = (Int(drawableSize.width.rounded()), Int(drawableSize.height.rounded()))
+        let drawable = (Int(drawableSize.width.rounded()), Int(drawableSize.height.rounded()))
         guard projection != nil, canvas.x > 0, canvas.y > 0,
-              output.0 > 0, output.1 > 0 else { return output }
+              drawable.0 > 0, drawable.1 > 0 else { return drawable }
+        // A piece on a wall is drawn once for every display it goes on, so it is
+        // the wall that says how large, not the display that happens to be
+        // drawing it. Off a wall the two are the same number.
+        let asked = wallDemand ?? drawableSize
+        let output = (max(1, Int(asked.width.rounded())), max(1, Int(asked.height.rounded())))
         let aspect = Double(canvas.x) / Double(canvas.y)
         let w = Double(output.0), h = Double(output.1)
         let wide = aspect > w / h
@@ -1227,12 +1241,29 @@ final class MetalRenderer {
                 max(1, Int((wide ? w / aspect : h).rounded())))
     }
 
+    /// One more display the frame is put on, besides the one being drawn in.
+    ///
+    /// The canvas is drawn once and presented as many times as there are
+    /// displays, each with its own placement, so a wall costs one drawing and
+    /// one tone-map per beam.
+    struct ExtraDisplay {
+        let drawable: any CAMetalDrawable
+        /// What this display carries, worked out against its own size. Nil
+        /// presents the whole canvas straight, as a desk does.
+        let placement: ProjectionPlacement?
+    }
+
     /// Encode and present one frame's worth of recorded geometry: composite into
     /// the linear-float intermediate, then run the present pass to tone-map it into
     /// the drawable.
-    func render(_ drawer: Drawer, viewport: SIMD2<Float>, in view: MTKView) {
+    ///
+    /// - Parameter also: the other displays the same frame goes on. They are
+    ///   presented from the same command buffer as the drawing display, so every
+    ///   beam of a wall carries the same frame rather than one a step behind.
+    func render(_ drawer: Drawer, viewport: SIMD2<Float>, in view: MTKView,
+                also: [ExtraDisplay] = []) {
         if drawer.accumulates {
-            renderAccumulating(drawer, viewport: viewport, in: view)
+            renderAccumulating(drawer, viewport: viewport, in: view, also: also)
             return
         }
         let (width, height) = pictureSize(view.drawableSize, canvas: viewport)
@@ -1512,6 +1543,7 @@ final class MetalRenderer {
             presentEncoder.endEncoding()
         }
         commandBuffer.present(drawable)
+        encodeExtraDisplays(also, from: presented, drawer: drawer, into: commandBuffer)
         commandBuffer.commit()
         // The encode ends at the commit (the GPU runs on its own clock after it).
         // The GPU time is the last frame the device finished, one or two frames
@@ -1527,7 +1559,8 @@ final class MetalRenderer {
     /// blit the resolved canvas to the drawable to present it. Reuses the
     /// triple-buffer vertex ring and its semaphore exactly like `render`, so the
     /// upload still can't stomp a buffer an in-flight frame is reading.
-    private func renderAccumulating(_ drawer: Drawer, viewport: SIMD2<Float>, in view: MTKView) {
+    private func renderAccumulating(_ drawer: Drawer, viewport: SIMD2<Float>, in view: MTKView,
+                                    also: [ExtraDisplay] = []) {
         let (width, height) = pictureSize(view.drawableSize, canvas: viewport)
         guard width > 0, height > 0, let drawable = view.currentDrawable else { return }
 
@@ -1582,9 +1615,30 @@ final class MetalRenderer {
             presentEncoder.endEncoding()
         }
         commandBuffer.present(drawable)
+        encodeExtraDisplays(also, from: resolve, drawer: drawer, into: commandBuffer)
         commandBuffer.commit()
         profile.cpuEncodeMS = (CACurrentMediaTime() - encodeStart) * 1000
         profile.gpuMS = gpuFrameMS.withLock { $0 }
+    }
+
+    /// Tone-map the frame into every other display it goes on, each through its
+    /// own placement.
+    ///
+    /// The placement travels with the display rather than being read off the
+    /// renderer, which holds the drawing display's own: reading the stored one
+    /// would put the same part of the canvas on every beam of the wall.
+    private func encodeExtraDisplays(_ displays: [ExtraDisplay], from source: MTLTexture,
+                                     drawer: Drawer, into commandBuffer: MTLCommandBuffer) {
+        for display in displays {
+            if let encoder = countedEncoder(commandBuffer,
+                                            presentPass(into: display.drawable.texture),
+                                            caller: "present") {
+                encodePresent(from: source, drawer: drawer, into: encoder,
+                              projected: display.placement != nil, placement: display.placement)
+                encoder.endEncoding()
+            }
+            commandBuffer.present(display.drawable)
+        }
     }
 
     /// Headless accumulation: render this frame's geometry onto the persistent

@@ -88,6 +88,7 @@ let package = Package(
         example("Installation/Hours"),
         example("Installation/Fitted"),
         example("Installation/ManyWindows"),
+        example("Installation/ManyDisplays"),
         example("Rendering/Blending"),
         example("Effects/Bloom"),
         example("Shapes/Combinators"),

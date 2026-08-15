@@ -103,6 +103,8 @@ The flag hands the sketch a window of its own, full screen, with the pointer hid
 
 That host does not reload on save. A piece on a wall runs the code it was started with. Work on it with plain `ollin piece.swift`, then put it up.
 
+`--displays spanning` spreads the canvas over every display the machine drives, and `--rehearse 3` lays that wall out as three windows on the desk you are at. Both route to the same host as `--installation`, since a wall needs the sketch to own its windows.
+
 ### Assets and satellite libraries
 
 Files sitting beside the sketch load the way a packaged example's resources do, with `in: .module` pointing at the sketch's own folder:

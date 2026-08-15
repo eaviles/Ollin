@@ -565,6 +565,43 @@ The one on the right declares the mirror of that: `shows` starting at 0.4, and t
 
 None of this reaches an export. A file has no wall to fit.
 
+### Several displays, one machine
+
+Two projectors do not have to mean two machines. A Mac with two outputs can carry both of them itself:
+
+```swift
+override var installation: Installation {
+    Installation(displays: .spanning)
+}
+```
+
+<img src="Images/22-SharingAndPerforming/ManyDisplays.jpg" alt="A long canvas at the top holding a night sky, a sun and one wave, divided by two lines into three parts labelled shows 0 to 0.33, 0.33 to 0.66, and 0.66 to 1. Three arrows lead down to three display panes, each holding its own third of the same picture, so the wave carries on from one to the next" width="680">
+
+That spreads one canvas over every display the machine has, in the arrangement they are actually in. Two monitors side by side carry a half each. One above the other carries a band each. You declare no numbers at all, because the desk already says them.
+
+The piece knows none of this. It draws one canvas, and the wall decides which part of that canvas each display carries. That is the same split as the two-machine wall above, with both parts on one machine.
+
+For a wall that is not a plain row of monitors, declare the parts yourself. Two projectors overlapping in the middle is the usual case:
+
+```swift
+Installation(displays: .parts([
+    .init(shows: Rectangle(x: 0, y: 0, width: 0.6, height: 1), blend: Insets(right: 0.2)),
+    .init(shows: Rectangle(x: 0.4, y: 0, width: 0.6, height: 1), blend: Insets(left: 0.2)),
+]))
+```
+
+Command-K raises the handles on every display at once, since a wall is lined up as one thing. The keys that move a corner go to the display you last clicked.
+
+You will usually meet the wall for the first time in the room it is going up in. So look at it before then:
+
+```sh
+swift run --package-path Examples Example-Installation-ManyDisplays --rehearse 3
+```
+
+That opens one window per part on the desk you are at, side by side, each carrying its own part. It shows you the layout rather than the light. Two beams sharing a band add up to one coat; two windows sharing one would only hide each other.
+
+The piece is drawn once a frame however many displays it goes on. What grows is the size it is drawn at, since each display wants its own part at its own resolution.
+
 ### Several windows, one world
 
 A piece does not have to be one window. Run the same sketch three times and you have three windows on one desk, and they can look into one world rather than three.

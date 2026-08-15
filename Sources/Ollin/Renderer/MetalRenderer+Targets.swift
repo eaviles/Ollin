@@ -2665,10 +2665,14 @@ extension MetalRenderer {
     ///   run was calibrated with. Only the two paths that present into a
     ///   drawable pass true: an export, a frame grab, and a Syphon feed all
     ///   re-render the canvas itself, which has no wall to fit.
+    /// - Parameter placement: the placement to fit through, for a display other
+    ///   than the one being drawn in. Left out, the run's own is used, which is
+    ///   the drawing display's.
     func encodePresent(from source: MTLTexture, drawer: Drawer,
                                into encoder: MTLRenderCommandEncoder,
-                               projected: Bool = false) {
-        let place = projected ? projection : nil
+                               projected: Bool = false,
+                               placement: ProjectionPlacement? = nil) {
+        let place = projected ? (placement ?? projection) : nil
         guard let state = try? pipeline(place == nil ? .present : .presentProjected) else { return }
         encoder.setRenderPipelineState(state)
         encoder.setFragmentTexture(source, index: 0)

@@ -30,31 +30,27 @@ final class ProjectionCalibrator {
     /// The canvas, for working `Corners.fit` out: it is the picture's own
     /// proportions that decide where a fitted corner sits.
     private let canvas: Vector2
-    /// Which display this is filed under.
-    private let displayKey: String
+    /// Which display this is filed under, or nil for a display that is only
+    /// being rehearsed and whose corners belong to nobody.
+    private let displayKey: String?
     /// Whether the pointer goes back into hiding when the handles come down.
     private let hidesPointer: Bool
 
-    private weak var runner: SketchRunner?
-    private var keyMonitor: Any?
+    /// Where every change goes: the display this calibrator belongs to, which
+    /// puts it on the run itself when that display is the one being drawn in.
+    var onChange: ((Installation.Projection) -> Void)?
 
     init(projection: Installation.Projection, canvas: Vector2,
-         displayKey: String, hidesPointer: Bool) {
+         displayKey: String?, hidesPointer: Bool) {
         self.projection = projection
         self.canvas = canvas
         self.displayKey = displayKey
         self.hidesPointer = hidesPointer
     }
 
-    /// The running sketch, as soon as the view has built one.
-    func attach(_ runner: SketchRunner) {
-        self.runner = runner
-        runner.setProjection(projection)
-    }
-
     // MARK: The handles
 
-    func toggle() { isOpen ? close() : open() }
+    /// Raised and put down by the host, which raises every display's at once.
 
     func open() {
         guard !isOpen else { return }
@@ -121,12 +117,17 @@ final class ProjectionCalibrator {
 
     private func apply(_ corners: Installation.Projection.Corners) {
         projection.corners = corners
-        runner?.setProjection(projection)
+        onChange?(projection)
     }
 
     /// Keep the corners under this display. Called as each drag ends, so a
     /// power cut in the middle of an evening's work loses nothing.
+    ///
+    /// A rehearsed display has nothing to keep them under: its window stands for
+    /// a display that is not here, and writing desk numbers into the room's file
+    /// would put them on the piece that opens there next.
     func save() {
+        guard let displayKey else { return }
         ProjectionCalibration.save(projection.corners, forDisplay: displayKey,
                                    displaySize: outputSize)
     }
@@ -143,33 +144,11 @@ final class ProjectionCalibrator {
 
     // MARK: The keys
 
-    /// Watch for the keys the handles answer to.
-    ///
-    /// A local monitor rather than a menu command: this window has no menu bar
-    /// to hang one on, since a piece on a wall is full screen. It reads the
-    /// event before the canvas does, so Command-K works while the sketch holds
-    /// the keyboard, and everything else is passed straight through unless the
-    /// handles are actually up.
-    func watchKeys() {
-        guard keyMonitor == nil else { return }
-        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self else { return event }
-            return self.handle(event) ? nil : event
-        }
-    }
-
-    func stopWatchingKeys() {
-        if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
-        keyMonitor = nil
-    }
-
     /// Whether this key was one of ours, and so must not reach the sketch.
-    private func handle(_ event: NSEvent) -> Bool {
-        let command = event.modifierFlags.contains(.command)
-        if command, event.charactersIgnoringModifiers?.lowercased() == "k" {
-            toggle()
-            return true
-        }
+    ///
+    /// The monitor itself belongs to the host, because a wall has a calibrator
+    /// per display and one Command-K raises the handles on all of them.
+    func handleKey(_ event: NSEvent) -> Bool {
         guard isOpen else { return false }
         let step = event.modifierFlags.contains(.shift) ? 10.0 : 1.0
         switch Int(event.keyCode) {
@@ -181,7 +160,8 @@ final class ProjectionCalibrator {
         case 126: nudge(by: Vector2(0, -step)); return true  // up
         default: break
         }
-        if event.charactersIgnoringModifiers?.lowercased() == "r", !command {
+        if event.charactersIgnoringModifiers?.lowercased() == "r",
+           !event.modifierFlags.contains(.command) {
             reset()
             return true
         }

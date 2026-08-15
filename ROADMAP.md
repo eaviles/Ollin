@@ -120,10 +120,6 @@ See the [design notes](DESIGN-NOTES.md#authoring-and-editor-tooling).
 
 Apple-native, low-ceremony ways several machines share one piece: **Multipeer** local networking so several Macs and iPhones form one canvas with no server, the **iPhone as a 6DoF wand** (extending the sensor stream the phone already sends). (A more speculative **SharePlay** co-creation idea sits under [Further out / exploratory](#further-out--exploratory).) See the [design notes](DESIGN-NOTES.md#collaboration-and-multi-device).
 
-## Installation mode
-
-The concerns of a piece that runs unattended for days in a gallery rather than for a session at a desk. What is ahead here is one machine driving several displays at once: fullscreen output spanning them, with one canvas across the lot or a part of it per display, so a wall wider than one projector needs one Mac rather than one per beam. A documented, supported way to run long rather than a hope. See the [design notes](DESIGN-NOTES.md#installation-mode).
-
 ## Learning: the Guide
 
 **Near-term.** The reference docs ([`Docs/`](Docs/)) answer "what does this function do"; the [Guide](Guide/README.md) is the narrative layer that answers "how do I think in sketches": a practical, book-length introduction to creative coding taught through Ollin, written for an engineer with no math, graphics, or Swift background. Ahead: the Guide grows in step with the framework. Every capability that ships gets a row in the feature-coverage matrix and a chapter home (the queue, briefs, and coverage plan live in [`Guide/PLAN.md`](Guide/PLAN.md), the writing rules in [`Guide/AUTHORING.md`](Guide/AUTHORING.md)), and the parking lot there reserves a Guide seat for each item on this page. Further out: a website presenting the Guide, the reference, and the examples gallery together.

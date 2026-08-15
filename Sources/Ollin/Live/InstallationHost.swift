@@ -50,8 +50,10 @@ final class InstallationHost {
     /// the first reading, so the run says out loud what it opened into.
     private var showing: Bool?
 
-    /// The corner handles, and the keys that raise them.
-    private var calibrator: ProjectionCalibrator?
+    /// The displays the piece is on, with the corner handles for each of them.
+    private var wall: DisplayWall?
+    /// Watches for the keys the handles answer to.
+    private var keyMonitor: Any?
 
     init(_ settings: Installation) {
         self.settings = settings
@@ -62,19 +64,21 @@ final class InstallationHost {
     /// Take over `window` for the run: fill the screen, hide the pointer, keep
     /// the display awake, and start watching for what the system does next.
     ///
-    /// The calibrator comes with it because its keys belong to the window: this
-    /// one has no menu bar to hang a command on.
-    func take(over window: NSWindow, calibrator: ProjectionCalibrator? = nil) {
+    /// The wall comes with it because the keys that line it up belong to the
+    /// window: this one has no menu bar to hang a command on.
+    func take(over window: NSWindow, wall: DisplayWall? = nil) {
         self.window = window
-        self.calibrator = calibrator
+        self.wall = wall
         log("running unattended; Command-K lines it up, Command-Q quits")
 
         if settings.fillsScreen { fillScreen(window) }
         // Not while somebody is lining it up: the pointer is the tool.
-        if settings.hidesPointer, calibrator?.isOpen != true { NSCursor.hide() }
+        if settings.hidesPointer, !(wall?.calibrators.contains(where: \.isOpen) ?? false) {
+            NSCursor.hide()
+        }
         if settings.keepsDisplayAwake { keepAwake() }
         heartbeat = Heartbeat.start()
-        calibrator?.watchKeys()
+        watchKeys()
         watchTheSystem()
         if !settings.schedule.periods.isEmpty { watchTheClock() }
     }
@@ -87,13 +91,55 @@ final class InstallationHost {
         scheduleTimer = nil
         heartbeat?.stop()
         heartbeat = nil
-        calibrator?.stopWatchingKeys()
+        if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
+        keyMonitor = nil
+        wall?.close()
         releaseAwake()
         if settings.hidesPointer { NSCursor.unhide() }
         for observer in appObservers { NotificationCenter.default.removeObserver(observer) }
         for observer in workspaceObservers { NSWorkspace.shared.notificationCenter.removeObserver(observer) }
         appObservers.removeAll()
         workspaceObservers.removeAll()
+    }
+
+    // MARK: The keys that line a wall up
+
+    /// Watch for the keys the handles answer to.
+    ///
+    /// A local monitor rather than a menu command: a piece on a wall is full
+    /// screen and has no menu bar to hang one on. It reads the event before the
+    /// canvas does, so Command-K works while the sketch holds the keyboard, and
+    /// everything else is passed straight through unless the handles are up.
+    ///
+    /// One key raises the handles on every display at once, because a wall is
+    /// lined up as one thing. The keys that move a corner go to the display
+    /// somebody is actually working on, which is the window they last clicked.
+    private func watchKeys() {
+        guard keyMonitor == nil, let wall, !wall.calibrators.isEmpty else { return }
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self, let wall = self.wall else { return event }
+            if event.modifierFlags.contains(.command),
+               event.charactersIgnoringModifiers?.lowercased() == "k" {
+                self.toggleHandles()
+                return nil
+            }
+            let working = wall.outputs.first(where: \.isKeyWindow)?.calibrator
+                ?? wall.calibrators.first
+            return working?.handleKey(event) == true ? nil : event
+        }
+    }
+
+    /// Raise the handles on every display, or put them all down.
+    func toggleHandles() {
+        guard let wall else { return }
+        let opening = !wall.calibrators.contains(where: \.isOpen)
+        for calibrator in wall.calibrators {
+            opening ? calibrator.open() : calibrator.close()
+        }
+        // A window of the wall takes the keyboard only while it is being lined
+        // up, so the arrow keys can be aimed at one display by clicking it.
+        for output in wall.outputs { output.takeKeys(opening) }
+        if !opening { window?.makeKeyAndOrderFront(nil) }
     }
 
     // MARK: The screen
@@ -253,6 +299,9 @@ final class InstallationHost {
             if window.screen == nil, let home = NSScreen.main {
                 window.setFrame(home.frame, display: true)
             }
+            // Which display carries what has just changed, so the wall is worked
+            // out again and its windows put back where the parts now are.
+            self.wall?.displaysChanged()
             OllinActiveSketch.runner?.displayChanged(to: window.screen)
         }
         pendingScreenChange = work

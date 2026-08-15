@@ -32,6 +32,10 @@ usage: ollin <path/to/Sketch.swift> [flags]   run the sketch (live window)
                                               put it up: the sketch owns the
                                               window, so everything it declares
                                               for a long run applies
+       ollin <path/to/Sketch.swift> --rehearse 3
+                                              lay the wall out on this desk:
+                                              one window per display it would
+                                              go on (--displays picks which)
        ollin <path/to/Sketch.swift> --export frame.png [...]
                                               headless export (--export-gif,
                                               --export-video, --export-svg, ...)
@@ -135,7 +139,7 @@ case "${1:-}" in
         host="OllinLive"
         for arg in "$@"; do
             case "$arg" in
-                --installation|--calibrate) host="OllinRun"; break ;;
+                --installation|--calibrate|--rehearse|--displays) host="OllinRun"; break ;;
             esac
         done
         # Absolute path: the host build runs with the repo as its package, and

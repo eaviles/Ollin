@@ -16,6 +16,29 @@ enum OllinActiveSketch {
     static weak var runner: SketchRunner?
 }
 
+/// A display a running sketch is put on besides the one it draws in.
+///
+/// The runner owns the frame and asks each of these for somewhere to put it. The
+/// windows themselves belong to the host, which is where the wall is built and
+/// where AppKit lives.
+@MainActor
+protocol CanvasOutput: AnyObject {
+
+    /// Where this display wants the frame put, with what it carries of the
+    /// canvas worked out against its own size. Nil when it has no drawable free,
+    /// which is a frame it sits out rather than one the wall waits for.
+    func nextDisplay(canvas: Vector2) -> MetalRenderer.ExtraDisplay?
+
+    /// How large this display wants the canvas drawn: its own size in pixels,
+    /// and the part of the canvas it carries.
+    func canvasDemand(canvas: Vector2) -> (size: CGSize, part: Rectangle)?
+
+    /// Put this display's picture up, or take it away for the night. A wall goes
+    /// black rather than showing the desktop, so it is the picture that is taken
+    /// away and never the window.
+    func setShowing(_ showing: Bool)
+}
+
 // MARK: - The continuous draw loop
 
 /// Bridges an `MTKView`'s per-frame callback to a `Sketch`: it advances the
@@ -174,6 +197,61 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         (view as? OllinMTKView)?.projection = placement
     }
 
+    // MARK: The other displays
+
+    /// The displays this run is put on besides the one it draws in. Empty for a
+    /// piece on one screen, which is every run at a desk.
+    private var otherDisplays: [any CanvasOutput] = []
+
+    /// The device this run's frames are made on. A wall's own layers have to be
+    /// on the same one, since a drawable can only take a frame from its own
+    /// device.
+    var metalDevice: MTLDevice { renderer.device }
+
+    /// Put the piece on these displays as well as the one it draws in. Called by
+    /// the host that owns the windows, and again when a display is plugged in or
+    /// unplugged.
+    func setOtherDisplays(_ displays: [any CanvasOutput]) {
+        otherDisplays = displays
+        if displays.isEmpty { renderer.wallDemand = nil }
+    }
+
+    /// How large the canvas has to be drawn to feed every display it goes on:
+    /// the largest ask among them.
+    ///
+    /// A display carrying half the canvas across its own width asks for a canvas
+    /// twice that wide, so a wall of four projectors asks for four times the
+    /// canvas one of them would. The ask is capped at what a texture can be, and
+    /// the cap is said out loud once, because a wall quietly drawn at half the
+    /// resolution somebody paid for is the kind of thing nobody notices until
+    /// the opening.
+    private func wallDemand(canvas: Vector2, view: MTKView) -> CGSize? {
+        guard !otherDisplays.isEmpty else { return nil }
+        var width = 0.0, height = 0.0
+        func ask(_ size: CGSize, _ part: Rectangle) {
+            guard part.width > 0, part.height > 0 else { return }
+            width = max(width, Double(size.width) / part.width)
+            height = max(height, Double(size.height) / part.height)
+        }
+        ask(view.drawableSize, renderer.projection?.source ?? Installation.Projection.wholeCanvas)
+        for display in otherDisplays {
+            if let asked = display.canvasDemand(canvas: canvas) { ask(asked.size, asked.part) }
+        }
+        guard width > 0, height > 0 else { return nil }
+        let cap = Double(SketchRunner.largestPicture)
+        if width > cap || height > cap, !didLogWallCap {
+            didLogWallCap = true
+            ollinInstallationLog("the wall asks for \(Int(width))x\(Int(height)) of canvas; "
+                                 + "drawing at \(SketchRunner.largestPicture) at most")
+        }
+        return CGSize(width: min(width, cap), height: min(height, cap))
+    }
+
+    /// The widest a canvas is drawn for a wall, whatever the wall asks for: what
+    /// a Metal texture can be on this generation of hardware.
+    static let largestPicture = 16384
+    private var didLogWallCap = false
+
     /// Whether the piece is on screen at all. A schedule that shuts for the
     /// night takes the canvas away; nothing else ever does.
     private var isShowing = true
@@ -192,6 +270,24 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         isShowing = showing
         view?.isHidden = !showing
         view?.isPaused = showing ? !sketch.isLooping : true
+        // Every other display of the wall goes down with it. They are fed from
+        // this frame loop, so a night without frames would otherwise leave the
+        // last one of the evening lit on all of them.
+        for display in otherDisplays { display.setShowing(showing) }
+        if showing { redrawOnce() }
+    }
+
+    /// Draw one frame now, outside the loop.
+    ///
+    /// A still piece draws once and stops, so a display that arrives after that
+    /// frame has nothing to put up and would stay black for the rest of the run.
+    /// A display gaining a size, or the morning arriving, asks for one here.
+    func redrawOnce() {
+        guard let view, didSetup else { return }
+        DispatchQueue.main.async { [weak view] in
+            guard let view, !view.isHidden else { return }
+            view.draw()
+        }
     }
 
     /// Write the run's state now. Quiet after the first one: a line a minute for
@@ -631,9 +727,20 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
 
         refreshProjection(in: view)
 
+        // The other displays of a wall: each hands over the drawable it wants
+        // this frame in, and what it carries of the canvas. Asked for before the
+        // render so all of them ride the one command buffer, which is what keeps
+        // the beams of a wall on the same frame.
+        var wall: [MetalRenderer.ExtraDisplay] = []
+        if !otherDisplays.isEmpty {
+            let canvas = Vector2(sketch.width, sketch.height)
+            renderer.wallDemand = wallDemand(canvas: canvas, view: view)
+            wall = otherDisplays.compactMap { $0.nextDisplay(canvas: canvas) }
+        }
+
         renderer.render(sketch.drawer,
                         viewport: SIMD2<Float>(Float(sketch.width), Float(sketch.height)),
-                        in: view)
+                        in: view, also: wall)
 
         if capturing, let capture { renderer.endGPUCapture(at: capture) }
 
@@ -777,6 +884,15 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         guard let rect, let primary = NSScreen.screens.first else { return nil }
         return Rectangle(x: rect.minX, y: primary.frame.maxY - rect.maxY,
                          width: rect.width, height: rect.height)
+    }
+
+    /// The same journey back: a rectangle in desk coordinates, as AppKit wants
+    /// it, counting up from the bottom of the primary display. What a window is
+    /// put on a display of a wall with.
+    static func screenRect(_ rect: Rectangle) -> CGRect? {
+        guard let primary = NSScreen.screens.first else { return nil }
+        return CGRect(x: rect.x, y: primary.frame.maxY - (rect.y + rect.height),
+                      width: rect.width, height: rect.height)
     }
 
     /// The same, for a rectangle in a view's own window: it goes out to the
@@ -2374,7 +2490,12 @@ private final class StandaloneAppDelegate: NSObject, NSApplicationDelegate {
             forName: NSWindow.willCloseNotification, object: nil, queue: .main
         ) { _ in
             DispatchQueue.main.async {
-                let realWindowsLeft = NSApp.windows.contains { $0.isVisible && !($0 is NSPanel) }
+                // A window of a wall is not a window somebody opened: it belongs
+                // to the piece in the window that just closed, so it must not
+                // keep the run alive after it.
+                let realWindowsLeft = NSApp.windows.contains {
+                    $0.isVisible && !($0 is NSPanel) && !($0 is OllinDisplayWindow)
+                }
                 if !realWindowsLeft { NSApp.terminate(nil) }
             }
         }
@@ -2476,21 +2597,21 @@ private final class StandaloneAppDelegate: NSObject, NSApplicationDelegate {
         // any piece. What the sketch declared comes first; the corners this
         // display was last lined up with win over it, because they belong to the
         // room rather than to the work.
+        //
+        // The wall works that out for every display the piece goes on, this one
+        // among them. A piece on one display is a wall of one, which is the same
+        // run it has always been.
         let canvas = sketch.canvasSize.cgSize
-        var projection = installation.projection
-        let displayKey = ProjectionCalibration.key(for: screen)
-        if let saved = ProjectionCalibration.corners(forDisplay: displayKey) {
-            projection.corners = saved
-            ollinInstallationLog("lined up already: corners kept for this display")
-        }
-        let calibrator = ProjectionCalibrator(
-            projection: projection,
-            canvas: Vector2(Double(canvas.width), Double(canvas.height)),
-            displayKey: displayKey, hidesPointer: installation.hidesPointer)
+        let wall = DisplayWall(installation,
+                               canvas: Vector2(Double(canvas.width), Double(canvas.height)),
+                               rehearsing: WallFlags.rehearsal(CommandLine.arguments))
+        let calibrator = wall.primary.calibrator
         // Opening straight into the handles, for the evening the projector is
         // hung: the piece is up on the wall and out of true, and reaching for a
         // keyboard shortcut is the last thing anybody wants to look up.
-        if CommandLine.arguments.contains("--calibrate") { calibrator.open() }
+        if CommandLine.arguments.contains("--calibrate") {
+            for each in wall.calibrators { each.open() }
+        }
 
         let root = AnyView(
             ZStack {
@@ -2500,7 +2621,7 @@ private final class StandaloneAppDelegate: NSObject, NSApplicationDelegate {
                 // otherwise float over the piece on the wall.
                 SketchView(sketch, showsInspectorPanel: false) { runner in
                     runner.beginInstallation(installation)
-                    calibrator.attach(runner)
+                    wall.open(with: runner, sketch: sketch)
                     host.attach(runner)
                 }
                 CalibrationOverlay(calibrator: calibrator)
@@ -2511,11 +2632,18 @@ private final class StandaloneAppDelegate: NSObject, NSApplicationDelegate {
         hosting.frame = NSRect(origin: .zero, size: contentSize)
         hosting.autoresizingMask = [.width, .height]
         window.contentView = hosting
-        if let screen { window.setFrame(screen.frame, display: true) }
+        // The piece's own window goes where its own part of the wall is, which
+        // for one display is the display it opened on.
+        if let frame = wall.primaryFrame {
+            window.setFrame(installation.fillsScreen ? frame
+                                : window.frameRect(forContentRect: frame), display: true)
+        } else if let screen {
+            window.setFrame(screen.frame, display: true)
+        }
         window.makeKeyAndOrderFront(nil)
         self.window = window
 
-        host.take(over: window, calibrator: calibrator)
+        host.take(over: window, wall: wall)
         self.installationHost = host
     }
 }
