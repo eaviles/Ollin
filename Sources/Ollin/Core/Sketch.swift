@@ -195,6 +195,33 @@ open class Sketch {
     /// Live only: a headless render has no display, so it reads 1.
     public private(set) var displayHeadroom: Double = 1
 
+    /// Where this canvas sits on the desk, in screen points, or `nil` when it
+    /// sits nowhere (an export, a headless render).
+    ///
+    /// It is measured the way the canvas itself is: the origin is the top-left
+    /// corner of the main screen, and y grows downward. So two sketches running
+    /// side by side describe the same desk in the same numbers, which is what
+    /// lets one world show through several windows at once.
+    ///
+    /// ```swift
+    /// guard let mine = canvasOnScreen else { return }
+    /// let onCanvas = (worldPoint - mine.corner) * (width / mine.width)
+    /// ```
+    ///
+    /// It follows the window: drag one and the next frame reads the new place.
+    /// The rectangle is the canvas's own, not the window's, so a sidebar or a
+    /// title bar is already out of it. A piece being warped onto a wall is the
+    /// one case where the two part company, since the warp moves the picture
+    /// inside the canvas rather than the canvas across the desk.
+    ///
+    /// See `Examples/Installation/ManyWindows`.
+    public private(set) var canvasOnScreen: Rectangle?
+
+    /// The screen that canvas is on, in the same coordinates, or `nil` when
+    /// there is no window. The room a piece has to be dragged around in, and
+    /// the natural size for a world that several windows look into.
+    public private(set) var screenFrame: Rectangle?
+
     /// Whether the system is set to reduce motion.
     ///
     /// Ollin animates by default, which is the point of `draw()` running every
@@ -2724,6 +2751,14 @@ open class Sketch {
     func setMouse(x: Double, y: Double) {
         mouseX = x
         mouseY = y
+    }
+
+    /// Where the run sits on the desk this frame. Pushed every frame rather
+    /// than on a move, so a window being dragged is current in the frame that
+    /// draws during the drag.
+    func setPlacement(canvas: Rectangle?, screen: Rectangle?) {
+        canvasOnScreen = canvas
+        screenFrame = screen
     }
 
     func setDisplayHeadroom(_ headroom: Double) {

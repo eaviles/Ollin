@@ -565,6 +565,23 @@ The one on the right declares the mirror of that: `shows` starting at 0.4, and t
 
 None of this reaches an export. A file has no wall to fit.
 
+### Several windows, one world
+
+A piece does not have to be one window. Run the same sketch three times and you have three windows on one desk, and they can look into one world rather than three.
+
+<img src="Images/22-SharingAndPerforming/OneWorldManyWindows.jpg" alt="A pale rectangle labelled the desk, holding faint rings and coloured dots. Three dark window panes sit on it, each showing the part of the rings and dots that falls inside it, so the rings carry on across the gaps between the panes. A bracket under the middle pane is labelled canvasOnScreen: where this one sits on the desk" width="680">
+
+What each window needs is to know where it is. `canvasOnScreen` says where this canvas sits on the desk. It is measured the way the canvas is measured, so all three windows describe the same desk in the same numbers:
+
+```swift
+guard let mine = canvasOnScreen else { return }
+let onCanvas = worldPoint - Vector2(mine.x, mine.y)      // the desk, seen from here
+```
+
+Then draw in desk coordinates and move each point into this canvas at the last moment. Drag a window and the next frame reads the new place, so the world stays where it is while the window slides over it.
+
+The other half is that nothing here talks to anything. The windows are separate programs, and separate programs are hard to keep in step. So make the whole world a function of the time of day, which they all read the same, and they cannot disagree. That is worth reaching for before anything with a network in it. The `Installation/ManyWindows` example is the whole thing, in about eighty lines.
+
 ### The log
 
 An unattended run prints a line when it starts, when it resumes, and when the machine wakes or the displays change. The hours and the watch print their own. Send it somewhere you can read on Monday:

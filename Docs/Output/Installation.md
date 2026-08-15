@@ -299,6 +299,21 @@ The file is compiled once, and the sketch is handed the window. Every part in th
 
 Exports open no window, so none of the window parts apply to them. The clock restart does travel with the piece, because it belongs to the sketch rather than to the window. It lands on a whole lap there too.
 
+### Several windows, one world
+
+A piece is not always one window. Run the same sketch more than once. Each run opens its own window on the same desk.
+
+`canvasOnScreen` says where this canvas sits there, in screen points. It is measured from the top-left corner of the main screen, downward. Every window describes the same desk in the same numbers. So each one can draw its own part of a single world:
+
+```swift
+guard let mine = canvasOnScreen else { return }
+let onCanvas = worldPoint - Vector2(mine.x, mine.y)     // the desk, seen from here
+```
+
+`screenFrame` gives the screen that window is on. That is a natural size for the world itself. Both read `nil` in an export, where there is no window.
+
+Keeping separate programs in step is the harder half. The cheapest answer needs no messages at all. Make the world a function of the time of day. Every window reads the same clock, so none of them can disagree.
+
 ### See also
 
 - [`Export`](./Export.md) for writing frames, video, and vectors out of a piece.
@@ -306,3 +321,4 @@ Exports open no window, so none of the window parts apply to them. The clock res
 - [`Canvas`](../Core/Canvas.md) for how the canvas and the window relate, which is what lets a 1080 square fill a wide screen without distorting.
 - The [Unattended example](../../Examples/Installation/Unattended/Sketch.swift), and the [Resuming example](../../Examples/Installation/Resuming/Sketch.swift), a wall that fills in and remembers how far it got.
 - The [Fitted example](../../Examples/Installation/Fitted/Sketch.swift), a piece with the marks on it that you line the corners up against.
+- The [ManyWindows example](../../Examples/Installation/ManyWindows/Sketch.swift), one world seen through as many windows as you care to open.

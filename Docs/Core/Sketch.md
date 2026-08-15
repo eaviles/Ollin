@@ -24,7 +24,7 @@ final class HelloCircle: Sketch {
 
 - [Lifecycle](#lifecycle) - `setup`, `draw`, `mousePressed`/`mouseReleased`, `keyPressed`/`keyReleased`, `onReload`
 - [Temporal state](#temporal-state) - `frameCount`, `time`, `deltaTime`, `frameRate`
-- [Canvas](#canvas) - `width`, `height`
+- [Canvas](#canvas) - `width`, `height`, `canvasOnScreen`, `screenFrame`
 - [Loop control](#loop-control) - `noLoop`, `loop`, `isLooping`
 - [Extensions](#extensions) - `extend`, and writing a `SketchExtension`
 - [Configuration](#configuration) - `title`, `canvasSize`, `windowMode`, `loopDuration`, `installation`
@@ -144,10 +144,16 @@ Alongside the clock, `variation` (an `Int`) names the seed this run's randomness
 | Property | Type | Meaning |
 |---|---|---|
 | `width` / `height` | `Double` | canvas size in logical points; updates live on resize |
+| `canvasOnScreen` | `Rectangle?` | where this canvas sits on the desk, in screen points; `nil` with no window |
+| `screenFrame` | `Rectangle?` | the screen it sits on, in the same coordinates |
 
 ```swift
 drawCircle(width / 2, height / 2, min(width, height) / 4)   // centered, proportional
 ```
+
+`canvasOnScreen` is measured the way the canvas is. The origin is the top-left corner of the main screen, and y grows downward. Every window on the desk describes that desk in the same numbers. That is what lets several of them look into one world.
+
+The rectangle covers the canvas alone. A title bar or a sidebar falls outside it. It follows the window, so a drag lands in the next frame. An export has no window, and both properties read `nil` there. The `Installation/ManyWindows` example is built on the pair.
 
 To keep a sketch looking the same at every canvas size, write it relative to the canvas with `scale` and `width`/`height` fractions. That, the `canvasSize` export presets, and the preview window are all on the [Canvas](../Core/Canvas.md) page.
 

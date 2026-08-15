@@ -529,6 +529,14 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
 
         sketch.advance(time: elapsed, deltaTime: dt, frameRate: smoothedFrameRate)
 
+        // Where this canvas is on the desk, read fresh each frame so a window
+        // being dragged is current in the frames drawn during the drag. It is
+        // the view's own rectangle rather than the window's, so a host with a
+        // sidebar or a title bar reports the canvas and not the chrome.
+        sketch.setPlacement(canvas: SketchRunner.onScreen(view.convert(view.bounds, to: nil),
+                                                          in: view.window),
+                            screen: SketchRunner.desktopRect(view.window?.screen?.frame))
+
         // A camera-view snap from the host menu: request it before the sketch's
         // draw() runs, so its cameraShowcase/cameraControl/cameraMove call applies
         // it this frame.
@@ -758,6 +766,27 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// `drawableSize / backingScale` — that scale is unreliable before the view
     /// joins a window (it reads 1 on a Retina display), which silently doubled the
     /// canvas and left mouse coordinates at half scale.
+    /// A rectangle in AppKit's screen space as one a sketch can use: the origin
+    /// moves to the top-left of the primary screen and y grows downward, which
+    /// is how the canvas is measured. `nil` when there is no rectangle, or no
+    /// screen to measure it against.
+    static func desktopRect(_ rect: CGRect?) -> Rectangle? {
+        // `screens.first` rather than `main`: the main screen is the one with
+        // the key window, while the coordinate system is anchored on the
+        // primary one, and on two displays those are different screens.
+        guard let rect, let primary = NSScreen.screens.first else { return nil }
+        return Rectangle(x: rect.minX, y: primary.frame.maxY - rect.maxY,
+                         width: rect.width, height: rect.height)
+    }
+
+    /// The same, for a rectangle in a view's own window: it goes out to the
+    /// screen first. `nil` while the view has no window, which is every frame
+    /// of a headless render.
+    static func onScreen(_ rect: CGRect, in window: NSWindow?) -> Rectangle? {
+        guard let window else { return nil }
+        return desktopRect(window.convertToScreen(rect))
+    }
+
     private func updateCanvasSize(from view: MTKView, drawableSize _: CGSize) {
         if case .resizable = sketch.windowMode {
             let pts = view.bounds.size
