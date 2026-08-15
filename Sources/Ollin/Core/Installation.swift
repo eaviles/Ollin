@@ -65,6 +65,10 @@ public struct Installation: Sendable, Equatable {
     /// ``Schedule``.
     public var schedule: Schedule = .always
 
+    /// How the picture is shaped to fit what it is thrown onto, and how it
+    /// fades into the machine beside it. See ``Projection``.
+    public var projection: Projection = .direct
+
     /// When the clock a shader reads starts counting from zero again.
     ///
     /// A sketch reads `time` as a `Double`, which stays exact for centuries. A
@@ -147,7 +151,8 @@ public struct Installation: Sendable, Equatable {
                 clock: Clock = .automatic,
                 checkpoint: Checkpointing = .off,
                 restarts: Restarting = .never,
-                schedule: Schedule = .always) {
+                schedule: Schedule = .always,
+                projection: Projection = .direct) {
         self.fillsScreen = fillsScreen
         self.hidesPointer = hidesPointer
         self.keepsDisplayAwake = keepsDisplayAwake
@@ -155,6 +160,7 @@ public struct Installation: Sendable, Equatable {
         self.checkpoint = checkpoint
         self.restarts = restarts
         self.schedule = schedule
+        self.projection = projection
     }
 
     /// The private form behind ``off``, the one value that is not running.

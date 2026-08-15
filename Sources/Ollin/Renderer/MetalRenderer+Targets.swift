@@ -2660,9 +2660,16 @@ extension MetalRenderer {
     /// resolved linear-float frame) with the drawer's exposure + tone-map mode,
     /// dithering and sRGB-encoding to the bound display attachment. Shared by every
     /// output path (on-screen drawable, export texture, Syphon/grab texture).
+    /// - Parameter projected: whether this present is the one the audience sees
+    ///   on a wall, and so carries the corner-pin warp and the edge fades the
+    ///   run was calibrated with. Only the two paths that present into a
+    ///   drawable pass true: an export, a frame grab, and a Syphon feed all
+    ///   re-render the canvas itself, which has no wall to fit.
     func encodePresent(from source: MTLTexture, drawer: Drawer,
-                               into encoder: MTLRenderCommandEncoder) {
-        guard let state = try? pipeline(.present) else { return }
+                               into encoder: MTLRenderCommandEncoder,
+                               projected: Bool = false) {
+        let place = projected ? projection : nil
+        guard let state = try? pipeline(place == nil ? .present : .presentProjected) else { return }
         encoder.setRenderPipelineState(state)
         encoder.setFragmentTexture(source, index: 0)
         encoder.setFragmentSamplerState(imageSampler, index: 0)
@@ -2673,6 +2680,24 @@ extension MetalRenderer {
                                            referenceNits: Float(ColorOutput.referenceWhiteNits),
                                            peakNits: Float(ColorOutput.peakNits))
         encoder.setFragmentBytes(&present, length: MemoryLayout<OllinPresentUniforms>.stride, index: 0)
+        if var fit = place?.uniforms {
+            encoder.setFragmentBytes(&fit, length: MemoryLayout<OllinProjectionUniforms>.stride, index: 1)
+        }
         encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+    }
+}
+
+extension ProjectionPlacement {
+
+    /// The placement in the form the projected present pass reads.
+    var uniforms: OllinProjectionUniforms {
+        OllinProjectionUniforms(
+            fromOutput: homography.shaderInverse,
+            sourceOrigin: SIMD2<Float>(Float(source.x), Float(source.y)),
+            sourceSize: SIMD2<Float>(Float(source.width), Float(source.height)),
+            fade: SIMD4<Float>(Float(fade.left), Float(fade.right),
+                               Float(fade.top), Float(fade.bottom)),
+            curve: Float(curve),
+            gammaExponent: Float(gammaExponent))
     }
 }

@@ -198,7 +198,7 @@ The needs of a piece running unattended for days in a gallery, which none of the
 
 A single-file sketch cannot go up on a wall at all: the live host opens its window, so the sketch never opens its own, and the whole tier applies on the path where the sketch owns that window. The fix is a host that compiles the loose file and hands the sketch to `OllinApp.run`.
 
-The output side of the same audience is **projection mapping and multi-display**: a corner-pin / homography warp applied to the presented frame (a small matrix or mesh warp in the present pass, where tone-mapping already runs, so exports stay unwarped), edge blending with gamma-aware feathering for multi-projector spans, and fullscreen output across several displays (one canvas spanning them, or one sketch driving per-display regions). Warp calibration is host chrome in the OllinLive spirit (drag the corners live, persist per setup), not sketch code; Syphon already covers the case where a dedicated mapping app owns the wall.
+The output side of the same audience is **several displays from one machine**: fullscreen output across them, with one canvas spanning the lot or a declared part of it per display. A projection already says which part of the canvas a machine shows, where it lands, and how its edges fade, so what this needs is a window and a drawable per display driven from one canvas render, where the frame loop assumes exactly one of each. Syphon already covers the case where a dedicated mapping app owns the wall.
 
 ## Learning: the Guide
 

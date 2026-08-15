@@ -1044,4 +1044,22 @@ typedef struct {
     float peakNits;      // brightest luminance carried, in cd/m² (the mastering peak)
 } OllinPresentUniforms;
 
+// Constants for the *projected* present pass (`ollin_present_projected_fragment`
+// and its wide twin): the corner-pin warp that squares a projector's picture up
+// with the wall it lands on, and the edge fades that let one machine's picture
+// meet another's without a bright bar down the join. Screen only: an export
+// re-renders and never carries either (see `Installation.Projection`).
+//
+// The warp runs *backwards*. The fragment starts from where it is on the output
+// and asks which part of the picture belongs there, so what the GPU reads is the
+// map from output to picture rather than the one the four corners describe.
+typedef struct {
+    simd_float3x3 fromOutput;  // output fractions -> shown-part fractions; multiply (x, y, 1), divide by z
+    simd_float2 sourceOrigin;  // where the shown part starts on the canvas, 0…1
+    simd_float2 sourceSize;    // how much of the canvas it covers, 0…1
+    simd_float4 fade;          // how far the fade reaches from the left/right/top/bottom edge, in shown-part fractions
+    float curve;               // the shape of the fade: 1 a straight line, 2 the published S
+    float gammaExponent;       // the standard curve (2.2) over the projector's own
+} OllinProjectionUniforms;
+
 #endif /* OLLIN_SHADER_TYPES_H */

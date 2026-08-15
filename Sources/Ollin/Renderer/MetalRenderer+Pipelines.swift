@@ -82,7 +82,7 @@ extension MetalRenderer {
         // into the float intermediate, fully described by its shader pair + blend +
         // alpha convention + depth format.
         if key.isPresent {
-            return try makePresentPipeline(using: library)
+            return try makePresentPipeline(key, using: library)
         }
         if key.isEffect {
             return try makeEffectPipeline(key, using: library)
@@ -218,13 +218,17 @@ extension MetalRenderer {
     /// linear-float frame and writing the sRGB drawable. Single-sample (it runs
     /// after the MSAA resolve), blending disabled (it overwrites the drawable),
     /// and it targets the display format rather than the float intermediate.
-    private func makePresentPipeline(using library: MTLLibrary) throws -> MTLRenderPipelineState {
+    private func makePresentPipeline(_ key: PipelineKey,
+                                     using library: MTLLibrary) throws -> MTLRenderPipelineState {
         // The 8-bit path runs the shipped fragment; a float destination (wide
         // gamut or HDR) runs its twin, which converts primaries instead of
         // dithering and sRGB-encoding. One or the other for the renderer's whole
-        // life, so this is not a per-frame branch.
-        let fragmentName = presentEncoding == .srgb8
-            ? "ollin_present_fragment" : "ollin_present_wide_fragment"
+        // life, so this is not a per-frame branch. A piece fitted to a wall runs
+        // the projected twin of whichever of those it is (see
+        // `Installation.Projection`), which is a per-*key* branch: the plain pass
+        // is still what an export and a desk window run.
+        let base = presentEncoding == .srgb8 ? "ollin_present" : "ollin_present_wide"
+        let fragmentName = key.isProjected ? "\(base)_projected_fragment" : "\(base)_fragment"
         guard let vertexFunction = library.makeFunction(name: "ollin_present_vertex"),
               let fragmentFunction = library.makeFunction(name: fragmentName) else {
             throw RendererError.shaderFunctions

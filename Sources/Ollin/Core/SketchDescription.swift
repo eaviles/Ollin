@@ -128,8 +128,12 @@ public struct SketchDescription: Equatable, Sendable {
 /// the view counts it up from the bottom, so the region is flipped as well as
 /// scaled. A canvas with no size yet gives back the whole view.
 func viewRect(of region: Rectangle, canvasWidth: Double, canvasHeight: Double,
-              in bounds: CGRect) -> CGRect {
+              in bounds: CGRect, through projection: ProjectionPlacement? = nil) -> CGRect {
     guard canvasWidth > 0, canvasHeight > 0 else { return bounds }
+    if let projection {
+        return warpedViewRect(of: region, canvasWidth: canvasWidth, canvasHeight: canvasHeight,
+                              in: bounds, through: projection)
+    }
     let sx = Double(bounds.width) / canvasWidth
     let sy = Double(bounds.height) / canvasHeight
     let width = region.width * sx
@@ -137,6 +141,31 @@ func viewRect(of region: Rectangle, canvasWidth: Double, canvasHeight: Double,
     let x = Double(bounds.minX) + region.corner.x * sx
     let y = Double(bounds.minY) + Double(bounds.height) - region.corner.y * sy - height
     return CGRect(x: x, y: y, width: width, height: height)
+}
+
+/// The same question for a piece fitted to a wall, where the canvas lands as a
+/// four-sided shape rather than as a rectangle.
+///
+/// A screen reader wants a rectangle, so the region's four corners go through
+/// the map and the box around them is the answer. It is larger than the part
+/// itself wherever the picture is turned, which is the right way to be wrong
+/// here: a box that covers the part is findable, and one that misses it is not.
+private func warpedViewRect(of region: Rectangle, canvasWidth: Double, canvasHeight: Double,
+                            in bounds: CGRect, through projection: ProjectionPlacement) -> CGRect {
+    let corners = [region.topLeft, region.topRight, region.bottomRight, region.bottomLeft]
+    var minX = Double.greatestFiniteMagnitude, minY = Double.greatestFiniteMagnitude
+    var maxX = -Double.greatestFiniteMagnitude, maxY = -Double.greatestFiniteMagnitude
+    for corner in corners {
+        let onDisplay = projection.outputPoint(
+            fromCanvas: Vector2(corner.x / canvasWidth, corner.y / canvasHeight))
+        // The canvas counts y down from the top and the view counts it up from
+        // the bottom.
+        let x = Double(bounds.minX) + onDisplay.x * Double(bounds.width)
+        let y = Double(bounds.minY) + Double(bounds.height) * (1 - onDisplay.y)
+        minX = min(minX, x); maxX = max(maxX, x)
+        minY = min(minY, y); maxY = max(maxY, y)
+    }
+    return CGRect(x: minX, y: minY, width: max(0, maxX - minX), height: max(0, maxY - minY))
 }
 
 // MARK: - The sketch's own calls

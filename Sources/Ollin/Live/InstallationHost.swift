@@ -50,6 +50,9 @@ final class InstallationHost {
     /// the first reading, so the run says out loud what it opened into.
     private var showing: Bool?
 
+    /// The corner handles, and the keys that raise them.
+    private var calibrator: ProjectionCalibrator?
+
     init(_ settings: Installation) {
         self.settings = settings
     }
@@ -58,14 +61,20 @@ final class InstallationHost {
 
     /// Take over `window` for the run: fill the screen, hide the pointer, keep
     /// the display awake, and start watching for what the system does next.
-    func take(over window: NSWindow) {
+    ///
+    /// The calibrator comes with it because its keys belong to the window: this
+    /// one has no menu bar to hang a command on.
+    func take(over window: NSWindow, calibrator: ProjectionCalibrator? = nil) {
         self.window = window
-        log("running unattended; Command-Q quits")
+        self.calibrator = calibrator
+        log("running unattended; Command-K lines it up, Command-Q quits")
 
         if settings.fillsScreen { fillScreen(window) }
-        if settings.hidesPointer { NSCursor.hide() }
+        // Not while somebody is lining it up: the pointer is the tool.
+        if settings.hidesPointer, calibrator?.isOpen != true { NSCursor.hide() }
         if settings.keepsDisplayAwake { keepAwake() }
         heartbeat = Heartbeat.start()
+        calibrator?.watchKeys()
         watchTheSystem()
         if !settings.schedule.periods.isEmpty { watchTheClock() }
     }
@@ -78,6 +87,7 @@ final class InstallationHost {
         scheduleTimer = nil
         heartbeat?.stop()
         heartbeat = nil
+        calibrator?.stopWatchingKeys()
         releaseAwake()
         if settings.hidesPointer { NSCursor.unhide() }
         for observer in appObservers { NotificationCenter.default.removeObserver(observer) }

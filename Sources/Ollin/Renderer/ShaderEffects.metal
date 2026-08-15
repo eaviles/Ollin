@@ -122,6 +122,108 @@ fragment float4 ollin_present_wide_fragment(PresentOut in [[stage_in]],
     return float4(clamp(wide, 0.0, u.ceiling), 1.0);
 }
 
+// MARK: - Present: fitted to the wall
+//
+// The twins again, this time for a piece thrown onto something. A projector is
+// almost never square to its wall, so the picture lands as a trapezoid; these
+// take the four corners of where it *should* land and read the frame backwards
+// through that map, which puts it back on true. Where two projectors overlap,
+// each fades out across the shared band so the two beams add to one coat rather
+// than a bright bar.
+//
+// Separate functions rather than a branch in the four above, for the reason the
+// wide twin is separate: what those emit is what every shipped frame is made of,
+// and growing one re-contracts its arithmetic under fast math. Screen only, so
+// nothing here reaches an export.
+
+// One edge's fade, as a fraction of full brightness. `t` is the distance in from
+// that edge and `width` is how far the band reaches, both in shown-part units.
+// The curve is the published blending function: a straight line at p = 1, and at
+// p = 2 an S that leaves the middle at half and meets full brightness flat, so
+// two of these back to back add to exactly one at every point across the band.
+static inline float ollin_fade_ramp(float t, float width, float p) {
+    if (width <= 0.0) { return 1.0; }
+    float x = clamp(t / width, 0.0, 1.0);
+    return x < 0.5 ? 0.5 * pow(2.0 * x, p)
+                   : 1.0 - 0.5 * pow(2.0 * (1.0 - x), p);
+}
+
+// Where this fragment reads from and how much of it counts: xy the point on the
+// canvas, z how much of the pixel the picture covers (0 outside it), w the fade.
+//
+// Every step is taken unconditionally, including the ones a fragment outside the
+// picture has no use for. `fwidth` reads its neighbours in the same quad, and a
+// lane that has already returned has nothing to read, so the guard is applied to
+// the answer rather than to the flow.
+static inline float4 ollin_projection_at(float2 uv, constant OllinProjectionUniforms &p) {
+    float3 h = p.fromOutput * float3(uv, 1.0);
+    // Behind the projector: the map sends these off to infinity, so they are
+    // held at a small positive divisor here and dropped by `ahead` below.
+    float ahead = h.z > 0.0 ? 1.0 : 0.0;
+    float2 q = h.xy / max(abs(h.z), 1e-8);
+
+    // How much of this pixel is inside the picture: the distance to the nearest
+    // edge, in pixels, through the same map. It is the picture's own outline, so
+    // it stays about a pixel wide however far the corners are dragged.
+    float2 fw = max(fwidth(q), 1e-6);
+    float2 inside = clamp(min(q, 1.0 - q) / fw + 0.5, 0.0, 1.0);
+
+    float fade = ollin_fade_ramp(q.x, p.fade.x, p.curve)
+               * ollin_fade_ramp(1.0 - q.x, p.fade.y, p.curve)
+               * ollin_fade_ramp(q.y, p.fade.z, p.curve)
+               * ollin_fade_ramp(1.0 - q.y, p.fade.w, p.curve);
+
+    float2 source = p.sourceOrigin + clamp(q, 0.0, 1.0) * p.sourceSize;
+    return float4(source, inside.x * inside.y * ahead, fade);
+}
+
+// How much light this fragment keeps: coverage, and the fade raised by the
+// projector's answer to the standard curve. At 2.2, the standard one, the
+// exponent is 1 and the fade is applied as it stands, which is exact: the frame
+// is still linear light here, so two beams weighted w and 1 - w add to one.
+static inline float ollin_projection_weight(float4 place, float exponent) {
+    float fade = exponent == 1.0 ? place.w : pow(place.w, exponent);
+    return place.z * fade;
+}
+
+fragment float4 ollin_present_projected_fragment(PresentOut in [[stage_in]],
+                                                 texture2d<float> src [[texture(0)]],
+                                                 sampler samp [[sampler(0)]],
+                                                 constant OllinPresentUniforms &u [[buffer(0)]],
+                                                 constant OllinProjectionUniforms &p [[buffer(1)]]) {
+    float4 place = ollin_projection_at(in.uv, p);
+    float3 c = src.sample(samp, place.xy).rgb * u.exposure;
+    if (u.toneMapMode == 1) {
+        c = c / (1.0 + c);              // Reinhard: x / (1 + x), per channel
+    } else if (u.toneMapMode == 2) {
+        c = toneMapACES(c);             // ACES filmic
+    }
+    c *= ollin_projection_weight(place, p.gammaExponent);
+    return finalizeColor(float4(c, 1.0), in.position.xy);
+}
+
+fragment float4 ollin_present_wide_projected_fragment(PresentOut in [[stage_in]],
+                                                      texture2d<float> src [[texture(0)]],
+                                                      sampler samp [[sampler(0)]],
+                                                      constant OllinPresentUniforms &u [[buffer(0)]],
+                                                      constant OllinProjectionUniforms &p [[buffer(1)]]) {
+    float4 place = ollin_projection_at(in.uv, p);
+    float3 c = src.sample(samp, place.xy).rgb * u.exposure;
+    if (u.toneMapMode == 1) {
+        c = c / (1.0 + c);
+    } else if (u.toneMapMode == 2) {
+        c = toneMapACES(c);
+    }
+    c *= ollin_projection_weight(place, p.gammaExponent);
+
+    if (u.outputSpace == 2) {
+        float3 wide = max(ollin_srgb_to_rec2020(c), 0.0);
+        return float4(ollin_pq_encode(min(wide * u.referenceNits, u.peakNits)), 1.0);
+    }
+    float3 wide = ollin_srgb_to_display_p3(c);
+    return float4(clamp(wide, 0.0, u.ceiling), 1.0);
+}
+
 // MARK: - Effects filters (texture -> texture, linear-float intermediate)
 //
 // These run between resolves on the off-screen effects layers, reusing the

@@ -131,6 +131,49 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         }
     }
 
+    // MARK: Fitting the wall
+
+    /// What this run is fitted with: the sketch's declaration with the saved
+    /// calibration's corners in it. Nil at a desk, and in every host that owns
+    /// its own window rather than giving it to the piece.
+    private var projectionSettings: Installation.Projection?
+    /// The display size the placement was last worked out against, so a monitor
+    /// changing rebuilds it and an ordinary frame does not.
+    private var projectionSize: SIMD2<Int> = .zero
+
+    /// Fit this run to what it is thrown onto, or stop fitting it. Called by the
+    /// host that owns the window, and again by each drag of a calibration
+    /// handle.
+    func setProjection(_ projection: Installation.Projection?) {
+        projectionSettings = projection
+        projectionSize = .zero          // work it out again against the display
+        if projection == nil {
+            renderer.projection = nil
+            (view as? OllinMTKView)?.projection = nil
+        }
+    }
+
+    /// Work the declaration out against the display, when either has moved. The
+    /// canvas keeps its own proportions inside the fitted picture, so this is
+    /// also what tells the renderer to stop taking its shape from the drawable.
+    private func refreshProjection(in view: MTKView) {
+        guard let projectionSettings else { return }
+        let size = SIMD2(Int(view.drawableSize.width.rounded()),
+                         Int(view.drawableSize.height.rounded()))
+        guard size.x > 0, size.y > 0, size != projectionSize else { return }
+        projectionSize = size
+        // Nothing to work out from a shape with no inside, which is what a hand
+        // dragging one corner past another makes for a moment. The last good
+        // placement stays up until the hand comes back: a picture that vanishes
+        // mid-drag is a picture nobody can drag.
+        guard let placement = ProjectionPlacement(projectionSettings,
+                                                  canvas: Vector2(sketch.width, sketch.height),
+                                                  output: Vector2(Double(size.x), Double(size.y)))
+        else { return }
+        renderer.projection = placement
+        (view as? OllinMTKView)?.projection = placement
+    }
+
     /// Whether the piece is on screen at all. A schedule that shuts for the
     /// night takes the canvas away; nothing else ever does.
     private var isShowing = true
@@ -578,6 +621,8 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         }
         let capturing = capture.map { renderer.beginGPUCapture(to: $0) } ?? false
 
+        refreshProjection(in: view)
+
         renderer.render(sketch.drawer,
                         viewport: SIMD2<Float>(Float(sketch.width), Float(sketch.height)),
                         in: view)
@@ -734,6 +779,11 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
 /// for: the wiring is the whole feature there, so it is checked on a real view.
 final class OllinMTKView: MTKView {
     weak var sketch: Sketch?
+
+    /// How this run is fitted to what it is thrown onto, when it is. The
+    /// pointer goes back through it, so a piece being calibrated still reads
+    /// `mouseX` in its own canvas rather than in screen corners.
+    var projection: ProjectionPlacement?
 
     /// Whether the view claims keyboard focus the moment it lands in a window
     /// (`KeyboardFocus.automatic`). The gallery turns this off so its example
@@ -972,6 +1022,15 @@ final class OllinMTKView: MTKView {
         guard let sketch else { return }
         let p = convert(windowPoint, from: nil)
         let bw = Double(bounds.width), bh = Double(bounds.height)
+        // A fitted piece fills the display and puts its picture inside that
+        // through a warp, so the pointer takes the same warp backwards. Without
+        // it a piece being lined up on a wall reads a mouse somewhere else.
+        if let projection, bw > 0, bh > 0 {
+            let onCanvas = projection.canvasPoint(
+                fromOutput: Vector2(Double(p.x) / bw, (bh - Double(p.y)) / bh))
+            sketch.setMouse(x: onCanvas.x * sketch.width, y: onCanvas.y * sketch.height)
+            return
+        }
         let x = bw > 0 ? Double(p.x) / bw * sketch.width : Double(p.x)
         let y = bh > 0 ? (bh - Double(p.y)) / bh * sketch.height : bh - Double(p.y)
         sketch.setMouse(x: x, y: y)
@@ -1017,7 +1076,7 @@ final class OllinMTKView: MTKView {
             part.setAccessibilityFrameInParentSpace(
                 viewRect(of: element.region ?? whole,
                          canvasWidth: sketch.width, canvasHeight: sketch.height,
-                         in: bounds))
+                         in: bounds, through: projection))
         }
     }
 
@@ -2377,16 +2436,33 @@ private final class StandaloneAppDelegate: NSObject, NSApplicationDelegate {
         window.title = sketch.title
         window.isReleasedWhenClosed = false
         window.contentMinSize = NSSize(width: 200, height: 200)
-        // The canvas stretches to whatever frame it is given and maps the
-        // pointer by its bounds, so keeping the aspect at the layout level is
-        // what makes a 1080 square fill a wide screen's height without
-        // distorting and without the mouse drifting off the drawing.
-        let canvas = sketch.canvasSize.cgSize
-        let aspect = canvas.height > 0 ? canvas.width / canvas.height : 1
         // Built before the view, so the host is in hand when the runner arrives:
         // the runner registers itself globally on its first frame, and a piece
         // whose schedule opens dark never draws one until the schedule says so.
         let host = InstallationHost(installation)
+
+        // This window always fits its picture in the present pass rather than
+        // in the layout, even when the sketch declares nothing: the canvas keeps
+        // its proportions either way, and Command-K then has corners to drag on
+        // any piece. What the sketch declared comes first; the corners this
+        // display was last lined up with win over it, because they belong to the
+        // room rather than to the work.
+        let canvas = sketch.canvasSize.cgSize
+        var projection = installation.projection
+        let displayKey = ProjectionCalibration.key(for: screen)
+        if let saved = ProjectionCalibration.corners(forDisplay: displayKey) {
+            projection.corners = saved
+            ollinInstallationLog("lined up already: corners kept for this display")
+        }
+        let calibrator = ProjectionCalibrator(
+            projection: projection,
+            canvas: Vector2(Double(canvas.width), Double(canvas.height)),
+            displayKey: displayKey, hidesPointer: installation.hidesPointer)
+        // Opening straight into the handles, for the evening the projector is
+        // hung: the piece is up on the wall and out of true, and reaching for a
+        // keyboard shortcut is the last thing anybody wants to look up.
+        if CommandLine.arguments.contains("--calibrate") { calibrator.open() }
+
         let root = AnyView(
             ZStack {
                 SwiftUI.Color.black
@@ -2395,9 +2471,10 @@ private final class StandaloneAppDelegate: NSObject, NSApplicationDelegate {
                 // otherwise float over the piece on the wall.
                 SketchView(sketch, showsInspectorPanel: false) { runner in
                     runner.beginInstallation(installation)
+                    calibrator.attach(runner)
                     host.attach(runner)
                 }
-                .aspectRatio(aspect, contentMode: .fit)
+                CalibrationOverlay(calibrator: calibrator)
             }
             .frame(minWidth: 200, maxWidth: .infinity, minHeight: 200, maxHeight: .infinity)
         )
@@ -2409,7 +2486,7 @@ private final class StandaloneAppDelegate: NSObject, NSApplicationDelegate {
         window.makeKeyAndOrderFront(nil)
         self.window = window
 
-        host.take(over: window)
+        host.take(over: window, calibrator: calibrator)
         self.installationHost = host
     }
 }

@@ -27,6 +27,7 @@ Command-Q quits, whatever the piece covers. The menu bar is hidden, not gone.
 | `checkpoint` | How often the run writes its state down, so a relaunch resumes rather than restarts. Off until asked for. See [picking up where it left off](#picking-up-where-it-left-off). |
 | `restarts` | Whether a run that ends badly is started again. Off until asked for. See [getting back up on its own](#getting-back-up-on-its-own). |
 | `schedule` | The hours the piece is on screen, and the parts of the day it can behave differently in. None until asked for. See [keeping hours](#keeping-hours). |
+| `projection` | How the picture is shaped to fit what it is thrown onto, and how it fades into the machine beside it. See [fitting the wall](#fitting-the-wall). |
 
 Build one by hand to change any part of it. Anything you build is running: `.off` is the only value that is not.
 
@@ -211,6 +212,57 @@ Installation(schedule: [.from(9, "morning"), .from(13, "afternoon"), .dark(from:
 
 `scheduledPeriod` and `scheduledProgress` read the same anywhere, at a desk as much as on a wall. So a piece that changes through the day can be worked on at any hour of it. Going dark is the half that needs the installation: only a piece that owns its window can take the screen away.
 
+### Fitting the wall
+
+A projector is almost never square to what it is aimed at. It hangs off a beam, or sits on a shelf to one side. The picture lands as a trapezoid a few degrees out of true.
+
+So the picture is placed by the framework rather than by the window. Press **Command-K** on a running piece, drag the four corners onto the wall, and press it again.
+
+```sh
+swift run --package-path Examples Example-Installation-Fitted --calibrate    # open with the handles up
+```
+
+| Key | What it does |
+|---|---|
+| **Command-K** | Raises the handles, and puts them down again |
+| **Drag** | Moves one corner. The picture answers while you drag |
+| **Arrow keys** | Nudges the lit corner by a point. Shift moves it by ten |
+| **Tab** | Takes the next corner |
+| **R** | Squares the picture back up |
+
+The numbers are kept under the display, not under the sketch, in `~/Library/Application Support/Ollin/Calibration/`. A projector on a wall is out of true by the same amount whatever is playing. So you line it up once, and every piece you show there opens square. Delete the file to start again.
+
+Nothing about reading that file can stop a piece from starting. A file that is missing, unreadable, or written by an older Ollin is passed over, and the piece opens as it was declared.
+
+#### Two machines on one wall
+
+A wall longer than one projector is two projectors, each carrying a part of the canvas. They overlap in the middle, and the overlap is twice as bright as the rest unless each one fades out across it.
+
+```swift
+// The machine on the left.
+Installation(projection: .init(shows: Rectangle(x: 0, y: 0, width: 0.6, height: 1),
+                               blend: Insets(right: 0.2)))
+// The machine on the right.
+Installation(projection: .init(shows: Rectangle(x: 0.4, y: 0, width: 0.6, height: 1),
+                               blend: Insets(left: 0.2)))
+```
+
+`shows` is the part of the canvas this machine carries, in fractions of the canvas. `blend` is how far in the fade reaches from each edge, in the same fractions.
+
+The units are the same on purpose. Both machines are told about the same fifth of the same canvas. Their two fades are then the same function of the same wall. They add up to exactly one coat.
+
+The fade is applied to light rather than to a pixel value, which is what makes the sum exact. `gamma` says what your projector does with the standard curve, and 2.2 is that curve. Reach for it when a lined-up overlap still reads brighter or darker than the picture beside it.
+
+#### What it does and does not touch
+
+A fitted window fills the display, and the canvas keeps its own proportions inside that. So a square canvas on a wide screen looks the same as it always did until you drag something.
+
+The pointer takes the warp backwards, so a piece being lined up still reads `mouseX` in its own canvas.
+
+Exports are never warped. A file has no wall to fit, and the frames a piece writes out are the canvas itself. The same goes for a Syphon feed, since the software receiving it does its own mapping.
+
+The canvas renders at its own proportions, as large as fits the display. Dragging the corners wider than that stretches what has already been drawn. A piece meant for a wide wall is better off declaring a wide canvas.
+
 ### Displays that change under you
 
 A monitor unplugged, replugged, or re-resolved reaches the piece as a burst of notifications, sometimes dozens in a second. The burst is waited out first. Then the piece is put back on a screen that still exists, and the draw loop is retimed to the refresh rate it now faces. A piece moved from a 60 Hz panel to a 120 Hz one asks for the right rate from then on.
@@ -245,3 +297,4 @@ Exports open no window, so none of the window parts apply to them. The clock res
 - [`Sketch`](../Core/Sketch.md) for `loopDuration` and the rest of the declared configuration.
 - [`Canvas`](../Core/Canvas.md) for how the canvas and the window relate, which is what lets a 1080 square fill a wide screen without distorting.
 - The [Unattended example](../../Examples/Installation/Unattended/Sketch.swift), and the [Resuming example](../../Examples/Installation/Resuming/Sketch.swift), a wall that fills in and remembers how far it got.
+- The [Fitted example](../../Examples/Installation/Fitted/Sketch.swift), a piece with the marks on it that you line the corners up against.

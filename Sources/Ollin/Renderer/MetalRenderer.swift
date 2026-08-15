@@ -63,6 +63,11 @@ final class MetalRenderer {
         /// format, unlike every geometry pipeline; this flag keeps it in the same
         /// cache (so live shader reload rebuilds it too).
         var isPresent = false
+        /// The present pass fitted to a wall: the same pass through the twin that
+        /// reads the frame back through a corner-pin warp and fades its edges (see
+        /// `Installation.Projection`). Only ever set with `isPresent`, and only on
+        /// the two paths that present into a drawable, so an export never warps.
+        var isProjected = false
         /// The shadow depth pass: single-sample, depth-only (no color attachment, no
         /// fragment). Like `isPresent`, an exception to the geometry-pipeline shape,
         /// kept in the same cache so live shader reload rebuilds it too.
@@ -310,6 +315,10 @@ final class MetalRenderer {
         // final fullscreen tone-map pass, float -> sRGB drawable
         static let present = PipelineKey(vertex: "ollin_present_vertex",
                                          fragment: "ollin_present_fragment", isPresent: true)
+        // the same pass warped onto a wall and faded at its edges (screen only)
+        static let presentProjected = PipelineKey(vertex: "ollin_present_vertex",
+                                                  fragment: "ollin_present_projected_fragment",
+                                                  isPresent: true, isProjected: true)
         // an effects filter pass: a fullscreen-triangle `fragment` (sharing the
         // present vertex) writing the linear-float intermediate, single-sample, replace.
         static func effect(_ fragment: String) -> PipelineKey {
@@ -388,6 +397,11 @@ final class MetalRenderer {
     /// `ColorOutput.ceiling(displayHeadroom:)`, so `wide` stays at 1 whatever
     /// the screen can do). Unused by the 8-bit and PQ paths.
     var presentCeiling: Float
+    /// How the presented frame is fitted to what it is thrown onto: nil at a
+    /// desk, a resolved placement while a piece runs under an
+    /// `Installation.Projection`. Set by the host that owns the window, and read
+    /// only where the frame goes to a drawable, so no export carries it.
+    var projection: ProjectionPlacement?
     /// The compositing substrate: a linear `rgba16Float` intermediate every
     /// geometry pipeline renders into, so values can exceed 1.0 (additive light)
     /// and many translucent blends don't band the way an 8-bit target would. The
@@ -1192,6 +1206,27 @@ final class MetalRenderer {
         _ = try pipeline(.present)
     }
 
+    /// What size to render the frame at, given the drawable it will be presented
+    /// into. The drawable's own size, until the piece is fitted to a wall.
+    ///
+    /// A fitted piece fills the display, and the picture inside it is placed by
+    /// the present pass rather than by the window, so the geometry must not take
+    /// its shape from the drawable: a square canvas rendered across a wide screen
+    /// and then squared back up would carry oval dots and strokes of two
+    /// thicknesses. It renders at the canvas's own proportions instead, as large
+    /// as fits the drawable, which is the same count of pixels a window holding
+    /// the canvas's shape hands over.
+    func pictureSize(_ drawableSize: CGSize, canvas: SIMD2<Float>) -> (Int, Int) {
+        let output = (Int(drawableSize.width.rounded()), Int(drawableSize.height.rounded()))
+        guard projection != nil, canvas.x > 0, canvas.y > 0,
+              output.0 > 0, output.1 > 0 else { return output }
+        let aspect = Double(canvas.x) / Double(canvas.y)
+        let w = Double(output.0), h = Double(output.1)
+        let wide = aspect > w / h
+        return (max(1, Int((wide ? w : h * aspect).rounded())),
+                max(1, Int((wide ? w / aspect : h).rounded())))
+    }
+
     /// Encode and present one frame's worth of recorded geometry: composite into
     /// the linear-float intermediate, then run the present pass to tone-map it into
     /// the drawable.
@@ -1200,8 +1235,7 @@ final class MetalRenderer {
             renderAccumulating(drawer, viewport: viewport, in: view)
             return
         }
-        let width = Int(view.drawableSize.width.rounded())
-        let height = Int(view.drawableSize.height.rounded())
+        let (width, height) = pictureSize(view.drawableSize, canvas: viewport)
         guard width > 0, height > 0, let drawable = view.currentDrawable else { return }
 
         // The temporal upscaler renders the whole frame at a reduced size and
@@ -1474,7 +1508,7 @@ final class MetalRenderer {
         let presented = applyFrameFilters(drawer, resolved: blurred, width: width, height: height,
                                           into: commandBuffer, pooled: true)
         if let presentEncoder = countedEncoder(commandBuffer, presentPass(into: drawable.texture), caller: "present") {
-            encodePresent(from: presented, drawer: drawer, into: presentEncoder)
+            encodePresent(from: presented, drawer: drawer, into: presentEncoder, projected: true)
             presentEncoder.endEncoding()
         }
         commandBuffer.present(drawable)
@@ -1494,8 +1528,7 @@ final class MetalRenderer {
     /// triple-buffer vertex ring and its semaphore exactly like `render`, so the
     /// upload still can't stomp a buffer an in-flight frame is reading.
     private func renderAccumulating(_ drawer: Drawer, viewport: SIMD2<Float>, in view: MTKView) {
-        let width = Int(view.drawableSize.width.rounded())
-        let height = Int(view.drawableSize.height.rounded())
+        let (width, height) = pictureSize(view.drawableSize, canvas: viewport)
         guard width > 0, height > 0, let drawable = view.currentDrawable else { return }
 
         profile.resetCounts()
@@ -1545,7 +1578,7 @@ final class MetalRenderer {
         // Present: tone-map the resolved float pile into the drawable. (The pile
         // itself stays in linear float, so faint samples keep summing next frame.)
         if let presentEncoder = countedEncoder(commandBuffer, presentPass(into: drawable.texture), caller: "present") {
-            encodePresent(from: resolve, drawer: drawer, into: presentEncoder)
+            encodePresent(from: resolve, drawer: drawer, into: presentEncoder, projected: true)
             presentEncoder.endEncoding()
         }
         commandBuffer.present(drawable)

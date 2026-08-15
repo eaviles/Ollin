@@ -86,6 +86,7 @@ let package = Package(
         example("Installation/Resuming"),
         example("Installation/Watched"),
         example("Installation/Hours"),
+        example("Installation/Fitted"),
         example("Rendering/Blending"),
         example("Effects/Bloom"),
         example("Shapes/Combinators"),

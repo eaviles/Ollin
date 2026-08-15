@@ -535,6 +535,28 @@ Each part runs until the next one starts. The last one runs round to the first, 
 
 Both readings work at your desk as well as on a wall. You can build a piece that changes at dusk without waiting for dusk.
 
+### Fitting the wall
+
+A projector is almost never square to what it is aimed at. It hangs off a beam, or sits on a shelf to one side, and your rectangle lands as a trapezoid.
+
+So press **Command-K** on the running piece. Four handles appear on the corners. Drag each one onto the wall, and press Command-K again.
+
+<img src="Images/22-SharingAndPerforming/FittingTheWall.jpg" alt="Left, a rectangle of grid lines landing on a wall as a tilted trapezoid, labelled as it lands. Right, the same grid sitting square inside the wall with a handle on each corner, labelled corner-pinned. Below, two coloured blocks meeting in a shared band where each fades out, with a flat line across the top labelled added up, one coat" width="680">
+
+The numbers are kept under the display rather than under the sketch. The projector is out of true by the same amount whatever is playing. Line it up once and everything you show there opens square.
+
+A wall longer than one projector takes two machines, each carrying a part of the canvas:
+
+```swift
+// The machine on the left.
+Installation(projection: .init(shows: Rectangle(x: 0, y: 0, width: 0.6, height: 1),
+                               blend: Insets(right: 0.2)))
+```
+
+The one on the right declares the mirror of that: `shows` starting at 0.4, and the same 0.2 fading in from its left. They are told the same number about the same band. Their two fades add up to one coat, so no bright bar runs down the join.
+
+None of this reaches an export. A file has no wall to fit.
+
 ### The log
 
 An unattended run prints a line when it starts, when it resumes, and when the machine wakes or the displays change. The hours and the watch print their own. Send it somewhere you can read on Monday:
