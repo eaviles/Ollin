@@ -2458,6 +2458,27 @@ open class Sketch {
     public func textJustify(_ on: Bool = true) { drawer.textJustify(on) }
     /// Leave wrapped text at its natural width, the default. See `textJustify`.
     public func noTextJustify() { drawer.noTextJustify() }
+    /// Let a full stop or comma at the end of a line sit past that end.
+    ///
+    /// Wrapping normally keeps every character inside the box. A stop may not open a
+    /// line, so a stop that will not fit takes the character it follows to the next
+    /// line with it. This lets that stop hang past the edge instead, which keeps the
+    /// line full and the edge even. It is the Japanese ぶら下げ, and the same move
+    /// Latin typesetters make to keep a margin looking straight.
+    ///
+    /// It applies where the wrap happens, so this is a `drawText(_:in:)` setting.
+    /// The characters that may hang are the stops and the commas: `。`, `、`, their
+    /// full-width and half-width forms, and the Latin `.` and `,`. A hung character
+    /// does not count toward the line, so alignment and justification measure the
+    /// rest of it.
+    ///
+    /// ```swift
+    /// textHangingPunctuation()
+    /// drawText(passage, in: box)
+    /// ```
+    public func textHangingPunctuation(_ on: Bool = true) { drawer.textHangingPunctuation(on) }
+    /// Keep every character inside the box, the default. See `textHangingPunctuation`.
+    public func noTextHangingPunctuation() { drawer.noTextHangingPunctuation() }
     /// Draw `string` at `(x, y)` using the active `textFont`/`textSize`/`textAlign`.
     /// How it paints follows the font kind: an **outline** (`.ttf`/`.otf`) font
     /// (the default, `OutlineFont.systemMedium`) takes `fill` *and* `stroke`; a

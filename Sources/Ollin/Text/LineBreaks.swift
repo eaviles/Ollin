@@ -3,6 +3,29 @@
 
 import Foundation
 
+/// The characters allowed to sit past the end of a line (see
+/// `textHangingPunctuation`).
+///
+/// Stops and commas, and nothing else. Those are the two the writing systems that
+/// do this hang: a stop may not open a line, so without this it takes the
+/// character it follows to the next line and leaves a hole behind. The ideographic
+/// pair come with their full-width and half-width forms, since a passage may be
+/// typed with any of them.
+enum HangingPunctuation {
+    static let characters: Set<Character> = [
+        "\u{3002}", "\u{3001}",     // 。 、
+        "\u{FF61}", "\u{FF64}",     // ｡ ､ half-width
+        "\u{FF0E}", "\u{FF0C}",     // ． ， full-width
+        ".", ",",
+    ]
+
+    /// Whether `string` ends with a character that may hang.
+    static func endsWithHangable(_ string: some StringProtocol) -> Bool {
+        guard let last = string.last else { return false }
+        return characters.contains(last)
+    }
+}
+
 /// Line-break opportunities in a string.
 ///
 /// Wrapping text into a box means choosing where a line may end. Splitting on

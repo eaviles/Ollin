@@ -73,16 +73,51 @@ public enum TextDirection: Sendable {
     /// drawText("春はあけぼの。", 900, 100)
     /// ```
     ///
-    /// Mongolian is the writing system this does not serve: it is also vertical,
-    /// but its columns fill left to right.
+    /// Mongolian is set with `.topToBottomLeftToRight` instead: it is also
+    /// vertical, but its columns fill the other way and its letters join.
     case topToBottom
+
+    /// Set the text in columns that run top to bottom, the columns themselves
+    /// filling **left to right**: traditional Mongolian, and the scripts written
+    /// like it.
+    ///
+    /// The column order is the small half of the difference. The large half is
+    /// that these letters *join*: a word is one connected stroke, and each letter
+    /// takes the width its own shape needs. So the line is shaped the way a
+    /// horizontal line is, keeping the joins and the real widths, and then the
+    /// whole line is turned a quarter turn clockwise to stand it up. Nothing is
+    /// set on an em square, which is what the other vertical mode does.
+    ///
+    /// A column is as wide as the face's ascent and descent together, and the
+    /// two `textAlign` axes swap roles exactly as they do for `.topToBottom`: the
+    /// vertical one says where each column starts, the horizontal one places the
+    /// block. `\n` starts the next column to the right.
+    ///
+    /// ```swift
+    /// textDirection(.topToBottomLeftToRight)
+    /// drawText("ᠮᠣᠩᠭᠣᠯ ᠬᠡᠯᠡ", 300, 100)
+    /// ```
+    ///
+    /// Setting Japanese this way would lay every character on its side, so reach
+    /// for `.topToBottom` there.
+    case topToBottomLeftToRight
 }
 
 extension TextDirection: CaseIterable, ParamOption {}
 
 extension TextDirection {
     /// Whether the text runs down a column rather than across a line.
-    var isVertical: Bool { self == .topToBottom }
+    var isVertical: Bool { self == .topToBottom || self == .topToBottomLeftToRight }
+
+    /// Whether each glyph is turned a quarter turn clockwise to stand the line up,
+    /// rather than set upright on its own em square. This is what separates the two
+    /// vertical modes, and it decides how the line is shaped in the first place: a
+    /// turned column is shaped horizontally, so the letters keep their joins and
+    /// their own widths.
+    ///
+    /// It also decides which end the first column stands at, since the two vertical
+    /// modes fill their columns opposite ways.
+    var turnsGlyphs: Bool { self == .topToBottomLeftToRight }
 }
 
 /// What a justified block of text is stretched to fit (see `textJustify`).

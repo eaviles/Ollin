@@ -217,10 +217,9 @@ License hygiene carries over: a third-party extension is the author's own packag
 
 ## Accessibility and inclusive text
 
-Inclusivity on the platform's native support. What ships is in [`Docs/Helpers/Accessibility.md`](Docs/Helpers/Accessibility.md); one decision from it carries forward, which is that nothing is applied on a sketch's behalf, since only the sketch knows which of its movements, distinctions or shapes is load-bearing. What is left:
+Inclusivity on the platform's native support. What ships is in [`Docs/Helpers/Accessibility.md`](Docs/Helpers/Accessibility.md); one decision from it carries forward, which is that nothing is applied on a sketch's behalf, since only the sketch knows which of its movements, distinctions or shapes is load-bearing. One idea is on record as deliberately out, and the reasoning is what guides the next person who proposes it:
 
 - **Descriptions Ollin could derive.** A sketch writes its own words today. The vector recorder holds one frame as typed commands (`SVGCommand`). Shape kinds, positions, sizes and colors are all there, so that is the seam a derived summary would be built on. It stays out for now: a list of what was drawn is not a description of what it means.
-- **Mongolian, and hanging punctuation.** Columns run top to bottom for Japanese and Chinese, filling right to left. Mongolian fills the other way, which is a third column order rather than a new axis, so it is a small addition to the same layout once a face to test it against is in hand. Beside it sits hanging punctuation (ぶら下げ), where a full stop or comma is allowed to sit past the end of a line rather than pushing its neighbour along. That is a style a piece chooses, so it wants a knob of its own, and it is the one line-breaking refinement the system's own break set leaves to the caller.
 
 ## Examples folder
 

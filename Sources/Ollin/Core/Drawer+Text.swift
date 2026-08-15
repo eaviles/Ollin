@@ -112,7 +112,8 @@ extension Drawer {
         let placed = font.placedGlyphs(for: string, size: textPixelSize,
                                        alignH: textAlignH, alignV: textAlignV,
                                        direction: textWritingDirection,
-                                       justify: textJustification, at: Vector2(x, y))
+                                       justify: textJustification, hangs: textHangsInBox,
+                                       at: Vector2(x, y))
 
         if svgRecorder != nil {
             for glyph in placed {
@@ -173,7 +174,8 @@ extension Drawer {
         let placed = font.placedAtlasGlyphs(for: string, size: textPixelSize,
                                             alignH: textAlignH, alignV: textAlignV,
                                             direction: textWritingDirection,
-                                            justify: textJustification, at: Vector2(x, y))
+                                            justify: textJustification, hangs: textHangsInBox,
+                                            at: Vector2(x, y))
         guard !placed.isEmpty else { return }
 
         // A distance field holds one channel, so an emoji cannot ride the atlas and
@@ -197,19 +199,23 @@ extension Drawer {
             for (index, g) in placed.enumerated() {
                 guard let slot = slots[index] else { continue }   // space / picture / unplaced
                 // Cell rect (em, y-up) → canvas: x grows with em-x, canvas-y falls as
-                // em-y rises (font y-up vs Ollin y-down).
-                let left = Float(g.origin.x + slot.emLeft * textPixelSize)
-                let right = Float(g.origin.x + slot.emRight * textPixelSize)
-                let top = Float(g.origin.y - slot.emTop * textPixelSize)
-                let bottom = Float(g.origin.y - slot.emBottom * textPixelSize)
-                let tl = imageVertex(left, top, slot.u0, slot.v0,
-                                     vp.color(at: Vector2(Double(left), Double(top))))
-                let tr = imageVertex(right, top, slot.u1, slot.v0,
-                                     vp.color(at: Vector2(Double(right), Double(top))))
-                let br = imageVertex(right, bottom, slot.u1, slot.v1,
-                                     vp.color(at: Vector2(Double(right), Double(bottom))))
-                let bl = imageVertex(left, bottom, slot.u0, slot.v1,
-                                     vp.color(at: Vector2(Double(left), Double(bottom))))
+                // em-y rises (font y-up vs Ollin y-down). Where the column turns its
+                // glyphs, each corner takes the same quarter turn clockwise about the
+                // pen. A quarter turn keeps the quad a quad, and it carries each
+                // corner's own patch of the atlas with it, so the picture turns too.
+                func corner(_ emX: Double, _ emY: Double, _ u: Float, _ v: Float) -> OllinImageVertex {
+                    let lx = emX * textPixelSize, ly = -emY * textPixelSize
+                    let px = Float(g.turned ? g.origin.x - ly : g.origin.x + lx)
+                    let py = Float(g.turned ? g.origin.y + lx : g.origin.y + ly)
+                    // The paint is sampled at the vertex the GPU will see, which is
+                    // the rounded one.
+                    return imageVertex(px, py, u, v,
+                                       vp.color(at: Vector2(Double(px), Double(py))))
+                }
+                let tl = corner(slot.emLeft, slot.emTop, slot.u0, slot.v0)
+                let tr = corner(slot.emRight, slot.emTop, slot.u1, slot.v0)
+                let br = corner(slot.emRight, slot.emBottom, slot.u1, slot.v1)
+                let bl = corner(slot.emLeft, slot.emBottom, slot.u0, slot.v1)
                 glyphVertices.append(contentsOf: [tl, tr, br, tl, br, bl])
             }
         }
@@ -386,8 +392,9 @@ extension Drawer {
         let across = Double(max(0, lineCount - 1)) * advance
 
         if runsVertically {
-            // Columns fill right to left and each is one em across.
-            let blockWidth = across + textPixelSize
+            // A column is one em across where its glyphs stand upright, and as wide
+            // as its own ascent and descent where they are turned.
+            let blockWidth = across + (turnsGlyphs ? ascent + descent : textPixelSize)
             let left: Double
             switch textAlignH {
             case .left:   left = x
@@ -439,7 +446,10 @@ extension Drawer {
         if textJustifies {
             textJustification = TextJustification(extent: limit, naturalLines: paragraphEnds)
         }
-        defer { textJustification = nil }
+        // Hanging lives for this call only, for the same reason: the box is the edge
+        // a stop hangs past.
+        textHangsInBox = textHangsPunctuation
+        defer { textJustification = nil; textHangsInBox = false }
 
         // Each alignment names a box edge, and the plain `drawText` already reads
         // those two axes the way the current writing direction needs, so the anchors
@@ -495,8 +505,11 @@ extension Drawer {
             for piece in LineBreaks.pieces(of: String(paragraph)) {
                 let candidate = current + piece
                 // Trailing spaces belong to the line that ends there, so they are
-                // not measured against the box.
-                if current.isEmpty || textWidth(trimmedTrailing(candidate)) <= maxExtent {
+                // not measured against the box. A stop allowed to hang is not
+                // measured either: that is the whole of what hanging does here, and
+                // it is why the piece it rides on can stay on this line.
+                let trimmed = trimmedTrailing(candidate)
+                if current.isEmpty || textWidth(trimmed) - hangingWidth(of: trimmed) <= maxExtent {
                     current = candidate
                 } else {
                     lines.append(trimmedTrailing(current))
@@ -507,6 +520,18 @@ extension Drawer {
             paragraphEnds.insert(lines.count - 1)
         }
         return (lines, paragraphEnds)
+    }
+
+    /// How far `line`'s last character reaches past the rest of it, in points, when
+    /// hanging is on and that character is one that may hang. Zero otherwise.
+    ///
+    /// Measured as the difference the character makes to the line rather than read
+    /// off the character on its own, so it carries whatever the shaping did about
+    /// the pair. It costs a second measurement, and only a line that ends in a stop
+    /// pays it.
+    func hangingWidth(of line: String) -> Double {
+        guard textHangsPunctuation, HangingPunctuation.endsWithHangable(line) else { return 0 }
+        return max(0, textWidth(line) - textWidth(String(line.dropLast())))
     }
 
     /// `string` without its trailing whitespace.
@@ -531,6 +556,12 @@ extension Drawer {
 
         // Where the run starts, and the fixed coordinate it holds across its own
         // axis: the baseline of a line, the centre axis of a column.
+        // How wide the column is, and where its axis sits inside it: an em square
+        // either side of the middle where the glyphs stand upright, the ascent and
+        // the descent either side of the baseline where they are turned.
+        let turned = turnsGlyphs
+        let columnWidth = turned ? ascent + descent : textPixelSize
+        let axisFromLeft = turned ? descent : textPixelSize / 2
         let runStart: Double, across: Double
         if vertical {
             switch textAlignV {
@@ -539,9 +570,9 @@ extension Drawer {
             case .bottom:         runStart = y - runLength
             }
             switch textAlignH {
-            case .left:   across = x + textPixelSize / 2
-            case .center: across = x
-            case .right:  across = x - textPixelSize / 2
+            case .left:   across = x + axisFromLeft
+            case .center: across = x + axisFromLeft - columnWidth / 2
+            case .right:  across = x + axisFromLeft - columnWidth
             }
         } else {
             switch textAlignH {
@@ -567,8 +598,8 @@ extension Drawer {
             // The piece's own cell: the advance box across a line, and down a column
             // the em-wide square the writing system sets to.
             let bounds = vertical
-                ? Rectangle(x: origin.x - textPixelSize / 2, y: origin.y,
-                            width: textPixelSize, height: item.advance)
+                ? Rectangle(x: origin.x - axisFromLeft, y: origin.y,
+                            width: columnWidth, height: item.advance)
                 : Rectangle(x: origin.x, y: origin.y - ascent,
                             width: item.advance, height: ascent + descent)
             let picture = item.picture
@@ -607,7 +638,7 @@ extension Drawer {
         guard textPixelSize > 0, !string.isEmpty else { return }
         guard fillPaint != nil || (strokePaint != nil && strokeWidth > 0) else { return }
         if runsVertically {
-            noteOnce("text on a path follows the path, so textDirection(.topToBottom) does not apply to it; the run stays along the curve.")
+            noteOnce("text on a path follows the path, so a column direction does not apply to it; the run stays along the curve.")
         }
         let run = glyphRun(string, vertical: false)
         let points = path.contour.points
@@ -679,7 +710,7 @@ extension Drawer {
         case .outline(let font):
             let along = vertical && runsVertically
             return font.glyphRun(for: string, size: textPixelSize,
-                                 direction: along ? .topToBottom : horizontalDirection)
+                                 direction: along ? textWritingDirection : horizontalDirection)
         case .bitmap(let font):  return bitmapGlyphRun(string, font: font)
         case .stroke(let font):  return strokeGlyphRun(string, font: font)
         }
@@ -694,11 +725,15 @@ extension Drawer {
     var runsVertically: Bool {
         guard textWritingDirection.isVertical else { return false }
         guard case .outline = currentFont else {
-            noteOnce("textDirection(.topToBottom) needs an outline font for the sideways glyph forms, so this text stays horizontal.")
+            noteOnce("a column needs an outline font for the shaping the system's layout engine supplies, so this text stays horizontal.")
             return false
         }
         return true
     }
+
+    /// Whether the column being drawn now turns its glyphs rather than setting them
+    /// upright on an em square. Only a real column can, so this reads the font too.
+    var turnsGlyphs: Bool { runsVertically && textWritingDirection.turnsGlyphs }
 
     /// The writing direction with the vertical axis taken out: what a path lays its
     /// text along. A path already says which way the text travels and how it turns,

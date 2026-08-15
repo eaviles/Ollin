@@ -153,9 +153,31 @@ Which is why the face decides what happens to English inside a column. A Japanes
 
 Turning the writing turns the settings with it. A `\n` starts the next column, to the left. `textWidth` measures how long the column is. A box wraps against its height, because that is the room a column has to run in. And the two halves of `textAlign` swap jobs: the vertical one says where a column starts, the horizontal one places the block of columns. So vertical text in a box usually wants `textAlign(.right, .top)`, which is the corner the writing opens at.
 
+## The other way down
+
+Mongolian runs down the page too. Its columns fill the other way.
+
+```swift
+textFont(OutlineFont(name: "Noto Sans Mongolian")!)
+textDirection(.topToBottomLeftToRight)
+drawText("ᠮᠣᠩᠭᠣᠯ ᠪᠢᠴᠢᠭ", 200, 120)
+```
+
+<img src="Images/07-WordsAndPictures/ColumnsTheOtherWay.jpg" alt="Top: one Mongolian phrase set across a line, an arrow curving a quarter turn clockwise, and the same phrase standing as a column. Bottom: three identical Mongolian columns with an arrow running left to right and the first column marked at the left, beside three Japanese columns with an arrow running right to left and the first marked at the right" width="680">
+
+The column order is the easy half. The half that matters is that these letters join. A word is one connected stroke. Each letter is as wide as its own shape, so no square can hold it.
+
+**A column here is a line, tipped on its side.** Ollin shapes it across the page the way it shapes any line, keeping the joins and the widths. Then it turns that line a quarter turn clockwise. The top of the figure shows one phrase twice, once lying flat and once standing up. The column is as long as the line was wide. It is the same line, stood up.
+
+The rest works as it did. A `\n` starts the next column, to the right this time. The two halves of `textAlign` still swap jobs. A box fills from `textAlign(.left, .top)`, where this writing opens.
+
+Two things change with the turn. A column is as wide as the face's ascent and descent together, rather than one em. And you have to hand it a face that has the script. The system font does not have it. A column takes its width from the face you gave it. The wrong face gives you columns that sit on each other.
+
+Japanese wants `.topToBottom`. This mode would lay every character on its side.
+
 ## Both edges flush
 
-The bottom of the figure is one passage, set twice in the same box. On the left every full column reaches the red rule. On the right each one stops where it happened to stop.
+The bottom of the columns figure, further up, is one passage set twice in the same box. On the left every full column reaches the red rule. On the right each one stops where it happened to stop.
 
 ```swift
 textJustify()
@@ -165,6 +187,27 @@ drawText(passage, in: box)
 Justification needs to know how far a line should run, and only a box says that. So it applies to the box form of `drawText` and to nothing else. The last line of each paragraph keeps its natural length: that one is short because the writing ended there.
 
 Where the extra room goes is the layout engine's business. English opens the spaces between words. Japanese has no spaces, so it opens the gaps between characters instead. Either way you ask for the same thing.
+
+## Letting a stop hang
+
+A full stop may not open a line. So a stop that will not fit takes the character it follows to the next line with it. That leaves a hole at the edge where the two of them used to be.
+
+```swift
+textHangingPunctuation()
+drawText(passage, in: box)
+```
+
+<img src="Images/07-WordsAndPictures/HangingStops.jpg" alt="The same Japanese passage in two identical boxes, each with a red rule down its right edge. On the left every character stays inside the rule and the passage runs to six lines. On the right three full stops sit across the rule and the passage fits in five" width="680">
+
+**The stop is allowed outside the box, so the writing can stay inside it.** Both boxes here are the same width and hold the same passage. On the right the stops that would not fit cross the rule instead of pushing their neighbour down. The whole passage comes out a line shorter.
+
+Japanese calls this ぶら下げ. Latin typesetters do the same thing to keep a right margin looking straight. Only stops and commas hang, in either script. A closing bracket may not open a line either, but hanging one would leave it outside the thing it closes.
+
+Like justification, this is about the box, so it applies to `drawText(_:in:)` and nothing else. A hung character is left out of how far its line counts as running, so alignment and justification measure the rest of it.
+
+It only shows where a stop would not otherwise fit. Change the box width and the effect comes and goes, which is worth knowing before you decide it is broken.
+
+## What the font could not do
 
 Two more calls help when you go looking. `OutlineFont.fontsUsed(for:)` names the faces a line borrowed. That is how you catch a Latin font handing your Japanese to somebody else. `textMissingCharacters` lists what the current font cannot draw at all. For an outline font it is almost always empty. For bitmap and plotter fonts it matters: those hold only their own glyphs. Anything else draws nothing.
 

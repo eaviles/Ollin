@@ -138,10 +138,6 @@ The framework grows past the core team only when other people can publish and fi
 
 See the [design notes](DESIGN-NOTES.md#a-third-party-extension-ecosystem).
 
-## Accessibility and inclusive text
-
-Making Ollin and the work people make with it more inclusive, on the platform's native support. What a sketch can already do for color, motion, describing itself, and text in any script is in [Accessibility](Docs/Helpers/Accessibility.md) and [Text](Docs/Drawing/Text.md#scripts). Text can be set in columns for Japanese and Chinese, which fill right to left. What remains is **Mongolian**, whose columns fill the other way, and **hanging punctuation**, where a full stop is allowed to sit past the end of a line. See the [design notes](DESIGN-NOTES.md#accessibility-and-inclusive-text).
-
 ## Further out / exploratory
 
 Lower-confidence ideas kept on record but deliberately not near-term: each is plausible on the platform, but speculative enough that it shouldn't crowd the planned work above. Distinct from [On the horizon](#on-the-horizon), which is the platform-gated later legs (iOS, visionOS, AR), not uncertainty.

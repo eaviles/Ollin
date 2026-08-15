@@ -304,32 +304,35 @@ public struct OutlineFont: @unchecked Sendable {
                       alignH: TextAlignH, alignV: TextAlignV,
                       direction: TextDirection,
                       justify: TextJustification? = nil,
+                      hangs: Bool = false,
                       at origin: Vector2) -> [PlacedGlyphGeometry] {
         guard size > 0, !string.isEmpty else { return [] }
-        let laidOut = layoutBlock(string, size: size, direction: direction, justify: justify)
-        let starts = lineStarts(extents: laidOut.map { $0.width * size }, size: size,
+        let laidOut = layoutBlock(string, size: size, direction: direction,
+                                  justify: justify, hangs: hangs)
+        let starts = lineStarts(extents: laidOut.map { ($0.width - $0.hang) * size }, size: size,
                                 alignH: alignH, alignV: alignV,
-                                vertical: direction.isVertical, at: origin)
+                                direction: direction, at: origin)
+        let turned = direction.turnsGlyphs
 
         var placedGlyphs: [PlacedGlyphGeometry] = []
         for (index, line) in laidOut.enumerated() {
             let start = starts[index]
             for placed in line.glyphs {
-                let glyphOriginX = start.x + placed.x * size
-                let glyphOriginY = start.y - placed.y * size
-                let local = geometry(for: placed.glyph, font: placed.font, size: size)
+                let pen = OutlineFont.penOrigin(placed, start: start, size: size, turned: turned)
+                let glyphOriginX = pen.x
+                let glyphOriginY = pen.y
+                let local = geometry(for: placed.glyph, font: placed.font, size: size, turned: turned)
                 if local.contours.isEmpty {
                     // No outline: either a glyph the font draws as a picture, or
                     // something with no ink at all (a space).
                     guard let color = colorGlyphs.glyph(placed.glyph, font: placed.font) else { continue }
+                    let box = OutlineFont.pictureRect(color.emRect, size: size, turned: turned)
                     placedGlyphs.append(PlacedGlyphGeometry(
                         origin: Vector2(glyphOriginX, glyphOriginY),
                         localContours: [], localFill: [],
                         picture: color.image,
-                        pictureRect: Rectangle(x: glyphOriginX + color.emRect.x * size,
-                                               y: glyphOriginY + color.emRect.y * size,
-                                               width: color.emRect.width * size,
-                                               height: color.emRect.height * size)))
+                        pictureRect: Rectangle(x: glyphOriginX + box.x, y: glyphOriginY + box.y,
+                                               width: box.width, height: box.height)))
                     continue
                 }
                 placedGlyphs.append(PlacedGlyphGeometry(
@@ -349,6 +352,9 @@ public struct OutlineFont: @unchecked Sendable {
         let origin: Vector2
         let glyph: CGGlyph
         let font: CTFont
+        /// Set where the column turns its glyphs: the quad the drawer builds from
+        /// the atlas slot takes the same quarter turn clockwise about this origin.
+        let turned: Bool
     }
 
     /// The glyphs of `string`, each placed (pen origin + glyph id/font) as if drawn
@@ -360,20 +366,23 @@ public struct OutlineFont: @unchecked Sendable {
                            alignH: TextAlignH, alignV: TextAlignV,
                            direction: TextDirection,
                            justify: TextJustification? = nil,
+                           hangs: Bool = false,
                            at origin: Vector2) -> [PlacedAtlasGlyph] {
         guard size > 0, !string.isEmpty else { return [] }
-        let laidOut = layoutBlock(string, size: size, direction: direction, justify: justify)
-        let starts = lineStarts(extents: laidOut.map { $0.width * size }, size: size,
+        let laidOut = layoutBlock(string, size: size, direction: direction,
+                                  justify: justify, hangs: hangs)
+        let starts = lineStarts(extents: laidOut.map { ($0.width - $0.hang) * size }, size: size,
                                 alignH: alignH, alignV: alignV,
-                                vertical: direction.isVertical, at: origin)
+                                direction: direction, at: origin)
+        let turned = direction.turnsGlyphs
 
         var result: [PlacedAtlasGlyph] = []
         for (index, line) in laidOut.enumerated() {
             let start = starts[index]
             for placed in line.glyphs {
                 result.append(PlacedAtlasGlyph(
-                    origin: Vector2(start.x + placed.x * size, start.y - placed.y * size),
-                    glyph: placed.glyph, font: placed.font))
+                    origin: OutlineFont.penOrigin(placed, start: start, size: size, turned: turned),
+                    glyph: placed.glyph, font: placed.font, turned: turned))
             }
         }
         return result
@@ -382,15 +391,29 @@ public struct OutlineFont: @unchecked Sendable {
     /// Every line of a block, laid out. Split on the newlines, and where the block is
     /// justified each line but the last of its paragraph is stretched to the box.
     private func layoutBlock(_ string: String, size: Double, direction: TextDirection,
-                             justify: TextJustification?) -> [(glyphs: [ShapedGlyph], width: Double)] {
+                             justify: TextJustification?,
+                             hangs: Bool) -> [(glyphs: [ShapedGlyph], width: Double, hang: Double)] {
         string.split(separator: "\n", omittingEmptySubsequences: false)
             .enumerated()
             .map { index, line in
+                let text = String(line)
+                // What the last character adds, where it is one allowed to hang past
+                // the end. The line still holds it and still draws it; it is only
+                // left out of how far the line counts as running.
+                var hang = 0.0
+                if hangs, HangingPunctuation.endsWithHangable(text) {
+                    let full = layoutLine(text, direction: direction).width
+                    let rest = layoutLine(String(text.dropLast()), direction: direction).width
+                    hang = max(0, full - rest)
+                }
                 var target: Double? = nil
                 if let justify, !justify.naturalLines.contains(index) {
-                    target = justify.extent / size   // the layout works in em
+                    // The stretch has to carry the hung character past the edge, so
+                    // the part that counts is the part that reaches it.
+                    target = justify.extent / size + hang   // the layout works in em
                 }
-                return layoutLine(String(line), direction: direction, justifyTo: target)
+                let laid = layoutLine(text, direction: direction, justifyTo: target)
+                return (laid.glyphs, laid.width, hang)
             }
     }
 
@@ -409,7 +432,7 @@ public struct OutlineFont: @unchecked Sendable {
     /// own length exactly as a short line does.
     private func lineStarts(extents: [Double], size: Double,
                             alignH: TextAlignH, alignV: TextAlignV,
-                            vertical: Bool, at origin: Vector2) -> [Vector2] {
+                            direction: TextDirection, at origin: Vector2) -> [Vector2] {
         let ascentP = ascent * size
         let descentP = descent * size
         // Baseline to baseline across a line, and column axis to column axis down
@@ -417,7 +440,7 @@ public struct OutlineFont: @unchecked Sendable {
         let pitch = (ascent + descent + leading) * size
         let count = Double(extents.count - 1)
 
-        guard vertical else {
+        guard direction.isVertical else {
             let blockHeight = count * pitch + ascentP + descentP
             let topY: Double
             switch alignV {
@@ -437,18 +460,27 @@ public struct OutlineFont: @unchecked Sendable {
             }
         }
 
-        // A column is one em across, whatever the glyphs in it: that em square is
-        // what the writing system sets to, and it keeps the block a fixed width
-        // however the text changes. Columns fill right to left, so the first one
-        // is the rightmost.
-        let blockWidth = count * pitch + size
+        // How wide one column is, and where its own axis sits inside it. Set on the
+        // em square, a column is one em across whatever the glyphs in it, which is
+        // what the writing system sets to and what keeps the block a fixed width
+        // however the text changes. Turned, a column is instead as wide as the line
+        // it was before the turn, so it takes the ascent and the descent. The turn
+        // puts what stood above the baseline to the right of the axis, so the
+        // descent is the side that reaches back to the column's left edge.
+        let turned = direction.turnsGlyphs
+        let columnWidth = turned ? ascentP + descentP : size
+        let axisFromLeft = turned ? descentP : size / 2
+        let blockWidth = count * pitch + columnWidth
         let left: Double
         switch alignH {
         case .left:   left = origin.x
         case .center: left = origin.x - blockWidth / 2
         case .right:  left = origin.x - blockWidth
         }
-        let firstAxis = left + blockWidth - size / 2
+        // Which end the first column stands at is the other half of the difference:
+        // one order fills right to left, the other left to right.
+        let firstAxis = turned ? left + axisFromLeft : left + blockWidth - axisFromLeft
+        let step = turned ? pitch : -pitch
         return extents.enumerated().map { index, length in
             let topY: Double
             switch alignV {
@@ -456,8 +488,35 @@ public struct OutlineFont: @unchecked Sendable {
             case .middle:         topY = origin.y - length / 2
             case .bottom:         topY = origin.y - length
             }
-            return Vector2(firstAxis - Double(index) * pitch, topY)
+            return Vector2(firstAxis + Double(index) * step, topY)
         }
+    }
+
+    /// Where one shaped glyph's pen lands in canvas space, measured from its line's
+    /// start point.
+    ///
+    /// A turned column swaps the two axes. What the pen advanced across the line now
+    /// runs down the column, and what stood above the baseline now stands to the
+    /// right of the column's axis, so both offsets are added rather than one being
+    /// subtracted for the font's y-up.
+    static func penOrigin(_ placed: ShapedGlyph, start: Vector2,
+                          size: Double, turned: Bool) -> Vector2 {
+        turned ? Vector2(start.x + placed.y * size, start.y + placed.x * size)
+               : Vector2(start.x + placed.x * size, start.y - placed.y * size)
+    }
+
+    /// One point of a glyph's local geometry, turned a quarter turn clockwise. The
+    /// glyph's own advance direction becomes the way down the column.
+    static func turnedPoint(_ p: Vector2) -> Vector2 { Vector2(-p.y, p.x) }
+
+    /// A picture glyph's box in the glyph's local frame, turned with the glyph where
+    /// the column turns. A quarter turn takes a box to a box, so the picture stays
+    /// square to the page.
+    static func pictureRect(_ emRect: Rectangle, size: Double, turned: Bool) -> Rectangle {
+        let x = emRect.x * size, y = emRect.y * size
+        let w = emRect.width * size, h = emRect.height * size
+        guard turned else { return Rectangle(x: x, y: y, width: w, height: h) }
+        return Rectangle(x: -(y + h), y: x, width: h, height: w)
     }
 
     /// The glyphs of `string`, each as a positioned `Shape` of vector contours, as
@@ -470,10 +529,11 @@ public struct OutlineFont: @unchecked Sendable {
                      alignH: TextAlignH, alignV: TextAlignV,
                      direction: TextDirection,
                      justify: TextJustification? = nil,
+                     hangs: Bool = false,
                      at origin: Vector2) -> [Shape] {
         OutlineFont.shapes(of: placedGlyphs(for: string, size: size, alignH: alignH,
                                             alignV: alignV, direction: direction,
-                                            justify: justify, at: origin))
+                                            justify: justify, hangs: hangs, at: origin))
     }
 
     /// The canvas-space `Shape` of each placed glyph that has one. A glyph the font
@@ -492,8 +552,20 @@ public struct OutlineFont: @unchecked Sendable {
     /// origin) for one glyph at `size`. Built on first use through the per-font
     /// `geometryCache`.
     private func geometry(for glyph: CGGlyph, font: CTFont,
-                          size: Double) -> GlyphGeometryCache.Local {
-        geometryCache.geometry(for: glyph, font: font, size: size) {
+                          size: Double, turned: Bool = false) -> GlyphGeometryCache.Local {
+        geometryCache.geometry(for: glyph, font: font, size: size, turned: turned) {
+            // A turned glyph is the upright one under a quarter turn, so it asks for
+            // that one first and turns the result. The flatten, the clean and the
+            // triangulation therefore happen once for the pair, and a turned column
+            // stays what an upright line already is: a translate of cached vertices.
+            if turned {
+                let upright = geometry(for: glyph, font: font, size: size)
+                return GlyphGeometryCache.Local(
+                    contours: upright.contours.map {
+                        Contour($0.points.map(OutlineFont.turnedPoint), closed: $0.isClosed)
+                    },
+                    fill: upright.fill.map(OutlineFont.turnedPoint))
+            }
             guard let path = cache.path(for: glyph, font: font) else {
                 return GlyphGeometryCache.Local(contours: [], fill: [])
             }
@@ -550,18 +622,21 @@ public struct OutlineFont: @unchecked Sendable {
         let (placed, _) = layoutLine(line, direction: direction)
         guard !placed.isEmpty else { return [] }
 
-        let vertical = direction.isVertical
-        let clusters = TextClusters.group(placed, in: line, vertical: vertical)
-        // Down a column the run starts at the top edge of the first piece's square,
-        // which is a whole ascent above the first glyph's own baseline, so the
-        // distance is accumulated from the advances rather than read off a glyph.
-        // Across a line the shaped pen position already is that distance, and it
-        // carries the kerning, so it is kept.
+        // A turned column was shaped as an ordinary line, so it measures its pen the
+        // way a line does. Only a column set on em squares stacks its pieces.
+        let turned = direction.turnsGlyphs
+        let stacked = direction.isVertical && !turned
+        let clusters = TextClusters.group(placed, in: line, vertical: stacked)
+        // Down a stacked column the run starts at the top edge of the first piece's
+        // square, which is a whole ascent above the first glyph's own baseline, so
+        // the distance is accumulated from the advances rather than read off a
+        // glyph. Across a line the shaped pen position already is that distance, and
+        // it carries the kerning, so it is kept.
         var reached = 0.0
 
         var items: [GlyphRunItem] = []
         for cluster in clusters {
-            let pen = (vertical ? reached : cluster.anchor) * size
+            let pen = (stacked ? reached : cluster.anchor) * size
             // The top edge of this piece's square, in the layout's own frame.
             let cellTop = -reached
             defer { reached += cluster.advance }
@@ -573,18 +648,22 @@ public struct OutlineFont: @unchecked Sendable {
                 // over its letter and a reordered vowel sign sits before it. Only
                 // the axis the run travels along is made relative; the other one
                 // keeps the offset the layout gave it.
-                let localX = (vertical ? glyph.x : glyph.x - cluster.anchor) * size
-                let localY = -(vertical ? glyph.y - cellTop : glyph.y) * size
+                // A turned piece keeps the same two numbers with their axes swapped:
+                // the pen distance runs down the piece, the height across it.
+                let along = (stacked ? glyph.x : glyph.x - cluster.anchor) * size
+                let across = -(stacked ? glyph.y - cellTop : glyph.y) * size
+                let localX = turned ? -across : along
+                let localY = turned ? along : across
                 if let path = cache.path(for: glyph.glyph, font: glyph.font) {
                     let contours = OutlineFont.flatten(path, scale: size,
-                                                       originX: localX, originY: localY)
+                                                       originX: localX, originY: localY,
+                                                       turned: turned)
                     if !contours.isEmpty { shapes.append(Shape(contours: contours, winding: .nonZero)) }
                 } else if let color = colorGlyphs.glyph(glyph.glyph, font: glyph.font) {
                     picture = color.image
-                    pictureRect = Rectangle(x: localX + color.emRect.x * size,
-                                            y: localY + color.emRect.y * size,
-                                            width: color.emRect.width * size,
-                                            height: color.emRect.height * size)
+                    let box = OutlineFont.pictureRect(color.emRect, size: size, turned: turned)
+                    pictureRect = Rectangle(x: localX + box.x, y: localY + box.y,
+                                            width: box.width, height: box.height)
                 }
             }
             items.append(GlyphRunItem(text: cluster.text, pen: pen,
@@ -606,7 +685,7 @@ public struct OutlineFont: @unchecked Sendable {
                             justifyTo: Double? = nil) -> (glyphs: [ShapedGlyph], width: Double) {
         guard !string.isEmpty else { return ([], 0) }
         var attributes: [CFString: Any] = [kCTFontAttributeName: ctFont]
-        if direction.isVertical {
+        if direction.isVertical && !direction.turnsGlyphs {
             // Asking for the vertical forms does two things at once: the layout
             // engine picks each character's sideways glyph where the font has one,
             // and it places the glyphs down the column instead of across a line.
@@ -666,8 +745,10 @@ public struct OutlineFont: @unchecked Sendable {
     private static func paragraphStyle(_ direction: TextDirection) -> CTParagraphStyle? {
         switch direction {
         // Vertical text asks for the vertical forms instead, and a column has no
-        // base direction to force: it always runs top to bottom.
-        case .automatic, .topToBottom: return nil
+        // base direction to force: it always runs top to bottom. A turned column
+        // is shaped as an ordinary line, but the scripts set that way run one way
+        // only, so reading the direction off the text is already right.
+        case .automatic, .topToBottom, .topToBottomLeftToRight: return nil
         case .leftToRight:  return forcedLeftToRight
         case .rightToLeft:  return forcedRightToLeft
         }
@@ -746,9 +827,13 @@ public struct OutlineFont: @unchecked Sendable {
     }
 
     private static func flatten(_ path: CGPath, scale: Double,
-                                originX: Double, originY: Double) -> [Contour] {
+                                originX: Double, originY: Double,
+                                turned: Bool = false) -> [Contour] {
         func map(_ p: CGPoint) -> Vector2 {
-            Vector2(originX + Double(p.x) * scale, originY - Double(p.y) * scale)
+            // Turned, the same quarter turn clockwise every other piece of a turned
+            // column takes: the glyph's advance runs down, its height runs right.
+            turned ? Vector2(originX + Double(p.y) * scale, originY + Double(p.x) * scale)
+                   : Vector2(originX + Double(p.x) * scale, originY - Double(p.y) * scale)
         }
         var contours: [Contour] = []
         var current: [Vector2] = []
@@ -839,7 +924,7 @@ private final class GlyphPathCache: @unchecked Sendable {
 /// usual cost), with the total bounded by clearing past a cap.
 private final class GlyphGeometryCache: @unchecked Sendable {
     struct Local { let contours: [Contour]; let fill: [Vector2] }
-    private struct Key: Hashable { let glyph: CGGlyph; let sizeBits: UInt64 }
+    private struct Key: Hashable { let glyph: CGGlyph; let sizeBits: UInt64; let turned: Bool }
     private var fonts: [(font: CTFont, glyphs: [Key: Local])] = []
     private var count = 0
     /// Bound memory for text whose size animates (each size is a distinct key).
@@ -851,9 +936,9 @@ private final class GlyphGeometryCache: @unchecked Sendable {
     private let lock = OSAllocatedUnfairLock()
 
     /// Cached local geometry for `glyph` at `size`, built via `make` on first use.
-    func geometry(for glyph: CGGlyph, font: CTFont, size: Double,
+    func geometry(for glyph: CGGlyph, font: CTFont, size: Double, turned: Bool = false,
                   make: () -> Local) -> Local {
-        let key = Key(glyph: glyph, sizeBits: size.bitPattern)
+        let key = Key(glyph: glyph, sizeBits: size.bitPattern, turned: turned)
         lock.lock()
         let cached = lookup(key, font)
         lock.unlock()

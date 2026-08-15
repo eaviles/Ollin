@@ -32,7 +32,9 @@ The default font is `OutlineFont.systemMedium`, the system UI face (San Francisc
 - [Every script](#scripts) - Arabic, Devanagari, Thai, Japanese, emoji, and what changes
 - [textDirection](#textdirection) - which way a line runs
 - [Writing in columns](#vertical) - Japanese and Chinese set top to bottom
+- [Columns that fill the other way](#mongolian) - traditional Mongolian, whose letters join
 - [textJustify](#justify) - both edges of the box flush
+- [textHangingPunctuation](#hanging) - let a stop sit past the end of a line
 - [textMissingCharacters](#missing) - what the font cannot draw
 - [BitmapFont](#bitmapfont) - the bitmap font value type, and authoring your own
 
@@ -492,7 +494,7 @@ Direction reorders a line; it never changes how wide it is. It is drawing state,
 textDirection(.topToBottom)
 ```
 
-Japanese and Chinese can be written down the page instead of across it. The columns fill right to left. This is a fourth `TextDirection`, and it turns the writing onto its other axis. That changes what the other text settings measure.
+Japanese and Chinese can be written down the page instead of across it. The columns fill right to left. This `TextDirection` turns the writing onto its other axis. That changes what the other text settings measure.
 
 ```swift
 textDirection(.topToBottom)
@@ -516,9 +518,36 @@ Columns are one em wide, so a block of columns keeps its width as the text chang
 
 Two things stay out. Text on a path keeps running along the path, since the curve already says which way the text travels. Bitmap and stroke fonts stay horizontal and say so once, as they do for `.rightToLeft`.
 
-Mongolian is the writing system this does not serve. It is vertical too, but its columns fill left to right.
-
 Example: `Examples/Text/Columns`.
+
+<a name="mongolian"></a>
+
+### Columns that fill the other way
+
+```swift
+textDirection(.topToBottomLeftToRight)
+```
+
+Traditional Mongolian is vertical too. Its columns fill left to right, so `\n` starts the next column to the **right**.
+
+```swift
+textFont(OutlineFont(name: "Noto Sans Mongolian")!)
+textDirection(.topToBottomLeftToRight)
+textAlign(.left, .top)
+drawText("ᠮᠣᠩᠭᠣᠯ ᠪᠢᠴᠢᠭ", 200, 120)
+```
+
+These letters join into one connected stroke. Each letter is as wide as its own shape, so an em square cannot hold it.
+
+Ollin shapes the line horizontally, which keeps the joins and the widths. It then turns that line a quarter turn clockwise.
+
+A column otherwise behaves as it does under `.topToBottom`, `textAlign` axes included.
+
+A column is as wide as the face's ascent and descent together, since the turn puts the line's height across the column. The face must also have the script, since a column takes its width from the face you gave it. The system font lacks this script, so ask for one that has it.
+
+Use `.topToBottom` for Japanese. This mode would lay every character on its side.
+
+Example: `Examples/Text/MongolianColumns`.
 
 <a name="justify"></a>
 
@@ -543,6 +572,32 @@ The last line of each paragraph keeps its natural width. That line is short beca
 The layout engine decides where the extra room goes. English opens the spaces between words. Japanese has none, so it opens the gaps between characters. A column justifies like a line and reaches the bottom of its box.
 
 Justification never squeezes. A line already at or past the box is left alone.
+
+<a name="hanging"></a>
+
+### textHangingPunctuation
+
+```swift
+textHangingPunctuation(_ on: Bool = true)     // default off
+noTextHangingPunctuation()
+```
+
+Let a full stop or comma at the end of a line sit past that end.
+
+```swift
+textHangingPunctuation()
+drawText(passage, in: box)
+```
+
+A stop may not open a line. So a stop that will not fit normally takes the character it follows to the next line. That leaves a hole at the edge where both used to be. Hanging leaves the pair where it is and lets the stop cross the edge. Japanese calls it ぶら下げ, and it is the same move a Latin typesetter makes to keep a right margin looking straight.
+
+Only stops and commas hang: `。` and `、`, their full-width and half-width forms, and the Latin `.` and `,`. A closing bracket may not open a line either, but hanging one would leave the bracket outside the thing it closes.
+
+The wrap is where this happens, so it applies to [box layout](#box) and nothing else, exactly as justification does. A hung character is left out of how far its line counts as running, so alignment and justification measure the rest of it. That part is outline-font work; a bitmap or stroke font still wraps this way, and still aligns on the whole line.
+
+It shows only where a stop would not otherwise fit. Change the box width and it comes and goes.
+
+Example: `Examples/Text/HangingStops`.
 
 <a name="missing"></a>
 

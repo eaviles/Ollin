@@ -23,5 +23,7 @@ Drawing text with `drawText` — bitmap (pixel-grid) and outline (`.ttf`/`.otf`)
 | [JitterType](JitterType/Sketch.swift) | letters rattling like a bad photocopy — each glyph's vertices jittered by a pulsing random offset (`textToShapes`, `Shape.mapPoints`, `randomSeed`) |
 | [Scripts](Scripts/Sketch.swift) | one specimen sheet in five scripts: Arabic right to left, Devanagari reordered, Thai with stacked marks, Japanese wrapped in a box with no spaces to break at, and an emoji drawn as the picture the font carries (`textDirection`, per-piece `drawText`, `fontsUsed(for:)`) |
 | [Columns](Columns/Sketch.swift) | the Pillow Book set down the page in columns that fill right to left, justified into its box, with the brackets and comma taking the sideways shapes the font keeps for them (`textDirection(.topToBottom)`, `textJustify`, box layout) |
+| [HangingStops](HangingStops/Sketch.swift) | one passage in two identical boxes, with a rule down each measured edge: on the right the full stops that would not fit sit past it instead of taking their neighbour to the next line (`textHangingPunctuation`, box layout) |
+| [MongolianColumns](MongolianColumns/Sketch.swift) | the other vertical writing: columns that fill left to right, their letters joined into one stroke, laid out by shaping the line across the page and turning it a quarter turn (`textDirection(.topToBottomLeftToRight)`, `textBounds`) |
 
 Run one with `swift run Example-Text-<Name>`, e.g. `swift run Example-Text-HelloText`.

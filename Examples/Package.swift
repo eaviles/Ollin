@@ -421,6 +421,8 @@ let package = Package(
         example("Text/JitterType"),
         example("Text/Scripts"),
         example("Text/Columns"),
+        example("Text/MongolianColumns"),
+        example("Text/HangingStops"),
         example("Images/GlyphMosaic"),
         example("Images/Halftone"),
         example("Images/LuminanceMelt"),

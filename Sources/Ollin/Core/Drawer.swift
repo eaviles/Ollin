@@ -229,10 +229,15 @@ final class Drawer {
     var textRenderMode: TextMode = .outline      // outline vs SDF-atlas text (see textMode)
     var textWritingDirection: TextDirection = .automatic   // base line direction (see textDirection)
     var textJustifies: Bool = false              // stretch wrapped lines to the box (see textJustify)
+    var textHangsPunctuation: Bool = false       // let a stop or comma sit past a line end (see textHangingPunctuation)
     /// What the block being drawn right now is stretched to, set by the box form of
     /// `drawText` for the length of that one call. Nothing else may set it: only a
     /// box knows how far a line should run.
     var textJustification: TextJustification? = nil
+    /// Whether the block being drawn right now may hang a stop past a line end. Set
+    /// by the box form of `drawText` for the length of that one call, and for the
+    /// same reason justification is: only a box has an edge to hang past.
+    var textHangsInBox = false
     var tintColor: Color? = nil                  // multiplies drawImage texels; nil = untinted (see tint / noTint)
     var currentBlend: BlendMode = .normal        // how shapes combine with the canvas (see blendMode)
     var currentDepth: Float? = nil               // clip-z for 2D draws in a 3D scene; nil = draw over (see depth(at:))
@@ -1548,6 +1553,7 @@ final class Drawer {
         var textRenderMode: TextMode
         var textWritingDirection: TextDirection
         var textJustifies: Bool
+        var textHangsPunctuation: Bool
         var tintColor: Color?
         var currentBlend: BlendMode
         var currentDepth: Float?
@@ -1793,6 +1799,14 @@ final class Drawer {
 
     /// Leave wrapped text at its natural width, the default.
     func noTextJustify() { textJustifies = false }
+
+    /// Let a full stop or comma at the end of a line sit past that end, rather than
+    /// pushing the character it follows onto the next line (see
+    /// `textHangingPunctuation`).
+    func textHangingPunctuation(_ on: Bool = true) { textHangsPunctuation = on }
+
+    /// Keep every character inside the box, the default.
+    func noTextHangingPunctuation() { textHangsPunctuation = false }
 
     // MARK: 3D camera & point clouds
 
@@ -3317,6 +3331,7 @@ final class Drawer {
                                      textRenderMode: textRenderMode,
                                      textWritingDirection: textWritingDirection,
                                      textJustifies: textJustifies,
+                                     textHangsPunctuation: textHangsPunctuation,
                                      tintColor: tintColor,
                                      currentBlend: currentBlend,
                                      currentDepth: currentDepth,
@@ -3352,6 +3367,7 @@ final class Drawer {
         textRenderMode = s.textRenderMode
         textWritingDirection = s.textWritingDirection
         textJustifies = s.textJustifies
+        textHangsPunctuation = s.textHangsPunctuation
         tintColor = s.tintColor
         currentBlend = s.currentBlend
         currentDepth = s.currentDepth
