@@ -27,7 +27,7 @@ final class HelloCircle: Sketch {
 - [Canvas](#canvas) - `width`, `height`
 - [Loop control](#loop-control) - `noLoop`, `loop`, `isLooping`
 - [Extensions](#extensions) - `extend`, and writing a `SketchExtension`
-- [Configuration](#configuration) - `title`, `canvasSize`, `windowMode`, `loopDuration`
+- [Configuration](#configuration) - `title`, `canvasSize`, `windowMode`, `loopDuration`, `installation`
 - [Running a sketch](#running-a-sketch)
 
 Canvas sizing, `scale`, export resolution, and the preview window have their own page: [Canvas](../Core/Canvas.md).
@@ -255,6 +255,20 @@ The length of the sketch's loop in seconds, `nil` (the default) when it doesn't 
 
 ```swift
 override var loopDuration: Double? { 6 }   // repeats every 6 seconds
+```
+
+<a name="installation"></a>
+
+#### installation
+
+```swift
+installation: Installation
+```
+
+What the piece needs to run by itself for days, `.off` (the default) for a sketch at a desk. `.on` fills the screen, hides the pointer, and keeps the display awake; see [running unattended](../Output/Installation.md).
+
+```swift
+override var installation: Installation { .on }
 ```
 
 <a name="running-a-sketch"></a>

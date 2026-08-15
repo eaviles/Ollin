@@ -72,7 +72,7 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 
 20. **[Sound and control](20-SoundAndControl.md).** Hearing loudness, spectrum, and beats; MIDI knobs and OSC faders; one parameter played from anywhere.
 21. **[Seeing](21-Seeing.md).** The webcam as input; faces, hands, bodies, edges, and motion as typed values; video as material.
-22. **[Sharing and performing](22-SharingAndPerforming.md).** Stills, video, GIF, SVG for plotters, feeding other apps, and live coding on stage.
+22. **[Sharing and performing](22-SharingAndPerforming.md).** Stills, video, GIF, SVG for plotters, feeding other apps, leaving a piece running on a wall, and live coding on stage.
 
 ### Appendices
 

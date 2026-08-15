@@ -6,7 +6,7 @@
 
 <img src="Images/22-SharingAndPerforming/Finale.jpg" alt="A bold posterized field of nested contour bands, electric blue and green at the edges through lilac and olive to a small lime core, like a printed topographic map of a wave" width="560">
 
-Twenty-one chapters of pieces have lived on your screen. This last chapter is about everywhere else they can go. Out as files, meaning a poster, a video, a GIF, or a plotter drawing. Out as live feeds, into a VJ rig or a video call. Out as light on a real rig. And out on a stage, where writing the code is the performance. The piece above is the final state of a live-coded set you'll build in five evaluations. Every road out of the framework starts from the same place, the sketch you already have.
+Twenty-one chapters of pieces have lived on your screen. This last chapter is about everywhere else they can go. Out as files, meaning a poster, a video, a GIF, or a plotter drawing. Out as live feeds, into a VJ rig or a video call. Out as light on a real rig. Up on a wall, running by itself for a week. And out on a stage, where writing the code is the performance. The piece above is the final state of a live-coded set you'll build in five evaluations. Every road out of the framework starts from the same place, the sketch you already have.
 
 ## Leaving as files
 
@@ -420,6 +420,61 @@ MTL_CAPTURE_ENABLED=1 ollin MySketch.swift
 
 Then **View ▸ Capture GPU Frame (⌘⇧G)**, or `captureGPUFrame()` from your own code. Ollin writes a `.gputrace` file that opens in Xcode's GPU debugger, and prints the frame's passes in order on the way past. Often that printed list is the whole answer.
 
+## Leaving it running
+
+Some pieces are not files. They go on a wall, or in a shop window, and stay there for a week with nobody watching them.
+
+That is a different job from a sketch at your desk, and different things end it. The screen saver comes on at midnight. The display sleeps. Somebody unplugs the monitor to borrow it. None of that is your drawing's fault, and all of it stops the show.
+
+One line asks Ollin to hold it off:
+
+```swift
+override var installation: Installation { .on }
+```
+
+Now the window takes the whole screen with no title bar, the pointer disappears, and the display stays lit with the screen saver held off. Command-Q still quits, whatever the piece covers.
+
+You do not have to edit a sketch to try this, or to get out of it:
+
+```sh
+swift run --package-path Examples Example-Motion-Orbits --installation                 # any sketch, up on the wall
+swift run --package-path Examples Example-Installation-Unattended --no-installation    # back to a window to work in
+```
+
+### What actually breaks is the clock
+
+The screen saver is the obvious enemy. The clock is the real one, and it goes wrong twice.
+
+<img src="Images/22-SharingAndPerforming/LongRunClock.jpg" alt="A diagram in two parts: a timeline of frame ticks with an eight-hour gap where the display slept, the first frame back read two ways as either an eight-hour deltaTime or a quarter-second one; and two cards of three consecutive shader-clock readings, one stuck at 604800.00 and one counting normally after a restart" width="680">
+
+First, a gap. When the display sleeps, no frames are drawn, and the first frame back happened eight hours after the last one. Read from the wall clock, that is a `deltaTime` of eight hours. Hand that to anything that moves by `speed * deltaTime` and it leaves the canvas forever, in one step.
+
+So the sketch clock is not the wall clock. It is the sum of its own frame steps, and each step is capped at a quarter of a second. A gap becomes a pause, and the piece carries on where it stopped. You get this whether or not you declared an installation, because a laptop lid closes in the middle of an afternoon too.
+
+Second, precision. Your `time` is a 64-bit number and stays exact for centuries. The copy your shaders read is a 32-bit one, and it cannot count seconds for a week. After a day the steps go uneven. After a week, adding one frame to it changes nothing at all, and every motion written inside a shader stops dead.
+
+The fix is to give the shaders a clock that starts over. It is only free if the restart lands where the piece repeats, so it is tied to the loop you declare:
+
+```swift
+override var installation: Installation { .on }
+override var loopDuration: Double? { 120 }     // two minutes a lap
+```
+
+Nothing moves at the restart, because the piece is back at the start of a lap anyway. A sketch with no declared loop keeps counting, since there is no free moment to jump at. Say `Installation(clock: .restarting(every: 600))` if you know one, or leave it alone.
+
+### The log
+
+An unattended run prints a line when it starts, when the machine wakes, and when the displays change. Send it somewhere you can read on Monday:
+
+```sh
+swift run --package-path Examples Example-Installation-Unattended >> ~/piece.log 2>&1
+```
+
+```
+Ollin installation [2026-08-15 08:41:45]: running unattended; Command-Q quits
+Ollin installation [2026-08-16 03:12:08]: the screens woke
+```
+
 ## Performing the code itself
 
 The last output is a stage. `swift run OllinLiveCoding` opens the performance host, where the sketch fills the window and the code rides over it as translucent text, part of the show:
@@ -484,10 +539,11 @@ Live coding as a performance practice was organized by TOPLAP (founded 2004), wh
 - [Syphon](../Docs/Integration/Syphon.md): publishing, receiving, discovery, and the loopback.
 - [Virtual camera](../Docs/Integration/VirtualCamera.md): the one-time install, publishing, the test card.
 - [DMX](../Docs/Integration/DMX.md): universes and fixtures, Art-Net and sACN, the send cadence, and the console-drives-the-sketch direction.
+- [Installation](../Docs/Output/Installation.md): leaving a piece running, what each part of the declaration turns on, the two clock defences, and the log.
 - [Profiling](../Docs/Tools/Profiling.md): reading the cost row, what to do about each answer, and capturing a frame for Xcode.
 - [Live coding](../Docs/Tools/LiveCoding.md): the evaluate loop, errors, recovery, and the keyboard reference.
 - [Writing an extension](../Docs/Tools/Extensions.md): the four seams, the naming convention, the publishing checklist, and what is deliberately closed.
-- Worked examples: [`Examples/Export/VectorExport`](../Examples/Export/VectorExport/Sketch.swift), [`Examples/Export/Hatching`](../Examples/Export/Hatching/Sketch.swift), [`Examples/Integration/SyphonLoopback`](../Examples/Integration/SyphonLoopback/Sketch.swift), [`Examples/Integration/SyphonViewer`](../Examples/Integration/SyphonViewer/Sketch.swift), [`Examples/Integration/DMXLoopback`](../Examples/Integration/DMXLoopback/Sketch.swift), and [`Examples/Integration/VirtualCamera`](../Examples/Integration/VirtualCamera/Sketch.swift).
+- Worked examples: [`Examples/Installation/Unattended`](../Examples/Installation/Unattended/Sketch.swift), [`Examples/Export/VectorExport`](../Examples/Export/VectorExport/Sketch.swift), [`Examples/Export/Hatching`](../Examples/Export/Hatching/Sketch.swift), [`Examples/Integration/SyphonLoopback`](../Examples/Integration/SyphonLoopback/Sketch.swift), [`Examples/Integration/SyphonViewer`](../Examples/Integration/SyphonViewer/Sketch.swift), [`Examples/Integration/DMXLoopback`](../Examples/Integration/DMXLoopback/Sketch.swift), and [`Examples/Integration/VirtualCamera`](../Examples/Integration/VirtualCamera/Sketch.swift).
 
 ---
 

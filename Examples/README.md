@@ -22,6 +22,7 @@ Examples are grouped into **category** folders, and each example gets its own fo
 | [Export](Export/) | saving a sketch out — raster frame grab, vector SVG, and plotter hatching |
 | [Images](Images/) | loading, drawing, tinting, and authoring images, plus glyph mosaics, pixel sorting, single-line renderings, and slit scan |
 | [Input](Input/) | mouse-driven sketches |
+| [Installation](Installation/) | pieces left running unattended, on a wall or in a window |
 | [Integration](Integration/) | talking to other apps and gear: OSC, MIDI, DMX lighting, Syphon (`import OllinOSC` / `OllinMIDI` / `OllinDMX` / `OllinSyphon`) |
 | [Live](Live/) | tunable `@Param` knobs under OllinLive |
 | [Motion](Motion/) | animation driven by `time` |

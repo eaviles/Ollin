@@ -48,7 +48,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     private var didReload = false        // call onReload() after the post-reload setup()
     private var pendingSetupRerun = false // re-run setup() in place (e.g. an asset changed)
     private var clockCarry: Double?      // seconds to continue `time` from across a reload
-    private var startTime: CFTimeInterval = 0
+    private var elapsed: Double = 0      // the sketch clock: the sum of the frame steps so far
     private var lastTime: CFTimeInterval = 0
     private var smoothedFrameRate: Double = 0
     private var smoothedCPUMS: Double = 0
@@ -83,6 +83,26 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// equal consecutive poses (with no pending snap or drag) mean settled.
     private var cameraHoldover = false
     private var cameraHoldoverPose: Camera3D?
+
+    /// The longest step the sketch clock takes in one frame, however long the
+    /// frame actually took. The clock is the sum of its steps rather than the
+    /// wall clock, so anything that stops the frames for a while (a display
+    /// asleep overnight, a window dragged, a stall) resumes where the piece
+    /// left off instead of jumping forward by the whole gap. That jump is not
+    /// cosmetic: `deltaTime` drives every integrator a sketch has, and one
+    /// eight-hour step throws a physics world into the far distance.
+    ///
+    /// A quarter of a second is past any frame rate worth animating at, so a
+    /// running sketch never meets the clamp; a sketch slower than four frames a
+    /// second runs in slow motion, which beats the alternative.
+    static let longestFrameStep: Double = 0.25
+
+    /// The step the clock takes for a frame that measured `raw` seconds: the
+    /// measurement, capped, and never negative (the clock a display link reads
+    /// can step backwards across a system time change).
+    static func clockStep(measuring raw: Double) -> Double {
+        min(max(0, raw), longestFrameStep)
+    }
 
     public init(sketch: Sketch, view: MTKView, device: MTLDevice) {
         self.sketch = sketch
@@ -306,6 +326,16 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         updateCanvasSize(from: view, drawableSize: size)
     }
 
+    /// Retime the draw loop for the display the window now sits on. The rate is
+    /// read once when the view is built, so a piece moved from a 60 Hz panel to
+    /// a 120 Hz one (or onto a projector at 30) would otherwise keep asking for
+    /// the old one for the rest of the run. Called by the installation host
+    /// after the displays change.
+    func displayChanged(to screen: NSScreen?) {
+        guard let rate = (screen ?? NSScreen.main)?.maximumFramesPerSecond else { return }
+        view?.preferredFramesPerSecond = rate
+    }
+
     /// One exponential smoothing step, at the factor the frame rate already
     /// uses. The first sample seeds the value, so a readout opens at the real
     /// number instead of climbing to it from zero.
@@ -333,9 +363,9 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         let now = CACurrentMediaTime()
 
         if !didSetup {
-            // Offset startTime so `time` continues across a keep-clock reload;
-            // otherwise start it now so a fresh reload resets to zero.
-            startTime = now - (clockCarry ?? 0)
+            // Continue the clock across a keep-clock reload; otherwise start it
+            // at zero so a fresh reload begins the piece again.
+            elapsed = clockCarry ?? 0
             clockCarry = nil
             lastTime = now
             // Reflect where the cursor actually is before the first frame, so a
@@ -353,18 +383,28 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             sketch.setup()            // in-place asset reload; clock keeps running
         }
 
-        let dt = max(0, now - lastTime)
+        // The clock is the sum of its own steps, each one capped (see
+        // `longestFrameStep`), so a gap in the frames is a pause rather than a
+        // jump: the piece resumes where it stopped.
+        let step = max(0, now - lastTime)
         lastTime = now
+        let dt = SketchRunner.clockStep(measuring: step)
+        elapsed += dt
 
         // Exponentially smoothed FPS so the number doesn't jitter frame to frame.
-        let instantaneous = dt > 0 ? 1.0 / dt : 0
-        if smoothedFrameRate == 0 {
-            smoothedFrameRate = instantaneous
-        } else {
-            smoothedFrameRate += (instantaneous - smoothedFrameRate) * 0.1
+        // A capped step is a stall rather than a frame rate, so it never feeds
+        // the readout: one overnight gap would otherwise pull the average to
+        // zero and take a minute of frames to climb back.
+        if step <= SketchRunner.longestFrameStep {
+            let instantaneous = dt > 0 ? 1.0 / dt : 0
+            if smoothedFrameRate == 0 {
+                smoothedFrameRate = instantaneous
+            } else {
+                smoothedFrameRate += (instantaneous - smoothedFrameRate) * 0.1
+            }
         }
 
-        sketch.advance(time: now - startTime, deltaTime: dt, frameRate: smoothedFrameRate)
+        sketch.advance(time: elapsed, deltaTime: dt, frameRate: smoothedFrameRate)
 
         // A camera-view snap from the host menu: request it before the sketch's
         // draw() runs, so its cameraShowcase/cameraControl/cameraMove call applies
@@ -2135,6 +2175,8 @@ struct OllinSketchApp: App {
 /// close-doesn't-quit behavior.
 private final class StandaloneAppDelegate: NSObject, NSApplicationDelegate {
     private var window: NSWindow?
+    /// Held for the run: it owns the power assertion and the system observers.
+    private var installationHost: InstallationHost?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
@@ -2160,10 +2202,22 @@ private final class StandaloneAppDelegate: NSObject, NSApplicationDelegate {
         true
     }
 
+    func applicationWillTerminate(_ notification: Notification) {
+        installationHost?.release()
+    }
+
     /// Create the sketch window: AppKit shell, SwiftUI content.
     @MainActor
     private func openSketchWindow() {
         guard let sketch = OllinApp.standaloneSketch else { return }
+        // A piece that runs unattended opens on the whole screen and keeps its
+        // proportions inside it, rather than at the preview size a session at a
+        // desk wants. The host takes the window over once it is on screen.
+        let installation = Installation.resolved(for: sketch)
+        if installation.runsUnattended {
+            openInstallationWindow(sketch: sketch, installation: installation)
+            return
+        }
         let contentSize = OllinApp.windowSize(for: sketch)
         let isResizable: Bool = {
             if case .resizable = sketch.windowMode { return true }
@@ -2209,5 +2263,51 @@ private final class StandaloneAppDelegate: NSObject, NSApplicationDelegate {
         window.setFrameAutosaveName("ollin-sketch")
         window.makeKeyAndOrderFront(nil)
         self.window = window
+    }
+
+    /// The window for a piece left running: the screen's size, the canvas
+    /// centred inside it at its own proportions on black, and no saved frame
+    /// (a position remembered from a session at a desk is the wrong one here).
+    @MainActor
+    private func openInstallationWindow(sketch: Sketch, installation: Installation) {
+        let screen = NSScreen.main
+        let contentSize = screen?.frame.size ?? OllinApp.windowSize(for: sketch)
+        let window = NSWindow(
+            contentRect: NSRect(origin: .zero, size: contentSize),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = sketch.title
+        window.isReleasedWhenClosed = false
+        window.contentMinSize = NSSize(width: 200, height: 200)
+        // The canvas stretches to whatever frame it is given and maps the
+        // pointer by its bounds, so keeping the aspect at the layout level is
+        // what makes a 1080 square fill a wide screen's height without
+        // distorting and without the mouse drifting off the drawing.
+        let canvas = sketch.canvasSize.cgSize
+        let aspect = canvas.height > 0 ? canvas.width / canvas.height : 1
+        let root = AnyView(
+            ZStack {
+                SwiftUI.Color.black
+                // No detached stats panel: the "Show Inspector" toggle is
+                // remembered between runs, and a panel left on at a desk would
+                // otherwise float over the piece on the wall.
+                SketchView(sketch, showsInspectorPanel: false)
+                    .aspectRatio(aspect, contentMode: .fit)
+            }
+            .frame(minWidth: 200, maxWidth: .infinity, minHeight: 200, maxHeight: .infinity)
+        )
+        let hosting = NSHostingView(rootView: root)
+        hosting.frame = NSRect(origin: .zero, size: contentSize)
+        hosting.autoresizingMask = [.width, .height]
+        window.contentView = hosting
+        if let screen { window.setFrame(screen.frame, display: true) }
+        window.makeKeyAndOrderFront(nil)
+        self.window = window
+
+        let host = InstallationHost(installation)
+        host.take(over: window)
+        self.installationHost = host
     }
 }

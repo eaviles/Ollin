@@ -277,6 +277,32 @@ open class Sketch {
     /// See `Docs/Output/Spatial.md`.
     open var stereoGeometry: StereoGeometry { .automatic }
 
+    /// What this piece needs to run by itself, unattended, for days. Defaults
+    /// to `.off`, a sketch run at a desk for a session:
+    ///
+    /// ```swift
+    /// override var installation: Installation { .on }
+    /// ```
+    ///
+    /// `.on` fills the screen, hides the pointer, and keeps the display awake
+    /// and the screen saver off. See `Installation` for the parts, and
+    /// `Docs/Output/Installation.md` for the whole surface.
+    open var installation: Installation { .off }
+
+    /// The clock a shader reads, which is the sketch clock until an
+    /// installation asks for it to start over.
+    ///
+    /// A 32-bit `float` cannot hold a second-accurate clock for long: a day in,
+    /// a frame's worth of time is at the limit of what it resolves, and a week
+    /// in the number does not change from one frame to the next at all. So a
+    /// piece that runs for days hands its shaders a clock that starts over,
+    /// while `time` itself keeps counting. See `Installation.Clock`.
+    var shaderClock: Double {
+        guard let period = installation.clockPeriod(loopDuration: loopDuration),
+              period > 0 else { return time }
+        return time.truncatingRemainder(dividingBy: period)
+    }
+
     // MARK: Lifecycle (override in subclasses)
 
     /// Called once, after the canvas size is known, before the first `draw()`.
@@ -2793,10 +2819,16 @@ open class Sketch {
             for e in extensions { e.setup(self) }
         }
         drawer.beginFrame()
+        // The GPU takes the clock as a 32-bit float, which runs out of precision
+        // in a run measured in days, so an installation hands it one that starts
+        // over (`shaderClock`); every other run passes `time` through unchanged.
+        // The frame number truncates rather than traps: at 60 frames a second a
+        // `UInt32` fills after a bit over two years, and a piece on a wall must
+        // wrap rather than stop.
         drawer.setComputeFrame(resolution: SIMD2(Float(width), Float(height)),
                                mouse: SIMD2(Float(mouseX), Float(mouseY)),
-                               time: Float(time), dt: Float(deltaTime),
-                               frameCount: UInt32(max(0, frameCount)))
+                               time: Float(shaderClock), dt: Float(deltaTime),
+                               frameCount: UInt32(truncatingIfNeeded: max(0, frameCount)))
         for e in extensions { e.beforeDraw(self) }
         draw()
         for e in extensions { e.afterDraw(self) }   // before the render — can draw

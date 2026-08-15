@@ -59,6 +59,16 @@ struct OllinLiveApp: App {
         })
         if handled { exit(0) }
 
+        // An installation is read by a sketch that opens its own window, and
+        // this host opens its own instead. Said out loud rather than dropped:
+        // a flag that quietly does nothing reads as a broken feature.
+        if arguments.contains("--installation") {
+            let message = "OllinLive: --installation applies to a sketch that opens its own window; "
+                + "this host owns the window, so the flag is ignored here "
+                + "(see Docs/Output/Installation.md)\n"
+            FileHandle.standardError.write(Data(message.utf8))
+        }
+
         // Keep `init()` fast so the window appears (and activates) immediately;
         // the initial compile runs async inside `LiveSession`. A blocking compile
         // here left the window behind the terminal until a Dock click.
