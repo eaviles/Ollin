@@ -194,7 +194,9 @@ Apple-native, low-ceremony ways several machines share one piece.
 
 ## Installation mode
 
-The needs of a piece running unattended for days in a gallery, which none of the desktop creative-coding frameworks treat as first-class: restart on failure (a watchdog), and scheduled evolution (behavior by time of day). Each one is a field on the declared `Installation` value, beside the window, power, display, clock and checkpoint fields already there. A watchdog pairs with the checkpoint that is already written: the point of restarting a piece is that it comes back where it was. Mostly a robustness-and-lifecycle track over the existing loop rather than new rendering, and the natural companion to the installation audience the framework keeps drawing.
+The needs of a piece running unattended for days in a gallery, which none of the desktop creative-coding frameworks treat as first-class. Anything added here is a field on the declared `Installation` value, beside the window, power, display, clock, checkpoint, restart and schedule fields already there, rather than a switch of its own.
+
+A single-file sketch cannot go up on a wall at all: the live host opens its window, so the sketch never opens its own, and the whole tier applies on the path where the sketch owns that window. The fix is a host that compiles the loose file and hands the sketch to `OllinApp.run`.
 
 The output side of the same audience is **projection mapping and multi-display**: a corner-pin / homography warp applied to the presented frame (a small matrix or mesh warp in the present pass, where tone-mapping already runs, so exports stay unwarped), edge blending with gamma-aware feathering for multi-projector spans, and fullscreen output across several displays (one canvas spanning them, or one sketch driving per-display regions). Warp calibration is host chrome in the OllinLive spirit (drag the corners live, persist per setup), not sketch code; Syphon already covers the case where a dedicated mapping app owns the wall.
 

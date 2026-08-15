@@ -265,7 +265,7 @@ override var loopDuration: Double? { 6 }   // repeats every 6 seconds
 installation: Installation
 ```
 
-What the piece needs to run by itself for days, `.off` (the default) for a sketch at a desk. `.on` fills the screen, hides the pointer, and keeps the display awake. Add `checkpoint:` and every `@Saved` property is written down, so a relaunch resumes. See [running unattended](../Output/Installation.md).
+What the piece needs to run by itself for days, `.off` (the default) for a sketch at a desk. `.on` fills the screen, hides the pointer, and keeps the display awake. Add `checkpoint:` and every `@Saved` property is written down, so a relaunch resumes. Add `restarts:` and a run that crashes or stops answering is started again. Add `schedule:` for the hours the piece is on screen, and the parts of the day it reads back with `scheduledPeriod`. See [running unattended](../Output/Installation.md).
 
 ```swift
 override var installation: Installation { .on }

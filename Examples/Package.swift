@@ -84,6 +84,8 @@ let package = Package(
         example("Export/Hatching"),
         example("Installation/Unattended"),
         example("Installation/Resuming"),
+        example("Installation/Watched"),
+        example("Installation/Hours"),
         example("Rendering/Blending"),
         example("Effects/Bloom"),
         example("Shapes/Combinators"),

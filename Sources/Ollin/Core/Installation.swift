@@ -57,6 +57,14 @@ public struct Installation: Sendable, Equatable {
     /// than restarts. See ``Checkpointing``.
     public var checkpoint: Checkpointing = .off
 
+    /// Whether a run that ends badly is started again. See ``Restarting``.
+    public var restarts: Restarting = .never
+
+    /// What the piece does at different times of day: the hours it is on
+    /// screen, and the parts of the day it can behave differently in. See
+    /// ``Schedule``.
+    public var schedule: Schedule = .always
+
     /// When the clock a shader reads starts counting from zero again.
     ///
     /// A sketch reads `time` as a `Double`, which stays exact for centuries. A
@@ -107,16 +115,46 @@ public struct Installation: Sendable, Equatable {
         }
     }
 
+    /// Whether the piece is started again when a run ends badly, and what
+    /// counts as badly.
+    ///
+    /// Off by default, even under ``on``, for the reason the checkpoint is: it
+    /// changes what happens when a run ends, which is exactly right on a wall
+    /// and confusing at a desk. A piece that crashes while you are working on
+    /// it should stay crashed, where you can read the error.
+    ///
+    /// It pairs with ``Checkpointing``. Starting the piece again is worth most
+    /// when the piece comes back where it was rather than back at the start.
+    public enum Restarting: Sendable, Equatable {
+        /// Never. A run that ends, ends.
+        case never
+        /// Start the piece again after a crash, and after `stalledAfter`
+        /// seconds with no answer from a piece that is still running.
+        ///
+        /// A run has to answer because a crash is not the only way a piece
+        /// stops: a frame that never finishes leaves the process alive and the
+        /// wall frozen. Zero seconds waits forever, for a piece that means to
+        /// block.
+        case onFailure(stalledAfter: Double)
+
+        /// After a crash, and after half a minute with no answer.
+        public static let onFailure = Restarting.onFailure(stalledAfter: 30)
+    }
+
     public init(fillsScreen: Bool = true,
                 hidesPointer: Bool = true,
                 keepsDisplayAwake: Bool = true,
                 clock: Clock = .automatic,
-                checkpoint: Checkpointing = .off) {
+                checkpoint: Checkpointing = .off,
+                restarts: Restarting = .never,
+                schedule: Schedule = .always) {
         self.fillsScreen = fillsScreen
         self.hidesPointer = hidesPointer
         self.keepsDisplayAwake = keepsDisplayAwake
         self.clock = clock
         self.checkpoint = checkpoint
+        self.restarts = restarts
+        self.schedule = schedule
     }
 
     /// The private form behind ``off``, the one value that is not running.

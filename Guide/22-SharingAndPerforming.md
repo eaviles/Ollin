@@ -486,9 +486,58 @@ You will edit the sketch while an old file is still sitting there, so every mism
 
 `--fresh` ignores the saved state for one run without deleting it. That is the one to reach for when a piece comes back in a state you do not want.
 
+### When it falls over
+
+A piece on a wall crashes at three in the morning and nobody is there. The wall stays dark until somebody notices, which is usually the next day.
+
+```swift
+override var installation: Installation {
+    Installation(checkpoint: .every(seconds: 60), restarts: .onFailure)
+}
+```
+
+The process you start becomes a small watch with no window of its own, and your piece runs inside it as a child. When a run ends badly, the watch starts another one. Pair it with a checkpoint, or the piece comes back at the beginning every time.
+
+<img src="Images/22-SharingAndPerforming/BackUp.jpg" alt="A timeline of one night from 22:00 to 08:00: three run bars for the piece, the first ending at a marker labelled crash, the second turning grey before a marker labelled stopped answering, the third still going; underneath, a row of heartbeat ticks that stops where the grey stretch begins" width="680">
+
+Two things end a run badly. A crash is the obvious one. The other is a frame that never finishes. The process stays perfectly healthy and the picture freezes, which is what a viewer actually sees. So the piece writes a heartbeat every couple of seconds from the thread that draws. A main thread stuck in a frame stops writing it, and that silence is the only sign there is.
+
+Quitting is not falling over. Command-Q ends the whole thing, watch included.
+
+A piece that fails one second after it starts will not be fixed by starting it again. So each try waits longer than the last. After five short runs the watch gives up and says so in the log. One run of any real length clears that record. A slow `setup()` is not a stall either: a piece gets at least two minutes to draw its first frame, whatever limit you set.
+
+### Gallery hours
+
+A piece on a wall is in a building, and buildings have hours.
+
+```swift
+Installation(schedule: .open(from: 10, to: 18))
+```
+
+Outside them the screen goes dark and the display is allowed to sleep. The frames stop with it, and the clock stops with them. In the morning the piece carries on from where it stopped, not from where the day got to.
+
+<img src="Images/22-SharingAndPerforming/GalleryHours.jpg" alt="A day drawn as a coloured bar over a 24-hour axis: a dark stretch until six, then parts named dawn, day, dusk and night, and dark again from eleven at night; below it the sketch clock as a line that lies flat through the dark hours and climbs through the rest" width="680">
+
+The other half is a piece that changes through the day. Name the parts of the day, and read the one you are in:
+
+```swift
+override var installation: Installation {
+    Installation(schedule: [.from(6, "dawn"), .from(10, "day"),
+                            .from(18, "dusk"), .from(20, "night")])
+}
+
+override func draw() {
+    background(scheduledPeriod == "night" ? Color(white: 0.04) : .white)
+}
+```
+
+Each part runs until the next one starts. The last one runs round to the first, which is how a night crosses midnight in one piece. `scheduledProgress` says how far through the current part you are, from 0 to 1, for a piece that slides rather than switches. The two halves are one list, so mix them: `.dark(from: 20)` is a part with nothing on screen.
+
+Both readings work at your desk as well as on a wall. You can build a piece that changes at dusk without waiting for dusk.
+
 ### The log
 
-An unattended run prints a line when it starts, when it resumes, when the machine wakes, and when the displays change. Send it somewhere you can read on Monday:
+An unattended run prints a line when it starts, when it resumes, and when the machine wakes or the displays change. The hours and the watch print their own. Send it somewhere you can read on Monday:
 
 ```sh
 swift run --package-path Examples Example-Installation-Unattended >> ~/piece.log 2>&1
@@ -497,6 +546,7 @@ swift run --package-path Examples Example-Installation-Unattended >> ~/piece.log
 ```
 Ollin installation [2026-08-15 08:41:45]: running unattended; Command-Q quits
 Ollin installation [2026-08-15 08:41:45]: resumed the run saved at 2026-08-14 23:07:12 (frame 4098, 68s in)
+Ollin installation [2026-08-15 18:00:04]: dark until 10:00
 Ollin installation [2026-08-16 03:12:08]: the screens woke
 ```
 

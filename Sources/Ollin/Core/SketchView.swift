@@ -131,10 +131,35 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         }
     }
 
+    /// Whether the piece is on screen at all. A schedule that shuts for the
+    /// night takes the canvas away; nothing else ever does.
+    private var isShowing = true
+
+    /// Put the piece on screen, or take it away, as the schedule's part of the
+    /// day changes. Called by the host that owns the window.
+    ///
+    /// Taking it away stops the frames as well as hiding them, and stopping the
+    /// frames is what makes the night cost nothing: the clock is the sum of the
+    /// frames the piece draws, so a piece that comes back in the morning comes
+    /// back where it stopped rather than fourteen hours further on. A still
+    /// sketch keeps its own pause across it, since a `noLoop()` piece must not
+    /// start redrawing just because the day did.
+    func setShowing(_ showing: Bool) {
+        guard showing != isShowing else { return }
+        isShowing = showing
+        view?.isHidden = !showing
+        view?.isPaused = showing ? !sketch.isLooping : true
+    }
+
     /// Write the run's state now. Quiet after the first one: a line a minute for
     /// a week buries everything else in the log.
     func saveCheckpointNow() {
-        guard checkpointInterval != nil else { return }
+        // Never before the run has read the state it is replacing. Saving is
+        // asked for from outside the frame loop (a schedule closing for the
+        // night, a quit, a stop signal), and any of those can arrive before the
+        // first frame, which is where the restore happens. Writing then puts an
+        // empty run over a piece that has been growing for three days.
+        guard checkpointInterval != nil, didSetup else { return }
         do {
             try Checkpoint.write(sketch, time: elapsed)
             if !didLogFirstSave {
@@ -1367,6 +1392,12 @@ public enum OllinApp {
     /// the same lifecycle the live host and gallery use. This is the
     /// `swift run Example-X` path, reached via `Sketch.main()`.
     public static func run(_ sketch: Sketch) {
+        // A piece asked to get itself back up becomes its own supervisor here,
+        // and never reaches the line below: it starts the piece as a child
+        // process instead and starts another whenever one ends badly. Before
+        // the window rather than after, so the process that owns the window is
+        // the one that can be replaced.
+        Supervisor.superviseIfAsked(Installation.resolved(for: sketch))
         standaloneSketch = sketch
         OllinSketchApp.main()
     }
@@ -2352,6 +2383,10 @@ private final class StandaloneAppDelegate: NSObject, NSApplicationDelegate {
         // distorting and without the mouse drifting off the drawing.
         let canvas = sketch.canvasSize.cgSize
         let aspect = canvas.height > 0 ? canvas.width / canvas.height : 1
+        // Built before the view, so the host is in hand when the runner arrives:
+        // the runner registers itself globally on its first frame, and a piece
+        // whose schedule opens dark never draws one until the schedule says so.
+        let host = InstallationHost(installation)
         let root = AnyView(
             ZStack {
                 SwiftUI.Color.black
@@ -2360,6 +2395,7 @@ private final class StandaloneAppDelegate: NSObject, NSApplicationDelegate {
                 // otherwise float over the piece on the wall.
                 SketchView(sketch, showsInspectorPanel: false) { runner in
                     runner.beginInstallation(installation)
+                    host.attach(runner)
                 }
                 .aspectRatio(aspect, contentMode: .fit)
             }
@@ -2373,7 +2409,6 @@ private final class StandaloneAppDelegate: NSObject, NSApplicationDelegate {
         window.makeKeyAndOrderFront(nil)
         self.window = window
 
-        let host = InstallationHost(installation)
         host.take(over: window)
         self.installationHost = host
     }

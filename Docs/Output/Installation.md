@@ -25,6 +25,8 @@ Command-Q quits, whatever the piece covers. The menu bar is hidden, not gone.
 | `keepsDisplayAwake` | The display stays lit and the screen saver never arms, for as long as the piece runs. |
 | `clock` | When the clock a shader reads starts over, so a run of weeks stays exact. See [the clock](#the-clock-is-the-part-that-breaks) below. |
 | `checkpoint` | How often the run writes its state down, so a relaunch resumes rather than restarts. Off until asked for. See [picking up where it left off](#picking-up-where-it-left-off). |
+| `restarts` | Whether a run that ends badly is started again. Off until asked for. See [getting back up on its own](#getting-back-up-on-its-own). |
+| `schedule` | The hours the piece is on screen, and the parts of the day it can behave differently in. None until asked for. See [keeping hours](#keeping-hours). |
 
 Build one by hand to change any part of it. Anything you build is running: `.off` is the only value that is not.
 
@@ -90,6 +92,8 @@ That is the whole surface. Every `@Saved` property is written on the cadence, al
 
 Checkpointing is off until you ask for it, even under `.on`. Restoring changes what a piece does on launch, which is right for a wall and confusing at a desk.
 
+Nothing is ever written before the run has read the file it replaces. A quit or a stop signal can arrive before the first frame. A save there would put an empty run over a piece that had been growing for days.
+
 Anything `Codable` can be saved: numbers, strings, arrays, dictionaries, and your own structs and enums once you mark them `Codable`. Ollin's small value types (`Vector2`, `Vector3`, `Color`, `Rectangle`, `Insets`) already are.
 
 **What cannot be saved is anything living on the GPU.** An accumulated canvas, a feedback layer, a simulation field, a compute buffer: those are textures the framework owns, and a checkpoint does not reach them. A piece built on those comes back on a clean canvas.
@@ -132,6 +136,80 @@ The file is JSON, sorted and indented, in `~/Library/Application Support/Ollin/C
 ```
 
 The save happens on the frame it falls on, so keep the saved state to what the piece actually needs. A hundred thousand particles will hitch that frame.
+
+### Getting back up on its own
+
+A crash at three in the morning leaves the wall dark until somebody notices, which is usually the next day.
+
+```swift
+override var installation: Installation {
+    Installation(checkpoint: .every(seconds: 60), restarts: .onFailure)
+}
+```
+
+The process you start becomes a small watch that owns no window, and the piece runs as its child. When a run ends badly the watch starts another one. Pair it with a checkpoint: starting the piece again is worth most when the piece comes back where it was.
+
+Two things count as ending badly, and the second is the one an exit status cannot show.
+
+| What happened | How it is found |
+|---|---|
+| A crash | The run ends with a bad status, or on a signal. |
+| A stall | The run is still there and no longer answering. The piece writes a heartbeat from its main thread every couple of seconds, and a main thread stuck in a frame stops writing it. A frozen picture with a healthy process is what a viewer actually sees, and nothing else catches it. |
+
+Quitting is not ending badly. Command-Q ends the whole thing, and so does stopping the watch itself.
+
+A piece that fails a second after it starts is broken in a way that starting it again will not fix. So each try waits longer than the last. After five short runs in a row the watch stops trying and says so in the log. One run of any real length clears that record, so a piece that fails once a week runs for ever.
+
+A heavy `setup()` is not a stall. A piece has not answered at all until its first frame, so a start gets at least two minutes, whatever the limit says. Say your own limit for a piece that means to block for longer, or turn the stall watch off and keep the crash watch:
+
+```swift
+Installation(restarts: .onFailure(stalledAfter: 300))   // five minutes without a frame
+Installation(restarts: .onFailure(stalledAfter: 0))     // crashes only, and wait for ever
+```
+
+Restarting is off until you ask for it, even under `.on`. A piece that crashes while you work on it should stay crashed, so you can read the error. `--no-installation` takes the watch off with everything else.
+
+```
+Ollin installation [2026-08-15 13:02:06]: watching this run; a piece that stops answering for 10s is started again
+Ollin installation [2026-08-15 13:02:18]: the piece crashed (signal 9) after 12s; starting it again in 1s
+Ollin installation [2026-08-15 13:02:19]: resumed the run saved at 13:02:16 (frame 596, 10s in)
+Ollin installation [2026-08-15 13:02:38]: the piece has not answered for 10s; stopping it
+```
+
+### Keeping hours
+
+A piece on a wall is in a building, and buildings have hours.
+
+```swift
+Installation(schedule: .open(from: 10, to: 18))
+```
+
+Outside them the screen goes dark, the frames stop, and the display is allowed to sleep. In the morning the piece comes back where it stopped. The clock is the sum of the frames it drew, so a night off costs it nothing. The state goes down on the way into the dark, so a piece that checkpoints keeps the night as well.
+
+The other half is behaving differently at different times of day. Name the parts of the day, and the sketch reads which one it is in.
+
+```swift
+override var installation: Installation {
+    Installation(schedule: [.from(6, "dawn"), .from(10, "day"),
+                            .from(18, "dusk"), .from(22, "night")])
+}
+
+override func draw() {
+    background(scheduledPeriod == "night" ? Color(white: 0.04) : .white)
+}
+```
+
+Each part runs until the next one starts, and the last runs round to the first. That is what makes a night crossing midnight one part rather than two. `scheduledProgress` says how far through its part the day has got, from 0 to 1, for a piece that slides rather than switches.
+
+An hour on its own is a time of day, and `.at(9, 30)` says it to the minute. Times are read in the machine's own time zone.
+
+The two halves are one list, so mix them. A part with nothing on screen is `.dark(from:)`:
+
+```swift
+Installation(schedule: [.from(9, "morning"), .from(13, "afternoon"), .dark(from: 20)])
+```
+
+`scheduledPeriod` and `scheduledProgress` read the same anywhere, at a desk as much as on a wall. So a piece that changes through the day can be worked on at any hour of it. Going dark is the half that needs the installation: only a piece that owns its window can take the screen away.
 
 ### Displays that change under you
 

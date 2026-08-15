@@ -38,6 +38,18 @@ final class InstallationHost {
     private var appObservers: [any NSObjectProtocol] = []
     private var workspaceObservers: [any NSObjectProtocol] = []
 
+    /// Answers the supervisor watching this run, if there is one. Nothing at a
+    /// desk: a run nobody is watching has nobody to answer.
+    private var heartbeat: Heartbeat?
+
+    /// Reads the clock for a piece that keeps hours.
+    private var scheduleTimer: Timer?
+    /// The running sketch, once its view has built one. Weak: the view owns it.
+    private weak var sketchRunner: SketchRunner?
+    /// Whether the piece is on screen, as the schedule last had it. `nil` until
+    /// the first reading, so the run says out loud what it opened into.
+    private var showing: Bool?
+
     init(_ settings: Installation) {
         self.settings = settings
     }
@@ -53,19 +65,20 @@ final class InstallationHost {
         if settings.fillsScreen { fillScreen(window) }
         if settings.hidesPointer { NSCursor.hide() }
         if settings.keepsDisplayAwake { keepAwake() }
+        heartbeat = Heartbeat.start()
         watchTheSystem()
+        if !settings.schedule.periods.isEmpty { watchTheClock() }
     }
 
     /// Give everything back. A run that ends on its own never gets here, which
     /// is fine: the assertion and the hidden pointer both belong to the process.
     func release() {
         pendingScreenChange?.cancel()
-        idleTimer?.invalidate()
-        idleTimer = nil
-        if let activity {
-            ProcessInfo.processInfo.endActivity(activity)
-            self.activity = nil
-        }
+        scheduleTimer?.invalidate()
+        scheduleTimer = nil
+        heartbeat?.stop()
+        heartbeat = nil
+        releaseAwake()
         if settings.hidesPointer { NSCursor.unhide() }
         for observer in appObservers { NotificationCenter.default.removeObserver(observer) }
         for observer in workspaceObservers { NSWorkspace.shared.notificationCenter.removeObserver(observer) }
@@ -128,6 +141,74 @@ final class InstallationHost {
                                          kIOPMUserActiveLocal, &userActivity)
     }
 
+    /// Give the display and the machine back their own idleness, for the hours
+    /// the piece is not on screen. Nothing is holding the screen saver off then,
+    /// which is the point: a dark piece should let the panel rest.
+    private func releaseAwake() {
+        idleTimer?.invalidate()
+        idleTimer = nil
+        if let activity {
+            ProcessInfo.processInfo.endActivity(activity)
+            self.activity = nil
+        }
+    }
+
+    // MARK: Keeping hours
+
+    /// Follow the schedule's parts of the day. Twenty seconds is far finer than
+    /// anything a schedule says, so a change lands well inside the minute it
+    /// names, and the reading itself is a comparison of two clock times.
+    private func watchTheClock() {
+        applySchedule()
+        let timer = Timer(timeInterval: 20, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.applySchedule() }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        scheduleTimer = timer
+    }
+
+    private func applySchedule() {
+        let now = Date()
+        let shows = settings.schedule.shows(at: now)
+        if shows != showing {
+            showing = shows
+            let until = settings.schedule.nextChange(at: now).map { " until \($0.text)" } ?? ""
+            if shows {
+                log("on screen\(until)")
+                // Declaring activity here is also what wakes a display that
+                // went to sleep during the dark hours: nothing else in the
+                // process is touching the machine at nine in the morning.
+                if settings.keepsDisplayAwake { keepAwake() }
+                if settings.hidesPointer { NSCursor.hide() }
+            } else {
+                log("dark\(until)")
+                // An ordinary pause, so the state goes down with it rather than
+                // waiting on a cadence that has just stopped ticking.
+                sketchRunner?.saveCheckpointNow()
+                releaseAwake()
+            }
+        }
+        // Pushed every reading rather than only on a change: the runner may
+        // arrive after the window is taken over, and telling it nothing would
+        // leave a piece drawing through its own dark hours.
+        sketchRunner?.setShowing(shows)
+    }
+
+    /// The runner, handed over as soon as the view builds it, along with the
+    /// schedule's opening state: a piece launched outside its hours must not
+    /// show one frame and then have it taken away.
+    ///
+    /// Held here rather than read from `OllinActiveSketch`, which a piece only
+    /// registers with on its first frame. A piece that opens outside its hours
+    /// has no first frame to draw until the hours come round, so reading the
+    /// global would find nothing at exactly the moment this needs it.
+    func attach(_ runner: SketchRunner) {
+        sketchRunner = runner
+        if !settings.schedule.periods.isEmpty {
+            runner.setShowing(settings.schedule.shows(at: Date()))
+        }
+    }
+
     // MARK: Watching the system
 
     private func watchTheSystem() {
@@ -170,10 +251,10 @@ final class InstallationHost {
 
     private func reassert() {
         guard settings.keepsDisplayAwake else { return }
-        if let activity { ProcessInfo.processInfo.endActivity(activity) }
-        activity = nil
-        idleTimer?.invalidate()
-        idleTimer = nil
+        // Nothing to hold awake while the piece is off screen: the schedule put
+        // it down, and a wake in the small hours must not stand it back up.
+        guard showing ?? true else { return }
+        releaseAwake()
         keepAwake()
         if settings.hidesPointer { NSCursor.hide() }
     }
