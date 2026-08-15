@@ -462,9 +462,33 @@ override var loopDuration: Double? { 120 }     // two minutes a lap
 
 Nothing moves at the restart, because the piece is back at the start of a lap anyway. A sketch with no declared loop keeps counting, since there is no free moment to jump at. Say `Installation(clock: .restarting(every: 600))` if you know one, or leave it alone.
 
+### Picking up where it left off
+
+Some pieces are the same every launch, because everything they draw comes from the clock and the seed. Those need nothing here.
+
+Others grow. A wall that fills in one tile at a time, a reef that adds a polyp an hour, a drawing that accumulates. Three days in, that piece is not something you can rebuild from its seed. Getting back there means running the three days again.
+
+<img src="Images/22-SharingAndPerforming/Resuming.jpg" alt="Two dark eight-by-eight boards side by side with an arrow labelled relaunch between them: the left holding fourteen coloured tiles, the right holding the same fourteen in the same cells plus three more, ringed in orange" width="680">
+
+So write the state down. Two lines: how often, and what.
+
+```swift
+override var installation: Installation { Installation(checkpoint: .every(seconds: 60)) }
+
+@Saved var tiles: [Tile] = []
+```
+
+Every `@Saved` property goes into the file on that cadence, along with the seed, the clock, and every `@Param` value. A relaunch puts them all back before your first frame draws. The piece carries on.
+
+Anything `Codable` can be saved, which includes your own structs once you mark them `Codable`. What cannot is anything living on the GPU: an accumulated canvas, a feedback layer, a simulation field. Those are textures the framework owns, and the checkpoint does not reach them.
+
+You will edit the sketch while an old file is still sitting there, so every mismatch is made to cost only itself. Rename a property and the old value finds nothing. Change its type and it fails alone, named in the log, while everything else still restores. Damage the file and it is ignored. A piece on a wall that will not start is worse than one that started over.
+
+`--fresh` ignores the saved state for one run without deleting it. That is the one to reach for when a piece comes back in a state you do not want.
+
 ### The log
 
-An unattended run prints a line when it starts, when the machine wakes, and when the displays change. Send it somewhere you can read on Monday:
+An unattended run prints a line when it starts, when it resumes, when the machine wakes, and when the displays change. Send it somewhere you can read on Monday:
 
 ```sh
 swift run --package-path Examples Example-Installation-Unattended >> ~/piece.log 2>&1
@@ -472,6 +496,7 @@ swift run --package-path Examples Example-Installation-Unattended >> ~/piece.log
 
 ```
 Ollin installation [2026-08-15 08:41:45]: running unattended; Command-Q quits
+Ollin installation [2026-08-15 08:41:45]: resumed the run saved at 2026-08-14 23:07:12 (frame 4098, 68s in)
 Ollin installation [2026-08-16 03:12:08]: the screens woke
 ```
 
@@ -539,11 +564,11 @@ Live coding as a performance practice was organized by TOPLAP (founded 2004), wh
 - [Syphon](../Docs/Integration/Syphon.md): publishing, receiving, discovery, and the loopback.
 - [Virtual camera](../Docs/Integration/VirtualCamera.md): the one-time install, publishing, the test card.
 - [DMX](../Docs/Integration/DMX.md): universes and fixtures, Art-Net and sACN, the send cadence, and the console-drives-the-sketch direction.
-- [Installation](../Docs/Output/Installation.md): leaving a piece running, what each part of the declaration turns on, the two clock defences, and the log.
+- [Installation](../Docs/Output/Installation.md): leaving a piece running, what each part of the declaration turns on, the two clock defences, checkpoint and restore, and the log.
 - [Profiling](../Docs/Tools/Profiling.md): reading the cost row, what to do about each answer, and capturing a frame for Xcode.
 - [Live coding](../Docs/Tools/LiveCoding.md): the evaluate loop, errors, recovery, and the keyboard reference.
 - [Writing an extension](../Docs/Tools/Extensions.md): the four seams, the naming convention, the publishing checklist, and what is deliberately closed.
-- Worked examples: [`Examples/Installation/Unattended`](../Examples/Installation/Unattended/Sketch.swift), [`Examples/Export/VectorExport`](../Examples/Export/VectorExport/Sketch.swift), [`Examples/Export/Hatching`](../Examples/Export/Hatching/Sketch.swift), [`Examples/Integration/SyphonLoopback`](../Examples/Integration/SyphonLoopback/Sketch.swift), [`Examples/Integration/SyphonViewer`](../Examples/Integration/SyphonViewer/Sketch.swift), [`Examples/Integration/DMXLoopback`](../Examples/Integration/DMXLoopback/Sketch.swift), and [`Examples/Integration/VirtualCamera`](../Examples/Integration/VirtualCamera/Sketch.swift).
+- Worked examples: [`Examples/Installation/Unattended`](../Examples/Installation/Unattended/Sketch.swift), [`Examples/Installation/Resuming`](../Examples/Installation/Resuming/Sketch.swift), [`Examples/Export/VectorExport`](../Examples/Export/VectorExport/Sketch.swift), [`Examples/Export/Hatching`](../Examples/Export/Hatching/Sketch.swift), [`Examples/Integration/SyphonLoopback`](../Examples/Integration/SyphonLoopback/Sketch.swift), [`Examples/Integration/SyphonViewer`](../Examples/Integration/SyphonViewer/Sketch.swift), [`Examples/Integration/DMXLoopback`](../Examples/Integration/DMXLoopback/Sketch.swift), and [`Examples/Integration/VirtualCamera`](../Examples/Integration/VirtualCamera/Sketch.swift).
 
 ---
 

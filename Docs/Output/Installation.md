@@ -24,6 +24,7 @@ Command-Q quits, whatever the piece covers. The menu bar is hidden, not gone.
 | `hidesPointer` | The pointer goes away. Nobody is holding the mouse, so an arrow parked over the work is only ever a blemish. |
 | `keepsDisplayAwake` | The display stays lit and the screen saver never arms, for as long as the piece runs. |
 | `clock` | When the clock a shader reads starts over, so a run of weeks stays exact. See [the clock](#the-clock-is-the-part-that-breaks) below. |
+| `checkpoint` | How often the run writes its state down, so a relaunch resumes rather than restarts. Off until asked for. See [picking up where it left off](#picking-up-where-it-left-off). |
 
 Build one by hand to change any part of it. Anything you build is running: `.off` is the only value that is not.
 
@@ -72,6 +73,66 @@ Installation(clock: .continuous)               // never
 
 Pick a whole number of the periods your shaders animate on, or expect a visible jump each time. `time` itself always keeps counting, so nothing in your own `draw()` changes.
 
+### Picking up where it left off
+
+A piece that has been growing for three days cannot be rebuilt from its seed in any useful sense. Getting back there means running the three days again. So the state itself is written down, and the next launch reads it.
+
+Two things to say. How often to write, and what is worth writing.
+
+```swift
+override var installation: Installation { Installation(checkpoint: .every(seconds: 60)) }
+
+@Saved var polyps: [Vector2] = []
+@Saved var generation = 0
+```
+
+That is the whole surface. Every `@Saved` property is written on the cadence, along with the seed, the clock, and every `@Param` value. A relaunch puts them all back, and the piece carries on.
+
+Checkpointing is off until you ask for it, even under `.on`. Restoring changes what a piece does on launch, which is right for a wall and confusing at a desk.
+
+Anything `Codable` can be saved: numbers, strings, arrays, dictionaries, and your own structs and enums once you mark them `Codable`. Ollin's small value types (`Vector2`, `Vector3`, `Color`, `Rectangle`, `Insets`) already are.
+
+**What cannot be saved is anything living on the GPU.** An accumulated canvas, a feedback layer, a simulation field, a compute buffer: those are textures the framework owns, and a checkpoint does not reach them. A piece built on those comes back on a clean canvas.
+
+### When the file and the sketch disagree
+
+You will edit the sketch while a checkpoint from the old one is still sitting there. Every mismatch costs exactly the thing it touches:
+
+| What changed | What happens |
+|---|---|
+| A property renamed | The old value finds nothing and the fresh one stands. Values are matched by property name. |
+| A property retyped | The old value will not decode, so it is named in the log and the fresh one stands. Everything else still restores. |
+| A property added | It gets its starting value, since the file has nothing for it. |
+| The sketch renamed | The file belongs to a name, so a renamed sketch starts over with an empty one of its own. |
+| The canvas resized | Everything restores and the log says the size changed, since only you know whether that matters. |
+| The file damaged | It is ignored and the piece starts fresh. A half-written file cannot happen anyway: writes are atomic. |
+
+Nothing here ever stops a piece from starting, because a gallery piece that will not start is worse than one that started over.
+
+### Starting over, and saving by hand
+
+```sh
+swift run --package-path Examples Example-Installation-Resuming --fresh
+```
+
+`--fresh` ignores the saved state without deleting it, so one clean run does not cost you the file. To throw it away for good, call `forgetCheckpoint()`. To write one at a moment of your choosing, on a key press or at the end of a phase, call `saveCheckpoint()`.
+
+The file is JSON, sorted and indented, in `~/Library/Application Support/Ollin/Checkpoints/`, one per sketch. It is meant to be read: when a piece comes back wrong, the state it came back with is the first thing to look at.
+
+```json
+{
+  "frameCount" : 4098,
+  "sketch" : "Resuming",
+  "state" : {
+    "nextLanding" : 68,
+    "tiles" : [ { "cell" : 106, "shade" : 0.354, "turn" : 0.303 } ]
+  },
+  "time" : 67.98
+}
+```
+
+The save happens on the frame it falls on, so keep the saved state to what the piece actually needs. A hundred thousand particles will hitch that frame.
+
 ### Displays that change under you
 
 A monitor unplugged, replugged, or re-resolved reaches the piece as a burst of notifications, sometimes dozens in a second. The burst is waited out first. Then the piece is put back on a screen that still exists, and the draw loop is retimed to the refresh rate it now faces. A piece moved from a 60 Hz panel to a 120 Hz one asks for the right rate from then on.
@@ -105,4 +166,4 @@ Exports open no window, so none of the window parts apply to them. The clock res
 - [`Export`](./Export.md) for writing frames, video, and vectors out of a piece.
 - [`Sketch`](../Core/Sketch.md) for `loopDuration` and the rest of the declared configuration.
 - [`Canvas`](../Core/Canvas.md) for how the canvas and the window relate, which is what lets a 1080 square fill a wide screen without distorting.
-- The [Unattended example](../../Examples/Installation/Unattended/Sketch.swift).
+- The [Unattended example](../../Examples/Installation/Unattended/Sketch.swift), and the [Resuming example](../../Examples/Installation/Resuming/Sketch.swift), a wall that fills in and remembers how far it got.

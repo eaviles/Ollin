@@ -53,6 +53,10 @@ public struct Installation: Sendable, Equatable {
     /// When the clock the shaders read starts over. See ``Clock``.
     public var clock: Clock = .automatic
 
+    /// How often the run writes its state down, so a relaunch resumes rather
+    /// than restarts. See ``Checkpointing``.
+    public var checkpoint: Checkpointing = .off
+
     /// When the clock a shader reads starts counting from zero again.
     ///
     /// A sketch reads `time` as a `Double`, which stays exact for centuries. A
@@ -78,14 +82,41 @@ public struct Installation: Sendable, Equatable {
         case restarting(every: Double)
     }
 
+    /// How often a run writes its state down, and whether it does at all.
+    ///
+    /// The state is the seed, the clock, every `@Param` value, and every
+    /// ``Saved`` property. A relaunch reads the file back and the piece carries
+    /// on. What it cannot carry is anything living on the GPU: an accumulated
+    /// canvas, a feedback layer, a simulation field.
+    ///
+    /// Off by default, even under ``on``, because restoring changes what a piece
+    /// does on launch. That is exactly right for a wall and confusing at a desk,
+    /// so it is asked for rather than assumed.
+    public enum Checkpointing: Sendable, Equatable {
+        /// Never write the state down. Every launch starts the piece over.
+        case off
+        /// Write it every `seconds`, and once more on the way out of an
+        /// ordinary stop. A minute is a good number: the cost is one frame's
+        /// worth of encoding, and the loss when the power goes is a minute.
+        case every(seconds: Double)
+
+        /// The cadence in seconds, or `nil` when nothing is written.
+        var interval: Double? {
+            if case .every(let seconds) = self, seconds > 0 { return seconds }
+            return nil
+        }
+    }
+
     public init(fillsScreen: Bool = true,
                 hidesPointer: Bool = true,
                 keepsDisplayAwake: Bool = true,
-                clock: Clock = .automatic) {
+                clock: Clock = .automatic,
+                checkpoint: Checkpointing = .off) {
         self.fillsScreen = fillsScreen
         self.hidesPointer = hidesPointer
         self.keepsDisplayAwake = keepsDisplayAwake
         self.clock = clock
+        self.checkpoint = checkpoint
     }
 
     /// The private form behind ``off``, the one value that is not running.

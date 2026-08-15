@@ -83,6 +83,7 @@ let package = Package(
         example("Export/VectorExport"),
         example("Export/Hatching"),
         example("Installation/Unattended"),
+        example("Installation/Resuming"),
         example("Rendering/Blending"),
         example("Effects/Bloom"),
         example("Shapes/Combinators"),

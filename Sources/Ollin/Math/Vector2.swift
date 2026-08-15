@@ -5,7 +5,7 @@ import Foundation
 ///
 /// `Vector2` is Ollin's geometry currency — the type primitives like
 /// `polyline` take, and the value you pass around, transform, and compose.
-public struct Vector2: Equatable, Hashable, Sendable {
+public struct Vector2: Equatable, Hashable, Sendable, Codable {
     public let x: Double
     public let y: Double
 

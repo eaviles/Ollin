@@ -7,7 +7,7 @@ import Foundation
 /// with a `z`, plus `xy` to project back onto the canvas plane. Axis meaning
 /// (which way is up, where the origin sits) belongs to whatever produced the
 /// value, so check the producer's documentation.
-public struct Vector3: Equatable, Hashable, Sendable {
+public struct Vector3: Equatable, Hashable, Sendable, Codable {
     public let x: Double
     public let y: Double
     public let z: Double

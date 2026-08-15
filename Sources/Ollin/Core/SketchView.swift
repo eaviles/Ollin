@@ -104,6 +104,50 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         min(max(0, raw), longestFrameStep)
     }
 
+    // MARK: Checkpointing
+
+    /// How often this run writes its state down, or `nil` for a run that does
+    /// not. Set by the host that owns the window: a sketch under the live host
+    /// or the gallery never checkpoints, because restoring old state on every
+    /// reload is the opposite of what iterating wants.
+    private var checkpointInterval: Double?
+    /// The clock reading the next save is due at.
+    private var nextCheckpoint: Double = .infinity
+    /// Whether the one restore this run gets has happened. `didSetup` goes false
+    /// again on a reload or a seed restart, and neither should pull old state
+    /// back in.
+    private var didRestoreCheckpoint = false
+    private var didLogFirstSave = false
+
+    /// Start the parts of an installation the runner owns. Called by the host
+    /// that opened the window, once, before the first frame.
+    func beginInstallation(_ settings: Installation) {
+        guard let interval = settings.checkpoint.interval else { return }
+        checkpointInterval = interval
+        // A watchdog stopping the piece, or Control-C in the terminal it was
+        // started from, should not lose the minute since the last save.
+        CheckpointSignals.catchStops {
+            OllinActiveSketch.runner?.saveCheckpointNow()
+        }
+    }
+
+    /// Write the run's state now. Quiet after the first one: a line a minute for
+    /// a week buries everything else in the log.
+    func saveCheckpointNow() {
+        guard checkpointInterval != nil else { return }
+        do {
+            try Checkpoint.write(sketch, time: elapsed)
+            if !didLogFirstSave {
+                didLogFirstSave = true
+                let seconds = Int(checkpointInterval ?? 0)
+                let path = Checkpoint.url(for: sketch)?.path ?? "?"
+                ollinInstallationLog("saving state every \(seconds)s to \(path)")
+            }
+        } catch {
+            ollinInstallationLog("could not save the state: \(error)")
+        }
+    }
+
     public init(sketch: Sketch, view: MTKView, device: MTLDevice) {
         self.sketch = sketch
         do {
@@ -363,9 +407,18 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         let now = CACurrentMediaTime()
 
         if !didSetup {
-            // Continue the clock across a keep-clock reload; otherwise start it
-            // at zero so a fresh reload begins the piece again.
-            elapsed = clockCarry ?? 0
+            // A run that keeps a checkpoint gets one restore, at its first
+            // setup: the seed and the tuned knobs before `setup()` builds
+            // anything from them, the state itself after.
+            var restored: Checkpoint?
+            if checkpointInterval != nil, !didRestoreCheckpoint {
+                didRestoreCheckpoint = true
+                restored = Checkpoint.load(for: sketch)
+                restored?.applyBeforeSetup(to: sketch)
+            }
+            // Continue the clock across a keep-clock reload, or from where the
+            // saved state left it; otherwise start at zero.
+            elapsed = clockCarry ?? restored?.time ?? 0
             clockCarry = nil
             lastTime = now
             // Reflect where the cursor actually is before the first frame, so a
@@ -373,6 +426,8 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             // blank frame — until the pointer first moves over the window.
             (view as? OllinMTKView)?.seedPointer()
             sketch.setup()
+            restored?.applyAfterSetup(to: sketch)
+            nextCheckpoint = elapsed + (checkpointInterval ?? .infinity)
             didSetup = true
             if didReload {            // setup() just ran on a hot-swapped sketch
                 didReload = false
@@ -544,6 +599,14 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
                                        pointCount: sketch.drawer.points.count,
                                        particleCount: sketch.drawer.particleCount,
                                        profile: profile))
+
+        // The cadence, measured on the sketch clock rather than the wall clock,
+        // so a piece that was paused or asleep does not come back owing a pile
+        // of saves.
+        if elapsed >= nextCheckpoint, let interval = checkpointInterval {
+            nextCheckpoint = elapsed + interval
+            saveCheckpointNow()
+        }
 
         // Frame-grab: if any extension asked for the rendered pixels, render the
         // frame off-screen and hand it over. Gated on `wantsRenderedFrames` so a
@@ -2203,6 +2266,8 @@ private final class StandaloneAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        // Quitting is an ordinary end to a run, so the state goes down with it.
+        OllinActiveSketch.runner?.saveCheckpointNow()
         installationHost?.release()
     }
 
@@ -2293,8 +2358,10 @@ private final class StandaloneAppDelegate: NSObject, NSApplicationDelegate {
                 // No detached stats panel: the "Show Inspector" toggle is
                 // remembered between runs, and a panel left on at a desk would
                 // otherwise float over the piece on the wall.
-                SketchView(sketch, showsInspectorPanel: false)
-                    .aspectRatio(aspect, contentMode: .fit)
+                SketchView(sketch, showsInspectorPanel: false) { runner in
+                    runner.beginInstallation(installation)
+                }
+                .aspectRatio(aspect, contentMode: .fit)
             }
             .frame(minWidth: 200, maxWidth: .infinity, minHeight: 200, maxHeight: .infinity)
         )

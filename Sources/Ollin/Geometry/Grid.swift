@@ -7,7 +7,7 @@ import Foundation
 /// `.horizontal(40)`, `.vertical(20)`, or the explicit
 /// `Insets(top:right:bottom:left:)`. A bare number works too: `padding: 20`
 /// reads as `.all(20)`.
-public struct Insets: Equatable, Hashable, Sendable {
+public struct Insets: Equatable, Hashable, Sendable, Codable {
     public var top: Double
     public var right: Double
     public var bottom: Double
