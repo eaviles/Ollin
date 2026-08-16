@@ -35,12 +35,14 @@ final class Pose: Sketch {
 ### Contents
 
 - [Setup](#setup) - install the capture app, connect the cable
-- [Reading the stream](#reading-the-stream) - `latestBody`, `latestFace`, `latestDepthFrame`, `sceneMesh`, `latestMotion`, the connection state
+- [Reading the stream](#reading-the-stream) - `latestBody`, `latestFace`, `latestDepthFrame`, `sceneMesh`, `planes`, `latestLight`, `latestMotion`, the connection state
 - [The body](#the-body) - `PhoneBody`, the joints, drawing the skeleton
 - [The face](#the-face) - `PhoneFace`, the blendshapes, the mesh
 - [World depth](#world-depth) - `latestDepthFrame`, `pointCloud(...)`, the camera pose
 - [World fusion](#world-fusion) - `WorldCloud`, sweeping a room into one cloud, and [keeping it registered](#drift)
-- [The room mesh](#the-room-mesh) - `sceneMesh`, the room as a labelled surface, the Mesh mode
+- [The room mesh](#the-room-mesh) - `sceneMesh`, the room as a labelled surface, the Room mode
+- [The flat surfaces](#the-flat-surfaces) - `planes`, somewhere to stand something, no LiDAR needed
+- [The room's light](#the-rooms-light) - `latestLight`, how bright and how warm the room is
 - [Segmentation](#segmentation) - `latestSegmentationMatte`, `latestSegmentationCutout`, the Segment mode
 - [Device motion](#device-motion) - `PhoneMotion`, the transport smoke-test
 - [Notes](#notes) - the wire, coordinate space, what's ahead
@@ -71,13 +73,15 @@ device.latestBody                    // PhoneBody?, the latest skeleton (Body mo
 device.latestFaces                   // [PhoneFace], every tracked face, up to 3 (Face mode)
 device.latestFace                    // PhoneFace?, the most prominent face (= latestFaces.first)
 device.latestDepthFrame              // RGBDFrame?, the latest depth frame (World mode)
-device.sceneMesh                     // PhoneSceneMesh, the room scanned so far (Mesh mode)
+device.sceneMesh                     // PhoneSceneMesh, the room scanned so far (Room mode)
+device.planes                        // PhonePlanes, the flat surfaces found (Room mode)
+device.latestLight                   // PhoneLight?, how bright and how warm the room is
 device.latestMotion                  // PhoneMotion?, the latest device-motion sample
 ```
 
 These are fresh each time the phone sends one, so read them within the current `draw()`. Each is `nil` until the first of its kind arrives. Motion typically lights up first, since it needs no camera or model, proving the wire before ARKit has found a body, face, or depth.
 
-**The camera modes are mutually exclusive.** Body, World, Segment, and Mesh use the rear camera, Face the front TrueDepth camera, and only one ARKit session runs at a time. The capture app has a **Body / Face / World / Segment / Mesh** toggle, and whichever is selected is the one that updates: `latestBody`, `latestFace`, `latestDepthFrame`, the segmentation images, or `sceneMesh`. The others hold their last value, so read the one for the mode you mean to drive. Motion streams across all of them.
+**The camera modes are mutually exclusive.** Body, World, Segment, and Room use the rear camera, Face the front TrueDepth camera, and only one ARKit session runs at a time. The capture app has a **Body / Face / World / Segment / Room** toggle, and whichever is selected is the one that updates: `latestBody`, `latestFace`, `latestDepthFrame`, the segmentation images, or the room's `sceneMesh` and `planes`. The others hold their last value, so read the one for the mode you mean to drive. Motion and `latestLight` stream across all of them.
 
 ## The body
 
@@ -213,7 +217,7 @@ To see the difference without a phone, `swift run --package-path Examples Exampl
 
 ## The room mesh
 
-In **Mesh** mode the phone stops sending you raw depth and sends you the room itself. ARKit reconstructs the space around it as a real triangle surface on the device, and labels each triangle with what it is. What arrives on the Mac already has normals, and already knows the floor from the wall.
+In **Room** mode the phone stops sending you raw depth and sends you the room itself. ARKit reconstructs the space around it as a real triangle surface on the device, and labels each triangle with what it is. What arrives on the Mac already has normals, and already knows the floor from the wall. The same mode also reports [the flat surfaces](#the-flat-surfaces) in that room, from one session and one world origin, so the two always agree about where things are.
 
 Where [world fusion](#world-fusion) builds a cloud of points on the Mac, this is a solid surface built on the phone. Both come from the same LiDAR, so pick by what you want to do with it. Points are for a cloud you scatter, deform, or reconstruct yourself. A mesh is for a surface you light, hide things behind, or bounce something off.
 
@@ -261,9 +265,111 @@ fill(Color(hex: 0x4C9A6B)); drawMesh(scan.mesh(of: .floor))
 
 Positions are in ARKit's fixed, gravity-aligned world space, in meters. That is the same space `latestPose` reports, so a mesh block and a fused cloud from one session line up.
 
-Starting a scan resets that world origin, which would leave an older room floating in a space that no longer exists. So every block says which run of the scanner it came from, and `PhoneDevice` drops the room it was holding the moment a new run begins. Leaving Mesh mode and coming back is a new run.
+Starting a scan resets that world origin, which would leave an older room floating in a space that no longer exists. So every block says which run of the scanner it came from, and `PhoneDevice` drops the room it was holding the moment a new run begins. Leaving Room mode and coming back is a new run.
 
-Scene reconstruction needs a LiDAR sensor, so Mesh mode is Pro-tier iPhones only. The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneRoomMesh`.
+Scene reconstruction needs a LiDAR sensor, so the surface is Pro-tier iPhones only. The flat surfaces below are not, so Room mode is worth opening on any phone. The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneRoomMesh`.
+
+## The flat surfaces
+
+Room mode reports one more thing: the flat surfaces in the room. ARKit finds a floor, a wall, a table top, or a seat as a single flat patch, and grows it as you look around. Each one carries a label, the same one it puts on a triangle of the surface.
+
+The mesh is the whole shape of the room, down to the clutter. This is the handful of places worth putting something on or hanging something from. It also needs **no LiDAR**: plane detection runs on any phone the capture app installs on. That is what makes Room mode worth opening on a phone that cannot reconstruct anything.
+
+```swift
+device.planes                        // PhonePlanes, every flat surface found so far
+device.planesVersion                 // Int?, changes when one arrives, grows, or is retired
+device.resetPlanes()                 // forget them and collect again
+```
+
+Each one is a `PhonePlane`, already in world space:
+
+```swift
+for plane in device.planes.flat {
+    plane.surface                    // PhoneSurface: floor, table, seat, wall, …
+    plane.center                     // Vector3, the middle of it
+    plane.normal                     // Vector3, the way it faces
+    plane.area                       // Double, square meters, measured on the outline
+    plane.boundary                   // [Vector3], the real outline, a convex polygon
+    plane.mesh                       // Mesh, the outline filled in
+    plane.outline                    // [Vector3], a closed loop, ready for drawTube
+}
+```
+
+The set is read the same way:
+
+```swift
+let room = device.planes
+room.flat                            // [PhonePlane], floors, tables, seats
+room.upright                         // [PhonePlane], walls
+room.planes(of: .table, .seat)       // [PhonePlane], only these labels
+room.largest                         // PhonePlane?, the most surface, by real area
+room.largest(of: .table)             // PhonePlane?, the biggest of a label
+room.floor                           // PhonePlane?, the labelled floor, or the lowest flat one
+room.mesh { surface in ... }         // Mesh, every surface painted by what it is
+```
+
+**`largest` measures the outline, not the box around it.** A long thin shelf can have a big box and very little surface. Picking it as the ground would put your sketch on a shelf.
+
+**`floor` answers before ARKit has decided.** A label arrives late, so `floor` gives you the labelled floor when there is one and the lowest flat surface until then. A sketch can stand something on the ground a second or two after the app opens.
+
+```swift
+// A ball resting on the biggest flat thing in the room.
+if let ground = device.planes.largest(of: .table) ?? device.planes.floor {
+    withState {
+        translate(ground.center + ground.normal * 0.15)
+        drawSphere(radius: 0.15)
+    }
+}
+```
+
+Surfaces share the room mesh's world space and its scan number, so a new run of the scanner clears both together. The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneRoomPlanes`.
+
+## The room's light
+
+The phone measures the light around it from its own camera image. It does this in **every** mode, a few times a second, so a sketch can match the light in the room.
+
+```swift
+if let light = device.latestLight {
+    light.lumens                     // Double, as measured; 1000 is an ordinary room
+    light.intensity                  // Double, the same scaled so 1 is an ordinary room
+    light.kelvin                     // Double, color temperature; 6500 is neutral white
+    light.color                      // Color, what a white wall in this room looks like
+    light.ambient                    // Color, that white turned down by how bright it is
+}
+```
+
+`ambient` is the one to reach for, because it carries both halves at once:
+
+```swift
+ambientLight(device.latestLight?.ambient ?? Color(white: 0.4))
+```
+
+The reading follows the room, so switching a lamp on warms the sketch with it.
+
+**Face mode knows more.** ARKit reads the shading on a tracked face, so a front-camera session also reports where the light comes from:
+
+```swift
+light.direction                      // Vector3?, the way the strongest light travels
+light.keyIntensity                   // Double?, how strong it is, on the same scale
+light.sphericalHarmonics             // [Float]?, 27 coefficients, nine per channel
+light.key                            // Light?, all of that, ready to add to a scene
+```
+
+```swift
+if let key = device.latestLight?.key { light(key) }
+```
+
+A world-facing session has no face to read, so `direction` and `key` are `nil` there and the two ambient numbers arrive on their own. In Room mode a sketch can add its own directional light, in the room's measured color:
+
+```swift
+if let measured = device.latestLight {
+    ambientLight(measured.ambient)
+    light(.directional(measured.color, direction: Vector3(-0.35, -1, -0.25),
+                       intensity: measured.intensity))
+}
+```
+
+`PhoneLight` has a public initializer, so a sketch can be developed against a stand-in reading with no phone attached: `PhoneLight(lumens: 480, kelvin: 2700)` is a lamp-lit room.
 
 ## Segmentation
 
@@ -308,5 +414,5 @@ Tilt the phone and `gravity` swings, a one-line check that the wire is alive.
 - **USB only.** The transport is the `usbmuxd` tunnel over the cable, on port 1338, distinct from Record3D's 1337. Wi-Fi is deliberately out.
 - **Per-frame clouds are camera-relative, and fusion is world-space.** A single `pointCloud(...)` is in the camera's own frame, root at the lens, and the skeleton is in model space, root at the origin. [World fusion](#world-fusion) is what lifts a sweep into one fixed world cloud, by applying each frame's `latestPose`. It fuses several poses' clouds into a single *registered* scene, but not the richer multi-frame tricks like loop closure and drift correction. So a long sweep drifts with ARKit's own tracking.
 - **Depth is raw over the wire.** The LiDAR depth map ships uncompressed, and a 256×192 frame is ~196 KB, comfortable over USB. LZFSE compression is a later optimization. The color image is sent as a downscaled JPEG.
-- **A growing catalog.** Body pose, face, world depth, the room mesh, person segmentation, and motion are the payloads today. Richer sensors are the same app sending new tagged payloads, not new pipelines.
+- **A growing catalog.** Body pose, face, world depth, the room mesh, the flat surfaces, the room's light, person segmentation, and motion are the payloads today. Richer sensors are the same app sending new tagged payloads, not new pipelines.
 - **A mesh block is carried raw, and sending is what is throttled.** The phone reads a block's geometry the moment ARKit hands it over, since those buffers belong to the session. It then queues the block and sends a few at a time. A block too big for one payload is skipped and counted on the app's own screen.

@@ -11,10 +11,12 @@ import simd
 /// practical subset onto `PhoneJoint`. A name that isn't present in the skeleton
 /// returns a nil transform and is simply skipped, so the figure still streams the
 /// joints that resolved — and the available names are logged once for tuning.
-final class ARStreamer: NSObject, ARSessionDelegate {
+final class ARStreamer: NSObject, ARSessionDelegate, LightReporting {
 
     /// Fired (on the main thread) for each updated body, with its joints in meters.
     var onPose: ((PhonePoseSample) -> Void)?
+
+    let lightSampler = LightSampler()
 
     /// Whether this device supports ARKit body tracking (A12+, rear camera).
     var isSupported: Bool { ARBodyTrackingConfiguration.isSupported }
@@ -34,6 +36,7 @@ final class ARStreamer: NSObject, ARSessionDelegate {
     // MARK: ARSessionDelegate
 
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
+        lightSampler.report(frame)
         for anchor in frame.anchors {
             guard let body = anchor as? ARBodyAnchor else { continue }
             let skeleton = body.skeleton

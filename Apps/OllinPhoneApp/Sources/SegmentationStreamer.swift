@@ -15,10 +15,12 @@ import UIKit
 ///
 /// ARKit delivers its delegate callbacks on the main thread, so `onSegmentation`
 /// fires on main; the matte copy/downscale and the JPEG encode all run there.
-final class SegmentationStreamer: NSObject, ARSessionDelegate {
+final class SegmentationStreamer: NSObject, ARSessionDelegate, LightReporting {
 
     /// Fired (on the main thread) for each frame that carries a segmentation matte.
     var onSegmentation: ((PhoneSegmentationSample) -> Void)?
+
+    let lightSampler = LightSampler()
 
     /// Whether this device supports ARKit person segmentation.
     var isSupported: Bool { ARWorldTrackingConfiguration.supportsFrameSemantics(.personSegmentation) }
@@ -46,6 +48,9 @@ final class SegmentationStreamer: NSObject, ARSessionDelegate {
     // MARK: ARSessionDelegate
 
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
+        // Before the matte guard, so the room's light keeps arriving on a frame with
+        // nobody in it.
+        lightSampler.report(frame)
         guard let buffer = frame.segmentationBuffer,
               let (w, h, native) = bytePixels(buffer) else { return }
         // The matte and the color come from the same frame, so they're in the same

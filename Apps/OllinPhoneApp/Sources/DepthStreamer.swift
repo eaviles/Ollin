@@ -17,10 +17,12 @@ import UniformTypeIdentifiers
 ///
 /// ARKit delivers its delegate callbacks on the main thread, so `onDepth` fires on
 /// main; the depth-map copy, intrinsics scaling, and JPEG encode all run there.
-final class DepthStreamer: NSObject, ARSessionDelegate {
+final class DepthStreamer: NSObject, ARSessionDelegate, LightReporting {
 
     /// Fired (on the main thread) for each frame that carries scene depth.
     var onDepth: ((PhoneDepthSample) -> Void)?
+
+    let lightSampler = LightSampler()
 
     /// Whether this device has a LiDAR sensor for scene depth.
     var isSupported: Bool { ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth) }
@@ -52,6 +54,9 @@ final class DepthStreamer: NSObject, ARSessionDelegate {
     // MARK: ARSessionDelegate
 
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
+        // Before the depth guard, so the room's light keeps arriving on a frame that
+        // carries no depth.
+        lightSampler.report(frame)
         guard let sceneDepth = frame.smoothedSceneDepth ?? frame.sceneDepth else { return }
 
         guard let (depthW, depthH, depth) = floatPixels(sceneDepth.depthMap) else { return }

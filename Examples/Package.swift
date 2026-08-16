@@ -287,8 +287,11 @@ let package = Package(
         // the rear-camera Segment-mode sibling of the depth/pose/face examples.
         example("3D/Phone/PhoneSegmentation", [.phone]),
         // The room the phone reconstructs as a solid surface, block by block, painted
-        // by what each triangle is. The Mesh-mode sibling of PhoneWorldScan.
+        // by what each triangle is. The Room-mode sibling of PhoneWorldScan.
         example("3D/Phone/PhoneRoomMesh", [.phone]),
+        // The flat surfaces in that same room, each as its real outline, with a ball
+        // standing on the biggest one and the scene lit by the room's own light.
+        example("3D/Phone/PhoneRoomPlanes", [.phone]),
         example("Motion/Breathing"),
         example("Motion/SineSweep"),
         example("Motion/Easing"),

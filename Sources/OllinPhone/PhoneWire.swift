@@ -73,8 +73,18 @@ public enum PhoneMessageKind: UInt8, Sendable, CaseIterable {
     /// carries **one block**, identified by a stable `id`. The Mac keeps a set of
     /// them, replaces a block when a better version arrives, and drops one the
     /// phone retires, which keeps each payload small while the room builds up
-    /// piece by piece. Streams only in Mesh mode (LiDAR rear camera).
+    /// piece by piece. Streams only in Room mode (LiDAR rear camera).
     case sceneMesh = 6
+    /// One flat surface the phone has found: a floor, a wall, a table top. ARKit
+    /// reports each as its own anchor and keeps growing it as you look around, so
+    /// this message carries **one plane**, identified by a stable `id`, the same way
+    /// a mesh block is. Streams in Room mode, and unlike the mesh it needs no LiDAR.
+    case plane = 7
+    /// What the room's light is doing: how bright it is and how warm. The phone
+    /// measures this from the camera image, so it arrives in **every** mode, a few
+    /// times a second. In Face mode it also carries a direction for the strongest
+    /// light, which ARKit works out from the face itself.
+    case light = 8
 }
 
 /// The named joints the stream carries — a practical subset of ARKit's ~91-joint
@@ -264,11 +274,11 @@ public struct PhoneSegmentationSample: Sendable, Equatable {
     }
 }
 
-/// What the phone thinks a piece of the room surface is. ARKit labels every
-/// triangle of the reconstructed mesh with one of these while it scans, so a
-/// sketch can treat the floor differently from a wall, or keep only the tables.
-/// A triangle the phone is unsure about stays `unclassified`, which is most of
-/// them early in a scan.
+/// What the phone thinks a piece of the room is. ARKit labels every triangle of
+/// the reconstructed mesh with one of these while it scans, and labels each flat
+/// surface it finds the same way, so a sketch can treat the floor differently from
+/// a wall, or keep only the tables. A part the phone is unsure about stays
+/// `unclassified`, which is most of them early in a scan.
 ///
 /// The raw values are contiguous from `0`, and the iOS app maps ARKit's own
 /// labels onto them, so the wire carries one byte per triangle. A test pins the
@@ -327,7 +337,102 @@ public struct PhoneSceneMeshSample: Sendable, Equatable {
     }
 }
 
-/// A decoded message of any kind — the unit tests round-trip this.
+/// Which way a found surface faces: flat like a floor or a table top, or upright
+/// like a wall. ARKit sorts every plane into one of the two, and a sketch that
+/// wants somewhere to stand an object asks for the flat ones.
+public enum PhonePlaneAlignment: UInt8, CaseIterable, Sendable {
+    case horizontal = 0
+    case vertical
+}
+
+/// One flat surface the phone has found, in the coordinate space of its own anchor:
+/// `center` and `boundary` are anchor-local meters, and `transform` places that
+/// origin in ARKit's fixed world (the same world `PhoneDepthSample.cameraTransform`
+/// and the room mesh report). The surface always lies in the anchor's own XZ plane,
+/// so its normal is the anchor's up axis whichever way it faces.
+///
+/// `width` and `height` are the size of the smallest upright box around it, turned
+/// by `rotationOnYAxis` so a table at an angle still measures as a table rather than
+/// as the bigger box holding it. `boundary` is the real outline, a **convex** polygon
+/// ARKit fits around everything it has seen of the surface, which is what a sketch
+/// draws when a rectangle is too coarse.
+///
+/// `id`, `scan`, and `removed` work exactly as they do for a mesh block: the same
+/// `id` arrives again with a better shape, a new `scan` number means the phone
+/// restarted and the old world is gone, and a removal carries no geometry (ARKit
+/// retires a plane when it merges it into a bigger one).
+public struct PhonePlaneSample: Sendable, Equatable {
+    public var tracked: Bool
+    public var timestamp: Double
+    public var id: UUID
+    public var scan: UInt32
+    public var removed: Bool
+    public var transform: simd_float4x4
+    public var center: SIMD3<Float>
+    public var width: Float
+    public var height: Float
+    public var rotationOnYAxis: Float
+    public var alignment: PhonePlaneAlignment
+    public var surface: UInt8
+    public var boundary: [SIMD3<Float>]
+
+    public init(tracked: Bool, timestamp: Double, id: UUID, scan: UInt32 = 0,
+                removed: Bool = false, transform: simd_float4x4,
+                center: SIMD3<Float> = .zero, width: Float = 0, height: Float = 0,
+                rotationOnYAxis: Float = 0, alignment: PhonePlaneAlignment = .horizontal,
+                surface: UInt8 = 0, boundary: [SIMD3<Float>] = []) {
+        self.tracked = tracked
+        self.timestamp = timestamp
+        self.id = id
+        self.scan = scan
+        self.removed = removed
+        self.transform = transform
+        self.center = center
+        self.width = width
+        self.height = height
+        self.rotationOnYAxis = rotationOnYAxis
+        self.alignment = alignment
+        self.surface = surface
+        self.boundary = boundary
+    }
+}
+
+/// What the phone measures of the light around it, read off the camera image.
+///
+/// `ambientIntensity` is in lumens, where **1000 is ordinary indoor light**, and
+/// `colorTemperature` is in kelvin, where **6500 is neutral white**. Lower is the
+/// warm yellow of a lamp, higher the cool blue of a window or an overcast sky.
+///
+/// The rest arrives only in Face mode. Watching a face gives ARKit enough to say
+/// where the light comes from, so `hasDirection` turns on and brings `direction`
+/// (the way the strongest light travels, in world space), `directionalIntensity`
+/// (lumens), and the 27 `sphericalHarmonics` coefficients (nine per color channel,
+/// the compact description of light arriving from every direction at once). A
+/// world-facing session has no face to read, so it sends the two ambient numbers
+/// on their own.
+public struct PhoneLightSample: Sendable, Equatable {
+    public var timestamp: Double
+    public var ambientIntensity: Float
+    public var colorTemperature: Float
+    public var hasDirection: Bool
+    public var direction: SIMD3<Float>
+    public var directionalIntensity: Float
+    public var sphericalHarmonics: [Float]
+
+    public init(timestamp: Double, ambientIntensity: Float, colorTemperature: Float,
+                hasDirection: Bool = false, direction: SIMD3<Float> = .zero,
+                directionalIntensity: Float = 0, sphericalHarmonics: [Float] = []) {
+        self.timestamp = timestamp
+        self.ambientIntensity = ambientIntensity
+        self.colorTemperature = colorTemperature
+        self.hasDirection = hasDirection
+        self.direction = direction
+        self.directionalIntensity = directionalIntensity
+        self.sphericalHarmonics = sphericalHarmonics
+    }
+}
+
+/// A decoded message of any kind, which the unit tests round-trip.
 public enum PhoneMessage: Sendable, Equatable {
     case motion(PhoneMotionSample)
     case pose(PhonePoseSample)
@@ -340,6 +445,11 @@ public enum PhoneMessage: Sendable, Equatable {
     /// One block of the reconstructed room surface, keyed by its own id. Blocks
     /// arrive one at a time and keep arriving as the scan improves.
     case sceneMesh(PhoneSceneMeshSample)
+    /// One flat surface, keyed by its own id, arriving and growing the same way a
+    /// mesh block does.
+    case plane(PhonePlaneSample)
+    /// How bright and how warm the room is, a few times a second.
+    case light(PhoneLightSample)
 
     public var kind: PhoneMessageKind {
         switch self {
@@ -349,6 +459,8 @@ public enum PhoneMessage: Sendable, Equatable {
         case .depth: return .depth
         case .segmentation: return .segmentation
         case .sceneMesh: return .sceneMesh
+        case .plane: return .plane
+        case .light: return .light
         }
     }
 }
@@ -396,6 +508,8 @@ public extension PhoneWire {
         case .depth(let d): payload = encodeDepthPayload(d)
         case .segmentation(let seg): payload = encodeSegmentationPayload(seg)
         case .sceneMesh(let chunk): payload = encodeSceneMeshPayload(chunk)
+        case .plane(let plane): payload = encodePlanePayload(plane)
+        case .light(let light): payload = encodeLightPayload(light)
         }
         var out = Data()
         appendU32(&out, magic)
@@ -528,6 +642,41 @@ public extension PhoneWire {
         return p
     }
 
+    private static func encodePlanePayload(_ p0: PhonePlaneSample) -> Data {
+        var p = Data()
+        p.append(p0.tracked ? 1 : 0)
+        appendF64(&p, p0.timestamp)
+        appendUUID(&p, p0.id)
+        appendU32(&p, p0.scan)
+        p.append(p0.removed ? 1 : 0)
+        appendMatrix(&p, p0.transform)
+        // A retirement notice carries no shape, so the rest stops here.
+        guard !p0.removed else { return p }
+        for v in [p0.center.x, p0.center.y, p0.center.z] { appendF32(&p, v) }
+        for v in [p0.width, p0.height, p0.rotationOnYAxis] { appendF32(&p, v) }
+        p.append(p0.alignment.rawValue)
+        p.append(p0.surface)
+        // The outline: a point count, then xyz per point (anchor-local).
+        appendU32(&p, UInt32(p0.boundary.count))
+        for v in p0.boundary { appendF32(&p, v.x); appendF32(&p, v.y); appendF32(&p, v.z) }
+        return p
+    }
+
+    private static func encodeLightPayload(_ l: PhoneLightSample) -> Data {
+        var p = Data()
+        appendF64(&p, l.timestamp)
+        appendF32(&p, l.ambientIntensity)
+        appendF32(&p, l.colorTemperature)
+        p.append(l.hasDirection ? 1 : 0)
+        // Only a face session knows a direction, so the rest is there or it is not.
+        guard l.hasDirection else { return p }
+        for v in [l.direction.x, l.direction.y, l.direction.z] { appendF32(&p, v) }
+        appendF32(&p, l.directionalIntensity)
+        p.append(UInt8(min(l.sphericalHarmonics.count, 255)))
+        for v in l.sphericalHarmonics.prefix(255) { appendF32(&p, v) }
+        return p
+    }
+
     /// The size the payload for `chunk` will take, so the phone can skip a block
     /// too big for one frame before it pays to encode it.
     static func sceneMeshPayloadSize(vertexCount: Int, indexCount: Int,
@@ -552,6 +701,8 @@ public extension PhoneWire {
         case .depth: return decodeDepth(payload).map(PhoneMessage.depth)
         case .segmentation: return decodeSegmentation(payload).map(PhoneMessage.segmentation)
         case .sceneMesh: return decodeSceneMesh(payload).map(PhoneMessage.sceneMesh)
+        case .plane: return decodePlane(payload).map(PhoneMessage.plane)
+        case .light: return decodeLight(payload).map(PhoneMessage.light)
         }
     }
 
@@ -750,6 +901,76 @@ public extension PhoneWire {
                                     scan: scan, removed: false, transform: transform,
                                     vertices: vertices, normals: normals,
                                     triangleIndices: triangleIndices, surfaces: surfaces)
+    }
+
+    private static func decodePlane(_ data: Data) -> PhonePlaneSample? {
+        // Fixed prefix: tracked(1) + timestamp(8) + id(16) + scan(4) + removed(1) + transform(64).
+        let prefix = 1 + 8 + 16 + 4 + 1 + 64
+        guard data.count >= prefix else { return nil }
+        let s = data.startIndex
+        var o = 0
+        func u32() -> Int { defer { o += 4 }; return Int(readU32(data, s + o)) }
+        func f32() -> Float { defer { o += 4 }; return readF32(data, s + o) }
+
+        let tracked = data[s] != 0; o += 1
+        let timestamp = readF64(data, s + o); o += 8
+        let id = readUUID(data, s + o); o += 16
+        let scan = readU32(data, s + o); o += 4
+        let removed = data[s + o] != 0; o += 1
+        let transform = readMatrix(data, s + o); o += 64
+
+        // A retirement notice ends here, with no shape to read.
+        guard !removed else {
+            return PhonePlaneSample(tracked: tracked, timestamp: timestamp, id: id,
+                                    scan: scan, removed: true, transform: transform)
+        }
+
+        // center(12) + width/height/rotation(12) + alignment(1) + surface(1) + count(4).
+        guard data.count >= o + 12 + 12 + 1 + 1 + 4 else { return nil }
+        let center = SIMD3<Float>(f32(), f32(), f32())
+        let width = f32(), height = f32(), rotation = f32()
+        let alignment = PhonePlaneAlignment(rawValue: data[s + o]) ?? .horizontal; o += 1
+        let surface = data[s + o]; o += 1
+
+        let pointCount = u32()
+        guard pointCount >= 0, data.count >= o + pointCount * 12 else { return nil }
+        var boundary = [SIMD3<Float>](); boundary.reserveCapacity(pointCount)
+        for _ in 0..<pointCount { boundary.append(SIMD3<Float>(f32(), f32(), f32())) }
+
+        return PhonePlaneSample(tracked: tracked, timestamp: timestamp, id: id, scan: scan,
+                                removed: false, transform: transform, center: center,
+                                width: width, height: height, rotationOnYAxis: rotation,
+                                alignment: alignment, surface: surface, boundary: boundary)
+    }
+
+    private static func decodeLight(_ data: Data) -> PhoneLightSample? {
+        // Fixed prefix: timestamp(8) + ambient(4) + temperature(4) + hasDirection(1).
+        guard data.count >= 8 + 4 + 4 + 1 else { return nil }
+        let s = data.startIndex
+        var o = 0
+        func f32() -> Float { defer { o += 4 }; return readF32(data, s + o) }
+        let timestamp = readF64(data, s + o); o += 8
+        let ambient = f32()
+        let temperature = f32()
+        let hasDirection = data[s + o] != 0; o += 1
+        guard hasDirection else {
+            return PhoneLightSample(timestamp: timestamp, ambientIntensity: ambient,
+                                    colorTemperature: temperature)
+        }
+
+        // direction(12) + intensity(4) + coefficient count(1).
+        guard data.count >= o + 12 + 4 + 1 else { return nil }
+        let direction = SIMD3<Float>(f32(), f32(), f32())
+        let intensity = f32()
+        let shCount = Int(data[s + o]); o += 1
+        guard data.count >= o + shCount * 4 else { return nil }
+        var harmonics = [Float](); harmonics.reserveCapacity(shCount)
+        for _ in 0..<shCount { harmonics.append(f32()) }
+
+        return PhoneLightSample(timestamp: timestamp, ambientIntensity: ambient,
+                                colorTemperature: temperature, hasDirection: true,
+                                direction: direction, directionalIntensity: intensity,
+                                sphericalHarmonics: harmonics)
     }
 }
 

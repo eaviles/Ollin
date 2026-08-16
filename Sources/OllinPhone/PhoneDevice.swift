@@ -32,9 +32,15 @@ import Darwin
 /// for world fusion. The device is also a `FrameSource` + `VideoFeed`, so a vision
 /// tracker can analyze the depth-mode color feed and `drawFrame` can letterbox it.
 ///
-/// In **Mesh** mode the phone reconstructs the room as a triangle surface and sends
+/// In **Room** mode the phone reconstructs the room as a triangle surface and sends
 /// it block by block: `sceneMesh` is the room built up so far, ready to draw as one
 /// `Mesh`, with every triangle labelled as a wall, the floor, a table, and so on.
+/// The same mode reports the flat surfaces it finds, which is the short summary of
+/// that room: `planes` holds a floor, a table top, or a wall as an outline to stand
+/// something on or hang something from, and it needs no LiDAR.
+///
+/// `latestLight` says how bright and how warm the room is. It arrives in every mode,
+/// so a sketch can match the light it is standing in.
 ///
 /// Launch the Ollin capture app on the iPhone and connect the cable; the device
 /// keeps retrying, so plugging in or starting the app mid-run just works. The
@@ -174,10 +180,10 @@ public final class PhoneDevice: FrameSource, VideoFeed {
         return cutout
     }
 
-    // MARK: - Mesh mode (the reconstructed room surface)
+    // MARK: - Room mode (the reconstructed room surface)
 
     /// The room the phone has reconstructed so far, as a growing set of triangle
-    /// blocks. Populated when the capture app is in **Mesh** mode (rear LiDAR): the
+    /// blocks. Populated when the capture app is in **Room** mode (rear LiDAR): the
     /// phone builds a real surface of the space on its own Neural Engine and streams
     /// it block by block, sharpening as you walk around.
     ///
@@ -195,6 +201,34 @@ public final class PhoneDevice: FrameSource, VideoFeed {
     /// own reconstruction, so blocks return as it re-reports them; this clears what
     /// the Mac is holding, which is what a sketch wants when it starts a new scan.
     public func resetSceneMesh() { reader.resetSceneMesh() }
+
+    /// The flat surfaces the phone has found so far: a floor, a table top, a wall,
+    /// each as a labelled outline placed in the room. Populated in **Room** mode
+    /// beside the reconstructed surface, and unlike that surface it needs no LiDAR,
+    /// so it fills in on any phone that runs the capture app.
+    ///
+    /// A surface grows as the phone sees more of it, so read it fresh each frame
+    /// rather than holding on to one.
+    public var planes: PhonePlanes { reader.planes }
+
+    /// A number that changes whenever a surface arrives, grows, or is retired.
+    /// Compare it against the last value you built from to rebuild only on a change.
+    /// `nil` before the first surface arrives.
+    public var planesVersion: Int? { reader.planesVersion }
+
+    /// Forget the flat surfaces found so far and start collecting them again. The
+    /// phone keeps its own, so they return as it re-reports them.
+    public func resetPlanes() { reader.resetPlanes() }
+
+    // MARK: - The room's light (every mode)
+
+    /// How bright and how warm the room is, or `nil` before the first reading. The
+    /// phone measures this from its camera image in **every** mode, a few times a
+    /// second, so a sketch can light itself the way the room is lit.
+    ///
+    /// In **Face** mode it also carries the direction the strongest light comes
+    /// from, which ARKit reads off the face itself.
+    public var latestLight: PhoneLight? { reader.latestLight.map(PhoneLight.init) }
 
     // MARK: - FrameSource / VideoFeed (the World-mode color feed)
 
@@ -236,6 +270,10 @@ final class PhoneStreamReader: @unchecked Sendable {
         var sceneMesh = PhoneSceneMesh()
         var sceneMeshVersion: Int?
         var sceneMeshScan: UInt32?
+        var planes = PhonePlanes()
+        var planesVersion: Int?
+        var planesScan: UInt32?
+        var latestLight: PhoneLightSample?
         var tap: FrameTap?
         var connected = false
         var message: String? = "Connecting to the phone…"
@@ -258,6 +296,9 @@ final class PhoneStreamReader: @unchecked Sendable {
     var latestPose3D: simd_float4x4? { lock.withLock { $0.latestDepth?.transform } }
     var sceneMesh: PhoneSceneMesh { lock.withLock { $0.sceneMesh } }
     var sceneMeshVersion: Int? { lock.withLock { $0.sceneMeshVersion } }
+    var planes: PhonePlanes { lock.withLock { $0.planes } }
+    var planesVersion: Int? { lock.withLock { $0.planesVersion } }
+    var latestLight: PhoneLightSample? { lock.withLock { $0.latestLight } }
     var isConnected: Bool { lock.withLock { $0.connected } }
     var statusMessage: String? { lock.withLock { $0.message } }
 
@@ -267,6 +308,13 @@ final class PhoneStreamReader: @unchecked Sendable {
         lock.withLock { state in
             state.sceneMesh.reset()
             state.sceneMeshVersion = (state.sceneMeshVersion ?? 0) + 1
+        }
+    }
+
+    func resetPlanes() {
+        lock.withLock { state in
+            state.planes.reset()
+            state.planesVersion = (state.planesVersion ?? 0) + 1
         }
     }
 
@@ -353,13 +401,33 @@ final class PhoneStreamReader: @unchecked Sendable {
                         }
                         state.sceneMeshVersion = (state.sceneMeshVersion ?? 0) + 1
                     }
+                case .message(.plane(let sample)):
+                    // Place the surface into world space on this thread, off the main
+                    // actor and outside the lock, the way a mesh block is.
+                    let plane = sample.removed ? nil : phonePlane(from: sample)
+                    guard sample.removed || plane != nil else { continue }
+                    lock.withLock { state in
+                        // A new run of the scanner moves the world origin, so surfaces
+                        // from the run before it describe a space that is gone.
+                        if state.planesScan != sample.scan {
+                            state.planesScan = sample.scan
+                            state.planes.reset()
+                        }
+                        if let plane {
+                            state.planes.apply(plane)
+                        } else {
+                            state.planes.remove(sample.id)
+                        }
+                        state.planesVersion = (state.planesVersion ?? 0) + 1
+                    }
                 case .message(let message):
                     lock.withLock { state in
                         switch message {
                         case .motion(let m): state.latestMotion = m
                         case .pose(let p): state.latestPose = p
                         case .face(let f): state.latestFaces = f
-                        case .depth, .segmentation, .sceneMesh: break   // handled above
+                        case .light(let l): state.latestLight = l
+                        case .depth, .segmentation, .sceneMesh, .plane: break   // handled above
                         }
                     }
                 case .skip:

@@ -9,11 +9,15 @@ import simd
 ///
 /// Face tracking uses the front camera and so is mutually exclusive with the
 /// rear-camera body tracking (`ARStreamer`); the app runs one or the other.
-final class FaceStreamer: NSObject, ARSessionDelegate {
+final class FaceStreamer: NSObject, ARSessionDelegate, LightReporting {
 
     /// Fired (on the main thread) each frame with the complete current face set —
     /// possibly empty when no face is in view, so the Mac side clears it.
     var onFaces: (([PhoneFaceSample]) -> Void)?
+
+    /// A face session is the only one that reads a direction for the light, because
+    /// ARKit knows the shape it is looking at well enough to read the shading on it.
+    let lightSampler = LightSampler()
 
     /// Whether this device supports ARKit face tracking (a TrueDepth front camera).
     var isSupported: Bool { ARFaceTrackingConfiguration.isSupported }
@@ -35,6 +39,7 @@ final class FaceStreamer: NSObject, ARSessionDelegate {
     // MARK: ARSessionDelegate
 
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
+        lightSampler.report(frame)
         let faces = frame.anchors.compactMap { anchor -> PhoneFaceSample? in
             guard let face = anchor as? ARFaceAnchor else { return nil }
 

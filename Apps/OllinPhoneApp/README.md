@@ -10,13 +10,14 @@ face, depth cloud, person matte, room mesh, or motion in `draw()` through the
 This is the own-app successor to borrowing the Record3D app's RGBD feed
 ([`OllinRecord3D`](../../Sources/OllinRecord3D)): it streams what ARKit *perceives*, so
 a 3D body skeleton, a face mesh with its 52 expression blendshapes, a world-facing
-RGBD depth frame (a point cloud, with the camera's 6DoF pose), a person matte, and the
-reconstructed room as a labelled triangle surface. The chain is Ollin's end to end.
+RGBD depth frame (a point cloud, with the camera's 6DoF pose), a person matte, the
+reconstructed room as a labelled triangle surface, and the flat planes in that room.
+The chain is Ollin's end to end.
 
-Body, World, Segment, and Mesh use the rear camera and face tracking the front
+Body, World, Segment, and Room use the rear camera and face tracking the front
 TrueDepth camera, and only one ARKit session runs at a time. The app has a **Body /
-Face / World / Segment / Mesh** toggle and runs one mode at a time. Device motion
-streams in all of them.
+Face / World / Segment / Room** toggle and runs one mode at a time. Device motion and
+the room's light stream in all of them.
 
 ## How it fits together
 
@@ -65,7 +66,7 @@ Requirements:
 ## Run it
 
 1. Build + run on the iPhone. The screen shows **READY** until the Mac connects,
-   then **ON AIR**, with the **Body / Face / World / Segment / Mesh** toggle and live status.
+   then **ON AIR**, with the **Body / Face / World / Segment / Room** toggle and live status.
 2. Connect the cable to the Mac.
 3. On the Mac, run a sketch. With the toggle on **Body**:
    `swift run --package-path Examples Example-3D-Phone-PhoneBodyPose`, and the
@@ -75,11 +76,14 @@ Requirements:
    mouth. On **World** (a LiDAR iPhone):
    `swift run --package-path Examples Example-3D-Phone-PhoneDepthCloud`, then
    point the phone at the room and the rear LiDAR's depth becomes a live point
-   cloud. On **Mesh** (a LiDAR iPhone):
+   cloud. On **Room** (a LiDAR iPhone):
    `swift run --package-path Examples Example-3D-Phone-PhoneRoomMesh`, then walk
    around and the room arrives as a solid surface, painted by what each triangle
-   is. Before tracking begins, the gravity readout proves the USB wire is
-   alive (tilt the phone and it moves).
+   is. The same mode finds the flat surfaces in the room, on any phone:
+   `swift run --package-path Examples Example-3D-Phone-PhoneRoomPlanes` draws each
+   one as its outline and stands a ball on the biggest. Before tracking begins, the
+   gravity readout proves the USB wire is alive (tilt the phone and it moves), and
+   the light row reads the room's brightness and color in every mode.
 
 ## Notes
 

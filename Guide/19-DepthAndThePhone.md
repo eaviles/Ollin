@@ -205,7 +205,7 @@ What comes back is an ordinary `Mesh`, so everything Chapter 17 taught applies. 
 
 ## A surface the phone already built
 
-That whole last section rebuilt a surface on the Mac, out of points you swept and fused yourself. A LiDAR phone can hand you one directly. ARKit reconstructs the room as you walk, on the device, and Ollin Capture streams the result. Tap **Mesh** and what arrives already has faces and normals, and every triangle already knows what it is.
+That whole last section rebuilt a surface on the Mac, out of points you swept and fused yourself. A LiDAR phone can hand you one directly. ARKit reconstructs the room as you walk, on the device, and Ollin Capture streams the result. Tap **Room** and what arrives already has faces and normals, and every triangle already knows what it is.
 
 ```swift
 var room = Mesh(positions: [], indices: [])
@@ -238,6 +238,37 @@ The blocks in that picture are staged rather than scanned, so it renders without
 Early in a scan almost everything reads `unclassified`, because ARKit only decides what a surface is once it has seen enough of it. That is the truth of a scan in progress rather than a fault. `foundSurfaces` tells you which labels have appeared so far, so a sketch that keys off labels can say so while the room fills in.
 
 So which do you want, points or a surface? Both come off the same sensor. **Points are what the camera saw; the mesh is what the phone decided was there.** Take the points when you want to scatter, drift, or reconstruct them yourself. Take the mesh when you want something to light, to hide things behind, or to bounce something off. The `3D/Phone/PhoneRoomMesh` example is the room painted by label, with a key to keep only the flat things you could set something down on.
+
+## Somewhere to stand, and the light in the room
+
+The mesh is the whole shape of the room, clutter and all. Most of the time you want far less than that: one flat surface to put something on.
+
+Room mode reports those too. ARKit finds a floor, a table top, or a wall as a single flat patch, and grows it as you look around. This half needs no LiDAR, so it works on any phone that runs the app.
+
+```swift
+if let ground = device.planes.floor {
+    withState {
+        translate(ground.center + ground.normal * 0.15)
+        drawSphere(radius: 0.15)
+    }
+}
+```
+
+<img src="Images/19-DepthAndThePhone/RoomAsPlanes.jpg" alt="Left, three flat surfaces of a staged room corner drawn as outlined polygons: a green floor, a blue-grey wall, a tan table top. Right, the same three in plain grey with a metal ball resting on the table. Below, three color swatches labelled lamp 480 lm 2700 K, room 1000 lm 5000 K, window 900 lm 9000 K, running from warm brown through cream to pale blue" width="680">
+
+`floor` is the one to reach for, because it answers early. It gives you the labelled floor once ARKit has decided, and the lowest flat surface until then. `largest` picks by real area, measured on the outline rather than on the box around it, so a long thin shelf never wins.
+
+Every surface carries that outline: a convex polygon around everything the phone has seen of it. `plane.mesh` fills it in, and `plane.outline` is the same loop closed, ready for `drawTube`.
+
+Then the light. The phone measures how bright and how warm the room is, in every mode, a few times a second.
+
+```swift
+ambientLight(device.latestLight?.ambient ?? Color(white: 0.4))
+```
+
+`ambient` is the room's own white, turned down by how bright the room is. The three swatches under the picture are three readings: a lamp, a working room, a window. Switch a lamp on and the sketch warms with it.
+
+One catch. Only Face mode knows *where* the light comes from, because ARKit works that out from the shading on a face. A world-facing camera has no face to read, so Room mode gives you brightness and color, and you aim your own key light.
 
 ## Putting it together: the ghost room
 
@@ -297,10 +328,10 @@ Depth capture entered art practice when the Microsoft Kinect shipped in 2010 and
 - [RGBD frames](../Docs/3D/RGBD.md): the frame type, unprojection, depth-lifted pose (a 2D-tracked skeleton placed at its true depth).
 - [3D](../Docs/3D/3D.md#point-clouds): `PointCloud` itself, its point sizing and colors, and how it sits beside the rest of the 3D path.
 - [Record3D](../Docs/3D/Record3D.md): recorded `.r3d` clips and the live USB stream, frame by frame.
-- [The iPhone capture app](../Docs/3D/Phone.md): body, faces, world depth with pose, the room mesh, segmentation, motion, and world fusion.
+- [The iPhone capture app](../Docs/3D/Phone.md): body, faces, world depth with pose, the room mesh, the flat surfaces, the room's light, segmentation, motion, and world fusion.
 - [Depth compositing](../Docs/3D/DepthCompositing.md): `depth(at:)`, billboards, `drawDepthScene`, and the metric camera.
 - [Surface reconstruction](../Docs/Generators/SurfaceReconstruction.md): rebuilding a scanned cloud as a mesh, skinning particle sets, and the holes and orientation details.
-- Worked examples: [`Examples/3D/Depth/DepthCloud`](../Examples/3D/Depth/DepthCloud/Sketch.swift) (a webcam depth model, no phone needed), [`Examples/3D/Depth/Record3DCloud`](../Examples/3D/Depth/Record3DCloud/Sketch.swift), [`Examples/3D/Depth/Record3DLiveCloud`](../Examples/3D/Depth/Record3DLiveCloud/Sketch.swift), [`Examples/3D/Depth/DepthLiftedPose`](../Examples/3D/Depth/DepthLiftedPose/Sketch.swift), [`Examples/3D/Phone/PhoneDepthCloud`](../Examples/3D/Phone/PhoneDepthCloud/Sketch.swift), [`Examples/3D/Phone/PhoneWorldScan`](../Examples/3D/Phone/PhoneWorldScan/Sketch.swift), [`Examples/3D/Phone/PhoneRoomMesh`](../Examples/3D/Phone/PhoneRoomMesh/Sketch.swift), [`Examples/3D/Geometry/SurfaceFromPoints`](../Examples/3D/Geometry/SurfaceFromPoints/Sketch.swift), and [`Examples/3D/Depth/DepthOcclusion`](../Examples/3D/Depth/DepthOcclusion/Sketch.swift).
+- Worked examples: [`Examples/3D/Depth/DepthCloud`](../Examples/3D/Depth/DepthCloud/Sketch.swift) (a webcam depth model, no phone needed), [`Examples/3D/Depth/Record3DCloud`](../Examples/3D/Depth/Record3DCloud/Sketch.swift), [`Examples/3D/Depth/Record3DLiveCloud`](../Examples/3D/Depth/Record3DLiveCloud/Sketch.swift), [`Examples/3D/Depth/DepthLiftedPose`](../Examples/3D/Depth/DepthLiftedPose/Sketch.swift), [`Examples/3D/Phone/PhoneDepthCloud`](../Examples/3D/Phone/PhoneDepthCloud/Sketch.swift), [`Examples/3D/Phone/PhoneWorldScan`](../Examples/3D/Phone/PhoneWorldScan/Sketch.swift), [`Examples/3D/Phone/PhoneRoomMesh`](../Examples/3D/Phone/PhoneRoomMesh/Sketch.swift), [`Examples/3D/Phone/PhoneRoomPlanes`](../Examples/3D/Phone/PhoneRoomPlanes/Sketch.swift), [`Examples/3D/Geometry/SurfaceFromPoints`](../Examples/3D/Geometry/SurfaceFromPoints/Sketch.swift), and [`Examples/3D/Depth/DepthOcclusion`](../Examples/3D/Depth/DepthOcclusion/Sketch.swift).
 
 ---
 

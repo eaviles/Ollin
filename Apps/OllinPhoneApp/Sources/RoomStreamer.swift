@@ -2,48 +2,63 @@ import Foundation
 import ARKit
 import simd
 
-/// Runs ARKit world tracking with **scene reconstruction** (the rear LiDAR) and
-/// turns the room it builds into `PhoneSceneMeshSample` blocks: a triangle surface
-/// with normals, placed by its anchor, and labelled by what each triangle is.
+/// Runs ARKit world tracking over the rear camera and reports the room two ways at
+/// once: the **surface** it reconstructs with the LiDAR, block by block, and the
+/// **flat planes** it finds, one by one.
+///
+/// The two belong in one session because they must agree about where things are.
+/// They share a world origin, a scan number, and a walk around the room, so a sketch
+/// can draw the reconstructed floor and stand something on the floor plane and have
+/// both land in the same place.
+///
+/// They differ in what they need. Reconstruction needs a LiDAR sensor (Pro-tier
+/// iPhones); plane detection needs nothing but the camera. So the session starts
+/// either way and adds reconstruction when the device has it, which is why this mode
+/// is useful on a phone with no LiDAR at all.
 ///
 /// ARKit does not hand over one mesh of the room. It divides the space into blocks,
 /// reports each as its own anchor, and keeps improving a block as you look at it
 /// again, so this streamer sends one block per message and the Mac keeps the newest
-/// of each. A block the session retires is sent as a removal notice.
+/// of each. Planes work the same way: one anchor each, growing as you look. A block
+/// or a plane the session retires is sent as a removal notice.
 ///
-/// Scene reconstruction needs a LiDAR sensor (Pro-tier iPhones), so this is gated on
-/// `ARWorldTrackingConfiguration.supportsSceneReconstruction`. It uses the rear
-/// camera in its own session, so it is mutually exclusive with the other modes.
-///
-/// Two rules shape the code. The geometry is read **inside** the delegate callback,
-/// because ARKit gives it as Metal buffers owned by the session and nothing promises
-/// they outlive the call. And the **sending** is throttled rather than the reading:
-/// a block changes far more often than it needs to travel, so each block waits its
-/// turn in a queue and none is dropped.
+/// Two rules shape the code. The mesh geometry is read **inside** the delegate
+/// callback, because ARKit gives it as Metal buffers owned by the session and nothing
+/// promises they outlive the call. And the **sending** is throttled rather than the
+/// reading: a block changes far more often than it needs to travel, so each block
+/// waits its turn in a queue and none is dropped.
 ///
 /// `@unchecked Sendable`: every member is touched on the main thread only. ARKit
 /// delivers its delegate callbacks there, and the flush timer runs on the main run
 /// loop, which is what the annotation is asserting.
-final class SceneMeshStreamer: NSObject, ARSessionDelegate, @unchecked Sendable {
+final class RoomStreamer: NSObject, ARSessionDelegate, LightReporting, @unchecked Sendable {
 
     /// Fired (on the main thread) for each block that goes out, including removals.
     var onChunk: ((PhoneSceneMeshSample) -> Void)?
+
+    /// Fired (on the main thread) for each flat surface that goes out, including
+    /// removals.
+    var onPlane: ((PhonePlaneSample) -> Void)?
 
     /// Fired when a block is too big to carry in one payload, so the app can say so
     /// rather than dropping it in silence. Carries the running count.
     var onOversized: ((Int) -> Void)?
 
-    /// Whether this device can reconstruct the scene at all.
-    var isSupported: Bool {
+    let lightSampler = LightSampler()
+
+    /// Whether this device can reconstruct the room surface. Plane detection runs
+    /// without it, so the mode itself is always available.
+    var canReconstruct: Bool {
         ARWorldTrackingConfiguration.supportsSceneReconstruction(.meshWithClassification)
             || ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh)
     }
 
-    /// How often the queue is emptied a little, and how many blocks go out each time.
-    /// Together they cap the wire at 15 blocks a second, which keeps up with a walking
-    /// scan without flooding the Mac.
+    /// How often the queues are emptied a little, and how many of each go out each
+    /// time. Together they cap the wire at 15 blocks and 20 surfaces a second, which
+    /// keeps up with a walking scan without flooding the Mac.
     private let flushInterval = 0.2
     private let chunksPerFlush = 3
+    private let planesPerFlush = 4
 
     private let session = ARSession()
 
@@ -51,6 +66,13 @@ final class SceneMeshStreamer: NSObject, ARSessionDelegate, @unchecked Sendable 
     /// became due, so a block that stops changing still gets its turn.
     private var pending: [UUID: PhoneSceneMeshSample] = [:]
     private var queue: [UUID] = []
+
+    /// The same, for the flat surfaces. They are far smaller than a block, but a
+    /// growing plane is reported again on almost every frame, so it is worth the
+    /// same treatment.
+    private var pendingPlanes: [UUID: PhonePlaneSample] = [:]
+    private var planeQueue: [UUID] = []
+
     private var flushTimer: Timer?
 
     /// The latest frame's clock and tracking state, kept so a block carries the same
@@ -59,21 +81,24 @@ final class SceneMeshStreamer: NSObject, ARSessionDelegate, @unchecked Sendable 
     private var tracking = false
     private var oversized = 0
 
-    /// Which run of the scanner these blocks belong to. Starting the session resets
-    /// the world origin, so a fresh number is what tells the Mac to drop the room it
-    /// was holding instead of mixing two coordinate spaces.
+    /// Which run of the scanner these blocks and surfaces belong to. Starting the
+    /// session resets the world origin, so a fresh number is what tells the Mac to
+    /// drop the room it was holding instead of mixing two coordinate spaces.
     private var scan: UInt32 = 0
 
     func start() {
-        guard isSupported else { return }
         scan = UInt32.random(in: 1 ... .max)
         session.delegate = self
         let config = ARWorldTrackingConfiguration()
-        // Classification is the whole point of the mode (a floor a sketch can find),
-        // so take it when the device offers it and fall back to bare geometry.
-        config.sceneReconstruction =
-            ARWorldTrackingConfiguration.supportsSceneReconstruction(.meshWithClassification)
-            ? .meshWithClassification : .mesh
+        // Flat surfaces cost nothing extra and work on any device.
+        config.planeDetection = [.horizontal, .vertical]
+        // Classification is the point of the reconstruction (a floor a sketch can
+        // find), so take it when the device offers it and fall back to bare geometry.
+        if ARWorldTrackingConfiguration.supportsSceneReconstruction(.meshWithClassification) {
+            config.sceneReconstruction = .meshWithClassification
+        } else if ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh) {
+            config.sceneReconstruction = .mesh
+        }
         session.run(config, options: [.resetTracking, .removeExistingAnchors])
 
         flushTimer?.invalidate()
@@ -90,6 +115,8 @@ final class SceneMeshStreamer: NSObject, ARSessionDelegate, @unchecked Sendable 
         flushTimer = nil
         pending.removeAll()
         queue.removeAll()
+        pendingPlanes.removeAll()
+        planeQueue.removeAll()
         oversized = 0
     }
 
@@ -98,6 +125,7 @@ final class SceneMeshStreamer: NSObject, ARSessionDelegate, @unchecked Sendable 
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
         frameTime = frame.timestamp
         if case .normal = frame.camera.trackingState { tracking = true } else { tracking = false }
+        lightSampler.report(frame)
     }
 
     func session(_ session: ARSession, didAdd anchors: [ARAnchor]) { read(anchors) }
@@ -105,33 +133,48 @@ final class SceneMeshStreamer: NSObject, ARSessionDelegate, @unchecked Sendable 
     func session(_ session: ARSession, didUpdate anchors: [ARAnchor]) { read(anchors) }
 
     func session(_ session: ARSession, didRemove anchors: [ARAnchor]) {
-        for anchor in anchors.compactMap({ $0 as? ARMeshAnchor }) {
+        for anchor in anchors {
             // A retirement is a few bytes, so it goes straight out, and it drops any
-            // reading of the same block still waiting in the queue.
-            pending.removeValue(forKey: anchor.identifier)
-            queue.removeAll { $0 == anchor.identifier }
-            onChunk?(PhoneSceneMeshSample(tracked: tracking, timestamp: frameTime,
-                                          id: anchor.identifier, scan: scan,
-                                          removed: true, transform: anchor.transform))
+            // reading of the same thing still waiting in the queue.
+            if let mesh = anchor as? ARMeshAnchor {
+                pending.removeValue(forKey: mesh.identifier)
+                queue.removeAll { $0 == mesh.identifier }
+                onChunk?(PhoneSceneMeshSample(tracked: tracking, timestamp: frameTime,
+                                              id: mesh.identifier, scan: scan,
+                                              removed: true, transform: mesh.transform))
+            } else if let plane = anchor as? ARPlaneAnchor {
+                pendingPlanes.removeValue(forKey: plane.identifier)
+                planeQueue.removeAll { $0 == plane.identifier }
+                onPlane?(PhonePlaneSample(tracked: tracking, timestamp: frameTime,
+                                          id: plane.identifier, scan: scan,
+                                          removed: true, transform: plane.transform))
+            }
         }
     }
 
     // MARK: Reading and sending
 
-    /// Read every mesh anchor in `anchors` now, while ARKit's buffers are certainly
-    /// alive, and put each reading in the queue.
+    /// Read every mesh block and flat surface in `anchors` now, while ARKit's buffers
+    /// are certainly alive, and put each reading in its queue.
     private func read(_ anchors: [ARAnchor]) {
-        for anchor in anchors.compactMap({ $0 as? ARMeshAnchor }) {
-            guard let sample = sample(from: anchor) else { continue }
-            // A block already waiting keeps its place in line and takes the newer
-            // reading, so a busy block cannot push a quiet one down the queue.
-            if pending.updateValue(sample, forKey: anchor.identifier) == nil {
-                queue.append(anchor.identifier)
+        for anchor in anchors {
+            if let mesh = anchor as? ARMeshAnchor {
+                guard let sample = sample(from: mesh) else { continue }
+                // A block already waiting keeps its place in line and takes the newer
+                // reading, so a busy block cannot push a quiet one down the queue.
+                if pending.updateValue(sample, forKey: mesh.identifier) == nil {
+                    queue.append(mesh.identifier)
+                }
+            } else if let plane = anchor as? ARPlaneAnchor {
+                let sample = self.sample(from: plane)
+                if pendingPlanes.updateValue(sample, forKey: plane.identifier) == nil {
+                    planeQueue.append(plane.identifier)
+                }
             }
         }
     }
 
-    /// Send the next few blocks in turn.
+    /// Send the next few blocks and surfaces in turn.
     private func flush() {
         var sent = 0
         while sent < chunksPerFlush, !queue.isEmpty {
@@ -139,6 +182,13 @@ final class SceneMeshStreamer: NSObject, ARSessionDelegate, @unchecked Sendable 
             guard let sample = pending.removeValue(forKey: id) else { continue }
             onChunk?(sample)
             sent += 1
+        }
+        var planesSent = 0
+        while planesSent < planesPerFlush, !planeQueue.isEmpty {
+            let id = planeQueue.removeFirst()
+            guard let sample = pendingPlanes.removeValue(forKey: id) else { continue }
+            onPlane?(sample)
+            planesSent += 1
         }
     }
 
@@ -168,6 +218,21 @@ final class SceneMeshStreamer: NSObject, ARSessionDelegate, @unchecked Sendable 
                                     transform: anchor.transform, vertices: vertices,
                                     normals: normals, triangleIndices: indices,
                                     surfaces: surfaces)
+    }
+
+    /// One flat surface read into a wire sample: where it sits, how big it is, what
+    /// ARKit thinks it is, and its outline.
+    private func sample(from anchor: ARPlaneAnchor) -> PhonePlaneSample {
+        let extent = anchor.planeExtent
+        let boundary = anchor.geometry.boundaryVertices.map { SIMD3<Float>($0.x, $0.y, $0.z) }
+        return PhonePlaneSample(tracked: tracking, timestamp: frameTime,
+                                id: anchor.identifier, scan: scan, removed: false,
+                                transform: anchor.transform, center: anchor.center,
+                                width: extent.width, height: extent.height,
+                                rotationOnYAxis: extent.rotationOnYAxis,
+                                alignment: Self.alignment(anchor.alignment),
+                                surface: Self.surface(anchor.classification).rawValue,
+                                boundary: boundary)
     }
 
     // MARK: Reading ARKit's buffers
@@ -237,6 +302,32 @@ final class SceneMeshStreamer: NSObject, ARSessionDelegate, @unchecked Sendable 
         case .window:  return .window
         case .door:    return .door
         @unknown default: return .unclassified
+        }
+    }
+
+    /// ARKit's label for a whole flat surface, mapped case by case for the same
+    /// reason. A surface it has not decided about carries a status saying why, which
+    /// the Mac does not need: it reads as unclassified either way.
+    private static func surface(_ label: ARPlaneAnchor.Classification) -> PhoneSurface {
+        switch label {
+        case .none:    return .unclassified
+        case .wall:    return .wall
+        case .floor:   return .floor
+        case .ceiling: return .ceiling
+        case .table:   return .table
+        case .seat:    return .seat
+        case .window:  return .window
+        case .door:    return .door
+        @unknown default: return .unclassified
+        }
+    }
+
+    /// Which way a surface faces, mapped case by case for the same reason.
+    private static func alignment(_ alignment: ARPlaneAnchor.Alignment) -> PhonePlaneAlignment {
+        switch alignment {
+        case .horizontal: return .horizontal
+        case .vertical:   return .vertical
+        @unknown default: return .horizontal
         }
     }
 }

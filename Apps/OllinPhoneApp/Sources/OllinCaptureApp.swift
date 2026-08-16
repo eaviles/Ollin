@@ -3,8 +3,9 @@ import ARKit
 import simd
 
 /// **Ollin Capture** — Ollin's own iPhone sensor app. The phone runs ARKit (body
-/// pose, face, rear-LiDAR scene depth, person segmentation, and the reconstructed room
-/// mesh) on its Neural Engine plus CoreMotion device motion, and streams them to a
+/// pose, face, rear-LiDAR scene depth, person segmentation, the reconstructed room
+/// surface with the flat planes in it, and the room's own light) on its Neural
+/// Engine plus CoreMotion device motion, and streams them to a
 /// tethered Mac over USB (usbmuxd → `PhoneWire.streamPort`), where an Ollin sketch
 /// reads them in `draw()` via `OllinPhone`'s `PhoneDevice`.
 @main
@@ -14,18 +15,21 @@ struct OllinCaptureApp: App {
     }
 }
 
-/// Which on-device sensor ARKit drives. Body, World, Segment, and Mesh use the rear
+/// Which on-device sensor ARKit drives. Body, World, Segment, and Room use the rear
 /// camera, Face the front TrueDepth camera. Only one ARKit session runs at a time, so
 /// they are mutually exclusive and the app runs one at a time. World streams a LiDAR
 /// RGBD frame (depth + color + pose); Body a skeleton; Face the expression mesh;
-/// Segment a person matte (+ color) for a silhouette/cutout; Mesh the reconstructed
-/// room surface, block by block, with each triangle labelled.
+/// Segment a person matte (+ color) for a silhouette/cutout; Room the reconstructed
+/// surface, block by block, with each triangle labelled, and the flat planes found
+/// alongside it.
+///
+/// The room's light streams in every mode, so it is not a mode of its own.
 enum CaptureMode: String, CaseIterable, Identifiable {
     case body = "Body"
     case face = "Face"
     case world = "World"
     case segment = "Segment"
-    case mesh = "Mesh"
+    case room = "Room"
     var id: String { rawValue }
 }
 
@@ -47,6 +51,9 @@ final class SensorStreamer {
     var segInfo = ""
     var meshTracked = false
     var meshInfo = ""
+    var planeInfo = ""
+    var lightInfo = ""
+    var lightLive = false
     var gravity = SIMD3<Float>(0, 0, 0)
     var motionLive = false
     var status = "Starting…"
@@ -62,13 +69,17 @@ final class SensorStreamer {
     private let face = FaceStreamer()
     private let depth = DepthStreamer()
     private let seg = SegmentationStreamer()
-    private let sceneMesh = SceneMeshStreamer()
+    private let room = RoomStreamer()
     private let motion = MotionStreamer()
 
     /// How many blocks of the room have gone out, and how many were dropped for
     /// being too big to carry, so the screen can report both.
     private var meshBlocksSent = 0
     private var meshBlocksSkipped = 0
+    /// The flat surfaces reported so far, and how many of them are still live, so the
+    /// screen can say what the phone has found.
+    private var planesSent = 0
+    private var livePlanes: Set<UUID> = []
     private var started = false
 
     func start() {
@@ -127,7 +138,7 @@ final class SensorStreamer {
             self.segInfo = "\(sample.matteWidth)×\(sample.matteHeight) · \(sample.colorJPEG.count / 1024) KB"
         }
 
-        sceneMesh.onChunk = { [weak self] sample in
+        room.onChunk = { [weak self] sample in
             guard let self else { return }
             self.server?.send(PhoneWire.encode(.sceneMesh(sample)))
             self.meshBlocksSent += 1
@@ -138,8 +149,30 @@ final class SensorStreamer {
             }
         }
 
-        sceneMesh.onOversized = { [weak self] count in
+        room.onOversized = { [weak self] count in
             self?.meshBlocksSkipped = count
+        }
+
+        room.onPlane = { [weak self] sample in
+            guard let self else { return }
+            self.server?.send(PhoneWire.encode(.plane(sample)))
+            self.planesSent += 1
+            if sample.removed { self.livePlanes.remove(sample.id) } else { self.livePlanes.insert(sample.id) }
+            self.planeInfo = "\(self.livePlanes.count) found"
+        }
+
+        // Every session estimates the light, so they all report to the same handler
+        // and a mode switch never interrupts it.
+        let reporters: [any LightReporting] = [ar, face, depth, seg, room]
+        for reporter in reporters {
+            reporter.lightSampler.onLight = { [weak self] sample in
+                guard let self else { return }
+                self.server?.send(PhoneWire.encode(.light(sample)))
+                self.lightLive = true
+                self.lightInfo = String(format: "%.0f lm · %.0f K",
+                                        sample.ambientIntensity, sample.colorTemperature)
+                if sample.hasDirection { self.lightInfo += " · with direction" }
+            }
         }
 
         applyMode()
@@ -157,30 +190,35 @@ final class SensorStreamer {
         // Only one ARKit session at a time — stop the others before starting one.
         switch mode {
         case .body:
-            face.stop(); depth.stop(); seg.stop(); sceneMesh.stop()
+            face.stop(); depth.stop(); seg.stop(); room.stop()
             ar.start()
             status = bodySupported ? "Streaming body" : "This device doesn't support body tracking"
         case .face:
-            ar.stop(); depth.stop(); seg.stop(); sceneMesh.stop()
+            ar.stop(); depth.stop(); seg.stop(); room.stop()
             face.start()
             status = faceSupported ? "Streaming face" : "This device doesn't support face tracking"
         case .world:
-            ar.stop(); face.stop(); seg.stop(); sceneMesh.stop()
+            ar.stop(); face.stop(); seg.stop(); room.stop()
             depth.start()
             status = depthSupported ? "Streaming depth" : "This device has no LiDAR for depth"
         case .segment:
-            ar.stop(); face.stop(); depth.stop(); sceneMesh.stop()
+            ar.stop(); face.stop(); depth.stop(); room.stop()
             seg.start()
             status = segSupported ? "Streaming segmentation" : "This device doesn't support person segmentation"
-        case .mesh:
+        case .room:
             ar.stop(); face.stop(); depth.stop(); seg.stop()
             // A fresh session rebuilds the room from nothing, so the Mac's own count
             // starts again with it.
             meshBlocksSent = 0
             meshBlocksSkipped = 0
             meshInfo = ""
-            sceneMesh.start()
-            status = meshSupported ? "Streaming the room mesh" : "This device has no LiDAR to build a mesh"
+            planesSent = 0
+            livePlanes.removeAll()
+            planeInfo = ""
+            room.start()
+            status = meshSupported
+                ? "Streaming the room surface and its flat planes"
+                : "Streaming flat planes (this device has no LiDAR to build a surface)"
         }
     }
 
@@ -260,12 +298,17 @@ struct ContentView: View {
                             ? (streamer.segTracked ? "streaming · \(streamer.segInfo)" : "starting…")
                             : "needs A12+ for segmentation",
                             ok: streamer.segTracked)
-                    case .mesh:
-                        row("Room", streamer.meshSupported
+                    case .room:
+                        row("Surface", streamer.meshSupported
                             ? (streamer.meshInfo.isEmpty ? "walk around to build it…" : "streaming · \(streamer.meshInfo)")
                             : "needs LiDAR (Pro)",
                             ok: streamer.meshTracked)
+                        row("Planes", streamer.planeInfo.isEmpty
+                            ? "looking for flat surfaces…" : "streaming · \(streamer.planeInfo)",
+                            ok: !streamer.planeInfo.isEmpty)
                     }
+                    row("Light", streamer.lightLive ? streamer.lightInfo : "measuring…",
+                        ok: streamer.lightLive)
                     row("Motion", streamer.motionLive
                         ? String(format: "live · gravity (% .2f, % .2f, % .2f)",
                                  streamer.gravity.x, streamer.gravity.y, streamer.gravity.z)
