@@ -494,10 +494,18 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
         if FileManager.default.fileExists(atPath: cached.path) { return cached }
         let compiled = try await MLModel.compileModel(at: url)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        // Copy to a private name, then move into place: the move is atomic, so
+        // a concurrent load never reads a half-copied model directory (two
+        // trackers loading the same model at once is the ordinary case for a
+        // paired-encoder model).
+        let staging = dir.appendingPathComponent("staging-\(UUID().uuidString).mlmodelc",
+                                                 isDirectory: true)
+        try FileManager.default.copyItem(at: compiled, to: staging)
         do {
-            try FileManager.default.copyItem(at: compiled, to: cached)
+            try FileManager.default.moveItem(at: staging, to: cached)
         } catch CocoaError.fileWriteFileExists {
-            // A concurrent load won the copy; theirs is identical.
+            // A concurrent load won the move; theirs is identical.
+            try? FileManager.default.removeItem(at: staging)
         }
         return cached
     }

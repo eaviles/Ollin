@@ -63,6 +63,7 @@ final class Faces: Sketch {
 - [Classification](#classification) - one label and how strongly it applies
 - [SaliencyTracker](#saliencytracker) - map what draws the eye
 - [Saliency](#saliency) - the heat map, regions, and point query
+- [ConceptTracker](#concepttracker) - score any phrases you type against the picture
 - [ModelTracker](#modeltracker) - run your own Core ML model over the frames
 - [ModelOutput](#modeloutput) - its decoded surfaces: labels, objects, map
 - [ClassMask](#classmask) - a semantic segmenter's output: every pixel named
@@ -761,6 +762,48 @@ struct Saliency {
 ```
 
 What the still-image `detect(in:mode:)` returns, the same three surfaces the live tracker publishes as one value. `nil` only if the heat map couldn't be converted.
+
+<a name="concepttracker"></a>
+
+### ConceptTracker
+
+```swift
+ConceptTracker(_ source: any FrameSource,
+               imageModelAt: URL, textModelAt: URL, vocabAt: URL,
+               concepts: [String] = [])
+ConceptTracker(imageModelAt: URL, textModelAt: URL, vocabAt: URL,
+               concepts: [String] = [])       // bound to no source; still images only
+var concepts: [String] { get set }            // the phrases being scored
+var labels: [Classification] { get }          // shares over the concepts, strongest first
+var top: Classification? { get }
+func confidence(of phrase: String) -> Double  // one phrase's share, 0…1
+func similarity(of phrase: String) -> Double  // the raw cosine, unshared
+var imageEmbedding: [Double]? { get }         // the frame as a unit vector
+func embedding(of phrase: String) async throws -> [Double]
+func detect(in image: Image) async throws -> [Classification]
+var isLoaded: Bool { get }
+```
+
+Scores **any phrases you type** against the picture. It reads like [`ImageClassifier`](#imageclassifier), but the vocabulary is yours: give it concepts as plain language and read how strongly each applies, every frame.
+
+```swift
+let camera = Camera()
+lazy var ideas = ConceptTracker(camera,
+    imageModelAt: URL(fileURLWithPath: "Models/mobileclip_s0_image.mlpackage"),
+    textModelAt: URL(fileURLWithPath: "Models/mobileclip_s0_text.mlpackage"),
+    vocabAt: URL(fileURLWithPath: "Models/bpe_simple_vocab_16e6.txt"),
+    concepts: ["a spooky scene", "a cheerful scene"])
+
+override func draw() {
+    let spooky = ideas.confidence(of: "a spooky scene")   // 0…1, updates each frame
+}
+```
+
+Under it is a contrastive image-text model in two halves. An image encoder runs over the frames, and a text encoder embeds each phrase once. The result is cached, so a fixed concept set costs one text run per phrase, ever. Both land in one shared space; a score says how close the picture sits to the phrase. The three files are downloaded by `Scripts/fetch-models.sh` into `Models/` and never committed. The `TugOfWords` example shows the whole flow, including the missing-files notice.
+
+The scores are relative to the concept set; they are the phrases' shares of the picture and sum to 1. Alone, one phrase always reads 1. Provide contrasts for meaningful scores. "How spooky does the room look" is the spooky phrase's share against a cheerful one. `similarity(of:)` is the raw cosine instead (matching pairs typically land around 0.2 to 0.4), for mapping the space yourself.
+
+Phrases can change while the sketch runs. Set `concepts`, or query `confidence(of:)` for an unseen phrase. The new phrase joins the set and reads 0 until its text encoding completes, within one or two frames. `imageEmbedding` and `embedding(of:)` expose the unit vectors under the scores; compare them with a dot product. Loading and availability behave like [`ModelTracker`](#modeltracker). The first-ever load specializes the models for this Mac and can take several seconds. `isLoaded` flips when they're ready, and a missing file surfaces through `unavailableReason`.
 
 <a name="modeltracker"></a>
 

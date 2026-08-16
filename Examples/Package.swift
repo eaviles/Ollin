@@ -597,6 +597,10 @@ let package = Package(
         // The camera through a Create ML style-transfer model you train
         // yourself (no download — the model is the user's own work).
         example("Vision/StyleMirror", [.vision]),
+        // Typed phrases as live knobs (ConceptTracker): two phrases pull on
+        // one rope by how well each matches the frame. The model weights
+        // download via Scripts/fetch-models.sh (never committed).
+        example("Vision/TugOfWords", [.vision]),
         // Trajectory detection — ballistic arcs found in a synthetic feed (a
         // custom FrameSource the example conforms itself).
         example("Vision/TrajectoryTracking", [.vision]),

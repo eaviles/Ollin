@@ -58,6 +58,7 @@ public protocol VisionAvailability: AnyObject {
 
 extension BarcodeScanner: VisionAvailability {}
 extension BodyTracker: VisionAvailability {}
+extension ConceptTracker: VisionAvailability {}
 extension BodyTracker3D: VisionAvailability {}
 extension ContourDetector: VisionAvailability {}
 extension FaceTracker: VisionAvailability {}

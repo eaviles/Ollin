@@ -70,10 +70,6 @@ Ollin aims to support AR sketches and offer a template-driven AR framework, fill
 
 `ModelTracker` runs any converted Core ML model, so new perception examples are mostly a matter of picking models worth showing, plus, for some, one small new output surface on the tracker. The standing delivery rule for all of them: **weights are never committed**. `Scripts/fetch-models.sh` downloads into the gitignored `Models/`, the example shows the run-the-script notice until they exist, provenance goes in `THIRD-PARTY-NOTICES.md`, and the real-model tests soft-skip where the weights aren't fetched.
 
-Candidates, in rough order of effort:
-
-- **Text-driven knobs (MobileCLIP-class embeddings).** `confidence(of:)` for *any phrase*, not a fixed vocabulary: "how spooky does the camera look" as a `0…1` knob. A real milestone rather than an example: it needs an embedding surface, the text-encoder side, and a tokenizer, and **the license of Apple's MobileCLIP release needs verifying before any fetch script points at it.**
-
 Skip the plain ImageNet classifiers (FastViT, MobileNetV2, ResNet), redundant with the built-in `ImageClassifier`'s ~1,300-label vocabulary. And the modern Ultralytics YOLOs (v8/26) are AGPL-3.0: never bundled, never scripted, same tier as p5.js's LGPL.
 
 ## iPhone as a sensor array

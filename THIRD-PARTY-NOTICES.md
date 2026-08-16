@@ -329,3 +329,29 @@ redistributed inside this repository.
 > Apache-2.0 applies to the model weights the script downloads; nothing from the
 > model is redistributed in this repository, so the root [`LICENSE`](LICENSE) is
 > unaffected. This entry records the provenance of what the script fetches.
+
+---
+
+## MobileCLIP-S0 (example model, downloaded, not bundled)
+
+- **Used for:** `ConceptTracker` and its `TugOfWords` example sketch. The framework provides no bundled weights.
+- **Location in this repo:** none. [`Scripts/fetch-models.sh`](Scripts/fetch-models.sh) downloads the weights into the gitignored `Models/` directory.
+- **Work:** *MobileCLIP-S0* (CVPR 2024), by Pavan Kumar Anasosalu Vasu, Hadi Pouransari, Fartash Faghri, Raviteja Vemulapalli, and Oncel Tuzel, in Apple's Core ML exports (`mobileclip_s0_image.mlpackage`, `mobileclip_s0_text.mlpackage`).
+- **Upstream:** https://huggingface.co/apple/coreml-mobileclip (export); original release https://github.com/apple/ml-mobileclip
+- **License:** the 2024 release's `LICENSE_weights_data`: redistributable with attribution; no research-only clause. The export's model card declares `apple-ascl`. The fetch script uses the 2024 model (MobileCLIP2 is research-only).
+
+> The license applies to the downloaded weights. This repository does not
+> redistribute them; the root [`LICENSE`](LICENSE) is unaffected.
+
+---
+
+## CLIP byte-pair-encoding vocabulary (example data, downloaded, not bundled)
+
+- **Used for:** `ConceptTracker`'s tokenizer (`PhraseTokenizer`), which turns a typed phrase into the token sequence the text encoder expects. The tokenizer implementation is Ollin's own, credited in [`ATTRIBUTION.md`](ATTRIBUTION.md); this entry covers the vocabulary file.
+- **Location in this repo:** none. [`Scripts/fetch-models.sh`](Scripts/fetch-models.sh) downloads `bpe_simple_vocab_16e6.txt.gz` into the gitignored `Models/` directory and unpacks it.
+- **Work:** the byte-pair-encoding merges file from OpenAI's CLIP tokenizer. MobileCLIP's text encoder was trained on this vocabulary.
+- **Upstream:** https://github.com/openai/CLIP (`clip/bpe_simple_vocab_16e6.txt.gz`)
+- **License:** MIT (Copyright 2021 OpenAI): https://github.com/openai/CLIP/blob/main/LICENSE
+
+> The license applies to the downloaded file. This repository does not
+> redistribute it; the root [`LICENSE`](LICENSE) is unaffected.
