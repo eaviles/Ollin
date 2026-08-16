@@ -67,6 +67,14 @@ public enum PhoneMessageKind: UInt8, Sendable, CaseIterable {
     /// Rear camera, so it's mutually exclusive with face tracking and shares the
     /// camera with body/depth (its own session). Streams only in Segment mode.
     case segmentation = 5
+    /// One chunk of the reconstructed room surface from the rear LiDAR: a triangle
+    /// mesh the phone builds and keeps improving as you walk around. ARKit divides
+    /// the room into blocks and reports each as its own anchor, so this message
+    /// carries **one block**, identified by a stable `id`. The Mac keeps a set of
+    /// them, replaces a block when a better version arrives, and drops one the
+    /// phone retires, which keeps each payload small while the room builds up
+    /// piece by piece. Streams only in Mesh mode (LiDAR rear camera).
+    case sceneMesh = 6
 }
 
 /// The named joints the stream carries — a practical subset of ARKit's ~91-joint
@@ -256,6 +264,69 @@ public struct PhoneSegmentationSample: Sendable, Equatable {
     }
 }
 
+/// What the phone thinks a piece of the room surface is. ARKit labels every
+/// triangle of the reconstructed mesh with one of these while it scans, so a
+/// sketch can treat the floor differently from a wall, or keep only the tables.
+/// A triangle the phone is unsure about stays `unclassified`, which is most of
+/// them early in a scan.
+///
+/// The raw values are contiguous from `0`, and the iOS app maps ARKit's own
+/// labels onto them, so the wire carries one byte per triangle. A test pins the
+/// contiguity, the same way the blendshape order is pinned.
+public enum PhoneSurface: UInt8, CaseIterable, Sendable {
+    case unclassified = 0
+    case wall, floor, ceiling, table, seat, window, door
+}
+
+/// One block of the reconstructed room surface, in the coordinate space of its own
+/// anchor: `vertices` and `normals` are anchor-local meters, and `transform` places
+/// the block in ARKit's fixed world (the same world `PhoneDepthSample.cameraTransform`
+/// reports). `triangleIndices` is a triangle list, three indices per triangle, and
+/// `surfaces` carries one `PhoneSurface` raw value per triangle (empty when the
+/// device scans without classification).
+///
+/// `id` is the block's stable identity: the phone sends the same `id` again with a
+/// better mesh as the scan improves, so the Mac replaces that block in place rather
+/// than piling up copies. `removed` is the retirement notice, and the payload then
+/// carries no geometry, so the Mac drops the block.
+///
+/// `scan` says which run of the scanner the block belongs to. Starting a scan resets
+/// the phone's world origin, so blocks from an earlier run are in a coordinate space
+/// that no longer exists. The number changes with every run, and the Mac drops the
+/// old room the moment it sees a new one.
+///
+/// Geometry is carried raw, which makes a block tens of kilobytes. The phone sends
+/// only a few blocks per second, and skips a block too big for one payload, so the
+/// wire stays quiet while a whole room accumulates.
+public struct PhoneSceneMeshSample: Sendable, Equatable {
+    public var tracked: Bool
+    public var timestamp: Double
+    public var id: UUID
+    public var scan: UInt32
+    public var removed: Bool
+    public var transform: simd_float4x4
+    public var vertices: [SIMD3<Float>]
+    public var normals: [SIMD3<Float>]
+    public var triangleIndices: [UInt32]
+    public var surfaces: [UInt8]
+
+    public init(tracked: Bool, timestamp: Double, id: UUID, scan: UInt32 = 0,
+                removed: Bool = false, transform: simd_float4x4,
+                vertices: [SIMD3<Float>] = [], normals: [SIMD3<Float>] = [],
+                triangleIndices: [UInt32] = [], surfaces: [UInt8] = []) {
+        self.tracked = tracked
+        self.timestamp = timestamp
+        self.id = id
+        self.scan = scan
+        self.removed = removed
+        self.transform = transform
+        self.vertices = vertices
+        self.normals = normals
+        self.triangleIndices = triangleIndices
+        self.surfaces = surfaces
+    }
+}
+
 /// A decoded message of any kind — the unit tests round-trip this.
 public enum PhoneMessage: Sendable, Equatable {
     case motion(PhoneMotionSample)
@@ -266,6 +337,9 @@ public enum PhoneMessage: Sendable, Equatable {
     case face([PhoneFaceSample])
     case depth(PhoneDepthSample)
     case segmentation(PhoneSegmentationSample)
+    /// One block of the reconstructed room surface, keyed by its own id. Blocks
+    /// arrive one at a time and keep arriving as the scan improves.
+    case sceneMesh(PhoneSceneMeshSample)
 
     public var kind: PhoneMessageKind {
         switch self {
@@ -274,6 +348,7 @@ public enum PhoneMessage: Sendable, Equatable {
         case .face: return .face
         case .depth: return .depth
         case .segmentation: return .segmentation
+        case .sceneMesh: return .sceneMesh
         }
     }
 }
@@ -320,6 +395,7 @@ public extension PhoneWire {
         case .face(let faces): payload = encodeFacePayload(faces)
         case .depth(let d): payload = encodeDepthPayload(d)
         case .segmentation(let seg): payload = encodeSegmentationPayload(seg)
+        case .sceneMesh(let chunk): payload = encodeSceneMeshPayload(chunk)
         }
         var out = Data()
         appendU32(&out, magic)
@@ -427,6 +503,39 @@ public extension PhoneWire {
         p.append(contentsOf: s.matte)
         return p
     }
+
+    private static func encodeSceneMeshPayload(_ c: PhoneSceneMeshSample) -> Data {
+        var p = Data()
+        p.append(c.tracked ? 1 : 0)
+        appendF64(&p, c.timestamp)
+        appendUUID(&p, c.id)
+        appendU32(&p, c.scan)
+        p.append(c.removed ? 1 : 0)
+        appendMatrix(&p, c.transform)
+        // A retirement notice carries no geometry, so the counts stop here.
+        guard !c.removed else { return p }
+        // Vertices and normals: a count each, then xyz per entry (anchor-local).
+        appendU32(&p, UInt32(c.vertices.count))
+        for v in c.vertices { appendF32(&p, v.x); appendF32(&p, v.y); appendF32(&p, v.z) }
+        appendU32(&p, UInt32(c.normals.count))
+        for n in c.normals { appendF32(&p, n.x); appendF32(&p, n.y); appendF32(&p, n.z) }
+        // Topology: an index count, then a vertex index each (three per triangle).
+        appendU32(&p, UInt32(c.triangleIndices.count))
+        for i in c.triangleIndices { appendU32(&p, i) }
+        // Classification: a count, then one PhoneSurface raw value per triangle.
+        appendU32(&p, UInt32(c.surfaces.count))
+        p.append(contentsOf: c.surfaces)
+        return p
+    }
+
+    /// The size the payload for `chunk` will take, so the phone can skip a block
+    /// too big for one frame before it pays to encode it.
+    static func sceneMeshPayloadSize(vertexCount: Int, indexCount: Int,
+                                     surfaceCount: Int) -> Int {
+        // tracked(1) + timestamp(8) + id(16) + scan(4) + removed(1) + transform(64),
+        // then the four counts, then the positions and normals at 12 bytes each.
+        94 + 16 + vertexCount * 24 + indexCount * 4 + surfaceCount
+    }
 }
 
 // MARK: - Decoding
@@ -442,6 +551,7 @@ public extension PhoneWire {
         case .face: return decodeFace(payload).map(PhoneMessage.face)
         case .depth: return decodeDepth(payload).map(PhoneMessage.depth)
         case .segmentation: return decodeSegmentation(payload).map(PhoneMessage.segmentation)
+        case .sceneMesh: return decodeSceneMesh(payload).map(PhoneMessage.sceneMesh)
         }
     }
 
@@ -593,6 +703,54 @@ public extension PhoneWire {
                                        matteWidth: matteWidth, matteHeight: matteHeight,
                                        orientation: orientation, matte: matte, colorJPEG: colorJPEG)
     }
+
+    private static func decodeSceneMesh(_ data: Data) -> PhoneSceneMeshSample? {
+        // Fixed prefix: tracked(1) + timestamp(8) + id(16) + scan(4) + removed(1) + transform(64).
+        let prefix = 1 + 8 + 16 + 4 + 1 + 64
+        guard data.count >= prefix else { return nil }
+        let s = data.startIndex
+        var o = 0
+        func u32() -> Int { defer { o += 4 }; return Int(readU32(data, s + o)) }
+        func f32() -> Float { defer { o += 4 }; return readF32(data, s + o) }
+
+        let tracked = data[s] != 0; o += 1
+        let timestamp = readF64(data, s + o); o += 8
+        let id = readUUID(data, s + o); o += 16
+        let scan = readU32(data, s + o); o += 4
+        let removed = data[s + o] != 0; o += 1
+        let transform = readMatrix(data, s + o); o += 64
+
+        // A retirement notice ends here, with no geometry to read.
+        guard !removed else {
+            return PhoneSceneMeshSample(tracked: tracked, timestamp: timestamp, id: id,
+                                        scan: scan, removed: true, transform: transform)
+        }
+
+        guard data.count >= o + 4 else { return nil }
+        let vertexCount = u32()
+        guard vertexCount >= 0, data.count >= o + vertexCount * 12 + 4 else { return nil }
+        var vertices = [SIMD3<Float>](); vertices.reserveCapacity(vertexCount)
+        for _ in 0..<vertexCount { vertices.append(SIMD3<Float>(f32(), f32(), f32())) }
+
+        let normalCount = u32()
+        guard normalCount >= 0, data.count >= o + normalCount * 12 + 4 else { return nil }
+        var normals = [SIMD3<Float>](); normals.reserveCapacity(normalCount)
+        for _ in 0..<normalCount { normals.append(SIMD3<Float>(f32(), f32(), f32())) }
+
+        let indexCount = u32()
+        guard indexCount >= 0, data.count >= o + indexCount * 4 + 4 else { return nil }
+        var triangleIndices = [UInt32](); triangleIndices.reserveCapacity(indexCount)
+        for _ in 0..<indexCount { triangleIndices.append(UInt32(u32())) }
+
+        let surfaceCount = u32()
+        guard surfaceCount >= 0, data.count >= o + surfaceCount else { return nil }
+        let surfaces = [UInt8](data[(s + o)..<(s + o + surfaceCount)])
+
+        return PhoneSceneMeshSample(tracked: tracked, timestamp: timestamp, id: id,
+                                    scan: scan, removed: false, transform: transform,
+                                    vertices: vertices, normals: normals,
+                                    triangleIndices: triangleIndices, surfaces: surfaces)
+    }
 }
 
 // MARK: - Little-endian byte helpers
@@ -620,6 +778,18 @@ private extension PhoneWire {
                                      readF32(d, base + 8), readF32(d, base + 12)))
         }
         return simd_float4x4(cols[0], cols[1], cols[2], cols[3])
+    }
+    /// A UUID as its 16 raw bytes, in the order `UUID.uuid` reports them.
+    static func appendUUID(_ d: inout Data, _ id: UUID) {
+        withUnsafeBytes(of: id.uuid) { d.append(contentsOf: $0) }
+    }
+    static func readUUID(_ d: Data, _ i: Data.Index) -> UUID {
+        var bytes = [UInt8](repeating: 0, count: 16)
+        for k in 0..<16 { bytes[k] = d[i + k] }
+        return UUID(uuid: (bytes[0], bytes[1], bytes[2], bytes[3],
+                           bytes[4], bytes[5], bytes[6], bytes[7],
+                           bytes[8], bytes[9], bytes[10], bytes[11],
+                           bytes[12], bytes[13], bytes[14], bytes[15]))
     }
     static func readU32(_ d: Data, _ i: Data.Index) -> UInt32 {
         UInt32(d[i]) | (UInt32(d[i + 1]) << 8) | (UInt32(d[i + 2]) << 16) | (UInt32(d[i + 3]) << 24)

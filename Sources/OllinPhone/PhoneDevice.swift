@@ -32,6 +32,10 @@ import Darwin
 /// for world fusion. The device is also a `FrameSource` + `VideoFeed`, so a vision
 /// tracker can analyze the depth-mode color feed and `drawFrame` can letterbox it.
 ///
+/// In **Mesh** mode the phone reconstructs the room as a triangle surface and sends
+/// it block by block: `sceneMesh` is the room built up so far, ready to draw as one
+/// `Mesh`, with every triangle labelled as a wall, the floor, a table, and so on.
+///
 /// Launch the Ollin capture app on the iPhone and connect the cable; the device
 /// keeps retrying, so plugging in or starting the app mid-run just works. The
 /// transport is the standard `usbmuxd` tunnel (port 1338); the wire format is
@@ -170,6 +174,28 @@ public final class PhoneDevice: FrameSource, VideoFeed {
         return cutout
     }
 
+    // MARK: - Mesh mode (the reconstructed room surface)
+
+    /// The room the phone has reconstructed so far, as a growing set of triangle
+    /// blocks. Populated when the capture app is in **Mesh** mode (rear LiDAR): the
+    /// phone builds a real surface of the space on its own Neural Engine and streams
+    /// it block by block, sharpening as you walk around.
+    ///
+    /// Building its combined `mesh` walks the whole room, so gate the rebuild on
+    /// `sceneMeshVersion` instead of doing it every frame.
+    public var sceneMesh: PhoneSceneMesh { reader.sceneMesh }
+
+    /// A number that changes whenever a block of the room arrives or is retired.
+    /// The room mesh is large and `draw()` runs far faster than blocks stream in, so
+    /// compare this against the last value you built from and rebuild only when it
+    /// moves. `nil` before the first block arrives.
+    public var sceneMeshVersion: Int? { reader.sceneMeshVersion }
+
+    /// Forget the scanned room and start collecting it again. The phone keeps its
+    /// own reconstruction, so blocks return as it re-reports them; this clears what
+    /// the Mac is holding, which is what a sketch wants when it starts a new scan.
+    public func resetSceneMesh() { reader.resetSceneMesh() }
+
     // MARK: - FrameSource / VideoFeed (the World-mode color feed)
 
     /// The analysis tap (`FrameSource`): the live color frame, delivered on the
@@ -207,6 +233,9 @@ final class PhoneStreamReader: @unchecked Sendable {
         var depthSequence = 0
         var latestSegmentation: PhoneSegmentationBox?
         var segSequence = 0
+        var sceneMesh = PhoneSceneMesh()
+        var sceneMeshVersion: Int?
+        var sceneMeshScan: UInt32?
         var tap: FrameTap?
         var connected = false
         var message: String? = "Connecting to the phone…"
@@ -227,10 +256,19 @@ final class PhoneStreamReader: @unchecked Sendable {
     var latestDepth: PhoneDepthFrameBox? { lock.withLock { $0.latestDepth } }
     var latestSegmentation: PhoneSegmentationBox? { lock.withLock { $0.latestSegmentation } }
     var latestPose3D: simd_float4x4? { lock.withLock { $0.latestDepth?.transform } }
+    var sceneMesh: PhoneSceneMesh { lock.withLock { $0.sceneMesh } }
+    var sceneMeshVersion: Int? { lock.withLock { $0.sceneMeshVersion } }
     var isConnected: Bool { lock.withLock { $0.connected } }
     var statusMessage: String? { lock.withLock { $0.message } }
 
     func setTap(_ tap: FrameTap?) { lock.withLock { $0.tap = tap } }
+
+    func resetSceneMesh() {
+        lock.withLock { state in
+            state.sceneMesh.reset()
+            state.sceneMeshVersion = (state.sceneMeshVersion ?? 0) + 1
+        }
+    }
 
     func start() {
         let alreadyRunning = lock.withLock { state -> Bool in
@@ -294,13 +332,34 @@ final class PhoneStreamReader: @unchecked Sendable {
                     if let box = decodePhoneSegmentation(sample, sequence: seq) {
                         lock.withLock { $0.latestSegmentation = box }
                     }
+                case .message(.sceneMesh(let sample)):
+                    // Place the block into world space on this thread, off the main
+                    // actor and outside the lock (a block carries thousands of
+                    // vertices, and the lock is held by every read in draw()).
+                    let chunk = sample.removed ? nil : phoneSceneChunk(from: sample)
+                    guard sample.removed || chunk != nil else { continue }
+                    lock.withLock { state in
+                        // A new run of the scanner resets the phone's world origin,
+                        // so blocks from the run before it are in a space that no
+                        // longer exists. Drop the old room rather than mixing them.
+                        if state.sceneMeshScan != sample.scan {
+                            state.sceneMeshScan = sample.scan
+                            state.sceneMesh.reset()
+                        }
+                        if let chunk {
+                            state.sceneMesh.apply(chunk)
+                        } else {
+                            state.sceneMesh.remove(sample.id)
+                        }
+                        state.sceneMeshVersion = (state.sceneMeshVersion ?? 0) + 1
+                    }
                 case .message(let message):
                     lock.withLock { state in
                         switch message {
                         case .motion(let m): state.latestMotion = m
                         case .pose(let p): state.latestPose = p
                         case .face(let f): state.latestFaces = f
-                        case .depth, .segmentation: break   // handled above
+                        case .depth, .segmentation, .sceneMesh: break   // handled above
                         }
                     }
                 case .skip:

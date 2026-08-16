@@ -6,7 +6,7 @@
 
 Borrow a tethered iPhone's on-device perception in a sketch that still renders on the Mac. **Ollin Capture**, Ollin's own iOS app ([`Apps/OllinPhoneApp`](../../Apps/OllinPhoneApp/README.md)), runs ARKit on the phone's Neural Engine and streams the results over the USB cable. `PhoneDevice` reads them on the Mac as typed values you use in `draw()`.
 
-Five payloads come over. A **3D body skeleton**. **Faces**, up to 3 at once, each a deforming mesh plus the 52 expression blendshapes. A world-facing **RGBD depth frame** from the rear LiDAR, which unprojects into a point cloud and carries the camera's 6DoF pose. A **person-segmentation matte** from the rear camera, as a silhouette and a cutout. And **device motion**.
+Six payloads come over. A **3D body skeleton**. **Faces**, up to 3 at once, each a deforming mesh plus the 52 expression blendshapes. A world-facing **RGBD depth frame** from the rear LiDAR, which unprojects into a point cloud and carries the camera's 6DoF pose. The **room mesh**, the space itself reconstructed as a labelled triangle surface. A **person-segmentation matte** from the rear camera, as a silhouette and a cutout. And **device motion**.
 
 Where [`Record3D`](../3D/Record3D.md) borrows another app's color-plus-depth feed, this is Ollin's own app, so the stream carries what ARKit *perceives*. The chain is Ollin's end to end.
 
@@ -35,11 +35,12 @@ final class Pose: Sketch {
 ### Contents
 
 - [Setup](#setup) - install the capture app, connect the cable
-- [Reading the stream](#reading-the-stream) - `latestBody`, `latestFace`, `latestDepthFrame`, `latestMotion`, the connection state
+- [Reading the stream](#reading-the-stream) - `latestBody`, `latestFace`, `latestDepthFrame`, `sceneMesh`, `latestMotion`, the connection state
 - [The body](#the-body) - `PhoneBody`, the joints, drawing the skeleton
 - [The face](#the-face) - `PhoneFace`, the blendshapes, the mesh
 - [World depth](#world-depth) - `latestDepthFrame`, `pointCloud(...)`, the camera pose
 - [World fusion](#world-fusion) - `WorldCloud`, sweeping a room into one cloud
+- [The room mesh](#the-room-mesh) - `sceneMesh`, the room as a labelled surface, the Mesh mode
 - [Segmentation](#segmentation) - `latestSegmentationMatte`, `latestSegmentationCutout`, the Segment mode
 - [Device motion](#device-motion) - `PhoneMotion`, the transport smoke-test
 - [Notes](#notes) - the wire, coordinate space, what's ahead
@@ -70,12 +71,13 @@ device.latestBody                    // PhoneBody?, the latest skeleton (Body mo
 device.latestFaces                   // [PhoneFace], every tracked face, up to 3 (Face mode)
 device.latestFace                    // PhoneFace?, the most prominent face (= latestFaces.first)
 device.latestDepthFrame              // RGBDFrame?, the latest depth frame (World mode)
+device.sceneMesh                     // PhoneSceneMesh, the room scanned so far (Mesh mode)
 device.latestMotion                  // PhoneMotion?, the latest device-motion sample
 ```
 
 These are fresh each time the phone sends one, so read them within the current `draw()`. Each is `nil` until the first of its kind arrives. Motion typically lights up first, since it needs no camera or model, proving the wire before ARKit has found a body, face, or depth.
 
-**The three camera modes are mutually exclusive.** Body and World use the rear camera, Face the front TrueDepth camera, and only one ARKit session runs at a time. The capture app has a **Body / Face / World** toggle, and whichever is selected is the one that updates: `latestBody`, `latestFace`, or `latestDepthFrame`. The others hold their last value, so read the one for the mode you mean to drive. Motion streams across all three.
+**The camera modes are mutually exclusive.** Body, World, Segment, and Mesh use the rear camera, Face the front TrueDepth camera, and only one ARKit session runs at a time. The capture app has a **Body / Face / World / Segment / Mesh** toggle, and whichever is selected is the one that updates: `latestBody`, `latestFace`, `latestDepthFrame`, the segmentation images, or `sceneMesh`. The others hold their last value, so read the one for the mode you mean to drive. Motion streams across all of them.
 
 ## The body
 
@@ -178,6 +180,60 @@ override func draw() {
 
 The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneWorldScan`. Sweep the phone, and press **R** to reset.
 
+## The room mesh
+
+In **Mesh** mode the phone stops sending you raw depth and sends you the room itself. ARKit reconstructs the space around it as a real triangle surface on the device, and labels each triangle with what it is. What arrives on the Mac already has normals, and already knows the floor from the wall.
+
+Where [world fusion](#world-fusion) builds a cloud of points on the Mac, this is a solid surface built on the phone. Both come from the same LiDAR, so pick by what you want to do with it. Points are for a cloud you scatter, deform, or reconstruct yourself. A mesh is for a surface you light, hide things behind, or bounce something off.
+
+```swift
+device.sceneMesh                     // PhoneSceneMesh, the room scanned so far
+device.sceneMeshVersion              // Int?, changes when a block arrives or is retired
+device.resetSceneMesh()              // forget it and collect the room again
+```
+
+The room arrives **in blocks**. ARKit divides the space into pieces, reports each as its own anchor, and keeps improving a piece as you look at it again. So a block turns up many times under the same identity, and the newest reading replaces the last. Blocks arrive at up to 15 a second while you walk.
+
+**Rebuild the mesh when it changes, never once per frame.** A scanned room reaches hundreds of thousands of triangles, and `draw()` runs far faster than blocks arrive. `sceneMeshVersion` is the gate:
+
+```swift
+var room = Mesh(positions: [], indices: [])
+var built: Int?
+
+override func draw() {
+    if device.sceneMeshVersion != built {
+        built = device.sceneMeshVersion
+        room = device.sceneMesh.mesh          // the whole room, one Mesh
+    }
+    drawMesh(room)
+}
+```
+
+`PhoneSceneMesh` gives three shapes of the same room:
+
+```swift
+let scan = device.sceneMesh
+scan.mesh                            // Mesh, the whole room, world space, meters
+scan.mesh(of: .floor, .table)        // Mesh, only the labels you ask for
+scan.mesh { surface in ... }         // Mesh, painted a color per triangle
+```
+
+Plus what you need to frame it and report it: `chunks`, `chunkCount`, `vertexCount`, `triangleCount`, `bounds`, `center`, `isEmpty`, and `foundSurfaces` (the labels the scan has actually produced).
+
+A label is a `PhoneSurface`: `wall`, `floor`, `ceiling`, `table`, `seat`, `window`, `door`, or `unclassified`. **Early in a scan almost everything is `unclassified`**, because ARKit decides what a surface is only once it has seen enough of it. That is the honest picture rather than a fault, so a sketch that keys off labels should say so while the room fills in. `foundSurfaces` tells you what is available.
+
+```swift
+// A floor you could stand something on, and the rest of the room behind it.
+fill(Color(white: 0.25)); drawMesh(scan.mesh)
+fill(Color(hex: 0x4C9A6B)); drawMesh(scan.mesh(of: .floor))
+```
+
+Positions are in ARKit's fixed, gravity-aligned world space, in meters. That is the same space `latestPose` reports, so a mesh block and a fused cloud from one session line up.
+
+Starting a scan resets that world origin, which would leave an older room floating in a space that no longer exists. So every block says which run of the scanner it came from, and `PhoneDevice` drops the room it was holding the moment a new run begins. Leaving Mesh mode and coming back is a new run.
+
+Scene reconstruction needs a LiDAR sensor, so Mesh mode is Pro-tier iPhones only. The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneRoomMesh`.
+
 ## Segmentation
 
 In **Segment** mode the phone's rear camera runs ARKit's on-device **person segmentation**. The Neural Engine separates the people in the scene from the background, and the phone streams the matte plus the color frame. `PhoneDevice` turns them into two drawable `Image`s:
@@ -221,4 +277,5 @@ Tilt the phone and `gravity` swings, a one-line check that the wire is alive.
 - **USB only.** The transport is the `usbmuxd` tunnel over the cable, on port 1338, distinct from Record3D's 1337. Wi-Fi is deliberately out.
 - **Per-frame clouds are camera-relative, and fusion is world-space.** A single `pointCloud(...)` is in the camera's own frame, root at the lens, and the skeleton is in model space, root at the origin. [World fusion](#world-fusion) is what lifts a sweep into one fixed world cloud, by applying each frame's `latestPose`. It fuses several poses' clouds into a single *registered* scene, but not the richer multi-frame tricks like loop closure and drift correction. So a long sweep drifts with ARKit's own tracking.
 - **Depth is raw over the wire.** The LiDAR depth map ships uncompressed, and a 256×192 frame is ~196 KB, comfortable over USB. LZFSE compression is a later optimization. The color image is sent as a downscaled JPEG.
-- **A growing catalog.** Body pose, face, world depth, person segmentation, and motion are the payloads today. Richer sensors are the same app sending new tagged payloads, not new pipelines.
+- **A growing catalog.** Body pose, face, world depth, the room mesh, person segmentation, and motion are the payloads today. Richer sensors are the same app sending new tagged payloads, not new pipelines.
+- **A mesh block is carried raw, and sending is what is throttled.** The phone reads a block's geometry the moment ARKit hands it over, since those buffers belong to the session. It then queues the block and sends a few at a time. A block too big for one payload is skipped and counted on the app's own screen.

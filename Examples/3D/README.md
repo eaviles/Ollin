@@ -162,5 +162,6 @@ The **Ollin Capture** iPhone app streaming ARKit perception over USB.
 | [PhoneDepthCloud](Phone/PhoneDepthCloud/) | A **live** rear-LiDAR RGBD cloud from Ollin Capture (tap **World**): Ollin's own-app world-facing depth feed, unprojected with the stream's true intrinsics and orbited. Needs `import OllinPhone`. |
 | [PhoneWorldScan](Phone/PhoneWorldScan/) | Sweep the phone (tap **World**) and each depth frame is placed by its camera pose into one fused `WorldCloud` of the room; **R** to reset. Needs `import OllinPhone`. |
 | [PhoneSegmentation](Phone/PhoneSegmentation/) | Ollin Capture's on-device person matte (tap **Segment**): the cutout lifted onto a live gradient backdrop, the tinted matte as a drop shadow. Needs `import OllinPhone`. |
+| [PhoneRoomMesh](Phone/PhoneRoomMesh/) | Walk the phone around (tap **Mesh**) and the room arrives as a solid surface, painted by what each triangle is; **space**, **F**, **R**. Needs `import OllinPhone`. |
 
 See [`Docs/3D/3D.md`](../../Docs/3D/3D.md) for the 3D guide. Record3D recordings have their own guide in [`Docs/3D/Record3D.md`](../../Docs/3D/Record3D.md); the Ollin Capture stream is documented in [`Docs/3D/Phone.md`](../../Docs/3D/Phone.md).

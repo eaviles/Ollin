@@ -3,9 +3,10 @@ import ARKit
 import simd
 
 /// **Ollin Capture** — Ollin's own iPhone sensor app. The phone runs ARKit (body
-/// pose, face, and rear-LiDAR scene depth) on its Neural Engine plus CoreMotion device
-/// motion, and streams them to a tethered Mac over USB (usbmuxd → `PhoneWire.streamPort`),
-/// where an Ollin sketch reads them in `draw()` via `OllinPhone`'s `PhoneDevice`.
+/// pose, face, rear-LiDAR scene depth, person segmentation, and the reconstructed room
+/// mesh) on its Neural Engine plus CoreMotion device motion, and streams them to a
+/// tethered Mac over USB (usbmuxd → `PhoneWire.streamPort`), where an Ollin sketch
+/// reads them in `draw()` via `OllinPhone`'s `PhoneDevice`.
 @main
 struct OllinCaptureApp: App {
     var body: some Scene {
@@ -13,16 +14,18 @@ struct OllinCaptureApp: App {
     }
 }
 
-/// Which on-device sensor ARKit drives. Body, World, and Segment use the rear camera,
-/// Face the front TrueDepth camera; only one ARKit session runs at a time, so they're
-/// mutually exclusive — the app runs one at a time. World streams a LiDAR RGBD frame
-/// (depth + color + pose); Body a skeleton; Face the expression mesh; Segment a person
-/// matte (+ color) for a silhouette/cutout.
+/// Which on-device sensor ARKit drives. Body, World, Segment, and Mesh use the rear
+/// camera, Face the front TrueDepth camera. Only one ARKit session runs at a time, so
+/// they are mutually exclusive and the app runs one at a time. World streams a LiDAR
+/// RGBD frame (depth + color + pose); Body a skeleton; Face the expression mesh;
+/// Segment a person matte (+ color) for a silhouette/cutout; Mesh the reconstructed
+/// room surface, block by block, with each triangle labelled.
 enum CaptureMode: String, CaseIterable, Identifiable {
     case body = "Body"
     case face = "Face"
     case world = "World"
     case segment = "Segment"
+    case mesh = "Mesh"
     var id: String { rawValue }
 }
 
@@ -42,6 +45,8 @@ final class SensorStreamer {
     var depthInfo = ""
     var segTracked = false
     var segInfo = ""
+    var meshTracked = false
+    var meshInfo = ""
     var gravity = SIMD3<Float>(0, 0, 0)
     var motionLive = false
     var status = "Starting…"
@@ -50,13 +55,20 @@ final class SensorStreamer {
     let faceSupported = ARFaceTrackingConfiguration.isSupported
     let depthSupported = ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth)
     let segSupported = ARWorldTrackingConfiguration.supportsFrameSemantics(.personSegmentation)
+    let meshSupported = ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh)
 
     private var server: SensorServer?
     private let ar = ARStreamer()
     private let face = FaceStreamer()
     private let depth = DepthStreamer()
     private let seg = SegmentationStreamer()
+    private let sceneMesh = SceneMeshStreamer()
     private let motion = MotionStreamer()
+
+    /// How many blocks of the room have gone out, and how many were dropped for
+    /// being too big to carry, so the screen can report both.
+    private var meshBlocksSent = 0
+    private var meshBlocksSkipped = 0
     private var started = false
 
     func start() {
@@ -115,6 +127,21 @@ final class SensorStreamer {
             self.segInfo = "\(sample.matteWidth)×\(sample.matteHeight) · \(sample.colorJPEG.count / 1024) KB"
         }
 
+        sceneMesh.onChunk = { [weak self] sample in
+            guard let self else { return }
+            self.server?.send(PhoneWire.encode(.sceneMesh(sample)))
+            self.meshBlocksSent += 1
+            self.meshTracked = sample.tracked
+            self.meshInfo = "\(self.meshBlocksSent) blocks"
+            if self.meshBlocksSkipped > 0 {
+                self.meshInfo += " · \(self.meshBlocksSkipped) too big"
+            }
+        }
+
+        sceneMesh.onOversized = { [weak self] count in
+            self?.meshBlocksSkipped = count
+        }
+
         applyMode()
     }
 
@@ -130,21 +157,30 @@ final class SensorStreamer {
         // Only one ARKit session at a time — stop the others before starting one.
         switch mode {
         case .body:
-            face.stop(); depth.stop(); seg.stop()
+            face.stop(); depth.stop(); seg.stop(); sceneMesh.stop()
             ar.start()
             status = bodySupported ? "Streaming body" : "This device doesn't support body tracking"
         case .face:
-            ar.stop(); depth.stop(); seg.stop()
+            ar.stop(); depth.stop(); seg.stop(); sceneMesh.stop()
             face.start()
             status = faceSupported ? "Streaming face" : "This device doesn't support face tracking"
         case .world:
-            ar.stop(); face.stop(); seg.stop()
+            ar.stop(); face.stop(); seg.stop(); sceneMesh.stop()
             depth.start()
             status = depthSupported ? "Streaming depth" : "This device has no LiDAR for depth"
         case .segment:
-            ar.stop(); face.stop(); depth.stop()
+            ar.stop(); face.stop(); depth.stop(); sceneMesh.stop()
             seg.start()
             status = segSupported ? "Streaming segmentation" : "This device doesn't support person segmentation"
+        case .mesh:
+            ar.stop(); face.stop(); depth.stop(); seg.stop()
+            // A fresh session rebuilds the room from nothing, so the Mac's own count
+            // starts again with it.
+            meshBlocksSent = 0
+            meshBlocksSkipped = 0
+            meshInfo = ""
+            sceneMesh.start()
+            status = meshSupported ? "Streaming the room mesh" : "This device has no LiDAR to build a mesh"
         }
     }
 
@@ -224,6 +260,11 @@ struct ContentView: View {
                             ? (streamer.segTracked ? "streaming · \(streamer.segInfo)" : "starting…")
                             : "needs A12+ for segmentation",
                             ok: streamer.segTracked)
+                    case .mesh:
+                        row("Room", streamer.meshSupported
+                            ? (streamer.meshInfo.isEmpty ? "walk around to build it…" : "streaming · \(streamer.meshInfo)")
+                            : "needs LiDAR (Pro)",
+                            ok: streamer.meshTracked)
                     }
                     row("Motion", streamer.motionLive
                         ? String(format: "live · gravity (% .2f, % .2f, % .2f)",

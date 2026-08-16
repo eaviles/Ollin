@@ -1,21 +1,22 @@
 # Ollin Capture — iPhone sensor app
 
 Ollin's own iPhone capture app: the phone runs **ARKit body tracking**, **face
-tracking**, and **rear-LiDAR scene depth** on its Neural Engine, plus **CoreMotion**
-device motion, and streams them to a tethered Mac over USB. An Ollin sketch on the Mac
-reads the live skeleton, face, depth cloud, or motion in `draw()` through the
+tracking**, **rear-LiDAR scene depth**, **person segmentation**, and **scene
+reconstruction** on its Neural Engine, plus **CoreMotion** device motion, and streams
+them to a tethered Mac over USB. An Ollin sketch on the Mac reads the live skeleton,
+face, depth cloud, person matte, room mesh, or motion in `draw()` through the
 [`OllinPhone`](../../Sources/OllinPhone) satellite (`PhoneDevice`).
 
 This is the own-app successor to borrowing the Record3D app's RGBD feed
-([`OllinRecord3D`](../../Sources/OllinRecord3D)): it streams what ARKit *perceives* —
+([`OllinRecord3D`](../../Sources/OllinRecord3D)): it streams what ARKit *perceives*, so
 a 3D body skeleton, a face mesh with its 52 expression blendshapes, a world-facing
-RGBD depth frame (a point cloud, with the camera's 6DoF pose), and device motion
-today, more sensors (segmentation, scene mesh) to come. The chain is Ollin's end to
-end.
+RGBD depth frame (a point cloud, with the camera's 6DoF pose), a person matte, and the
+reconstructed room as a labelled triangle surface. The chain is Ollin's end to end.
 
-Body and World use the rear camera and face tracking the front TrueDepth camera, and
-only one ARKit session runs at a time — the app has a **Body / Face / World** toggle
-and runs one mode at a time. Device motion streams in all three.
+Body, World, Segment, and Mesh use the rear camera and face tracking the front
+TrueDepth camera, and only one ARKit session runs at a time. The app has a **Body /
+Face / World / Segment / Mesh** toggle and runs one mode at a time. Device motion
+streams in all of them.
 
 ## How it fits together
 
@@ -64,7 +65,7 @@ Requirements:
 ## Run it
 
 1. Build + run on the iPhone. The screen shows **READY** until the Mac connects,
-   then **ON AIR**, with the **Body / Face / World** toggle and live status.
+   then **ON AIR**, with the **Body / Face / World / Segment / Mesh** toggle and live status.
 2. Connect the cable to the Mac.
 3. On the Mac, run a sketch. With the toggle on **Body**:
    `swift run --package-path Examples Example-3D-Phone-PhoneBodyPose`, and the
@@ -74,7 +75,10 @@ Requirements:
    mouth. On **World** (a LiDAR iPhone):
    `swift run --package-path Examples Example-3D-Phone-PhoneDepthCloud`, then
    point the phone at the room and the rear LiDAR's depth becomes a live point
-   cloud. Before tracking begins, the gravity readout proves the USB wire is
+   cloud. On **Mesh** (a LiDAR iPhone):
+   `swift run --package-path Examples Example-3D-Phone-PhoneRoomMesh`, then walk
+   around and the room arrives as a solid surface, painted by what each triangle
+   is. Before tracking begins, the gravity readout proves the USB wire is
    alive (tilt the phone and it moves).
 
 ## Notes
@@ -92,6 +96,14 @@ Requirements:
   the intrinsics scaled to the depth grid, per-pixel confidence, and the camera's
   6DoF transform. Scene depth needs a **LiDAR** sensor (Pro-tier iPhones); the World
   segment reports it unsupported otherwise. The Mac decodes it into a core `RGBDFrame`.
+- The mesh stream (`SceneMeshStreamer`) runs `ARWorldTrackingConfiguration` with scene
+  reconstruction and sends the room one anchor block at a time: vertices, normals,
+  triangles, the anchor's placement, and one label per triangle. Two rules shape it.
+  Each block's geometry is read **inside** the delegate callback, because ARKit owns
+  those Metal buffers and nothing promises they outlive the call. And the **sending**
+  is throttled rather than the reading, so a block waits its turn and none is dropped.
+  Scene reconstruction needs a **LiDAR** sensor (Pro-tier iPhones).
 - The skeleton/face cloud is in **model space** (root or face at the origin) and the
-  depth cloud is camera-relative. World mode carries the per-frame camera pose, but
-  world placement / multi-frame fusion using it is a later slice.
+  depth cloud is camera-relative. World mode carries the per-frame camera pose, which
+  is what fuses a sweep into one world cloud; the mesh blocks arrive in that same
+  fixed world space.

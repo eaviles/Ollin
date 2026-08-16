@@ -283,6 +283,9 @@ let package = Package(
         // The phone's on-device person segmentation lifted onto a live backdrop —
         // the rear-camera Segment-mode sibling of the depth/pose/face examples.
         example("3D/Phone/PhoneSegmentation", [.phone]),
+        // The room the phone reconstructs as a solid surface, block by block, painted
+        // by what each triangle is. The Mesh-mode sibling of PhoneWorldScan.
+        example("3D/Phone/PhoneRoomMesh", [.phone]),
         example("Motion/Breathing"),
         example("Motion/SineSweep"),
         example("Motion/Easing"),
