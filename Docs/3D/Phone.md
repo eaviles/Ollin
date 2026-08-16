@@ -39,7 +39,7 @@ final class Pose: Sketch {
 - [The body](#the-body) - `PhoneBody`, the joints, drawing the skeleton
 - [The face](#the-face) - `PhoneFace`, the blendshapes, the mesh
 - [World depth](#world-depth) - `latestDepthFrame`, `pointCloud(...)`, the camera pose
-- [World fusion](#world-fusion) - `WorldCloud`, sweeping a room into one cloud
+- [World fusion](#world-fusion) - `WorldCloud`, sweeping a room into one cloud, and [keeping it registered](#drift)
 - [The room mesh](#the-room-mesh) - `sceneMesh`, the room as a labelled surface, the Mesh mode
 - [Segmentation](#segmentation) - `latestSegmentationMatte`, `latestSegmentationCutout`, the Segment mode
 - [Device motion](#device-motion) - `PhoneMotion`, the transport smoke-test
@@ -168,7 +168,7 @@ override func draw() {
     if let id = device.latestDepthFrameID, id != lastFused,
        let pose = device.latestPose,
        let cameraCloud = device.pointCloud(minimumConfidence: .low, depthRange: 0.3...5.0) {
-        world.add(cameraCloud, transformedBy: pose)
+        world.add(cameraCloud, correcting: pose)
         lastFused = id
     }
     camera(.orbiting(target: center, radius: r, azimuth: time * 0.2, elevation: 0.22))
@@ -176,9 +176,40 @@ override func draw() {
 }
 ```
 
-`add(_:transformedBy:)` applies the camera-to-world pose and merges in one pass, and `add(_:)` merges an already-world-space cloud. `latestDepthFrameID` changes only when a new depth frame arrives, so comparing it against the last fused id adds each frame exactly once. `world.cloud` is the fused `PointCloud`, `world.count` its point total, and `world.reset()` starts a fresh scan. The placement primitive underneath, `PointCloud.transformed(by:)`, is public too, so any 4×4 matrix can be applied to a cloud's positions.
+`add(_:transformedBy:)` applies the camera-to-world pose and merges in one pass, `add(_:correcting:)` corrects that pose first (see below), and `add(_:)` merges an already-world-space cloud. `latestDepthFrameID` changes only when a new depth frame arrives, so comparing it against the last fused id adds each frame exactly once. `world.cloud` is the fused `PointCloud`, `world.count` its point total, and `world.reset()` starts a fresh scan. The placement primitive underneath, `PointCloud.transformed(by:)`, is public too, so any 4×4 matrix can be applied to a cloud's positions, and `Vector3.transformed(by:)` does the same for one point.
 
-The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneWorldScan`. Sweep the phone, and press **R** to reset.
+The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneWorldScan`. Sweep the phone, press **C** to turn the correction off, and **R** to reset.
+
+<a name="drift"></a>
+### Keeping a long sweep registered
+
+ARKit reports its pose with a small error, and the error never goes away, so it piles up. Over a minute of sweeping it grows into tens of centimeters: a wall seen at the start of the scan and again at the end lands in two places, and the fused cloud thickens into a smear. That is drift, and it is the reason a long scan looks worse than a short one.
+
+`add(_:correcting:)` takes it out. Before each frame is merged, the frame is slid and turned until it sits on the surfaces already fused, and the fix that did it is kept and used as the starting guess for the next frame:
+
+```swift
+let fix = world.add(cameraCloud, correcting: pose)
+
+fix.pose          // the pose the cloud actually went in at
+fix.error         // what is left between the frame and the scan, in meters
+fix.overlap       // how much of the frame found a surface to match, 0 to 1
+fix.applied       // false when the fit was held back
+world.correction  // the whole fix so far: placed = correction * reported
+```
+
+Two rules keep it honest. A frame that finds too little to match, or that asks for a jump rather than a nudge, is **held back**: the cloud still goes in, at the fix earlier frames established, and `applied` reads false. And a direction the geometry does not pin down is left alone rather than guessed, so sweeping one blank wall corrects across it and never slides along it.
+
+The fit costs about half of what merging the frame costs, and it stops as soon as a round stops moving the cloud, so a well-tracked frame pays for one or two rounds. `CloudAlignment.Settings` has the knobs (how many points to fit through, how many rounds, how far to look, and the two guards); the defaults suit a hand-held sweep at a few centimeters per voxel.
+
+Apply `world.correction` to anything else the phone reports in the same space, so it lands where the fused cloud does:
+
+```swift
+let whereTheCameraReallyIs = Vector3.zero.transformed(by: world.correction * pose)
+```
+
+This corrects the error as it accumulates. It does not close a **loop**: walk a full circle around a building and come back, and the scan will have wandered by more than one frame's fit can find. That needs loop detection and a pose graph, which is still ahead.
+
+To see the difference without a phone, `swift run --package-path Examples Example-3D-Depth-DriftCorrectedScan` sweeps a made-up room twice, side by side, with the correction on and off.
 
 ## The room mesh
 

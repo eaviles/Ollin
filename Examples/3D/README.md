@@ -150,6 +150,7 @@ Depth feeds and depth-aware compositing: cameras, recordings, and metric space.
 | [DepthOcclusion](Depth/DepthOcclusion/) | 2D discs hung at a draggable depth plane over a live webcam depth feed (a neural model), occluded by whoever stands nearer. Needs `import OllinVision` + `Scripts/fetch-models.sh`. |
 | [MetricDepthScene](Depth/MetricDepthScene/) | 2D markers floating at **true metric depths** (meters) inside a live LiDAR feed: a `Camera3D.fromIntrinsics` makes the feed metric, so a marker at a real distance is blocked when you step closer than it. Needs `import OllinRecord3D`. |
 | [DepthLiftedPose](Depth/DepthLiftedPose/) | A 2D body pose lifted into metric 3D through a depth frame: the tethered phone's depth back-projects each tracked joint, and the skeleton is drawn in space over the person's own cloud. Needs `import OllinVision`/`OllinRecord3D`. |
+| [DriftCorrectedScan](Depth/DriftCorrectedScan/) | The same made-up room swept twice side by side: once trusting the reported camera pose, once lining each frame up against the scan with `add(_:correcting:)`. Nothing to plug in; **R** runs the sweep again. |
 
 ### Phone
 
@@ -160,7 +161,7 @@ The **Ollin Capture** iPhone app streaming ARKit perception over USB.
 | [PhoneBodyPose](Phone/PhoneBodyPose/) | A live 3D body skeleton streamed from **Ollin Capture** on a tethered iPhone: ARKit body pose over USB, orbited as a stick figure. Needs `import OllinPhone`. |
 | [PhoneFace](Phone/PhoneFace/) | Ollin Capture's live face mesh and 52 expression blendshapes, orbited as a point cloud with expression bars (tap **Face** on the phone). Needs `import OllinPhone`. |
 | [PhoneDepthCloud](Phone/PhoneDepthCloud/) | A **live** rear-LiDAR RGBD cloud from Ollin Capture (tap **World**): Ollin's own-app world-facing depth feed, unprojected with the stream's true intrinsics and orbited. Needs `import OllinPhone`. |
-| [PhoneWorldScan](Phone/PhoneWorldScan/) | Sweep the phone (tap **World**) and each depth frame is placed by its camera pose into one fused `WorldCloud` of the room; **R** to reset. Needs `import OllinPhone`. |
+| [PhoneWorldScan](Phone/PhoneWorldScan/) | Sweep the phone (tap **World**) and each depth frame is lined up against the scan so far and fused into one `WorldCloud` of the room; **C** turns the drift correction off, **R** resets. Needs `import OllinPhone`. |
 | [PhoneSegmentation](Phone/PhoneSegmentation/) | Ollin Capture's on-device person matte (tap **Segment**): the cutout lifted onto a live gradient backdrop, the tinted matte as a drop shadow. Needs `import OllinPhone`. |
 | [PhoneRoomMesh](Phone/PhoneRoomMesh/) | Walk the phone around (tap **Mesh**) and the room arrives as a solid surface, painted by what each triangle is; **space**, **F**, **R**. Needs `import OllinPhone`. |
 

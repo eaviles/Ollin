@@ -567,8 +567,9 @@ private func orientAlongSpanningTree(normals: inout [Vector3], centers: [Vector3
 
 /// The eigenvector of the smallest eigenvalue of a symmetric 3x3 matrix, by
 /// cyclic Jacobi rotations: small, deterministic, and robust for the
-/// covariance matrices the plane fit produces.
-private func smallestEigenvector(xx: Double, xy: Double, xz: Double,
+/// covariance matrices the plane fit produces. Shared with the surface normals
+/// `WorldCloud` fits, which pose the same problem.
+func smallestEigenvector(xx: Double, xy: Double, xz: Double,
                                  yy: Double, yz: Double, zz: Double) -> Vector3 {
     var a = (xx: xx, xy: xy, xz: xz, yy: yy, yz: yz, zz: zz)
     // Eigenvectors accumulate as the columns of v.

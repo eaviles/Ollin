@@ -4,30 +4,41 @@ import Ollin
 import OllinPhone
 
 /// Sweep a tethered iPhone around a room and watch the whole space build up as one
-/// point cloud — the fusion sibling of `PhoneDepthCloud`. Where that sketch draws the
+/// point cloud, the fusion sibling of `PhoneDepthCloud`. Where that sketch draws the
 /// single slice of depth in front of the lens, this one keeps every slice: each new
 /// frame is placed by the phone's 6DoF camera pose into ARKit's fixed world space and
 /// merged, so panning the phone across a room paints the room.
 ///
 /// Setup: install **Ollin Capture** on a LiDAR iPhone (a Pro model), launch it, tap
-/// the **World** segment, and connect the cable. Then move the phone slowly to sweep —
-/// walls, furniture, and corners accumulate. Press **R** to clear and start a fresh
+/// the **World** segment, and connect the cable. Then move the phone slowly to sweep.
+/// Walls, furniture, and corners accumulate. Press **R** to clear and start a fresh
 /// scan; drag to spin the view by hand.
 ///
 /// The fusion is a `WorldCloud`: it keeps one point per small cube of space (here
 /// 2.5 cm), so re-seeing a wall refreshes it in place rather than piling up, and the
 /// scan can run as long as you like without the cloud growing without bound.
+///
+/// Each frame is also lined up against what has already been fused before it is
+/// merged, which is what keeps a long sweep from smearing: the phone's own tracking
+/// is a little wrong every frame, and the error piles up until a wall lands in two
+/// places. Press **C** to turn the correction off and watch that happen. See
+/// `DriftCorrectedScan` for the same thing side by side, with no phone needed.
 @main
 final class PhoneWorldScan: Sketch {
 
     let device = PhoneDevice()
 
-    // Fuse the sweep at 2.5 cm voxels — fine enough to read a room, coarse enough to
+    // Fuse the sweep at 2.5 cm voxels: fine enough to read a room, coarse enough to
     // stay light over a long scan.
     var world = WorldCloud(voxelSize: 0.025)
     // The last depth frame fused, so each frame is added exactly once (draw runs
     // faster than frames stream in).
     var lastFused: Int?
+
+    // Whether each frame is lined up against the scan before it is merged, and what
+    // the last fit had left over (meters).
+    var correcting = true
+    var leftOver = 0.0
 
     // The orbit framing, eased frame-to-frame so it drifts smoothly as the scan grows.
     var orbitCenter = Vector3.zero
@@ -48,7 +59,11 @@ final class PhoneWorldScan: Sketch {
            let pose = device.latestPose,
            let cameraCloud = device.pointCloud(minimumConfidence: .low,
                                                depthRange: 0.3...5.0, pointSize: 0.013) {
-            world.add(cameraCloud, transformedBy: pose)
+            if correcting {
+                leftOver = world.add(cameraCloud, correcting: pose).error
+            } else {
+                world.add(cameraCloud, transformedBy: pose)
+            }
             lastFused = id
         }
 
@@ -76,11 +91,22 @@ final class PhoneWorldScan: Sketch {
                     elevation: 0.22, fieldOfView: .pi / 3)
         drawPointCloud(world.cloud)
 
-        drawCaption("PhoneWorldScan — \(world.count) pts fused; sweep the phone, R to reset")
+        drawCaption(correcting
+            ? String(format: "PhoneWorldScan: %d pts fused, lined up to %.0f mm; "
+                     + "C for off, R to reset", world.count, leftOver * 1000)
+            : "PhoneWorldScan: \(world.count) pts fused, pose as reported; "
+                + "C to line it up, R to reset")
     }
 
     override func keyPressed() {
         if key == "r" || key == "R" {
+            world.reset()
+            framed = false
+            lastFused = nil
+        }
+        // Turning the correction off mid-scan would mix two spaces, so start over.
+        if key == "c" || key == "C" {
+            correcting.toggle()
             world.reset()
             framed = false
             lastFused = nil

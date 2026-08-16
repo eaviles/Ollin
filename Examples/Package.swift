@@ -268,6 +268,9 @@ let package = Package(
         // metric (meters) sibling of DepthOcclusion, via a Camera3D.fromIntrinsics.
         example("3D/Depth/MetricDepthScene", [.record3D]),
         example("3D/Depth/DepthLiftedPose", [.vision, .record3D]),
+        // The same made-up room swept twice side by side, once trusting the reported
+        // camera pose and once lining each frame up against what is already fused.
+        example("3D/Depth/DriftCorrectedScan"),
         // The Ollin iPhone capture app's live body pose drawn as an orbiting 3D
         // stick figure — the own-app sibling of Record3DLiveCloud.
         example("3D/Phone/PhoneBodyPose", [.phone]),

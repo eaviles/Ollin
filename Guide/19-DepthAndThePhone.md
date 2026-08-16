@@ -162,7 +162,25 @@ drawPointCloud(world.cloud)
 
 <img src="Images/19-DepthAndThePhone/SweepFuse.jpg" alt="Three tinted captures of the staged room fused into one cloud, coral from the left, green from the middle, blue from the right, each camera position marked with a small sphere and a sight line" width="680">
 
-Each capture is tinted coral, green, or blue, so you can see who saw what. Three partial views, one room. The small spheres are the three camera positions, and the walls each frame couldn't see are filled in by the frames that could. On a real phone this is exactly the `PhoneWorldScan` example. ARKit supplies the pose in `device.latestPose`, you sweep the room, and the slices stack into a scan. Over a long sweep, small pose errors slowly build up, and drift correction for long scans is on the [roadmap](../ROADMAP.md#iphone-as-a-sensor-array).
+Each capture is tinted coral, green, or blue, so you can see who saw what. Three partial views, one room. The small spheres are the three camera positions, and the walls each frame couldn't see are filled in by the frames that could. On a real phone this is exactly the `PhoneWorldScan` example. ARKit supplies the pose in `device.latestPose`, you sweep the room, and the slices stack into a scan.
+
+### When the camera loses its place
+
+Sweep for a minute and the scan starts to fog. The camera's estimate of where it stands is a little wrong in every frame. Those errors never cancel. They pile up. A wall seen early and seen again late lands in two places.
+
+`add(_:correcting:)` is the answer. It slides and turns each arriving frame onto the surfaces already fused, then merges it:
+
+```swift
+world.add(cloud, correcting: reportedPose)
+```
+
+<img src="Images/19-DepthAndThePhone/DriftFixed.jpg" alt="The same staged room fused twice side by side: on the left a blurred, doubled ball and a ghosted crate over a smeared checkered floor, on the right the same ball and crate crisp and single, the checker squares clean" width="680">
+
+Both halves are the same nine captures, seen from the same angle. On the left the ball is drawn several times over. On the right it is drawn once. The corrected scan also holds half as many points. A smeared wall fills twice the space a wall does.
+
+The correction that worked is kept. The next frame starts from it, so the fit only has to find the newest error. That is why it costs so little. Apply `world.correction` to anything else the camera reports in that space.
+
+Two things it will not do. A frame that finds too little to match is held back rather than guessed at, and `fix.applied` says so. It also cannot recognize a room it left and came back to. That is loop closure, and it is still [ahead](../ROADMAP.md#iphone-as-a-sensor-array).
 
 ## From the cloud to a surface
 

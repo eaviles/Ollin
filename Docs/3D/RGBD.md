@@ -114,7 +114,7 @@ The **input** to `unproject` is Vision-normalized (lower-left origin), while the
 <a name="ahead"></a>
 ## Where this fits
 
-This page covers the core `RGBDFrame`/`CameraIntrinsics`/`DepthConfidence`, `unproject`/`pointCloud`, and depth-lifted pose (`Body.lifted` to `LiftedPose`). A depth source that also reports a camera **pose** reaches two more pieces. `PointCloud.transformed(by:)` places a camera-space cloud into world space, and `WorldCloud` fuses a sweep of pose-placed frames into one accumulated cloud. Both are worked through in [Phone › World fusion](../3D/Phone.md#world-fusion).
+This page covers the core `RGBDFrame`/`CameraIntrinsics`/`DepthConfidence`, `unproject`/`pointCloud`, and depth-lifted pose (`Body.lifted` to `LiftedPose`). A depth source that also reports a camera **pose** reaches two more pieces. `PointCloud.transformed(by:)` places a camera-space cloud into world space, and `WorldCloud` fuses a sweep of pose-placed frames into one accumulated cloud, correcting the tracker's drift as it goes so a long sweep stays registered. Both are worked through in [Phone › World fusion](../3D/Phone.md#world-fusion).
 
 From there, [depth compositing](../3D/DepthCompositing.md) puts 2D drawing *inside* a depth scene, so a mark occludes and is occluded by the depth. And drawing a frame's depth map into a layer feeds [`.defocus`](../Drawing/Effects.md#combined) for depth of field over a live feed.
 
