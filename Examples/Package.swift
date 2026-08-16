@@ -607,5 +607,8 @@ let package = Package(
         example("Recreations/BridgetRiley/Current"),
         example("Recreations/OsamuSato/Totem"),
         example("Recreations/OsamuSato/Alphabet"),
+        // A raffia suit that conceals its dancer and rustles when the body moves,
+        // after Nick Cave's Soundsuits; the tethered phone can wear it live.
+        example("Recreations/NickCave/Soundsuit", [.audio, .phone]),
     ]
 )
