@@ -145,7 +145,7 @@ Two more readings ride each body. `scaleFactor` relates the person's estimated h
 
 `latestBodies` is the whole set, empty when nobody is in view, so a person leaving clears the sketch rather than freezing the last pose. ARKit follows one body today; the list keeps the surface ready if that grows.
 
-The bundled example is `Example-3D-Phone-PhoneBodyFigure`: a solid mannequin whose parts ride the joint orientations, standing where the person stands, sized by the scale factor, tinted by the tracked flags. `PhoneBody`'s init is public, so a pose can also be staged from a `PhonePoseSample` with no phone attached, which is how a test or a figure exercises the same drawing code.
+Two bundled examples read this section live. `Example-3D-Phone-PhoneBodyFigure` is a solid mannequin whose parts ride the joint orientations. It stands where the person stands, sized by the scale factor and tinted by the tracked flags. `Example-3D-Phone-PhoneCostume` puts a costume on the same skeleton: ribbon trails the joints leave as they move, and plumage that twists with the joint rotations. It is a homage after Universal Everything's *Super You*, credited in its header. `PhoneBody`'s init is public, so a pose can also be staged from a `PhonePoseSample` with no phone attached, which is how a test or a figure exercises the same drawing code.
 
 ## The face
 

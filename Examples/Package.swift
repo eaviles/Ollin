@@ -278,6 +278,9 @@ let package = Package(
         // A solid mannequin posed by the stream's richer half: the world anchor
         // stands it where the person stands, joint orientations turn its parts.
         example("3D/Phone/PhoneBodyFigure", [.phone]),
+        // A costume worn by the live skeleton: ribbon trails that only exist in
+        // motion, or plumage whose twist follows the joint rotations.
+        example("3D/Phone/PhoneCostume", [.phone]),
         // The Ollin capture app's live face mesh + blendshapes, orbited as a point
         // cloud with expression bars — the front-camera sibling of PhoneBodyPose.
         example("3D/Phone/PhoneFace", [.phone]),

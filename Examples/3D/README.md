@@ -161,6 +161,7 @@ The **Ollin Capture** iPhone app streaming ARKit perception over USB.
 | --- | --- |
 | [PhoneBodyPose](Phone/PhoneBodyPose/) | A live 3D body skeleton streamed from **Ollin Capture** on a tethered iPhone: ARKit body pose over USB, orbited as a stick figure. Needs `import OllinPhone`. |
 | [PhoneBodyFigure](Phone/PhoneBodyFigure/) | A solid mannequin posed by that same stream's richer half: joint orientations turn its parts, the world anchor stands it where the person stands, the scale sizes it, tracked flags tint it. Needs `import OllinPhone`. |
+| [PhoneCostume](Phone/PhoneCostume/) | A costume worn by the live skeleton, inspired by Universal Everything's *Super You*: ribbon trails that only exist in motion, or plumage whose twist follows the joint rotations. Needs `import OllinPhone`. |
 | [PhoneFace](Phone/PhoneFace/) | Ollin Capture's live face mesh and 52 expression blendshapes, orbited as a point cloud with expression bars (tap **Face** on the phone). Needs `import OllinPhone`. |
 | [PhoneDepthCloud](Phone/PhoneDepthCloud/) | A **live** rear-LiDAR RGBD cloud from Ollin Capture (tap **World**): Ollin's own-app world-facing depth feed, unprojected with the stream's true intrinsics and orbited. Needs `import OllinPhone`. |
 | [PhoneWorldScan](Phone/PhoneWorldScan/) | Sweep the phone (tap **World**) and each depth frame is lined up against the scan so far and fused into one `WorldCloud` of the room; **C** turns the drift correction off, **R** resets. Needs `import OllinPhone`. |
