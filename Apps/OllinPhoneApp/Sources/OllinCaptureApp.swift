@@ -114,11 +114,11 @@ final class SensorStreamer {
         }
         motion.start()
 
-        ar.onPose = { [weak self] sample in
+        ar.onBodies = { [weak self] samples in
             guard let self else { return }
-            self.server?.send(PhoneWire.encode(.pose(sample)))
-            self.bodyTracked = sample.tracked
-            self.jointCount = sample.joints.count
+            self.server?.send(PhoneWire.encode(.pose(samples)))
+            self.bodyTracked = samples.contains { $0.tracked }
+            self.jointCount = samples.first?.joints.count ?? 0
         }
 
         face.onFaces = { [weak self] samples in

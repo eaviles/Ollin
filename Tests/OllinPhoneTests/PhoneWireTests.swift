@@ -28,19 +28,45 @@ import Darwin
     }
 
     @Test func roundTripsPose() {
-        let joints: [PhoneJoint: SIMD3<Float>] = [
-            .root: SIMD3<Float>(0, 0, 0),
-            .head: SIMD3<Float>(0, 1.62, 0),
-            .leftHand: SIMD3<Float>(-0.55, 1.0, 0.1),
-            .rightAnkle: SIMD3<Float>(0.18, -0.9, 0.02),
+        // Joints carry position, orientation, and a per-joint tracked flag; the
+        // body carries its world anchor and the person's estimated scale.
+        let joints: [PhoneJoint: PhoneJointSample] = [
+            .root: PhoneJointSample(position: SIMD3<Float>(0, 0, 0)),
+            .head: PhoneJointSample(position: SIMD3<Float>(0, 1.62, 0),
+                                    orientation: SIMD4<Float>(0, 0.383, 0, 0.924)),
+            .leftHand: PhoneJointSample(position: SIMD3<Float>(-0.55, 1.0, 0.1),
+                                        orientation: SIMD4<Float>(0.5, 0.5, 0.5, 0.5),
+                                        tracked: false),
+            .rightAnkle: PhoneJointSample(position: SIMD3<Float>(0.18, -0.9, 0.02)),
         ]
-        let message = PhoneMessage.pose(PhonePoseSample(tracked: true, timestamp: 3.25, joints: joints))
+        let anchor = simd_float4x4(SIMD4<Float>(0, 0, -1, 0), SIMD4<Float>(0, 1, 0, 0),
+                                   SIMD4<Float>(1, 0, 0, 0), SIMD4<Float>(0.4, 0.9, -2.5, 1))
+        let message = PhoneMessage.pose([PhonePoseSample(
+            tracked: true, timestamp: 3.25, anchor: anchor, scaleFactor: 0.93, joints: joints)])
         #expect(roundTrip(message) == message)
     }
 
     @Test func roundTripsEmptyPose() {
-        // No body in view: tracked is false and there are zero joints.
-        let message = PhoneMessage.pose(PhonePoseSample(tracked: false, timestamp: 1, joints: [:]))
+        // No body in view: the empty set, so the reader clears itself (a person
+        // leaving disappears) rather than holding the last pose.
+        let message = PhoneMessage.pose([])
+        #expect(roundTrip(message) == message)
+    }
+
+    @Test func roundTripsMultipleBodies() {
+        // ARKit follows one body today, but the wire carries a list; two must come
+        // back in order, each with its own anchor and joints.
+        func body(_ i: Int) -> PhonePoseSample {
+            let f = Float(i)
+            var anchor = matrix_identity_float4x4
+            anchor.columns.3 = SIMD4<Float>(f, 0, -f, 1)
+            return PhonePoseSample(
+                tracked: i == 0, timestamp: Double(i), anchor: anchor, scaleFactor: 1 + 0.1 * f,
+                joints: [.hips: PhoneJointSample(position: SIMD3<Float>(0, 0.9 + f, 0),
+                                                 orientation: SIMD4<Float>(0, 0, 0, 1),
+                                                 tracked: i == 0)])
+        }
+        let message = PhoneMessage.pose([body(0), body(1)])
         #expect(roundTrip(message) == message)
     }
 
@@ -171,7 +197,7 @@ import Darwin
     // MARK: Header validation
 
     @Test func parsesHeader() {
-        let data = PhoneWire.encode(.pose(PhonePoseSample(tracked: true, timestamp: 0, joints: [:])))
+        let data = PhoneWire.encode(.pose([PhonePoseSample(tracked: true, timestamp: 0, joints: [:])]))
         let header = PhoneHeader.parse(data)
         #expect(header?.kind == .bodyPose)
         #expect(header?.payloadLength == data.count - PhoneWire.headerByteCount)

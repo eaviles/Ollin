@@ -47,7 +47,12 @@ public enum PhoneMessageKind: UInt8, Sendable, CaseIterable {
     /// CoreMotion device motion (attitude, gravity, rates) — the cheap transport
     /// smoke-test: if these numbers move on the Mac, the wire works.
     case deviceMotion = 1
-    /// An ARKit body skeleton (named 3D joints in model space).
+    /// The ARKit bodies in view, bundled per frame (the tracker follows one today;
+    /// the wire carries a list so more cost nothing later). Each body is a set of
+    /// named joints, each a position and an orientation in model space with a flag
+    /// saying whether the camera observed that joint, plus the anchor transform
+    /// that stands the whole skeleton in ARKit world space and the person's
+    /// estimated size as a scale factor.
     case bodyPose = 2
     /// The ARKit faces in view (up to 3 on TrueDepth) — each a deforming mesh, the
     /// 52 expression blendshapes, and a head pose, bundled per frame. The phone runs
@@ -123,17 +128,49 @@ public struct PhoneMotionSample: Sendable, Equatable {
     }
 }
 
-/// One ARKit body-pose sample: every reported joint as a 3D position in **meters**,
-/// model space (the pelvis root at the origin, x right, y up, z toward the camera —
-/// ARKit's convention), plus whether ARKit currently has tracking.
+/// One joint of a streamed skeleton: where it is and which way it points, both in
+/// model space (the pelvis root at the origin), plus whether the camera actually
+/// observed it this frame. ARKit's full rig carries joints the model does not see
+/// (they interpolate between tracked neighbors so a rigged mesh maps cleanly);
+/// `tracked` is false for those.
+public struct PhoneJointSample: Sendable, Equatable {
+    /// The joint's position in meters, model space.
+    public var position: SIMD3<Float>
+    /// The joint's orientation as a quaternion `(x, y, z, w)`, model space.
+    public var orientation: SIMD4<Float>
+    /// Whether the camera observed this joint (vs. the rig filling it in).
+    public var tracked: Bool
+
+    public init(position: SIMD3<Float>, orientation: SIMD4<Float> = SIMD4<Float>(0, 0, 0, 1),
+                tracked: Bool = true) {
+        self.position = position
+        self.orientation = orientation
+        self.tracked = tracked
+    }
+}
+
+/// One ARKit body-pose sample: every reported joint in **meters**, model space
+/// (the pelvis root at the origin, x right, y up, z toward the camera, ARKit's
+/// convention), the anchor transform that places that model space in ARKit world
+/// space, the person's estimated size, and whether ARKit currently has tracking.
 public struct PhonePoseSample: Sendable, Equatable {
     public var tracked: Bool
     public var timestamp: Double
-    public var joints: [PhoneJoint: SIMD3<Float>]
+    /// Model space → ARKit world space (meters, y up, the origin where the
+    /// session started). Multiply a model-space joint through this to stand the
+    /// skeleton where the person stands.
+    public var anchor: simd_float4x4
+    /// How the person's size relates to the default rig height (1 = the default
+    /// rig; smaller people give smaller factors).
+    public var scaleFactor: Float
+    public var joints: [PhoneJoint: PhoneJointSample]
 
-    public init(tracked: Bool, timestamp: Double, joints: [PhoneJoint: SIMD3<Float>]) {
+    public init(tracked: Bool, timestamp: Double, anchor: simd_float4x4 = matrix_identity_float4x4,
+                scaleFactor: Float = 1, joints: [PhoneJoint: PhoneJointSample]) {
         self.tracked = tracked
         self.timestamp = timestamp
+        self.anchor = anchor
+        self.scaleFactor = scaleFactor
         self.joints = joints
     }
 }
@@ -436,7 +473,11 @@ public struct PhoneLightSample: Sendable, Equatable {
 /// A decoded message of any kind, which the unit tests round-trip.
 public enum PhoneMessage: Sendable, Equatable {
     case motion(PhoneMotionSample)
-    case pose(PhonePoseSample)
+    /// Every body ARKit currently tracks, bundled into one frame (the tracker
+    /// follows one today). The list is the complete current set, empty when no
+    /// body is in view, so the reader swaps it in wholesale and a person leaving
+    /// clears themselves.
+    case pose([PhonePoseSample])
     /// Every face ARKit currently tracks, bundled into one frame (TrueDepth tracks
     /// up to 3). The list is the complete current set — empty when no face is in
     /// view — so the reader swaps it in wholesale and a face leaving clears itself.
@@ -532,18 +573,33 @@ public extension PhoneWire {
         return p
     }
 
-    private static func encodePosePayload(_ pose: PhonePoseSample) -> Data {
+    private static func encodePosePayload(_ bodies: [PhonePoseSample]) -> Data {
         var p = Data()
+        // A body count, then that many self-contained body records (the count is
+        // capped at 255 defensively; ARKit follows one body today).
+        p.append(UInt8(min(bodies.count, 255)))
+        for body in bodies.prefix(255) { appendPoseRecord(&p, body) }
+        return p
+    }
+
+    /// One body record: tracked, timestamp, the world anchor, the scale factor,
+    /// and the joints. Self-contained so the list decoder reads records back to back.
+    private static func appendPoseRecord(_ p: inout Data, _ pose: PhonePoseSample) {
         p.append(pose.tracked ? 1 : 0)
         appendF64(&p, pose.timestamp)
+        appendMatrix(&p, pose.anchor)
+        appendF32(&p, pose.scaleFactor)
         appendU16(&p, UInt16(pose.joints.count))
         // Sorted by joint id so the encoding is deterministic (round-trip stable).
         for joint in pose.joints.keys.sorted(by: { $0.rawValue < $1.rawValue }) {
-            let pos = pose.joints[joint]!
+            let j = pose.joints[joint]!
             p.append(joint.rawValue)
-            appendF32(&p, pos.x); appendF32(&p, pos.y); appendF32(&p, pos.z)
+            appendF32(&p, j.position.x); appendF32(&p, j.position.y); appendF32(&p, j.position.z)
+            for v in [j.orientation.x, j.orientation.y, j.orientation.z, j.orientation.w] {
+                appendF32(&p, v)
+            }
+            p.append(j.tracked ? 1 : 0)
         }
-        return p
     }
 
     private static func encodeFacePayload(_ faces: [PhoneFaceSample]) -> Data {
@@ -722,24 +778,48 @@ public extension PhoneWire {
                                  userAcceleration: userAcceleration, timestamp: timestamp)
     }
 
-    private static func decodePose(_ data: Data) -> PhonePoseSample? {
-        guard data.count >= 1 + 8 + 2 else { return nil }
+    private static func decodePose(_ data: Data) -> [PhonePoseSample]? {
+        // A body count, then that many records. An empty set (count 0) is valid;
+        // it means no body is in view this frame.
+        guard !data.isEmpty else { return nil }
+        let count = Int(data[data.startIndex])
+        var o = 1
+        var bodies = [PhonePoseSample](); bodies.reserveCapacity(count)
+        for _ in 0..<count {
+            guard let body = readPoseRecord(data, &o) else { return nil }
+            bodies.append(body)
+        }
+        return bodies
+    }
+
+    /// Read one body record starting at offset `o` (advanced past the record on
+    /// success), or `nil` if the buffer is short.
+    private static func readPoseRecord(_ data: Data, _ o: inout Int) -> PhonePoseSample? {
+        // Fixed prefix: tracked(1) + timestamp(8) + anchor(64) + scale(4) + jointCount(2).
+        guard data.count >= o + 1 + 8 + 64 + 4 + 2 else { return nil }
         let s = data.startIndex
-        let tracked = data[s] != 0
-        let timestamp = readF64(data, s + 1)
-        let count = Int(UInt16(data[s + 9]) | (UInt16(data[s + 10]) << 8))
-        var o = 11
-        guard data.count >= o + count * 13 else { return nil }
-        var joints: [PhoneJoint: SIMD3<Float>] = [:]
+        let tracked = data[s + o] != 0; o += 1
+        let timestamp = readF64(data, s + o); o += 8
+        let anchor = readMatrix(data, s + o); o += 64
+        let scaleFactor = readF32(data, s + o); o += 4
+        let count = Int(UInt16(data[s + o]) | (UInt16(data[s + o + 1]) << 8)); o += 2
+        // Per joint: id(1) + position(12) + orientation(16) + tracked(1).
+        guard data.count >= o + count * 30 else { return nil }
+        var joints: [PhoneJoint: PhoneJointSample] = [:]
         joints.reserveCapacity(count)
         for _ in 0..<count {
             let raw = data[s + o]; o += 1
-            let x = readF32(data, s + o); o += 4
-            let y = readF32(data, s + o); o += 4
-            let z = readF32(data, s + o); o += 4
-            if let joint = PhoneJoint(rawValue: raw) { joints[joint] = SIMD3<Float>(x, y, z) }
+            func f32() -> Float { defer { o += 4 }; return readF32(data, s + o) }
+            let position = SIMD3<Float>(f32(), f32(), f32())
+            let orientation = SIMD4<Float>(f32(), f32(), f32(), f32())
+            let jointTracked = data[s + o] != 0; o += 1
+            if let joint = PhoneJoint(rawValue: raw) {
+                joints[joint] = PhoneJointSample(position: position, orientation: orientation,
+                                                 tracked: jointTracked)
+            }
         }
-        return PhonePoseSample(tracked: tracked, timestamp: timestamp, joints: joints)
+        return PhonePoseSample(tracked: tracked, timestamp: timestamp, anchor: anchor,
+                               scaleFactor: scaleFactor, joints: joints)
     }
 
     private static func decodeFace(_ data: Data) -> [PhoneFaceSample]? {

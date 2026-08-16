@@ -13,6 +13,8 @@ This is the own-app successor to borrowing the Record3D app's RGBD feed
 a 3D body skeleton, a face mesh with its 52 expression blendshapes, a world-facing
 RGBD depth frame (a point cloud, with the camera's 6DoF pose), a person matte, the
 reconstructed room as a labelled triangle surface, and the flat planes in that room.
+Each body joint carries a position, an orientation, and a camera-observed flag; the
+body also carries its world anchor and the person's estimated scale.
 The chain is Ollin's end to end.
 
 Body, World, Segment, and Room use the rear camera; Face (ARKit, TrueDepth) and

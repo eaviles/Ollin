@@ -1,6 +1,7 @@
 import Foundation
 import CoreGraphics
 import Metal
+import simd
 import COllinShaders   // OllinParticle (the GPU particle struct, shared with the shaders)
 
 /// How a sketch's preview window behaves and is sized, relative to its
@@ -1468,6 +1469,14 @@ open class Sketch {
                                  mesh: .capsule(radius: radius, height: height, segments: segments, rings: rings))
     }
 
+    /// Draw a capsule spanning `from` to `to` end to end, its round tips on the
+    /// two points (the straight section shortens by the radius at each end), the
+    /// solid way to draw a bone or strut between two 3D points.
+    public func drawCapsule(from: Vector3, to: Vector3, radius: Double,
+                            segments: Int = 32, rings: Int = 8) {
+        drawer.drawCapsule(from: from, to: to, radius: radius, segments: segments, rings: rings)
+    }
+
     /// Draw a box with rounded edges centered at the model origin, the edges
     /// filleted by `radius`. `segments` is the per-face grid resolution.
     public func drawRoundedBox(width: Double = 1, height: Double = 1, depth: Double = 1,
@@ -2695,6 +2704,11 @@ open class Sketch {
     /// Scale subsequent 3D geometry by per-axis `factors`. Uniform scale is
     /// `scale(Vector3(s, s, s))`.
     public func scale(_ factors: Vector3) { drawer.scale(factors) }
+    /// Compose an arbitrary 4x4 `matrix` onto subsequent 3D geometry, for a
+    /// transform that arrives whole (a streamed body anchor, a joint pose) rather
+    /// than as separate translate/rotate/scale steps. Composes like the calls
+    /// above and is saved/restored by `withState`.
+    public func transform(_ matrix: simd_float4x4) { drawer.transform(matrix) }
 
     public func pushState() { drawer.pushState() }
     public func popState() { drawer.popState() }

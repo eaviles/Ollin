@@ -36,7 +36,7 @@ final class Pose: Sketch {
 
 - [Setup](#setup) - install the capture app, connect the cable
 - [Reading the stream](#reading-the-stream) - `latestBody`, `latestFace`, `latestDepthFrame`, `sceneMesh`, `planes`, `latestLight`, `latestMotion`, the connection state
-- [The body](#the-body) - `PhoneBody`, the joints, drawing the skeleton
+- [The body](#the-body) - `PhoneBody`, the joints, drawing the skeleton, where the person stands, joints that turn
 - [The face](#the-face) - `PhoneFace`, the blendshapes, the mesh
 - [World depth](#world-depth) - `latestDepthFrame`, `pointCloud(...)`, the camera pose
 - [World fusion](#world-fusion) - `WorldCloud`, sweeping a room into one cloud, [keeping it registered](#drift), and [recognizing a place already scanned](#loops) with `ScanGraph`
@@ -69,7 +69,8 @@ device.start()                       // begins connecting; safe to call once
 
 device.isStreaming                   // Bool, frames currently arriving
 device.waitingMessage                // a notice reflecting the live connection state
-device.latestBody                    // PhoneBody?, the latest skeleton (Body mode)
+device.latestBody                    // PhoneBody?, the tracked skeleton (Body mode)
+device.latestBodies                  // [PhoneBody], every tracked body (= one today)
 device.latestFaces                   // [PhoneFace], every tracked face, up to 3 (Face mode)
 device.latestFace                    // PhoneFace?, the most prominent face (= latestFaces.first)
 device.latestDepthFrame              // RGBDFrame?, the latest depth frame (World mode)
@@ -97,14 +98,54 @@ if let body = device.latestBody {
 }
 ```
 
-The joints are the `PhoneJoint` set, a practical subset of ARKit's ~91-joint skeleton. It holds root, hips, spine, chest, neck, head, and the arms and legs out to hands and feet. A joint ARKit didn't report this frame is simply absent.
+The joints are the `PhoneJoint` set, a practical subset of ARKit's ~91-joint skeleton. It holds root, hips, spine, chest, neck, head, and the arms and legs out to hands and feet. A joint ARKit didn't report this frame is simply absent. The subset is deliberate: only part of the full rig is really observed by the camera, and the rest exists to smooth a rigged mesh, so streaming it would add bytes and no information.
 
-3D drawing has no thin-line primitive, so the way to draw the skeleton is as a `PointCloud`. Each joint is a splat and each bone a dotted line of splats, exactly like `LiftedPose.cloud`:
+The lightest way to draw the skeleton is as a `PointCloud`. Each joint is a splat and each bone a dotted line of splats, exactly like `LiftedPose.cloud`. For solid bones, string capsules between the joints with `drawCapsule(from:to:radius:)`:
 
 ```swift
 camera(.orbiting(target: body.center, radius: 2.6, azimuth: time * 0.4, elevation: 0.12))
 drawPointCloud(body.cloud(jointSize: 0.055, boneSize: 0.018, color: .white))
+
+for (a, b) in body.bones() {            // or: solid bones
+    drawCapsule(from: a, to: b, radius: 0.03)
+}
 ```
+
+### Where the person stands
+
+Model space keeps the root at the origin, so a figure drawn from `position(_:)` stays put while the person walks. The body also carries its anchor's **world transform**: model space → ARKit world space, y up, meters, the origin where the phone's session started. That is the same world the depth sweep, the room mesh, and the flat surfaces live in, so a body and a scanned room combine directly:
+
+```swift
+body.worldTransform                  // simd_float4x4, model space → world space
+body.worldPosition(.head)            // Vector3?, one joint, standing in the room
+body.worldCenter                     // Vector3, the centroid in the world
+drawPointCloud(body.cloud().transformed(by: body.worldTransform))
+```
+
+### Joints that turn
+
+Every joint carries its orientation beside its position, as a quaternion `(x, y, z, w)` in model space. Compose it with the position through `modelTransform(_:)` (or `worldTransform(of:)` to stand it in the room) and hand the result to [`transform(_:)`](3D.md#transforms) to pose a solid part at the joint:
+
+```swift
+body.orientation(.head)              // SIMD4<Float>?, the joint's quaternion
+body.modelTransform(.head)           // simd_float4x4?, orientation + position composed
+body.worldTransform(of: .head)       // simd_float4x4?, the same, stood in the world
+
+if let pose = body.worldTransform(of: .head) {
+    withState {
+        transform(pose)              // the head's full pose, one call
+        drawSphere(radius: 0.11)
+    }
+}
+```
+
+### The person's size, and what the camera saw
+
+Two more readings ride each body. `scaleFactor` relates the person's estimated height to the default rig (1 = the default; a smaller person gives a smaller factor), so a figure's parts can size themselves to whoever steps in front of the camera. And `isJointTracked(_:)` says whether the camera actually observed a joint this frame; the rig fills unseen joints in from their neighbors, and those report `false`, so a sketch can tint guesswork apart from observation.
+
+`latestBodies` is the whole set, empty when nobody is in view, so a person leaving clears the sketch rather than freezing the last pose. ARKit follows one body today; the list keeps the surface ready if that grows.
+
+The bundled example is `Example-3D-Phone-PhoneBodyFigure`: a solid mannequin whose parts ride the joint orientations, standing where the person stands, sized by the scale factor, tinted by the tracked flags. `PhoneBody`'s init is public, so a pose can also be staged from a `PhonePoseSample` with no phone attached, which is how a test or a figure exercises the same drawing code.
 
 ## The face
 
@@ -455,7 +496,7 @@ Tilt the phone and `gravity` swings, a one-line check that the wire is alive.
 
 - **The wire is Ollin's own, shared verbatim.** Both ends are Swift, so the protocol skips the packed-image trick cross-language tools use. It is a length-prefixed stream of tagged binary messages, `PhoneWire`. That one source file is compiled into *both* the Mac satellite and the iOS app, so the framing can't drift between them.
 - **USB only.** The transport is the `usbmuxd` tunnel over the cable, on port 1338, distinct from Record3D's 1337. Wi-Fi is deliberately out.
-- **Per-frame clouds are camera-relative, and fusion is world-space.** A single `pointCloud(...)` is in the camera's own frame, root at the lens, and the skeleton is in model space, root at the origin. [World fusion](#world-fusion) is what lifts a sweep into one fixed world cloud, by applying each frame's `latestPose`. It fuses several poses' clouds into a single *registered* scene, but not the richer multi-frame tricks like loop closure and drift correction. So a long sweep drifts with ARKit's own tracking.
+- **Per-frame clouds are camera-relative, and fusion is world-space.** A single `pointCloud(...)` is in the camera's own frame, root at the lens, and the skeleton is in model space, root at the origin. [World fusion](#world-fusion) is what lifts a sweep into one fixed world cloud, by applying each frame's `latestPose`. It fuses several poses' clouds into a single *registered* scene. [Keeping a long sweep straight](#drift) and [recognizing a place already scanned](#loops) correct ARKit's own drift on top. The body's anchor lives in the same world, so a skeleton and a swept room combine directly.
 - **Depth is raw over the wire.** The LiDAR depth map ships uncompressed, and a 256×192 frame is ~196 KB, comfortable over USB. LZFSE compression is a later optimization. The color image is sent as a downscaled JPEG.
 - **A growing catalog.** Body pose, face, world depth, the room mesh, the flat surfaces, the room's light, person segmentation, and motion are the payloads today. Richer sensors are the same app sending new tagged payloads, not new pipelines.
 - **A mesh block is carried raw, and sending is what is throttled.** The phone reads a block's geometry the moment ARKit hands it over, since those buffers belong to the session. It then queues the block and sends a few at a time. A block too big for one payload is skipped and counted on the app's own screen.

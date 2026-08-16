@@ -275,6 +275,9 @@ let package = Package(
         // The Ollin iPhone capture app's live body pose drawn as an orbiting 3D
         // stick figure — the own-app sibling of Record3DLiveCloud.
         example("3D/Phone/PhoneBodyPose", [.phone]),
+        // A solid mannequin posed by the stream's richer half: the world anchor
+        // stands it where the person stands, joint orientations turn its parts.
+        example("3D/Phone/PhoneBodyFigure", [.phone]),
         // The Ollin capture app's live face mesh + blendshapes, orbited as a point
         // cloud with expression bars — the front-camera sibling of PhoneBodyPose.
         example("3D/Phone/PhoneFace", [.phone]),

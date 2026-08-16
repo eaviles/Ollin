@@ -3237,6 +3237,40 @@ final class Drawer {
         modelIsIdentity = false
     }
 
+    /// Compose an arbitrary 4x4 `matrix` onto subsequent 3D geometry, for a
+    /// transform that arrives whole (a streamed anchor, a joint pose, a scene
+    /// node) rather than as separate translate/rotate/scale steps.
+    func transform(_ matrix: simd_float4x4) {
+        modelMatrix = modelMatrix * matrix
+        modelIsIdentity = false
+    }
+
+    /// Draw a capsule spanning `from` to `to` end to end, its round tips on the
+    /// two points (the straight section shortens by the radius at each end), the
+    /// solid way to draw a bone or strut between two 3D points.
+    func drawCapsule(from: Vector3, to: Vector3, radius: Double, segments: Int, rings: Int) {
+        let d = to - from
+        let length = d.length
+        guard length > 1e-9, radius > 0 else { return }
+        let savedMatrix = modelMatrix
+        let savedIdentity = modelIsIdentity
+        defer { modelMatrix = savedMatrix; modelIsIdentity = savedIdentity }
+        translate((from + to) * 0.5)
+        // Turn the capsule's y axis onto the segment's direction.
+        let dir = d / length
+        let up = Vector3(0, 1, 0)
+        let axis = up.cross(dir)
+        if axis.lengthSquared > 1e-12 {
+            rotate(acos(max(-1, min(1, up.dot(dir)))), axis: axis)
+        } else if dir.y < 0 {
+            rotateX(.pi)
+        }
+        let height = max(0, length - radius * 2)
+        drawMeshPrimitive(.capsule(radius: radius, height: height),
+                          mesh: .capsule(radius: radius, height: height,
+                                         segments: segments, rings: rings))
+    }
+
     /// Scale subsequent 3D geometry by `(x, y, z)` per axis.
     func scale(_ x: Double, _ y: Double, _ z: Double) {
         modelMatrix = modelMatrix * Drawer.scaling3(Float(x), Float(y), Float(z))
