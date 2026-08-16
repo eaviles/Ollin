@@ -146,11 +146,13 @@ public final class PhoneDevice: FrameSource, VideoFeed {
     /// to add each frame exactly once. `nil` before the first frame.
     public var latestDepthFrameID: Int? { reader.latestDepth?.sequence }
 
-    // MARK: - Segment mode (rear-camera person segmentation)
+    // MARK: - Segment and Selfie modes (person segmentation)
 
     /// The latest person-segmentation matte as a tintable white-alpha `Image`, or
     /// `nil` before one arrives. Populated when the capture app is in **Segment**
-    /// mode (rear camera, ARKit's on-device person segmentation). Drawn as-is it's a
+    /// mode (rear camera, ARKit's on-device person segmentation) or **Selfie** mode
+    /// (front camera, a Vision pass; the feed arrives mirrored, like the phone's own
+    /// front-camera preview). Drawn as-is it's a
     /// white silhouette; `tint(_:)` recolors it into a shadow, glow, or solid fill.
     /// Draw it into the same rectangle as the color feed and it lines up.
     public var latestSegmentationMatte: Image? {
@@ -162,8 +164,9 @@ public final class PhoneDevice: FrameSource, VideoFeed {
         return matte
     }
 
-    /// The latest person **cutout** — the rear-camera frame's pixels where the matte
-    /// is on, transparent elsewhere — or `nil` before a Segment-mode frame arrives.
+    /// The latest person **cutout**, the camera frame's pixels where the matte is on
+    /// and transparent elsewhere, or `nil` before a Segment- or Selfie-mode frame
+    /// arrives.
     /// The person lifted off the background, ready to composite over anything you
     /// draw. Costs a little more than the matte (the color is masked), so it's built
     /// only when read.

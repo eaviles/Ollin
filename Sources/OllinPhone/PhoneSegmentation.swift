@@ -3,7 +3,8 @@ import CoreGraphics
 import ImageIO
 import Ollin
 
-/// One decoded person-segmentation frame from the phone's rear camera, boxed for
+/// One decoded person-segmentation frame from the phone (the rear camera in Segment
+/// mode, the front camera in Selfie mode), boxed for
 /// the hand-off from the reader thread to the main thread. The `matte` is already
 /// rotated upright (it's small, so the rotation is eager on the reader thread); the
 /// `color` is kept in the sensor orientation and rotated **lazily** by `orientation`

@@ -2,7 +2,8 @@
 
 Ollin's own iPhone capture app: the phone runs **ARKit body tracking**, **face
 tracking**, **rear-LiDAR scene depth**, **person segmentation**, and **scene
-reconstruction** on its Neural Engine, plus **CoreMotion** device motion, and streams
+reconstruction** on its Neural Engine, plus a **front-camera selfie matte** (Vision
+over a plain capture session) and **CoreMotion** device motion, and streams
 them to a tethered Mac over USB. An Ollin sketch on the Mac reads the live skeleton,
 face, depth cloud, person matte, room mesh, or motion in `draw()` through the
 [`OllinPhone`](../../Sources/OllinPhone) satellite (`PhoneDevice`).
@@ -14,10 +15,11 @@ RGBD depth frame (a point cloud, with the camera's 6DoF pose), a person matte, t
 reconstructed room as a labelled triangle surface, and the flat planes in that room.
 The chain is Ollin's end to end.
 
-Body, World, Segment, and Room use the rear camera and face tracking the front
-TrueDepth camera, and only one ARKit session runs at a time. The app has a **Body /
-Face / World / Segment / Room** toggle and runs one mode at a time. Device motion and
-the room's light stream in all of them.
+Body, World, Segment, and Room use the rear camera; Face (ARKit, TrueDepth) and
+Selfie (AVFoundation + Vision, no ARKit) the front camera. Only one camera session
+runs at a time. The app has a **Body / Face / World / Segment / Selfie / Room**
+toggle and runs one mode at a time. Device motion streams in all of them; the room's
+light in every mode except Selfie, which has no ARKit session to measure it.
 
 ## How it fits together
 
@@ -66,7 +68,7 @@ Requirements:
 ## Run it
 
 1. Build + run on the iPhone. The screen shows **READY** until the Mac connects,
-   then **ON AIR**, with the **Body / Face / World / Segment / Room** toggle and live status.
+   then **ON AIR**, with the **Body / Face / World / Segment / Selfie / Room** toggle and live status.
 2. Connect the cable to the Mac.
 3. On the Mac, run a sketch. With the toggle on **Body**:
    `swift run --package-path Examples Example-3D-Phone-PhoneBodyPose`, and the
@@ -81,9 +83,12 @@ Requirements:
    around and the room arrives as a solid surface, painted by what each triangle
    is. The same mode finds the flat surfaces in the room, on any phone:
    `swift run --package-path Examples Example-3D-Phone-PhoneRoomPlanes` draws each
-   one as its outline and stands a ball on the biggest. Before tracking begins, the
+   one as its outline and stands a ball on the biggest. On **Segment** (rear camera)
+   or **Selfie** (front camera, mirrored):
+   `swift run --package-path Examples Example-3D-Phone-PhoneSegmentation`, and the
+   person is lifted onto a drifting backdrop. Before tracking begins, the
    gravity readout proves the USB wire is alive (tilt the phone and it moves), and
-   the light row reads the room's brightness and color in every mode.
+   the light row reads the room's brightness and color in every ARKit mode.
 
 ## Notes
 
@@ -100,7 +105,12 @@ Requirements:
   the intrinsics scaled to the depth grid, per-pixel confidence, and the camera's
   6DoF transform. Scene depth needs a **LiDAR** sensor (Pro-tier iPhones); the World
   segment reports it unsupported otherwise. The Mac decodes it into a core `RGBDFrame`.
-- The mesh stream (`SceneMeshStreamer`) runs `ARWorldTrackingConfiguration` with scene
+- The selfie stream (`SelfieStreamer`) is the app's one non-ARKit sensor: the front
+  camera through `AVCaptureSession`, the matte from Vision's person segmentation.
+  The capture connection rotates buffers upright (so the wire's turn count is 0) and
+  mirrors them like the front-camera preview; the matte is computed from the
+  delivered buffer, so it can't misalign with the color.
+- The room stream (`RoomStreamer`) runs `ARWorldTrackingConfiguration` with scene
   reconstruction and sends the room one anchor block at a time: vertices, normals,
   triangles, the anchor's placement, and one label per triangle. Two rules shape it.
   Each block's geometry is read **inside** the delegate callback, because ARKit owns

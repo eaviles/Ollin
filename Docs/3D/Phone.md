@@ -81,7 +81,7 @@ device.latestMotion                  // PhoneMotion?, the latest device-motion s
 
 These are fresh each time the phone sends one, so read them within the current `draw()`. Each is `nil` until the first of its kind arrives. Motion typically lights up first, since it needs no camera or model, proving the wire before ARKit has found a body, face, or depth.
 
-**The camera modes are mutually exclusive.** Body, World, Segment, and Room use the rear camera, Face the front TrueDepth camera, and only one ARKit session runs at a time. The capture app has a **Body / Face / World / Segment / Room** toggle, and whichever is selected is the one that updates: `latestBody`, `latestFace`, `latestDepthFrame`, the segmentation images, or the room's `sceneMesh` and `planes`. The others hold their last value, so read the one for the mode you mean to drive. Motion and `latestLight` stream across all of them.
+**The camera modes are mutually exclusive.** Body, World, Segment, and Room use the rear camera, Face and Selfie the front camera, and only one camera session runs at a time. The capture app has a **Body / Face / World / Segment / Selfie / Room** toggle, and whichever is selected is the one that updates: `latestBody`, `latestFace`, `latestDepthFrame`, the segmentation images (Segment and Selfie both feed them), or the room's `sceneMesh` and `planes`. The others hold their last value, so read the one for the mode you mean to drive. Motion streams across all of them, and `latestLight` across every mode except Selfie, the one mode that runs no ARKit session.
 
 ## The body
 
@@ -432,7 +432,9 @@ let rect = Rectangle(fitting: Vector2(Double(cutout.width), Double(cutout.height
 drawImage(cutout, in: rect)           // the person over whatever you drew first
 ```
 
-The matte and cutout come back **upright** for how the phone is held, and they stay aligned with each other. The capture app sends the device orientation and `PhoneDevice` rotates both to match. Person segmentation needs an A12 or later iPhone, and uses the **rear** camera. ARKit's segmentation is rear-only, and a front or selfie matte is a later addition. The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneSegmentation`.
+The matte and cutout come back **upright** for how the phone is held, and they stay aligned with each other. The capture app sends the device orientation and `PhoneDevice` rotates both to match. Rear-camera person segmentation needs an A12 or later iPhone. The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneSegmentation`, and it draws whichever camera is feeding it.
+
+**Selfie** mode is the front-camera half. ARKit's person segmentation is rear-only, so the app runs the front camera through a plain capture session and computes the matte with Vision instead. The same two accessors update, and a sketch doesn't care which camera fed them. The feed arrives **mirrored**, like the phone's own front-camera preview, because that is how a person expects to see their own picture. For the unmirrored view, flip it when drawing: a negative x scale inside `withState { }`. Selfie runs no ARKit session, so `latestLight` pauses there and holds its last reading. It also needs no particular chip: any iPhone front camera will do.
 
 ## Device motion
 

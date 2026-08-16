@@ -60,12 +60,13 @@ public enum PhoneMessageKind: UInt8, Sendable, CaseIterable {
     /// of KB; depth is raw float32 — LZFSE compression is a later optimization), so it
     /// streams only while the app is in World mode (LiDAR rear camera).
     case depth = 4
-    /// A person-segmentation matte computed on the phone's Neural Engine (ARKit's
-    /// `personSegmentation`) — a grayscale alpha matte (0 = background … 255 =
-    /// person) of the people in the rear-camera scene, plus the matching color
-    /// frame, which the Mac turns into a tintable silhouette and a person cutout.
-    /// Rear camera, so it's mutually exclusive with face tracking and shares the
-    /// camera with body/depth (its own session). Streams only in Segment mode.
+    /// A person-segmentation matte computed on the phone: a grayscale alpha matte
+    /// (0 = background … 255 = person) of the people in the scene, plus the
+    /// matching color frame, which the Mac turns into a tintable silhouette and a
+    /// person cutout. Two modes send it, one kind either way: **Segment** (rear
+    /// camera, ARKit's on-device segmentation, its own session, so it shares the
+    /// rear camera with body/depth) and **Selfie** (front camera, a Vision pass
+    /// over a plain capture session, mirrored like the front-camera preview).
     case segmentation = 5
     /// One chunk of the reconstructed room surface from the rear LiDAR: a triangle
     /// mesh the phone builds and keeps improving as you walk around. ARKit divides
@@ -240,19 +241,19 @@ public struct PhoneDepthSample: Sendable, Equatable {
     }
 }
 
-/// One person-segmentation frame from the phone's rear camera: a grayscale alpha
+/// One person-segmentation frame from the phone's camera: a grayscale alpha
 /// `matte` (`matteWidth × matteHeight`, row-major from the top-left, 0 = background
-/// … 255 = person) computed on the Neural Engine, and the matching JPEG color frame
+/// … 255 = person), and the matching JPEG color frame
 /// (`colorJPEG`, decoded on the Mac side so this file stays free of ImageIO). The
-/// matte is downscaled on the phone to a bounded size — it's a soft mask, and the
+/// matte is downscaled on the phone to a bounded size: it's a soft mask, and the
 /// Mac rescales it onto the color when it builds the cutout, so the payload stays
 /// small.
 ///
-/// Both arrive in the camera-native (sensor-landscape) orientation, aligned with
-/// each other. `orientation` is the number of 90° **clockwise** turns the Mac
-/// applies to both to stand them upright for how the phone was held (0…3, derived
-/// from the device's interface orientation) — rotating them by the same amount keeps
-/// them aligned.
+/// Both arrive aligned with each other. `orientation` is the number of 90°
+/// **clockwise** turns the Mac applies to both to stand them upright for how the
+/// phone was held (0…3). Segment mode sends camera-native (sensor-landscape)
+/// buffers with the turn count that fixes them; Selfie mode rotates on the phone
+/// and always sends 0. Rotating both by the same amount keeps them aligned.
 public struct PhoneSegmentationSample: Sendable, Equatable {
     public var tracked: Bool
     public var timestamp: Double

@@ -5,7 +5,8 @@ import simd
 /// **Ollin Capture** — Ollin's own iPhone sensor app. The phone runs ARKit (body
 /// pose, face, rear-LiDAR scene depth, person segmentation, the reconstructed room
 /// surface with the flat planes in it, and the room's own light) on its Neural
-/// Engine plus CoreMotion device motion, and streams them to a
+/// Engine plus a front-camera selfie matte (Vision, no ARKit) and CoreMotion
+/// device motion, and streams them to a
 /// tethered Mac over USB (usbmuxd → `PhoneWire.streamPort`), where an Ollin sketch
 /// reads them in `draw()` via `OllinPhone`'s `PhoneDevice`.
 @main
@@ -15,20 +16,24 @@ struct OllinCaptureApp: App {
     }
 }
 
-/// Which on-device sensor ARKit drives. Body, World, Segment, and Room use the rear
-/// camera, Face the front TrueDepth camera. Only one ARKit session runs at a time, so
-/// they are mutually exclusive and the app runs one at a time. World streams a LiDAR
-/// RGBD frame (depth + color + pose); Body a skeleton; Face the expression mesh;
-/// Segment a person matte (+ color) for a silhouette/cutout; Room the reconstructed
-/// surface, block by block, with each triangle labelled, and the flat planes found
-/// alongside it.
+/// Which on-device sensor runs. Body, World, Segment, and Room use the rear camera
+/// through ARKit; Face the front TrueDepth camera through ARKit; Selfie the front
+/// camera through a plain capture session plus Vision. Only one camera session runs
+/// at a time, so they are mutually exclusive and the app runs one at a time. World
+/// streams a LiDAR RGBD frame (depth + color + pose); Body a skeleton; Face the
+/// expression mesh; Segment a person matte (+ color) for a silhouette/cutout;
+/// Selfie the same matte from the front camera, mirrored like the preview; Room the
+/// reconstructed surface, block by block, with each triangle labelled, and the flat
+/// planes found alongside it.
 ///
-/// The room's light streams in every mode, so it is not a mode of its own.
+/// The room's light streams in every ARKit mode, so it is not a mode of its own.
+/// Selfie runs no ARKit session, so it is the one mode with no light readings.
 enum CaptureMode: String, CaseIterable, Identifiable {
     case body = "Body"
     case face = "Face"
     case world = "World"
     case segment = "Segment"
+    case selfie = "Selfie"
     case room = "Room"
     var id: String { rawValue }
 }
@@ -49,6 +54,8 @@ final class SensorStreamer {
     var depthInfo = ""
     var segTracked = false
     var segInfo = ""
+    var selfiePresent = false
+    var selfieInfo = ""
     var meshTracked = false
     var meshInfo = ""
     var planeInfo = ""
@@ -62,6 +69,7 @@ final class SensorStreamer {
     let faceSupported = ARFaceTrackingConfiguration.isSupported
     let depthSupported = ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth)
     let segSupported = ARWorldTrackingConfiguration.supportsFrameSemantics(.personSegmentation)
+    let selfieSupported = SelfieStreamer.hasFrontCamera
     let meshSupported = ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh)
 
     private var server: SensorServer?
@@ -69,6 +77,7 @@ final class SensorStreamer {
     private let face = FaceStreamer()
     private let depth = DepthStreamer()
     private let seg = SegmentationStreamer()
+    private let selfie = SelfieStreamer()
     private let room = RoomStreamer()
     private let motion = MotionStreamer()
 
@@ -138,6 +147,15 @@ final class SensorStreamer {
             self.segInfo = "\(sample.matteWidth)×\(sample.matteHeight) · \(sample.colorJPEG.count / 1024) KB"
         }
 
+        // The selfie matte rides the same wire kind as the rear-camera one; the Mac
+        // reads whichever mode is running through the same accessors.
+        selfie.onSegmentation = { [weak self] sample in
+            guard let self else { return }
+            self.server?.send(PhoneWire.encode(.segmentation(sample)))
+            self.selfiePresent = sample.tracked
+            self.selfieInfo = "\(sample.matteWidth)×\(sample.matteHeight) · \(sample.colorJPEG.count / 1024) KB"
+        }
+
         room.onChunk = { [weak self] sample in
             guard let self else { return }
             self.server?.send(PhoneWire.encode(.sceneMesh(sample)))
@@ -161,8 +179,9 @@ final class SensorStreamer {
             self.planeInfo = "\(self.livePlanes.count) found"
         }
 
-        // Every session estimates the light, so they all report to the same handler
-        // and a mode switch never interrupts it.
+        // Every ARKit session estimates the light, so they all report to the same
+        // handler and a mode switch never interrupts it. Selfie runs no ARKit
+        // session and reports none.
         let reporters: [any LightReporting] = [ar, face, depth, seg, room]
         for reporter in reporters {
             reporter.lightSampler.onLight = { [weak self] sample in
@@ -187,26 +206,32 @@ final class SensorStreamer {
     }
 
     private func applyMode() {
-        // Only one ARKit session at a time — stop the others before starting one.
+        // Only one camera session at a time; stop the others before starting one.
         switch mode {
         case .body:
-            face.stop(); depth.stop(); seg.stop(); room.stop()
+            face.stop(); depth.stop(); seg.stop(); selfie.stop(); room.stop()
             ar.start()
             status = bodySupported ? "Streaming body" : "This device doesn't support body tracking"
         case .face:
-            ar.stop(); depth.stop(); seg.stop(); room.stop()
+            ar.stop(); depth.stop(); seg.stop(); selfie.stop(); room.stop()
             face.start()
             status = faceSupported ? "Streaming face" : "This device doesn't support face tracking"
         case .world:
-            ar.stop(); face.stop(); seg.stop(); room.stop()
+            ar.stop(); face.stop(); seg.stop(); selfie.stop(); room.stop()
             depth.start()
             status = depthSupported ? "Streaming depth" : "This device has no LiDAR for depth"
         case .segment:
-            ar.stop(); face.stop(); depth.stop(); room.stop()
+            ar.stop(); face.stop(); depth.stop(); selfie.stop(); room.stop()
             seg.start()
             status = segSupported ? "Streaming segmentation" : "This device doesn't support person segmentation"
+        case .selfie:
+            ar.stop(); face.stop(); depth.stop(); seg.stop(); room.stop()
+            selfie.start()
+            status = selfieSupported
+                ? "Streaming the front-camera person matte, mirrored like the preview"
+                : "This device has no front camera"
         case .room:
-            ar.stop(); face.stop(); depth.stop(); seg.stop()
+            ar.stop(); face.stop(); depth.stop(); seg.stop(); selfie.stop()
             // A fresh session rebuilds the room from nothing, so the Mac's own count
             // starts again with it.
             meshBlocksSent = 0
@@ -264,8 +289,9 @@ struct ContentView: View {
                         .foregroundStyle(.white.opacity(0.9))
                 }
 
-                // Capture mode — one ARKit session at a time (rear: body/world/segment,
-                // front: face), so the modes are mutually exclusive.
+                // Capture mode: one camera session at a time (rear: body/world/
+                // segment/room, front: face/selfie), so the modes are mutually
+                // exclusive.
                 Picker("Mode", selection: Binding(
                     get: { streamer.mode },
                     set: { streamer.setMode($0) }
@@ -298,6 +324,12 @@ struct ContentView: View {
                             ? (streamer.segTracked ? "streaming · \(streamer.segInfo)" : "starting…")
                             : "needs A12+ for segmentation",
                             ok: streamer.segTracked)
+                    case .selfie:
+                        row("Person", streamer.selfieSupported
+                            ? (streamer.selfieInfo.isEmpty ? "starting…"
+                               : "streaming · \(streamer.selfieInfo)\(streamer.selfiePresent ? "" : " · nobody in view")")
+                            : "no front camera",
+                            ok: streamer.selfiePresent)
                     case .room:
                         row("Surface", streamer.meshSupported
                             ? (streamer.meshInfo.isEmpty ? "walk around to build it…" : "streaming · \(streamer.meshInfo)")
@@ -307,8 +339,10 @@ struct ContentView: View {
                             ? "looking for flat surfaces…" : "streaming · \(streamer.planeInfo)",
                             ok: !streamer.planeInfo.isEmpty)
                     }
-                    row("Light", streamer.lightLive ? streamer.lightInfo : "measuring…",
-                        ok: streamer.lightLive)
+                    row("Light", streamer.mode == .selfie
+                        ? "paused (Selfie runs no ARKit)"
+                        : (streamer.lightLive ? streamer.lightInfo : "measuring…"),
+                        ok: streamer.mode != .selfie && streamer.lightLive)
                     row("Motion", streamer.motionLive
                         ? String(format: "live · gravity (% .2f, % .2f, % .2f)",
                                  streamer.gravity.x, streamer.gravity.y, streamer.gravity.z)

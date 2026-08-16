@@ -131,7 +131,7 @@ final class Replay: Sketch {
 
 A recorded clip is depth footage you can edit against, re-render, and export deterministically. It's the medium the "volumetric filmmaking" scene works in. The same app also streams **live over USB**. Plug the phone in and `Record3DDevice` delivers `latestFrame` continuously, so the person in front of the phone becomes a live point cloud in your sketch.
 
-The deeper option is **Ollin Capture**, Ollin's own iPhone app. It runs ARKit on the phone and streams typed results the sketch reads like any other input. Those are a 3D **body skeleton**, and up to three **faces**, each a deforming mesh plus 52 expression values. There is also rear-LiDAR **world depth** with the camera's own position and orientation, a **person segmentation** matte, and **device motion**:
+The deeper option is **Ollin Capture**, Ollin's own iPhone app. It runs ARKit on the phone and streams typed results the sketch reads like any other input. Those are a 3D **body skeleton**, and up to three **faces**, each a deforming mesh plus 52 expression values. There is also rear-LiDAR **world depth** with the camera's own position and orientation, a **person segmentation** matte (rear camera, or mirrored from the front like a selfie), and **device motion**:
 
 ```swift
 import OllinPhone
