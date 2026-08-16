@@ -131,7 +131,7 @@ final class Replay: Sketch {
 
 A recorded clip is depth footage you can edit against, re-render, and export deterministically. It's the medium the "volumetric filmmaking" scene works in. The same app also streams **live over USB**. Plug the phone in and `Record3DDevice` delivers `latestFrame` continuously, so the person in front of the phone becomes a live point cloud in your sketch.
 
-The deeper option is **Ollin Capture**, Ollin's own iPhone app. It runs ARKit on the phone and streams typed results the sketch reads like any other input. Those are a 3D **body skeleton**, and up to three **faces**, each a deforming mesh plus 52 expression values. There is also rear-LiDAR **world depth** with the camera's own position and orientation, a **person segmentation** matte (rear camera, or mirrored from the front like a selfie), and **device motion**:
+The deeper option is **Ollin Capture**, Ollin's own iPhone app. It runs ARKit on the phone and streams typed results the sketch reads like any other input. Those are a 3D **body skeleton**, up to three **faces**, each a deforming mesh plus 52 expression values, and up to four **hands**, each a 21-joint skeleton. There is also rear-LiDAR **world depth** with the camera's own position and orientation, a **person segmentation** matte (rear camera, or mirrored from the front like a selfie), and **device motion**:
 
 ```swift
 import OllinPhone
@@ -162,6 +162,25 @@ if let pose = body.modelTransform(.head) {
 <img src="Images/19-DepthAndThePhone/BodyAsFigure.jpg" alt="The same staged mid-stride pose twice: on the left as ivory dots and dotted bones, on the right as a solid mannequin with capsule limbs, a leaning torso box, and a turned head, its left forearm tinted blue" width="680">
 
 The blue forearm is the stream being honest. The camera never saw those joints, the rig filled them in, and `isJointTracked(_:)` says so, part by part. Two more readings ride along. `scaleFactor` sizes the figure to the person in front of the camera. And `worldTransform` stands the whole skeleton where the person really is, in the same ARKit world as the swept cloud and the room mesh, so walking across the room walks the figure across the sketch. The `3D/Phone/PhoneBodyFigure` example is this section live: a mannequin that follows you around the room.
+
+## A hand you can reach in with
+
+The body stream draws a whole person. The hand stream leans in close. In **Hands** mode the phone finds up to four hands, each as 21 joints: the wrist, then four joints along every finger. On a LiDAR phone every joint also carries a real position in meters. It stands in the same world as the swept cloud and the room mesh. A hand is the part of you that points, pinches, and conducts, so this is the stream gestures come from:
+
+```swift
+for hand in device.latestHands {
+    for (a, b) in hand.bones() {
+        drawCapsule(from: a, to: b, radius: 0.006)
+    }
+    if let pinch = hand.pinchDistance, pinch < 0.02 {
+        // thumb and index are touching: a click, made of air
+    }
+}
+```
+
+<img src="Images/19-DepthAndThePhone/HandsAsSkeletons.jpg" alt="Two staged hands drawn as small solid skeletons on a dark ground: an open orange right hand with its thumb spread wide, and a blue left hand whose index finger curls to meet its thumb, a bright white bead sitting where the two fingertips pinch" width="680">
+
+The orange hand is a right hand and the blue one a left, straight from `chirality`. The white bead sits where the blue hand pinches. `pinchDistance` measures thumb tip to index tip in meters. Under about two centimeters, the fingers are touching. That one number is a whole instrument. A pinch can pluck a note, a spread can stretch a shape, a fingertip can draw a ribbon through the room. A joint the model could not see simply stays absent. On a phone with no LiDAR, the same hands arrive flat, ready to map over the canvas with `point(_:in:)`. The `3D/Phone/PhoneHands` example is this section live: hold up a hand and it stands in the room as a small solid skeleton.
 
 ## One world from many frames
 

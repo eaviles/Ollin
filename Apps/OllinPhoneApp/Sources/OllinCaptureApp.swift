@@ -5,8 +5,9 @@ import simd
 /// **Ollin Capture** — Ollin's own iPhone sensor app. The phone runs ARKit (body
 /// pose, face, rear-LiDAR scene depth, person segmentation, the reconstructed room
 /// surface with the flat planes in it, and the room's own light) on its Neural
-/// Engine plus a front-camera selfie matte (Vision, no ARKit) and CoreMotion
-/// device motion, and streams them to a
+/// Engine, plus the 21-joint hand skeletons in view (Vision over the ARKit frames,
+/// lifted to 3D through the LiDAR depth), a front-camera selfie matte (Vision, no
+/// ARKit), and CoreMotion device motion, and streams them to a
 /// tethered Mac over USB (usbmuxd → `PhoneWire.streamPort`), where an Ollin sketch
 /// reads them in `draw()` via `OllinPhone`'s `PhoneDevice`.
 @main
@@ -16,15 +17,16 @@ struct OllinCaptureApp: App {
     }
 }
 
-/// Which on-device sensor runs. Body, World, Segment, and Room use the rear camera
-/// through ARKit; Face the front TrueDepth camera through ARKit; Selfie the front
-/// camera through a plain capture session plus Vision. Only one camera session runs
-/// at a time, so they are mutually exclusive and the app runs one at a time. World
-/// streams a LiDAR RGBD frame (depth + color + pose); Body a skeleton; Face the
-/// expression mesh; Segment a person matte (+ color) for a silhouette/cutout;
+/// Which on-device sensor runs. Body, World, Segment, Room, and Hands use the rear
+/// camera through ARKit; Face the front TrueDepth camera through ARKit; Selfie the
+/// front camera through a plain capture session plus Vision. Only one camera session
+/// runs at a time, so they are mutually exclusive and the app runs one at a time.
+/// World streams a LiDAR RGBD frame (depth + color + pose); Body a skeleton; Face
+/// the expression mesh; Segment a person matte (+ color) for a silhouette/cutout;
 /// Selfie the same matte from the front camera, mirrored like the preview; Room the
 /// reconstructed surface, block by block, with each triangle labelled, and the flat
-/// planes found alongside it.
+/// planes found alongside it; Hands the 21-joint hand skeletons in view, lifted to
+/// metric 3D through the LiDAR depth where the device has it.
 ///
 /// The room's light streams in every ARKit mode, so it is not a mode of its own.
 /// Selfie runs no ARKit session, so it is the one mode with no light readings.
@@ -35,6 +37,7 @@ enum CaptureMode: String, CaseIterable, Identifiable {
     case segment = "Segment"
     case selfie = "Selfie"
     case room = "Room"
+    case hands = "Hands"
     var id: String { rawValue }
 }
 
@@ -59,6 +62,8 @@ final class SensorStreamer {
     var meshTracked = false
     var meshInfo = ""
     var planeInfo = ""
+    var handsTracked = false
+    var handsInfo = ""
     var lightInfo = ""
     var lightLive = false
     var gravity = SIMD3<Float>(0, 0, 0)
@@ -71,6 +76,7 @@ final class SensorStreamer {
     let segSupported = ARWorldTrackingConfiguration.supportsFrameSemantics(.personSegmentation)
     let selfieSupported = SelfieStreamer.hasFrontCamera
     let meshSupported = ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh)
+    let handsLift = ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth)
 
     private var server: SensorServer?
     private let ar = ARStreamer()
@@ -79,6 +85,7 @@ final class SensorStreamer {
     private let seg = SegmentationStreamer()
     private let selfie = SelfieStreamer()
     private let room = RoomStreamer()
+    private let hands = HandStreamer()
     private let motion = MotionStreamer()
 
     /// How many blocks of the room have gone out, and how many were dropped for
@@ -179,10 +186,22 @@ final class SensorStreamer {
             self.planeInfo = "\(self.livePlanes.count) found"
         }
 
+        hands.onHands = { [weak self] samples in
+            guard let self else { return }
+            self.server?.send(PhoneWire.encode(.hands(samples)))
+            self.handsTracked = !samples.isEmpty
+            if samples.isEmpty {
+                self.handsInfo = "no hands in view"
+            } else {
+                let lifted = samples.contains { $0.joints.values.contains(where: \.hasWorldPosition) }
+                self.handsInfo = "\(samples.count) · \(lifted ? "3D" : "2D")"
+            }
+        }
+
         // Every ARKit session estimates the light, so they all report to the same
         // handler and a mode switch never interrupts it. Selfie runs no ARKit
         // session and reports none.
-        let reporters: [any LightReporting] = [ar, face, depth, seg, room]
+        let reporters: [any LightReporting] = [ar, face, depth, seg, room, hands]
         for reporter in reporters {
             reporter.lightSampler.onLight = { [weak self] sample in
                 guard let self else { return }
@@ -209,29 +228,37 @@ final class SensorStreamer {
         // Only one camera session at a time; stop the others before starting one.
         switch mode {
         case .body:
-            face.stop(); depth.stop(); seg.stop(); selfie.stop(); room.stop()
+            face.stop(); depth.stop(); seg.stop(); selfie.stop(); room.stop(); hands.stop()
             ar.start()
             status = bodySupported ? "Streaming body" : "This device doesn't support body tracking"
         case .face:
-            ar.stop(); depth.stop(); seg.stop(); selfie.stop(); room.stop()
+            ar.stop(); depth.stop(); seg.stop(); selfie.stop(); room.stop(); hands.stop()
             face.start()
             status = faceSupported ? "Streaming face" : "This device doesn't support face tracking"
         case .world:
-            ar.stop(); face.stop(); seg.stop(); selfie.stop(); room.stop()
+            ar.stop(); face.stop(); seg.stop(); selfie.stop(); room.stop(); hands.stop()
             depth.start()
             status = depthSupported ? "Streaming depth" : "This device has no LiDAR for depth"
         case .segment:
-            ar.stop(); face.stop(); depth.stop(); selfie.stop(); room.stop()
+            ar.stop(); face.stop(); depth.stop(); selfie.stop(); room.stop(); hands.stop()
             seg.start()
             status = segSupported ? "Streaming segmentation" : "This device doesn't support person segmentation"
         case .selfie:
-            ar.stop(); face.stop(); depth.stop(); seg.stop(); room.stop()
+            ar.stop(); face.stop(); depth.stop(); seg.stop(); room.stop(); hands.stop()
             selfie.start()
             status = selfieSupported
                 ? "Streaming the front-camera person matte, mirrored like the preview"
                 : "This device has no front camera"
+        case .hands:
+            ar.stop(); face.stop(); depth.stop(); seg.stop(); selfie.stop(); room.stop()
+            handsTracked = false
+            handsInfo = ""
+            hands.start()
+            status = handsLift
+                ? "Streaming hand pose, lifted to 3D through the LiDAR depth"
+                : "Streaming hand pose in 2D (this device has no LiDAR to lift it)"
         case .room:
-            ar.stop(); face.stop(); depth.stop(); seg.stop(); selfie.stop()
+            ar.stop(); face.stop(); depth.stop(); seg.stop(); selfie.stop(); hands.stop()
             // A fresh session rebuilds the room from nothing, so the Mac's own count
             // starts again with it.
             meshBlocksSent = 0
@@ -290,15 +317,13 @@ struct ContentView: View {
                 }
 
                 // Capture mode: one camera session at a time (rear: body/world/
-                // segment/room, front: face/selfie), so the modes are mutually
-                // exclusive.
-                Picker("Mode", selection: Binding(
-                    get: { streamer.mode },
-                    set: { streamer.setMode($0) }
-                )) {
-                    ForEach(CaptureMode.allCases) { mode in Text(mode.rawValue).tag(mode) }
+                // segment/room/hands, front: face/selfie), so the modes are
+                // mutually exclusive. Seven modes outgrew the segmented control,
+                // so they wrap as two rows of chips.
+                VStack(spacing: 8) {
+                    modeRow([.body, .face, .world, .segment])
+                    modeRow([.selfie, .room, .hands])
                 }
-                .pickerStyle(.segmented)
                 .padding(.horizontal, 28)
 
                 // Status rows
@@ -330,6 +355,11 @@ struct ContentView: View {
                                : "streaming · \(streamer.selfieInfo)\(streamer.selfiePresent ? "" : " · nobody in view")")
                             : "no front camera",
                             ok: streamer.selfiePresent)
+                    case .hands:
+                        row("Hands", streamer.handsInfo.isEmpty
+                            ? "looking for hands…"
+                            : "streaming · \(streamer.handsInfo)",
+                            ok: streamer.handsTracked)
                     case .room:
                         row("Surface", streamer.meshSupported
                             ? (streamer.meshInfo.isEmpty ? "walk around to build it…" : "streaming · \(streamer.meshInfo)")
@@ -368,6 +398,23 @@ struct ContentView: View {
             }
         }
         .onAppear { streamer.start() }
+    }
+
+    /// One row of mode chips: the same one-of-many choice a segmented control
+    /// gives, drawn as capsules so seven modes fit across two rows.
+    private func modeRow(_ modes: [CaptureMode]) -> some View {
+        HStack(spacing: 8) {
+            ForEach(modes) { mode in
+                let selected = streamer.mode == mode
+                Button(mode.rawValue) { streamer.setMode(mode) }
+                    .font(.system(.subheadline, design: .rounded).weight(.semibold))
+                    .foregroundStyle(selected ? Color.black : Color.white.opacity(0.85))
+                    .padding(.vertical, 8)
+                    .frame(maxWidth: .infinity)
+                    .background(selected ? Color.white : Color.white.opacity(0.08),
+                                in: Capsule())
+            }
+        }
     }
 
     private func row(_ label: String, _ value: String, ok: Bool) -> some View {

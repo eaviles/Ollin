@@ -61,31 +61,12 @@ final class SegmentationStreamer: NSObject, ARSessionDelegate, LightReporting {
                                     maxDimension: maxColorDimension, quality: 0.6) else { return }
 
         let normal: Bool = if case .normal = frame.camera.trackingState { true } else { false }
+        // The shared device-hold mapping supplies the turn count; a wrong direction
+        // there can't break matte/color alignment, since the Mac turns both by the
+        // same N.
         onSegmentation?(PhoneSegmentationSample(
             tracked: normal, timestamp: frame.timestamp,
-            matteWidth: mw, matteHeight: mh, orientation: Self.quarterTurns(),
+            matteWidth: mw, matteHeight: mh, orientation: captureQuarterTurns(),
             matte: matte, colorJPEG: jpeg))
-    }
-
-    /// The 90°-clockwise turns the Mac should apply to stand the sensor-landscape
-    /// matte/color upright for the current device hold. The rear camera is
-    /// sensor-landscape-right, so landscape-right is 0 turns and portrait is one CW
-    /// turn. (If a hold reads rotated the wrong way on-device, flip the mapping here —
-    /// it can't break matte/color alignment, since the Mac turns both by the same N.)
-    private static func quarterTurns() -> UInt8 {
-        // ARKit delivers its delegate callbacks on the main thread, so this runs
-        // there; assume the main actor to read UIApplication's interface orientation.
-        let orientation = MainActor.assumeIsolated {
-            UIApplication.shared.connectedScenes
-                .compactMap { $0 as? UIWindowScene }
-                .first?.interfaceOrientation ?? .portrait
-        }
-        switch orientation {
-        case .portrait:           return 1
-        case .landscapeLeft:      return 2
-        case .landscapeRight:     return 0
-        case .portraitUpsideDown: return 3
-        default:                  return 1
-        }
     }
 }

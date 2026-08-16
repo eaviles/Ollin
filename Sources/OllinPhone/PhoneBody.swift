@@ -110,7 +110,13 @@ public struct PhoneBody: Sendable {
     public var center: Vector3 {
         guard !joints.isEmpty else { return .zero }
         var sum = Vector3.zero
-        for j in joints.values { sum += PhoneBody.vector(j.position) }
+        // Summed in declaration order, not dictionary order, so the same pose
+        // always lands on the bit-identical centroid (a camera aimed at it must
+        // not jitter between runs).
+        for joint in PhoneJoint.allCases {
+            guard let j = joints[joint] else { continue }
+            sum += PhoneBody.vector(j.position)
+        }
         return sum / Double(joints.count)
     }
 
@@ -132,7 +138,12 @@ public struct PhoneBody: Sendable {
     public func cloud(jointSize: Double = 0.05, boneSize: Double = 0.02,
                       color: Color = .white) -> PointCloud {
         var cloud = PointCloud()
-        for j in joints.values { cloud.add(PhoneBody.vector(j.position), color: color, size: jointSize) }
+        // Joints in declaration order, not dictionary order: overlapping splats
+        // composite in draw order, so a fixed order keeps a render reproducible.
+        for joint in PhoneJoint.allCases {
+            guard let j = joints[joint] else { continue }
+            cloud.add(PhoneBody.vector(j.position), color: color, size: jointSize)
+        }
         for (a, b) in bones() {
             let steps = max(1, Int((a.distance(to: b) / max(boneSize, 1e-4)).rounded()))
             for s in 1..<steps {                 // interior dots; endpoints are joints

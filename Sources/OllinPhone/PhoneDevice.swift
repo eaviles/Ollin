@@ -11,7 +11,8 @@ import Darwin
 /// A live sensor stream from a tethered iPhone running the **Ollin** capture app
 /// (Apps/OllinPhoneApp) — the phone runs ARKit on its own Neural Engine and streams
 /// typed results the Mac reads in `draw()`: a 3D **body skeleton**, a **face** (the
-/// deforming mesh + the 52 expression blendshapes), a world-facing **RGBD depth
+/// deforming mesh + the 52 expression blendshapes), the **hands** in view (21-joint
+/// skeletons, lifted to metric 3D on a LiDAR phone), a world-facing **RGBD depth
 /// frame** from the rear LiDAR, and **device motion**.
 ///
 /// ```swift
@@ -106,6 +107,19 @@ public final class PhoneDevice: FrameSource, VideoFeed {
     /// none is in view. The convenience for the common single-person case; read
     /// `latestFaces` to handle several people at once.
     public var latestFace: PhoneFace? { latestFaces.first }
+
+    /// Every hand the phone currently sees (up to 4), newest set each frame, empty
+    /// before any arrive or when no hand is in view. Populated in **Hands** mode
+    /// (rear camera): each is a 21-joint skeleton with upright 2D image points,
+    /// and on a LiDAR phone each joint also carries a metric 3D position in ARKit
+    /// world space, lifted through the depth map and the camera pose.
+    public var latestHands: [PhoneHand] { reader.latestHands.map(PhoneHand.init) }
+
+    /// The most confident hand in view, or `nil` when none is: the convenience for
+    /// the common one-hand case; read `latestHands` to handle several at once.
+    public var latestHand: PhoneHand? {
+        latestHands.max { $0.confidence < $1.confidence }
+    }
 
     /// The latest CoreMotion sample, or `nil` before one arrives — the cheap
     /// transport smoke-test (it moves the moment the wire is alive, before ARKit
@@ -272,6 +286,7 @@ final class PhoneStreamReader: @unchecked Sendable {
     private struct State {
         var latestPoses: [PhonePoseSample] = []
         var latestFaces: [PhoneFaceSample] = []
+        var latestHands: [PhoneHandSample] = []
         var latestMotion: PhoneMotionSample?
         var latestDepth: PhoneDepthFrameBox?
         var depthSequence = 0
@@ -300,6 +315,7 @@ final class PhoneStreamReader: @unchecked Sendable {
 
     var latestPoses: [PhonePoseSample] { lock.withLock { $0.latestPoses } }
     var latestFaces: [PhoneFaceSample] { lock.withLock { $0.latestFaces } }
+    var latestHands: [PhoneHandSample] { lock.withLock { $0.latestHands } }
     var latestMotion: PhoneMotionSample? { lock.withLock { $0.latestMotion } }
     var latestDepth: PhoneDepthFrameBox? { lock.withLock { $0.latestDepth } }
     var latestSegmentation: PhoneSegmentationBox? { lock.withLock { $0.latestSegmentation } }
@@ -436,6 +452,7 @@ final class PhoneStreamReader: @unchecked Sendable {
                         case .motion(let m): state.latestMotion = m
                         case .pose(let p): state.latestPoses = p
                         case .face(let f): state.latestFaces = f
+                        case .hands(let h): state.latestHands = h
                         case .light(let l): state.latestLight = l
                         case .depth, .segmentation, .sceneMesh, .plane: break   // handled above
                         }

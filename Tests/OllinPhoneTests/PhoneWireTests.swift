@@ -9,10 +9,10 @@ import OllinUSBMux
 import Darwin
 #endif
 
-/// Exercises the phone sensor-stream wire format — the framing header plus the
-/// motion, body-pose, face, depth, and segmentation payload codecs — with encode/decode
-/// round-trips (GPU-free, CI-safe), plus a live-device test that soft-skips when no
-/// phone is streaming.
+/// Exercises the phone sensor-stream wire format (the framing header plus the
+/// motion, body-pose, face, depth, segmentation, and hand-pose payload codecs) with
+/// encode/decode round-trips (GPU-free, CI-safe), plus a live-device test that
+/// soft-skips when no phone is streaming.
 @Suite(.timeLimit(.minutes(1))) struct PhoneWireTests {
 
     // MARK: Round-trips
@@ -192,6 +192,62 @@ import Darwin
         let raws = PhoneBlendShape.allCases.map { Int($0.rawValue) }
         #expect(raws == Array(0..<PhoneBlendShape.allCases.count))
         #expect(PhoneBlendShape.allCases.count == 52)
+    }
+
+    @Test func roundTripsHands() {
+        // Two hands in one frame: a lifted right hand (every joint carrying a world
+        // position) and a 2D-only left hand with a low-confidence joint.
+        let right = PhoneHandSample(
+            tracked: true, timestamp: 4.5, chirality: .right, confidence: 0.98,
+            joints: [
+                .wrist: PhoneHandJointSample(point: SIMD2<Float>(0.5, 0.4), confidence: 0.99,
+                                             hasWorldPosition: true,
+                                             worldPosition: SIMD3<Float>(0.1, 1.2, -0.8)),
+                .indexTip: PhoneHandJointSample(point: SIMD2<Float>(0.55, 0.62), confidence: 0.9,
+                                                hasWorldPosition: true,
+                                                worldPosition: SIMD3<Float>(0.14, 1.35, -0.78)),
+            ])
+        let left = PhoneHandSample(
+            tracked: false, timestamp: 4.5, chirality: .left, confidence: 0.7,
+            joints: [
+                .thumbTip: PhoneHandJointSample(point: SIMD2<Float>(0.2, 0.3), confidence: 0.31),
+            ])
+        let message = PhoneMessage.hands([right, left])
+        #expect(roundTrip(message) == message)
+    }
+
+    @Test func roundTripsNoHands() {
+        // No hand in view: the empty set, so the reader clears itself (a hand
+        // leaving disappears) rather than holding the last skeleton.
+        let message = PhoneMessage.hands([])
+        #expect(roundTrip(message) == message)
+    }
+
+    @Test func handJointOrderIsContiguous() {
+        // The wire carries a hand joint as one byte, so the cases must be 0…20.
+        let raws = PhoneHandJoint.allCases.map { Int($0.rawValue) }
+        #expect(raws == Array(0..<PhoneHandJoint.allCases.count))
+        #expect(PhoneHandJoint.allCases.count == 21)
+    }
+
+    @Test func mapsUprightPointsOntoTheBuffer() {
+        // The mapping from an upright normalized point (lower-left origin) back
+        // onto the camera-native buffer grid (top-left origin), per quarter-turn
+        // count. Each case checks the upright image's top-center point: with no
+        // turn it is the buffer's top-center; one CW turn stands the buffer's left
+        // column up, so the top of the picture came from the buffer's left edge.
+        let top = SIMD2<Float>(0.5, 1)
+        #expect(PhoneWire.bufferPoint(fromUpright: top, quarterTurnsCW: 0) == SIMD2<Float>(0.5, 0))
+        #expect(PhoneWire.bufferPoint(fromUpright: top, quarterTurnsCW: 1) == SIMD2<Float>(0, 0.5))
+        #expect(PhoneWire.bufferPoint(fromUpright: top, quarterTurnsCW: 2) == SIMD2<Float>(0.5, 1))
+        #expect(PhoneWire.bufferPoint(fromUpright: top, quarterTurnsCW: 3) == SIMD2<Float>(1, 0.5))
+        // And the upright left edge's middle, to pin the other axis: one CW turn
+        // means the picture's left edge came from the buffer's bottom row.
+        let left = SIMD2<Float>(0, 0.5)
+        #expect(PhoneWire.bufferPoint(fromUpright: left, quarterTurnsCW: 0) == SIMD2<Float>(0, 0.5))
+        #expect(PhoneWire.bufferPoint(fromUpright: left, quarterTurnsCW: 1) == SIMD2<Float>(0.5, 1))
+        #expect(PhoneWire.bufferPoint(fromUpright: left, quarterTurnsCW: 2) == SIMD2<Float>(1, 0.5))
+        #expect(PhoneWire.bufferPoint(fromUpright: left, quarterTurnsCW: 3) == SIMD2<Float>(0.5, 0))
     }
 
     // MARK: Header validation

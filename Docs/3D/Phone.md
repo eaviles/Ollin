@@ -6,7 +6,7 @@
 
 Borrow a tethered iPhone's on-device perception in a sketch that still renders on the Mac. **Ollin Capture**, Ollin's own iOS app ([`Apps/OllinPhoneApp`](../../Apps/OllinPhoneApp/README.md)), runs ARKit on the phone's Neural Engine and streams the results over the USB cable. `PhoneDevice` reads them on the Mac as typed values you use in `draw()`.
 
-Six payloads come over. A **3D body skeleton**. **Faces**, up to 3 at once, each a deforming mesh plus the 52 expression blendshapes. A world-facing **RGBD depth frame** from the rear LiDAR, which unprojects into a point cloud and carries the camera's 6DoF pose. The **room mesh**, the space itself reconstructed as a labelled triangle surface. A **person-segmentation matte** from the rear camera, as a silhouette and a cutout. And **device motion**.
+Seven payloads come over. A **3D body skeleton**. **Faces**, up to 3 at once, each a deforming mesh plus the 52 expression blendshapes. The **hands** in view, up to 4, each a 21-joint skeleton lifted to metric 3D where the phone has LiDAR. A world-facing **RGBD depth frame** from the rear LiDAR, which unprojects into a point cloud and carries the camera's 6DoF pose. The **room mesh**, the space itself reconstructed as a labelled triangle surface. A **person-segmentation matte** from the rear camera, as a silhouette and a cutout. And **device motion**.
 
 Where [`Record3D`](../3D/Record3D.md) borrows another app's color-plus-depth feed, this is Ollin's own app, so the stream carries what ARKit *perceives*. The chain is Ollin's end to end.
 
@@ -38,6 +38,7 @@ final class Pose: Sketch {
 - [Reading the stream](#reading-the-stream) - `latestBody`, `latestFace`, `latestDepthFrame`, `sceneMesh`, `planes`, `latestLight`, `latestMotion`, the connection state
 - [The body](#the-body) - `PhoneBody`, the joints, drawing the skeleton, where the person stands, joints that turn
 - [The face](#the-face) - `PhoneFace`, the blendshapes, the mesh
+- [The hands](#the-hands) - `PhoneHand`, 21 joints, the 3D lift, `pinchDistance`
 - [World depth](#world-depth) - `latestDepthFrame`, `pointCloud(...)`, the camera pose
 - [World fusion](#world-fusion) - `WorldCloud`, sweeping a room into one cloud, [keeping it registered](#drift), and [recognizing a place already scanned](#loops) with `ScanGraph`
 - [The room mesh](#the-room-mesh) - `sceneMesh`, the room as a labelled surface, the Room mode
@@ -73,6 +74,8 @@ device.latestBody                    // PhoneBody?, the tracked skeleton (Body m
 device.latestBodies                  // [PhoneBody], every tracked body (= one today)
 device.latestFaces                   // [PhoneFace], every tracked face, up to 3 (Face mode)
 device.latestFace                    // PhoneFace?, the most prominent face (= latestFaces.first)
+device.latestHands                   // [PhoneHand], every hand in view, up to 4 (Hands mode)
+device.latestHand                    // PhoneHand?, the most confident one
 device.latestDepthFrame              // RGBDFrame?, the latest depth frame (World mode)
 device.sceneMesh                     // PhoneSceneMesh, the room scanned so far (Room mode)
 device.planes                        // PhonePlanes, the flat surfaces found (Room mode)
@@ -82,7 +85,7 @@ device.latestMotion                  // PhoneMotion?, the latest device-motion s
 
 These are fresh each time the phone sends one, so read them within the current `draw()`. Each is `nil` until the first of its kind arrives. Motion typically lights up first, since it needs no camera or model, proving the wire before ARKit has found a body, face, or depth.
 
-**The camera modes are mutually exclusive.** Body, World, Segment, and Room use the rear camera, Face and Selfie the front camera, and only one camera session runs at a time. The capture app has a **Body / Face / World / Segment / Selfie / Room** toggle, and whichever is selected is the one that updates: `latestBody`, `latestFace`, `latestDepthFrame`, the segmentation images (Segment and Selfie both feed them), or the room's `sceneMesh` and `planes`. The others hold their last value, so read the one for the mode you mean to drive. Motion streams across all of them, and `latestLight` across every mode except Selfie, the one mode that runs no ARKit session.
+**The camera modes are mutually exclusive.** Body, World, Segment, Room, and Hands use the rear camera, Face and Selfie the front camera, and only one camera session runs at a time. The capture app has a **Body / Face / World / Segment / Selfie / Room / Hands** toggle, and whichever is selected is the one that updates: `latestBody`, `latestFace`, `latestHands`, `latestDepthFrame`, the segmentation images (Segment and Selfie both feed them), or the room's `sceneMesh` and `planes`. The others hold their last value, so read the one for the mode you mean to drive. Motion streams across all of them, and `latestLight` across every mode except Selfie, the one mode that runs no ARKit session.
 
 ## The body
 
@@ -178,6 +181,32 @@ drawMesh(face.mesh())
 ```
 
 `face.cloud()` draws the vertices as points instead, if you want the splat look. The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneFace`.
+
+## The hands
+
+In **Hands** mode the phone finds the hands in front of the rear camera, **up to 4 at once**, each a `PhoneHand`. A hand is a 21-joint skeleton: the wrist, then four joints along each finger from base to tip. The finding runs on the phone's own Neural Engine, so the Mac receives finished skeletons.
+
+Every joint carries an upright 2D image point, already turned for how the phone is held. On a LiDAR phone each joint also carries a metric 3D position in **ARKit world space**. The phone reads the joint's depth pixel, unprojects it through the camera intrinsics, and stands it in the world with the camera pose. That is the same fixed, gravity-aligned world the [depth sweep](#world-fusion), the [room mesh](#the-room-mesh), and the body's anchor use. A live hand can reach into a scanned scene. Without LiDAR the hands arrive 2D-only and draw as a flat overlay.
+
+```swift
+for hand in device.latestHands {     // up to 4
+    hand.chirality                   // .left / .right / .unknown, as the camera sees it
+    hand.confidence                  // Double 0…1, the model's overall trust
+    hand.position(.indexTip)         // Vector3?, metric ARKit world space (needs LiDAR)
+    hand.point(.indexTip, in: bounds) // Vector2?, the 2D point mapped into a rectangle
+    hand.bones()                     // [(Vector3, Vector3)], 3D bone segments
+    hand.bones(in: bounds)           // [(Vector2, Vector2)], the flat skeleton
+    hand.pinchDistance               // Double?, thumb tip to index tip, meters
+    hand.cloud()                     // PointCloud, the lifted hand as splats
+}
+device.latestHand                    // PhoneHand?, the most confident one
+```
+
+`latestHands` is the complete current set each frame, so a hand leaving simply drops out and the list shrinks. A joint the model could not place is absent, and `has(_:)` says so. A joint whose depth pixel was a hole keeps its 2D point but returns `nil` from `position(_:)`. `hasWorldPositions` says whether a hand lifted at all, which is how a sketch picks between its 3D and 2D drawing.
+
+`pinchDistance` is the gesture staple: thumb tip to index tip in meters, `nil` unless both lifted. Under about 2 cm reads as a closed pinch. `PhoneHand.skeleton` names the 20 bones, `PhoneHand.tips` the five fingertips, and `PhoneHand.fingerChains` each finger's chain wrist-first, ready to run a tube or a ribbon along.
+
+The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneHands`.
 
 ## World depth
 
@@ -498,5 +527,5 @@ Tilt the phone and `gravity` swings, a one-line check that the wire is alive.
 - **USB only.** The transport is the `usbmuxd` tunnel over the cable, on port 1338, distinct from Record3D's 1337. Wi-Fi is deliberately out.
 - **Per-frame clouds are camera-relative, and fusion is world-space.** A single `pointCloud(...)` is in the camera's own frame, root at the lens, and the skeleton is in model space, root at the origin. [World fusion](#world-fusion) is what lifts a sweep into one fixed world cloud, by applying each frame's `latestPose`. It fuses several poses' clouds into a single *registered* scene. [Keeping a long sweep straight](#drift) and [recognizing a place already scanned](#loops) correct ARKit's own drift on top. The body's anchor lives in the same world, so a skeleton and a swept room combine directly.
 - **Depth is raw over the wire.** The LiDAR depth map ships uncompressed, and a 256×192 frame is ~196 KB, comfortable over USB. LZFSE compression is a later optimization. The color image is sent as a downscaled JPEG.
-- **A growing catalog.** Body pose, face, world depth, the room mesh, the flat surfaces, the room's light, person segmentation, and motion are the payloads today. Richer sensors are the same app sending new tagged payloads, not new pipelines.
+- **A growing catalog.** Body pose, face, hands, world depth, the room mesh, the flat surfaces, the room's light, person segmentation, and motion are the payloads today. Richer sensors are the same app sending new tagged payloads, not new pipelines.
 - **A mesh block is carried raw, and sending is what is throttled.** The phone reads a block's geometry the moment ARKit hands it over, since those buffers belong to the session. It then queues the block and sends a few at a time. A block too big for one payload is skipped and counted on the app's own screen.

@@ -91,6 +91,12 @@ public enum PhoneMessageKind: UInt8, Sendable, CaseIterable {
     /// times a second. In Face mode it also carries a direction for the strongest
     /// light, which ARKit works out from the face itself.
     case light = 8
+    /// The hands in view, bundled per frame: each a 21-joint skeleton the phone
+    /// finds on-device (Vision) in the rear camera. Every joint carries an upright
+    /// 2D image point; on a LiDAR phone each also carries a metric 3D position in
+    /// ARKit world space, lifted through the depth map and the camera pose, so a
+    /// hand lands in the same world the depth sweep and the room use.
+    case handPose = 9
 }
 
 /// The named joints the stream carries — a practical subset of ARKit's ~91-joint
@@ -470,6 +476,93 @@ public struct PhoneLightSample: Sendable, Equatable {
     }
 }
 
+/// The 21 joints of a streamed hand skeleton: the wrist, then four joints along
+/// each finger from base to tip. The raw values are contiguous from `0`, so the
+/// wire carries one byte per joint; a test pins the contiguity, the same way the
+/// blendshape order is pinned. The iOS app maps Vision's joint names onto these;
+/// the Mac side draws bones between them (`PhoneHand.skeleton`).
+public enum PhoneHandJoint: UInt8, CaseIterable, Sendable {
+    case wrist = 0
+    case thumbCMC, thumbMP, thumbIP, thumbTip
+    case indexMCP, indexPIP, indexDIP, indexTip
+    case middleMCP, middlePIP, middleDIP, middleTip
+    case ringMCP, ringPIP, ringDIP, ringTip
+    case littleMCP, littlePIP, littleDIP, littleTip
+}
+
+/// Which hand a skeleton belongs to, from the camera's point of view, or
+/// `unknown` when the model can't say.
+public enum PhoneHandChirality: UInt8, CaseIterable, Sendable {
+    case unknown = 0
+    case left
+    case right
+}
+
+/// One joint of a streamed hand: where it sits in the picture, and (when the
+/// phone lifted it) where it sits in the world.
+///
+/// `point` is an upright normalized image point, `0...1` with the origin at the
+/// **lower-left** and y pointing up, already turned for how the phone was held,
+/// so it maps straight onto a canvas rectangle whichever way the phone points.
+/// `confidence` is the model's own `0...1` trust in the joint. On a LiDAR phone
+/// `hasWorldPosition` turns on and `worldPosition` carries the joint in meters,
+/// ARKit world space (y up, the origin where the session started).
+public struct PhoneHandJointSample: Sendable, Equatable {
+    public var point: SIMD2<Float>
+    public var confidence: Float
+    public var hasWorldPosition: Bool
+    public var worldPosition: SIMD3<Float>
+
+    public init(point: SIMD2<Float>, confidence: Float = 1,
+                hasWorldPosition: Bool = false, worldPosition: SIMD3<Float> = .zero) {
+        self.point = point
+        self.confidence = confidence
+        self.hasWorldPosition = hasWorldPosition
+        self.worldPosition = worldPosition
+    }
+}
+
+/// One hand the phone found: which hand it is, the model's overall confidence,
+/// and the joints it was sure enough about (a joint the model couldn't place is
+/// absent). `tracked` reports the ARKit session's own tracking state, which is
+/// what says whether the world positions are standing in a steady world.
+public struct PhoneHandSample: Sendable, Equatable {
+    public var tracked: Bool
+    public var timestamp: Double
+    public var chirality: PhoneHandChirality
+    public var confidence: Float
+    public var joints: [PhoneHandJoint: PhoneHandJointSample]
+
+    public init(tracked: Bool, timestamp: Double, chirality: PhoneHandChirality = .unknown,
+                confidence: Float = 1, joints: [PhoneHandJoint: PhoneHandJointSample]) {
+        self.tracked = tracked
+        self.timestamp = timestamp
+        self.chirality = chirality
+        self.confidence = confidence
+        self.joints = joints
+    }
+}
+
+public extension PhoneWire {
+    /// Map an upright normalized point (lower-left origin, y up: the convention
+    /// every 2D hand joint is carried in) back onto the camera-native buffer's
+    /// normalized grid (top-left origin, y down: the space the depth map lives in).
+    ///
+    /// `quarterTurnsCW` is the number of 90-degree clockwise turns that stand the
+    /// camera-native buffer upright for how the phone is held, the same count the
+    /// segmentation stream carries (portrait is 1). The phone uses this to read a
+    /// joint's depth pixel after the pose model ran on the upright image; a Mac
+    /// test can pin the mapping because it is pure arithmetic.
+    static func bufferPoint(fromUpright p: SIMD2<Float>, quarterTurnsCW: UInt8) -> SIMD2<Float> {
+        switch quarterTurnsCW % 4 {
+        case 1:  return SIMD2<Float>(1 - p.y, 1 - p.x)
+        case 2:  return SIMD2<Float>(1 - p.x, p.y)
+        case 3:  return SIMD2<Float>(p.y, p.x)
+        default: return SIMD2<Float>(p.x, 1 - p.y)
+        }
+    }
+}
+
 /// A decoded message of any kind, which the unit tests round-trip.
 public enum PhoneMessage: Sendable, Equatable {
     case motion(PhoneMotionSample)
@@ -492,6 +585,10 @@ public enum PhoneMessage: Sendable, Equatable {
     case plane(PhonePlaneSample)
     /// How bright and how warm the room is, a few times a second.
     case light(PhoneLightSample)
+    /// Every hand the phone currently sees, bundled into one frame (up to 4). The
+    /// list is the complete current set, empty when no hand is in view, so the
+    /// reader swaps it in wholesale and a hand leaving clears itself.
+    case hands([PhoneHandSample])
 
     public var kind: PhoneMessageKind {
         switch self {
@@ -503,6 +600,7 @@ public enum PhoneMessage: Sendable, Equatable {
         case .sceneMesh: return .sceneMesh
         case .plane: return .plane
         case .light: return .light
+        case .hands: return .handPose
         }
     }
 }
@@ -552,6 +650,7 @@ public extension PhoneWire {
         case .sceneMesh(let chunk): payload = encodeSceneMeshPayload(chunk)
         case .plane(let plane): payload = encodePlanePayload(plane)
         case .light(let light): payload = encodeLightPayload(light)
+        case .hands(let hands): payload = encodeHandsPayload(hands)
         }
         var out = Data()
         appendU32(&out, magic)
@@ -734,6 +833,42 @@ public extension PhoneWire {
         return p
     }
 
+    private static func encodeHandsPayload(_ hands: [PhoneHandSample]) -> Data {
+        var p = Data()
+        // A hand count, then that many self-contained hand records (the phone
+        // looks for up to 4; the count is capped at 255 defensively).
+        p.append(UInt8(min(hands.count, 255)))
+        for hand in hands.prefix(255) { appendHandRecord(&p, hand) }
+        return p
+    }
+
+    /// One hand record: tracked, timestamp, chirality, the model's confidence, and
+    /// the joints. Self-contained so the list decoder reads records back to back.
+    private static func appendHandRecord(_ p: inout Data, _ hand: PhoneHandSample) {
+        p.append(hand.tracked ? 1 : 0)
+        appendF64(&p, hand.timestamp)
+        p.append(hand.chirality.rawValue)
+        appendF32(&p, hand.confidence)
+        p.append(UInt8(min(hand.joints.count, 255)))
+        // Sorted by joint id so the encoding is deterministic (round-trip stable).
+        for joint in hand.joints.keys.sorted(by: { $0.rawValue < $1.rawValue }) {
+            let j = hand.joints[joint]!
+            p.append(joint.rawValue)
+            appendF32(&p, j.point.x); appendF32(&p, j.point.y)
+            appendF32(&p, j.confidence)
+            // The world position is there or it is not (a non-LiDAR phone, or a
+            // joint whose depth pixel was a hole).
+            if j.hasWorldPosition {
+                p.append(1)
+                appendF32(&p, j.worldPosition.x)
+                appendF32(&p, j.worldPosition.y)
+                appendF32(&p, j.worldPosition.z)
+            } else {
+                p.append(0)
+            }
+        }
+    }
+
     /// The size the payload for `chunk` will take, so the phone can skip a block
     /// too big for one frame before it pays to encode it.
     static func sceneMeshPayloadSize(vertexCount: Int, indexCount: Int,
@@ -760,6 +895,7 @@ public extension PhoneWire {
         case .sceneMesh: return decodeSceneMesh(payload).map(PhoneMessage.sceneMesh)
         case .plane: return decodePlane(payload).map(PhoneMessage.plane)
         case .light: return decodeLight(payload).map(PhoneMessage.light)
+        case .handPose: return decodeHands(payload).map(PhoneMessage.hands)
         }
     }
 
@@ -1052,6 +1188,57 @@ public extension PhoneWire {
                                 colorTemperature: temperature, hasDirection: true,
                                 direction: direction, directionalIntensity: intensity,
                                 sphericalHarmonics: harmonics)
+    }
+
+    private static func decodeHands(_ data: Data) -> [PhoneHandSample]? {
+        // A hand count, then that many records. An empty set (count 0) is valid;
+        // it means no hand is in view this frame.
+        guard !data.isEmpty else { return nil }
+        let count = Int(data[data.startIndex])
+        var o = 1
+        var hands = [PhoneHandSample](); hands.reserveCapacity(count)
+        for _ in 0..<count {
+            guard let hand = readHandRecord(data, &o) else { return nil }
+            hands.append(hand)
+        }
+        return hands
+    }
+
+    /// Read one hand record starting at offset `o` (advanced past the record on
+    /// success), or `nil` if the buffer is short.
+    private static func readHandRecord(_ data: Data, _ o: inout Int) -> PhoneHandSample? {
+        // Fixed prefix: tracked(1) + timestamp(8) + chirality(1) + confidence(4) + jointCount(1).
+        guard data.count >= o + 1 + 8 + 1 + 4 + 1 else { return nil }
+        let s = data.startIndex
+        func f32() -> Float { defer { o += 4 }; return readF32(data, s + o) }
+        let tracked = data[s + o] != 0; o += 1
+        let timestamp = readF64(data, s + o); o += 8
+        let chirality = PhoneHandChirality(rawValue: data[s + o]) ?? .unknown; o += 1
+        let confidence = f32()
+        let count = Int(data[s + o]); o += 1
+
+        var joints: [PhoneHandJoint: PhoneHandJointSample] = [:]
+        joints.reserveCapacity(count)
+        for _ in 0..<count {
+            // Per joint: id(1) + point(8) + confidence(4) + hasWorld(1), then the
+            // world position (12) only when the flag is on.
+            guard data.count >= o + 1 + 8 + 4 + 1 else { return nil }
+            let raw = data[s + o]; o += 1
+            let point = SIMD2<Float>(f32(), f32())
+            let jointConfidence = f32()
+            let hasWorld = data[s + o] != 0; o += 1
+            var world = SIMD3<Float>.zero
+            if hasWorld {
+                guard data.count >= o + 12 else { return nil }
+                world = SIMD3<Float>(f32(), f32(), f32())
+            }
+            if let joint = PhoneHandJoint(rawValue: raw) {
+                joints[joint] = PhoneHandJointSample(point: point, confidence: jointConfidence,
+                                                     hasWorldPosition: hasWorld, worldPosition: world)
+            }
+        }
+        return PhoneHandSample(tracked: tracked, timestamp: timestamp, chirality: chirality,
+                               confidence: confidence, joints: joints)
     }
 }
 

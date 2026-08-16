@@ -168,5 +168,6 @@ The **Ollin Capture** iPhone app streaming ARKit perception over USB.
 | [PhoneSegmentation](Phone/PhoneSegmentation/) | Ollin Capture's on-device person matte (tap **Segment**): the cutout lifted onto a live gradient backdrop, the tinted matte as a drop shadow. Needs `import OllinPhone`. |
 | [PhoneRoomMesh](Phone/PhoneRoomMesh/) | Walk the phone around (tap **Room**) and the room arrives as a solid surface, painted by what each triangle is; **space**, **F**, **R**. Needs `import OllinPhone`. |
 | [PhoneRoomPlanes](Phone/PhoneRoomPlanes/) | The flat surfaces in that same room, each as its real outline, with a ball standing on the biggest one and the scene lit by the room's own light; **space**, **F**, **M**, **L**, **R**. Needs no LiDAR. Needs `import OllinPhone`. |
+| [PhoneHands](Phone/PhoneHands/) | The hands the phone sees (tap **Hands**, up to 4) as solid little skeletons standing in the room, lifted to metric 3D through the LiDAR depth; a pinch closes into a bright bead, and without LiDAR the same stream draws as a flat overlay. Needs `import OllinPhone`. |
 
 See [`Docs/3D/3D.md`](../../Docs/3D/3D.md) for the 3D guide. Record3D recordings have their own guide in [`Docs/3D/Record3D.md`](../../Docs/3D/Record3D.md); the Ollin Capture stream is documented in [`Docs/3D/Phone.md`](../../Docs/3D/Phone.md).

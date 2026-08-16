@@ -299,6 +299,9 @@ let package = Package(
         // The flat surfaces in that same room, each as its real outline, with a ball
         // standing on the biggest one and the scene lit by the room's own light.
         example("3D/Phone/PhoneRoomPlanes", [.phone]),
+        // The hands the phone sees as solid little skeletons in the room, lifted to
+        // metric 3D through the LiDAR depth, with a pinch closing into a bead.
+        example("3D/Phone/PhoneHands", [.phone]),
         example("Motion/Breathing"),
         example("Motion/SineSweep"),
         example("Motion/Easing"),
