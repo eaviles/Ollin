@@ -35,6 +35,22 @@ public struct CloudAlignment: Sendable {
     /// cloud, so a well-tracked frame costs one or two.
     public var passes: Int
 
+    /// How well the geometry pinned the answer down, 0 to 1.
+    ///
+    /// A fit can only find an error it can see. A camera facing one flat wall is free to
+    /// slide along it and turn about its normal, and every one of those poses fits the
+    /// wall exactly as well, so three of the six numbers are not measured at all. This
+    /// says how far the surfaces in view are from that: 1 is a corner that pins
+    /// everything, and a value near zero is a fit that could not have answered.
+    ///
+    /// It is read from the fit's own normal equations, as the smallest of their six
+    /// eigenvalues over the largest. The fit already refuses to guess a direction the
+    /// geometry does not pin down, so a low reading here is not a wrong answer: it is a
+    /// *partial* one, and the parts it did not measure keep whatever error they had.
+    /// That matters most when the answer is being kept as a measurement rather than used
+    /// on the spot, which is what `minimumStability` is for.
+    public var stability: Double
+
     /// Whether this frame's fit was accepted. When it is false the cloud still went
     /// in at `pose`, but with the fix carried over from earlier frames rather than a
     /// new one: too little overlap, too few points, or a jump big enough to look like
@@ -69,13 +85,22 @@ public struct CloudAlignment: Sendable {
         /// The biggest turn to accept, in radians.
         public var maximumTurn: Double = .pi / 12
 
+        /// The least `stability` to trust, 0 to 1. Below it the fit is held back.
+        ///
+        /// The default of zero never refuses on this ground, which is right for a live
+        /// feed: a partial answer against a bare wall still beats no answer, and the next
+        /// frame that sees a corner puts the rest right. Raise it when the fit is being
+        /// kept as a *measurement* of where two places stand relative to each other,
+        /// since there the unmeasured directions are believed forever after.
+        public var minimumStability: Double = 0
+
         public init() {}
     }
 
     /// The result for a frame nothing could be done with, where the pose passes through.
     static func unchanged(_ pose: simd_float4x4, correction: simd_float4x4) -> CloudAlignment {
         CloudAlignment(pose: pose, correction: correction, overlap: 0, error: 0,
-                       passes: 0, applied: false)
+                       passes: 0, stability: 0, applied: false)
     }
 }
 
@@ -121,6 +146,7 @@ extension WorldCloud {
         var overlap = 0.0
         var error = 0.0
         var passes = 0
+        var stability = 0.0
         var refused = false
 
         for _ in 0 ..< settings.passes {
@@ -149,14 +175,15 @@ extension WorldCloud {
                 refused = true
                 break
             }
-            guard let move = solvePointToPlane(pairs) else {
+            guard let solved = solvePointToPlane(pairs) else {
                 refused = true
                 break
             }
-            current = move * current
+            stability = solved.stability
+            current = solved.move * current
 
             // A round that no longer moves the cloud has found its answer.
-            if move.shift < 1e-5, move.turn < 1e-5 { break }
+            if solved.move.shift < 1e-5, solved.move.turn < 1e-5 { break }
         }
 
         // A fit that asks for a jump is a fit that matched the wrong surfaces. Keep
@@ -165,13 +192,20 @@ extension WorldCloud {
         if asked.shift > settings.maximumShift || asked.turn > settings.maximumTurn {
             refused = true
         }
+        // A fit the geometry could not pin down answered only some of the six numbers,
+        // and left the rest as they were. That is the right thing to do with it here,
+        // but it is the wrong thing to hand on as a measurement.
+        if stability < settings.minimumStability { refused = true }
+
         guard !refused else {
             return CloudAlignment(pose: carried, correction: correction, overlap: overlap,
-                                  error: error, passes: passes, applied: false)
+                                  error: error, passes: passes, stability: stability,
+                                  applied: false)
         }
 
         return CloudAlignment(pose: current, correction: current * reportedPose.inverse,
-                              overlap: overlap, error: error, passes: passes, applied: true)
+                              overlap: overlap, error: error, passes: passes,
+                              stability: stability, applied: true)
     }
 
     /// Line `source` up against what is already fused, then merge it: the drift
@@ -232,9 +266,15 @@ struct SurfacePair {
 /// approximate one the linear system was built from: that one is not a rotation, and
 /// feeding it back would shear the cloud a little more every round.
 ///
+/// It also reports how well the pairs pinned the answer down, as the smallest of the
+/// system's six eigenvalues over the largest. That ratio is the standard reading of an
+/// ICP fit's geometric stability, from Gelfand, Ikemoto, Rusinkiewicz and Levoy,
+/// *Geometrically Stable Sampling for the ICP Algorithm* (3DIM 2003): a shape with a
+/// small eigenvalue has a direction it can slide along, and the eigenvector says which.
+///
 /// Implemented from Kok-Lim Low, *Linear Least-Squares Optimization for Point-to-Plane
 /// ICP Surface Registration* (UNC TR04-004, 2004).
-func solvePointToPlane(_ pairs: [SurfacePair]) -> simd_float4x4? {
+func solvePointToPlane(_ pairs: [SurfacePair]) -> (move: simd_float4x4, stability: Double)? {
     guard pairs.count >= 6 else { return nil }
 
     // Angles and distances have to be comparable in size for the solve to be steady,
@@ -268,7 +308,8 @@ func solvePointToPlane(_ pairs: [SurfacePair]) -> simd_float4x4? {
         for j in 0 ..< i { ata[i * 6 + j] = ata[j * 6 + i] }
     }
 
-    guard let x = solveSymmetric6(ata, atb) else { return nil }
+    guard let solved = solveSymmetric6(ata, atb) else { return nil }
+    let x = solved.answer
 
     let alpha = x[0], beta = x[1], gamma = x[2]
     let translation = Vector3(x[3], x[4], x[5]) * scale
@@ -288,12 +329,13 @@ func solvePointToPlane(_ pairs: [SurfacePair]) -> simd_float4x4? {
     let offset = center - rotation * center + SIMD3(translation.x, translation.y, translation.z)
     guard offset.x.isFinite, offset.y.isFinite, offset.z.isFinite else { return nil }
 
-    return simd_float4x4(columns: (
+    let move = simd_float4x4(columns: (
         SIMD4(Float(rotation.columns.0.x), Float(rotation.columns.0.y), Float(rotation.columns.0.z), 0),
         SIMD4(Float(rotation.columns.1.x), Float(rotation.columns.1.y), Float(rotation.columns.1.z), 0),
         SIMD4(Float(rotation.columns.2.x), Float(rotation.columns.2.y), Float(rotation.columns.2.z), 0),
         SIMD4(Float(offset.x), Float(offset.y), Float(offset.z), 1)
     ))
+    return (move, solved.stability)
 }
 
 /// Solve a symmetric 6×6 system through its eigenvectors, dropping any direction the
@@ -301,7 +343,11 @@ func solvePointToPlane(_ pairs: [SurfacePair]) -> simd_float4x4? {
 /// solve would answer such a direction with a huge, meaningless number; this answers
 /// it with zero, which reads as "the geometry does not say", and is what keeps a sweep
 /// of one flat wall from sliding along it.
-private func solveSymmetric6(_ matrix: [Double], _ rhs: [Double]) -> [Double]? {
+///
+/// It reports the smallest eigenvalue over the largest along with the answer, which is
+/// how far the geometry was from pinning all six numbers down.
+private func solveSymmetric6(_ matrix: [Double], _ rhs: [Double])
+    -> (answer: [Double], stability: Double)? {
     var a = matrix
     var v = [Double](repeating: 0, count: 36)
     for i in 0 ..< 6 { v[i * 6 + i] = 1 }
@@ -342,20 +388,34 @@ private func solveSymmetric6(_ matrix: [Double], _ rhs: [Double]) -> [Double]? {
     }
 
     var largest = 0.0
-    for i in 0 ..< 6 { largest = Swift.max(largest, abs(a[i * 6 + i])) }
+    var smallest = Double.greatestFiniteMagnitude
+    for i in 0 ..< 6 {
+        largest = Swift.max(largest, abs(a[i * 6 + i]))
+        smallest = Swift.min(smallest, abs(a[i * 6 + i]))
+    }
     guard largest > 0, largest.isFinite else { return nil }
+    let stability = smallest / largest
+
+    // Where a direction stops counting as measured. It is a *conditioning* cutoff and
+    // not a numerical one, which is the whole point: a direction a thousandth as well
+    // pinned as the best one is not a faint signal to be amplified, it is a surface the
+    // points are free to slide along, and answering it divides a little noise by a very
+    // small number. Set near the floating-point floor instead, the solve answers it, and
+    // a camera facing one flat wall slides along it a few centimeters a frame while every
+    // other reading, overlap and leftover error alike, stays perfect.
+    let unmeasured = 1e-3
 
     var x = [Double](repeating: 0, count: 6)
     for j in 0 ..< 6 {
         let eigenvalue = a[j * 6 + j]
-        guard eigenvalue > largest * 1e-8 else { continue }   // unconstrained direction
+        guard eigenvalue > largest * unmeasured else { continue }   // it cannot say
         var projection = 0.0
         for k in 0 ..< 6 { projection += v[k * 6 + j] * rhs[k] }
         let weight = projection / eigenvalue
         for k in 0 ..< 6 { x[k] += weight * v[k * 6 + j] }
     }
     for value in x where !value.isFinite { return nil }
-    return x
+    return (x, stability)
 }
 
 // MARK: - Reading a transform

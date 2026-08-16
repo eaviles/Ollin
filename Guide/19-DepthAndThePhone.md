@@ -180,7 +180,33 @@ Both halves are the same nine captures, seen from the same angle. On the left th
 
 The correction that worked is kept. The next frame starts from it, so the fit only has to find the newest error. That is why it costs so little. Apply `world.correction` to anything else the camera reports in that space.
 
-Two things it will not do. A frame that finds too little to match is held back rather than guessed at, and `fix.applied` says so. It also cannot recognize a room it left and came back to. That is loop closure, and it is still [ahead](../ROADMAP.md#iphone-as-a-sensor-array).
+One thing it will not do. A frame that finds too little to match is held back rather than guessed at, and `fix.applied` says so.
+
+### Coming back to where you started
+
+There is a second thing it cannot do, and it takes a walk to see. Correcting a frame fixes the newest error. It never revises the poses already laid down. So each frame agrees with the frame before it, the chain of them comes out smooth, and the whole chain can still lean. Go all the way around a room and back to the door, and the far wall is a good way from where it really is.
+
+**`ScanGraph`** is the answer to that one. It fuses and corrects exactly as `WorldCloud` does. It also keeps a **keyframe** every so often: a pose, and a thinned copy of what that frame saw. When a new keyframe lands where an old one stood, the two are matched against each other. That match ties a late pose to an early one, so the chain becomes a loop that does not quite close. The difference is then shared out over every pose in between:
+
+```swift
+var scan = ScanGraph(voxelSize: 0.025)
+
+let update = scan.add(cloud, correcting: reportedPose)
+if let loop = update.loop {
+    print("been here before: the map moved \(loop.moved) m")
+}
+drawPointCloud(scan.cloud)
+```
+
+<img src="Images/19-DepthAndThePhone/LoopClosed.jpg" alt="Two overhead views of the same staged room scanned by a camera walking a full circle inside it. On the left the walls are drawn twice, thick and offset, and the ring of camera positions ends short of where it began. On the right the walls are single and clean and the ring closes on itself" width="680">
+
+Both halves are the same walk, seen from straight above, because from overhead a wall is a line and a scan that leaned draws that line twice. The dots are where each half thinks the camera stood; the white ones are the first and the last. On the left the walk closes as a spiral and the walls double. On the right the walk closes as a ring, the walls are single, and the scan holds a quarter fewer points. A smeared wall fills more space than a wall.
+
+What you get from this is a scan that agrees with itself. That is a different thing from a scan that is in exactly the right place, and worth being clear about. One match pulls the two ends of a walk together and shares the difference along everything between them. It earns most of what it earns at the point of return. In a small room, where nearly every frame can see something already fused, the frame-by-frame fit has taken most of the drift out before the walk ever gets back, and there is little left to find.
+
+Two limits are worth knowing. A place is recognized by standing near it, so a scan that has drifted further than `searchRadius` before it comes back is out of its own reach, and the match is refused rather than guessed. And a camera facing one bare wall can slide along that wall and fit it exactly as well every time, so a match made there would record drift as though it had been measured. Neither the overlap nor the leftover error can see that; only the fit's own conditioning can, which is why a room with things standing about in it is easier to scan than an empty corridor.
+
+Run it for yourself with `swift run --package-path Examples Example-3D-Depth-ClosedLoopScan`, which walks a made-up hall twice side by side with the true walls drawn over both.
 
 ## From the cloud to a surface
 
@@ -331,7 +357,7 @@ Depth capture entered art practice when the Microsoft Kinect shipped in 2010 and
 - [The iPhone capture app](../Docs/3D/Phone.md): body, faces, world depth with pose, the room mesh, the flat surfaces, the room's light, segmentation, motion, and world fusion.
 - [Depth compositing](../Docs/3D/DepthCompositing.md): `depth(at:)`, billboards, `drawDepthScene`, and the metric camera.
 - [Surface reconstruction](../Docs/Generators/SurfaceReconstruction.md): rebuilding a scanned cloud as a mesh, skinning particle sets, and the holes and orientation details.
-- Worked examples: [`Examples/3D/Depth/DepthCloud`](../Examples/3D/Depth/DepthCloud/Sketch.swift) (a webcam depth model, no phone needed), [`Examples/3D/Depth/Record3DCloud`](../Examples/3D/Depth/Record3DCloud/Sketch.swift), [`Examples/3D/Depth/Record3DLiveCloud`](../Examples/3D/Depth/Record3DLiveCloud/Sketch.swift), [`Examples/3D/Depth/DepthLiftedPose`](../Examples/3D/Depth/DepthLiftedPose/Sketch.swift), [`Examples/3D/Phone/PhoneDepthCloud`](../Examples/3D/Phone/PhoneDepthCloud/Sketch.swift), [`Examples/3D/Phone/PhoneWorldScan`](../Examples/3D/Phone/PhoneWorldScan/Sketch.swift), [`Examples/3D/Phone/PhoneRoomMesh`](../Examples/3D/Phone/PhoneRoomMesh/Sketch.swift), [`Examples/3D/Phone/PhoneRoomPlanes`](../Examples/3D/Phone/PhoneRoomPlanes/Sketch.swift), [`Examples/3D/Geometry/SurfaceFromPoints`](../Examples/3D/Geometry/SurfaceFromPoints/Sketch.swift), and [`Examples/3D/Depth/DepthOcclusion`](../Examples/3D/Depth/DepthOcclusion/Sketch.swift).
+- Worked examples: [`Examples/3D/Depth/DepthCloud`](../Examples/3D/Depth/DepthCloud/Sketch.swift) (a webcam depth model, no phone needed), [`Examples/3D/Depth/DriftCorrectedScan`](../Examples/3D/Depth/DriftCorrectedScan/Sketch.swift) and [`Examples/3D/Depth/ClosedLoopScan`](../Examples/3D/Depth/ClosedLoopScan/Sketch.swift) (both staged, no phone needed), [`Examples/3D/Depth/Record3DCloud`](../Examples/3D/Depth/Record3DCloud/Sketch.swift), [`Examples/3D/Depth/Record3DLiveCloud`](../Examples/3D/Depth/Record3DLiveCloud/Sketch.swift), [`Examples/3D/Depth/DepthLiftedPose`](../Examples/3D/Depth/DepthLiftedPose/Sketch.swift), [`Examples/3D/Phone/PhoneDepthCloud`](../Examples/3D/Phone/PhoneDepthCloud/Sketch.swift), [`Examples/3D/Phone/PhoneWorldScan`](../Examples/3D/Phone/PhoneWorldScan/Sketch.swift), [`Examples/3D/Phone/PhoneRoomMesh`](../Examples/3D/Phone/PhoneRoomMesh/Sketch.swift), [`Examples/3D/Phone/PhoneRoomPlanes`](../Examples/3D/Phone/PhoneRoomPlanes/Sketch.swift), [`Examples/3D/Geometry/SurfaceFromPoints`](../Examples/3D/Geometry/SurfaceFromPoints/Sketch.swift), and [`Examples/3D/Depth/DepthOcclusion`](../Examples/3D/Depth/DepthOcclusion/Sketch.swift).
 
 ---
 

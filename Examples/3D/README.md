@@ -151,6 +151,7 @@ Depth feeds and depth-aware compositing: cameras, recordings, and metric space.
 | [MetricDepthScene](Depth/MetricDepthScene/) | 2D markers floating at **true metric depths** (meters) inside a live LiDAR feed: a `Camera3D.fromIntrinsics` makes the feed metric, so a marker at a real distance is blocked when you step closer than it. Needs `import OllinRecord3D`. |
 | [DepthLiftedPose](Depth/DepthLiftedPose/) | A 2D body pose lifted into metric 3D through a depth frame: the tethered phone's depth back-projects each tracked joint, and the skeleton is drawn in space over the person's own cloud. Needs `import OllinVision`/`OllinRecord3D`. |
 | [DriftCorrectedScan](Depth/DriftCorrectedScan/) | The same made-up room swept twice side by side: once trusting the reported camera pose, once lining each frame up against the scan with `add(_:correcting:)`. Nothing to plug in; **R** runs the sweep again. |
+| [ClosedLoopScan](Depth/ClosedLoopScan/) | A made-up hall walked all the way around and back, scanned twice side by side: lining each frame up on the left, and `ScanGraph` also recognizing the place it started on the right. The true walls are drawn over both. Nothing to plug in; **R** walks it again. |
 
 ### Phone
 

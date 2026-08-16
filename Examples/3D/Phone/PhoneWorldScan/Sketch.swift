@@ -21,24 +21,42 @@ import OllinPhone
 /// Each frame is also lined up against what has already been fused before it is
 /// merged, which is what keeps a long sweep from smearing: the phone's own tracking
 /// is a little wrong every frame, and the error piles up until a wall lands in two
-/// places. Press **C** to turn the correction off and watch that happen. See
-/// `DriftCorrectedScan` for the same thing side by side, with no phone needed.
+/// places. Press **C** to cycle what the sweep does about that: the pose as reported,
+/// each frame lined up against the scan, or that plus recognizing a place already
+/// scanned and straightening the whole room when it comes back to one. See
+/// `DriftCorrectedScan` and `ClosedLoopScan` for the same three side by side, with no
+/// phone needed.
 @main
 final class PhoneWorldScan: Sketch {
+
+    /// What the sweep does about the phone's own tracking error.
+    enum Keeping: CaseIterable {
+        /// Place every frame where the phone says it is.
+        case asReported
+        /// Line each frame up against the scan before merging it.
+        case linedUp
+        /// That, and recognize a place already scanned.
+        case closingLoops
+    }
 
     let device = PhoneDevice()
 
     // Fuse the sweep at 2.5 cm voxels: fine enough to read a room, coarse enough to
     // stay light over a long scan.
     var world = WorldCloud(voxelSize: 0.025)
+    var scan = ScanGraph(voxelSize: 0.025)
     // The last depth frame fused, so each frame is added exactly once (draw runs
     // faster than frames stream in).
     var lastFused: Int?
 
-    // Whether each frame is lined up against the scan before it is merged, and what
-    // the last fit had left over (meters).
-    var correcting = true
+    // What the sweep is doing about drift, what the last fit had left over (meters),
+    // and the last place it recognized.
+    var keeping = Keeping.linedUp
     var leftOver = 0.0
+    var recognized: ScanGraph.Loop?
+
+    /// The fused cloud of whichever way the sweep is being kept.
+    var fused: PointCloud { keeping == .closingLoops ? scan.cloud : world.cloud }
 
     // The orbit framing, eased frame-to-frame so it drifts smoothly as the scan grows.
     var orbitCenter = Vector3.zero
@@ -59,15 +77,20 @@ final class PhoneWorldScan: Sketch {
            let pose = device.latestPose,
            let cameraCloud = device.pointCloud(minimumConfidence: .low,
                                                depthRange: 0.3...5.0, pointSize: 0.013) {
-            if correcting {
-                leftOver = world.add(cameraCloud, correcting: pose).error
-            } else {
+            switch keeping {
+            case .asReported:
                 world.add(cameraCloud, transformedBy: pose)
+            case .linedUp:
+                leftOver = world.add(cameraCloud, correcting: pose).error
+            case .closingLoops:
+                let update = scan.add(cameraCloud, correcting: pose)
+                leftOver = update.alignment.error
+                if let loop = update.loop { recognized = loop }
             }
             lastFused = id
         }
 
-        guard !world.isEmpty else {
+        guard !fused.isEmpty else {
             return drawStatus(device.waitingMessage + "\n\n" +
                               "Open Ollin Capture on a LiDAR iPhone, tap the World tab,\n" +
                               "connect the cable, then sweep the phone across the room.",
@@ -76,8 +99,8 @@ final class PhoneWorldScan: Sketch {
 
         // Frame the fused cloud: orbit its centroid at a radius set by how spread out
         // it is. Ease toward the target so the view glides as the scan keeps growing.
-        let center = centroid(world.cloud)
-        let radius = max(0.8, spread(world.cloud, around: center) * 3)
+        let center = centroid(fused)
+        let radius = max(0.8, spread(fused, around: center) * 3)
         if framed {
             orbitCenter = orbitCenter.lerp(to: center, 0.06)
             orbitRadius += (radius - orbitRadius) * 0.06
@@ -89,28 +112,45 @@ final class PhoneWorldScan: Sketch {
 
         cameraShowcase(.turntable(period: .tau / 0.2), target: orbitCenter, radius: orbitRadius,
                     elevation: 0.22, fieldOfView: .pi / 3)
-        drawPointCloud(world.cloud)
+        drawPointCloud(fused)
 
-        drawCaption(correcting
-            ? String(format: "PhoneWorldScan: %d pts fused, lined up to %.0f mm; "
-                     + "C for off, R to reset", world.count, leftOver * 1000)
-            : "PhoneWorldScan: \(world.count) pts fused, pose as reported; "
-                + "C to line it up, R to reset")
+        drawCaption(caption())
+    }
+
+    private func caption() -> String {
+        switch keeping {
+        case .asReported:
+            return "PhoneWorldScan: \(fused.count) pts fused, pose as reported; "
+                + "C to line it up, R to reset"
+        case .linedUp:
+            return String(format: "PhoneWorldScan: %d pts fused, lined up to %.0f mm; "
+                          + "C to close loops too, R to reset", fused.count, leftOver * 1000)
+        case .closingLoops:
+            let met = recognized.map {
+                String(format: ", last place met moved the room %.0f cm", $0.moved * 100)
+            } ?? ""
+            return String(format: "PhoneWorldScan: %d pts fused, %d kept, lined up to %.0f mm%@; "
+                          + "C for the reported pose, R to reset",
+                          fused.count, scan.keyframes.count, leftOver * 1000, met)
+        }
     }
 
     override func keyPressed() {
-        if key == "r" || key == "R" {
-            world.reset()
-            framed = false
-            lastFused = nil
-        }
-        // Turning the correction off mid-scan would mix two spaces, so start over.
+        if key == "r" || key == "R" { startOver() }
+        // Changing what the sweep does mid-scan would mix two spaces, so start over.
         if key == "c" || key == "C" {
-            correcting.toggle()
-            world.reset()
-            framed = false
-            lastFused = nil
+            let all = Keeping.allCases
+            keeping = all[(all.firstIndex(of: keeping)! + 1) % all.count]
+            startOver()
         }
+    }
+
+    private func startOver() {
+        world.reset()
+        scan.reset()
+        recognized = nil
+        framed = false
+        lastFused = nil
     }
 
     private func centroid(_ cloud: PointCloud) -> Vector3 {

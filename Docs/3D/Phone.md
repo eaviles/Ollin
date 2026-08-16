@@ -39,7 +39,7 @@ final class Pose: Sketch {
 - [The body](#the-body) - `PhoneBody`, the joints, drawing the skeleton
 - [The face](#the-face) - `PhoneFace`, the blendshapes, the mesh
 - [World depth](#world-depth) - `latestDepthFrame`, `pointCloud(...)`, the camera pose
-- [World fusion](#world-fusion) - `WorldCloud`, sweeping a room into one cloud, and [keeping it registered](#drift)
+- [World fusion](#world-fusion) - `WorldCloud`, sweeping a room into one cloud, [keeping it registered](#drift), and [recognizing a place already scanned](#loops) with `ScanGraph`
 - [The room mesh](#the-room-mesh) - `sceneMesh`, the room as a labelled surface, the Room mode
 - [The flat surfaces](#the-flat-surfaces) - `planes`, somewhere to stand something, no LiDAR needed
 - [The room's light](#the-rooms-light) - `latestLight`, how bright and how warm the room is
@@ -211,9 +211,50 @@ Apply `world.correction` to anything else the phone reports in the same space, s
 let whereTheCameraReallyIs = Vector3.zero.transformed(by: world.correction * pose)
 ```
 
-This corrects the error as it accumulates. It does not close a **loop**: walk a full circle around a building and come back, and the scan will have wandered by more than one frame's fit can find. That needs loop detection and a pose graph, which is still ahead.
-
 To see the difference without a phone, `swift run --package-path Examples Example-3D-Depth-DriftCorrectedScan` sweeps a made-up room twice, side by side, with the correction on and off.
+
+<a name="loops"></a>
+### Recognizing a place already scanned
+
+Correcting each frame removes the newest error. It does not revise the poses behind it. Each frame agrees with the frame before it, and the chain of them can still lean. Walk a full circle around a room and the far wall lands well away from where it is.
+
+`ScanGraph` fixes that. It fuses and corrects exactly as `WorldCloud` does. It also keeps a **keyframe** every so often: the pose it went in at, and a thinned copy of what that frame saw. A new keyframe that lands where an old one stood is matched against it directly. The match ties a late pose to an early one, so the chain becomes a loop that does not quite close. That difference is shared out over every pose between the two, and the fused cloud is laid out again from the keyframes' new poses.
+
+```swift
+var scan = ScanGraph(voxelSize: 0.025)
+
+let update = scan.add(cameraCloud, correcting: pose)
+update.alignment            // the same CloudAlignment the frame-by-frame fit reports
+update.keyframe             // the keyframe this frame became, if it was worth keeping
+update.loop                 // set when the scan recognized a place
+
+scan.cloud                  // the fused points, as WorldCloud's
+scan.keyframes              // every kept moment: pose, reported pose, what it saw
+scan.loops                  // every place recognized so far
+scan.correction             // placed = correction * reported, straightenings included
+```
+
+A loop reports its match and its effect:
+
+```swift
+if let loop = update.loop {
+    loop.keyframe           // the keyframe that turned out to be somewhere known
+    loop.recognized         // the older keyframe it matched
+    loop.overlap            // how much of the two views agreed, 0 to 1
+    loop.error              // what the match left over, in meters
+    loop.moved              // the biggest keyframe move the straightening made, in meters
+}
+```
+
+**The envelope.** The search compares position and viewing direction, so `searchRadius`, 1.5 m by default, is the limit. A scan that drifts further than that before returning is out of its own reach. Each candidate is then fitted, twice: wide, then narrow. The wide pass finds an error too big for the narrow one to see. The narrow pass is the one that is scored, and a candidate that scores badly is refused.
+
+**One guard is not obvious.** A camera facing one flat wall can slide along that wall and turn about its normal. Every such pose fits the wall equally well. Three of the six reported numbers are then unmeasured; they record drift as though it were measured. Overlap and leftover error both appear perfect. Only the fit's conditioning reveals this, reported as `stability` on `CloudAlignment`, and a match under `matching.minimumStability` is refused. A room with objects in it is therefore easier to scan than a bare corridor.
+
+**A straightened scan is rebuilt from the keyframes.** So `keyframeDetail`, 4 cm by default, sets both the detail the finished scan holds and the memory the keyframes cost. Use a value near the fusion `voxelSize` for the most detail, or several times it to stay light. Frames after the last keyframe are not kept and are not laid down again; the sweep replaces their detail as it continues.
+
+The rest are knobs on `ScanGraph.Settings`: the distance between keyframes, how far back to look, how many candidates to fit, how much the two views must agree, and the distance at which a turn is weighed. Leave that last one unset and the scan supplies it.
+
+Without a phone, `swift run --package-path Examples Example-3D-Depth-ClosedLoopScan` walks a made-up hall twice, side by side. The left half lines up frame by frame, the right half also closes loops, and the true walls are drawn over both.
 
 ## The room mesh
 

@@ -93,7 +93,7 @@ struct CloudRegistrationTests {
         let solved = solvePointToPlane(pairs)
         #expect(solved != nil)
         // One round of the linear approximation lands close; ICP would run more.
-        #expect(disagreement(solved!, move) < 2e-3)
+        #expect(disagreement(solved!.move, move) < 2e-3)
     }
 
     /// The linear system is built from an approximate rotation matrix, and that matrix
@@ -122,7 +122,7 @@ struct CloudRegistrationTests {
 
         let solved = solvePointToPlane(pairs)
         #expect(solved != nil)
-        let m = solved!
+        let m = solved!.move
         let columns = [SIMD3(m.columns.0.x, m.columns.0.y, m.columns.0.z),
                        SIMD3(m.columns.1.x, m.columns.1.y, m.columns.1.z),
                        SIMD3(m.columns.2.x, m.columns.2.y, m.columns.2.z)]
@@ -159,10 +159,12 @@ struct CloudRegistrationTests {
         let solved = solvePointToPlane(pairs)
         #expect(solved != nil)
         // It should push the points down onto the plane, and not slide them sideways.
-        let moved = solved!.transforming(Vector3(0.5, 0.5, 0.02))
+        let moved = solved!.move.transforming(Vector3(0.5, 0.5, 0.02))
         #expect(abs(moved.z) < 1e-4)
         #expect(abs(moved.x - 0.5) < 1e-3)
         #expect(abs(moved.y - 0.5) < 1e-3)
+        // And it should say so: one plane pins three of the six numbers at most.
+        #expect(solved!.stability < 1e-6, "one plane read as \(solved!.stability)")
     }
 
     // MARK: - Recovering a pose against a fused scene
