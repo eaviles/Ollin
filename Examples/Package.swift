@@ -284,6 +284,9 @@ let package = Package(
         // The Ollin capture app's live face mesh + blendshapes, orbited as a point
         // cloud with expression bars — the front-camera sibling of PhoneBodyPose.
         example("3D/Phone/PhoneFace", [.phone]),
+        // The eyes and the gaze from that same Face mode: eyeballs at the streamed
+        // eye poses, beams converging on the look-at point, a bead where they meet.
+        example("3D/Phone/PhoneGaze", [.phone]),
         // The Ollin capture app's live rear-LiDAR RGBD cloud — the depth sibling of
         // PhoneBodyPose and PhoneFace.
         example("3D/Phone/PhoneDepthCloud", [.phone]),

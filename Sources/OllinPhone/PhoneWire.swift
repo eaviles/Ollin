@@ -214,9 +214,14 @@ public enum PhoneBlendShape: UInt8, CaseIterable, Sendable {
 /// One ARKit face sample: whether ARKit has the face, the capture timestamp, the
 /// head's world pose (rotation `(x,y,z,w)` + position in meters), the 52 expression
 /// `blendShapes` (positional, in `PhoneBlendShape` order), the deforming
-/// `meshVertices` in **face-local** space (centered on the face, meters), and the
-/// `triangleIndices` (the mesh topology — constant per device, three indices per
-/// triangle) so the Mac can draw a real mesh, not just a point cloud.
+/// `meshVertices` in **face-local** space (centered on the face, meters), the
+/// `triangleIndices` (the mesh topology, constant per device, three indices per
+/// triangle) so the Mac can draw a real mesh, not just a point cloud, and the
+/// per-vertex `textureCoordinates` so that mesh can wear a texture.
+///
+/// The eyes and the gaze ride along, all **face-local** (relative to the head):
+/// each eye as a rotation `(x,y,z,w)` + position, and `lookAtPoint` as the point the
+/// two eyes converge on. Multiply by the head pose to stand them in world space.
 public struct PhoneFaceSample: Sendable, Equatable {
     public var tracked: Bool
     public var timestamp: Double
@@ -225,10 +230,21 @@ public struct PhoneFaceSample: Sendable, Equatable {
     public var blendShapes: [Float]
     public var meshVertices: [SIMD3<Float>]
     public var triangleIndices: [UInt16]
+    public var textureCoordinates: [SIMD2<Float>]
+    public var leftEyeOrientation: SIMD4<Float>
+    public var leftEyePosition: SIMD3<Float>
+    public var rightEyeOrientation: SIMD4<Float>
+    public var rightEyePosition: SIMD3<Float>
+    public var lookAtPoint: SIMD3<Float>
 
     public init(tracked: Bool, timestamp: Double, headOrientation: SIMD4<Float>,
                 headPosition: SIMD3<Float>, blendShapes: [Float], meshVertices: [SIMD3<Float>],
-                triangleIndices: [UInt16] = []) {
+                triangleIndices: [UInt16] = [], textureCoordinates: [SIMD2<Float>] = [],
+                leftEyeOrientation: SIMD4<Float> = SIMD4<Float>(0, 0, 0, 1),
+                leftEyePosition: SIMD3<Float> = .zero,
+                rightEyeOrientation: SIMD4<Float> = SIMD4<Float>(0, 0, 0, 1),
+                rightEyePosition: SIMD3<Float> = .zero,
+                lookAtPoint: SIMD3<Float> = .zero) {
         self.tracked = tracked
         self.timestamp = timestamp
         self.headOrientation = headOrientation
@@ -236,6 +252,12 @@ public struct PhoneFaceSample: Sendable, Equatable {
         self.blendShapes = blendShapes
         self.meshVertices = meshVertices
         self.triangleIndices = triangleIndices
+        self.textureCoordinates = textureCoordinates
+        self.leftEyeOrientation = leftEyeOrientation
+        self.leftEyePosition = leftEyePosition
+        self.rightEyeOrientation = rightEyeOrientation
+        self.rightEyePosition = rightEyePosition
+        self.lookAtPoint = lookAtPoint
     }
 }
 
@@ -731,6 +753,19 @@ public extension PhoneWire {
         // per device, but small (~7k indices), so it's sent each frame for simplicity.
         appendU32(&p, UInt32(face.triangleIndices.count))
         for i in face.triangleIndices { appendU16(&p, i) }
+        // Texture coordinates: a count, then uv per vertex (empty when not carried).
+        appendU16(&p, UInt16(min(face.textureCoordinates.count, Int(UInt16.max))))
+        for uv in face.textureCoordinates.prefix(Int(UInt16.max)) {
+            appendF32(&p, uv.x); appendF32(&p, uv.y)
+        }
+        // Eyes + gaze, all face-local: each eye a quaternion + position, then the
+        // point the two eyes converge on.
+        for eye in [(face.leftEyeOrientation, face.leftEyePosition),
+                    (face.rightEyeOrientation, face.rightEyePosition)] {
+            for v in [eye.0.x, eye.0.y, eye.0.z, eye.0.w] { appendF32(&p, v) }
+            for v in [eye.1.x, eye.1.y, eye.1.z] { appendF32(&p, v) }
+        }
+        for v in [face.lookAtPoint.x, face.lookAtPoint.y, face.lookAtPoint.z] { appendF32(&p, v) }
     }
 
     private static func encodeDepthPayload(_ d: PhoneDepthSample) -> Data {
@@ -1002,9 +1037,27 @@ public extension PhoneWire {
             triangleIndices.append(UInt16(data[s + o]) | (UInt16(data[s + o + 1]) << 8)); o += 2
         }
 
+        // Texture coordinates: a count, then uv per vertex.
+        guard data.count >= o + 2 else { return nil }
+        let uvCount = Int(UInt16(data[s + o]) | (UInt16(data[s + o + 1]) << 8)); o += 2
+        // Eyes (2 x quat 16 + pos 12) + lookAtPoint (12) follow the UVs.
+        guard data.count >= o + uvCount * 8 + 56 + 12 else { return nil }
+        var textureCoordinates = [SIMD2<Float>](); textureCoordinates.reserveCapacity(uvCount)
+        for _ in 0..<uvCount { textureCoordinates.append(SIMD2<Float>(f32(), f32())) }
+
+        let leftEyeOrientation = SIMD4<Float>(f32(), f32(), f32(), f32())
+        let leftEyePosition = SIMD3<Float>(f32(), f32(), f32())
+        let rightEyeOrientation = SIMD4<Float>(f32(), f32(), f32(), f32())
+        let rightEyePosition = SIMD3<Float>(f32(), f32(), f32())
+        let lookAtPoint = SIMD3<Float>(f32(), f32(), f32())
+
         return PhoneFaceSample(tracked: tracked, timestamp: timestamp, headOrientation: headOrientation,
                                headPosition: headPosition, blendShapes: blendShapes,
-                               meshVertices: meshVertices, triangleIndices: triangleIndices)
+                               meshVertices: meshVertices, triangleIndices: triangleIndices,
+                               textureCoordinates: textureCoordinates,
+                               leftEyeOrientation: leftEyeOrientation, leftEyePosition: leftEyePosition,
+                               rightEyeOrientation: rightEyeOrientation, rightEyePosition: rightEyePosition,
+                               lookAtPoint: lookAtPoint)
     }
 
     private static func decodeDepth(_ data: Data) -> PhoneDepthSample? {

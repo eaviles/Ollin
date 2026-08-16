@@ -96,6 +96,26 @@ import Darwin
         #expect(roundTrip(message) == message)
     }
 
+    @Test func roundTripsFaceWithEyesGazeAndUVs() {
+        // The richer half of the face record: per-vertex texture coordinates, both
+        // eye poses (face-local quaternion + position), and the look-at point the
+        // eyes converge on. All must survive alongside the mesh and its topology.
+        let mesh = [SIMD3<Float>(0, 0, 0), SIMD3<Float>(1, 0, 0), SIMD3<Float>(0, 1, 0)]
+        let message = PhoneMessage.face([PhoneFaceSample(
+            tracked: true, timestamp: 2.25,
+            headOrientation: SIMD4<Float>(0, 0.383, 0, 0.924),
+            headPosition: SIMD3<Float>(0.1, 0.2, -0.5),
+            blendShapes: [Float](repeating: 0.2, count: PhoneBlendShape.allCases.count),
+            meshVertices: mesh, triangleIndices: [0, 1, 2],
+            textureCoordinates: [SIMD2<Float>(0, 0), SIMD2<Float>(1, 0), SIMD2<Float>(0.5, 1)],
+            leftEyeOrientation: SIMD4<Float>(0.1, 0, 0, 0.995),
+            leftEyePosition: SIMD3<Float>(0.032, 0.028, 0.026),
+            rightEyeOrientation: SIMD4<Float>(0, -0.1, 0, 0.995),
+            rightEyePosition: SIMD3<Float>(-0.032, 0.028, 0.026),
+            lookAtPoint: SIMD3<Float>(0.05, -0.02, 0.4))])
+        #expect(roundTrip(message) == message)
+    }
+
     @Test func roundTripsFaceWithoutMesh() {
         // Blendshapes only, no mesh vertices — the lightweight case.
         let message = PhoneMessage.face([PhoneFaceSample(

@@ -37,7 +37,7 @@ final class Pose: Sketch {
 - [Setup](#setup) - install the capture app, connect the cable
 - [Reading the stream](#reading-the-stream) - `latestBody`, `latestFace`, `latestDepthFrame`, `sceneMesh`, `planes`, `latestLight`, `latestMotion`, the connection state
 - [The body](#the-body) - `PhoneBody`, the joints, drawing the skeleton, where the person stands, joints that turn
-- [The face](#the-face) - `PhoneFace`, the blendshapes, the mesh
+- [The face](#the-face) - `PhoneFace`, the blendshapes, the mesh and its texture coordinates, [the eyes and the gaze](#the-eyes-and-the-gaze)
 - [The hands](#the-hands) - `PhoneHand`, 21 joints, the 3D lift, `pinchDistance`
 - [World depth](#world-depth) - `latestDepthFrame`, `pointCloud(...)`, the camera pose
 - [World fusion](#world-fusion) - `WorldCloud`, sweeping a room into one cloud, [keeping it registered](#drift), and [recognizing a place already scanned](#loops) with `ScanGraph`
@@ -152,7 +152,7 @@ Two bundled examples read this section live. `Example-3D-Phone-PhoneBodyFigure` 
 
 ## The face
 
-In **Face** mode the phone tracks faces on the front TrueDepth camera, **up to 3 at once**. Each streams as a `PhoneFace`: the 52 expression **blendshapes**, the deforming **mesh**, and the **head pose**. Read `latestFaces` for the whole set, or `latestFace` for just the most prominent one:
+In **Face** mode the phone tracks faces on the front TrueDepth camera, **up to 3 at once**. Each streams as a `PhoneFace`: the 52 expression **blendshapes**, the deforming **mesh** (with its texture coordinates), the **head pose**, the two **eye poses**, and the **look-at point** the eyes converge on. Read `latestFaces` for the whole set, or `latestFace` for just the most prominent one:
 
 ```swift
 for face in device.latestFaces {     // up to 3 people
@@ -162,8 +162,10 @@ for face in device.latestFaces {     // up to 3 people
     face.strongestBlendShapes()      // the few firing now, strongest first
     face.mesh()                      // Mesh, the triangle surface (draw solid/wireframe)
     face.meshPoints                  // [Vector3], the mesh vertices, face-local (meters)
+    face.meshUVs                     // [Vector2], per-vertex texture coordinates
     face.headPosition                // Vector3, head position in world space
     face.headOrientation             // SIMD4<Float>, head rotation quaternion (x,y,z,w)
+    face.headTransform               // simd_float4x4, both composed, for transform(_:)
 }
 ```
 
@@ -171,7 +173,7 @@ for face in device.latestFaces {     // up to 3 people
 
 The blendshapes are the `PhoneBlendShape` set, ARKit's 52 named coefficients: `jawOpen`, `eyeBlinkLeft`, `mouthSmileLeft`, `browInnerUp`, `cheekPuff`, `tongueOut`, and the rest. Each runs `0` at neutral to `1` fully expressed. They're the cheap, expressive payload, so read one to drive a knob, or `strongestBlendShapes()` to name the current expression.
 
-Draw each face as a `mesh()`, its triangle surface, carrying the ARKit topology and computed normals. Draw it solid, textured, or as a `wireframe()`, the recognizable AR face net. The vertices are face-local, centered on the face, so add `face.headPosition` to place several people apart in space, then orbit their centroid:
+Draw each face as a `mesh()`, its triangle surface, carrying the ARKit topology, computed normals, and the per-vertex texture coordinates. Draw it solid, textured, or as a `wireframe()`, the recognizable AR face net. The texture coordinates are the mapping every face shares and they never change frame to frame, so a mask image painted once (`face.mesh().textured(maskImage)`) fits every face and stays in place while the mesh deforms. The vertices are face-local, centered on the face, so add `face.headPosition` to place several people apart in space, then orbit their centroid:
 
 ```swift
 // One face: face-local space, so orbit .zero
@@ -180,7 +182,25 @@ wireframe()
 drawMesh(face.mesh())
 ```
 
-`face.cloud()` draws the vertices as points instead, if you want the splat look. The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneFace`.
+To stand the mesh where the head really is, turned the way the head turns, put `face.headTransform` on the transform stack instead and draw the mesh under it. `face.cloud()` draws the vertices as points instead, if you want the splat look. The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneFace`.
+
+### The eyes and the gaze
+
+Each face also carries its two eyes and where they look. The eye poses and the look-at point are **face-local** (relative to the head), and every reader has a world twin that stands it through the head pose:
+
+```swift
+face.eyePosition(.left)              // Vector3, face-local (meters)
+face.worldEyePosition(.left)         // Vector3, stood through the head pose
+face.eyeOrientation(.right)          // SIMD4<Float>, quaternion, identity = straight ahead
+face.gazeDirection(.right)           // Vector3, unit, out of the face
+face.worldGazeDirection(.right)      // Vector3, unit, in the room
+face.lookAtPoint                     // Vector3, where the eyes converge, face-local
+face.worldLookAtPoint                // Vector3, the same point in the room
+```
+
+The look-at point is the one to reach for first: one point in space that both eyes agree on, good for aiming a bead, steering a creature, or letting a viewer's glance push things around. The per-eye readers are for drawing the eyes themselves: an eyeball at `worldEyePosition`, a pupil a few millimeters along `gazeDirection`, a beam from each eye to `worldLookAtPoint`. The blink blendshapes (`.eyeBlinkLeft` / `.eyeBlinkRight`) pair naturally with them.
+
+The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneGaze`: eyeballs standing at the streamed eye poses, beams converging on the look-at bead.
 
 ## The hands
 

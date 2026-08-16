@@ -182,6 +182,23 @@ for hand in device.latestHands {
 
 The orange hand is a right hand and the blue one a left, straight from `chirality`. The white bead sits where the blue hand pinches. `pinchDistance` measures thumb tip to index tip in meters. Under about two centimeters, the fingers are touching. That one number is a whole instrument. A pinch can pluck a note, a spread can stretch a shape, a fingertip can draw a ribbon through the room. A joint the model could not see simply stays absent. On a phone with no LiDAR, the same hands arrive flat, ready to map over the canvas with `point(_:in:)`. The `3D/Phone/PhoneHands` example is this section live: hold up a hand and it stands in the room as a small solid skeleton.
 
+## Where a look lands
+
+The face stream carries more than expression. Each face arrives with its two eyes and one extra point: `lookAtPoint`, where those eyes converge. The head says where you face. The eyes say where you look. Those are different things, and the difference is the interesting part. Every reader has a world twin, so three calls draw the whole idea:
+
+```swift
+if let face = device.latestFace {
+    let target = face.worldLookAtPoint
+    for eye in PhoneEye.allCases {
+        drawCapsule(from: face.worldEyePosition(eye), to: target, radius: 0.002)
+    }
+}
+```
+
+<img src="Images/19-DepthAndThePhone/GazeAsBeams.jpg" alt="A staged wireframe face shell on a dark ground, a small nose marker under its two white eyeballs, each pupil turned toward a warm bead floating off to the side, with a thin beam running from each eye to the bead where the two converge" width="680">
+
+The shell is the face mesh drawn under `headTransform`. It stands where the head is and turns the way the head turns. The head points one way. The eyes look another, and both beams land on the same warm bead. That point is a cursor you steer without hands. Park a creature there, or steer a brush with a glance. The blink blendshapes pair naturally with the eyes: `.eyeBlinkLeft` is the left lid closing over `worldEyePosition(.left)`. The mesh also carries its texture coordinates, the same mapping on every face. A painted mask keeps its place while the face deforms. The `3D/Phone/PhoneGaze` example is this section live: look past the phone and the bead lands where you look.
+
 ## One world from many frames
 
 A single frame is a slice of the world, whatever the lens saw plus voids. The way past that is the last idea of the chapter, and it needs one new ingredient. That is the **pose**, where the camera stood and which way it looked, written as a transform. Given a frame's cloud in camera space, and its pose, `transformed(by:)` places the points where they really are in the room. `WorldCloud` accumulates those placed points, thinning duplicates so overlapping frames don't pile up:

@@ -3,9 +3,11 @@ import ARKit
 import simd
 
 /// Runs ARKit face tracking (front TrueDepth camera) and turns the tracked faces
-/// — up to 3 at once — into `PhoneFaceSample`s: the 52 expression blendshapes, the
-/// deforming mesh in face-local space, and each head's world pose. ARKit delivers
-/// its delegate callbacks on the main thread, so `onFaces` fires on main.
+/// (up to 3 at once) into `PhoneFaceSample`s: the 52 expression blendshapes, the
+/// deforming mesh (with its topology and texture coordinates) in face-local space,
+/// each head's world pose, the two eye poses, and the look-at point the eyes
+/// converge on. ARKit delivers its delegate callbacks on the main thread, so
+/// `onFaces` fires on main.
 ///
 /// Face tracking uses the front camera and so is mutually exclusive with the
 /// rear-camera body tracking (`ARStreamer`); the app runs one or the other.
@@ -51,13 +53,22 @@ final class FaceStreamer: NSObject, ARSessionDelegate, LightReporting {
 
             // The mesh, in face-local space (meters, centered on the face), plus its
             // triangle topology (constant per device; ARKit's indices are vertex
-            // indices, always non-negative).
+            // indices, always non-negative) and the per-vertex texture coordinates
+            // (constant too; only the vertex positions deform frame to frame).
             let vertices = face.geometry.vertices.map { SIMD3<Float>($0.x, $0.y, $0.z) }
             let indices = face.geometry.triangleIndices.map { UInt16($0) }
+            let uvs = face.geometry.textureCoordinates.map { SIMD2<Float>($0.x, $0.y) }
 
             // Head pose in world space: rotation as a quaternion + translation.
             let q = simd_quatf(face.transform)
             let t = face.transform.columns.3
+
+            // The eyes and the gaze, all face-local (relative to the head): each eye
+            // a rigid transform, the look-at point the two eyes converge on.
+            let leftQ = simd_quatf(face.leftEyeTransform)
+            let leftT = face.leftEyeTransform.columns.3
+            let rightQ = simd_quatf(face.rightEyeTransform)
+            let rightT = face.rightEyeTransform.columns.3
 
             return PhoneFaceSample(
                 tracked: face.isTracked,
@@ -66,7 +77,15 @@ final class FaceStreamer: NSObject, ARSessionDelegate, LightReporting {
                 headPosition: SIMD3<Float>(t.x, t.y, t.z),
                 blendShapes: blendShapes,
                 meshVertices: vertices,
-                triangleIndices: indices)
+                triangleIndices: indices,
+                textureCoordinates: uvs,
+                leftEyeOrientation: SIMD4<Float>(leftQ.vector.x, leftQ.vector.y,
+                                                 leftQ.vector.z, leftQ.vector.w),
+                leftEyePosition: SIMD3<Float>(leftT.x, leftT.y, leftT.z),
+                rightEyeOrientation: SIMD4<Float>(rightQ.vector.x, rightQ.vector.y,
+                                                  rightQ.vector.z, rightQ.vector.w),
+                rightEyePosition: SIMD3<Float>(rightT.x, rightT.y, rightT.z),
+                lookAtPoint: face.lookAtPoint)
         }
         onFaces?(faces)
     }
