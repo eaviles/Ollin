@@ -97,6 +97,12 @@ public enum PhoneMessageKind: UInt8, Sendable, CaseIterable {
     /// ARKit world space, lifted through the depth map and the camera pose, so a
     /// hand lands in the same world the depth sweep and the room use.
     case handPose = 9
+    /// The lines of text the phone can read in the rear camera, bundled per frame:
+    /// each what it says, how sure the reader is, and the four corners of the line
+    /// as upright 2D image points. On a LiDAR phone each corner also carries a
+    /// metric 3D position in ARKit world space, lifted through the depth map and
+    /// the camera pose, so a sign stands where it hangs in the room.
+    case recognizedText = 10
 }
 
 /// The named joints the stream carries — a practical subset of ARKit's ~91-joint
@@ -565,6 +571,41 @@ public struct PhoneHandSample: Sendable, Equatable {
     }
 }
 
+/// One line of text the phone read: what it says, the reader's confidence, and
+/// where the line sits in the picture. Its four `corners` are upright normalized
+/// image points (`0…1`, lower-left origin, y up, already turned for how the phone
+/// was held), in perimeter order: top-left, top-right, bottom-right, bottom-left.
+///
+/// On a LiDAR phone `hasWorldCorners` turns on and `worldCorners` carries the
+/// same four corners in meters, ARKit world space (y up, the origin where the
+/// session started), lifted through the depth map and the camera pose: all four
+/// or none, since three corners are not a quad. `tracked` reports the ARKit
+/// session's own tracking state, which is what says whether the world corners
+/// stand in a steady world.
+public struct PhoneTextSample: Sendable, Equatable {
+    public var tracked: Bool
+    public var timestamp: Double
+    public var text: String
+    public var confidence: Float
+    /// Four upright normalized image points, perimeter order (tl, tr, br, bl).
+    public var corners: [SIMD2<Float>]
+    public var hasWorldCorners: Bool
+    /// Four metric world-space corners in the same order, or empty.
+    public var worldCorners: [SIMD3<Float>]
+
+    public init(tracked: Bool, timestamp: Double, text: String, confidence: Float = 1,
+                corners: [SIMD2<Float>], hasWorldCorners: Bool = false,
+                worldCorners: [SIMD3<Float>] = []) {
+        self.tracked = tracked
+        self.timestamp = timestamp
+        self.text = text
+        self.confidence = confidence
+        self.corners = corners
+        self.hasWorldCorners = hasWorldCorners
+        self.worldCorners = worldCorners
+    }
+}
+
 public extension PhoneWire {
     /// Map an upright normalized point (lower-left origin, y up: the convention
     /// every 2D hand joint is carried in) back onto the camera-native buffer's
@@ -611,6 +652,10 @@ public enum PhoneMessage: Sendable, Equatable {
     /// list is the complete current set, empty when no hand is in view, so the
     /// reader swaps it in wholesale and a hand leaving clears itself.
     case hands([PhoneHandSample])
+    /// Every line of text the phone can currently read, bundled into one frame.
+    /// The list is the complete current set, empty when no text is in view, so
+    /// the reader swaps it in wholesale and a sign leaving clears itself.
+    case texts([PhoneTextSample])
 
     public var kind: PhoneMessageKind {
         switch self {
@@ -623,6 +668,7 @@ public enum PhoneMessage: Sendable, Equatable {
         case .plane: return .plane
         case .light: return .light
         case .hands: return .handPose
+        case .texts: return .recognizedText
         }
     }
 }
@@ -673,6 +719,7 @@ public extension PhoneWire {
         case .plane(let plane): payload = encodePlanePayload(plane)
         case .light(let light): payload = encodeLightPayload(light)
         case .hands(let hands): payload = encodeHandsPayload(hands)
+        case .texts(let texts): payload = encodeTextsPayload(texts)
         }
         var out = Data()
         appendU32(&out, magic)
@@ -904,6 +951,45 @@ public extension PhoneWire {
         }
     }
 
+    private static func encodeTextsPayload(_ texts: [PhoneTextSample]) -> Data {
+        var p = Data()
+        // A line count, then that many self-contained line records (the count is
+        // capped at 255 defensively; a frame rarely reads more than a few dozen).
+        p.append(UInt8(min(texts.count, 255)))
+        for line in texts.prefix(255) { appendTextRecord(&p, line) }
+        return p
+    }
+
+    /// One text-line record: tracked, timestamp, the UTF-8 string, the reader's
+    /// confidence, the four image corners, and (when lifted) the four world
+    /// corners. Self-contained so the list decoder reads records back to back.
+    private static func appendTextRecord(_ p: inout Data, _ line: PhoneTextSample) {
+        p.append(line.tracked ? 1 : 0)
+        appendF64(&p, line.timestamp)
+        // The string as UTF-8: a byte count, then the bytes (capped defensively;
+        // a recognized line is far under the cap).
+        let utf8 = Data(line.text.utf8.prefix(Int(UInt16.max)))
+        appendU16(&p, UInt16(utf8.count))
+        p.append(utf8)
+        appendF32(&p, line.confidence)
+        // Exactly four corners, perimeter order; short input pads at the origin
+        // so the record's shape never varies.
+        for i in 0..<4 {
+            let c = i < line.corners.count ? line.corners[i] : .zero
+            appendF32(&p, c.x); appendF32(&p, c.y)
+        }
+        // The world corners are there or they are not (a non-LiDAR phone, or a
+        // corner over a hole in the depth map): all four or none.
+        if line.hasWorldCorners, line.worldCorners.count == 4 {
+            p.append(1)
+            for c in line.worldCorners {
+                appendF32(&p, c.x); appendF32(&p, c.y); appendF32(&p, c.z)
+            }
+        } else {
+            p.append(0)
+        }
+    }
+
     /// The size the payload for `chunk` will take, so the phone can skip a block
     /// too big for one frame before it pays to encode it.
     static func sceneMeshPayloadSize(vertexCount: Int, indexCount: Int,
@@ -931,6 +1017,7 @@ public extension PhoneWire {
         case .plane: return decodePlane(payload).map(PhoneMessage.plane)
         case .light: return decodeLight(payload).map(PhoneMessage.light)
         case .handPose: return decodeHands(payload).map(PhoneMessage.hands)
+        case .recognizedText: return decodeTexts(payload).map(PhoneMessage.texts)
         }
     }
 
@@ -1292,6 +1379,51 @@ public extension PhoneWire {
         }
         return PhoneHandSample(tracked: tracked, timestamp: timestamp, chirality: chirality,
                                confidence: confidence, joints: joints)
+    }
+
+    private static func decodeTexts(_ data: Data) -> [PhoneTextSample]? {
+        // A line count, then that many records. An empty set (count 0) is valid;
+        // it means no readable text is in view this frame.
+        guard !data.isEmpty else { return nil }
+        let count = Int(data[data.startIndex])
+        var o = 1
+        var texts = [PhoneTextSample](); texts.reserveCapacity(count)
+        for _ in 0..<count {
+            guard let line = readTextRecord(data, &o) else { return nil }
+            texts.append(line)
+        }
+        return texts
+    }
+
+    /// Read one text-line record starting at offset `o` (advanced past the record
+    /// on success), or `nil` if the buffer is short.
+    private static func readTextRecord(_ data: Data, _ o: inout Int) -> PhoneTextSample? {
+        // Fixed prefix: tracked(1) + timestamp(8) + byteCount(2).
+        guard data.count >= o + 1 + 8 + 2 else { return nil }
+        let s = data.startIndex
+        func f32() -> Float { defer { o += 4 }; return readF32(data, s + o) }
+        let tracked = data[s + o] != 0; o += 1
+        let timestamp = readF64(data, s + o); o += 8
+        let byteCount = Int(UInt16(data[s + o]) | (UInt16(data[s + o + 1]) << 8)); o += 2
+
+        // The string bytes, then confidence(4) + four corners(32) + hasWorld(1).
+        guard data.count >= o + byteCount + 4 + 32 + 1 else { return nil }
+        let text = String(decoding: data[(s + o)..<(s + o + byteCount)], as: UTF8.self)
+        o += byteCount
+        let confidence = f32()
+        var corners = [SIMD2<Float>](); corners.reserveCapacity(4)
+        for _ in 0..<4 { corners.append(SIMD2<Float>(f32(), f32())) }
+
+        let hasWorld = data[s + o] != 0; o += 1
+        var worldCorners: [SIMD3<Float>] = []
+        if hasWorld {
+            guard data.count >= o + 4 * 12 else { return nil }
+            worldCorners.reserveCapacity(4)
+            for _ in 0..<4 { worldCorners.append(SIMD3<Float>(f32(), f32(), f32())) }
+        }
+        return PhoneTextSample(tracked: tracked, timestamp: timestamp, text: text,
+                               confidence: confidence, corners: corners,
+                               hasWorldCorners: hasWorld, worldCorners: worldCorners)
     }
 }
 

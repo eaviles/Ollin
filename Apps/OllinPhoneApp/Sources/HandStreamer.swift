@@ -45,27 +45,10 @@ final class HandStreamer: NSObject, ARSessionDelegate, LightReporting, @unchecke
     /// Joints below this confidence are dropped (occluded or guessed).
     private let minimumJointConfidence: Float = 0.3
 
-    /// How far around a joint's depth pixel to look for the median, in pixels. A
-    /// single sample at a silhouette edge is often a hole.
-    private let depthWindowRadius = 2
-
     private let session = ARSession()
     private let queue = DispatchQueue(label: "dev.ollin.hand-pose")
     /// Main-thread-only: whether a pose pass is in flight (the drop-if-busy gate).
     private var busy = false
-
-    /// The copied pieces a 3D lift needs, all camera-native: the depth grid, the
-    /// intrinsics already scaled onto it, and the camera→world pose.
-    private struct LiftContext {
-        var width: Int
-        var height: Int
-        var depth: [Float]
-        var fx: Float
-        var fy: Float
-        var cx: Float
-        var cy: Float
-        var transform: simd_float4x4
-    }
 
     func start() {
         session.delegate = self
@@ -99,21 +82,7 @@ final class HandStreamer: NSObject, ARSessionDelegate, LightReporting, @unchecke
         let timestamp = frame.timestamp
         let turns = captureQuarterTurns()
         let tracked: Bool = if case .normal = frame.camera.trackingState { true } else { false }
-
-        var lift: LiftContext?
-        if let sceneDepth = frame.smoothedSceneDepth ?? frame.sceneDepth,
-           let (depthW, depthH, depth) = floatPixels(sceneDepth.depthMap) {
-            // Intrinsics arrive at the captured-image resolution; bring them onto
-            // the depth grid so a joint's pixel unprojects directly.
-            let res = frame.camera.imageResolution
-            let k = frame.camera.intrinsics
-            let sx = Float(depthW) / Float(res.width)
-            let sy = Float(depthH) / Float(res.height)
-            lift = LiftContext(width: depthW, height: depthH, depth: depth,
-                               fx: k.columns.0.x * sx, fy: k.columns.1.y * sy,
-                               cx: k.columns.2.x * sx, cy: k.columns.2.y * sy,
-                               transform: frame.camera.transform)
-        }
+        let lift = liftContext(of: frame)
 
         queue.async { [weak self] in
             guard let self else { return }
@@ -136,7 +105,7 @@ final class HandStreamer: NSObject, ARSessionDelegate, LightReporting, @unchecke
         let request = VNDetectHumanHandPoseRequest()
         request.maximumHandCount = maximumHandCount
         let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer,
-                                            orientation: Self.cgOrientation(forQuarterTurnsCW: turns),
+                                            orientation: visionOrientation(forQuarterTurnsCW: turns),
                                             options: [:])
         guard (try? handler.perform([request])) != nil else { return nil }
 
@@ -164,52 +133,6 @@ final class HandStreamer: NSObject, ARSessionDelegate, LightReporting, @unchecke
                                    chirality: chirality,
                                    confidence: Float(observation.confidence),
                                    joints: joints)
-        }
-    }
-
-    /// Lift one upright joint point into ARKit world space: back onto the
-    /// camera-native depth grid by the shared quarter-turn arithmetic, a median
-    /// depth from the window around its pixel, the unprojection through the
-    /// depth-grid intrinsics (camera space: +x right, +y up, looking down −z),
-    /// and the camera pose onto the front of that.
-    private func worldPosition(ofUpright p: SIMD2<Float>, turns: UInt8,
-                               lift: LiftContext) -> SIMD3<Float>? {
-        let b = PhoneWire.bufferPoint(fromUpright: p, quarterTurnsCW: turns)
-        let col = Int((b.x * Float(lift.width)).rounded(.down))
-        let row = Int((b.y * Float(lift.height)).rounded(.down))
-        guard let depth = medianDepth(atCol: col, row: row, lift: lift) else { return nil }
-
-        let x = (Float(col) - lift.cx) / lift.fx * depth
-        let y = -(Float(row) - lift.cy) / lift.fy * depth
-        let world = lift.transform * SIMD4<Float>(x, y, -depth, 1)
-        return SIMD3<Float>(world.x, world.y, world.z)
-    }
-
-    /// The median of the valid depth samples in the window around a pixel, or
-    /// `nil` when every sample there is a hole: robust to the dropouts that sit
-    /// exactly where a fingertip meets the background.
-    private func medianDepth(atCol col: Int, row: Int, lift: LiftContext) -> Float? {
-        var samples: [Float] = []
-        let r = depthWindowRadius
-        samples.reserveCapacity((2 * r + 1) * (2 * r + 1))
-        for y in max(0, row - r)...min(lift.height - 1, row + r) where lift.height > 0 {
-            for x in max(0, col - r)...min(lift.width - 1, col + r) where lift.width > 0 {
-                let d = lift.depth[y * lift.width + x]
-                if d > 0, d.isFinite { samples.append(d) }
-            }
-        }
-        guard !samples.isEmpty else { return nil }
-        return samples.sorted()[samples.count / 2]
-    }
-
-    /// The image orientation that stands the camera-native buffer upright for the
-    /// model, from the same quarter-turn count everything else uses.
-    private static func cgOrientation(forQuarterTurnsCW turns: UInt8) -> CGImagePropertyOrientation {
-        switch turns % 4 {
-        case 1:  return .right
-        case 2:  return .down
-        case 3:  return .left
-        default: return .up
         }
     }
 

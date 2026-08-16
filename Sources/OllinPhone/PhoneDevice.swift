@@ -12,8 +12,9 @@ import Darwin
 /// (Apps/OllinPhoneApp) — the phone runs ARKit on its own Neural Engine and streams
 /// typed results the Mac reads in `draw()`: a 3D **body skeleton**, a **face** (the
 /// deforming mesh + the 52 expression blendshapes), the **hands** in view (21-joint
-/// skeletons, lifted to metric 3D on a LiDAR phone), a world-facing **RGBD depth
-/// frame** from the rear LiDAR, and **device motion**.
+/// skeletons, lifted to metric 3D on a LiDAR phone), the **text** it can read in
+/// the scene (each line with its corners, lifted the same way), a world-facing
+/// **RGBD depth frame** from the rear LiDAR, and **device motion**.
 ///
 /// ```swift
 /// let device = PhoneDevice()
@@ -119,6 +120,22 @@ public final class PhoneDevice: FrameSource, VideoFeed {
     /// the common one-hand case; read `latestHands` to handle several at once.
     public var latestHand: PhoneHand? {
         latestHands.max { $0.confidence < $1.confidence }
+    }
+
+    /// Every line of text the phone can currently read, newest set each frame,
+    /// empty before any arrive or when none is in view. Populated in **Text** mode
+    /// (rear camera): each line carries what it says, the reader's confidence, and
+    /// its four corners as upright 2D image points; on a LiDAR phone the corners
+    /// also lift to metric 3D in ARKit world space, so a sign stands where it
+    /// hangs in the room.
+    public var latestTexts: [PhoneText] { reader.latestTexts.map(PhoneText.init) }
+
+    /// The line filling the most of the picture, or `nil` when none is in view:
+    /// the convenience for the common one-sign case (a frame of readable text is
+    /// usually one big line and several small ones). Read `latestTexts` for all
+    /// of them.
+    public var latestText: PhoneText? {
+        latestTexts.max { $0.imageArea < $1.imageArea }
     }
 
     /// The latest CoreMotion sample, or `nil` before one arrives — the cheap
@@ -287,6 +304,7 @@ final class PhoneStreamReader: @unchecked Sendable {
         var latestPoses: [PhonePoseSample] = []
         var latestFaces: [PhoneFaceSample] = []
         var latestHands: [PhoneHandSample] = []
+        var latestTexts: [PhoneTextSample] = []
         var latestMotion: PhoneMotionSample?
         var latestDepth: PhoneDepthFrameBox?
         var depthSequence = 0
@@ -316,6 +334,7 @@ final class PhoneStreamReader: @unchecked Sendable {
     var latestPoses: [PhonePoseSample] { lock.withLock { $0.latestPoses } }
     var latestFaces: [PhoneFaceSample] { lock.withLock { $0.latestFaces } }
     var latestHands: [PhoneHandSample] { lock.withLock { $0.latestHands } }
+    var latestTexts: [PhoneTextSample] { lock.withLock { $0.latestTexts } }
     var latestMotion: PhoneMotionSample? { lock.withLock { $0.latestMotion } }
     var latestDepth: PhoneDepthFrameBox? { lock.withLock { $0.latestDepth } }
     var latestSegmentation: PhoneSegmentationBox? { lock.withLock { $0.latestSegmentation } }
@@ -453,6 +472,7 @@ final class PhoneStreamReader: @unchecked Sendable {
                         case .pose(let p): state.latestPoses = p
                         case .face(let f): state.latestFaces = f
                         case .hands(let h): state.latestHands = h
+                        case .texts(let t): state.latestTexts = t
                         case .light(let l): state.latestLight = l
                         case .depth, .segmentation, .sceneMesh, .plane: break   // handled above
                         }

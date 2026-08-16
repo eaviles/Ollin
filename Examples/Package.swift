@@ -305,6 +305,9 @@ let package = Package(
         // The hands the phone sees as solid little skeletons in the room, lifted to
         // metric 3D through the LiDAR depth, with a pinch closing into a bead.
         example("3D/Phone/PhoneHands", [.phone]),
+        // The words the phone can read, standing in the room where they really are:
+        // each line a framed panel of glowing wire type, facing the way it faces.
+        example("3D/Phone/PhoneWorldText", [.phone]),
         example("Motion/Breathing"),
         example("Motion/SineSweep"),
         example("Motion/Easing"),

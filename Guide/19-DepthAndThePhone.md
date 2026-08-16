@@ -199,6 +199,26 @@ if let face = device.latestFace {
 
 The shell is the face mesh drawn under `headTransform`. It stands where the head is and turns the way the head turns. The head points one way. The eyes look another, and both beams land on the same warm bead. That point is a cursor you steer without hands. Park a creature there, or steer a brush with a glance. The blink blendshapes pair naturally with the eyes: `.eyeBlinkLeft` is the left lid closing over `worldEyePosition(.left)`. The mesh also carries its texture coordinates, the same mapping on every face. A painted mask keeps its place while the face deforms. The `3D/Phone/PhoneGaze` example is this section live: look past the phone and the bead lands where you look.
 
+## The words on the wall
+
+The phone can also read. In **Text** mode it runs the on-device recognizer over the rear camera. It streams every line it can make out: a sign, a book spine, a note on a door. Each line arrives as a `PhoneText` with its string and the reader's confidence. On a LiDAR phone its four corners carry real positions in meters, and `worldTransform` folds them into one matrix. Stand a drawing on that matrix and it hangs where the sign hangs:
+
+```swift
+for line in device.latestTexts {
+    guard let placement = line.worldTransform else { continue }
+    withState {
+        transform(placement)   // x along the words, y up the line, z off the surface
+        drawCapsule(from: Vector3(-line.worldWidth / 2, -line.worldHeight / 2, 0),
+                    to: Vector3(line.worldWidth / 2, -line.worldHeight / 2, 0),
+                    radius: 0.004)   // an underline, drawn on the world
+    }
+}
+```
+
+<img src="Images/19-DepthAndThePhone/WordsInPlace.jpg" alt="Two staged lines of wire-frame stroke type on a dark ground: the word OLLIN standing upright inside a framed panel on an implied wall, and the word hello lying flat inside its own panel on a small table slab, each panel outlined and facing its own way" width="680">
+
+The upright word stands on a wall and the flat one lies on a table, and neither needed different code. Each panel is the line's own quad, and the type inside it is `textToShapes` run through `drawTube`, scaled by `worldWidth`. The frame does the placing. A line lifts all four corners or none, so `worldTransform` is either a real place or `nil`. The flat fallback draws the same lines over the canvas with `corners(in:)`. Underline a read word, replace it, translate it, or move it off its wall. The `3D/Phone/PhoneWorldText` example is this section live: aim the phone at anything readable and the words stand in the room.
+
 ## One world from many frames
 
 A single frame is a slice of the world, whatever the lens saw plus voids. The way past that is the last idea of the chapter, and it needs one new ingredient. That is the **pose**, where the camera stood and which way it looked, written as a transform. Given a frame's cloud in camera space, and its pose, `transformed(by:)` places the points where they really are in the room. `WorldCloud` accumulates those placed points, thinning duplicates so overlapping frames don't pile up:

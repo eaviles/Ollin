@@ -6,7 +6,7 @@
 
 Borrow a tethered iPhone's on-device perception in a sketch that still renders on the Mac. **Ollin Capture**, Ollin's own iOS app ([`Apps/OllinPhoneApp`](../../Apps/OllinPhoneApp/README.md)), runs ARKit on the phone's Neural Engine and streams the results over the USB cable. `PhoneDevice` reads them on the Mac as typed values you use in `draw()`.
 
-Seven payloads come over. A **3D body skeleton**. **Faces**, up to 3 at once, each a deforming mesh plus the 52 expression blendshapes. The **hands** in view, up to 4, each a 21-joint skeleton lifted to metric 3D where the phone has LiDAR. A world-facing **RGBD depth frame** from the rear LiDAR, which unprojects into a point cloud and carries the camera's 6DoF pose. The **room mesh**, the space itself reconstructed as a labelled triangle surface. A **person-segmentation matte** from the rear camera, as a silhouette and a cutout. And **device motion**.
+Eight payloads come over. A **3D body skeleton**. **Faces**, up to 3 at once, each a deforming mesh plus the 52 expression blendshapes. The **hands** in view, up to 4, each a 21-joint skeleton lifted to metric 3D where the phone has LiDAR. The lines of **text** it can read, each with its corners lifted the same way. A world-facing **RGBD depth frame** from the rear LiDAR, which unprojects into a point cloud and carries the camera's 6DoF pose. The **room mesh**, the space itself reconstructed as a labelled triangle surface. A **person-segmentation matte** from the rear camera, as a silhouette and a cutout. And **device motion**.
 
 Where [`Record3D`](../3D/Record3D.md) borrows another app's color-plus-depth feed, this is Ollin's own app, so the stream carries what ARKit *perceives*. The chain is Ollin's end to end.
 
@@ -39,6 +39,7 @@ final class Pose: Sketch {
 - [The body](#the-body) - `PhoneBody`, the joints, drawing the skeleton, where the person stands, joints that turn
 - [The face](#the-face) - `PhoneFace`, the blendshapes, the mesh and its texture coordinates, [the eyes and the gaze](#the-eyes-and-the-gaze)
 - [The hands](#the-hands) - `PhoneHand`, 21 joints, the 3D lift, `pinchDistance`
+- [The text in view](#the-text-in-view) - `PhoneText`, the corners, `worldTransform`
 - [World depth](#world-depth) - `latestDepthFrame`, `pointCloud(...)`, the camera pose
 - [World fusion](#world-fusion) - `WorldCloud`, sweeping a room into one cloud, [keeping it registered](#drift), and [recognizing a place already scanned](#loops) with `ScanGraph`
 - [The room mesh](#the-room-mesh) - `sceneMesh`, the room as a labelled surface, the Room mode
@@ -227,6 +228,30 @@ device.latestHand                    // PhoneHand?, the most confident one
 `pinchDistance` is the gesture staple: thumb tip to index tip in meters, `nil` unless both lifted. Under about 2 cm reads as a closed pinch. `PhoneHand.skeleton` names the 20 bones, `PhoneHand.tips` the five fingertips, and `PhoneHand.fingerChains` each finger's chain wrist-first, ready to run a tube or a ribbon along.
 
 The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneHands`.
+
+## The text in view
+
+In **Text** mode the phone reads the text in front of the rear camera. Each line arrives as a `PhoneText` with its string, the reader's `confidence`, and its position. The recognizer is Apple's on-device one, the engine behind Live Text.
+
+The four corners of a line are upright 2D image points, already turned for how the phone is held. On a LiDAR phone the corners also lift to metric 3D in **ARKit world space**. That is the same fixed world as the [depth sweep](#world-fusion) and the [hands](#the-hands). `worldTransform` turns the corners into one matrix for `transform(_:)`. Its origin is the line's center. Its x axis runs along the reading direction, y up the line, and z out of the surface. Without LiDAR the lines stay 2D and draw as a flat overlay.
+
+```swift
+for line in device.latestTexts {
+    line.text                        // what the line says
+    line.confidence                  // Double 0…1, the reader's trust
+    line.corners(in: bounds)         // [Vector2], the quad mapped into a rectangle
+    line.bounds(in: bounds)          // Rectangle, the box around it
+    line.worldCorners                // [Vector3], metric ARKit world space (needs LiDAR)
+    line.worldCenter                 // Vector3, the quad's center
+    line.worldWidth                  // Double, meters along the reading direction
+    line.worldTransform              // simd_float4x4?, the line's placement matrix
+}
+device.latestText                    // PhoneText?, the line filling the most of the picture
+```
+
+`latestTexts` is the complete current set each frame, so a sign that leaves the view drops out. A line lifts all four corners, never three. `hasWorldPlacement` says whether the lift happened. The recognizer completes a few readings per second, below camera rate, because it runs at the `.accurate` recognition level. The `.fast` level misses small text across a room.
+
+The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneWorldText`.
 
 ## World depth
 

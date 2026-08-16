@@ -2,17 +2,19 @@
 
 Ollin's own iPhone capture app: the phone runs **ARKit body tracking**, **face
 tracking**, **rear-LiDAR scene depth**, **person segmentation**, and **scene
-reconstruction** on its Neural Engine, plus **hand pose** (Vision over the ARKit
-frames, lifted to 3D through the LiDAR depth), a **front-camera selfie matte**
-(Vision over a plain capture session), and **CoreMotion** device motion, and streams
-them to a tethered Mac over USB. An Ollin sketch on the Mac reads the live skeleton,
-face, hands, depth cloud, person matte, room mesh, or motion in `draw()` through the
+reconstruction** on its Neural Engine, plus **hand pose** and **text reading**
+(Vision over the ARKit frames, lifted to 3D through the LiDAR depth), a
+**front-camera selfie matte** (Vision over a plain capture session), and
+**CoreMotion** device motion, and streams them to a tethered Mac over USB. An Ollin
+sketch on the Mac reads the live skeleton, face, hands, text, depth cloud, person
+matte, room mesh, or motion in `draw()` through the
 [`OllinPhone`](../../Sources/OllinPhone) satellite (`PhoneDevice`).
 
 This is the own-app successor to borrowing the Record3D app's RGBD feed
 ([`OllinRecord3D`](../../Sources/OllinRecord3D)): it streams what ARKit *perceives*, so
 a 3D body skeleton, a face mesh with its 52 expression blendshapes, the 21-joint
-hand skeletons in view (up to 4, in metric world space on a LiDAR phone), a
+hand skeletons in view (up to 4, in metric world space on a LiDAR phone), the lines
+of readable text in view (their corners lifted the same way), a
 world-facing RGBD depth frame (a point cloud, with the camera's 6DoF pose), a person
 matte, the reconstructed room as a labelled triangle surface, and the flat planes in
 that room.
@@ -20,12 +22,12 @@ Each body joint carries a position, an orientation, and a camera-observed flag; 
 body also carries its world anchor and the person's estimated scale.
 The chain is Ollin's end to end.
 
-Body, World, Segment, Room, and Hands use the rear camera; Face (ARKit, TrueDepth)
-and Selfie (AVFoundation + Vision, no ARKit) the front camera. Only one camera
-session runs at a time. The app has a **Body / Face / World / Segment / Selfie /
-Room / Hands** toggle and runs one mode at a time. Device motion streams in all of
-them; the room's light in every mode except Selfie, which has no ARKit session to
-measure it.
+Body, World, Segment, Room, Hands, and Text use the rear camera; Face (ARKit,
+TrueDepth) and Selfie (AVFoundation + Vision, no ARKit) the front camera. Only one
+camera session runs at a time. The app has a **Body / Face / World / Segment /
+Selfie / Room / Hands / Text** toggle and runs one mode at a time. Device motion
+streams in all of them; the room's light in every mode except Selfie, which has no
+ARKit session to measure it.
 
 ## How it fits together
 
@@ -74,8 +76,8 @@ Requirements:
 ## Run it
 
 1. Build + run on the iPhone. The screen shows **READY** until the Mac connects,
-   then **ON AIR**, with the **Body / Face / World / Segment / Selfie / Room / Hands**
-   toggle and live status.
+   then **ON AIR**, with the **Body / Face / World / Segment / Selfie / Room /
+   Hands / Text** toggle and live status.
 2. Connect the cable to the Mac.
 3. On the Mac, run a sketch. With the toggle on **Body**:
    `swift run --package-path Examples Example-3D-Phone-PhoneBodyPose`, and the
@@ -96,7 +98,10 @@ Requirements:
    person is lifted onto a drifting backdrop. On **Hands**:
    `swift run --package-path Examples Example-3D-Phone-PhoneHands`, then hold a
    hand in front of the rear camera and it stands in the room as a solid little
-   skeleton, a pinch closing into a bead. Before tracking begins, the
+   skeleton, a pinch closing into a bead. On **Text**:
+   `swift run --package-path Examples Example-3D-Phone-PhoneWorldText`, then aim
+   the rear camera at a sign or a page and each line stands in the room as
+   wire-frame type on a framed panel. Before tracking begins, the
    gravity readout proves the USB wire is alive (tilt the phone and it moves), and
    the light row reads the room's brightness and color in every ARKit mode.
 
@@ -129,6 +134,12 @@ Requirements:
   takes a median depth around the joint's pixel, unprojects through the depth-grid
   intrinsics, and stands the joint in the world with the camera pose. Without LiDAR
   the mode still runs and the hands stay 2D.
+- The text stream (`TextStreamer`) follows the same pattern over Vision's text
+  recognizer: its own queue, the drop-if-busy gate, the upright orientation handed
+  to the request, and each line's four corners lifted through the shared depth
+  arithmetic. A line lifts all four corners or none. It reads at the accurate
+  recognition level, so a few finished readings arrive per second. Without LiDAR
+  the lines stay 2D.
 - The room stream (`RoomStreamer`) runs `ARWorldTrackingConfiguration` with scene
   reconstruction and sends the room one anchor block at a time: vertices, normals,
   triangles, the anchor's placement, and one label per triangle. Two rules shape it.

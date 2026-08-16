@@ -2,14 +2,14 @@ import SwiftUI
 import ARKit
 import simd
 
-/// **Ollin Capture** — Ollin's own iPhone sensor app. The phone runs ARKit (body
+/// **Ollin Capture**, Ollin's own iPhone sensor app. The phone runs ARKit (body
 /// pose, face, rear-LiDAR scene depth, person segmentation, the reconstructed room
 /// surface with the flat planes in it, and the room's own light) on its Neural
-/// Engine, plus the 21-joint hand skeletons in view (Vision over the ARKit frames,
-/// lifted to 3D through the LiDAR depth), a front-camera selfie matte (Vision, no
-/// ARKit), and CoreMotion device motion, and streams them to a
-/// tethered Mac over USB (usbmuxd → `PhoneWire.streamPort`), where an Ollin sketch
-/// reads them in `draw()` via `OllinPhone`'s `PhoneDevice`.
+/// Engine, plus the 21-joint hand skeletons and the readable text in view (Vision
+/// over the ARKit frames, lifted to 3D through the LiDAR depth), a front-camera
+/// selfie matte (Vision, no ARKit), and CoreMotion device motion, and streams them
+/// to a tethered Mac over USB (usbmuxd → `PhoneWire.streamPort`), where an Ollin
+/// sketch reads them in `draw()` via `OllinPhone`'s `PhoneDevice`.
 @main
 struct OllinCaptureApp: App {
     var body: some Scene {
@@ -17,16 +17,18 @@ struct OllinCaptureApp: App {
     }
 }
 
-/// Which on-device sensor runs. Body, World, Segment, Room, and Hands use the rear
-/// camera through ARKit; Face the front TrueDepth camera through ARKit; Selfie the
-/// front camera through a plain capture session plus Vision. Only one camera session
-/// runs at a time, so they are mutually exclusive and the app runs one at a time.
-/// World streams a LiDAR RGBD frame (depth + color + pose); Body a skeleton; Face
-/// the expression mesh; Segment a person matte (+ color) for a silhouette/cutout;
-/// Selfie the same matte from the front camera, mirrored like the preview; Room the
-/// reconstructed surface, block by block, with each triangle labelled, and the flat
-/// planes found alongside it; Hands the 21-joint hand skeletons in view, lifted to
-/// metric 3D through the LiDAR depth where the device has it.
+/// Which on-device sensor runs. Body, World, Segment, Room, Hands, and Text use
+/// the rear camera through ARKit; Face the front TrueDepth camera through ARKit;
+/// Selfie the front camera through a plain capture session plus Vision. Only one
+/// camera session runs at a time, so they are mutually exclusive and the app runs
+/// one at a time. World streams a LiDAR RGBD frame (depth + color + pose); Body a
+/// skeleton; Face the expression mesh; Segment a person matte (+ color) for a
+/// silhouette/cutout; Selfie the same matte from the front camera, mirrored like
+/// the preview; Room the reconstructed surface, block by block, with each triangle
+/// labelled, and the flat planes found alongside it; Hands the 21-joint hand
+/// skeletons in view, lifted to metric 3D through the LiDAR depth where the device
+/// has it; Text the lines it can read in the scene, their corners lifted the same
+/// way.
 ///
 /// The room's light streams in every ARKit mode, so it is not a mode of its own.
 /// Selfie runs no ARKit session, so it is the one mode with no light readings.
@@ -38,6 +40,7 @@ enum CaptureMode: String, CaseIterable, Identifiable {
     case selfie = "Selfie"
     case room = "Room"
     case hands = "Hands"
+    case text = "Text"
     var id: String { rawValue }
 }
 
@@ -64,6 +67,8 @@ final class SensorStreamer {
     var planeInfo = ""
     var handsTracked = false
     var handsInfo = ""
+    var textTracked = false
+    var textInfo = ""
     var lightInfo = ""
     var lightLive = false
     var gravity = SIMD3<Float>(0, 0, 0)
@@ -77,6 +82,7 @@ final class SensorStreamer {
     let selfieSupported = SelfieStreamer.hasFrontCamera
     let meshSupported = ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh)
     let handsLift = ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth)
+    let textLift = ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth)
 
     private var server: SensorServer?
     private let ar = ARStreamer()
@@ -86,6 +92,7 @@ final class SensorStreamer {
     private let selfie = SelfieStreamer()
     private let room = RoomStreamer()
     private let hands = HandStreamer()
+    private let text = TextStreamer()
     private let motion = MotionStreamer()
 
     /// How many blocks of the room have gone out, and how many were dropped for
@@ -198,10 +205,22 @@ final class SensorStreamer {
             }
         }
 
+        text.onTexts = { [weak self] samples in
+            guard let self else { return }
+            self.server?.send(PhoneWire.encode(.texts(samples)))
+            self.textTracked = !samples.isEmpty
+            if samples.isEmpty {
+                self.textInfo = "no text in view"
+            } else {
+                let lifted = samples.contains(where: \.hasWorldCorners)
+                self.textInfo = "\(samples.count) \(samples.count == 1 ? "line" : "lines") · \(lifted ? "3D" : "2D")"
+            }
+        }
+
         // Every ARKit session estimates the light, so they all report to the same
         // handler and a mode switch never interrupts it. Selfie runs no ARKit
         // session and reports none.
-        let reporters: [any LightReporting] = [ar, face, depth, seg, room, hands]
+        let reporters: [any LightReporting] = [ar, face, depth, seg, room, hands, text]
         for reporter in reporters {
             reporter.lightSampler.onLight = { [weak self] sample in
                 guard let self else { return }
@@ -228,37 +247,45 @@ final class SensorStreamer {
         // Only one camera session at a time; stop the others before starting one.
         switch mode {
         case .body:
-            face.stop(); depth.stop(); seg.stop(); selfie.stop(); room.stop(); hands.stop()
+            face.stop(); depth.stop(); seg.stop(); selfie.stop(); room.stop(); hands.stop(); text.stop()
             ar.start()
             status = bodySupported ? "Streaming body" : "This device doesn't support body tracking"
         case .face:
-            ar.stop(); depth.stop(); seg.stop(); selfie.stop(); room.stop(); hands.stop()
+            ar.stop(); depth.stop(); seg.stop(); selfie.stop(); room.stop(); hands.stop(); text.stop()
             face.start()
             status = faceSupported ? "Streaming face" : "This device doesn't support face tracking"
         case .world:
-            ar.stop(); face.stop(); seg.stop(); selfie.stop(); room.stop(); hands.stop()
+            ar.stop(); face.stop(); seg.stop(); selfie.stop(); room.stop(); hands.stop(); text.stop()
             depth.start()
             status = depthSupported ? "Streaming depth" : "This device has no LiDAR for depth"
         case .segment:
-            ar.stop(); face.stop(); depth.stop(); selfie.stop(); room.stop(); hands.stop()
+            ar.stop(); face.stop(); depth.stop(); selfie.stop(); room.stop(); hands.stop(); text.stop()
             seg.start()
             status = segSupported ? "Streaming segmentation" : "This device doesn't support person segmentation"
         case .selfie:
-            ar.stop(); face.stop(); depth.stop(); seg.stop(); room.stop(); hands.stop()
+            ar.stop(); face.stop(); depth.stop(); seg.stop(); room.stop(); hands.stop(); text.stop()
             selfie.start()
             status = selfieSupported
                 ? "Streaming the front-camera person matte, mirrored like the preview"
                 : "This device has no front camera"
         case .hands:
-            ar.stop(); face.stop(); depth.stop(); seg.stop(); selfie.stop(); room.stop()
+            ar.stop(); face.stop(); depth.stop(); seg.stop(); selfie.stop(); room.stop(); text.stop()
             handsTracked = false
             handsInfo = ""
             hands.start()
             status = handsLift
                 ? "Streaming hand pose, lifted to 3D through the LiDAR depth"
                 : "Streaming hand pose in 2D (this device has no LiDAR to lift it)"
+        case .text:
+            ar.stop(); face.stop(); depth.stop(); seg.stop(); selfie.stop(); room.stop(); hands.stop()
+            textTracked = false
+            textInfo = ""
+            text.start()
+            status = textLift
+                ? "Streaming the readable text, lifted to 3D through the LiDAR depth"
+                : "Streaming the readable text in 2D (this device has no LiDAR to lift it)"
         case .room:
-            ar.stop(); face.stop(); depth.stop(); seg.stop(); selfie.stop(); hands.stop()
+            ar.stop(); face.stop(); depth.stop(); seg.stop(); selfie.stop(); hands.stop(); text.stop()
             // A fresh session rebuilds the room from nothing, so the Mac's own count
             // starts again with it.
             meshBlocksSent = 0
@@ -317,12 +344,12 @@ struct ContentView: View {
                 }
 
                 // Capture mode: one camera session at a time (rear: body/world/
-                // segment/room/hands, front: face/selfie), so the modes are
-                // mutually exclusive. Seven modes outgrew the segmented control,
+                // segment/room/hands/text, front: face/selfie), so the modes are
+                // mutually exclusive. Eight modes outgrew the segmented control,
                 // so they wrap as two rows of chips.
                 VStack(spacing: 8) {
                     modeRow([.body, .face, .world, .segment])
-                    modeRow([.selfie, .room, .hands])
+                    modeRow([.selfie, .room, .hands, .text])
                 }
                 .padding(.horizontal, 28)
 
@@ -360,6 +387,11 @@ struct ContentView: View {
                             ? "looking for hands…"
                             : "streaming · \(streamer.handsInfo)",
                             ok: streamer.handsTracked)
+                    case .text:
+                        row("Text", streamer.textInfo.isEmpty
+                            ? "looking for readable text…"
+                            : "streaming · \(streamer.textInfo)",
+                            ok: streamer.textTracked)
                     case .room:
                         row("Surface", streamer.meshSupported
                             ? (streamer.meshInfo.isEmpty ? "walk around to build it…" : "streaming · \(streamer.meshInfo)")

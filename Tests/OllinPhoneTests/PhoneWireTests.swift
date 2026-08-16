@@ -243,6 +243,31 @@ import Darwin
         #expect(roundTrip(message) == message)
     }
 
+    @Test func roundTripsTexts() {
+        // Two lines in one frame: a lifted one whose four corners carry world
+        // positions (and whose string leaves ASCII), and a flat 2D-only one.
+        let lifted = PhoneTextSample(
+            tracked: true, timestamp: 6.25, text: "Café ☕ 24h", confidence: 0.92,
+            corners: [SIMD2<Float>(0.2, 0.7), SIMD2<Float>(0.6, 0.72),
+                      SIMD2<Float>(0.6, 0.62), SIMD2<Float>(0.2, 0.6)],
+            hasWorldCorners: true,
+            worldCorners: [SIMD3<Float>(-0.4, 1.6, -2), SIMD3<Float>(0.4, 1.6, -2),
+                           SIMD3<Float>(0.4, 1.4, -2), SIMD3<Float>(-0.4, 1.4, -2)])
+        let flat = PhoneTextSample(
+            tracked: false, timestamp: 6.25, text: "EXIT", confidence: 0.55,
+            corners: [SIMD2<Float>(0.1, 0.9), SIMD2<Float>(0.2, 0.9),
+                      SIMD2<Float>(0.2, 0.85), SIMD2<Float>(0.1, 0.85)])
+        let message = PhoneMessage.texts([lifted, flat])
+        #expect(roundTrip(message) == message)
+    }
+
+    @Test func roundTripsNoTexts() {
+        // No readable text in view: the empty set, so the reader clears itself
+        // (a sign leaving disappears) rather than holding the last lines.
+        let message = PhoneMessage.texts([])
+        #expect(roundTrip(message) == message)
+    }
+
     @Test func handJointOrderIsContiguous() {
         // The wire carries a hand joint as one byte, so the cases must be 0…20.
         let raws = PhoneHandJoint.allCases.map { Int($0.rawValue) }
