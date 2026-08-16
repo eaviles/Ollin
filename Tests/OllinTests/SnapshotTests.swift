@@ -419,6 +419,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("self-avoiding-walk",
                  note: "A seeded self-avoiding walk threading a lattice as one stroke, hue along its length. Pins the backtracking DFS (visited cells stay blocked, the longest path wins), the neighbor shuffling's rng order, and the lattice centering. Seeded, no time, so the path is deterministic.",
                  make: { SelfAvoidingWalkScene() }),
+    SnapshotCase("crack-growth",
+                 note: "A seeded crack-growth field run several hundred ticks in one frame: perpendicular cracks subdividing the plane, each dragging its one-sided grain wash. Pins the angle-grid collision rules, the restart-and-recruit population, the wash's side and sin-eased grain spacing, and the rng call order. Seeded, no time, so it is deterministic.",
+                 make: { CrackGrowthScene() }),
     SnapshotCase("dither",
                  note: "One painted gradient quantized to a three-color palette four ways, at 1:1 pixels: plain nearest-color (banding), ordered Bayer, blue noise, Floyd-Steinberg. Pins the whole dithering pass (the Bayer recurrence, the void-and-cluster tile, the error-diffusion kernel and its serpentine scan) plus the color space each family chooses its colors in. No rng and no time, so it is deterministic.",
                  make: { DitherScene() }),
@@ -3129,6 +3132,33 @@ private final class SelfAvoidingWalkScene: Sketch {
         for i in 1 ..< path.count {
             stroke(ramp.color(at: Double(i) / Double(max(path.count - 1, 1))))
             drawLine(path[i - 1], path[i])
+        }
+    }
+}
+
+/// A crack-growth field advanced several hundred ticks in one frame, every
+/// mark drawn: the faint crack points plus each tick's one-sided grain wash.
+/// The helper is seeded and stepped in one call, so the geometry, the washes,
+/// and the rng call order are all pinned. No `time`, so it is deterministic.
+private final class CrackGrowthScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0xF7F3EA))
+        noStroke()
+        let inks = [Color(hex: 0x1F5673), Color(hex: 0xC26D3F),
+                    Color(hex: 0x8A9B68), Color(hex: 0x71486E)]
+        let field = CrackGrowth(width: 256, height: 256, cracks: 3,
+                                seedAngles: 12, maxCracks: 24, seed: 9)
+        for mark in field.step(500) {
+            let ink = inks[mark.crack % inks.count]
+            for grain in CrackGrowth.grains(from: mark.point, to: mark.washExtent,
+                                            gain: mark.gain, count: 24) {
+                fill(ink.withAlpha(grain.alpha))
+                drawPoint(grain.position)
+            }
+            fill(Color.black.withAlpha(0.33))
+            drawPoint(mark.point)
         }
     }
 }

@@ -16,6 +16,7 @@ shape *composition* (booleans and SDF combinators) live in [Shapes](../Shapes/).
 | [CirclePacking](CirclePacking/Sketch.swift) | grow-to-touch circle packing, both flavors: a self-seeding gap-filling pack, and a foam grown from a blue-noise scatter (`packCircles`) |
 | [CliffordAttractor](CliffordAttractor/Sketch.swift) | a Clifford map iterated into an accumulating additive density field, bright filaments where the chaotic orbit returns again and again (`ChaoticMap.clifford`, `noClear`, `blendMode(.add)`) |
 | [ContourMap](ContourMap/Sketch.swift) | a topographic map of a drifting fbm terrain traced by marching squares, every fifth level heavier like a cartographer's index contour (`isolines`, `fbm`) |
+| [Cracks](Cracks/Sketch.swift) | crack growth: perpendicular cracks subdividing the plane into city-block cells, each dragging a translucent one-sided grain wash across the open space beside it (`CrackGrowth`, `noClear`) |
 | [Dendrite](Dendrite/Sketch.swift) | diffusion-limited aggregation: random walkers freeze where they first touch the cluster, growing frost-like dendrites from a center seed, tinted by arrival time (`DiffusionLimitedAggregation`) |
 | [DifferentialGrowth](DifferentialGrowth/Sketch.swift) | a closed ring relaxed under attraction, alignment, and repulsion with long edges splitting, folding live into brain-coral meanders (`DifferentialGrowth`) |
 | [DotGrid](DotGrid/Sketch.swift) | a grid of black/white dots woven by a modulo rule |

@@ -6395,6 +6395,17 @@ parent-linked and arrival order equals index, so tint-by-age is free.
 Example `Patterns/Dendrite`; snapshot `dla` (`frame: 110`). `GrowthTests`
 pins both growth systems.
 
+Crack growth (`Geometry/CrackGrowth.swift`): straight cracks over an
+angle-raster grid. A cell within 5° of the crack's angle reads as its own
+line. Any other angle stops the crack, which restarts perpendicular at a
+random claimed cell and recruits one more, up to `maxCracks`. Restarts
+draw from a kept list of claimed cells. A bounded random probe went
+dormant on a sparse grid, a real bug the tests caught. `step()` returns
+per-tick `Mark`s (point, one-sided wash span, gain); `CrackGrowth.grains`
+lays the sin-eased wash. The wash-side test was verified red by flipping
+the sign. Example `Patterns/Cracks`; snapshot `crack-growth`;
+`CrackGrowthTests` (8, CPU-only).
+
 ### Wave Function Collapse
 
 `Geometry/WaveFunctionCollapse.swift` is the simple-tiled model (Gumin):

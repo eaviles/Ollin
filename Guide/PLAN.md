@@ -125,11 +125,11 @@ Figures: steering-move diagram; wander/arrive diagrams; one diagram per boid rul
 Draws from: `Docs/Generators/Steering.md`, `Docs/Generators/Boids.md`, `Docs/Generators/DifferentialGrowth.md`; `Examples/Motion/Steering`, `Examples/Patterns/Flocking`, `Examples/Patterns/DifferentialGrowth`.
 
 **11. Growing things.**
-Teaches: recursion by drawing (a fractal tree written by hand first); rewriting rules (L-systems) and the turtle, grown iteration by iteration; branching with the stack; stochastic rules; parametric rules (symbols carrying numbers, so lengths can be fractions and a trunk can taper); space colonization (growth that claims space: veins and trees from attraction points, the pipe model for weight); diffusion-limited aggregation (growth by chance: frost from frozen walkers); Wave Function Collapse as "every neighbor must agree", watched as it solves; the chance games (the chaos game deriving the same fern a second way, then fractal flames, circle-inversion limit sets, and Kleinian limit curves).
+Teaches: recursion by drawing (a fractal tree written by hand first); rewriting rules (L-systems) and the turtle, grown iteration by iteration; branching with the stack; stochastic rules; parametric rules (symbols carrying numbers, so lengths can be fractions and a trunk can taper); space colonization (growth that claims space: veins and trees from attraction points, the pipe model for weight); diffusion-limited aggregation (growth by chance: frost from frozen walkers); crack growth (growth by collision: perpendicular cracks subdividing the plane, the one-sided wash); Wave Function Collapse as "every neighbor must agree", watched as it solves; the chance games (the chaos game deriving the same fern a second way, then fractal flames, circle-inversion limit sets, and Kleinian limit curves).
 Assumes: Ch 4 (seeds), Ch 6 (grids, for WFC), Ch 10 (stateful steppers).
 Payoff: a procedural garden.
-Figures: branch-stack diagram; L-system expansion table + drawing per iteration; the three panels of what carrying a number buys; a space-colonization growth sequence; a DLA cluster; WFC solve sequence; the garden.
-Draws from: `Docs/Generators/LSystem.md`, `Docs/Generators/SpaceColonization.md`, `Docs/Generators/DiffusionLimitedAggregation.md`, `Docs/Generators/WaveFunctionCollapse.md`; `Examples/Patterns/LSystem`, `Examples/Patterns/ParametricLSystem`, `Examples/Patterns/Venation`, `Examples/Patterns/Dendrite`, `Examples/Patterns/WaveFunctionCollapse`.
+Figures: branch-stack diagram; L-system expansion table + drawing per iteration; the three panels of what carrying a number buys; a space-colonization growth sequence; a DLA cluster; the cracked city; WFC solve sequence; the garden.
+Draws from: `Docs/Generators/LSystem.md`, `Docs/Generators/SpaceColonization.md`, `Docs/Generators/DiffusionLimitedAggregation.md`, `Docs/Generators/CrackGrowth.md`, `Docs/Generators/WaveFunctionCollapse.md`; `Examples/Patterns/LSystem`, `Examples/Patterns/ParametricLSystem`, `Examples/Patterns/Venation`, `Examples/Patterns/Dendrite`, `Examples/Patterns/Cracks`, `Examples/Patterns/WaveFunctionCollapse`.
 
 **12. Fields and flow.**
 Teaches: a field as "an answer at every point" (the mental model shaders and SDFs later reuse); visualizing a field with arrows; `FlowField` from noise; level curves of a scalar field (`isolines`, marching squares, the stacked-levels contour map, the image form); tracing streamlines; evenly-spaced streamlines; advecting particles; strange attractors as found motion; the logistic map and its bifurcation diagram (one dial's route to chaos).
@@ -275,6 +275,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | `Generators/DifferentialGrowth.md` | Ch 10 | taught |
 | `Generators/SpaceColonization.md` | Ch 11 | taught |
 | `Generators/DiffusionLimitedAggregation.md` | Ch 11 | taught |
+| `Generators/CrackGrowth.md` | Ch 11 | taught ("Growth by collision" with the two-panel cracked-city figure: the stop-and-recruit rule, the accumulating canvas, the marks and the one-sided wash) |
 | `Generators/LSystem.md` (symbolic and parametric) | Ch 11 | taught ("When the rules need arithmetic" motivates parametric rules from what one step cannot say, walks a guarded rule left to right, explains that an unmatched symbol is how growth stops, and shows the tapered form through marks, with a three-panel figure) |
 | `Generators/WaveFunctionCollapse.md` | Ch 11 | taught |
 | `Generators/FlowField.md` (streamlines, advection) | Ch 12 | taught |

@@ -37,3 +37,4 @@
 - [`Steering`](./Steering.md) - `Vehicle`, a creature moved by composable steering forces (seek, flee, arrive, pursue, wander, follow a path or flow field)
 - [`Space colonization`](./SpaceColonization.md) - `SpaceColonization`, branching growth (veins, roots, trees) toward scattered attraction points (a stateful stepper)
 - [`Diffusion-limited aggregation`](./DiffusionLimitedAggregation.md) - `DiffusionLimitedAggregation`, dendritic clusters frozen out of random walkers (frost and coral, a stateful stepper)
+- [`Crack growth`](./CrackGrowth.md) - `CrackGrowth`, perpendicular cracks subdividing the plane into city-block cells, each dragging a one-sided watercolor wash (a stateful stepper)

@@ -429,6 +429,7 @@ let package = Package(
         example("Patterns/Schottky"),
         example("Patterns/Marbling"),
         example("Patterns/Chladni"),
+        example("Patterns/Cracks"),
         example("Shapes/HollowShapes"),
         example("Shapes/StrokeAlignment"),
         example("Shapes/StrokeJoinsAndCaps"),

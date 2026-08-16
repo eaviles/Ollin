@@ -139,6 +139,7 @@ Use it two ways. It is an index for the moment you remember the guide showing bl
 | Differential growth | A line that folds into coral as it grows | [Ch 10](10-FlocksAndSwarms.md) | [DifferentialGrowth](../Docs/Generators/DifferentialGrowth.md) |
 | Space colonization | Branching growth toward attraction points: veins and venation | [Ch 11](11-GrowingThings.md) | [SpaceColonization](../Docs/Generators/SpaceColonization.md) |
 | Diffusion-limited aggregation | Walkers that freeze on contact into dendrites and frost | [Ch 11](11-GrowingThings.md) | [DiffusionLimitedAggregation](../Docs/Generators/DiffusionLimitedAggregation.md) |
+| Crack growth | Perpendicular cracks subdividing the plane into city blocks, with a watercolor wash | [Ch 11](11-GrowingThings.md) | [CrackGrowth](../Docs/Generators/CrackGrowth.md) |
 | Strange attractors | Lorenz, Clifford, de Jong, and friends, as orbits you draw | [Ch 12](12-FieldsAndFlow.md) | [Attractors](../Docs/Drawing/Attractors.md) |
 | Chaotic maps & bifurcation | The logistic route to chaos: bifurcation diagrams, cobweb staircases, Lyapunov exponents | [Ch 12](12-FieldsAndFlow.md) | [Bifurcation](../Docs/Generators/Bifurcation.md) |
 | Cellular automata | `elementaryCA` / `totalisticCA` rules and `Turmite` ants: tiny rules, long runs | [Ch 16](16-Simulations.md) | [Cellular automata](../Docs/Generators/CellularAutomata.md) |
