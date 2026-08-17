@@ -49,6 +49,7 @@ final class Faces: Sketch {
 - [Body3D](#body3d) - the 3D skeleton in canvas, model, and camera space
 - [PersonSegmenter](#personsegmenter) - lift the people out of the frame
 - [SubjectSegmenter](#subjectsegmenter) - lift whatever stands out as foreground
+- [PointSegmenter](#pointsegmenter) - lift whatever you point at
 - [Segmentation](#segmentation) - a soft matte and the cutout it makes
 - [RectangleDetector](#rectangledetector) - find rectangular shapes and their corners
 - [BarcodeScanner](#barcodescanner) - read barcodes and QR codes
@@ -412,6 +413,48 @@ override func draw() {
     guard let rect = drawFrame(camera) else { return noTint() }
     noTint()
     if let cutout = subjects.cutout { drawImage(cutout, in: rect) }     // the subject, lit
+}
+```
+
+<a name="pointsegmenter"></a>
+
+### PointSegmenter
+
+```swift
+PointSegmenter(_ source: any FrameSource,
+               imageEncoderAt: URL, promptEncoderAt: URL, maskDecoderAt: URL)
+func pick(at: Vector2, in: Rectangle)        // start a fresh pick
+func include(_: Vector2, in: Rectangle)      // the pick must also cover this
+func exclude(_: Vector2, in: Rectangle)      // the pick must not cover this
+func clear()
+var pick: Pick? { get }                      // matte, cutout, score, bounds(in:)
+var isWorking: Bool { get }
+func detect(in: Image, at: [Vector2], avoiding: [Vector2] = []) async throws -> Pick?
+```
+
+Lifts **whatever you point at**. Where `SubjectSegmenter` decides for itself what stands out, this one takes direction: give it one point and it segments the thing under that point, any thing. A click picks the mug, not the person holding it. Under it is a promptable-segmentation model in three parts, fetched by `Scripts/fetch-models.sh` and never committed; hand the three files to the initializer.
+
+`pick(at:in:)` takes the point in canvas coordinates and the rectangle the frame is drawn in, the same `fittedRect` you drew it into. It answers asynchronously: the frozen frame is encoded once (about 0.2 s), then the mask decodes in milliseconds. `pick` keeps the previous answer until the new one lands; `isWorking` says one is on the way. Refines reuse the frozen frame's encoding, so they land in milliseconds too. `include(_:in:)` adds a point the mask must also cover. `exclude(_:in:)` adds a point it must not, so a shift-click can send a stray region away. The model proposes three readings of every prompt (the part, the whole, the group) and the best-scored one wins. `Pick.score` is that confidence.
+
+`Pick` carries the same frame-aligned `matte` and `cutout` pair the other segmenters publish, plus `bounds(in:)`, the picked thing's box mapped into the rectangle you name. The still-image `detect(in:at:avoiding:)` takes its points in image pixel coordinates and returns `nil` when the prompt matches nothing.
+
+```swift
+let camera = Camera()
+lazy var picker = PointSegmenter(camera, imageEncoderAt: encoderURL,
+                                 promptEncoderAt: promptURL, maskDecoderAt: decoderURL)
+override func mousePressed() {
+    guard let rect = camera.fittedRect(in: bounds) else { return }
+    if modifiers.contains(.shift) {
+        picker.exclude(Vector2(mouseX, mouseY), in: rect)
+    } else {
+        picker.pick(at: Vector2(mouseX, mouseY), in: rect)
+    }
+}
+override func draw() {
+    tint(Color(white: 0.3))
+    guard let rect = drawFrame(camera) else { return noTint() }
+    noTint()
+    if let pick = picker.pick { drawImage(pick.cutout, in: rect) }   // the picked thing, lit
 }
 ```
 

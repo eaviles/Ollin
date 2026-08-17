@@ -22,6 +22,11 @@
 #     declares apple-ascl; no research-only restriction).
 #     https://huggingface.co/apple/coreml-mobileclip
 #     (MobileCLIP2 is research-only and is deliberately NOT fetched.)
+#   SAM2_1SmallImageEncoderFLOAT16 + SAM2_1SmallPromptEncoderFLOAT16 +
+#     SAM2_1SmallMaskDecoderFLOAT16: the three parts of one promptable
+#     segmentation model, Apache-2.0. Meta's Segment Anything 2.1 (small),
+#     in Apple's official Core ML conversion.
+#     https://huggingface.co/apple/coreml-sam2.1-small
 #   bpe_simple_vocab_16e6.txt: the byte-pair-encoding vocabulary the text
 #     encoder was trained with, from OpenAI's CLIP repository (MIT),
 #     https://github.com/openai/CLIP; gunzipped at download.
@@ -122,6 +127,15 @@ fetch_hf_mlpackage "mobileclip_s0_image" \
 
 fetch_hf_mlpackage "mobileclip_s0_text" \
     "https://huggingface.co/apple/coreml-mobileclip/resolve/main"
+
+fetch_hf_mlpackage "SAM2_1SmallImageEncoderFLOAT16" \
+    "https://huggingface.co/apple/coreml-sam2.1-small/resolve/main"
+
+fetch_hf_mlpackage "SAM2_1SmallPromptEncoderFLOAT16" \
+    "https://huggingface.co/apple/coreml-sam2.1-small/resolve/main"
+
+fetch_hf_mlpackage "SAM2_1SmallMaskDecoderFLOAT16" \
+    "https://huggingface.co/apple/coreml-sam2.1-small/resolve/main"
 
 fetch_gz_text "bpe_simple_vocab_16e6.txt" \
     "https://github.com/openai/CLIP/raw/main/clip/bpe_simple_vocab_16e6.txt.gz"

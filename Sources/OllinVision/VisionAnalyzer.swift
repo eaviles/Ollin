@@ -68,6 +68,7 @@ extension ImageClassifier: VisionAvailability {}
 extension ModelTracker: VisionAvailability {}
 extension ObjectTracker: VisionAvailability {}
 extension PersonSegmenter: VisionAvailability {}
+extension PointSegmenter: VisionAvailability {}
 extension RectangleDetector: VisionAvailability {}
 extension SaliencyTracker: VisionAvailability {}
 extension SubjectSegmenter: VisionAvailability {}

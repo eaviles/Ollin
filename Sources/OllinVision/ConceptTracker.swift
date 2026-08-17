@@ -393,12 +393,9 @@ public final class ConceptTracker: VisionTracking, @unchecked Sendable {
             // specializing this model family's attention blocks (a fold-into-
             // attention pass dereferences null mid-compile), and the Neural
             // Engine + CPU pair runs both encoders correctly and fast.
-            let configuration = MLModelConfiguration()
-            configuration.computeUnits = .cpuAndNeuralEngine
-
             let compiledText = try await ModelTracker.compiledModelURL(for: textModelURL)
-            let textModel = try await MLModel.load(contentsOf: compiledText,
-                                                   configuration: configuration)
+            let textModel = try await ModelLoader.shared.load(contentsOf: compiledText,
+                                                              computeUnits: .cpuAndNeuralEngine)
             let description = textModel.modelDescription
             guard let inputName = description.inputDescriptionsByName.keys.first,
                   let outputName = description.outputDescriptionsByName.keys.first,
@@ -410,8 +407,8 @@ public final class ConceptTracker: VisionTracking, @unchecked Sendable {
             }
 
             let compiledImage = try await ModelTracker.compiledModelURL(for: imageModelURL)
-            let imageModel = try await MLModel.load(contentsOf: compiledImage,
-                                                    configuration: configuration)
+            let imageModel = try await ModelLoader.shared.load(contentsOf: compiledImage,
+                                                               computeUnits: .cpuAndNeuralEngine)
             var request = CoreMLRequest(model: try CoreMLModelContainer(model: imageModel))
             // The model family's published preprocessing: the short side
             // scaled to the input size, the long side cropped around the

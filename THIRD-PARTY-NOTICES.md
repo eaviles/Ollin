@@ -345,6 +345,20 @@ redistributed inside this repository.
 
 ---
 
+## Segment Anything 2.1 (example model, downloaded, not bundled)
+
+- **Used for:** `PointSegmenter` and its `PointLift` example sketch. The framework provides no bundled weights.
+- **Location in this repo:** none. [`Scripts/fetch-models.sh`](Scripts/fetch-models.sh) downloads the weights into the gitignored `Models/` directory.
+- **Work:** *SAM 2: Segment Anything in Images and Videos* (2024), Nikhila Ravi, Valentin Gabeur, Yuan-Ting Hu, Ronghang Hu, Chaitanya Ryali, Tengyu Ma, Haitham Khedr, Roman Rädle, Chloe Rolland, Laura Gustafson, Eric Mintun, Junting Pan, Kalyan Vasudev Alwala, Nicolas Carion, Chao-Yuan Wu, Ross Girshick, Piotr Dollár, Christoph Feichtenhofer (Meta AI): the 2.1 "small" checkpoint, in Apple's official Core ML conversion, split as `SAM2_1SmallImageEncoderFLOAT16.mlpackage`, `SAM2_1SmallPromptEncoderFLOAT16.mlpackage`, and `SAM2_1SmallMaskDecoderFLOAT16.mlpackage`.
+- **Upstream:** https://huggingface.co/apple/coreml-sam2.1-small (conversion); original release https://github.com/facebookresearch/sam2
+- **License:** Apache-2.0 (both the original release and the Core ML conversion's model card).
+
+> Apache-2.0 applies to the model weights the script downloads; nothing from the
+> model is redistributed in this repository, so the root [`LICENSE`](LICENSE) is
+> unaffected. This entry records the provenance of what the script fetches.
+
+---
+
 ## CLIP byte-pair-encoding vocabulary (example data, downloaded, not bundled)
 
 - **Used for:** `ConceptTracker`'s tokenizer (`PhraseTokenizer`), which turns a typed phrase into the token sequence the text encoder expects. The tokenizer implementation is Ollin's own, credited in [`ATTRIBUTION.md`](ATTRIBUTION.md); this entry covers the vocabulary file.

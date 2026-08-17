@@ -569,6 +569,9 @@ let package = Package(
         // The salient subject lifted into a spotlight: dimmed frame, full-color
         // cutout, matte halo.
         example("Vision/SubjectLift", [.vision]),
+        // Click a thing and it lifts out: point-prompted segmentation over the
+        // feed, shift-click trims, C clears (fetched model).
+        example("Vision/PointLift", [.vision]),
         // Rectangular shapes (paper, screens, cards) highlighted as quads.
         example("Vision/RectangleScan", [.vision]),
         // Barcodes / QR codes outlined and their payload printed.

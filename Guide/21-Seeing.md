@@ -135,6 +135,31 @@ Where the pose trackers reduce a person to joints, these give you their pixels. 
 
 Stamp the matte every frame without clearing and you have a trail of yourself. That is Chapter 14's accumulation, with a person as the brush. `PersonSegmenter` takes a `quality:` that trades edge detail for speed. `SubjectSegmenter` adds a `count` of how many separate subjects it found, going to `nil` and `0` while nothing in the picture stands out. Both need Apple silicon, like the pose trackers.
 
+## Lifting what you point at
+
+The segmenters above decide for themselves what the subject is. **`PointSegmenter`** hands that decision to you. Click a thing, any thing, and it comes loose from the picture.
+
+```swift
+lazy var picker = PointSegmenter(camera,
+    imageEncoderAt: encoderURL, promptEncoderAt: promptURL, maskDecoderAt: decoderURL)
+
+override func mousePressed() {
+    guard let rect = camera.fittedRect(in: bounds) else { return }
+    picker.pick(at: Vector2(mouseX, mouseY), in: rect)
+}
+
+override func draw() {
+    tint(Color(white: 0.3))                                          // the room, dimmed
+    guard let rect = drawFrame(camera) else { return noTint() }
+    noTint()
+    if let pick = picker.pick { drawImage(pick.cutout, in: rect) }   // the picked thing, lit
+}
+```
+
+A pick answers with the same `matte` and `cutout` pair as the other segmenters, plus a `score` and a `bounds(in:)` box for framing what it found. The first answer takes a beat, because the model studies the clicked frame once. After that the frame stays frozen and refining is nearly free: `include(_:in:)` adds a point the mask must also cover, `exclude(_:in:)` a point it must not. Click the teapot, then shift-click the shadow it dragged along, and the mask lets the shadow go.
+
+Like `ModelTracker`'s models below, this one runs on downloaded weights: run `Scripts/fetch-models.sh` once and pass the three files it fetches. `Examples/Vision/PointLift` is the whole loop, clicks and all.
+
 ## Reading what's printed
 
 The next three trackers aren't looking for people. They look for the flat printed things the world is full of, and none of them needs Apple silicon. Two are classical computer vision with no neural model at all, and the third, the text reader, runs on a model every Mac already has.

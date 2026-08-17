@@ -259,7 +259,7 @@ Use it two ways. It is an index for the moment you remember the guide showing bl
 |---|---|---|---|
 | Camera feeds | The webcam (or any frame source) drawn and analyzed live | [Ch 21](21-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
 | People trackers | Faces with landmarks, hands, 2D and 3D body poses, person segmentation | [Ch 21](21-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
-| Scene trackers | Contours, rectangles, barcodes, text (OCR), saliency, classification, subject lift | [Ch 21](21-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
+| Scene trackers | Contours, rectangles, barcodes, text (OCR), saliency, classification, subject lift, point-prompted lift | [Ch 21](21-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
 | Motion trackers | Object tracking, thrown-object trajectories, dense optical flow | [Ch 21](21-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
 | `ModelTracker` | Bring any Core ML model: classifiers, detectors, image-to-image maps, segmenters | [Ch 21](21-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
 | Still analysis | Every tracker also runs one-shot on an `Image` | [Ch 21](21-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |

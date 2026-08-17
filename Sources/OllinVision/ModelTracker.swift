@@ -456,7 +456,7 @@ public final class ModelTracker: VisionTracking, @unchecked Sendable {
                     return
                 }
                 let compiled = try await Self.compiledModelURL(for: url)
-                model = try await MLModel.load(contentsOf: compiled, configuration: .init())
+                model = try await ModelLoader.shared.load(contentsOf: compiled)
             } else {
                 status.markUnavailable("No model was provided.")
                 return

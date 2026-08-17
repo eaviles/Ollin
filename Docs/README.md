@@ -139,7 +139,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 
 ### Vision
 
-- [`Vision`](./Vision/Vision.md) - `import OllinVision` for the Mac's camera (built-in, Continuity, or external) plus Apple's on-device perception, surfaced as typed results you read in `draw()`: seventeen trackers spanning detection (rectangles, barcodes/QR, text/OCR, contours into vector `Shape`s), tracking (a patch you point at, parabolic trajectories, dense optical flow), segmentation (person and subject mattes and cutouts), pose (face landmarks, hand and body skeletons, the 3D body in meters), classification, saliency, and typed phrases scored against the picture, plus any custom Core ML model
+- [`Vision`](./Vision/Vision.md) - `import OllinVision` for the Mac's camera (built-in, Continuity, or external) plus Apple's on-device perception, surfaced as typed results you read in `draw()`: eighteen trackers spanning detection (rectangles, barcodes/QR, text/OCR, contours into vector `Shape`s), tracking (a patch you point at, parabolic trajectories, dense optical flow), segmentation (person, subject, and point-prompted mattes and cutouts), pose (face landmarks, hand and body skeletons, the 3D body in meters), classification, saliency, and typed phrases scored against the picture, plus any custom Core ML model
 
 ### Video
 
