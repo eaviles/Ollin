@@ -3141,6 +3141,32 @@ vertex MeshOut ollin_mesh_instanced_vertex(uint vid [[vertex_id]],
     return out;
 }
 
+// The MeshField vertex: the instanced vertex with one indirection. A field's
+// visible copies are compacted per entry by the cull kernel, and each entry's
+// GPU-encoded draw carries its compact-region offset as base_instance, so
+// [[instance_id]] lands directly on this draw's slice of `compacted`. The
+// field's draw-time matrix (buffer 6) composes ahead of the copy's own, then
+// everything shades exactly as the solid path (MeshOut -> ollin_mesh_fragment).
+vertex MeshOut ollin_mesh_field_vertex(uint vid [[vertex_id]],
+                                       uint iid [[instance_id]],
+                                       const device OllinMeshVertex *verts [[buffer(0)]],
+                                       const device OllinMeshInstance *instances [[buffer(4)]],
+                                       const device uint *compacted [[buffer(5)]],
+                                       constant float4x4 &fieldModel [[buffer(6)]],
+                                       constant Uniforms3D &u [[buffer(2)]]) {
+    OllinMeshVertex v = verts[vid];
+    OllinMeshInstance inst = instances[compacted[iid]];
+    float4x4 model = fieldModel * inst.model;
+    float4 wp = model * float4(v.position.xyz, 1.0);
+    float3x3 lin = float3x3(model[0].xyz, model[1].xyz, model[2].xyz);
+    MeshOut out;
+    out.worldPos = wp.xyz;
+    out.position = u.projection * (u.view * float4(wp.xyz, 1.0));
+    out.normal = normalize(ollin_instance_normal(lin, v.normal.xyz));
+    out.color = v.color * inst.color;
+    return out;
+}
+
 // Depth-only instanced vertex for the directional/spot shadow pass: the
 // instance's model matrix, then the caster's clip space (the `ollin_mesh_shadow_vertex`
 // contract), so instanced copies cast into the 2D map like any solid mesh.
@@ -3152,6 +3178,41 @@ vertex MeshShadowOut ollin_mesh_instanced_shadow_vertex(uint vid [[vertex_id]],
     MeshShadowOut out;
     float4 wp = instances[iid].model * float4(verts[vid].position.xyz, 1.0);
     out.position = lightVP * wp;
+    return out;
+}
+
+// The MeshField shadow vertices. A field casts independently of the CAMERA
+// frustum (a copy behind the camera still throws its shadow into view); the 2D
+// (directional/spot) pass instead culls against the LIGHT's own frustum, whose
+// compacted set + GPU-written indirect draws arrive exactly like the main
+// pass's (base_instance = the entry's compact region, so `compacted[iid]`
+// lands on this draw's slice). The field's draw-time matrix composes ahead.
+vertex MeshShadowOut ollin_mesh_field_shadow_vertex(uint vid [[vertex_id]],
+                                                    uint iid [[instance_id]],
+                                                    const device OllinMeshVertex *verts [[buffer(0)]],
+                                                    const device OllinMeshInstance *instances [[buffer(4)]],
+                                                    const device uint *compacted [[buffer(5)]],
+                                                    constant float4x4 &lightVP [[buffer(2)]],
+                                                    constant float4x4 &fieldModel [[buffer(6)]]) {
+    MeshShadowOut out;
+    float4 wp = fieldModel * (instances[compacted[iid]].model * float4(verts[vid].position.xyz, 1.0));
+    out.position = lightVP * wp;
+    return out;
+}
+
+vertex MeshCubeShadowOut ollin_mesh_field_point_shadow_vertex(uint vid [[vertex_id]],
+                                                              uint iid [[instance_id]],
+                                                              const device OllinMeshVertex *verts [[buffer(0)]],
+                                                              const device OllinMeshInstance *instances [[buffer(4)]],
+                                                              constant float4x4 *faceVP [[buffer(2)]],
+                                                              constant float4x4 &fieldModel [[buffer(6)]]) {
+    uint face = iid % 6;
+    uint inst = iid / 6;
+    MeshCubeShadowOut out;
+    float4 wp = fieldModel * (instances[inst].model * float4(verts[vid].position.xyz, 1.0));
+    out.worldPos = wp.xyz;
+    out.layer = face;
+    out.position = faceVP[face] * float4(wp.xyz, 1.0);
     return out;
 }
 

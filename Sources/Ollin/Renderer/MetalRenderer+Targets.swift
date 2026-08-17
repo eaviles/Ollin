@@ -240,6 +240,9 @@ extension MetalRenderer {
         // any exist; a frame with only instanced casters still renders its maps.
         let hasInstancedCasters = instancedMeshBuffer != nil
             && drawer.batches.contains { $0.kind == .meshInstanced }
+        // Fields cast too, from their own retained buffers, UNCULLED (a copy
+        // outside the camera frustum still throws its shadow into view).
+        let hasFieldCasters = drawer.batches.contains { $0.kind == .meshField }
         // Ray-traced reflections want a caster acceleration structure even when no light casts
         // a shadow; build it once and reuse it for both. (A non-RT device can't reflect, so
         // `wantReflect` is already false there and the shadow paths stay byte-identical.)
@@ -252,7 +255,8 @@ extension MetalRenderer {
         // the probe trace needs no environment (misses just read black) and no caster.
         let wantGI = drawer.globalIlluminationEnabled && rayTracedShadows
             && drawer.camera3D != nil
-        guard lighting.enabled != 0, !meshVertices.isEmpty || hasInstancedCasters,
+        guard lighting.enabled != 0,
+              !meshVertices.isEmpty || hasInstancedCasters || hasFieldCasters,
               lighting.shadowLight >= 0 || wantReflect || wantGI else { return ShadowMaps() }
 
         // Fill the caster buffers here: the shadow pass runs before the main
@@ -359,6 +363,11 @@ extension MetalRenderer {
             drawInstancedShadowCasters(drawer, encoder: encoder,
                                        instancedMeshBuffer: instancedMeshBuffer,
                                        meshInstanceBuffer: meshInstanceBuffer, faces: 1)
+        }
+        // MeshFields cast from their retained buffers, whole (no culling here).
+        if hasFieldCasters, let fp = try? pipeline(.meshFieldShadow) {
+            encoder.setRenderPipelineState(fp)
+            drawFieldShadowCasters(drawer, encoder: encoder, faces: 1)
         }
         // Marched 3D fields cast into the same map: sphere-trace each from the light's POV and
         // write its depth, z-tested against the mesh casters already there, so meshes receive a
@@ -482,6 +491,11 @@ extension MetalRenderer {
                                        instancedMeshBuffer: instancedMeshBuffer,
                                        meshInstanceBuffer: meshInstanceBuffer, faces: 6)
         }
+        if drawer.batches.contains(where: { $0.kind == .meshField }),
+           let fieldMin = try? pipeline(.meshFieldPointShadowMin) {
+            encoder.setRenderPipelineState(fieldMin)
+            drawFieldShadowCasters(drawer, encoder: encoder, faces: 6)
+        }
         encoder.setRenderPipelineState(maxPipeline)   // farthest -> G
         if let meshBuffer {
             drawShadowCasters(drawer, encoder: encoder, meshBuffer: meshBuffer, instanceCount: 6)
@@ -491,6 +505,11 @@ extension MetalRenderer {
             drawInstancedShadowCasters(drawer, encoder: encoder,
                                        instancedMeshBuffer: instancedMeshBuffer,
                                        meshInstanceBuffer: meshInstanceBuffer, faces: 6)
+        }
+        if drawer.batches.contains(where: { $0.kind == .meshField }),
+           let fieldMax = try? pipeline(.meshFieldPointShadowMax) {
+            encoder.setRenderPipelineState(fieldMax)
+            drawFieldShadowCasters(drawer, encoder: encoder, faces: 6)
         }
         encoder.endEncoding()
         return cube
@@ -2720,6 +2739,44 @@ extension MetalRenderer {
             encoder.drawPrimitives(type: .triangle, vertexStart: 0,
                                    vertexCount: batch.instancedVertexCount,
                                    instanceCount: copies * faces)
+        }
+    }
+
+    /// Draw every `MeshField` batch into the active shadow encoder from the
+    /// field's own retained buffers. The 2D (directional/spot) pass runs the
+    /// GPU-written indirect draws culled against the LIGHT's frustum
+    /// (`shadowArguments`/`shadowCompacted`, filled by `encodeMeshFieldCulling`);
+    /// the layered cube pass is omnidirectional, so it draws each entry's whole
+    /// copy run directly, every copy on all six faces. The caller sets the
+    /// matching field shadow pipeline first; `faces` is 1 for the 2D map, 6 for
+    /// the cube.
+    private func drawFieldShadowCasters(_ drawer: Drawer, encoder: MTLRenderCommandEncoder,
+                                        faces: Int) {
+        let instStride = MemoryLayout<OllinMeshInstance>.stride
+        let argStride = MemoryLayout<MTLDrawPrimitivesIndirectArguments>.stride
+        for batch in drawer.batches where batch.kind == .meshField {
+            guard let field = batch.field,
+                  let resources = field.gpuResources(for: device) else { continue }
+            encoder.setVertexBuffer(resources.vertices, offset: 0, index: 0)
+            var fieldModel = batch.fieldTransform
+            encoder.setVertexBytes(&fieldModel, length: MemoryLayout<simd_float4x4>.stride, index: 6)
+            if faces == 1 {
+                encoder.setVertexBuffer(resources.instances, offset: 0, index: 4)
+                encoder.setVertexBuffer(resources.shadowCompacted, offset: 0, index: 5)
+                for entry in 0 ..< resources.entryCount {
+                    encoder.drawPrimitives(type: .triangle,
+                                           indirectBuffer: resources.shadowArguments,
+                                           indirectBufferOffset: entry * argStride)
+                }
+            } else {
+                for entry in field.entries where entry.copyCount > 0 {
+                    encoder.setVertexBuffer(resources.instances,
+                                            offset: Int(entry.copyStart) * instStride, index: 4)
+                    encoder.drawPrimitives(type: .triangle, vertexStart: Int(entry.vertexStart),
+                                           vertexCount: Int(entry.vertexCount),
+                                           instanceCount: Int(entry.copyCount) * faces)
+                }
+            }
         }
     }
 

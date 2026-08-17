@@ -1389,6 +1389,14 @@ open class Sketch {
         drawer.drawMeshInstanced(mesh, instanceBuffer: instances, count: count ?? instances.count)
     }
 
+    /// Draw a retained `MeshField`: a whole world of placed meshes in ONE call,
+    /// every frame, with the GPU deciding per copy what the camera can see.
+    /// Build the field in `setup()` (`field.place(mesh, at: copies)`), hold it,
+    /// and draw it here; the transform stack moves the whole field, and copies
+    /// out of view cost (almost) nothing. Once per frame per field; a no-op
+    /// without a camera.
+    public func drawMeshField(_ field: MeshField) { drawer.drawMeshField(field) }
+
     /// Draw a loaded `Scene`: every node's mesh at its authored place, the node
     /// transforms composed down the tree and onto the 3D transform stack (so
     /// `translate`/`rotate`/`scale` before this call move the whole scene). The

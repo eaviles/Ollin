@@ -96,6 +96,8 @@ enum GeometryKind {
     case meshInstanced // one mesh drawn many times: local-space vertices in
                        // `instancedMeshVertices`, per-copy placements in `meshInstances`
                        // (or a GPU-resident instance buffer), placed on the GPU
+    case meshField     // a retained `MeshField`: many distinct meshes + copies drawn
+                       // by ONE executeCommandsInBuffer, GPU-culled per copy
     case fringe       // edge-expanded stroke + ~1px AA fringe in `vertices` (the high-quality stroke path)
     case depthScene   // a backdrop quad in `imageVertices` that also primes the depth buffer from a depth map
     case sdfGroup     // composed SDF field (combinator) in `sdfGroups`, evaluating `sdfNodes`
@@ -150,6 +152,11 @@ struct GeometryBatch {
     var instancedVertexCount: Int = 0
     var meshInstanceStart: Int = 0
     var meshInstanceCount: Int = 0
+    /// The retained field for a `.meshField` batch (`nil` otherwise), plus the
+    /// 3D CTM at draw time (composed onto every copy by the cull kernel and the
+    /// field vertex shader; identity when the field is drawn untransformed).
+    var field: MeshField?
+    var fieldTransform: simd_float4x4 = matrix_identity_float4x4
     /// The *metric* depth map (meters) for a metric `.depthScene` batch, written to
     /// the depth buffer as true clip-space depth against the active camera's near/far
     /// (the conversion coefficients ride in the quad's vertex tint). `nil` for the
@@ -3051,9 +3058,22 @@ final class Drawer {
         let pbr = currentMaterial.shading == .physicallyBased
         let metalW: Float = pbr ? Float(currentMaterial.metallic) : 0
         let posW: Float = pbr ? Float(currentMaterial.roughness) : 1
-        let vertexColored = mesh.colors.count == mesh.positions.count
         let start = instancedMeshVertices.count
-        instancedMeshVertices.reserveCapacity(start + mesh.indices.count)
+        Drawer.expandBaseMesh(mesh, surface: color, posW: posW, metalW: metalW,
+                              into: &instancedMeshVertices)
+        return (start, instancedMeshVertices.count - start)
+    }
+
+    /// Expand `mesh`'s indexed triangles into a flat LOCAL-space vertex list for
+    /// an instanced path (no model matrix baked; each copy's matrix applies on
+    /// the GPU). `surface` multiplies per-vertex mesh colors when they align
+    /// (the solid-mesh rules); `posW`/`metalW` fill the spare w slots. Shared by
+    /// the per-frame instanced recorder and the retained `MeshField` build.
+    static func expandBaseMesh(_ mesh: Mesh, surface: SIMD4<Float>,
+                               posW: Float, metalW: Float,
+                               into vertices: inout [OllinMeshVertex]) {
+        let vertexColored = mesh.colors.count == mesh.positions.count
+        vertices.reserveCapacity(vertices.count + mesh.indices.count)
         for idx in mesh.indices {
             let i = Int(idx)
             guard i < mesh.positions.count else { continue }
@@ -3063,10 +3083,9 @@ final class Drawer {
             v.position = SIMD4<Float>(Float(p.x), Float(p.y), Float(p.z), posW)
             let nn = n.normalized
             v.normal = SIMD4<Float>(Float(nn.x), Float(nn.y), Float(nn.z), metalW)
-            v.color = vertexColored ? color * mesh.colors[i].simd4 : color
-            instancedMeshVertices.append(v)
+            v.color = vertexColored ? surface * mesh.colors[i].simd4 : surface
+            vertices.append(v)
         }
-        return (start, instancedMeshVertices.count - start)
     }
 
     /// Open the `.meshInstanced` batch (always its own; never merges).
@@ -3092,6 +3111,61 @@ final class Drawer {
                                      instancedVertexCount: vertexRange.count,
                                      meshInstanceStart: instanceStart,
                                      meshInstanceCount: instanceCount,
+                                     finish: currentMaterial.gpuMaterial(),
+                                     target: currentTarget, clipLevel: activeClipLevel))
+        currentKind = nil
+    }
+
+    /// Draw a retained `MeshField`: the whole world of placed meshes in one
+    /// GPU-culled indirect draw. The 3D CTM at this call composes onto every
+    /// copy (the field moves as a unit); the current `material(_:)` finish
+    /// shades it. Once per frame per field: the cull results live on the field's
+    /// own buffers, so a second draw of the same field in one frame is skipped
+    /// with a note.
+    func drawMeshField(_ field: MeshField) {
+        if isRecordingBatch {
+            noteBatchRecording("a MeshField inside makeBatch { } is not recorded (it is already retained and GPU-resident); draw it where the batch is drawn.")
+            return
+        }
+        guard camera3D != nil, !field.isEmpty else { return }
+        if !combineStack.isEmpty {
+            if !warnedMeshInCombine {
+                print("Ollin: a mesh inside a combine block is ignored unless it's an SDF-able primitive (drawSphere/drawBox/drawRoundedBox/drawCylinder/drawCone/drawTorus/drawCapsule/drawOctahedron); a 3D combine merges those analytic fields.")
+                warnedMeshInCombine = true
+            }
+            return
+        }
+        // SVG export is 2D vector only; a shaded solid has no vector outline.
+        if svgRecorder != nil { return }
+        if let spatialRecorder {
+            // Spatial export walks the field's CPU-side placements: each copy as
+            // the mesh plus the matrix that placed it, like a loop of drawMesh.
+            for placement in field.placements {
+                for copy in placement.copies {
+                    let m = modelIsIdentity ? copy.matrix : modelMatrix * copy.matrix
+                    spatialRecorder.record(mesh: placement.mesh, transform: m,
+                                           surface: .white, finish: currentMaterial,
+                                           wireframe: false, matcap: false)
+                }
+            }
+            return
+        }
+        if batches.contains(where: { $0.kind == .meshField && $0.field === field }) {
+            noteOnce("a MeshField can be drawn once per frame (its cull results live on the field); place more copies in it instead of drawing it twice.")
+            return
+        }
+        currentTarget?.needsDepth = true
+        batches.append(GeometryBatch(kind: .meshField, vertexStart: vertices.count,
+                                     instanceStart: sdfInstances.count,
+                                     imageStart: imageVertices.count,
+                                     glyphStart: glyphVertices.count,
+                                     pointStart: points.count,
+                                     meshStart: meshVertices.count,
+                                     sdfGroupStart: sdfGroups.count,
+                                     sdf3DGroupStart: sdf3DGroups.count,
+                                     blendMode: currentBlend, depth: currentDepth,
+                                     field: field,
+                                     fieldTransform: modelIsIdentity ? matrix_identity_float4x4 : modelMatrix,
                                      finish: currentMaterial.gpuMaterial(),
                                      target: currentTarget, clipLevel: activeClipLevel))
         currentKind = nil

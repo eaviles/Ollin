@@ -113,6 +113,7 @@ public struct FrameProfile: Sendable, Equatable {
         case .glyphAtlas: glyphVertices += n
         case .mesh3D:     meshVertices += n
         case .meshInstanced: meshVertices += n   // n = base vertices x copies (total shaded)
+        case .meshField:  meshVertices += n      // n = copies placed (the GPU culls; visible count never round-trips)
         case .points3D:   pointSplats += n
         case .particles:  particles += n
         case .clipPush:   clipVertices += n

@@ -33,6 +33,7 @@ As a reference point, take a 12,400-pillar field, lit and shadowed, at 1080² in
 
 - [MeshInstance](#meshinstance) - one copy's placement
 - [Instances from a compute kernel](#compute) - GPU-resident placements
+- [A field that culls itself](#meshfield) - `MeshField`, a retained world the GPU trims per copy
 - [What applies to a copy](#applies)
 - [Notes](#notes)
 
@@ -69,6 +70,32 @@ override func draw() {
 
 `OllinMeshInstance` is the raw GPU struct: a `model` matrix (local to world) and a `color` multiplier. Import `COllinShaders` to name it in a kernel-writing sketch. The matrices are absolute world space. The transform stack is not composed on top, because the kernel owns the placement. The shader derives the normal transform from the matrix itself. So a kernel fills only those two fields, and non-uniform scale still lights correctly.
 
+<a id="meshfield"></a>
+### A field that culls itself
+
+`drawMesh(_:instances:)` re-records its placement list every frame, which is what makes a field wave. For a *world*, most of which never changes and most of which the camera can't see, a **`MeshField`** goes further. Place copies of any number of meshes into it once; draw it with one call forever. Each frame a compute pass tests every copy against the camera and writes the surviving draws itself, so copies behind the camera or beyond the far plane cost (almost) nothing, and the CPU never touches a copy again.
+
+```swift
+let field = MeshField()
+
+override func setup() {
+    field.place(stone, at: stoneSpots)      // [MeshInstance], like drawMesh
+    field.place(pine, at: pineSpots)
+    field.place(boulder, at: boulderSpots)
+}
+
+override func draw() {
+    camera(Camera3D(eye: eye, target: ahead, far: 110))
+    drawMeshField(field)                    // one call for the whole world
+}
+```
+
+A field is retained, like a `Batch`: build it in `setup()` and hold it. Its surface colors bake when a mesh is placed (the mesh material's base color times its per-vertex colors, tinted per copy by `MeshInstance.color`); the draw-time `fill` does not tint a field. The transform stack still moves the whole field as a unit, the current `material(_:)` finish shades it, and its copies cast into the shadow maps *uncculled*, so a tree behind the camera still throws its shadow into view. Draw a field once per frame; a second draw is skipped with a note.
+
+Culling is on by default and must never change the picture, only the work: a culled copy was outside the view by definition. `field.cullingEnabled = false` draws every copy regardless, which is the honest way to feel the difference (the `MeshField` example wires it to a knob). The mechanics, for the curious: a GPU pass tests each copy's bounding sphere against the view frustum, compacts the survivors per mesh, and writes one indirect draw per mesh kind, so the CPU issues one draw per *kind of thing*, never per copy. The shadow pass gets the same treatment against the light's own frustum, so a caster behind the camera still shadows the view while everything outside the map is skipped.
+
+As a reference point, the example's 240,000-copy plain, lit, shadowed, and fogged at 1080² on an M2: 18.5 ms of GPU per frame with culling on, 50.8 ms with it off, a 2.7x win, and the CPU record cost of the one `drawMeshField` call rounds to zero. `Scripts/benchmark.sh field` reproduces it on your machine.
+
 <a id="applies"></a>
 ### What applies to a copy
 
@@ -88,4 +115,6 @@ Not yet, by design (each lands with a later slice of the GPU-driven tier):
 - `makeBatch { }` refuses an instanced draw (like plain meshes: a retained copy would silently lose its shadows). Draw the field where the batch is drawn.
 - Spatial export records the `[MeshInstance]` form as one mesh per placement, exactly like a loop of `drawMesh` calls. The GPU-buffer form can't be exported (the placements live on the GPU) and says so once.
 - SVG export skips meshes entirely, instanced or not: a shaded solid has no vector outline.
+- A `MeshField` exports spatially like a loop of `drawMesh` calls (its placements stay on the CPU for exactly this). The not-yet list above applies to fields too, and under a point light on a ray-tracing GPU a field's copies do not cast (the caster set is traced there).
 - The [`InstancedMesh`](../../Examples/Rendering/InstancedMesh/Sketch.swift) example draws 12,000 wave-riding pillars with a knob that flips between the instanced path and a per-copy `drawMesh` loop. The cost difference shows live in the inspector.
+- The [`MeshField`](../../Examples/Rendering/MeshField/Sketch.swift) example scatters 240,000 solids across a foggy plain and flies through them, with a knob that turns the culling off. The picture stays the same; the frame rate does not.

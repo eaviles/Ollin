@@ -2249,7 +2249,7 @@ extension MetalRenderer {
                 // scene and 3D batches set their own clip-z (a fragment SV_Depth and
                 // the camera projection), so only plain 2D batches feed `clipDepth`.
                 let wantsDepth = depthFormat != nil && (batch.kind == .points3D || batch.kind == .mesh3D
-                    || batch.kind == .meshInstanced
+                    || batch.kind == .meshInstanced || batch.kind == .meshField
                     || batch.kind == .depthScene || batch.kind == .sdfGroup3D || batch.depth != nil)
                 if hasStencil {
                     switch batch.kind {
@@ -2287,6 +2287,7 @@ extension MetalRenderer {
                 }
                 if depthFormat != nil,
                    batch.kind != .points3D && batch.kind != .mesh3D && batch.kind != .meshInstanced
+                    && batch.kind != .meshField
                     && batch.kind != .depthScene && batch.kind != .sdfGroup3D {
                     uniforms.clipDepth = batch.depth ?? 0
                     encoder.setVertexBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: 1)
@@ -2618,6 +2619,36 @@ extension MetalRenderer {
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0,
                                        vertexCount: batch.instancedVertexCount,
                                        instanceCount: copies)
+            case .meshField:
+                // A retained field: the GPU already culled every copy and wrote
+                // one `MTLDrawPrimitivesIndirectArguments` per entry
+                // (`encodeMeshFieldCulling`, earlier in this command buffer), so
+                // this arm binds the shared state once and issues one indirect
+                // draw per entry, the CPU never seeing a copy. The depth
+                // requirement is load-bearing: only depth-carrying drives encode
+                // the cull, so it also keeps stale arguments from ever drawing
+                // (the accumulating drives pass no depth format).
+                guard depthFormat != nil, drawer.camera3D != nil,
+                      let fieldHandle = batch.field,
+                      let resources = fieldHandle.gpuResources(for: device) else { continue }
+                encoder.setRenderPipelineState(state)
+                encoder.setVertexBuffer(resources.vertices, offset: 0, index: 0)
+                encoder.setVertexBuffer(resources.instances, offset: 0, index: 4)
+                encoder.setVertexBuffer(resources.compacted, offset: 0, index: 5)
+                var fieldModel = batch.fieldTransform
+                encoder.setVertexBytes(&fieldModel, length: MemoryLayout<simd_float4x4>.stride,
+                                       index: 6)
+                bindLitMeshFragment(batch.finish)
+                // Counts what was recorded (copies placed); the visible count
+                // lives on the GPU and never round-trips.
+                profile.countDraw(batch.kind, fieldHandle.copyCount)
+                let argStride = MemoryLayout<MTLDrawPrimitivesIndirectArguments>.stride
+                for entry in 0 ..< resources.entryCount {
+                    if entry > 0 { profile.drawCalls += 1 }
+                    encoder.drawPrimitives(type: .triangle,
+                                           indirectBuffer: resources.drawArguments,
+                                           indirectBufferOffset: entry * argStride)
+                }
             case .depthScene:
                 // A backdrop quad (in `imageVertices`, like an image) whose fragment
                 // also writes per-pixel depth from the depth map: color at texture 0,
@@ -2835,6 +2866,106 @@ extension MetalRenderer {
                 threadsPerThreadgroup: MTLSize(width: groupWidth, height: groupHeight, depth: 1))
         }
         encoder.endEncoding()
+    }
+
+    /// Encode every drawn `MeshField`'s per-frame GPU passes, ahead of the render
+    /// passes in the same command buffer (hazard tracking orders them before the
+    /// draws): zero the visible counts (one blit), then cull every copy and
+    /// GPU-write each entry's `MTLDrawPrimitivesIndirectArguments` (one compute
+    /// encoder). Runs once per frame per field; the depth-carrying drives all
+    /// call it, and the `.meshField` draw arm requires a depth pass, so a field
+    /// can never draw stale arguments.
+    func encodeMeshFieldCulling(_ drawer: Drawer, into commandBuffer: MTLCommandBuffer,
+                                viewport: SIMD2<Float>) {
+        let fieldBatches = drawer.batches.filter { $0.kind == .meshField }
+        guard !fieldBatches.isEmpty, let camera = drawer.camera3D,
+              let cullState = try? computePipeline(for: MeshField.cullKernel),
+              let encodeState = try? computePipeline(for: MeshField.encodeKernel) else { return }
+        let aspect = viewport.y > 0 ? Double(viewport.x / viewport.y) : 1
+        // The unjittered view-projection: sub-pixel TAA jitter is far inside the
+        // bounding-sphere conservatism, so culling ignores it.
+        let planes = MeshField.frustumPlanes(of: camera.viewProjectionMatrix(aspect: aspect))
+
+        var work: [(GeometryBatch, MeshField.GPUResources, MeshField)] = []
+        for batch in fieldBatches {
+            guard let field = batch.field,
+                  let resources = field.gpuResources(for: device) else { continue }
+            work.append((batch, resources, field))
+        }
+        guard !work.isEmpty else { return }
+
+        // The shadow pass has its own frustum: a directional/spot caster's 2D
+        // map is a box in the world, and copies outside it cannot reach the map.
+        // Cull the shadow set against those planes; a cube (point) caster is
+        // omnidirectional, so its set compacts uncculled (identity).
+        let lighting = drawer.makeLighting()
+        let castsShadows = lighting.enabled != 0 && lighting.shadowLight >= 0
+        let lightPlanes: [SIMD4<Float>]? = castsShadows && lighting.shadowKind == 0
+            ? MeshField.frustumPlanes(of: lighting.lightViewProjection) : nil
+
+        guard let reset = commandBuffer.makeBlitCommandEncoder() else { return }
+        for (_, resources, _) in work {
+            reset.fill(buffer: resources.counts, range: 0 ..< resources.counts.length, value: 0)
+            reset.fill(buffer: resources.shadowCounts,
+                       range: 0 ..< resources.shadowCounts.length, value: 0)
+        }
+        reset.endEncoding()
+
+        guard let compute = commandBuffer.makeComputeCommandEncoder() else { return }
+        for (batch, resources, field) in work {
+            var params = OllinFieldCullParams()
+            withUnsafeMutableBytes(of: &params.planes) { raw in
+                let dst = raw.bindMemory(to: SIMD4<Float>.self)
+                for (i, plane) in planes.enumerated() { dst[i] = plane }
+            }
+            params.fieldModel = batch.fieldTransform
+            params.copyCount = UInt32(field.copyCount)
+            params.entryCount = UInt32(resources.entryCount)
+            params.cullEnabled = field.cullingEnabled ? 1 : 0
+            let width = cullState.threadExecutionWidth
+            compute.setComputePipelineState(cullState)
+            compute.setBuffer(resources.instances, offset: 0, index: 0)
+            compute.setBuffer(resources.entries, offset: 0, index: 1)
+            compute.setBuffer(resources.counts, offset: 0, index: 2)
+            compute.setBuffer(resources.compacted, offset: 0, index: 3)
+            compute.setBytes(&params, length: MemoryLayout<OllinFieldCullParams>.stride, index: 4)
+            compute.dispatchThreads(MTLSize(width: field.copyCount, height: 1, depth: 1),
+                                    threadsPerThreadgroup: MTLSize(width: width, height: 1, depth: 1))
+            compute.setComputePipelineState(encodeState)
+            compute.setBuffer(resources.drawArguments, offset: 0, index: 0)
+            compute.dispatchThreads(MTLSize(width: resources.entryCount, height: 1, depth: 1),
+                                    threadsPerThreadgroup: MTLSize(width: min(width, resources.entryCount),
+                                                                   height: 1, depth: 1))
+            profile.computeDispatches += 2
+
+            guard castsShadows else { continue }
+            var shadowParams = params
+            if let lightPlanes {
+                withUnsafeMutableBytes(of: &shadowParams.planes) { raw in
+                    let dst = raw.bindMemory(to: SIMD4<Float>.self)
+                    for (i, plane) in lightPlanes.enumerated() { dst[i] = plane }
+                }
+            } else {
+                shadowParams.cullEnabled = 0
+            }
+            compute.setComputePipelineState(cullState)
+            // Rebind the instance buffer: the encode dispatch above repointed
+            // index 0 at the draw-arguments buffer.
+            compute.setBuffer(resources.instances, offset: 0, index: 0)
+            compute.setBuffer(resources.shadowCounts, offset: 0, index: 2)
+            compute.setBuffer(resources.shadowCompacted, offset: 0, index: 3)
+            compute.setBytes(&shadowParams, length: MemoryLayout<OllinFieldCullParams>.stride,
+                             index: 4)
+            compute.dispatchThreads(MTLSize(width: field.copyCount, height: 1, depth: 1),
+                                    threadsPerThreadgroup: MTLSize(width: width, height: 1, depth: 1))
+            compute.setComputePipelineState(encodeState)
+            compute.setBuffer(resources.shadowArguments, offset: 0, index: 0)
+            compute.dispatchThreads(MTLSize(width: resources.entryCount, height: 1, depth: 1),
+                                    threadsPerThreadgroup: MTLSize(width: min(width, resources.entryCount),
+                                                                   height: 1, depth: 1))
+            profile.computeDispatches += 2
+        }
+        compute.endEncoding()
     }
 
     /// Execute this frame's recorded compute dispatches *without* rendering geometry —

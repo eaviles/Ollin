@@ -1580,6 +1580,90 @@ and `--export-sweep` rather than by a tier.
 
 ---
 
+## Instanced meshes and mesh fields
+
+The user-facing surface is `Docs/3D/Instancing.md`; this section is the
+machinery behind `drawMesh(_:instances:)` and the retained, GPU-culled
+`MeshField`, and the two findings that shaped them.
+
+### The two tiers
+
+The per-frame instanced path (`.meshInstanced`) is the animation tier: the base
+mesh expands once per call into its own ring array (LOCAL space, the model
+matrix deliberately NOT baked, which is the whole saving over the per-mesh
+path's per-copy re-bake), and an 80-byte `OllinMeshInstance` per copy (model
+matrix + tint) rides a second ring. Rebuilding the placement list every frame
+is the intended idiom, so nothing here is retained. The `MeshField`
+(`.meshField`) is the world tier: everything uploads once into the field's own
+per-device buffers (the `Batch.GPUResources` model), and the per-frame work
+moves to the GPU entirely.
+
+Both vertex shaders derive the normal transform from the model's linear part as
+the adjugate (three column cross products), normalized after. That choice is
+load-bearing for the compute-written forms: a kernel fills only model + color,
+and non-uniform scale still lights correctly with no inverse-transpose to
+precompute. The A/B against the CPU path's true inverse-transpose held under
+mean 0.5/255 with non-uniform scales in the fixture.
+
+### The field's frame
+
+`encodeMeshFieldCulling` runs at drive level (after `encodeCompute`, before any
+render pass, same command buffer, so hazard tracking orders everything): one
+blit zeroes the per-entry visible counts, then per field a cull kernel (one
+thread per copy) tests the entry's local bounding sphere through the copy's
+matrix and the draw-time field matrix against six Gribb-Hartmann planes, and
+appends survivors into the entry's own region of a compacted-index buffer
+(atomic per-entry counters; regions tile the copy list, so entries never
+collide). An encode kernel (one thread per entry) then writes one
+`MTLDrawPrimitivesIndirectArguments` per entry:
+
+```
+draws[e] = { vertexCount:   entry.vertexCount,
+             instanceCount: visible[e],
+             vertexStart:   entry.vertexStart,     // into the shared vertex buffer
+             baseInstance:  entry.compactOffset }  // into the shared compacted buffer
+```
+
+`baseInstance` is the trick that keeps the draw arm stateless: `[[instance_id]]`
+starts at `baseInstance`, so the field vertex reads
+`instances[compacted[iid]]` and every entry's draw uses identical whole-buffer
+bindings; the arm binds four things once and issues one indirect draw per
+entry. CPU cost is per KIND of mesh, never per copy.
+
+### Why indirect draws and not an indirect command buffer
+
+The design started as a classic ICB (compute-encoded `render_command`s,
+`inheritPipelineState`, one `executeCommandsInBuffer`), and the mechanism
+worked in isolation. It died on a fact worth keeping: on a ray-tracing device
+the lit mesh fragment carries the RT intersector, and Metal refuses that
+fragment in any ICB-capable pipeline ("Fragment shader cannot be used with
+indirect command buffers"). The choices were a hand-synced RT-free fragment
+twin (fields would stop receiving ray-traced effects) or GPU-written indirect
+draw arguments, which carry the identical payload with no fragment restriction.
+Indirect draws won: full shading everywhere, one code path, and the CPU still
+never sees a copy. Any future ICB use belongs on RT-free shaders (a depth-only
+pass is the natural fit). A second lesson from the same debugging session: a
+failed `try? pipeline(key)` skips a batch silently, which made the field
+invisible while its culling A/B "passed" on two empty images; every new
+pipeline key now gets an explicit build test.
+
+### Culling the shadow pass, exactly
+
+Camera-frustum culling alone recovered only 1.5x on the 240k-copy benchmark,
+because the shadow pass still drew every copy. The fix is a second cull of the
+same shapes against the LIGHT's frustum (the 2D map's own view-projection),
+which is exact by construction: anything it drops, the map's rasterizer would
+have clipped anyway, so casters behind the camera still shadow the view and the
+picture cannot change. The cube (point) pass stays uncculled: it looks in six
+directions at once. With both culls the benchmark lands at 18.5 ms vs 50.8 ms
+unculled (2.7x), CPU ~0. One gotcha cost real time: within a single compute
+encoder, a later dispatch inherits earlier `setBuffer` bindings, and the
+shadow-cull dispatch read the just-bound draw-arguments buffer as instance
+matrices until the instance buffer was explicitly rebound. The
+culled-vs-unculled A/B surfaced it as a single 37-pixel shadow sliver.
+
+---
+
 ## 3D lighting and environments
 
 The user-facing surface is in `Docs/3D/3D.md`; this section is the machinery

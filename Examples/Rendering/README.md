@@ -15,5 +15,6 @@ How the frame composites. Every frame is built in a linear floating-point canvas
 | [DepthOfField](DepthOfField/Sketch.swift) | sandpainting depth of field: bokeh earned by scattering accumulated samples (drag to rack focus) |
 | [RetainedBatch](RetainedBatch/Sketch.swift) | 150k stars recorded once into a `Batch` and replayed for free, plus a rosette stamped at many placements (`makeBatch`/`drawBatch`; flip the knob to feel the per-frame cost) |
 | [InstancedMesh](InstancedMesh/Sketch.swift) | 12,000 wave-riding pillars from one mesh and one draw call (`drawMesh(_:instances:)`; flip the knob to feel the per-copy cost) |
+| [MeshField](MeshField/Sketch.swift) | 240,000 solids across a foggy plain, GPU-culled per copy (`MeshField`/`drawMeshField`; flip the knob to feel what culling saves) |
 
 Run one with `swift run Example-Rendering-<Name>`, e.g. `swift run Example-Rendering-Blending`.

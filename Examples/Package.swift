@@ -151,6 +151,7 @@ let package = Package(
         example("Rendering/DepthOfField"),
         example("Rendering/RetainedBatch"),
         example("Rendering/InstancedMesh"),
+        example("Rendering/MeshField"),
         example("Compute/CurlField"),
         // The kernels live in their own .metal file (highlighted, editor-checked);
         // .copy ships the source for Ollin's runtime compiler to read + splice.

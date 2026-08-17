@@ -399,6 +399,39 @@ typedef struct {
     simd_float4 color;     // straight RGBA multiplier on the surface color
 } OllinMeshInstance;
 
+// One entry of a `MeshField` (one distinct mesh and its run of copies), read by
+// the field's GPU cull + encode kernels and by the CPU build. The field's base
+// vertices concatenate into one buffer; `vertexStart`/`vertexCount` are this
+// entry's run. Its copies are `copyStart ..< copyStart + copyCount` in the
+// field's `OllinMeshInstance` buffer, and its visible copies compact into
+// `compactOffset ..<` in the compacted-index buffer (capacity = copyCount, so
+// entries never collide). `center`/`radius` are the mesh's LOCAL bounding
+// sphere; the cull kernel transforms them per copy. Stride 48.
+typedef struct {
+    simd_float4 center;      // local bounding-sphere center (xyz; w unused)
+    unsigned int vertexStart;
+    unsigned int vertexCount;
+    unsigned int copyStart;
+    unsigned int copyCount;
+    unsigned int compactOffset;
+    float radius;            // local bounding-sphere radius
+    float _fe0;              // pads the stride to 48 (16-aligned)
+    float _fe1;
+} OllinFieldEntry;
+
+// Per-frame parameters for a `MeshField`'s GPU cull + encode kernels: the view
+// frustum as six inward-facing planes (Gribb-Hartmann rows of the unjittered
+// view-projection, normalized), the field's draw-time model matrix (the 3D CTM
+// at drawMeshField, composed onto every copy), and the two dispatch widths.
+typedef struct {
+    simd_float4 planes[6];     // inward world-space frustum planes (xyz = n, w = d)
+    simd_float4x4 fieldModel;  // field local -> world (identity when untransformed)
+    unsigned int copyCount;    // total copies (the cull dispatch width)
+    unsigned int entryCount;   // entries (the encode dispatch width)
+    unsigned int cullEnabled;  // 0 = every copy passes (the A/B and export path)
+    unsigned int _fc0;
+} OllinFieldCullParams;
+
 // The surface *finish* of a 3D mesh: how it responds to light, separate from the surface
 // color (which is the baked vertex color = the current `fill`). A material is constant
 // across a mesh, so it's bound per mesh batch as a fragment uniform rather than baked into

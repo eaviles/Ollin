@@ -212,6 +212,16 @@ final class MetalRenderer {
             PipelineKey(vertex: "ollin_mesh_instanced_vertex", fragment: "ollin_mesh_fragment",
                         blend: blend, depthFormat: depth)
         }
+        // MeshField: many distinct meshes + copies drawn by GPU-written indirect
+        // draws (one per entry). The vertex adds the compacted-copy indirection
+        // over the instanced path and the copies shade through the same solid
+        // lit fragment, so the pipeline is an ordinary lit mesh pipeline. (Not
+        // an MTLIndirectCommandBuffer: the RT-compiled fragment is rejected by
+        // ICB pipelines, and indirect draws carry the same GPU-authored payload.)
+        static func meshField(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
+            PipelineKey(vertex: "ollin_mesh_field_vertex", fragment: "ollin_mesh_fragment",
+                        blend: blend, depthFormat: depth)
+        }
         // textured 3D triangle mesh: the surface samples a base-color texture at the
         // vertex UVs, otherwise the same depth-tested, lit mesh path.
         static func meshTextured(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
@@ -337,6 +347,15 @@ final class MetalRenderer {
         // the instanced sibling: instanced-mesh copies cast into the same 2D map
         static let meshInstancedShadow = PipelineKey(vertex: "ollin_mesh_instanced_shadow_vertex",
                                                      fragment: "", isShadow: true)
+        // the MeshField siblings: a field casts uncculled, its draw-time matrix composed
+        static let meshFieldShadow = PipelineKey(vertex: "ollin_mesh_field_shadow_vertex",
+                                                 fragment: "", isShadow: true)
+        static let meshFieldPointShadowMin = PipelineKey(
+            vertex: "ollin_mesh_field_point_shadow_vertex",
+            fragment: "ollin_mesh_point_shadow_fragment", isShadow: true, pointShadowOp: 1)
+        static let meshFieldPointShadowMax = PipelineKey(
+            vertex: "ollin_mesh_field_point_shadow_vertex",
+            fragment: "ollin_mesh_point_shadow_fragment", isShadow: true, pointShadowOp: 2)
         // depth-only shadow pass for a raymarched 3D field: the same fullscreen-tri vertex as
         // the main raymarch, marched from the light's POV, writing the hit's light-clip depth
         // into the directional/spot 2D map so meshes receive the field's cast shadow.
@@ -386,6 +405,7 @@ final class MetalRenderer {
                      : textured      ? .meshTextured(blend, depth: depth)
                                      : .mesh(blend, depth: depth)
             case .meshInstanced: return .meshInstanced(blend, depth: depth)
+            case .meshField:  return .meshField(blend, depth: depth)
             case .depthScene: return .depthScene(blend, depth: depth)
             case .clipPush:   return .clipWrite(depth: depth)
             case .clipPop:    return .clipCover(depth: depth)
@@ -1378,6 +1398,8 @@ final class MetalRenderer {
             return
         }
         encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
+        encodeMeshFieldCulling(drawer, into: commandBuffer,
+                               viewport: SIMD2<Float>(Float(width), Float(height)))
         // Bake the IBL environment maps (once, cached) ahead of the geometry pass, so the
         // mesh fragments can sample them. A no-op when no environment is set.
         _ = resolveIBL(for: drawer.environment, commandBuffer: commandBuffer)
@@ -1947,6 +1969,8 @@ final class MetalRenderer {
         guard let readback = device.makeBuffer(length: byteCount, options: .storageModeShared),
               let commandBuffer = commandQueue.makeCommandBuffer() else { return nil }
         encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
+        encodeMeshFieldCulling(drawer, into: commandBuffer,
+                               viewport: SIMD2<Float>(Float(width), Float(height)))
         // Export blocks on a remote-environment download so the exported frame is full-res.
         _ = resolveIBL(for: drawer.environment, commandBuffer: commandBuffer, blocking: true)
         ensureSheenLUT(for: drawer, commandBuffer: commandBuffer)
@@ -2223,6 +2247,8 @@ final class MetalRenderer {
                                                    width: width, height: height)
             guard let cb = commandQueue.makeCommandBuffer() else { continue }
             encodeCompute(drawer, into: cb)
+            encodeMeshFieldCulling(drawer, into: cb,
+                                   viewport: SIMD2<Float>(Float(width), Float(height)))
             _ = resolveIBL(for: drawer.environment, commandBuffer: cb)   // bake IBL once
             ensureSheenLUT(for: drawer, commandBuffer: cb)
             let renderedShadow = encodeShadowPass(
@@ -2358,6 +2384,8 @@ final class MetalRenderer {
 
         guard let commandBuffer = commandQueue.makeCommandBuffer() else { return nil }
         encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
+        encodeMeshFieldCulling(drawer, into: commandBuffer,
+                               viewport: SIMD2<Float>(Float(width), Float(height)))
         guard let encoder = countedEncoder(commandBuffer, pass, caller: "canvas (headless)") else { return nil }
 
         encode(drawer, viewport: viewport, into: encoder,

@@ -566,6 +566,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("instanced-mesh",
                  note: "A ring of pillars drawn as ONE instanced mesh call (drawMesh(_:instances:)): per-copy positions, y rotations, non-uniform scales, and tints over a floor, lit by a directional key with castShadows() on. Pins the instanced vertex placement (the per-copy matrix applied on the GPU), the adjugate normal transform under non-uniform scale, the per-copy tint multiply, and the instanced casters rendering into the 2D shadow map beside a plain-mesh floor. No time and no rng, deterministic.",
                  make: { InstancedMeshScene() }),
+    SnapshotCase("mesh-field",
+                 note: "A retained MeshField of three mesh kinds (boxes, spheres, cones) in a ring, drawn by GPU-written indirect draws with per-copy frustum culling ON and the camera framed so part of the ring sits outside the view. Pins the field build (entry table, compact regions), the cull + encode kernels, the per-entry indirect draws, the per-copy tints, and the field casters in the 2D shadow map beside a plain floor. Culling must not change a pixel (a culled copy is off-screen), so this reference also pins that no visible copy is ever lost. No rng and no time, deterministic.",
+                 make: { MeshFieldScene() }),
     SnapshotCase("tiling-grids",
                  note: "The hex and triangle grids on one sheet: a pointy-top hex grid tinted by hex distance from its center cell (concentric rings), a flat-top grid tinted by column, and a triangle grid whose up/down parity splits two palettes. Pins both hex orientations' lattice math (centers, corners, the offset half-step, axial distance, gutter insets) and the triangle tiling. No rng and no time, so it is deterministic.",
                  make: { TilingGridsScene() }),
@@ -6606,6 +6609,48 @@ private final class ClipScene: Sketch {
 /// motif spans the retainable paths: SDF instances (one with a gradient fill, so
 /// the batch's own handle-relative gradient strip is exercised), a fringe-stroked
 /// polyline, a concave tessellated fill, and a smooth-union SDF field.
+/// A retained MeshField of three mesh kinds in a ring, GPU-culled, framed so
+/// part of the ring is off-screen. No rng and no time, deterministic.
+private final class MeshFieldScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    private let field = MeshField()
+
+    override func setup() {
+        var boxes: [MeshInstance] = [], spheres: [MeshInstance] = [], cones: [MeshInstance] = []
+        for i in 0 ..< 60 {
+            let a = Double(i) / 60 * .tau
+            let r = 2.0 + Double(i % 7) * 1.1
+            let p = Vector3(cos(a) * r, 0.4, sin(a) * r)
+            let tint = Color(red: 0.5 + 0.5 * cos(a), green: 0.7, blue: 1, alpha: 1)
+            switch i % 3 {
+            case 0: boxes.append(MeshInstance(position: p, rotation: Vector3(0, a, 0),
+                                              scale: Vector3(1, 1 + Double(i % 4) * 0.4, 0.8),
+                                              color: tint))
+            case 1: spheres.append(MeshInstance(position: p, scale: 0.6, color: tint))
+            default: cones.append(MeshInstance(position: p, rotation: Vector3(0, a, 0), color: tint))
+            }
+        }
+        field.place(Mesh.box(width: 0.8, height: 0.8, depth: 0.8), at: boxes)
+        field.place(Mesh.sphere(radius: 0.6), at: spheres)
+        field.place(Mesh.cone(radius: 0.5, height: 1.1), at: cones)
+    }
+
+    override func draw() {
+        background(Color(hex: 0x101218))
+        camera(Camera3D(eye: Vector3(6, 3, 6), target: Vector3(2, 0.4, 0)))
+        ambientLight(Color(white: 0.15))
+        directionalLight(Color(white: 1), direction: Vector3(-0.5, -0.85, -0.35), intensity: 1)
+        castShadows()
+        withState {
+            fill(Color(white: 0.8))
+            drawPlane(width: 24, depth: 24)
+        }
+        specular(0.3)
+        shininess(32)
+        drawMeshField(field)
+    }
+}
+
 /// A ring of pillars from one instanced mesh call: per-copy positions, y
 /// rotations, non-uniform scales, and tints over a floor, one directional
 /// caster, shadows on. No time and no rng, so it's deterministic.
