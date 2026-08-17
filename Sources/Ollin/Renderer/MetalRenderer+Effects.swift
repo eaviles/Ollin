@@ -40,6 +40,8 @@ extension MetalRenderer {
         var sdfNode: MTLBuffer?
         var sdf3DGroup: MTLBuffer?
         var sdf3DNode: MTLBuffer?
+        var instancedMesh: MTLBuffer?
+        var meshInstance: MTLBuffer?
     }
 
     /// Fill every effects layer this frame, ahead of the main pass: render each
@@ -119,6 +121,8 @@ extension MetalRenderer {
             encode(drawer, viewport: SIMD2(Float(target.width), Float(target.height)), into: enc,
                    triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf, imageBuffer: buffers.image,
                    glyphBuffer: buffers.glyph, pointBuffer: buffers.point, meshBuffer: buffers.mesh,
+                   instancedMeshBuffer: buffers.instancedMesh,
+                   meshInstanceBuffer: buffers.meshInstance,
                    sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
                    sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
                    depthFormat: depthResolve != nil ? depthPixelFormat : nil,
@@ -185,6 +189,8 @@ extension MetalRenderer {
             encode(drawer, viewport: SIMD2(Float(target.width), Float(target.height)), into: enc,
                    triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf, imageBuffer: buffers.image,
                    glyphBuffer: buffers.glyph, pointBuffer: buffers.point, meshBuffer: buffers.mesh,
+                   instancedMeshBuffer: buffers.instancedMesh,
+                   meshInstanceBuffer: buffers.meshInstance,
                    sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
                    sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
                    depthFormat: nil, stencil: passHasStencil, gi: gi, target: target)
@@ -234,6 +240,8 @@ extension MetalRenderer {
                 encode(drawer, viewport: SIMD2(Float(target.width), Float(target.height)), into: enc,
                        triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf, imageBuffer: buffers.image,
                        glyphBuffer: buffers.glyph, pointBuffer: buffers.point, meshBuffer: buffers.mesh,
+                   instancedMeshBuffer: buffers.instancedMesh,
+                   meshInstanceBuffer: buffers.meshInstance,
                    sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
                    sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
                        depthFormat: nil, stencil: passHasStencil, gi: gi, target: target)
@@ -1768,6 +1776,8 @@ extension MetalRenderer {
                         triangleBuffer: MTLBuffer?, sdfBuffer: MTLBuffer?,
                         imageBuffer: MTLBuffer?, glyphBuffer: MTLBuffer?,
                         pointBuffer: MTLBuffer?, meshBuffer: MTLBuffer?,
+                        instancedMeshBuffer: MTLBuffer? = nil,
+                        meshInstanceBuffer: MTLBuffer? = nil,
                         sdfGroupBuffer: MTLBuffer? = nil, sdfNodeBuffer: MTLBuffer? = nil,
                         sdf3DGroupBuffer: MTLBuffer? = nil, sdf3DNodeBuffer: MTLBuffer? = nil,
                         depthFormat: MTLPixelFormat?,
@@ -1825,6 +1835,16 @@ extension MetalRenderer {
         if !meshVertices.isEmpty, let meshBuffer {
             meshVertices.withUnsafeBytes { raw in
                 meshBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+            }
+        }
+        if !drawer.instancedMeshVertices.isEmpty, let instancedMeshBuffer {
+            drawer.instancedMeshVertices.withUnsafeBytes { raw in
+                instancedMeshBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+            }
+        }
+        if !drawer.meshInstances.isEmpty, let meshInstanceBuffer {
+            drawer.meshInstances.withUnsafeBytes { raw in
+                meshInstanceBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
             }
         }
         if !groups.isEmpty, let sdfGroupBuffer {
@@ -2064,6 +2084,94 @@ extension MetalRenderer {
         let imageStride = MemoryLayout<OllinImageVertex>.stride
         let pointStride = MemoryLayout<OllinPoint>.stride
         let meshStride = MemoryLayout<OllinMeshVertex>.stride
+        let meshInstanceStride = MemoryLayout<OllinMeshInstance>.stride
+        // Everything the lit solid/textured mesh fragments read, bound the same
+        // way for the `.mesh3D` and `.meshInstanced` arms (one function so the
+        // two can never drift): shadow maps + samplers, the lighting + finish
+        // uniforms, the RT acceleration structure and reflection-fetch buffers,
+        // the SDF field buffers, IBL, LTC, light shaping, sheen, contact shadow,
+        // the deferred reflection layer, and the GI atlases. The comments on
+        // each binding live here, once.
+        func bindLitMeshFragment(_ batchFinish: OllinMaterial) {
+            // Shadow maps at fragment textures 1 (2D, directional/spot) and 2
+            // (cube, point): the real map when that caster is active, a 1×1 dummy
+            // otherwise (`lighting.shadowLight`/`shadowKind` gate the sampling).
+            // Both share the one comparison sampler (lessEqual hardware PCF).
+            encoder.setFragmentTexture(shadowTexture, index: 1)
+            encoder.setFragmentTexture(shadowCubeTexture, index: 2)
+            // 2D map: comparison sampler (hardware PCF). Cube: plain sampler (it
+            // stores linear distance, read with `.sample`, manual PCF in-shader).
+            if let shadowSampler { encoder.setFragmentSamplerState(shadowSampler, index: 1) }
+            if let shadowCubeSampler { encoder.setFragmentSamplerState(shadowCubeSampler, index: 2) }
+            encoder.setFragmentBytes(&lighting, length: MemoryLayout<OllinLighting>.stride, index: 0)
+            // The surface finish (shading model + Blinn-Phong/rim/subsurface/
+            // iridescence) is one uniform bound per batch.
+            var finish = batchFinish
+            encoder.setFragmentBytes(&finish, length: MemoryLayout<OllinMaterial>.stride, index: 1)
+            // Ray-traced point shadows: the fragment traces this acceleration
+            // structure at buffer 3 (a dummy when shadowKind != 2, never traced).
+            if let accel = shadowAccelStructure {
+                encoder.useResource(accel, usage: .read, stages: .fragment)
+                encoder.setFragmentAccelerationStructure(accel, bufferIndex: 3)
+            }
+            // Ray-traced reflections: the flat mesh buffer (whole, offset 0, for absolute
+            // indexing) at fragment buffer 6 and the per-geometry base-vertex offsets at 7,
+            // so a physically-based fragment can fetch a reflection hit's triangle. Bound
+            // whenever the fragment is RT-compiled (a dummy offsets buffer when reflections
+            // are off; `lighting.rtReflections` gates the read). Both feed `ollin_rt_reflection`.
+            // An instanced-only frame has no flat mesh buffer; the accel is empty then, so
+            // no hit can read it and the offsets dummy satisfies the declared argument.
+            if rayTracedShadows {
+                encoder.setFragmentBuffer(meshBuffer ?? geoOffsetsBuffer, offset: 0, index: 6)
+            }
+            if let geoOffsetsBuffer {
+                encoder.setFragmentBuffer(geoOffsetsBuffer, offset: 0, index: 7)
+            }
+            // The SDF field group + nodes (buffers 4/5) so a lit mesh can march them
+            // toward a point/ray-traced caster (a field's cast shadow). Always allocated
+            // (min one element) for a 3D frame; `lighting.fieldCasterCount` gates the
+            // march, so this is inert (and byte-identical) when there are no fields.
+            if let sdf3DGroupBuffer { encoder.setFragmentBuffer(sdf3DGroupBuffer, offset: 0, index: 4) }
+            if let sdf3DNodeBuffer { encoder.setFragmentBuffer(sdf3DNodeBuffer, offset: 0, index: 5) }
+            // The half-res field-shadow texture (the live RenderQuality path) the fragment
+            // samples when `lighting.fieldShadowMode == 1`; a never-sampled stand-in (the
+            // gradient `strip`) otherwise, so the declared texture is always bound.
+            encoder.setFragmentTexture(halfResFieldShadow ?? strip, index: 3)
+            // The image-based-lighting maps the physically-based fragment samples when
+            // `lighting.iblEnabled == 1`: the irradiance + prefiltered cubes (tex 4/5)
+            // and the BRDF LUT (tex 6). Never-sampled stand-ins (a 1×1 cube, the
+            // gradient strip) otherwise, so the declared textures are always bound.
+            if iblPlaceholderCube == nil { iblPlaceholderCube = makeCubeTexture(face: 1, mipped: false) }
+            encoder.setFragmentTexture(currentIBLIrradiance ?? iblPlaceholderCube, index: 4)
+            encoder.setFragmentTexture(currentIBLPrefilter ?? iblPlaceholderCube, index: 5)
+            encoder.setFragmentTexture(iblBRDFLUTTexture ?? strip, index: 6)
+            // The LTC tables (tex 8/9) for area lights; never-sampled stand-ins when
+            // unloaded (`lighting.ltcEnabled` gates the read).
+            encoder.setFragmentTexture(ltcMatTexture ?? strip, index: 8)
+            encoder.setFragmentTexture(ltcAmpTexture ?? strip, index: 9)
+            // The light-shaping arrays (tex 10/11: IES profiles + cookies); the
+            // array stand-in otherwise (`iesEnabled`/`cookieEnabled` gate).
+            encoder.setFragmentTexture(iesArrayTexture ?? shapingStandIn(), index: 10)
+            encoder.setFragmentTexture(cookieArrayTexture ?? shapingStandIn(), index: 11)
+            // The sheen directional-albedo LUT (tex 12); a never-sampled stand-in
+            // unless a material carries sheen (its sheen color gates the read).
+            encoder.setFragmentTexture(sheenLUT ?? strip, index: 12)
+            // The contact-shadow mask (tex 16), sampled by screen position when
+            // `lighting.contactShadow.x` is set; a never-sampled stand-in otherwise.
+            encoder.setFragmentTexture(contactShadow ?? strip, index: 16)
+            // The pre-traced reflection layer (tex 7) when the deferred path is on;
+            // a never-sampled stand-in otherwise (`rtReflectionDeferred` gates the
+            // read). Only part of the RT-compiled fragment signature.
+            if rayTracedShadows {
+                encoder.setFragmentTexture(deferredReflection ?? strip, index: 7)
+                // The GI probe atlases + relocation offsets (tex 13/14/15);
+                // never-sampled stand-ins unless the frame resolved a probe
+                // field (`giOrigin.w` gates).
+                encoder.setFragmentTexture(gi?.irradiance ?? strip, index: 13)
+                encoder.setFragmentTexture(gi?.depth ?? strip, index: 14)
+                encoder.setFragmentTexture(gi?.offsets ?? strip, index: 15)
+            }
+        }
         // On the half-res raymarch tier all fields composite in one upsample at the first field
         // batch; this flag skips the rest (their geometry already merged into the half-res target).
         var compositedHalfResFields = false
@@ -2141,6 +2249,7 @@ extension MetalRenderer {
                 // scene and 3D batches set their own clip-z (a fragment SV_Depth and
                 // the camera projection), so only plain 2D batches feed `clipDepth`.
                 let wantsDepth = depthFormat != nil && (batch.kind == .points3D || batch.kind == .mesh3D
+                    || batch.kind == .meshInstanced
                     || batch.kind == .depthScene || batch.kind == .sdfGroup3D || batch.depth != nil)
                 if hasStencil {
                     switch batch.kind {
@@ -2177,7 +2286,8 @@ extension MetalRenderer {
                                                  : (wantsDepth ? depthTestState : noDepthState))
                 }
                 if depthFormat != nil,
-                   batch.kind != .points3D && batch.kind != .mesh3D && batch.kind != .depthScene && batch.kind != .sdfGroup3D {
+                   batch.kind != .points3D && batch.kind != .mesh3D && batch.kind != .meshInstanced
+                    && batch.kind != .depthScene && batch.kind != .sdfGroup3D {
                     uniforms.clipDepth = batch.depth ?? 0
                     encoder.setVertexBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: 1)
                 }
@@ -2473,85 +2583,41 @@ extension MetalRenderer {
                     var grid = batch.gridParams
                     encoder.setFragmentBytes(&grid, length: MemoryLayout<OllinGridParams>.stride, index: 0)
                 } else if !meshWireframe && !meshMatcap {
-                    // Shadow maps at fragment textures 1 (2D, directional/spot) and 2
-                    // (cube, point): the real map when that caster is active, a 1×1 dummy
-                    // otherwise (`lighting.shadowLight`/`shadowKind` gate the sampling).
-                    // Both share the one comparison sampler (lessEqual hardware PCF).
-                    encoder.setFragmentTexture(shadowTexture, index: 1)
-                    encoder.setFragmentTexture(shadowCubeTexture, index: 2)
-                    // 2D map: comparison sampler (hardware PCF). Cube: plain sampler (it
-                    // stores linear distance, read with `.sample`, manual PCF in-shader).
-                    if let shadowSampler { encoder.setFragmentSamplerState(shadowSampler, index: 1) }
-                    if let shadowCubeSampler { encoder.setFragmentSamplerState(shadowCubeSampler, index: 2) }
-                    encoder.setFragmentBytes(&lighting, length: MemoryLayout<OllinLighting>.stride, index: 0)
-                    // The surface finish (shading model + Blinn-Phong/rim/subsurface/
-                    // iridescence) is one uniform bound per batch.
-                    var finish = batch.finish
-                    encoder.setFragmentBytes(&finish, length: MemoryLayout<OllinMaterial>.stride, index: 1)
-                    // Ray-traced point shadows: the fragment traces this acceleration
-                    // structure at buffer 3 (a dummy when shadowKind != 2, never traced).
-                    if let accel = shadowAccelStructure {
-                        encoder.useResource(accel, usage: .read, stages: .fragment)
-                        encoder.setFragmentAccelerationStructure(accel, bufferIndex: 3)
-                    }
-                    // Ray-traced reflections: the flat mesh buffer (whole, offset 0, for absolute
-                    // indexing) at fragment buffer 6 and the per-geometry base-vertex offsets at 7,
-                    // so a physically-based fragment can fetch a reflection hit's triangle. Bound
-                    // whenever the fragment is RT-compiled (a dummy offsets buffer when reflections
-                    // are off; `lighting.rtReflections` gates the read). Both feed `ollin_rt_reflection`.
-                    if rayTracedShadows {
-                        encoder.setFragmentBuffer(meshBuffer, offset: 0, index: 6)
-                    }
-                    if let geoOffsetsBuffer {
-                        encoder.setFragmentBuffer(geoOffsetsBuffer, offset: 0, index: 7)
-                    }
-                    // The SDF field group + nodes (buffers 4/5) so a lit mesh can march them
-                    // toward a point/ray-traced caster (a field's cast shadow). Always allocated
-                    // (min one element) for a 3D frame; `lighting.fieldCasterCount` gates the
-                    // march, so this is inert (and byte-identical) when there are no fields.
-                    if let sdf3DGroupBuffer { encoder.setFragmentBuffer(sdf3DGroupBuffer, offset: 0, index: 4) }
-                    if let sdf3DNodeBuffer { encoder.setFragmentBuffer(sdf3DNodeBuffer, offset: 0, index: 5) }
-                    // The half-res field-shadow texture (the live RenderQuality path) the fragment
-                    // samples when `lighting.fieldShadowMode == 1`; a never-sampled stand-in (the
-                    // gradient `strip`) otherwise, so the declared texture is always bound.
-                    encoder.setFragmentTexture(halfResFieldShadow ?? strip, index: 3)
-                    // The image-based-lighting maps the physically-based fragment samples when
-                    // `lighting.iblEnabled == 1`: the irradiance + prefiltered cubes (tex 4/5)
-                    // and the BRDF LUT (tex 6). Never-sampled stand-ins (a 1×1 cube, the
-                    // gradient strip) otherwise, so the declared textures are always bound.
-                    if iblPlaceholderCube == nil { iblPlaceholderCube = makeCubeTexture(face: 1, mipped: false) }
-                    encoder.setFragmentTexture(currentIBLIrradiance ?? iblPlaceholderCube, index: 4)
-                    encoder.setFragmentTexture(currentIBLPrefilter ?? iblPlaceholderCube, index: 5)
-                    encoder.setFragmentTexture(iblBRDFLUTTexture ?? strip, index: 6)
-                    // The LTC tables (tex 8/9) for area lights; never-sampled stand-ins when
-                    // unloaded (`lighting.ltcEnabled` gates the read).
-                    encoder.setFragmentTexture(ltcMatTexture ?? strip, index: 8)
-                    encoder.setFragmentTexture(ltcAmpTexture ?? strip, index: 9)
-                    // The light-shaping arrays (tex 10/11: IES profiles + cookies); the
-                    // array stand-in otherwise (`iesEnabled`/`cookieEnabled` gate).
-                    encoder.setFragmentTexture(iesArrayTexture ?? shapingStandIn(), index: 10)
-                    encoder.setFragmentTexture(cookieArrayTexture ?? shapingStandIn(), index: 11)
-                    // The sheen directional-albedo LUT (tex 12); a never-sampled stand-in
-                    // unless a material carries sheen (its sheen color gates the read).
-                    encoder.setFragmentTexture(sheenLUT ?? strip, index: 12)
-                    // The contact-shadow mask (tex 16), sampled by screen position when
-                    // `lighting.contactShadow.x` is set; a never-sampled stand-in otherwise.
-                    encoder.setFragmentTexture(contactShadow ?? strip, index: 16)
-                    // The pre-traced reflection layer (tex 7) when the deferred path is on;
-                    // a never-sampled stand-in otherwise (`rtReflectionDeferred` gates the
-                    // read). Only part of the RT-compiled fragment signature.
-                    if rayTracedShadows {
-                        encoder.setFragmentTexture(deferredReflection ?? strip, index: 7)
-                        // The GI probe atlases + relocation offsets (tex 13/14/15);
-                        // never-sampled stand-ins unless the frame resolved a probe
-                        // field (`giOrigin.w` gates).
-                        encoder.setFragmentTexture(gi?.irradiance ?? strip, index: 13)
-                        encoder.setFragmentTexture(gi?.depth ?? strip, index: 14)
-                        encoder.setFragmentTexture(gi?.offsets ?? strip, index: 15)
-                    }
+                    bindLitMeshFragment(batch.finish)
                 }
                 profile.countDraw(batch.kind, count)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: count)
+            case .meshInstanced:
+                // One mesh, many placements: the local-space base run at vertex
+                // buffer 0 and the per-copy matrices at 4, placed per vertex on
+                // the GPU, so the whole field is one draw. Copies shade through
+                // the solid lit fragment, so the full lit binding set applies.
+                guard batch.instancedVertexCount > 0, drawer.camera3D != nil,
+                      let instancedMeshBuffer else { continue }
+                let copies: Int
+                encoder.setRenderPipelineState(state)
+                encoder.setVertexBuffer(instancedMeshBuffer,
+                                        offset: batch.instancedVertexStart * meshStride, index: 0)
+                if let gpuBuffer = batch.particleBuffer {
+                    // GPU-resident placements (a compute kernel writes them; the
+                    // particle/point-cloud rule): read straight from that buffer,
+                    // never uploaded through the frame's instance list.
+                    guard batch.particleCount > 0,
+                          let ib = gpuBuffer.metalBuffer(for: device) else { continue }
+                    encoder.setVertexBuffer(ib, offset: 0, index: 4)
+                    copies = batch.particleCount
+                } else {
+                    guard batch.meshInstanceCount > 0, let meshInstanceBuffer else { continue }
+                    encoder.setVertexBuffer(meshInstanceBuffer,
+                                            offset: batch.meshInstanceStart * meshInstanceStride,
+                                            index: 4)
+                    copies = batch.meshInstanceCount
+                }
+                bindLitMeshFragment(batch.finish)
+                profile.countDraw(batch.kind, batch.instancedVertexCount * copies)
+                encoder.drawPrimitives(type: .triangle, vertexStart: 0,
+                                       vertexCount: batch.instancedVertexCount,
+                                       instanceCount: copies)
             case .depthScene:
                 // A backdrop quad (in `imageVertices`, like an image) whose fragment
                 // also writes per-pixel depth from the depth map: color at texture 0,

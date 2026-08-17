@@ -112,6 +112,7 @@ public struct FrameProfile: Sendable, Equatable {
         case .image, .depthScene: imageVertices += n
         case .glyphAtlas: glyphVertices += n
         case .mesh3D:     meshVertices += n
+        case .meshInstanced: meshVertices += n   // n = base vertices x copies (total shaded)
         case .points3D:   pointSplats += n
         case .particles:  particles += n
         case .clipPush:   clipVertices += n

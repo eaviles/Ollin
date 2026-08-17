@@ -206,9 +206,11 @@ extension MetalRenderer {
         } else {
             descriptor.depthAttachmentPixelFormat = depthPixelFormat
         }
-        // The cube pass routes each instance to a cube face from the vertex stage, so
-        // the pipeline must declare a layered (triangle) input topology.
-        if key.vertex == "ollin_mesh_point_shadow_vertex" {
+        // The cube pass routes each instance to a cube face from the vertex stage
+        // (both the plain and the instanced point-shadow vertices write
+        // `render_target_array_index`), so the pipeline must declare a layered
+        // (triangle) input topology.
+        if key.pointShadowOp != 0 {
             descriptor.inputPrimitiveTopology = .triangle
         }
         return try device.makeRenderPipelineState(descriptor: descriptor)
@@ -493,6 +495,37 @@ extension MetalRenderer {
         if let buffer = meshExportBuffer, buffer.length >= needed { return buffer }
         meshExportBuffer = device.makeBuffer(length: needed + needed / 2, options: .storageModeShared)
         return meshExportBuffer
+    }
+
+    /// Ring + export buffers for the instanced-mesh path: the local-space base
+    /// vertices and the per-copy placements. Mirror `meshBuffer(at:for:)`.
+    func instancedMeshBuffer(at index: Int, for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<OllinMeshVertex>.stride
+        if let buffer = instancedMeshBuffers[index], buffer.length >= needed { return buffer }
+        instancedMeshBuffers[index] = device.makeBuffer(length: needed + needed / 2,
+                                                        options: .storageModeShared)
+        return instancedMeshBuffers[index]
+    }
+    func exportInstancedMeshBuffer(for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<OllinMeshVertex>.stride
+        if let buffer = instancedMeshExportBuffer, buffer.length >= needed { return buffer }
+        instancedMeshExportBuffer = device.makeBuffer(length: needed + needed / 2,
+                                                      options: .storageModeShared)
+        return instancedMeshExportBuffer
+    }
+    func meshInstanceBuffer(at index: Int, for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<OllinMeshInstance>.stride
+        if let buffer = meshInstanceBuffers[index], buffer.length >= needed { return buffer }
+        meshInstanceBuffers[index] = device.makeBuffer(length: needed + needed / 2,
+                                                       options: .storageModeShared)
+        return meshInstanceBuffers[index]
+    }
+    func exportMeshInstanceBuffer(for count: Int) -> MTLBuffer? {
+        let needed = max(count, 1) * MemoryLayout<OllinMeshInstance>.stride
+        if let buffer = meshInstanceExportBuffer, buffer.length >= needed { return buffer }
+        meshInstanceExportBuffer = device.makeBuffer(length: needed + needed / 2,
+                                                     options: .storageModeShared)
+        return meshInstanceExportBuffer
     }
 
     /// Splice the shared CPU/GPU type header into shader source for runtime

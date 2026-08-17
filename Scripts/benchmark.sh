@@ -34,8 +34,9 @@ case "${1:-all}" in
   ssao)     filter="SSAOBenchmarkTests" ;;
   ssr)      filter="SSRBenchmarkTests" ;;
   raymarch) filter="RaymarchBenchmarkTests" ;;
+  instancing) filter="MeshInstanceBenchmarkTests" ;;
   all)      filter="BenchmarkTests" ;;   # substring matches all suites
-  *) echo "usage: $0 [all|shadows|dof|ssao|ssr|raymarch] [resolution]" >&2; exit 1 ;;
+  *) echo "usage: $0 [all|shadows|dof|ssao|ssr|raymarch|instancing] [resolution]" >&2; exit 1 ;;
 esac
 [ "${2:-}" != "" ] && export OLLIN_BENCH_RES="$2"
 

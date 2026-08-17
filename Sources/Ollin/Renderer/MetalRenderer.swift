@@ -205,6 +205,13 @@ final class MetalRenderer {
         static func mesh(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
             PipelineKey(vertex: "ollin_mesh_vertex", fragment: "ollin_mesh_fragment", blend: blend, depthFormat: depth)
         }
+        // instanced 3D triangle mesh: one local-space base mesh + a per-copy
+        // placement buffer, placed per vertex on the GPU. Shares the solid lit
+        // fragment, so copies shade exactly like solid meshes.
+        static func meshInstanced(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
+            PipelineKey(vertex: "ollin_mesh_instanced_vertex", fragment: "ollin_mesh_fragment",
+                        blend: blend, depthFormat: depth)
+        }
         // textured 3D triangle mesh: the surface samples a base-color texture at the
         // vertex UVs, otherwise the same depth-tested, lit mesh path.
         static func meshTextured(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
@@ -327,6 +334,9 @@ final class MetalRenderer {
         // depth-only shadow pass (mesh geometry from the light's point of view)
         static let meshShadow = PipelineKey(vertex: "ollin_mesh_shadow_vertex",
                                             fragment: "", isShadow: true)
+        // the instanced sibling: instanced-mesh copies cast into the same 2D map
+        static let meshInstancedShadow = PipelineKey(vertex: "ollin_mesh_instanced_shadow_vertex",
+                                                     fragment: "", isShadow: true)
         // depth-only shadow pass for a raymarched 3D field: the same fullscreen-tri vertex as
         // the main raymarch, marched from the light's POV, writing the hit's light-clip depth
         // into the directional/spot 2D map so meshes receive the field's cast shadow.
@@ -342,6 +352,13 @@ final class MetalRenderer {
         static let meshPointShadowMax = PipelineKey(vertex: "ollin_mesh_point_shadow_vertex",
                                                     fragment: "ollin_mesh_point_shadow_fragment",
                                                     isShadow: true, pointShadowOp: 2)
+        // the instanced siblings: each copy into all six cube faces (6 * copies instances)
+        static let meshInstancedPointShadowMin = PipelineKey(
+            vertex: "ollin_mesh_instanced_point_shadow_vertex",
+            fragment: "ollin_mesh_point_shadow_fragment", isShadow: true, pointShadowOp: 1)
+        static let meshInstancedPointShadowMax = PipelineKey(
+            vertex: "ollin_mesh_instanced_point_shadow_vertex",
+            fragment: "ollin_mesh_point_shadow_fragment", isShadow: true, pointShadowOp: 2)
 
         /// The pipeline a recorded batch needs, from its geometry kind, blend, the
         /// active depth format (nil in 2D), and — for a mesh — whether it's textured.
@@ -368,6 +385,7 @@ final class MetalRenderer {
                      : normalMapped  ? .meshNormalMapped(blend, depth: depth)
                      : textured      ? .meshTextured(blend, depth: depth)
                                      : .mesh(blend, depth: depth)
+            case .meshInstanced: return .meshInstanced(blend, depth: depth)
             case .depthScene: return .depthScene(blend, depth: depth)
             case .clipPush:   return .clipWrite(depth: depth)
             case .clipPop:    return .clipCover(depth: depth)
@@ -549,6 +567,14 @@ final class MetalRenderer {
     /// advanced with `frameIndex` like the others.
     var meshBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
     var meshExportBuffer: MTLBuffer?
+
+    /// Parallel rings + export buffers for instanced mesh draws: the local-space
+    /// base-mesh vertices (`OllinMeshVertex`) and the per-copy placements
+    /// (`OllinMeshInstance`), advanced with `frameIndex` like the others.
+    var instancedMeshBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
+    var instancedMeshExportBuffer: MTLBuffer?
+    var meshInstanceBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
+    var meshInstanceExportBuffer: MTLBuffer?
 
     /// Depth-stencil states for the 3D path, built once. 3D geometry z-tests
     /// (less-equal) and writes depth; 2D batches in a 3D pass leave depth alone
@@ -1362,6 +1388,10 @@ final class MetalRenderer {
         let meshBuf = meshBuffer(at: frameIndex, for: drawer.meshVertices.count)
         let renderedShadow = encodeShadowPass(
             drawer, into: commandBuffer, meshBuffer: meshBuf,
+            instancedMeshBuffer: drawer.instancedMeshVertices.isEmpty ? nil
+                : instancedMeshBuffer(at: frameIndex, for: drawer.instancedMeshVertices.count),
+            meshInstanceBuffer: drawer.meshInstances.isEmpty ? nil
+                : meshInstanceBuffer(at: frameIndex, for: drawer.meshInstances.count),
             sdf3DGroupBuffer: sdf3DGroupBuffer(at: frameIndex, for: drawer.sdf3DGroups.count),
             sdf3DNodeBuffer: sdf3DNodeBuffer(at: frameIndex, for: drawer.sdf3DNodes.count))
 
@@ -1377,7 +1407,11 @@ final class MetalRenderer {
             sdfGroup: sdfGroupBuffer(at: frameIndex, for: drawer.sdfGroups.count),
             sdfNode: sdfNodeBuffer(at: frameIndex, for: drawer.sdfNodes.count),
             sdf3DGroup: sdf3DGroupBuffer(at: frameIndex, for: drawer.sdf3DGroups.count),
-            sdf3DNode: sdf3DNodeBuffer(at: frameIndex, for: drawer.sdf3DNodes.count))
+            sdf3DNode: sdf3DNodeBuffer(at: frameIndex, for: drawer.sdf3DNodes.count),
+            instancedMesh: drawer.instancedMeshVertices.isEmpty ? nil
+                : instancedMeshBuffer(at: frameIndex, for: drawer.instancedMeshVertices.count),
+            meshInstance: drawer.meshInstances.isEmpty ? nil
+                : meshInstanceBuffer(at: frameIndex, for: drawer.meshInstances.count))
         beginStatefulEncode(drawer)
         // The frame's temporal sub-pixel jitter (zero when neither temporal AA
         // nor the upscaler is on): the live path cycles the sequence by frame
@@ -1471,6 +1505,8 @@ final class MetalRenderer {
                triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,
                imageBuffer: buffers.image, glyphBuffer: buffers.glyph,
                pointBuffer: buffers.point, meshBuffer: buffers.mesh,
+               instancedMeshBuffer: buffers.instancedMesh,
+               meshInstanceBuffer: buffers.meshInstance,
                    sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
                    sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
                depthFormat: passDepthFormat, stencil: passHasStencil,
@@ -1919,6 +1955,10 @@ final class MetalRenderer {
         let meshBuf = exportMeshBuffer(for: drawer.meshVertices.count)
         let renderedShadow = encodeShadowPass(
             drawer, into: commandBuffer, meshBuffer: meshBuf,
+            instancedMeshBuffer: drawer.instancedMeshVertices.isEmpty ? nil
+                : exportInstancedMeshBuffer(for: drawer.instancedMeshVertices.count),
+            meshInstanceBuffer: drawer.meshInstances.isEmpty ? nil
+                : exportMeshInstanceBuffer(for: drawer.meshInstances.count),
             sdf3DGroupBuffer: exportSDF3DGroupBuffer(for: drawer.sdf3DGroups.count),
             sdf3DNodeBuffer: exportSDF3DNodeBuffer(for: drawer.sdf3DNodes.count))
 
@@ -1934,7 +1974,11 @@ final class MetalRenderer {
             sdfGroup: exportSDFGroupBuffer(for: drawer.sdfGroups.count),
             sdfNode: exportSDFNodeBuffer(for: drawer.sdfNodes.count),
             sdf3DGroup: exportSDF3DGroupBuffer(for: drawer.sdf3DGroups.count),
-            sdf3DNode: exportSDF3DNodeBuffer(for: drawer.sdf3DNodes.count))
+            sdf3DNode: exportSDF3DNodeBuffer(for: drawer.sdf3DNodes.count),
+            instancedMesh: drawer.instancedMeshVertices.isEmpty ? nil
+                : exportInstancedMeshBuffer(for: drawer.instancedMeshVertices.count),
+            meshInstance: drawer.meshInstances.isEmpty ? nil
+                : exportMeshInstanceBuffer(for: drawer.meshInstances.count))
         beginStatefulEncode(drawer)
         // Global illumination, historyless: the volume fits this frame's own bounds and
         // K whole trace+blend iterations converge the field within the frame (seed = the
@@ -2021,6 +2065,8 @@ final class MetalRenderer {
                        triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,
                        imageBuffer: buffers.image, glyphBuffer: buffers.glyph,
                        pointBuffer: buffers.point, meshBuffer: buffers.mesh,
+               instancedMeshBuffer: buffers.instancedMesh,
+               meshInstanceBuffer: buffers.meshInstance,
                        sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
                        sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
                        depthFormat: passDepthFormat, stencil: passHasStencil,
@@ -2063,6 +2109,8 @@ final class MetalRenderer {
                    triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,
                    imageBuffer: buffers.image, glyphBuffer: buffers.glyph,
                    pointBuffer: buffers.point, meshBuffer: buffers.mesh,
+               instancedMeshBuffer: buffers.instancedMesh,
+               meshInstanceBuffer: buffers.meshInstance,
                        sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
                        sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
                    depthFormat: passDepthFormat, stencil: passHasStencil,
@@ -2136,7 +2184,11 @@ final class MetalRenderer {
             sdfGroup: exportSDFGroupBuffer(for: drawer.sdfGroups.count),
             sdfNode: exportSDFNodeBuffer(for: drawer.sdfNodes.count),
             sdf3DGroup: exportSDF3DGroupBuffer(for: drawer.sdf3DGroups.count),
-            sdf3DNode: exportSDF3DNodeBuffer(for: drawer.sdf3DNodes.count))
+            sdf3DNode: exportSDF3DNodeBuffer(for: drawer.sdf3DNodes.count),
+            instancedMesh: drawer.instancedMeshVertices.isEmpty ? nil
+                : exportInstancedMeshBuffer(for: drawer.instancedMeshVertices.count),
+            meshInstance: drawer.meshInstances.isEmpty ? nil
+                : exportMeshInstanceBuffer(for: drawer.meshInstances.count))
         var totalMs = 0.0, counted = 0
         for i in 0..<iterations {
             let pass = MTLRenderPassDescriptor()
@@ -2175,6 +2227,8 @@ final class MetalRenderer {
             ensureSheenLUT(for: drawer, commandBuffer: cb)
             let renderedShadow = encodeShadowPass(
                 drawer, into: cb, meshBuffer: meshBuf,
+                instancedMeshBuffer: buffers.instancedMesh,
+                meshInstanceBuffer: buffers.meshInstance,
                 sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode)
             beginStatefulEncode(drawer)
             let taaJitter: SIMD2<Float> = taaActive
@@ -2222,6 +2276,8 @@ final class MetalRenderer {
                    triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,
                    imageBuffer: buffers.image, glyphBuffer: buffers.glyph,
                    pointBuffer: buffers.point, meshBuffer: buffers.mesh,
+               instancedMeshBuffer: buffers.instancedMesh,
+               meshInstanceBuffer: buffers.meshInstance,
                    sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
                    sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
                    depthFormat: passDepthFormat, stencil: passHasStencil,

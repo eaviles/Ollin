@@ -384,6 +384,21 @@ typedef struct {
     OllinHalf4 tangent;     // packed world tangent xyz + handedness w (normal-mapped pipeline only)
 } OllinMeshVertex;
 
+// One instance of an instanced mesh draw (`drawMesh(_:instances:)`): the base
+// mesh's local-space vertices ride their own buffer once per call, and each
+// instance carries its own local -> world model matrix, applied per vertex on
+// the GPU (`ollin_mesh_instanced_vertex`), so a thousand copies cost one
+// vertex expansion plus a thousand of these, not a thousand CPU re-bakes.
+// `color` multiplies the batch's baked surface color (white = unchanged).
+// There is deliberately no normal matrix: the shader derives the normal
+// transform from the model's linear part (the adjugate-transpose, exact under
+// non-uniform scale), so a compute kernel writing instances fills only these
+// two fields. Stride 80 (five 16-byte rows).
+typedef struct {
+    simd_float4x4 model;   // local -> world (the instance's own placement)
+    simd_float4 color;     // straight RGBA multiplier on the surface color
+} OllinMeshInstance;
+
 // The surface *finish* of a 3D mesh: how it responds to light, separate from the surface
 // color (which is the baked vertex color = the current `fill`). A material is constant
 // across a mesh, so it's bound per mesh batch as a fragment uniform rather than baked into

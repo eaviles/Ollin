@@ -229,10 +229,17 @@ extension MetalRenderer {
     /// geometry pass re-copies the same bytes).
     func encodeShadowPass(_ drawer: Drawer, into commandBuffer: MTLCommandBuffer,
                                   meshBuffer: MTLBuffer?,
+                                  instancedMeshBuffer: MTLBuffer? = nil,
+                                  meshInstanceBuffer: MTLBuffer? = nil,
                                   sdf3DGroupBuffer: MTLBuffer? = nil,
                                   sdf3DNodeBuffer: MTLBuffer? = nil) -> ShadowMaps {
         let lighting = drawer.makeLighting()
         let meshVertices = drawer.meshVertices
+        // Instanced-mesh copies cast into the rasterized maps (2D + cube) but not
+        // the ray-traced acceleration structure yet, so they matter here whenever
+        // any exist; a frame with only instanced casters still renders its maps.
+        let hasInstancedCasters = instancedMeshBuffer != nil
+            && drawer.batches.contains { $0.kind == .meshInstanced }
         // Ray-traced reflections want a caster acceleration structure even when no light casts
         // a shadow; build it once and reuse it for both. (A non-RT device can't reflect, so
         // `wantReflect` is already false there and the shadow paths stay byte-identical.)
@@ -245,18 +252,38 @@ extension MetalRenderer {
         // the probe trace needs no environment (misses just read black) and no caster.
         let wantGI = drawer.globalIlluminationEnabled && rayTracedShadows
             && drawer.camera3D != nil
-        guard lighting.enabled != 0, !meshVertices.isEmpty, let meshBuffer,
+        guard lighting.enabled != 0, !meshVertices.isEmpty || hasInstancedCasters,
               lighting.shadowLight >= 0 || wantReflect || wantGI else { return ShadowMaps() }
 
-        meshVertices.withUnsafeBytes { raw in
-            meshBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+        // Fill the caster buffers here: the shadow pass runs before the main
+        // encode (which re-uploads the same bytes), so the GPU sees the geometry
+        // when it renders the maps. The plain mesh buffer may be nil on a frame
+        // whose only casters are instanced; each consumer below skips it then.
+        if !meshVertices.isEmpty, let meshBuffer {
+            meshVertices.withUnsafeBytes { raw in
+                meshBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+            }
+        }
+        if hasInstancedCasters {
+            if let instancedMeshBuffer, !drawer.instancedMeshVertices.isEmpty {
+                drawer.instancedMeshVertices.withUnsafeBytes { raw in
+                    instancedMeshBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+                }
+            }
+            if let meshInstanceBuffer, !drawer.meshInstances.isEmpty {
+                drawer.meshInstances.withUnsafeBytes { raw in
+                    meshInstanceBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+                }
+            }
         }
 
         // A point caster: ray-trace it on a capable device (exact, no cube/depth-compare
         // artifacts), else render the omnidirectional mid-point cube. The one accel serves
-        // both the shadow (shadowKind 2) and, when on, reflections.
+        // both the shadow (shadowKind 2) and, when on, reflections. The traced path needs
+        // real mesh geometry in the accel; a frame with only instanced casters falls to
+        // the cube, which they render into.
         if lighting.shadowLight >= 0, lighting.shadowKind == 1 {
-            if rayTracedShadows,
+            if rayTracedShadows, let meshBuffer, !meshVertices.isEmpty,
                let built = buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer) {
                 return ShadowMaps(accel: built.accel,
                                   reflectAccel: wantReflect ? built.accel : nil,
@@ -265,7 +292,9 @@ extension MetalRenderer {
                                   giGeoOffsets: wantGI ? built.offsets : nil)
             }
             let cube = encodePointShadowPass(drawer, lighting: lighting,
-                                             into: commandBuffer, meshBuffer: meshBuffer)
+                                             into: commandBuffer, meshBuffer: meshBuffer,
+                                             instancedMeshBuffer: hasInstancedCasters ? instancedMeshBuffer : nil,
+                                             meshInstanceBuffer: meshInstanceBuffer)
             return ShadowMaps(cube: cube)
         }
 
@@ -275,6 +304,7 @@ extension MetalRenderer {
         // 2D map below, whose PCSS penumbra the packing already sized from the panel's
         // extent, so both devices soften by the same physical size.
         if lighting.shadowLight >= 0, casterGPUKind(lighting) >= 3, rayTracedShadows,
+           let meshBuffer, !meshVertices.isEmpty,
            let built = buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer) {
             return ShadowMaps(accel: built.accel,
                               reflectAccel: wantReflect ? built.accel : nil,
@@ -285,7 +315,8 @@ extension MetalRenderer {
 
         // Reflections and/or GI with no shadow-casting light: build only the accel.
         if lighting.shadowLight < 0 {
-            guard let built = buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer)
+            guard let meshBuffer, !meshVertices.isEmpty,
+                  let built = buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer)
             else { return ShadowMaps() }
             return ShadowMaps(reflectAccel: wantReflect ? built.accel : nil,
                               reflectGeoOffsets: wantReflect ? built.offsets : nil,
@@ -295,8 +326,9 @@ extension MetalRenderer {
 
         // A directional/spot caster's 2D map below, plus a reflection/GI accel when either
         // is on (both precede the main geometry pass, so trace order is satisfied either way).
-        let reflect = (wantReflect || wantGI)
-            ? buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer) : nil
+        let reflect = (wantReflect || wantGI) && !meshVertices.isEmpty
+            ? meshBuffer.flatMap { buildShadowAccel(drawer, into: commandBuffer, meshBuffer: $0) }
+            : nil
         guard let shadowMap = ensureShadowMap(),
               let shadowPipeline = try? pipeline(.meshShadow) else {
             return ShadowMaps(reflectAccel: wantReflect ? reflect?.accel : nil,
@@ -317,7 +349,17 @@ extension MetalRenderer {
         encoder.setDepthBias(0.0015, slopeScale: 2.0, clamp: 0.01)
         var lightVP = lighting.lightViewProjection
         encoder.setVertexBytes(&lightVP, length: MemoryLayout<simd_float4x4>.stride, index: 2)
-        drawShadowCasters(drawer, encoder: encoder, meshBuffer: meshBuffer, instanceCount: 1)
+        if let meshBuffer, !meshVertices.isEmpty {
+            drawShadowCasters(drawer, encoder: encoder, meshBuffer: meshBuffer, instanceCount: 1)
+        }
+        // Instanced-mesh copies cast into the same map through their own depth-only
+        // pipeline (the instance matrices applied per vertex, then the light's clip).
+        if hasInstancedCasters, let ip = try? pipeline(.meshInstancedShadow) {
+            encoder.setRenderPipelineState(ip)
+            drawInstancedShadowCasters(drawer, encoder: encoder,
+                                       instancedMeshBuffer: instancedMeshBuffer,
+                                       meshInstanceBuffer: meshInstanceBuffer, faces: 1)
+        }
         // Marched 3D fields cast into the same map: sphere-trace each from the light's POV and
         // write its depth, z-tested against the mesh casters already there, so meshes receive a
         // field's shadow too. The field keeps its analytic self-shadow in the main pass and
@@ -373,7 +415,9 @@ extension MetalRenderer {
     /// and far plane come from the lighting uniform. Returns the populated cube.
     private func encodePointShadowPass(_ drawer: Drawer, lighting: OllinLighting,
                                        into commandBuffer: MTLCommandBuffer,
-                                       meshBuffer: MTLBuffer) -> MTLTexture? {
+                                       meshBuffer: MTLBuffer?,
+                                       instancedMeshBuffer: MTLBuffer? = nil,
+                                       meshInstanceBuffer: MTLBuffer? = nil) -> MTLTexture? {
         guard let cube = ensurePointShadowMap(),
               let minPipeline = try? pipeline(.meshPointShadowMin),
               let maxPipeline = try? pipeline(.meshPointShadowMax) else { return nil }
@@ -421,10 +465,33 @@ extension MetalRenderer {
         faceVP.withUnsafeBytes { encoder.setVertexBytes($0.baseAddress!, length: $0.count, index: 2) }
         var lightPosFar = SIMD4<Float>(lightPos.x, lightPos.y, lightPos.z, far)
         encoder.setFragmentBytes(&lightPosFar, length: MemoryLayout<SIMD4<Float>>.stride, index: 0)
+        // The instanced siblings share the pass: each phase draws the plain casters,
+        // then the instanced ones under the matching MIN/MAX pipeline (blend rides
+        // the pipeline, so order within a phase doesn't matter).
+        let instancedMin = instancedMeshBuffer != nil
+            ? try? pipeline(.meshInstancedPointShadowMin) : nil
+        let instancedMax = instancedMeshBuffer != nil
+            ? try? pipeline(.meshInstancedPointShadowMax) : nil
         encoder.setRenderPipelineState(minPipeline)   // nearest -> R
-        drawShadowCasters(drawer, encoder: encoder, meshBuffer: meshBuffer, instanceCount: 6)
+        if let meshBuffer {
+            drawShadowCasters(drawer, encoder: encoder, meshBuffer: meshBuffer, instanceCount: 6)
+        }
+        if let instancedMin {
+            encoder.setRenderPipelineState(instancedMin)
+            drawInstancedShadowCasters(drawer, encoder: encoder,
+                                       instancedMeshBuffer: instancedMeshBuffer,
+                                       meshInstanceBuffer: meshInstanceBuffer, faces: 6)
+        }
         encoder.setRenderPipelineState(maxPipeline)   // farthest -> G
-        drawShadowCasters(drawer, encoder: encoder, meshBuffer: meshBuffer, instanceCount: 6)
+        if let meshBuffer {
+            drawShadowCasters(drawer, encoder: encoder, meshBuffer: meshBuffer, instanceCount: 6)
+        }
+        if let instancedMax {
+            encoder.setRenderPipelineState(instancedMax)
+            drawInstancedShadowCasters(drawer, encoder: encoder,
+                                       instancedMeshBuffer: instancedMeshBuffer,
+                                       meshInstanceBuffer: meshInstanceBuffer, faces: 6)
+        }
         encoder.endEncoding()
         return cube
     }
@@ -2621,6 +2688,38 @@ extension MetalRenderer {
             encoder.setVertexBuffer(meshBuffer, offset: batch.meshStart * meshStride, index: 0)
             encoder.drawPrimitives(type: .triangle, vertexStart: 0,
                                    vertexCount: count, instanceCount: instanceCount)
+        }
+    }
+
+    /// Draw every instanced-mesh batch into the active shadow encoder (the caller
+    /// sets the matching instanced pipeline first). `faces` is 1 for the 2D pass
+    /// and 6 for the layered cube pass, where the draw runs `copies * 6` instances
+    /// and the vertex routes `iid % 6` to a face, `iid / 6` to a copy.
+    private func drawInstancedShadowCasters(_ drawer: Drawer, encoder: MTLRenderCommandEncoder,
+                                            instancedMeshBuffer: MTLBuffer?,
+                                            meshInstanceBuffer: MTLBuffer?, faces: Int) {
+        guard let instancedMeshBuffer else { return }
+        let meshStride = MemoryLayout<OllinMeshVertex>.stride
+        let instStride = MemoryLayout<OllinMeshInstance>.stride
+        for batch in drawer.batches where batch.kind == .meshInstanced {
+            guard batch.instancedVertexCount > 0 else { continue }
+            let copies: Int
+            if let gpuBuffer = batch.particleBuffer {
+                guard batch.particleCount > 0,
+                      let ib = gpuBuffer.metalBuffer(for: device) else { continue }
+                encoder.setVertexBuffer(ib, offset: 0, index: 4)
+                copies = batch.particleCount
+            } else {
+                guard batch.meshInstanceCount > 0, let meshInstanceBuffer else { continue }
+                encoder.setVertexBuffer(meshInstanceBuffer,
+                                        offset: batch.meshInstanceStart * instStride, index: 4)
+                copies = batch.meshInstanceCount
+            }
+            encoder.setVertexBuffer(instancedMeshBuffer,
+                                    offset: batch.instancedVertexStart * meshStride, index: 0)
+            encoder.drawPrimitives(type: .triangle, vertexStart: 0,
+                                   vertexCount: batch.instancedVertexCount,
+                                   instanceCount: copies * faces)
         }
     }
 

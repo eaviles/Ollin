@@ -563,6 +563,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("retained-batch",
                  note: "One motif recorded into a Batch (SDF shapes incl. a gradient fill, a fringe polyline, a concave tessellated fill, a smooth-union SDF field) and replayed three ways: in place (the identity replay, byte-identical to recording), under a rotate+scale+translate stamp (the flag-gated shader transform), and with a dynamic shape drawn between the replays (draw-order compositing around a .retained reference batch). Pins the retained encode path, the batch's handle-relative gradient strip, and the per-run blend/pipeline selection. No time, deterministic.",
                  make: { RetainedBatchScene() }),
+    SnapshotCase("instanced-mesh",
+                 note: "A ring of pillars drawn as ONE instanced mesh call (drawMesh(_:instances:)): per-copy positions, y rotations, non-uniform scales, and tints over a floor, lit by a directional key with castShadows() on. Pins the instanced vertex placement (the per-copy matrix applied on the GPU), the adjugate normal transform under non-uniform scale, the per-copy tint multiply, and the instanced casters rendering into the 2D shadow map beside a plain-mesh floor. No time and no rng, deterministic.",
+                 make: { InstancedMeshScene() }),
     SnapshotCase("tiling-grids",
                  note: "The hex and triangle grids on one sheet: a pointy-top hex grid tinted by hex distance from its center cell (concentric rings), a flat-top grid tinted by column, and a triangle grid whose up/down parity splits two palettes. Pins both hex orientations' lattice math (centers, corners, the offset half-step, axial distance, gutter insets) and the triangle tiling. No rng and no time, so it is deterministic.",
                  make: { TilingGridsScene() }),
@@ -6603,6 +6606,44 @@ private final class ClipScene: Sketch {
 /// motif spans the retainable paths: SDF instances (one with a gradient fill, so
 /// the batch's own handle-relative gradient strip is exercised), a fringe-stroked
 /// polyline, a concave tessellated fill, and a smooth-union SDF field.
+/// A ring of pillars from one instanced mesh call: per-copy positions, y
+/// rotations, non-uniform scales, and tints over a floor, one directional
+/// caster, shadows on. No time and no rng, so it's deterministic.
+private final class InstancedMeshScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x101218))
+        camera(Camera3D(eye: Vector3(6, 6, 9), target: Vector3(0, 0.8, 0)))
+        ambientLight(Color(white: 0.15))
+        directionalLight(Color(white: 1), direction: Vector3(-0.5, -0.85, -0.35), intensity: 1)
+        castShadows()
+
+        withState {
+            fill(Color(white: 0.8))
+            drawPlane(width: 14, depth: 14)
+        }
+
+        specular(0.3)
+        shininess(32)
+        fill(Color(hex: 0xB8C4E8))
+
+        let pillar = Mesh.box(width: 0.5, height: 1, depth: 0.5)
+        var placements: [MeshInstance] = []
+        for i in 0 ..< 40 {
+            let a = Double(i) / 40 * .tau
+            let r = 1.4 + Double(i % 5) * 0.55
+            let h = 0.6 + Double((i * 7) % 11) * 0.22
+            placements.append(MeshInstance(
+                position: Vector3(cos(a) * r, h / 2, sin(a) * r),
+                rotation: Vector3(0, a, 0),
+                scale: Vector3(1, h, 0.7),
+                color: Color(red: 0.6 + 0.4 * cos(a), green: 0.7, blue: 1, alpha: 1)))
+        }
+        drawMesh(pillar, instances: placements)
+    }
+}
+
 private final class RetainedBatchScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 

@@ -93,6 +93,9 @@ enum GeometryKind {
     case particles    // instanced GPU-particle discs reading a compute buffer
     case points3D     // instanced 3D point-cloud splats in `points`, through the camera
     case mesh3D       // solid triangle-mesh geometry in `meshVertices`, through the camera
+    case meshInstanced // one mesh drawn many times: local-space vertices in
+                       // `instancedMeshVertices`, per-copy placements in `meshInstances`
+                       // (or a GPU-resident instance buffer), placed on the GPU
     case fringe       // edge-expanded stroke + ~1px AA fringe in `vertices` (the high-quality stroke path)
     case depthScene   // a backdrop quad in `imageVertices` that also primes the depth buffer from a depth map
     case sdfGroup     // composed SDF field (combinator) in `sdfGroups`, evaluating `sdfNodes`
@@ -137,6 +140,16 @@ struct GeometryBatch {
     /// The depth map for a `.depthScene` batch — sampled per pixel and written to
     /// the depth buffer (with `image` as the color backdrop). `nil` otherwise.
     var depthImage: Image?
+    /// The base-mesh vertex run for a `.meshInstanced` batch: start and count in
+    /// `instancedMeshVertices` (local space, indices expanded), plus the placement
+    /// run in `meshInstances`. Carried as explicit counts rather than next-batch
+    /// arithmetic: an instanced draw is always its own batch, and no other batch
+    /// creator records these starts. A GPU-resident instance buffer rides
+    /// `particleBuffer`/`particleCount` instead (`meshInstanceCount` then 0).
+    var instancedVertexStart: Int = 0
+    var instancedVertexCount: Int = 0
+    var meshInstanceStart: Int = 0
+    var meshInstanceCount: Int = 0
     /// The *metric* depth map (meters) for a metric `.depthScene` batch, written to
     /// the depth buffer as true clip-space depth against the active camera's near/far
     /// (the conversion coefficients ride in the quad's vertex tint). `nil` for the
@@ -326,6 +339,17 @@ final class Drawer {
     /// positions + normals drawn through `camera3D`; triangle indices are expanded
     /// into this flat list (no index buffer), matching the 2D triangle path.
     private(set) var meshVertices: [OllinMeshVertex] = []
+
+    /// Base-mesh vertices for this frame's instanced draws (see
+    /// `drawMeshInstanced`): LOCAL space, indices expanded, the model matrix NOT
+    /// baked in (each instance applies its own on the GPU). One run per instanced
+    /// batch, addressed by the batch's explicit start/count.
+    private(set) var instancedMeshVertices: [OllinMeshVertex] = []
+
+    /// Per-copy placements for this frame's instanced draws: the composed
+    /// local -> world matrix (the CTM at draw time times the instance's own) plus
+    /// the per-copy tint. One run per instanced batch.
+    private(set) var meshInstances: [OllinMeshInstance] = []
 
     /// The active 3D camera, or `nil` for a 2D frame (the default). Per-frame state
     /// like the geometry — set with `camera`/`perspective`/`ortho`, reset each
@@ -667,7 +691,7 @@ final class Drawer {
     /// Buffer/batch lengths at one moment, for rolling target geometry back.
     private struct GeometrySnapshot {
         let batches, vertices, sdf, image, glyph, points, mesh, sdfGroup, sdfNode: Int
-        let sdf3DGroup, sdf3DNode: Int
+        let sdf3DGroup, sdf3DNode, instancedMesh, meshInstance: Int
     }
     private func snapshot() -> GeometrySnapshot {
         GeometrySnapshot(batches: batches.count, vertices: vertices.count,
@@ -675,7 +699,9 @@ final class Drawer {
                          glyph: glyphVertices.count, points: points.count,
                          mesh: meshVertices.count,
                          sdfGroup: sdfGroups.count, sdfNode: sdfNodes.count,
-                         sdf3DGroup: sdf3DGroups.count, sdf3DNode: sdf3DNodes.count)
+                         sdf3DGroup: sdf3DGroups.count, sdf3DNode: sdf3DNodes.count,
+                         instancedMesh: instancedMeshVertices.count,
+                         meshInstance: meshInstances.count)
     }
     /// The surface finish of the currently-open *solid* mesh batch, so a `material(_:)`
     /// change opens a fresh batch (the finish is bound once per batch as a uniform).
@@ -1358,6 +1384,12 @@ final class Drawer {
         if sdfNodes.count > s.sdfNode { sdfNodes.removeLast(sdfNodes.count - s.sdfNode) }
         if sdf3DGroups.count > s.sdf3DGroup { sdf3DGroups.removeLast(sdf3DGroups.count - s.sdf3DGroup) }
         if sdf3DNodes.count > s.sdf3DNode { sdf3DNodes.removeLast(sdf3DNodes.count - s.sdf3DNode) }
+        if instancedMeshVertices.count > s.instancedMesh {
+            instancedMeshVertices.removeLast(instancedMeshVertices.count - s.instancedMesh)
+        }
+        if meshInstances.count > s.meshInstance {
+            meshInstances.removeLast(meshInstances.count - s.meshInstance)
+        }
     }
 
     /// Open a `.particles` batch drawing `count` instances from the GPU `buffer`.
@@ -1594,6 +1626,8 @@ final class Drawer {
         glyphVertices.removeAll(keepingCapacity: true)
         points.removeAll(keepingCapacity: true)
         meshVertices.removeAll(keepingCapacity: true)
+        instancedMeshVertices.removeAll(keepingCapacity: true)
+        meshInstances.removeAll(keepingCapacity: true)
         // Mover ranges index the mesh list the wipe just emptied; a range left
         // behind would send the velocity pass past the frame's vertex buffer.
         // (The history keeps its entries: a redrawn block this frame takes a
@@ -2919,6 +2953,150 @@ final class Drawer {
         recordMoverRange(from: moverStart, wireframe: wireframe)
     }
 
+    /// Draw `mesh` once per placement in `instances`, as ONE instanced GPU draw:
+    /// the mesh's local-space vertices are expanded once, each copy's matrix is
+    /// applied per vertex on the GPU, and the whole field costs one draw call.
+    /// Copies shade exactly like solid meshes (the current `fill` and
+    /// `material(_:)` finish, lights, shadows received, IBL, GI, fog); the
+    /// per-copy `color` tints on top. The surrounding 3D transform stack moves
+    /// the whole field. Instanced copies cast into the directional/spot and
+    /// point shadow maps; they are not yet part of the ray-traced passes
+    /// (reflections and ray-traced shadows do not see them) or the screen-space
+    /// pre-passes.
+    func drawMeshInstanced(_ mesh: Mesh, instances: [MeshInstance]) {
+        guard !instances.isEmpty else { return }
+        guard prepareInstancedMeshDraw(mesh) else { return }
+        if let spatialRecorder {
+            // Spatial export wants each copy as the mesh plus the matrix that
+            // placed it, exactly like a loop of drawMesh calls would record.
+            for inst in instances {
+                let m = modelIsIdentity ? inst.matrix : modelMatrix * inst.matrix
+                spatialRecorder.record(mesh: mesh, transform: m,
+                                       surface: meshSurfaceColor, finish: currentMaterial,
+                                       wireframe: false, matcap: false)
+            }
+            return
+        }
+        currentTarget?.needsDepth = true
+        let vertexRange = appendInstancedBaseMesh(mesh)
+        let iStart = meshInstances.count
+        meshInstances.reserveCapacity(iStart + instances.count)
+        for inst in instances {
+            var gi = OllinMeshInstance()
+            gi.model = modelIsIdentity ? inst.matrix : modelMatrix * inst.matrix
+            gi.color = inst.color?.simd4 ?? SIMD4<Float>(1, 1, 1, 1)
+            meshInstances.append(gi)
+        }
+        appendInstancedMeshBatch(mesh, vertexRange: vertexRange,
+                                 instanceStart: iStart, instanceCount: instances.count)
+    }
+
+    /// The GPU-resident sibling: draw `count` copies whose `OllinMeshInstance`
+    /// placements live in a compute buffer a kernel writes (positions never
+    /// round-trip through the CPU, the particle/point-cloud rule). The matrices
+    /// are absolute world space: the transform stack is NOT composed on top,
+    /// since the kernel owns the placement.
+    func drawMeshInstanced(_ mesh: Mesh, instanceBuffer: ComputeBindable, count: Int) {
+        guard count > 0 else { return }
+        guard prepareInstancedMeshDraw(mesh) else { return }
+        if spatialRecorder != nil {
+            noteOnce("a GPU-instanced mesh's placements live on the GPU, so a spatial export can't record them; use the [MeshInstance] form for exportable copies.")
+            return
+        }
+        currentTarget?.needsDepth = true
+        let vertexRange = appendInstancedBaseMesh(mesh)
+        appendInstancedMeshBatch(mesh, vertexRange: vertexRange,
+                                 instanceStart: 0, instanceCount: 0,
+                                 gpuInstances: instanceBuffer, gpuCount: count)
+    }
+
+    /// The shared gates of an instanced mesh draw (the `drawMesh` set): batch
+    /// recording, camera, combine blocks, SVG. Returns false when the draw
+    /// should not record. The solid lit path is the one instanced pipeline, so
+    /// wireframe and matcap modes fall back to it with a note.
+    private func prepareInstancedMeshDraw(_ mesh: Mesh) -> Bool {
+        if isRecordingBatch {
+            noteBatchRecording("instanced meshes inside makeBatch { } are not recorded (a retained mesh would cast no shadow); draw them where the batch is drawn.")
+            return false
+        }
+        guard camera3D != nil, !mesh.isEmpty else { return false }
+        if !combineStack.isEmpty {
+            if !warnedMeshInCombine {
+                print("Ollin: a mesh inside a combine block is ignored unless it's an SDF-able primitive (drawSphere/drawBox/drawRoundedBox/drawCylinder/drawCone/drawTorus/drawCapsule/drawOctahedron); a 3D combine merges those analytic fields.")
+                warnedMeshInCombine = true
+            }
+            return false
+        }
+        // SVG export is 2D vector only; a shaded solid has no vector outline.
+        if svgRecorder != nil { return false }
+        if wireframeEnabled {
+            noteOnce("instanced meshes draw on the solid lit path; wireframe() doesn't apply to them yet.")
+        }
+        if currentMatcap != nil {
+            noteOnce("instanced meshes draw on the solid lit path; a matcap doesn't apply to them yet.")
+        }
+        if mesh.material?.texture != nil || mesh.material?.normalTexture != nil {
+            noteOnce("an instanced mesh draws untextured (its base color still tints); texture and surface maps aren't instanced yet.")
+        }
+        return true
+    }
+
+    /// Expand the base mesh once into `instancedMeshVertices`, LOCAL space (no
+    /// model bake; each instance's matrix is applied on the GPU). Returns the run.
+    private func appendInstancedBaseMesh(_ mesh: Mesh) -> (start: Int, count: Int) {
+        // The vertex color is the current fill tinted by the material's base
+        // color, times any per-vertex mesh colors (the solid-mesh rules); the
+        // PBR metalness/roughness ride the spare w slots like the solid path.
+        let color = meshSurfaceColor.simd4 * (mesh.material?.baseColor.simd4 ?? SIMD4<Float>(1, 1, 1, 1))
+        let pbr = currentMaterial.shading == .physicallyBased
+        let metalW: Float = pbr ? Float(currentMaterial.metallic) : 0
+        let posW: Float = pbr ? Float(currentMaterial.roughness) : 1
+        let vertexColored = mesh.colors.count == mesh.positions.count
+        let start = instancedMeshVertices.count
+        instancedMeshVertices.reserveCapacity(start + mesh.indices.count)
+        for idx in mesh.indices {
+            let i = Int(idx)
+            guard i < mesh.positions.count else { continue }
+            let p = mesh.positions[i]
+            let n = i < mesh.normals.count ? mesh.normals[i] : Vector3.unitZ
+            var v = OllinMeshVertex()
+            v.position = SIMD4<Float>(Float(p.x), Float(p.y), Float(p.z), posW)
+            let nn = n.normalized
+            v.normal = SIMD4<Float>(Float(nn.x), Float(nn.y), Float(nn.z), metalW)
+            v.color = vertexColored ? color * mesh.colors[i].simd4 : color
+            instancedMeshVertices.append(v)
+        }
+        return (start, instancedMeshVertices.count - start)
+    }
+
+    /// Open the `.meshInstanced` batch (always its own; never merges).
+    private func appendInstancedMeshBatch(_ mesh: Mesh,
+                                          vertexRange: (start: Int, count: Int),
+                                          instanceStart: Int, instanceCount: Int,
+                                          gpuInstances: ComputeBindable? = nil,
+                                          gpuCount: Int = 0) {
+        guard vertexRange.count > 0 else { return }
+        batches.append(GeometryBatch(kind: .meshInstanced, vertexStart: vertices.count,
+                                     instanceStart: sdfInstances.count,
+                                     imageStart: imageVertices.count,
+                                     glyphStart: glyphVertices.count,
+                                     pointStart: points.count,
+                                     meshStart: meshVertices.count,
+                                     sdfGroupStart: sdfGroups.count,
+                                     sdf3DGroupStart: sdf3DGroups.count,
+                                     blendMode: currentBlend,
+                                     particleBuffer: gpuInstances,
+                                     particleCount: gpuCount,
+                                     depth: currentDepth,
+                                     instancedVertexStart: vertexRange.start,
+                                     instancedVertexCount: vertexRange.count,
+                                     meshInstanceStart: instanceStart,
+                                     meshInstanceCount: instanceCount,
+                                     finish: currentMaterial.gpuMaterial(),
+                                     target: currentTarget, clipLevel: activeClipLevel))
+        currentKind = nil
+    }
+
     /// Draw every node of a loaded `Scene` at its authored place: walk the node
     /// tree, composing each node's local transform onto the 3D model matrix, and
     /// `drawMesh` each node's geometry. A node with morph targets draws its
@@ -3079,6 +3257,8 @@ final class Drawer {
         glyphVertices.removeAll(keepingCapacity: true)
         points.removeAll(keepingCapacity: true)
         meshVertices.removeAll(keepingCapacity: true)
+        instancedMeshVertices.removeAll(keepingCapacity: true)
+        meshInstances.removeAll(keepingCapacity: true)
         sdfGroups.removeAll(keepingCapacity: true)
         sdfNodes.removeAll(keepingCapacity: true)
         sdf3DGroups.removeAll(keepingCapacity: true)

@@ -3105,6 +3105,75 @@ fragment float4 ollin_mesh_point_shadow_fragment(MeshCubeShadowOut in [[stage_in
     return float4(dist, dist, 0.0, 0.0);
 }
 
+// MARK: - Instanced meshes (one mesh, many placements)
+//
+// The instanced sibling of the solid mesh path: the base mesh's vertices arrive
+// in LOCAL space (buffer 0, model matrix NOT baked) and each instance carries
+// its own local -> world matrix (buffer 4), applied here per vertex, so a field
+// of copies is one draw. The output is the solid path's own MeshOut, so the
+// instanced pipeline reuses `ollin_mesh_fragment` and shades identically
+// (lights, shadows received, IBL, GI, fog). The normal transforms by the
+// adjugate of the model's linear part: proportional to the inverse-transpose
+// (exact after normalization, non-uniform scale included) without an inverse,
+// and computed from the matrix alone so a compute kernel writing instances
+// fills only model + color.
+static inline float3 ollin_instance_normal(float3x3 lin, float3 n) {
+    // adjugate(lin) * n via the column cross products.
+    return cross(lin[1], lin[2]) * n.x
+         + cross(lin[2], lin[0]) * n.y
+         + cross(lin[0], lin[1]) * n.z;
+}
+
+vertex MeshOut ollin_mesh_instanced_vertex(uint vid [[vertex_id]],
+                                           uint iid [[instance_id]],
+                                           const device OllinMeshVertex *verts [[buffer(0)]],
+                                           const device OllinMeshInstance *instances [[buffer(4)]],
+                                           constant Uniforms3D &u [[buffer(2)]]) {
+    OllinMeshVertex v = verts[vid];
+    OllinMeshInstance inst = instances[iid];
+    float4 wp = inst.model * float4(v.position.xyz, 1.0);
+    float3x3 lin = float3x3(inst.model[0].xyz, inst.model[1].xyz, inst.model[2].xyz);
+    MeshOut out;
+    out.worldPos = wp.xyz;
+    out.position = u.projection * (u.view * float4(wp.xyz, 1.0));
+    out.normal = normalize(ollin_instance_normal(lin, v.normal.xyz));
+    out.color = v.color * inst.color;
+    return out;
+}
+
+// Depth-only instanced vertex for the directional/spot shadow pass: the
+// instance's model matrix, then the caster's clip space (the `ollin_mesh_shadow_vertex`
+// contract), so instanced copies cast into the 2D map like any solid mesh.
+vertex MeshShadowOut ollin_mesh_instanced_shadow_vertex(uint vid [[vertex_id]],
+                                                        uint iid [[instance_id]],
+                                                        const device OllinMeshVertex *verts [[buffer(0)]],
+                                                        const device OllinMeshInstance *instances [[buffer(4)]],
+                                                        constant float4x4 &lightVP [[buffer(2)]]) {
+    MeshShadowOut out;
+    float4 wp = instances[iid].model * float4(verts[vid].position.xyz, 1.0);
+    out.position = lightVP * wp;
+    return out;
+}
+
+// The omnidirectional (point) shadow pass's instanced vertex: the draw is
+// instanced `6 * copies` times, face `iid % 6` picking the cube layer and
+// `iid / 6` the mesh instance, so all copies land on all six faces in the one
+// layered pass (the `ollin_mesh_point_shadow_vertex` contract otherwise).
+vertex MeshCubeShadowOut ollin_mesh_instanced_point_shadow_vertex(uint vid [[vertex_id]],
+                                                                  uint iid [[instance_id]],
+                                                                  const device OllinMeshVertex *verts [[buffer(0)]],
+                                                                  const device OllinMeshInstance *instances [[buffer(4)]],
+                                                                  constant float4x4 *faceVP [[buffer(2)]]) {
+    uint face = iid % 6;
+    uint inst = iid / 6;
+    MeshCubeShadowOut out;
+    float4 wp = instances[inst].model * float4(verts[vid].position.xyz, 1.0);
+    out.worldPos = wp.xyz;
+    out.layer = face;
+    out.position = faceVP[face] * float4(wp.xyz, 1.0);
+    return out;
+}
+
 // The environment seen *through* a transmissive physically-based surface: real-time
 // refraction against the environment map, the base path every GPU gets (the ray-traced
 // walk above upgrades it to the actual scene). Refract the view ray at the entry

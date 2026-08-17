@@ -1364,6 +1364,31 @@ open class Sketch {
     /// The primitive calls below are sugar over this.
     public func drawMesh(_ mesh: Mesh) { drawer.drawMesh(mesh) }
 
+    /// Draw `mesh` once per placement in `instances`, as one instanced GPU draw:
+    /// the mesh uploads once and the GPU places every copy, so a field of
+    /// thousands costs one draw call. Each `MeshInstance` gives a copy its
+    /// position, rotation, scale, and an optional tint; copies shade exactly
+    /// like solid meshes (the current `fill` and `material(_:)` finish, lights,
+    /// shadows received, image-based lighting, fog) and cast into the shadow
+    /// maps. The transform stack moves the whole field together. Copies draw on
+    /// the solid lit path: textures, wireframe, and matcap don't apply to them
+    /// yet, and the ray-traced passes (reflections of them, ray-traced shadows)
+    /// don't see them yet. A no-op without a camera.
+    public func drawMesh(_ mesh: Mesh, instances: [MeshInstance]) {
+        drawer.drawMeshInstanced(mesh, instances: instances)
+    }
+
+    /// The GPU-resident sibling: draw `count` copies (defaulting to the buffer's
+    /// element count) whose `OllinMeshInstance` placements live in a compute
+    /// buffer a kernel writes, so a simulation can move a hundred thousand
+    /// copies without the positions ever visiting the CPU. The matrices are
+    /// absolute world space (the kernel owns the placement, so the transform
+    /// stack is not composed on top); `color` multiplies the surface color.
+    public func drawMesh(_ mesh: Mesh, instances: ComputeBuffer<OllinMeshInstance>,
+                         count: Int? = nil) {
+        drawer.drawMeshInstanced(mesh, instanceBuffer: instances, count: count ?? instances.count)
+    }
+
     /// Draw a loaded `Scene`: every node's mesh at its authored place, the node
     /// transforms composed down the tree and onto the 3D transform stack (so
     /// `translate`/`rotate`/`scale` before this call move the whole scene). The

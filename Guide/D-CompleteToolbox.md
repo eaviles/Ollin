@@ -216,6 +216,7 @@ Use it two ways. It is an index for the moment you remember the guide showing bl
 | Point clouds | Instanced splats by the hundred thousand, camera-facing | [Ch 19](19-DepthAndThePhone.md) | [3D](../Docs/3D/3D.md) |
 | Camera control and moves | Viewer orbiting, cinematic `CameraMove`s, the self-driving showcase, snap views | [Ch 17](17-3DGently.md) | [Camera](../Docs/3D/Camera.md) |
 | Scene chrome | The axis widget and ground grid, live-only, never exported | [Ch 17](17-3DGently.md) | [Camera](../Docs/3D/Camera.md) |
+| Instanced meshes | One mesh drawn thousands of times in one call: `MeshInstance` placements the GPU applies per copy, or a compute-written buffer | [Ch 17](17-3DGently.md) | [Instancing](../Docs/3D/Instancing.md) |
 | Depth compositing | Flat 2D drawing placed *inside* the 3D depth buffer, so the scene occludes it: `depth(at:)`, `project`, billboards, depth feeds | [Ch 19](19-DepthAndThePhone.md) | [DepthCompositing](../Docs/3D/DepthCompositing.md) |
 | What stacks with what | The compatibility map across the 3D features | [Ch 17](17-3DGently.md), [Ch 18](18-SculptingWithFields.md) | [Combining](../Docs/3D/Combining.md) |
 

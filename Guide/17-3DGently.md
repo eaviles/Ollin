@@ -651,6 +651,38 @@ The colors are worth a sentence, because they carry a second fact. A particle's 
 
 One more decision shows in the picture. The particles start spread over the attractor itself, sampled from a settled orbit, and then nudged off it by a hair. The nudge is the part that matters. Sitting exactly on the orbit, every particle rides the same trajectory forever, and the picture can only ever be that one curve with dots sliding along it. A hair off, and chaos separates them within a few laps into a million trajectories, which is the whole reason to run this many. Sensitivity to initial conditions is usually the thing that makes chaotic systems hard to work with. Here it is the mechanism.
 
+## Ten thousand of the same thing
+
+The particles above are points. Sooner or later you want the same abundance out of *solids*: a plaza of columns, a hillside of trees, a scatter of ten thousand rocks. The loop you would naturally write, `drawMesh` inside a `for`, pays the mesh's full cost once per copy, every frame, on the CPU. Ten thousand copies of even a small mesh is millions of vertices rebuilt per frame, and the frame rate goes where you would expect.
+
+Instancing is the escape. Hand `drawMesh` the mesh once and a list of **placements**, and the GPU puts every copy where it goes. **The mesh uploads once; only the placements travel.**
+
+<img src="Images/17-3DGently/InstancedField.jpg" alt="A dense circular field of thousands of slender box pillars riding a traveling wave, colored deep blue in the troughs and warm amber at the crests, lit from the upper left with each pillar dropping a shadow on the pale floor" width="640">
+
+```swift
+let pillar = Mesh.box(width: 0.16, height: 1, depth: 0.16)
+
+override func draw() {
+    background(Color(hex: 0x0E1016))
+    cameraShowcase(target: Vector3(0, 0.9, 0), radius: 15)
+    directionalLight(.white, direction: Vector3(-0.5, -0.85, -0.35))
+    castShadows()
+
+    var copies: [MeshInstance] = []
+    for seat in seats {                              // built once in setup()
+        let h = 0.25 + wave(at: seat) * 2.8          // the animation lives here
+        copies.append(MeshInstance(position: Vector3(seat.x, h / 2, seat.z),
+                                   scale: Vector3(1, h, 1),
+                                   color: Color.mix(low, high, t: h / 3)))
+    }
+    drawMesh(pillar, instances: copies)              // one call, one draw
+}
+```
+
+A `MeshInstance` is a position, a rotation, a scale, and an optional tint, applied in the order the names suggest: place it, turn it, size it. Rebuilding the list every frame is the normal way to animate a field; twelve thousand small structs is nothing next to the twelve thousand mesh expansions it replaces. And the copies are not a special cheap kind of object. They take the current `fill` and material, the scene's lights, the environment, and the fog, and they drop real shadows, exactly as if you had drawn each one yourself.
+
+This is the same division of labor as the retained `Batch` in Chapter 13 and the particle flow above, applied to solid geometry: keep the heavy thing on the GPU, send only what changed. The numbers land where you would hope: recording this field costs the per-copy loop about 12 ms of CPU per frame on an M2, and the instanced call about a quarter of a millisecond, a 53x drop, while the GPU does the same work either way. The [`InstancedMesh`](../Examples/Rendering/InstancedMesh/Sketch.swift) example has a knob that flips between the two, so you can watch the inspector's CPU frame time tell the story. And when even the placement list is too much CPU, a compute kernel can write the placements into a buffer that never visits the CPU at all; the [instancing reference](../Docs/3D/Instancing.md) shows that form.
+
 ## Things with weight
 
 Chapter 9 dropped flat shapes into a physics world and let gravity do the animating. The same world exists in 3D, and it fits the scene you've been building all chapter. Crates stack, balls roll, and chains swing, with real contact response, under the same lights and shadows as everything else. It comes with `import OllinPhysics`, like its 2D sibling, and it keeps the shape you already know. Build a `World3D` once, add bodies, and step it every frame.
