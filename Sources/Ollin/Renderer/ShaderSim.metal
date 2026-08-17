@@ -62,6 +62,46 @@ fragment float4 ollin_sim_inject_sand(PresentOut in [[stage_in]],
     return float4(nq, nq, nq, 1.0);
 }
 
+// The excitable-media inject: a drawn mark sparks rather than paints. Where a solid
+// mark lands, a bright one sets the cell firing (state 1 of the cycle, the faint
+// encoded level) and a dark one calms it back to rest; undrawn texels keep their
+// state and evolve. Writing the mark's own brightness (the default inject) would
+// land on an arbitrary rung of the refractory tail, so the inject snaps to the two
+// states a hand can mean, and the alpha gate is a hard step so an anti-aliased
+// fringe doesn't spark half-covered cells. (params[1].x = states.)
+fragment float4 ollin_sim_inject_excite(PresentOut in [[stage_in]],
+                                        texture2d<float> state [[texture(0)]],
+                                        texture2d<float> seed [[texture(1)]],
+                                        sampler samp [[sampler(0)]],
+                                        constant float4 *params [[buffer(0)]]) {
+    float4 s = state.sample(samp, in.uv);
+    float4 d = seed.sample(samp, in.uv);
+    float states = max(3.0, params[1].x);
+    float luma = dot(ollin_unpremul(d), float3(0.2126, 0.7152, 0.0722));
+    float sparked = (luma >= 0.5) ? 1.0 / (states - 1.0) : 0.0;
+    float v = mix(s.r, sparked, step(0.5, d.a));
+    return float4(float3(v), 1.0);
+}
+
+// The Brian's Brain inject: snap, don't blend. The default inject composites a
+// mark by its alpha, and a disc's anti-aliased rim then lands between the levels,
+// reading as a ring of resting cells that no birth can cross: the drawn blob dies
+// out instead of exploding. So a solid mark (alpha past half) writes the nearest
+// of the three states from its brightness, white firing, black ready, and the
+// soft fringe writes nothing.
+fragment float4 ollin_sim_inject_brain(PresentOut in [[stage_in]],
+                                       texture2d<float> state [[texture(0)]],
+                                       texture2d<float> seed [[texture(1)]],
+                                       sampler samp [[sampler(0)]],
+                                       constant float4 *params [[buffer(0)]]) {
+    float4 s = state.sample(samp, in.uv);
+    float4 d = seed.sample(samp, in.uv);
+    float luma = dot(ollin_unpremul(d), float3(0.2126, 0.7152, 0.0722));
+    float snapped = rint(luma * 2.0) * 0.5;
+    float v = mix(s.r, snapped, step(0.5, d.a));
+    return float4(float3(v), 1.0);
+}
+
 // The interactive-water step: state is (height, velocity), both signed about
 // zero. Velocity accelerates toward the four-neighbor average (the coupling
 // gain is the wave speed), is damped a little so waves die away, and moves the
@@ -173,6 +213,151 @@ fragment float4 ollin_sim_sandpile(PresentOut in [[stage_in]],
              + ollin_sandpile_gives(src, samp, uv - float2(0.0, t.y))
              + ollin_sandpile_gives(src, samp, uv + float2(0.0, t.y));
     return float4(nq, nq, nq, 1.0);
+}
+
+// MARK: - The state automata (cyclic, excitable, Brian's Brain, hodgepodge)
+//
+// A shared encoding: a cell's integer state s (of N levels) is stored as
+// s / (N - 1) in .r (gray across the channels for a readable raw image), decoded
+// with rint. Texel-centre sampling returns each neighbour's value exactly and a
+// half-float texel holds these levels well past the decode's half-step margin, so
+// states and counts are exact integers throughout. Edges wrap; the neighbourhood is
+// the full block within `range` (moore) or the diamond |dx|+|dy| <= range
+// (von Neumann).
+
+// One decoded neighbour state.
+static inline float ollin_cell_state(texture2d<float> src, sampler samp,
+                                     float2 uv, float levelsMinusOne) {
+    return rint(src.sample(samp, uv).r * levelsMinusOne);
+}
+
+// Griffeath's cyclic cellular automaton: N states arranged in a circle, and a cell
+// advances to the next state (wrapping to 0) when at least `threshold` neighbours
+// already hold that next state, so each color eats the one before it. From a random
+// start the field passes through droplets and defects into turning spirals.
+// params[1] = (states, threshold, range, moore).
+fragment float4 ollin_sim_cyclic(PresentOut in [[stage_in]],
+                                 texture2d<float> src [[texture(0)]],
+                                 sampler samp [[sampler(0)]],
+                                 constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float states = max(2.0, params[1].x);
+    float threshold = max(1.0, params[1].y);
+    int range = int(clamp(params[1].z, 1.0, 4.0));
+    bool moore = params[1].w > 0.5;
+    float2 uv = in.uv;
+    float top = states - 1.0;
+    float s = ollin_cell_state(src, samp, uv, top);
+    float next = (s + 1.0 > top) ? 0.0 : s + 1.0;
+    float count = 0.0;
+    for (int dy = -range; dy <= range; dy += 1) {
+        for (int dx = -range; dx <= range; dx += 1) {
+            if (dx == 0 && dy == 0) { continue; }
+            if (!moore && abs(dx) + abs(dy) > range) { continue; }
+            float2 p = fract(uv + float2(float(dx), float(dy)) * t);
+            count += (ollin_cell_state(src, samp, p, top) == next) ? 1.0 : 0.0;
+        }
+    }
+    float ns = (count >= threshold) ? next : s;
+    return float4(float3(ns / top), 1.0);
+}
+
+// The Greenberg-Hastings excitable medium: state 0 rests, state 1 fires, and the
+// remaining states are the refractory tail. A resting cell fires when at least
+// `threshold` neighbours are firing; every other cell advances one step on its own,
+// around to rest, and cannot be re-excited on the way. That one-way recovery is
+// what turns a spark into a traveling ring with a dead zone behind it, and a broken
+// front into a spiral pair. params[1] = (states, threshold, range, moore).
+fragment float4 ollin_sim_excitable(PresentOut in [[stage_in]],
+                                    texture2d<float> src [[texture(0)]],
+                                    sampler samp [[sampler(0)]],
+                                    constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float states = max(3.0, params[1].x);
+    float threshold = max(1.0, params[1].y);
+    int range = int(clamp(params[1].z, 1.0, 4.0));
+    bool moore = params[1].w > 0.5;
+    float2 uv = in.uv;
+    float top = states - 1.0;
+    float s = ollin_cell_state(src, samp, uv, top);
+    float ns;
+    if (s < 0.5) {
+        float firing = 0.0;
+        for (int dy = -range; dy <= range; dy += 1) {
+            for (int dx = -range; dx <= range; dx += 1) {
+                if (dx == 0 && dy == 0) { continue; }
+                if (!moore && abs(dx) + abs(dy) > range) { continue; }
+                float2 p = fract(uv + float2(float(dx), float(dy)) * t);
+                firing += (ollin_cell_state(src, samp, p, top) == 1.0) ? 1.0 : 0.0;
+            }
+        }
+        ns = (firing >= threshold) ? 1.0 : 0.0;
+    } else {
+        ns = (s + 1.0 > top) ? 0.0 : s + 1.0;
+    }
+    return float4(float3(ns / top), 1.0);
+}
+
+// Brian's Brain: ready (0), firing (2), resting (1), stored as state/2 so the raw
+// image is already the classic picture: white fire, mid-gray afterglow, black
+// ground. A ready cell fires on exactly two firing Moore neighbours (the birth rule
+// of the two-state Seeds automaton this extends); a firing cell rests for one step
+// and can't be re-lit; a resting cell returns to ready. Nothing settles, so the
+// field boils with gliders.
+fragment float4 ollin_sim_brain(PresentOut in [[stage_in]],
+                                texture2d<float> src [[texture(0)]],
+                                sampler samp [[sampler(0)]],
+                                constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float2 uv = in.uv;
+#define FIRING(DX, DY) ((ollin_cell_state(src, samp, \
+        fract(uv + float2(float(DX), float(DY)) * t), 2.0) == 2.0) ? 1.0 : 0.0)
+    float n = FIRING(-1, -1) + FIRING(0, -1) + FIRING(1, -1) + FIRING(-1, 0)
+            + FIRING(1, 0) + FIRING(-1, 1) + FIRING(0, 1) + FIRING(1, 1);
+#undef FIRING
+    float s = ollin_cell_state(src, samp, uv, 2.0);
+    float ns = (s < 0.5) ? ((n == 2.0) ? 2.0 : 0.0)     // ready: fire on exactly two
+             : (s > 1.5) ? 1.0                          // firing: rest
+                         : 0.0;                         // resting: ready again
+    return float4(float3(ns * 0.5), 1.0);
+}
+
+// The Gerhardt-Schuster hodgepodge machine, in Dewdney's formulation: states 0..n,
+// healthy at 0, ill at n, infected between. A healthy cell catches
+// floor(A/k1) + floor(B/k2), where A counts its infected neighbours and B its ill
+// ones; an infected cell takes its neighbourhood's average infection plus the speed
+// g, floor(S / (A + 1)) + g, where S sums its own state and all its neighbours'
+// (healthy cells add zero, so this is the infection total) and the +1 counts the
+// cell itself among the infected cells being averaged, which also keeps an isolated
+// infected cell from dividing by zero; an ill cell recovers to 0 at once.
+// Everything caps at n. params[1] = (n, k1, k2, g); params[2] = (moore, 0, 0, 0).
+fragment float4 ollin_sim_hodgepodge(PresentOut in [[stage_in]],
+                                     texture2d<float> src [[texture(0)]],
+                                     sampler samp [[sampler(0)]],
+                                     constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float n = max(2.0, params[1].x);
+    float k1 = max(1.0, params[1].y), k2 = max(1.0, params[1].z);
+    float g = params[1].w;
+    bool moore = params[2].x > 0.5;
+    float2 uv = in.uv;
+    float s = rint(src.sample(samp, uv).r * n);
+    float A = 0.0, B = 0.0, S = s;
+    for (int dy = -1; dy <= 1; dy += 1) {
+        for (int dx = -1; dx <= 1; dx += 1) {
+            if (dx == 0 && dy == 0) { continue; }
+            if (!moore && abs(dx) + abs(dy) > 1) { continue; }
+            float2 p = fract(uv + float2(float(dx), float(dy)) * t);
+            float v = rint(src.sample(samp, p).r * n);
+            S += v;
+            A += (v > 0.5 && v < n - 0.5) ? 1.0 : 0.0;
+            B += (v > n - 0.5) ? 1.0 : 0.0;
+        }
+    }
+    float ns = (s < 0.5)     ? floor(A / k1) + floor(B / k2)
+             : (s > n - 0.5) ? 0.0
+                             : floor(S / (A + 1.0)) + g;
+    return float4(float3(clamp(ns, 0.0, n) / n), 1.0);
 }
 
 // Lenia: the continuous Game of Life. The state is a smooth 0…1 mass in .r. Each step
@@ -416,6 +601,22 @@ fragment float4 ollin_sim_turing_seed(PresentOut in [[stage_in]],
     float2 cell = floor(in.uv / max(t, float2(1e-6)));
     float n = hash12(cell + float2(seed * 0.7331, seed * 1.3197));
     return float4(float3(n), 1.0);
+}
+
+// The state automata's starting fill: every texel one of `levels` evenly spaced
+// states, uniformly at random, quantized onto the shared s/(levels-1) encoding.
+// Applied once, when the field's ping-pong pair is first allocated; a uniform field
+// is a fixed point for these rules, so the random start is what sets them going.
+// (params[1] = (seed, levels).)
+fragment float4 ollin_sim_state_seed(PresentOut in [[stage_in]],
+                                     constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float seed = params[1].x;
+    float levels = max(2.0, params[1].y);
+    float2 cell = floor(in.uv / max(t, float2(1e-6)));
+    float n = hash12(cell + float2(seed * 0.7331, seed * 1.3197));
+    float state = min(floor(n * levels), levels - 1.0);
+    return float4(float3(state / (levels - 1.0)), 1.0);
 }
 
 // downsample: one pyramid rung, a binomial (Gaussian) reduction of the rung below.

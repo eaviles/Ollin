@@ -39,6 +39,13 @@ public struct Sim: Sendable {
         case multiScaleTuring(scales: [TuringScale], seed: Double)
         case sandpile(pour: Int, topplings: Int)
         case watercolor(WatercolorConfig)
+        case cyclic(states: Int, threshold: Int, range: Int,
+                    neighborhood: CellNeighborhood, seed: Double)
+        case excitable(states: Int, threshold: Int, range: Int,
+                       neighborhood: CellNeighborhood)
+        case briansBrain
+        case hodgepodge(states: Int, k1: Int, k2: Int, g: Int,
+                        neighborhood: CellNeighborhood, seed: Double)
     }
 
     let kind: Kind
@@ -230,7 +237,155 @@ public struct Sim: Sendable {
                             topplings: max(1, min(128, topplings))))
     }
 
+    /// Griffeath's **cyclic cellular automaton**: every cell holds one of `states`
+    /// colors arranged in a circle, and a cell advances to the next color the moment
+    /// at least `threshold` of its neighbours already wear it, so each color eats
+    /// the one before it and is eaten by the one after. From its random start the
+    /// field self-organizes through the famous four acts: colored static, then
+    /// growing single-color droplets, then the first spiral defects, and finally a
+    /// field of turning spiral cores that own everything. The defaults are the
+    /// classic rule (14 states, threshold 1, the four edge-sharing neighbours);
+    /// raising `threshold` with a wider `range` trades spirals for churning block
+    /// turbulence, and a high enough threshold freezes the field into still color
+    /// fields.
+    ///
+    /// The field needs no seeding: it starts from seeded random states (a uniform
+    /// field is a fixed point, so noise is the required start, and the same `seed`
+    /// replays the same picture). Drawing into it *stamps* states instead: a mark's
+    /// brightness picks the state it writes (white the top state, black state
+    /// zero), and the rule swallows the disturbance back into the spiral flow.
+    ///
+    /// The raw `image` is the state as grayscale, one flat level per state, made for
+    /// `.filtered(.gradientMap(...))`; a cyclic palette keeps the color wheel's
+    /// seam invisible. One texel is one cell, so the field's `scale` sets the cell
+    /// size, and edges wrap.
+    ///
+    /// - Parameters:
+    ///   - states: How many colors chase each other (2...64). More states make
+    ///     slower, broader spirals; fewer make a faster boil.
+    ///   - threshold: How many neighbours of the next color it takes to advance
+    ///     (1...16). 1 is the classic spiral regime; higher thresholds want a wider
+    ///     `range` to fire at all.
+    ///   - range: How far a cell looks, in cells (1...4). The neighbourhood is the
+    ///     full block within that distance, or the diamond under `.vonNeumann`.
+    ///   - neighborhood: Which cells count as neighbours. `.vonNeumann` is the edge
+    ///     sharers (the classic); `.moore` adds the corners.
+    ///   - seed: Picks the random start, so the same seed replays the same run.
+    public static func cyclic(states: Int = 14, threshold: Int = 1, range: Int = 1,
+                              neighborhood: CellNeighborhood = .vonNeumann,
+                              seed: Double = 1) -> Sim {
+        Sim(kind: .cyclic(states: max(2, min(64, states)),
+                          threshold: max(1, min(16, threshold)),
+                          range: max(1, min(4, range)),
+                          neighborhood: neighborhood, seed: seed))
+    }
+
+    /// The Greenberg-Hastings model, the classic cellular automaton of **excitable
+    /// media** (heart tissue, neurons, a chemical oscillator). A resting cell fires
+    /// when at least `threshold` of its neighbours are firing, then climbs alone
+    /// through its refractory tail back to rest, and a cell mid-recovery cannot be
+    /// re-excited, which is exactly what turns a spark into a traveling wave with a
+    /// dead zone behind it. Sparks grow into rings, rings annihilate where they
+    /// collide (each runs into the other's refractory wake), and a broken wavefront
+    /// curls into a pair of counter-rotating spirals that re-excite the medium
+    /// forever.
+    ///
+    /// The field starts at rest, so **draw to spark it**: a bright mark excites the
+    /// cells it covers (a black mark calms them back to rest). Dab single sparks for
+    /// expanding rings; drag a line and erase half a ring with black to set a spiral
+    /// pair turning.
+    ///
+    /// The raw `image` is grayscale: rest is black, a firing cell is faint gray
+    /// (state 1 of `states`), and the refractory tail climbs toward white. Run it
+    /// through `.filtered(.gradientMap(...))` with a dark-to-hot ramp to make the
+    /// wavefronts glow. One texel is one cell (`scale` sets the size), and edges
+    /// wrap.
+    ///
+    /// - Parameters:
+    ///   - states: The full cycle length: rest, firing, then `states - 2` refractory
+    ///     steps (3...64). Longer tails make wider dead zones and broader spirals.
+    ///   - threshold: How many firing neighbours it takes to fire (1...16).
+    ///   - range: How far a cell looks, in cells (1...4).
+    ///   - neighborhood: `.vonNeumann` (the classic four) or `.moore` (eight).
+    public static func excitable(states: Int = 3, threshold: Int = 1, range: Int = 1,
+                                 neighborhood: CellNeighborhood = .vonNeumann) -> Sim {
+        Sim(kind: .excitable(states: max(3, min(64, states)),
+                             threshold: max(1, min(16, threshold)),
+                             range: max(1, min(4, range)),
+                             neighborhood: neighborhood))
+    }
+
+    /// Silverman's **Brian's Brain**: the three-state automaton where every cell is
+    /// ready, firing, or resting. A ready cell fires when exactly two of its eight
+    /// neighbours are firing; every firing cell spends the next step resting (and
+    /// can't be re-lit); every resting cell returns to ready. Because nothing
+    /// settles (almost every pattern explodes into gliders) the field boils forever
+    /// with ships racing along diagonals and orthogonals, an automaton that reads
+    /// as pure electricity.
+    ///
+    /// The field starts empty, so **draw to light it**: a white mark sets cells
+    /// firing, a black mark clears them, and the afterglow comes from the rule. A
+    /// single small blob is enough to fill the field with traffic.
+    ///
+    /// The raw `image` is already the classic picture (firing cells white, resting
+    /// cells mid-gray, ready cells black), and a `.gradientMap` restyles it. One
+    /// texel is one cell; edges wrap.
+    public static func briansBrain() -> Sim { Sim(kind: .briansBrain) }
+
+    /// The Gerhardt-Schuster **hodgepodge machine**, the automaton built to mimic an
+    /// oscillating chemical reaction (its waves are dead ringers for the
+    /// Belousov-Zhabotinsky reaction in a dish). Cells run from healthy (0) through
+    /// degrees of infection to ill (`states`): a healthy cell catches infection from
+    /// its infected and ill neighbours (`⌊a/k1⌋ + ⌊b/k2⌋`), an infected cell's state
+    /// climbs to its neighbourhood's average infection plus the constant `g`, and an
+    /// ill cell recovers to healthy at once. From a random start the field passes
+    /// through churning noise into curling wavefronts and finally locked spiral
+    /// cores shedding rings, the tempo set by `g`, the speed of infection.
+    ///
+    /// The field needs no seeding: it starts from seeded random states (all-healthy
+    /// is a fixed point, so the random start is the protocol, and the same `seed`
+    /// replays the same run). Drawing stamps states (brightness picks the degree of
+    /// infection, black heals), and the waves close back over the wound.
+    ///
+    /// The raw `image` is the infection degree as grayscale, made for
+    /// `.filtered(.gradientMap(...))`; the classic pictures map it across a hot
+    /// thermal ramp. One texel is one cell (`scale` sets the size), and edges wrap.
+    ///
+    /// - Parameters:
+    ///   - states: The ill state, the top of the ladder (4...200). The classic runs
+    ///     use 100.
+    ///   - k1: Divides the infected-neighbour count in a healthy cell's catch rule
+    ///     (1...9). Higher is harder to catch.
+    ///   - k2: Divides the ill-neighbour count in the same rule (1...9).
+    ///   - g: How much sicker an infected cell gets per step (1...100), the speed of
+    ///     infection and the behavior dial: low g dies out, mid g plateaus, high g
+    ///     locks into the spiral regime.
+    ///   - neighborhood: `.moore` (the eight-neighbour classic for these spirals) or
+    ///     `.vonNeumann` (the original experiment's four).
+    ///   - seed: Picks the random start, so the same seed replays the same run.
+    public static func hodgepodge(states: Int = 100, k1: Int = 2, k2: Int = 3,
+                                  g: Int = 25,
+                                  neighborhood: CellNeighborhood = .moore,
+                                  seed: Double = 1) -> Sim {
+        Sim(kind: .hodgepodge(states: max(4, min(200, states)),
+                              k1: max(1, min(9, k1)), k2: max(1, min(9, k2)),
+                              g: max(1, min(100, g)),
+                              neighborhood: neighborhood, seed: seed))
+    }
+
     // MARK: Renderer hooks (internal)
+
+    /// The seeded random start a state automaton needs, or `nil` for sims that rest
+    /// at a constant: how many evenly spaced state levels to fill and the seed that
+    /// picks them. Handed to the renderer's first-allocation fill, because a uniform
+    /// field is a fixed point for these rules and noise is the required start.
+    var stateSeedFill: (levels: Int, seed: Double)? {
+        switch kind {
+        case let .cyclic(states, _, _, _, seed): return (states, seed)
+        case let .hodgepodge(states, _, _, _, _, seed): return (states + 1, seed)
+        default: return nil
+        }
+    }
 
     /// Whether this sim runs the dedicated multi-field fluid pipeline (`runFluid`)
     /// rather than the single-texture step path. Its parameters live in `fluidConfig`.
@@ -267,6 +422,10 @@ public struct Sim: Sendable {
             return topplings                // the pacing dial: an avalanche front
                                             // moves one texel per pass
         case .watercolor:        return 1   // unused: watercolor runs its own pipeline
+        case .cyclic:            return 1   // one generation per frame, like Life
+        case .excitable:         return 1
+        case .briansBrain:       return 1
+        case .hodgepodge:        return 1
         }
     }
 
@@ -286,6 +445,12 @@ public struct Sim: Sendable {
                                                             // fills it with a seeded hash instead
         case .sandpile:          return SIMD4(0, 0, 0, 1)   // an empty table
         case .watercolor:        return SIMD4(0, 0, 0, 0)   // unused: runWatercolor clears its own fields
+        case .cyclic:            return SIMD4(0, 0, 0, 1)   // unused: starts as seeded
+                                                            // random states (stateSeedFill)
+        case .excitable:         return SIMD4(0, 0, 0, 1)   // everything at rest
+        case .briansBrain:       return SIMD4(0, 0, 0, 1)   // everything ready
+        case .hodgepodge:        return SIMD4(0, 0, 0, 1)   // unused: starts as seeded
+                                                            // random states (stateSeedFill)
         }
     }
 
@@ -300,6 +465,10 @@ public struct Sim: Sendable {
         case .multiScaleTuring:  return ""   // unused: Turing dispatches its own fragments
         case .sandpile:          return "ollin_sim_sandpile"
         case .watercolor:        return ""   // unused: watercolor dispatches its own fragments
+        case .cyclic:            return "ollin_sim_cyclic"
+        case .excitable:         return "ollin_sim_excitable"
+        case .briansBrain:       return "ollin_sim_brain"
+        case .hodgepodge:        return "ollin_sim_hodgepodge"
         }
     }
 
@@ -315,6 +484,8 @@ public struct Sim: Sendable {
         case .multiScaleTuring: return "ollin_sim_inject_luma"
         case .sandpile:         return "ollin_sim_inject_sand"
         case .watercolor:       return ""   // unused: watercolor runs its own two injects
+        case .excitable:        return "ollin_sim_inject_excite"
+        case .briansBrain:      return "ollin_sim_inject_brain"
         default:                return "ollin_sim_inject"
         }
     }
@@ -343,8 +514,31 @@ public struct Sim: Sendable {
             return [SIMD4(Float(pour), 0, 0, 0)]   // read by the inject, not the step
         case .watercolor:
             return []   // unused: watercolor binds per-pass parameters itself
+        case let .cyclic(states, threshold, range, neighborhood, _):
+            return [SIMD4(Float(states), Float(threshold), Float(range),
+                          neighborhood == .moore ? 1 : 0)]
+        case let .excitable(states, threshold, range, neighborhood):
+            // states also read by the inject: a mark excites to state 1 of `states`.
+            return [SIMD4(Float(states), Float(threshold), Float(range),
+                          neighborhood == .moore ? 1 : 0)]
+        case .briansBrain:
+            return []
+        case let .hodgepodge(states, k1, k2, g, neighborhood, _):
+            return [SIMD4(Float(states), Float(k1), Float(k2), Float(g)),
+                    SIMD4(neighborhood == .moore ? 1 : 0, 0, 0, 0)]
         }
     }
+}
+
+/// Which cells count as a cell's neighbours in the grid automata (`Sim.cyclic`,
+/// `Sim.excitable`, `Sim.hodgepodge`). With a `range` above 1 the same two shapes
+/// scale up: `.moore` is the full block within that distance, `.vonNeumann` the
+/// diamond.
+public enum CellNeighborhood: Sendable, Equatable {
+    /// The edge-sharing cells: four at range 1, a diamond further out.
+    case vonNeumann
+    /// The edge sharers plus the corners: eight at range 1, a full block further out.
+    case moore
 }
 
 /// One magnification in a `Sim.multiScaleTuring` field: a pair of averaging radii

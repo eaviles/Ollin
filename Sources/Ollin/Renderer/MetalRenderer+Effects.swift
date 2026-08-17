@@ -217,7 +217,7 @@ extension MetalRenderer {
                         target.texture = slot.flipped ? slot.dyeB : slot.dyeA
                     }
                 } else if let slot = feedbackSlot(for: sf, width: pw, height: ph,
-                                                  fill: turingNoiseFill(sf.sim, into: cb),
+                                                  fill: initialNoiseFill(sf.sim, into: cb),
                                                   into: cb) {
                     target.texture = slot.flipped ? slot.b : slot.a
                 }
@@ -280,7 +280,7 @@ extension MetalRenderer {
                 guard let slot = feedbackSlot(for: sf, width: pw, height: ph,
                                               restState: MTLClearColor(red: Double(rest.x), green: Double(rest.y),
                                                                        blue: Double(rest.z), alpha: Double(rest.w)),
-                                              fill: turingNoiseFill(sf.sim, into: cb),
+                                              fill: initialNoiseFill(sf.sim, into: cb),
                                               into: cb) else { continue }
                 let front = slot.flipped ? slot.b : slot.a
                 let back  = slot.flipped ? slot.a : slot.b
@@ -1157,16 +1157,28 @@ extension MetalRenderer {
         return slot
     }
 
-    /// The starting-state fill a multi-scale Turing field needs (seeded white noise),
-    /// or `nil` for every other sim, which starts from a constant rest state. Handed to
-    /// `feedbackSlot` so it applies exactly once, when the pair is first allocated.
-    private func turingNoiseFill(_ sim: Sim, into cb: MTLCommandBuffer) -> ((MTLTexture) -> Void)? {
-        guard let turing = sim.turingConfig else { return nil }
-        return { tex in
-            let texel = SIMD4<Float>(1 / Float(tex.width), 1 / Float(tex.height), 0, 0)
-            self.encodeEffectFragment("ollin_sim_turing_seed", inputs: [], output: tex,
-                                      params: [texel, SIMD4(Float(turing.seed), 0, 0, 0)], into: cb)
+    /// The starting-state fill a self-organizing sim needs, or `nil` for every other
+    /// sim, which starts from a constant rest state: seeded white noise for a
+    /// multi-scale Turing field, seeded random states for the state automata (their
+    /// `stateSeedFill`). Handed to `feedbackSlot` so it applies exactly once, when
+    /// the pair is first allocated.
+    private func initialNoiseFill(_ sim: Sim, into cb: MTLCommandBuffer) -> ((MTLTexture) -> Void)? {
+        if let turing = sim.turingConfig {
+            return { tex in
+                let texel = SIMD4<Float>(1 / Float(tex.width), 1 / Float(tex.height), 0, 0)
+                self.encodeEffectFragment("ollin_sim_turing_seed", inputs: [], output: tex,
+                                          params: [texel, SIMD4(Float(turing.seed), 0, 0, 0)], into: cb)
+            }
         }
+        if let fill = sim.stateSeedFill {
+            return { tex in
+                let texel = SIMD4<Float>(1 / Float(tex.width), 1 / Float(tex.height), 0, 0)
+                self.encodeEffectFragment("ollin_sim_state_seed", inputs: [], output: tex,
+                                          params: [texel, SIMD4(Float(fill.seed), Float(fill.levels), 0, 0)],
+                                          into: cb)
+            }
+        }
+        return nil
     }
 
     /// One step of a multi-scale Turing field, McCabe's rule: at every pixel each scale

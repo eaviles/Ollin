@@ -89,6 +89,29 @@ dish = simField(.lenia(radius: 13), scale: 0.55)
 
 Those knobs are the model's whole personality. `radius` is how far the ring reaches. The growth center and width are the target mass, and how forgiving the rule is about missing it. The one thing to know before running it is that **Lenia needs a dense seed**. Sparse mass starves and fades to nothing, which looks like a bug and isn't. So give it a generous soup of soft marks, and a few hundred frames. What grows are colonies with soft glowing edges, and at the right settings, small self-contained creatures that swim.
 
+## The medium that has to rest
+
+There is a family of automata built on one restriction: a cell that fires cannot fire again until it has rested. That is the whole secret of an *excitable medium*, which is how nerve fibers, heart muscle, and certain chemical reactions carry their signals. An excitable medium remembers where a wave has just been, and that memory is what pushes the wave forward. A spark cannot spread back into the spent cells behind it, so it has nowhere to go but outward.
+
+The plainest member is the Greenberg-Hastings model, `.excitable`. A resting cell fires when a neighbor is firing. A fired cell then climbs alone through a refractory tail, one step per frame, and comes back ready. The field starts at rest, so you draw to spark it:
+
+```swift
+medium = simField(.excitable(states: 5), scale: 0.25)
+
+// in draw(), inside withField(medium) { }:
+if mouseIsPressed { fill(.white); drawCircle(mouseX, mouseY, 8) }
+```
+
+A dab makes a ring. Two rings erase each other where they meet, because each runs into the other's spent wake. And the famous move is to grow one large ring, then wipe half the plane with black. The two cut ends have nothing spent behind them anymore, so they curl. What you get is a pair of counter-rotating spirals that turn forever, re-lighting the medium on every lap. The wave trains filling the top-right panel below all pour out of one such pair.
+
+<img src="Images/16-Simulations/ExcitableFamily.jpg" alt="Four square panels. Top left, nested rainbow spirals and diamond wave trains of a cyclic automaton. Top right, fine concentric orange-and-black chevron wave trains radiating from a central spiral pair. Bottom left, sparse white and blue cell clusters scattered on black. Bottom right, thick concentric rings in rainbow thermal colors, red rims around green-and-yellow cores, on a dark purple ground" width="560">
+
+Griffeath's cyclic automaton, `.cyclic`, wires the same idea into a loop. Every cell wears one of fourteen colors. Each color is eaten by the color after it, around a circle with no rest state at all. The field is an argument nobody can win: every color loses to the next one, forever. Like the Turing field, it needs no seeding, so it fills itself with seeded random states. From there it plays four acts in order: colored static, growing droplets, the first spiral defects, and then spirals that own the whole field. That is the top-left panel.
+
+Brian's Brain, `.briansBrain()`, is the family's live wire. A ready cell fires when *exactly two* of its eight neighbors are firing, rests for one step, and is ready again. Almost any loose sprinkle explodes into gliders that race the grid forever, which is the bottom-left panel's permanent traffic. The one thing to know: a solid painted blob dies on the spot. Its interior rests all at once, and along a flat edge every outside cell sees three firing neighbors where a birth needs exactly two. So sprinkle loose soup, never a disc.
+
+The hodgepodge machine, `.hodgepodge`, is the family's chemist, in the bottom-right panel. Cells run from healthy to fully ill and back to healthy in one step. The healthy catch infection from sick neighbors, and the sick climb by their neighborhood's average plus a constant `g`, the speed of infection. Turn `g` up and the field locks into curling waves that look uncannily like the Belousov-Zhabotinsky reaction. (That reaction, a chemical clock, was so implausible that Belousov couldn't get the paper published; the automaton was built to argue his side.) All four fields are one `simField` call each, recolored through `.gradientMap` like every other sim in this chapter.
+
 ## A pile of sand
 
 One more automaton belongs in this family, and it comes with the best origin story in the chapter. Drop grains of sand on a grid. A cell can hold three. The moment it holds four it topples, sending one grain to each of its four neighbors. A neighbor that was sitting at three is now at four, so it topples too. One grain landing in the wrong place can send an avalanche across the whole field. The order you process the topplings in turns out not to matter at all, because the pile always settles into exactly the same configuration. That theorem is what puts the *Abelian* in the Abelian sandpile. It is also why Ollin can topple every unstable cell at once on the GPU:

@@ -221,6 +221,18 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("sandpile", frame: 120,
                  note: "An Abelian sandpile on the classic protocol: a mountain dropped once on frame 1 (a fixed dot, no rng), caught mid-collapse at frame 120 so the picture holds both regimes at once, settled counts as lacework at the rim and cells still mid-topple at the hot core. Pins the parallel multiple-toppling gather (fract(q) plus floored neighbour quarters), the open boundary, the add-whole-grains inject with its rounding, the quarters state encoding whose flat levels the gradient map reads, and the render-every-frame headless warmup the collapse depends on. SandpileTests pins the rule itself against a sequential CPU reference (the abelian schedule-independence), which a whole-frame mean diff cannot.",
                  make: { SandpileScene() }),
+    SnapshotCase("cyclic-automaton", frame: 300,
+                 note: "A cyclic cellular automaton (the classic 14-state, threshold-1, von Neumann rule) from its seeded random start, run to frame 300 and recoloured by a closed hue wheel. Pins the state-automata family end to end: the seeded random state fill a fresh field starts from (a uniform field is a fixed point), the s/(levels-1) state encoding and rint decode, the eat-the-next-color advance, and the toroidal neighbour taps. StateAutomataTests pins the rule itself cell-for-cell against a sequential CPU reference, which a whole-frame mean diff cannot.",
+                 make: { CyclicScene() }),
+    SnapshotCase("excitable-medium", frame: 90,
+                 note: "A Greenberg-Hastings excitable medium sparked by a fixed script (a line and four dots on frame 1, half the plane wiped at frame 30 so the broken front curls into a spiral pair), read at frame 90 through an inferno ramp. Pins the draw-to-spark inject (bright excites, dark calms, the alpha gate that keeps an anti-aliased fringe from sparking) and the fire/recover/rest advance whose one-way recovery makes the rings and spirals.",
+                 make: { ExcitableScene() }),
+    SnapshotCase("brians-brain", frame: 60,
+                 note: "Brian's Brain lit by a seeded sprinkle of single cells on frame 1 (a solid blob dies at once, so the soup is the protocol), run to frame 60 under the classic black/afterglow/white ramp. Pins the three-state advance (fire on exactly two, one step of rest, no re-lighting) and the snapping inject that keeps a mark's anti-aliased rim from reading as resting cells that block every birth.",
+                 make: { BriansBrainScene() }),
+    SnapshotCase("hodgepodge", frame: 300,
+                 note: "A hodgepodge machine (the oscillating-chemical-reaction automaton; 100 states, k1 2, k2 3, g 25, the eight-cell block) from its seeded random start, run to frame 300 and recoloured with turbo. Pins the three-branch rule: the healthy cell's floored catch from infected and ill neighbours, the infected cell's averaged-sum climb plus g with the self-counting denominator, the instant recovery at the top, and the cap.",
+                 make: { HodgepodgeScene() }),
     SnapshotCase("watercolor-sim", frame: 140,
                  note: "A watercolor SimField painted by a fixed script: an ultramarine wash laid on frame 1 (its edge darkening as it sits), rose charged into it wet-in-wet on frame 30, the sheet dried on frame 60, and a hansa-yellow band glazed across everything on frame 62, caught at frame 140. Pins the whole three-layer wash pipeline: the staggered-grid shallow-water step with the paper's slope, the divergence relaxation, the blurred-mask edge darkening, upwind pigment advection, the density/staining/granulation exchange with the deposit layer, the capillary re-wet of damp paper, the dry() bake into the glaze stack, and the Kubelka-Munk rendering (wet wash over dried glazes over paper) whose optical mixing the crossing shows. WatercolorSimTests pins the behaviors a mean diff averages away.",
                  make: { WatercolorSimScene() }),
@@ -6978,6 +6990,97 @@ private final class SandpileScene: Sketch {
                                   (0.75, Color(hex: 0xF2E9DC)),
                                   (1.00, .white)])
         drawImage(pile.filtered(.gradientMap(counts)).image, 0, 0)
+    }
+}
+
+/// The classic cyclic cellular automaton from its seeded random start, recoloured
+/// by a closed hue wheel. Deterministic: the start is the seeded state fill, the
+/// rule a pure gather.
+private final class CyclicScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    var field: SimField!
+
+    override func setup() { field = simField(.cyclic(seed: 4), scale: 0.5) }
+
+    override func draw() {
+        background(.black)
+        let wheel = Ramp(stops: (0 ... 6).map {
+            (position: Double($0) / 6,
+             color: Color(hue: Double($0) / 6, saturation: 0.72, brightness: 0.95))
+        })
+        drawImage(field.filtered(.gradientMap(wheel)).image, 0, 0)
+    }
+}
+
+/// A Greenberg-Hastings medium sparked by a fixed script (no random, no time): a
+/// line and four dots on frame 1, half the plane wiped at frame 30 so the broken
+/// front curls into a spiral pair.
+private final class ExcitableScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    var field: SimField!
+
+    override func setup() { field = simField(.excitable(states: 5), scale: 0.5) }
+
+    override func draw() {
+        background(.black)
+        withField(field) {
+            noStroke()
+            if frameCount == 1 {
+                fill(.white)
+                drawRect(64, 140, 128, 3)
+                for p in [(40.0, 40.0), (200.0, 60.0), (60.0, 210.0), (210.0, 200.0)] {
+                    drawCircle(p.0, p.1, 3)
+                }
+            }
+            if frameCount == 30 {
+                fill(.black)
+                drawRect(0, 0, 256, 132)
+            }
+        }
+        drawImage(field.filtered(.gradientMap(.inferno)).image, 0, 0)
+    }
+}
+
+/// Brian's Brain lit by a seeded sprinkle of single firing cells (a solid blob
+/// dies at once, so the soup is the protocol), under the classic ramp.
+private final class BriansBrainScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    var field: SimField!
+
+    override func setup() {
+        field = simField(.briansBrain(), scale: 0.5)
+        randomSeed(7)
+    }
+
+    override func draw() {
+        background(.black)
+        withField(field) {
+            noStroke()
+            if frameCount == 1 {
+                fill(.white)
+                for _ in 0 ..< 1400 {
+                    drawCircle(random(width), random(height), 1.1)
+                }
+            }
+        }
+        let glow = Ramp(stops: [(0.0, Color(hex: 0x05070C)),
+                                (0.5, Color(hex: 0x3A6BD8)),
+                                (1.0, .white)])
+        drawImage(field.filtered(.gradientMap(glow)).image, 0, 0)
+    }
+}
+
+/// A hodgepodge machine on the classic constants from its seeded random start,
+/// recoloured with turbo. Deterministic: the start is the seeded state fill.
+private final class HodgepodgeScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    var field: SimField!
+
+    override func setup() { field = simField(.hodgepodge(seed: 4), scale: 0.5) }
+
+    override func draw() {
+        background(.black)
+        drawImage(field.filtered(.gradientMap(.turbo)).image, 0, 0)
     }
 }
 
