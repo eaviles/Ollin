@@ -427,8 +427,20 @@ See `Examples/Effects/PatternFields` for the first five (plus a field chained in
   same iteration with `c` fixed and the orbit started at each pixel, so every `c` yields
   a different filigree (points near the Mandelbrot set's edge give the richest). Animate
   `c` a little and the whole form morphs.
+- **`.orbitTrap(_:c:colors:center:zoom:iterations:glow:angle:)`** an orbit trap: the
+  same iteration, colored by the orbit's closest pass to a trap shape held in the
+  plane rather than by its escape. Orbits that graze the trap glow through the last
+  of `colors`; distant ones sit in the first. Stalks and filaments appear wherever
+  orbits pass near the shape. The trap is a `Generator.OrbitTrap`: `.point(_:)`,
+  `.cross(_:)` for the stalk look, `.circle(center:radius:)`, or
+  `.square(center:radius:)`, the outlines lit from both sides. `c: nil` works the
+  Mandelbrot plane; a fixed `c` picks that Julia set and re-centers the default
+  framing. `glow` is the falloff distance in plane units; tighten it to thin the
+  filaments. `angle` turns the trap about its own center; feed it your `time` and
+  the stalks sweep.
 
-See `Examples/Effects/Fractals` for both, with the Julia's `c` on a slow orbit.
+See `Examples/Effects/Fractals` for the first two, with the Julia's `c` on a slow
+orbit, and `Examples/Effects/OrbitTraps` for all four traps, two of them turning.
 
 A pattern composes for the layer it fills. The default `generate(_:)` makes a
 full-canvas layer, and `generate(_:width:height:)` fills one of an explicit size, so a

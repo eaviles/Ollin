@@ -179,6 +179,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("escape-time",
                  note: "The Mandelbrot set and a Julia set at fixed framing and phase (no time, no random). Pins the escape-time generator: the z = z^2 + c iteration, the smooth iteration count, the cosine palette fold, and the interior fill, in both modes.",
                  make: { EscapeTimeScene() }),
+    SnapshotCase("orbit-trap",
+                 note: "The four orbit traps tiled 2x2 at fixed framing and angles (no time, no random): a turned cross on a Julia set, a point on the Mandelbrot plane, a circle and a turned square on two more Julia sets. Pins the orbit-trap generator: the minimum-distance tracking through the iteration, each trap's distance formula, the trap rotation, and the exp glow ramp.",
+                 make: { OrbitTrapScene() }),
     SnapshotCase("noise-toolkit",
                  note: "The noise-toolkit generators tiled 2x2 at a fixed phase (no time, no random): domain-warped noise (the warp knob on .noise), and the cellular generator in its three styles (cells, borders at reduced jitter, mosaic). Pins the warped-fbm displacement chain, the wandering-feature-point Worley scan, the border AA, and the per-cell mosaic hash, plus that each tile generates at its own size.",
                  make: { NoiseToolkitScene() }),
@@ -5769,6 +5772,35 @@ private final class EscapeTimeScene: Sketch {
                   in: Rectangle(x: 1, y: 2, width: Double(w), height: Double(h)))
         drawImage(generate(.julia(iterations: 120, phase: 0.6), width: w, height: h).image,
                   in: Rectangle(x: 129, y: 2, width: Double(w), height: Double(h)))
+    }
+}
+
+/// The four orbit traps at fixed framing and angles (no time, no random): pins
+/// the minimum-distance tracking, each trap's distance formula, the trap
+/// rotation, and the exp glow ramp.
+private final class OrbitTrapScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        let w = 126, h = 126
+        let tile: (Int, Int) -> Rectangle = { col, row in
+            Rectangle(x: 1 + Double(col) * 128, y: 1 + Double(row) * 128,
+                      width: Double(w), height: Double(h))
+        }
+        drawImage(generate(.orbitTrap(.cross(.zero), c: Vector2(-0.79, 0.15),
+                                      zoom: 1.2, iterations: 120, angle: 0.35),
+                           width: w, height: h).image, in: tile(0, 0))
+        drawImage(generate(.orbitTrap(.point(.zero), iterations: 120, glow: 0.15),
+                           width: w, height: h).image, in: tile(1, 0))
+        drawImage(generate(.orbitTrap(.circle(center: .zero, radius: 0.5),
+                                      c: Vector2(0.285, 0.01), zoom: 1.2,
+                                      iterations: 120, glow: 0.02),
+                           width: w, height: h).image, in: tile(0, 1))
+        drawImage(generate(.orbitTrap(.square(center: .zero, radius: 0.35),
+                                      c: Vector2(-0.4, 0.6), zoom: 1.2,
+                                      iterations: 120, glow: 0.05, angle: 0.5),
+                           width: w, height: h).image, in: tile(1, 1))
     }
 }
 

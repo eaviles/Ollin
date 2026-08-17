@@ -1439,6 +1439,13 @@ extension MetalRenderer {
                                           SIMD4(Float(center.x), Float(center.y), Float(zoom), Float(cycles)),
                                           SIMD4(Float(c.x), Float(c.y), Float(phase), 0),
                                           interior] + colors, into: cb)
+        case let .orbitTrap(colors, trap, mode, c, center, zoom, iterations, glow, angle):
+            encodeEffectFragment("ollin_gen_orbittrap", inputs: [], output: output,
+                                 params: [SIMD4(Float(colors.count), aspect, Float(mode), Float(iterations)),
+                                          SIMD4(Float(center.x), Float(center.y), Float(zoom), Float(glow)),
+                                          SIMD4(Float(c.x), Float(c.y), trap.rawIndex, Float(angle)),
+                                          SIMD4(Float(trap.trapCenter.x), Float(trap.trapCenter.y),
+                                                Float(trap.trapRadius), 0)] + colors, into: cb)
         }
     }
 

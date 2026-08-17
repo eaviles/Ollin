@@ -112,6 +112,11 @@ public struct Generator: Sendable {
         case escapeTime(colors: [SIMD4<Float>], interior: SIMD4<Float>, mode: Double,
                         c: Vector2, center: Vector2, zoom: Double, iterations: Double,
                         cycles: Double, phase: Double)
+        /// The same escape-time iteration colored by the orbit's closest pass
+        /// to a trap shape held in the plane, not by when it escapes.
+        case orbitTrap(colors: [SIMD4<Float>], trap: OrbitTrap, mode: Double,
+                       c: Vector2, center: Vector2, zoom: Double, iterations: Double,
+                       glow: Double, angle: Double)
     }
 
     let kind: Kind
@@ -612,6 +617,74 @@ public struct Generator: Sendable {
                                     zoom: min(max(zoom, 0.1), 100_000),
                                     iterations: min(max(iterations, 8), 400),
                                     cycles: min(max(cycles, 0.25), 24), phase: phase))
+    }
+
+    /// The shape an `orbitTrap` generator measures the orbit against, placed in
+    /// the same complex plane the fractal lives in (the whole Mandelbrot set
+    /// spans about x -2…1, y -1.5…1.5 at zoom 1).
+    public enum OrbitTrap: Sendable {
+        /// A single point: orbits that pass near it light up as soft knots.
+        case point(Vector2)
+        /// A horizontal and a vertical line crossing at the point: the classic
+        /// stalk look, filaments sprouting wherever an orbit grazes an axis.
+        case cross(Vector2)
+        /// A circle outline of `radius` around `center`: orbits light up where
+        /// they skim the ring, from either side.
+        case circle(center: Vector2, radius: Double)
+        /// A square outline of half-width `radius` around `center`.
+        case square(center: Vector2, radius: Double)
+
+        /// The shader's trap index (kept in step with `ollin_gen_orbittrap`).
+        var rawIndex: Float {
+            switch self {
+            case .point: return 0
+            case .cross: return 1
+            case .circle: return 2
+            case .square: return 3
+            }
+        }
+
+        /// Where the trap sits in the plane.
+        var trapCenter: Vector2 {
+            switch self {
+            case .point(let p), .cross(let p): return p
+            case .circle(let c, _), .square(let c, _): return c
+            }
+        }
+
+        /// The outline's size, for the shapes that have one.
+        var trapRadius: Double {
+            switch self {
+            case .point, .cross: return 0
+            case .circle(_, let r), .square(_, let r): return max(0, r)
+            }
+        }
+    }
+
+    /// An **orbit trap**: the same z = z² + c iteration as `mandelbrot` and
+    /// `julia`, but each pixel is colored by how *close* its orbit ever came to
+    /// a `trap` shape held in the plane, not by when it escaped. Orbits that
+    /// graze the trap glow through the last of `colors`; ones that stay far
+    /// read as the first, so filaments (Pickover's stalks) trace where orbits
+    /// wander near the shape. Pass `c: nil` for the Mandelbrot plane or a fixed
+    /// `c` for that Julia set. `glow` is the distance (in plane units) over
+    /// which the light falls off, `angle` turns the trap about its own center
+    /// (feed it your `time` and the stalks sweep), and `center`/`zoom`/
+    /// `iterations` frame the plane as in `mandelbrot` (`center: nil` frames
+    /// whichever set `c` picked).
+    public static func orbitTrap(_ trap: OrbitTrap = .cross(.zero),
+                                 c: Vector2? = nil,
+                                 colors: [Color] = [Color(hex: 0x0B1026), Color(hex: 0x2B6C8C),
+                                                    Color(hex: 0xE8B44A), Color(hex: 0xF2E8DC)],
+                                 center: Vector2? = nil, zoom: Double = 1,
+                                 iterations: Double = 150, glow: Double = 0.08,
+                                 angle: Double = 0) -> Generator {
+        Generator(kind: .orbitTrap(colors: colorRows(colors, max: 8), trap: trap,
+                                   mode: c == nil ? 0 : 1, c: c ?? .zero,
+                                   center: center ?? (c == nil ? Vector2(-0.6, 0) : .zero),
+                                   zoom: min(max(zoom, 0.1), 100_000),
+                                   iterations: min(max(iterations, 8), 400),
+                                   glow: min(max(glow, 0.001), 4), angle: angle))
     }
 }
 

@@ -1762,3 +1762,51 @@ fragment float4 ollin_gen_escape(PresentOut in [[stage_in]],
     float tt = 0.5 + 0.5 * cos(6.2831853 * (t * cycles + phase));
     return ollin_pat_out(ollin_pat_ramp(colors, count, tt));
 }
+
+// Orbit trap: the same z = z^2 + c iteration, but each pixel keeps the minimum
+// distance its orbit ever reached to a trap shape held in the plane (a point, a
+// cross of two axis lines, a circle outline, or a square outline), and that
+// closest pass is the color: exp falloff over `glow` plane units through the
+// palette, so grazing orbits glow through the last stop and distant ones sit in
+// the first. The trap is turned by `angle` about its own center (the sample is
+// counter-rotated, which is the same thing). Escaped and trapped pixels are
+// colored alike; the escape test only ends the orbit. (params[0]: colorCount,
+// aspect, mode, iterations; params[1]: center.xy, zoom, glow; params[2]: c.xy,
+// trap, angle; params[3]: trap center.xy, radius; then colors.)
+fragment float4 ollin_gen_orbittrap(PresentOut in [[stage_in]],
+                                    constant float4 *params [[buffer(0)]]) {
+    int count = int(params[0].x);
+    float aspect = params[0].y;
+    int mode = int(params[0].z);
+    int maxIter = int(params[0].w);
+    float2 center = params[1].xy;
+    float zoom = max(params[1].z, 1e-3);
+    float glow = max(params[1].w, 1e-4);
+    float2 cFixed = params[2].xy;
+    int trap = int(params[2].z);
+    float angle = params[2].w;
+    float2 tc = params[3].xy;
+    float radius = params[3].z;
+    constant float4 *colors = params + 4;
+
+    float2 p = ollin_pat_square(in.uv, aspect) * (3.0 / zoom) + center;
+    float2 z = (mode == 0) ? float2(0.0) : p;
+    float2 c = (mode == 0) ? p : cFixed;
+    float ca = cos(angle), sa = sin(angle);
+
+    float dist = 1e20;
+    for (int i = 0; i < 400; i++) {
+        if (i >= maxIter) { break; }
+        z = float2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + c;
+        float2 q = z - tc;
+        q = float2(ca * q.x + sa * q.y, ca * q.y - sa * q.x);
+        float d;
+        if (trap == 0)      { d = length(q); }
+        else if (trap == 1) { d = min(abs(q.x), abs(q.y)); }
+        else if (trap == 2) { d = abs(length(q) - radius); }
+        else                { d = abs(max(abs(q.x), abs(q.y)) - radius); }
+        dist = min(dist, d);
+        if (dot(z, z) > 256.0) { break; }
+    }
+    return ollin_pat_out(ollin_pat_ramp(colors, count, exp(-dist / glow)));
+}

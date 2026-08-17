@@ -137,6 +137,7 @@ let package = Package(
         example("Simulation/ParticleFluid"),
         example("Simulation/SoftBodies"),
         example("Effects/Fractals"),
+        example("Effects/OrbitTraps"),
         example("Effects/Patterns"),
         example("Effects/Cellular"),
         example("Shaders/HelloShader"),
