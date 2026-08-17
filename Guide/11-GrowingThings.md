@@ -154,9 +154,9 @@ The picture also explains what the weights are for. The fern's rules aren't chos
 
 Two small practical notes come with it. The points arrive in the system's own coordinate space rather than canvas pixels. `fitted` scales and centers them into any rectangle you name. The fern also needs its y negated, because it grows upward while the canvas counts downward.
 
-## Three more games worth knowing
+## Four more games worth knowing
 
-The same move (play transformations at random, see where the orbit lives) generalizes further than ferns, and Ollin ships three of the places it goes.
+The same move (play transformations at random, see where the orbit lives) generalizes further than ferns, and Ollin ships four of the places it goes.
 
 <img src="Images/11-GrowingThings/FractalFamily.jpg" alt="Three dark panels: a fractal flame in orange and blue smoke, a golden lace of dust sitting among five faint tangent circles, and a pale blue closed curve that spirals into itself at every scale" width="680">
 
@@ -170,6 +170,20 @@ drawImage(flame.render(width: 900, height: 900, quality: 90, using: &source),
 ```
 
 `quality` is how many samples each output pixel gets, so a few dozen previews and a few hundred makes a clean still. There's also a progressive `Renderer` you feed a slice of samples per frame. That is how flames are meant to be watched, rising out of the noise. Rolling a random flame is genuinely a roll, and some come out muddy. Rerolling until one sings is part of the practice, not a sign you did it wrong.
+
+The flame's counting trick has a famous cousin. Square a number, add the point you started from, and repeat. Some starting points fly off to infinity. The ones that never do make up the Mandelbrot set, which Chapter 16 zooms into. The **Buddhabrot** is what the escapers leave behind. Test random starting points, and every time one escapes, let its whole path brighten each pixel it passed through. The piled-up visits, developed like a photographic plate, form a seated figure that was hiding in the set all along. Melinda Green found it in 1993.
+
+```swift
+let plate = Buddhabrot()      // three caps: long orbits red, short ones blue
+let renderer = Buddhabrot.Renderer(plate, width: 560, height: 560, seed: 7)
+// each frame:
+renderer.accumulate(samples: 20_000)
+drawImage(renderer.image(), in: canvasRectangle)
+```
+
+<img src="Images/11-GrowingThings/BuddhaPlate.jpg" alt="Two dark panels of the Buddhabrot. On the left a grayscale density plate of the seated figure; on the right the same figure in false color, a blue haze around a gold and red core" width="680">
+
+The `iterations` list does the coloring. Give it a single cap and the plate develops in gray. Give it three and the red, green, and blue channels expose at different orbit lengths, so color reads as orbit depth. A plate this deep resolves over many frames, the same way the flame does. Feed the `Renderer` a slice of samples per frame and let the figure rise. `Examples/Patterns/Buddhabrot` leaves one running.
 
 **Inversion** is a different transformation to play with. Inverting a point in a circle turns the plane inside out around that circle. The rim stays exactly where it is, points near the center fly far away, and points far away land near the center. Take an arrangement of circles, repeatedly invert in one picked at random, and the orbit settles onto the arrangement's limit set. The one rule is never to pick the same circle twice in a row, because inverting twice in the same circle just undoes itself.
 
@@ -426,7 +440,7 @@ Then make it yours:
 
 L-systems are Aristid Lindenmayer's 1968 invention. Their visual language comes from *The Algorithmic Beauty of Plants* (1990), written with Przemyslaw Prusinkiewicz. It is still free to read online and still beautiful. The parametric form is that book's section 1.10. James Hanan's 1992 dissertation, from the same group, works it out more fully. The tapered trees and the leaves are their published figures. Space colonization is by Adam Runions, Brendan Lane, and Prusinkiewicz at the University of Calgary's Algorithmic Botany group. The paper is "Modeling Trees with a Space Colonization Algorithm" (2007), after their 2005 leaf-venation work. Diffusion-limited aggregation was described by the physicists Thomas Witten and Leonard Sander in 1981. Generative artists have been growing frost with it ever since. The crack growth is Jared Tarbell's *Substrate*, from 2003. It ran as a Processing applet on his site complexification.net. Its city-block subdivisions are among the best-known images of early generative art. Wave Function Collapse is Maxim Gumin's 2016 algorithm, named with a physicist's wink. The tile-and-socket form here is its simple-tiled model.
 
-The chance games have their own shelf. Iterated function systems and the chaos game are Michael Barnsley's, from *Fractals Everywhere* (1988), and the fern uses his published four-map table. The fractal flame is Scott Draves and Erik Reckase's algorithm, which Draves began in 1992. It ran for years as a distributed screensaver that evolved flames by popular vote. Circle-inversion limit sets follow Michael Frame and Tatiana Cogevina's 2000 rendering method, and Frame's Yale course pages explain them clearly. The Kleinian curves and the paired circles both come from David Mumford, Caroline Series, and David Wright's *Indra's Pearls*. It runs four hundred pages, making Felix Klein's groups visible. Friedrich Schottky described the paired-circle groups in 1877. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The chance games have their own shelf. Iterated function systems and the chaos game are Michael Barnsley's, from *Fractals Everywhere* (1988), and the fern uses his published four-map table. The fractal flame is Scott Draves and Erik Reckase's algorithm, which Draves began in 1992. It ran for years as a distributed screensaver that evolved flames by popular vote. The Buddhabrot is Melinda Green's 1993 discovery, and the three-cap false-color reading is hers too, named after the astronomical plates it resembles. Circle-inversion limit sets follow Michael Frame and Tatiana Cogevina's 2000 rendering method, and Frame's Yale course pages explain them clearly. The Kleinian curves and the paired circles both come from David Mumford, Caroline Series, and David Wright's *Indra's Pearls*. It runs four hundred pages, making Felix Klein's groups visible. Friedrich Schottky described the paired-circle groups in 1877. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 

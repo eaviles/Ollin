@@ -4,15 +4,16 @@
 
 ## Fractals
 
-Five ways a handful of numbers unfolds into infinite detail:
+Six ways a handful of numbers unfolds into infinite detail:
 
 - **Iterated function systems** condense a few affine maps onto a fern.
 - **Fractal flames** are the chaos game grown up, with nonlinear warps and a log-density display.
+- **The Buddhabrot** plots the Mandelbrot set's escaping orbits as a density plate.
 - **Circle-inversion limit sets** are lace living in the gaps of a mirror arrangement.
 - **Kleinian limit sets** are the fractal boundary curves of Möbius groups, traced in order.
 - **Schottky circle orbits** pair circles off by Möbius maps, and the pairs nest forever.
 
-All five are deterministic. The point emitters run off a seedable generator, and the Kleinian walk uses no randomness at all. The escape-time siblings (`.mandelbrot`, `.julia`) live on the GPU as [generators](../Drawing/Effects.md#generate).
+All six are deterministic. The point emitters run off a seedable generator, and the Kleinian walk uses no randomness at all. The escape-time siblings (`.mandelbrot`, `.julia`, `.orbitTrap`) live on the GPU as [generators](../Drawing/Effects.md#generate).
 
 ```
   IFS                    flame                  inversion            Kleinian
@@ -27,6 +28,7 @@ All five are deterministic. The point emitters run off a seedable generator, and
 
 - [IFS (the chaos game)](#ifs)
 - [FractalFlame](#flame)
+- [Buddhabrot](#buddhabrot)
 - [inversionLimitSet](#inversion)
 - [kleinianLimitSet](#kleinian)
 - [schottkyCircles](#schottky)
@@ -83,6 +85,31 @@ drawImage(renderer.image(), in: canvasRectangle)
 ```
 
 `quality` is chaos-game samples per output pixel. A few dozen give a preview, and hundreds make a clean still. The `Renderer` is the live form: feed it a slice of samples per frame and the picture rises out of the noise. Both are deterministic for a fixed seed and sample count. `FractalFlame.random` rolls a new flame from contractive affines, one variation each. Some rolls are duds, so reroll the seed until one sings.
+
+<a name="buddhabrot"></a>
+
+#### Buddhabrot
+
+```swift
+Buddhabrot(iterations: [Int] = [5000, 500, 50],
+           window: Rectangle = Rectangle(x: -1.6, y: -2.05, width: 3.2, height: 3.2),
+           gamma: 2, brightness: 1)
+plate.render(width: Int, height: Int, quality: Double = 10, using: &rng) -> Image
+Buddhabrot.Renderer(plate, width: Int, height: Int, seed: Int)   // the progressive form
+```
+
+The Mandelbrot set, displayed by its escaping orbits. Random plane points are tested with the same z = z² + c loop the escape-time generators run. Each one that escapes is run again, and every point its orbit visited brightens the pixel under it. The accumulated density, developed like a photographic plate, is the seated figure Melinda Green discovered in 1993.
+
+`iterations` is one cap or three. One cap develops a grayscale plate. Three caps expose red, green, and blue at different orbit lengths, so short orbits haze the background blue and the longest draw the figure's red spine. An orbit that outlives every cap is taken to be inside the set and plots nothing. `window` frames the plane in the classic upright reading: `x` spans the imaginary axis, `y` the real one, the antenna at the top. Orbits deposit mirrored about the real axis, which is the set's own symmetry, so each sample exposes both halves.
+
+```swift
+let renderer = Buddhabrot.Renderer(Buddhabrot(), width: 560, height: 560, seed: 7)
+// each frame:
+renderer.accumulate(samples: 20_000)
+drawImage(renderer.image(), in: canvasRectangle)
+```
+
+A plate this deep is meant to be watched, and the `Renderer` is the live form. `quality` on the one-shot `render` is orbit samples per output pixel, sized for small stills and tests. `gamma` at its default 2 lifts the faint structure. The develop normalizes each channel to a percentile ceiling, so a few hot pixels near the antenna cannot dim the plate. Deterministic for a fixed seed and sample count.
 
 <a name="inversion"></a>
 

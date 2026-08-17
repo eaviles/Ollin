@@ -587,6 +587,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("fractal-flame",
                  note: "A seeded random fractal flame accumulated to a fixed sample count and developed once. Pins the chaos-game loop (weighted picks, the fuse), the variation formulas and their theta convention, structural coloring, and the log-density display with gamma and vibrancy. Seeded, and the sample count is fixed, so the render is deterministic.",
                  make: { FractalFlameScene() }),
+    SnapshotCase("buddhabrot",
+                 note: "A seeded Buddhabrot plate accumulated to a fixed orbit count and developed once, in the three-cap false-color split. Pins the orbit test (interior shortcuts, escape step), the half-disc seed region, the mirrored upright deposit, the per-channel cap gating, and the percentile-ceiling gamma develop. Seeded and fixed-count, so the render is deterministic.",
+                 make: { BuddhabrotScene() }),
     SnapshotCase("taa",
                  note: "Thin tilted slats and a sphere under temporalAntialiasing(): pins the deterministic export path (N jittered geometry renders under the fixed sequence, averaged within the frame), the jittered-projection plumbing on the mesh path, and the weighted-sum normalization. Fixed camera, no time; runs on any Metal GPU.",
                  make: { TAAScene() }),
@@ -6991,6 +6994,27 @@ private final class SchottkyScene: Sketch {
 
 /// A seeded random flame at a fixed sample count, developed once. Seeded and
 /// sample-fixed, so it's deterministic.
+/// A seeded Buddhabrot plate at a fixed orbit count in the three-cap
+/// false-color split: pins the orbit test, the seed region, the mirrored
+/// deposit, the cap gating, and the percentile develop.
+private final class BuddhabrotScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    private var picture: Image?
+
+    override func setup() {
+        let plate = Buddhabrot(iterations: [600, 120, 30])
+        let renderer = Buddhabrot.Renderer(plate, width: 128, height: 128, seed: 12)
+        renderer.accumulate(samples: 250_000)
+        picture = renderer.image()
+    }
+
+    override func draw() {
+        background(.black)
+        if let picture { drawImage(picture, in: canvasRectangle) }
+        noLoop()
+    }
+}
+
 private final class FractalFlameScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
     private var picture: Image?

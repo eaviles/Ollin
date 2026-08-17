@@ -131,7 +131,7 @@ Use it two ways. It is an index for the moment you remember the guide showing bl
 | Mazes | Perfect labyrinths (three carving textures), walls as clean line-work | [Ch 6](06-GridsAndRepetition.md) | [Tiling](../Docs/Drawing/Tiling.md) |
 | Apollonian gasket | A circle filled with an endless foam of kissing circles | [Ch 6](06-GridsAndRepetition.md) | [Tiling](../Docs/Drawing/Tiling.md) |
 | Aperiodic tilings | Penrose kites/darts and rhombs with matching-rule arcs, Wang edge-matching quilts, girih star patterns over any polygons, and the spectre (the einstein) | [Ch 6](06-GridsAndRepetition.md) | [Aperiodic tilings](../Docs/Drawing/AperiodicTilings.md) |
-| Fractals | IFS chaos games, fractal flames, circle-inversion lace, and Kleinian limit-set curves | [Ch 11](11-GrowingThings.md) | [Fractals](../Docs/Generators/Fractals.md) |
+| Fractals | IFS chaos games, fractal flames, the Buddhabrot density plate, circle-inversion lace, and Kleinian limit-set curves | [Ch 11](11-GrowingThings.md) | [Fractals](../Docs/Generators/Fractals.md) |
 | L-systems | Grammar rewriting walked by a turtle: ferns, trees, lichens | [Ch 11](11-GrowingThings.md) | [LSystem](../Docs/Generators/LSystem.md) |
 | Wave Function Collapse | Socketed tiles solved by constraint propagation | [Ch 11](11-GrowingThings.md) | [WaveFunctionCollapse](../Docs/Generators/WaveFunctionCollapse.md) |
 | Flow fields | Direction fields, streamlines (free and evenly spaced), advection | [Ch 12](12-FieldsAndFlow.md) | [FlowField](../Docs/Generators/FlowField.md) |
