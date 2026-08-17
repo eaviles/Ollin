@@ -628,5 +628,6 @@ let package = Package(
         // A raffia suit that conceals its dancer and rustles when the body moves,
         // after Nick Cave's Soundsuits; the tethered phone can wear it live.
         example("Recreations/NickCave/Soundsuit", [.audio, .phone]),
+        example("Recreations/JaredTarbell/Substrate"),
     ]
 )
