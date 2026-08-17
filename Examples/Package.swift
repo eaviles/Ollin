@@ -415,6 +415,7 @@ let package = Package(
         example("Patterns/LSystem"),
         example("Patterns/ParametricLSystem"),
         example("Patterns/DifferentialGrowth"),
+        example("Patterns/Meander"),
         example("Patterns/WaveFunctionCollapse"),
         example("Patterns/TextureSynthesis"),
         example("Patterns/ElementaryCA"),

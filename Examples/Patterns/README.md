@@ -19,6 +19,7 @@ shape *composition* (booleans and SDF combinators) live in [Shapes](../Shapes/).
 | [Cracks](Cracks/Sketch.swift) | crack growth: perpendicular cracks subdividing the plane into city-block cells, each dragging a translucent one-sided grain wash across the open space beside it (`CrackGrowth`, `noClear`) |
 | [Dendrite](Dendrite/Sketch.swift) | diffusion-limited aggregation: random walkers freeze where they first touch the cluster, growing frost-like dendrites from a center seed, tinted by arrival time (`DiffusionLimitedAggregation`) |
 | [DifferentialGrowth](DifferentialGrowth/Sketch.swift) | a closed ring relaxed under attraction, alignment, and repulsion with long edges splitting, folding live into brain-coral meanders (`DifferentialGrowth`) |
+| [Meander](Meander/Sketch.swift) | a river migrating by curvature across a parchment plain, bends sliding downstream, oxbow lakes pinching off, the recorded scars ribboned beneath the water (`Meander`) |
 | [DotGrid](DotGrid/Sketch.swift) | a grid of black/white dots woven by a modulo rule |
 | [ElementaryCA](ElementaryCA/Sketch.swift) | 1D cellular automata stacked as rows, elementary and 3-color totalistic, the rule and code on knobs: one number flips the picture between order, fractals, and chaos (`elementaryCA`, `totalisticCA`) |
 | [EnergyGrid](EnergyGrid/Sketch.swift) | columns sized by a moving "energy" share (`translate`, `drawRect`) |

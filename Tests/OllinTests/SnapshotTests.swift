@@ -476,6 +476,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("differential-growth", frame: 130,
                  note: "A seeded ring grown by differential growth to a fixed frame: attraction, alignment, and spatial-hash repulsion per step plus edge-splitting fold it into a brain-coral meander. Pins the stepper (forces, node injection, the spatial hash) at a deterministic frame. Seeded, and the frame is fixed, so the fold is reproducible.",
                  make: { DifferentialGrowthScene() }),
+    SnapshotCase("meander", frame: 170,
+                 note: "A seeded river migrated to a fixed frame: curvature-driven drift with upstream weighting bends the channel, the spline resample keeps the spacing even, and the recorded scars ribbon beneath the water. Pins the stepper (curvature, the upstream average, the resample, scar recording) at a deterministic frame. Seeded, and the migration itself is rng-free, so the river is reproducible.",
+                 make: { MeanderScene() }),
     SnapshotCase("wave-function-collapse",
                  note: "A pipe network solved by Wave Function Collapse over a blank + straight/elbow/tee/cross tileset. Pins the solver: min-entropy observation, weighted collapse, and arc-consistency propagation reach a fully legal grid (every internal pipe meets a matching pipe). Seeded, no time, so the layout is deterministic (the sorted-candidate guard keeps the Set-based solve reproducible).",
                  make: { WaveFunctionCollapseScene() }),
@@ -3613,6 +3616,34 @@ private final class DifferentialGrowthScene: Sketch {
         strokeJoin(.round)
         stroke(Color(hex: 0x7FE0C4))
         drawPolyline(growth.nodes, closed: true)
+    }
+}
+
+private final class MeanderScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    private let river = Meander.line(from: Vector2(-170, 150),
+                                     to: Vector2(280, 115),
+                                     seed: 7, width: 9, recordEvery: 20)
+
+    override func draw() {
+        river.step(2)
+        background(Color(hex: 0xF2ECDD))
+        noFill()
+        strokeWeight(river.width * 0.7)
+        for (index, scar) in river.scars.enumerated() {
+            let recency = Double(index + 1) / Double(river.scars.count)
+            stroke(Color(hex: 0xC26D3F).withAlpha(0.1 + 0.2 * recency))
+            drawPolyline(scar)
+        }
+        stroke(Color(hex: 0x7FA8C9).withAlpha(0.8))
+        strokeWeight(river.width * 0.8)
+        for oxbow in river.oxbows {
+            drawPolyline(oxbow.points)
+        }
+        stroke(Color(hex: 0x2C4A6E))
+        strokeWeight(river.width)
+        drawPolyline(river.centerline)
     }
 }
 

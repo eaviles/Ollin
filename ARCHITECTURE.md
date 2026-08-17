@@ -6490,6 +6490,30 @@ lays the sin-eased wash. The wash-side test was verified red by flipping
 the sign. Example `Patterns/Cracks`; snapshot `crack-growth`;
 `CrackGrowthTests` (8, CPU-only).
 
+Meander (`Geometry/Meander.swift`): kinematic river migration, a stateful
+`final class` you hold and `step()`. Per step: curvature by central
+differences; each point's drift blends the local curvature (weight -1) with
+a normalized, exponentially decaying average of upstream curvature (weight
+2.5, e-folding over `memoryLength`), applied perpendicular to the line and
+clamped to 0.9 x `spacing`; pinch pairs closer than `cutoffDistance` across
+the land (skipping nearby indices along it) excise the loop into an
+`Oxbow`; the centerline resamples through an interpolating Catmull-Rom at
+even `spacing`. Two findings are load-bearing. The resample must be a
+curvature-preserving spline: routing it through the straight-segment
+`Contour.resampled(spacing:)` shaves curvature every step and visibly damps
+the growth. And the seed perturbation must be long-wave: a white-noise
+jitter of the start line carries almost no energy at the amplified
+wavelengths (about ten channel widths) while its curvature spikes trip the
+per-step clamp, and the measured sinuosity stalled at 1.19 by step 1600;
+three tapered sine components in the 6-16 width band reach 1.84 by step
+800, with the first natural cutoff before step 1600. Oxbows shrink toward
+their centroid and are deleted under half a width; `scars` records the
+centerline every `recordEvery` steps, trimmed to `maxScars` in one pass.
+The migration itself is deterministic; all rng is in the seeded start
+waves. Example `Patterns/Meander` (starts 700 units off-canvas, so the
+canvas windows the middle of a longer river and the downstream translation
+keeps feeding it); snapshot `meander`; `MeanderTests` (9, CPU-only).
+
 ### Wave Function Collapse
 
 `Geometry/WaveFunctionCollapse.swift` is the simple-tiled model (Gumin):

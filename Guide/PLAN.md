@@ -129,7 +129,7 @@ Teaches: recursion by drawing (a fractal tree written by hand first); rewriting 
 Assumes: Ch 4 (seeds), Ch 6 (grids, for WFC), Ch 10 (stateful steppers).
 Payoff: a procedural garden.
 Figures: branch-stack diagram; L-system expansion table + drawing per iteration; the three panels of what carrying a number buys; a space-colonization growth sequence; a DLA cluster; the cracked city; WFC solve sequence; the garden.
-Draws from: `Docs/Generators/LSystem.md`, `Docs/Generators/SpaceColonization.md`, `Docs/Generators/DiffusionLimitedAggregation.md`, `Docs/Generators/CrackGrowth.md`, `Docs/Generators/WaveFunctionCollapse.md`; `Examples/Patterns/LSystem`, `Examples/Patterns/ParametricLSystem`, `Examples/Patterns/Venation`, `Examples/Patterns/Dendrite`, `Examples/Patterns/Cracks`, `Examples/Patterns/WaveFunctionCollapse`.
+Draws from: `Docs/Generators/LSystem.md`, `Docs/Generators/SpaceColonization.md`, `Docs/Generators/DiffusionLimitedAggregation.md`, `Docs/Generators/CrackGrowth.md`, `Docs/Generators/Meander.md`, `Docs/Generators/WaveFunctionCollapse.md`; `Examples/Patterns/LSystem`, `Examples/Patterns/ParametricLSystem`, `Examples/Patterns/Venation`, `Examples/Patterns/Dendrite`, `Examples/Patterns/Cracks`, `Examples/Patterns/Meander`, `Examples/Patterns/WaveFunctionCollapse`.
 
 **12. Fields and flow.**
 Teaches: a field as "an answer at every point" (the mental model shaders and SDFs later reuse); visualizing a field with arrows; `FlowField` from noise; level curves of a scalar field (`isolines`, marching squares, the stacked-levels contour map, the image form); tracing streamlines; evenly-spaced streamlines; advecting particles; strange attractors as found motion; the logistic map and its bifurcation diagram (one dial's route to chaos).
@@ -276,6 +276,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | `Generators/SpaceColonization.md` | Ch 11 | taught |
 | `Generators/DiffusionLimitedAggregation.md` | Ch 11 | taught |
 | `Generators/CrackGrowth.md` | Ch 11 | taught ("Growth by collision" with the two-panel cracked-city figure: the stop-and-recruit rule, the accumulating canvas, the marks and the one-sided wash) |
+| `Generators/Meander.md` | Ch 11 | taught ("Growth by wandering" with the two-panel wandering-river figure: the outside-bank rule, the downstream slide, the scars and the oxbow lakes) |
 | `Generators/LSystem.md` (symbolic and parametric) | Ch 11 | taught ("When the rules need arithmetic" motivates parametric rules from what one step cannot say, walks a guarded rule left to right, explains that an unmatched symbol is how growth stops, and shows the tapered form through marks, with a three-panel figure) |
 | `Generators/WaveFunctionCollapse.md` | Ch 11 | taught |
 | `Generators/FlowField.md` (streamlines, advection) | Ch 12 | taught |
