@@ -1751,6 +1751,13 @@ open class Sketch {
     private var extensions: [SketchExtension] = []
     private var extensionsDidSetup = false
 
+    /// The live recorder, once `startRecording()` (or an attached
+    /// `SessionRecorder`) has claimed the slot. Held by name, not just in
+    /// `extensions`, so the runner can carry a running recording across a
+    /// live-reload swap, and readable so a host can reach the typed recorder
+    /// (`stopAndWait()` on the way out) behind the bare calls.
+    public internal(set) var sessionRecorder: SessionRecorder?
+
     /// The `@Eased` / `@Smoothed` properties on this sketch, discovered once via
     /// reflection (the stored set is fixed at compile time) and advanced each frame.
     private var advancingValues: [FrameAdvancing]?

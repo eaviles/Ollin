@@ -136,11 +136,24 @@ public final class AudioPlayer: AudioSource {
     private func installTapIfNeeded() {
         guard !tapInstalled else { return }
         installAnalyzerTap(on: engine.mainMixerNode, bufferSize: tapBufferSize,
-                           analyzer: analyzer, relay: relay)
+                           analyzer: analyzer, relay: relay, capture: captureRelay)
         tapInstalled = true
     }
 
     private let relay = AudioTapRelay()
+    let captureRelay = CaptureTapRelay()
+}
+
+/// The live recorder's lane onto a playing file.
+extension AudioPlayer: CaptureAudioSource {
+    package func beginAudioCapture(into sink: AudioCaptureSink) {
+        captureRelay.set(sink)
+        installTapIfNeeded()
+    }
+
+    package func endAudioCapture() {
+        captureRelay.set(nil)
+    }
 }
 
 /// A playing file is a sound source anything can listen to. Samples flow while

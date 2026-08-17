@@ -46,7 +46,7 @@ ollin new dots.swift
 ollin dots.swift
 ```
 
-`new` writes a minimal breathing-circle sketch (the class named after the file) and marks it executable. `ollin dots.swift` opens it in the live host, so edit and save and the window swaps in the change without closing. A save that doesn't compile shows the error over the canvas while the last good sketch keeps drawing. Everything the live host offers is there: the `@Param` inspector, the seed card, and `--keep-clock` to carry the clock across reloads.
+`new` writes a minimal breathing-circle sketch (the class named after the file) and marks it executable. `ollin dots.swift` opens it in the live host, so edit and save and the window swaps in the change without closing. A save that doesn't compile shows the error over the canvas while the last good sketch keeps drawing. Everything the live host offers is there: the `@Param` inspector, the seed card, `--keep-clock` to carry the clock across reloads, and `--record` to keep the run as a [movie](../Output/Recording.md) from its first frame.
 
 The file is an ordinary Ollin sketch, so there's nothing single-file-specific to learn:
 

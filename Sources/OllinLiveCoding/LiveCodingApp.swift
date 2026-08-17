@@ -86,6 +86,12 @@ final class LiveCodingAppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         true
     }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        // A recording that outlives its process is an unreadable file; quit
+        // waits the moment it takes to finish the movie.
+        ActivePerformance.session?.core.currentSketch?.sessionRecorder?.stopAndWait()
+    }
 }
 
 /// Sketch ▸ Evaluate (⌘↩) / Evaluate Fresh (⌘⇧↩), the instrument's action.
@@ -101,6 +107,14 @@ private struct SketchCommands: Commands {
                 ActivePerformance.session?.evaluate(fresh: true)
             }
             .keyboardShortcut(.return, modifiers: [.command, .shift])
+
+            Divider()
+
+            Button(ActivePerformance.session?.isRecording == true
+                   ? "Stop Recording" : "Start Recording") {
+                ActivePerformance.session?.toggleRecording()
+            }
+            .keyboardShortcut("r", modifiers: [.command, .shift])
         }
     }
 }

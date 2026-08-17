@@ -77,9 +77,12 @@ struct OllinLiveApp: App {
         // the initial compile runs async inside `LiveSession`. A blocking compile
         // here left the window behind the terminal until a Dock click.
         let keepClock = arguments.contains("--keep-clock")
-        _session = State(initialValue: LiveSession(
+        let record = arguments.contains("--record")
+        let session = LiveSession(
             loader: SketchLoader(sketchPath: sketchPath), sketchPath: sketchPath,
-            displayName: pathArg, keepClock: keepClock))
+            displayName: pathArg, keepClock: keepClock, recordOnLaunch: record)
+        _session = State(initialValue: session)
+        ActiveLiveSession.session = session
     }
 
     var body: some SwiftUI.Scene {
@@ -105,7 +108,29 @@ struct OllinLiveApp: App {
         // the sidebar is the live host's stats display.
         .commands {
             LiveSidebarCommands()
+            LiveRecordCommands()
             OllinCameraCommands()
+        }
+    }
+}
+
+/// The one running session, reachable from menu `Commands` structs (which
+/// can't be handed instance state). Weak: the `App`'s `@State` owns it.
+@MainActor
+enum ActiveLiveSession {
+    static weak var session: LiveSession?
+}
+
+/// Sketch ▸ Record (⌘⇧R): record the live run to a movie, sound included,
+/// the same control the performance host has.
+private struct LiveRecordCommands: Commands {
+    var body: some Commands {
+        CommandMenu("Sketch") {
+            Button(ActiveLiveSession.session?.core.currentSketch?.isRecording == true
+                   ? "Stop Recording" : "Start Recording") {
+                ActiveLiveSession.session?.toggleRecording()
+            }
+            .keyboardShortcut("r", modifiers: [.command, .shift])
         }
     }
 }

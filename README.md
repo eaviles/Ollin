@@ -195,6 +195,8 @@ swift run OllinLive MySketches/Loop.swift --export-gif loop.gif --seconds 4   # 
 
 Sequence, video, and GIF exports advance the clock at a fixed timestep rather than wall-clock, so a slow render still plays back smoothly. In code they're `OllinApp.export`, `exportSequence`, `exportVideo`, and `exportGIF`. Codec and quality dials, the `--skip` warmup, GIF sizing, and the plotter-oriented `--hatch` fills are all in [`Docs/Output/Export.md`](Docs/Output/Export.md).
 
+An export reproduces a sketch; a recording keeps a performance. `startRecording()` in a sketch, ⌘⇧R in the live hosts, or `--record` on OllinLive writes the run as it happens, picture and the sketch's own sound (or the room's) in one movie in real time, and in the live-coding host a take plays straight through an evaluate. See [`Docs/Output/Recording.md`](Docs/Output/Recording.md).
+
 A seeded sketch is a generator, so Ollin names the seed each run grew from ([`variation`](Docs/Core/Variations.md)) and gives you the tools to explore the space it indexes: step, roll, or jump through seeds from the inspector's Variation card, proof a whole range as a labeled contact sheet, then re-render the keeper at full size.
 
 ```sh

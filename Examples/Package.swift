@@ -80,6 +80,7 @@ let package = Package(
         example("Basic/Guides"),
         example("Basic/Describing"),
         example("Export/Capture"),
+        example("Export/Record", [.audio]),
         example("Export/VectorExport"),
         example("Export/Hatching"),
         example("Installation/Unattended"),

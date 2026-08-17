@@ -60,6 +60,7 @@ A sketch's co-located assets (an image or `.metal` file beside the `.swift`) res
 - **Bigger/Smaller Code (⌘+ / ⌘−)** sizes the type for the room. Use **View ▸ Code Backdrop** to set how dark the strip behind the text reads over bright visuals.
 - **The inspector (⌘/)** docks on the right, hidden by default. It is the rehearsal and soundcheck surface, with a live monitor card (FPS, frame time, geometry counts). Under the card comes a control per `@Param`, which is a slider, a stepper, a toggle, a menu, or a color well.
 - The **Camera menu** (⌘0-⌘8) works on any 3D sketch, same as in the other hosts.
+- **Record (⌘⇧R)** keeps the set as a movie, picture and the sketch's own sound, written in real time to `~/Movies/Ollin/`. A red chip counts the take on the stage, a toast names the file when it is saved, and the recording plays straight through every evaluate. See [Recording](../Output/Recording.md).
 
 ### Keyboard reference
 
@@ -70,6 +71,7 @@ A sketch's co-located assets (an image or `.metal` file beside the `.swift`) res
 | ⌘N / ⌘O | New untitled buffer / open a sketch file |
 | ⌘S / ⌘⇧S | Save / save as |
 | ⌃⇧H | Hide or show the code |
+| ⌘⇧R | Start or stop recording the set |
 | ⌃⌘F | Enter or leave fullscreen |
 | ⌘+ / ⌘− | Bigger / smaller code |
 | ⌘/ | Show or hide the inspector |

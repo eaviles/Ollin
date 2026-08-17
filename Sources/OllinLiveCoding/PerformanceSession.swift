@@ -33,6 +33,10 @@ final class PerformanceSession {
     private(set) var title = "OllinLiveCoding"
     /// Recovered buffer text offered after a crash (`nil` when none pending).
     private(set) var recoveryAvailable: String?
+    /// Whether the stage is being recorded; the chip and the menu read this.
+    private(set) var isRecording = false
+    /// The just-finished recording's file name, briefly shown as a toast.
+    private(set) var recordingSaved: String?
 
     @ObservationIgnored weak var window: NSWindow?
     @ObservationIgnored private var didStart = false
@@ -128,6 +132,29 @@ final class PerformanceSession {
                 self.diagnostics = []
             }
             self.editor.setDiagnostics(self.diagnostics.filter { $0.severity == .error })
+        }
+    }
+
+    // MARK: - Recording
+
+    /// Start or stop recording the performance (⌘⇧R). The recording rides the
+    /// runner across evaluations, so a swap mid-take never cuts the film; the
+    /// file lands in `~/Movies/Ollin/` and its name is shown when it is done.
+    func toggleRecording() {
+        guard let sketch = core.currentSketch else { return }
+        if sketch.isRecording {
+            sketch.stopRecording { [weak self] url in
+                guard let self, let url else { return }
+                self.recordingSaved = url.lastPathComponent
+                Task { @MainActor in
+                    try? await Task.sleep(for: .seconds(3))
+                    self.recordingSaved = nil
+                }
+            }
+            isRecording = false
+        } else {
+            sketch.startRecording()
+            isRecording = sketch.isRecording
         }
     }
 

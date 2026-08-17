@@ -103,11 +103,24 @@ public final class Tone: AudioSource {
     private func installTapIfNeeded() {
         guard !tapInstalled else { return }
         installAnalyzerTap(on: engine.mainMixerNode, bufferSize: tapBufferSize,
-                           analyzer: analyzer, relay: relay)
+                           analyzer: analyzer, relay: relay, capture: captureRelay)
         tapInstalled = true
     }
 
     private let relay = AudioTapRelay()
+    let captureRelay = CaptureTapRelay()
+}
+
+/// The live recorder's lane onto a sounding oscillator.
+extension Tone: CaptureAudioSource {
+    package func beginAudioCapture(into sink: AudioCaptureSink) {
+        captureRelay.set(sink)
+        installTapIfNeeded()
+    }
+
+    package func endAudioCapture() {
+        captureRelay.set(nil)
+    }
 }
 
 /// A sounding oscillator is a sound source anything can listen to, which is

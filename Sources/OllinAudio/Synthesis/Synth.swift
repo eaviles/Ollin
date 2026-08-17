@@ -1,4 +1,5 @@
 import AVFoundation
+import Ollin
 
 /// An instrument a sketch plays.
 ///
@@ -314,9 +315,12 @@ public final class Synth: AudioSource {
 
     private func installTapIfNeeded() {
         guard !tapInstalled else { return }
-        installAnalyzerTap(on: engine.mainMixerNode, bufferSize: tapBufferSize, analyzer: analyzer)
+        installAnalyzerTap(on: engine.mainMixerNode, bufferSize: tapBufferSize, analyzer: analyzer,
+                           capture: captureRelay)
         tapInstalled = true
     }
+
+    let captureRelay = CaptureTapRelay()
 
     /// Rebuilds the chain so the instrument can be placed in the scene.
     ///
@@ -493,5 +497,21 @@ func makeSynthSourceNode(format: AVAudioFormat, renderer: SynthRenderer) -> AVAu
             other.assumingMemoryBound(to: Float.self).update(from: output.baseAddress!, count: frames)
         }
         return noErr
+    }
+}
+
+/// The live recorder's lane onto an instrument: what the synth sends to the
+/// speakers is what lands in the file, effects and placement included, because
+/// the tap sits on the far end of the graph.
+extension Synth: CaptureAudioSource {
+    package func beginAudioCapture(into sink: AudioCaptureSink) {
+        captureRelay.set(sink)
+        // The tap normally arrives with the first note; a recording that
+        // starts earlier wants it in place already.
+        installTapIfNeeded()
+    }
+
+    package func endAudioCapture() {
+        captureRelay.set(nil)
     }
 }

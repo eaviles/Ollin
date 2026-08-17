@@ -1,7 +1,10 @@
 import AVFoundation
+import Ollin
+import os
 
 /// Installs a tap that feeds `analyzer` from a node's output, and passes the
-/// same audio on to `relay` when the source is also being listened to.
+/// same audio on to `relay` when the source is also being listened to, and to
+/// `capture` when the live recorder has a lane on the source.
 ///
 /// This is a free (non-isolated) function on purpose: the tap closure runs on
 /// the audio render thread. If it were formed inside a `@MainActor` method,
@@ -10,11 +13,29 @@ import AVFoundation
 /// non-isolated, and it only captures `Sendable` values.
 func installAnalyzerTap(
     on node: AVAudioNode, bufferSize: UInt32, analyzer: AudioAnalyzer,
-    relay: AudioTapRelay? = nil
+    relay: AudioTapRelay? = nil, capture: CaptureTapRelay? = nil
 ) {
-    node.installTap(onBus: 0, bufferSize: bufferSize, format: nil) { buffer, _ in
+    node.installTap(onBus: 0, bufferSize: bufferSize, format: nil) { buffer, time in
         analyzer.process(buffer)
         relay?.deliver(buffer)
+        capture?.deliver(buffer, at: time)
+    }
+}
+
+/// The one tap a node allows is shared by analysis and recording, so the
+/// recorder's lane rides the same closure behind a slot it can come and go
+/// from. The slot is read on the audio thread and set from the main one,
+/// hence the lock.
+final class CaptureTapRelay: @unchecked Sendable {
+    private let slot = OSAllocatedUnfairLock<AudioCaptureSink?>(initialState: nil)
+
+    func set(_ sink: AudioCaptureSink?) {
+        slot.withLock { $0 = sink }
+    }
+
+    func deliver(_ buffer: AVAudioPCMBuffer, at time: AVAudioTime) {
+        guard let sink = slot.withLock({ $0 }) else { return }
+        sink.take(buffer, at: time)
     }
 }
 

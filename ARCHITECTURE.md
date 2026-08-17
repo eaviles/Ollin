@@ -7129,6 +7129,59 @@ CLAUDE.md's *Live coding* block.
 
 ---
 
+## Live recording (the real-time recorder)
+
+`SessionRecorder` (`Sources/Ollin/Export/SessionRecorder.swift`) records a live
+run as it happens, where the offline exporters re-render on a fixed clock. It
+is a `SketchExtension`: while a take runs it arms `wantsRenderedFrame` and
+receives each frame as a `CGImage` from the runner's frame-grab hook. That is
+the CPU-readback path on purpose. The GPU-texture hook is cheaper but its
+off-screen render skips shadows, effect targets, and the whole 3D pass list,
+so a recording through it would silently degrade exactly the sketches worth
+recording. The CGImage path is the same full off-screen re-render the export
+uses, pixel-identical to `--export-video`, at the cost the frame-grab design
+already accepted (an async readback stays the later optimization).
+
+Everything that touches the `AVAssetWriter` lives in a queue-confined
+`RecorderWriter` on one serial queue: the frame appends, the audio drain
+timer, and the finish. Both writer inputs run `expectsMediaDataInRealTime`,
+and the session's timeline is the host clock: a video frame's presentation
+time is the wall time it rendered at, so a slow frame simply lasts longer in
+the file. A frame the encoder cannot take is dropped and counted, never
+awaited; real time does not block on a codec.
+
+Sound has no master bus to tap. Every sound object owns a private engine, so
+the recorder discovers the sketch's sources by Mirror walk (the
+`ExportAudioSource` trick) through the core `CaptureAudioSource` seam, and
+each source gets an `AudioCaptureSink` lane. A node allows one tap per bus
+and the analyzer already owns it, so capture rides the same tap through a
+`CaptureTapRelay` slot added to `installAnalyzerTap`'s fan-out. A lane places
+each buffer on the master timeline by its host-time stamp with a running
+counter smoothing the jitter: the counter wins while the stamp disagrees by
+under 50 ms, the stamp wins past that, and the hole a device drop leaves is
+filled with silence rather than closed up. Closing it up is the classic
+drift bug: the audio track comes out shorter than the video and the two part
+ways a few seconds per headphone switch. The writer queue mixes all lanes
+every 100 ms, 150 ms behind the clock (late buffers still land), applies the
+offline mixer's `tanh` knee, and appends interleaved float stereo; the AAC
+track is declared whenever the mode carries sound at all, so an instrument
+that first plays mid-take lands mid-file, in sync, after plain silence.
+
+Two lifecycle rules carry the live hosts. A recording survives a hot swap
+because `SketchRunner.reload(to:)` moves `sketch.sessionRecorder` to the new
+instance and re-extends it; the recorder's `setup` hook then rescans that
+instance's instruments, which is how the sound keeps flowing after an
+evaluation replaced every `Synth`. Hosts must address the *current* sketch
+through `SketchSession.currentSketch` (the runner's), because
+`SketchSession.sketch` deliberately stays the first mount and a recorder
+wired to a stale instance films nothing. And a take must end as a playable
+file however the process ends: `stop` finishes asynchronously, app
+termination and the recorder's own SIGINT/SIGTERM dispatch sources go
+through `stopAndWait()`, and a canvas-size change (the one thing a movie
+cannot absorb) finishes the file cleanly and says so.
+
+---
+
 ## Spatial video (the stereo pair and its file)
 
 `--export-spatial` writes stereo MV-HEVC, the format Apple's platforms play with

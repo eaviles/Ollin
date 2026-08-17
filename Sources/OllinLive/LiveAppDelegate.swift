@@ -16,4 +16,10 @@ final class LiveAppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         true
     }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        // A recording that outlives its process is an unreadable file; quit
+        // waits the moment it takes to finish the movie.
+        ActiveLiveSession.session?.core.currentSketch?.sessionRecorder?.stopAndWait()
+    }
 }

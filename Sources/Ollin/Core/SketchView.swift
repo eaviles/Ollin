@@ -51,7 +51,10 @@ protocol CanvasOutput: AnyObject {
 @MainActor
 public final class SketchRunner: NSObject, MTKViewDelegate {
 
-    private(set) var sketch: Sketch
+    /// The instance currently drawing. `package` so the session layer can
+    /// reach the *current* sketch after swaps (its own `sketch` deliberately
+    /// stays the first mount, which is what keeps the view from remounting).
+    package private(set) var sketch: Sketch
     private let renderer: MetalRenderer
     private weak var view: MTKView?
 
@@ -428,8 +431,16 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
                   + "relaunch to see it (the window's drawable is built once)")
         }
         wireLoopControl(newSketch)
+        let recorder = sketch.sessionRecorder
         sketch = newSketch
         if let statsExtension { newSketch.extend(statsExtension) }   // re-attach stats observer
+        if let recorder {
+            // A running recording survives the swap: the recorder moves to the
+            // fresh instance and, at its setup hook, picks up that sketch's
+            // own instruments.
+            newSketch.sessionRecorder = recorder
+            newSketch.extend(recorder)
+        }
         renderer.resetAccumulation()   // a reloaded sketch starts on a clean canvas
         didSetup = false            // re-run setup() next frame
         didReload = true            // ...then call onReload() once

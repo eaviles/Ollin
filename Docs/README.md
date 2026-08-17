@@ -151,6 +151,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 ### Output
 
 - [`Export`](./Output/Export.md) - save frames as raster (PNG, sequences), motion (video, animated GIF), or vector (SVG for pen plotters, PDF for print)
+- [`Recording`](./Output/Recording.md) - record a live run as it happens, picture and the sketch's own sound (or the room) in one movie, in real time
 - [`Fabrication`](./Output/Fabrication.md) - write a `Mesh` as STL, OBJ, or 3MF for 3D printing, with real units and a printability check
 - [`Installation`](./Output/Installation.md) - leave a piece running for days: full screen, no pointer, a clock that survives a week, a watch that starts it again, and the building's hours
 - [`Print separations`](./Output/PrintSeparations.md) - split a sketch into per-ink grayscale masters for risograph and screen printing, with an overprint preview and registration marks

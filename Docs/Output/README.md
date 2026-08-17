@@ -5,6 +5,7 @@
 ## Output
 
 - [`Export`](./Export.md) - save frames as raster (PNG, sequences), motion (video, animated GIF), or vector (SVG for pen plotters, PDF for print)
+- [`Recording`](./Recording.md) - record a live run as it happens, picture and the sketch's own sound (or the room) in one movie, in real time
 - [`Installation`](./Installation.md) - leave a piece running for days: full screen, no pointer, a clock that survives a week, a watch that starts it again, and the building's hours
 - [`Fabrication`](./Fabrication.md) - write a `Mesh` as STL, OBJ, or 3MF for 3D printing, with real units and a printability check
 - [`Print separations`](./PrintSeparations.md) - split a sketch into per-ink grayscale masters for risograph and screen printing, with an overprint preview and registration marks

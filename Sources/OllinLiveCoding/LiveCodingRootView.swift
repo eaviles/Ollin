@@ -104,6 +104,14 @@ struct LiveCodingRootView: View {
                 if session.chipStatus != .watching {
                     StatusChip(status: session.chipStatus)
                 }
+                if session.isRecording {
+                    RecordingChip(session: session)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+                if let saved = session.recordingSaved {
+                    SavedRecordingToast(name: saved)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
                 if showEvaluatedToast {
                     EvaluatedToast(count: session.evaluateCount,
                                    buildSeconds: session.core.lastBuildSeconds)
@@ -112,6 +120,8 @@ struct LiveCodingRootView: View {
             }
             .padding(14)
             .animation(.easeInOut(duration: 0.18), value: session.chipStatus)
+            .animation(.easeInOut(duration: 0.18), value: session.isRecording)
+            .animation(.easeInOut(duration: 0.18), value: session.recordingSaved == nil)
         }
         .overlay(alignment: .bottom) {
             if !session.diagnostics.isEmpty || session.core.errorMessage != nil {
@@ -175,6 +185,60 @@ struct LiveCodingRootView: View {
             guard !Task.isCancelled else { return }
             withAnimation { showEvaluatedToast = false }
         }
+    }
+}
+
+/// The on-air light: a red dot and the take's elapsed time, ticking while the
+/// stage is being recorded.
+private struct RecordingChip: View {
+    let session: PerformanceSession
+
+    @SwiftUI.Environment(\.colorScheme) private var colorScheme
+
+    private func clock(_ seconds: Double) -> String {
+        let whole = Int(seconds)
+        return String(format: "%d:%02d", whole / 60, whole % 60)
+    }
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 9, style: .continuous)
+        return TimelineView(.periodic(from: .now, by: 0.5)) { _ in
+            HStack(spacing: 8) {
+                SwiftUI.Circle().fill(OllinInspector.red).frame(width: 10, height: 10)
+                Text("Recording").font(.system(size: 12, weight: .medium))
+                Text(clock(session.core.currentSketch?.recordingElapsed ?? 0))
+                    .font(.system(size: 10.5, design: .monospaced)).foregroundStyle(.secondary)
+            }
+        }
+        .padding(.leading, 10)
+        .padding(.trailing, 12)
+        .padding(.vertical, 7)
+        .glassEffect(.regular, in: shape)
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.14), radius: 12, y: 5)
+    }
+}
+
+/// A brief "the take is on disk" confirmation, named so it can be found.
+private struct SavedRecordingToast: View {
+    let name: String
+
+    @SwiftUI.Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 9, style: .continuous)
+        return HStack(spacing: 8) {
+            SwiftUI.Image(systemName: "film")
+                .font(.system(size: 11)).foregroundStyle(OllinInspector.green)
+            Text("Saved").font(.system(size: 12, weight: .medium))
+            Text(name)
+                .font(.system(size: 10.5, design: .monospaced)).foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .padding(.leading, 10)
+        .padding(.trailing, 12)
+        .padding(.vertical, 7)
+        .glassEffect(.regular, in: shape)
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.14), radius: 12, y: 5)
     }
 }
 

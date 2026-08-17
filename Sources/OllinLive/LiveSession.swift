@@ -107,10 +107,16 @@ final class LiveSession {
     /// Asset extensions whose change re-runs `setup()` (where assets load).
     private static let assetExtensions = ["png", "jpg", "jpeg", "gif", "heic", "bmp", "tiff"]
 
-    init(loader: SketchLoader, sketchPath: String, displayName: String, keepClock: Bool) {
+    /// Whether `--record` asked for the run to be recorded from the first
+    /// frame; consumed when the runner attaches.
+    @ObservationIgnored private var recordOnLaunch: Bool
+
+    init(loader: SketchLoader, sketchPath: String, displayName: String, keepClock: Bool,
+         recordOnLaunch: Bool = false) {
         self.loader = loader
         self.sketchPath = sketchPath
         self.displayName = displayName
+        self.recordOnLaunch = recordOnLaunch
         self.core = SketchSession(keepClock: keepClock)
 
         let dir = (FileManager.default.currentDirectoryPath as NSString)
@@ -137,6 +143,23 @@ final class LiveSession {
     /// the shared instance); the engine wires the user-shader error channel.
     func attach(_ runner: SketchRunner) {
         core.attach(runner)
+        // `--record` starts the take the moment the run is on screen. The
+        // recording then rides the runner across reloads, so saves mid-take
+        // keep filming; closing the window finishes the file.
+        if recordOnLaunch {
+            recordOnLaunch = false
+            core.currentSketch?.startRecording()
+        }
+    }
+
+    /// Start or stop recording the run (the Sketch ▸ Record menu, ⌘⇧R).
+    func toggleRecording() {
+        guard let sketch = core.currentSketch else { return }
+        if sketch.isRecording {
+            sketch.stopRecording()
+        } else {
+            sketch.startRecording()
+        }
     }
 
     /// Record a knob the user changed, so it survives the next reload.

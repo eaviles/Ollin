@@ -51,7 +51,8 @@ usage: ollin <path/to/Sketch.swift> [flags]   run the sketch (live window)
 
 flags: --debug (first flag) runs a debug build of the host; every other flag
 is passed through to the sketch host (see Docs/Output/Export.md for the export
-surface, --keep-clock for reloads that keep the clock).
+surface, --keep-clock for reloads that keep the clock, --record to record the
+live run as a movie from its first frame; Docs/Output/Recording.md).
 EOF
 }
 

@@ -32,6 +32,11 @@ public final class SketchSession {
     /// host's view then builds the runner with it). Later evaluations swap
     /// inside the runner, not through this.
     public private(set) var sketch: Sketch?
+    /// The instance actually drawing right now: the runner's, once one exists,
+    /// because later evaluations swap inside the runner while `sketch` stays
+    /// the first mount. Anything addressed to "the sketch on stage" (the live
+    /// recorder, a host control) goes through this.
+    public var currentSketch: Sketch? { runner?.sketch ?? sketch }
     public private(set) var phase: Phase = .idle
     /// Runner-reload count: bumped on every successful swap after the first
     /// mount. `reloadCount == 0` inside `onSuccess` identifies the first mount.
