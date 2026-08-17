@@ -186,6 +186,24 @@ selfAvoidingWalk(cellSize: 22)
 
 All three are seeded like everything else in this chapter, so the same seed gives the same journey.
 
+## When chance acts as a crowd
+
+Everything so far rolled for one thing at a time: a nudge, a choice, a step. Chance can also act as a crowd, and a crowd of coin flips can do something no single flip can. Fill a grid with cells, each one open with the same probability, and ask a question about the whole grid at once. Do the open cells connect from the top edge to the bottom?
+
+<img src="Images/04-Randomness/ChanceInCrowds.jpg" alt="Three dark grid panels. At probability 0.50, scattered blue islands; at 0.56, one pale cluster strains most of the way across; at 0.63, a single gold cluster spans the grid, traced with a pale outline" width="680">
+
+This game is called **percolation**, and the answer has a shape nobody would guess from the rules. Each cell flips its coin alone, and no rule ever mentions a threshold. Yet the grid's answer flips almost all at once, near a probability of 0.5927. Below it the open cells stay separate islands, however long you wait. A little above it, one giant cluster reaches across the whole grid. Physics calls a sudden collective change like this a phase transition, and this humble grid is its standard model.
+
+```swift
+seed(9)
+let grid = percolation(columns: 48, rows: 48, probability: 0.6)
+noStroke()
+fill(Color(hex: 0xE8B44A))
+for cell in grid.cellRects(of: 0, in: bounds) { drawRect(cell) }
+```
+
+`percolation` hands back the clusters largest first, so cluster `0` is always the giant. `grid.spans` answers the top-to-bottom question, `spanningClusterIndex` names the cluster that did it, and `outlines(of:in:)` traces any cluster's boundary as closed loops a plotter can draw. The magic number lives in the API as `Percolation.criticalProbability`, so a sketch can breathe around the threshold without hard-coding it: `Examples/Patterns/Percolation` does exactly that, and the moment the span snaps into place never stops being satisfying. The [percolation reference](../Docs/Generators/Percolation.md) has the full surface, including reading clusters off a grid you filled some other way.
+
 ## Putting it together: order, with a pinch of disorder
 
 This is the piece from the top of the chapter, and it holds still on purpose, because its motion lives *between* variations, one click apart. The idea is borrowed openly from the founding generation of computer artists, Vera Molnár above all, who worked exactly this way. You take a perfectly ordered structure, a grid of nested squares, and add disorder in small, controlled amounts. Here each square's corners get a random nudge, and the permitted nudge grows from nothing in the top row to full strength at the bottom, so a single image walks from architecture to scribble. Make `MySketches/DisorderGrid.swift`:
@@ -269,13 +287,14 @@ Then push it somewhere new:
 
 ## Where this comes from
 
-The grammar of this chapter is the founding grammar of computer art. Vera Molnár, who began making combinatorial drawings by hand in 1959 with what she called her *machine imaginaire* (dice standing in for the computer she didn't yet have), spent six decades applying precise doses of chance to grids of squares. Her phrase "1% of disorder" is the finished piece's entire recipe, and this guide's repository carries two homages to her plotter work in [`Examples/Recreations/VeraMolnar`](../Examples/Recreations/VeraMolnar/). Georg Nees's *Schotter* (1968), a column of squares tumbling from order into rubble, set the order-above, chaos-below composition this chapter's finished piece borrows. The "pseudo" in pseudo-random goes back to John von Neumann's 1940s number generators, and Ollin's is SplitMix64 (Guy L. Steele Jr., Doug Lea, and Christine H. Flood, 2014). `randomGaussian` uses George Marsaglia's polar method (1964), and the random walk got its enduring nickname from Karl Pearson's 1905 letter to *Nature* asking where a drunk man ends up. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The grammar of this chapter is the founding grammar of computer art. Vera Molnár, who began making combinatorial drawings by hand in 1959 with what she called her *machine imaginaire* (dice standing in for the computer she didn't yet have), spent six decades applying precise doses of chance to grids of squares. Her phrase "1% of disorder" is the finished piece's entire recipe, and this guide's repository carries two homages to her plotter work in [`Examples/Recreations/VeraMolnar`](../Examples/Recreations/VeraMolnar/). Georg Nees's *Schotter* (1968), a column of squares tumbling from order into rubble, set the order-above, chaos-below composition this chapter's finished piece borrows. The "pseudo" in pseudo-random goes back to John von Neumann's 1940s number generators, and Ollin's is SplitMix64 (Guy L. Steele Jr., Doug Lea, and Christine H. Flood, 2014). `randomGaussian` uses George Marsaglia's polar method (1964), and the random walk got its enduring nickname from Karl Pearson's 1905 letter to *Nature* asking where a drunk man ends up. Percolation entered mathematics through Simon Broadbent and John Hammersley's 1957 paper on fluids seeping through porous stone, and the square-lattice threshold this chapter leans on is the value Mark Newman and Robert Ziff measured in 2000. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
 - [Random](../Docs/Generators/Random.md): the full reference, including `randomVector` (a roll inside a rectangle), `ring` (a roll inside a ring, great for halos), and the seeded `shuffled`.
 - [Variations](../Docs/Core/Variations.md): `variation` and the seed-exploration tools in full, including contact sheets (`--export-grid`) and re-rendering a keeper (`--seed`).
 - [Walks](../Docs/Generators/Walks.md): the hand-rolled walk from this chapter, shipped and seeded, plus two relatives worth meeting. `levyFlight` mostly shuffles and occasionally leaps, which is how foraging animals actually move, and `selfAvoidingWalk` refuses to cross its own path.
+- [Percolation](../Docs/Generators/Percolation.md): the crowd game in full, including the outline tracing and reading clusters off any boolean grid.
 - [Noise](../Docs/Generators/Noise.md): the next chapter's subject, if you can't wait to make chance glide.
 - Worked examples, all in [`Examples/Randomness/`](../Examples/Randomness/): `Variations` (a whole composition per seed), `Gaussian` (the bell curve as boiling scatter), `RandomBand` (uniform, for contrast), and `Ring` (the ring roll).
 - The Molnár homages in [`Examples/Recreations/VeraMolnar/`](../Examples/Recreations/VeraMolnar/): `DesOrdres` (seeded disorder scrubbed by the mouse) and `Interruptions` (a field of tilted ticks, its gaps carved by the noise you'll meet in Chapter 5).

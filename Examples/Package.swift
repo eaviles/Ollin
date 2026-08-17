@@ -426,6 +426,7 @@ let package = Package(
         example("Patterns/IteratedFunctions"),
         example("Patterns/FractalFlame"),
         example("Patterns/Buddhabrot"),
+        example("Patterns/Percolation"),
         example("Patterns/InversionFractal"),
         example("Patterns/Kleinian"),
         example("Patterns/Schottky"),

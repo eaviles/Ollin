@@ -428,6 +428,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("string-art",
                  note: "A painted crescent wound as string art in one frame: a few hundred greedy chords of one thread over a ring of pins, drawn translucent. Pins the darkness sampling and its circle mask, the greedy mean-darkness scoring, the ink pay-down, the span and no-repeat rules, and the pin layout. No rng and no time, so it is deterministic.",
                  make: { StringArtScene() }),
+    SnapshotCase("percolation",
+                 note: "A seeded site-percolation grid just past the critical probability (no time): island clusters tinted by size and the spanning cluster filled warm with its traced boundary loops stroked. Pins the seeded fill, the union-find labeling and largest-first order, the spanning test, cellRects placement, and the outline tracer's loops and collinear merging.",
+                 make: { PercolationScene() }),
     SnapshotCase("dither",
                  note: "One painted gradient quantized to a three-color palette four ways, at 1:1 pixels: plain nearest-color (banding), ordered Bayer, blue noise, Floyd-Steinberg. Pins the whole dithering pass (the Bayer recurrence, the void-and-cluster tile, the error-diffusion kernel and its serpentine scan) plus the color space each family chooses its colors in. No rng and no time, so it is deterministic.",
                  make: { DitherScene() }),
@@ -3175,6 +3178,38 @@ private final class CrackGrowthScene: Sketch {
 /// A painted crescent wound as string art in one frame: the greedy chord
 /// choice pays its ink down as it goes, so the whole winding is one
 /// deterministic pass. No rng and no `time`, so it is deterministic.
+/// A seeded percolation grid just past the threshold: pins the fill, the
+/// union-find labels, the spanning test, and the outline tracer.
+private final class PercolationScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        var rng = SplitMix64(seed: 17)
+        let grid = Percolation(columns: 40, rows: 40, probability: 0.62, using: &rng)
+        let area = Rectangle(x: 8, y: 8, width: 240, height: 240)
+        let spanning = grid.spanningClusterIndex
+
+        noStroke()
+        for k in 0 ..< grid.clusterCount where k != spanning {
+            let t = min(Double(grid.clusterSizes[k]) / 150, 1)
+            fill(Color.mix(Color(hex: 0x24506B), Color(hex: 0x88C7E8), t: t))
+            for cell in grid.cellRects(of: k, in: area) { drawRect(cell) }
+        }
+        if let spanning {
+            fill(Color(hex: 0xE8B44A))
+            for cell in grid.cellRects(of: spanning, in: area) { drawRect(cell) }
+            stroke(Color(hex: 0xF2E8DC))
+            strokeWeight(1.5)
+            noFill()
+            for loop in grid.outlines(of: spanning, in: area) {
+                drawPolygon(loop.points)
+            }
+        }
+        noLoop()
+    }
+}
+
 private final class StringArtScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 
