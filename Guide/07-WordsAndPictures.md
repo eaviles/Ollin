@@ -322,6 +322,32 @@ let veins = spanningTree(of: picture, points: 4000, in: frame)
 
 In those forms `cutoff` is the knob to know. It rounds bright grays up to paper, so pixels lighter than it place no dots at all. Without it a light region collects a thin wandering thread instead of staying empty, which is exactly what the sun in the figure would have done.
 
+## A picture wound from thread
+
+String art takes the same idea to its most physical extreme. Ring the canvas with pins, tie one thread to a pin, and wind it straight across, again and again. Nothing curves and nothing lifts. The picture has to come out of where the crossings pile up.
+
+<img src="Images/07-WordsAndPictures/WoundFromThread.jpg" alt="Three panels: a bold crescent picture, the first 350 chords of its winding crowding into the crescent, and the finished winding where the crescent is dense thread and the rest a light veil" width="680">
+
+```swift
+let art = StringArt(of: picture, center: Vector2(540, 540), radius: 470)
+
+override func setup() { noClear() }
+
+override func draw() {
+    if frameCount == 1 { background(.white) }
+    stroke(Color.black.withAlpha(0.35))
+    for chord in art.step(8) {
+        drawLine(chord.from, chord.to)
+    }
+}
+```
+
+Each chord is a greedy choice. From the pin the thread is on, `StringArt` scores every reachable pin by the darkness the straight chord would still cover. It winds the best one, subtracts that ink from its copy of the picture, and goes again from the pin it landed on. Dark regions demand crossing after crossing. Light regions are left almost alone. The picture emerges from where the thread had to go.
+
+It is a stepper you hold on to, like the growth systems of Chapter 11. Each `step` winds a few more chords onto a never-clearing canvas, so the figure knits itself over the first seconds of a run. And the result is honest thread: `art.thread` is one open polyline. `art.sequence` is the winding order itself, pin numbers you could follow on a real rim.
+
+One honest note, and it is why the figure gets a crescent instead of the sunset. Bold tonal masses knit into a clear figure. The sunset would wind into fuzz: its tone changes gently everywhere. Every chord covers about the same darkness, so no choice stands out. Give the winding silhouettes and deep shadow against open paper, or boost a timid picture's contrast first.
+
 ## Sorting the pixels
 
 The last treatment doesn't add marks, it rearranges the ones already there. **Pixel sorting** walks each row or column, finds runs of pixels whose brightness falls inside a band you choose, and sorts each run.
@@ -504,7 +530,7 @@ Then make it yours:
 
 Making pictures out of characters is older than computing. Typewriter artists were composing portraits from letters by the 1890s, and when 1960s line printers became the first output devices many people ever touched, the tradition became ASCII art. The deeper idea, an image rebuilt from small marks whose size carries the tone, is the halftone screen that printed every newspaper photograph for a century, and pointillism if you ask a painter. This chapter's tools have their own lineages. The bundled pixel font is [Cozette](https://github.com/the-moonwitch/Cozette) by Ines. The bundled stroke font is Hershey Sans, one of the vector fonts A. V. Hershey drew at the U.S. National Bureau of Standards in 1967 for early plotters, still beloved by the pen-plotter community. And outline text is laid out by the system's own type machinery, so kerning and ligatures come for free.
 
-The picture-as-marks tools each come from a named piece of work. Halftone screening is the printing industry's own, and Robert Ulichney's *Digital Halftoning* is the standard account of it. The settling method behind stippling is Adrian Secord's, published in 2002. Joining those dots into one line is TSP art, from Robert Bosch and Adrianne Herman in 2004, with the tone-driven dot placement Craig Kaplan and Bosch added a year later; joining them into a tree instead comes from Kohei Inoue and Kiichi Urahama in 2009. Pixel sorting is Kim Asendorf's, who wrote the original in Processing in 2010 and gave a generation of glitch artists their favorite verb. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The picture-as-marks tools each come from a named piece of work. Halftone screening is the printing industry's own, and Robert Ulichney's *Digital Halftoning* is the standard account of it. The settling method behind stippling is Adrian Secord's, published in 2002. Joining those dots into one line is TSP art, from Robert Bosch and Adrianne Herman in 2004, with the tone-driven dot placement Craig Kaplan and Bosch added a year later; joining them into a tree instead comes from Kohei Inoue and Kiichi Urahama in 2009. String art on a circular rim is Petros Vrellis's, whose 2016 knitted portraits wound one thread over 200 pins. The greedy winding here follows the formulation Michael Birsak and colleagues published in 2018. Pixel sorting is Kim Asendorf's, who wrote the original in Processing in 2010 and gave a generation of glitch artists their favorite verb. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
@@ -514,10 +540,11 @@ The picture-as-marks tools each come from a named piece of work. Halftone screen
 - [`Examples/Images/PixelField`](../Examples/Images/PixelField/Sketch.swift): authoring an image pixel by pixel and reading it back, under an animated tint.
 - [Glyph mosaic](../Docs/Drawing/GlyphMosaic.md) and [halftone](../Docs/Drawing/Halftone.md): the measured-ink ramp, the curated glyph sets, screen angles, and the data forms that let you draw your own marks.
 - [Stippling](../Docs/Generators/Stippling.md), [single line](../Docs/Generators/SingleLine.md), and [spanning tree](../Docs/Generators/SpanningTree.md): dot placement and the two ways to join it, with the `cutoff` and point-count guidance.
+- [String art](../Docs/Generators/StringArt.md): the pins and the ink dial, `inverted` for a pale thread on a dark ground, and the plotter path.
 - [Pixel sorting](../Docs/Drawing/PixelSorting.md): every key and direction, and how to get each of the classic looks.
 - [Data](../Docs/Helpers/Data.md): `loadTable` and `loadJSON` in full, including the separator and header guesses, reading a headerless file, and when a `Codable` type is the better tool.
 - Worked examples for data: [`Examples/Data/Readings`](../Examples/Data/Readings/Sketch.swift) (a CSV as a range chart) and [`Examples/Data/Places`](../Examples/Data/Places/Sketch.swift) (a JSON survey).
-- Worked examples: [`Examples/Images/GlyphMosaic`](../Examples/Images/GlyphMosaic/Sketch.swift), [`Halftone`](../Examples/Images/Halftone/Sketch.swift), [`PixelSort`](../Examples/Images/PixelSort/Sketch.swift), [`SingleLine`](../Examples/Images/SingleLine/Sketch.swift), and [`SpanningTree`](../Examples/Images/SpanningTree/Sketch.swift).
+- Worked examples: [`Examples/Images/GlyphMosaic`](../Examples/Images/GlyphMosaic/Sketch.swift), [`Halftone`](../Examples/Images/Halftone/Sketch.swift), [`PixelSort`](../Examples/Images/PixelSort/Sketch.swift), [`SingleLine`](../Examples/Images/SingleLine/Sketch.swift), [`SpanningTree`](../Examples/Images/SpanningTree/Sketch.swift), and [`StringArt`](../Examples/Images/StringArt/Sketch.swift).
 
 ---
 

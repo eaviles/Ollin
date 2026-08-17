@@ -464,6 +464,7 @@ let package = Package(
         example("Images/SingleLine"),
         example("Images/SlitScan"),
         example("Images/SpanningTree"),
+        example("Images/StringArt"),
         example("Audio/Synth", [.audio]),
         example("Audio/Generative", [.audio]),
         example("Audio/Strings", [.audio]),

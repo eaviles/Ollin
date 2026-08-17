@@ -4,7 +4,7 @@
 
 ## Images
 
-Loading, drawing, tinting, and authoring raster images (the `Image` value type, `drawImage`, `tint`, and the `Image[x, y]` pixel subscript), plus the image-as-input renderings that turn a picture into glyphs, streaks, halftone dots, a single line, or a molten field.
+Loading, drawing, tinting, and authoring raster images (the `Image` value type, `drawImage`, `tint`, and the `Image[x, y]` pixel subscript), plus the image-as-input renderings that turn a picture into glyphs, streaks, halftone dots, a single line, a branching tree of veins, a wound thread, or a molten field.
 
 | Example | What it shows |
 |---|---|
@@ -15,5 +15,7 @@ Loading, drawing, tinting, and authoring raster images (the `Image` value type, 
 | [PixelSort](PixelSort/Sketch.swift) | a painted dusk skyline melted into falling streaks, the sort window breathing over the loop and a second axis on mouse hold (`Image.pixelSorted`, threshold intervals, `reversed`) |
 | [SingleLine](SingleLine/Sketch.swift) | a ringed planet drawn by one unbroken line that reveals and unwinds, stipple plus traveling-salesman tour, plotter-ready via `--export-svg` (`singleLine(of:points:)`, `cutoff`) |
 | [SlitScan](SlitScan/Sketch.swift) | time smeared across space over a painted feed: the classic left-to-right scan, radial time on mouse hold, the live source inset (`SlitScan`, `push`, `image(delay:)`) |
+| [SpanningTree](SpanningTree/Sketch.swift) | a leaf's stipples joined by the minimum spanning tree, so the dots come out as veins drawn chain by chain in plotting order, plotter-ready via `--export-svg` (`spanningTree(of:points:)`) |
+| [StringArt](StringArt/Sketch.swift) | a crescent moon knitted from one continuous thread over 200 rim pins, each chord chosen greedily for the darkness it still covers, the winding accumulating live (`StringArt`, `step`, `thread`) |
 
 Run one with `swift run Example-Images-<Name>`, e.g. `swift run Example-Images-PixelField`.

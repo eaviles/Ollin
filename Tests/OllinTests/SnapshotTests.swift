@@ -422,6 +422,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("crack-growth",
                  note: "A seeded crack-growth field run several hundred ticks in one frame: perpendicular cracks subdividing the plane, each dragging its one-sided grain wash. Pins the angle-grid collision rules, the restart-and-recruit population, the wash's side and sin-eased grain spacing, and the rng call order. Seeded, no time, so it is deterministic.",
                  make: { CrackGrowthScene() }),
+    SnapshotCase("string-art",
+                 note: "A painted crescent wound as string art in one frame: a few hundred greedy chords of one thread over a ring of pins, drawn translucent. Pins the darkness sampling and its circle mask, the greedy mean-darkness scoring, the ink pay-down, the span and no-repeat rules, and the pin layout. No rng and no time, so it is deterministic.",
+                 make: { StringArtScene() }),
     SnapshotCase("dither",
                  note: "One painted gradient quantized to a three-color palette four ways, at 1:1 pixels: plain nearest-color (banding), ordered Bayer, blue noise, Floyd-Steinberg. Pins the whole dithering pass (the Bayer recurrence, the void-and-cluster tile, the error-diffusion kernel and its serpentine scan) plus the color space each family chooses its colors in. No rng and no time, so it is deterministic.",
                  make: { DitherScene() }),
@@ -3160,6 +3163,43 @@ private final class CrackGrowthScene: Sketch {
             fill(Color.black.withAlpha(0.33))
             drawPoint(mark.point)
         }
+    }
+}
+
+/// A painted crescent wound as string art in one frame: the greedy chord
+/// choice pays its ink down as it goes, so the whole winding is one
+/// deterministic pass. No rng and no `time`, so it is deterministic.
+private final class StringArtScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0xF6F1E7))
+        let art = StringArt(of: paint(), center: Vector2(128, 128), radius: 116,
+                            pins: 100, chords: 400, ink: 0.12, resolution: 128)
+        noFill()
+        stroke(Color(hex: 0x20222B).withAlpha(0.4))
+        strokeWeight(1)
+        for chord in art.step(400) {
+            drawLine(chord.from, chord.to)
+        }
+    }
+
+    /// A small crescent on white: a disk with a second disk bitten out of it.
+    private func paint() -> Image {
+        let n = 96
+        let image = Image(width: n, height: n, color: .white)
+        for y in 0 ..< n {
+            for x in 0 ..< n {
+                let u = (Double(x) + 0.5) / Double(n) * 2 - 1
+                let v = (Double(y) + 0.5) / Double(n) * 2 - 1
+                let disk = dist(u, v, 0, 0)
+                guard disk < 0.68 else { continue }
+                let inDisk = 1 - smoothstep(0.62, 0.68, disk)
+                let inBite = smoothstep(0.5, 0.6, dist(u, v, 0.3, -0.24))
+                image[x, y] = Color(white: 0.85 - 0.7 * inDisk * inBite)
+            }
+        }
+        return image
     }
 }
 
