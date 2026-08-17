@@ -451,6 +451,36 @@ fragment float4 ollin_ibl_sky_gen_clouds(OllinIBLVaryings in [[stage_in]],
     return float4(max(col, 0.0), 1.0);
 }
 
+// 1d) Live-feed environment generation. Fill an equirectangular target from a camera
+// (or video) frame, so the rest of the IBL bake runs on it exactly as on a loaded
+// HDRI. The picture covers the front hemisphere (azimuth measured about +Z, the
+// direction the frame faces); the back hemisphere is its horizontal mirror, so the
+// wrap is continuous at both side seams. Toward the poles the sample pinches to the
+// picture's center column, so the two pole points are single colors rather than
+// seams. The frame's texture is sRGB, so the sample arrives linear; alpha is held
+// at 1 (an environment has no transparency).
+fragment float4 ollin_ibl_feed_gen(OllinIBLVaryings in [[stage_in]],
+                                   texture2d<float> frame [[texture(0)]]) {
+    constexpr sampler samp(filter::linear,
+                           s_address::clamp_to_edge, t_address::clamp_to_edge);
+    float3 dir = ollin_ibl_equirect_dir(in.uv);
+    float phi = atan2(dir.x, dir.z);          // 0 straight ahead (+Z), ±π behind
+    float a = abs(phi);
+    float halfPi = OLLIN_IBL_PI * 0.5;
+    // Fold the back half onto the front as its mirror: ±π/2 meets the picture's own
+    // edge (continuous), ±π meets its far edge folded back (continuous).
+    float folded = (a <= halfPi) ? phi : copysign(OLLIN_IBL_PI - a, phi);
+    float u = 0.5 + folded / OLLIN_IBL_PI;
+    // Pinch toward the center column as the direction leaves the equator, so every
+    // azimuth converges to one sample at each pole instead of a swirl.
+    float sinLat = sqrt(max(1.0 - dir.y * dir.y, 0.0));
+    u = 0.5 + (u - 0.5) * sinLat;
+    // The equirect's own v is the latitude fraction: the picture stretches from the
+    // top of the sphere to the bottom.
+    float3 c = frame.sample(samp, float2(u, in.uv.y)).rgb;
+    return float4(c, 1.0);
+}
+
 // 2) Diffuse irradiance: cosine-weighted hemisphere convolution of the environment cube.
 fragment float4 ollin_ibl_irradiance(OllinIBLVaryings in [[stage_in]],
                                      constant float4 &params [[buffer(0)]],

@@ -48,6 +48,11 @@ public struct Environment: Equatable, Hashable, Sendable {
         /// A procedural physically-based sky (no asset): `turbidity` haze, `sunElevation`
         /// in radians above the horizon, `groundAlbedo` reflectance.
         case sky(turbidity: Double, sunElevation: Double, groundAlbedo: Double)
+        /// A live picture (`Environment.feed(_:)`): the registered `VideoFeed` whose
+        /// latest frame is wrapped into the surroundings and re-baked as frames arrive.
+        /// The `id` names the feed in the frame-feed registry; build one with the
+        /// `feed(_:)` factory rather than by hand.
+        case feed(id: Int)
     }
 
     /// Where the lighting comes from (a bundled / loaded / downloaded HDRI or a procedural sky).
@@ -298,7 +303,7 @@ extension Environment {
     /// to a cached file or a fallback first) and on load failure.
     func loadEquirectImage() -> CGImage? {
         switch source {
-        case .sky, .remote:
+        case .sky, .remote, .feed:
             return nil   // resolved to a cached `.url` or a `.resource` fallback by the renderer
         case .url(let url):
             return Environment.decodeHDR(at: url)

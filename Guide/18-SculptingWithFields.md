@@ -244,6 +244,27 @@ Two knobs come up immediately in practice. An environment paints itself **behind
 
 `SDF3D.plane()` is worth knowing about here too, since it's an infinite floor you can merge into the field for true horizon-to-horizon self-shadowing.
 
+### The room as the light
+
+Every environment so far was somewhere else: a Venice evening, a studio, a synthetic sky. `Environment.feed(...)` uses somewhere you already are. Hand it the webcam, and its latest frame becomes the surroundings. **The room you are sitting in lights the thing you are making.**
+
+```swift
+let camera = Camera()          // Chapter 21 introduces it properly; start it in setup()
+
+func draw() {
+    drawFrame(camera)              // the room as the picture
+    environment(.feed(camera))     // the room as the light
+    material(.polishedMetal)
+    drawSphere(radius: 1)
+}
+```
+
+Walk past the camera and the reflections move with you. Hold up something red and the whole scene warms. A webcam only brings a window, and lighting needs a whole sphere of surroundings, so the half the camera can't see is filled with the mirror image of the half it can. That's plausible rather than true, and plausible is exactly what lighting needs.
+
+<img src="Images/18-SculptingWithFields/LiveRoom.jpg" alt="Three spheres floating in front of a picture of a room: a warm amber wall on the left, a cool blue one on the right, a bright window pane upper right, a dark floor band below. The chrome sphere on the left reflects the window and the two-toned wall, the middle sphere smears the same reflection into a satin sheen, and the white matte sphere on the right reads warm on its left side and cool on its right" width="680">
+
+That figure fakes the webcam with one authored picture, so the guide reproduces; everything after the frame is the real path. The picture behind the spheres is also the light on them, which is the whole point: show the feed yourself with `drawFrame`, and the picture and the lighting stay one world. The feed deliberately never draws as its own backdrop the way an HDRI does, because the wrap is made for lighting, not for looking at. Any `VideoFeed` works the same way (a playing video, a screen capture, the phone's camera), and until the first frame arrives a neutral sky stands in. The `3D/Environments/LiveEnvironment` example is this section, live.
+
 ## Mirrors that see off screen
 
 Chapter 17 finished with screen-space reflections and an honest limit. They reflect what is on the screen, so they cannot show you anything the camera can't already see. `rayTracedReflections()` is the answer to that, and it works differently enough to be worth understanding.

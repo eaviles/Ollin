@@ -1114,6 +1114,9 @@ final class MetalRenderer {
     /// Test seam: overrides `iblCacheBudgetBytes` so eviction is observable without
     /// baking gigabytes.
     var iblCacheBudgetOverride: Int?
+    /// Per-feed bake state for `.feed` environments: the frame last baked and the
+    /// generation its cache key carries (see `bakeFeed`).
+    var feedBakeStates: [Int: FeedBakeState] = [:]
     var iblBRDFLUT: MTLTexture?
     /// The sheen directional-albedo LUT, environment-independent like the BRDF LUT but
     /// needed with plain lights too, so it bakes on its own trigger: the first frame

@@ -260,6 +260,7 @@ let package = Package(
         example("3D/Environments/Cloudscape"),
         example("3D/Environments/HighResEnvironment"),
         example("3D/Environments/EnvironmentURL"),
+        example("3D/Environments/LiveEnvironment", [.vision]),
         example("3D/Materials/Matcap"),
         example("3D/Lighting/Shadows"),
         example("3D/Lighting/SpotShadow"),

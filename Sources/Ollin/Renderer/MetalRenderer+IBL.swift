@@ -27,6 +27,18 @@ struct IBLCacheEntry {
 struct IBLKey: Hashable {
     let source: Environment.Source
     let clouds: Clouds?
+    /// For a `.feed` source, the frame generation the bake was made from (a new
+    /// camera/video frame bumps it, so the stale bake stops matching and is evicted).
+    /// Always 0 for every other source, so their keys never vary on it.
+    var feedGeneration: UInt64 = 0
+}
+
+/// The renderer's per-feed record for a `.feed` environment: the frame `Image` it last
+/// baked (compared by identity, and *held*, so a freed frame's recycled object address
+/// can never read as "unchanged") and the generation its bake key carries.
+struct FeedBakeState {
+    var image: Image?
+    var generation: UInt64 = 0
 }
 
 /// The baked image-based-lighting maps for one environment, cached by source. The
@@ -100,6 +112,11 @@ extension MetalRenderer {
     /// source so the bake runs once; the raw float pixels are freed once baked into textures.
     private func bakeReady(_ env: Environment, blocking: Bool,
                            commandBuffer cb: MTLCommandBuffer) -> IBLMaps? {
+        // A live feed bakes on its own path (a per-feed generation keys its cache
+        // entries), so the HDRI/sky path below never sees a feed.
+        if case .feed(let feedID) = env.source {
+            return bakeFeed(env, feedID: feedID, commandBuffer: cb)
+        }
         // A static sky (or an HDRI) keys on its exact source (clouds included, for the
         // sky), so it bakes once and then reuses the cache every frame. An animated sky
         // is a fresh key each frame, so it re-bakes entirely on the GPU (no CPU
@@ -151,6 +168,81 @@ extension MetalRenderer {
 
     /// Once-only note for a clouds value on a non-sky environment (ignored by design).
     private static let warnedCloudsOnHDRI = OSAllocatedUnfairLock(initialState: false)
+
+    /// Bake (or reuse) the IBL maps for a `.feed` environment: the feed's latest frame,
+    /// wrapped into an equirect on the GPU and run through the reduced-budget convolution
+    /// the animated sky uses. The bake key carries a per-feed generation that bumps when
+    /// a new frame arrives, so an unchanged frame reuses its bake for free and a new one
+    /// re-bakes (the stale generation is evicted below, the animated-sky discipline). A
+    /// GPU-backed frame (a live texture updated in place) can't signal newness by
+    /// identity, so it re-bakes every resolve, the animated sky's own per-frame cost.
+    /// Returns nil (the placeholder sky lights the scene) until the first frame arrives
+    /// or once the feed has deallocated.
+    private func bakeFeed(_ env: Environment, feedID: Int,
+                          commandBuffer cb: MTLCommandBuffer) -> IBLMaps? {
+        guard let feed = FeedEnvironments.feed(for: feedID),
+              let frame = feed.frame,
+              let frameTexture = frame.texture(for: device) else { return nil }
+        var state = feedBakeStates[feedID] ?? FeedBakeState()
+        if frame.hasCPUPixels {
+            if state.image !== frame {
+                state.generation &+= 1
+                state.image = frame
+            }
+        } else {
+            state.generation &+= 1
+            state.image = frame
+        }
+        feedBakeStates[feedID] = state
+        let key = IBLKey(source: env.source, clouds: nil, feedGeneration: state.generation)
+        if var entry = iblCache[key] {
+            entry.lastUse = iblResolveTick
+            iblCache[key] = entry
+            return entry.maps
+        }
+        // Auto-exposure stays at exactly 1 for a feed (the target average IS the
+        // average passed): a camera exposes itself, and reading the frame's pixels
+        // back for a real average would be a per-bake CPU copy of every frame.
+        guard let equirect = generateFeedEquirectTexture(from: frameTexture, commandBuffer: cb),
+              let maps = bakeIBL(env, equirectTexture: equirect,
+                                 avgLuminance: Self.iblTargetLuminance,
+                                 fastSky: true, commandBuffer: cb) else { return nil }
+        for k in iblCache.keys where k != key {
+            if case .feed(let kid) = k.source, kid == feedID { iblCache[k] = nil }
+        }
+        let bytes = Self.textureFootprint(maps.irradiance) + Self.textureFootprint(maps.prefilter)
+            + Self.textureFootprint(maps.envCube) + Self.textureFootprint(maps.equirect)
+        iblCache[key] = IBLCacheEntry(maps: maps, bytes: bytes, lastUse: iblResolveTick)
+        evictIBLOverBudget(keeping: key)
+        return maps
+    }
+
+    /// Wrap a feed frame into a mipmapped equirect texture on the frame's command buffer
+    /// (`ollin_ibl_feed_gen`): the picture covers the front hemisphere, its mirror the
+    /// back, pinched to its center column at the poles, so the wrap is continuous
+    /// everywhere and the rest of the IBL bake runs on it exactly as on a loaded HDRI.
+    /// No CPU round-trip, the procedural sky's own rule.
+    private func generateFeedEquirectTexture(from frameTexture: MTLTexture,
+                                             commandBuffer cb: MTLCommandBuffer) -> MTLTexture? {
+        let width = 1024, height = 512
+        let desc = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba16Float,
+                                                            width: width, height: height,
+                                                            mipmapped: true)
+        desc.usage = [.renderTarget, .shaderRead]
+        desc.storageMode = .private
+        guard let tex = device.makeTexture(descriptor: desc),
+              let pipe = try? pipeline(.ibl("ollin_ibl_feed_gen")) else { return nil }
+        let rp = MTLRenderPassDescriptor()
+        rp.colorAttachments[0].texture = tex
+        rp.colorAttachments[0].loadAction = .dontCare
+        rp.colorAttachments[0].storeAction = .store
+        guard let enc = countedEncoder(cb, rp) else { return nil }
+        enc.setRenderPipelineState(pipe)
+        enc.setFragmentTexture(frameTexture, index: 0)
+        enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        enc.endEncoding()
+        return tex
+    }
 
     /// The baked-map budget: enough for a handful of high-resolution environments (a 4K
     /// HDRI's maps are ~85 MB, an 8K's ~270 MB) while keeping a gallery that cycles many
@@ -221,6 +313,11 @@ extension MetalRenderer {
             return (env, nil)
         case .sky:
             return (env, nil)   // generated on the GPU when its pixels are baked
+        case .feed:
+            // Generated on the GPU from the feed's latest frame when baked; until the
+            // first frame arrives (camera permission pending, a video still opening),
+            // the neutral sky lights the scene, the remote-download discipline.
+            return (env, with(Self.skyPlaceholderSource))
         case .remote(let url, let fallback):
             let cache = EnvironmentCache.shared
             // While a non-bundled HDRI downloads, light the scene with a procedural sky
@@ -285,9 +382,9 @@ extension MetalRenderer {
                 }
             }
             return nil
-        case .sky, .remote:
-            // .sky is generated as a texture directly in bakeReady (no CPU pixels); .remote was
-            // resolved to a cached .url or a placeholder before reaching here.
+        case .sky, .remote, .feed:
+            // .sky and .feed are generated as textures directly in bakeReady (no CPU
+            // pixels); .remote was resolved to a cached .url or a placeholder first.
             return nil
         }
     }
