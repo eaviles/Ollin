@@ -432,6 +432,39 @@ typedef struct {
     unsigned int _fc0;
 } OllinFieldCullParams;
 
+// Parameters for a `StrandField` (`drawStrands`): a patch of grass-like blades
+// generated ENTIRELY on the GPU by a mesh pipeline. No vertex or instance
+// buffer exists anywhere: every blade's position, height, lean, sway phase, and
+// tint derive from its index through the shader library's hashes, the object
+// stage frustum-culls per tile and picks a per-tile segment count by camera
+// distance, and the mesh stage emits the ribbons in-draw. One struct feeds the
+// object stage, the mesh stage, and the CPU-side tile math.
+typedef struct {
+    simd_float4 planes[6];     // inward world-space frustum planes (camera)
+    simd_float4x4 fieldModel;  // patch local -> world (the draw-time 3D CTM)
+    simd_float4 lowColor;      // straight sRGB base color at the blade root
+    simd_float4 tipColor;      // straight sRGB color at the tip
+    simd_float4 patch;         // x, y = patch half-extents in X/Z; z = tile edge; w unused
+    simd_float4 blade;         // x = height, y = height variance 0..1, z = width, w = lean amount
+    simd_float4 sway;          // x = sway amplitude, y = frequency, z = the sketch clock, w = seed
+    simd_float4 lod;           // x = camera-space near distance (full detail), y = far
+                               // (least), z = eye x, w = eye z (the distance read)
+    simd_float4 eye;           // xyz = world eye (unused slots reserved); w = lodEnabled
+    unsigned int tilesX;       // tiles across the patch
+    unsigned int tilesZ;
+    unsigned int bladesPerTile;
+    unsigned int cullEnabled;  // 0 = every tile passes (the A/B switch)
+} OllinStrandParams;
+
+// Blade-bundle sizing shared by the CPU dispatch and the mesh stage: each mesh
+// threadgroup emits up to OLLIN_STRAND_BUNDLE blades, one thread per blade, at
+// up to OLLIN_STRAND_MAX_SEGMENTS segments each. The metal::mesh capacity is
+// sized from these (verts = bundle * (maxSegments + 1) * 2 <= 256, primitives
+// = bundle * maxSegments * 2 <= 512), so changing either means re-checking
+// both caps.
+#define OLLIN_STRAND_BUNDLE 24
+#define OLLIN_STRAND_MAX_SEGMENTS 4
+
 // The surface *finish* of a 3D mesh: how it responds to light, separate from the surface
 // color (which is the baked vertex color = the current `fill`). A material is constant
 // across a mesh, so it's bound per mesh batch as a fragment uniform rather than baked into

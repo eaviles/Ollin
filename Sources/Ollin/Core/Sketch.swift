@@ -1397,6 +1397,15 @@ open class Sketch {
     /// without a camera.
     public func drawMeshField(_ field: MeshField) { drawer.drawMeshField(field) }
 
+    /// Draw a `StrandField`: a patch of grass-like blades the GPU grows inside
+    /// the draw call itself. No geometry exists anywhere (no vertex, index, or
+    /// instance buffer); the camera decides per tile what to skip and how much
+    /// detail distant blades deserve, and every blade sways on the sketch
+    /// clock. Blades shade like solid meshes (lights, shadows received,
+    /// image-based lighting, fog) with the current `material(_:)` finish, and
+    /// the transform stack places the patch. A no-op without a camera.
+    public func drawStrands(_ field: StrandField) { drawer.drawStrands(field) }
+
     /// Draw a loaded `Scene`: every node's mesh at its authored place, the node
     /// transforms composed down the tree and onto the 3D transform stack (so
     /// `translate`/`rotate`/`scale` before this call move the whole scene). The

@@ -168,6 +168,7 @@ extension MetalRenderer {
             }
             return try device.makeRenderPipelineState(descriptor: d)
         }
+        if !key.mesh.isEmpty { return try makeMeshPipeline(key, using: library) }
         return try makePipeline(vertex: key.vertex, fragment: key.fragment, using: library,
                                 premultiplied: key.premultiplied, blend: key.blend,
                                 depthFormat: key.depthFormat, singleSample: key.singleSample,
@@ -316,6 +317,46 @@ extension MetalRenderer {
         attachment.destinationAlphaBlendFactor = state.destinationAlpha
 
         return try device.makeRenderPipelineState(descriptor: descriptor)
+    }
+
+    /// A mesh pipeline (Metal 3 [[object]]/[[mesh]] stages): the strand fields'
+    /// factory. Shaped like the generic geometry pipeline (linear-float target,
+    /// the pass's MSAA count, blend from the key) with the two mesh stages in
+    /// place of a vertex function; the fragment is the ordinary lit one.
+    private func makeMeshPipeline(_ key: PipelineKey,
+                                  using library: MTLLibrary) throws -> MTLRenderPipelineState {
+        guard let objectFunction = library.makeFunction(name: key.object),
+              let meshFunction = library.makeFunction(name: key.mesh),
+              let fragmentFunction = library.makeFunction(name: key.fragment) else {
+            throw RendererError.shaderFunctions
+        }
+        let descriptor = MTLMeshRenderPipelineDescriptor()
+        descriptor.objectFunction = objectFunction
+        descriptor.meshFunction = meshFunction
+        descriptor.fragmentFunction = fragmentFunction
+        descriptor.payloadMemoryLength = key.payloadLength
+        descriptor.maxTotalThreadsPerObjectThreadgroup = 32
+        descriptor.maxTotalThreadsPerMeshThreadgroup = Int(OLLIN_STRAND_BUNDLE)
+        descriptor.rasterSampleCount = key.singleSample ? 1 : sampleCount
+        if let depthFormat = key.depthFormat {
+            descriptor.depthAttachmentPixelFormat = depthFormat
+        }
+        if let stencilFormat = key.stencilFormat {
+            descriptor.stencilAttachmentPixelFormat = stencilFormat
+        }
+        let state = key.blend.blendState(premultiplied: key.premultiplied)
+        let attachment = descriptor.colorAttachments[0]!
+        attachment.pixelFormat = linearFormat
+        attachment.isBlendingEnabled = true
+        attachment.rgbBlendOperation = state.colorOperation
+        attachment.alphaBlendOperation = state.alphaOperation
+        attachment.sourceRGBBlendFactor = state.sourceColor
+        attachment.sourceAlphaBlendFactor = state.sourceAlpha
+        attachment.destinationRGBBlendFactor = state.destinationColor
+        attachment.destinationAlphaBlendFactor = state.destinationAlpha
+        let (pipeline, _) = try device.makeRenderPipelineState(descriptor: descriptor,
+                                                               options: [])
+        return pipeline
     }
 
     // MARK: Helpers
@@ -790,7 +831,7 @@ extension MetalRenderer {
     /// so it goes first (Metal needs a declaration before its use); `ShaderCore`
     /// follows with the 2D core pipelines. The single `Shaders.metal` split into
     /// these once it crossed ~2,000 lines; the renderer never assumes one file.
-    static let shaderSourceNames = ["OllinShaderLib", "ShaderCore", "ShaderShapes", "ShaderCombinator", "Shader3D", "ShaderRaymarch", "ShaderEffects", "ShaderCombine", "ShaderGI", "ShaderSim", "ShaderPatterns", "ShaderIBL"]
+    static let shaderSourceNames = ["OllinShaderLib", "ShaderCore", "ShaderShapes", "ShaderCombinator", "Shader3D", "ShaderRaymarch", "ShaderStrands", "ShaderEffects", "ShaderCombine", "ShaderGI", "ShaderSim", "ShaderPatterns", "ShaderIBL"]
 
     /// Read and concatenate the shader segments from a filesystem `directory`, in
     /// `shaderSourceNames` order. This is the source live shader reload feeds back

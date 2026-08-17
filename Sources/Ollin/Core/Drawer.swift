@@ -98,6 +98,8 @@ enum GeometryKind {
                        // (or a GPU-resident instance buffer), placed on the GPU
     case meshField     // a retained `MeshField`: many distinct meshes + copies drawn
                        // by ONE executeCommandsInBuffer, GPU-culled per copy
+    case strands       // a `StrandField`: blades a mesh pipeline grows in-draw
+                       // (no geometry buffers anywhere), tile-culled + LOD'd on the GPU
     case fringe       // edge-expanded stroke + ~1px AA fringe in `vertices` (the high-quality stroke path)
     case depthScene   // a backdrop quad in `imageVertices` that also primes the depth buffer from a depth map
     case sdfGroup     // composed SDF field (combinator) in `sdfGroups`, evaluating `sdfNodes`
@@ -157,6 +159,9 @@ struct GeometryBatch {
     /// field vertex shader; identity when the field is drawn untransformed).
     var field: MeshField?
     var fieldTransform: simd_float4x4 = matrix_identity_float4x4
+    /// The strand parameters for a `.strands` batch (`nil` otherwise); the
+    /// draw-time CTM rides `fieldTransform` like a mesh field's.
+    var strandField: StrandField?
     /// The *metric* depth map (meters) for a metric `.depthScene` batch, written to
     /// the depth buffer as true clip-space depth against the active camera's near/far
     /// (the conversion coefficients ride in the quad's vertex tint). `nil` for the
@@ -3166,6 +3171,48 @@ final class Drawer {
                                      blendMode: currentBlend, depth: currentDepth,
                                      field: field,
                                      fieldTransform: modelIsIdentity ? matrix_identity_float4x4 : modelMatrix,
+                                     finish: currentMaterial.gpuMaterial(),
+                                     target: currentTarget, clipLevel: activeClipLevel))
+        currentKind = nil
+    }
+
+    /// Draw a `StrandField`: blades a mesh pipeline synthesizes inside the draw
+    /// call itself (no geometry buffers exist), tile-culled against the camera
+    /// and detail-graded by distance on the GPU. Blades shade on the solid lit
+    /// path with the current `material(_:)` finish; the 3D CTM moves the patch.
+    /// The geometry exists only in-draw, so strands are skipped by the shadow
+    /// casters, the vector recorder, and the spatial recorder (each with a note
+    /// where surprising).
+    func drawStrands(_ field: StrandField) {
+        if isRecordingBatch {
+            noteBatchRecording("a StrandField inside makeBatch { } is not recorded (its blades are grown by the GPU each frame); draw it where the batch is drawn.")
+            return
+        }
+        guard camera3D != nil, field.count > 0 else { return }
+        if !combineStack.isEmpty {
+            if !warnedMeshInCombine {
+                print("Ollin: a mesh inside a combine block is ignored unless it's an SDF-able primitive (drawSphere/drawBox/drawRoundedBox/drawCylinder/drawCone/drawTorus/drawCapsule/drawOctahedron); a 3D combine merges those analytic fields.")
+                warnedMeshInCombine = true
+            }
+            return
+        }
+        if svgRecorder != nil { return }
+        if spatialRecorder != nil {
+            noteOnce("a StrandField's blades exist only inside the draw, so a spatial export can't record them.")
+            return
+        }
+        currentTarget?.needsDepth = true
+        batches.append(GeometryBatch(kind: .strands, vertexStart: vertices.count,
+                                     instanceStart: sdfInstances.count,
+                                     imageStart: imageVertices.count,
+                                     glyphStart: glyphVertices.count,
+                                     pointStart: points.count,
+                                     meshStart: meshVertices.count,
+                                     sdfGroupStart: sdfGroups.count,
+                                     sdf3DGroupStart: sdf3DGroups.count,
+                                     blendMode: currentBlend, depth: currentDepth,
+                                     fieldTransform: modelIsIdentity ? matrix_identity_float4x4 : modelMatrix,
+                                     strandField: field,
                                      finish: currentMaterial.gpuMaterial(),
                                      target: currentTarget, clipLevel: activeClipLevel))
         currentKind = nil

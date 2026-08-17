@@ -708,6 +708,27 @@ The picture above holds 240,000 solids. Each frame, a small compute pass tests e
 
 A field bakes its colors when you place it (each copy's own tint on top), shades through whatever `material(_:)` is current, and still drops real shadows, including from copies *behind* you, which is the sort of detail you only notice when it is wrong. The shadow pass culls too, against the light's own view instead of yours. On an M2, this world costs 18.5 ms of GPU per frame with culling on and 50.8 ms with it off, a 2.7x win, and the one `drawMeshField` call costs the CPU nothing worth printing. The [instancing reference](../Docs/3D/Instancing.md) has the field's fine print.
 
+## Grass that was never built
+
+One kind of geometry defeats every trick so far. A meadow needs half a million blades, and each blade needs its own curve: its own height, its own lean, its own bend along its length, its own sway in the wind. Instancing cannot do that. An instanced draw moves rigid copies of one fixed shape, and a blade's whole character is that it is *not* rigid. The answer is to stop storing geometry at all. A **`StrandField`** grows every blade inside the draw call itself. **The geometry is born inside the draw and gone when it ends.**
+
+<img src="Images/17-3DGently/GrassMeadow.jpg" alt="A dense meadow of individually curved grass blades in deep greens, each catching the warm key light differently, with pale boulders half-buried among them and the field dimming into darkness at the horizon" width="640">
+
+```swift
+var meadow = StrandField(width: 90, depth: 90, count: 500_000)
+
+override func draw() {
+    camera(...)
+    directionalLight(...)
+    castShadows()
+    drawStrands(meadow)        // half a million blades, zero buffers
+}
+```
+
+There is no vertex buffer and no instance list behind that call, and `setup()` built nothing. A GPU stage looks at each tile of the patch, skips the ones the camera cannot see, and decides how much detail the rest deserve; a second stage synthesizes the visible ribbons from hashes of each blade's index, four segments near the camera and one far away. Where a blade roots, how it bends, how it sways on the sketch clock: all of it is arithmetic that happens during the draw and is never written down anywhere.
+
+And the blades are not a special effect painted over the scene. They shade on the same lit path as every solid, so the boulders' cast shadows fall across the grass, the fog takes the far rows, and your `material(_:)` finish applies. The meadow above draws in about 22.5 ms on an M2, from zero bytes of geometry and zero per-frame CPU. The [`Grassland`](../Examples/Rendering/Grassland/Sketch.swift) example is that meadow with a knob on the distance grading; the [strand reference](../Docs/3D/Strands.md) has the blade knobs and the fine print (blades receive shadows but cast none; nothing exists for an exporter to record).
+
 ## Things with weight
 
 Chapter 9 dropped flat shapes into a physics world and let gravity do the animating. The same world exists in 3D, and it fits the scene you've been building all chapter. Crates stack, balls roll, and chains swing, with real contact response, under the same lights and shadows as everything else. It comes with `import OllinPhysics`, like its 2D sibling, and it keeps the shape you already know. Build a `World3D` once, add bodies, and step it every frame.

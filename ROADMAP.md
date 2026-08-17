@@ -98,7 +98,6 @@ See the [design notes](DESIGN-NOTES.md#new-output-surfaces).
 Deeper use of the Metal core and Apple displays, all opt-in so the 2D path stays untaxed:
 
 - **Dolby Vision.** Dynamic per-scene HDR metadata, where the static HDR10 metadata a video carries describes the whole file at once. It needs the licensed encoder path rather than AVFoundation's plain HDR writer, so it is a licensing question before it is an API one.
-- **Mesh shaders.** Generate geometry on the GPU: grass, hair, shells with no CPU vertex buffer, for the forms that cannot be expressed as instanced draws. Metal-native, slotting in as a new pipeline kind behind the `PipelineKey` cache.
 - **Film-quality export.** An offline path-traced render path a sketch can switch to for gallery-grade stills and sequences, from the same scene tuned live (an extension of the ray-tracing direction noted under [3D mode](#3d-mode)).
 
 See the [design notes](DESIGN-NOTES.md#rendering-and-color-frontier). (The most speculative items here, spectral rendering, AI frame interpolation, optical-flow self-warp, and print color management, sit under [Further out / exploratory](#further-out--exploratory).)

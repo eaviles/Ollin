@@ -218,6 +218,7 @@ Use it two ways. It is an index for the moment you remember the guide showing bl
 | Scene chrome | The axis widget and ground grid, live-only, never exported | [Ch 17](17-3DGently.md) | [Camera](../Docs/3D/Camera.md) |
 | Instanced meshes | One mesh drawn thousands of times in one call: `MeshInstance` placements the GPU applies per copy, or a compute-written buffer | [Ch 17](17-3DGently.md) | [Instancing](../Docs/3D/Instancing.md) |
 | Mesh fields | A retained world of placed meshes drawn by one call, GPU-culled per copy against the camera (`MeshField`/`drawMeshField`) | [Ch 17](17-3DGently.md) | [Instancing](../Docs/3D/Instancing.md) |
+| Strand fields | Grass grown inside the draw call: bending, swaying blades with no geometry buffers, camera-culled and distance-graded (`StrandField`/`drawStrands`) | [Ch 17](17-3DGently.md) | [Strands](../Docs/3D/Strands.md) |
 | Depth compositing | Flat 2D drawing placed *inside* the 3D depth buffer, so the scene occludes it: `depth(at:)`, `project`, billboards, depth feeds | [Ch 19](19-DepthAndThePhone.md) | [DepthCompositing](../Docs/3D/DepthCompositing.md) |
 | What stacks with what | The compatibility map across the 3D features | [Ch 17](17-3DGently.md), [Ch 18](18-SculptingWithFields.md) | [Combining](../Docs/3D/Combining.md) |
 

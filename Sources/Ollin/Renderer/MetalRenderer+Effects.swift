@@ -2250,6 +2250,7 @@ extension MetalRenderer {
                 // the camera projection), so only plain 2D batches feed `clipDepth`.
                 let wantsDepth = depthFormat != nil && (batch.kind == .points3D || batch.kind == .mesh3D
                     || batch.kind == .meshInstanced || batch.kind == .meshField
+                    || batch.kind == .strands
                     || batch.kind == .depthScene || batch.kind == .sdfGroup3D || batch.depth != nil)
                 if hasStencil {
                     switch batch.kind {
@@ -2287,7 +2288,7 @@ extension MetalRenderer {
                 }
                 if depthFormat != nil,
                    batch.kind != .points3D && batch.kind != .mesh3D && batch.kind != .meshInstanced
-                    && batch.kind != .meshField
+                    && batch.kind != .meshField && batch.kind != .strands
                     && batch.kind != .depthScene && batch.kind != .sdfGroup3D {
                     uniforms.clipDepth = batch.depth ?? 0
                     encoder.setVertexBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: 1)
@@ -2649,6 +2650,31 @@ extension MetalRenderer {
                                            indirectBuffer: resources.drawArguments,
                                            indirectBufferOffset: entry * argStride)
                 }
+            case .strands:
+                // A StrandField: two GPU stages grow the blades inside this draw
+                // (tile cull + per-tile detail in the object stage, ribbon
+                // synthesis in the mesh stage). Nothing is bound but parameters:
+                // no vertex, index, or instance buffer exists. Blades emit the
+                // solid path's MeshOut, so the full lit binding set applies.
+                guard depthFormat != nil, drawer.camera3D != nil,
+                      let strandField = batch.strandField else { continue }
+                let tiling = strandField.tiling
+                encoder.setRenderPipelineState(state)
+                var strandParams = makeStrandParams(strandField, batch: batch,
+                                                    drawer: drawer, viewport: viewport)
+                let strandLength = MemoryLayout<OllinStrandParams>.stride
+                encoder.setObjectBytes(&strandParams, length: strandLength, index: 4)
+                encoder.setMeshBytes(&strandParams, length: strandLength, index: 4)
+                if var u3 = uniforms3D {
+                    encoder.setMeshBytes(&u3, length: MemoryLayout<Uniforms3D>.stride, index: 2)
+                }
+                bindLitMeshFragment(batch.finish)
+                profile.countDraw(batch.kind, strandField.bladeCount)
+                encoder.drawMeshThreadgroups(
+                    MTLSize(width: tiling.tilesX, height: tiling.tilesZ, depth: 1),
+                    threadsPerObjectThreadgroup: MTLSize(width: 1, height: 1, depth: 1),
+                    threadsPerMeshThreadgroup: MTLSize(width: Int(OLLIN_STRAND_BUNDLE),
+                                                       height: 1, depth: 1))
             case .depthScene:
                 // A backdrop quad (in `imageVertices`, like an image) whose fragment
                 // also writes per-pixel depth from the depth map: color at texture 0,
@@ -2966,6 +2992,41 @@ extension MetalRenderer {
             profile.computeDispatches += 2
         }
         compute.endEncoding()
+    }
+
+    /// Pack a `StrandField`'s GPU parameters for one draw: the camera frustum
+    /// planes (the same extraction the mesh fields cull with), the draw-time
+    /// field matrix, the derived tile grid, and the sketch clock for the sway.
+    func makeStrandParams(_ field: StrandField, batch: GeometryBatch,
+                          drawer: Drawer, viewport: SIMD2<Float>) -> OllinStrandParams {
+        var params = OllinStrandParams()
+        if let camera = drawer.camera3D {
+            let aspect = viewport.y > 0 ? Double(viewport.x / viewport.y) : 1
+            let planes = MeshField.frustumPlanes(of: camera.viewProjectionMatrix(aspect: aspect))
+            withUnsafeMutableBytes(of: &params.planes) { raw in
+                let dst = raw.bindMemory(to: SIMD4<Float>.self)
+                for (i, plane) in planes.enumerated() { dst[i] = plane }
+            }
+            let eye = camera.eye.simd3
+            params.eye = SIMD4<Float>(eye.x, eye.y, eye.z,
+                                      field.levelOfDetailEnabled ? 1 : 0)
+        }
+        params.fieldModel = batch.fieldTransform
+        params.lowColor = field.lowColor.simd4
+        params.tipColor = field.tipColor.simd4
+        let tiling = field.tiling
+        params.patch = SIMD4<Float>(Float(field.width / 2), Float(field.depth / 2),
+                                    Float(tiling.tileEdge), 0)
+        params.blade = SIMD4<Float>(Float(field.bladeHeight), Float(field.heightVariance),
+                                    Float(field.bladeWidth), Float(field.lean))
+        params.sway = SIMD4<Float>(Float(field.swayAmount), Float(field.swayFrequency),
+                                   drawer.computeUniforms.time, Float(field.seed))
+        params.lod = SIMD4<Float>(Float(field.detailNear), Float(field.detailFar), 0, 0)
+        params.tilesX = UInt32(tiling.tilesX)
+        params.tilesZ = UInt32(tiling.tilesZ)
+        params.bladesPerTile = UInt32(StrandField.bladesPerTile)
+        params.cullEnabled = field.cullingEnabled ? 1 : 0
+        return params
     }
 
     /// Execute this frame's recorded compute dispatches *without* rendering geometry —

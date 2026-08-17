@@ -36,8 +36,9 @@ case "${1:-all}" in
   raymarch) filter="RaymarchBenchmarkTests" ;;
   instancing) filter="MeshInstanceBenchmarkTests" ;;
   field)    filter="MeshFieldBenchmarkTests" ;;
+  strands)  filter="StrandBenchmarkTests" ;;
   all)      filter="BenchmarkTests" ;;   # substring matches all suites
-  *) echo "usage: $0 [all|shadows|dof|ssao|ssr|raymarch|instancing|field] [resolution]" >&2; exit 1 ;;
+  *) echo "usage: $0 [all|shadows|dof|ssao|ssr|raymarch|instancing|field|strands] [resolution]" >&2; exit 1 ;;
 esac
 [ "${2:-}" != "" ] && export OLLIN_BENCH_RES="$2"
 

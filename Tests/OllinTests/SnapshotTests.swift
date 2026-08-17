@@ -569,6 +569,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("mesh-field",
                  note: "A retained MeshField of three mesh kinds (boxes, spheres, cones) in a ring, drawn by GPU-written indirect draws with per-copy frustum culling ON and the camera framed so part of the ring sits outside the view. Pins the field build (entry table, compact regions), the cull + encode kernels, the per-entry indirect draws, the per-copy tints, and the field casters in the 2D shadow map beside a plain floor. Culling must not change a pixel (a culled copy is off-screen), so this reference also pins that no visible copy is ever lost. No rng and no time, deterministic.",
                  make: { MeshFieldScene() }),
+    SnapshotCase("strands",
+                 note: "A StrandField meadow patch (drawStrands) grown entirely in-draw by the mesh pipeline: 60k hashed blades over a floor with a box casting a shadow the blades receive, framed so part of the patch is off-screen with tile culling ON. Pins the object-stage tile cull + distance grading, the mesh-stage ribbon synthesis (roots, heights, leans, tapers, tints all from hashes), the blades shading through the shared lit fragment, and that culling never eats a visible tile. No time (phase-zero sway) and no rng, deterministic (the render is pinned byte-exact by its own test).",
+                 make: { StrandsScene() }),
     SnapshotCase("tiling-grids",
                  note: "The hex and triangle grids on one sheet: a pointy-top hex grid tinted by hex distance from its center cell (concentric rings), a flat-top grid tinted by column, and a triangle grid whose up/down parity splits two palettes. Pins both hex orientations' lattice math (centers, corners, the offset half-step, axial distance, gutter insets) and the triangle tiling. No rng and no time, so it is deterministic.",
                  make: { TilingGridsScene() }),
@@ -6609,6 +6612,33 @@ private final class ClipScene: Sketch {
 /// motif spans the retainable paths: SDF instances (one with a gradient fill, so
 /// the batch's own handle-relative gradient strip is exercised), a fringe-stroked
 /// polyline, a concave tessellated fill, and a smooth-union SDF field.
+/// A StrandField meadow patch grown in-draw, with a shadow-casting box, framed
+/// so part of the patch is off-screen. No time and no rng, deterministic.
+private final class StrandsScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x101218))
+        camera(Camera3D(eye: Vector3(5, 2.4, 5), target: Vector3(1.5, 0.3, 0)))
+        ambientLight(Color(white: 0.18))
+        directionalLight(Color(white: 1), direction: Vector3(-0.5, -0.85, -0.35), intensity: 1)
+        castShadows()
+        withState {
+            fill(Color(hue: 0.3, saturation: 0.25, brightness: 0.3))
+            drawPlane(width: 30, depth: 30)
+        }
+        withState {
+            translate(1.2, 0.75, -0.6)
+            fill(Color(hue: 0.08, saturation: 0.4, brightness: 0.7))
+            drawBox(width: 1.2, height: 1.5, depth: 1.2)
+        }
+        var meadow = StrandField(width: 16, depth: 16, count: 60_000)
+        meadow.bladeHeight = 0.55
+        meadow.swayAmount = 0.08
+        drawStrands(meadow)
+    }
+}
+
 /// A retained MeshField of three mesh kinds in a ring, GPU-culled, framed so
 /// part of the ring is off-screen. No rng and no time, deterministic.
 private final class MeshFieldScene: Sketch {

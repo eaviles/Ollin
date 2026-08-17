@@ -16,6 +16,11 @@
 using namespace metal::raytracing;
 #endif
 
+// Mesh pipelines (the ShaderStrands segment's [[object]]/[[mesh]] stages).
+// Every Apple-silicon and mac2 GPU on this macOS floor compiles it; building
+// a mesh pipeline is the gated step, not the include.
+#include <metal_mesh>
+
 // MARK: - Present-pass dithering
 //
 // A small triangular-PDF dither is applied in the output (sRGB) space, just

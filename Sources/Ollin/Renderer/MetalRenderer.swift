@@ -116,6 +116,13 @@ final class MetalRenderer {
         /// A clip-write pipeline (the stencil-clipping push/pop): rasterizes into the
         /// stencil only, with the color write mask empty and blending off.
         var isClipWrite = false
+        /// A mesh pipeline (Metal 3 [[object]]/[[mesh]] stages) when `mesh` is
+        /// non-empty: `object` + `mesh` name the two stages, `vertex` is unused
+        /// (""), and the factory builds an MTLMeshRenderPipelineDescriptor.
+        var object = ""
+        var mesh = ""
+        /// The object-stage payload length for a mesh pipeline, bytes.
+        var payloadLength = 0
 
         // an IBL bake pass (equirect→cube / irradiance / prefilter / BRDF LUT)
         static func ibl(_ fragment: String, color: MTLPixelFormat = .rgba16Float) -> PipelineKey {
@@ -221,6 +228,14 @@ final class MetalRenderer {
         static func meshField(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
             PipelineKey(vertex: "ollin_mesh_field_vertex", fragment: "ollin_mesh_fragment",
                         blend: blend, depthFormat: depth)
+        }
+        // StrandField (drawStrands): a mesh pipeline growing grass-like blades
+        // inside the draw itself (no geometry buffers). The mesh stage emits the
+        // solid path's MeshOut, so blades shade through the same lit fragment.
+        static func strands(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
+            PipelineKey(vertex: "", fragment: "ollin_mesh_fragment", blend: blend,
+                        depthFormat: depth, object: "ollin_strand_object",
+                        mesh: "ollin_strand_mesh", payloadLength: 16)
         }
         // textured 3D triangle mesh: the surface samples a base-color texture at the
         // vertex UVs, otherwise the same depth-tested, lit mesh path.
@@ -406,6 +421,7 @@ final class MetalRenderer {
                                      : .mesh(blend, depth: depth)
             case .meshInstanced: return .meshInstanced(blend, depth: depth)
             case .meshField:  return .meshField(blend, depth: depth)
+            case .strands:    return .strands(blend, depth: depth)
             case .depthScene: return .depthScene(blend, depth: depth)
             case .clipPush:   return .clipWrite(depth: depth)
             case .clipPop:    return .clipCover(depth: depth)
