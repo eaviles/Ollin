@@ -498,7 +498,7 @@ private let snapshotMetalCases: [SnapshotCase] = [
                  note: "Evenly-spaced streamlines through a Perlin flow field, seeded from a blue-noise set. Pins the field (angle from noise), the both-directions tracing, and the separation test that keeps the lines from crossing. Seeded, no time, so the lines are deterministic.",
                  make: { StreamlinesScene() }),
     SnapshotCase("classic-curves",
-                 note: "The classic-curve builders on one sheet: a 3:2 Lissajous figure, a 5-petal rose nesting a 7/3 rational rose, a hypotrochoid and an epitrochoid from the same gear pair, a phyllotaxis scatter at the golden angle, and a spiky star smoothed by Chaikin corner cutting over its raw outline. Pure closed forms, no rng and no time, so the sheet is deterministic.",
+                 note: "The classic-curve builders on one sheet: a 3:2 Lissajous figure, a 5-petal rose nesting a 7/3 rational rose, a hypotrochoid and an epitrochoid from the same gear pair, a squircle superellipse over a pinched one, a 7-lobe supershape, a phyllotaxis scatter at the golden angle, and a spiky star smoothed by Chaikin corner cutting over its raw outline. Pure closed forms, no rng and no time, so the sheet is deterministic.",
                  make: { ClassicCurvesScene() }),
     SnapshotCase("harmonograph",
                  note: "A damped-pendulum harmonograph trace: two pendulums per axis, near-unison fundamentals plus faster overtones, baked once by contour() and drawn as one open polyline. The detune precesses the figure and the damping reels each lap inward. No rng and no time, so the weave is deterministic.",
@@ -3818,9 +3818,10 @@ private final class StreamlinesScene: Sketch {
 }
 
 /// The classic-curve builders on one sheet, one per grid cell: Lissajous,
-/// whole and rational roses, both trochoids, a phyllotaxis scatter, and a
-/// spiky star smoothed by Chaikin corner cutting over its raw outline. Pure
-/// closed forms with no rng and no time, so the sheet is deterministic.
+/// whole and rational roses, both trochoids, a squircle superellipse over a
+/// pinched one, a 7-lobe supershape, a phyllotaxis scatter, and a spiky star
+/// smoothed by Chaikin corner cutting over its raw outline. Pure closed
+/// forms with no rng and no time, so the sheet is deterministic.
 private final class ClassicCurvesScene: Sketch {
     override var canvasSize: CanvasSize { .square(384) }
 
@@ -3829,7 +3830,7 @@ private final class ClassicCurvesScene: Sketch {
         noFill()
         strokeWeight(1.5)
 
-        let cells = Grid(in: bounds, columns: 3, rows: 2, padding: .all(16)).cells
+        let cells = Grid(in: bounds, columns: 4, rows: 2, padding: .all(14)).cells
         let radius = 0.42 * min(cells[0].frame.width, cells[0].frame.height)
 
         withState {
@@ -3853,13 +3854,20 @@ private final class ClassicCurvesScene: Sketch {
         }
         withState {
             translate(cells[3].center.x, cells[3].center.y)
+            stroke(Color(hex: 0x53D8A4))
+            drawPolyline(superellipse(width: 2 * radius, n: 4).points, closed: true)
+            stroke(Color(hex: 0x2EC4B6))
+            drawPolyline(superellipse(width: 2 * radius, n: 0.7).points, closed: true)
+        }
+        withState {
+            translate(cells[4].center.x, cells[4].center.y)
             stroke(Color(hex: 0xF6511D))
             let s = radius / 8.4
             drawPolyline(epitrochoid(ring: 5, wheel: 2, pen: 1.4).points.map { $0 * s },
                          closed: true)
         }
         withState {
-            translate(cells[4].center.x, cells[4].center.y)
+            translate(cells[5].center.x, cells[5].center.y)
             noStroke()
             fill(Color(hex: 0xDDE3EC))
             drawCircles(phyllotaxis(count: 140, spacing: radius / 12).map {
@@ -3867,7 +3875,13 @@ private final class ClassicCurvesScene: Sketch {
             })
         }
         withState {
-            translate(cells[5].center.x, cells[5].center.y)
+            translate(cells[7].center.x, cells[7].center.y)
+            stroke(Color(hex: 0xE86A5B))
+            drawPolyline(supershape(radius: radius, m: 7, n1: 0.3, n2: 1.2, n3: 1.2).points,
+                         closed: true)
+        }
+        withState {
+            translate(cells[6].center.x, cells[6].center.y)
             let star = Contour((0..<22).map { i in
                 Vector2(angle: Double(i) / 22 * .tau,
                         length: i % 2 == 0 ? radius : radius * 0.45)

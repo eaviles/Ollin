@@ -217,6 +217,68 @@ struct ClassicCurveTests {
         #expect(Harmonograph(x: [], y: []).contour().points.isEmpty)
     }
 
+    // MARK: - Superellipse
+
+    /// Every sampled point satisfies the Lamé identity `|x/a|^n + |y/b|^n = 1`
+    /// for exponents on both sides of the ellipse, and `n: 2` really is the
+    /// ellipse.
+    @Test func superellipseSatisfiesItsIdentity() {
+        for n in [0.8, 2.0, 4.0, 12.0] {
+            let c = superellipse(width: 300, height: 200, n: n)
+            #expect(c.isClosed && c.points.count == 256)
+            for p in c.points {
+                let lame = pow(abs(p.x / 150), n) + pow(abs(p.y / 100), n)
+                #expect(abs(lame - 1) < 1e-9)
+            }
+        }
+        for p in superellipse(width: 240, n: 2).points {
+            #expect(abs(p.length - 120) < 1e-9)
+        }
+    }
+
+    /// The exponent moves the diagonal the way the family promises: the
+    /// diamond hugs the axes, the squircle bulges past the ellipse, and a
+    /// large exponent almost reaches the rectangle's corner.
+    @Test func superellipseSweepsDiamondToRectangle() {
+        func diagonalReach(_ n: Double) -> Double {
+            superellipse(width: 2, n: n, samples: 4096).points
+                .map { min(abs($0.x), abs($0.y)) }.max() ?? 0
+        }
+        let diamond = diagonalReach(1)
+        let ellipse = diagonalReach(2)
+        let squircle = diagonalReach(4)
+        let boxy = diagonalReach(40)
+        #expect(abs(diamond - 0.5) < 1e-3)
+        #expect(abs(ellipse - 2.0.squareRoot() / 2) < 1e-3)
+        #expect(ellipse < squircle && squircle < boxy)
+        #expect(boxy > 0.96)
+    }
+
+    // MARK: - Supershape
+
+    /// `m: 0, n*: 1` collapses the superformula to a circle, and integer `m`
+    /// with equal lobe exponents gives exact m-fold symmetry.
+    @Test func supershapeCircleAndSymmetry() {
+        for p in supershape(radius: 90, m: 0, n1: 1, n2: 1, n3: 1).points {
+            #expect(abs(p.length - 90) < 1e-9)
+        }
+        let star = supershape(radius: 100, m: 4, n1: 0.4, n2: 0.9, n3: 0.9,
+                              samples: 512)
+        for i in 0..<128 {
+            #expect(abs(star.points[i].length - star.points[i + 128].length) < 1e-9)
+        }
+    }
+
+    /// The formula's radius guard holds: a spiky parameter set stays within
+    /// the clamped reach and never emits a non-finite point.
+    @Test func supershapeStaysFiniteAndClamped() {
+        let spiky = supershape(radius: 50, m: 5, n1: 0.08, n2: 2.5, n3: 0.2)
+        for p in spiky.points {
+            #expect(p.x.isFinite && p.y.isFinite)
+            #expect(p.length <= 50 * 4 + 1e-9)
+        }
+    }
+
     // MARK: - Helpers
 
     /// Count clusters of consecutive samples whose radius exceeds 95% of the

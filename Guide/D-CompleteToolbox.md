@@ -84,7 +84,7 @@ Use it two ways. It is an index for the moment you remember the guide showing bl
 | Stroke as shape | Turn any stroked line into a filled region for booleans and plotting | [Ch 13](13-ShapesAsMaterial.md) | [Geometry](../Docs/Drawing/Geometry.md) |
 | SVG import | Vector artwork read into shapes: draw it as authored, or mine it as geometry | [Ch 13](13-ShapesAsMaterial.md) | [SVG](../Docs/Drawing/SVG.md) |
 | Fourier epicycles | Rebuild any closed outline as a chain of spinning circles, term count as the detail dial | [Ch 13](13-ShapesAsMaterial.md) | [Epicycles](../Docs/Drawing/Epicycles.md) |
-| Classic curves | Phyllotaxis, Lissajous figures, roses, the spirograph gears, the harmonograph, and Chaikin corner-cut smoothing, all closed forms with no randomness | [Ch 13](13-ShapesAsMaterial.md) | [Classic curves](../Docs/Drawing/Curves.md) |
+| Classic curves | Phyllotaxis, Lissajous figures, roses, superellipses, supershapes, the spirograph gears, the harmonograph, and Chaikin corner-cut smoothing, all closed forms with no randomness | [Ch 13](13-ShapesAsMaterial.md) | [Classic curves](../Docs/Drawing/Curves.md) |
 | Shape morphing | Tween one shape into another; holes grow in and out, and every in-between is real geometry | [Ch 13](13-ShapesAsMaterial.md) | [Morphing](../Docs/Drawing/Morphing.md) |
 | Paper marbling | Ink floated on a bath and raked: drops, tines, combs, and vortices, all exact transforms of vector outlines | [Ch 13](13-ShapesAsMaterial.md) | [Marbling](../Docs/Generators/Marbling.md) |
 | Watercolor | Pigment from one polygon deformed and stacked at low opacity: dense cores, uneven blooming edges | [Ch 13](13-ShapesAsMaterial.md) | [Watercolor](../Docs/Generators/Watercolor.md) |

@@ -48,15 +48,17 @@ A cubic curve bends from one point to the next, steered by two control points it
 
 ## Curves you can write down
 
-The leaf was drawn by hand, one control point at a time. Some outlines don't need that, because somebody already found the formula, and the formula is shorter than the drawing. Six of them come with Ollin, all deterministic and none of them touching randomness.
+The leaf was drawn by hand, one control point at a time. Some outlines don't need that, because somebody already found the formula, and the formula is shorter than the drawing. Eight of them come with Ollin, all deterministic and none of them touching randomness.
 
-<img src="Images/13-ShapesAsMaterial/ClassicCurves.jpg" alt="Six panels: a sunflower seed spiral, a woven Lissajous figure, a five-petal rose, a looping spirograph curve, a decaying harmonograph tangle, and a rough polygon shown beside its smoothed version" width="680">
+<img src="Images/13-ShapesAsMaterial/ClassicCurves.jpg" alt="Eight panels: a sunflower seed spiral, a woven Lissajous figure, a five-petal rose, a squircle holding a pinched four-point star, a looping spirograph curve, a decaying harmonograph tangle, a seven-lobed supershape star, and a rough polygon shown beside its smoothed version" width="680">
 
 ```swift
 phyllotaxis(count: 520, spacing: 7)                   // [Vector2]
 lissajous(a: 3, b: 2, width: 200)                     // Contour
 rose(n: 5, radius: 100)
 hypotrochoid(ring: 84, wheel: 33, pen: 26)
+superellipse(width: 200, n: 4)                        // the squircle
+supershape(radius: 100, m: 7)
 ```
 
 **Phyllotaxis** is how a sunflower packs its seeds. Seed number `i` sits `i` golden angles around the center and `spacing * sqrt(i)` out from it. That one rule fills the disk evenly at any count. The golden angle, about 137.5 degrees, is doing all the work here. It's the fraction of a turn that never lines back up with itself, so no seed ever lands behind an earlier one. Nudge the angle by a hundredth of a degree and the whole thing collapses into spokes. That is worth trying once just to watch it happen.
@@ -64,6 +66,8 @@ hypotrochoid(ring: 84, wheel: 33, pen: 26)
 **Lissajous figures** are what two sine waves make when one drives the horizontal and the other the vertical. A point swings side to side `a` times while it bobs up and down `b` times. The ratio between them is the whole character of the figure. **Roses** come from one polar equation, `r = radius * cos(k * theta)`. An odd `n` gives you `n` petals, and an even `n` gives you `2n`.
 
 **Hypotrochoids and epitrochoids** are the toy gear set from childhood. A wheel rolls around a ring, inside for the first and outside for the second. A pen sits in a hole `pen` units from the wheel's center. Whole numbers for the gears are what guarantee the pen eventually returns to where it started. Ollin samples exactly the number of laps that closes the curve once, so nothing is drawn twice.
+
+**Superellipses** put the whole family between diamond and rectangle on one exponent. `n: 2` is the ellipse, `n: 4` the squircle of app icons, `n: 1` the diamond, and lower values pinch into a four-point star. Animate `n` and a mark breathes between round and square; the `Shapes/Superellipse` example sweeps a whole wall of them. The **supershape** generalizes further. One formula with a lobe count `m` and three shaping numbers covers stars, flowers, gears, and organic blobs. It's the same formula behind the 3D `Mesh.supershape`. Keep `m` a whole number, since the curve only closes in one turn for integer `m`. The `Shapes/Supershape` example morphs one through its family.
 
 **Harmonographs** were real Victorian machines: pendulums swinging under a pen, drawing while they slowly died away. Ollin's takes a list of pendulums per axis, each with its own amplitude, frequency, phase, and damping. Near-but-not-quite matching frequencies are where the good tangles come from.
 
@@ -591,7 +595,7 @@ The skeleton is Harry Blum's medial axis, proposed in 1967 as a way to describe 
 - [SVG import](../Docs/Drawing/SVG.md): loading, drawing, the element list, and what the importer reads and skips.
 - [Fourier epicycles](../Docs/Drawing/Epicycles.md): the `Term` list, the joint and path readers, and resampling requirements. The [`Examples/Motion/Epicycles`](../Examples/Motion/Epicycles/Sketch.swift) example traces a whale with them.
 - [Shape morphing](../Docs/Drawing/Morphing.md): the correspondence rules, `spacing`, and `Tweenable` geometry inside a `Timeline`. The [`Examples/Motion/Morphing`](../Examples/Motion/Morphing/Sketch.swift) example loops a star through a blob and a donut.
-- [Classic curves](../Docs/Drawing/Curves.md): every parameter of all six, including what closes each curve exactly once.
+- [Classic curves](../Docs/Drawing/Curves.md): every parameter of all eight, including what closes each curve exactly once.
 - [Low-discrepancy sampling](../Docs/Generators/LowDiscrepancy.md): Halton bases, Sobol, `startIndex`, and the scalar `halton`.
 - [Marks](../Docs/Drawing/Marks.md): `StrokeMark`, the response and dynamics types, what the smoothing and spacing knobs do, building a mark without a pointer, and what survives vector export.
 - [Retained batches](../Docs/Drawing/Batches.md): what a `Batch` can and can't record, how transforms apply at replay, and the measured numbers.

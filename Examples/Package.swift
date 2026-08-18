@@ -385,6 +385,8 @@ let package = Package(
         example("Patterns/LifeQuilt"),
         example("Shapes/Markers"),
         example("Shapes/NamedPolygons"),
+        example("Shapes/Superellipse"),
+        example("Shapes/Supershape"),
         example("Shapes/ShapeMenagerie"),
         example("Shapes/Primitives"),
         example("Shapes/Booleans"),

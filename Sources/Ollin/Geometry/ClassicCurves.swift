@@ -108,6 +108,58 @@ public func epitrochoid(ring: Int, wheel: Int, pen: Double, samples: Int? = nil)
     trochoid(ring: ring, wheel: wheel, pen: pen, samples: samples, rollsInside: false)
 }
 
+/// A superellipse (the Lamé curve): `|x/a|^n + |y/b|^n = 1`, the whole family
+/// between diamond and rectangle in one exponent. `n: 2` is the ellipse,
+/// `n: 4` the classic squircle, higher values square up toward the bounding
+/// rectangle; `n: 1` is the diamond and lower values pinch inward to a
+/// four-point star (`n: 2/3` is the astroid). `width` and `height` are the
+/// full extents; `height` defaults to `width`.
+///
+/// Returns a closed `Contour` centered on the origin, so it feeds straight
+/// into `drawPolyline`, `Shape`, the booleans, hatching, and SVG export. The
+/// sampling is uniform in the sweep angle; for a plotter-even outline at
+/// extreme exponents, follow with `resampled(spacing:)`.
+public func superellipse(width: Double, height: Double? = nil, n: Double = 4,
+                         samples: Int = 256) -> Contour {
+    let hw = width / 2
+    let hh = (height ?? width) / 2
+    let e = 2 / max(n, 1e-3)
+    let count = max(8, samples)
+    func lame(_ value: Double) -> Double {
+        let magnitude = pow(abs(value), e)
+        return value < 0 ? -magnitude : magnitude
+    }
+    return Contour((0..<count).map { i in
+        let t = Double(i) / Double(count) * .tau
+        return Vector2(hw * lame(cos(t)), hh * lame(sin(t)))
+    }, closed: true)
+}
+
+/// A 2D supershape (the same Gielis superformula behind `Mesh.supershape`):
+/// `r(θ) = (|cos(mθ/4)|^n2 + |sin(mθ/4)|^n3)^(-1/n1)`, a handful of
+/// parameters sweeping through star, flower, and organic forms. `m` sets the
+/// symmetry (lobe count, integer values close in one turn); `n1`/`n2`/`n3`
+/// shape the lobes, and `m: 0, n*: 1` is a circle. `radius` scales the
+/// figure (the formula's own radius tops out at 1 on the symmetry axes and
+/// is clamped to 4 between them, the same guard the mesh uses).
+///
+/// Returns a closed `Contour` centered on the origin. Great driven by `time`
+/// or a `@Param`.
+public func supershape(radius: Double, m: Double = 7, n1: Double = 0.2,
+                       n2: Double = 1.7, n3: Double = 1.7,
+                       samples: Int = 512) -> Contour {
+    let count = max(8, samples)
+    return Contour((0..<count).map { i in
+        let theta = Double(i) / Double(count) * .tau
+        let t = m * theta / 4
+        let denom = pow(abs(cos(t)), n2) + pow(abs(sin(t)), n3)
+        guard denom > 1e-9, abs(n1) > 1e-9 else { return Vector2.zero }
+        let r = pow(denom, -1 / n1)
+        let clamped = r.isFinite ? min(r, 4) : 0
+        return Vector2(angle: theta, length: radius * clamped)
+    }, closed: true)
+}
+
 private func trochoid(ring: Int, wheel: Int, pen: Double, samples: Int?,
                       rollsInside: Bool) -> Contour {
     let ringRadius = max(1, abs(ring))

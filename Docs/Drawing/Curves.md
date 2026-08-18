@@ -21,6 +21,8 @@ for (i, p) in phyllotaxis(count: 600, spacing: 9).enumerated() {
 - [Phyllotaxis: the sunflower scatter](#phyllotaxis)
 - [Lissajous figures](#lissajous)
 - [Rose curves](#rose)
+- [Superellipse: the squircle family](#superellipse)
+- [Supershape: the superformula](#supershape)
 - [Spirograph: hypotrochoids and epitrochoids](#spirograph)
 - [The harmonograph](#harmonograph)
 - [Chaikin smoothing](#smoothing)
@@ -61,6 +63,32 @@ rose(n: Int, d: Int = 1, radius: Double, samples: Int? = nil) -> Contour
 Petals from one polar equation, `r = radius * cos(k * theta)` with `k = n / d`. With the default `d: 1`, an odd `n` draws `n` petals and an even `n` draws `2n`, while a fractional `k` (say `n: 7, d: 3`) interleaves the petals into woven, open stars. The sampling covers exactly the span that closes the curve once (the span depends on the parity of `n * d`), so there is no retraced doubling in the geometry, and what you plot is what exists. Leave `samples` nil and the density scales with that span.
 
 The contour starts at `(radius, 0)` and is centered on the origin. A rose has as many symmetry steps as petals, so rotating by one petal per loop makes a seamless lap. Example: `Patterns/Roses`.
+
+<a name="superellipse"></a>
+
+#### Superellipse: the squircle family
+
+```swift
+superellipse(width: Double, height: Double? = nil, n: Double = 4,
+             samples: Int = 256) -> Contour
+```
+
+The Lamé curve `|x/a|^n + |y/b|^n = 1`: the whole family between diamond and rectangle in one exponent. `n: 2` is the ellipse. `n: 4` is the classic squircle, the shape of app icons and mid-century tabletops. Higher values square up toward the bounding rectangle. `n: 1` is the diamond, and lower values pinch inward to a four-point star (`n: 2/3` is the astroid). `width` and `height` are the full extents, `height` defaulting to `width`.
+
+The contour is closed and centered on the origin. The sampling is uniform in the sweep angle, so at extreme exponents follow with [`resampled(spacing:)`](./Geometry.md) for a plotter-even outline. Animate `n` and a mark breathes between round and square. Example: `Shapes/Superellipse`.
+
+<a name="supershape"></a>
+
+#### Supershape: the superformula
+
+```swift
+supershape(radius: Double, m: Double = 7, n1: Double = 0.2,
+           n2: Double = 1.7, n3: Double = 1.7, samples: Int = 512) -> Contour
+```
+
+The 2D superformula, the same one behind [`Mesh.supershape`](../3D/3D.md): `r(θ) = (|cos(mθ/4)|^n2 + |sin(mθ/4)|^n3)^(-1/n1)`. A handful of parameters sweeps through star, flower, gear, and organic forms. `m` sets the symmetry (the lobe count), and `n1`/`n2`/`n3` shape the lobes: `m: 0, n*: 1` is a circle, small `n1` sharpens, unequal `n2`/`n3` leans the petals. It generalizes the [rose](#rose) and the [superellipse](#superellipse) into one dial-covered surface.
+
+The contour is closed and centered on the origin. **Keep `m` a whole number**: the formula only closes in one turn for integer `m`, and a fractional `m` leaves a visible seam where the end meets the start. The formula's own radius tops out at 1 on the symmetry axes and is clamped to 4 between them (the same guard the mesh uses), so `radius` stays an honest size. Great driven by `time` or a `@Param`. Example: `Shapes/Supershape`.
 
 <a name="spirograph"></a>
 
