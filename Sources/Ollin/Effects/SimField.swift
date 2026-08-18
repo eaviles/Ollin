@@ -41,6 +41,19 @@ public class SimField {
     /// takes effect immediately while the field's evolved state carries on.
     public var sim: Sim
 
+    /// An optional **modulation layer**: a layer whose brightness re-tunes the sim
+    /// per texel, for sims that support one (today `.reactionDiffusion`, where it
+    /// slides `feed`/`kill` from the factory's first pair where the map is black to
+    /// its `to` pair where the map is white; see
+    /// `Sim.reactionDiffusion(feed:kill:toFeed:toKill:)`). Set it once and **draw
+    /// into the layer each frame** before reading the field: layers are per-frame,
+    /// and the sim samples the map at every substep. A frame where the layer was
+    /// not drawn (or a sim with no modulated variant) runs the plain step instead,
+    /// so an idle map degrades to the uniform field, never to garbage. Attach a
+    /// drawn or generated layer, not a `filtered(_:)` output (filters resolve after
+    /// the sims each frame, so a filtered map would always be a frame stale).
+    public var modulation: RenderTarget?
+
     /// The drawer that owns the recording, so a `withField` block records against it.
     weak var drawer: Drawer?
 

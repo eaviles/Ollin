@@ -152,6 +152,35 @@ fragment float4 ollin_sim_reaction_diffusion(PresentOut in [[stage_in]],
     return float4(clamp(na, 0.0, 1.0), clamp(nb, 0.0, 1.0), 0.0, 1.0);
 }
 
+// The modulated reaction-diffusion step: the same Gray-Scott arithmetic, with feed
+// and kill interpolated per texel by a modulation map's brightness, so one continuous
+// field runs different regimes in different places (stripes inside a drawn matte,
+// spots outside it) and the chemistry crosses the boundary instead of seaming at it.
+// A separate fragment, not a branch in the plain step: an unmodulated field must
+// render byte-identically, so this variant is selected only when a map is attached.
+// params[1] = (feed, kill, toFeed, toKill); map brightness 0 -> (x, y), 1 -> (z, w).
+fragment float4 ollin_sim_reaction_diffusion_modulated(PresentOut in [[stage_in]],
+                                                       texture2d<float> src [[texture(0)]],
+                                                       texture2d<float> map [[texture(1)]],
+                                                       sampler samp [[sampler(0)]],
+                                                       constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float m = saturate(dot(map.sample(samp, in.uv).rgb, float3(0.2126, 0.7152, 0.0722)));
+    float feed = mix(params[1].x, params[1].z, m);
+    float kill = mix(params[1].y, params[1].w, m);
+    float2 uv = in.uv;
+#define TAP(DX, DY) src.sample(samp, fract(uv + float2(float(DX), float(DY)) * t)).xy
+    float2 c = src.sample(samp, uv).xy;
+    float2 lap = -c
+        + 0.20 * (TAP(-1, 0) + TAP(1, 0) + TAP(0, -1) + TAP(0, 1))
+        + 0.05 * (TAP(-1, -1) + TAP(1, -1) + TAP(-1, 1) + TAP(1, 1));
+#undef TAP
+    float a = c.x, b = c.y, reaction = a * b * b;
+    float na = a + (1.0 * lap.x - reaction + feed * (1.0 - a));
+    float nb = b + (0.5 * lap.y + reaction - (kill + feed) * b);
+    return float4(clamp(na, 0.0, 1.0), clamp(nb, 0.0, 1.0), 0.0, 1.0);
+}
+
 // Conway's Game of Life: a cell is alive where its red channel > 0.5; it survives on
 // 2-3 live neighbours, is born on exactly 3 (B3/S23). Sampling at exact texel-centre
 // offsets returns each neighbour's value exactly, so the integer counts are exact.

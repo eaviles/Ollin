@@ -30,7 +30,7 @@ public struct Sim: Sendable {
     /// The concrete simulations the renderer knows how to step. Internal: a sketch
     /// builds a `Sim` through the static factories below.
     enum Kind: Sendable {
-        case reactionDiffusion(feed: Double, kill: Double)
+        case reactionDiffusion(feed: Double, kill: Double, toFeed: Double, toKill: Double)
         case gameOfLife
         case lenia(radius: Int, growthCenter: Double, growthWidth: Double,
                    timeScale: Double, rings: [Double])
@@ -70,7 +70,24 @@ public struct Sim: Sendable {
     /// (mitosis). State is chemical A in red, B in green, so the raw `image` reads
     /// reddish — recolor it with `.filtered(.gradientMap(...))` or `.threshold(...)`.
     public static func reactionDiffusion(feed: Double = 0.055, kill: Double = 0.062) -> Sim {
-        Sim(kind: .reactionDiffusion(feed: max(0, feed), kill: max(0, kill)))
+        Sim(kind: .reactionDiffusion(feed: max(0, feed), kill: max(0, kill),
+                                     toFeed: max(0, feed), toKill: max(0, kill)))
+    }
+
+    /// Gray-Scott reaction-diffusion whose regime **varies across the field**. Attach
+    /// a layer to the field's `modulation` and its brightness re-tunes the chemistry
+    /// per texel: where the map is black the field runs at `feed`/`kill`, where it is
+    /// white at `toFeed`/`toKill`, sliding smoothly between. One continuous field then
+    /// wears different patterns in different places (stripes inside a camera matte,
+    /// spots outside it), and because it is a single simulation the pattern crosses
+    /// the boundary instead of seaming at it. Draw the map layer each frame before
+    /// reading the field; a frame with no map falls back to the plain `feed`/`kill`
+    /// step. Seeding, state channels, and recoloring work exactly as in
+    /// `reactionDiffusion(feed:kill:)`.
+    public static func reactionDiffusion(feed: Double = 0.055, kill: Double = 0.062,
+                                         toFeed: Double, toKill: Double) -> Sim {
+        Sim(kind: .reactionDiffusion(feed: max(0, feed), kill: max(0, kill),
+                                     toFeed: max(0, toFeed), toKill: max(0, toKill)))
     }
 
     /// Conway's **Game of Life**: each cell lives or dies by its eight neighbours
@@ -472,6 +489,18 @@ public struct Sim: Sendable {
         }
     }
 
+    /// The `ollin_sim_*` step variant that reads a modulation map as a second input
+    /// texture, for sims whose parameters can vary across the field (`nil` when the
+    /// sim has none). The renderer selects it only when the field's `modulation`
+    /// layer was drawn this frame; the plain `stepFragment` path stays byte-identical
+    /// for every unmodulated field.
+    var modulatedStepFragment: String? {
+        switch kind {
+        case .reactionDiffusion: return "ollin_sim_reaction_diffusion_modulated"
+        default: return nil
+        }
+    }
+
     /// The `ollin_sim_*` fragment that composites this frame's drawn seed marks
     /// onto the state before stepping. Most sims *replace* the state's channels
     /// with the mark's color where it covers (the default); ripples instead
@@ -494,8 +523,11 @@ public struct Sim: Sendable {
     /// them to the step fragment as `params[1]` onward).
     var params: [SIMD4<Float>] {
         switch kind {
-        case let .reactionDiffusion(feed, kill):
-            return [SIMD4(Float(feed), Float(kill), 0, 0)]
+        case let .reactionDiffusion(feed, kill, toFeed, toKill):
+            // x/y are all the plain step reads, so a uniform sim (toFeed == feed,
+            // toKill == kill) binds the same bytes as the plain form; z/w feed the
+            // modulated step's per-texel lerp.
+            return [SIMD4(Float(feed), Float(kill), Float(toFeed), Float(toKill))]
         case .gameOfLife:
             return []
         case let .lenia(radius, growthCenter, growthWidth, timeScale, rings):

@@ -206,6 +206,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("effects-simfield", frame: 60,
                  note: "A reaction-diffusion SimField seeded with a fixed dot grid, evolved to frame 60 and recoloured. Pins the stateful sim substrate end to end: the persistent ping-pong, the seed-inject pass, the multi-substep Gray-Scott stepping, and the headless render-every-frame warmup the built-up state depends on.",
                  make: { EffectsSimField() }),
+    SnapshotCase("effects-simfield-modulated", frame: 150,
+                 note: "The modulated sibling of effects-simfield: the same fixed dot-grid seed under a half-black, half-white modulation layer, spot regime on the left sliding to maze/coral on the right, evolved to frame 150 and recoloured. Pins the modulated step variant: the map layer resolved before the sim passes, the per-texel feed/kill lerp from the params row's z/w, and one continuous field wearing two regimes with the pattern crossing the boundary instead of seaming at it.",
+                 make: { EffectsSimFieldModulated() }),
     SnapshotCase("effects-fluid", frame: 48,
                  note: "A fluid SimField driven by a fixed brush path, run to frame 48. Pins the multi-field fluid pipeline end to end: the velocity + dye splat, curl and vorticity confinement, the Jacobi pressure projection, semi-Lagrangian advection, and the persistent two-pair ping-pong with render-every-frame warmup.",
                  make: { EffectsFluid() }),
@@ -6309,6 +6312,46 @@ private final class EffectsSimField: Sketch {
     override func setup() { rd = simField(.reactionDiffusion(), scale: 0.5) }
 
     override func draw() {
+        withField(rd) {
+            if !seeded {
+                noStroke(); fill(.white)
+                for i in 0 ..< 6 {
+                    for j in 0 ..< 6 {
+                        drawCircle((Double(i) + 0.5) * width / 6, (Double(j) + 0.5) * height / 6, 5)
+                    }
+                }
+                seeded = true
+            }
+        }
+        drawImage(rd.filtered(.gradientMap(.magma)).image, 0, 0)
+    }
+}
+
+/// The modulated sibling of `EffectsSimField`: the same fixed dot-grid seed, with a
+/// half-black, half-white modulation layer sliding feed/kill from the spot regime
+/// (left) to the maze/coral regime (right; both pairs living regimes of this
+/// implementation, read off the Guide's FeedKillMap figure). Pins the modulated step
+/// variant end to end: the map layer resolved before the sim passes, the per-texel
+/// feed/kill lerp, and one continuous field wearing two regimes without a seam.
+private final class EffectsSimFieldModulated: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    var rd: SimField!
+    var mask: RenderTarget!
+    var seeded = false
+
+    override func setup() {
+        rd = simField(.reactionDiffusion(feed: 0.046, kill: 0.065,
+                                         toFeed: 0.055, toKill: 0.062), scale: 0.5)
+        mask = renderTarget()
+        rd.modulation = mask
+    }
+
+    override func draw() {
+        withTarget(mask) {                       // redrawn each frame: layers are per-frame
+            background(.black)
+            noStroke(); fill(.white)
+            drawRect(width / 2, 0, width / 2, height)
+        }
         withField(rd) {
             if !seeded {
                 noStroke(); fill(.white)

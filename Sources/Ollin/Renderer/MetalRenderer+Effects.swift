@@ -288,7 +288,16 @@ extension MetalRenderer {
                     runMultiScaleTuring(turing.scales, state: front, seed: seed, output: back,
                                         width: pw, height: ph, into: cb, pooled: pooled)
                 } else {
+                    // The modulation map, when the field has one and it was drawn (or
+                    // generated) this frame. Those layers resolve in the passes above,
+                    // before any sim steps, so the texture is this frame's content; a
+                    // map absent from this frame's targets is skipped rather than
+                    // sampled stale, and the field falls back to the plain step.
+                    let modulation = sf.modulation.flatMap { map in
+                        drawer.renderTargets.contains(where: { $0 === map }) ? map.texture : nil
+                    }
                     runSimulation(sf.sim, state: front, seed: seed, output: back,
+                                  modulation: modulation,
                                   width: pw, height: ph, into: cb, pooled: pooled)
                 }
                 target.texture = back
@@ -850,6 +859,7 @@ extension MetalRenderer {
     /// two scratch textures and landing the last step in `output` (the back buffer).
     /// All fragment passes on the effect pipeline, reading/writing the float field.
     private func runSimulation(_ sim: Sim, state: MTLTexture, seed: MTLTexture, output: MTLTexture,
+                               modulation: MTLTexture? = nil,
                                width: Int, height: Int, into cb: MTLCommandBuffer, pooled: Bool) {
         guard let s0 = acquireFilterTexture(width: width, height: height, pooled: pooled),
               let s1 = acquireFilterTexture(width: width, height: height, pooled: pooled) else { return }
@@ -862,11 +872,20 @@ extension MetalRenderer {
                              params: [texel] + sim.params, into: cb)
         // Step: read s0, ping-pong s0↔s1 between steps, write the final step into the
         // back buffer. Read and write are always distinct, so there's no in-pass hazard.
+        // With a modulation map (and a sim that has a modulated variant), the map rides
+        // as a second input and the variant fragment lerps the parameters per texel;
+        // without one, the plain fragment encodes exactly as it always has.
+        let step: (name: String, extra: [MTLTexture])
+        if let map = modulation, let modulated = sim.modulatedStepFragment {
+            step = (modulated, [map])
+        } else {
+            step = (sim.stepFragment, [])
+        }
         var read = s0
         let steps = max(1, sim.subSteps)
         for i in 0..<steps {
             let write = (i == steps - 1) ? output : (read === s0 ? s1 : s0)
-            encodeEffectFragment(sim.stepFragment, inputs: [read], output: write,
+            encodeEffectFragment(step.name, inputs: [read] + step.extra, output: write,
                                  params: [texel] + sim.params, into: cb)
             read = write
         }

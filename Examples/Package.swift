@@ -583,6 +583,9 @@ let package = Package(
         // People lifted off the background and composited over a drawn gradient
         // (background replacement; the matte doubles as the drop shadow).
         example("Vision/PersonSegmentation", [.vision]),
+        // The person matte as a reaction-diffusion regime map: maze chemistry on
+        // your silhouette, spots everywhere else, one continuous field.
+        example("Vision/TuringMirror", [.vision]),
         // The salient subject lifted into a spotlight: dimmed frame, full-color
         // cutout, matte halo.
         example("Vision/SubjectLift", [.vision]),
