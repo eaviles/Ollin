@@ -427,6 +427,7 @@ let package = Package(
         example("Patterns/ShapePacking"),
         example("Patterns/Streamlines"),
         example("Patterns/Spirograph"),
+        example("Patterns/Guilloche"),
         example("Patterns/Roses"),
         example("Patterns/Flocking"),
         example("Patterns/ForceGraph"),

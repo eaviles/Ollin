@@ -500,6 +500,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("classic-curves",
                  note: "The classic-curve builders on one sheet: a 3:2 Lissajous figure, a 5-petal rose nesting a 7/3 rational rose, a hypotrochoid and an epitrochoid from the same gear pair, a squircle superellipse over a pinched one, a 7-lobe supershape, a phyllotaxis scatter at the golden angle, and a spiky star smoothed by Chaikin corner cutting over its raw outline. Pure closed forms, no rng and no time, so the sheet is deterministic.",
                  make: { ClassicCurvesScene() }),
+    SnapshotCase("guilloche",
+                 note: "A guilloche rosette: concentric rings shaped by a coarse cam plus a fine ripple, each ring turned a hair against its neighbor so braided arms weave through the waves. Pins the stacked-rosette sum, the per-ring twist, and the ring spacing. Pure closed form, no rng and no time, so the face is deterministic.",
+                 make: { GuillocheScene() }),
     SnapshotCase("harmonograph",
                  note: "A damped-pendulum harmonograph trace: two pendulums per axis, near-unison fundamentals plus faster overtones, baked once by contour() and drawn as one open polyline. The detune precesses the figure and the damping reels each lap inward. No rng and no time, so the weave is deterministic.",
                  make: { HarmonographScene() }),
@@ -3893,6 +3896,28 @@ private final class ClassicCurvesScene: Sketch {
             stroke(Color(hex: 0x2EC4B6))
             strokeWeight(1.5)
             drawPolyline(star.smoothed(iterations: 3).points, closed: true)
+        }
+    }
+}
+
+/// A guilloche rosette: a coarse cam plus a fine ripple over twisted rings.
+/// Pure closed form with no rng and no time, so one frame pins the braid.
+private final class GuillocheScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0F2A24))
+        noFill()
+        stroke(Color(hex: 0xEFE6CF, alpha: 0.85))
+        strokeWeight(0.8)
+        withState {
+            translate(128, 128)
+            let rings = guilloche(rings: 22, innerRadius: 20, outerRadius: 112,
+                                  rosettes: [Rosette(bumps: 8, amplitude: 6),
+                                             Rosette(bumps: 40, amplitude: 1.2)])
+            for ring in rings {
+                drawPolyline(ring.points, closed: true)
+            }
         }
     }
 }

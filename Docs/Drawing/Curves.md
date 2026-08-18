@@ -24,6 +24,7 @@ for (i, p) in phyllotaxis(count: 600, spacing: 9).enumerated() {
 - [Superellipse: the squircle family](#superellipse)
 - [Supershape: the superformula](#supershape)
 - [Spirograph: hypotrochoids and epitrochoids](#spirograph)
+- [Guilloche: the rose engine](#guilloche)
 - [The harmonograph](#harmonograph)
 - [Chaikin smoothing](#smoothing)
 
@@ -101,7 +102,39 @@ epitrochoid(ring: Int, wheel: Int, pen: Double, samples: Int? = nil) -> Contour
 
 These are the toy gear set. A `wheel`-radius gear rolls around a fixed `ring`-radius gear, inside it for the hypotrochoid, outside for the epitrochoid, with the pen `pen` units from the wheel's center. Integer radii stand in for the gears' teeth, which guarantees that the pen eventually lines back up with its start, and the sampling covers exactly the `wheel / gcd(ring, wheel)` laps that close the curve once. The pen distance sets the character: less than `wheel` rounds the lobes, equal gives cusps (the hypocycloid and epicycloid), more loops them over themselves.
 
-Both return a closed, origin-centered contour. The finished figure repeats every `ring / gcd(ring, wheel)` lobes around the center, so spinning by one lobe per loop is seamless. Nested pen distances from one gear pair stack into the woven rosette every childhood knows. Example: `Patterns/Spirograph`.
+Both return a closed, origin-centered contour. The finished figure repeats every `ring / gcd(ring, wheel)` lobes around the center, so spinning by one lobe per loop is seamless. Nested pen distances from one gear pair stack into the woven rosette every childhood knows; for the engraved, many-ring version of that idea, see [guilloche](#guilloche). Example: `Patterns/Spirograph`.
+
+<a name="guilloche"></a>
+
+#### Guilloche: the rose engine
+
+```swift
+guilloche(rings: Int, innerRadius: Double, outerRadius: Double,
+          rosettes: [Rosette], twist: Double = .pi / 90,
+          samples: Int? = nil) -> [Contour]
+
+guilloche(rings: Int, innerRadius: Double, outerRadius: Double,
+          bumps: Int, amplitude: Double, twist: Double = .pi / 90,
+          samples: Int? = nil) -> [Contour]
+
+Rosette(bumps: Int, amplitude: Double, phase: Double = 0)
+```
+
+The engine-turned ornament of watch faces, banknotes, and certificates. The machine behind the look is a lathe whose cams rock the cutter as the piece turns. Each pass cuts one wavy ring, and the piece is turned a hair between passes. This traces the same recipe: `rings` concentric closed curves from `innerRadius` out to `outerRadius`, each one `r(θ) = base + Σ amplitude·sin(bumps·θ + phase)` over the stacked `rosettes`, with ring `k` rotated by `k · twist`. The creeping rotation is what weaves neighboring rings into the braided moiré.
+
+Stack a coarse rosette and a fine one and the ripple rides the wave, the layered look the craft is known for. One rosette is common enough to have its own overload. The result is one closed `Contour` per ring, innermost first, centered on the origin, so the line-work strokes, hatches, and exports to SVG for a pen plotter. Keep `bumps` whole so every ring closes. Example: `Patterns/Guilloche`.
+
+```swift
+withState {
+    translate(width / 2, height / 2)
+    stroke(.white); strokeWeight(1); noFill()
+    for ring in guilloche(rings: 36, innerRadius: 90, outerRadius: 320,
+                          rosettes: [Rosette(bumps: 8, amplitude: 24),
+                                     Rosette(bumps: 40, amplitude: 4)]) {
+        drawPolyline(ring.points, closed: true)
+    }
+}
+```
 
 <a name="harmonograph"></a>
 
@@ -145,7 +178,7 @@ It pairs with everything that emits raw line-work: a random walk, [streamlines](
 
 #### Where this comes from
 
-These curves come from Vogel's phyllotaxis model, the classical Lissajous, rose, and trochoid parametric forms, the damped-pendulum harmonograph, and Chaikin's corner-cutting algorithm. See [`ATTRIBUTION.md`](../../ATTRIBUTION.md) for the sources.
+These curves come from Vogel's phyllotaxis model, the classical Lissajous, rose, and trochoid parametric forms, Lamé's superellipse, Gielis's superformula, the rose engine's guilloche, the damped-pendulum harmonograph, and Chaikin's corner-cutting algorithm. See [`ATTRIBUTION.md`](../../ATTRIBUTION.md) for the sources.
 
 #### Go deeper
 
