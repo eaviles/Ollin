@@ -104,6 +104,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 - [`Steering`](./Generators/Steering.md) - `Vehicle`, a creature moved by composable steering forces (seek, flee, arrive, pursue, wander, follow a path or flow field)
 - [`Space colonization`](./Generators/SpaceColonization.md) - `SpaceColonization`, branching growth (veins, roots, trees) toward scattered attraction points (a stateful stepper)
 - [`Diffusion-limited aggregation`](./Generators/DiffusionLimitedAggregation.md) - `DiffusionLimitedAggregation`, dendritic clusters frozen out of random walkers (frost and coral, a stateful stepper)
+- [`Dielectric breakdown`](./Generators/DielectricBreakdown.md) - `DielectricBreakdown`, lightning grown where the solved electric field is strongest, the `eta` exponent sweeping furry bush to sparse Lichtenberg arc
 - [`Crack growth`](./Generators/CrackGrowth.md) - `CrackGrowth`, perpendicular cracks subdividing the plane into city-block cells, each dragging a one-sided watercolor wash (a stateful stepper)
 
 ### Helpers

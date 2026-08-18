@@ -275,6 +275,27 @@ override func draw() {
 
 Because particles freeze in arrival order, `cluster.particles[i]` froze `i`-th, and tinting by index paints the cluster's whole life story as rings of color. Each particle also remembers which particle it stuck to, so `segments` gives the branching skeleton as plain lines. `stickiness` below `1` lets walkers slide deeper before freezing, giving denser, mossier clusters. Seeding a *row* of points instead of one center grows frost creeping up from an edge. The `Patterns/Dendrite` example is the ring-tinted version.
 
+## Growth by voltage
+
+DLA's walkers are secretly measuring something. Where walkers arrive often, an electric field would be strong too. The **dielectric breakdown model** drops the walkers and measures the field directly. Hold the discharge at one voltage and the surroundings at another, solve the field between them, and grow where it's strongest. This is how a spark decides, and it's the physics burned into wood and acrylic as Lichtenberg figures.
+
+<img src="Images/11-GrowingThings/VoltageChooses.jpg" alt="Two panels: left, a young lattice discharge inside a violet wash of its solved field, its frontier dotted in orange with the dots large at the tips and missing in the crevices; right, a sparse jagged discharge with its main channels drawn thick" width="680">
+
+One number runs the show. Every frontier cell's chance to grow is the local field raised to `eta`, and that exponent is a character dial DLA never had. At `1` you're back to DLA's furry bushes. Near `2` the favorites win so hard the figure turns sparse and jagged, which is the lightning regime. Higher still approaches a single channel.
+
+```swift
+let bolt = DielectricBreakdown(seeds: [center], in: bounds, seed: 7)
+
+override func draw() {
+    bolt.step(6)               // the field settles as it grows
+    background(.black)
+    stroke(.white)
+    for (a, b) in bolt.segments { drawLine(a, b) }
+}
+```
+
+It's the same stepper shape as the others, with three gifts on top. `thicknesses(tipWidth:exponent:)` thickens trunks toward the seed, the way a real discharge brightens its main channel. `branches()` hands back whole channels as polylines, ready for smoothing or a plotter. And `potential(at:)` reads the solved field itself, so the glow around the figure can be drawn from the same physics that grew it. The `Patterns/Lichtenberg` example watches one arc to the rim.
+
 ## Growth by collision
 
 The fourth grower makes cities. Start three straight cracks moving across the canvas, each remembering its angle in a grid as it goes. A crack that reaches a cell holding some *other* angle has met an older line. It stops there. Then it restarts perpendicular to a random point on the existing pattern, and one more crack joins the population:
@@ -470,6 +491,7 @@ The chance games have their own shelf. Iterated function systems and the chaos g
 - [L-systems](../Docs/Generators/LSystem.md): the grammar type, the turtle alphabet, all thirteen presets, and the [parametric](../Docs/Generators/LSystem.md#parametric) form with its rule language, weighted rules, and botany-literature presets.
 - [Space colonization](../Docs/Generators/SpaceColonization.md): every knob, plus recipes for venation, lightning, and multi-root plantings.
 - [Diffusion-limited aggregation](../Docs/Generators/DiffusionLimitedAggregation.md): stickiness, cages, and drawing the skeleton.
+- [Dielectric breakdown](../Docs/Generators/DielectricBreakdown.md): the eta regimes, ground as a rim or as electrodes, channel polylines and pipe widths, and reading the field back.
 - [Crack growth](../Docs/Generators/CrackGrowth.md): the stepper, the marks and the wash, and the plotter path through `segments`.
 - [Meander](../Docs/Generators/Meander.md): the migration mechanism step by step, every knob, and drawing the oxbows and scars.
 - [Wave Function Collapse](../Docs/Generators/WaveFunctionCollapse.md): sockets, weights, rotations, learning from a picture instead, and what to do when a solve fails.

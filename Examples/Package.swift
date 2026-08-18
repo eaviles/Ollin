@@ -433,6 +433,7 @@ let package = Package(
         example("Patterns/ForceGraph"),
         example("Patterns/Venation"),
         example("Patterns/Dendrite"),
+        example("Patterns/Lichtenberg"),
         example("Patterns/HexGrid"),
         example("Patterns/TriangleGrid"),
         example("Patterns/Subdivision"),

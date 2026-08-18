@@ -500,6 +500,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("classic-curves",
                  note: "The classic-curve builders on one sheet: a 3:2 Lissajous figure, a 5-petal rose nesting a 7/3 rational rose, a hypotrochoid and an epitrochoid from the same gear pair, a squircle superellipse over a pinched one, a 7-lobe supershape, a phyllotaxis scatter at the golden angle, and a spiky star smoothed by Chaikin corner cutting over its raw outline. Pure closed forms, no rng and no time, so the sheet is deterministic.",
                  make: { ClassicCurvesScene() }),
+    SnapshotCase("lichtenberg",
+                 note: "A dielectric-breakdown discharge grown 500 sites from a center seed in one frame: field-weighted growth on the lattice, pipe-model widths thickening the main channels, a violet additive halo under a hot core. Pins the Laplace-field growth weights, the parent links, and the width accumulation. Seeded, no time, so the figure is deterministic.",
+                 make: { LichtenbergScene() }),
     SnapshotCase("guilloche",
                  note: "A guilloche rosette: concentric rings shaped by a coarse cam plus a fine ripple, each ring turned a hair against its neighbor so braided arms weave through the waves. Pins the stacked-rosette sum, the per-ring twist, and the ring spacing. Pure closed form, no rng and no time, so the face is deterministic.",
                  make: { GuillocheScene() }),
@@ -3896,6 +3899,38 @@ private final class ClassicCurvesScene: Sketch {
             stroke(Color(hex: 0x2EC4B6))
             strokeWeight(1.5)
             drawPolyline(star.smoothed(iterations: 3).points, closed: true)
+        }
+    }
+}
+
+/// A dielectric-breakdown discharge grown to a fixed size in one frame,
+/// drawn with pipe-model widths under an additive halo. Seeded and stepped a
+/// fixed count, so the figure is deterministic.
+private final class LichtenbergScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0A0A12))
+        let bolt = DielectricBreakdown(seeds: [Vector2(128, 128)], in: bounds,
+                                       resolution: 84, eta: 1.9,
+                                       maxSites: 500, seed: 3)
+        bolt.step(500)
+
+        let widths = bolt.thicknesses(tipWidth: 1.0, exponent: 2.0)
+        strokeCap(.round)
+        blendMode(.add)
+        stroke(Color(red: 0.55, green: 0.42, blue: 1.0, alpha: 0.22))
+        for (i, site) in bolt.sites.enumerated() {
+            guard let parent = site.parent else { continue }
+            strokeWeight(widths[i] * 2.4)
+            drawLine(bolt.sites[parent].position, site.position)
+        }
+        blendMode(.normal)
+        stroke(Color(hex: 0xF3EFFF))
+        for (i, site) in bolt.sites.enumerated() {
+            guard let parent = site.parent else { continue }
+            strokeWeight(widths[i] * 0.7)
+            drawLine(bolt.sites[parent].position, site.position)
         }
     }
 }
