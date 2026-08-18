@@ -19,7 +19,9 @@ The number is how many light paths each pixel traces. More samples make a smooth
 - **Physically soft shadows.** An area light's shadow sharpens at contact and melts with distance, because the tracer samples the panel's real surface.
 - **Color bleeding.** A red sphere on a white floor stains the floor red. Bounce light carries color everywhere it lands, at any number of bounces.
 - **Mirror in mirror.** Every polished surface reflects the scene, including other reflections, to the full path depth (`--pt-depth`, default 8).
-- **Emissive surfaces glow onto the scene.** A mesh with an emissive material lights its surroundings through the same bounces.
+- **Real glass.** A `.glass(...)` material refracts the actual scene: light bends through a solid body by its index of refraction, an `attenuationColor` tints it along the interior path, and a thin pane passes the view straight through behind its reflection. Frosted glass roughens both. And the shadow follows: light reaches the floor *through* a glass object, tinted by its color, instead of stopping at an opaque silhouette.
+- **Emissive surfaces are lights.** A mesh with an emissive material does not just glow, it lights its surroundings: the tracer samples glowing surfaces directly, the way it samples an area light's panel, so a neon bar throws smooth, soft-shadowed light instead of waiting for lucky bounces.
+- **Textures travel with the light.** A traced hit reads the mesh's base-color texture at the hit point, so a textured floor shows its picture in a mirror, keeps it through a glass sphere, and bleeds its colors onto neighbors.
 - **A real lens.** `Camera3D.aperture` (a thin-lens radius, world units) and `Camera3D.focusDistance` give the traced camera depth of field. The live view ignores both and stays pinhole-sharp while you frame. `focusDistance` left `nil` focuses on the camera's `target`.
 
 ```swift
@@ -43,10 +45,10 @@ The contact sheets, the vector exports (SVG and PDF), and the benchmark keep the
 
 ### What the traced frame does not carry yet
 
-- **Transmission renders opaque.** A glass material traces as its opaque dielectric base for now. The raster pipeline remains the way to show glass.
-- **Textures stay on the raster side.** A traced hit reads the mesh's baked vertex color and material factors, not its image maps. A heavily textured mesh reads flat in reflections and bounces.
+- **Only the base-color map traces.** The other surface maps (normal, metallic-roughness, occlusion, emissive, height, detail) apply in the raster view but not at a traced hit, which reads their constant factors instead.
 - **The layered lobes simplify.** Clearcoat, sheen, iridescence, anisotropy, and subsurface trace as their metallic-roughness base. Toon, gooch, and the standard finish trace as matte surfaces with their raster brightness.
-- **Volumetric shafts and caustics stay raster features.** Height fog and aerial perspective do apply to the traced frame along the eye's path.
+- **Glass shadows are tinted, not focused.** Light through glass reaches a shadow as a straight, tinted pass; the bent, bunched-up bright lines of a real caustic stay with the live [`caustics()`](../3D/Caustics.md) feature.
+- **Volumetric shafts stay raster features.** Height fog and aerial perspective do apply to the traced frame along the eye's path.
 
 ### Determinism and the programmatic surface
 

@@ -2595,11 +2595,24 @@ extension MetalRenderer {
     /// ahead of the geometry pass in the same command buffer, so Metal orders build →
     /// trace. The structure + scratch grow in place only when the scene outgrows them.
     /// Returns nil when there's nothing to cast (the caller then falls back / unshadows).
+    /// The path-traced export's extra per-geometry scene tables, built beside the
+    /// acceleration structure: the bindless base-color texture handles a hit samples,
+    /// the emissive-triangle table the mesh-light strategy draws from, and the
+    /// transmission flag that gates the transparent shadow walk.
+    struct PTSceneTables {
+        var textures: MTLBuffer        // per-geometry texture resource IDs (bindless)
+        var textureList: [MTLTexture]  // the unique textures to mark resident
+        var emissive: MTLBuffer        // the OllinPTEmissiveTri power-CDF table
+        var emissiveCount: Int         // triangles in it (0 = no mesh lights)
+        var emissivePower: Float       // total power (luminance x area), the pdf scale
+        var anyTransmission: Bool      // any traced geometry transmits
+    }
+
     func buildShadowAccel(_ drawer: Drawer, into commandBuffer: MTLCommandBuffer,
                           meshBuffer: MTLBuffer, causticMats: Bool = false,
                           pathTraceMats: Bool = false)
         -> (accel: MTLAccelerationStructure, offsets: MTLBuffer, causticMats: MTLBuffer?,
-            ptMats: MTLBuffer?)? {
+            ptMats: MTLBuffer?, ptScene: PTSceneTables?)? {
         let meshStride = MemoryLayout<OllinMeshVertex>.stride
         let meshVertices = drawer.meshVertices
         let batches = drawer.batches
@@ -2620,9 +2633,15 @@ extension MetalRenderer {
         // parallel, so a path-trace hit's `geometryId` resolves its whole material.
         var geoMats: [OllinCausticGeo] = []
         var geoFinishes: [OllinMaterial] = []
+        // The path-traced build's parallels: each geometry's vertex count (for the
+        // emissive-triangle scan) and its base-color texture (`nil` = untextured;
+        // texture identity also breaks the run, so a geometry is texture-uniform).
+        var geoCounts: [Int] = []
+        var geoTextures: [Image?] = []
         var runStart = -1, runEnd = 0
         var runMat = OllinCausticGeo()
         var runFinish = OllinMaterial()
+        var runTexture: Image? = nil
         func causticGeo(_ f: OllinMaterial) -> OllinCausticGeo {
             var g = OllinCausticGeo()
             g.refractive = SIMD4(f.transmission, f.ior, f.thickness > 0 ? 0 : 1, 0)
@@ -2648,6 +2667,8 @@ extension MetalRenderer {
             geoOffsets.append(UInt32(runStart))
             geoMats.append(runMat)
             geoFinishes.append(runFinish)
+            geoCounts.append(runEnd - runStart)
+            geoTextures.append(runTexture)
             runStart = -1
         }
         for i in batches.indices {
@@ -2668,10 +2689,17 @@ extension MetalRenderer {
                    mat.refractive != runMat.refractive || mat.attenuation != runMat.attenuation {
                     flushRun()
                 }
-                if runStart >= 0, pathTraceMats, !sameFinish(batch.finish, runFinish) {
+                if runStart >= 0, pathTraceMats,
+                   !sameFinish(batch.finish, runFinish)
+                       || batch.material?.texture !== runTexture {
                     flushRun()
                 }
-                if runStart < 0 { runStart = batch.meshStart; runMat = mat; runFinish = batch.finish }
+                if runStart < 0 {
+                    runStart = batch.meshStart
+                    runMat = mat
+                    runFinish = batch.finish
+                    runTexture = batch.material?.texture
+                }
                 runEnd = end
             } else {
                 flushRun()
@@ -2728,6 +2756,7 @@ extension MetalRenderer {
         }
         // The per-geometry full finishes for the path-traced export, same ring rule.
         var finishBuffer: MTLBuffer? = nil
+        var ptScene: PTSceneTables? = nil
         if pathTraceMats {
             let finishLength = max(MemoryLayout<OllinMaterial>.stride,
                                    geoFinishes.count * MemoryLayout<OllinMaterial>.stride)
@@ -2739,8 +2768,86 @@ extension MetalRenderer {
             geoFinishes.withUnsafeBytes { raw in
                 finishBuffer?.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
             }
+            ptScene = buildPTSceneTables(drawer, geoOffsets: geoOffsets, geoCounts: geoCounts,
+                                         geoFinishes: geoFinishes, geoTextures: geoTextures)
         }
-        return (accel, offsetsBuffer, matsBuffer, finishBuffer)
+        return (accel, offsetsBuffer, matsBuffer, finishBuffer, ptScene)
+    }
+
+    /// The path-traced export's per-geometry scene tables: the bindless base-color
+    /// texture handles, the emissive-triangle power CDF, and the transmission gate.
+    /// Transient allocations (the export waits on its own command buffers, so no
+    /// in-flight frame shares them).
+    private func buildPTSceneTables(_ drawer: Drawer, geoOffsets: [UInt32],
+                                    geoCounts: [Int], geoFinishes: [OllinMaterial],
+                                    geoTextures: [Image?]) -> PTSceneTables? {
+        // The bindless texture table: one GPU resource ID per geometry, the white
+        // stand-in where a geometry is untextured (its sample is the identity), so
+        // the kernel indexes without a gate. The textures ride along for the
+        // encoder's residency call.
+        guard let white = whiteStandIn() else { return nil }
+        var textureList: [MTLTexture] = [white]
+        var ids: [UInt64] = []
+        ids.reserveCapacity(geoTextures.count)
+        for image in geoTextures {
+            if let tex = image?.texture(for: device) {
+                textureList.append(tex)
+                ids.append(unsafeBitCast(tex.gpuResourceID, to: UInt64.self))
+            } else {
+                ids.append(unsafeBitCast(white.gpuResourceID, to: UInt64.self))
+            }
+        }
+        guard let texBuffer = ids.withUnsafeBytes({ raw in
+            device.makeBuffer(bytes: raw.baseAddress!, length: max(raw.count, 8),
+                              options: .storageModeShared)
+        }) else { return nil }
+
+        // The emissive-triangle table: every triangle of every glowing geometry,
+        // weighted by luminance x area into a running CDF, so the kernel draws
+        // mesh-light samples by each triangle's share of the scene's power.
+        var tris: [OllinPTEmissiveTri] = []
+        var totalPower = 0.0
+        let verts = drawer.meshVertices
+        for g in geoFinishes.indices {
+            let e = geoFinishes[g].emissive
+            let lum = Double(0.2126 * e.x + 0.7152 * e.y + 0.0722 * e.z)
+            guard lum > 0 else { continue }
+            let start = Int(geoOffsets[g])
+            for t in 0..<(geoCounts[g] / 3) {
+                let base = start + t * 3
+                let a = SIMD3(verts[base].position.x, verts[base].position.y, verts[base].position.z)
+                let b = SIMD3(verts[base + 1].position.x, verts[base + 1].position.y, verts[base + 1].position.z)
+                let c = SIMD3(verts[base + 2].position.x, verts[base + 2].position.y, verts[base + 2].position.z)
+                let area = 0.5 * Double(simd_length(simd_cross(b - a, c - a)))
+                guard area > 1e-9 else { continue }
+                totalPower += lum * area
+                var entry = OllinPTEmissiveTri()
+                entry.cdf = Float(totalPower)   // normalized below
+                entry.tri = UInt32(base)
+                entry.geo = UInt32(g)
+                tris.append(entry)
+            }
+        }
+        if totalPower > 0 {
+            for i in tris.indices { tris[i].cdf /= Float(totalPower) }
+            tris[tris.count - 1].cdf = 1        // guard the search's top end
+        } else {
+            tris = []
+        }
+        let emLength = max(MemoryLayout<OllinPTEmissiveTri>.stride,
+                           tris.count * MemoryLayout<OllinPTEmissiveTri>.stride)
+        guard let emBuffer = device.makeBuffer(length: emLength, options: .storageModeShared)
+        else { return nil }
+        tris.withUnsafeBytes { raw in
+            if let base = raw.baseAddress, raw.count > 0 {
+                emBuffer.contents().copyMemory(from: base, byteCount: raw.count)
+            }
+        }
+        let anyTransmission = geoFinishes.contains { $0.shadingModel == 3 && $0.transmission > 0 }
+        return PTSceneTables(textures: texBuffer, textureList: textureList,
+                             emissive: emBuffer, emissiveCount: tris.count,
+                             emissivePower: Float(totalPower),
+                             anyTransmission: anyTransmission)
     }
 
     /// A 1-triangle acceleration structure bound to the lit mesh fragment whenever no

@@ -279,7 +279,7 @@ Use it two ways. It is an index for the moment you remember the guide showing bl
 | Capability | What it is | Guide | Reference |
 |---|---|---|---|
 | Stills and sequences | `--export` a frame, `--export-sequence` a folder of them | [Ch 22](22-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
-| Path-traced export | `--path-traced` renders the 3D scene by tracing light: soft shadows, bounce color, mirror in mirror, a real lens | [Ch 22](22-SharingAndPerforming.md) | [Path-traced export](../Docs/Output/PathTraced.md) |
+| Path-traced export | `--path-traced` renders the 3D scene by tracing light: soft shadows, bounce color, mirror in mirror, real glass, glowing meshes as lights, textures in the bounces, a real lens | [Ch 22](22-SharingAndPerforming.md) | [Path-traced export](../Docs/Output/PathTraced.md) |
 | Video and GIF | `--export-video` (H.264, HEVC, ProRes) and `--export-gif`, deterministic | [Ch 3](03-MotionAndTime.md), [Ch 22](22-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
 | Live recording | `startRecording()` or ⌘⇧R keeps a run as it happens, sound included, through evaluations | [Ch 22](22-SharingAndPerforming.md) | [Recording](../Docs/Output/Recording.md) |
 | Record & replay | `--record-take` writes a run's seed, clock, inputs, and knobs down; `--replay` plays it back exactly, scrubs it, and re-renders it through any export | [Ch 22](22-SharingAndPerforming.md) | [Replay](../Docs/Core/Replay.md) |

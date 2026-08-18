@@ -63,7 +63,7 @@ extension MetalRenderer {
         }
         guard let built = buildShadowAccel(drawer, into: setupCB, meshBuffer: meshBuffer,
                                            pathTraceMats: true),
-              let finishes = built.ptMats,
+              let finishes = built.ptMats, let scene = built.ptScene,
               let pipeline = try? libraryComputePipeline("ollin_pt_trace") else { return nil }
         setupCB.commit()
         setupCB.waitUntilCompleted()
@@ -109,6 +109,24 @@ extension MetalRenderer {
         pt.counts = SIMD4<UInt32>(UInt32(total), UInt32(max(1, settings.maxDepth)),
                                   envTables != nil ? UInt32(Self.envGridW) : 0,
                                   envTables != nil ? UInt32(Self.envGridH) : 0)
+        // The texture-LOD ray cone: unproject the center pixel and its neighbor and
+        // measure how far apart their rays start (the orthographic pixel footprint)
+        // and how much their directions diverge per unit of travel (the perspective
+        // pixel angle). Projection-agnostic, so every camera kind reads right.
+        func unproject(_ px: Double, _ py: Double, _ z: Float) -> SIMD3<Float> {
+            let ndc = SIMD4<Float>(Float(px / Double(width)) * 2 - 1,
+                                   1 - Float(py / Double(height)) * 2, z, 1)
+            let h = pt.inverseViewProjection * ndc
+            return SIMD3(h.x, h.y, h.z) / h.w
+        }
+        let cx = Double(width) * 0.5, cy = Double(height) * 0.5
+        let o0 = unproject(cx, cy, 0), o1 = unproject(cx + 1, cy, 0)
+        let d0 = simd_normalize(unproject(cx, cy, 1) - o0)
+        let d1 = simd_normalize(unproject(cx + 1, cy, 1) - o1)
+        pt.cone = SIMD4<Float>(simd_length(o1 - o0), simd_length(d1 - d0), 0, 0)
+        pt.meshLights = SIMD4<Float>(Float(scene.emissiveCount),
+                                     max(scene.emissivePower, 1e-6),
+                                     scene.anyTransmission ? 1 : 0, 0)
 
         let envTexture = (lighting.iblEnabled != 0 ? currentIBL?.equirect : nil) ?? whiteStandIn()
         let shapingArray = shapingStandIn()
@@ -134,6 +152,9 @@ extension MetalRenderer {
             // The declared tables argument always binds something; the kernel only
             // reads it while `counts.z > 0` (real tables built).
             enc.setBuffer(envTables ?? ensureDummyGeoOffsets(), offset: 0, index: 10)
+            enc.setBuffer(scene.emissive, offset: 0, index: 11)
+            enc.setBuffer(scene.textures, offset: 0, index: 12)
+            enc.useResources(scene.textureList, usage: .read)
             enc.setTexture(accum, index: 0)
             enc.setTexture(depthTex, index: 1)
             enc.setTexture(envTexture, index: 2)

@@ -6,10 +6,12 @@ import Ollin
 /// rate, with every dial live. The *same sketch* exported with `--path-traced`
 /// renders by tracing light paths instead: the panel's shadows soften with
 /// distance, the floor picks up color bled from the spheres, every polished
-/// surface mirrors the scene at any depth, and the camera's aperture turns into a
-/// real thin-lens depth of field (the raster view stays sharp; the lens is the
-/// traced camera's). That is the whole workflow: the live window is the viewfinder,
-/// the flag is the film back.
+/// surface mirrors the scene at any depth, the amber sphere turns to real solid
+/// glass (light bends through it, its shadow glows amber instead of going black),
+/// the glowing bar lights the set by its own surface, and the camera's aperture
+/// turns into a real thin-lens depth of field (the raster view stays sharp; the
+/// lens is the traced camera's). That is the whole workflow: the live window is
+/// the viewfinder, the flag is the film back.
 ///
 ///     swift run Example-3D-Effects-PathTraced                          # tune live
 ///     swift run Example-3D-Effects-PathTraced --export out.png --path-traced 512
@@ -56,12 +58,17 @@ final class PathTraced: Sketch {
             drawBox(width: 24, height: 1, depth: 18)
         }
 
-        // The row: chrome, colored gloss, and matte side by side, so one export
-        // shows the whole material range under one light. Each rests on the floor.
+        // The row: chrome, colored gloss, solid amber glass, and matte side by
+        // side, so one export shows the whole material range under one light. The
+        // glass sphere is where the traced render pulls furthest ahead of the
+        // window: the trace bends light through the body, tints it along the
+        // interior path, and passes it on into the shadow. Each rests on the floor.
         let finishes: [(Color, Material)] = [
             (Color(white: 0.95), .metal(roughness: 0.04)),
             (Color(hue: 0.02, saturation: 0.75, brightness: 0.85), .dielectric(roughness: 0.08)),
-            (Color(hue: 0.55, saturation: 0.55, brightness: 0.9), .metal(roughness: 0.3)),
+            (Color(hue: 0.1, saturation: 0.4, brightness: 1.0),
+             .glass(thickness: 1, attenuationColor: Color(hue: 0.09, saturation: 0.75, brightness: 0.9),
+                    attenuationDistance: 0.9)),
             (Color(hue: 0.12, saturation: 0.6, brightness: 0.95), .dielectric(roughness: 0.5)),
             (Color(white: 0.85), Material())
         ]
@@ -82,6 +89,18 @@ final class PathTraced: Sketch {
             fill(Color(white: 0.9))
             material(.metal(roughness: 0.05))
             drawBox(width: 1.4, height: 3.6, depth: 0.35)
+        }
+
+        // A cool glowing bar floating at the right edge: an emissive mesh, so in
+        // the traced render its own surface is a light. The trace samples it the
+        // way it samples the softbox, so the glow reaches the floor and the
+        // sphere row as smooth, soft-shadowed light rather than speckle.
+        withState {
+            translate(4.0, 0.5, 0.6)
+            rotateZ(0.5 * .pi)
+            var bar = Mesh.box(width: 0.24, height: 2.4, depth: 0.24)
+            bar.material = MeshMaterial(emissiveFactor: Color(red: 1.4, green: 2.3, blue: 2.6))
+            drawMesh(bar)
         }
     }
 }

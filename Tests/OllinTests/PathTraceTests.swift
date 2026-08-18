@@ -185,4 +185,258 @@ struct PathTraceTests {
         let b = try #require(OllinApp.image(of: Probe.make(.parityDirectional), frame: 1))
         #expect(pixels(of: a) == pixels(of: b))
     }
+
+    // MARK: - Glass, textures, and emissive meshes through the trace
+
+    /// The scenes for the traced glass / texture / mesh-light probes.
+    final class SliceProbe: Sketch {
+        enum Kind {
+            case glassFurnace          // a solid clear glass sphere in the uniform field
+            case glassShadow           // a floor lit through a clear pane
+            case redGlassShadow        // the same, through a red pane
+            case opaqueShadow          // the same pane, opaque (the comparison anchor)
+            case texturedSphere        // a two-tone textured sphere (parity vs raster)
+            case emissivePanel         // a glowing panel over a matte floor, no lights
+            case everything            // all three at once (the determinism scene)
+        }
+        var kind: Kind = .glassFurnace
+
+        override var canvasSize: CanvasSize { .square(256) }
+
+        /// The emissive panel's factor: `srgbToLinear` of this is the radiance the
+        /// analytic check below prices.
+        static let panelFactor = 6.0
+
+        static func make(_ kind: Kind) -> SliceProbe {
+            let p = SliceProbe()
+            p.kind = kind
+            return p
+        }
+
+        /// A 64x64 texture: left half red, right half blue.
+        static let twoTone: Image = {
+            var bytes = [UInt8]()
+            bytes.reserveCapacity(64 * 64 * 4)
+            for y in 0..<64 {
+                for x in 0..<64 {
+                    bytes.append(x < 32 ? 255 : 0)
+                    bytes.append(0)
+                    bytes.append(x < 32 ? 0 : 255)
+                    bytes.append(255)
+                }
+            }
+            return Image(width: 64, height: 64, premultipliedRGBA: bytes)!
+        }()
+
+        private func shadowSet(pane: (Color, Material)) {
+            ambientLight(Color(white: 0.02))
+            directionalLight(Color(white: 0.85), direction: Vector3(-1, -1, 0))
+            camera(Camera3D(eye: Vector3(0, 6, 1.2), target: .zero))
+            withState {
+                translate(0, -0.5, 0)
+                fill(Color(white: 0.4))
+                material(Material())
+                drawBox(width: 12, height: 1, depth: 12)
+            }
+            // The pane sits up and to the right, so its 45-degree shadow lands on
+            // the floor centered at the origin while the pane itself projects well
+            // outside the probe region in the top-down view.
+            withState {
+                translate(2.6, 2.6, 0)
+                fill(pane.0)
+                material(pane.1)
+                drawBox(width: 2.6, height: 0.06, depth: 2.6)
+            }
+        }
+
+        private func emissivePanelMesh() -> Mesh {
+            var panel = Mesh.box(width: 0.4, height: 0.05, depth: 0.4)
+            let f = Self.panelFactor
+            panel.material = MeshMaterial(emissiveFactor: Color(red: f, green: f, blue: f))
+            return panel
+        }
+
+        override func draw() {
+            background(.black)
+            switch kind {
+            case .glassFurnace:
+                ambientLight(Color(white: 0.5))
+                camera(Camera3D(eye: Vector3(0, 0, 4), target: .zero))
+                fill(.white)
+                material(.glass(thickness: 1))
+                drawSphere(radius: 1.2)
+            case .glassShadow:
+                shadowSet(pane: (.white, .glass()))
+            case .redGlassShadow:
+                shadowSet(pane: (Color(red: 1, green: 0.15, blue: 0.15), .glass()))
+            case .opaqueShadow:
+                shadowSet(pane: (.white, Material()))
+            case .texturedSphere:
+                ambientLight(Color(white: 0.5))
+                camera(Camera3D(eye: Vector3(0, 0, 4), target: .zero))
+                fill(.white)
+                material(Material())
+                drawMesh(Mesh.sphere(radius: 1.2).textured(Self.twoTone))
+            case .emissivePanel:
+                ambientLight(.black)
+                // The target sits on the floor under the panel, so the image
+                // center is exactly the point the analytic check prices.
+                camera(Camera3D(eye: Vector3(0, 2.2, 4.5), target: .zero))
+                withState {
+                    translate(0, -0.5, 0)
+                    fill(Color(white: 0.5))
+                    material(Material())
+                    drawBox(width: 8, height: 1, depth: 8)
+                }
+                withState {
+                    translate(0, 1.5, 0)
+                    fill(.white)
+                    material(Material())
+                    drawMesh(emissivePanelMesh())
+                }
+            case .everything:
+                ambientLight(Color(white: 0.1))
+                directionalLight(Color(white: 0.5), direction: Vector3(-1, -1, -0.5))
+                camera(Camera3D(eye: Vector3(0, 1.6, 5), target: Vector3(0, 0.4, 0)))
+                withState {
+                    translate(0, -0.5, 0)
+                    fill(.white)
+                    material(Material())
+                    drawMesh(Mesh.box(width: 10, height: 1, depth: 8).textured(Self.twoTone))
+                }
+                withState {
+                    translate(-0.9, 0.7, 0)
+                    fill(Color(red: 1, green: 0.4, blue: 0.3))
+                    material(.glass(thickness: 1))
+                    drawSphere(radius: 0.7)
+                }
+                withState {
+                    translate(0.9, 1.4, -0.4)
+                    drawMesh(emissivePanelMesh())
+                }
+            }
+        }
+    }
+
+    /// Mean of one channel over an arbitrary fractional region of the image.
+    private func regionMean(_ image: CGImage, x0: Double, x1: Double,
+                            y0: Double, y1: Double, channel: Int = 1) -> Double {
+        let d = pixels(of: image)
+        var sum = 0, count = 0
+        for py in Int(Double(image.height) * y0)..<Int(Double(image.height) * y1) {
+            for px in Int(Double(image.width) * x0)..<Int(Double(image.width) * x1) {
+                sum += Int(d[(py * image.width + px) * 4 + channel]); count += 1
+            }
+        }
+        return Double(sum) / Double(max(count, 1))
+    }
+
+    /// Relative luminance noise over a region: per-pixel green-channel standard
+    /// deviation over the mean (the mesh-light variance probe).
+    private func regionRelativeNoise(_ image: CGImage, x0: Double, x1: Double,
+                                     y0: Double, y1: Double) -> Double {
+        let d = pixels(of: image)
+        var values: [Double] = []
+        for py in Int(Double(image.height) * y0)..<Int(Double(image.height) * y1) {
+            for px in Int(Double(image.width) * x0)..<Int(Double(image.width) * x1) {
+                values.append(Double(d[(py * image.width + px) * 4 + 1]))
+            }
+        }
+        let mean = values.reduce(0, +) / Double(max(values.count, 1))
+        guard mean > 0 else { return .infinity }
+        let variance = values.reduce(0) { $0 + ($1 - mean) * ($1 - mean) }
+                     / Double(max(values.count, 1))
+        return variance.squareRoot() / mean
+    }
+
+    private func pathTracedSlice(_ kind: SliceProbe.Kind, samples: Int = 96,
+                                 depth: Int = 8) -> CGImage? {
+        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, maxDepth: depth)
+        defer { OllinApp.pathTracedExport = nil }
+        return OllinApp.image(of: SliceProbe.make(kind), frame: 1)
+    }
+
+    /// The glass furnace: a solid clear glass sphere in the uniform field must
+    /// render the field, because a lossless dielectric redirects light without
+    /// absorbing any. Every piece of the transmission path (the Fresnel split,
+    /// Snell's bend, total internal reflection, the microfacet weight) has to
+    /// conserve energy for the mean to stay put.
+    @Test(.enabled(if: Snapshot.hasRaytracing))
+    func theGlassFurnaceHoldsItsEnergy() throws {
+        let image = try #require(pathTracedSlice(.glassFurnace, samples: 128, depth: 12))
+        let m = centerMean(image)
+        #expect(abs(m - 127.5) < 4.0, "glass furnace mean \(m), expected ~127.5")
+    }
+
+    /// The transparent shadow: a floor point lit through a clear pane must read
+    /// far brighter than the same point under an opaque pane (the walk passes the
+    /// light through instead of stopping at the silhouette), and a red pane must
+    /// throw a red shadow (the tint rides the visibility, not just the view).
+    @Test(.enabled(if: Snapshot.hasRaytracing))
+    func glassPassesLightIntoItsShadow() throws {
+        let glass = try #require(pathTracedSlice(.glassShadow, samples: 48))
+        let opaque = try #require(pathTracedSlice(.opaqueShadow, samples: 48))
+        // Compare in linear light (the sRGB curve compresses exactly the dark
+        // region a shadow lives in); the opaque shadow keeps its real bounce
+        // light, so the ratio is against that, not against black.
+        let g = Color.srgbToLinear(centerMean(glass) / 255)
+        let o = Color.srgbToLinear(centerMean(opaque) / 255)
+        #expect(g > 4.0 * o, "through glass \(g) vs opaque \(o) (linear)")
+        let red = try #require(pathTracedSlice(.redGlassShadow, samples: 48))
+        let r = Color.srgbToLinear(centerMean(red, channel: 0) / 255)
+        let b = Color.srgbToLinear(centerMean(red, channel: 2) / 255)
+        #expect(r > 3.0 * b, "red shadow reads r \(r) vs b \(b) (linear)")
+    }
+
+    /// Image maps at a traced hit: a two-tone textured sphere must read the same
+    /// through the trace as through the raster pipeline, on both halves, so the
+    /// uv fetch, the sample orientation, and the color pipeline all line up.
+    @Test(.enabled(if: Snapshot.hasRaytracing))
+    func aTexturedMeshKeepsItsPictureThroughTheTrace() throws {
+        let traced = try #require(pathTracedSlice(.texturedSphere))
+        OllinApp.pathTracedExport = nil
+        let raster = try #require(OllinApp.image(of: SliceProbe.make(.texturedSphere), frame: 1))
+        for channel in [0, 2] {
+            let tl = regionMean(traced, x0: 0.34, x1: 0.44, y0: 0.44, y1: 0.56, channel: channel)
+            let rl = regionMean(raster, x0: 0.34, x1: 0.44, y0: 0.44, y1: 0.56, channel: channel)
+            #expect(abs(tl - rl) < 14.0, "left channel \(channel): traced \(tl) vs raster \(rl)")
+            let tr = regionMean(traced, x0: 0.56, x1: 0.66, y0: 0.44, y1: 0.56, channel: channel)
+            let rr = regionMean(raster, x0: 0.56, x1: 0.66, y0: 0.44, y1: 0.56, channel: channel)
+            #expect(abs(tr - rr) < 14.0, "right channel \(channel): traced \(tr) vs raster \(rr)")
+        }
+    }
+
+    /// The mesh light: a glowing panel over a matte floor, no other light at all.
+    /// The floor under the panel must match the analytic small-emitter irradiance
+    /// (radiance x area x cos^2 / d^2, through the floor's Lambert albedo / pi),
+    /// which a double-counted or mis-priced strategy misses by a large factor, and
+    /// it must be *smooth* at a sample count where waiting for lucky lobe hits
+    /// would still be speckle (the reason the sampler exists).
+    @Test(.enabled(if: Snapshot.hasRaytracing))
+    func anEmissiveMeshLightsTheFloorSmoothly() throws {
+        let image = try #require(pathTracedSlice(.emissivePanel, samples: 32))
+        // The analytic expectation at the floor point under the panel's center.
+        let radiance = Color.srgbToLinear(SliceProbe.panelFactor)
+        let area = 0.4 * 0.4
+        let d = 1.475           // panel underside (1.5 - 0.025) to the floor at 0
+        let albedo = Color.srgbToLinear(0.5)
+        let expected = radiance * area / (d * d) * albedo / .pi
+        let mean = regionMean(image, x0: 0.47, x1: 0.53, y0: 0.47, y1: 0.53)
+        let measured = Color.srgbToLinear(mean / 255)
+        #expect(abs(measured - expected) < expected * 0.18,
+                "floor reads \(measured) linear, expected ~\(expected)")
+        let noise = regionRelativeNoise(image, x0: 0.44, x1: 0.56, y0: 0.44, y1: 0.56)
+        #expect(noise < 0.35, "relative noise \(noise) at 32 spp")
+    }
+
+    /// The whole slice stays deterministic: glass, a textured floor, and a mesh
+    /// light in one scene render byte-identically across runs (the binary
+    /// searches, the stochastic lobe mixes, and the transparent walk are all
+    /// pure functions of the sample stream).
+    @Test(.enabled(if: Snapshot.hasRaytracing))
+    func theNewPathsStayDeterministic() throws {
+        let a = try #require(pathTracedSlice(.everything, samples: 12))
+        let b = try #require(pathTracedSlice(.everything, samples: 12))
+        #expect(pixels(of: a) == pixels(of: b))
+    }
 }

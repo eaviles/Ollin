@@ -96,6 +96,19 @@ static inline float ollin_pt_smith_g1(float NoV, float a) {
     return 2.0 * NoV / max(NoV + sqrt(a2 + (1.0 - a2) * NoV * NoV), 1e-6);
 }
 
+// Exact (unpolarized) dielectric Fresnel reflectance for one interface. `cosI` is
+// the incident cosine against the microfacet normal (>= 0), `eta` the relative
+// index n_incident / n_transmitted along the ray (entering glass from air: 1/ior;
+// leaving: ior). Returns 1 past the critical angle (total internal reflection).
+static inline float ollin_pt_fresnel_dielectric(float cosI, float eta) {
+    float sin2T = eta * eta * max(0.0, 1.0 - cosI * cosI);
+    if (sin2T >= 1.0) return 1.0;
+    float cosT = sqrt(1.0 - sin2T);
+    float rPerp = (eta * cosI - cosT) / max(eta * cosI + cosT, 1e-6);
+    float rParl = (cosI - eta * cosT) / max(cosI + eta * cosT, 1e-6);
+    return 0.5 * (rPerp * rPerp + rParl * rParl);
+}
+
 // MARK: - Scene radiance
 
 // The environment's radiance along `dir`, in display-linear units: the equirect at
@@ -192,6 +205,111 @@ struct OllinPTHit {
     bool physical;         // shading model 3: microfacet lobes; else Lambert only
 };
 
+// Next-event visibility with glass in the scene: walk the shadow segment hit by
+// hit, passing through transmissive geometry with its tint (the surface color and
+// transmitted fraction at a crossing into a solid or through a thin pane, plus the
+// Beer-Lambert interior loss while inside one) and stopping dead at the first
+// opaque surface. The pass-through is a straight line: a shadow ray cannot refract
+// (the bent path to the light is the caustics domain), so this is the standard
+// shadow-ray approximation that turns a glass object's shadow from an opaque
+// silhouette into tinted light. With no transmissive geometry in the frame the
+// cheap any-hit ray answers instead (the `anyTransmission` gate).
+static inline float3 ollin_pt_transmittance(float3 origin, float3 target, float eps,
+                                            primitive_acceleration_structure accel,
+                                            const device OllinMeshVertex *verts,
+                                            const device uint *geoOffsets,
+                                            const device OllinMaterial *geoMats,
+                                            bool anyTransmission) {
+    if (!anyTransmission) {
+        intersection_params p;
+        p.accept_any_intersection(true);
+        return float3(traceShadowRay(origin, target, eps, accel, p));
+    }
+    float3 tint = float3(1.0);
+    float3 span = target - origin;
+    float total = length(span);
+    float3 dir = span / max(total, 1e-5);
+    float3 o = origin;
+    float remaining = total - eps;
+    float4 medium = float4(0.0);   // rgb = the entered solid's attenuation color,
+                                   // w = its attenuation distance (0 = not inside)
+    for (int i = 0; i < 8; i++) {
+        ray r;
+        r.origin = o;
+        r.direction = dir;
+        r.min_distance = eps;
+        r.max_distance = remaining;
+        intersection_query<triangle_data> q;
+        if (!ollin_rt_query(q, r, accel)) break;
+        OllinMaterial m = geoMats[q.get_committed_geometry_id()];
+        if (m.shadingModel != 3 || m.transmission <= 0.0) return float3(0.0);
+        bool backface = false;
+        OllinRTSurface s = ollin_rt_fetch_surface(q, verts, geoOffsets, o, dir, backface);
+        float d = q.get_committed_distance();
+        if (medium.w > 0.0)
+            tint *= pow(max(medium.rgb, float3(1e-4)), d / medium.w);
+        if (m.thickness > 0.0) {
+            // A solid's boundary: the crossing into it carries the tint (the exit
+            // does not, or a slab would tint twice), and the interior segment
+            // between the two is what the Beer term above just priced.
+            if (!backface) {
+                tint *= s.albedo * m.transmission;
+                medium = m.attenuation;
+            } else {
+                medium = float4(0.0);
+            }
+        } else {
+            tint *= s.albedo * m.transmission;   // a thin pane, one sheet
+        }
+        o = o + dir * (d + eps);
+        remaining -= d + eps;
+        if (remaining <= eps) break;
+    }
+    return tint;
+}
+
+// One bindless texture handle per traced geometry (the CPU writes the textures'
+// GPU resource IDs at the same 8-byte stride; Metal reads the struct as an
+// argument buffer, which is the one form a texture may take in device memory).
+struct OllinPTTexEntry {
+    texture2d<float> tex;
+};
+
+// The hit's base-color texture read: fetch the triangle's uvs from the flat mesh
+// buffer and sample the geometry's texture (bindless; untextured geometries carry
+// the white stand-in, whose sample is the identity). The mip follows the ray cone:
+// the footprint a pixel's cone has grown to at this distance, over the triangle's
+// own texel density (texture-space area over world-space area), the standard
+// texture-LOD scheme for a ray that has no screen-space derivatives.
+static inline float3 ollin_pt_texture_albedo(thread intersection_query<triangle_data> &q,
+                                             const device OllinMeshVertex *verts,
+                                             const device uint *geoOffsets,
+                                             const device OllinPTTexEntry *geoTextures,
+                                             float3 rayDir, float3 N,
+                                             float coneWidth) {
+    texture2d<float> tex = geoTextures[q.get_committed_geometry_id()].tex;
+    uint base = geoOffsets[q.get_committed_geometry_id()]
+              + q.get_committed_primitive_id() * 3u;
+    OllinMeshVertex a = verts[base + 0u];
+    OllinMeshVertex b = verts[base + 1u];
+    OllinMeshVertex c = verts[base + 2u];
+    float2 bc = q.get_committed_triangle_barycentric_coord();
+    float2 uv = a.uv * (1.0 - bc.x - bc.y) + b.uv * bc.x + c.uv * bc.y;
+    float twoWorld = length(cross(b.position.xyz - a.position.xyz,
+                                  c.position.xyz - a.position.xyz));
+    float2 e1 = b.uv - a.uv, e2 = c.uv - a.uv;
+    float twoTexel = abs(e1.x * e2.y - e1.y * e2.x)
+                   * float(tex.get_width()) * float(tex.get_height());
+    float lod = 0.0;
+    if (twoWorld > 1e-9 && twoTexel > 0.0) {
+        lod = 0.5 * log2(twoTexel / twoWorld)
+            + log2(max(coneWidth, 1e-6) / max(abs(dot(N, rayDir)), 1e-3));
+    }
+    constexpr sampler s(filter::linear, mip_filter::linear,
+                        address::clamp_to_edge);
+    return tex.sample(s, uv, level(max(lod, 0.0))).rgb;
+}
+
 // Evaluate the surface's reflectance for light arriving from `wi` seen from `wo`
 // (both away from the surface), *without* the raster parity fold: the physically-
 // based finish returns the microfacet BRDF value, a legacy finish returns albedo/π.
@@ -240,22 +358,75 @@ static inline float ollin_pt_bsdf_pdf(OllinPTHit h, float3 wo, float3 wi) {
     return p * pdfSpec + (1.0 - p) * pdfDiff;
 }
 
+// Next-event estimation over the frame's emissive *meshes*: draw one triangle from
+// the power CDF, one uniform point on it, and add its glow through the surface's
+// reflectance, priced by the area-to-solid-angle pdf and credited against the lobe
+// strategy with the power heuristic (a continuation ray can land on the same
+// surface, so the two strategies split the light the way the environment pair
+// does). Emission is two-sided, matching the constant term a direct hit adds.
+static inline float3 ollin_pt_mesh_light(OllinPTHit h, float3 wo, float eps,
+                                         primitive_acceleration_structure accel,
+                                         const device OllinMeshVertex *verts,
+                                         const device uint *geoOffsets,
+                                         const device OllinMaterial *geoMats,
+                                         const device OllinPTEmissiveTri *emTris,
+                                         constant OllinPathTraceUniforms &pt,
+                                         float4 u) {
+    uint n = uint(pt.meshLights.x);
+    uint lo = 0, hi = n - 1;
+    while (lo < hi) { uint mid = (lo + hi) >> 1; if (emTris[mid].cdf < u.x) lo = mid + 1; else hi = mid; }
+    OllinPTEmissiveTri e = emTris[lo];
+    OllinMeshVertex A = verts[e.tri];
+    OllinMeshVertex B = verts[e.tri + 1u];
+    OllinMeshVertex C = verts[e.tri + 2u];
+    float su = sqrt(u.y);
+    float b1 = (1.0 - u.z) * su, b2 = u.z * su;   // uniform over the triangle
+    float3 p = A.position.xyz * (1.0 - su) + B.position.xyz * b1 + C.position.xyz * b2;
+    float3 ng = cross(B.position.xyz - A.position.xyz, C.position.xyz - A.position.xyz);
+    float twoArea = length(ng);
+    if (twoArea <= 1e-9) return float3(0.0);
+    ng /= twoArea;
+    float3 toL = p - h.s.P;
+    float dist2 = dot(toL, toL);
+    if (dist2 <= eps * eps) return float3(0.0);
+    float3 wi = toL * rsqrt(dist2);
+    float NoL = dot(h.s.N, wi);
+    if (NoL <= 0.0) return float3(0.0);
+    float cosL = abs(dot(ng, wi));                // two-sided emitter
+    if (cosL <= 1e-4) return float3(0.0);
+    float3 Le = geoMats[e.geo].emissive.rgb;
+    float lum = dot(Le, float3(0.2126, 0.7152, 0.0722));
+    if (lum <= 0.0) return float3(0.0);
+    float areaPdf = lum / pt.meshLights.y;        // uniform-in-power: luminance / total
+    float pdfSA = areaPdf * dist2 / cosL;
+    float3 vis = ollin_pt_transmittance(h.s.P + h.s.N * eps, p, eps, accel,
+                                        verts, geoOffsets, geoMats,
+                                        pt.meshLights.z > 0.5);
+    if (all(vis <= float3(0.0))) return float3(0.0);
+    float3 f = ollin_pt_bsdf(h, wo, wi);
+    float w = ollin_pt_mis(pdfSA, ollin_pt_bsdf_pdf(h, wo, wi));
+    return f * Le * vis * (NoL * cosL / (dist2 * areaPdf)) * w;
+}
+
 // Next-event estimation over the frame's light list: for each light, pick the point
 // the surface would see, trace one visibility ray, and add the light's contribution
 // through the surface's reflectance. Punctual kinds keep the raster conventions
 // (intensity-premultiplied color, no distance falloff, the spot cone, IES/cookie
 // shaping); area kinds sample their real surface, which is where the physically
-// soft shadows come from.
+// soft shadows come from. Visibility runs through the transparent walk, so glass
+// between a surface and a light passes tinted light instead of an opaque shadow.
 static inline float3 ollin_pt_direct(OllinPTHit h, float3 wo, float eps,
                                      primitive_acceleration_structure accel,
                                      constant OllinLighting &light,
                                      uint2 gid, uint sampleIndex, uint dim,
                                      texture2d_array<float> iesProfiles,
-                                     texture2d_array<float> cookies) {
+                                     texture2d_array<float> cookies,
+                                     const device OllinMeshVertex *verts,
+                                     const device uint *geoOffsets,
+                                     const device OllinMaterial *geoMats,
+                                     bool anyTransmission) {
     float3 direct = float3(0.0);
     if (light.lightCount <= 0) return direct;
-    intersection_params shadowParams;
-    shadowParams.accept_any_intersection(true);
     float3 origin = h.s.P + h.s.N * eps;
     for (int i = 0; i < light.lightCount; i++) {
         OllinLight L = light.lights[i];
@@ -272,14 +443,16 @@ static inline float3 ollin_pt_direct(OllinPTHit h, float3 wo, float eps,
             }
             ollin_apply_light_shaping(L, light, toLight, h.s.P, iesProfiles, cookies);
             float3 target = (L.kind == 0) ? h.s.P + toLight * 1e6 : L.position.xyz;
-            float vis = traceShadowRay(origin, target, eps, accel, shadowParams);
-            if (vis <= 0.0) continue;
+            float3 vis = ollin_pt_transmittance(origin, target, eps, accel,
+                                                verts, geoOffsets, geoMats,
+                                                anyTransmission);
+            if (all(vis <= float3(0.0))) continue;
             // Raster parity: the physically-based finish shades the premultiplied
             // color through the microfacet BRDF; a legacy finish keeps the raster's
             // un-normalized Lambert (albedo · color · N·L, no 1/π).
             float3 f = h.physical ? ollin_pt_bsdf(h, wo, toLight)
                                   : h.s.albedo;
-            direct += f * L.color.rgb * (NoL * atten * vis);
+            direct += f * L.color.rgb * vis * (NoL * atten);
         } else {
             // Area (rect / disk / tube): sample one point on the emitting surface.
             float4 u = ollin_pt_rand4(gid, sampleIndex, dim + uint(i));
@@ -318,10 +491,12 @@ static inline float3 ollin_pt_direct(OllinPTHit h, float3 wo, float eps,
             float cosL = dot(-wi, lightN);
             if (L.direction.w > 0.5) cosL = abs(cosL);   // two-sided panel
             if (cosL <= 0.0) continue;
-            float vis = traceShadowRay(origin, p, eps, accel, shadowParams);
-            if (vis <= 0.0) continue;
+            float3 vis = ollin_pt_transmittance(origin, p, eps, accel,
+                                                verts, geoOffsets, geoMats,
+                                                anyTransmission);
+            if (all(vis <= float3(0.0))) continue;
             float3 f = ollin_pt_bsdf(h, wo, wi);
-            direct += f * L.color.rgb * (NoL * cosL * area / dist2);
+            direct += f * L.color.rgb * vis * (NoL * cosL * area / dist2);
         }
     }
     return direct;
@@ -342,6 +517,8 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
                            const device uint *geoOffsets [[buffer(7)]],
                            const device OllinMaterial *geoMats [[buffer(9)]],
                            const device float *envTables [[buffer(10)]],
+                           const device OllinPTEmissiveTri *emTris [[buffer(11)]],
+                           const device OllinPTTexEntry *geoTextures [[buffer(12)]],
                            texture2d<float, access::read_write> accum [[texture(0)]],
                            texture2d<float, access::read_write> depthOut [[texture(1)]],
                            texture2d<float> equirect [[texture(2)]],
@@ -427,7 +604,11 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
         float primaryDist = 0.0;
         float3 eye = ro;
         float3 eyeDir = rd;
-        float prevPdf = 0.0;   // the continuation pdf that produced this ray
+        float prevPdf = 0.0;    // the continuation pdf that produced this ray
+        bool prevNEE = false;   // whether that ray's vertex ran next-event estimation
+        float pathDist = 0.0;   // distance traveled so far (grows the texture ray cone)
+        float4 medium = float4(0.0);   // inside a solid glass body: its attenuation
+                                       // color (rgb) + distance (w); w = 0 outside
 
         for (uint depth = 0; depth < maxDepth; depth++) {
             ray r;
@@ -440,9 +621,11 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
                 // A bounced ray that leaves the scene picks up the environment (or
                 // the flat ambient); a primary miss leaves the pixel to the backdrop.
                 // With environment sampling on, the power heuristic hands this
-                // strategy only the share the table sample doesn't already carry.
+                // strategy only the share the table sample doesn't already carry;
+                // after a vertex that ran no next-event pass (glass), the full
+                // share lands here.
                 if (depth > 0) {
-                    float w = envSampling
+                    float w = (envSampling && prevNEE)
                         ? ollin_pt_mis(prevPdf, ollin_pt_env_pdf(rd, envRot, pt.counts.z,
                                                                  pt.counts.w, envTables))
                         : 1.0;
@@ -466,7 +649,113 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
             h.s = ollin_rt_fetch_surface(q, verts, geoOffsets, ro, rd, backface);
             h.mat = geoMats[q.get_committed_geometry_id()];
             h.physical = h.mat.shadingModel == 3;
-            if (depth == 0) { covered = true; primaryDist = q.get_committed_distance(); }
+            float hitDist = q.get_committed_distance();
+            if (depth == 0) { covered = true; primaryDist = hitDist; }
+            pathDist += hitDist;
+
+            // Inside a solid glass body, the segment just traveled pays its
+            // Beer-Lambert absorption (`attenuation` is what white becomes after
+            // w units of interior travel; w = 0 means a clear medium).
+            if (medium.w > 0.0)
+                throughput *= pow(max(medium.rgb, float3(1e-4)), hitDist / medium.w);
+
+            // The base color at the hit: the baked vertex tint times the
+            // geometry's texture (the white stand-in when untextured), read at
+            // the mip the ray cone's footprint has grown to.
+            h.s.albedo *= ollin_pt_texture_albedo(q, verts, geoOffsets, geoTextures,
+                                                  rd, h.s.N,
+                                                  pt.cone.x + pt.cone.y * pathDist);
+
+            // The glass share of the mix: `transmission` is the fraction of light
+            // the surface passes, so that share of the paths takes the dielectric
+            // branch below and the rest shades the ordinary opaque surface
+            // (a stochastic, weight-free mix).
+            bool glassVertex = false;
+            float glassPick = 0.0;
+            if (h.physical && h.mat.transmission > 0.0) {
+                float4 ug = ollin_pt_rand4(gid, sampleIndex, dim++);
+                glassVertex = ug.x < h.mat.transmission;
+                glassPick = ug.y;
+            }
+
+            // The surface's own glow. The mesh-light pass at the previous vertex
+            // may already have sampled this surface, so past the first hit its
+            // emission is credited through the power heuristic against that
+            // strategy (full strength when no next-event pass competed).
+            if (any(h.mat.emissive.rgb > float3(0.0))) {
+                float wE = 1.0;
+                float lum = dot(h.mat.emissive.rgb, float3(0.2126, 0.7152, 0.0722));
+                if (depth > 0 && prevNEE && pt.meshLights.x > 0.5 && lum > 0.0) {
+                    float cosL = max(abs(dot(h.s.N, rd)), 1e-4);
+                    float pdfSA = (lum / pt.meshLights.y) * hitDist * hitDist / cosL;
+                    wE = ollin_pt_mis(prevPdf, pdfSA);
+                }
+                radiance += throughput * h.mat.emissive.rgb * wE;
+            }
+
+            if (glassVertex) {
+                // The dielectric: sample a microfacet normal from the visible-
+                // normal distribution, weigh reflection against refraction by the
+                // exact Fresnel, and cross or bounce accordingly (past the critical
+                // angle everything reflects). A thin pane (thickness 0) passes the
+                // ray straight through, both faces canceling; a solid bends it by
+                // Snell's law and enters the Beer-Lambert medium. The estimator
+                // weight is the outgoing Smith shadowing alone (the visible-normal
+                // pdf cancels the rest), 1 for polished glass, so a clear sphere
+                // in a uniform field returns the field exactly. Specular-dominated,
+                // so the vertex runs no next-event pass; the next hit or miss takes
+                // its light at full weight instead.
+                float a = h.s.rough * h.s.rough;
+                float4 u = ollin_pt_rand4(gid, sampleIndex, dim++);
+                float3 wo = -rd;
+                float3 t, b;
+                ollin_pt_basis(h.s.N, t, b);
+                float3 woT = float3(dot(wo, t), dot(wo, b), dot(wo, h.s.N));
+                float3 hT = ollin_pt_sample_vndf(woT, a, u.xy);
+                float3 hW = normalize(t * hT.x + b * hT.y + h.s.N * hT.z);
+                bool thin = h.mat.thickness <= 0.0;
+                float eta = (backface && !thin) ? h.mat.ior : 1.0 / h.mat.ior;
+                float F = ollin_pt_fresnel_dielectric(max(dot(wo, hW), 1e-4), eta);
+                float3 wi;
+                bool crossed = false;
+                if (glassPick < F) {
+                    wi = reflect(rd, hW);
+                    if (dot(wi, h.s.N) <= 0.0) break;
+                } else if (thin) {
+                    wi = rd;
+                    crossed = true;
+                    throughput *= h.s.albedo;      // the pane's tint, one sheet
+                } else {
+                    wi = refract(rd, hW, eta);
+                    if (all(wi == float3(0.0))) {
+                        wi = reflect(rd, hW);      // total internal reflection
+                        if (dot(wi, h.s.N) <= 0.0) break;
+                    } else if (dot(wi, h.s.N) >= 0.0) {
+                        break;                     // a grazing microfacet mis-crossed
+                    } else {
+                        crossed = true;
+                        if (!backface) {
+                            throughput *= h.s.albedo;    // the crossing in carries the tint
+                            medium = h.mat.attenuation;  // and enters the medium
+                        } else {
+                            medium = float4(0.0);        // the crossing out leaves it
+                        }
+                    }
+                }
+                if (!(thin && crossed))
+                    throughput *= ollin_pt_smith_g1(max(abs(dot(h.s.N, wi)), 1e-4), a);
+                prevPdf = 1e6;      // effectively a delta lobe (sharp env mip on a miss)
+                prevNEE = false;
+                if (depth >= 3) {
+                    float p = clamp(max(throughput.x, max(throughput.y, throughput.z)),
+                                    0.05, 0.95);
+                    if (u.w >= p) break;
+                    throughput /= p;
+                }
+                ro = h.s.P + h.s.N * (crossed ? -eps : eps);
+                rd = wi;
+                continue;
+            }
 
             // Path-space regularization: a next-event evaluation at an *indirectly*
             // seen vertex widens a polished lobe to a modest floor. On a near-mirror
@@ -478,12 +767,24 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
             OllinPTHit hNEE = h;
             if (depth > 0) hNEE.s.rough = max(hNEE.s.rough, 0.25);
 
-            // The surface's own glow, then the lights it sees directly.
-            radiance += throughput * h.mat.emissive.rgb;
+            // The lights the surface sees directly.
             radiance += throughput * ollin_pt_direct(hNEE, -rd, eps, accel, light,
                                                      gid, sampleIndex, dim,
-                                                     iesProfiles, cookies);
+                                                     iesProfiles, cookies,
+                                                     verts, geoOffsets, geoMats,
+                                                     pt.meshLights.z > 0.5);
             dim += uint(light.lightCount) + 1u;
+
+            // The emissive meshes' own strategy: one triangle drawn by its share
+            // of the total power, credited against the lobe sample through the
+            // power heuristic (the environment pair's arrangement), so a glowing
+            // mesh lights its room without waiting for a lucky bounce.
+            if (pt.meshLights.x > 0.5) {
+                float4 ue = ollin_pt_rand4(gid, sampleIndex, dim++);
+                radiance += throughput * ollin_pt_mesh_light(hNEE, -rd, eps, accel,
+                                                             verts, geoOffsets,
+                                                             geoMats, emTris, pt, ue);
+            }
 
             // The environment's own strategy: one sample drawn by the equirect's
             // brightness, credited through the power heuristic against the lobe
@@ -496,13 +797,14 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
                 float3 wiE = envRotInv * dEq;
                 float NoLE = dot(h.s.N, wiE);
                 if (NoLE > 0.0 && envPdf > 1e-8) {
-                    intersection_params sp;
-                    sp.accept_any_intersection(true);
-                    if (traceShadowRay(h.s.P + h.s.N * eps, h.s.P + wiE * 1e6,
-                                       eps, accel, sp) > 0.0) {
+                    float3 visE = ollin_pt_transmittance(h.s.P + h.s.N * eps,
+                                                         h.s.P + wiE * 1e6, eps, accel,
+                                                         verts, geoOffsets, geoMats,
+                                                         pt.meshLights.z > 0.5);
+                    if (any(visE > float3(0.0))) {
                         float3 f = ollin_pt_bsdf(hNEE, -rd, wiE);
                         float w = ollin_pt_mis(envPdf, ollin_pt_bsdf_pdf(hNEE, -rd, wiE));
-                        radiance += throughput * f
+                        radiance += throughput * f * visE
                                   * ollin_pt_env(wiE, light, pt, equirect, pt.miss.w)
                                   * (NoLE / envPdf * w);
                     }
@@ -544,6 +846,7 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
                 prevPdf = max(dot(h.s.N, wi), 0.0) * (1.0 / 3.14159265);
             }
             throughput *= weight;
+            prevNEE = true;
 
             // Russian roulette after a few bounces: continue with probability equal
             // to the path's remaining strength, re-scaling so the estimate stays fair.

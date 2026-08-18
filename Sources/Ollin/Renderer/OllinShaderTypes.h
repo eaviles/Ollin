@@ -920,8 +920,36 @@ typedef struct {
                                    // dispatch adds (the accumulation sums across
                                    // dispatches; the composite divides by the total)
     simd_uint4 counts;             // x = total samples per pixel, y = max path depth,
-                                   // z/w unused
+                                   // z/w = the environment-sampling table grid (width,
+                                   // height); z = 0 turns environment sampling off
+    simd_float4 cone;              // the texture-LOD ray cone: x = the pixel footprint
+                                   // at the eye (world units; the orthographic pixel
+                                   // width), y = the spread added per unit of travel
+                                   // (the perspective pixel angle). A hit's base-color
+                                   // read samples the mip whose texel footprint matches
+                                   // x + y * distance. z/w unused.
+    simd_float4 meshLights;        // x = emissive-triangle count (0 = no mesh lights,
+                                   // the gate), y = the triangles' total power
+                                   // (emissive luminance x area, the area-pdf
+                                   // normalizer), z = 1 when any traced geometry
+                                   // transmits (gates the transparent shadow walk),
+                                   // w unused
 } OllinPathTraceUniforms;
+
+// One emissive triangle for the traced export's mesh-light sampling: the CPU lays the
+// emissive geometries' triangles out with a running power CDF (power = emissive
+// luminance x area, emission two-sided), the kernel binary-searches the CDF to draw
+// one, and `tri`/`geo` recover its vertices and its geometry's material. Because a
+// triangle's selection probability is proportional to luminance x area and the point
+// is uniform within it, the pdf over the light's area at any sampled point is just
+// luminance / total power, so a hit on an emissive surface can price the light
+// strategy with no per-triangle lookup. Stride 16.
+typedef struct {
+    float cdf;              // running normalized power CDF (the last entry is 1)
+    unsigned int tri;       // the triangle's base vertex index in the flat mesh buffer
+    unsigned int geo;       // the geometry (accel `geometryId`) the triangle belongs to
+    float pad;
+} OllinPTEmissiveTri;
 
 // Per-frame constants for the caustics chain (`caustics()`): the emission frame the
 // photons leave the caster light through, the adaptive-feedback constants, and the
