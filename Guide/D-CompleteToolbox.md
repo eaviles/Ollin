@@ -163,6 +163,7 @@ Use it two ways. It is an index for the moment you remember the guide showing bl
 | Gravity at scale | `NBody`: thousands of bodies pulling on each other, with seeded disk and cluster scenes | [Ch 9](09-ForcesAndPhysics.md) | [Motion](../Docs/Simulation/Motion.md) |
 | Force-directed layout | `ForceLayout`: a graph untangling itself into an even web you can grow, pin, and drag | [Ch 9](09-ForcesAndPhysics.md) | [ForceLayout](../Docs/Generators/ForceLayout.md) |
 | Artificial life | `ParticleLife`, `PPS`, `Physarum`, `ParticleLenia`, `SwarmChemistry` on the public `SpatialHash` neighbor search | [Ch 16](16-Simulations.md) | [Artificial life](../Docs/Simulation/ArtificialLife.md) |
+| Ant colony | A pheromone-trail colony condensing a web of possibilities onto a short tour | [Ch 16](16-Simulations.md) | [AntColony](../Docs/Generators/AntColony.md) |
 | Steering at scale | `Swarm`: separation, alignment, cohesion, seek, flee, arrive, wander, and flow as weights over tens of thousands of agents | [Ch 16](16-Simulations.md) | [Swarm](../Docs/Simulation/Swarm.md) |
 | Evolution | `Evolution`: GPU populations bred toward a target past obstacles by tournament selection; `Population` + `Genome`: a handful of genomes bred from the ones you pick by eye | [Ch 16](16-Simulations.md) | [Evolution](../Docs/Simulation/Evolution.md) |
 | Particle fluids | `ParticleFluid`: SPH liquid with a free surface, splashes, and grabbing | [Ch 16](16-Simulations.md) | [Fluids](../Docs/Simulation/Fluids.md) |

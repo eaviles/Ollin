@@ -434,6 +434,7 @@ let package = Package(
         example("Patterns/Venation"),
         example("Patterns/Dendrite"),
         example("Patterns/Lichtenberg"),
+        example("Patterns/AntColony"),
         example("Patterns/HexGrid"),
         example("Patterns/TriangleGrid"),
         example("Patterns/Subdivision"),

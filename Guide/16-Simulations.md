@@ -423,6 +423,22 @@ drawImage(slime.image, in: bounds)
 
 One honest caveat covers all three. The neighbor sort settles ties with a race between GPU threads, and these systems are chaotic, so a run is not reproducible frame for frame. Seed them for a repeatable *starting* layout, but don't expect two exports to match.
 
+Physarum's talk-through-the-floor trick has a CPU cousin that actually finishes something. **Ant-colony optimization** points the pheromone at a task: visit every city once, briefly. Each `step()` the whole colony walks a tour, choosing the next city by trail strength and closeness. Then the map evaporates a little, and every ant lays trail along its route, more for shorter tours. Draw `trails` each frame and you watch a haze over every pair condense onto an answer:
+
+```swift
+let colony = AntColony(cities: points, seed: 7)
+
+// each frame:
+colony.step()
+for trail in colony.trails {
+    stroke(Color.white.withAlpha(trail.strength * 0.8))
+    drawLine(trail.a, trail.b)
+}
+drawPolyline(colony.bestTourPoints, closed: true)   // the answer so far
+```
+
+Unlike its GPU cousins this one runs on the CPU and reproduces exactly from its seed. `bestTour` never worsens, so you can stop whenever the web looks done. The `Patterns/AntColony` example watches the condensation live; the [reference](../Docs/Generators/AntColony.md) has the knobs.
+
 ## Matter that decides what shape to be
 
 The three systems above are written as forces: something pushes, something pulls. **Particle Lenia** is written a different way, and it is worth seeing because the difference is the whole idea. There is no force law. There is a landscape, and particles walk downhill on it.
@@ -654,6 +670,7 @@ The two waves in this chapter are older than any of it. The ripple pool integrat
 - [Escape-time fractals](../Docs/Drawing/Effects.md#generate): `.mandelbrot` / `.julia` framing, iterations, and coloring, plus the `.orbitTrap` traps, `glow`, and `angle`.
 - [Cellular automata](../Docs/Generators/CellularAutomata.md): every elementary and totalistic rule, random start rows, the `Turmite` preset catalog, and writing your own rule table.
 - [Artificial life](../Docs/Simulation/ArtificialLife.md): all three systems with every knob, plus building your own on the public `SpatialHash`.
+- [Ant colony](../Docs/Generators/AntColony.md): the trail and closeness pulls, evaporation, elitism, and drawing the web and the answer.
 - [Swarm](../Docs/Simulation/Swarm.md): all eight steering behaviors, every knob, and how to pick the three numbers that are tied together.
 - [Fluids & soft bodies](../Docs/Simulation/Fluids.md): the SPH and shape-matching knobs, grabbing, and the substep model.
 - [Evolution](../Docs/Simulation/Evolution.md): the scoring and selection in full, the pacing you can take over, and the interactive `Population` with its three ways of mixing two parents.

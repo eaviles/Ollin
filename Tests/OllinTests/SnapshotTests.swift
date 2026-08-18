@@ -500,6 +500,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("classic-curves",
                  note: "The classic-curve builders on one sheet: a 3:2 Lissajous figure, a 5-petal rose nesting a 7/3 rational rose, a hypotrochoid and an epitrochoid from the same gear pair, a squircle superellipse over a pinched one, a 7-lobe supershape, a phyllotaxis scatter at the golden angle, and a spiky star smoothed by Chaikin corner cutting over its raw outline. Pure closed forms, no rng and no time, so the sheet is deterministic.",
                  make: { ClassicCurvesScene() }),
+    SnapshotCase("ant-colony",
+                 note: "An ant colony eight iterations into a tour over a seeded scatter: the pheromone web drawn with strength as alpha and width, the best tour so far in bright ink, the cities as dots. Pins the tour construction, the evaporate-and-deposit update, and the normalized trail read-back. Seeded, no time, so the search is deterministic.",
+                 make: { AntColonyScene() }),
     SnapshotCase("lichtenberg",
                  note: "A dielectric-breakdown discharge grown 500 sites from a center seed in one frame: field-weighted growth on the lattice, pipe-model widths thickening the main channels, a violet additive halo under a hot core. Pins the Laplace-field growth weights, the parent links, and the width accumulation. Seeded, no time, so the figure is deterministic.",
                  make: { LichtenbergScene() }),
@@ -3900,6 +3903,37 @@ private final class ClassicCurvesScene: Sketch {
             strokeWeight(1.5)
             drawPolyline(star.smoothed(iterations: 3).points, closed: true)
         }
+    }
+}
+
+/// An ant colony a fixed number of iterations into a tour, the pheromone web
+/// under the best route so far. Seeded scatter, seeded search, no time, so
+/// the picture is deterministic.
+private final class AntColonyScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x14100C))
+        var rng = SplitMix64(seed: 12)
+        let cities = Ollin.poissonDisk(in: Rectangle(x: 24, y: 24, width: 208, height: 208),
+                                       radius: 46, using: &rng)
+        let colony = AntColony(cities: cities, elitism: 2, seed: 12)
+        colony.step(8)
+
+        strokeCap(.round)
+        for trail in colony.trails {
+            stroke(Color(red: 1.0, green: 0.72, blue: 0.35,
+                         alpha: 0.05 + trail.strength * 0.5))
+            strokeWeight(0.4 + trail.strength * 1.6)
+            drawLine(trail.a, trail.b)
+        }
+        stroke(Color(hex: 0xF6EFE2))
+        strokeWeight(1.4)
+        noFill()
+        drawPolyline(colony.bestTourPoints, closed: true)
+        noStroke()
+        fill(Color(hex: 0xE4572E))
+        for city in colony.cities { drawCircle(city.x, city.y, 3) }
     }
 }
 

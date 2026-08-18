@@ -75,6 +75,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 - [`Fractals`](./Generators/Fractals.md) - `IFS` chaos games, `FractalFlame` renders, circle-inversion limit sets, and Kleinian limit-set curves, plus the `fitted` placement helper
 - [`Chaotic maps & bifurcation`](./Generators/Bifurcation.md) - `IteratedMap`, the one-dimensional route to chaos: logistic, sine, tent, and Gauss families, orbits and cobweb staircases, the bifurcation diagram as dots or a density image, and Lyapunov exponents
 - [`Single line`](./Generators/SingleLine.md) - `singleLine`, one continuous tour through an image's stipple (TSP art), a plotter-friendly `Contour`
+- [`Ant colony`](./Generators/AntColony.md) - `AntColony`, a pheromone-trail colony condensing a web of possibilities onto a short tour, the search itself the picture
 - [`Spanning tree`](./Generators/SpanningTree.md) - `spanningTree`, the minimum spanning tree of an image's stipple: the branching, vein-like sibling of the single line
 - [`String art`](./Generators/StringArt.md) - `StringArt`, one continuous thread wound over rim pins until the crossings reproduce a picture (a stateful stepper)
 - [`Percolation`](./Generators/Percolation.md) - `Percolation`, site-percolation clusters over a seeded grid: largest-first labeling, the spanning cluster, cell rectangles and traced boundary loops
