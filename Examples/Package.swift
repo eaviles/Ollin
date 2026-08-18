@@ -418,6 +418,7 @@ let package = Package(
         example("Patterns/WangTiles"),
         example("Patterns/Girih"),
         example("Patterns/Spectre"),
+        example("Patterns/HyperbolicTiling"),
         example("Patterns/CirclePacking"),
         example("Patterns/LSystem"),
         example("Patterns/ParametricLSystem"),

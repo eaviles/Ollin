@@ -476,6 +476,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("spectre",
                  note: "A spectre (einstein) patch with curved chiral edges, colored by metatile with the odd mystic partners accented. Pins the substitution system (slot transforms, per-level mirroring, the mystic pair), the bounds fit, and the alternating edge bumps. No rng and no time, so it is deterministic.",
                  make: { SpectreScene() }),
+    SnapshotCase("hyperbolic-tiling",
+                 note: "Two Poincaré disks: a {5,4} checkerboard panned off center (left) and a {7,3} depth fade (right). Pins the central tile's derived vertex radius, the reflection expansion and its dedup, the parity two-coloring closing around every vertex, the panning motion, and the geodesic arc flattening. No rng and no time, so it is deterministic.",
+                 make: { HyperbolicTilingScene() }),
     SnapshotCase("circle-packing",
                  note: "Circle packing, both grow-to-touch flavors: a self-seeding gap-filling pack in the top half (big circles first, smaller ones filling the gaps) and a blue-noise foam in the bottom half (a circle grown at each Poisson-disk point until it touches its nearest neighbor). Pins that circles never overlap and land the same way. Seeded, no time, so the layout is deterministic.",
                  make: { CirclePackingScene() }),
@@ -3631,6 +3634,38 @@ private final class TruchetScene: Sketch {
         stroke(Color(hex: 0xF6511D))
         for c in truchet(in: bottom, columns: 6, rows: 3, tile: .diagonals) {
             drawPolyline(c.points, closed: false)
+        }
+    }
+}
+
+/// Two Poincaré disks: a panned {5,4} checkerboard and a {7,3} depth fade.
+/// Pins the central tile's derived radius, the reflection expansion, the
+/// parity coloring, the panning motion, and the arc flattening.
+private final class HyperbolicTilingScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x101418))
+        noStroke()
+
+        let left = Rectangle(x: 4, y: 66, width: 124, height: 124)
+        for tile in hyperbolicTiling(sides: 5, meeting: 4, in: left,
+                                     viewpoint: Vector2(0.3, 0.1), minEdge: 1.5) {
+            fill(tile.parity == 0 ? Color(hex: 0xF2E9DC) : Color(hex: 0x24476B))
+            drawShape(tile.shape)
+        }
+
+        let right = Rectangle(x: 128, y: 66, width: 124, height: 124)
+        for tile in hyperbolicTiling(sides: 7, meeting: 3, in: right, minEdge: 1.5) {
+            fill(Color.mix(Color(hex: 0xF2E9DC), Color(hex: 0x2EC4B6),
+                           t: min(Double(tile.depth) / 6, 1)))
+            drawShape(tile.shape)
+        }
+        noFill()
+        stroke(Color(hex: 0x101418).withAlpha(0.85))
+        strokeWeight(1)
+        for tile in hyperbolicTiling(sides: 7, meeting: 3, in: right, minEdge: 1.5) {
+            drawPolyline(tile.points, closed: true)
         }
     }
 }
