@@ -424,6 +424,8 @@ key.chord(on: 1)     // a triad on the second degree
 
 On a major scale those come out major and minor from the same call. That is the point of building a chord out of a key. The quality follows from where in the scale you started. Changing the key changes the chords along with it, rather than fighting them.
 
+<img src="Images/20-SoundAndControl/ScaleLadder.jpg" alt="Left: a ladder of pentatonic scale rungs over a faint semitone grid, with a wandering numbered sequence of dots landing only on rungs. Right: seven triads built on the degrees of C major, each three stacked marks two rungs apart, colored by what fell out: major on I, IV, and V, minor on ii, iii, and vi, diminished on the seventh" width="680">
+
 An `Arpeggio` plays a chord one note at a time, and like a rhythm it answers a step number:
 
 ```swift

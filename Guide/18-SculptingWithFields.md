@@ -410,6 +410,8 @@ material(.glass(thickness: 1.8))
 drawSphere(radius: 0.9)               // its bright spot lands inside its own shadow
 ```
 
+<img src="Images/18-SculptingWithFields/CausticLight.jpg" alt="Two glass spheres and a chrome ring on a sunlit matte table. The clear sphere throws a tight bright spot inside its own shadow, the bottle-green sphere throws a green-tinted one, and the ring, lying almost flat, folds light into a radial fan across its middle" width="680">
+
 **A shadow is where light couldn't go; a caustic is where it went instead.** The renderer traces thousands of little parcels of light from the sun, through every glass and every polished metal, and draws each one where it lands. A clear ball throws a tight hot spot. A bottle-green ball throws a green one, because the parcels crossed the green interior. A chrome ring folds light into the curved fan a wedding band leaves beside itself. Nothing needs declaring: whatever transmits or mirrors, casts.
 
 Two knobs. `caustics(intensity: 1.6)` turns the patterns up past physical, for drama. `caustics(dispersion: 1)` gives every parcel its own wavelength, so a prism's edge fans into a real rainbow and even a plain sphere's spot picks up red and blue fringes. If the patterns look coarse, `causticsQuality(.detail)` traces more parcels; exports always use the fine setting on their own. Like the other traced light, it needs a Mac that traces and quietly does nothing elsewhere, so the call can stay in the sketch. The [`Caustics` example](../Examples/3D/Lighting/Caustics/Sketch.swift) is the sunlit-table scene: two glass spheres and a chrome ring, with the space bar to compare.

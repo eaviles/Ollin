@@ -1426,6 +1426,10 @@ world.connect(tray, counterweight,
 
 Rope behaves like rope. It resists being pulled longer and gives when it is let slack, so both ends can drop together but neither can stretch. `ratio: 2` threads the second side twice, which is a block and tackle. That side moves half as far and lifts twice as much.
 
+<img src="Images/17-3DGently/TrackAndPulley.jpg" alt="Two machines side by side. Left, a cart banked into the bend of an oval wire track on thin posts. Right, a timber frame: a rope runs up from a tray holding a brass ball, across the beam, and down to a counterweight, the two passing each other at the same height" width="680">
+
+Both machines are the joint doing all the work. The cart is banked because `.followsPath` turned it into the bend, and the tray and counterweight are passing each other because one rope ties their motions together.
+
 **The joint that is just a list of freedoms.** Every kind so far is a choice out of the six things a body can do, the same six the last section took away. When none of the named kinds fits, say which ones you're keeping:
 
 ```swift

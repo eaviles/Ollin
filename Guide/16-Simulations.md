@@ -578,6 +578,8 @@ let rings = g.value(2, in: 1 ... 4)
 pool.breed(from: chosen)
 ```
 
+<img src="Images/16-Simulations/PickAndBreed.jpg" alt="Two four-by-four grids of small radial ornaments. In the left grid every ornament is different and two are outlined in orange. In the right grid, one breeding later, all sixteen are recognizable variations on the outlined pair" width="680">
+
 Nothing in a `Genome` knows what its numbers mean, which is exactly what lets the framework mate and mutate one without knowing what is being evolved. Sixteen ornaments become sixteen slightly different ornaments, then sixteen variations on the two you liked. After a dozen rounds the grid is full of things you would not have thought to draw.
 
 The mutation rate here defaults far higher than the scored version's, and the reason is arithmetic about people. A search you judge by eye gets maybe twenty candidates a generation, and maybe twenty generations before you get bored. So a few hundred looks have to cover ground a scored run covers in millions. Variation has to arrive fast enough to be worth looking at. For the same reason the genomes you picked are carried into the next generation untouched. One breeding is a big step when a person is doing the judging. The thing you just chose should not vanish the moment you choose it.

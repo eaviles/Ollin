@@ -295,6 +295,8 @@ for tile in hyperbolicTiling(sides: 5, meeting: 4) {
 }
 ```
 
+<img src="Images/06-GridsAndRepetition/HyperbolicDisks.jpg" alt="Two Poincaré disks side by side. Left: pentagons meeting four to a corner in a crisp ivory-and-indigo curved checkerboard. Right: heptagons meeting three to a corner, ivory at the center deepening to indigo as the tiles shrink toward the circular horizon" width="680">
+
 Each tile carries `parity`, which flips across every shared edge. When `meeting` is even, the two colors close cleanly around every vertex and the disk becomes a perfect curved checkerboard. When it's odd, fade by `depth` instead, the count of edge crossings out from the middle. And the disk has one more trick: pass a moving `viewpoint` and the camera pans across the tiling forever, tiles swelling as they reach the middle and shrinking away behind. The horizon never gets closer. The full reference is the [hyperbolic tiling](../Docs/Drawing/HyperbolicTiling.md) page; `Examples/Patterns/HyperbolicTiling` is the panning tour.
 
 ## Putting it together: a meandering tangle
