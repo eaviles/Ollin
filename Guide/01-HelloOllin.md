@@ -10,7 +10,7 @@ By the end of this chapter you'll have built the piece above. It's twenty-eight 
 
 ## What you need
 
-A Mac running macOS 26 or newer, with Apple's Swift tools installed. The easiest way to get them is to install Xcode from the App Store once; you never have to open it, everything in this guide happens in the terminal and your text editor. To check you're ready:
+A Mac running macOS 26 or newer, with Apple's Swift tools installed. The easiest way to get them is to install Xcode from the App Store once; you never have to open it, everything in this guide happens in the terminal and your text editor. You don't need to know Swift, either. The guide teaches what each step needs as it comes up. [Appendix A](A-JustEnoughSwift.md) is the primer to read first, if you'd rather meet the language whole. To check you're ready:
 
 ```sh
 swift --version
@@ -138,7 +138,7 @@ final class FirstCircle: Sketch {
 }
 ```
 
-Anything that should happen once belongs in `setup()`. That means work heavy enough that repeating it sixty times a second would slow the sketch down, and decisions you want the sketch to make once and then keep. You don't need it yet, since everything in this chapter is drawn fresh each frame from numbers that are cheap to compute. It arrives properly in Chapter 2, where reading the colors out of a photograph turns out to be too slow to repeat, and again in Chapter 3, where an animation has to be told once that it should loop.
+Anything that should happen once belongs in `setup()`. That means work heavy enough that repeating it sixty times a second would slow the sketch down, and decisions you want the sketch to make once and then keep. You don't need it yet, since everything in this chapter is drawn fresh each frame from numbers that are cheap to compute. It arrives properly in [Chapter 2](02-Color.md), where reading the colors out of a photograph turns out to be too slow to repeat, and again in [Chapter 3](03-MotionAndTime.md), where an animation has to be told once that it should loop.
 
 ## Where things go
 
@@ -203,7 +203,7 @@ Colors come as names (`.white`, `.black`, and the rest of the CSS set) or as hex
 
 When you want a rectangle centered on a point instead of hung from its corner, ask for it by name: `drawRect(center: Vector2(x, y), width: w, height: h)`. Most shapes offer both forms, one taking bare numbers in a fixed order and one naming the anchor, and naming the anchor is how you say which part of the shape the position refers to.
 
-> **Swift note.** `Vector2(x, y)` bundles an x and a y into a single value, so you can pass a position around as one thing instead of two loose numbers. That's all you need from it here. Chapter 8 gives it a whole chapter, because once a position is one value you can add positions together, and that turns out to be how motion and forces get written.
+> **Swift note.** `Vector2(x, y)` bundles an x and a y into a single value, so you can pass a position around as one thing instead of two loose numbers. That's all you need from it here. [Chapter 8](08-Vectors.md) gives it a whole chapter, because once a position is one value you can add positions together, and that turns out to be how motion and forces get written.
 
 > **Swift note.** Some calls take bare values in a fixed order, like `drawCircle(540, 540, 200)` for x, y, and radius, which is a convention you'll internalize quickly. Others name their values, like `Color(hex: 0xE4572E)`, where the `hex:` is part of the call. And `.white` is shorthand for `Color.white`, because Swift lets you drop the type name when it can already tell what you mean.
 
@@ -217,9 +217,9 @@ drawCircle(width / 2 + time * 120, height / 2, 200)
 
 Save, and the circle drifts to the right until it leaves the canvas. You didn't set up an animation and there was no play button to press. `draw()` was already running over and over, at your display's refresh rate of 60 or 120 times a second, and `time` holds the seconds since the sketch started. So when `time` grows, an x computed from it grows along with it, and the circle lands somewhere slightly different on every frame. Drawing that sequence quickly is what we read as motion. Nearly everything animated in this guide works this way, from breathing dots to flocking birds: you put time into an expression.
 
-(`time` has siblings called `frameCount`, `deltaTime`, and `frameRate`. The [Sketch](../Docs/Core/Sketch.md#temporal-state) page lists them, and you'll meet them properly in Chapter 3.)
+(`time` has siblings called `frameCount`, `deltaTime`, and `frameRate`. The [Sketch](../Docs/Core/Sketch.md#temporal-state) page lists them, and you'll meet them properly in [Chapter 3](03-MotionAndTime.md).)
 
-Our drifting circle has a problem, though, which is that it left. To make motion that stays on the canvas, we'll borrow one recipe from Chapter 3 ahead of time: `sin`. All you need to know for now is that as its input grows, `sin` glides smoothly between −1 and 1 and then back again, forever, the way a pendulum swings. Multiply it by a distance and you have a swing of your own:
+Our drifting circle has a problem, though, which is that it left. To make motion that stays on the canvas, we'll borrow one recipe from [Chapter 3](03-MotionAndTime.md) ahead of time: `sin`. All you need to know for now is that as its input grows, `sin` glides smoothly between −1 and 1 and then back again, forever, the way a pendulum swings. Multiply it by a distance and you have a swing of your own:
 
 ```swift
 let x = width / 2 + sin(time * .tau / 3) * 300
@@ -228,7 +228,7 @@ drawCircle(x, height / 2, 70)
 
 <img src="Images/01-HelloOllin/FirstMotion.gif" alt="A yellow circle swinging smoothly from side to side" width="480">
 
-The `* 300` is how far it swings. `.tau` is the angle of one full turn, about 6.28, and dividing it by 3 makes each complete back-and-forth take three seconds. Chapter 3 explains why that works, and for today you can use it as a recipe.
+The `* 300` is how far it swings. `.tau` is the angle of one full turn, about 6.28, and dividing it by 3 makes each complete back-and-forth take three seconds. [Chapter 3](03-MotionAndTime.md) explains why that works, and for today you can use it as a recipe.
 
 > **Swift note.** `let x = ...` gives a value a name. Use `let` for values computed fresh each frame (most of what you'll write in `draw()`); `var` is for values that need to change after they're set.
 
@@ -236,7 +236,7 @@ The recipe has a second half, and it's what the end of this chapter is built on.
 
 <img src="Images/01-HelloOllin/AroundACircle.jpg" alt="A circle with an angle marked at its center, and cos and sin placing a point on its rim" width="680">
 
-Feed the pair an angle and a radius, and they hand you the x and y of the point that far around the circle. Grow the angle and the point walks the rim. For now that's all this guide asks of `cos` and `sin`, that they're how you place things *around* something. Chapter 3 shows why it works, and [Appendix B](B-JustEnoughMath.md#an-angle-and-a-radius-make-a-point) keeps this picture for whenever you want it back.
+Feed the pair an angle and a radius, and they hand you the x and y of the point that far around the circle. Grow the angle and the point walks the rim. For now that's all this guide asks of `cos` and `sin`, that they're how you place things *around* something. [Chapter 3](03-MotionAndTime.md) shows why it works, and [Appendix B](B-JustEnoughMath.md#an-angle-and-a-radius-make-a-point) keeps this picture for whenever you want it back.
 
 ## The mouse joins in
 
@@ -316,7 +316,7 @@ Before moving on, make the piece yours. Some directions worth trying:
 
 ## Where this comes from
 
-The `setup()` and `draw()` sketch model comes from [Processing](https://processing.org) (Casey Reas and Ben Fry, 2001), the project that made creative coding a field, and it continues through [p5.js](https://p5js.org), [openFrameworks](https://openframeworks.cc), and [OPENRNDR](https://openrndr.org), each of which shaped Ollin's design. What Ollin does differently is leave motion on by default, turning around the usual arrangement where animation is something you opt into. The name is the Nahuatl word for movement, the seventeenth day sign of the Aztec calendar. The edit-and-watch live-reload loop belongs to a long lineage of live-coding tools, and you'll meet its stage-performance form in Chapter 22.
+The `setup()` and `draw()` sketch model comes from [Processing](https://processing.org) (Casey Reas and Ben Fry, 2001), the project that made creative coding a field, and it continues through [p5.js](https://p5js.org), [openFrameworks](https://openframeworks.cc), and [OPENRNDR](https://openrndr.org), each of which shaped Ollin's design. What Ollin does differently is leave motion on by default, turning around the usual arrangement where animation is something you opt into. The name is the Nahuatl word for movement, the seventeenth day sign of the Aztec calendar. The edit-and-watch live-reload loop belongs to a long lineage of live-coding tools, and you'll meet its stage-performance form in [Chapter 22](22-SharingAndPerforming.md).
 
 ## Go deeper
 
@@ -326,7 +326,8 @@ The `setup()` and `draw()` sketch model comes from [Processing](https://processi
 - [The project generator](../Docs/Tools/ProjectGenerator.md): every template and option behind `ollin new` and `ollin generate`, what a generated folder holds, and how to add a template of your own.
 - [Input](../Docs/Helpers/Input.md): the keyboard, click hooks, and the rest of the mouse.
 - [Parameters](../Docs/Helpers/Parameters.md): the full knob family (toggles, menus, pads, and friends), grouping knobs into cards, icons, smoothing, and driving knobs from MIDI or OSC hardware.
-- [The Swift quick reference](../Docs/Swift.md): just enough of the language, for whenever a construct here felt mysterious.
+- [Appendix A, Just enough Swift](A-JustEnoughSwift.md): the language met properly, every construct these sketches lean on taught in order. [The Swift quick reference](../Docs/Swift.md) is its terse sibling, for whenever a single construct felt mysterious.
+- Appendix B draws this chapter's math, one picture per idea: [Where things are](B-JustEnoughMath.md#where-things-are), [Angles and circles](B-JustEnoughMath.md#angles-and-circles), [Fractions, mapping, and wrapping](B-JustEnoughMath.md#fractions-mapping-and-wrapping).
 - Worked examples: [`Examples/Basic/HelloCircle`](../Examples/Basic/HelloCircle/Sketch.swift) and the knobs demo [`Examples/Live/Parameters`](../Examples/Live/Parameters/Sketch.swift).
 
 ---

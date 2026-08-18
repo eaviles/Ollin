@@ -8,7 +8,7 @@ The guide teaches Swift the way it teaches everything else: a short note at the 
 
 You don't need to have written Swift before. You do need to have programmed a little in something, because if loops and functions are familiar in any language, this is a translation job rather than a first language.
 
-Two sibling pages cover the same territory at different speeds. The [Swift quick reference](../Docs/Swift.md) is the fast pass, a page to keep open while you work. [Appendix C](C-ComingFromP5.md) is the dictionary for people arriving from p5.js or Processing. Read this appendix before Chapter 1 if you like to meet the language first, or come back to it whenever a chapter's Swift note goes by too quickly.
+Two sibling pages cover the same territory at different speeds. The [Swift quick reference](../Docs/Swift.md) is the fast pass, a page to keep open while you work. [Appendix C](C-ComingFromP5.md) is the dictionary for people arriving from p5.js or Processing. Read this appendix before [Chapter 1](01-HelloOllin.md) if you like to meet the language first, or come back to it whenever a chapter's Swift note goes by too quickly.
 
 ## One sketch, top to bottom
 
@@ -178,7 +178,7 @@ Read the first line this way. `Meteors` is a new class built on `Sketch`, the fr
 The deeper split behind the keyword is **who copies**. Swift types come in two kinds:
 
 - **Structs are values.** Assigning one, or passing it to a function, copies it, and the copy and the original then lead separate lives. `Vector2`, `Color`, `Rectangle`, and `Shape` are structs, which is why you can hand a position to a function without worrying it'll be changed behind your back.
-- **Classes are references.** Assigning one shares it, so both names point at the same object. Ollin's living, stateful things are classes: the physics `World` and its particles, trackers, your sketch itself. Chapter 9 leans on this when a `Particle` added to the world and kept in your own array is one object seen from two places.
+- **Classes are references.** Assigning one shares it, so both names point at the same object. Ollin's living, stateful things are classes: the physics `World` and its particles, trackers, your sketch itself. [Chapter 9](09-ForcesAndPhysics.md) leans on this when a `Particle` added to the world and kept in your own array is one object seen from two places.
 
 One consequence trips everyone once: `let` on a class instance means the *reference* can't be reassigned, but the object it points to can still change. `let world = World()` happily accepts `world.gravity = ...` forever. On the struct side the fine print runs the other way, because many Ollin structs are immutable, so instead of assigning into `p.x` you build a changed copy with arithmetic (`p + Vector2(2.3, 0)`) or a helper like `p.with(x: 0)`.
 
@@ -240,7 +240,7 @@ The guide uses three, all from Ollin:
 @Smoothed var level = 0.0                                     // calms a jittery incoming value
 ```
 
-`@Param` exposes the property as a live control in the host's inspector (Chapter 1), and later chapters bind MIDI knobs and OSC faders to the same properties, spelled `$size` when a binding wants the parameter itself rather than its current value. `@Eased` and `@Smoothed` (Chapter 3) change *when* the value moves, not what it is. You won't write your own wrappers in this guide, and recognizing the `@` is enough.
+`@Param` exposes the property as a live control in the host's inspector ([Chapter 1](01-HelloOllin.md)), and later chapters bind MIDI knobs and OSC faders to the same properties, spelled `$size` when a binding wants the parameter itself rather than its current value. `@Eased` and `@Smoothed` ([Chapter 3](03-MotionAndTime.md)) change *when* the value moves, not what it is. You won't write your own wrappers in this guide, and recognizing the `@` is enough.
 
 ## Strings, briefly
 
@@ -250,7 +250,7 @@ The guide uses three, all from Ollin:
 drawText("frame \(frameCount)", 40, 40)
 ```
 
-Triple quotes make a multiline string, verbatim, line breaks and all. That matters in Chapter 15, where a fragment shader rides inside your Swift file as one `"""` literal.
+Triple quotes make a multiline string, verbatim, line breaks and all. That matters in [Chapter 15](15-YourFirstShader.md), where a fragment shader rides inside your Swift file as one `"""` literal.
 
 ## What the guide never needed
 
@@ -267,4 +267,4 @@ If a chapter's Swift ever still feels like the obstacle, that's a bug in this gu
 
 ---
 
-[Contents](README.md#contents)
+[Contents](README.md#contents) · Previous: [Chapter 22, Sharing and performing](22-SharingAndPerforming.md) · Next: [Appendix B, Just enough math, visually](B-JustEnoughMath.md)

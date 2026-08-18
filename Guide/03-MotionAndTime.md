@@ -6,7 +6,7 @@
 
 <img src="Images/03-MotionAndTime/RingPulse.gif" alt="Waves of light chasing around five concentric rings of colored dots, looping seamlessly" width="480">
 
-Chapter 1 handed you `sin` as a recipe and promised an explanation later, and this is later. By the end of this chapter you'll know where that wave comes from. You'll know how to make motion run at the same speed on every display. And you'll bend plain constant-rate movement into motion with character, the kind that eases, snaps, springs, and bounces. It all comes together in the piece above, a loop that ends exactly where it begins. You'll export it as the first file in this guide you can share with someone.
+[Chapter 1](01-HelloOllin.md) handed you `sin` as a recipe and promised an explanation later, and this is later. By the end of this chapter you'll know where that wave comes from. You'll know how to make motion run at the same speed on every display. And you'll bend plain constant-rate movement into motion with character, the kind that eases, snaps, springs, and bounces. It all comes together in the piece above, a loop that ends exactly where it begins. You'll export it as the first file in this guide you can share with someone.
 
 ## The clock
 
@@ -29,15 +29,15 @@ What you want to avoid is the third way, a bare per-frame step, which silently b
 
 ## The circle behind sin
 
-Here is where the wave comes from, and it's the promise Chapter 1 made:
+Here is where the wave comes from, and it's the promise [Chapter 1](01-HelloOllin.md) made:
 
 <img src="Images/03-MotionAndTime/CircleToSine.jpg" alt="A point on a circle at some angle, with a dashed line carrying its height onto a sine wave traced over time, the period and swing labeled" width="680">
 
-Picture a point walking around a circle at a steady speed. Ask at every moment "how high is it?" and write the answers down from left to right. The trace you get is the sine wave, and that's all `sin` is: **the height of a point going around a circle**. Its partner `cos` gives you the same point's distance across. Now you can see why the pair places things around a circle the way Chapter 1's ring of dots did. They were never two separate tools, just the two coordinates of one walking point.
+Picture a point walking around a circle at a steady speed. Ask at every moment "how high is it?" and write the answers down from left to right. The trace you get is the sine wave, and that's all `sin` is: **the height of a point going around a circle**. Its partner `cos` gives you the same point's distance across. Now you can see why the pair places things around a circle the way [Chapter 1](01-HelloOllin.md)'s ring of dots did. They were never two separate tools, just the two coordinates of one walking point.
 
 Everything you need to control follows from the picture:
 
-- **One full turn is one full cycle.** The angle of a full turn is `.tau`. So `sin(time * .tau)` swings exactly once per second, and `sin(time * .tau / 5)` once every five seconds. The mysterious `/ 3` in Chapter 1's swinging circle was setting the period all along, one back-and-forth every three seconds.
+- **One full turn is one full cycle.** The angle of a full turn is `.tau`. So `sin(time * .tau)` swings exactly once per second, and `sin(time * .tau / 5)` once every five seconds. The mysterious `/ 3` in [Chapter 1](01-HelloOllin.md)'s swinging circle was setting the period all along, one back-and-forth every three seconds.
 - **The swing is the radius.** `sin` runs between -1 and 1, so multiplying is what makes it cover ground. `sin(...) * 300` swings 300 pixels each way.
 
 Put both to work and the walking point itself appears:
@@ -67,11 +67,11 @@ for i in 0..<24 {
 }
 ```
 
-Run that and you've built the bottom half of the diagram, live. You've also seen the move before, because Chapter 1's breathing ring offset each circle's swing with `+ Double(i) * 0.5`. That was phase, used before it had a name. It's the cheapest way there is to make many things feel alive together. The finished piece at the end of this chapter leans on it heavily.
+Run that and you've built the bottom half of the diagram, live. You've also seen the move before, because [Chapter 1](01-HelloOllin.md)'s breathing ring offset each circle's swing with `+ Double(i) * 0.5`. That was phase, used before it had a name. It's the cheapest way there is to make many things feel alive together. The finished piece at the end of this chapter leans on it heavily.
 
 ## map and lerp: moving between ranges
 
-`sin` hands you `-1...1`, but that's rarely the range you actually want. You want 40 to 220 pixels of radius, or `0...1` to feed a color ramp. Chapter 2 patched this with the squeeze, `sin(...) * 0.5 + 0.5`. The proper tool is `map`, which carries a value from one range into another by keeping its *fraction along*:
+`sin` hands you `-1...1`, but that's rarely the range you actually want. You want 40 to 220 pixels of radius, or `0...1` to feed a color ramp. [Chapter 2](02-Color.md) patched this with the squeeze, `sin(...) * 0.5 + 0.5`. The proper tool is `map`, which carries a value from one range into another by keeping its *fraction along*:
 
 <img src="Images/03-MotionAndTime/MapAndLerp.jpg" alt="Top: a value carried between two number lines by its fraction along, map. Bottom: dots walking a segment from a to b as t runs 0 to 1, lerp" width="680">
 
@@ -82,7 +82,7 @@ drawCircle(width / 2, height / 2, radius)
 
 Read it as a sentence. It says "take this value, which lives in `-1...1`, and restate it in `40...220`". You get a breathing circle, and every number in sight says what it means. (By default `map` extrapolates past the ends, so add `clamp: true` when you want the result pinned inside the target range.)
 
-Its smaller sibling `lerp(a, b, t)` skips the first range entirely. Here `t` is already a `0...1` "how far along", the same `t` you fed to `Color.mix` and to ramps in Chapter 2. `lerp` returns the point that far from `a` to `b`. So `lerp(140, 940, 0.5)` is halfway, which is 540.
+Its smaller sibling `lerp(a, b, t)` skips the first range entirely. Here `t` is already a `0...1` "how far along", the same `t` you fed to `Color.mix` and to ramps in [Chapter 2](02-Color.md). `lerp` returns the point that far from `a` to `b`. So `lerp(140, 940, 0.5)` is halfway, which is 540.
 
 That raises the question of where a moving `t` comes from, and the answer is the clock, wrapped. Divide `time` by how long one lap should take and keep only the fraction of the current lap you're through. The move is common enough to have its own name, so every sketch can just ask for it:
 
@@ -123,7 +123,7 @@ drawCircle(x, height / 2, 50)
 
 Same dot, same three seconds, but now it *departs* and *arrives*. (Under the hood the S is one line of algebra, `t * t * (3 - 2 * t)`. You'll never need to write it, but it's nice to know the whole curve is that small.)
 
-Because the edges are yours to place, smoothstep does more than reshape a progress. It also works as a **window cutter**. Read `smoothstep(0.3, 1.0, wave)` as "0 until the wave climbs past 0.3, then 1 once it reaches the top, with a soft shoulder in between". That gives you a way of turning any signal into a smooth spotlight. Hold on to that, because the piece at the end of this chapter runs on it. This little S-curve is one of the great workhorses of computer graphics. When you reach shaders in Chapter 15 you'll find it waiting there, spelled exactly the same. It does per-pixel what it does per-frame here.
+Because the edges are yours to place, smoothstep does more than reshape a progress. It also works as a **window cutter**. Read `smoothstep(0.3, 1.0, wave)` as "0 until the wave climbs past 0.3, then 1 once it reaches the top, with a soft shoulder in between". That gives you a way of turning any signal into a smooth spotlight. Hold on to that, because the piece at the end of this chapter runs on it. This little S-curve is one of the great workhorses of computer graphics. When you reach shaders in [Chapter 15](15-YourFirstShader.md) you'll find it waiting there, spelled exactly the same. It does per-pixel what it does per-frame here.
 
 ## A catalog of curves
 
@@ -211,7 +211,17 @@ final class Rise: Sketch {
 }
 ```
 
-The plot above *is* this timeline, sampled and drawn by an Ollin sketch like every figure in this guide. Notice `setup()` doing its Chapter 1 job here: `move.loops = true` is a decision the sketch makes once and then keeps. Timelines advance themselves once per frame, as long as they're stored properties on the sketch, the way `move` is. One you create on the fly inside `draw()` has to be stepped by hand with `move.advance(by: deltaTime)`. They loop, report `progress` and `isFinished`, can be restarted and scrubbed, and sequence 2D and 3D positions as happily as they do numbers. The details live in [Animation](../Docs/Helpers/Animation.md#timeline).
+The plot above *is* this timeline, sampled and drawn by an Ollin sketch like every figure in this guide. Notice `setup()` doing its [Chapter 1](01-HelloOllin.md) job here: `move.loops = true` is a decision the sketch makes once and then keeps. Timelines advance themselves once per frame, as long as they're stored properties on the sketch, the way `move` is. One you create on the fly inside `draw()` has to be stepped by hand with `move.advance(by: deltaTime)`. They loop, report `progress` and `isFinished`, can be restarted and scrubbed, and sequence 2D and 3D positions as happily as they do numbers. The details live in [Animation](../Docs/Helpers/Animation.md#timeline).
+
+## When somebody would rather it stopped
+
+Motion is the default here, and for some people that is a problem rather than a pleasure. Movement can bring on nausea or a headache, which is why macOS carries a Reduce Motion setting. A sketch can ask for it:
+
+```swift
+let speed = prefersReducedMotion ? 0.1 : 1.0
+```
+
+Nothing changes on its own, and that is deliberate. Only you know which of your movements is the piece and which is decoration. Slow a drift, hold something that was oscillating, drop a flash, and the work still reads. A headless export always reads `false`, so a file you render is the same file anywhere.
 
 ## Putting it together: a loop that never ends
 
@@ -260,9 +270,9 @@ final class RingPulse: Sketch {
 Run it with `swift run OllinLive MySketches/RingPulse.swift` and take the interesting lines apart:
 
 - `beat` is the loop's heartbeat. `loopProgress` laps `0...1` once every `loopTime` seconds, so multiplying by `.tau` turns it into exactly one full circle per lap. The only other time term in the sketch is `beat * 2`, which is a whole multiple, so frame 0 and the frame at `loopTime` are identical. The loop rule is enforced by how the sketch is built rather than by checking afterward.
-- `wave` is the phase trick from earlier, bent into a circle. Each dot's head start is its angle times the wave count, so the crests *travel* around the ring. That count has to stay a whole number, or the wave won't meet itself where the ring closes. That is why `waves` starts at `3` rather than `3.0`. A whole-number property makes a whole-number knob, stepping 1, 2, 3 instead of sliding through fractions. `Double(waves)` converts it for the math, the same move as Chapter 1's `Double(i)`.
+- `wave` is the phase trick from earlier, bent into a circle. Each dot's head start is its angle times the wave count, so the crests *travel* around the ring. That count has to stay a whole number, or the wave won't meet itself where the ring closes. That is why `waves` starts at `3` rather than `3.0`. A whole-number property makes a whole-number knob, stepping 1, 2, 3 instead of sliding through fractions. `Double(waves)` converts it for the math, the same move as [Chapter 1](01-HelloOllin.md)'s `Double(i)`.
 - `lit` is the window cutter from the shaping section, working here as a **soft spotlight**. The wave lives in `-1...1`, and smoothstep's edges carve out its crest. That gives 0 below the threshold, 1 at the peak, and soft shoulders in between. The dots swell and fade rather than switching on and off. Widen `Pulse width` and the lower edge drops, which opens the window until the whole ring breathes at once.
-- Everything `lit` touches is a `lerp` in spirit. The color leans toward warm white by `lit * 0.4`, using Chapter 2's `Color.mix`. The dot lifts outward by `lit * 18`, and it swells from 6 up to 26. One shaped value drives all three.
+- Everything `lit` touches is a `lerp` in spirit. The color leans toward warm white by `lit * 0.4`, using [Chapter 2](02-Color.md)'s `Color.mix`. The dot lifts outward by `lit * 18`, and it swells from 6 up to 26. One shaped value drives all three.
 - `direction` flips alternate rings, and that alone is most of why the piece feels alive rather than mechanical.
 
 When it feels right in the live window, export it. Anything Ollin can run it can also render to a file without opening a window. The live host accepts the same export flags the example targets do:
@@ -280,16 +290,6 @@ Then make it yours:
 - Replace the `smoothstep` in `lit` with `step(1 - pulseWidth * 2, wave)` and the glow becomes a hard blink, with the same window and no shoulders. Put the smoothstep back and appreciate the shoulders.
 - Make all rings run the same `direction`, or give the ramp four colors of your own.
 
-## When somebody would rather it stopped
-
-Motion is the default here, and for some people that is a problem rather than a pleasure. Movement can bring on nausea or a headache, which is why macOS carries a Reduce Motion setting. A sketch can ask for it:
-
-```swift
-let speed = prefersReducedMotion ? 0.1 : 1.0
-```
-
-Nothing changes on its own, and that is deliberate. Only you know which of your movements is the piece and which is decoration. Slow a drift, hold something that was oscillating, drop a flash, and the work still reads. A headless export always reads `false`, so a file you render is the same file anywhere.
-
 ## Where this comes from
 
 The named easing curves are Robert Penner's easing equations, published with the 2002 book *Programming Macromedia Flash MX*. They have since been absorbed into practically every animation system. Ollin's are written from the formulas catalogued at [easings.net](https://easings.net). The craft behind them is older than software. The animator's principles of slow-in and slow-out grew out of the Disney studio of the 1930s. Their lesson is that "the spacing is the animation". Smoothstep is a small classic of computer graphics shading languages, where it does per-pixel what this chapter does per-frame. That per-pixel world is taught beautifully in [The Book of Shaders](https://thebookofshaders.com) by Patricio Gonzalez Vivo and Jen Lowe. Its insistence on *drawing* shaping functions rather than defining them shaped this chapter. Describing a spring by duration and bounce instead of by stiffness and damping is the approach Apple introduced with SwiftUI's spring animations. It's a good deal kinder to work with than the physical parameters. `@Smoothed` implements the [1€ filter](https://gery.casiez.net/1euro/) by Géry Casiez, Nicolas Roussel, and Daniel Vogel (CHI 2012). Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
@@ -301,6 +301,7 @@ The named easing curves are Robert Penner's easing equations, published with the
 - [Sketch](../Docs/Core/Sketch.md#temporal-state): the clock properties in one table.
 - [Accessibility](../Docs/Helpers/Accessibility.md): `prefersReducedMotion`, and the color half beside it.
 - [Export](../Docs/Output/Export.md): stills, sequences, video, GIF sizing, and render quality.
+- Appendix B draws this chapter's math, one picture per idea: [Angles and circles](B-JustEnoughMath.md#angles-and-circles), [Fractions, mapping, and wrapping](B-JustEnoughMath.md#fractions-mapping-and-wrapping), [Shaping a value](B-JustEnoughMath.md#shaping-a-value), [Vectors, motion, and forces](B-JustEnoughMath.md#vectors-motion-and-forces).
 - Worked examples, all in [`Examples/Motion/`](../Examples/Motion/): `Breathing` (map on a pulse), `Easing` (four dots racing to a click), `EasingGallery` (all thirty curves), `Springs` (`@Sprung` against a moving target), `Timeline` (a scripted tour of a square, one easing per side), `Smoothing` (the filter chasing a shaky target), `SineSweep`, and `Orbits`.
 
 ---

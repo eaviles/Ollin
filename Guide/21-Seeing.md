@@ -87,7 +87,7 @@ if let body = pose.body {
 }
 ```
 
-Those meters drop straight into Chapter 17's world, which is what `Examples/Vision/BodyPose3D` does with them. It behaves differently from the flat tracker in ways worth knowing before you reach for it. It follows only one person, so `body` is a single optional rather than a list. It also places the whole skeleton every time, guessing at the joints it can't see, with no per-joint confidence. The 2D tracker is the opposite on both counts. There's also `body.height`, an estimate of how tall the person is. `heightEstimation` says whether that came from real depth data, or from scaling the skeleton to a standard height. Scaling is all a plain webcam can offer.
+Those meters drop straight into [Chapter 17](17-3DGently.md)'s world, which is what `Examples/Vision/BodyPose3D` does with them. It behaves differently from the flat tracker in ways worth knowing before you reach for it. It follows only one person, so `body` is a single optional rather than a list. It also places the whole skeleton every time, guessing at the joints it can't see, with no per-joint confidence. The 2D tracker is the opposite on both counts. There's also `body.height`, an estimate of how tall the person is. `heightEstimation` says whether that came from real depth data, or from scaling the skeleton to a standard height. Scaling is all a plain webcam can offer.
 
 Two practical notes are worth keeping. These are neural models, and the heavier ones (body pose, segmentation) want Apple silicon. Every tracker exposes `isAvailable` and `unavailableReason`, and `drawStatus(reason, style: .warning)` turns the reason into the standard on-canvas notice instead of a silent nothing. And every tracker also runs one-shot on a still picture with no camera at all. `try await FaceTracker.detect(in: image)` analyzes a loaded `Image`, which is how you analyze photos, and how this chapter's figures were made honest.
 
@@ -95,13 +95,13 @@ Two practical notes are worth keeping. These are neural models, and the heavier 
 
 Two more trackers see *qualities* of the picture rather than things in it, and both connect straight back to ideas you already have.
 
-**`ContourDetector`** traces the boundaries between dark and light into closed vector contours, and hands them back as Chapter 13's `Shape`s, holes and all:
+**`ContourDetector`** traces the boundaries between dark and light into closed vector contours, and hands them back as [Chapter 13](13-ShapesAsMaterial.md)'s `Shape`s, holes and all:
 
 <img src="Images/21-Seeing/Contours.jpg" alt="Two panels: a black ink study of merged blobs beside a ring, and the same forms traced as orange vector outlines with the ring's hole preserved" width="680">
 
-The picture on the left was built pixel by pixel by the committed figure, standing in for a camera frame. The shapes on the right are what `ContourDetector.detect(in:)` traced out of it. Once a camera frame is `Shape`s, everything from Chapter 13 applies. Boolean it, offset it, hatch it, warp it, or export it as SVG for a plotter. A webcam pointed at high-contrast subjects becomes a live vectorizer.
+The picture on the left was built pixel by pixel by the committed figure, standing in for a camera frame. The shapes on the right are what `ContourDetector.detect(in:)` traced out of it. Once a camera frame is `Shape`s, everything from [Chapter 13](13-ShapesAsMaterial.md) applies. Boolean it, offset it, hatch it, warp it, or export it as SVG for a plotter. A webcam pointed at high-contrast subjects becomes a live vectorizer.
 
-**`FlowTracker`** measures **optical flow**, meaning how every part of the picture moved since the previous frame. Chapter 12 taught fields as "an answer at every point", and this is that exact idea. The difference is that the answers are measured from the world, not computed from noise:
+**`FlowTracker`** measures **optical flow**, meaning how every part of the picture moved since the previous frame. [Chapter 12](12-FieldsAndFlow.md) taught fields as "an answer at every point", and this is that exact idea. The difference is that the answers are measured from the world, not computed from noise:
 
 <img src="Images/21-Seeing/FlowArrows.jpg" alt="Two panels: a dark frame holding two pale speckled hands, and the same frame with orange arrows on one hand showing its measured motion. The other hand, mid-turnaround, gets no arrows" width="680">
 
@@ -115,7 +115,7 @@ if let field = flow.field {
 
 `field` is `nil` until the second analyzed frame, because flow needs a pair. After that you can ask it anywhere. `vector(at:in:)` gives the motion under a point, `samples(in:every:)` a grid of arrows, and `averageFlow(in:)` the whole picture's drift. Look closely at the figure and you'll see that only one hand grew arrows. The other was turning around at that instant, nearly still. Flow reports *motion*, not presence, so a hand at rest is invisible to it.
 
-Motion is only measurable where the picture has texture. A featureless area, a blank wall or a solid backdrop, doesn't politely read as zero. It reads as noise, because there is nothing to match from one frame to the next. If your scene is mostly flat, give it some texture before trusting the field there. Treat the magnitudes as a signal to scale by a gain of your own rather than a calibrated speed. The measured field has its own name, `MotionField`, so you won't confuse it with Chapter 12's generative `FlowField`. One is a rule you invent. The other is motion the camera actually saw.
+Motion is only measurable where the picture has texture. A featureless area, a blank wall or a solid backdrop, doesn't politely read as zero. It reads as noise, because there is nothing to match from one frame to the next. If your scene is mostly flat, give it some texture before trusting the field there. Treat the magnitudes as a signal to scale by a gain of your own rather than a calibrated speed. The measured field has its own name, `MotionField`, so you won't confuse it with [Chapter 12](12-FieldsAndFlow.md)'s generative `FlowField`. One is a rule you invent. The other is motion the camera actually saw.
 
 ## Lifting the subject
 
@@ -133,7 +133,7 @@ override func draw() {
 
 Where the pose trackers reduce a person to joints, these give you their pixels. `matte` is a soft white silhouette, and its alpha says how much each pixel belongs to the subject. `tint(_:)` then turns it into a shadow, a glow, or a flat colored figure. `cutout` is the frame's own pixels with the background gone, ready to composite over whatever your sketch has already drawn. Both come back as ordinary `Image`s, so draw them into the same rectangle as the frame and they land exactly on the picture.
 
-Stamp the matte every frame without clearing and you have a trail of yourself. That is Chapter 14's accumulation, with a person as the brush. `PersonSegmenter` takes a `quality:` that trades edge detail for speed. `SubjectSegmenter` adds a `count` of how many separate subjects it found, going to `nil` and `0` while nothing in the picture stands out. Both need Apple silicon, like the pose trackers.
+Stamp the matte every frame without clearing and you have a trail of yourself. That is [Chapter 14](14-LayersAndEffects.md)'s accumulation, with a person as the brush. `PersonSegmenter` takes a `quality:` that trades edge detail for speed. `SubjectSegmenter` adds a `count` of how many separate subjects it found, going to `nil` and `0` while nothing in the picture stands out. Both need Apple silicon, like the pose trackers.
 
 ## Lifting what you point at
 
@@ -182,7 +182,7 @@ A `DetectedRectangle` also offers `center(in:)`, `bounds(in:)`, the upright box 
 
 **`BarcodeScanner`** decodes barcodes and QR codes. A `DetectedBarcode` gives you the decoded `payload`, the `symbology` that says which kind of code it was, and `corners(in:)` for where it sits. Pointing a webcam at a QR code is a friendly way to hand a running installation some input. Anyone in the room can make one on their phone.
 
-The figure above used no camera and no photograph. The committed figure [`ReadingACard.swift`](Figures/21-Seeing/ReadingACard.swift) draws the desk, the card and the type into a picture pixel by pixel. The letters are Chapter 7's `textToShapes` outlines, filled in by hand. It then hands that picture to the two real detectors through `waitFor`. Its right-hand caption is written from the words that came back. If the reader ever came back with something else, the figure would say so rather than keep the old claim.
+The figure above used no camera and no photograph. The committed figure [`ReadingACard.swift`](Figures/21-Seeing/ReadingACard.swift) draws the desk, the card and the type into a picture pixel by pixel. The letters are [Chapter 7](07-WordsAndPictures.md)'s `textToShapes` outlines, filled in by hand. It then hands that picture to the two real detectors through `waitFor`. Its right-hand caption is written from the words that came back. If the reader ever came back with something else, the figure would say so rather than keep the old claim.
 
 ## Following one thing
 
@@ -251,7 +251,7 @@ The bars on the right of the figure are that list, drawn for the made-up card. T
 
 The other way to read the same result suits knobs better. `confidence(of: "plant")` answers for any word in the vocabulary, whether or not it cleared the floor. So "how much does this look like a plant" can drive a color or a speed straight from the room.
 
-**`SaliencyTracker`** maps where an eye would go. `heatMap` is a white image whose alpha is the salience, so a `tint(_:)` turns it into a glow over the picture. `regions` are the boxes it peaks in. And `salience(at:in:)` answers for one canvas point, which is the field-shaped reading of Chapter 12. Use it as a density for stippling, a weight for where to spend detail, or an attractor for particles.
+**`SaliencyTracker`** maps where an eye would go. `heatMap` is a white image whose alpha is the salience, so a `tint(_:)` turns it into a glow over the picture. `regions` are the boxes it peaks in. And `salience(at:in:)` answers for one canvas point, which is the field-shaped reading of [Chapter 12](12-FieldsAndFlow.md). Use it as a density for stippling, a weight for where to spend detail, or an attractor for particles.
 
 In the figure the attention piles onto the words rather than onto the card as a whole. That's the model doing exactly what it was trained on, since type and contrast are what people look at. There are two flavors, chosen with `mode:`. The default `.attention` predicts human gaze, while `.objectness` highlights regions likely to hold discrete objects whether or not they draw the eye. The mode is fixed when you make the tracker, so read both by making two.
 
@@ -309,7 +309,7 @@ override func setup() { player.loops = true; player.play() }
 override func draw() { drawFrame(player) }
 ```
 
-Frames arrive as GPU textures, so drawing them costs almost nothing. `drawFrame` letterboxes them the same way, and trackers analyze the footage as it plays. `snapshot()` hands you a CPU still for the one-shot `detect(in:)` calls. Chapter 20's `Soundtrack(of: player)` completes the loop. One clip can drive a piece with its pixels *and* its music. The `Video/VideoPlayback` example ships with a short clip of the *Voladores de Papantla* to play with, and `Vision/VideoTrace` runs a contour tracker over it live. One export note is worth carrying forward. Headless exports drive the player deterministically, so frame `k` of the export always shows the clip at `k/fps`. But a *tracker* attached to it analyzes nothing during an export, because analysis rides the live clock.
+Frames arrive as GPU textures, so drawing them costs almost nothing. `drawFrame` letterboxes them the same way, and trackers analyze the footage as it plays. `snapshot()` hands you a CPU still for the one-shot `detect(in:)` calls. [Chapter 20](20-SoundAndControl.md)'s `Soundtrack(of: player)` completes the loop. One clip can drive a piece with its pixels *and* its music. The `Video/VideoPlayback` example ships with a short clip of the *Voladores de Papantla* to play with, and `Vision/VideoTrace` runs a contour tracker over it live. One export note is worth carrying forward. Headless exports drive the player deterministically, so frame `k` of the export always shows the clip at `k/fps`. But a *tracker* attached to it analyzes nothing during an export, because analysis rides the live clock.
 
 ## The screen as material
 
@@ -429,14 +429,14 @@ final class MotionBrush: Sketch {
 
 <img src="Images/21-Seeing/MotionBrush.jpg" alt="The finished motion painting: a swirling wreath of green and magenta strokes tracing where the pretend dancer's hands moved, dense where recent, faded where old" width="560">
 
-The committed figure swaps the camera block for the pretend dancer, and the painting code is identical. `StagePerformer.step()` stands where `flow.field` stands, feeding the same kind of field from a synthesized dance, with nobody to mirror. Chapter 14's accumulation, `noClear` plus the faint veil, is what turns instants of motion into a painting with a memory.
+The committed figure swaps the camera block for the pretend dancer, and the painting code is identical. `StagePerformer.step()` stands where `flow.field` stands, feeding the same kind of field from a synthesized dance, with nobody to mirror. [Chapter 14](14-LayersAndEffects.md)'s accumulation, `noClear` plus the faint veil, is what turns instants of motion into a painting with a memory.
 
 Then make it yours:
 
 - Change what motion means by using `field.averageFlow(in: bounds)` to steer one big brush instead of thousands of small ones, and the piece becomes a single line that follows the room.
 - Paint with yourself instead of your motion. Swap the flow for `PersonSegmenter` and stamp the `matte`, tinted, wherever you stand, so motion leaves silhouettes.
 - Give the brush a hand by driving it with `HandTracker`'s `.indexTip` instead of flow, and you're drawing in the air.
-- Trace the room instead, with a `ContourDetector` over the same camera drawn as strokes that jitter with Chapter 5's noise, which makes the mirror a live etching.
+- Trace the room instead, with a `ContourDetector` over the same camera drawn as strokes that jitter with [Chapter 5](05-Noise.md)'s noise, which makes the mirror a live etching.
 
 ## Where this comes from
 
@@ -448,6 +448,7 @@ Camera-as-instrument art is older than the personal computer. Myron Krueger's *V
 - [Video](../Docs/Video/Video.md): loading and playing footage, analysis, the soundtrack, deterministic export.
 - [Screen capture](../Docs/Integration/ScreenCapture.md): naming a display, app, or window, listing what's there, the permission story in full, and the feedback tunnel.
 - [Slit scan](../Docs/Video/SlitScan.md): the frame history, both delay forms, memory cost, and the delay maps worth trying.
+- Appendix B draws this chapter's math, one picture per idea: [Where things are](B-JustEnoughMath.md#where-things-are), [Fields and following them](B-JustEnoughMath.md#fields-and-following-them).
 - Worked examples, people first: [`FaceTracking`](../Examples/Vision/FaceTracking/Sketch.swift), [`HandTracking`](../Examples/Vision/HandTracking/Sketch.swift), [`BodyPose`](../Examples/Vision/BodyPose/Sketch.swift), [`BodyPose3D`](../Examples/Vision/BodyPose3D/Sketch.swift), [`PersonSegmentation`](../Examples/Vision/PersonSegmentation/Sketch.swift), [`SubjectLift`](../Examples/Vision/SubjectLift/Sketch.swift).
 - Then the picture itself: [`ContourTrace`](../Examples/Vision/ContourTrace/Sketch.swift), [`OpticalFlow`](../Examples/Vision/OpticalFlow/Sketch.swift), [`RectangleScan`](../Examples/Vision/RectangleScan/Sketch.swift), [`TextScan`](../Examples/Vision/TextScan/Sketch.swift), [`BarcodeReader`](../Examples/Vision/BarcodeReader/Sketch.swift), [`ObjectTracking`](../Examples/Vision/ObjectTracking/Sketch.swift), [`TrajectoryTracking`](../Examples/Vision/TrajectoryTracking/Sketch.swift), [`SceneLabels`](../Examples/Vision/SceneLabels/Sketch.swift), [`EyeCatcher`](../Examples/Vision/EyeCatcher/Sketch.swift).
 - Models of your own: [`DepthRelief`](../Examples/Vision/DepthRelief/Sketch.swift), [`ObjectDetection`](../Examples/Vision/ObjectDetection/Sketch.swift), [`PaintByClass`](../Examples/Vision/PaintByClass/Sketch.swift), [`TugOfWords`](../Examples/Vision/TugOfWords/Sketch.swift) for phrase scoring, [`StyleMirror`](../Examples/Vision/StyleMirror/Sketch.swift), and [`DigitReader`](../Examples/Vision/DigitReader/Sketch.swift), which points a model at the sketch's own pixels with no camera anywhere. The rest live in [`Examples/Vision/`](../Examples/Vision).

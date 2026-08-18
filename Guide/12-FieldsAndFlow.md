@@ -6,11 +6,11 @@
 
 <img src="Images/12-FieldsAndFlow/FlowPrint.jpg" alt="A print of flowing ribbons in terracotta, gold, sage, navy, and ink on cream, combed across the canvas in curving non-crossing lines of three different widths" width="560">
 
-Most tricks in this guide do one job. This chapter teaches one that keeps working everywhere. It is the **field**, a question you can ask at every point of the canvas and always get an answer. Noise was your first field, a number at every point. Give the answer a *direction* instead and you get flow. Lines comb themselves into currents, particles ride invisible rivers, and the print above draws itself out of one function. The same mental model comes back per-pixel in Chapter 15 and as sculpting material in Chapter 18. What you learn here keeps working long after this chapter.
+Most tricks in this guide do one job. This chapter teaches one that keeps working everywhere. It is the **field**, a question you can ask at every point of the canvas and always get an answer. Noise was your first field, a number at every point. Give the answer a *direction* instead and you get flow. Lines comb themselves into currents, particles ride invisible rivers, and the print above draws itself out of one function. The same mental model comes back per-pixel in [Chapter 15](15-YourFirstShader.md) and as sculpting material in [Chapter 18](18-SculptingWithFields.md). What you learn here keeps working long after this chapter.
 
 ## An answer at every point
 
-A **flow field** is a direction at every point of the plane. It isn't a grid of stored directions, just a rule. Hand it any point and it hands back an angle. In Ollin a `FlowField` is exactly that, a wrapped function. The easiest way to make a good one is to let noise pick the angles, which is what the `flowField(...)` helper does. Because noise changes smoothly (Chapter 5's whole point), nearby points get nearby directions, and the field organizes into weather.
+A **flow field** is a direction at every point of the plane. It isn't a grid of stored directions, just a rule. Hand it any point and it hands back an angle. In Ollin a `FlowField` is exactly that, a wrapped function. The easiest way to make a good one is to let noise pick the angles, which is what the `flowField(...)` helper does. Because noise changes smoothly ([Chapter 5](05-Noise.md)'s whole point), nearby points get nearby directions, and the field organizes into weather.
 
 You can't see a function, but you can interview it. Put down a grid of points, ask the field for its direction at each one, and draw a needle. Make `MySketches/Compass.swift`:
 
@@ -43,13 +43,13 @@ final class Compass: Sketch {
 
 <img src="Images/12-FieldsAndFlow/Compass.jpg" alt="A grid of small pale needles on a dark canvas, each tipped with a gold dot, their directions changing smoothly across the canvas so currents and swirls show in the pattern" width="560">
 
-`field.angle(p)` is the raw answer in radians, and `field.direction(at: p)` is the same answer as a unit vector, ready for Chapter 8's arithmetic. The `z` argument is the third noise dimension doing its usual job from Chapter 5. Nudge it over time and the whole weather system drifts. Two things are worth noticing before moving on. The needles are only *samples*, and the field has an answer between them too, at every point you could ever ask. The field is also cheap, because nothing is simulated or stored, so asking is all it ever costs.
+`field.angle(p)` is the raw answer in radians, and `field.direction(at: p)` is the same answer as a unit vector, ready for [Chapter 8](08-Vectors.md)'s arithmetic. The `z` argument is the third noise dimension doing its usual job from [Chapter 5](05-Noise.md). Nudge it over time and the whole weather system drifts. Two things are worth noticing before moving on. The needles are only *samples*, and the field has an answer between them too, at every point you could ever ask. The field is also cheap, because nothing is simulated or stored, so asking is all it ever costs.
 
 One habit keeps the sugar honest. `flowField` reads the sketch's seeded noise, so call `seed(...)` first and build the field fresh each frame. You can also trace what you need once and keep the *results*. It's a lens over the noise, not a stored grid.
 
 ## Where the field equals something
 
-A `FlowField` answers with a direction. The other kind of field answers with a number, and you already have one. Chapter 5's noise hands back a value at every point. Fields like that invite a different question. Instead of asking which way to go, you ask where the field equals some particular value, and the answer is a set of curves.
+A `FlowField` answers with a direction. The other kind of field answers with a number, and you already have one. [Chapter 5](05-Noise.md)'s noise hands back a value at every point. Fields like that invite a different question. Instead of asking which way to go, you ask where the field equals some particular value, and the answer is a set of curves.
 
 Those curves are **level curves**, or contours, and you have read thousands of them on maps. A contour line on a map is the set of places at exactly 400 metres. Walking along one is flat, and crossing several quickly means the slope is steep.
 
@@ -79,7 +79,7 @@ Passing all the levels at once samples the field a single time and traces them a
 
 Two details show up the moment you use this. Curves come back **closed** when they close inside your region and **open** when they run off its edge. That is why `drawPolyline` wants `isClosed` rather than guessing. And there's a version that reads a picture instead of a function, `isolines(of: image, at:)`, which treats the image's tone as the field. That's how you get a contour map of a photograph, or clean vector outlines from anything you can draw.
 
-This is also the general answer to "how do I get a real outline out of a field". Metaball silhouettes, the boundary of a simulation, and the nodal lines of the vibrating plate in Chapter 16 are all one `isolines` call. What comes back is ordinary geometry you can stroke, offset, or send to a plotter.
+This is also the general answer to "how do I get a real outline out of a field". Metaball silhouettes, the boundary of a simulation, and the nodal lines of the vibrating plate in [Chapter 16](16-Simulations.md) are all one `isolines` call. What comes back is ordinary geometry you can stroke, offset, or send to a plotter.
 
 ## Following the flow
 
@@ -103,7 +103,7 @@ let lines = field.streamlines(from: poissonDisk(radius: 24),
                               bounds: bounds, separation: 21)
 ```
 
-The starts come from `poissonDisk`, Chapter 11's well-spread scatter (Chapter 13 finally opens it up), because evenly spaced lines deserve evenly spread beginnings. Each traced line is an ordinary `[Vector2]`, so everything you know applies. Stroke it, vary its weight, or feed it to an export.
+The starts come from `poissonDisk`, [Chapter 11](11-GrowingThings.md)'s well-spread scatter ([Chapter 13](13-ShapesAsMaterial.md) finally opens it up), because evenly spaced lines deserve evenly spread beginnings. Each traced line is an ordinary `[Vector2]`, so everything you know applies. Stroke it, vary its weight, or feed it to an export.
 
 ## Particles that ride
 
@@ -115,7 +115,7 @@ particles = field.advected(particles, stepLength: 7)
 
 <img src="Images/12-FieldsAndFlow/Drift.gif" alt="Short teal streaks swimming along invisible currents on a dark canvas, each dragging a brief trail, like eels riding an unseen river" width="480">
 
-The figure gives each particle a short stored trail (Chapter 10's array trick) and respawns any swimmer that leaves the canvas. It rides `curlField`, a second field builder worth knowing. Curl noise is built so the flow only ever swirls, never piling up or draining away. That keeps a drifting population evenly spread forever. It's the field of choice for smoke, ink, and anything that should feel fluid without simulating fluid.
+The figure gives each particle a short stored trail ([Chapter 10](10-FlocksAndSwarms.md)'s array trick) and respawns any swimmer that leaves the canvas. It rides `curlField`, a second field builder worth knowing. Curl noise is built so the flow only ever swirls, never piling up or draining away. That keeps a drifting population evenly spread forever. It's the field of choice for smoke, ink, and anything that should feel fluid without simulating fluid.
 
 ## Motion found in a formula
 
@@ -132,7 +132,7 @@ for _ in 0 ..< 30_000 {
 }
 ```
 
-The plates accumulate on a canvas that never clears, with `blendMode(.add)`. Instead of painting over what's below, each faint dot *adds* its light. The places the orbit revisits glow brighter, a first taste of the additive layering Chapter 14 develops. Every constant in `clifford(a:b:c:d:)` reshapes the ghost completely. Most values collapse to a dot or explode into static. Part of the craft is collecting constants that sing, and the four plates are four such finds. Three more maps wait in the same family, each with its own temperament. `.gumowskiMira()` wanders a sea of islands into a many-petaled blossom; plot it from the start with no settling, since the long wander *is* the picture. `.ikeda()` folds everything into one layered swirl. `.hopalong()` hops around nested rings that keep widening as it runs. The [attractors reference](../Docs/Drawing/Attractors.md) has all six forms. The 3D members of this family, Lorenz and friends, live in `StrangeAttractor` and wait for Chapter 17's camera. That chapter is also where a million particles ride one at once.
+The plates accumulate on a canvas that never clears, with `blendMode(.add)`. Instead of painting over what's below, each faint dot *adds* its light. The places the orbit revisits glow brighter, a first taste of the additive layering [Chapter 14](14-LayersAndEffects.md) develops. Every constant in `clifford(a:b:c:d:)` reshapes the ghost completely. Most values collapse to a dot or explode into static. Part of the craft is collecting constants that sing, and the four plates are four such finds. Three more maps wait in the same family, each with its own temperament. `.gumowskiMira()` wanders a sea of islands into a many-petaled blossom; plot it from the start with no settling, since the long wander *is* the picture. `.ikeda()` folds everything into one layered swirl. `.hopalong()` hops around nested rings that keep widening as it runs. The [attractors reference](../Docs/Drawing/Attractors.md) has all six forms. The 3D members of this family, Lorenz and friends, live in `StrangeAttractor` and wait for [Chapter 17](17-3DGently.md)'s camera. That chapter is also where a million particles ride one at once.
 
 ## One dial away from chaos
 
@@ -182,7 +182,7 @@ final class FlowPrint: Sketch {
 }
 ```
 
-Everything happens in `draw()` with a fixed seed, so the piece is a still that redraws identically every frame. Change the seed and a new print rolls off the press. The `weights` list is a quiet trick from Chapter 4, where repeating `9` three times makes medium ribbons three times as likely as heavy ones.
+Everything happens in `draw()` with a fixed seed, so the piece is a still that redraws identically every frame. Change the seed and a new print rolls off the press. The `weights` list is a quiet trick from [Chapter 4](04-Randomness.md), where repeating `9` three times makes medium ribbons three times as likely as heavy ones.
 
 Then make it yours:
 
@@ -190,7 +190,7 @@ Then make it yours:
 - Swap `flowField` for `curlField` and the print turns from wind-combed to whirlpooled.
 - Give the palette a bias by picking the color from the line's *position*, its first point's `y` mapped into the palette. The print then develops horizons.
 - Replace `drawPolyline` with a dot walked along each line every few points, and the ribbons become stitched embroidery.
-- Print it for real by adding `--export-svg print.svg` when you run it. Every ribbon exports as a true vector path, and Chapter 13 goes deeper into plotter territory.
+- Print it for real by adding `--export-svg print.svg` when you run it. Every ribbon exports as a true vector path, and [Chapter 13](13-ShapesAsMaterial.md) goes deeper into plotter territory.
 
 ## Where this comes from
 
@@ -203,7 +203,8 @@ Vector fields are old mathematics, since fluid dynamics and electromagnetism bot
 - [Chaotic maps & bifurcation](../Docs/Generators/Bifurcation.md): the one-dimensional families, the diagram's dot and density forms, cobwebs, and Lyapunov exponents.
 - [Noise](../Docs/Generators/Noise.md): the field the flow is made of.
 - [Isolines](../Docs/Generators/Isolines.md): the single-level and stacked-level forms, the image form, resolution, and what open versus closed contours mean.
-- [Steering](../Docs/Generators/Steering.md): creatures that *follow* a field instead of riding it (Chapter 10's `follow(_:)`).
+- [Steering](../Docs/Generators/Steering.md): creatures that *follow* a field instead of riding it ([Chapter 10](10-FlocksAndSwarms.md)'s `follow(_:)`).
+- Appendix B draws this chapter's math, one picture per idea: [Fields and following them](B-JustEnoughMath.md#fields-and-following-them).
 - Worked examples: [`Examples/Patterns/Streamlines`](../Examples/Patterns/Streamlines/Sketch.swift) (evenly spaced, hue drifting along the flow), [`Examples/Patterns/CliffordAttractor`](../Examples/Patterns/CliffordAttractor/Sketch.swift) (the density bloom, built up live), [`Examples/Patterns/GumowskiMira`](../Examples/Patterns/GumowskiMira/Sketch.swift) (the island-sea blossom, aging from ember to violet), [`Examples/Patterns/Bifurcation`](../Examples/Patterns/Bifurcation/Sketch.swift) (the logistic diagram with its Lyapunov trace, zoomable by knob), and [`Examples/Motion/FlowField`](../Examples/Motion/FlowField/Sketch.swift) (a curl field of drifting needles).
 
 ---

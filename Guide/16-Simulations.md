@@ -10,7 +10,7 @@ Nobody drew those corridors. They grew, over six hundred frames, from a scatter 
 
 ## State that lives on the GPU
 
-Chapter 14's feedback layer was the first taste, a picture fed its transformed self back in, frame after frame. A simulation field replaces "transform the whole picture" with something more local and more alive. Every cell of the field computes its next value *from its neighbors*, all at once, every frame. It's Chapter 15's per-pixel function, plus the one addition that changes everything. That addition is memory.
+[Chapter 14](14-LayersAndEffects.md)'s feedback layer was the first taste, a picture fed its transformed self back in, frame after frame. A simulation field replaces "transform the whole picture" with something more local and more alive. Every cell of the field computes its next value *from its neighbors*, all at once, every frame. It's [Chapter 15](15-YourFirstShader.md)'s per-pixel function, plus the one addition that changes everything. That addition is memory.
 
 In Ollin that's a `SimField`. Like `Feedback`, it's persistent, so make it once and keep it. You never write the kernel for the built-in ones. Pick a `Sim`, draw into the field to seed it, and composite its `image`:
 
@@ -28,7 +28,7 @@ override func draw() {
 }
 ```
 
-`withField` works like Chapter 14's `withTarget`, and what a drawn mark *means* depends on the simulation. For the Game of Life, white means alive.
+`withField` works like [Chapter 14](14-LayersAndEffects.md)'s `withTarget`, and what a drawn mark *means* depends on the simulation. For the Game of Life, white means alive.
 
 ## The Game of Life
 
@@ -69,7 +69,7 @@ let rows = elementaryCA(rule: 30, width: 161, generations: 161)
 
 Rule 30, on the left, is the famous one, because a rule that small has no business producing something that irregular. Wolfram used its middle column as a source of random numbers for years. Rule 90 draws the Sierpinski triangle, and rule 110 turns out to be complicated enough to compute anything a computer can. `totalisticCA` is the same idea with more colors, where a cell reads the *sum* of its neighborhood rather than the exact pattern.
 
-**A turmite** is an ant on a grid instead of a whole row of cells. It reads the color under it, writes a new one, turns, steps forward, and adopts a new state. That is the entire creature. Langton's ant, the classic, spends about ten thousand steps making an incoherent blot. Then, with no warning at all, it starts laying a perfectly regular diagonal highway and walks off along it forever. Nobody has a satisfying explanation for why. You hold one and step it, the way you held a `DifferentialGrowth` in Chapter 10:
+**A turmite** is an ant on a grid instead of a whole row of cells. It reads the color under it, writes a new one, turns, steps forward, and adopts a new state. That is the entire creature. Langton's ant, the classic, spends about ten thousand steps making an incoherent blot. Then, with no warning at all, it starts laying a perfectly regular diagonal highway and walks off along it forever. Nobody has a satisfying explanation for why. You hold one and step it, the way you held a `DifferentialGrowth` in [Chapter 10](10-FlocksAndSwarms.md):
 
 ```swift
 let ant = Turmite(.langton, columns: 260, rows: 260)
@@ -163,7 +163,7 @@ Seeding is drawing, same as before, and it's worth watching what one mark become
 
 <img src="Images/16-Simulations/Seeding.jpg" alt="Four dishes seeded with the same ring at different moments, showing its growth: the raw ring, a thickened double ring, a wavy cross, and a labyrinth filling the dish" width="680">
 
-One more habit is worth forming here. The raw field is *data*, not a picture. Reaction-diffusion's state reads as dim red-green, so you give it a look by filtering. The catalog is the same one as everything else. Try `dish.filtered(.gradientMap(.viridis))`, a `.threshold` for hard ink, or Chapter 14's `.relight` to light it as matter.
+One more habit is worth forming here. The raw field is *data*, not a picture. Reaction-diffusion's state reads as dim red-green, so you give it a look by filtering. The catalog is the same one as everything else. Try `dish.filtered(.gradientMap(.viridis))`, a `.threshold` for hard ink, or [Chapter 14](14-LayersAndEffects.md)'s `.relight` to light it as matter.
 
 ## The same rule at many sizes
 
@@ -365,7 +365,7 @@ Which brings the sidebar back to the chapter. The simulation fields spread their
 
 ## A million grains
 
-The fields so far evolved *textures*. The other half of GPU simulation evolves *particles*. That is a buffer of hundreds of thousands of individuals, each updated by a small program, none of them ever touching the CPU. In Ollin that's `Particles`, and the update is a snippet of Metal, the same language as Chapter 15's shaders. It is presented here as a recipe you can adapt without ceremony:
+The fields so far evolved *textures*. The other half of GPU simulation evolves *particles*. That is a buffer of hundreds of thousands of individuals, each updated by a small program, none of them ever touching the CPU. In Ollin that's `Particles`, and the update is a snippet of Metal, the same language as [Chapter 15](15-YourFirstShader.md)'s shaders. It is presented here as a recipe you can adapt without ceremony:
 
 ```swift
 lazy var sand = Particles(count: 1_000_000, step: """
@@ -391,7 +391,7 @@ Inside the snippet, each particle's `position`, `color`, `size`, and `life` are 
 
 <img src="Images/16-Simulations/MillionGrains.jpg" alt="Three strips of the same particle system at ten thousand, a hundred thousand, and a million grains: sparse embers, a grainy dune, and a smooth field of light" width="560">
 
-Each grain sheds the same faint light, and density does the drawing. At ten thousand you see individuals, at a million you see a *material*. Pair this with Chapter 14's `noClear()` and `toneMap(.aces)`, and the grains deposit into the long-exposure sandpainting look. The `Rendering/DepthOfField` example pushes it all the way to a photographic bokeh field. The [compute reference](../Docs/Shaders/Compute.md) has the full snippet vocabulary, `.metal`-file loading, and the typed core underneath.
+Each grain sheds the same faint light, and density does the drawing. At ten thousand you see individuals, at a million you see a *material*. Pair this with [Chapter 14](14-LayersAndEffects.md)'s `noClear()` and `toneMap(.aces)`, and the grains deposit into the long-exposure sandpainting look. The `Rendering/DepthOfField` example pushes it all the way to a photographic bokeh field. The [compute reference](../Docs/Shaders/Compute.md) has the full snippet vocabulary, `.metal`-file loading, and the typed core underneath.
 
 ## Crowds that organize themselves
 
@@ -409,7 +409,7 @@ updateParticleLife(life)
 drawParticles(life)
 ```
 
-The matrix is rolled at build, and `life.randomizeMatrix(seed:)` rolls a fresh one. Most rolls are dull and a few are alive, which makes this another seed-hunting system in the spirit of Chapter 4.
+The matrix is rolled at build, and `life.randomizeMatrix(seed:)` rolls a fresh one. Most rolls are dull and a few are alive, which makes this another seed-hunting system in the spirit of [Chapter 4](04-Randomness.md).
 
 **The Primordial Particle System** is leaner still. Each particle counts its neighbors, and notices whether more of them sit to its left or its right. Then it turns toward the busier side, by a fixed amount plus a crowd-proportional one. From that single rule come cells that grow, divide, and die. The middle panel above is a few seconds in, with yellow marking the crowded cell walls and blue the free wanderers.
 
@@ -473,7 +473,7 @@ One thing you never set is the kernel's weight. It is not a free number. It is w
 
 ## The flock, a thousand times bigger
 
-Chapter 10 gave one creature a short list of urges and let a few hundred of them flock. That work was done on the CPU, one agent at a time, which is why the counts stayed small. `Swarm` is the same list of urges run on the GPU, over the neighbor sort above. So the same rules carry tens or hundreds of thousands of agents.
+[Chapter 10](10-FlocksAndSwarms.md) gave one creature a short list of urges and let a few hundred of them flock. That work was done on the CPU, one agent at a time, which is why the counts stayed small. `Swarm` is the same list of urges run on the GPU, over the neighbor sort above. So the same rules carry tens or hundreds of thousands of agents.
 
 <img src="Images/16-Simulations/Swarm.jpg" alt="Three dark panels of pale blue trails. Left, flocking: dense clusters of curving paths with gaps between them. Middle, a current: broad ribbons of trails winding through the panel and coiling into two vortices. Right, roaming: an even scribble of short independent paths crossing everywhere" width="680">
 
@@ -490,7 +490,7 @@ updateSwarm(flock)
 drawParticles(flock)
 ```
 
-That's the left panel. Turn those three off and turn on `flow` instead and a noise field carries everyone, which is the middle panel. Turn on `wander` alone and each agent roams by itself, which is the right one. `seek`, `flee`, and `arrive` steer at a `target` you can move with the mouse. Each behavior works out where it *wants* to be going, and subtracts where the agent is already going. The weighted total is capped before it moves anything, exactly as in Chapter 10.
+That's the left panel. Turn those three off and turn on `flow` instead and a noise field carries everyone, which is the middle panel. Turn on `wander` alone and each agent roams by itself, which is the right one. `seek`, `flee`, and `arrive` steer at a `target` you can move with the mouse. Each behavior works out where it *wants* to be going, and subtracts where the agent is already going. The weighted total is capped before it moves anything, exactly as in [Chapter 10](10-FlocksAndSwarms.md).
 
 Three numbers are tied to each other, and a swarm that looks wrong is usually one of them rather than a weight. An agent should see about twenty others, which is what `perceptionRadius` decides against how crowded the canvas is. See far more and every agent is averaging over most of the swarm, so the structure washes out. `separationRadius` wants to be about the gap between neighbors, since a personal space larger than that means everyone shoves everyone forever. And the turning circle, `maxSpeed²/maxForce`, should be a few times the perception radius, or agents orbit inside their own neighborhood instead of travelling through it.
 
@@ -610,7 +610,7 @@ The color is the recipe itself, three of its numbers read as red, green and blue
 
 ## Putting it together: the organism
 
-The finished piece grows a culture. A scatter of spores seeds a reaction-diffusion dish in its mitosis regime, and whatever you draw while it runs joins the chemistry. The display pipeline is pure Chapter 14, a levels stretch, a gradient map for the skin, and a liquid relight so the ridges catch light. Make `MySketches/Organism.swift`:
+The finished piece grows a culture. A scatter of spores seeds a reaction-diffusion dish in its mitosis regime, and whatever you draw while it runs joins the chemistry. The display pipeline is pure [Chapter 14](14-LayersAndEffects.md), a levels stretch, a gradient map for the skin, and a liquid relight so the ridges catch light. Make `MySketches/Organism.swift`:
 
 ```swift
 import Ollin
@@ -656,7 +656,7 @@ Then make it yours:
 
 - Walk the map by putting `feed` and `kill` on knobs, and steer the culture between mitosis, worms, and coral while it grows.
 - Recolor the skin ramp. The same labyrinth reads as coral, lichen, or circuitry depending entirely on four colors.
-- Seed with meaning. Chapter 7's `drawText` into the field grows a word into a labyrinth that slowly forgets it was a word.
+- Seed with meaning. [Chapter 7](07-WordsAndPictures.md)'s `drawText` into the field grows a word into a labyrinth that slowly forgets it was a word.
 - Swap `.relight(.liquid)` for `.relight(.metal, color:)` and the organism becomes an engraving.
 
 ## Where this comes from
@@ -683,6 +683,7 @@ The two waves in this chapter are older than any of it. The ripple pool integrat
 - [Fluids & soft bodies](../Docs/Simulation/Fluids.md): the SPH and shape-matching knobs, grabbing, and the substep model.
 - [Evolution](../Docs/Simulation/Evolution.md): the scoring and selection in full, the pacing you can take over, and the interactive `Population` with its three ways of mixing two parents.
 - [Chladni figures](../Docs/Generators/Chladni.md): the closed form, the `.chladni` generator's two styles, the degenerate cases, and pulling nodal lines out as vector contours.
+- Appendix B draws this chapter's math, one picture per idea: [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure).
 - Worked examples: [`Examples/Simulation/GrayScott`](../Examples/Simulation/GrayScott/Sketch.swift), [`Examples/Simulation/GameOfLife`](../Examples/Simulation/GameOfLife/Sketch.swift), [`Examples/Simulation/MultiScaleTuring`](../Examples/Simulation/MultiScaleTuring/Sketch.swift), [`Examples/Simulation/Sandpile`](../Examples/Simulation/Sandpile/Sketch.swift), [`Examples/Simulation/Fluid`](../Examples/Simulation/Fluid/Sketch.swift), [`Examples/Simulation/Ripples`](../Examples/Simulation/Ripples/Sketch.swift), [`Examples/Simulation/Watercolor`](../Examples/Simulation/Watercolor/Sketch.swift), [`Examples/Patterns/Chladni`](../Examples/Patterns/Chladni/Sketch.swift), [`Examples/Audio/ChladniResonance`](../Examples/Audio/ChladniResonance/Sketch.swift), [`Examples/Effects/Fractals`](../Examples/Effects/Fractals/Sketch.swift), [`Examples/Compute/CurlField`](../Examples/Compute/CurlField/Sketch.swift), and [`Examples/Compute/ReactionDiffusion`](../Examples/Compute/ReactionDiffusion/Sketch.swift).
 
 ---

@@ -10,7 +10,7 @@ Part II begins here, and so does a new kind of sketch, one where things *remembe
 
 ## An arrow you can draw
 
-You've been using `Vector2` since Chapter 6 without ceremony, as a pair of coordinates carried as one value that calls like `drawCircle(center:radius:)` accept directly. The new idea is that the same pair has *two readings*. Read `(300, 200)` as a **point** and it's a place on the canvas. Read it as a **vector** and it's an arrow: go 300 right and 200 down, from wherever you are. Nothing in the type changes, and what changes is what you do with it.
+You've been using `Vector2` since [Chapter 6](06-GridsAndRepetition.md) without ceremony, as a pair of coordinates carried as one value that calls like `drawCircle(center:radius:)` accept directly. The new idea is that the same pair has *two readings*. Read `(300, 200)` as a **point** and it's a place on the canvas. Read it as a **vector** and it's an arrow: go 300 right and 200 down, from wherever you are. Nothing in the type changes, and what changes is what you do with it.
 
 ```swift
 let place = Vector2(300, 200)          // a point: somewhere on the canvas
@@ -29,7 +29,7 @@ Vectors add, subtract, and scale, and each operation has a picture worth keeping
 - **Subtracting** answers the most useful question in this half of the guide: `target - pos` is *the arrow that goes from here to there*. Every chase, spring, and look-at in the chapters ahead starts with this line.
 - **Scaling** multiplies by a plain number: `v * 2` is twice as far in the same direction, `v * 0.5` half, `v * -1` the same road walked backward.
 
-Two spellings make these read like sentences. `pos += step` moves a point by an arrow in place, and `v * deltaTime` is Chapter 3's frame-rate rule wearing vector clothes, so you write speeds per second and scale by the frame's slice of a second.
+Two spellings make these read like sentences. `pos += step` moves a point by an arrow in place, and `v * deltaTime` is [Chapter 3](03-MotionAndTime.md)'s frame-rate rule wearing vector clothes, so you write speeds per second and scale by the frame's slice of a second.
 
 ## Length and direction
 
@@ -46,7 +46,7 @@ That pair of lines is the move-toward-anything recipe, and it works at any dista
 
 Two relatives complete the kit. `a.distance(to: b)` measures between two points (it's `(a - b).length`). And `v.limited(to: max)` caps an arrow's length while keeping its heading, which sounds minor and turns out to be the seatbelt on everything in Part II: speeds that can't blow up, corrections that can't overshoot.
 
-One more is useful for drawing. `v.angle` is the arrow's direction as a single number, ready for Chapter 6's `rotate`, so a shape can face where it's going. Its inverse builds an arrow from scratch with `Vector2(angle: a, length: 10)`.
+One more is useful for drawing. `v.angle` is the arrow's direction as a single number, ready for [Chapter 6](06-GridsAndRepetition.md)'s `rotate`, so a shape can face where it's going. Its inverse builds an arrow from scratch with `Vector2(angle: a, length: 10)`.
 
 ## Position, velocity, acceleration
 
@@ -106,11 +106,11 @@ velocity = (velocity + steer * deltaTime).limited(to: maxSpeed)
 
 In words, you figure out the velocity you *wish* you had, straight at the target at full speed. Then you subtract the velocity you actually have, which gives the correction arrow between them. You cap that correction, because nothing real turns instantly, and finally you apply it like any other acceleration. The two caps are the character knobs. `maxSpeed` is how fast it can go, and `maxForce` is how sharply it can turn. High force snaps onto the target like a hunting fly, while low force sails past and swings back in wide, lazy arcs. The misses are where the life is: the chaser overshoots *because* it has momentum, and the correction is visible.
 
-Every line is arithmetic you already have: a subtraction pointing from here to there, a normalize choosing a speed, a limit keeping it honest. Chapter 10 builds whole flocks from exactly this correction, aimed at neighbors instead of a target.
+Every line is arithmetic you already have: a subtraction pointing from here to there, a normalize choosing a speed, a limit keeping it honest. [Chapter 10](10-FlocksAndSwarms.md) builds whole flocks from exactly this correction, aimed at neighbors instead of a target.
 
 ## Putting it together: the swarm
 
-One chaser is a pet; a few hundred are weather. The piece at the top of the chapter runs the steering recipe over parallel lists of positions and velocities, gives every mover its own top speed so the crowd stretches into leaders and stragglers, and draws each as a streak along its own velocity, so the drawing *is* the motion made visible. The lure wanders on Chapter 5's noise until you hold the mouse down, which hands it to you. Make `MySketches/Swarm.swift`:
+One chaser is a pet; a few hundred are weather. The piece at the top of the chapter runs the steering recipe over parallel lists of positions and velocities, gives every mover its own top speed so the crowd stretches into leaders and stragglers, and draws each as a streak along its own velocity, so the drawing *is* the motion made visible. The lure wanders on [Chapter 5](05-Noise.md)'s noise until you hold the mouse down, which hands it to you. Make `MySketches/Swarm.swift`:
 
 ```swift
 import Ollin
@@ -192,7 +192,7 @@ Run it with `swift run OllinLive MySketches/Swarm.swift`, watch the school wheel
 - `quickness` is one seeded roll per mover, and it does more than any other line for the feel, because everyone runs the same rules at a different top speed, so the crowd naturally stretches into warm leaders and cool stragglers. The streak color reads straight from it.
 - The steering block is the chase recipe verbatim, aimed at `lure`. Turn `Chase` down and the school swings in long arcs past the dot; turn it up and the swarm snaps tight around it.
 - Each mover draws as a `drawLine` from a little behind itself (`- velocities[i] * 0.11`) to where it is, giving a streak that grows with speed and points where it's going, with no rotation math needed.
-- The lure is two `noise` calls on far-apart rows of the field, Chapter 5's trick for unrelated drifts, and `mouseIsPressed` swaps it for your cursor. In a still export nobody is pressing, which is why the committed figure shows the noise chase.
+- The lure is two `noise` calls on far-apart rows of the field, [Chapter 5](05-Noise.md)'s trick for unrelated drifts, and `mouseIsPressed` swaps it for your cursor. In a still export nobody is pressing, which is why the committed figure shows the noise chase.
 
 > **Swift note.** `[Vector2]` is a list that grows: `append` adds to the end, `removeLast(n)` trims, `count` is the size, and `positions.indices` counts `0..<count` so one `i` can index all three lists together. Lists like these are how a sketch keeps state for *many* things, and Part II leans on them everywhere.
 
@@ -205,14 +205,15 @@ Then make it yours:
 
 ## Where this comes from
 
-Vectors are the physics notation the 1880s settled on, mostly at the hands of Josiah Willard Gibbs and Oliver Heaviside, and position/velocity/acceleration as arrows is Newton's mechanics wearing that notation. The steering recipe, desired minus actual, capped, is Craig Reynolds' *steering behaviors*, published in his 1999 paper "Steering Behaviors for Autonomous Characters" as the ground floor of the boids work you'll meet properly in Chapter 10. The teaching order of this chapter, arrows first, then the trio, then steering, walks in the footsteps of Daniel Shiffman's *The Nature of Code*, which made this progression the standard on-ramp for a generation of creative coders, this author included. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Vectors are the physics notation the 1880s settled on, mostly at the hands of Josiah Willard Gibbs and Oliver Heaviside, and position/velocity/acceleration as arrows is Newton's mechanics wearing that notation. The steering recipe, desired minus actual, capped, is Craig Reynolds' *steering behaviors*, published in his 1999 paper "Steering Behaviors for Autonomous Characters" as the ground floor of the boids work you'll meet properly in [Chapter 10](10-FlocksAndSwarms.md). The teaching order of this chapter, arrows first, then the trio, then steering, walks in the footsteps of Daniel Shiffman's *The Nature of Code*, which made this progression the standard on-ramp for a generation of creative coders, this author included. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
 - [Geometry](../Docs/Drawing/Geometry.md#vector2): the full `Vector2` tour, with a picture per operation, including the ones this chapter saved for later: `dot` (same way or opposite?), `cross` (which side?), `lerp(to:)` (the smooth follow), `rotated(by:around:)`, and `projected(onto:)`.
 - [Math helpers](../Docs/Helpers/Math.md): `map`, `dist`, and the scalar kit the vector calls sit beside.
+- Appendix B draws this chapter's math, one picture per idea: [Vectors, motion, and forces](B-JustEnoughMath.md#vectors-motion-and-forces).
 - Worked examples, in [`Examples/Motion/`](../Examples/Motion/): `Orbits` (the angle-and-radius reading), `Easing` (dots racing to a click), and `Smoothing` (a chased value with a filter instead of physics).
-- A look ahead: [`Examples/Patterns/Flocking`](../Examples/Patterns/Flocking/Sketch.swift) runs this chapter's correction three ways at once, and Chapter 10 takes it apart.
+- A look ahead: [`Examples/Patterns/Flocking`](../Examples/Patterns/Flocking/Sketch.swift) runs this chapter's correction three ways at once, and [Chapter 10](10-FlocksAndSwarms.md) takes it apart.
 
 ---
 

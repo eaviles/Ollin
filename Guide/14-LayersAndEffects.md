@@ -6,7 +6,7 @@
 
 <img src="Images/14-LayersAndEffects/Comets.jpg" alt="A dark canvas full of glowing comet swarms: hundreds of small lights in orange, pink, and green, each dragging a soft luminous tail that curves with its flock's turn" width="560">
 
-Every sketch so far has drawn onto one surface. This chapter adds more of them, off-screen layers you can hold, blur, glow, feed back into themselves, and stack like sheets of film. By the end, Chapter 10's flock comes back rebuilt out of light. Along the way the canvas learns three tricks a single surface can't do. It remembers, it accumulates, and it goes brighter than the screen.
+Every sketch so far has drawn onto one surface. This chapter adds more of them, off-screen layers you can hold, blur, glow, feed back into themselves, and stack like sheets of film. By the end, [Chapter 10](10-FlocksAndSwarms.md)'s flock comes back rebuilt out of light. Along the way the canvas learns three tricks a single surface can't do. It remembers, it accumulates, and it goes brighter than the screen.
 
 ## A drawing you can hold
 
@@ -39,7 +39,7 @@ final class FirstLayer: Sketch {
 
 <img src="Images/14-LayersAndEffects/FirstLayer.jpg" alt="A wave of colored dots shown twice: hugely blurred across the whole canvas, and sharp inside a smaller card floating in front of its own blur" width="560">
 
-Three calls carry the whole idea. `renderTarget()` makes the layer. `withTarget(art) { }` redirects everything drawn inside the block into it, the way `withState { }` scopes a transform, and a `background(_:)` inside clears just the layer. Then `art.image` hands the finished layer back as an image for Chapter 7's `drawImage`. The same drawing can now appear twice, once blurred across the whole canvas and once sharp in a card floating over its own ghost. One drawing, two appearances. That's the move everything else in this chapter builds on.
+Three calls carry the whole idea. `renderTarget()` makes the layer. `withTarget(art) { }` redirects everything drawn inside the block into it, the way `withState { }` scopes a transform, and a `background(_:)` inside clears just the layer. Then `art.image` hands the finished layer back as an image for [Chapter 7](07-WordsAndPictures.md)'s `drawImage`. The same drawing can now appear twice, once blurred across the whole canvas and once sharp in a card floating over its own ghost. One drawing, two appearances. That's the move everything else in this chapter builds on.
 
 Two habits worth forming now. A `renderTarget()` is per-frame scaffolding, so make it fresh inside `draw()` rather than storing it. And a layer that isn't composited never shows up, because `withTarget` records the drawing and `drawImage` is what puts it on screen.
 
@@ -75,9 +75,9 @@ layer.filtered(.dither(dark: navy, light: sand, pixelSize: 3))
 layer.filtered(.swirl(angle: 4.2, radius: 0.42, center: Vector2(0.3, 0.34)))
 ```
 
-**`.relight` reads brightness as height.** It treats a bright pixel as a high point and a dark one as a low point. It then works out which way the resulting surface faces and lights it from an angle you choose. Hand it a photograph and you get an odd embossed thing. Hand it a noise field, as the first panel does, and you get hammered metal. Noise makes a plausible bumpy surface. Five finishes change how the material responds, from `.matte` through `.metal` and `.glass` to `.sand` and `.liquid`. Chapter 16's ripple pool used it to turn a height field into water.
+**`.relight` reads brightness as height.** It treats a bright pixel as a high point and a dark one as a low point. It then works out which way the resulting surface faces and lights it from an angle you choose. Hand it a photograph and you get an odd embossed thing. Hand it a noise field, as the first panel does, and you get hammered metal. Noise makes a plausible bumpy surface. Five finishes change how the material responds, from `.matte` through `.metal` and `.glass` to `.sand` and `.liquid`. [Chapter 16](16-Simulations.md)'s ripple pool used it to turn a height field into water.
 
-**`.dither(dark:light:)` reads brightness as tone.** It screens the layer into exactly two colors of your choosing. Each pixel comes from a repeating pattern, the way Chapter 2's ordered dither did. Gradients survive as texture rather than collapsing into two flat regions. `pixelSize` makes the grain coarser, which is how you get the look of cheap newsprint or an early screen in any two colors you like.
+**`.dither(dark:light:)` reads brightness as tone.** It screens the layer into exactly two colors of your choosing. Each pixel comes from a repeating pattern, the way [Chapter 2](02-Color.md)'s ordered dither did. Gradients survive as texture rather than collapsing into two flat regions. `pixelSize` makes the grain coarser, which is how you get the look of cheap newsprint or an early screen in any two colors you like.
 
 **The warp filters read a center.** `.swirl`, `.bulge`, `.ripple`, and their relatives all distort around the middle of the layer by default. Each takes a `center` given in `0...1` layer coordinates. That one argument is what turns a symmetric effect into a composition, and feeding it `uv(of: mouse)` puts the distortion under the pointer. The marked circle in the third panel is the center that swirl was given.
 
@@ -100,7 +100,7 @@ Three lines, and the canvas is a printed poster. It is a mesh gradient of soft c
 
 ### The design family
 
-Two lines of that listing came from a set worth knowing as a set. Alongside the plain generators (checkers, noise, gradients) there's a **design** family. It is built to look like the finished graphics you'd meet on a product page rather than like test patterns. The family is `.meshGradient`, `.filaments`, `.smokeRing`, `.colorPanels`, `.spiral`, `.waves`, `.dotOrbit`, `.grainGradient`, `.pulsingBorder`, and `.godRays`. Each comes with defaults that already look composed, so `generate(.godRays())` is a usable backdrop with nothing configured. Each also takes colors plus a handful of knobs when you want it to be yours. There's a third group, the pattern fields, with a more mathematical flavor. Chapter 15 picks those up, because by then you'll be able to read how they work.
+Two lines of that listing came from a set worth knowing as a set. Alongside the plain generators (checkers, noise, gradients) there's a **design** family. It is built to look like the finished graphics you'd meet on a product page rather than like test patterns. The family is `.meshGradient`, `.filaments`, `.smokeRing`, `.colorPanels`, `.spiral`, `.waves`, `.dotOrbit`, `.grainGradient`, `.pulsingBorder`, and `.godRays`. Each comes with defaults that already look composed, so `generate(.godRays())` is a usable backdrop with nothing configured. Each also takes colors plus a handful of knobs when you want it to be yours. There's a third group, the pattern fields, with a more mathematical flavor. [Chapter 15](15-YourFirstShader.md) picks those up, because by then you'll be able to read how they work.
 
 Nearly all of them take a **`phase`**, and that is the one detail to remember. They have no clock of their own, so nothing moves until you feed it one.
 
@@ -128,7 +128,7 @@ withTarget(shape) {
 drawImage(shape.filtered(.liquidMetal(phase: time)).image, 0, 0)
 ```
 
-Any silhouette works, which is the interesting part. It can be text from Chapter 7, a shape you built in Chapter 13, or a tracked hand from Chapter 21. The filter never knows or cares where the outline came from.
+Any silhouette works, which is the interesting part. It can be text from [Chapter 7](07-WordsAndPictures.md), a shape you built in [Chapter 13](13-ShapesAsMaterial.md), or a tracked hand from [Chapter 21](21-Seeing.md). The filter never knows or cares where the outline came from.
 
 One practical warning, since it cost the figure above a few attempts. These filters are tuned for **full-canvas** use. On a small layer the defaults can look like almost nothing. Push them hard and the distortion reaches past the layer's edge, and drags the transparent surround in as dark smears. The `edges` knob on the distorting ones controls how close to the border they're allowed to work. A continuous field takes a strong refraction more gracefully than a pattern of separate marks does.
 
@@ -199,7 +199,7 @@ Layers composite bottom to top in the order written. `.post(_:)` filters a layer
 
 ## The canvas that keeps everything
 
-Chapter 10 sneaked a preview of this: `noClear()` stops the canvas from being wiped between frames, and from then on drawing *piles up*. Pair it with `.add` and faint marks become deposits of light, arriving frame after frame, the long-exposure photograph as a drawing style. Make `MySketches/Sandpainting.swift`:
+[Chapter 10](10-FlocksAndSwarms.md) sneaked a preview of this: `noClear()` stops the canvas from being wiped between frames, and from then on drawing *piles up*. Pair it with `.add` and faint marks become deposits of light, arriving frame after frame, the long-exposure photograph as a drawing style. Make `MySketches/Sandpainting.swift`:
 
 ```swift
 import Ollin
@@ -238,7 +238,7 @@ final class Sandpainting: Sketch {
 
 <img src="Images/14-LayersAndEffects/Sandpainting.jpg" alt="Golden streamlines built from hundreds of thousands of faint accumulated dots, swirling around eddies like polished wood grain made of light" width="560">
 
-Each frame draws only 2,600 dots at 4% opacity, barely visible alone. Six hundred frames later the canvas holds more than a million deposits. The curl field's eddies emerge as rivers of light, advecting grains exactly as Chapter 12 advected walkers. Nothing here is drawn as a line. The lines are simply where light kept landing.
+Each frame draws only 2,600 dots at 4% opacity, barely visible alone. Six hundred frames later the canvas holds more than a million deposits. The curl field's eddies emerge as rivers of light, advecting grains exactly as [Chapter 12](12-FieldsAndFlow.md) advected walkers. Nothing here is drawn as a line. The lines are simply where light kept landing.
 
 Two practical notes. While accumulating, `background(_:)` becomes the reset, so call it on the frame you want to wipe, or never. And a perfectly still additive scene just brightens toward white forever, so keep something moving. The glow finds its level when light flows across the canvas instead of parking.
 
@@ -322,9 +322,9 @@ The `tint` alpha is the decay. At 0.93 each pass keeps 93% of the past, so marks
 
 ## Putting it together: comets
 
-Chapter 10 ended with a flock of triangles trailing fading paint. Here is the same society rebuilt with this chapter's whole toolkit. The boids draw as bright dots into a feedback layer, giving wakes that drift and curl. The layer comes back bloomed and added as light, and ACES rolls the hot cores off like film. For contrast, here is the before:
+[Chapter 10](10-FlocksAndSwarms.md) ended with a flock of triangles trailing fading paint. Here is the same society rebuilt with this chapter's whole toolkit. The boids draw as bright dots into a feedback layer, giving wakes that drift and curl. The layer comes back bloomed and added as light, and ACES rolls the hot cores off like film. For contrast, here is the before:
 
-<img src="Images/10-FlocksAndSwarms/FlockMotion.gif" alt="Chapter 10's flock: colored triangles with short painted trails on a flat dark canvas" width="480">
+<img src="Images/10-FlocksAndSwarms/FlockMotion.gif" alt="[Chapter 10](10-FlocksAndSwarms.md)'s flock: colored triangles with short painted trails on a flat dark canvas" width="480">
 
 Make `MySketches/Comets.swift`:
 
@@ -379,13 +379,13 @@ final class Comets: Sketch {
 
 <img src="Images/14-LayersAndEffects/Comets.jpg" alt="The finished piece: comet swarms of glowing dots in orange, pink, and green, each flock dragging soft curved tails of light through the dark" width="560">
 
-Read it as three acts. The flock is untouched Chapter 10, still steering by the same three rules. The middle act is the feedback loop from the last section. The boids are drawn inside it, so their light lands *in* the layer that remembers. And the final act is one line of compositing. The trail layer comes back bloomed, added as light, and rolled off by the tone map set back in `setup()`. Every hue still means a heading, and now it also smears into a wake that shows where the heading has been.
+Read it as three acts. The flock is untouched [Chapter 10](10-FlocksAndSwarms.md), still steering by the same three rules. The middle act is the feedback loop from the last section. The boids are drawn inside it, so their light lands *in* the layer that remembers. And the final act is one line of compositing. The trail layer comes back bloomed, added as light, and rolled off by the tone map set back in `setup()`. Every hue still means a heading, and now it also smears into a wake that shows where the heading has been.
 
 Then make it yours:
 
 - Turn the feedback knobs. An `alpha: 0.85` gives short nervous tails, while `0.97` fills the sky with fog. Flipping `scale(1.006)` to `0.994` makes the wakes fall inward instead of blooming outward.
 - Put a `@Param` on the bloom `intensity` and `exposure` and grade the piece live, like color-timing film.
-- Swap the flock for anything that moves: Chapter 12's advected particles, Chapter 9's bouncing bodies, or just your mouse.
+- Swap the flock for anything that moves: [Chapter 12](12-FieldsAndFlow.md)'s advected particles, [Chapter 9](09-ForcesAndPhysics.md)'s bouncing bodies, or just your mouse.
 - Add a second `compose` layer beneath with a dim `generate(.meshGradient(...))` and the comets fly over weather.
 
 ## Where this comes from
@@ -398,6 +398,7 @@ Off-screen layers are as old as computer graphics has had memory to spare. The s
 - [Accumulation](../Docs/Drawing/Accumulation.md) and [HDR & tone-mapping](../Docs/Drawing/HDR.md): the persistent canvas and the float pipeline underneath it.
 - [Wide gamut & HDR output](../Docs/Drawing/ColorOutput.md): `colorOutput`, colors outside sRGB, and what each export format carries.
 - [Blend modes](../Docs/Drawing/Drawing.md#blendMode): the arithmetic of each mode.
+- Appendix B draws this chapter's math, one picture per idea: [Shaping a value](B-JustEnoughMath.md#shaping-a-value), [Color and light as numbers](B-JustEnoughMath.md#color-and-light-as-numbers).
 - Worked examples: [`Examples/Effects/Bloom`](../Examples/Effects/Bloom/Sketch.swift), [`Examples/Effects/Compose`](../Examples/Effects/Compose/Sketch.swift), [`Examples/Effects/Feedback`](../Examples/Effects/Feedback/Sketch.swift), [`Examples/Effects/Relight`](../Examples/Effects/Relight/Sketch.swift), [`Examples/Rendering/Accumulation`](../Examples/Rendering/Accumulation/Sketch.swift), and [`Examples/Rendering/ToneMapping`](../Examples/Rendering/ToneMapping/Sketch.swift).
 
 ---

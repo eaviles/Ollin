@@ -6,7 +6,7 @@
 
 <img src="Images/04-Randomness/DisorderGrid.jpg" alt="A nine-by-nine grid of nested square outlines on warm paper, perfectly ordered at the top and dissolving into tangled quadrilaterals toward the bottom, with a few red, blue, and ochre accents" width="560">
 
-Randomness is the "generative" in generative art. You stop placing every mark yourself and start writing the rules that place them. Adding chance takes one call, and all the craft is in *controlling* it, deciding what may vary and by how much, and getting the exact same "accident" back tomorrow. Chapter 2 used all of this in its poster and promised the full story later. This chapter is that story, and it ends in the piece above: a grid that begins in perfect order and comes apart one row at a time.
+Randomness is the "generative" in generative art. You stop placing every mark yourself and start writing the rules that place them. Adding chance takes one call, and all the craft is in *controlling* it, deciding what may vary and by how much, and getting the exact same "accident" back tomorrow. [Chapter 2](02-Color.md) used all of this in its poster and promised the full story later. This chapter is that story, and it ends in the piece above: a grid that begins in perfect order and comes apart one row at a time.
 
 ## Rolling dice
 
@@ -37,7 +37,7 @@ final class Scatter: Sketch {
 
 Run it and you'll notice immediately that the canvas *boils*. Nothing is wrong. `draw()` runs sixty times a second, every frame rolls eighty fresh positions, and you're watching all of them. Sometimes that shimmer is exactly the texture a piece wants (the repository's [`Gaussian` example](../Examples/Randomness/Gaussian/Sketch.swift) leans into it). But most of the time you want chance to make its choices *once* and keep them. For that, you need to know a small secret about where these numbers come from.
 
-> **Swift note.** `for _ in 0..<80` is Chapter 1's counting loop with the counter thrown away. The underscore says "I don't need `i`, just do this eighty times."
+> **Swift note.** `for _ in 0..<80` is [Chapter 1](01-HelloOllin.md)'s counting loop with the counter thrown away. The underscore says "I don't need `i`, just do this eighty times."
 
 ## Seeds: randomness you can keep
 
@@ -53,7 +53,7 @@ Add that line at the top of `Scatter`'s `draw()` and the boiling stops. Every fr
 
 This is the working rhythm of generative art, so it's worth spelling out. The code decides everything the piece *could* be, and a seed picks one of them. You write the rules, then flip through seeds the way a photographer reads a contact sheet (the image above is exactly that), and keep the ones you like. Reproducibility is what turns the whole thing into art direction instead of a slot machine: a keeper is never lost, because code plus seed *is* the piece. Render it twice and the files match pixel for pixel.
 
-There's one relative worth knowing. `seed(5)`, without the `random` prefix, seeds `random` *and* its smooth cousin `noise` in one go. Noise is Chapter 5's whole subject, and until then the two calls do the same job.
+There's one relative worth knowing. `seed(5)`, without the `random` prefix, seeds `random` *and* its smooth cousin `noise` in one go. Noise is [Chapter 5](05-Noise.md)'s whole subject, and until then the two calls do the same job.
 
 ## Finding a seed worth keeping
 
@@ -128,7 +128,7 @@ One more idea completes the starter kit, and it's the one that points at the res
 
 The top strip re-rolls `y` from scratch at every step, so it stays a jagged hash. The bottom strip keeps `y` and adds a small `random(-9, 9)` to it each step, and suddenly there's a *path* that wanders, drifts, and doubles back. This is the **random walk**, the humble ancestor of most organic motion in generative art. Give the same treatment to a point in two dimensions and it traces a journey.
 
-To draw that journey you need one shape this guide hasn't written out yet. `drawLine(x1, y1, x2, y2)` draws a straight segment between two points, and it's the third of the basic shapes from Chapter 1's contact sheet. Joining each step of the walk to the next is all it takes. Make `MySketches/WalkGrows.swift`:
+To draw that journey you need one shape this guide hasn't written out yet. `drawLine(x1, y1, x2, y2)` draws a straight segment between two points, and it's the third of the basic shapes from [Chapter 1](01-HelloOllin.md)'s contact sheet. Joining each step of the walk to the next is all it takes. Make `MySketches/WalkGrows.swift`:
 
 ```swift
 import Ollin
@@ -164,7 +164,7 @@ Run it and the walk *grows* in front of you, ten seconds from first step to rest
 
 > **Swift note.** Wrapping a number in `Int(...)` drops its fraction, so `Int(time * 240)` counts up in whole steps, 240 of them a second. `min(a, b)` hands back the smaller of its two values, which is what stops the count at 2,400.
 
-The walk's core move is a value carried forward and nudged (`x = nx`), and it's where Part II begins, because velocity, springs, and flocks all carry a value forward and nudge it. The walk does have one visual flaw, the constant jitter, and that's exactly what Chapter 5 fixes, since noise wanders the same way without it.
+The walk's core move is a value carried forward and nudged (`x = nx`), and it's where Part II begins, because velocity, springs, and flocks all carry a value forward and nudge it. The walk does have one visual flaw, the constant jitter, and that's exactly what [Chapter 5](05-Noise.md) fixes, since noise wanders the same way without it.
 
 ## Three walks, three rules
 
@@ -266,7 +266,7 @@ final class DisorderGrid: Sketch {
 
 Run it with `swift run OllinLive MySketches/DisorderGrid.swift` and take it apart:
 
-- `randomSeed(gridSeed)` runs first, so the whole drawing is one seed's variation, held perfectly still. The `Seed` knob picks which one, and you can click the canvas to step to the next variation or click the knob's value box and type a favorite. `Seed` starts at a whole number (`7`, not `7.0`), so it's a whole-number knob, the same move as Chapter 3's `Waves`.
+- `randomSeed(gridSeed)` runs first, so the whole drawing is one seed's variation, held perfectly still. The `Seed` knob picks which one, and you can click the canvas to step to the next variation or click the knob's value box and type a favorite. `Seed` starts at a whole number (`7`, not `7.0`), so it's a whole-number knob, the same move as [Chapter 3](03-MotionAndTime.md)'s `Waves`.
 - `unrest` is the composition. Row 0 computes it as zero (no nudge allowed, perfect nesting), the bottom row gets the full `Disorder` knob, and every row between gets its share. One line decides the piece's entire top-to-bottom structure.
 - Each quadrilateral is four corners sitting on the posts of a perfect square, `inset` deep into its cell, and every corner coordinate rolls its own `random(-1, 1)` nudge, scaled by the row's reach `d`. That's eight rolls per shape, so the squares don't just shift, they *deform*. Four `drawLine` calls close the loop.
 - The accent is a gate and a pick working together, straight from this chapter, with eight percent of quads trading ink for `randomChoice(accents)`.
@@ -282,7 +282,7 @@ Then push it somewhere new:
 
 - Let the disorder grow left to right instead, by building `unrest` from `c` and `columns`.
 - Give the inner squares more license than the outer ones, by scaling `d` with `Double(k + 1) / 4`.
-- Put the motion back. Writing `let d = unrest * cell * 0.35 * (sin(time * .tau / 8) * 0.5 + 0.5)` breathes the piece between order and chaos every eight seconds, and Chapter 3's loop rule means a `--export-gif` of it loops seamlessly.
+- Put the motion back. Writing `let d = unrest * cell * 0.35 * (sin(time * .tau / 8) * 0.5 + 0.5)` breathes the piece between order and chaos every eight seconds, and [Chapter 3](03-MotionAndTime.md)'s loop rule means a `--export-gif` of it loops seamlessly.
 - Retune the accents. At `0.02` they read as stray errors, and at `0.3` as confetti. Both are worth trying.
 
 ## Where this comes from
@@ -296,8 +296,9 @@ The grammar of this chapter is the founding grammar of computer art. Vera Molná
 - [Walks](../Docs/Generators/Walks.md): the hand-rolled walk from this chapter, shipped and seeded, plus two relatives worth meeting. `levyFlight` mostly shuffles and occasionally leaps, which is how foraging animals actually move, and `selfAvoidingWalk` refuses to cross its own path.
 - [Percolation](../Docs/Generators/Percolation.md): the crowd game in full, including the outline tracing and reading clusters off any boolean grid.
 - [Noise](../Docs/Generators/Noise.md): the next chapter's subject, if you can't wait to make chance glide.
+- Appendix B draws this chapter's math, one picture per idea: [Randomness](B-JustEnoughMath.md#randomness).
 - Worked examples, all in [`Examples/Randomness/`](../Examples/Randomness/): `Variations` (a whole composition per seed), `Gaussian` (the bell curve as boiling scatter), `RandomBand` (uniform, for contrast), and `Ring` (the ring roll).
-- The Molnár homages in [`Examples/Recreations/VeraMolnar/`](../Examples/Recreations/VeraMolnar/): `DesOrdres` (seeded disorder scrubbed by the mouse) and `Interruptions` (a field of tilted ticks, its gaps carved by the noise you'll meet in Chapter 5).
+- The Molnár homages in [`Examples/Recreations/VeraMolnar/`](../Examples/Recreations/VeraMolnar/): `DesOrdres` (seeded disorder scrubbed by the mouse) and `Interruptions` (a field of tilted ticks, its gaps carved by the noise you'll meet in [Chapter 5](05-Noise.md)).
 
 ---
 

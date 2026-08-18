@@ -10,7 +10,7 @@ That aurora is about forty lines of code and no assets, and it runs at full reso
 
 ## One question, a million times
 
-Chapter 12 gave you the mental model without saying so, in that a field is an answer at every point. A flow field answered with a direction. A shader is a field that answers with a **color**, and the GPU is hardware built to ask it at every pixel simultaneously:
+[Chapter 12](12-FieldsAndFlow.md) gave you the mental model without saying so, in that a field is an answer at every point. A flow field answered with a direction. A shader is a field that answers with a **color**, and the GPU is hardware built to ask it at every pixel simultaneously:
 
 <img src="Images/15-YourFirstShader/PixelGrid.jpg" alt="Two panels evaluating the same glow function: coarsely on the left, where each grid cell shows one answer, and at full pixel resolution on the right where the answers fuse into a smooth image" width="680">
 
@@ -38,7 +38,7 @@ final class FirstShader: Sketch {
 
 <img src="Images/15-YourFirstShader/FirstShader.jpg" alt="The first shader's output: a smooth gradient, dark blue at the top left corner, red growing to the right, green growing downward, meeting in pink and yellow" width="560">
 
-The string is the shader, and everything around it is plumbing you already know, since Chapter 14's `generate` makes a layer and `drawImage` shows it. The function is the contract. Ollin calls your `shade` once per pixel, handing it that pixel's `uv` position, and whatever color you return is what that pixel becomes. Here red is `uv.x` and green is `uv.y`, so the image *is* the coordinate system:
+The string is the shader, and everything around it is plumbing you already know, since [Chapter 14](14-LayersAndEffects.md)'s `generate` makes a layer and `drawImage` shows it. The function is the contract. Ollin calls your `shade` once per pixel, handing it that pixel's `uv` position, and whatever color you return is what that pixel becomes. Here red is `uv.x` and green is `uv.y`, so the image *is* the coordinate system:
 
 <img src="Images/15-YourFirstShader/UVSpace.jpg" alt="The uv gradient annotated: (0,0) at the top left, (1,0) top right, (0,1) bottom left, (1,1) bottom right, with the center marked (0.5, 0.5)" width="680">
 
@@ -64,7 +64,7 @@ float4 shade(float2 uv, ShaderInfo info) {
 """)
 ```
 
-Look at the third line. `smoothstep` is Chapter 3's easing curve, the one you watched as a graph and used to cushion motion. Here it answers a different question with the same shape, because as `d` crosses from 0.35 down to 0.34 the result ramps smoothly from 0 to 1, and that one-percent ramp is the disc's anti-aliased rim. Widen the ramp and the rim becomes a glow; collapse it and the edge goes hard and pixelated:
+Look at the third line. `smoothstep` is [Chapter 3](03-MotionAndTime.md)'s easing curve, the one you watched as a graph and used to cushion motion. Here it answers a different question with the same shape, because as `d` crosses from 0.35 down to 0.34 the result ramps smoothly from 0 to 1, and that one-percent ramp is the disc's anti-aliased rim. Widen the ramp and the rim becomes a glow; collapse it and the edge goes hard and pixelated:
 
 <img src="Images/15-YourFirstShader/EdgeStep.jpg" alt="The same amber disc three times: a hard stepped edge, a clean rim from a narrow smoothstep, and a wide soft glow from a broad one" width="680">
 
@@ -93,9 +93,9 @@ Rebuilding the `Shader` value every frame is the normal pattern and costs nothin
 
 ## The library in your pocket
 
-Ollin splices its own shader library into every shader you write, so the helpers its built-in effects use are yours too, with no import. Several you already know by other names. `fbm` is Chapter 5's layered noise as one call, and the rest of that chapter's field family (`simplexNoise`, `worley`, `ridgedFbm`, `turbulence`, `warpedFbm`) is here under the same names. `hash12` is a random number that never changes between frames, so feed it a cell and it's Chapter 4's seeded random, per pixel. The `sd*` family measures distance to ellipses, stars, hearts, and béziers the way `length` measured distance to a point. And `palette(t, a, b, c, d)` turns a `0...1` value into color along a designed gradient, where four `float3`s shape the ramp, so steal starting values from its documentation and nudge.
+Ollin splices its own shader library into every shader you write, so the helpers its built-in effects use are yours too, with no import. Several you already know by other names. `fbm` is [Chapter 5](05-Noise.md)'s layered noise as one call, and the rest of that chapter's field family (`simplexNoise`, `worley`, `ridgedFbm`, `turbulence`, `warpedFbm`) is here under the same names. `hash12` is a random number that never changes between frames, so feed it a cell and it's [Chapter 4](04-Randomness.md)'s seeded random, per pixel. The `sd*` family measures distance to ellipses, stars, hearts, and béziers the way `length` measured distance to a point. And `palette(t, a, b, c, d)` turns a `0...1` value into color along a designed gradient, where four `float3`s shape the ramp, so steal starting values from its documentation and nudge.
 
-The word "splices" in that first sentence is doing real work, and it's worth a moment because it explains why the names never drift. There is one library file, and it gets pasted into three different places: the framework's own effect shaders, every shader you write, and every compute kernel from Chapter 16. So `fbm` in your filter, `fbm` in Ollin's built-in noise generator, and `fbm` in a particle kernel are not three implementations that happen to agree. They are the same source text compiled three times, which is why a field you prototype in a shader behaves identically when you move it into a kernel.
+The word "splices" in that first sentence is doing real work, and it's worth a moment because it explains why the names never drift. There is one library file, and it gets pasted into three different places: the framework's own effect shaders, every shader you write, and every compute kernel from [Chapter 16](16-Simulations.md). So `fbm` in your filter, `fbm` in Ollin's built-in noise generator, and `fbm` in a particle kernel are not three implementations that happen to agree. They are the same source text compiled three times, which is why a field you prototype in a shader behaves identically when you move it into a kernel.
 
 Splicing the whole library into every shader would make every compile larger than it needs to be, so there's an opt-out:
 
@@ -107,7 +107,7 @@ Leave it off and you get everything, which is the right default while you're exp
 
 ## The pattern fields
 
-You've also been *using* shaders all along, since every Chapter 14 filter and generator is one. Chapter 14 introduced the design generators, and held one group back for here: the **pattern fields**, because they're the ones this chapter has just taught you to read.
+You've also been *using* shaders all along, since every [Chapter 14](14-LayersAndEffects.md) filter and generator is one. [Chapter 14](14-LayersAndEffects.md) introduced the design generators, and held one group back for here: the **pattern fields**, because they're the ones this chapter has just taught you to read.
 
 What makes them a group is a property, not a style. A pattern field is **closed form**: it has no state, no source picture, and it reads no textures. Every pixel is a small piece of arithmetic on its own coordinates, exactly like the shaders you've been writing. Three consequences follow, and they're the reason to reach for one.
 
@@ -121,7 +121,7 @@ drawImage(generate(.quasicrystal(phase: time)).image, 0, 0)
 
 <img src="Images/15-YourFirstShader/Fields.jpg" alt="Six labeled tiles: a blue quasicrystal of interfering waves, a black and white moire of beating ring gratings, cream interwoven gyroid bands on slate, an orange golden-angle dot spiral, a hexagonal lattice of teal, red and gold cells, and a sandy white Chladni figure of nodal lines on near-black" width="680">
 
-There are six. `.quasicrystal` sums plane waves at evenly spaced angles, so it's ordered but never repeats. `.moire` overlaps ring gratings and shows you their beat, which travels much faster than the rings themselves. `.gyroid` slices a famous minimal surface. `.phyllotaxis` is the sunflower's golden-angle spiral from Chapter 13, drawn per pixel. `.hexPulse` gives every cell of a hex lattice its own hashed heartbeat. `.chladni` is a ringing plate's standing wave, which Chapter 16 comes back to and Chapter 20 plays with sound.
+There are six. `.quasicrystal` sums plane waves at evenly spaced angles, so it's ordered but never repeats. `.moire` overlaps ring gratings and shows you their beat, which travels much faster than the rings themselves. `.gyroid` slices a famous minimal surface. `.phyllotaxis` is the sunflower's golden-angle spiral from [Chapter 13](13-ShapesAsMaterial.md), drawn per pixel. `.hexPulse` gives every cell of a hex lattice its own hashed heartbeat. `.chladni` is a ringing plate's standing wave, which [Chapter 16](16-Simulations.md) comes back to and [Chapter 20](20-SoundAndControl.md) plays with sound.
 
 Here's the part worth doing rather than reading. Take the gyroid, which is genuinely one line: a sum of three `sin` and `cos` products, read at a fixed slice through space.
 
@@ -161,7 +161,33 @@ drawVisual(
 
 <img src="Images/15-YourFirstShader/ChainGraph.jpg" alt="A chain shown as a graph of real renders: striped oscillator bands, folded into a hexagonal kaleidoscope, then organically warped by a noise driver patched in from below" width="680">
 
-The signature move is the last step, where one chain's *color* drives another chain's *coordinates*, per pixel. That `displaced(by:)` is the same idea as Chapter 14's displacement combine, but the driver is any chain, and the whole expression, drivers included, compiles into a single GPU pass. Everything animates by default, every number can ride a knob or a beat without recompiling, and `generate(chain)` hands the result back as an ordinary layer for the rest of the effect graph. The [chains reference](../Docs/Shaders/Visuals.md) has the full vocabulary (sources, warps, color ops, blends, and the feedback loop).
+The signature move is the last step, where one chain's *color* drives another chain's *coordinates*, per pixel. That `displaced(by:)` is the same idea as [Chapter 14](14-LayersAndEffects.md)'s displacement combine, but the driver is any chain, and the whole expression, drivers included, compiles into a single GPU pass. Everything animates by default, every number can ride a knob or a beat without recompiling, and `generate(chain)` hands the result back as an ordinary layer for the rest of the effect graph. The [chains reference](../Docs/Shaders/Visuals.md) has the full vocabulary (sources, warps, color ops, blends, and the feedback loop).
+
+## Somebody else's shader
+
+You now know the shape well enough to read other people's. Shadertoy holds tens of thousands of fragment shaders. Nearly all of them are the two moves you just made: a pixel position in, a color out. Only the spelling differs. Theirs is called `mainImage`, it takes the position in pixels rather than a 0-to-1 `uv`, and it reads the clock from a global named `iTime`. Ollin will do that translation for you:
+
+```sh
+ollin new Plasma --from-shader plasma.glsl
+```
+
+<img src="Images/15-YourFirstShader/ImportedShader.jpg" alt="Left, a nine-line GLSL shader as pasted, with mod, iResolution and iTime picked out in dark ink. Right, the ring pattern it draws once translated, tiling evenly across the whole frame" width="680">
+
+That writes a project with the translated shader in `imported.metal` beside the sketch, ready to build. A shader you have just copied can go straight in with `pbpaste | ollin new Plasma --from-shader -`. How many inputs it reads decides what it becomes. One that reads nothing is a generator. One that reads `iChannel0` is a filter over a layer, which is [Chapter 14](14-LayersAndEffects.md)'s vocabulary again.
+
+Most of the translation is renaming. `vec3` becomes `float3`, `atan(y, x)` becomes `atan2(y, x)`. Three of the changes are worth knowing, because they change what you *see* rather than whether the file compiles.
+
+**`mod` rounds the other way.** GLSL floors the quotient where Metal truncates it, so the two disagree the moment either side goes negative. That is the ordinary case. Tiling a plane that reaches left of the origin is the first thing this kind of shader does. So the translation writes the flooring version out by hand instead of calling Metal's built-in.
+
+**The vertical axis turns over.** A texture is measured from its bottom edge and an Ollin layer from its top. Any shader that reads a layer gets its coordinate flipped on the way in, or it arrives upside down.
+
+**`iTime` is a global, and Metal has none.** Any function in a GLSL shader can reach for the clock. In Metal, `info` has to be handed along as a parameter. The translation adds it to the functions that read the clock, and to the functions that call those. Helpers that only do arithmetic, like the distance functions, are left alone.
+
+Whatever cannot come over is written into the file as a comment. A `NOTE(ollin)` tells you something changed on the way. A `TODO(ollin)` marks something left for you, and the shader will not compile until you deal with it. A shader built on four buffer passes gets one of those, since only the image pass comes across.
+
+Then there is the part no tool can decide for you. **A shader belongs to whoever wrote it.** Shadertoy's default is CC BY-NC-SA, and many authors write their own terms into a comment at the top. So the translated file keeps a header naming the shader, its author, and the address it came from. Leave that header where it is, and read the terms before you publish anything made from it.
+
+What you get back is Metal source sitting in your own project, with Ollin's shader library already spliced in. You can call `palette` or `fbm` inside somebody else's plasma and watch what happens. That is the difference between bringing a shader over and admiring it in a browser tab.
 
 ## Putting it together: aurora
 
@@ -224,7 +250,7 @@ final class Aurora: Sketch {
 
 <img src="Images/15-YourFirstShader/Aurora.jpg" alt="The finished aurora: swaying teal-green curtains over a starred violet night and a black ridge" width="560">
 
-Read the shader top to bottom and count the old friends: `fbm` (Chapter 5) bends and builds the curtains, `smoothstep` (Chapter 3) shapes every transition, from the curtain edges to the height fade to the two-pixel horizon line, `hash12` (Chapter 4's determinism, per pixel) places the stars, `palette` designs the color, and `mix` (lerp by another name) blends every layer of the picture. Nothing new happened here except *where the code runs*.
+Read the shader top to bottom and count the old friends: `fbm` ([Chapter 5](05-Noise.md)) bends and builds the curtains, `smoothstep` ([Chapter 3](03-MotionAndTime.md)) shapes every transition, from the curtain edges to the height fade to the two-pixel horizon line, `hash12` ([Chapter 4](04-Randomness.md)'s determinism, per pixel) places the stars, `palette` designs the color, and `mix` (lerp by another name) blends every layer of the picture. Nothing new happened here except *where the code runs*.
 
 Then make it yours:
 
@@ -232,32 +258,6 @@ Then make it yours:
 - Reflect it. Draw the sky into the top half and again below, flipped and darkened, and there's a lake.
 - Feed `info.mouse` into the palette so the colors follow your hand.
 - Chain it. `generate(sky).filtered(.bloom())` glows the curtains, and a `Visual` reading `.layer(generate(sky))` can kaleidoscope the whole night.
-
-## Somebody else's shader
-
-You now know the shape well enough to read other people's. Shadertoy holds tens of thousands of fragment shaders. Nearly all of them are the two moves you just made: a pixel position in, a color out. Only the spelling differs. Theirs is called `mainImage`, it takes the position in pixels rather than a 0-to-1 `uv`, and it reads the clock from a global named `iTime`. Ollin will do that translation for you:
-
-```sh
-ollin new Plasma --from-shader plasma.glsl
-```
-
-<img src="Images/15-YourFirstShader/ImportedShader.jpg" alt="Left, a nine-line GLSL shader as pasted, with mod, iResolution and iTime picked out in dark ink. Right, the ring pattern it draws once translated, tiling evenly across the whole frame" width="680">
-
-That writes a project with the translated shader in `imported.metal` beside the sketch, ready to build. A shader you have just copied can go straight in with `pbpaste | ollin new Plasma --from-shader -`. How many inputs it reads decides what it becomes. One that reads nothing is a generator. One that reads `iChannel0` is a filter over a layer, which is Chapter 14's vocabulary again.
-
-Most of the translation is renaming. `vec3` becomes `float3`, `atan(y, x)` becomes `atan2(y, x)`. Three of the changes are worth knowing, because they change what you *see* rather than whether the file compiles.
-
-**`mod` rounds the other way.** GLSL floors the quotient where Metal truncates it, so the two disagree the moment either side goes negative. That is the ordinary case. Tiling a plane that reaches left of the origin is the first thing this kind of shader does. So the translation writes the flooring version out by hand instead of calling Metal's built-in.
-
-**The vertical axis turns over.** A texture is measured from its bottom edge and an Ollin layer from its top. Any shader that reads a layer gets its coordinate flipped on the way in, or it arrives upside down.
-
-**`iTime` is a global, and Metal has none.** Any function in a GLSL shader can reach for the clock. In Metal, `info` has to be handed along as a parameter. The translation adds it to the functions that read the clock, and to the functions that call those. Helpers that only do arithmetic, like the distance functions, are left alone.
-
-Whatever cannot come over is written into the file as a comment. A `NOTE(ollin)` tells you something changed on the way. A `TODO(ollin)` marks something left for you, and the shader will not compile until you deal with it. A shader built on four buffer passes gets one of those, since only the image pass comes across.
-
-Then there is the part no tool can decide for you. **A shader belongs to whoever wrote it.** Shadertoy's default is CC BY-NC-SA, and many authors write their own terms into a comment at the top. So the translated file keeps a header naming the shader, its author, and the address it came from. Leave that header where it is, and read the terms before you publish anything made from it.
-
-What you get back is Metal source sitting in your own project, with Ollin's shader library already spliced in. You can call `palette` or `fbm` inside somebody else's plasma and watch what happens. That is the difference between bringing a shader over and admiring it in a browser tab.
 
 ## Where this comes from
 
@@ -269,7 +269,8 @@ Shaders come out of computer graphics research and the demoscene, but the reason
 - [Bringing a shader over](../Docs/Tools/ShaderImport.md): `ollin new --from-shader` translates a GLSL fragment shader into Metal and writes the project around it, with the `mod` rounding difference, the flipped vertical axis, and the license header explained.
 - [The shader library](../Docs/Shaders/ShaderLibrary.md): every spliced-in helper with its signature.
 - [Visual chains](../Docs/Shaders/Visuals.md): all sources, warps, color ops, combines, and modulations.
-- [Compute](../Docs/Shaders/Compute.md): the sibling world where kernels update buffers of particles instead of pixels, waiting in Chapter 16.
+- [Compute](../Docs/Shaders/Compute.md): the sibling world where kernels update buffers of particles instead of pixels, waiting in [Chapter 16](16-Simulations.md).
+- Appendix B draws this chapter's math, one picture per idea: [Where things are](B-JustEnoughMath.md#where-things-are), [Per-pixel thinking and distance](B-JustEnoughMath.md#per-pixel-thinking-and-distance).
 - Worked examples: [`Examples/Shaders/HelloShader`](../Examples/Shaders/HelloShader/Sketch.swift), [`Examples/Shaders/ShaderFilter`](../Examples/Shaders/ShaderFilter/Sketch.swift), [`Examples/Shaders/ShaderFile`](../Examples/Shaders/ShaderFile/Sketch.swift) (hot-reloading `.metal`), [`Examples/Shaders/VisualSynth`](../Examples/Shaders/VisualSynth/Sketch.swift), and [`Examples/Effects/PatternFields`](../Examples/Effects/PatternFields/Sketch.swift).
 
 ---

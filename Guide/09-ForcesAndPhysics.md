@@ -6,11 +6,11 @@
 
 <img src="Images/09-ForcesAndPhysics/Wrecker.jpg" alt="A wrecking ball on a chain of gray links mid-swing, smashing through a tower of colored bricks, four bricks flying to the right while the rest of the column leans" width="560">
 
-In Chapter 8 you moved things yourself. You wrote the velocity, added the gravity, decided what happens at the floor. This chapter is about the layer under that, meaning forces, the pushes that change a velocity. You'll write a few forces by hand first, and find out why mass matters. Then you'll hand the whole job to a physics world. It holds hundreds of bodies at once, connects them with springs and hinges, and lets you grab them with the mouse. The wrecking ball above is where it ends up. You get to knock the tower down yourself.
+In [Chapter 8](08-Vectors.md) you moved things yourself. You wrote the velocity, added the gravity, decided what happens at the floor. This chapter is about the layer under that, meaning forces, the pushes that change a velocity. You'll write a few forces by hand first, and find out why mass matters. Then you'll hand the whole job to a physics world. It holds hundreds of bodies at once, connects them with springs and hinges, and lets you grab them with the mouse. The wrecking ball above is where it ends up. You get to knock the tower down yourself.
 
 ## A force is a push
 
-The bouncing ball in Chapter 8 ran on two lines:
+The bouncing ball in [Chapter 8](08-Vectors.md) ran on two lines:
 
 ```swift
 velocity += gravity * deltaTime
@@ -95,7 +95,7 @@ final class Confetti: Sketch {
 
 <img src="Images/09-ForcesAndPhysics/Confetti.jpg" alt="A shower of small colored paper pieces falling through a dark canvas, the short light pieces blown sideways by wind while the long heavy pieces hang nearly vertical" width="560">
 
-The state is Chapter 8's parallel lists again, with one addition. Every piece gets its own `mass`, and its drawn length comes from it, so you can tell them apart. The wind is a single `signedNoise` value shared by the whole shower, wandering the way Chapter 5's noise wanders. Run it and watch what mass does. When a gust arrives, the small pieces get thrown almost sideways while the long ones sway a little and keep plowing downward. The code treats every piece the same. The same three forces act on all of them, and the one division by mass makes the light ones flighty and the heavy ones stubborn. Each piece also draws itself rotated to its own velocity (`rotate(velocities[i].angle)`, from Chapter 8), so when the wind leans, the whole shower leans with it.
+The state is [Chapter 8](08-Vectors.md)'s parallel lists again, with one addition. Every piece gets its own `mass`, and its drawn length comes from it, so you can tell them apart. The wind is a single `signedNoise` value shared by the whole shower, wandering the way [Chapter 5](05-Noise.md)'s noise wanders. Run it and watch what mass does. When a gust arrives, the small pieces get thrown almost sideways while the long ones sway a little and keep plowing downward. The code treats every piece the same. The same three forces act on all of them, and the one division by mass makes the light ones flighty and the heavy ones stubborn. Each piece also draws itself rotated to its own velocity (`rotate(velocities[i].angle)`, from [Chapter 8](08-Vectors.md)), so when the wind leans, the whole shower leans with it.
 
 ## A world that pushes back
 
@@ -239,7 +239,7 @@ For bricks, the same `World` holds a second kind of body. A `Body` is rigid, mea
         }
 ```
 
-That's the tower from the top of the chapter, nine boxes stacked with a couple of points of breathing room. The collider can be a `.circle(radius:)`, a `.box(width:height:)`, a `.capsule(from:to:radius:)`, or a convex `.polygon([...])`. A body also takes three numbers. `friction` is surface grip from 0 to 1, `density` sets how heavy it is for its size, and `restitution` is its bounciness. A particle only had a position, and a body has a `position` *and* an `angle`. So drawing one takes the transform tools from Chapter 6:
+That's the tower from the top of the chapter, nine boxes stacked with a couple of points of breathing room. The collider can be a `.circle(radius:)`, a `.box(width:height:)`, a `.capsule(from:to:radius:)`, or a convex `.polygon([...])`. A body also takes three numbers. `friction` is surface grip from 0 to 1, `density` sets how heavy it is for its size, and `restitution` is its bounciness. A particle only had a position, and a body has a `position` *and* an `angle`. So drawing one takes the transform tools from [Chapter 6](06-GridsAndRepetition.md):
 
 ```swift
             withState {
@@ -496,9 +496,10 @@ The three ready-made systems each have a paper behind them. The default IK solve
 - [Physics](../Docs/Simulation/Physics.md): the full `World` / `Particle` / `Spring` / `Body` reference, including the parts this chapter left out: masses and forces on particles, `strain` for tinting springs by stress, soft blobs, and the other joint kinds.
 - [Articulated and chaotic motion](../Docs/Simulation/Motion.md): the full `IKChain`, `DoublePendulum`, and `NBody` reference, including both IK solvers, `maxBend`, the pendulum's `energy` check, and the n-body factories.
 - [Force-directed layout](../Docs/Generators/ForceLayout.md): the full `ForceLayout` reference, including edge weights, gravity for disconnected graphs, the cooling schedule's knobs, and the pin-and-drag idiom.
+- Appendix B draws this chapter's math, one picture per idea: [Vectors, motion, and forces](B-JustEnoughMath.md#vectors-motion-and-forces).
 - Worked examples, in [`Examples/Physics/`](../Examples/Physics/): `Packing` (discs settling into a jar), `Blobs` (squishy soft bodies that bump), `Stack` (a pyramid to knock down), `Tumble` (mixed shapes in a drum), and `Chain` (hanging chains to grab and fling).
 - The ready-made systems at work, in [`Examples/Motion/`](../Examples/Motion/): `InverseKinematics` (five tentacles under a swimming lure, both IK knobs live), `DoublePendulum` (a fan of twenty-four pendulums pulling apart), and `NBody` (two galaxies on a grazing orbit).
-- A look ahead: the flocking in [`Examples/Patterns/Flocking`](../Examples/Patterns/Flocking/Sketch.swift) is force accumulation too, with the forces coming from neighbors. Chapter 10 builds it.
+- A look ahead: the flocking in [`Examples/Patterns/Flocking`](../Examples/Patterns/Flocking/Sketch.swift) is force accumulation too, with the forces coming from neighbors. [Chapter 10](10-FlocksAndSwarms.md) builds it.
 
 ---
 

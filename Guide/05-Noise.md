@@ -6,7 +6,7 @@
 
 <img src="Images/05-Noise/Meadow.jpg" alt="A dark canvas covered in thousands of short curved strokes, combed into flowing currents like grass in wind, deep teal on one side warming to a broad golden current on the other" width="560">
 
-Chapter 4 ended with a complaint. The random walk goes interesting places, but its path is all jitter. Every organic thing you might want to draw (grass, smoke, coastlines, a hand-drawn line) varies smoothly, and `random` only knows how to jump. This chapter is about `noise`, the function that fixes that. It ends in the piece above: a meadow of fifteen hundred blades, combed by a wind you never see, all of it grown from one function.
+[Chapter 4](04-Randomness.md) ended with a complaint. The random walk goes interesting places, but its path is all jitter. Every organic thing you might want to draw (grass, smoke, coastlines, a hand-drawn line) varies smoothly, and `random` only knows how to jump. This chapter is about `noise`, the function that fixes that. It ends in the piece above: a meadow of fifteen hundred blades, combed by a wind you never see, all of it grown from one function.
 
 ## Random that remembers
 
@@ -34,7 +34,7 @@ final class Glide: Sketch {
 
 The dot floats up and down like something breathing underwater. There's no rhythm you can predict, but there's also never a jolt. The input is `time * 0.4`, so the dot is *strolling along the landscape* at 0.4 units a second and reporting the terrain as it goes. Now swap `noise` for `random()` (drop the argument) and run it again. The dot teleports sixty times a second. Same range, same canvas, completely different feel. Put `noise` back.
 
-One habit carries over from Chapter 4. The landscape itself is rolled from entropy at launch, so every run strolls different hills. `noiseSeed(6)` pins the landscape (and `seed(6)`, which you met in Chapter 4, pins `noise` and `random` together). Same seed, same hills, same piece.
+One habit carries over from [Chapter 4](04-Randomness.md). The landscape itself is rolled from entropy at launch, so every run strolls different hills. `noiseSeed(6)` pins the landscape (and `seed(6)`, which you met in [Chapter 4](04-Randomness.md), pins `noise` and `random` together). Same seed, same hills, same piece.
 
 ## The zoom knob
 
@@ -48,7 +48,7 @@ There's a rule of thumb hiding in the panels. When you feed noise *pixel* coordi
 
 ## Two dimensions: a field
 
-Here's where noise pulls ahead of anything Chapter 4 could do. Give it *two* numbers, `noise(x, y)`, and the landscape becomes a smooth surface: an answer at every point of a plane. Ask at every cell of a grid and you can *see* it:
+Here's where noise pulls ahead of anything [Chapter 4](04-Randomness.md) could do. Give it *two* numbers, `noise(x, y)`, and the landscape becomes a smooth surface: an answer at every point of a plane. Ask at every cell of a grid and you can *see* it:
 
 <img src="Images/05-Noise/NoiseTerrain.jpg" alt="Two panels of the same noise field: on the left cells shaded from black to white forming soft clouds, on the right the same values drawn as dot sizes forming a halftone version of the same clouds" width="680">
 
@@ -95,17 +95,17 @@ let n = noise(x * 0.006, y * 0.006, time * 0.15)
 
 The clouds become weather. Nothing scrolls, since sliding `x` instead of `z` is what does that. The field boils in place, the way clouds actually do. The `0.15` is the zoom knob again, pointed at time, so smaller drifts slower.
 
-There's one caveat, and Chapter 3 taught you to care about it. A `z` that grows with `time` never returns to where it started, so this drift can't close a perfect GIF loop on its own. You could fold time with Chapter 3's `pingPong`, and out-and-back does loop, but then the weather spends half of every lap running in reverse. Noise has a better answer built in. Walk a *circle* through the field instead of a straight line and you end exactly where you began, facing the way you started, with no reversal and no seam. That's the `loop:` parameter:
+There's one caveat, and [Chapter 3](03-MotionAndTime.md) taught you to care about it. A `z` that grows with `time` never returns to where it started, so this drift can't close a perfect GIF loop on its own. You could fold time with [Chapter 3](03-MotionAndTime.md)'s `pingPong`, and out-and-back does loop, but then the weather spends half of every lap running in reverse. Noise has a better answer built in. Walk a *circle* through the field instead of a straight line and you end exactly where you began, facing the way you started, with no reversal and no seam. That's the `loop:` parameter:
 
 ```swift
 let n = noise(x * 0.006, y * 0.006, loop: loopProgress(over: 4), radius: 0.6)
 ```
 
-One lap of `loop` (a `0...1` progress, which Chapter 3's `loopProgress` makes a four-second one here) tours a closed circle through the field, and `radius` sets how much terrain the lap covers, so bigger is windier weather. The drifting figure above is exactly this move. Under the hood the circle rides extra noise dimensions, a beloved trick of the looping-GIF artists, and the [Noise reference](../Docs/Generators/Noise.md#loop) has the details, including using `loop:` to close a wave around a ring in *space*.
+One lap of `loop` (a `0...1` progress, which [Chapter 3](03-MotionAndTime.md)'s `loopProgress` makes a four-second one here) tours a closed circle through the field, and `radius` sets how much terrain the lap covers, so bigger is windier weather. The drifting figure above is exactly this move. Under the hood the circle rides extra noise dimensions, a beloved trick of the looping-GIF artists, and the [Noise reference](../Docs/Generators/Noise.md#loop) has the details, including using `loop:` to close a wave around a ring in *space*.
 
 ## signedNoise: drift that swings
 
-Chapter 4 settled on an idiom for jitter: `random(-1, 1) * amount`, a swing both ways that you scale. Noise has the same convention built in. `signedNoise` is the identical field spoken in `-1...1`, for when the natural resting point is a center rather than a floor:
+[Chapter 4](04-Randomness.md) settled on an idiom for jitter: `random(-1, 1) * amount`, a swing both ways that you scale. Noise has the same convention built in. `signedNoise` is the identical field spoken in `-1...1`, for when the natural resting point is a center rather than a floor:
 
 ```swift
 let x = width / 2 + signedNoise(time * 0.3, 10) * 300
@@ -161,7 +161,7 @@ That's the whole tour. You won't need most of these most days, since `noise` and
 
 ## Putting it together: a meadow in the wind
 
-The piece at the top of this chapter uses everything at once, in a field of about 1,500 blades. Each blade *grows* the way Chapter 4's walker walked, one step at a time, except that its steps don't jump at random. At every step it asks a `signedNoise` field which way to lean. Nearby blades ask nearby places, so they lean together, and currents appear. A second, bigger-scale ask decides each blade's color and thickness, the layering idea working as composition. And the whole field rides `loop:`, one lap of wind every six seconds, so it sways forever without a seam. Make `MySketches/Meadow.swift`:
+The piece at the top of this chapter uses everything at once, in a field of about 1,500 blades. Each blade *grows* the way [Chapter 4](04-Randomness.md)'s walker walked, one step at a time, except that its steps don't jump at random. At every step it asks a `signedNoise` field which way to lean. Nearby blades ask nearby places, so they lean together, and currents appear. A second, bigger-scale ask decides each blade's color and thickness, the layering idea working as composition. And the whole field rides `loop:`, one lap of wind every six seconds, so it sways forever without a seam. Make `MySketches/Meadow.swift`:
 
 ```swift
 import Ollin
@@ -213,10 +213,10 @@ final class Meadow: Sketch {
 
 Run it with `swift run OllinLive MySketches/Meadow.swift` and take it apart:
 
-- Chapters 4 and 5 share the work here, and it's worth seeing who does what. The grid plants a blade every 26 pixels, and seeded `random` jitter (the `random(-1, 1) * 8` pair, under `randomSeed(3)` so the planting holds still) breaks the rows so it reads as sown rather than tiled. Random scatters; noise flows.
-- Each blade really is Chapter 4's walker, minus the jitter. The inner loop is the same: keep a position, step, repeat. But the step direction now comes from `signedNoise` *at the blade's current position*, so the walk is steered by a smooth field instead of jumping at random. Six steps of 8 pixels, each leaning up to almost a fifth of a turn off vertical at full `Sway` (`up` is minus a quarter of `.tau`, the angle that points straight up on this canvas), and because the field is smooth, the blade *curves*.
+- [Chapter 4](04-Randomness.md) and this chapter share the work here, and it's worth seeing who does what. The grid plants a blade every 26 pixels, and seeded `random` jitter (the `random(-1, 1) * 8` pair, under `randomSeed(3)` so the planting holds still) breaks the rows so it reads as sown rather than tiled. Random scatters; noise flows.
+- Each blade really is [Chapter 4](04-Randomness.md)'s walker, minus the jitter. The inner loop is the same: keep a position, step, repeat. But the step direction now comes from `signedNoise` *at the blade's current position*, so the walk is steered by a smooth field instead of jumping at random. Six steps of 8 pixels, each leaning up to almost a fifth of a turn off vertical at full `Sway` (`up` is minus a quarter of `.tau`, the angle that points straight up on this canvas), and because the field is smooth, the blade *curves*.
 - `weather` is the layering idea doing the composing, a much bigger-scale ask (`0.0011`, about one feature per canvas) that colors whole regions warm or cool through the `Ramp` and thickens their strokes. Two zoom levels of one field: one composes, one textures.
-- The tip-light is Chapter 2 at work, with each segment mixing the blade color toward warm white by `Glow`, brightening toward the tip.
+- The tip-light is [Chapter 2](02-Color.md) at work, with each segment mixing the blade color toward warm white by `Glow`, brightening toward the tip.
 - `strokeCap(.round)` puts round tips on line segments so the six of them join into one continuous blade instead of a dashed one.
 - `breeze` is `loopProgress(over: 6)` feeding both asks' `loop:`, so the whole field tours one closed circle through the noise every six seconds. The wind never reverses and never jumps, and any six-second export loops exactly. (Both asks share the same lap but different spatial scales, which is why color-weather and lean-weather move together without being copies.)
 
@@ -237,13 +237,14 @@ Then make it yours:
 
 ## Where this comes from
 
-Noise has a birthplace. Ken Perlin built it in 1983, fresh from working on the computer imagery of the film *TRON* and frustrated that everything the machine made looked too clean, and published it in his 1985 SIGGRAPH paper "An Image Synthesizer." The Academy of Motion Picture Arts and Sciences gave him a Technical Achievement Award for it in 1997, possibly the only Oscar ever won by a math function. Ollin implements his refined 2002 "improved noise" algorithm. The layering-octaves idea grew alongside it in the fractal-terrain tradition (Benoit Mandelbrot's fractional Brownian motion, brought to graphics by Perlin and the terrain artists who followed), and `fbm` keeps that tradition's name. Daniel Shiffman's *The Nature of Code* and its video incarnations made `noise` a first-class citizen of creative-coding pedagogy, and this chapter walks in those footsteps. The rest of the family has its own lineage. Perlin returned in 2001 with simplex noise, the triangle-lattice redesign, which Ollin implements from Stefan Gustavson's lucid "Simplex noise demystified." The cellular field is Steven Worley's, from his 1996 paper "A Cellular Texture Basis Function," and the ridged fold comes from F. Kenton Musgrave, whose fractal terrains defined the look of a generation of digital mountains. Domain warping as a named, shareable recipe is Inigo Quilez's, from the article this guide's `warpedFbm` follows. The `loop:` trick, touring a circle through a higher-dimensional field so a drift comes home, was popularized by Étienne Jacob's [necessary-disorder tutorials](https://necessarydisorder.wordpress.com/), a rabbit hole of looping-GIF craft worth losing an evening to. The finished piece is a first cousin of the *flow field*, a technique with a rich generative-art tradition of its own that Chapter 12 meets properly. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Noise has a birthplace. Ken Perlin built it in 1983, fresh from working on the computer imagery of the film *TRON* and frustrated that everything the machine made looked too clean, and published it in his 1985 SIGGRAPH paper "An Image Synthesizer." The Academy of Motion Picture Arts and Sciences gave him a Technical Achievement Award for it in 1997, possibly the only Oscar ever won by a math function. Ollin implements his refined 2002 "improved noise" algorithm. The layering-octaves idea grew alongside it in the fractal-terrain tradition (Benoit Mandelbrot's fractional Brownian motion, brought to graphics by Perlin and the terrain artists who followed), and `fbm` keeps that tradition's name. Daniel Shiffman's *The Nature of Code* and its video incarnations made `noise` a first-class citizen of creative-coding pedagogy, and this chapter walks in those footsteps. The rest of the family has its own lineage. Perlin returned in 2001 with simplex noise, the triangle-lattice redesign, which Ollin implements from Stefan Gustavson's lucid "Simplex noise demystified." The cellular field is Steven Worley's, from his 1996 paper "A Cellular Texture Basis Function," and the ridged fold comes from F. Kenton Musgrave, whose fractal terrains defined the look of a generation of digital mountains. Domain warping as a named, shareable recipe is Inigo Quilez's, from the article this guide's `warpedFbm` follows. The `loop:` trick, touring a circle through a higher-dimensional field so a drift comes home, was popularized by Étienne Jacob's [necessary-disorder tutorials](https://necessarydisorder.wordpress.com/), a rabbit hole of looping-GIF craft worth losing an evening to. The finished piece is a first cousin of the *flow field*, a technique with a rich generative-art tradition of its own that [Chapter 12](12-FieldsAndFlow.md) meets properly. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
-- [Noise](../Docs/Generators/Noise.md): the full reference, including the looping `loop:` forms, layered `fbm`, the whole field family from this chapter's tour, and `curlNoise`, the swirling vector cousin waiting for Chapter 12.
+- [Noise](../Docs/Generators/Noise.md): the full reference, including the looping `loop:` forms, layered `fbm`, the whole field family from this chapter's tour, and `curlNoise`, the swirling vector cousin waiting for [Chapter 12](12-FieldsAndFlow.md).
 - [Random](../Docs/Generators/Random.md): the uncorrelated sibling, for when you *want* the jump.
-- The family at work: [`Patterns/RidgeLines`](../Examples/Patterns/RidgeLines/Sketch.swift) stacks `ridgedFbm` skylines into a looping landscape. The same fields also run per pixel on the GPU: [`Effects/Cellular`](../Examples/Effects/Cellular/Sketch.swift) is `worley` as a generated layer (Chapter 14 territory) and [`Shaders/DomainWarp`](../Examples/Shaders/DomainWarp/Sketch.swift) opens up the warp recipe in shader code (Chapter 15's).
+- The family at work: [`Patterns/RidgeLines`](../Examples/Patterns/RidgeLines/Sketch.swift) stacks `ridgedFbm` skylines into a looping landscape. The same fields also run per pixel on the GPU: [`Effects/Cellular`](../Examples/Effects/Cellular/Sketch.swift) is `worley` as a generated layer ([Chapter 14](14-LayersAndEffects.md) territory) and [`Shaders/DomainWarp`](../Examples/Shaders/DomainWarp/Sketch.swift) opens up the warp recipe in shader code ([Chapter 15](15-YourFirstShader.md)'s).
+- Appendix B draws this chapter's math, one picture per idea: [Fractions, mapping, and wrapping](B-JustEnoughMath.md#fractions-mapping-and-wrapping), [Noise](B-JustEnoughMath.md#noise), [Fields and following them](B-JustEnoughMath.md#fields-and-following-them).
 - Worked examples: [`Randomness/NoiseField`](../Examples/Randomness/NoiseField/Sketch.swift) (the cloud field, scrubbed by the mouse), [`Randomness/NoiseWave`](../Examples/Randomness/NoiseWave/Sketch.swift) (1D noise as a wave, beside its jagged twin [`RandomBand`](../Examples/Randomness/RandomBand/Sketch.swift)), and [`Motion/EllipseField`](../Examples/Motion/EllipseField/Sketch.swift) and [`Motion/ArcField`](../Examples/Motion/ArcField/Sketch.swift) (`signedNoise` driving whole fields of shapes).
 - The Molnár homage [`Interruptions`](../Examples/Recreations/VeraMolnar/Interruptions/Sketch.swift): a field of ticks like the meadow's ancestor, its gaps carved by noise.
 

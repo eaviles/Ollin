@@ -6,11 +6,11 @@
 
 <img src="Images/06-GridsAndRepetition/Meander.jpg" alt="A dense tangle of rounded strands meandering over a dark ground, colored in drifting patches of coral, cream, and teal" width="560">
 
-Every strand in this tangle is built from one shape, a quarter circle. It is stamped into a grid a couple hundred times, and each copy is spun by a coin flip. That's the whole chapter in one image. Grids are how generative art gets its sense of order, and repetition is how it gets its rhythm. A little disorder inside a strict structure, the move you know from Chapter 4, is where the life comes from. By the end you'll have the tangle, and a click that re-rolls it forever. You'll also have the two tools that carried it, a grid you loop once and transforms that move the paper under your shapes.
+Every strand in this tangle is built from one shape, a quarter circle. It is stamped into a grid a couple hundred times, and each copy is spun by a coin flip. That's the whole chapter in one image. Grids are how generative art gets its sense of order, and repetition is how it gets its rhythm. A little disorder inside a strict structure, the move you know from [Chapter 4](04-Randomness.md), is where the life comes from. By the end you'll have the tangle, and a click that re-rolls it forever. You'll also have the two tools that carried it, a grid you loop once and transforms that move the paper under your shapes.
 
 ## One loop, not two
 
-You've already built grids twice, the long way. Chapter 2's color field and Chapter 4's disorder grid both did the same chores. Pick a margin, then divide the leftover width into cells. Run a loop inside a loop, and rebuild each cell's x and y from the indices. Those chores are what `grid` is for:
+You've already built grids twice, the long way. [Chapter 2](02-Color.md)'s color field and [Chapter 4](04-Randomness.md)'s disorder grid both did the same chores. Pick a margin, then divide the leftover width into cells. Run a loop inside a loop, and rebuild each cell's x and y from the indices. Those chores are what `grid` is for:
 
 ```swift
 import Ollin
@@ -49,7 +49,7 @@ for p in grid(columns: 12, rows: 12, padding: 70, distribution: .spanning).point
 
 Two more things are worth knowing before we move on. `grid(...)` covers the whole canvas, but `Grid(in: someRectangle, ...)` lays one inside any rectangle. Since a cell's `frame` is itself a rectangle, grids nest. A grid where each cell holds a smaller grid is one more loop, and a classic look. And for margins that differ per edge, `padding:` takes more than a bare number: `.symmetric(horizontal: 40, vertical: 20)`, or any mix via `Insets`.
 
-> **Swift note.** `grid(...).cells` chains a call and a property, building the grid and then asking for its cells. `cell` in the loop is a small value with named parts you read with a dot (`cell.frame`, `cell.column`), and `drawRect` accepts the frame whole, with no unpacking into x and y. `p.position` is a `Vector2`, a pair of coordinates carried as one value, and `drawCircle(center:radius:)` takes it directly. Chapter 8 makes proper friends with vectors, and until then you can read `Vector2` as "a point".
+> **Swift note.** `grid(...).cells` chains a call and a property, building the grid and then asking for its cells. `cell` in the loop is a small value with named parts you read with a dot (`cell.frame`, `cell.column`), and `drawRect` accepts the frame whole, with no unpacking into x and y. `p.position` is a `Vector2`, a pair of coordinates carried as one value, and `drawCircle(center:radius:)` takes it directly. [Chapter 8](08-Vectors.md) makes proper friends with vectors, and until then you can read `Vector2` as "a point".
 
 ## Move the paper
 
@@ -57,7 +57,7 @@ The grid raises a question immediately. How do you draw something *rotated* insi
 
 <img src="Images/06-GridsAndRepetition/TransformSteps.jpg" alt="Four panels drawing the same flag with the same call: untransformed at the origin, then translated, then rotated a twelfth of a turn, then scaled up" width="680">
 
-Three calls move the paper. `translate(x, y)` slides the origin, the point that counts as (0, 0), somewhere else. `rotate(angle)` turns the paper around that origin (angles work like Chapter 3: `.tau / 4` is a quarter turn). `scale(factor)` stretches it. After any of them, every drawing call is measured on the moved paper, which is what the diagram shows. All four flags are the very same `drawRect` at the very same numbers, drawn on paper that had been slid, turned, and stretched first.
+Three calls move the paper. `translate(x, y)` slides the origin, the point that counts as (0, 0), somewhere else. `rotate(angle)` turns the paper around that origin (angles work like [Chapter 3](03-MotionAndTime.md): `.tau / 4` is a quarter turn). `scale(factor)` stretches it. After any of them, every drawing call is measured on the moved paper, which is what the diagram shows. All four flags are the very same `drawRect` at the very same numbers, drawn on paper that had been slid, turned, and stretched first.
 
 The moves accumulate as `draw()` runs, so you also need the undo. That's `withState`:
 
@@ -69,7 +69,7 @@ withState {
 }                               // paper snaps back as if nothing happened
 ```
 
-Everything inside the braces draws on the moved paper. At the closing brace the paper is restored, along with any `fill` or `stroke` you changed inside. This is the cell-drawing recipe you'll use for the rest of the guide. Translate to the cell's center, turn or stretch as the piece demands, then draw *around the origin*. Coordinates like `(-40, -40)` straddle (0, 0). Put the recipe in a grid, add a seeded coin flip from Chapter 4, and identical parts start composing figures nobody drew:
+Everything inside the braces draws on the moved paper. At the closing brace the paper is restored, along with any `fill` or `stroke` you changed inside. This is the cell-drawing recipe you'll use for the rest of the guide. Translate to the cell's center, turn or stretch as the piece demands, then draw *around the origin*. Coordinates like `(-40, -40)` straddle (0, 0). Put the recipe in a grid, add a seeded coin flip from [Chapter 4](04-Randomness.md), and identical parts start composing figures nobody drew:
 
 ```swift
 import Ollin
@@ -178,7 +178,7 @@ withClip(star) {
 
 `withClip` takes a `Shape`, a `Rectangle`, or a `Circle`, and confines everything drawn inside the block to that region. What makes it useful rather than merely convenient is that you don't have to work out the intersection yourself. The stripes in the figure are the same handful of long diagonal lines in all three panels. They are drawn straight past the edges, and the region decides what survives.
 
-Nesting is the other half. A clip inside a clip keeps only what falls in both. That is how the third panel gets the lens-shaped overlap, with no geometry on your part. Letters make good clips too, since Chapter 7's `textToShapes` hands back shapes, so you can pour a whole pattern into a word.
+Nesting is the other half. A clip inside a clip keeps only what falls in both. That is how the third panel gets the lens-shaped overlap, with no geometry on your part. Letters make good clips too, since [Chapter 7](07-WordsAndPictures.md)'s `textToShapes` hands back shapes, so you can pour a whole pattern into a word.
 
 ## Grids that aren't square
 
@@ -229,7 +229,7 @@ drawTruchet(columns: 8, rows: 8, tile: .arcs)
 
 The arc tile touches its cell's boundary in only four places, the edge midpoints, no matter which way it's spun. Think of the midpoints as doorways. Every tile has a doorway in the middle of each wall. So whatever your neighbor did, your marks and theirs meet at the doorway and flow through. Local rule, global order. Each tile only promises to hit its own doorways. The loops, corridors, and long wandering strands emerge across the whole canvas, with no tile knowing about them.
 
-The tiling is drawn from the seeded `random`, so it's reproducible like everything since Chapter 4. Same seed, same maze. And when the plain white line-work isn't enough, `truchet(columns:rows:tile:)` hands you the raw strands instead of drawing them. That is one list of points per arc, which is exactly what the finished piece wants.
+The tiling is drawn from the seeded `random`, so it's reproducible like everything since [Chapter 4](04-Randomness.md). Same seed, same maze. And when the plain white line-work isn't enough, `truchet(columns:rows:tile:)` hands you the raw strands instead of drawing them. That is one list of points per arc, which is exactly what the finished piece wants.
 
 ## One coin per line
 
@@ -299,7 +299,7 @@ Each tile carries `parity`, which flips across every shared edge. When `meeting`
 
 ## Putting it together: a meandering tangle
 
-Now you can build the image at the top. The plan is to lay Truchet arcs over a grid, then stroke every strand twice. A wide pass in a dark rim tone comes first, then a narrower colored pass on top. The strands then read as piping with a little depth. For the color, reach back to Chapter 5 and sample `noise` at each strand's midpoint. Neighbors then wear neighboring colors, and the palette drifts across the tangle like weather, slowly changing with `time`. Make a new file, `MySketches/Meander.swift`:
+Now you can build the image at the top. The plan is to lay Truchet arcs over a grid, then stroke every strand twice. A wide pass in a dark rim tone comes first, then a narrower colored pass on top. The strands then read as piping with a little depth. For the color, reach back to [Chapter 5](05-Noise.md) and sample `noise` at each strand's midpoint. Neighbors then wear neighboring colors, and the palette drifts across the tangle like weather, slowly changing with `time`. Make a new file, `MySketches/Meander.swift`:
 
 ```swift
 import Ollin
@@ -353,7 +353,7 @@ Run it, watch the colors migrate, and click for a fresh tangle. What each piece 
 - `seed(quiltSeed)` locks both `random` and `noise` at the top of every frame, so the layout holds still while `time` drifts the colors, and the Seed knob (or a click) is a whole new piece.
 - `truchet(...)` returns the strands as values instead of drawing them. Each is a contour, a list of points in `.points`, and `drawPolyline` strokes one list.
 - The two passes are an old illustrator's trick. The rim pass is a touch wider than the color pass, so wherever two strands run close, a dark seam keeps them apart. Drawing *all* rims before *any* color is what keeps each strand's own segments merging smoothly into one pipe.
-- `strand.midpoint` is the point halfway along a strand, and `noise` at that spot (scaled way down, Chapter 5's zoom knob) picks its color from the ramp. Nearby strands ask nearby questions, so color arrives in weather-like patches instead of confetti.
+- `strand.midpoint` is the point halfway along a strand, and `noise` at that spot (scaled way down, [Chapter 5](05-Noise.md)'s zoom knob) picks its color from the ramp. Nearby strands ask nearby questions, so color arrives in weather-like patches instead of confetti.
 - The knobs cover a lot of ground: `Columns` runs the piece from chunky plumbing at 6 to fine knitting at 26 (the stroke widths ride the cell size, so everything stays in proportion), and the `Diagonals` toggle swaps the whole mood from tangle to circuit board.
 
 Before moving on, make it yours:
@@ -378,8 +378,9 @@ Truchet tiles are named for Sébastien Truchet, a French Carmelite priest. He pu
 - [Tiling and layout](../Docs/Drawing/Tiling.md): every knob for `HexGrid`, `TriangleGrid`, `Subdivision`, `Maze`, and `apollonianGasket`, including hex orientation and picking, the quadtree split style, all three maze algorithms, and the longest-path helper.
 - [Aperiodic tilings](../Docs/Drawing/AperiodicTilings.md): the full reference for `penroseTiling` (both variants and the arcs), `wangTiling` (tile sets, weights, the complete set), `girihPattern` (the contact angle, the five girih tiles, composing them edge to edge), and `spectreTiling`.
 - [Hyperbolic tiling](../Docs/Drawing/HyperbolicTiling.md): the full `hyperbolicTiling` reference, every valid {p,q} pair, the parity and depth coloring hooks, and the panning viewpoint.
+- Appendix B draws this chapter's math, one picture per idea: [Angles and circles](B-JustEnoughMath.md#angles-and-circles), [Moving the paper](B-JustEnoughMath.md#moving-the-paper), [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure).
 - Worked examples: [`Patterns/Grid`](../Examples/Patterns/Grid/Sketch.swift) (the grid helper's tour), [`Patterns/Truchet`](../Examples/Patterns/Truchet/Sketch.swift) (both tiles, animated), [`Patterns/Hitomezashi`](../Examples/Patterns/Hitomezashi/Sketch.swift) (both faces, on a breathing cloth), [`Patterns/Penrose`](../Examples/Patterns/Penrose/Sketch.swift) (rhombs with breathing arcs), [`Patterns/WangTiles`](../Examples/Patterns/WangTiles/Sketch.swift) (the re-laying quilt), [`Patterns/Girih`](../Examples/Patterns/Girih/Sketch.swift) (the angle dial swept live, plus the decagon-and-pentagons medallion), [`Patterns/Spectre`](../Examples/Patterns/Spectre/Sketch.swift) (the einstein with a drifting tide), and [`Patterns/HyperbolicTiling`](../Examples/Patterns/HyperbolicTiling/Sketch.swift) (the panning tour of six {p,q} pairs).
-- A teaser for later: [`Patterns/WaveFunctionCollapse`](../Examples/Patterns/WaveFunctionCollapse/Sketch.swift) plays the agree-at-the-edges game with *constraints*, tiles that refuse certain neighbors, and Chapter 11 watches it solve.
+- A teaser for later: [`Patterns/WaveFunctionCollapse`](../Examples/Patterns/WaveFunctionCollapse/Sketch.swift) plays the agree-at-the-edges game with *constraints*, tiles that refuse certain neighbors, and [Chapter 11](11-GrowingThings.md) watches it solve.
 
 ---
 

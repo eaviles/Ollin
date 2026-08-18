@@ -238,7 +238,7 @@ That one call is the hinge of this chapter's finished piece. Once a stroke is a 
 
 ## The well-mannered scatter
 
-Chapters 11 and 12 borrowed `poissonDisk` with a promise to explain it here. Here is the problem it solves. Plain `random` placement clumps and leaves bare patches, because independent rolls have no manners about each other (Chapter 4 warned you). Blue noise is the fix, and the recipe, Robert Bridson's, is charmingly physical. Throw a dart, then keep throwing darts *near existing ones*, keeping only throws that land at least `radius` from everybody placed so far. When a dart can't find room after thirty tries, its neighborhood is full. The result is even but never gridded:
+[Chapter 11](11-GrowingThings.md) and [Chapter 12](12-FieldsAndFlow.md) borrowed `poissonDisk` with a promise to explain it here. Here is the problem it solves. Plain `random` placement clumps and leaves bare patches, because independent rolls have no manners about each other ([Chapter 4](04-Randomness.md) warned you). Blue noise is the fix, and the recipe, Robert Bridson's, is charmingly physical. Throw a dart, then keep throwing darts *near existing ones*, keeping only throws that land at least `radius` from everybody placed so far. When a dart can't find room after thirty tries, its neighborhood is full. The result is even but never gridded:
 
 <img src="Images/13-ShapesAsMaterial/ScatterCompare.jpg" alt="Two panels with the same number of dots: on the left plain random placement with clumps and bare gaps, on the right a blue-noise scatter, even but organic" width="680">
 
@@ -308,7 +308,7 @@ The knobs beyond `count` and the radius range are worth knowing, because they ch
 
 The output is `[Shape]`, so it flows straight into everything earlier in this chapter. Fill it, stroke it, boolean it, hatch it, or export it as SVG. Compute the packing once and hold it, then animate something visual like each shape's color, or the shapes will jump every frame.
 
-`ContinuousPacking` is the same engine held open instead of run to completion. You `step()` it each frame and the region fills in as you watch. The big gaps go first, so each new shape is smaller than the last. Paired with `noClear()` from Chapter 14 it costs almost nothing per frame, because a placed shape never moves and only the new ones need drawing. That's what the `Patterns/ShapePacking` example does, densifying forever.
+`ContinuousPacking` is the same engine held open instead of run to completion. You `step()` it each frame and the region fills in as you watch. The big gaps go first, so each new shape is smaller than the last. Paired with `noClear()` from [Chapter 14](14-LayersAndEffects.md) it costs almost nothing per frame, because a placed shape never moves and only the new ones need drawing. That's what the `Patterns/ShapePacking` example does, densifying forever.
 
 ## What shape are these points?
 
@@ -352,7 +352,7 @@ Two knobs shape the result. `spacing` is how finely the boundary gets sampled, s
 
 What makes this more than a line drawing is that the skeleton remembers thickness. Each branch carries `radii` alongside `points`, one radius per vertex, holding the size of the disk that fits there. So the skeleton knows how fat the shape is at every step along itself. Walk a branch drawing a circle from each pair and you rebuild the region as a train of disks. Size marks by the radius and a drawing swells through the thick parts, then thins into the tips. The largest radius anywhere marks the deepest point of the shape, the spot furthest from any edge.
 
-Skeletons are setup work rather than per-frame work, so extract once and hold the result. Glyph shapes from Chapter 7's `textToShapes` skeletonize as they are, counters and all. That is what the `Shapes/MedialAxis` example does, to spell a word in bones.
+Skeletons are setup work rather than per-frame work, so extract once and hold the result. Glyph shapes from [Chapter 7](07-WordsAndPictures.md)'s `textToShapes` skeletonize as they are, counters and all. That is what the `Shapes/MedialAxis` example does, to spell a word in bones.
 
 ## The other skeleton
 
@@ -471,7 +471,7 @@ if let art = loadSVG("boat.svg") {
 }
 ```
 
-`drawSVG` draws the file the way its author saw it, fills, strokes, and stacking order intact. But the reason it lives in this chapter is what happens when you ignore the authored look. `art.shapes` and `art.contours` hand over the bare geometry, and everything above applies to it. Subtract the artwork from a mosaic, or shrink it into nested outlines. Respace its contours into even dots, the Chapter 7 trick, or hatch it for the pen.
+`drawSVG` draws the file the way its author saw it, fills, strokes, and stacking order intact. But the reason it lives in this chapter is what happens when you ignore the authored look. `art.shapes` and `art.contours` hand over the bare geometry, and everything above applies to it. Subtract the artwork from a mosaic, or shrink it into nested outlines. Respace its contours into even dots, the [Chapter 7](07-WordsAndPictures.md) trick, or hatch it for the pen.
 
 <img src="Images/13-ShapesAsMaterial/ImportMined.jpg" alt="Three panels of the same imported sailboat SVG: drawn as authored with its own fills, respaced into even dots along every outline, and hatched into pen line work at a different angle per part" width="680">
 
@@ -579,7 +579,7 @@ Then make it yours:
 - Export it: `swift run` your sketch with `--export-svg plate.svg` and open the file in a vector editor. Every hatch line is really there.
 - Re-roll `seed(9)` until the ribbon and the mosaic argue well. The composition is the choosing.
 - Give every third cell a solid fill instead of hatching, and the plate gains ink-block weight.
-- Swap the ribbon for text: Chapter 7's `textToShapes` returns shapes, and shapes are what everything here eats. Hatched letters parting a mosaic make a poster.
+- Swap the ribbon for text: [Chapter 7](07-WordsAndPictures.md)'s `textToShapes` returns shapes, and shapes are what everything here eats. Hatched letters parting a mosaic make a poster.
 - Work in three pens by hatching the cells nearest the ribbon in a middle color, picked by distance from the wave's points.
 - Give the plate a deckled edge. Intersect every cell with `Shape(concaveHull(of: sites, concavity: 0.4))` instead of trimming to the margin rectangle. The mosaic then stops at the scatter's own outline.
 - Trade hatching for bones. Run `medialAxis` on each cell piece and stroke its branches, and the plate reads as a nervous system rather than a mosaic.
@@ -611,6 +611,7 @@ The skeleton is Harry Blum's medial axis, proposed in 1967 as a way to describe 
 - [Watercolor](../Docs/Generators/Watercolor.md): the sugar, the typed base, and how the deformation actually runs.
 - [Blue noise](../Docs/Generators/BlueNoise.md) and [circle packing](../Docs/Generators/Packing.md) / [shape packing](../Docs/Generators/ShapePacking.md), which also covers packing around a set of points you already have and the practical notes on building a shape bag.
 - [Export](../Docs/Output/Export.md): the whole `--export-svg` and `--hatch` surface, plus stills, sequences, video, and GIF.
+- Appendix B draws this chapter's math, one picture per idea: [Randomness](B-JustEnoughMath.md#randomness), [Shapes as regions](B-JustEnoughMath.md#shapes-as-regions).
 - Worked examples: [`Examples/Shapes/Booleans`](../Examples/Shapes/Booleans/Sketch.swift), [`Examples/Patterns/Topography`](../Examples/Patterns/Topography/Sketch.swift), [`Examples/Shapes/InkRibbon`](../Examples/Shapes/InkRibbon/Sketch.swift), [`Examples/Shapes/RubberBand`](../Examples/Shapes/RubberBand/Sketch.swift), [`Examples/Patterns/Voronoi`](../Examples/Patterns/Voronoi/Sketch.swift), [`Examples/Patterns/CirclePacking`](../Examples/Patterns/CirclePacking/Sketch.swift), [`Examples/Shapes/SVGImport`](../Examples/Shapes/SVGImport/Sketch.swift), [`Examples/Shapes/Hulls`](../Examples/Shapes/Hulls/Sketch.swift), [`Examples/Shapes/MedialAxis`](../Examples/Shapes/MedialAxis/Sketch.swift), [`Examples/Shapes/StraightSkeleton`](../Examples/Shapes/StraightSkeleton/Sketch.swift), [`Examples/Patterns/Marbling`](../Examples/Patterns/Marbling/Sketch.swift), [`Examples/Shapes/Watercolor`](../Examples/Shapes/Watercolor/Sketch.swift), and [`Examples/Shapes/Brushwork`](../Examples/Shapes/Brushwork/Sketch.swift).
 
 ---

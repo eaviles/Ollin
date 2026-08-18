@@ -452,4 +452,4 @@ Loudness is a level, while a beat is an *event*. You can't find events by watchi
 
 ---
 
-[Contents](README.md#contents)
+[Contents](README.md#contents) · Previous: [Appendix A, Just enough Swift](A-JustEnoughSwift.md) · Next: [Appendix C, Coming from p5.js and Processing](C-ComingFromP5.md)

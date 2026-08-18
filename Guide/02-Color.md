@@ -38,7 +38,7 @@ RGB is how the machine stores color, as three amounts of light. That's good for 
 fill(Color(hue: 0.07, saturation: 0.85, brightness: 0.95))   // a warm orange
 ```
 
-All three run from 0 to 1, and hue *wraps*, so 1.2 means the same as 0.2, a full turn around the wheel plus a bit. That makes hue safe to drive with `time` directly, with no bookkeeping to keep it in range. Try it on Chapter 1's swinging circle (`FirstMotion.swift`), replacing its `fill` line:
+All three run from 0 to 1, and hue *wraps*, so 1.2 means the same as 0.2, a full turn around the wheel plus a bit. That makes hue safe to drive with `time` directly, with no bookkeeping to keep it in range. Try it on [Chapter 1](01-HelloOllin.md)'s swinging circle (`FirstMotion.swift`), replacing its `fill` line:
 
 ```swift
 fill(Color(hue: time * 0.1, saturation: 0.8, brightness: 0.95))
@@ -68,7 +68,7 @@ Try it live on the swinging circle:
 fill(Color.mix(Color(hex: 0x2050C8), Color(hex: 0xFFC800), t: sin(time) * 0.5 + 0.5))
 ```
 
-The `sin(time) * 0.5 + 0.5` squeezes the pendulum's `-1...1` swing into the `0...1` that `t` wants, so the circle breathes between the two colors. That squeeze is worth remembering, and Chapter 3 turns it into a proper tool with a name.
+The `sin(time) * 0.5 + 0.5` squeezes the pendulum's `-1...1` swing into the `0...1` that `t` wants, so the circle breathes between the two colors. That squeeze is worth remembering, and [Chapter 3](03-MotionAndTime.md) turns it into a proper tool with a name.
 
 The same perceptual model comes in two more shapes worth knowing about. **OKLCH** turns OKLab into dials for lightness, chroma, and hue, so nudging a hue leaves the lightness alone, and mixing with `.oklch` holds a color's identity while it arcs between hues. **OKHSL** guarantees that everything you ask for is actually displayable, which makes it the space to reach for when a sketch is *generating* colors rather than using ones you picked. Here's the trick this chapter likes it for, which is hues that genuinely match in weight.
 
@@ -130,7 +130,7 @@ fill(p[0])     // the color the photo is mostly made of
 
 The colors come back most-used first, so `p[0]` is the one you'd name if someone asked what color the photo is. The grouping happens in OKLab for the same reason mixing does, which is that it groups colors the way your eye does rather than the way the numbers do. Ask for fewer colors than the picture holds and it merges the closest ones together instead of dropping any.
 
-Two practical notes. The first is that it gives the same answer every time for the same picture, so a sketch that extracts a palette still reproduces exactly, which will matter once you start exporting. The second is that it does real work, enough that you don't want it running sixty times a second. This is what `setup()` from Chapter 1 is for. Load the photo and extract the palette once, keep both in properties, and let `draw()` read what's already there:
+Two practical notes. The first is that it gives the same answer every time for the same picture, so a sketch that extracts a palette still reproduces exactly, which will matter once you start exporting. The second is that it does real work, enough that you don't want it running sixty times a second. This is what `setup()` from [Chapter 1](01-HelloOllin.md) is for. Load the photo and extract the palette once, keep both in properties, and let `draw()` read what's already there:
 
 ```swift
 var photo: Image?
@@ -217,7 +217,7 @@ Each of them takes a `Ramp` or a plain list of colors. Alpha rides along, so a r
 
 ## A recipe borrowed early: random
 
-Chapter 1 borrowed `sin` from Chapter 3, and this chapter's finale borrows `random` from Chapter 4. Three sentences will get you through it. `random(-1, 1)` hands you a fresh unpredictable number in that range every time you call it. On its own that's a problem for a piece that redraws sixty times a second, because every frame would roll new numbers and the canvas would boil. The fix is `randomSeed(n)`, which restarts the randomness from a fixed point, so the *same* seed always produces the *same* sequence of "random" numbers. Seed at the top of `draw()` and every frame makes identical choices, which holds the picture still; change the seed and you get a brand-new variation that's just as coherent. Chapter 4 tells the whole story, and this is enough to be going on with.
+[Chapter 1](01-HelloOllin.md) borrowed `sin` from [Chapter 3](03-MotionAndTime.md), and this chapter's finale borrows `random` from [Chapter 4](04-Randomness.md). Three sentences will get you through it. `random(-1, 1)` hands you a fresh unpredictable number in that range every time you call it. On its own that's a problem for a piece that redraws sixty times a second, because every frame would roll new numbers and the canvas would boil. The fix is `randomSeed(n)`, which restarts the randomness from a fixed point, so the *same* seed always produces the *same* sequence of "random" numbers. Seed at the top of `draw()` and every frame makes identical choices, which holds the picture still; change the seed and you get a brand-new variation that's just as coherent. [Chapter 4](04-Randomness.md) tells the whole story, and this is enough to be going on with.
 
 ## Putting it together: a color field poster
 
@@ -272,7 +272,7 @@ Run it and walk the interesting lines:
 
 > **Swift note.** `var fieldSeed = 7` is a *property*, declared on the class rather than inside `draw()`, and that's what lets it survive from one frame to the next. A `let` or `var` written inside `draw()` is born and dies with that frame. `mousePressed()` is another function Ollin calls for you, once per click, alongside `setup()` and `draw()`. And a loop inside a loop does what it sounds like: for every column, visit every row.
 
-Directions worth a try before Chapter 3:
+Directions worth a try before [Chapter 3](03-MotionAndTime.md):
 
 - Swap the ramp for `Colormap.viridis` or `CosinePalette.sunset` (both answer `color(at:)`, so it's a one-line change).
 - Make the cells circles, or shrink each one by a little `random(0, cell * 0.3)` for a hand-placed feel.
@@ -286,6 +286,7 @@ The OKLab family (OKLab, OKLCH, OKHSL) is the work of Björn Ottosson, published
 ## Go deeper
 
 - [Color](../Docs/Drawing/Color.md): the complete reference, including color temperature (`Color(kelvin:)`) and the string-hex grammar.
+- Appendix B draws this chapter's math, one picture per idea: [Fractions, mapping, and wrapping](B-JustEnoughMath.md#fractions-mapping-and-wrapping), [Color and light as numbers](B-JustEnoughMath.md#color-and-light-as-numbers).
 - Worked examples, all in [`Examples/Color/`](../Examples/Color/): `Mixing` (the five spaces side by side), `Harmonies`, `Swatchbook`, `Palettes`, `PaletteFile`, `PaletteFromImage`, `Colormaps`, `HSBWheel`, `Gradients`, and `ColorVision`.
 - [Accessibility](../Docs/Helpers/Accessibility.md): the color-vision simulation, the palette check, and the reduce-motion setting.
 - [Drawing](../Docs/Drawing/Drawing.md): every place a `Paint` can go.

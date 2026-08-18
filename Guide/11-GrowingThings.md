@@ -6,7 +6,7 @@
 
 <img src="Images/11-GrowingThings/Garden.jpg" alt="A dark garden bed: a pale branching tree with a thick trunk fills the sky, six green fern-like plants stand along the soil, and gray-green lichen sprawls at the ground line" width="560">
 
-Chapter 10 grew behavior, and this chapter grows form. Everything in the garden above was grown rather than drawn. The tree claimed its patch of air branch by branch. The plants were written by a grammar that rewrites itself, and the lichen froze into place one wandering particle at a time. Four ways to grow, and by the end you'll have planted all of them in one bed.
+[Chapter 10](10-FlocksAndSwarms.md) grew behavior, and this chapter grows form. Everything in the garden above was grown rather than drawn. The tree claimed its patch of air branch by branch. The plants were written by a grammar that rewrites itself, and the lichen froze into place one wandering particle at a time. Four ways to grow, and by the end you'll have planted all of them in one bed.
 
 ## A tree from one rule
 
@@ -52,7 +52,7 @@ final class TreeByHand: Sketch {
 
 This is **recursion**, a rule applied to its own output. `branch` draws one segment and then asks `branch` to finish the job, twice, smaller. The `depth` counter is what keeps it from asking forever, and `guard depth > 0 else { return }` is the floor it stops on. Nine levels is `2⁹` tips, five hundred twelve of them, out of fourteen lines of code.
 
-Look at where `withState` sits, because it's doing the quiet work. Each branch draws in its own coordinate world, using Chapter 6's trick. `translate` walks to the top of the segment just drawn, each `withState { rotate(...) ... }` tilts, recurses, and *puts the transform back* when its block ends. That put-it-back is the whole trick of drawing a tree. The left subtree's thousands of segments may wander anywhere. After it finishes, the pen is back at the fork, facing the way the fork faced, ready for the right subtree. A saved-and-restored state is how every branching drawing in this chapter works, and it's about to get a name from 1968.
+Look at where `withState` sits, because it's doing the quiet work. Each branch draws in its own coordinate world, using [Chapter 6](06-GridsAndRepetition.md)'s trick. `translate` walks to the top of the segment just drawn, each `withState { rotate(...) ... }` tilts, recurses, and *puts the transform back* when its block ends. That put-it-back is the whole trick of drawing a tree. The left subtree's thousands of segments may wander anywhere. After it finishes, the pen is back at the fork, facing the way the fork faced, ready for the right subtree. A saved-and-restored state is how every branching drawing in this chapter works, and it's about to get a name from 1968.
 
 The `* 1.15` on the right angle is a small honesty about nature, since perfectly symmetric trees read as diagrams. Drag the two knobs while it runs. `Shrink` near 0.78 grows old oaks, and `Angle` near 0.15 grows poplars.
 
@@ -88,7 +88,7 @@ final class Fern: Sketch {
 
 `drawLSystem` fits the grown form to the canvas and strokes it. Its sibling `lSystem(...)` returns the contours instead, for when you want to place, color, or export them yourself, as the garden does. A grammar of your own is one constructor, so `LSystem(axiom: "F", rules: ["F": "F+F-F-F+F"], angle: 90)` is the Koch curve. The [L-systems reference](../Docs/Generators/LSystem.md) lists the whole preset shelf, from `.dragonCurve` to `.hilbertCurve`.
 
-One more idea turns plants into *populations*. Give a symbol several possible rewrites, and let a seeded roll pick one each time it's rewritten. `.randomPlant` does this. Every plant grown from the same grammar is a different individual with the same species' look. Chapter 4's promise holds here. Because the rolls come from your `seed`, the same seed grows the same garden, down to the last twig.
+One more idea turns plants into *populations*. Give a symbol several possible rewrites, and let a seeded roll pick one each time it's rewritten. `.randomPlant` does this. Every plant grown from the same grammar is a different individual with the same species' look. [Chapter 4](04-Randomness.md)'s promise holds here. Because the rolls come from your `seed`, the same seed grows the same garden, down to the last twig.
 
 ## When the rules need arithmetic
 
@@ -128,7 +128,7 @@ strokeWeight(14)
 drawLSystem(.taperedTree(), iterations: 10, tapered: true)
 ```
 
-Widths arrive as multiples of `strokeWeight`, scaled so the widest is exactly 1. So `strokeWeight` sets the trunk and every twig follows from it. Behind that, a tapered system comes back as the `StrokeMark`s of Chapter 12 rather than as plain contours.
+Widths arrive as multiples of `strokeWeight`, scaled so the widest is exactly 1. So `strokeWeight` sets the trunk and every twig follows from it. Behind that, a tapered system comes back as the `StrokeMark`s of [Chapter 13](13-ShapesAsMaterial.md) rather than as plain contours.
 
 A plain grammar counts. A parametric one measures. The [reference](../Docs/Generators/LSystem.md#parametric) has the rest. It covers the arithmetic it accepts, weighted rules for stochastic growth, and a shelf of presets from the botany literature.
 
@@ -171,7 +171,7 @@ drawImage(flame.render(width: 900, height: 900, quality: 90, using: &source),
 
 `quality` is how many samples each output pixel gets, so a few dozen previews and a few hundred makes a clean still. There's also a progressive `Renderer` you feed a slice of samples per frame. That is how flames are meant to be watched, rising out of the noise. Rolling a random flame is genuinely a roll, and some come out muddy. Rerolling until one sings is part of the practice, not a sign you did it wrong.
 
-The flame's counting trick has a famous cousin. Square a number, add the point you started from, and repeat. Some starting points fly off to infinity. The ones that never do make up the Mandelbrot set, which Chapter 16 zooms into. The **Buddhabrot** is what the escapers leave behind. Test random starting points, and every time one escapes, let its whole path brighten each pixel it passed through. The piled-up visits, developed like a photographic plate, form a seated figure that was hiding in the set all along. Melinda Green found it in 1993.
+The flame's counting trick has a famous cousin. Square a number, add the point you started from, and repeat. Some starting points fly off to infinity. The ones that never do make up the Mandelbrot set, which [Chapter 16](16-Simulations.md) zooms into. The **Buddhabrot** is what the escapers leave behind. Test random starting points, and every time one escapes, let its whole path brighten each pixel it passed through. The piled-up visits, developed like a photographic plate, form a seated figure that was hiding in the set all along. Melinda Green found it in 1993.
 
 ```swift
 let plate = Buddhabrot()      // three caps: long orbits red, short ones blue
@@ -240,14 +240,14 @@ Grammars grow blind, and the fern doesn't know where the canvas ends or where it
 
 <img src="Images/11-GrowingThings/ClaimingSpace.jpg" alt="Four panels of the same growth at step 6, 18, 40, and finished: ink veins spread from a bottom root into a field of orange dots, and the dots vanish as branches reach them" width="680">
 
-This is **space colonization**, and it grows the most convincing veins, roots, and trees in generative art. It grows the way real veins do, reaching toward unclaimed space and never doubling back into crowded territory. In Ollin it's `SpaceColonization`, another stepper you hold (the Chapter 10 shape):
+This is **space colonization**, and it grows the most convincing veins, roots, and trees in generative art. It grows the way real veins do, reaching toward unclaimed space and never doubling back into crowded territory. In Ollin it's `SpaceColonization`, another stepper you hold (the [Chapter 10](10-FlocksAndSwarms.md) shape):
 
 ```swift
 let veins = SpaceColonization(attractors: poissonDisk(radius: 26),
                               roots: [Vector2(width / 2, height - 70)])
 ```
 
-`poissonDisk` is doing the scattering, and it returns an even, organic sprinkle of points, no two closer than the radius you ask for. Chapter 13 looks inside it, and for now it's a bag of well-spread points. The growth itself has no randomness at all. Same attractors, same roots, same veins, every run.
+`poissonDisk` is doing the scattering, and it returns an even, organic sprinkle of points, no two closer than the radius you ask for. [Chapter 13](13-ShapesAsMaterial.md) looks inside it, and for now it's a bag of well-spread points. The growth itself has no randomness at all. Same attractors, same roots, same veins, every run.
 
 Three distances shape the result, and they want a particular relationship. `stepLength` is how far a tip grows per step, and `killRadius` is how close counts as reached. Keep `stepLength` smaller than `killRadius`, or a tip can step right over its goal. Keep `killRadius` well under `influenceRadius`, which is how far an attractor's pull reaches. There's one practical gotcha. Growth only *starts* if some attractor's pull can reach a root. A tree whose crown floats high above its root needs an `influenceRadius` at least as long as the trunk-to-crown gap. The garden's tree hit exactly this.
 
@@ -495,8 +495,9 @@ The chance games have their own shelf. Iterated function systems and the chaos g
 - [Crack growth](../Docs/Generators/CrackGrowth.md): the stepper, the marks and the wash, and the plotter path through `segments`.
 - [Meander](../Docs/Generators/Meander.md): the migration mechanism step by step, every knob, and drawing the oxbows and scars.
 - [Wave Function Collapse](../Docs/Generators/WaveFunctionCollapse.md): sockets, weights, rotations, learning from a picture instead, and what to do when a solve fails.
-- [Blue noise](../Docs/Generators/BlueNoise.md): the even scatter the tree's crown was carved from, properly explained in Chapter 13.
+- [Blue noise](../Docs/Generators/BlueNoise.md): the even scatter the tree's crown was carved from, properly explained in [Chapter 13](13-ShapesAsMaterial.md).
 - [Fractals](../Docs/Generators/Fractals.md): the `IFS` type and its presets, the whole `FractalFlame` surface including the progressive renderer, inversion limit sets, the Kleinian trace presets, the Schottky circle orbit with both of its family builders, and `fitted` for placing any point cloud.
+- Appendix B draws this chapter's math, one picture per idea: [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure).
 - Worked examples: [`Examples/Patterns/LSystem`](../Examples/Patterns/LSystem/Sketch.swift) (the preset contact sheet), [`Examples/Patterns/ParametricLSystem`](../Examples/Patterns/ParametricLSystem/Sketch.swift) (the parametric one, including a tapered tree), [`Examples/Patterns/Venation`](../Examples/Patterns/Venation/Sketch.swift), [`Examples/Patterns/Dendrite`](../Examples/Patterns/Dendrite/Sketch.swift), [`Examples/Patterns/Cracks`](../Examples/Patterns/Cracks/Sketch.swift), [`Examples/Patterns/Meander`](../Examples/Patterns/Meander/Sketch.swift) (the river and its map of scars), [`Examples/Patterns/WaveFunctionCollapse`](../Examples/Patterns/WaveFunctionCollapse/Sketch.swift), [`Examples/Patterns/TextureSynthesis`](../Examples/Patterns/TextureSynthesis/Sketch.swift), [`Examples/Patterns/IteratedFunctions`](../Examples/Patterns/IteratedFunctions/Sketch.swift), [`Examples/Patterns/FractalFlame`](../Examples/Patterns/FractalFlame/Sketch.swift), [`Examples/Patterns/InversionFractal`](../Examples/Patterns/InversionFractal/Sketch.swift), and [`Examples/Patterns/Kleinian`](../Examples/Patterns/Kleinian/Sketch.swift).
 
 ---

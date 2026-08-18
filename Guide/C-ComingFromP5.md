@@ -44,7 +44,7 @@ final class Pulse: Sketch {
 
 Save it as `Pulse.swift`, run `swift run OllinLive Pulse.swift`, and it breathes like the original. Reading the two against each other shows most of what this appendix has to say:
 
-- **The sketch is a class.** Global functions become methods you `override` on a `Sketch` subclass. Sketch state that lived in globals becomes properties on the class. Chapter 1 walks through every line of this.
+- **The sketch is a class.** Global functions become methods you `override` on a `Sketch` subclass. Sketch state that lived in globals becomes properties on the class. [Chapter 1](01-HelloOllin.md) walks through every line of this.
 - **There is no `createCanvas`.** The canvas is 1080 by 1080 unless you say otherwise. The size is a declaration rather than a call, spelled `override var canvasSize: CanvasSize { .size(800, 600) }`.
 - **`drawCircle` takes a radius.** p5's `circle()` takes a diameter, which is why 480 became 240. Watch for this one, because it's the classic off-by-two.
 - **Motion reads a clock.** `frameCount * 0.03` becomes `time * 1.8`. `time` is seconds since the sketch started, so the speed holds on any display. At 60 frames a second the two expressions match exactly.
@@ -101,7 +101,7 @@ The catalog runs well past p5's. It holds stars, rings, hearts, n-gons, and a fe
 | `stroke(…)` / `strokeWeight(5)` | same names | |
 | `strokeCap(ROUND)` / `strokeJoin(MITER)` | `strokeCap(.round)` / `strokeJoin(.miter)` | enums instead of constants |
 | `colorMode(HSB, 360, 100, 100)` | `Color(hue: h, saturation: s, brightness: b)` | no mode state; everything `0...1`, hue wraps |
-| `lerpColor(a, b, 0.3)` | `Color.mix(a, b, t: 0.3)` | mixes in a perceptual space by default, so midpoints don't go muddy (Chapter 2) |
+| `lerpColor(a, b, 0.3)` | `Color.mix(a, b, t: 0.3)` | mixes in a perceptual space by default, so midpoints don't go muddy ([Chapter 2](02-Color.md)) |
 | `blendMode(ADD)` | `blendMode(.add)` | |
 
 ### Transforms and state
@@ -110,7 +110,7 @@ The catalog runs well past p5's. It holds stars, rings, hearts, n-gons, and a fe
 |---|---|---|
 | `translate(x, y)`, `rotate(a)`, `scale(s)` | same names | radians in both |
 | `push()` / `pop()` | `pushState()` / `popState()` | Processing: `pushMatrix()`/`popMatrix()` plus `pushStyle()`/`popStyle()`; one pair here snapshots both |
-| `push()` … `pop()` around a block | `withState { }` | the scoped form; the pop can't be forgotten (Chapter 6) |
+| `push()` … `pop()` around a block | `withState { }` | the scoped form; the pop can't be forgotten ([Chapter 6](06-GridsAndRepetition.md)) |
 | `angleMode(DEGREES)` | no equivalent | radians only; `.tau` is one full turn |
 | `TWO_PI`, `PI`, `HALF_PI` | `.tau`, `.pi`, `.pi / 2` | |
 | `radians(d)` / `degrees(r)` | `d * .pi / 180` / `r * 180 / .pi` | better: stay in radians and think in fractions of `.tau` |
@@ -123,11 +123,11 @@ The catalog runs well past p5's. It holds stars, rings, hearts, n-gons, and a fe
 | `random(array)` | `randomChoice(array)` | a weighted form exists: `randomChoice(array, weights:)` |
 | `shuffle(array)` | `shuffled(array)` | |
 | `randomGaussian()` | `randomGaussian()` | also `randomGaussian(mean:deviation:)` |
-| `randomSeed(n)` / `noiseSeed(n)` | same names | `seed(n)` sets both at once (Chapter 4) |
-| `noise(x)`, `noise(x, y)`, `noise(x, y, z)` | same | `0...1` in both, same small-steps habit (Chapter 5) |
+| `randomSeed(n)` / `noiseSeed(n)` | same names | `seed(n)` sets both at once ([Chapter 4](04-Randomness.md)) |
+| `noise(x)`, `noise(x, y)`, `noise(x, y, z)` | same | `0...1` in both, same small-steps habit ([Chapter 5](05-Noise.md)) |
 | `noiseDetail(lod, falloff)` | `fbm(x, y, octaves: 4, gain: 0.5)` | layered noise is its own call |
 
-Two more are worth meeting while you're here. `signedNoise` swings `-1...1`, with no more `* 2 - 1`, and `noise(x, loop: t)` closes on itself exactly, for seamless loops. Chapter 5 covers both.
+Two more are worth meeting while you're here. `signedNoise` swings `-1...1`, with no more `* 2 - 1`, and `noise(x, loop: t)` closes on itself exactly, for seamless loops. [Chapter 5](05-Noise.md) covers both.
 
 ### Vectors
 
@@ -143,7 +143,7 @@ Two more are worth meeting while you're here. `signedNoise` swings `-1...1`, wit
 | `p5.Vector.lerp(a, b, t)` | `a.lerp(to: b, t)` | |
 | `a.dot(b)` | `a.dot(b)` | |
 
-One habit is worth noticing. p5's vector methods change the vector in place, so `a.add(b)` alters `a`. Ollin's return new values and leave the inputs alone, which is why they read as math. Chapter 8 makes vectors comfortable.
+One habit is worth noticing. p5's vector methods change the vector in place, so `a.add(b)` alters `a`. Ollin's return new values and leave the inputs alone, which is why they read as math. [Chapter 8](08-Vectors.md) makes vectors comfortable.
 
 ### Everyday math
 
@@ -153,6 +153,7 @@ One habit is worth noticing. p5's vector methods change the vector in place, so 
 | `constrain(v, lo, hi)` | `clamp(v, lo, hi)` | |
 | `norm(v, a, b)` | `map(v, a, b, 0, 1)` | |
 | `lerp`, `dist`, `sin`, `cos`, `atan2`, `sqrt`, `pow`, `abs`, `min`, `max`, `floor` | same | `floor` returns a `Double`; `Int(x)` truncates to a whole number |
+| `width * 0.3, height * 0.7` | `uv(0.3, 0.7)` | a point as canvas fractions, so the sketch survives a resize |
 
 ### Text
 
@@ -161,19 +162,19 @@ One habit is worth noticing. p5's vector methods change the vector in place, so 
 | `text("hi", x, y)` | `drawText("hi", x, y)` | |
 | `textSize(32)` / `textWidth(s)` | same names | |
 | `textAlign(CENTER, CENTER)` | `textAlign(.center, .middle)` | the vertical center is `.middle` |
-| `textFont(f)` | `textFont(f)` | three font kinds: outline, bitmap, and stroke (Chapter 7) |
+| `textFont(f)` | `textFont(f)` | three font kinds: outline, bitmap, and stroke ([Chapter 7](07-WordsAndPictures.md)) |
 | `loadFont("x.otf")` | `OutlineFont(name:)` for installed fonts | or `OutlineFont(resource:in:)` for a bundled file |
 
 ### Images and pixels
 
 | p5.js | Ollin | Notes |
 |---|---|---|
-| `loadImage("a.png")` | `loadImage("a.png")` | returns an optional, since a path can be wrong (Chapter 7) |
+| `loadImage("a.png")` | `loadImage("a.png")` | returns an optional, since a path can be wrong ([Chapter 7](07-WordsAndPictures.md)) |
 | `image(img, x, y)` / `image(img, x, y, w, h)` | `drawImage(img, x, y)` / `drawImage(img, x, y, w, h)` | |
 | `tint(…)` / `noTint()` | `tint(_:)` / `noTint()` | |
 | `img.get(x, y)` / `img.set(x, y, c)` | `img[x, y]` | one subscript reads and writes |
 | `createImage(w, h)` | `Image(width:height:)` | |
-| `createGraphics(w, h)` | `renderTarget()` + `withTarget(layer) { }` | off-screen layers (Chapter 14) |
+| `createGraphics(w, h)` | `renderTarget()` + `withTarget(layer) { }` | off-screen layers ([Chapter 14](14-LayersAndEffects.md)) |
 
 ### Mouse and keyboard
 
@@ -193,13 +194,13 @@ Each of these gets a chapter, so the table only points.
 
 | p5.js | Ollin | Where |
 |---|---|---|
-| `createSlider`, `createButton`, the DOM | `@Param` knobs in the inspector | Chapter 1 |
-| `filter(BLUR)` | layers and the `Filter` catalog | Chapter 14 |
-| `loadShader` / `shader()` | the `Shader` type: `generate`, `.filtered`, `.combined` | Chapter 15 |
-| `WEBGL` mode, `box()`, `sphere()` | `camera()` or `perspective(…)`, then `drawBox()`, `drawSphere()`, … | Chapter 17 |
-| `orbitControl()` | `cameraControl()` | Chapter 17 |
-| `ambientLight`, `pointLight`, `directionalLight` | same names | Chapter 17 |
-| p5.sound: `getLevel()`, `p5.FFT` | `AudioAnalyzer`: `amplitude`, `spectrum`, `bands`, beats | Chapter 20 |
+| `createSlider`, `createButton`, the DOM | `@Param` knobs in the inspector | [Chapter 1](01-HelloOllin.md) |
+| `filter(BLUR)` | layers and the `Filter` catalog | [Chapter 14](14-LayersAndEffects.md) |
+| `loadShader` / `shader()` | the `Shader` type: `generate`, `.filtered`, `.combined` | [Chapter 15](15-YourFirstShader.md) |
+| `WEBGL` mode, `box()`, `sphere()` | `camera()` or `perspective(…)`, then `drawBox()`, `drawSphere()`, … | [Chapter 17](17-3DGently.md) |
+| `orbitControl()` | `cameraControl()` | [Chapter 17](17-3DGently.md) |
+| `ambientLight`, `pointLight`, `directionalLight` | same names | [Chapter 17](17-3DGently.md) |
+| p5.sound: `getLevel()`, `p5.FFT` | `AudioAnalyzer`: `amplitude`, `spectrum`, `bands`, beats | [Chapter 20](20-SoundAndControl.md) |
 
 ### Saving your work
 
@@ -211,7 +212,7 @@ Exporting is a run flag rather than a call in the sketch, so any sketch can rend
 | `saveFrames(…)` | `--export-sequence out --seconds 5` | |
 | `saveGif(…)` | `--export-gif loop.gif --seconds 4` | |
 | video capture libraries | `--export-video out.mp4 --seconds 10` | |
-| (no built-in SVG) | `--export-svg out.svg` | true vectors, plotter-ready (Chapter 22) |
+| (no built-in SVG) | `--export-svg out.svg` | true vectors, plotter-ready ([Chapter 22](22-SharingAndPerforming.md)) |
 
 ## Different on purpose
 
@@ -223,19 +224,21 @@ Exporting is a run flag rather than a call in the sketch, so any sketch can rend
 
 **Every sketch is already an instance.** What p5 calls instance mode is the only mode. A sketch is a class, its state is properties, and nothing leaks between sketches. `this.` ceremony doesn't come along. Inside the class you write `particles`, not `self.particles`.
 
-**The clock replaces the frame counter.** `time` and `deltaTime` are seconds. Motion written against them holds its speed on a 60 Hz display and a 120 Hz one alike. `frameCount` is still there for counting frames, but it's the wrong unit for speed. Chapter 3 builds the whole motion vocabulary on this.
+**The clock replaces the frame counter.** `time` and `deltaTime` are seconds. Motion written against them holds its speed on a 60 Hz display and a 120 Hz one alike. `frameCount` is still there for counting frames, but it's the wrong unit for speed. [Chapter 3](03-MotionAndTime.md) builds the whole motion vocabulary on this.
 
-**Files, not browser tabs.** The working loop is `swift run OllinLive Pulse.swift`, so you save the file and the running window swaps in the change. What you give up is the browser. Sharing a sketch means exporting an artifact, such as a still, a video, a GIF, or an SVG, rather than sending a URL. Chapter 22 is about doing that well.
+**The canvas wipes itself.** In p5 the pixels persist, `background()` is the wipe, and leaving it out is the classic trails trick. Ollin clears every frame whether or not you call `background`, so a ported trails sketch loses its trails in silence. The opt-out is one call, `noClear()`, and [Chapter 14](14-LayersAndEffects.md) builds the long-exposure style on it.
+
+**Files, not browser tabs.** The working loop is `swift run OllinLive Pulse.swift`, so you save the file and the running window swaps in the change. What you give up is the browser. Sharing a sketch means exporting an artifact, such as a still, a video, a GIF, or an SVG, rather than sending a URL. [Chapter 22](22-SharingAndPerforming.md) is about doing that well.
 
 ## Habits worth dropping
 
 - **Balancing `push()` and `pop()` by hand.** `withState { }` scopes the save and restore to a block, so the restore can't be forgotten or misplaced.
 - **Thinking in degrees.** There's no `angleMode`, and you won't miss it. A full turn is `.tau`, and half a turn is `.tau / 2`. Fractions of a turn read better than either 90 or 1.5708.
 - **Animating with `frameCount` arithmetic.** Reach for `time`. The magic numbers become real units (turns per second, pixels per second) and survive a change of display.
-- **Mixing colors in RGB.** `Color.mix` defaults to a perceptual space, so the midpoint of blue and yellow is a color you'd actually want. Chapter 2 shows the difference side by side.
-- **Hand-rolling grids from margins and nested loops.** `grid(columns: 12, rows: 8)` hands you the cells and their centers in one loop, indices included. Chapter 6.
-- **Hardcoding a constant, re-running, hardcoding again.** Declare it `@Param` and drag the knob while the sketch runs. When the value feels right, make it the new default. Chapter 1.
-- **Writing pixel loops for effects.** Blur, glow, and their relatives are GPU filters on layers, which Chapter 14 covers. Anything per-pixel you'd invent yourself is a short `shade` function away, in Chapter 15.
+- **Mixing colors in RGB.** `Color.mix` defaults to a perceptual space, so the midpoint of blue and yellow is a color you'd actually want. [Chapter 2](02-Color.md) shows the difference side by side.
+- **Hand-rolling grids from margins and nested loops.** `grid(columns: 12, rows: 8)` hands you the cells and their centers in one loop, indices included. [Chapter 6](06-GridsAndRepetition.md).
+- **Hardcoding a constant, re-running, hardcoding again.** Declare it `@Param` and drag the knob while the sketch runs. When the value feels right, make it the new default. [Chapter 1](01-HelloOllin.md).
+- **Writing pixel loops for effects.** Blur, glow, and their relatives are GPU filters on layers, which [Chapter 14](14-LayersAndEffects.md) covers. Anything per-pixel you'd invent yourself is a short `shade` function away, in [Chapter 15](15-YourFirstShader.md).
 
 ## Go deeper
 
@@ -247,4 +250,4 @@ Exporting is a run flag rather than a call in the sketch, so any sketch can rend
 
 ---
 
-[Contents](README.md#contents)
+[Contents](README.md#contents) · Previous: [Appendix B, Just enough math, visually](B-JustEnoughMath.md) · Next: [Appendix D, The complete toolbox](D-CompleteToolbox.md)

@@ -21,7 +21,7 @@ RGBDFrame(color: color, depth: depths, confidence: nil,
           depthWidth: 240, depthHeight: 180, intrinsics: intrinsics)
 ```
 
-Where did this chapter's frames come from, with no depth camera attached? We fake one. The committed figure [`Anatomy.swift`](Figures/19-DepthAndThePhone/Anatomy.swift) ends with `StageCamera`, under eighty lines of it. Those lines march rays through a tiny staged room, which is Chapter 18's sphere tracing run on the CPU. They fill exactly those arrays, colors from the scene and depths from how far each ray flew. It's a pretend camera, but the frame it produces is a real `RGBDFrame`. So everything else in this chapter treats it exactly as it would treat a LiDAR. That's the point of the type. Whatever fills the arrays, the rest of the pipeline doesn't care.
+Where did this chapter's frames come from, with no depth camera attached? We fake one. The committed figure [`Anatomy.swift`](Figures/19-DepthAndThePhone/Anatomy.swift) ends with `StageCamera`, under eighty lines of it. Those lines march rays through a tiny staged room, which is [Chapter 18](18-SculptingWithFields.md)'s sphere tracing run on the CPU. They fill exactly those arrays, colors from the scene and depths from how far each ray flew. It's a pretend camera, but the frame it produces is a real `RGBDFrame`. So everything else in this chapter treats it exactly as it would treat a LiDAR. That's the point of the type. Whatever fills the arrays, the rest of the pipeline doesn't care.
 
 > **Swift note.** `depth` is a plain `[Float]`, row by row from the top left, `0` where the sensor had no answer. Real depth maps are full of those holes, especially along silhouettes, and the API that reads them is built to shrug holes off.
 
@@ -31,7 +31,7 @@ One pixel plus one depth is a 3D point. The recipe is small enough to say in a s
 
 <img src="Images/19-DepthAndThePhone/Unproject.jpg" alt="A diagram of unprojection: a lens at the left, an image plane with a marked pixel, and a dashed ray extending out to a 3D point, with the recovered-coordinates formula below" width="680">
 
-That's called **unprojection**, and the intrinsics (`cx`, `cy` the image center, `fx`, `fy` the focal lengths) are exactly the numbers the recipe needs. You'll rarely do it per pixel yourself, because `RGBDFrame` does it wholesale. `pointCloud()` unprojects *every* valid depth pixel, colors each from the color image, and hands back the `PointCloud` you met in Chapter 17.
+That's called **unprojection**, and the intrinsics (`cx`, `cy` the image center, `fx`, `fy` the focal lengths) are exactly the numbers the recipe needs. You'll rarely do it per pixel yourself, because `RGBDFrame` does it wholesale. `pointCloud()` unprojects *every* valid depth pixel, colors each from the color image, and hands the result back as a `PointCloud`.
 
 ```swift
 let frame = StageCamera.capture(eye: Vector3(0.2, 1.05, 1.7),
@@ -68,7 +68,7 @@ for i in 0 ..< 6 {
 
 <img src="Images/19-DepthAndThePhone/Inhabit.jpg" alt="The staged room's color frame with six marbles placed into it in meters: four visible, one sliced in half by the crate's edge, the rest hidden behind it" width="560">
 
-Count the marbles. Six were drawn, and the crate's depth swallows the last two and slices one mid-body. Nothing here is compositing trickery. The marbles are ordinary solids from Chapter 17, z-tested against depths that came from a camera. That camera is our pretend one here, and the real one with a phone.
+Count the marbles. Six were drawn, and the crate's depth swallows the last two and slices one mid-body. Nothing here is compositing trickery. The marbles are ordinary solids from [Chapter 17](17-3DGently.md), z-tested against depths that came from a camera. That camera is our pretend one here, and the real one with a phone.
 
 ## Flat drawing that knows where it is
 
@@ -93,7 +93,7 @@ The three calls divide the job cleanly, and keeping them separate in your head s
 
 - **`depth(at: worldPoint)`** sets the *depth* of subsequent 2D drawing, and nothing else. The mark still lands wherever its canvas coordinates say. `noDepth()` puts it back on top.
 - **`project(worldPoint)`** answers the other half: where does this world point land on the canvas? It returns `nil` when the point is behind the camera, which is a case worth handling rather than forcing.
-- **`withBillboard(at: worldPoint) { }`** does both at once and moves the origin there, so inside the block you draw around `(0, 0)` and it lands on the point at the right depth. The numbered tags above are billboards, and it's the same call that labeled the shapes in Chapter 17's figures.
+- **`withBillboard(at: worldPoint) { }`** does both at once and moves the origin there, so inside the block you draw around `(0, 0)` and it lands on the point at the right depth. The numbered tags above are billboards, and it's the same call that labeled the shapes in [Chapter 17](17-3DGently.md)'s figures.
 
 Notice what the rings do *not* do. They don't get smaller with distance. All three are 96 points across, because a 2D mark keeps its canvas size. Depth changes what hides it, not how big it is. That's usually exactly what you want from a label, readable at any distance and correctly occluded. It's also the thing to remember when a sprite refuses to shrink.
 
@@ -300,7 +300,7 @@ The camera path does double duty here. Every fitted plane has two sides, and the
 
 Because the sketch handed over a `PointCloud` rather than bare positions, the colors ride along. Each mesh vertex takes its nearest sample's color, so the room comes back in the colors the camera saw. Per-vertex colors multiply the `fill`, which is the texture contract. That is why the default white fill shows them untouched, and `fill(Color(white: 0.5))` dims the whole scan without touching its hues. The same trick paints any mesh, via `colored(from:)` for a cloud or `colored(by:)` for a rule.
 
-What comes back is an ordinary `Mesh`, so everything Chapter 17 taught applies. That means materials, lighting, cast shadows, even `subdivided(_:)` to soften the scan. Sometimes points are their own material rather than a scan. A splash, say, or a swarm dense enough to read as a body. The sibling `particleSurface` skins them as one blended form, with no cameras involved. The [reference page](../Docs/Generators/SurfaceReconstruction.md) covers both, and the `3D/Geometry/SurfaceFromPoints` example puts the two side by side on one cloud.
+What comes back is an ordinary `Mesh`, so everything [Chapter 17](17-3DGently.md) taught applies. That means materials, lighting, cast shadows, even `subdivided(_:)` to soften the scan. Sometimes points are their own material rather than a scan. A splash, say, or a swarm dense enough to read as a body. The sibling `particleSurface` skins them as one blended form, with no cameras involved. The [reference page](../Docs/Generators/SurfaceReconstruction.md) covers both, and the `3D/Geometry/SurfaceFromPoints` example puts the two side by side on one cloud.
 
 ## A surface the phone already built
 
@@ -413,7 +413,7 @@ The woven texture is the scan lines of nine viewpoints interleaving. The solid p
 Then make it yours:
 
 - Point it at reality. With a LiDAR iPhone, swap `StageCamera` for `device.latestDepthFrame` and `device.latestPose` and sweep your actual room (the `3D/Phone/PhoneWorldScan` example is this piece with the pretend camera removed).
-- Restage the set. `StageCamera.scene` is a distance field, so everything Chapter 18 taught works in it, and you can melt a blob into the room and scan that.
+- Restage the set. `StageCamera.scene` is a distance field, so everything [Chapter 18](18-SculptingWithFields.md) taught works in it, and you can melt a blob into the room and scan that.
 - Color by height instead of by image, rebuilding the cloud with each point tinted by its `y`, and the scan becomes a contour map.
 - Slow the reveal to one frame every five seconds and export a video, because the assembly is the piece.
 - Rebuild it solid. Hand the finished world cloud to `reconstructSurface(of:spacing:orientedToward:)` with the nine eyes, and the ghost becomes a room you can light, shadow, and walk a camera through.
@@ -430,6 +430,7 @@ Depth capture entered art practice when the Microsoft Kinect shipped in 2010 and
 - [The iPhone capture app](../Docs/3D/Phone.md): body, faces, world depth with pose, the room mesh, the flat surfaces, the room's light, segmentation, motion, and world fusion.
 - [Depth compositing](../Docs/3D/DepthCompositing.md): `depth(at:)`, billboards, `drawDepthScene`, and the metric camera.
 - [Surface reconstruction](../Docs/Generators/SurfaceReconstruction.md): rebuilding a scanned cloud as a mesh, skinning particle sets, and the holes and orientation details.
+- Appendix B draws this chapter's math, one picture per idea: [Where things are](B-JustEnoughMath.md#where-things-are), [Into three dimensions](B-JustEnoughMath.md#into-three-dimensions).
 - Worked examples: [`Examples/3D/Depth/DepthCloud`](../Examples/3D/Depth/DepthCloud/Sketch.swift) (a webcam depth model, no phone needed), [`Examples/3D/Depth/DriftCorrectedScan`](../Examples/3D/Depth/DriftCorrectedScan/Sketch.swift) and [`Examples/3D/Depth/ClosedLoopScan`](../Examples/3D/Depth/ClosedLoopScan/Sketch.swift) (both staged, no phone needed), [`Examples/3D/Depth/Record3DCloud`](../Examples/3D/Depth/Record3DCloud/Sketch.swift), [`Examples/3D/Depth/Record3DLiveCloud`](../Examples/3D/Depth/Record3DLiveCloud/Sketch.swift), [`Examples/3D/Depth/DepthLiftedPose`](../Examples/3D/Depth/DepthLiftedPose/Sketch.swift), [`Examples/3D/Phone/PhoneDepthCloud`](../Examples/3D/Phone/PhoneDepthCloud/Sketch.swift), [`Examples/3D/Phone/PhoneWorldScan`](../Examples/3D/Phone/PhoneWorldScan/Sketch.swift), [`Examples/3D/Phone/PhoneRoomMesh`](../Examples/3D/Phone/PhoneRoomMesh/Sketch.swift), [`Examples/3D/Phone/PhoneRoomPlanes`](../Examples/3D/Phone/PhoneRoomPlanes/Sketch.swift), [`Examples/3D/Geometry/SurfaceFromPoints`](../Examples/3D/Geometry/SurfaceFromPoints/Sketch.swift), and [`Examples/3D/Depth/DepthOcclusion`](../Examples/3D/Depth/DepthOcclusion/Sketch.swift).
 
 ---

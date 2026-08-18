@@ -6,15 +6,15 @@
 
 <img src="Images/18-SculptingWithFields/Molten.jpg" alt="A pale mint sculpture like a settling drop of melted glass, glossy under studio light, one lobe drooping toward a dark floor that catches its soft shadow" width="560">
 
-Chapter 13 treated shapes as outlines you cut and joined, like paper. This chapter treats them as something closer to wax. They melt into each other, carve each other, and hold together as one surface no matter how you push them. The tool is the **signed distance field**, an idea you've already met twice without the name. It ends in the sculpture above, one body made of four melted lobes, slowly breathing, orbitable with the mouse.
+[Chapter 13](13-ShapesAsMaterial.md) treated shapes as outlines you cut and joined, like paper. This chapter treats them as something closer to wax. They melt into each other, carve each other, and hold together as one surface no matter how you push them. The tool is the **signed distance field**, an idea you've already met twice without the name. It ends in the sculpture above, one body made of four melted lobes, slowly breathing, orbitable with the mouse.
 
 ## A shape as a question
 
-Chapter 12 defined a field as an answer at every point. A **signed distance field** is a shape stored that way. Ask any point of the canvas and it answers with one number, *how far is the nearest surface*. The sign carries which side you're on. Positive is outside, negative is inside, and zero is exactly on the boundary.
+[Chapter 12](12-FieldsAndFlow.md) defined a field as an answer at every point. A **signed distance field** is a shape stored that way. Ask any point of the canvas and it answers with one number, *how far is the nearest surface*. The sign carries which side you're on. Positive is outside, negative is inside, and zero is exactly on the boundary.
 
 <img src="Images/18-SculptingWithFields/FieldMap.jpg" alt="A distance field visualized: a melted circle-and-box shape in warm orange, surrounded by concentric cool bands of equal distance, with a bold dark line at distance zero" width="680">
 
-That's the whole idea, and it's worth a slow look. The shape is not stored as an outline, and the *bold line* is only the places where the field happens to answer zero. Chapter 15 used this trick per pixel (a circle was "all the points within `radius`", and `smoothstep` softened its edge). What's new here is what the representation makes possible, because if two shapes are each a distance function, then *combining the answers* combines the shapes.
+That's the whole idea, and it's worth a slow look. The shape is not stored as an outline, and the *bold line* is only the places where the field happens to answer zero. [Chapter 15](15-YourFirstShader.md) used this trick per pixel (a circle was "all the points within `radius`", and `smoothstep` softened its edge). What's new here is what the representation makes possible, because if two shapes are each a distance function, then *combining the answers* combines the shapes.
 
 ## Melting
 
@@ -43,7 +43,7 @@ Run it and watch the seam. `SDF.circle` and `SDF.rect` are field *values*, like 
 
 <img src="Images/18-SculptingWithFields/MeltStrip.jpg" alt="The same orange and blue circles at four smoothing radii: touching hard at k = 0, necking together at 22, flowing into a peanut at 55, and fused into one capsule at 110" width="680">
 
-At `k = 0` the union is hard, two shapes overlapping like Chapter 13. As `k` grows, the seam becomes a fillet, then a neck, then the pair is one body. Look at the colors. The smooth union blends the two operands' colors across the melt, and that is what makes the result read as one object rather than a trick. This one knob is most of the medium, so put it on a `@Param` slider and you'll feel it immediately.
+At `k = 0` the union is hard, two shapes overlapping like [Chapter 13](13-ShapesAsMaterial.md). As `k` grows, the seam becomes a fillet, then a neck, then the pair is one body. Look at the colors. The smooth union blends the two operands' colors across the melt, and that is what makes the result read as one object rather than a trick. This one knob is most of the medium, so put it on a `@Param` slider and you'll feel it immediately.
 
 One habit is worth setting early, and it's that **order matters in the chain**. Every call wraps the field before it, so `circle.at(p).scaled(2)` scales the *moved* circle (it lands twice as far out), while `circle.scaled(2).at(p)` scales in place and then moves. Read chains inside out and they always make sense.
 
@@ -62,7 +62,7 @@ a.intersect(b)           // only the overlap
 a.morph(b, amount: 0.5)  // a shape halfway between the two
 ```
 
-These are Chapter 13's booleans reborn on fields, plus two things outlines can't do. The smooth forms are one. The other is `morph`, which blends the *boundary itself*, so at `0.5` you get a genuinely in-between shape rather than a crossfade. Two modifiers round out the kit. `.rounded(12)` inflates any field with soft corners, and `.onion(8)` hollows it into a shell. And past the melted family there's a whole *machined* family that shapes the seam like joinery instead of wax. It holds `chamferUnion`, `stairsUnion`, and `columnsUnion`, plus engrave, groove, tongue, and pipe detailing. The [combinators reference](../Docs/Drawing/Combinators.md#combining) has the full bench.
+These are [Chapter 13](13-ShapesAsMaterial.md)'s booleans reborn on fields, plus two things outlines can't do. The smooth forms are one. The other is `morph`, which blends the *boundary itself*, so at `0.5` you get a genuinely in-between shape rather than a crossfade. Two modifiers round out the kit. `.rounded(12)` inflates any field with soft corners, and `.onion(8)` hollows it into a shell. And past the melted family there's a whole *machined* family that shapes the seam like joinery instead of wax. It holds `chamferUnion`, `stairsUnion`, and `columnsUnion`, plus engrave, groove, tongue, and pipe detailing. The [combinators reference](../Docs/Drawing/Combinators.md#combining) has the full bench.
 
 ## Writing it like drawing
 
@@ -82,7 +82,7 @@ Everything drawable with a fill can join a block, including shapes the `SDF` typ
 
 ## Into space
 
-Everything above lifts into 3D nearly unchanged. `SDF3D` builds fields in space, and `drawSDF3D` draws the merged surface through Chapter 17's camera, lit by its lights, wearing its materials:
+Everything above lifts into 3D nearly unchanged. `SDF3D` builds fields in space, and `drawSDF3D` draws the merged surface through [Chapter 17](17-3DGently.md)'s camera, lit by its lights, wearing its materials:
 
 ```swift
 final class FirstMarch: Sketch {
@@ -182,11 +182,11 @@ There is still only one cluster. The domain operator rewrites each query point b
 
 ## The finish
 
-A field shades like a mesh, so all of Chapter 17 applies. `material(.jade)` gives a melt its glow, and `castShadows()` grounds it. A field even self-shadows, and it trades shadows with the meshes around it. But there is one family of finishes Chapter 17 deliberately left for here. It doesn't work without something this chapter's sculptures finally give it a reason to set up.
+A field shades like a mesh, so all of [Chapter 17](17-3DGently.md) applies. `material(.jade)` gives a melt its glow, and `castShadows()` grounds it. A field even self-shadows, and it trades shadows with the meshes around it. But there is one family of finishes [Chapter 17](17-3DGently.md) deliberately left for here. It doesn't work without something this chapter's sculptures finally give it a reason to set up.
 
 ### Two numbers for most real surfaces
 
-The materials in Chapter 17 were named looks, like velvet, jade, and toon. The **physically based** ones are different in kind. Instead of a name, you give two properties, and the renderer works out how light should behave:
+The materials in [Chapter 17](17-3DGently.md) were named looks, like velvet, jade, and toon. The **physically based** ones are different in kind. Instead of a name, you give two properties, and the renderer works out how light should behave:
 
 ```swift
 material(.metal(roughness: 0.12))         // a metal, nearly polished
@@ -199,7 +199,7 @@ material(.dielectric(roughness: 0.4))     // a non-metal, satin
 
 That is one material with one number changed. The leftmost sphere is a mirror, so what you see on it is mostly a reflection of the room it's standing in. That's why it's dark with one small bright highlight. As roughness grows, that reflection smears out into a wide sheen. By `1.0` it has spread so far that the sphere just reads as its average brightness. `fill` still sets the color, exactly as before, and roughness only decides how the surface handles light.
 
-There are ready-made ones for the common cases, like `.polishedMetal`, `.smoothPlastic`, and `.roughPlastic`. They're the same two properties underneath. Watch the naming, though. Plain `.plastic` is one of the *stylized* finishes from Chapter 17, not a physically based one, so reach for `.smoothPlastic` when you want this family.
+There are ready-made ones for the common cases, like `.polishedMetal`, `.smoothPlastic`, and `.roughPlastic`. They're the same two properties underneath. Watch the naming, though. Plain `.plastic` is one of the *stylized* finishes from [Chapter 17](17-3DGently.md), not a physically based one, so reach for `.smoothPlastic` when you want this family.
 
 ### A streak instead of a dot
 
@@ -232,7 +232,7 @@ drawSDF3D(body)
 
 Those two images are the same field, the same material, the same camera, and the same floor. The only difference is one word. Look at the left flank of the second blob and you can read the buildings in it. That's the whole idea in one glance. The surroundings *are* the reflection, and they are also the light. The floor is lit by the sky in the first and by an ochre evening in the second, without a single light being placed.
 
-Twenty environments come curated. Eight of them are bundled, so they work offline and instantly. Those are `.studio`, `.city`, `.courtyard`, `.forest`, `.interior`, `.night`, `.sunrise`, and `.sunset`. The other twelve download the first time you use one and cache from then on. They range enormously in real brightness, so each is exposed to a consistent level for you. They also pair well with `toneMap(.aces)` from Chapter 14, for a filmic rolloff on the highlights.
+Twenty environments come curated. Eight of them are bundled, so they work offline and instantly. Those are `.studio`, `.city`, `.courtyard`, `.forest`, `.interior`, `.night`, `.sunrise`, and `.sunset`. The other twelve download the first time you use one and cache from then on. They range enormously in real brightness, so each is exposed to a consistent level for you. They also pair well with `toneMap(.aces)` from [Chapter 14](14-LayersAndEffects.md), for a filmic rolloff on the highlights.
 
 The first image uses none of them. **`.sky(...)`** builds a daylight sky at runtime with nothing to load:
 
@@ -280,7 +280,7 @@ That figure fakes the webcam with one authored picture, so the guide reproduces;
 
 ## Mirrors that see off screen
 
-Chapter 17 finished with screen-space reflections and an honest limit. They reflect what is on the screen, so they cannot show you anything the camera can't already see. `rayTracedReflections()` is the answer to that, and it works differently enough to be worth understanding.
+[Chapter 17](17-3DGently.md) finished with screen-space reflections and an honest limit. They reflect what is on the screen, so they cannot show you anything the camera can't already see. `rayTracedReflections()` is the answer to that, and it works differently enough to be worth understanding.
 
 Instead of searching the finished picture for what a reflection should show, it fires an actual ray off each reflective surface. It asks what the ray hits, using the real geometry. Off-screen objects appear. Hidden faces appear. The underside of a ball resting on a mirrored floor appears, because the ray goes there and looks. It integrates into the environment lighting rather than sitting on top as a post-process. A traced hit simply replaces what the environment would have contributed, and a ray that hits nothing shows the sky.
 
@@ -375,7 +375,7 @@ What you keep is never the preview. Exports and snapshots render at full resolut
 
 ## Glass
 
-There has been a way to make a surface see-through since Chapter 17: give the `fill` some alpha, and the surface fades. Glass is a different thing. The surface stays fully there, with its highlights and reflections, and the *light* comes through instead, bent and tinted on the way. That's transmission, and it's one material call:
+There has been a way to make a surface see-through since [Chapter 17](17-3DGently.md): give the `fill` some alpha, and the surface fades. Glass is a different thing. The surface stays fully there, with its highlights and reflections, and the *light* comes through instead, bent and tinted on the way. That's transmission, and it's one material call:
 
 ```swift
 environment(.studio)                  // something to transmit
@@ -428,11 +428,11 @@ material(.felt)                         // a dry, fuzzy blue
 
 <img src="Images/18-SculptingWithFields/PaintAndCloth.jpg" alt="Four spheres in a row labeled car paint, bare metal, felt, and bare cloth. The car-paint sphere is a deep red with both a soft satin sheen and a small sharp white highlight; the bare metal beside it has only the satin sheen. The felt sphere is a pale-rimmed dusty blue that brightens toward its edge; the bare cloth beside it is the same blue, flat and matte" width="680">
 
-Look at the first pair. The bare metal has one soft satin highlight, the widest its roughness allows. The coated one keeps that satin body and adds a second, sharper reflection floating over it. **Two finishes on one surface, which no single roughness can make.** That's `clearcoat`, and the same idea covers piano lacquer and varnished wood. `.lacquer` is a near-black matte body under a deep gloss film. `clearcoatRoughness` sets the film's own polish, independent of the base. The base dims slightly under a coat, by exactly the light the film reflects away, so the layering never invents brightness. Add `sparkle` from Chapter 17 on top of `.carPaint` and you have metal-flake paint.
+Look at the first pair. The bare metal has one soft satin highlight, the widest its roughness allows. The coated one keeps that satin body and adds a second, sharper reflection floating over it. **Two finishes on one surface, which no single roughness can make.** That's `clearcoat`, and the same idea covers piano lacquer and varnished wood. `.lacquer` is a near-black matte body under a deep gloss film. `clearcoatRoughness` sets the film's own polish, independent of the base. The base dims slightly under a coat, by exactly the light the film reflects away, so the layering never invents brightness. Add [Chapter 17](17-3DGently.md)'s glitter flecks on top of `.carPaint`, through the `sparkle` knob, and you have metal-flake paint.
 
 Now the second pair. The felt sphere is the same blue as its neighbor, but its silhouette glows. Fabric is covered in fibers that lean every direction, and where the surface turns away from you those fibers catch the light edge-on. That's `sheen`. The face stays matte while the rim brightens, and the body gives up a little light to pay for it. `sheenRoughness` sets how tight the rim band is, so `.satin` pulls it close to the edge and `.felt` spreads it into a haze. `sheenColor` tints it. Leave it white for dusty cloth, or tint it away from the `fill` for shot fabric, the deep red velvet rimmed in orange that the [`CoatAndCloth` example](../Examples/3D/Materials/CoatAndCloth/Sketch.swift) ends on.
 
-Both layers work under ordinary lights, under the area-light panels of Chapter 17, and from an environment. Under `rayTracedReflections()` the coat's reflection upgrades to the traced scene along with everything else. The one honest edge matches glass. Seen *inside a mirror*, a coated or fuzzed surface shows only its base there.
+Both layers work under ordinary lights, under the area-light panels of [Chapter 17](17-3DGently.md), and from an environment. Under `rayTracedReflections()` the coat's reflection upgrades to the traced scene along with everything else. The one honest edge matches glass. Seen *inside a mirror*, a coated or fuzzed surface shows only its base there.
 
 ## Skin, wax, and stone
 
@@ -448,7 +448,7 @@ drawSphere(radius: 0.72)
 
 Look at each pair at the line where light gives way to shadow. The bare balls cut off the way a painted surface does. The scattering ones carry light a little way past that line, because light that entered on the lit side is re-emerging on the dark one. On the skin ball the carried light is *red*. Red travels farthest through flesh, which is why shadow edges on faces are warm. That per-channel reach is the `scatteringColor`, and its default is the skin ratio. Near-equal channels give the neutral softening of `.marble`, and a green-dominant color makes a jade whose glow is green.
 
-`scatteringRadius` is the one number you must set. It's in world units because it's a physical distance, how far light gets before it's absorbed. A head-sized form wants roughly 1% of its width. Make it too big and the material slides toward wax, then toward glowing from within, which is a nice dial to know about. `scattering` runs `0…1` and sets how much of the surface's light takes the trip at all. It layers on any material, needs no other calls, and costs nothing in a frame that doesn't use it. Two honest edges are worth knowing. It applies to solid meshes on the main canvas, so a raymarched field or a mesh inside a render target keeps its plain shading. And it's a different thing from the stylized `subsurface` glow Chapter 17's jade used, which fakes back-light cheaply and can still layer on top for ears and edges.
+`scatteringRadius` is the one number you must set. It's in world units because it's a physical distance, how far light gets before it's absorbed. A head-sized form wants roughly 1% of its width. Make it too big and the material slides toward wax, then toward glowing from within, which is a nice dial to know about. `scattering` runs `0…1` and sets how much of the surface's light takes the trip at all. It layers on any material, needs no other calls, and costs nothing in a frame that doesn't use it. Two honest edges are worth knowing. It applies to solid meshes on the main canvas, so a raymarched field or a mesh inside a render target keeps its plain shading. And it's a different thing from the stylized `subsurface` glow [Chapter 17](17-3DGently.md)'s jade used, which fakes back-light cheaply and can still layer on top for ears and edges.
 
 There's a second half, and it asks for one more call. Turn on `castShadows()` and the same material starts *transmitting*. Light that strikes the far side of a thin body comes through it, which is the flashlight-through-fingers trick from the top of this section done for real. It works because the shadow machinery already knows the one thing the material needs. A shadow map records where the light first landed, and the surface being shaded knows where it is. The gap between the two is how far the light traveled inside the body. **The shadow map was a thickness gauge all along.**
 
@@ -524,6 +524,7 @@ Distance fields as a drawing medium are the craft of the demoscene and Shadertoy
 - [Glass](../Docs/3D/3D.md#glass): every transmission knob with its units, the environment requirement, and the honest edges spelled out.
 - [Caustics](../Docs/3D/Caustics.md): what casts and what receives, the emitting light's priority, dispersion, the quality dial, and how the photon chain works.
 - [Subsurface scattering](../Docs/3D/3D.md#subsurface-scattering): the three scattering knobs, the presets, and the envelope; worked example [`Examples/3D/Materials/Subsurface`](../Examples/3D/Materials/Subsurface/Sketch.swift) (hold space to compare against the plain surfaces).
+- Appendix B draws this chapter's math, one picture per idea: [Per-pixel thinking and distance](B-JustEnoughMath.md#per-pixel-thinking-and-distance).
 - Worked examples for this section: [`Examples/3D/Materials/PhysicalMaterials`](../Examples/3D/Materials/PhysicalMaterials/Sketch.swift), [`Examples/3D/Materials/Glass`](../Examples/3D/Materials/Glass/Sketch.swift) (hold space to drop the traced view through the glass), [`Examples/3D/Environments/ImageBasedLighting`](../Examples/3D/Environments/ImageBasedLighting/Sketch.swift), [`EnvironmentGallery`](../Examples/3D/Environments/EnvironmentGallery/Sketch.swift) (steps through all twenty), and [`ProceduralSky`](../Examples/3D/Environments/ProceduralSky/Sketch.swift).
 - Worked example for the mesh route: [`Examples/3D/Geometry/Metaballs`](../Examples/3D/Geometry/Metaballs/Sketch.swift), a cluster that keeps fusing and parting, with the merge level and the grid detail on knobs.
 - Worked examples: [`Examples/Shapes/Combinators`](../Examples/Shapes/Combinators/Sketch.swift) and [`CombinatorsGradient`](../Examples/Shapes/CombinatorsGradient/Sketch.swift) in 2D; in 3D, [`Examples/3D/Raymarching/RaymarchedSDF`](../Examples/3D/Raymarching/RaymarchedSDF/Sketch.swift), [`RaymarchedShapes`](../Examples/3D/Raymarching/RaymarchedShapes/Sketch.swift), [`RaymarchedSculpt`](../Examples/3D/Raymarching/RaymarchedSculpt/Sketch.swift), [`RaymarchedClay`](../Examples/3D/Raymarching/RaymarchedClay/Sketch.swift), [`RaymarchedDomain`](../Examples/3D/Raymarching/RaymarchedDomain/Sketch.swift), [`RaymarchedRadial`](../Examples/3D/Raymarching/RaymarchedRadial/Sketch.swift), [`RaymarchedPlane`](../Examples/3D/Raymarching/RaymarchedPlane/Sketch.swift), and [`RaymarchedEnvironment`](../Examples/3D/Raymarching/RaymarchedEnvironment/Sketch.swift).
