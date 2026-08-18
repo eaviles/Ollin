@@ -199,7 +199,20 @@ material(.dielectric(roughness: 0.4))     // a non-metal, satin
 
 That is one material with one number changed. The leftmost sphere is a mirror, so what you see on it is mostly a reflection of the room it's standing in. That's why it's dark with one small bright highlight. As roughness grows, that reflection smears out into a wide sheen. By `1.0` it has spread so far that the sphere just reads as its average brightness. `fill` still sets the color, exactly as before, and roughness only decides how the surface handles light.
 
-There are ready-made ones for the common cases, like `.brushedMetal`, `.polishedMetal`, `.smoothPlastic`, and `.roughPlastic`. They're all the same two properties underneath. Watch the naming, though. Plain `.plastic` is one of the *stylized* finishes from Chapter 17, not a physically based one, so reach for `.smoothPlastic` when you want this family.
+There are ready-made ones for the common cases, like `.polishedMetal`, `.smoothPlastic`, and `.roughPlastic`. They're the same two properties underneath. Watch the naming, though. Plain `.plastic` is one of the *stylized* finishes from Chapter 17, not a physically based one, so reach for `.smoothPlastic` when you want this family.
+
+### A streak instead of a dot
+
+Roughness sets how *wide* the highlight is. One more number sets its *shape*. Look at the base of a frying pan, or a laptop lid. The highlight there isn't a dot but a streak, because fine parallel grooves from brushing or machining cover the surface. **anisotropy** is that streak. It runs `-1…1`: `0` keeps the round highlight, and either end pulls it into a line. **anisotropyRotation** spins the line, in radians.
+
+```swift
+material(Material(shading: .physicallyBased, metallic: 1,
+                  roughness: 0.4, anisotropy: 0.8))
+```
+
+<img src="Images/18-SculptingWithFields/BrushedRing.jpg" alt="Four steel objects in a row labeled isotropic, brushed 0.8, turned 90 degrees, and ring. The first sphere has one round highlight; the second wears a bright band wrapped horizontally around it; the third has the same band running vertically; the last is a thick metal ring whose sheen follows the curve of its surface like machining marks" width="680">
+
+**The whole picture answers to one number.** The first two spheres are the same steel, and the streak is what `0.8` does to it. The reflections smear the same way, so under an environment a brushed metal drags what it mirrors into stripes. The ring at the end is the ready-made `.brushedMetal` preset. On a curved body the streak follows the surface around, exactly how a machined ring or a lathed bowl reads. One thing to keep in mind: the streak is stretched *roughness*, so a mirror at roughness `0` has nothing to stretch. Give it a little roughness first. The [`BrushedMetal` example](../Examples/3D/Materials/BrushedMetal/Sketch.swift) sweeps the strength and the rotation side by side.
 
 ### Surroundings as the light
 

@@ -2098,6 +2098,60 @@ static inline float ollin_ltc_diffuse(OllinLight L, float3 n, float3 viewDir,
     return ollin_ltc_rect(n, viewDir, worldPos, identity, p0, p1, p2, p3, twoSided);
 }
 
+// Anisotropic specular (`mat.anisotropy.x` nonzero, physically-based only): the base
+// lobe stretched along a surface direction. One perceptual roughness splits into the
+// two α-level roughnesses along tangent and bitangent (at = α(1+strength),
+// ab = α(1−strength)); the distribution is the anisotropic GGX and the visibility the
+// height-correlated anisotropic Smith form (each folds in the 1/(4·N·L·N·V)
+// denominator like its isotropic sibling). The isotropic helpers above stay the
+// strength-0 path (the gate keeps them bit-exact), so these run only when a material
+// carries anisotropy. The area-light (LTC) lobes stay isotropic: the fitted tables
+// have no anisotropic form, and the punctual + environment lobes carry the look.
+// Written from the published techniques (README Techniques list).
+static inline float ollin_pbr_D_GGX_Aniso(float ToH, float BoH, float NoH,
+                                          float at, float ab) {
+    float a2 = at * ab;
+    float3 d = float3(ab * ToH, at * BoH, a2 * NoH);
+    float d2 = max(dot(d, d), 1e-10);
+    float b2 = a2 / d2;
+    return a2 * b2 * b2 * (1.0 / 3.14159265);
+}
+
+static inline float ollin_pbr_V_SmithGGX_Aniso(float at, float ab,
+                                               float ToV, float BoV,
+                                               float ToL, float BoL,
+                                               float NoV, float NoL) {
+    float lambdaV = NoL * length(float3(at * ToV, ab * BoV, NoV));
+    float lambdaL = NoV * length(float3(at * ToL, ab * BoL, NoL));
+    return 0.5 / max(lambdaV + lambdaL, 1e-5);
+}
+
+// The tangent/bitangent frame the anisotropic lobe shears along. A pipeline that
+// carries the real per-vertex basis passes it in (`vertexTangent.w` is the bitangent
+// handedness, never 0 on a real basis); the rest leave the zero default and get a
+// stable world-derived frame (the LTC fallback axis), which reads as a lathe finish
+// on a rotational surface. The packed cos/sin (`mat.anisotropy.yz`) then spins the
+// frame in the surface plane.
+static inline void ollin_aniso_frame(float3 n, float4 vertexTangent,
+                                     constant OllinMaterial &mat,
+                                     thread float3 &t, thread float3 &b) {
+    if (vertexTangent.w != 0.0) {
+        // Orthonormalize against the shading normal (a map may have bent it away
+        // from the frame the tangent was authored against).
+        float3 raw = vertexTangent.xyz - n * dot(n, vertexTangent.xyz);
+        float len = length(raw);
+        t = (len > 1e-6) ? raw / len : ollin_ltc_any_tangent(n);
+        b = cross(n, t) * ((len > 1e-6) ? sign(vertexTangent.w) : 1.0);
+    } else {
+        t = ollin_ltc_any_tangent(n);
+        b = cross(n, t);
+    }
+    float cr = mat.anisotropy.y, sr = mat.anisotropy.z;
+    float3 t0 = t;
+    t = t0 * cr + b * sr;
+    b = b * cr - t0 * sr;
+}
+
 // The lit color for a mesh fragment given its linear diffuse `base`, opacity `alpha`,
 // surface `normal`, `worldPos`, and the per-batch `mat` finish. It composes a base
 // shading model (standard Lambert / toon cel / Gooch warm–cool / physically-based) with
@@ -2141,6 +2195,11 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                                   // fragments (`meshRTThickness`); every other carrier leaves
                                   // the default (unread unless `shadowKind` is 2).
                                   , float rtThickness = 0.0
+                                  // The per-vertex tangent basis (xyz + bitangent
+                                  // handedness w) from a pipeline that carries one;
+                                  // the zero default derives a stable world frame.
+                                  // Read only when the material carries anisotropy.
+                                  , float4 tangent = float4(0.0)
                                   ) {
     float3 n = normalize(normal);
     if (light.enabled == 0) {
@@ -2181,6 +2240,18 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
         float sheenNoV = saturate(dot(n, viewDir));
         sheenE = sheenLUT.sample(sheenSamp, float2(sheenNoV, sheenRough)).r;
         sheenScale = 1.0 - max(sheenTint.x, max(sheenTint.y, sheenTint.z)) * sheenE;
+    }
+    // Anisotropic base lobe: the frame and the view's projections onto it, resolved
+    // once per pixel. Strength 0 takes none of this (the loop keeps the isotropic
+    // helpers on their exact old arithmetic, so existing materials shade
+    // byte-identically).
+    float aniso = (model == 3) ? mat.anisotropy.x : 0.0;
+    float3 anisoT = float3(0.0), anisoB = float3(0.0);
+    float anisoToV = 0.0, anisoBoV = 0.0;
+    if (aniso != 0.0) {
+        ollin_aniso_frame(n, tangent, mat, anisoT, anisoB);
+        anisoToV = dot(anisoT, viewDir);
+        anisoBoV = dot(anisoB, viewDir);
     }
 
     // Gooch sets its own diffuse tone below; the others start from the flat ambient term.
@@ -2439,8 +2510,21 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                 float3 F0 = mix(float3(mat.f0), base, mat.metallic);
                 // Under a coat the base's reflectance re-derives for the film interface.
                 if (coat > 0.0) F0 = mix(F0, ollin_pbr_coat_f0(F0), coat);
-                float  D   = ollin_pbr_D_GGX(NoH, rough);
-                float  Vis = ollin_pbr_V_SmithGGX(NoV, NoL, rough);
+                float D, Vis;
+                if (aniso != 0.0) {
+                    // One perceptual roughness split into the two α (the Kulla form).
+                    float a = rough * rough;
+                    float at = max(a * (1.0 + aniso), 1e-3);
+                    float ab = max(a * (1.0 - aniso), 1e-3);
+                    float ToH = dot(anisoT, h), BoH = dot(anisoB, h);
+                    float ToL = dot(anisoT, toLight), BoL = dot(anisoB, toLight);
+                    D   = ollin_pbr_D_GGX_Aniso(ToH, BoH, NoH, at, ab);
+                    Vis = ollin_pbr_V_SmithGGX_Aniso(at, ab, anisoToV, anisoBoV,
+                                                     ToL, BoL, NoV, NoL);
+                } else {
+                    D   = ollin_pbr_D_GGX(NoH, rough);
+                    Vis = ollin_pbr_V_SmithGGX(NoV, NoL, rough);
+                }
                 float3 F   = ollin_pbr_F_Schlick(VoH, F0);
                 float3 spec = D * Vis * F;
                 float3 kD   = (float3(1.0) - F) * (1.0 - mat.metallic);
@@ -2621,6 +2705,11 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
                                   // fragments (`meshRTThickness`); every other carrier leaves
                                   // the default (unread unless `shadowKind` is 2).
                                   , float rtThickness = 0.0
+                                  // The per-vertex tangent basis (xyz + bitangent
+                                  // handedness w) from a pipeline that carries one;
+                                  // the zero default derives a stable world frame.
+                                  // Read only when the material carries anisotropy.
+                                  , float4 tangent = float4(0.0)
                                   ) {
     float3 n = normalize(normal);
     if (light.enabled == 0) {
@@ -2661,6 +2750,18 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
         float sheenNoV = saturate(dot(n, viewDir));
         sheenE = sheenLUT.sample(sheenSamp, float2(sheenNoV, sheenRough)).r;
         sheenScale = 1.0 - max(sheenTint.x, max(sheenTint.y, sheenTint.z)) * sheenE;
+    }
+    // Anisotropic base lobe: the frame and the view's projections onto it, resolved
+    // once per pixel. Strength 0 takes none of this (the loop keeps the isotropic
+    // helpers on their exact old arithmetic, so existing materials shade
+    // byte-identically).
+    float aniso = (model == 3) ? mat.anisotropy.x : 0.0;
+    float3 anisoT = float3(0.0), anisoB = float3(0.0);
+    float anisoToV = 0.0, anisoBoV = 0.0;
+    if (aniso != 0.0) {
+        ollin_aniso_frame(n, tangent, mat, anisoT, anisoB);
+        anisoToV = dot(anisoT, viewDir);
+        anisoBoV = dot(anisoB, viewDir);
     }
 
     // Gooch sets its own diffuse tone below; the others start from the flat ambient term.
@@ -2919,8 +3020,21 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
                 float3 F0 = mix(float3(mat.f0), base, pxMetal);
                 // Under a coat the base's reflectance re-derives for the film interface.
                 if (coat > 0.0) F0 = mix(F0, ollin_pbr_coat_f0(F0), coat);
-                float  D   = ollin_pbr_D_GGX(NoH, rough);
-                float  Vis = ollin_pbr_V_SmithGGX(NoV, NoL, rough);
+                float D, Vis;
+                if (aniso != 0.0) {
+                    // One perceptual roughness split into the two α (the Kulla form).
+                    float a = rough * rough;
+                    float at = max(a * (1.0 + aniso), 1e-3);
+                    float ab = max(a * (1.0 - aniso), 1e-3);
+                    float ToH = dot(anisoT, h), BoH = dot(anisoB, h);
+                    float ToL = dot(anisoT, toLight), BoL = dot(anisoB, toLight);
+                    D   = ollin_pbr_D_GGX_Aniso(ToH, BoH, NoH, at, ab);
+                    Vis = ollin_pbr_V_SmithGGX_Aniso(at, ab, anisoToV, anisoBoV,
+                                                     ToL, BoL, NoV, NoL);
+                } else {
+                    D   = ollin_pbr_D_GGX(NoH, rough);
+                    Vis = ollin_pbr_V_SmithGGX(NoV, NoL, rough);
+                }
                 float3 F   = ollin_pbr_F_Schlick(VoH, F0);
                 float3 spec = D * Vis * F;
                 float3 kD   = (float3(1.0) - F) * (1.0 - pxMetal);
@@ -3568,12 +3682,34 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
                                            texture2d<float> giDepthTex,
                                            texture2d<float> giOffsetsTex
 #endif
+                                           // The per-vertex tangent basis (xyz +
+                                           // handedness w) from a pipeline that has
+                                           // one; zero derives a stable world frame.
+                                           // Read only under anisotropy.
+                                           , float4 tangent = float4(0.0)
                                            ) {
     constexpr sampler cubeSamp(filter::linear, mip_filter::linear, address::clamp_to_edge);
     constexpr sampler lutSamp(filter::linear, address::clamp_to_edge);
     float NoV = max(dot(n, viewDir), 1e-4);
     float rough = clamp((float)mat.roughness, 0.045, 1.0);
     float3 R = reflect(-viewDir, n);
+    // Anisotropy bends the base lobe's gather direction toward the surface's tangent
+    // plane (the bent-normal trick), so the stretched highlight reads the environment
+    // the way the streak reflects it. Only the base lobe follows: the coat and sheen
+    // keep the plain mirror direction below (`Rmirror`), their lobes being isotropic,
+    // though under ray-traced reflections the coat reuses the traced (bent) radiance,
+    // the same single-trace tradeoff it already takes on roughness. Strength 0 never
+    // enters, and `Rmirror == R` keeps every non-anisotropic frame byte-identical.
+    float3 Rmirror = R;
+    if (mat.anisotropy.x != 0.0) {
+        float3 anT, anB;
+        ollin_aniso_frame(n, tangent, mat, anT, anB);
+        float3 dir = (mat.anisotropy.x >= 0.0) ? anB : anT;
+        float3 bentT = cross(dir, viewDir);
+        float3 bentN = cross(bentT, dir);
+        float bend = abs(mat.anisotropy.x) * saturate(5.0 * rough);
+        R = reflect(-viewDir, normalize(mix(n, normalize(bentN), bend)));
+    }
     // Spin the sample directions about Y by the environment rotation.
     float cs = cos(light.iblRotation), sn = sin(light.iblRotation);
     float3x3 rot = float3x3(float3(cs, 0.0, -sn), float3(0.0, 1.0, 0.0), float3(sn, 0.0, cs));
@@ -3644,7 +3780,7 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
     if (sheenTint.x + sheenTint.y + sheenTint.z > 0.0) {
         float sheenRough = clamp((float)mat.sheenColor.w, 0.045, 1.0);
         float sheenE = sheenLUT.sample(lutSamp, float2(NoV, sheenRough)).r;
-        float3 sheenRad = prefilterTex.sample(cubeSamp, rot * R,
+        float3 sheenRad = prefilterTex.sample(cubeSamp, rot * Rmirror,
                                               level(sheenRough * light.iblMaxMip)).rgb;
         color = color * (1.0 - max(sheenTint.x, max(sheenTint.y, sheenTint.z)) * sheenE)
               + sheenTint * (sheenE * sheenRad);
@@ -3660,9 +3796,9 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
 #if OLLIN_RT_SHADOWS
         float3 coatRad = (light.rtReflections != 0)
             ? prefiltered
-            : prefilterTex.sample(cubeSamp, rot * R, level(coatRough * light.iblMaxMip)).rgb;
+            : prefilterTex.sample(cubeSamp, rot * Rmirror, level(coatRough * light.iblMaxMip)).rgb;
 #else
-        float3 coatRad = prefilterTex.sample(cubeSamp, rot * R,
+        float3 coatRad = prefilterTex.sample(cubeSamp, rot * Rmirror,
                                              level(coatRough * light.iblMaxMip)).rgb;
 #endif
         color = color * (1.0 - Fc) + coatRad * Fc;
@@ -3719,12 +3855,34 @@ static inline float3 ollin_pbr_ibl_ambient_mapped(float3 base, float3 n, float3 
                                            texture2d<float> giDepthTex,
                                            texture2d<float> giOffsetsTex
 #endif
+                                           // The per-vertex tangent basis (xyz +
+                                           // handedness w) from a pipeline that has
+                                           // one; zero derives a stable world frame.
+                                           // Read only under anisotropy.
+                                           , float4 tangent = float4(0.0)
                                            ) {
     constexpr sampler cubeSamp(filter::linear, mip_filter::linear, address::clamp_to_edge);
     constexpr sampler lutSamp(filter::linear, address::clamp_to_edge);
     float NoV = max(dot(n, viewDir), 1e-4);
     float rough = clamp(pxRough, 0.045, 1.0);
     float3 R = reflect(-viewDir, n);
+    // Anisotropy bends the base lobe's gather direction toward the surface's tangent
+    // plane (the bent-normal trick), so the stretched highlight reads the environment
+    // the way the streak reflects it. Only the base lobe follows: the coat and sheen
+    // keep the plain mirror direction below (`Rmirror`), their lobes being isotropic,
+    // though under ray-traced reflections the coat reuses the traced (bent) radiance,
+    // the same single-trace tradeoff it already takes on roughness. Strength 0 never
+    // enters, and `Rmirror == R` keeps every non-anisotropic frame byte-identical.
+    float3 Rmirror = R;
+    if (mat.anisotropy.x != 0.0) {
+        float3 anT, anB;
+        ollin_aniso_frame(n, tangent, mat, anT, anB);
+        float3 dir = (mat.anisotropy.x >= 0.0) ? anB : anT;
+        float3 bentT = cross(dir, viewDir);
+        float3 bentN = cross(bentT, dir);
+        float bend = abs(mat.anisotropy.x) * saturate(5.0 * rough);
+        R = reflect(-viewDir, normalize(mix(n, normalize(bentN), bend)));
+    }
     // Spin the sample directions about Y by the environment rotation.
     float cs = cos(light.iblRotation), sn = sin(light.iblRotation);
     float3x3 rot = float3x3(float3(cs, 0.0, -sn), float3(0.0, 1.0, 0.0), float3(sn, 0.0, cs));
@@ -3795,7 +3953,7 @@ static inline float3 ollin_pbr_ibl_ambient_mapped(float3 base, float3 n, float3 
     if (sheenTint.x + sheenTint.y + sheenTint.z > 0.0) {
         float sheenRough = clamp((float)mat.sheenColor.w, 0.045, 1.0);
         float sheenE = sheenLUT.sample(lutSamp, float2(NoV, sheenRough)).r;
-        float3 sheenRad = prefilterTex.sample(cubeSamp, rot * R,
+        float3 sheenRad = prefilterTex.sample(cubeSamp, rot * Rmirror,
                                               level(sheenRough * light.iblMaxMip)).rgb;
         color = color * (1.0 - max(sheenTint.x, max(sheenTint.y, sheenTint.z)) * sheenE)
               + sheenTint * (sheenE * sheenRad);
@@ -3811,9 +3969,9 @@ static inline float3 ollin_pbr_ibl_ambient_mapped(float3 base, float3 n, float3 
 #if OLLIN_RT_SHADOWS
         float3 coatRad = (light.rtReflections != 0)
             ? prefiltered
-            : prefilterTex.sample(cubeSamp, rot * R, level(coatRough * light.iblMaxMip)).rgb;
+            : prefilterTex.sample(cubeSamp, rot * Rmirror, level(coatRough * light.iblMaxMip)).rgb;
 #else
-        float3 coatRad = prefilterTex.sample(cubeSamp, rot * R,
+        float3 coatRad = prefilterTex.sample(cubeSamp, rot * Rmirror,
                                              level(coatRough * light.iblMaxMip)).rgb;
 #endif
         color = color * (1.0 - Fc) + coatRad * Fc;
@@ -4333,12 +4491,12 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
     float4 c = meshLitColor(base, alpha, N, in.worldPos, mat, light,
                             shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
                             ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT,
-                            rtShadow, -1.0, meshFieldShadow, rtThickness);
+                            rtShadow, -1.0, meshFieldShadow, rtThickness, in.tangent);
 #else
     float4 c = meshLitColor(base, alpha, N, in.worldPos, mat, light,
                             shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
                             ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT,
-                            -1.0, meshFieldShadow);
+                            -1.0, meshFieldShadow, 0.0, in.tangent);
 #endif
 #if OLLIN_RT_SHADOWS
     float3 gi = float3(0.0);
@@ -4366,7 +4524,7 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
                                        deferredRefl, ltcAmp, iesProfiles, cookies, gi,
                                        giIrradianceTex, giDepthTex, giOffsetsTex
 #endif
-                                       );
+                                       , in.tangent);
     } else if (light.iblEnabled != 0 && mat.shadingModel != 2) {
 #if OLLIN_RT_SHADOWS
         if (light.giOrigin.w > 0.0) {
@@ -4754,12 +4912,12 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
     float4 c = meshLitColorMapped(base, alpha, N, in.worldPos, pxMetal, pxRough, pxAO, mat, light,
                             shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
                             ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT,
-                            rtShadow, -1.0, meshFieldShadow, rtThickness);
+                            rtShadow, -1.0, meshFieldShadow, rtThickness, in.tangent);
 #else
     float4 c = meshLitColorMapped(base, alpha, N, in.worldPos, pxMetal, pxRough, pxAO, mat, light,
                             shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
                             ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT,
-                            -1.0, meshFieldShadow);
+                            -1.0, meshFieldShadow, 0.0, in.tangent);
 #endif
 #if OLLIN_RT_SHADOWS
     float3 gi = float3(0.0);
@@ -4789,7 +4947,7 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
                                        deferredRefl, ltcAmp, iesProfiles, cookies, gi,
                                        giIrradianceTex, giDepthTex, giOffsetsTex
 #endif
-                                       );
+                                       , in.tangent);
     } else if (light.iblEnabled != 0 && mat.shadingModel != 2) {
 #if OLLIN_RT_SHADOWS
         if (light.giOrigin.w > 0.0) {

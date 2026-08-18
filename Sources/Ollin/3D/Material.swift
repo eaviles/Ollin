@@ -101,6 +101,19 @@ public struct Material: Equatable, Sendable {
     /// == .physicallyBased`.
     public var roughness: Double
 
+    /// Physically-based shading: how directional the surface's polish is, `-1…1`.
+    /// `0` (the default) is an even polish whose highlight is round. Toward `1` the
+    /// highlight stretches into the streak of a brushed or turned finish (brushed
+    /// aluminum, satin, the base of a pan), running along the surface's `u` axis on a
+    /// mesh with a normal or surface map, and around a stable world frame everywhere
+    /// else, which reads as a lathe finish on a sphere or cylinder. `-1` runs the
+    /// streak the other way. Needs some `roughness` to show (a mirror has no lobe to
+    /// stretch). Ignored unless `shading == .physicallyBased`.
+    public var anisotropy: Double
+    /// Spins the brushed streak in the surface plane, in radians: `0` follows the `u`
+    /// axis (or the world frame), `.pi / 2` runs it the other way.
+    public var anisotropyRotation: Double
+
     /// Physically-based shading: how much light passes *through* the surface, `0…1`.
     /// At `0` the surface is opaque (the default); at `1` it's clear glass, the diffuse
     /// body replaced by whatever shows through, tinted by the `fill` and blurred by
@@ -237,6 +250,7 @@ public struct Material: Equatable, Sendable {
     /// when you set them.
     public init(shading: Shading = .standard, toonBands: Double = 4,
                 metallic: Double = 0, roughness: Double = 0.5,
+                anisotropy: Double = 0, anisotropyRotation: Double = 0,
                 transmission: Double = 0, ior: Double = 1.5,
                 thickness: Double = 0, attenuationColor: Color = .white,
                 attenuationDistance: Double = 0,
@@ -259,6 +273,8 @@ public struct Material: Equatable, Sendable {
         self.toonBands = max(1, toonBands)
         self.metallic = min(1, max(0, metallic))
         self.roughness = min(1, max(0, roughness))
+        self.anisotropy = min(1, max(-1, anisotropy))
+        self.anisotropyRotation = anisotropyRotation
         self.transmission = min(1, max(0, transmission))
         self.ior = max(1, ior)
         self.thickness = max(0, thickness)
@@ -349,6 +365,11 @@ public struct Material: Equatable, Sendable {
                                  Float(max(0.001, scatteringColor.blue)),
                                  Float(scatteringRadius))
         m.scatterStrength = Float(scattering)
+        // The brushing rotation ships as cos/sin so the fragment never evaluates the
+        // angle; at strength 0 the shader's gate keeps the whole lobe untouched.
+        m.anisotropy = SIMD4<Float>(Float(anisotropy),
+                                    Float(cos(anisotropyRotation)),
+                                    Float(sin(anisotropyRotation)), 0)
         return m
     }
 
@@ -501,8 +522,10 @@ public extension Material {
         Material(shading: .physicallyBased, metallic: 0, roughness: roughness)
     }
 
-    /// Brushed metal: a physically-based conductor with a soft, satin reflection.
-    static let brushedMetal = Material(shading: .physicallyBased, metallic: 1, roughness: 0.4)
+    /// Brushed metal: a physically-based conductor whose highlight streaks along the
+    /// brushing (the anisotropic lobe), the way a brushed or lathed surface reflects.
+    static let brushedMetal = Material(shading: .physicallyBased, metallic: 1,
+                                       roughness: 0.4, anisotropy: 0.8)
 
     /// Polished metal: a physically-based conductor with a tight, near-mirror reflection.
     static let polishedMetal = Material(shading: .physicallyBased, metallic: 1, roughness: 0.08)

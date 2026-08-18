@@ -314,6 +314,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("pbr-materials",
                  note: "A metal / mixed / dielectric x roughness sweep in the physically-based shading model (shadingModel 3). Pins the new OllinMaterial metallic/roughness fields and the Cook-Torrance branch (GGX distribution, Smith visibility, Schlick Fresnel, the (1-metallic) diffuse kill). No time, so it's deterministic.",
                  make: { PBRMaterialsScene() }),
+    SnapshotCase("anisotropy-materials",
+                 note: "The anisotropic specular finish: a strength sweep (0 / 0.5 / 0.9 / -0.9), the rotation spinning the streak, and the .brushedMetal preset on a torus, under fixed lights + the studio environment. Pins the OllinMaterial anisotropy packing, the anisotropic GGX + Smith direct lobe, the world-frame tangent fallback, and the bent-reflection environment gather. Fixed camera, no time, deterministic.",
+                 make: { AnisotropyScene() }),
     SnapshotCase("pbr-ibl",
                  note: "Physically-based balls lit by a bundled HDRI environment (image-based lighting): pins the whole IBL path (the equirect->cube / irradiance / GGX-prefilter / BRDF-LUT bake, the split-sum ambient on the mesh fragment, and the skybox backdrop). Fixed camera + environment, no time, so the bake is deterministic.",
                  make: { IBLScene() }),
@@ -1475,6 +1478,48 @@ private final class MeshMaterialsScene: Sketch {
 /// A metal / mixed / dielectric × roughness grid in the physically-based shading model
 /// under a fixed camera and custom lights — pins the metallic/roughness fields and the
 /// Cook-Torrance branch (no IBL: the smooth metals read dark, which is correct). No `time`.
+private final class AnisotropyScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        camera(.orbiting(target: .zero, radius: 8,
+                         azimuth: 0.0, elevation: 0.18, fieldOfView: .pi / 3.4))
+        environment(.studio.intensity(0.9))
+        directionalLight(Color(kelvin: 5400), direction: Vector3(-0.2, -0.4, -0.9), intensity: 1.1)
+
+        // Top row: the strength sweep on one steel.
+        let strengths = [0.0, 0.5, 0.9, -0.9]
+        for (col, s) in strengths.enumerated() {
+            withState {
+                translate(-2.4 + Double(col) * 1.6, 0.95, 0)
+                fill(Color(white: 0.75))
+                material(Material(shading: .physicallyBased, metallic: 1,
+                                  roughness: 0.4, anisotropy: s))
+                drawSphere(radius: 0.65)
+            }
+        }
+        // Bottom row: the rotation spinning the streak, then the preset on a torus.
+        for col in 0..<3 {
+            withState {
+                translate(-2.4 + Double(col) * 1.6, -0.95, 0)
+                fill(Color(hue: 0.11, saturation: 0.62, brightness: 0.85))
+                material(Material(shading: .physicallyBased, metallic: 1, roughness: 0.4,
+                                  anisotropy: 0.9,
+                                  anisotropyRotation: Double(col) * .pi / 4))
+                drawSphere(radius: 0.65)
+            }
+        }
+        withState {
+            translate(2.4, -0.95, 0)
+            rotateX(.pi / 2 - 0.5)
+            fill(Color(hue: 0.11, saturation: 0.62, brightness: 0.85))
+            material(.brushedMetal)
+            drawTorus(radius: 0.48, tube: 0.22)
+        }
+    }
+}
+
 private final class PBRMaterialsScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 

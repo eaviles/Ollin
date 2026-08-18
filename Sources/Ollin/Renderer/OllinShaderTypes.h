@@ -575,6 +575,11 @@ typedef struct {
                                   // base color); y = 1 when a detail normal map is bound
                                   // (texture 23, data; reoriented onto the base normal);
                                   // z, w pad the row.
+    simd_float4 anisotropy;       // anisotropic specular (physically-based only): x = strength,
+                                  // −1…1 (0 = isotropic, the gate; positive stretches the
+                                  // highlight along the surface's u/tangent axis, negative
+                                  // across it); y/z = cos/sin of the brushing rotation, packed
+                                  // CPU-side so the fragment never evaluates the angle; w pads.
 } OllinMaterial;
 
 // A projected decal (see `Sketch.decal(_:at:...)`): a picture stamped onto whatever
