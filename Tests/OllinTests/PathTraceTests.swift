@@ -439,4 +439,295 @@ struct PathTraceTests {
         let b = try #require(pathTracedSlice(.everything, samples: 12))
         #expect(pixels(of: a) == pixels(of: b))
     }
+
+    // MARK: - Surface maps through the trace
+
+    /// The scenes for the traced surface-map probes: each map kind staged so its
+    /// effect is either analytically exact or pinned against the raster pipeline,
+    /// which reads the same maps through the surface-mapped fragment.
+    final class MapsProbe: Sketch {
+        enum Kind {
+            case normalMapped          // half-tilted map on a face, oblique light
+            case normalFlat            // the same face, no map (the comparison)
+            case mrMapped              // a constant metallic-roughness map
+            case mrFactors             // the same surface carried as bare factors
+            case occlusionBlack        // a fully-occluding map in the furnace
+            case occlusionWhite        // the identity map in the furnace
+            case emissiveHeadOn        // a gray emissive map viewed straight on
+            case emissiveFloor         // the analytic mesh-light floor, map-dimmed
+            case triplanarFace         // the projected two-tone, trace vs raster
+            case mapsEverything        // all of it at once (the determinism scene)
+        }
+        var kind: Kind = .normalFlat
+
+        override var canvasSize: CanvasSize { .square(256) }
+
+        static func make(_ kind: Kind) -> MapsProbe {
+            let p = MapsProbe()
+            p.kind = kind
+            return p
+        }
+
+        /// A solid-color RGBA image (the constant-map builder).
+        static func constant(_ r: UInt8, _ g: UInt8, _ b: UInt8) -> Image {
+            var bytes = [UInt8]()
+            bytes.reserveCapacity(16 * 16 * 4)
+            for _ in 0..<(16 * 16) { bytes.append(contentsOf: [r, g, b, 255]) }
+            return Image(width: 16, height: 16, premultipliedRGBA: bytes)!
+        }
+
+        /// A normal map whose left half leans 45° one way along u and whose right
+        /// half leans the other: under an oblique light the two halves must shade
+        /// apart by the bent cosine, and identically through both pipelines.
+        static let halfTilt: Image = {
+            var bytes = [UInt8]()
+            bytes.reserveCapacity(64 * 64 * 4)
+            for _ in 0..<64 {
+                for x in 0..<64 {
+                    bytes.append(x < 32 ? 218 : 37)   // ±0.707 in tangent x
+                    bytes.append(128)
+                    bytes.append(218)                 // 0.707 up
+                    bytes.append(255)
+                }
+            }
+            return Image(width: 64, height: 64, premultipliedRGBA: bytes)!
+        }()
+
+        /// Metallic-roughness, glTF packing: roughness 102/255 = 0.4 in g,
+        /// metallic 1 in b (chosen so the byte decodes to the comparator's
+        /// factor exactly).
+        static let mrMap = constant(0, 102, 255)
+        static let occlusionZero = constant(0, 0, 0)
+        static let occlusionOne = constant(255, 255, 255)
+        /// Emissive, sRGB: 188 decodes to ~0.502 linear, the dimming the two
+        /// emissive probes price.
+        static let emissiveGray = constant(188, 188, 188)
+        static let emissiveGrayLinear = Color.srgbToLinear(188.0 / 255.0)
+
+        private func frontFace(_ mesh: Mesh, fill fillColor: Color = .white) {
+            camera(Camera3D(eye: Vector3(0, 0, 4), target: .zero))
+            fill(fillColor)
+            drawMesh(mesh)
+        }
+
+        /// A uv-carrying square face turned toward the camera (`Mesh.plane` faces
+        /// +y with u along +x; the quarter turn about x brings it to +z with u
+        /// still along world x and v running down the image).
+        private func facingPlane(_ size: Double, dress: (Mesh) -> Mesh) {
+            camera(Camera3D(eye: Vector3(0, 0, 4), target: .zero))
+            withState {
+                rotateX(.pi / 2)
+                drawMesh(dress(Mesh.plane(width: size, depth: size)))
+            }
+        }
+
+        override func draw() {
+            background(.black)
+            switch kind {
+            case .normalMapped, .normalFlat:
+                // An oblique light from the right: the half leaning toward it
+                // catches nearly full light, the half leaning away falls to the
+                // ambient floor.
+                ambientLight(Color(white: 0.05))
+                directionalLight(Color(white: 0.8), direction: Vector3(-1, 0, -0.6))
+                material(Material())
+                fill(Color(white: 0.9))
+                let mapped = kind == .normalMapped
+                facingPlane(3) { mapped ? $0.normalMapped(Self.halfTilt) : $0 }
+            case .mrMapped, .mrFactors:
+                ambientLight(Color(white: 0.1))
+                directionalLight(Color(white: 0.8), direction: Vector3(-1, -1, -1))
+                if kind == .mrMapped {
+                    material(.physicallyBased(metallic: 1, roughness: 1))
+                    camera(Camera3D(eye: Vector3(0, 0, 4), target: .zero))
+                    fill(Color(white: 0.9))
+                    drawMesh(Mesh.sphere(radius: 1.2).surfaceMapped(metallicRoughness: Self.mrMap))
+                } else {
+                    material(.physicallyBased(metallic: 1, roughness: 0.4))
+                    camera(Camera3D(eye: Vector3(0, 0, 4), target: .zero))
+                    fill(Color(white: 0.9))
+                    drawSphere(radius: 1.2)
+                }
+            case .occlusionBlack, .occlusionWhite:
+                // The furnace again: the occlusion map dims exactly the ambient
+                // share, which in this scene is all the light there is.
+                ambientLight(Color(white: 0.5))
+                material(Material())
+                let map = kind == .occlusionBlack ? Self.occlusionZero : Self.occlusionOne
+                frontFace(Mesh.sphere(radius: 1.2).surfaceMapped(occlusion: map))
+            case .emissiveHeadOn:
+                // No lights at all: the panel's pixels are the factor (white)
+                // times the map's linear value, an exact byte expectation.
+                ambientLight(.black)
+                material(Material())
+                fill(.white)
+                facingPlane(3) {
+                    $0.surfaceMapped(emissive: Self.emissiveGray, emissiveColor: .white)
+                }
+            case .emissiveFloor:
+                // The mesh-light analytic probe, with the panel's glow carried
+                // through a gray map instead of the bare factor.
+                ambientLight(.black)
+                camera(Camera3D(eye: Vector3(0, 2.2, 4.5), target: .zero))
+                withState {
+                    translate(0, -0.5, 0)
+                    fill(Color(white: 0.5))
+                    material(Material())
+                    drawBox(width: 8, height: 1, depth: 8)
+                }
+                withState {
+                    // A flat emitting square (emission is two-sided, so the
+                    // underside lights the floor); a plane rather than a slab
+                    // because the map needs the plane's uvs.
+                    translate(0, 1.5, 0)
+                    fill(.white)
+                    material(Material())
+                    let f = SliceProbe.panelFactor
+                    drawMesh(Mesh.plane(width: 0.4, depth: 0.4)
+                        .surfaceMapped(emissive: Self.emissiveGray,
+                                       emissiveColor: Color(red: f, green: f, blue: f)))
+                }
+            case .triplanarFace:
+                ambientLight(Color(white: 0.5))
+                material(Material())
+                frontFace(Mesh.box(width: 3, height: 3, depth: 1)
+                    .triplanarTextured(SliceProbe.twoTone, scale: 3))
+            case .mapsEverything:
+                ambientLight(Color(white: 0.15))
+                directionalLight(Color(white: 0.6), direction: Vector3(-1, -1, -0.5))
+                camera(Camera3D(eye: Vector3(0, 1.4, 5), target: Vector3(0, 0.4, 0)))
+                withState {
+                    translate(0, -0.5, 0)
+                    fill(.white)
+                    material(Material())
+                    drawMesh(Mesh.box(width: 10, height: 1, depth: 8)
+                        .triplanarTextured(SliceProbe.twoTone, scale: 4))
+                }
+                withState {
+                    translate(-0.9, 0.7, 0)
+                    fill(Color(white: 0.9))
+                    material(.physicallyBased(metallic: 1, roughness: 1))
+                    drawMesh(Mesh.sphere(radius: 0.7)
+                        .normalMapped(Self.halfTilt)
+                        .surfaceMapped(metallicRoughness: Self.mrMap,
+                                       occlusion: Self.occlusionOne))
+                }
+                withState {
+                    translate(0.9, 1.2, -0.4)
+                    rotateX(.pi / 2)
+                    fill(.white)
+                    material(Material())
+                    drawMesh(Mesh.plane(width: 0.5, depth: 0.5)
+                        .surfaceMapped(emissive: Self.emissiveGray, emissiveColor: .white))
+                }
+            }
+        }
+    }
+
+    private func pathTracedMaps(_ kind: MapsProbe.Kind, samples: Int = 96,
+                                depth: Int = 8) -> CGImage? {
+        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, maxDepth: depth)
+        defer { OllinApp.pathTracedExport = nil }
+        return OllinApp.image(of: MapsProbe.make(kind), frame: 1)
+    }
+
+    /// The normal map through the trace: the half-tilted face must shade its two
+    /// halves apart (the bend reaches the lighting), and each half must read the
+    /// same through the trace as through the raster normal-mapped pipeline (the
+    /// same interpolated tangent frame, the same bend, the same light).
+    @Test(.enabled(if: Snapshot.hasRaytracing))
+    func aNormalMapBendsTheTracedLight() throws {
+        let traced = try #require(pathTracedMaps(.normalMapped))
+        OllinApp.pathTracedExport = nil
+        let raster = try #require(OllinApp.image(of: MapsProbe.make(.normalMapped), frame: 1))
+        let tl = regionMean(traced, x0: 0.30, x1: 0.42, y0: 0.42, y1: 0.58)
+        let tr = regionMean(traced, x0: 0.58, x1: 0.70, y0: 0.42, y1: 0.58)
+        #expect(abs(tl - tr) > 40.0, "the tilted halves read \(tl) vs \(tr); the bend is missing")
+        let rl = regionMean(raster, x0: 0.30, x1: 0.42, y0: 0.42, y1: 0.58)
+        let rr = regionMean(raster, x0: 0.58, x1: 0.70, y0: 0.42, y1: 0.58)
+        #expect(abs(tl - rl) < 10.0, "left half: traced \(tl) vs raster \(rl)")
+        #expect(abs(tr - rr) < 10.0, "right half: traced \(tr) vs raster \(rr)")
+    }
+
+    /// The metallic-roughness map: a constant map whose channels decode to exact
+    /// factors must render the same as the factors carried in the finish (the
+    /// sampled g/b reach the same roughness/metalness the sampler and both
+    /// heuristic sides read).
+    @Test(.enabled(if: Snapshot.hasRaytracing))
+    func aMetallicRoughnessMapEqualsItsFactors() throws {
+        let mapped = try #require(pathTracedMaps(.mrMapped))
+        let factors = try #require(pathTracedMaps(.mrFactors))
+        let a = centerMean(mapped), b = centerMean(factors)
+        #expect(abs(a - b) < 3.0, "mapped \(a) vs factors \(b)")
+    }
+
+    /// The occlusion map dims the environment share and nothing else: in the
+    /// ambient furnace that share is all the light, so the fully-occluding map
+    /// turns the sphere black while the identity map leaves the furnace exact.
+    @Test(.enabled(if: Snapshot.hasRaytracing))
+    func anOcclusionMapDimsTheAmbientShare() throws {
+        let black = try #require(pathTracedMaps(.occlusionBlack))
+        let white = try #require(pathTracedMaps(.occlusionWhite))
+        let mb = centerMean(black), mw = centerMean(white)
+        #expect(mb < 4.0, "fully occluded furnace reads \(mb), expected ~0")
+        #expect(abs(mw - 127.5) < 3.0, "identity-occluded furnace reads \(mw), expected ~127.5")
+    }
+
+    /// The emissive map head-on: with a white factor and a constant gray map the
+    /// panel's radiance is exactly the map's linear value, an analytic byte.
+    @Test(.enabled(if: Snapshot.hasRaytracing))
+    func anEmissiveMapSetsTheGlowExactly() throws {
+        let image = try #require(pathTracedMaps(.emissiveHeadOn, samples: 32))
+        let m = centerMean(image)
+        let expected = 188.0
+        #expect(abs(m - expected) < 3.0, "mapped glow reads \(m), expected ~\(expected)")
+    }
+
+    /// The emissive map through the light sampler: the analytic floor probe again,
+    /// its expectation scaled by the map's linear gray, so the next-event samples
+    /// carry the mapped radiance while the selection keeps pricing the factor.
+    @Test(.enabled(if: Snapshot.hasRaytracing))
+    func aMappedEmitterLightsTheFloorByItsMap() throws {
+        let image = try #require(pathTracedMaps(.emissiveFloor, samples: 48))
+        let radiance = Color.srgbToLinear(SliceProbe.panelFactor) * MapsProbe.emissiveGrayLinear
+        let area = 0.4 * 0.4
+        let d = 1.5             // the emitting plane sits at y 1.5, the floor at 0
+        let albedo = Color.srgbToLinear(0.5)
+        let expected = radiance * area / (d * d) * albedo / .pi
+        let mean = regionMean(image, x0: 0.47, x1: 0.53, y0: 0.47, y1: 0.53)
+        let measured = Color.srgbToLinear(mean / 255)
+        #expect(abs(measured - expected) < expected * 0.18,
+                "floor reads \(measured) linear, expected ~\(expected)")
+    }
+
+    /// The triplanar projection at a traced hit: the projected two-tone must show
+    /// its two colors apart on the face (the world-space projection reaches the
+    /// hit, not a smeared corner texel) and match the raster's own projection
+    /// region for region.
+    @Test(.enabled(if: Snapshot.hasRaytracing))
+    func aTriplanarMeshKeepsItsProjectionThroughTheTrace() throws {
+        let traced = try #require(pathTracedMaps(.triplanarFace))
+        OllinApp.pathTracedExport = nil
+        let raster = try #require(OllinApp.image(of: MapsProbe.make(.triplanarFace), frame: 1))
+        var apart = 0.0
+        for channel in [0, 2] {
+            let tl = regionMean(traced, x0: 0.30, x1: 0.42, y0: 0.42, y1: 0.58, channel: channel)
+            let rl = regionMean(raster, x0: 0.30, x1: 0.42, y0: 0.42, y1: 0.58, channel: channel)
+            #expect(abs(tl - rl) < 14.0, "left channel \(channel): traced \(tl) vs raster \(rl)")
+            let tr = regionMean(traced, x0: 0.58, x1: 0.70, y0: 0.42, y1: 0.58, channel: channel)
+            let rr = regionMean(raster, x0: 0.58, x1: 0.70, y0: 0.42, y1: 0.58, channel: channel)
+            #expect(abs(tr - rr) < 14.0, "right channel \(channel): traced \(tr) vs raster \(rr)")
+            apart = max(apart, abs(tl - tr))
+        }
+        #expect(apart > 40.0, "the projected halves read \(apart) apart; the projection is missing")
+    }
+
+    /// The mapped paths stay deterministic: every map kind in one scene renders
+    /// byte-identically across runs.
+    @Test(.enabled(if: Snapshot.hasRaytracing))
+    func theMappedPathsStayDeterministic() throws {
+        let a = try #require(pathTracedMaps(.mapsEverything, samples: 12))
+        let b = try #require(pathTracedMaps(.mapsEverything, samples: 12))
+        #expect(pixels(of: a) == pixels(of: b))
+    }
 }

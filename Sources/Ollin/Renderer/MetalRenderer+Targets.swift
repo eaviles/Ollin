@@ -2596,16 +2596,38 @@ extension MetalRenderer {
     /// trace. The structure + scratch grow in place only when the scene outgrows them.
     /// Returns nil when there's nothing to cast (the caller then falls back / unshadows).
     /// The path-traced export's extra per-geometry scene tables, built beside the
-    /// acceleration structure: the bindless base-color texture handles a hit samples,
-    /// the emissive-triangle table the mesh-light strategy draws from, and the
-    /// transmission flag that gates the transparent shadow walk.
+    /// acceleration structure: the bindless surface-map handles a hit samples (base
+    /// color, normal, metallic-roughness, occlusion, emissive; five slots per
+    /// geometry, the `OllinPTTexEntry` layout), the emissive-triangle table the
+    /// mesh-light strategy draws from, and the transmission flag that gates the
+    /// transparent shadow walk.
     struct PTSceneTables {
-        var textures: MTLBuffer        // per-geometry texture resource IDs (bindless)
-        var textureList: [MTLTexture]  // the unique textures to mark resident
+        var textures: MTLBuffer        // per-geometry map resource IDs (bindless, 5 slots)
+        var textureList: [MTLTexture]  // the real textures to mark resident
         var emissive: MTLBuffer        // the OllinPTEmissiveTri power-CDF table
         var emissiveCount: Int         // triangles in it (0 = no mesh lights)
         var emissivePower: Float       // total power (luminance x area), the pdf scale
         var anyTransmission: Bool      // any traced geometry transmits
+    }
+
+    /// The gated surface-map set one traced geometry wears: each slot carries the
+    /// mesh material's map only when the batch finish's matching gate is up (the
+    /// raster encode's own binding rule), so identity over the slots is exactly
+    /// "would a hit read different texels", both for the accel run-breaking and
+    /// for the table upload. The base slot has no gate; a texture-wearing batch
+    /// on a sampling pipeline always reads it.
+    struct PTGeoMaps {
+        var base: Image?
+        var normal: Image?
+        var metallicRoughness: Image?
+        var occlusion: Image?
+        var emissive: Image?
+
+        static func same(_ a: PTGeoMaps, _ b: PTGeoMaps) -> Bool {
+            a.base === b.base && a.normal === b.normal
+                && a.metallicRoughness === b.metallicRoughness
+                && a.occlusion === b.occlusion && a.emissive === b.emissive
+        }
     }
 
     func buildShadowAccel(_ drawer: Drawer, into commandBuffer: MTLCommandBuffer,
@@ -2634,14 +2656,24 @@ extension MetalRenderer {
         var geoMats: [OllinCausticGeo] = []
         var geoFinishes: [OllinMaterial] = []
         // The path-traced build's parallels: each geometry's vertex count (for the
-        // emissive-triangle scan) and its base-color texture (`nil` = untextured;
-        // texture identity also breaks the run, so a geometry is texture-uniform).
+        // emissive-triangle scan) and its gated surface-map set (empty slots =
+        // untextured; map identity also breaks the run, so a geometry is
+        // map-uniform across all five slots).
         var geoCounts: [Int] = []
-        var geoTextures: [Image?] = []
+        var geoTextures: [PTGeoMaps] = []
         var runStart = -1, runEnd = 0
         var runMat = OllinCausticGeo()
         var runFinish = OllinMaterial()
-        var runTexture: Image? = nil
+        var runMaps = PTGeoMaps()
+        func ptMaps(_ batch: GeometryBatch) -> PTGeoMaps {
+            let m = batch.material
+            let f = batch.finish
+            return PTGeoMaps(base: m?.texture,
+                             normal: f.normalScale > 0 ? m?.normalTexture : nil,
+                             metallicRoughness: f.mrGate > 0 ? m?.metallicRoughnessTexture : nil,
+                             occlusion: f.occlusionStrength > 0 ? m?.occlusionTexture : nil,
+                             emissive: f.emissive.w > 0 ? m?.emissiveTexture : nil)
+        }
         func causticGeo(_ f: OllinMaterial) -> OllinCausticGeo {
             var g = OllinCausticGeo()
             g.refractive = SIMD4(f.transmission, f.ior, f.thickness > 0 ? 0 : 1, 0)
@@ -2668,7 +2700,7 @@ extension MetalRenderer {
             geoMats.append(runMat)
             geoFinishes.append(runFinish)
             geoCounts.append(runEnd - runStart)
-            geoTextures.append(runTexture)
+            geoTextures.append(runMaps)
             runStart = -1
         }
         for i in batches.indices {
@@ -2691,14 +2723,14 @@ extension MetalRenderer {
                 }
                 if runStart >= 0, pathTraceMats,
                    !sameFinish(batch.finish, runFinish)
-                       || batch.material?.texture !== runTexture {
+                       || !PTGeoMaps.same(ptMaps(batch), runMaps) {
                     flushRun()
                 }
                 if runStart < 0 {
                     runStart = batch.meshStart
                     runMat = mat
                     runFinish = batch.finish
-                    runTexture = batch.material?.texture
+                    runMaps = ptMaps(batch)
                 }
                 runEnd = end
             } else {
@@ -2774,28 +2806,39 @@ extension MetalRenderer {
         return (accel, offsetsBuffer, matsBuffer, finishBuffer, ptScene)
     }
 
-    /// The path-traced export's per-geometry scene tables: the bindless base-color
-    /// texture handles, the emissive-triangle power CDF, and the transmission gate.
+    /// The path-traced export's per-geometry scene tables: the bindless surface-map
+    /// handles, the emissive-triangle power CDF, and the transmission gate.
     /// Transient allocations (the export waits on its own command buffers, so no
     /// in-flight frame shares them).
     private func buildPTSceneTables(_ drawer: Drawer, geoOffsets: [UInt32],
                                     geoCounts: [Int], geoFinishes: [OllinMaterial],
-                                    geoTextures: [Image?]) -> PTSceneTables? {
-        // The bindless texture table: one GPU resource ID per geometry, the white
-        // stand-in where a geometry is untextured (its sample is the identity), so
-        // the kernel indexes without a gate. The textures ride along for the
-        // encoder's residency call.
+                                    geoTextures: [PTGeoMaps]) -> PTSceneTables? {
+        // The bindless map table: five GPU resource IDs per geometry (the
+        // `OllinPTTexEntry` slot order: base, normal, metallic-roughness,
+        // occlusion, emissive), the white stand-in where a slot is unbound (the
+        // base slot's sample is then the identity; the gated slots are never
+        // read unbound), so the kernel indexes without a gate. Base and emissive
+        // are color (sRGB), the value-encoding maps data (the raster encode's
+        // own split). The textures ride along for the encoder's residency call.
         guard let white = whiteStandIn() else { return nil }
         var textureList: [MTLTexture] = [white]
         var ids: [UInt64] = []
-        ids.reserveCapacity(geoTextures.count)
-        for image in geoTextures {
-            if let tex = image?.texture(for: device) {
+        ids.reserveCapacity(geoTextures.count * 5)
+        let whiteID = unsafeBitCast(white.gpuResourceID, to: UInt64.self)
+        func slot(_ tex: MTLTexture?) {
+            if let tex {
                 textureList.append(tex)
                 ids.append(unsafeBitCast(tex.gpuResourceID, to: UInt64.self))
             } else {
-                ids.append(unsafeBitCast(white.gpuResourceID, to: UInt64.self))
+                ids.append(whiteID)
             }
+        }
+        for maps in geoTextures {
+            slot(maps.base?.texture(for: device))
+            slot(maps.normal?.linearTexture(for: device))
+            slot(maps.metallicRoughness?.linearTexture(for: device))
+            slot(maps.occlusion?.linearTexture(for: device))
+            slot(maps.emissive?.texture(for: device))
         }
         guard let texBuffer = ids.withUnsafeBytes({ raw in
             device.makeBuffer(bytes: raw.baseAddress!, length: max(raw.count, 8),

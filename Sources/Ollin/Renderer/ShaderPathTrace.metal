@@ -203,6 +203,10 @@ struct OllinPTHit {
     OllinRTSurface s;      // world position, shading normal, albedo, metal, rough
     OllinMaterial mat;     // the batch finish (emissive, f0, shading model, …)
     bool physical;         // shading model 3: microfacet lobes; else Lambert only
+    float3 Ng;             // the geometric (pre-map-bend) normal, ray-facing: the
+                           // ray machinery (epsilon offsets, the below-horizon
+                           // check) keeps it while shading uses the bent `s.N`,
+                           // the raster's own detail-vs-position split
 };
 
 // Next-event visibility with glass in the scene: walk the shadow segment hit by
@@ -268,46 +272,129 @@ static inline float3 ollin_pt_transmittance(float3 origin, float3 target, float 
     return tint;
 }
 
-// One bindless texture handle per traced geometry (the CPU writes the textures'
-// GPU resource IDs at the same 8-byte stride; Metal reads the struct as an
+// The bindless per-geometry surface-map set (the CPU writes the textures' GPU
+// resource IDs at the same per-slot 8-byte stride; Metal reads the struct as an
 // argument buffer, which is the one form a texture may take in device memory).
+// Unbound slots carry the white stand-in: the base slot's sample is then the
+// multiply identity, and every other slot is read only behind its gate in the
+// geometry's `OllinMaterial` (`normalScale`, `mrGate`, `occlusionStrength`,
+// `emissive.w`), so a stand-in never reaches a term it would bend.
 struct OllinPTTexEntry {
-    texture2d<float> tex;
+    texture2d<float> base;        // base color (sRGB view)
+    texture2d<float> normalMap;   // tangent-space normal map (data view)
+    texture2d<float> mr;          // metallic-roughness (data; roughness g, metallic b)
+    texture2d<float> occlusion;   // occlusion (data; r channel)
+    texture2d<float> emissive;    // emissive (sRGB view)
 };
 
-// The hit's base-color texture read: fetch the triangle's uvs from the flat mesh
-// buffer and sample the geometry's texture (bindless; untextured geometries carry
-// the white stand-in, whose sample is the identity). The mip follows the ray cone:
-// the footprint a pixel's cone has grown to at this distance, over the triangle's
-// own texel density (texture-space area over world-space area), the standard
+// What the surface-map resolve hands back beside the mutated hit: the surface's
+// own glow (the emissive factor times its map) and the occlusion ramp that dims
+// the hit's environment share.
+struct OllinPTMapped {
+    float3 emissive;
+    float ao;
+};
+
+// The per-map mip level: the shared ray-cone footprint (`lodBias`, texel-density
+// free) plus each texture's own resolution term, so maps of different sizes read
+// the footprint-matched level of their own chain.
+static inline float ollin_pt_map_lod(float lodBias, texture2d<float> tex) {
+    return max(lodBias + 0.5 * log2(float(tex.get_width()) * float(tex.get_height())), 0.0);
+}
+
+// The hit's surface-map resolve, the raster surface-mapped fragment's reads at a
+// traced hit: fetch the triangle's uvs (and tangent frame) from the flat mesh
+// buffer and sample the geometry's bound maps, composing exactly as the raster
+// does: the base color multiplies the baked vertex tint, a normal map bends the
+// shading normal through the interpolated tangent frame (the bitangent rebuilt
+// as sign · cross(N, T), one normalize at the end), a metallic-roughness map's
+// g/b channels multiply the composed finish factors, an occlusion map builds the
+// 1 + strength·(ao − 1) ramp, and an emissive map multiplies the factor. A
+// triplanar geometry projects its base color and normal map by world position
+// instead (the same function the raster fragment runs; its lod-less reads land
+// on the base level, which is where a mipless image texture reads in the raster
+// too). The mip elsewhere follows the ray cone: the footprint a pixel's cone has
+// grown to at this distance, over the triangle's own texel density, the standard
 // texture-LOD scheme for a ray that has no screen-space derivatives.
-static inline float3 ollin_pt_texture_albedo(thread intersection_query<triangle_data> &q,
-                                             const device OllinMeshVertex *verts,
-                                             const device uint *geoOffsets,
-                                             const device OllinPTTexEntry *geoTextures,
-                                             float3 rayDir, float3 N,
-                                             float coneWidth) {
-    texture2d<float> tex = geoTextures[q.get_committed_geometry_id()].tex;
+//
+// Mutates the hit's albedo, shading normal, and metal/rough in place; `h.Ng`
+// keeps the geometric (pre-bend) normal for the ray machinery, the raster's own
+// split (a map is surface *detail*, not surface *position*). The bend runs on
+// the raw interpolated frame and flips to the viewed side after, so a back face
+// shows the same relief mirrored to its side.
+static inline OllinPTMapped ollin_pt_apply_maps(thread OllinPTHit &h,
+                                                thread intersection_query<triangle_data> &q,
+                                                const device OllinMeshVertex *verts,
+                                                const device uint *geoOffsets,
+                                                const device OllinPTTexEntry *geoTextures,
+                                                float3 rayDir, bool backface,
+                                                float coneWidth) {
+    OllinPTMapped out;
+    out.emissive = h.mat.emissive.rgb;
+    out.ao = 1.0;
+    OllinPTTexEntry maps = geoTextures[q.get_committed_geometry_id()];
+    if (h.mat.triplanar > 0.0) {
+        // The raster's cut applies here too: a triplanar mesh projects its base
+        // color and normal map only, so the uv-mapped reads below never run.
+        float3 raw = backface ? -h.s.N : h.s.N;
+        TriplanarSurface tri = ollin_triplanar_surface(h.s.P, raw, h.mat.triplanar,
+                                                       h.mat.normalScale,
+                                                       maps.base, maps.normalMap);
+        h.s.albedo *= tri.color.rgb;
+        if (h.mat.normalScale > 0.0) h.s.N = backface ? -tri.normal : tri.normal;
+        return out;
+    }
     uint base = geoOffsets[q.get_committed_geometry_id()]
               + q.get_committed_primitive_id() * 3u;
     OllinMeshVertex a = verts[base + 0u];
     OllinMeshVertex b = verts[base + 1u];
     OllinMeshVertex c = verts[base + 2u];
     float2 bc = q.get_committed_triangle_barycentric_coord();
-    float2 uv = a.uv * (1.0 - bc.x - bc.y) + b.uv * bc.x + c.uv * bc.y;
+    float3 w = float3(1.0 - bc.x - bc.y, bc.x, bc.y);
+    float2 uv = a.uv * w.x + b.uv * w.y + c.uv * w.z;
     float twoWorld = length(cross(b.position.xyz - a.position.xyz,
                                   c.position.xyz - a.position.xyz));
     float2 e1 = b.uv - a.uv, e2 = c.uv - a.uv;
-    float twoTexel = abs(e1.x * e2.y - e1.y * e2.x)
-                   * float(tex.get_width()) * float(tex.get_height());
-    float lod = 0.0;
-    if (twoWorld > 1e-9 && twoTexel > 0.0) {
-        lod = 0.5 * log2(twoTexel / twoWorld)
-            + log2(max(coneWidth, 1e-6) / max(abs(dot(N, rayDir)), 1e-3));
+    float uvTwoArea = abs(e1.x * e2.y - e1.y * e2.x);
+    float lodBias = -1000.0;    // no uv density (a degenerate mapping): base level
+    if (twoWorld > 1e-9 && uvTwoArea > 0.0) {
+        lodBias = 0.5 * log2(uvTwoArea / twoWorld)
+                + log2(max(coneWidth, 1e-6) / max(abs(dot(h.s.N, rayDir)), 1e-3));
     }
     constexpr sampler s(filter::linear, mip_filter::linear,
                         address::clamp_to_edge);
-    return tex.sample(s, uv, level(max(lod, 0.0))).rgb;
+    h.s.albedo *= maps.base.sample(s, uv, level(ollin_pt_map_lod(lodBias, maps.base))).rgb;
+    if (h.mat.normalScale > 0.0) {
+        float3 gn = a.normal.xyz * w.x + b.normal.xyz * w.y + c.normal.xyz * w.z;
+        float4 tangent = float4(a.tangent) * w.x + float4(b.tangent) * w.y
+                       + float4(c.tangent) * w.z;
+        float3 t = tangent.xyz;
+        float3 bt = cross(gn, t) * tangent.w;
+        float3 nmS = maps.normalMap.sample(s, uv,
+            level(ollin_pt_map_lod(lodBias, maps.normalMap))).xyz * 2.0 - 1.0;
+        nmS.xy *= h.mat.normalScale;
+        float3 bent = t * nmS.x + bt * nmS.y + gn * nmS.z;
+        float bentLen = length(bent);
+        if (bentLen > 1e-6) h.s.N = (backface ? -1.0 : 1.0) * (bent / bentLen);
+    }
+    if (h.mat.mrGate > 0.0) {
+        // The composed finish factors times the sampled channels (the finish
+        // table carries the drawing-state × mesh-material product for a gated
+        // geometry, which is what the raster's per-pixel resolve multiplies).
+        float4 mr = maps.mr.sample(s, uv, level(ollin_pt_map_lod(lodBias, maps.mr)));
+        h.s.rough = clamp(h.mat.roughness * mr.g, 0.045, 1.0);
+        h.s.metal = clamp(h.mat.metallic * mr.b, 0.0, 1.0);
+    }
+    if (h.mat.occlusionStrength > 0.0) {
+        float occ = maps.occlusion.sample(s, uv,
+            level(ollin_pt_map_lod(lodBias, maps.occlusion))).r;
+        out.ao = 1.0 + h.mat.occlusionStrength * (occ - 1.0);
+    }
+    if (h.mat.emissive.w > 0.0) {
+        out.emissive *= maps.emissive.sample(s, uv,
+            level(ollin_pt_map_lod(lodBias, maps.emissive))).rgb;
+    }
+    return out;
 }
 
 // Evaluate the surface's reflectance for light arriving from `wi` seen from `wo`
@@ -370,6 +457,7 @@ static inline float3 ollin_pt_mesh_light(OllinPTHit h, float3 wo, float eps,
                                          const device uint *geoOffsets,
                                          const device OllinMaterial *geoMats,
                                          const device OllinPTEmissiveTri *emTris,
+                                         const device OllinPTTexEntry *geoTextures,
                                          constant OllinPathTraceUniforms &pt,
                                          float4 u) {
     uint n = uint(pt.meshLights.x);
@@ -395,11 +483,20 @@ static inline float3 ollin_pt_mesh_light(OllinPTHit h, float3 wo, float eps,
     float cosL = abs(dot(ng, wi));                // two-sided emitter
     if (cosL <= 1e-4) return float3(0.0);
     float3 Le = geoMats[e.geo].emissive.rgb;
+    // The selection ran by the *factor's* power, so the pdf stays the factor's
+    // (which is what keeps the reverse weight at a BSDF-found hit computable
+    // with no lookup); an emissive map only modulates what the sample carries,
+    // and its texels never exceed 1, so the pdf's support covers the glow.
     float lum = dot(Le, float3(0.2126, 0.7152, 0.0722));
     if (lum <= 0.0) return float3(0.0);
+    if (geoMats[e.geo].emissive.w > 0.0) {
+        float2 uvL = A.uv * (1.0 - su) + B.uv * b1 + C.uv * b2;
+        constexpr sampler sE(filter::linear, address::clamp_to_edge);
+        Le *= geoTextures[e.geo].emissive.sample(sE, uvL, level(0.0)).rgb;
+    }
     float areaPdf = lum / pt.meshLights.y;        // uniform-in-power: luminance / total
     float pdfSA = areaPdf * dist2 / cosL;
-    float3 vis = ollin_pt_transmittance(h.s.P + h.s.N * eps, p, eps, accel,
+    float3 vis = ollin_pt_transmittance(h.s.P + h.Ng * eps, p, eps, accel,
                                         verts, geoOffsets, geoMats,
                                         pt.meshLights.z > 0.5);
     if (all(vis <= float3(0.0))) return float3(0.0);
@@ -427,7 +524,7 @@ static inline float3 ollin_pt_direct(OllinPTHit h, float3 wo, float eps,
                                      bool anyTransmission) {
     float3 direct = float3(0.0);
     if (light.lightCount <= 0) return direct;
-    float3 origin = h.s.P + h.s.N * eps;
+    float3 origin = h.s.P + h.Ng * eps;
     for (int i = 0; i < light.lightCount; i++) {
         OllinLight L = light.lights[i];
         if (L.kind <= 2) {
@@ -606,6 +703,12 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
         float3 eyeDir = rd;
         float prevPdf = 0.0;    // the continuation pdf that produced this ray
         bool prevNEE = false;   // whether that ray's vertex ran next-event estimation
+        float aoPrev = 1.0;     // the occlusion ramp at the vertex this ray left:
+                                // environment light the ray brings back arrives at
+                                // that surface, so its miss pickup dims by the same
+                                // ramp the vertex's own environment sample did (both
+                                // halves of the pairing scale together, which is
+                                // what keeps the combined estimator consistent)
         float pathDist = 0.0;   // distance traveled so far (grows the texture ray cone)
         float4 medium = float4(0.0);   // inside a solid glass body: its attenuation
                                        // color (rgb) + distance (w); w = 0 outside
@@ -640,7 +743,8 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
                         float omegaTexel = 2.0 * 3.14159265 * 3.14159265 / max(texels, 1.0);
                         lod = clamp(0.5 * log2(1.0 / (prevPdf * omegaTexel)), 0.0, 10.0);
                     }
-                    radiance += throughput * ollin_pt_env(rd, light, pt, equirect, lod) * w;
+                    radiance += throughput * ollin_pt_env(rd, light, pt, equirect, lod)
+                              * (w * aoPrev);
                 }
                 break;
             }
@@ -649,6 +753,7 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
             h.s = ollin_rt_fetch_surface(q, verts, geoOffsets, ro, rd, backface);
             h.mat = geoMats[q.get_committed_geometry_id()];
             h.physical = h.mat.shadingModel == 3;
+            h.Ng = h.s.N;
             float hitDist = q.get_committed_distance();
             if (depth == 0) { covered = true; primaryDist = hitDist; }
             pathDist += hitDist;
@@ -659,12 +764,14 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
             if (medium.w > 0.0)
                 throughput *= pow(max(medium.rgb, float3(1e-4)), hitDist / medium.w);
 
-            // The base color at the hit: the baked vertex tint times the
-            // geometry's texture (the white stand-in when untextured), read at
+            // The surface maps at the hit: the base color (baked tint times the
+            // geometry's texture, the white stand-in when untextured), the
+            // normal-map bend, the metallic-roughness channels, the occlusion
+            // ramp, and the emissive map's modulation of the factor, read at
             // the mip the ray cone's footprint has grown to.
-            h.s.albedo *= ollin_pt_texture_albedo(q, verts, geoOffsets, geoTextures,
-                                                  rd, h.s.N,
-                                                  pt.cone.x + pt.cone.y * pathDist);
+            OllinPTMapped mapped = ollin_pt_apply_maps(h, q, verts, geoOffsets,
+                                                       geoTextures, rd, backface,
+                                                       pt.cone.x + pt.cone.y * pathDist);
 
             // The glass share of the mix: `transmission` is the fraction of light
             // the surface passes, so that share of the paths takes the dielectric
@@ -678,19 +785,23 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
                 glassPick = ug.y;
             }
 
-            // The surface's own glow. The mesh-light pass at the previous vertex
-            // may already have sampled this surface, so past the first hit its
-            // emission is credited through the power heuristic against that
-            // strategy (full strength when no next-event pass competed).
-            if (any(h.mat.emissive.rgb > float3(0.0))) {
+            // The surface's own glow (the factor times its map, resolved above).
+            // The mesh-light pass at the previous vertex may already have sampled
+            // this surface, so past the first hit its emission is credited through
+            // the power heuristic against that strategy (full strength when no
+            // next-event pass competed). The reverse pdf prices the *factor*, the
+            // basis the selection CDF ran on, exactly as the strategy's own pdf does.
+            if (any(mapped.emissive > float3(0.0))) {
                 float wE = 1.0;
                 float lum = dot(h.mat.emissive.rgb, float3(0.2126, 0.7152, 0.0722));
                 if (depth > 0 && prevNEE && pt.meshLights.x > 0.5 && lum > 0.0) {
-                    float cosL = max(abs(dot(h.s.N, rd)), 1e-4);
+                    // The geometric normal: the strategy's own pdf prices the
+                    // triangle plane, so a normal-map bend must not shift this.
+                    float cosL = max(abs(dot(h.Ng, rd)), 1e-4);
                     float pdfSA = (lum / pt.meshLights.y) * hitDist * hitDist / cosL;
                     wE = ollin_pt_mis(prevPdf, pdfSA);
                 }
-                radiance += throughput * h.mat.emissive.rgb * wE;
+                radiance += throughput * mapped.emissive * wE;
             }
 
             if (glassVertex) {
@@ -752,7 +863,7 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
                     if (u.w >= p) break;
                     throughput /= p;
                 }
-                ro = h.s.P + h.s.N * (crossed ? -eps : eps);
+                ro = h.s.P + h.Ng * (crossed ? -eps : eps);
                 rd = wi;
                 continue;
             }
@@ -783,12 +894,18 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
                 float4 ue = ollin_pt_rand4(gid, sampleIndex, dim++);
                 radiance += throughput * ollin_pt_mesh_light(hNEE, -rd, eps, accel,
                                                              verts, geoOffsets,
-                                                             geoMats, emTris, pt, ue);
+                                                             geoMats, emTris,
+                                                             geoTextures, pt, ue);
             }
 
             // The environment's own strategy: one sample drawn by the equirect's
             // brightness, credited through the power heuristic against the lobe
             // sample below, so suns and windows light rough surfaces without spray.
+            // The occlusion map dims the surface's environment share (the raster
+            // dims its whole IBL ambient the same way): this strategy here, and
+            // the paired lobe-side pickup through `aoPrev` on a miss. Light
+            // carried surface to surface stays undimmed; the trace computes that
+            // occlusion from the real geometry.
             if (envSampling) {
                 float4 ue = ollin_pt_rand4(gid, sampleIndex, dim++);
                 float envPdf = 0.0;
@@ -797,7 +914,7 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
                 float3 wiE = envRotInv * dEq;
                 float NoLE = dot(h.s.N, wiE);
                 if (NoLE > 0.0 && envPdf > 1e-8) {
-                    float3 visE = ollin_pt_transmittance(h.s.P + h.s.N * eps,
+                    float3 visE = ollin_pt_transmittance(h.s.P + h.Ng * eps,
                                                          h.s.P + wiE * 1e6, eps, accel,
                                                          verts, geoOffsets, geoMats,
                                                          pt.meshLights.z > 0.5);
@@ -806,7 +923,7 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
                         float w = ollin_pt_mis(envPdf, ollin_pt_bsdf_pdf(hNEE, -rd, wiE));
                         radiance += throughput * f * visE
                                   * ollin_pt_env(wiE, light, pt, equirect, pt.miss.w)
-                                  * (NoLE / envPdf * w);
+                                  * (NoLE / envPdf * w * mapped.ao);
                     }
                 }
             }
@@ -845,8 +962,13 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
                 weight = h.s.albedo;
                 prevPdf = max(dot(h.s.N, wi), 0.0) * (1.0 / 3.14159265);
             }
+            // A map-bent lobe can point a continuation under the real surface;
+            // end the path there (with no map the check repeats the bent-normal
+            // one above, so unmapped scenes are untouched).
+            if (dot(wi, h.Ng) <= 0.0) break;
             throughput *= weight;
             prevNEE = true;
+            aoPrev = mapped.ao;
 
             // Russian roulette after a few bounces: continue with probability equal
             // to the path's remaining strength, re-scaling so the estimate stays fair.
@@ -856,7 +978,7 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
                 if (u.w >= p) break;
                 throughput /= p;
             }
-            ro = h.s.P + h.s.N * eps;
+            ro = h.s.P + h.Ng * eps;
             rd = wi;
         }
 

@@ -8,10 +8,11 @@ import Ollin
 /// distance, the floor picks up color bled from the spheres, every polished
 /// surface mirrors the scene at any depth, the amber sphere turns to real solid
 /// glass (light bends through it, its shadow glows amber instead of going black),
-/// the glowing bar lights the set by its own surface, and the camera's aperture
-/// turns into a real thin-lens depth of field (the raster view stays sharp; the
-/// lens is the traced camera's). That is the whole workflow: the live window is
-/// the viewfinder, the flag is the film back.
+/// the glowing bar lights the set by its own surface, the hammered panel's
+/// normal and roughness maps ride every traced hit (its relief ripples the
+/// reflections), and the camera's aperture turns into a real thin-lens depth of
+/// field (the raster view stays sharp; the lens is the traced camera's). That is
+/// the whole workflow: the live window is the viewfinder, the flag is the film back.
 ///
 ///     swift run Example-3D-Effects-PathTraced                          # tune live
 ///     swift run Example-3D-Effects-PathTraced --export out.png --path-traced 512
@@ -25,6 +26,48 @@ final class PathTraced: Sketch {
 
     @Param(0...0.4, icon: "camera.aperture") var aperture = 0.12
     @Param(3...14, icon: "scope") var focusOn = 7.4
+
+    /// A hammered-metal relief, built in code: a staggered grid of rounded dents
+    /// baked into a normal map, with a matching metallic-roughness map that
+    /// keeps the dent floors polished and roughens the flats between them.
+    private static let hammered: (normal: Image, mr: Image) = {
+        let size = 256
+        let cells = 7.0
+        func dent(_ u: Double, _ v: Double) -> Double {
+            let row = (v * cells).rounded(.down)
+            let ox = row.truncatingRemainder(dividingBy: 2) * 0.5
+            var cu = (u * cells + ox).truncatingRemainder(dividingBy: 1) - 0.5
+            let cv = (v * cells).truncatingRemainder(dividingBy: 1) - 0.5
+            cu = abs(cu) > 0.5 ? cu - (cu > 0 ? 1 : -1) : cu
+            let d = min((cu * cu + cv * cv).squareRoot() / 0.46, 1.0)
+            let fall = 1 - d * d
+            return fall * fall
+        }
+        var nBytes = [UInt8](); nBytes.reserveCapacity(size * size * 4)
+        var mrBytes = [UInt8](); mrBytes.reserveCapacity(size * size * 4)
+        let step = 1.0 / Double(size)
+        for y in 0..<size {
+            for x in 0..<size {
+                let u = (Double(x) + 0.5) * step, v = (Double(y) + 0.5) * step
+                let strength = 1.6
+                let gu = (dent(u + step, v) - dent(u - step, v)) / (2 * step) * strength * step * cells
+                let gv = (dent(u, v + step) - dent(u, v - step)) / (2 * step) * strength * step * cells
+                let inv = 1 / (1 + gu * gu + gv * gv).squareRoot()
+                nBytes.append(UInt8(((-gu * inv) * 0.5 + 0.5) * 255))
+                nBytes.append(UInt8(((gv * inv) * 0.5 + 0.5) * 255))
+                nBytes.append(UInt8((inv * 0.5 + 0.5) * 255))
+                nBytes.append(255)
+                // Dent floors polish toward 0.1 roughness; the flats brush out to 0.5.
+                let rough = 0.5 - 0.4 * dent(u, v)
+                mrBytes.append(0)
+                mrBytes.append(UInt8(rough * 255))
+                mrBytes.append(255)
+                mrBytes.append(255)
+            }
+        }
+        return (Image(width: size, height: size, premultipliedRGBA: nBytes)!,
+                Image(width: size, height: size, premultipliedRGBA: mrBytes)!)
+    }()
 
     override func draw() {
         background(Color(hex: 0x0B0C10))
@@ -89,6 +132,21 @@ final class PathTraced: Sketch {
             fill(Color(white: 0.9))
             material(.metal(roughness: 0.05))
             drawBox(width: 1.4, height: 3.6, depth: 0.35)
+        }
+
+        // A hammered-copper relief panel on the left: its normal map dents the
+        // shading and its metallic-roughness map polishes each dent's floor. The
+        // traced export reads both maps at every hit, so the relief survives into
+        // the floor's reflection and the light the panel bounces on the set.
+        withState {
+            translate(-4.2, 1.6, -2.2)
+            rotateY(0.5)
+            rotateX(.pi / 2)
+            fill(Color(hue: 0.07, saturation: 0.55, brightness: 0.9))
+            material(.physicallyBased(metallic: 1, roughness: 1))
+            drawMesh(Mesh.plane(width: 2.8, depth: 2.8)
+                .normalMapped(Self.hammered.normal)
+                .surfaceMapped(metallicRoughness: Self.hammered.mr))
         }
 
         // A cool glowing bar floating at the right edge: an emissive mesh, so in

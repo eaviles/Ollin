@@ -22,6 +22,7 @@ The number is how many light paths each pixel traces. More samples make a smooth
 - **Real glass.** A `.glass(...)` material refracts the actual scene: light bends through a solid body by its index of refraction, an `attenuationColor` tints it along the interior path, and a thin pane passes the view straight through behind its reflection. Frosted glass roughens both. And the shadow follows: light reaches the floor *through* a glass object, tinted by its color, instead of stopping at an opaque silhouette.
 - **Emissive surfaces are lights.** A mesh with an emissive material does not just glow, it lights its surroundings: the tracer samples glowing surfaces directly, the way it samples an area light's panel, so a neon bar throws smooth, soft-shadowed light instead of waiting for lucky bounces.
 - **Textures travel with the light.** A traced hit reads the mesh's base-color texture at the hit point, so a textured floor shows its picture in a mirror, keeps it through a glass sphere, and bleeds its colors onto neighbors.
+- **The surface maps travel too.** A normal map bends the traced shading the way it bends the raster's, so its relief shows in reflections and in bounce light. A metallic-roughness map varies the finish across the surface, and an occlusion map dims the environment's light in its crevices. An emissive map shapes where a glowing mesh emits, including the light it throws on the room. A triplanar texture (and its normal map) projects at a traced hit exactly as it does live.
 - **A real lens.** `Camera3D.aperture` (a thin-lens radius, world units) and `Camera3D.focusDistance` give the traced camera depth of field. The live view ignores both and stays pinhole-sharp while you frame. `focusDistance` left `nil` focuses on the camera's `target`.
 
 ```swift
@@ -45,7 +46,7 @@ The contact sheets, the vector exports (SVG and PDF), and the benchmark keep the
 
 ### What the traced frame does not carry yet
 
-- **Only the base-color map traces.** The other surface maps (normal, metallic-roughness, occlusion, emissive, height, detail) apply in the raster view but not at a traced hit, which reads their constant factors instead.
+- **Height, detail, and decals stay raster refinements.** A height map's parallax relief, the tiled detail pair, and projected decals apply in the raster view only; a traced hit reads the flat surface at its plain uv. The occlusion map dims the environment's share at a hit (the raster's own convention); light carried surface to surface is real traced transport, occluded by the actual geometry.
 - **The layered lobes simplify.** Clearcoat, sheen, iridescence, anisotropy, and subsurface trace as their metallic-roughness base. Toon, gooch, and the standard finish trace as matte surfaces with their raster brightness.
 - **Glass shadows are tinted, not focused.** Light through glass reaches a shadow as a straight, tinted pass; the bent, bunched-up bright lines of a real caustic stay with the live [`caustics()`](../3D/Caustics.md) feature.
 - **Volumetric shafts stay raster features.** Height fog and aerial perspective do apply to the traced frame along the eye's path.
