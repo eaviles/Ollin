@@ -1670,6 +1670,13 @@ public enum OllinApp {
     /// `.default`: it defaults to `.detail` (best quality; export has no frame-rate pressure),
     /// the `--render-quality` flag overrides it, and a feature the sketch dialled explicitly is
     /// always honoured regardless.
+    /// The offline path-traced render mode for the export paths (the `--path-traced`
+    /// flag sets it; a host may set it directly before `image(of:)` / `export`).
+    /// nil (the default) keeps every export on the raster pipeline. Stills and the
+    /// sequence/video exports honor it; the contact sheets and the vector exports
+    /// stay raster (a sheet of tiles at minutes per tile helps nobody).
+    public static var pathTracedExport: PathTracing?
+
     public static func image(of sketch: Sketch, frame: Int = 0, fps: Double = 60,
                              quality: RenderQuality = .detail) -> CGImage? {
         guard let device = MTLCreateSystemDefaultDevice(),
@@ -1682,6 +1689,7 @@ public enum OllinApp {
         isRenderingHeadless = true
         defer { isRenderingHeadless = false }
         renderer.automaticQuality = quality
+        renderer.pathTracing = pathTracedExport
         return renderImage(of: sketch, frame: frame, fps: fps, renderer: renderer)
     }
 
@@ -1868,6 +1876,8 @@ public enum OllinApp {
             fatalError("Ollin: failed to initialize the Metal renderer: \(error)")
         }
         renderer.automaticQuality = quality   // the fallback for features the sketch left at .default
+        renderer.pathTracing = pathTracedExport
+        renderer.pathTraceReportsProgress = false   // the loop below prints its own line
         isRenderingHeadless = true
         defer { isRenderingHeadless = false }
 
@@ -2066,6 +2076,21 @@ public extension OllinApp {
                   let q = RenderQuality(name: args[i + 1]) else { return .detail }
             return q
         }()
+        // `--path-traced [N]` switches the still/sequence/video exports to the
+        // offline path tracer (see `PathTracing`), N samples per pixel; bare, the
+        // count comes from the render-quality tier. Pre-parsed like the quality so
+        // it applies to whichever export flag follows.
+        if let i = args.firstIndex(of: "--path-traced") {
+            let n = i + 1 < args.count ? Int(args[i + 1]) : nil
+            // `--pt-depth N` caps the path length (the default 8 suits almost
+            // everything; shorter renders faster, longer only helps mirror halls).
+            let depth: Int? = args.firstIndex(of: "--pt-depth").flatMap { j in
+                j + 1 < args.count ? Int(args[j + 1]) : nil
+            }
+            pathTracedExport = PathTracing(
+                samplesPerPixel: n ?? PathTracing.tierSamples(for: renderQuality),
+                maxDepth: depth ?? 8)
+        }
         // `--seed N` reseeds the sketch before its `setup()` on every export
         // path, so a variation found in the inspector or on a contact sheet
         // re-renders exactly (a sketch that pins its own seed in `setup()`

@@ -891,6 +891,38 @@ typedef struct {
                              // (0 = no attenuation)
 } OllinCausticGeo;
 
+// Per-dispatch constants for the offline path-traced export (`--path-traced`): the
+// camera frame rays leave through, the sample window this dispatch integrates, and
+// the miss/lens model. One struct feeds the trace kernel and the composite fragment.
+// The kernel reads the scene through the same accel + flat mesh buffer + per-geometry
+// offsets the reflection/GI/caustics traces use, plus a parallel per-geometry
+// `OllinMaterial` table (the accel build breaks its coalesced runs where the batch
+// finish changes while the export path-traces, so a hit's `geometryId` resolves a
+// material-uniform surface).
+typedef struct {
+    simd_float4x4 inverseViewProjection;  // clip -> world, for camera ray generation
+    simd_float4x4 viewProjection;         // world -> clip, for the primary hit's depth write
+    simd_float4 cameraPosition;    // xyz = world-space eye; w = the self-hit epsilon in
+                                   // world units (sized from the scene scale, the
+                                   // rtReflectionBias rule)
+    simd_float4 lens;              // x = aperture radius (world units; 0 = pinhole, no
+                                   // depth of field), y = focus distance along the view
+                                   // axis (world units), z/w unused
+    simd_float4 miss;              // rgb = linear radiance a bounced ray that leaves the
+                                   // scene picks up when no environment is bound (the
+                                   // flat ambient, so an ambient-lit scene keeps its
+                                   // fill light; with an environment the ray samples it
+                                   // instead). A *primary* miss always leaves color and
+                                   // coverage at 0: the backdrop behind the composite
+                                   // (skybox or clear color) is what shows. w unused.
+    simd_uint4 window;             // x = canvas width, y = height, z = the first sample
+                                   // index this dispatch integrates, w = samples this
+                                   // dispatch adds (the accumulation sums across
+                                   // dispatches; the composite divides by the total)
+    simd_uint4 counts;             // x = total samples per pixel, y = max path depth,
+                                   // z/w unused
+} OllinPathTraceUniforms;
+
 // Per-frame constants for the caustics chain (`caustics()`): the emission frame the
 // photons leave the caster light through, the adaptive-feedback constants, and the
 // splat pass's screen mapping. One struct feeds the density/quadtree kernels, the

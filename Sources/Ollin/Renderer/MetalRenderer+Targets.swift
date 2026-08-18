@@ -2595,9 +2595,11 @@ extension MetalRenderer {
     /// ahead of the geometry pass in the same command buffer, so Metal orders build →
     /// trace. The structure + scratch grow in place only when the scene outgrows them.
     /// Returns nil when there's nothing to cast (the caller then falls back / unshadows).
-    private func buildShadowAccel(_ drawer: Drawer, into commandBuffer: MTLCommandBuffer,
-                                  meshBuffer: MTLBuffer, causticMats: Bool = false)
-        -> (accel: MTLAccelerationStructure, offsets: MTLBuffer, causticMats: MTLBuffer?)? {
+    func buildShadowAccel(_ drawer: Drawer, into commandBuffer: MTLCommandBuffer,
+                          meshBuffer: MTLBuffer, causticMats: Bool = false,
+                          pathTraceMats: Bool = false)
+        -> (accel: MTLAccelerationStructure, offsets: MTLBuffer, causticMats: MTLBuffer?,
+            ptMats: MTLBuffer?)? {
         let meshStride = MemoryLayout<OllinMeshVertex>.stride
         let meshVertices = drawer.meshVertices
         let batches = drawer.batches
@@ -2612,15 +2614,26 @@ extension MetalRenderer {
         var geoOffsets: [UInt32] = []
         // With `causticMats`, a change in the caustic-relevant material fields also
         // breaks the run, so each geometry is material-uniform for the photon trace,
-        // and the per-geometry `OllinCausticGeo` entries fill in parallel.
+        // and the per-geometry `OllinCausticGeo` entries fill in parallel. With
+        // `pathTraceMats` (the offline path-traced export), *any* change in the batch
+        // finish breaks the run instead, and the full `OllinMaterial` fills in
+        // parallel, so a path-trace hit's `geometryId` resolves its whole material.
         var geoMats: [OllinCausticGeo] = []
+        var geoFinishes: [OllinMaterial] = []
         var runStart = -1, runEnd = 0
         var runMat = OllinCausticGeo()
+        var runFinish = OllinMaterial()
         func causticGeo(_ f: OllinMaterial) -> OllinCausticGeo {
             var g = OllinCausticGeo()
             g.refractive = SIMD4(f.transmission, f.ior, f.thickness > 0 ? 0 : 1, 0)
             g.attenuation = f.attenuation
             return g
+        }
+        // The imported C struct has no synthesized ==; the finishes are packed
+        // CPU-side from the same inputs, so a bytewise compare is exact.
+        func sameFinish(_ a: OllinMaterial, _ b: OllinMaterial) -> Bool {
+            var x = a, y = b
+            return memcmp(&x, &y, MemoryLayout<OllinMaterial>.size) == 0
         }
         func flushRun() {
             guard runStart >= 0, runEnd - runStart >= 3 else { runStart = -1; return }
@@ -2634,14 +2647,20 @@ extension MetalRenderer {
             geometries.append(geo)
             geoOffsets.append(UInt32(runStart))
             geoMats.append(runMat)
+            geoFinishes.append(runFinish)
             runStart = -1
         }
         for i in batches.indices {
             let batch = batches[i]
             // Exclude the ground-grid chrome like `drawShadowCasters` does: its huge
             // opaque y=0 quad would otherwise occlude every downward reflection ray
-            // (and RT shadow ray) whenever the live grid toggle is on.
+            // (and RT shadow ray) whenever the live grid toggle is on. The path-traced
+            // build also excludes matcap batches: a matcap is the unlit, emissive-look
+            // finish (the glowing prop a sketch draws exactly over an area light), so
+            // it keeps rastering over the traced layer instead, and its body must not
+            // swallow the light's own next-event visibility rays.
             let isCaster = batch.kind == .mesh3D && !batch.meshWireframe && !batch.meshGrid
+                && !(pathTraceMats && batch.matcap != nil)
             let end = i + 1 < batches.count ? batches[i + 1].meshStart : meshVertices.count
             if isCaster {
                 let mat = causticMats ? causticGeo(batch.finish) : OllinCausticGeo()
@@ -2649,7 +2668,10 @@ extension MetalRenderer {
                    mat.refractive != runMat.refractive || mat.attenuation != runMat.attenuation {
                     flushRun()
                 }
-                if runStart < 0 { runStart = batch.meshStart; runMat = mat }
+                if runStart >= 0, pathTraceMats, !sameFinish(batch.finish, runFinish) {
+                    flushRun()
+                }
+                if runStart < 0 { runStart = batch.meshStart; runMat = mat; runFinish = batch.finish }
                 runEnd = end
             } else {
                 flushRun()
@@ -2704,7 +2726,21 @@ extension MetalRenderer {
                 matsBuffer?.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
             }
         }
-        return (accel, offsetsBuffer, matsBuffer)
+        // The per-geometry full finishes for the path-traced export, same ring rule.
+        var finishBuffer: MTLBuffer? = nil
+        if pathTraceMats {
+            let finishLength = max(MemoryLayout<OllinMaterial>.stride,
+                                   geoFinishes.count * MemoryLayout<OllinMaterial>.stride)
+            if (ptGeoMatBuffers[frameIndex]?.length ?? 0) < finishLength {
+                ptGeoMatBuffers[frameIndex] = device.makeBuffer(length: finishLength,
+                                                                options: .storageModeShared)
+            }
+            finishBuffer = ptGeoMatBuffers[frameIndex]
+            geoFinishes.withUnsafeBytes { raw in
+                finishBuffer?.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+            }
+        }
+        return (accel, offsetsBuffer, matsBuffer, finishBuffer)
     }
 
     /// A 1-triangle acceleration structure bound to the lit mesh fragment whenever no

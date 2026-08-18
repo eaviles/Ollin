@@ -1824,6 +1824,7 @@ extension MetalRenderer {
                         contactShadow: MTLTexture? = nil,
                         gi: GIResolved? = nil,
                         caustics: MTLTexture? = nil,
+                        pathTraced: (color: MTLTexture, depth: MTLTexture, invSamples: Float)? = nil,
                         target passTarget: RenderTarget? = nil,
                         taaJitter: SIMD2<Float> = .zero) {
         let vertices = drawer.vertices
@@ -2218,6 +2219,10 @@ extension MetalRenderer {
         // On the half-res raymarch tier all fields composite in one upsample at the first field
         // batch; this flag skips the rest (their geometry already merged into the half-res target).
         var compositedHalfResFields = false
+        // The path-traced export layer composites once, at the first solid mesh batch
+        // (the traced image covers every solid mesh, so draw order against the 2D
+        // content around them holds); this flag skips the rest.
+        var pathTracedComposited = false
         for i in batches.indices {
             let batch = batches[i]
             let next = i + 1 < batches.count ? batches[i + 1] : nil
@@ -2526,6 +2531,21 @@ extension MetalRenderer {
                 profile.countDraw(batch.kind, count)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: count)
             case .mesh3D:
+                // Path-traced export: the traced layer stands in for every solid mesh
+                // batch (composited once, at the first, so draw order against the 2D
+                // content holds); wireframe, the grid, and matcap batches (the unlit
+                // stylized finish, e.g. an area light's glowing prop) are not in the
+                // traced scene and keep rastering, depth-tested against the traced depth.
+                if let pathTraced, !batch.meshWireframe, !batch.meshGrid, batch.matcap == nil {
+                    if !pathTracedComposited {
+                        encodePathTraceComposite(pathTraced, into: encoder,
+                                                 uniforms3D: uniforms3D,
+                                                 depthFormat: depthFormat,
+                                                 hasStencil: hasStencil)
+                        pathTracedComposited = true
+                    }
+                    continue
+                }
                 // Solid 3D mesh: a flat triangle list (indices already expanded), drawn
                 // through the camera constants bound at index 2. Depth-tested + writing
                 // (state set above), so meshes occlude each other and the point clouds

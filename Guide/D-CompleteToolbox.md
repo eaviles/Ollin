@@ -279,6 +279,7 @@ Use it two ways. It is an index for the moment you remember the guide showing bl
 | Capability | What it is | Guide | Reference |
 |---|---|---|---|
 | Stills and sequences | `--export` a frame, `--export-sequence` a folder of them | [Ch 22](22-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
+| Path-traced export | `--path-traced` renders the 3D scene by tracing light: soft shadows, bounce color, mirror in mirror, a real lens | [Ch 22](22-SharingAndPerforming.md) | [Path-traced export](../Docs/Output/PathTraced.md) |
 | Video and GIF | `--export-video` (H.264, HEVC, ProRes) and `--export-gif`, deterministic | [Ch 3](03-MotionAndTime.md), [Ch 22](22-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
 | Live recording | `startRecording()` or ⌘⇧R keeps a run as it happens, sound included, through evaluations | [Ch 22](22-SharingAndPerforming.md) | [Recording](../Docs/Output/Recording.md) |
 | Perfect loops | Declare `loopDuration` and `--export-loop` renders exactly one seamless lap | [Ch 3](03-MotionAndTime.md) | [Export](../Docs/Output/Export.md) |

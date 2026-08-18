@@ -193,7 +193,7 @@ swift run --package-path Examples Example-Basic-HelloCircle --export-pdf still.p
 swift run OllinLive MySketches/Loop.swift --export-gif loop.gif --seconds 4   # a loose file, same flags
 ```
 
-Sequence, video, and GIF exports advance the clock at a fixed timestep rather than wall-clock, so a slow render still plays back smoothly. In code they're `OllinApp.export`, `exportSequence`, `exportVideo`, and `exportGIF`. Codec and quality dials, the `--skip` warmup, GIF sizing, and the plotter-oriented `--hatch` fills are all in [`Docs/Output/Export.md`](Docs/Output/Export.md).
+Sequence, video, and GIF exports advance the clock at a fixed timestep rather than wall-clock, so a slow render still plays back smoothly. In code they're `OllinApp.export`, `exportSequence`, `exportVideo`, and `exportGIF`. Codec and quality dials, the `--skip` warmup, GIF sizing, and the plotter-oriented `--hatch` fills are all in [`Docs/Output/Export.md`](Docs/Output/Export.md). A 3D scene can also render its export by tracing light paths instead of rasterizing: `--path-traced` spends seconds per frame on physically soft shadows, color bleed, mirror-in-mirror reflections, and a real lens, from the same sketch the window tunes live ([`Docs/Output/PathTraced.md`](Docs/Output/PathTraced.md)).
 
 An export reproduces a sketch; a recording keeps a performance. `startRecording()` in a sketch, ⌘⇧R in the live hosts, or `--record` on OllinLive writes the run as it happens, picture and the sketch's own sound (or the room's) in one movie in real time, and in the live-coding host a take plays straight through an evaluate. See [`Docs/Output/Recording.md`](Docs/Output/Recording.md).
 
@@ -242,7 +242,7 @@ The same trade rules out a browser version, because the web has no Metal, so a w
 
 ## Roadmap
 
-The full roadmap lives in [`ROADMAP.md`](ROADMAP.md): what's planned, what's being explored, and the best first contributions, with the engineering thinking behind each item in [`DESIGN-NOTES.md`](DESIGN-NOTES.md). The short version of what's ahead: more of the iPhone sensor array and the 3D mode (cloth that meets itself), generative geometry and a growing catalog of creative-coding technique helpers, more of the sound layer, new input and output surfaces (haptics, screen-saver and wallpaper export), GPU-driven rendering and a path-traced export, editor tooling, learning materials and a third-party extension ecosystem, and eventually iOS, visionOS, and AR.
+The full roadmap lives in [`ROADMAP.md`](ROADMAP.md): what's planned, what's being explored, and the best first contributions, with the engineering thinking behind each item in [`DESIGN-NOTES.md`](DESIGN-NOTES.md). The short version of what's ahead: more of the iPhone sensor array and the 3D mode (cloth that meets itself), generative geometry and a growing catalog of creative-coding technique helpers, more of the sound layer, new input and output surfaces (haptics, screen-saver and wallpaper export), editor tooling, learning materials and a third-party extension ecosystem, and eventually iOS, visionOS, and AR.
 
 ## Built with AI
 

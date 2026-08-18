@@ -48,6 +48,16 @@ public struct Camera3D: Equatable, Sendable {
     /// Perspective or orthographic, with its parameter.
     public var projection: Projection
 
+    /// The thin-lens aperture radius in world units, read by the path-traced export
+    /// (`--path-traced`) for real depth of field: 0 (the default) is a pinhole and
+    /// everything is sharp; larger values blur away from the focus plane. The live
+    /// raster view ignores it (screen-space defocus stays the live-preview blur).
+    public var aperture: Double = 0
+    /// The distance from the camera at which the path-traced export focuses, along
+    /// the view axis. `nil` (the default) focuses on the `target`, so an orbiting
+    /// camera keeps its subject sharp with no extra bookkeeping.
+    public var focusDistance: Double? = nil
+
     /// How far this camera has already stepped sideways off the centre line of a
     /// stereo pair, in world units, and the distance at which the two eyes agree.
     /// Zero for every ordinary camera, which is what leaves the projection of one

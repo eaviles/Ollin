@@ -570,6 +570,7 @@ let package = Package(
                 .copy("Renderer/ShaderSim.metal"),
                 .copy("Renderer/ShaderPatterns.metal"),
                 .copy("Renderer/ShaderIBL.metal"),
+                .copy("Renderer/ShaderPathTrace.metal"),
                 .copy("Renderer/OllinShaderTypes.h"),
                 // Cozette (MIT) — the bundled default bitmap font, loaded at
                 // runtime by BitmapFont.builtin via the BDF parser. License kept

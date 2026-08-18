@@ -150,6 +150,14 @@ final class MetalRenderer {
             PipelineKey(vertex: "ollin_ibl_skybox_vertex", fragment: "ollin_fog_air_fragment",
                         premultiplied: true, depthFormat: depth)
         }
+        // the path-traced export composite: a fullscreen draw of the traced layer into
+        // the geometry pass in place of the raster mesh batches, premultiplied by its
+        // coverage (silhouette edges blend over the backdrop) and writing the primary
+        // depth so the un-traced 3D kinds still occlude correctly.
+        static func pathTraceComposite(depth: MTLPixelFormat? = nil) -> PipelineKey {
+            PipelineKey(vertex: "ollin_ibl_skybox_vertex", fragment: "ollin_pt_composite_fragment",
+                        premultiplied: true, depthFormat: depth)
+        }
 
         // tessellated triangles (rects, lines, polygons, arcs)
         static func solid(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
@@ -754,6 +762,24 @@ final class MetalRenderer {
     /// (transmission, index of refraction, the interior attenuation). CPU-filled at
     /// accel-build time, so it rides the same per-frame ring as the offsets.
     var causticGeoMatBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
+    /// Per-geometry full batch finishes (`OllinMaterial`, parallel to the offsets) for
+    /// the offline path-traced export: the accel build breaks its coalesced runs where
+    /// the finish changes while path tracing, so a hit resolves its whole material.
+    /// Same per-frame ring rule as the offsets and the caustic materials.
+    var ptGeoMatBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
+    /// The offline path-traced export settings, set only by the headless export
+    /// drivers (`--path-traced`); nil live and everywhere else, which is what keeps
+    /// the raster pipeline byte-identical whenever the mode is off.
+    var pathTracing: PathTracing?
+    /// Whether the trace prints its rewriting progress line. The still export leaves
+    /// it on (a minutes-long render should say where it is); the sequence and video
+    /// drivers turn it off and keep their own per-frame line instead.
+    var pathTraceReportsProgress = true
+    /// The environment-sampling tables (luminance CDFs + solid-angle pdf grid) the
+    /// path-traced export builds per equirect, cached by texture identity so a
+    /// sequence export builds them once. Export-only and small (a few hundred KB per
+    /// environment), so the cache never needs eviction.
+    var ptEnvTableCache: [ObjectIdentifier: MTLBuffer] = [:]
     lazy var shadowSampler: MTLSamplerState? = {
         let d = MTLSamplerDescriptor()
         d.minFilter = .linear
@@ -2055,6 +2081,11 @@ final class MetalRenderer {
 
         guard let readback = device.makeBuffer(length: byteCount, options: .storageModeShared),
               let commandBuffer = commandQueue.makeCommandBuffer() else { return nil }
+        // Path-traced export (`--path-traced`, headless only): trace the whole mesh
+        // scene first, in its own completed command buffers, so the composite in the
+        // geometry pass reads finished textures and the frame's own shadow pass can
+        // safely re-fill the accel/offsets rings the trace used. nil = pure raster.
+        let pathTraced = encodePathTracePass(drawer, width: width, height: height)
         encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
         encodeMeshFieldCulling(drawer, into: commandBuffer,
                                viewport: SIMD2<Float>(Float(width), Float(height)))
@@ -2201,6 +2232,7 @@ final class MetalRenderer {
                        contactShadow: contactShadow,
                        gi: gi,
                        caustics: caustics,
+                       pathTraced: pathTraced,
                        taaJitter: jitter)
                 encoder.endEncoding()
                 let scattered = applySubsurfaceScattering(drawer, resolved: resolveTexture,
@@ -2245,7 +2277,8 @@ final class MetalRenderer {
                    deferredReflection: deferredReflection,
                    contactShadow: contactShadow,
                    gi: gi,
-                   caustics: caustics)
+                   caustics: caustics,
+                   pathTraced: pathTraced)
             encoder.endEncoding()
 
             // Tone-map the resolved float frame (after the subsurface-scattering
