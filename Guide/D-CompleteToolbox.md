@@ -127,6 +127,7 @@ Use it two ways. It is an index for the moment you remember the guide showing bl
 | Circle packing | Grow-to-touch packings, seeded and reproducible | [Ch 13](13-ShapesAsMaterial.md) | [Packing](../Docs/Generators/Packing.md) |
 | Shape packing | Packing measured against real outlines, so small shapes settle into a star's notches; one-shot or filled in over time | [Ch 13](13-ShapesAsMaterial.md) | [ShapePacking](../Docs/Generators/ShapePacking.md) |
 | Truchet tiles | One tile per cell at random spins; loops and mazes emerge | [Ch 6](06-GridsAndRepetition.md) | [Truchet](../Docs/Drawing/Truchet.md) |
+| Hitomezashi stitching | One bit per grid line phases its dashes; stitches and a two-tone cloth emerge | [Ch 6](06-GridsAndRepetition.md) | [Hitomezashi](../Docs/Drawing/Hitomezashi.md) |
 | Hex and triangle grids | The other regular tilings, with hex distance, neighbors, and exact picking | [Ch 6](06-GridsAndRepetition.md) | [Tiling](../Docs/Drawing/Tiling.md) |
 | Recursive subdivision | Uneven panels by aspect-aware splitting, binary or quadtree | [Ch 6](06-GridsAndRepetition.md) | [Tiling](../Docs/Drawing/Tiling.md) |
 | Mazes | Perfect labyrinths (three carving textures), walls as clean line-work | [Ch 6](06-GridsAndRepetition.md) | [Tiling](../Docs/Drawing/Tiling.md) |

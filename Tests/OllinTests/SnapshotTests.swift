@@ -452,6 +452,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("truchet",
                  note: "A Truchet tiling: arc tiles in the top half, diagonal tiles in the bottom, each cell's orientation chosen by the seed. Pins both tile geometries and the cross-cell connectivity (the arcs meet at shared edge midpoints, the diagonals at corners). Seeded, no time, so the layout is deterministic.",
                  make: { TruchetScene() }),
+    SnapshotCase("hitomezashi",
+                 note: "A hitomezashi stitch design: the two-tone parity fill underneath, the dash line-work over it. Pins the per-line dash alternation, the phase each line's bit picks, and that the fill's tone boundaries land exactly on the stitches (the two-coloring). Seeded, no time, so the design is deterministic.",
+                 make: { HitomezashiScene() }),
     SnapshotCase("penrose",
                  note: "Penrose tilings, kites and darts left, rhombs right, each with the matching-rule arcs stroked on top. Pins both deflations (the derived P2 rules and the P3 rules), the half-tile merge, the rhombs' intrinsic orientation, and the arc fractions that make the decoration continuous across every edge. No rng and no time, so it is deterministic.",
                  make: { PenroseScene() }),
@@ -3477,6 +3480,33 @@ private final class SpectreScene: Sketch {
                 }
             }
             drawShape(tile.shape)
+        }
+    }
+}
+
+/// A hitomezashi stitch design: the two-tone parity fill underneath, the dash
+/// line-work over it, both faces of one seeded design so their agreement (a
+/// tone boundary exactly under every stitch) is pinned as pixels.
+private final class HitomezashiScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x101A33))
+        seed(11)
+        let design = hitomezashi(in: Rectangle(x: 16, y: 16, width: 224, height: 224),
+                                 columns: 10, rows: 10)
+
+        noStroke()
+        for (cell, tone) in zip(design.grid.cells, design.parities) {
+            fill(tone ? Color(hex: 0x2C4A7F) : Color(hex: 0x18264A))
+            drawRect(cell.frame)
+        }
+
+        stroke(Color(hex: 0xF2E9DC))
+        strokeWeight(3)
+        strokeCap(.round)
+        for dash in design.stitches {
+            drawPolyline(dash.points, closed: false)
         }
     }
 }
