@@ -80,48 +80,6 @@ A window opens with your circle in it. Three calls made it happen. `background(.
 
 The next part is what will change how you work. Keep the window open, go back to your editor, change `200` to `320`, and save. The circle grows in place, because `OllinLive` watches the file and swaps in every save while the window keeps running. Now try breaking it on purpose: delete a parenthesis and save. An error prints in the terminal while your last working sketch keeps drawing, so nothing is lost. Fix the parenthesis, save again, and you're back where you were. You'll work this way through the whole guide, so it's worth arranging the window and the editor side by side now.
 
-### A shorter way to run things
-
-Typing `swift run OllinLive path/to/thing.swift` from inside the repository folder every time gets old, and it also means your sketches have to live somewhere near the repository. There's a one-time fix.
-
-```sh
-Scripts/ollin install        # run once, from the repository folder
-```
-
-That puts an `ollin` command on your path, and from then on a sketch is just a file you can run from anywhere:
-
-```sh
-ollin new NextIdea.swift     # writes a starter sketch, named after the file
-ollin NextIdea.swift         # opens it in the live window
-```
-
-The thing worth understanding here is what a sketch actually *is* in Ollin. It's one `.swift` file. Not a project, not a folder with configuration in it, not something you have to register anywhere. That's deliberate, because it means a sketch is small enough to keep in a notes folder, mail to someone, or paste into a message, and it will run on any machine that has Ollin. Every export option works on a loose file too, so `ollin NextIdea.swift --export-gif out.gif` renders a GIF from a file sitting on your desktop.
-
-If you want to go one step further, putting `#!/usr/bin/env ollin` on the first line and running `chmod +x` on the file makes the sketch directly executable, so `./NextIdea.swift` opens it.
-
-The guide keeps writing the full `swift run OllinLive` form so everything works whether or not you installed the shortcut. [Single-file sketches](../Docs/Tools/SingleFile.md) covers the rest.
-
-## When one file isn't enough
-
-A file stops being enough the moment the sketch needs things next to it: photographs, a font, a shader, a second file's worth of code. At that point you want a folder, and you should not have to build one by hand.
-
-```sh
-ollin new MyPiece                                  # a folder that builds and runs
-ollin new MyPiece --template shader --with audio   # wired for a shader and the microphone
-```
-
-That writes a small project: the sketch, a manifest that already knows where the framework is, a place to put your material, and a README with the commands in it. `swift run MyPiece` runs it, and `ollin Sources/MyPiece/Sketch.swift` opens that same file in the live window, so you keep the edit-and-save loop you just learned.
-
-The `--template` part is worth knowing about early. A template is not an empty file; it is a small sketch that already does something, so you start by changing something that works instead of facing a blank `draw()`. There are ten, from a plain breathing circle to pen-ready line work to a lit 3D solid.
-
-```sh
-ollin generate
-```
-
-This is the same thing in a window, and it does one thing the terminal cannot: it *runs* each template while you look at it. Pick a starting point by watching it move, tick what the sketch should be wired for, and press Create.
-
-Nothing about this changes what a sketch is. It is still your `.swift` file, still readable on its own, and the folder is just somewhere to keep it and its material. [The project generator](../Docs/Tools/ProjectGenerator.md) has the whole list of templates and options.
-
 ## Once, then every frame
 
 `draw()` is one of two functions Ollin calls for you. The other is `setup()`, and it runs a single time, before the first frame is drawn:
@@ -258,6 +216,48 @@ drawCircle(mouseX, mouseY, 80)
 ```
 
 Hold the button and the circle turns orange. You don't wire up events or register callbacks for this. Because `draw()` is running anyway, you can simply ask "is the button down right now?" on every frame and draw accordingly. Clicks, releases, and the keyboard work the same way, and [Input](../Docs/Helpers/Input.md) has the rest of them.
+
+### A shorter way to run things
+
+Typing `swift run OllinLive path/to/thing.swift` from inside the repository folder every time gets old, and it also means your sketches have to live somewhere near the repository. There's a one-time fix.
+
+```sh
+Scripts/ollin install        # run once, from the repository folder
+```
+
+That puts an `ollin` command on your path, and from then on a sketch is just a file you can run from anywhere:
+
+```sh
+ollin new NextIdea.swift     # writes a starter sketch, named after the file
+ollin NextIdea.swift         # opens it in the live window
+```
+
+The thing worth understanding here is what a sketch actually *is* in Ollin. It's one `.swift` file. Not a project, not a folder with configuration in it, not something you have to register anywhere. That's deliberate, because it means a sketch is small enough to keep in a notes folder, mail to someone, or paste into a message, and it will run on any machine that has Ollin. Every export option works on a loose file too, so `ollin NextIdea.swift --export-gif out.gif` renders a GIF from a file sitting on your desktop.
+
+If you want to go one step further, putting `#!/usr/bin/env ollin` on the first line and running `chmod +x` on the file makes the sketch directly executable, so `./NextIdea.swift` opens it.
+
+The guide keeps writing the full `swift run OllinLive` form so everything works whether or not you installed the shortcut. [Single-file sketches](../Docs/Tools/SingleFile.md) covers the rest.
+
+## When one file isn't enough
+
+A file stops being enough the moment the sketch needs things next to it: photographs, a font, a shader, a second file's worth of code. At that point you want a folder, and you should not have to build one by hand.
+
+```sh
+ollin new MyPiece                                  # a folder that builds and runs
+ollin new MyPiece --template shader --with audio   # wired for a shader and the microphone
+```
+
+That writes a small project: the sketch, a manifest that already knows where the framework is, a place to put your material, and a README with the commands in it. `swift run MyPiece` runs it, and `ollin Sources/MyPiece/Sketch.swift` opens that same file in the live window, so you keep the edit-and-save loop you just learned.
+
+The `--template` part is worth knowing about early. A template is not an empty file; it is a small sketch that already does something, so you start by changing something that works instead of facing a blank `draw()`. There are ten, from a plain breathing circle to pen-ready line work to a lit 3D solid.
+
+```sh
+ollin generate
+```
+
+This is the same thing in a window, and it does one thing the terminal cannot: it *runs* each template while you look at it. Pick a starting point by watching it move, tick what the sketch should be wired for, and press Create.
+
+Nothing about this changes what a sketch is. It is still your `.swift` file, still readable on its own, and the folder is just somewhere to keep it and its material. [The project generator](../Docs/Tools/ProjectGenerator.md) has the whole list of templates and options.
 
 ## Putting it together: a breathing ring
 

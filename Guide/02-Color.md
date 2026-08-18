@@ -107,7 +107,7 @@ fill(dusk.color(at: t))
 
 Two kinds of ramp come pre-made. **`Colormap`** holds eight scientific maps such as `.viridis` and `.magma`, built so that perceived brightness climbs evenly from one end to the other, which makes them the standard way to turn a number into color a viewer can read. **`CosinePalette`** holds seven cyclic palettes such as `.sunset` and `.neon`, all generated from one small formula, and because they loop they work beautifully when fed with `time`. Both answer to the same `color(at:)`.
 
-## Palettes from files and pictures
+## Palettes from a file
 
 Typing hex codes gets old, and two calls let you skip it.
 
@@ -119,6 +119,8 @@ let one  = loadPalette("sunset.hex")     // just the first
 ```
 
 A good place to get palettes is [nice-color-palettes](https://github.com/Experience-Monks/nice-color-palettes), a JSON file of a thousand of them in exactly the shape `loadPalettes` expects. Download it next to your sketch and the call above reads it as is. Two things to know about that file. Its palettes were collected from COLOURlovers, whose default license forbids commercial use, so Ollin doesn't bundle them and you should check the terms before selling work that uses them. And because so many people have reached for it, its very first palette (`#69d2e7`, `#a7dbd8`, `#e0e4cc`, `#f38630`, `#fa6900`) shows up in a startling amount of generative art. If you want your work to look like yours, that is a reason to keep reading.
+
+## Palettes from a photograph
 
 The second call takes the colors out of a picture. Give it an image and how many colors you want, and it groups the pixels by how similar they look and hands back the center of each group:
 
@@ -144,6 +146,8 @@ override func setup() {
 
 A palette pulled from a photograph you took is a palette nobody else has.
 
+## Fewer colors than the picture needs: dithering
+
 Once you have those colors, you can put the picture back together in them:
 
 ```swift
@@ -168,6 +172,20 @@ There are two families, and they look different on purpose.
 **Error diffusion** works differently. It commits to a color for one pixel, measures how far off that was, and pushes the leftover error onto neighbors it hasn't reached yet, so every mistake gets paid back nearby. `.floydSteinberg` is the classic, and it gives the organic scattered look in the third panel. `.atkinson` deliberately throws away a quarter of the error, which blows highlights and shadows out to clean white and black, a look worth knowing by name.
 
 A few practical notes. `.none` skips the scattering entirely, which is what the first panel uses and what you reach for to show someone the difference. There's a second form, `dithered(.atkinson, levels: 2)`, that quantizes to evenly spaced steps per channel instead of to a palette, which is the posterizing one. And this is CPU work over every pixel, so do it in `setup()` and hold the result rather than redoing it each frame. [The color reference](../Docs/Drawing/Color.md#dithering) has the full method list, and the `Dithering` example puts six of them side by side.
+
+## Gradients as paint
+
+A `Ramp` can also *be* the paint. Anywhere `fill` or `stroke` accepts a color it will also accept a gradient, laid over the canvas in one of three ways:
+
+<img src="Images/02-Color/GradientPaint.jpg" alt="Three panels: a rectangle with a vertical dusk gradient, a soft radial glow, and a ring stroked with a rainbow that sweeps around it" width="680">
+
+```swift
+fill(.linear(from: Vector2(0, 0), to: Vector2(0, height), dusk))   // along a line
+fill(.radial(center: spot, radius: 260, glow))                     // out from a point
+stroke(.alongPath(wheel))                                          // along the stroke itself
+```
+
+Each of them takes a `Ramp` or a plain list of colors. Alpha rides along, so a radial ramp that ends in a transparent color gives you an instant soft glow, which is the middle panel above. The coordinates live in drawing space, so gradients move with the shapes they paint. `.alongPath` runs from the start of a line to its end, and on a closed shape it sweeps once around, which is how the ring above became a color wheel.
 
 ## Will everybody see it?
 
@@ -200,20 +218,6 @@ if !myPalette.isColorblindSafe() {
 ```
 
 Here is the part worth carrying away. Red and green do look alike to a protanope, and the pair is often still fine, because one is much darker than the other. What merges is two colors of the same lightness that differ only in hue. Measured on a matched pair, they sit 0.281 apart for average vision and 0.014 apart under the worst kind. So vary lightness, not only hue, and give a shape or a label to anything that color alone is carrying.
-
-## Gradients as paint
-
-A `Ramp` can also *be* the paint. Anywhere `fill` or `stroke` accepts a color it will also accept a gradient, laid over the canvas in one of three ways:
-
-<img src="Images/02-Color/GradientPaint.jpg" alt="Three panels: a rectangle with a vertical dusk gradient, a soft radial glow, and a ring stroked with a rainbow that sweeps around it" width="680">
-
-```swift
-fill(.linear(from: Vector2(0, 0), to: Vector2(0, height), dusk))   // along a line
-fill(.radial(center: spot, radius: 260, glow))                     // out from a point
-stroke(.alongPath(wheel))                                          // along the stroke itself
-```
-
-Each of them takes a `Ramp` or a plain list of colors. Alpha rides along, so a radial ramp that ends in a transparent color gives you an instant soft glow, which is the middle panel above. The coordinates live in drawing space, so gradients move with the shapes they paint. `.alongPath` runs from the start of a line to its end, and on a closed shape it sweeps once around, which is how the ring above became a color wheel.
 
 ## A recipe borrowed early: random
 
