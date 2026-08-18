@@ -78,9 +78,30 @@ struct OllinLiveApp: App {
         // here left the window behind the terminal until a Dock click.
         let keepClock = arguments.contains("--keep-clock")
         let record = arguments.contains("--record")
+        // The take flags (`--record-take <file>` writes the run's inputs and
+        // knobs down; `--replay <file>` plays a recorded run back). A bad take
+        // file fails here, before a window opens.
+        func value(after flag: String) -> String? {
+            guard let i = arguments.firstIndex(of: flag), i + 1 < arguments.count else { return nil }
+            return arguments[i + 1]
+        }
+        let replayTake: Take? = value(after: "--replay").map { path in
+            do {
+                return try Take.load(from: URL(fileURLWithPath: path))
+            } catch {
+                FileHandle.standardError.write(Data("OllinLive: could not read the take: \(error)\n".utf8))
+                exit(1)
+            }
+        }
+        var takeRecordURL = value(after: "--record-take").map(URL.init(fileURLWithPath:))
+        if replayTake != nil, takeRecordURL != nil {
+            FileHandle.standardError.write(Data("OllinLive: --record-take is ignored during a replay\n".utf8))
+            takeRecordURL = nil
+        }
         let session = LiveSession(
             loader: SketchLoader(sketchPath: sketchPath), sketchPath: sketchPath,
-            displayName: pathArg, keepClock: keepClock, recordOnLaunch: record)
+            displayName: pathArg, keepClock: keepClock, recordOnLaunch: record,
+            takeRecordOnLaunch: takeRecordURL, replayOnLaunch: replayTake)
         _session = State(initialValue: session)
         ActiveLiveSession.session = session
     }

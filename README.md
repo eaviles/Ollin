@@ -197,6 +197,8 @@ Sequence, video, and GIF exports advance the clock at a fixed timestep rather th
 
 An export reproduces a sketch; a recording keeps a performance. `startRecording()` in a sketch, ⌘⇧R in the live hosts, or `--record` on OllinLive writes the run as it happens, picture and the sketch's own sound (or the room's) in one movie in real time, and in the live-coding host a take plays straight through an evaluate. See [`Docs/Output/Recording.md`](Docs/Output/Recording.md).
 
+A recording keeps the pixels; a *take* keeps the performance itself. `--record-take take.json` writes a run's seed, clock, inputs, and knob moves down as one small JSON file, and `--replay take.json` plays it back exactly, in the window (where the keyboard becomes a transport: pause, step, scrub) or through any export flag above, so a session of live tweaking re-renders offline frame for frame, even path-traced. `--seed` beside `--replay` plays the same gestures onto a different variation. See [`Docs/Core/Replay.md`](Docs/Core/Replay.md).
+
 A seeded sketch is a generator, so Ollin names the seed each run grew from ([`variation`](Docs/Core/Variations.md)) and gives you the tools to explore the space it indexes: step, roll, or jump through seeds from the inspector's Variation card, proof a whole range as a labeled contact sheet, then re-render the keeper at full size.
 
 ```sh

@@ -3,7 +3,7 @@
 /// `Character`); keys with no useful character — arrows, return, the function
 /// row — arrive as `keyCode` instead, so a sketch reads `keyCode == .leftArrow`
 /// rather than matching a magic number.
-public enum KeyCode: Hashable, Sendable {
+public enum KeyCode: Hashable, Sendable, Codable {
     case upArrow, downArrow, leftArrow, rightArrow
     /// The main Return key.
     case `return`
@@ -32,7 +32,7 @@ enum KeyToken: Hashable {
 /// and control), as an `OptionSet`, so a sketch reads `modifiers.contains(.shift)`
 /// or tests `modifiers == [.command, .shift]`. Platform-neutral; the live view
 /// maps the system's modifier flags onto it. Read it through `Sketch.modifiers`.
-public struct ModifierKeys: OptionSet, Sendable {
+public struct ModifierKeys: OptionSet, Sendable, Codable {
     public let rawValue: Int
     public init(rawValue: Int) { self.rawValue = rawValue }
 

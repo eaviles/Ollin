@@ -7222,6 +7222,20 @@ cannot absorb) finishes the file cleanly and says so.
 
 ---
 
+## Record and replay (the take transport)
+
+`Take` (`Sources/Ollin/Core/Take.swift`) writes a run down as data: the `variation` seed, one clock sample per frame exactly as the display drove it (jitter included), every input event, and every `@Param` change, the last two stamped with the frame they precede. Playing the same file into a fresh instance walks it through the same frames, and the pixel test pins that to the byte. Where the real-time recorder above keeps a run's *pixels*, a take keeps the *performance*, so it is small (roughly 90 bytes a frame as JSON, about 20 MB an hour) and it can re-render through any export path afterwards, path tracer included.
+
+The design lives on two choke points rather than a parallel driver. Every driver Ollin has, the live window, each offline export loop, the benchmark, funnels its clock through `Sketch.advance`; the player overrides the caller's values there, after applying the frame's recorded events and knob changes, and the recorder writes down whichever clock is about to apply. And every input enters `Sketch` through a small set of internal handlers (`setMouse`, `handleMouseButton`, `handleKey`, `handleScroll`, and friends); each one logs to the recorder and then refuses the call while a player is attached, and the player re-ingests recorded events through the same private halves, which is what makes the hooks (`mousePressed()` et al.) fire again on replay. Because both seams sit below every host, `--replay` composes with the whole export flag surface through nothing but the one `make()` wrapper in `handleCommandLine`.
+
+This is deliberately *not* a `SketchExtension`. The seam's hooks see the frame boundary but never the input events between frames, and they run after `advance` has already applied the clock, too late to override it. The recorder and player are two small internal collaborators on `Sketch` (`takeRecorder` / `takePlayer`, at most one attached), wired by the runner or by `Take.install(on:)`.
+
+The stamp contract is the one non-obvious invariant. An event stamped `k` arrived after frame `k` drew; it applies at the advance whose pre-increment `frameCount` is `k`, and `frames[k]` is that advance's clock. Recording and playback must agree on the pre-increment stamp, or every replay shears its input by one frame. `Take.install(on:)` must run before `setup()` (seed first, then the starting knob values, then the player), because `setup()` builds from both; `--seed` beside `--replay` re-seeds deliberately *after* install, which replays the same gestures onto a different variation.
+
+Recording starts at the run's own frame 0 (the runner attaches the recorder in its first-frame block, ahead of `setup()`, or `beginTake` restarts in place), because a take that begins mid-state could never reproduce. The file autosaves on a doubling cadence capped at a minute of frames: a growing take re-encodes whole, so a fixed short cadence would cost more the longer the run gets, and the write is a value-copy handed to a utility queue so the frame loop never pays it. A live-reload swap or a seed restart ends the take (writing it out) rather than corrupting it.
+
+Scrubbing backward is re-simulation: rewind to frame 0 (reseed, restore the starting knobs, `setup()` again) and step forward to the target. The intermediate frames go through `stepReplayFrame`, which mirrors the headless drive in `renderImage(of:)`: an accumulating or feedback frame must actually render off-screen for its persistent surface to evolve, anything else only needs its compute stepped. Generic state snapshots are not possible (only the sketch knows its state), so the honest cost of a deep backward scrub is the frames in between; determinism is what makes the landing exact.
+
 ## Spatial video (the stereo pair and its file)
 
 `--export-spatial` writes stereo MV-HEVC, the format Apple's platforms play with

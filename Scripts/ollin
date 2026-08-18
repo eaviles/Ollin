@@ -39,6 +39,10 @@ usage: ollin <path/to/Sketch.swift> [flags]   run the sketch (live window)
        ollin <path/to/Sketch.swift> --export frame.png [...]
                                               headless export (--export-gif,
                                               --export-video, --export-svg, ...)
+       ollin <path/to/Sketch.swift> --record-take take.json
+                                              write the run itself down;
+                                              --replay take.json plays it back
+                                              or re-renders it via any export
        ollin new [name.swift]                 write a starter sketch file
        ollin new <Name> [--template ...]      make a project folder
        ollin new <Name> --from-shader <src>   translate a GLSL fragment shader

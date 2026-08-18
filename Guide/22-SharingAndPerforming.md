@@ -683,6 +683,29 @@ swift run OllinLive MySketches/Finale.swift --record
 
 Stopping is generous on purpose. Quitting the host finishes the movie first, and so does Control-C in the terminal, because a take that ends badly should still be a take. The working example is [`Examples/Export/Record`](../Examples/Export/Record/Sketch.swift), an instrument you drag to play; everything else lives in [Recording](../Docs/Output/Recording.md).
 
+## Playing the night again
+
+A movie remembers what the performance looked like. A *take* remembers the performance itself: the seed the run rolled, the clock it followed, every pointer move, every knob you turned. It is one small JSON file, and playing it back walks the sketch through the same frames, pixel for pixel.
+
+```sh
+swift run OllinLive MySketches/Finale.swift --record-take take.json   # play; quitting writes the file
+swift run OllinLive MySketches/Finale.swift --replay take.json        # the run, again, exactly
+```
+
+During a replay your mouse belongs to the recording, so the keyboard becomes a transport. Space pauses. The arrows step one frame; with shift held they jump thirty. Home rewinds, End jumps to the last frame, and space at the end starts the night over. Stepping backward re-runs the sketch from the start up to the frame you asked for, which determinism makes exact. Finding the one frame worth keeping becomes arrow keys instead of luck.
+
+The best part is what a take turns into afterwards. `--replay` composes with every exporter in this chapter:
+
+```sh
+swift run OllinLive MySketches/Finale.swift --replay take.json --export-video night.mov
+swift run OllinLive MySketches/Finale.swift --replay take.json --export still.png --frame 412
+swift run OllinLive MySketches/Finale.swift --replay take.json --path-traced --export-video film.mov
+```
+
+A replayed video needs no `--seconds`; it renders the whole take. So the set you played live at sixty frames a second can re-render overnight at seconds per frame, exactly as performed. And `--seed` beside `--replay` keeps your gestures while `random()` walks a different world, so one good performance can audition many variations.
+
+What replays is what drives the sketch: time, input, knobs, randomness. A camera feed or a microphone keeps playing live during a replay. A piece leaning on the room follows your recorded hands, not the recorded room. The whole contract, and the `Take` type under the flags, lives in [Replay](../Docs/Core/Replay.md).
+
 ## Putting it together: a set in five evaluations
 
 What you'll build here is a short performed set. Open the host with a fresh buffer. Build the chapter's finale the way an audience would watch it grow, one evaluation at a time. Chapter 15's `Visual` chains are the natural material for this kind of set, since every step is one added line:

@@ -315,6 +315,194 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         }
     }
 
+    // MARK: Record and replay (the take transport, see `Take`)
+
+    /// Where the recording writes, when this run records one.
+    private var takeRecordURL: URL?
+    /// The autosave cadence, in recorded frames: the gap doubles after each
+    /// write (a growing take re-encodes whole, so a fixed short cadence would
+    /// cost more the longer the run gets), capped at a minute of frames.
+    private var takeAutosaveDue = 120
+    private var takeAutosaveGap = 120
+
+    /// Whether this runner is playing a recorded take back.
+    public var isReplaying: Bool { sketch.takePlayer != nil }
+    /// The transport's own pause, distinct from `noLoop()`.
+    private var replayPaused = false
+    /// A jump asked for by the transport keys: the `frameCount` to land on.
+    private var pendingScrubTarget: Int?
+
+    /// Start recording this run into a fresh take. The run restarts (same
+    /// seed, fresh `setup()`) so the take begins at frame 0, which is what
+    /// makes it replayable; knob values stay put, and the take writes them
+    /// down as its starting point. Pass a file to also write the take there,
+    /// on a growing autosave cadence and at `finishTake()`.
+    public func beginTake(writingTo url: URL? = nil) {
+        sketch.takePlayer = nil
+        takeRecordURL = url
+        restart(variation: sketch.variation)
+        attachTakeRecorder()
+        if let url { print("Ollin: recording a take to \(url.path)") }
+    }
+
+    /// Attach a fresh recorder to the current sketch, resetting the autosave
+    /// cadence. The runner's half of `beginTake`, also used by the first-frame
+    /// launch flag and by a seed restart mid-recording.
+    private func attachTakeRecorder() {
+        sketch.takeRecorder = TakeRecorder(sketch: sketch)
+        takeAutosaveGap = 120
+        takeAutosaveDue = 120
+    }
+
+    /// Stop recording and hand the take over, writing it to the recording
+    /// destination when there is one. Quiet when nothing was recording.
+    @discardableResult
+    public func finishTake() -> Take? {
+        guard let recorder = sketch.takeRecorder else { return nil }
+        sketch.takeRecorder = nil
+        let take = recorder.take
+        if let url = takeRecordURL {
+            do {
+                try take.write(to: url)
+                print("Ollin: take written, \(take.frameCount) frames, \(url.path)")
+            } catch {
+                FileHandle.standardError.write(
+                    Data("Ollin: could not write the take: \(error)\n".utf8))
+            }
+        }
+        return take
+    }
+
+    /// Play a recorded take back in this window: the sketch restarts under the
+    /// take's seed and starting knob values, live input hands over to the
+    /// recording, and the keyboard becomes the transport (space pauses and
+    /// resumes, the arrows step a frame, with shift they jump thirty, Home and
+    /// End go to the ends, and space at the end starts over).
+    public func replay(_ take: Take) {
+        finishTake()
+        take.install(on: sketch)
+        replayPaused = false
+        pendingScrubTarget = nil
+        restartForTransport()
+    }
+
+    /// The `restart(variation:)` recipe without the reseed: a replay's install
+    /// already seeded the sketch and restored its starting knobs.
+    private func restartForTransport() {
+        sketch.frameCount = 0
+        renderer.resetAccumulation()
+        didSetup = false
+        clockCarry = nil
+        sketch.loop()
+        view?.isPaused = false
+    }
+
+    /// Back to frame 0 of the replay: reseed, restore the starting knobs,
+    /// rewind the player, and re-run `setup()`, so the re-simulation walks the
+    /// exact original path.
+    private func rewindReplay() {
+        guard let player = sketch.takePlayer else { return }
+        sketch.seed(player.take.seed)
+        player.take.applyStart(to: sketch)
+        player.rewind()
+        restartForTransport()
+    }
+
+    /// Jump the replay to `frame` (a `frameCount` value, clamped to the take).
+    /// A backward jump restarts from frame 0 and re-simulates forward, which
+    /// determinism makes exact; the cost is the frames in between. The jump
+    /// lands paused, so stepping inspects still frames.
+    public func scrub(to frame: Int) {
+        guard let player = sketch.takePlayer else { return }
+        pendingScrubTarget = min(max(1, frame), player.take.frameCount)
+        replayPaused = true
+        view?.isPaused = false     // wake the loop for the one pass that lands it
+    }
+
+    /// The transport keys, fed by the view during a replay (live keys never
+    /// reach a replayed sketch, so they are free to drive the transport).
+    func handleTransportKey(character: Character?, code: KeyCode?, shift: Bool) {
+        guard let player = sketch.takePlayer else { return }
+        let step = shift ? 30 : 1
+        let lastFrame = player.take.frameCount
+        switch (character, code) {
+        case (" ", _):
+            if sketch.frameCount >= lastFrame {
+                rewindReplay()               // space at the end starts over
+                replayPaused = false
+            } else {
+                replayPaused.toggle()
+                view?.isPaused = replayPaused
+            }
+        case ("0", _):
+            scrub(to: 1)
+        case (_, .some(.leftArrow)):
+            scrub(to: sketch.frameCount - step)
+        case (_, .some(.rightArrow)):
+            scrub(to: sketch.frameCount + step)
+        case (_, .some(.home)):
+            scrub(to: 1)
+        case (_, .some(.end)):
+            scrub(to: lastFrame)
+        default:
+            break
+        }
+    }
+
+    /// Land a pending scrub: rewind when the target is behind, then re-simulate
+    /// up to the frame before it. The normal frame path draws the target frame
+    /// itself in the same pass, so the landed frame reaches the screen.
+    private func performScrub(to target: Int) {
+        guard sketch.takePlayer != nil else { return }
+        if target <= sketch.frameCount { rewindReplay() }
+        while sketch.frameCount < target - 1 { stepReplayFrame() }
+    }
+
+    /// One re-simulated frame with no present: advance (the player supplies
+    /// the recorded clock and inputs), draw, and give a stateful GPU layer its
+    /// step, mirroring the headless drive in `renderImage(of:)`. An
+    /// accumulating or feedback frame must actually render for its persistent
+    /// surface to evolve; anything else only needs its compute stepped.
+    private func stepReplayFrame() {
+        if !didSetup {
+            sketch.setup()
+            didSetup = true
+        }
+        sketch.advance(time: 0, deltaTime: 1.0 / 60, frameRate: 60)
+        sketch.performDraw()
+        let viewport = SIMD2<Float>(Float(sketch.width), Float(sketch.height))
+        let w = Int(sketch.width.rounded()), h = Int(sketch.height.rounded())
+        if sketch.drawer.accumulates {
+            _ = renderer.accumulatedImage(of: sketch.drawer, viewport: viewport,
+                                          width: w, height: h)
+        } else if sketch.drawer.usesFeedback {
+            _ = renderer.image(of: sketch.drawer, viewport: viewport, width: w, height: h)
+        } else {
+            renderer.stepCompute(sketch.drawer)
+        }
+    }
+
+    /// The transport's end of frame: autosave a recording on its growing
+    /// cadence, and hold a replay that reached its last frame (or a transport
+    /// pause) by stopping the display link until a key wakes it.
+    private func endTakeFrame(in view: MTKView) {
+        if let recorder = sketch.takeRecorder, takeRecordURL != nil,
+           recorder.take.frameCount >= takeAutosaveDue {
+            takeAutosaveGap = min(takeAutosaveGap * 2, 3600)
+            takeAutosaveDue = recorder.take.frameCount + takeAutosaveGap
+            // A value copy, written off the main thread: the encode of a long
+            // take is real work, and the frame loop must not pay it.
+            let snapshot = recorder.take
+            if let url = takeRecordURL {
+                DispatchQueue.global(qos: .utility).async { try? snapshot.write(to: url) }
+            }
+        }
+        if let player = sketch.takePlayer {
+            if player.isPastEnd(sketch.frameCount) { replayPaused = true }
+            if replayPaused, pendingScrubTarget == nil { view.isPaused = true }
+        }
+    }
+
     public init(sketch: Sketch, view: MTKView, device: MTLDevice) {
         self.sketch = sketch
         do {
@@ -358,7 +546,14 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// A sketch whose `setup()` pins its own seed simply reproduces that one
     /// variation. **Call on the main thread.**
     public func restart(variation: Int) {
+        // A seed restart is a new run: it deliberately ends a replay, and a
+        // recording starts over on the new seed (a take that changed seed
+        // mid-stream could never reproduce).
+        sketch.takePlayer = nil
+        let wasRecording = sketch.takeRecorder != nil
+        sketch.takeRecorder = nil
         sketch.seed(variation)
+        defer { if wasRecording { attachTakeRecorder() } }
         sketch.frameCount = 0
         renderer.resetAccumulation()   // a fresh variation starts on a clean canvas
         didSetup = false               // re-run setup() and restart the clock next frame
@@ -381,14 +576,14 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         let scale = viewWidth > 0 ? Double(sketch.width) / viewWidth : 1
         if began {
             widgetDragBase = (sketch.mouseX, sketch.mouseY)
-            sketch.mouseIsPressed = true
+            sketch.setMouseButtonState(true)
         }
         if let base = widgetDragBase {
             sketch.setMouse(x: base.x + Double(translation.width) * scale,
                             y: base.y + Double(translation.height) * scale)
         }
         if ended {
-            sketch.mouseIsPressed = false
+            sketch.setMouseButtonState(false)
             widgetDragBase = nil
         }
         if !sketch.isLooping { cameraHoldover = true }   // hand the pause back once settled
@@ -404,6 +599,10 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     ///   zero — so an animation's phase doesn't visibly jump on reload. Instance
     ///   state still resets (it's a fresh instance either way).
     public func reload(to newSketch: Sketch, keepClock: Bool = false) {
+        // A reload ends the take on either side of the transport: an edited
+        // sketch is a different run (its take is written out, so nothing is
+        // lost), and a replay's recorded inputs belong to the code they drove.
+        finishTake()
         // Size the fresh instance the way `updateCanvasSize` will keep asserting
         // it: a `.resizable` sketch's canvas follows the live view, so carry the
         // current size across the swap; otherwise honor the *new* sketch's
@@ -579,9 +778,24 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             updateCanvasSize(from: view, drawableSize: view.drawableSize)
         }
 
+        // A transport jump lands before the frame: re-simulate up to the frame
+        // ahead of the target, and let this pass draw the target itself.
+        if let target = pendingScrubTarget {
+            pendingScrubTarget = nil
+            performScrub(to: target)
+        }
+
         let now = CACurrentMediaTime()
 
         if !didSetup {
+            // A launch that asked to record starts its take here, ahead of
+            // `setup()`, so the take begins at the run's own frame 0.
+            if let url = OllinApp.pendingTakeRecording {
+                OllinApp.pendingTakeRecording = nil
+                takeRecordURL = url
+                attachTakeRecorder()
+                print("Ollin: recording a take to \(url.path)")
+            }
             // A run that keeps a checkpoint gets one restore, at its first
             // setup: the seed and the tuned knobs before `setup()` builds
             // anything from them, the state itself after.
@@ -862,6 +1076,8 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
                 cameraHoldoverPose = sketch.activeCamera
             }
         }
+
+        endTakeFrame(in: view)
     }
 
     /// Whether two consecutive frames' camera poses are close enough to call the
@@ -983,14 +1199,12 @@ final class OllinMTKView: MTKView {
         pressureConfiguration?.set()
         reportPointer(event)
         reportPressure(event)
-        sketch?.mouseIsPressed = true
-        sketch?.mousePressed()
+        sketch?.handleMouseButton(pressed: true)
     }
     override func mouseUp(with event: NSEvent) {
         reportPointer(event)
         sketch?.setPressure(0, canVary: false)
-        sketch?.mouseIsPressed = false
-        sketch?.mouseReleased()
+        sketch?.handleMouseButton(pressed: false)
     }
 
     /// A pressure-sensing device keeps sending pressure while the press deepens
@@ -1142,8 +1356,16 @@ final class OllinMTKView: MTKView {
     private func dispatchKey(_ event: NSEvent, pressed: Bool) {
         guard let sketch else { return }
         let (character, code) = Self.interpret(event)
+        // During a replay the recorded events own the sketch's keyboard, so
+        // the live keys are free to drive the transport instead.
+        if let runner = delegate as? SketchRunner, runner.isReplaying {
+            if pressed {
+                runner.handleTransportKey(character: character, code: code,
+                                          shift: event.modifierFlags.contains(.shift))
+            }
+            return
+        }
         sketch.handleKey(character: character, code: code, pressed: pressed)
-        if pressed { sketch.keyPressed() } else { sketch.keyReleased() }
     }
 
     /// Resolve an AppKit key event to Ollin's model: a named `KeyCode` for keys
@@ -1586,6 +1808,46 @@ public enum OllinApp {
     /// out-of-band rather than through an initializer.)
     fileprivate static var standaloneSketch: Sketch?
 
+    /// Where `--record-take` asked this run's take to be written. The runner
+    /// picks it up ahead of its first frame (the recorder must attach before
+    /// `setup()`, and only the runner knows when that is) and clears it, so a
+    /// host's later windows never inherit the flag.
+    static var pendingTakeRecording: URL?
+
+    /// Read the windowed take flags (`--replay <file>`, `--record-take <file>`)
+    /// against the sketch about to open. A replay installs on the sketch now,
+    /// before its window exists, so `setup()` already runs under the take's
+    /// seed and knobs; a recording is left for the runner to start (see
+    /// `pendingTakeRecording`). Called by the hosts that own a window; the
+    /// headless export surface reads `--replay` on its own in
+    /// `handleCommandLine`.
+    public static func configureTransport(_ args: [String], for sketch: Sketch) {
+        if let i = args.firstIndex(of: "--replay"), i + 1 < args.count {
+            let url = URL(fileURLWithPath: args[i + 1])
+            do {
+                let take = try Take.load(from: url)
+                let type = String(describing: type(of: sketch))
+                if take.sketchType != type {
+                    FileHandle.standardError.write(Data(
+                        "Ollin: this take was recorded from \(take.sketchType); replaying it onto \(type)\n".utf8))
+                }
+                take.install(on: sketch)
+                print("Ollin: replaying \(take.frameCount) frames from \(url.path) (space pauses, arrows step, Home/End jump)")
+            } catch {
+                FileHandle.standardError.write(Data("Ollin: could not read the take: \(error)\n".utf8))
+                exit(1)
+            }
+        }
+        if let i = args.firstIndex(of: "--record-take"), i + 1 < args.count {
+            guard sketch.takePlayer == nil else {
+                FileHandle.standardError.write(Data(
+                    "Ollin: --record-take is ignored during a replay\n".utf8))
+                return
+            }
+            pendingTakeRecording = URL(fileURLWithPath: args[i + 1])
+        }
+    }
+
     /// True while a headless driver (the frame grab, the sequence/video/GIF/SVG
     /// exporters, the benchmark loop) is driving the sketch clock: fixed
     /// timestep, no window, no runloop servicing between frames. Sources that
@@ -1613,6 +1875,7 @@ public enum OllinApp {
         // the window rather than after, so the process that owns the window is
         // the one that can be replaced.
         Supervisor.superviseIfAsked(Installation.resolved(for: sketch))
+        configureTransport(CommandLine.arguments, for: sketch)
         standaloneSketch = sketch
         OllinSketchApp.main()
     }
@@ -2053,7 +2316,8 @@ public extension OllinApp {
     /// `--export-loop`, `--export-spatial`, `--export-svg`, `--export-pdf`,
     /// `--export-usdz`, `--export-grid`, `--export-sweep`,
     /// `--export-separations` with their options, `--seed` on any of them,
-    /// plus `--bench`) against a sketch supplied on demand.
+    /// `--replay` to drive any of them from a recorded take, plus `--bench`)
+    /// against a sketch supplied on demand.
     ///
     /// Returns `true` when a headless flag was recognized (the work ran, or a
     /// usage message was printed), meaning the caller should exit rather than
@@ -2100,8 +2364,24 @@ public extension OllinApp {
             guard let i = args.firstIndex(of: "--seed"), i + 1 < args.count else { return nil }
             return Int(args[i + 1])
         }()
+        // `--replay <file>` beside any export flag re-renders a recorded take:
+        // the fresh sketch gets the recording's seed, starting knobs, clock,
+        // and inputs, so the export is the recorded run frame for frame (see
+        // `Take`). `--seed N` beside it re-seeds on purpose, playing the same
+        // gestures onto a different variation. The video-shaped exports
+        // default their length to the take's when none is given.
+        let replayTake: Take? = {
+            guard let i = args.firstIndex(of: "--replay"), i + 1 < args.count else { return nil }
+            do {
+                return try Take.load(from: URL(fileURLWithPath: args[i + 1]))
+            } catch {
+                FileHandle.standardError.write(Data("Ollin: could not read the take: \(error)\n".utf8))
+                exit(1)
+            }
+        }()
         func make() -> Sketch {
             let sketch = makeSketch()
+            if let replayTake { replayTake.install(on: sketch) }
             if let seedOverride { sketch.seed(seedOverride) }
             return sketch
         }
@@ -2118,6 +2398,8 @@ public extension OllinApp {
             if frames <= 0, let seconds = value("--seconds").flatMap(Double.init) {
                 frames = Int((seconds * fps).rounded())
             }
+            // Replaying with no length given renders the whole take.
+            if frames <= 0, let replayTake { frames = replayTake.frameCount }
             let start = value("--start").flatMap(Int.init) ?? 1
             let skip = value("--skip").flatMap(Double.init) ?? 0
             guard frames > 0 else {
@@ -2197,6 +2479,8 @@ public extension OllinApp {
             if frames <= 0, let seconds = value("--seconds").flatMap(Double.init) {
                 frames = Int((seconds * fps).rounded())
             }
+            // Replaying with no length given renders the whole take.
+            if frames <= 0, let replayTake { frames = replayTake.frameCount }
             let skip = value("--skip").flatMap(Double.init) ?? 0
             var codec = VideoCodec.h264
             if let name = value("--codec") {
@@ -2232,6 +2516,8 @@ public extension OllinApp {
             if frames <= 0, let seconds = value("--seconds").flatMap(Double.init) {
                 frames = Int((seconds * fps).rounded())
             }
+            // Replaying with no length given renders the whole take.
+            if frames <= 0, let replayTake { frames = replayTake.frameCount }
             let skip = value("--skip").flatMap(Double.init) ?? 0
             let bitrate = value("--bitrate").flatMap(Double.init).map { Int($0 * 1_000_000) }
             let quality = value("--quality").flatMap(Double.init)
@@ -2265,6 +2551,8 @@ public extension OllinApp {
             if frames <= 0, let seconds = value("--seconds").flatMap(Double.init) {
                 frames = Int((seconds * fps).rounded())
             }
+            // Replaying with no length given renders the whole take.
+            if frames <= 0, let replayTake { frames = replayTake.frameCount }
             let skip = value("--skip").flatMap(Double.init) ?? 0
             let width = value("--gif-width").flatMap(Int.init)
             guard frames > 0 else {
@@ -2544,6 +2832,7 @@ private final class StandaloneAppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         // Quitting is an ordinary end to a run, so the state goes down with it.
         OllinActiveSketch.runner?.saveCheckpointNow()
+        OllinActiveSketch.runner?.finishTake()
         installationHost?.release()
     }
 

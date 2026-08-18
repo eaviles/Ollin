@@ -13,6 +13,12 @@ import OllinAudio
 /// The sound needs no wiring: the recorder finds the instruments the sketch
 /// is holding, the same way the offline exporters do. In the live hosts the
 /// same recording is on ⌘⇧R, and there it even survives an evaluate.
+///
+/// A movie keeps the pixels; a *take* keeps the performance itself. Run with
+/// `--record-take take.json` to write the seed, clock, pointer, and knob
+/// timeline down, then `--replay take.json` to play the run back exactly
+/// (space pauses, the arrows step), or `--replay take.json --export-video`
+/// to re-render the performance offline. See Docs/Core/Replay.md.
 @main
 final class Record: Sketch {
     override var canvasSize: CanvasSize { .square(900) }

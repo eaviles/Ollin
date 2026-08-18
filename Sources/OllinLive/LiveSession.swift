@@ -111,12 +111,22 @@ final class LiveSession {
     /// frame; consumed when the runner attaches.
     @ObservationIgnored private var recordOnLaunch: Bool
 
+    /// Where `--record-take` asked the run's input-and-knob take to be
+    /// written, and the take `--replay` asked to play back. Both consumed when
+    /// the runner attaches; a later reload ends either (an edited sketch is a
+    /// different run, so the take is written out and the replay stops).
+    @ObservationIgnored private var takeRecordOnLaunch: URL?
+    @ObservationIgnored private var replayOnLaunch: Take?
+
     init(loader: SketchLoader, sketchPath: String, displayName: String, keepClock: Bool,
-         recordOnLaunch: Bool = false) {
+         recordOnLaunch: Bool = false, takeRecordOnLaunch: URL? = nil,
+         replayOnLaunch: Take? = nil) {
         self.loader = loader
         self.sketchPath = sketchPath
         self.displayName = displayName
         self.recordOnLaunch = recordOnLaunch
+        self.takeRecordOnLaunch = takeRecordOnLaunch
+        self.replayOnLaunch = replayOnLaunch
         self.core = SketchSession(keepClock: keepClock)
 
         let dir = (FileManager.default.currentDirectoryPath as NSString)
@@ -149,6 +159,17 @@ final class LiveSession {
         if recordOnLaunch {
             recordOnLaunch = false
             core.currentSketch?.startRecording()
+        }
+        // The take flags apply once the first compile is on screen: replay
+        // hands the run to the recording, and a take recording restarts the
+        // run so its frame 0 is the take's frame 0.
+        if let take = replayOnLaunch {
+            replayOnLaunch = nil
+            print("OllinLive: replaying \(take.frameCount) frames (space pauses, arrows step, Home/End jump)")
+            runner.replay(take)
+        } else if let url = takeRecordOnLaunch {
+            takeRecordOnLaunch = nil
+            runner.beginTake(writingTo: url)
         }
     }
 

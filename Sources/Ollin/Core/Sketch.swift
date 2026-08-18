@@ -1825,6 +1825,14 @@ open class Sketch {
     /// Set by the runner so `loop()`/`noLoop()` can pause/resume the MTKView.
     var loopStateDidChange: ((Bool) -> Void)?
 
+    /// Record-and-replay plumbing (see `Take`): at most one of the two is
+    /// attached. The recorder writes this run down as it plays; the player
+    /// drives this run from a recorded one, overriding the clock and gating
+    /// live input off. Both are wired by the runner or `Take.install(on:)`;
+    /// a sketch never touches them.
+    var takeRecorder: TakeRecorder?
+    var takePlayer: TakePlayer?
+
     /// Keys currently held down, so `isKeyDown(_:)` can answer and `keyIsPressed`
     /// tracks whether any key is down. The view inserts on press and removes on
     /// release (see `handleKey`).
@@ -2846,8 +2854,35 @@ open class Sketch {
     }
 
     func setMouse(x: Double, y: Double) {
+        takeRecorder?.log(.pointer(x: x, y: y), at: frameCount)
+        guard takePlayer == nil else { return }
+        ingestMouse(x: x, y: y)
+    }
+
+    fileprivate func ingestMouse(x: Double, y: Double) {
         mouseX = x
         mouseY = y
+    }
+
+    /// The primary button from the view: the held state plus the
+    /// once-per-press hooks.
+    func handleMouseButton(pressed: Bool) {
+        takeRecorder?.log(.button(pressed: pressed), at: frameCount)
+        guard takePlayer == nil else { return }
+        ingestMouseButton(pressed: pressed)
+    }
+
+    fileprivate func ingestMouseButton(pressed: Bool) {
+        mouseIsPressed = pressed
+        if pressed { mousePressed() } else { mouseReleased() }
+    }
+
+    /// The held state alone, with no hooks: a host widget dragging the camera
+    /// feeds the button state without a click the sketch should react to.
+    func setMouseButtonState(_ pressed: Bool) {
+        takeRecorder?.log(.buttonState(pressed: pressed), at: frameCount)
+        guard takePlayer == nil else { return }
+        mouseIsPressed = pressed
     }
 
     /// Where the run sits on the desk this frame. Pushed every frame rather
@@ -2863,6 +2898,8 @@ open class Sketch {
     }
 
     func setRightMousePressed(_ pressed: Bool) {
+        takeRecorder?.log(.rightButton(pressed: pressed), at: frameCount)
+        guard takePlayer == nil else { return }
         rightMouseIsPressed = pressed
     }
 
@@ -2871,6 +2908,12 @@ open class Sketch {
     /// once keeps reporting the capability even between presses, when the platform
     /// has nothing to tell us.
     func setPressure(_ amount: Double, canVary: Bool) {
+        takeRecorder?.log(.pressure(amount: amount, canVary: canVary), at: frameCount)
+        guard takePlayer == nil else { return }
+        ingestPressure(amount, canVary: canVary)
+    }
+
+    fileprivate func ingestPressure(_ amount: Double, canVary: Bool) {
         pressure = min(max(amount, 0), 1)
         if canVary { pressureIsAvailable = true }
     }
@@ -2885,6 +2928,12 @@ open class Sketch {
     /// without it the hook would read the previous frame's total, usually 0),
     /// and `advance()` overwrites it with the frame total before `draw()` polls it.
     func handleScroll(deltaY: Double) {
+        takeRecorder?.log(.scroll(deltaY: deltaY), at: frameCount)
+        guard takePlayer == nil else { return }
+        ingestScroll(deltaY: deltaY)
+    }
+
+    fileprivate func ingestScroll(deltaY: Double) {
         pendingScroll += deltaY
         scrollDeltaY = deltaY
         mouseWheel()
@@ -2892,14 +2941,23 @@ open class Sketch {
 
     /// Record the held modifier keys from the view.
     func setModifiers(_ mods: ModifierKeys) {
+        takeRecorder?.log(.modifiers(mods), at: frameCount)
+        guard takePlayer == nil else { return }
         modifiers = mods
     }
 
     /// Record a key event from the view and update the held-key set. The view
     /// passes exactly one of `character`/`code` (a printing key vs. a named one);
-    /// the other is `nil`. Updates `key`/`keyCode`/`keyIsPressed`, then the view
-    /// calls `keyPressed()`/`keyReleased()`.
+    /// the other is `nil`. Updates `key`/`keyCode`/`keyIsPressed`, then fires
+    /// `keyPressed()`/`keyReleased()`.
     func handleKey(character: Character?, code: KeyCode?, pressed: Bool) {
+        takeRecorder?.log(.key(character: character.map(String.init), code: code,
+                               pressed: pressed), at: frameCount)
+        guard takePlayer == nil else { return }
+        ingestKey(character: character, code: code, pressed: pressed)
+    }
+
+    fileprivate func ingestKey(character: Character?, code: KeyCode?, pressed: Bool) {
         key = character
         keyCode = code
         let token: KeyToken? = character.map(KeyToken.character) ?? code.map(KeyToken.code)
@@ -2907,16 +2965,61 @@ open class Sketch {
             if pressed { pressedKeys.insert(token) } else { pressedKeys.remove(token) }
         }
         keyIsPressed = !pressedKeys.isEmpty
+        if pressed { keyPressed() } else { keyReleased() }
     }
 
     /// Drop all held keys — called when the canvas loses keyboard focus, so a key
     /// held while focus leaves (no `keyUp` is delivered then) doesn't stick down.
     func clearHeldKeys() {
+        takeRecorder?.log(.keysCleared, at: frameCount)
+        guard takePlayer == nil else { return }
+        ingestClearHeldKeys()
+    }
+
+    fileprivate func ingestClearHeldKeys() {
         pressedKeys.removeAll()
         keyIsPressed = false
     }
 
+    /// Route one replayed event through the same paths live input takes, so
+    /// the state changes and the hooks fire exactly as when it was recorded.
+    func ingest(_ event: Take.Event) {
+        switch event {
+        case .pointer(let x, let y):
+            ingestMouse(x: x, y: y)
+        case .button(let pressed):
+            ingestMouseButton(pressed: pressed)
+        case .buttonState(let pressed):
+            mouseIsPressed = pressed
+        case .rightButton(let pressed):
+            rightMouseIsPressed = pressed
+        case .pressure(let amount, let canVary):
+            ingestPressure(amount, canVary: canVary)
+        case .scroll(let deltaY):
+            ingestScroll(deltaY: deltaY)
+        case .modifiers(let mods):
+            modifiers = mods
+        case .key(let character, let code, let pressed):
+            ingestKey(character: character.flatMap { $0.first }, code: code, pressed: pressed)
+        case .keysCleared:
+            ingestClearHeldKeys()
+        }
+    }
+
     func advance(time: Double, deltaTime: Double, frameRate: Double) {
+        var time = time, deltaTime = deltaTime, frameRate = frameRate
+        // A replay overrides the caller's clock with the recorded one, after
+        // applying the frame's recorded events and knob changes; a recording
+        // writes down whichever clock is about to apply. Every driver (the
+        // live window, each export loop, the benchmark) funnels through here,
+        // which is what lets one seam record and replay them all.
+        if let takePlayer {
+            (time, deltaTime, frameRate) = takePlayer.step(
+                self, frame: frameCount,
+                fallback: (time: time, deltaTime: deltaTime, frameRate: frameRate))
+        }
+        takeRecorder?.recordFrame(of: self, time: time, deltaTime: deltaTime,
+                                  frameRate: frameRate)
         frameCount += 1
         self.time = time
         self.deltaTime = deltaTime
