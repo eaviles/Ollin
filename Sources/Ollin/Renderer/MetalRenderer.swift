@@ -96,6 +96,13 @@ final class MetalRenderer {
         /// plus depth, single-sample, blending off: the one MRT pipeline, so it gets its
         /// own descriptor branch in `makePipeline`.
         var isGBuffer = false
+        /// How many color attachments a G-buffer pipeline declares: 2 for the
+        /// reflection pass, 3 for the caustics pass (which adds the baked albedo).
+        var gBufferAttachments = 2
+        /// The caustics splat pass: instanced photon-footprint quads additively
+        /// blended (one + one) into a single-sample float layer, no depth attachment
+        /// (the fragment depth-tests manually against the caustics G-buffer).
+        var isCausticSplat = false
         /// The subsurface-scatter mask pass: one float attachment written with blending
         /// off (the mask's alpha channel carries a profile index, which alpha blending
         /// would corrupt), single-sample, depth-tested into its own depth.
@@ -302,6 +309,20 @@ final class MetalRenderer {
             PipelineKey(vertex: "ollin_mesh_gbuffer_vertex", fragment: "ollin_mesh_gbuffer_fragment",
                         depthFormat: depth, isGBuffer: true)
         }
+        // caustics G-buffer: the reflection G-buffer's recipe plus a third attachment
+        // for the baked vertex color, which the photon-splat pass shades against.
+        // Only encoded when caustics are active on a ray-tracing device.
+        static func causticsGBuffer(depth: MTLPixelFormat) -> PipelineKey {
+            PipelineKey(vertex: "ollin_caustics_gbuffer_vertex",
+                        fragment: "ollin_caustics_gbuffer_fragment",
+                        depthFormat: depth, isGBuffer: true, gBufferAttachments: 3)
+        }
+        // caustics photon splat: instanced elliptical footprints, additively blended
+        // into the single-sample caustics layer; the fragment depth-tests manually
+        // against the caustics G-buffer's depth, so the pass carries no depth.
+        static let causticsSplat = PipelineKey(vertex: "ollin_caustics_splat_vertex",
+                                               fragment: "ollin_caustics_splat_fragment",
+                                               isCausticSplat: true)
         // subsurface-scatter mask: re-render the meshes single-sample into one float
         // attachment (uv-space blur step, mark, view depth, profile index) with its own
         // depth, so occluders suppress hidden scattering surfaces. Feeds the separable
@@ -728,6 +749,11 @@ final class MetalRenderer {
     /// RT-compiled mesh fragment's declared offsets argument is always satisfied.
     var meshGeoOffsetBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
     var dummyGeoOffsets: MTLBuffer?
+    /// Per-geometry caustic materials (`OllinCausticGeo`, parallel to the offsets):
+    /// what the photon trace needs at a hit that the baked vertex slots don't carry
+    /// (transmission, index of refraction, the interior attenuation). CPU-filled at
+    /// accel-build time, so it rides the same per-frame ring as the offsets.
+    var causticGeoMatBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
     lazy var shadowSampler: MTLSamplerState? = {
         let d = MTLSamplerDescriptor()
         d.minFilter = .linear
@@ -979,6 +1005,36 @@ final class MetalRenderer {
     /// pass each frame, so reuse across in-flight frames is safe (command buffers on
     /// one queue serialize the writes and reads).
     var rtReflectGBuf: (normal: MTLTexture, material: MTLTexture, depth: MTLTexture, w: Int, h: Int)?
+
+    /// The caustics chain's persistent state (`caustics()`, ray-tracing devices).
+    /// The G-buffer adds the baked albedo to the reflection G-buffer's recipe; the
+    /// GPU-private buffers hold the adaptive-emission state (light-space density,
+    /// feedback accumulators, the quadtree task buffer, leaf ray counts), the
+    /// photon records, and the splat pass's indirect-draw arguments. All GPU-written
+    /// and frame-serialized on the one queue, so none of them ride the CPU ring.
+    var causticsGBuf: (normal: MTLTexture, material: MTLTexture, albedo: MTLTexture,
+                       depth: MTLTexture, w: Int, h: Int)?
+    var causticsDensity: MTLBuffer?      // float per emission texel (live adaptivity)
+    var causticsFeedback: MTLBuffer?     // 4 uints per texel: area, variance, count, spare
+    var causticsTotals: MTLBuffer?       // 1 uint: the density map's fixed-point sum
+    var causticsQuadtree: MTLBuffer?     // uint4 per node, levels 0..depth-1 breadth-first
+    var causticsLeafCounts: MTLBuffer?   // uint per texel (a perfect square)
+    var causticsPhotons: MTLBuffer?      // OllinPhoton records (capacity = ray budget)
+    var causticsArgs: MTLBuffer?         // MTLDrawPrimitivesIndirectArguments (GPU-reset)
+    /// The emission-map edge the buffers were sized for (a quality change reallocates).
+    var causticsMapEdge = 0
+    var causticsPhotonCapacity = 0
+    /// Whether the density map holds a converged distribution from a previous live
+    /// frame (false forces the uniform seed, e.g. first frame or after a reset).
+    var causticsDensityValid = false
+    /// The live temporal history (the `rtReflectHistory` shape): resolved caustics
+    /// ping-pong + previous view·projection. The headless path never touches it.
+    var causticsHistory: SSRHistorySlot?
+
+    /// Compute pipelines built from the *main* shader library (the caustics kernels),
+    /// cached by entry name; distinct from `computePipelines`, whose kernels compile
+    /// from their own user source. Cleared on live shader reload with the rest.
+    var libComputePipelines: [String: MTLComputePipelineState] = [:]
 
     /// The global-illumination probe field's persistent state (the `rtReflectHistory`
     /// shape, doubled): ping-ponged irradiance + visibility atlases and the *held* probe
@@ -1519,6 +1575,17 @@ final class MetalRenderer {
             reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
             width: renderWidth, height: renderHeight, supersample: false, pooled: true,
             gi: gi, taaJitter: taaJitter)
+        // Caustics (live): trace this frame's photons through the specular casters,
+        // splat them, and temporally resolve the layer the mesh fragments add by
+        // screen position. Nil when caustics aren't active this frame; the carriers'
+        // branch then stays untaken (byte-identical).
+        let caustics = encodeCausticsPass(
+            drawer, into: commandBuffer, meshBuffer: meshBuf,
+            causticAccel: renderedShadow.causticAccel,
+            causticGeoOffsets: renderedShadow.causticGeoOffsets,
+            causticGeoMats: renderedShadow.causticGeoMats,
+            width: renderWidth, height: renderHeight, supersample: false, pooled: true,
+            taaJitter: taaJitter)
         // Contact shadows: march the scene's own depth toward the caster once per
         // frame; the mesh fragments sample the verdict by screen position. nil when
         // inactive (their gate then zeroes, byte-identical). Carries the frame's
@@ -1561,6 +1628,7 @@ final class MetalRenderer {
                deferredReflection: deferredReflection,
                contactShadow: contactShadow,
                gi: gi,
+               caustics: caustics,
                taaJitter: taaJitter)
         geomEncoder.endEncoding()
 
@@ -2076,6 +2144,15 @@ final class MetalRenderer {
             reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
             width: width, height: height, supersample: true, pooled: false,
             gi: gi)
+        // Caustics, historyless: uniform emission at the export budget, no history
+        // slot touched, so a single export is a pure function of the frame and the
+        // live frame-grab re-render never steps the on-screen adaptation.
+        let caustics = encodeCausticsPass(
+            drawer, into: commandBuffer, meshBuffer: meshBuf,
+            causticAccel: renderedShadow.causticAccel,
+            causticGeoOffsets: renderedShadow.causticGeoOffsets,
+            causticGeoMats: renderedShadow.causticGeoMats,
+            width: width, height: height, supersample: true, pooled: false)
         // Contact shadows, encoded once outside any TAA sample loop (the deferred-
         // reflection rule: the mask is screen-space and unjittered; a jittered
         // composite reads it at most half a pixel off, which the average absorbs).
@@ -2123,6 +2200,7 @@ final class MetalRenderer {
                        deferredReflection: deferredReflection,
                        contactShadow: contactShadow,
                        gi: gi,
+                       caustics: caustics,
                        taaJitter: jitter)
                 encoder.endEncoding()
                 let scattered = applySubsurfaceScattering(drawer, resolved: resolveTexture,
@@ -2166,7 +2244,8 @@ final class MetalRenderer {
                    halfResFieldShadow: halfResFieldShadow,
                    deferredReflection: deferredReflection,
                    contactShadow: contactShadow,
-                   gi: gi)
+                   gi: gi,
+                   caustics: caustics)
             encoder.endEncoding()
 
             // Tone-map the resolved float frame (after the subsurface-scattering

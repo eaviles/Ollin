@@ -3994,6 +3994,21 @@ static inline float3 ollin_ibl_flat_ambient(float3 base, float3 n,
     return base * irradianceTex.sample(cubeSamp, rot * n).rgb * light.iblIntensity;
 }
 
+#if OLLIN_RT_SHADOWS
+// The resolved caustics layer (`caustics()`), added to a lit surface by screen
+// position (the fieldShadowScale rule). The layer already holds outgoing
+// radiance shaded with the receiver's own G-buffer attributes, so the carriers
+// add it as-is, before the atmosphere dims the surface. `causticsEnabled` 0
+// leaves the branch untaken and the frame byte-identical.
+static inline float3 ollin_caustics_add(float2 fragXY, constant OllinLighting &light,
+                                        texture2d<float> causticsTex) {
+    if (light.causticsEnabled == 0) return float3(0.0);
+    constexpr sampler cs(filter::linear, address::clamp_to_edge);
+    float2 ts = float2(causticsTex.get_width(), causticsTex.get_height());
+    return causticsTex.sample(cs, fragXY * light.causticsScale / max(ts, float2(1.0))).rgb;
+}
+#endif
+
 fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                     constant OllinLighting &light [[buffer(0)]],
                                     constant OllinMaterial &mat [[buffer(1)]],
@@ -4029,6 +4044,9 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                     , texture2d<float> giIrradianceTex [[texture(13)]]
                                     , texture2d<float> giDepthTex [[texture(14)]]
                                     , texture2d<float> giOffsetsTex [[texture(15)]]
+                                    // The resolved caustics layer, added by screen position
+                                    // when `light.causticsEnabled`; a stand-in otherwise.
+                                    , texture2d<float> causticsTex [[texture(25)]]
 #endif
                                     ) {
     // Linearize the surface color so the present pass's sRGB re-encode lands the
@@ -4121,6 +4139,14 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
         // No environment: the probes' bounce is the scene's ambient, on top of whatever
         // flat ambient the sketch set (a PBR metal keeps no diffuse, per its model).
         c.rgb += gi * base * (mat.shadingModel == 3 ? (1.0 - mat.metallic) : 1.0);
+    }
+#endif
+#if OLLIN_RT_SHADOWS
+    // Branched at the call site (the fog/GI discipline): with caustics off the
+    // branch is untaken and the fragment executes exactly the prior instructions,
+    // which is what keeps a caustics-free frame byte-identical under fast math.
+    if (light.causticsEnabled != 0) {
+        c.rgb += ollin_caustics_add(in.position.xy, light, causticsTex);
     }
 #endif
     // Atmosphere last: fog dims the fully shaded surface (reflections and ambient
@@ -4295,6 +4321,7 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                              , texture2d<float> giIrradianceTex [[texture(13)]]
                                              , texture2d<float> giDepthTex [[texture(14)]]
                                              , texture2d<float> giOffsetsTex [[texture(15)]]
+                                             , texture2d<float> causticsTex [[texture(25)]]
 #endif
                                              ) {
     // The base-color texture is sRGB, so the sample comes back already linear and
@@ -4377,6 +4404,14 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
     }
 #endif
     // Atmosphere last, as on the solid path.
+#if OLLIN_RT_SHADOWS
+    // Branched at the call site (the fog/GI discipline): with caustics off the
+    // branch is untaken and the fragment executes exactly the prior instructions,
+    // which is what keeps a caustics-free frame byte-identical under fast math.
+    if (light.causticsEnabled != 0) {
+        c.rgb += ollin_caustics_add(in.position.xy, light, causticsTex);
+    }
+#endif
     if (light.fogColor.w > 0.0) {
         c.rgb = (light.fogColor.w > 1.5)
             ? ollin_apply_aerial(c.rgb, in.worldPos, in.position.xy, light,
@@ -4456,6 +4491,7 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
                                        , texture2d<float> giIrradianceTex [[texture(13)]]
                                        , texture2d<float> giDepthTex [[texture(14)]]
                                        , texture2d<float> giOffsetsTex [[texture(15)]]
+                                       , texture2d<float> causticsTex [[texture(25)]]
 #endif
                                        ) {
     float4 tex = baseColorTex.sample(samp, in.uv);
@@ -4539,6 +4575,14 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
 #if OLLIN_RT_SHADOWS
     else if (light.giOrigin.w > 0.0 && mat.shadingModel != 2) {
         c.rgb += gi * base * (mat.shadingModel == 3 ? (1.0 - mat.metallic) : 1.0);
+    }
+#endif
+#if OLLIN_RT_SHADOWS
+    // Branched at the call site (the fog/GI discipline): with caustics off the
+    // branch is untaken and the fragment executes exactly the prior instructions,
+    // which is what keeps a caustics-free frame byte-identical under fast math.
+    if (light.causticsEnabled != 0) {
+        c.rgb += ollin_caustics_add(in.position.xy, light, causticsTex);
     }
 #endif
     if (light.fogColor.w > 0.0) {
@@ -4759,6 +4803,7 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
                                          , texture2d<float> giIrradianceTex [[texture(13)]]
                                          , texture2d<float> giDepthTex [[texture(14)]]
                                          , texture2d<float> giOffsetsTex [[texture(15)]]
+                                         , texture2d<float> causticsTex [[texture(25)]]
 #endif
                                          ) {
     // Parallax occlusion first: with a height map bound (and the tangent basis
@@ -4967,6 +5012,14 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
     // The surface's own light: on before the atmosphere (emission is radiance
     // leaving the surface, so distance fogs it like everything else).
     c.rgb += emissive;
+#if OLLIN_RT_SHADOWS
+    // Branched at the call site (the fog/GI discipline): with caustics off the
+    // branch is untaken and the fragment executes exactly the prior instructions,
+    // which is what keeps a caustics-free frame byte-identical under fast math.
+    if (light.causticsEnabled != 0) {
+        c.rgb += ollin_caustics_add(in.position.xy, light, causticsTex);
+    }
+#endif
     if (light.fogColor.w > 0.0) {
         c.rgb = (light.fogColor.w > 1.5)
             ? ollin_apply_aerial(c.rgb, in.worldPos, in.position.xy, light,

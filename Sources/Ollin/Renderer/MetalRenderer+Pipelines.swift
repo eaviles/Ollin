@@ -66,7 +66,22 @@ extension MetalRenderer {
         // too so they rebuild against any edited shared types/prelude on next use.
         computePipelines.removeAll()
         computeLibraries.removeAll()
+        // Main-library kernels (the caustics chain) rebuild from the new library.
+        libComputePipelines.removeAll()
         invalidateUserShaderCaches()
+    }
+
+    /// The compiled compute pipeline for a kernel that lives in the *main* shader
+    /// library (the caustics chain), cached by entry name. Distinct from
+    /// `computePipeline(for:)`, which compiles user kernels from their own source.
+    func libraryComputePipeline(_ entry: String) throws -> MTLComputePipelineState {
+        if let existing = libComputePipelines[entry] { return existing }
+        guard let function = library.makeFunction(name: entry) else {
+            throw RendererError.shaderFunctions
+        }
+        let state = try device.makeComputePipelineState(function: function)
+        libComputePipelines[entry] = state
+        return state
     }
 
     /// The single place pipeline descriptors are constructed. Add a `case` here
@@ -161,11 +176,35 @@ extension MetalRenderer {
             d.vertexFunction = v
             d.fragmentFunction = f
             d.rasterSampleCount = 1
-            d.colorAttachments[0].pixelFormat = linearFormat
-            d.colorAttachments[1].pixelFormat = linearFormat
+            for i in 0..<key.gBufferAttachments {
+                d.colorAttachments[i].pixelFormat = linearFormat
+            }
             if let depthFormat = key.depthFormat {
                 d.depthAttachmentPixelFormat = depthFormat
             }
+            return try device.makeRenderPipelineState(descriptor: d)
+        }
+        if key.isCausticSplat {
+            // The caustics splat: instanced photon footprints additively blended
+            // (one + one) into the single-sample float caustics layer; no depth
+            // attachment (the fragment compares against the G-buffer's depth itself).
+            guard let v = library.makeFunction(name: key.vertex),
+                  let f = library.makeFunction(name: key.fragment) else {
+                throw RendererError.shaderFunctions
+            }
+            let d = MTLRenderPipelineDescriptor()
+            d.vertexFunction = v
+            d.fragmentFunction = f
+            d.rasterSampleCount = 1
+            let color = d.colorAttachments[0]!
+            color.pixelFormat = linearFormat
+            color.isBlendingEnabled = true
+            color.rgbBlendOperation = .add
+            color.alphaBlendOperation = .add
+            color.sourceRGBBlendFactor = .one
+            color.destinationRGBBlendFactor = .one
+            color.sourceAlphaBlendFactor = .one
+            color.destinationAlphaBlendFactor = .one
             return try device.makeRenderPipelineState(descriptor: d)
         }
         if !key.mesh.isEmpty { return try makeMeshPipeline(key, using: library) }
@@ -831,7 +870,7 @@ extension MetalRenderer {
     /// so it goes first (Metal needs a declaration before its use); `ShaderCore`
     /// follows with the 2D core pipelines. The single `Shaders.metal` split into
     /// these once it crossed ~2,000 lines; the renderer never assumes one file.
-    static let shaderSourceNames = ["OllinShaderLib", "ShaderCore", "ShaderShapes", "ShaderCombinator", "Shader3D", "ShaderRaymarch", "ShaderStrands", "ShaderEffects", "ShaderCombine", "ShaderGI", "ShaderSim", "ShaderPatterns", "ShaderIBL"]
+    static let shaderSourceNames = ["OllinShaderLib", "ShaderCore", "ShaderShapes", "ShaderCombinator", "Shader3D", "ShaderRaymarch", "ShaderStrands", "ShaderEffects", "ShaderCombine", "ShaderGI", "ShaderCaustics", "ShaderSim", "ShaderPatterns", "ShaderIBL"]
 
     /// Read and concatenate the shader segments from a filesystem `directory`, in
     /// `shaderSourceNames` order. This is the source live shader reload feeds back

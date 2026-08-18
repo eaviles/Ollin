@@ -242,6 +242,7 @@ let package = Package(
         example("3D/Lighting/AreaLights"),
         example("3D/Lighting/GlobalIllumination"),
         example("3D/Lighting/AreaShadows"),
+        example("3D/Lighting/Caustics"),
         example("3D/Lighting/LightShaping",
                 resources: [.copy("downlight.ies"), .copy("batwing.ies"), .copy("wallwash.ies")]),
         example("3D/Lighting/VolumetricLight"),

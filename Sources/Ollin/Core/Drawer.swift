@@ -505,6 +505,23 @@ final class Drawer {
     /// surfaces sample bounce light from them. A no-op on a non-ray-tracing GPU.
     private(set) var globalIlluminationEnabled = false
 
+    /// Whether this frame renders caustics (see `caustics`): light focused through
+    /// transmissive glass and off polished metal, photon-traced from the caster light
+    /// and splatted onto the rough surfaces it lands on. Per-frame state like the
+    /// lights. A no-op on a non-ray-tracing GPU, and inert when no material casts.
+    private(set) var causticsEnabled = false
+
+    /// The caustics brightness multiplier (1 = physical) and the dispersion amount
+    /// (0 = none, 1 = full rainbow split at every refraction). Per-frame state,
+    /// set alongside `causticsEnabled`.
+    private(set) var causticsIntensity: Double = 1
+    private(set) var causticsDispersion: Double = 0
+
+    /// The caustics quality tier (`causticsQuality(_:)`): the renderer maps it to a
+    /// photon budget and an emission-map size. Persistent like `shadowQualitySetting`,
+    /// not per-frame.
+    private(set) var causticsQualitySetting: RenderQuality = .default
+
     /// The GI intensity: a multiplier on the sampled bounce light (1 = physical).
     /// Per-frame state, set alongside `globalIlluminationEnabled`.
     private(set) var giIntensity: Double = 1
@@ -2062,6 +2079,23 @@ final class Drawer {
     /// Stop gathering global illumination (the default). Per-frame state.
     func noGlobalIllumination() { globalIlluminationEnabled = false }
 
+    /// Render caustics this frame: the light patterns a transmissive glass or a
+    /// polished metal focuses onto the rough surfaces around it, photon-traced from
+    /// the caster light (the shadow system's caster priority: directional, then
+    /// spot, then point) and splatted where they land. `intensity` scales the
+    /// brightness (1 = physical); `dispersion` splits refracted paths by
+    /// wavelength (0 = none, 1 = full rainbow). Per-frame state like the lights;
+    /// set it in `draw()`. A no-op without a ray-tracing device, a camera, or a
+    /// light, and inert while no material transmits or mirrors.
+    func caustics(intensity: Double = 1, dispersion: Double = 0) {
+        causticsEnabled = true
+        causticsIntensity = max(0, intensity)
+        causticsDispersion = max(0, min(1, dispersion))
+    }
+
+    /// Stop rendering caustics (the default). Per-frame state.
+    func noCaustics() { causticsEnabled = false }
+
     /// Temporally anti-alias the 3D scene this frame: jitter the projection
     /// sub-pixel and accumulate across frames (live), or average N deterministic
     /// jittered renders within the frame (export). Per-frame state like the lights;
@@ -2105,6 +2139,11 @@ final class Drawer {
     /// the rays per probe for the GPU, and the headless convergence depth). Persistent
     /// (set once, in `setup()` or `draw()`).
     func globalIlluminationQuality(_ quality: RenderQuality) { giQualitySetting = quality }
+
+    /// Set the caustics quality to a hardware-relative tier (the renderer picks the photon
+    /// budget and emission-map size for the GPU). Persistent (set once, in `setup()` or
+    /// `draw()`).
+    func causticsQuality(_ quality: RenderQuality) { causticsQualitySetting = quality }
 
     /// Set the soft-shadow quality to a hardware-relative tier (the renderer picks the ray
     /// count for the GPU). Persistent (set once, in `setup()` or `draw()`).
@@ -3423,6 +3462,9 @@ final class Drawer {
         rayTracedReflectionsEnabled = false
         globalIlluminationEnabled = false
         giIntensity = 1
+        causticsEnabled = false
+        causticsIntensity = 1
+        causticsDispersion = 0
         temporalAAEnabled = false
         temporalUpscalingEnabled = false
         temporalUpscalingQuality = .default

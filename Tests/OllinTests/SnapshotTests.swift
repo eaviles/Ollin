@@ -665,6 +665,9 @@ private let snapshotRaytracingCases: [SnapshotCase] = [
     SnapshotCase("area-reflections",
                  note: "A panel-lit white wall seen in a near-mirror metal floor with rayTracedReflections() on: pins the exact LTC diffuse in the traced hit shade (ollin_ltc_diffuse through ollin_rt_direct), the deferred trace pass's amp-table bind and LTC resolve, and the panel's glow carrying into the mirror with the same spread as the direct view. Fixed camera, bundled environment, no time.",
                  make: { AreaReflectionsScene() }),
+    SnapshotCase("caustics",
+                 note: "A hovering glass ball lens and a chrome torus over a matte floor under a steep sun with castShadows() + caustics() on. Pins the whole photon chain on the deterministic export path: uniform quadtree emission, the photon-differential walk through refraction and reflection (curvature via the interpolated-normal derivative, Fresnel + first-hit-cosine energy), the anisotropic footprint splat with its min-width and max-extent rules, and the screen-position add in the lit carriers. RT-gated, so it only runs (and is recorded) on a ray-tracing GPU.",
+                 make: { CausticsScene() }),
     SnapshotCase("gi-3d",
                  note: "A Cornell-style room lit by one spot pool with globalIllumination() on: the ceiling and walls carry only bounce light, the colored walls dye the white statue from either side. Pins the whole probe-field pipeline end to end: the auto-fitted volume, the deterministic in-frame convergence (iteration-indexed seeds, progressive-mean hysteresis), probe relocation walking the embedded slab-row probes out, the cage-capped visibility moments, and the perceptually-encoded sampling in the lit carriers. RT-gated, so it only runs (and is recorded) on a ray-tracing GPU.",
                  make: { GlobalIlluminationScene() }),
@@ -1138,6 +1141,43 @@ private final class RayTracedReflectionsScene: Sketch {
 /// A Cornell-style room whose only light is a spot pool on the floor, with
 /// `globalIllumination()` on: everything outside the pool is the probes' bounce.
 /// Fixed camera, no time.
+/// A ball lens hovering with its focal point on the floor and a chrome torus arch,
+/// under a steep sun with shadows and caustics on: the glass spot lands inside its
+/// own shadow, the torus folds light at its feet. Fixed camera, no time, and the
+/// export path emits photons uniformly at a fixed budget, so the frame is
+/// deterministic on a given GPU tier.
+private final class CausticsScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.06))
+        perspective(eye: Vector3(0, 5.6, 5.2), target: Vector3(0, 0.2, 0),
+                    fieldOfView: .pi / 3.4, near: 1, far: 30)
+        directionalLight(.white, direction: Vector3(-0.2, -1, -0.1), intensity: 2)
+        castShadows()
+        caustics()
+        withState {
+            material(.dielectric(roughness: 0.85))
+            fill(Color(white: 0.55))
+            translate(0, -0.5, 0)
+            drawBox(width: 20, height: 1.0, depth: 14)
+        }
+        withState {
+            material(.glass(thickness: 2.0))
+            fill(.white)
+            translate(-1.6, 1.45, 0.4)
+            drawSphere(radius: 1.0)
+        }
+        withState {
+            material(.metal(roughness: 0.06))
+            fill(Color(white: 0.95))
+            translate(1.5, 0.35, 1.2)
+            rotateX(.pi / 2 * 0.9)
+            drawTorus(radius: 0.95, tube: 0.14)
+        }
+    }
+}
+
 private final class GlobalIlluminationScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 

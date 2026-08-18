@@ -566,6 +566,7 @@ let package = Package(
                 .copy("Renderer/ShaderEffects.metal"),
                 .copy("Renderer/ShaderCombine.metal"),
                 .copy("Renderer/ShaderGI.metal"),
+                .copy("Renderer/ShaderCaustics.metal"),
                 .copy("Renderer/ShaderSim.metal"),
                 .copy("Renderer/ShaderPatterns.metal"),
                 .copy("Renderer/ShaderIBL.metal"),

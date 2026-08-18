@@ -1152,6 +1152,29 @@ open class Sketch {
     /// Stop gathering global illumination (the default).
     public func noGlobalIllumination() { drawer.noGlobalIllumination() }
 
+    /// Render caustics this frame: the focused light a glass or a polished metal
+    /// throws onto the surfaces around it (the bright loop under a wine glass, the
+    /// dancing net beside a chrome ring, the colored spill through a stained pane).
+    /// The renderer traces photons from the light through every transmissive
+    /// (`Material.glass`) and mirror-polished metallic surface, follows each one
+    /// through up to eight reflections and refractions, and draws where it lands as
+    /// a small elliptical spot whose shape comes from how the path focused, so the
+    /// patterns stay sharp without noise. Emission adapts frame to frame: photons
+    /// concentrate where the pattern is detailed or still flickering, and spread out
+    /// where it is smooth. `intensity` scales the brightness (1 = physical);
+    /// `dispersion` splits refracted light by wavelength for prism rainbows (0 =
+    /// none, 1 = full split). The caster light follows the shadow system's priority
+    /// (directional first, then spot, then point). Per-frame state like the lights
+    /// and camera, so call it in `draw()` after both. Needs a ray-tracing GPU
+    /// (Apple silicon), a camera, and a light; a no-op otherwise, and inert while
+    /// no material transmits or mirrors. Call `noCaustics()` to turn it back off.
+    public func caustics(intensity: Double = 1, dispersion: Double = 0) {
+        drawer.caustics(intensity: intensity, dispersion: dispersion)
+    }
+
+    /// Stop rendering caustics (the default).
+    public func noCaustics() { drawer.noCaustics() }
+
     /// Temporally anti-alias the 3D scene this frame, refining edges past what MSAA
     /// alone reaches: the renderer nudges the camera's projection by a sub-pixel
     /// offset that changes every frame and folds the resolved frames into a running
@@ -1242,6 +1265,17 @@ open class Sketch {
     /// alternative to `shadowQuality` — for fine control, pushing past the presets on a fast
     /// GPU, or a render that should look identical across machines. Persistent.
     public func shadowSamples(_ count: Int) { drawer.shadowSamples(count) }
+
+    /// Set the caustics quality (how many photons each frame traces, and how finely
+    /// the emission map steers them) as a **hardware-relative** tier, the
+    /// `shadowQuality` dial's caustics sibling: `.performance` favors frame rate
+    /// with a coarser pattern, `.detail` traces more photons for a finer one, and
+    /// `.default` is the balanced choice for the GPU (lifted to `.detail`
+    /// automatically on `--export`/headless). A persistent setting; set it once in
+    /// `setup()` or `draw()`. Read only while `caustics()` is on.
+    public func causticsQuality(_ quality: RenderQuality = .default) {
+        drawer.causticsQuality(quality)
+    }
 
     /// Set how **soft** a cast shadow's penumbra is, 0…1 (the contact-hardening dial). `0` is a
     /// hard edge (the classic shadow look); the `0.5` default sharpens the shadow where an object

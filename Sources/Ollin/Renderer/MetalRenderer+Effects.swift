@@ -1823,6 +1823,7 @@ extension MetalRenderer {
                         deferredReflection: MTLTexture? = nil,
                         contactShadow: MTLTexture? = nil,
                         gi: GIResolved? = nil,
+                        caustics: MTLTexture? = nil,
                         target passTarget: RenderTarget? = nil,
                         taaJitter: SIMD2<Float> = .zero) {
         let vertices = drawer.vertices
@@ -2032,6 +2033,14 @@ extension MetalRenderer {
             lighting.rtReflectionDeferred = 1
             lighting.rtReflectionScale = 1.0
         }
+        // Caustics: the resolved photon layer this frame's caustics pass produced
+        // (nil keeps `causticsEnabled` 0 and every carrier's branch untaken,
+        // byte-identical). Main canvas only, like the deferred reflection; the
+        // scale is 1 while the layer renders at full resolution.
+        if caustics != nil {
+            lighting.causticsEnabled = 1
+            lighting.causticsScale = 1.0
+        }
         // Global illumination: the probe field this frame's GI pass resolved (nil keeps
         // `giOrigin.w` 0 and every carrier's GI branch untaken, byte-identical). The
         // renderer owns the hardware check, so this is set only when that pass actually
@@ -2201,6 +2210,9 @@ extension MetalRenderer {
                 encoder.setFragmentTexture(gi?.irradiance ?? strip, index: 13)
                 encoder.setFragmentTexture(gi?.depth ?? strip, index: 14)
                 encoder.setFragmentTexture(gi?.offsets ?? strip, index: 15)
+                // The resolved caustics layer (tex 25), added by screen position
+                // when `causticsEnabled`; a never-sampled stand-in otherwise.
+                encoder.setFragmentTexture(caustics ?? strip, index: 25)
             }
         }
         // On the half-res raymarch tier all fields composite in one upsample at the first field

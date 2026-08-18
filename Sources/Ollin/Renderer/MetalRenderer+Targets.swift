@@ -216,6 +216,14 @@ extension MetalRenderer {
         /// `globalIllumination()` is on and the device can trace.
         var giAccel: MTLAccelerationStructure?
         var giGeoOffsets: MTLBuffer?
+        /// Caustics: the same structure + offsets for the photon trace, plus the
+        /// per-geometry caustic materials (transmission / ior / attenuation). Set only
+        /// when `caustics()` is on and the device can trace; the accel build then
+        /// breaks its coalesced geometry runs where those materials change, so a
+        /// photon hit's `geometryId` resolves a material-uniform surface.
+        var causticAccel: MTLAccelerationStructure?
+        var causticGeoOffsets: MTLBuffer?
+        var causticGeoMats: MTLBuffer?
     }
 
     /// Render the scene's mesh geometry into the shadow map from the casting light's
@@ -255,9 +263,14 @@ extension MetalRenderer {
         // the probe trace needs no environment (misses just read black) and no caster.
         let wantGI = drawer.globalIlluminationEnabled && rayTracedShadows
             && drawer.camera3D != nil
+        // Caustics want it too, plus the per-geometry caustic materials (the build
+        // then breaks runs at material changes). Only when a punctual light and a
+        // casting material exist; otherwise the frame is inert and byte-identical.
+        let wantCaustics = causticsWanted(drawer)
         guard lighting.enabled != 0,
               !meshVertices.isEmpty || hasInstancedCasters || hasFieldCasters,
-              lighting.shadowLight >= 0 || wantReflect || wantGI else { return ShadowMaps() }
+              lighting.shadowLight >= 0 || wantReflect || wantGI || wantCaustics
+        else { return ShadowMaps() }
 
         // Fill the caster buffers here: the shadow pass runs before the main
         // encode (which re-uploads the same bytes), so the GPU sees the geometry
@@ -288,12 +301,16 @@ extension MetalRenderer {
         // the cube, which they render into.
         if lighting.shadowLight >= 0, lighting.shadowKind == 1 {
             if rayTracedShadows, let meshBuffer, !meshVertices.isEmpty,
-               let built = buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer) {
+               let built = buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer,
+                                            causticMats: wantCaustics) {
                 return ShadowMaps(accel: built.accel,
                                   reflectAccel: wantReflect ? built.accel : nil,
                                   reflectGeoOffsets: wantReflect ? built.offsets : nil,
                                   giAccel: wantGI ? built.accel : nil,
-                                  giGeoOffsets: wantGI ? built.offsets : nil)
+                                  giGeoOffsets: wantGI ? built.offsets : nil,
+                                  causticAccel: wantCaustics ? built.accel : nil,
+                                  causticGeoOffsets: wantCaustics ? built.offsets : nil,
+                                  causticGeoMats: wantCaustics ? built.causticMats : nil)
             }
             let cube = encodePointShadowPass(drawer, lighting: lighting,
                                              into: commandBuffer, meshBuffer: meshBuffer,
@@ -309,36 +326,48 @@ extension MetalRenderer {
         // extent, so both devices soften by the same physical size.
         if lighting.shadowLight >= 0, casterGPUKind(lighting) >= 3, rayTracedShadows,
            let meshBuffer, !meshVertices.isEmpty,
-           let built = buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer) {
+           let built = buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer,
+                                        causticMats: wantCaustics) {
             return ShadowMaps(accel: built.accel,
                               reflectAccel: wantReflect ? built.accel : nil,
                               reflectGeoOffsets: wantReflect ? built.offsets : nil,
                               giAccel: wantGI ? built.accel : nil,
-                              giGeoOffsets: wantGI ? built.offsets : nil)
+                              giGeoOffsets: wantGI ? built.offsets : nil,
+                              causticAccel: wantCaustics ? built.accel : nil,
+                              causticGeoOffsets: wantCaustics ? built.offsets : nil,
+                              causticGeoMats: wantCaustics ? built.causticMats : nil)
         }
 
-        // Reflections and/or GI with no shadow-casting light: build only the accel.
+        // Reflections, GI, and/or caustics with no shadow-casting light: build only the accel.
         if lighting.shadowLight < 0 {
             guard let meshBuffer, !meshVertices.isEmpty,
-                  let built = buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer)
+                  let built = buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer,
+                                               causticMats: wantCaustics)
             else { return ShadowMaps() }
             return ShadowMaps(reflectAccel: wantReflect ? built.accel : nil,
                               reflectGeoOffsets: wantReflect ? built.offsets : nil,
                               giAccel: wantGI ? built.accel : nil,
-                              giGeoOffsets: wantGI ? built.offsets : nil)
+                              giGeoOffsets: wantGI ? built.offsets : nil,
+                              causticAccel: wantCaustics ? built.accel : nil,
+                              causticGeoOffsets: wantCaustics ? built.offsets : nil,
+                              causticGeoMats: wantCaustics ? built.causticMats : nil)
         }
 
-        // A directional/spot caster's 2D map below, plus a reflection/GI accel when either
-        // is on (both precede the main geometry pass, so trace order is satisfied either way).
-        let reflect = (wantReflect || wantGI) && !meshVertices.isEmpty
-            ? meshBuffer.flatMap { buildShadowAccel(drawer, into: commandBuffer, meshBuffer: $0) }
+        // A directional/spot caster's 2D map below, plus a reflection/GI/caustics accel when
+        // any is on (all precede the main geometry pass, so trace order is satisfied either way).
+        let reflect = (wantReflect || wantGI || wantCaustics) && !meshVertices.isEmpty
+            ? meshBuffer.flatMap { buildShadowAccel(drawer, into: commandBuffer, meshBuffer: $0,
+                                                    causticMats: wantCaustics) }
             : nil
         guard let shadowMap = ensureShadowMap(),
               let shadowPipeline = try? pipeline(.meshShadow) else {
             return ShadowMaps(reflectAccel: wantReflect ? reflect?.accel : nil,
                               reflectGeoOffsets: wantReflect ? reflect?.offsets : nil,
                               giAccel: wantGI ? reflect?.accel : nil,
-                              giGeoOffsets: wantGI ? reflect?.offsets : nil)
+                              giGeoOffsets: wantGI ? reflect?.offsets : nil,
+                              causticAccel: wantCaustics ? reflect?.accel : nil,
+                              causticGeoOffsets: wantCaustics ? reflect?.offsets : nil,
+                              causticGeoMats: wantCaustics ? reflect?.causticMats : nil)
         }
         let pass = MTLRenderPassDescriptor()
         pass.depthAttachment.texture = shadowMap
@@ -380,7 +409,10 @@ extension MetalRenderer {
                           reflectAccel: wantReflect ? reflect?.accel : nil,
                           reflectGeoOffsets: wantReflect ? reflect?.offsets : nil,
                           giAccel: wantGI ? reflect?.accel : nil,
-                          giGeoOffsets: wantGI ? reflect?.offsets : nil)
+                          giGeoOffsets: wantGI ? reflect?.offsets : nil,
+                          causticAccel: wantCaustics ? reflect?.accel : nil,
+                          causticGeoOffsets: wantCaustics ? reflect?.offsets : nil,
+                          causticGeoMats: wantCaustics ? reflect?.causticMats : nil)
     }
 
     /// Render the marched 3D fields into the active 2D shadow map (directional/spot). Each field
@@ -2564,8 +2596,8 @@ extension MetalRenderer {
     /// trace. The structure + scratch grow in place only when the scene outgrows them.
     /// Returns nil when there's nothing to cast (the caller then falls back / unshadows).
     private func buildShadowAccel(_ drawer: Drawer, into commandBuffer: MTLCommandBuffer,
-                                  meshBuffer: MTLBuffer)
-        -> (accel: MTLAccelerationStructure, offsets: MTLBuffer)? {
+                                  meshBuffer: MTLBuffer, causticMats: Bool = false)
+        -> (accel: MTLAccelerationStructure, offsets: MTLBuffer, causticMats: MTLBuffer?)? {
         let meshStride = MemoryLayout<OllinMeshVertex>.stride
         let meshVertices = drawer.meshVertices
         let batches = drawer.batches
@@ -2578,7 +2610,18 @@ extension MetalRenderer {
         // The base vertex index (the run start) of each geometry, in build order, so a
         // reflection hit's `geometryId` recovers where its triangles begin in `meshBuffer`.
         var geoOffsets: [UInt32] = []
+        // With `causticMats`, a change in the caustic-relevant material fields also
+        // breaks the run, so each geometry is material-uniform for the photon trace,
+        // and the per-geometry `OllinCausticGeo` entries fill in parallel.
+        var geoMats: [OllinCausticGeo] = []
         var runStart = -1, runEnd = 0
+        var runMat = OllinCausticGeo()
+        func causticGeo(_ f: OllinMaterial) -> OllinCausticGeo {
+            var g = OllinCausticGeo()
+            g.refractive = SIMD4(f.transmission, f.ior, f.thickness > 0 ? 0 : 1, 0)
+            g.attenuation = f.attenuation
+            return g
+        }
         func flushRun() {
             guard runStart >= 0, runEnd - runStart >= 3 else { runStart = -1; return }
             let geo = MTLAccelerationStructureTriangleGeometryDescriptor()
@@ -2590,6 +2633,7 @@ extension MetalRenderer {
             geo.opaque = true                 // load-bearing: else triangle hits never commit
             geometries.append(geo)
             geoOffsets.append(UInt32(runStart))
+            geoMats.append(runMat)
             runStart = -1
         }
         for i in batches.indices {
@@ -2600,7 +2644,12 @@ extension MetalRenderer {
             let isCaster = batch.kind == .mesh3D && !batch.meshWireframe && !batch.meshGrid
             let end = i + 1 < batches.count ? batches[i + 1].meshStart : meshVertices.count
             if isCaster {
-                if runStart < 0 { runStart = batch.meshStart }
+                let mat = causticMats ? causticGeo(batch.finish) : OllinCausticGeo()
+                if runStart >= 0, causticMats,
+                   mat.refractive != runMat.refractive || mat.attenuation != runMat.attenuation {
+                    flushRun()
+                }
+                if runStart < 0 { runStart = batch.meshStart; runMat = mat }
                 runEnd = end
             } else {
                 flushRun()
@@ -2641,7 +2690,21 @@ extension MetalRenderer {
         geoOffsets.withUnsafeBytes { raw in
             offsetsBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
         }
-        return (accel, offsetsBuffer)
+        // The per-geometry caustic materials, riding the same per-frame ring.
+        var matsBuffer: MTLBuffer? = nil
+        if causticMats {
+            let matsLength = max(MemoryLayout<OllinCausticGeo>.stride,
+                                 geoMats.count * MemoryLayout<OllinCausticGeo>.stride)
+            if (causticGeoMatBuffers[frameIndex]?.length ?? 0) < matsLength {
+                causticGeoMatBuffers[frameIndex] = device.makeBuffer(length: matsLength,
+                                                                     options: .storageModeShared)
+            }
+            matsBuffer = causticGeoMatBuffers[frameIndex]
+            geoMats.withUnsafeBytes { raw in
+                matsBuffer?.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+            }
+        }
+        return (accel, offsetsBuffer, matsBuffer)
     }
 
     /// A 1-triangle acceleration structure bound to the lit mesh fragment whenever no

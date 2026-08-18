@@ -854,7 +854,72 @@ typedef struct {
                                   // low-elevation reddening and the overall in-scatter gain);
                                   // w = the aerosol (haze) fraction of the extinction, 0…1
                                   // (0 = pure molecular blue-shift, 1 = gray haze).
+    int   causticsEnabled;        // 1 = the resolved caustics layer is bound at fragment texture
+                                  // 25 (main canvas, `caustics()` on a ray-tracing device) and the
+                                  // lit mesh fragments add it by screen position; 0 leaves every
+                                  // carrier's caustics branch untaken, byte-identical.
+    float causticsScale;          // that layer's resolution as a fraction of the drawable (the
+                                  // fieldShadowScale rule: uv = position.xy · scale / texture
+                                  // size), so a reduced-res caustics tier needs no shader change.
 } OllinLighting;
+
+// One deposited caustic photon (`caustics()`): written by the photon-trace kernel
+// when a light path through glass or polished metal lands on a rough opaque surface,
+// read by the splat pass that draws it as an anisotropic elliptical footprint. The
+// footprint half-axes are the photon differentials at the final hit (the two
+// world-space vectors the emission-parameter perturbations grew into through every
+// reflect/refract), so a focused path draws small and bright and a spread path
+// draws wide and dim with the same total energy. Stride 80 (five 16-byte rows).
+typedef struct {
+    simd_float4 position;   // world-space hit position; w unused
+    simd_float4 power;      // rgb = the photon's flux (linear, light units); w unused
+    simd_float4 incident;   // xyz = unit travel direction at arrival; w unused
+    simd_float4 dPdu;       // xyz = world-space footprint half-axis (∂p′/∂u · Δu); w unused
+    simd_float4 dPdv;       // xyz = the other half-axis (∂p′/∂v · Δv); w unused
+} OllinPhoton;
+
+// Per-geometry material data for the photon trace: what a photon needs to know at a
+// hit that the baked `OllinMeshVertex` w slots (metalness/roughness) don't carry.
+// One entry per acceleration-structure geometry, parallel to the base-vertex
+// offsets buffer; the accel build breaks its coalesced runs where these fields
+// change while caustics are on, so a geometry is material-uniform. Stride 32.
+typedef struct {
+    simd_float4 refractive;  // x = transmission (0 = opaque), y = ior, z = 1 thin-walled /
+                             // 0 solid, w unused
+    simd_float4 attenuation; // rgb = Beer-Lambert attenuation color (what white becomes
+                             // after w of interior travel); w = attenuation distance
+                             // (0 = no attenuation)
+} OllinCausticGeo;
+
+// Per-frame constants for the caustics chain (`caustics()`): the emission frame the
+// photons leave the caster light through, the adaptive-feedback constants, and the
+// splat pass's screen mapping. One struct feeds the density/quadtree kernels, the
+// photon-trace kernel, and the splat vertex/fragment.
+typedef struct {
+    simd_float4x4 viewProjection;  // world -> clip of the frame being rendered (carries the
+                                   // frame's temporal-AA jitter, so splats land exactly on the
+                                   // jittered G-buffer)
+    simd_float4 emitOrigin;  // xyz = emission origin (directional: the fitted patch corner;
+                             // point/spot: the light position); w = the light kind (0/1/2)
+    simd_float4 emitRight;   // xyz = the emission frame's unit right axis; w = the patch
+                             // extent along it, world units (directional only)
+    simd_float4 emitUp;      // xyz = unit up axis; w = the patch extent along it
+    simd_float4 emitDir;     // xyz = the photon travel direction (directional) or the cone
+                             // axis (point/spot); w = the cone half-angle, radians
+    simd_float4 lightColor;  // rgb = linear color × intensity; w = spot cosInner (0 otherwise)
+    simd_float4 lightParams; // x = spot cosOuter; y = the self-hit epsilon, world units;
+                             // z = max footprint edge, screen px; w = min footprint edge, px
+    simd_float4 feedback;    // x = target projected footprint area (px²); y = the variance
+                             // gain g; z = the density blend's temporal weight wt; w unused
+    simd_float4 params;      // x = intensity; y = dispersion 0…1; z = the splat depth bias
+                             // (NDC); w = the photon energy cull threshold
+    simd_uint4  counts;      // x = density-map edge, texels; y = quadtree depth (log2 edge);
+                             // z = the frame's ray budget; w = max bounces
+    simd_uint4  counts2;     // x = photon capacity; y = frame index (the jitter seed);
+                             // z = 1 emit uniformly (export / first frame, no feedback);
+                             // w = total quadtree nodes
+    simd_float4 screen;      // xy = the caustics buffer size, px; zw = 1/size
+} OllinCausticsUniforms;
 
 // Per-frame constants auto-injected into every compute dispatch (bound at buffer
 // index 10), so a kernel reads `u.time`/`u.dt`/`u.resolution`/… with no plumbing.
