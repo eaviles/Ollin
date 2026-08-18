@@ -83,4 +83,44 @@ struct AttractorsTests {
         let third = path[2]
         #expect(abs(third.x + 0.4) < 1e-12 && abs(third.y - 0.3) < 1e-12)
     }
+
+    @Test func gumowskiMiraKeepsItsSpreadWithoutEscaping() {
+        // The near-conservative map's failure modes are both degenerate: the
+        // orbit either escapes or parks on a fixed point/short cycle. At the
+        // defaults a long orbit stays inside a modest box AND keeps wandering
+        // a two-dimensional spread.
+        let path = ChaoticMap.gumowskiMira().orbit(count: 30_000)
+        var minP = path[0], maxP = path[0]
+        for p in path {
+            #expect(abs(p.x) < 12 && abs(p.y) < 9)
+            minP = Vector2(min(minP.x, p.x), min(minP.y, p.y))
+            maxP = Vector2(max(maxP.x, p.x), max(maxP.y, p.y))
+        }
+        #expect(maxP.x - minP.x > 3 && maxP.y - minP.y > 3)
+    }
+
+    @Test func ikedaFoldsIntoItsSwirl() {
+        // At u=0.9 the orbit settles into the folded swirl: bounded, and still
+        // spread out (not parked on the map's far-out stable point).
+        let path = ChaoticMap.ikeda().orbit(count: 20_000, settle: 200)
+        var minP = path[0], maxP = path[0]
+        for p in path {
+            #expect(p.x > -1.5 && p.x < 3 && p.y > -3.5 && p.y < 2)
+            minP = Vector2(min(minP.x, p.x), min(minP.y, p.y))
+            maxP = Vector2(max(maxP.x, p.x), max(maxP.y, p.y))
+        }
+        #expect(maxP.x - minP.x > 1 && maxP.y - minP.y > 1)
+    }
+
+    @Test func hopalongMatchesItsFirstIterates() {
+        // The hopalong map (a=2, b=1, c=0) hops from the origin to known
+        // points: sgn(0) = 0 keeps the first two steps square-root-free.
+        let path = ChaoticMap.hopalong().orbit(count: 4)
+        #expect(path[0] == Vector2(0, 0))
+        #expect(path[1] == Vector2(0, 2))
+        #expect(path[2] == Vector2(2, 2))
+        let fourth = path[3]
+        #expect(abs(fourth.x - (2 - Double(2).squareRoot())) < 1e-12)
+        #expect(abs(fourth.y) < 1e-12)
+    }
 }

@@ -1291,6 +1291,29 @@ static inline float2 ollin_henon(float2 p, float a, float b) {
     return float2(1.0 - a * p.x * p.x + p.y, b * p.x);
 }
 
+// The Gumowski-Mira map: particle-beam filigree. `mu` reshapes it; `a`/`b` add
+// a whisper of damping, so the picture is the long wandering orbit.
+static inline float2 ollin_gumowski_mira(float2 p, float mu, float a, float b) {
+    float s1 = 1.0 + p.x * p.x;
+    float gx = mu * p.x + 2.0 * (1.0 - mu) * p.x * p.x / (s1 * s1);
+    float x = p.y + a * (1.0 - b * p.y * p.y) * p.y + gx;
+    float s2 = 1.0 + x * x;
+    float gx2 = mu * x + 2.0 * (1.0 - mu) * x * x / (s2 * s2);
+    return float2(x, gx2 - p.x);
+}
+
+// The Ikeda map: a distance-falloff spin folds the orbit into a swirl.
+static inline float2 ollin_ikeda(float2 p, float u) {
+    float t = 0.4 - 6.0 / (1.0 + dot(p, p));
+    return float2(1.0 + u * (p.x * cos(t) - p.y * sin(t)),
+                  u * (p.x * sin(t) + p.y * cos(t)));
+}
+
+// The hopalong map: square-root hops that fill nested, widening rings.
+static inline float2 ollin_hopalong(float2 p, float a, float b, float c) {
+    return float2(p.y - sign(p.x) * sqrt(fabs(b * p.x - c)), a - p.x);
+}
+
 // Advance `STATE` (a `float3`) one fixed step `H` of fourth-order Runge-Kutta: the
 // standard weighted average of four slope samples across the step, the same one the
 // CPU side takes. `DERIV` is an expression giving the derivative at the sample point

@@ -228,6 +228,56 @@ public extension ChaoticMap {
             Vector2(1 - a * p.x * p.x + p.y, b * p.x)
         }
     }
+
+    /// The Gumowski-Mira map, worked out to trace particle beams:
+    /// `x' = y + a·(1 - b·y²)·y + G(x)`, `y' = G(x') - x`, with the shaping
+    /// function `G(x) = mu·x + 2(1-mu)·x²/(1+x²)²`. Small moves of `mu`
+    /// reshape the filigree completely, through blossoms, lace, and
+    /// insect-like forms. The map is nearly area-preserving (`a` adds only a
+    /// whisper of damping), so the picture is one long orbit wandering a sea
+    /// of islands: plot it from the start, and know the starting point picks
+    /// the structure it wanders (the default sits in the wide sea; a start
+    /// deep inside an island traces thin rings instead). The defaults stay
+    /// within roughly [-9, 9] × [-6, 6].
+    static func gumowskiMira(mu: Double = -0.7, a: Double = 0.008,
+                             b: Double = 0.05) -> ChaoticMap {
+        ChaoticMap(start: Vector2(0, 0.5)) { p in
+            func g(_ x: Double) -> Double {
+                let s = 1 + x * x
+                return mu * x + 2 * (1 - mu) * x * x / (s * s)
+            }
+            let x = p.y + a * (1 - b * p.y * p.y) * p.y + g(p.x)
+            return Vector2(x, g(x) - p.x)
+        }
+    }
+
+    /// The Ikeda map, light circling a ring cavity: a spin by an angle that
+    /// falls off with distance, `t = 0.4 - 6/(1 + x² + y²)`, then
+    /// `x' = 1 + u·(x·cos t - y·sin t)`, `y' = u·(x·sin t + y·cos t)`.
+    /// Chaotic for `u` above ~0.6; at the default `0.9` the orbit folds into
+    /// a swirl within roughly [-0.4, 1.7] × [-2.2, 0.9]. (Pushing `u` toward
+    /// 1 coexists with a far-out stable point, so some starts spiral away
+    /// from the swirl and park.)
+    static func ikeda(u: Double = 0.9) -> ChaoticMap {
+        ChaoticMap { p in
+            let t = 0.4 - 6 / (1 + p.x * p.x + p.y * p.y)
+            return Vector2(1 + u * (p.x * cos(t) - p.y * sin(t)),
+                           u * (p.x * sin(t) + p.y * cos(t)))
+        }
+    }
+
+    /// The hopalong map: square-root hops, `x' = y - sgn(x)·√|b·x - c|`,
+    /// `y' = a - x`, from the origin. The orbit fills nested rings that keep
+    /// widening as it runs, so its reach grows with `count` (the defaults sit
+    /// within roughly ±40 after a million steps); larger constants give
+    /// larger, coarser webs.
+    static func hopalong(a: Double = 2.0, b: Double = 1.0, c: Double = 0.0) -> ChaoticMap {
+        ChaoticMap(start: .zero) { p in
+            let hop = (b * p.x - c).magnitude.squareRoot()
+            let sign: Double = p.x > 0 ? 1 : (p.x < 0 ? -1 : 0)
+            return Vector2(p.y - sign * hop, a - p.x)
+        }
+    }
 }
 
 // MARK: - Sketch sugar

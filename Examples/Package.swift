@@ -369,6 +369,7 @@ let package = Package(
         example("Randomness/Walk"),
         example("Randomness/Variations"),
         example("Patterns/CliffordAttractor"),
+        example("Patterns/GumowskiMira"),
         example("Patterns/Bifurcation"),
         example("Patterns/DotGrid"),
         example("Patterns/Grid"),

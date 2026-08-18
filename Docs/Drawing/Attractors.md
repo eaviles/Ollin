@@ -7,7 +7,7 @@
 A strange attractor is the shape a chaotic system settles onto. It is a bounded path that never repeats, and it traces wispy, layered forms like the Lorenz butterfly or the Clifford filigree. Ollin gives you two flavors, and both hand back plain points you draw however you like.
 
 - **`StrangeAttractor`** is a *continuous* system, a velocity field integrated over time with fourth-order Runge-Kutta. Its orbit is a `[Vector3]`, so it rides the [point-cloud](../3D/3D.md) path through the camera. Lorenz, Rössler, Aizawa, and friends.
-- **`ChaoticMap`** is a *discrete* iterated map, a `[Vector2]` orbit you plot as a scatter of points (prettiest accumulated additively into a density field). Clifford, Peter de Jong, Hénon.
+- **`ChaoticMap`** is a *discrete* iterated map, a `[Vector2]` orbit you plot as a scatter of points (prettiest accumulated additively into a density field). Clifford, Peter de Jong, Hénon, Gumowski-Mira, Ikeda, hopalong.
 - **`AttractorFlow`** runs the same continuous systems on the GPU with a million particles riding the field at once, so the shape arrives as moving material rather than a still curve.
 
 The family's one-dimensional members (the logistic map and friends, with their bifurcation diagrams, cobwebs, and Lyapunov exponents) live in [`IteratedMap`](../Generators/Bifurcation.md).
@@ -119,8 +119,11 @@ let points = ChaoticMap.clifford(a: -1.4, b: 1.6, c: 1, d: 0.7).orbit(count: 200
 | `.clifford(a:b:c:d:)` | `sin(a·y) + c·cos(a·x)`, `sin(b·x) + d·cos(b·y)`. |
 | `.deJong(a:b:c:d:)` | `sin(a·y) - cos(b·x)`, `sin(c·x) - cos(d·y)`. |
 | `.henon(a:b:)` | `1 - a·x² + y`, `b·x`. |
+| `.gumowskiMira(mu:a:b:)` | `y + a·(1 - b·y²)·y + G(x)`, `G(x') - x`, with `G(x) = mu·x + 2(1-mu)·x²/(1+x²)²`. |
+| `.ikeda(u:)` | A spin by `t = 0.4 - 6/(1 + x² + y²)`: `1 + u·(x·cos t - y·sin t)`, `u·(x·sin t + y·cos t)`. |
+| `.hopalong(a:b:c:)` | `y - sgn(x)·√\|b·x - c\|`, `a - x`. |
 
-The four constants reshape these maps completely, so nudge them to explore. They look their best accumulated additively (`blendMode(.add)` over [`noClear()`](Accumulation.md)) so repeated visits brighten into filaments.
+The constants reshape these maps completely, so nudge them to explore. They look their best accumulated additively (`blendMode(.add)` over [`noClear()`](Accumulation.md)) so repeated visits brighten into filaments. Each has its own character. Gumowski-Mira wanders a near-conservative sea of islands into many-petaled filigree: `mu` picks the blossom, and the *starting point* picks which structure the orbit wanders. The long transient is the picture, so plot it with no `settle`. The richest plates layer several orbits from different seeded starts. Ikeda folds everything into one swirl, within roughly `[-0.4, 1.7] × [-2.2, 0.9]` at the default `u = 0.9`. Hopalong hops around nested rings that keep widening as the orbit runs. Its reach grows slowly with `count`: roughly ±4 after a million steps at the defaults.
 
 <a name="sugar"></a>
 
@@ -223,7 +226,7 @@ lazy var motes = Particles(count: 500_000, step: """
 """)
 ```
 
-`OLLIN_RK4_STEP(state, h, derivative)` advances a `float3` one step. `derivative` is an expression in the sample point `_p`, which is how a system's constants reach it. Metal has no function pointers here, so this is a macro like the neighbor iteration. Beside the eight flows sit the three maps, `ollin_clifford`, `ollin_de_jong`, and `ollin_henon`, which return the next point outright and need no integration.
+`OLLIN_RK4_STEP(state, h, derivative)` advances a `float3` one step. `derivative` is an expression in the sample point `_p`, which is how a system's constants reach it. Metal has no function pointers here, so this is a macro like the neighbor iteration. Beside the eight flows sit the six maps: `ollin_clifford`, `ollin_de_jong`, `ollin_henon`, `ollin_gumowski_mira`, `ollin_ikeda`, and `ollin_hopalong`. A map returns the next point outright and needs no integration.
 
 ---
 

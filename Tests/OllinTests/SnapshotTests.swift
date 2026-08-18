@@ -269,6 +269,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("clifford-attractor", frame: 24,
                  note: "A Clifford map accumulated additively over several frames. Pins the iterated map plus the noClear density build-up.",
                  make: { CliffordAttractorScene() }),
+    SnapshotCase("gumowski-mira", frame: 12,
+                 note: "The three newer iterated maps accumulated additively over several frames: a Gumowski-Mira blossom across the canvas, an Ikeda swirl inset lower-left, a hopalong web inset lower-right. Pins all three map rules (each deterministic from its start, no settle, so the Gumowski-Mira transient renders exactly) and the noClear build-up.",
+                 make: { NewerMapsScene() }),
     SnapshotCase("bifurcation",
                  note: "One-dimensional maps three ways: the logistic bifurcation diagram as a log-toned density image, the Gauss mouse diagram as swept dots, and a cobweb staircase over its curve and diagonal. Pins the sweep's column-center sampling, the density image's global log tone, the point mapping, and the cobweb/graph geometry. No rng and no time, so it is deterministic.",
                  make: { BifurcationScene() }),
@@ -6457,6 +6460,56 @@ private final class CliffordAttractorScene: Sketch {
         blendMode(.add)
         fill(Color(red: 0.42, green: 0.74, blue: 1.0, alpha: 0.06))
         pointSize(1.0)
+        drawPoints(points)
+    }
+}
+
+/// The three newer iterated maps in one frame: Gumowski-Mira across the whole
+/// canvas, Ikeda and hopalong as small insets. Each carries its orbit across
+/// frames with no settle (the Gumowski-Mira picture *is* the transient), so
+/// the fixed capture frame pins the exact orbit prefix of all three rules.
+private final class NewerMapsScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    private let mira = ChaoticMap.gumowskiMira()
+    private let ikeda = ChaoticMap.ikeda()
+    private let hopalong = ChaoticMap.hopalong()
+    private var points = [Vector2]()   // scratch, reused per map per frame
+
+    private var miraCurrent: Vector2?
+    private var ikedaCurrent: Vector2?
+    private var hopalongCurrent: Vector2?
+
+    override func setup() { noClear(); noStroke() }
+
+    override func draw() {
+        if frameCount == 1 { background(.black) }
+        blendMode(.add)
+        pointSize(1.0)
+
+        accumulate(map: mira, current: &miraCurrent, perFrame: 20_000,
+                   center: Vector2(128, 118), reach: 13,
+                   color: Color(red: 1.0, green: 0.62, blue: 0.3, alpha: 0.07))
+        accumulate(map: ikeda, current: &ikedaCurrent, perFrame: 8_000,
+                   center: Vector2(52, 210), reach: 16,
+                   color: Color(red: 0.42, green: 0.74, blue: 1.0, alpha: 0.07))
+        accumulate(map: hopalong, current: &hopalongCurrent, perFrame: 8_000,
+                   center: Vector2(204, 208), reach: 9,
+                   color: Color(red: 0.55, green: 1.0, blue: 0.62, alpha: 0.07))
+    }
+
+    private func accumulate(map: ChaoticMap, current: inout Vector2?,
+                            perFrame: Int, center: Vector2, reach: Double,
+                            color: Color) {
+        var point = current ?? map.start
+        points.removeAll(keepingCapacity: true)
+        points.reserveCapacity(perFrame)
+        for _ in 0..<perFrame {
+            point = map.next(point)
+            points.append(Vector2(center.x + point.x * reach,
+                                  center.y + point.y * reach))
+        }
+        current = point
+        fill(color)
         drawPoints(points)
     }
 }
