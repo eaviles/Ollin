@@ -31,7 +31,17 @@ Both kinds of image are already at work on this page: the piece above is [`Figur
 
 ## How to read it
 
-Read the chapters in order the first time; each builds only on the ones before it. They also grow as the subject deepens: Chapter 21 is several times the size of its neighbors, so budget for it. Anything needing hardware beyond the Mac always leads with the path every reader can follow. Work along in the live-reload host (`swift run OllinLive path/to/YourSketch.swift`), which recompiles on save so the window never closes while you experiment. [Chapter 1](01-HelloOllin.md) sets this up.
+Read the chapters in order the first time. Each builds only on the ones before it, and it helps to know roughly what each part is going to ask of you.
+
+- **Part I, chapters 1 to 9.** Around 120 pages. The base everything else stands on, and the one part with no way around it.
+- **Part II, chapters 10 to 15.** Around 90 pages. Chapter 10 is the one the rest of the guide leans on hardest, so do not skim it.
+- **Part III, chapters 16 to 20.** Around 80 pages, the shortest part. Chapter 17 is its gate, since 18, 19 and 20 all assume you can read a shader.
+- **Part IV, chapters 21 to 26.** Around 135 pages, the longest. Chapter 21 is its gate, and chapter 24 also wants the physics from chapter 11.
+- **Part V, chapters 27 to 32.** Around 125 pages, and the loosest. Its chapters barely depend on each other, so read the ones you need in whatever order you like.
+
+Four chapters are better with hardware beyond the Mac, and every one of them leads with the path that needs none. [Chapter 27](27-DepthAndThePhone.md) wants an iPhone with a LiDAR sensor, [Chapter 28](28-SoundAndControl.md) a microphone and later a MIDI controller, [Chapter 30](30-Seeing.md) a webcam, and [Chapter 32](32-Installations.md) a lighting node or a projector. Skip any of them and nothing later in the guide breaks.
+
+Work along in the live-reload host (`swift run OllinLive path/to/YourSketch.swift`), which recompiles on save so the window never closes while you experiment. [Chapter 1](01-HelloOllin.md) sets this up.
 
 If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps what you already know onto Ollin. If you're new to Swift, [Appendix A](A-JustEnoughSwift.md) and the [Swift quick reference](../Docs/Swift.md) cover just enough of the language to be productive.
 
@@ -74,10 +84,10 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 24. **[Worlds with weight](24-WorldsWithWeight.md).** Rigid bodies in the 3D scene: stacking and contact, asking what a body would hit, collision groups, degrees of freedom, machines made out of joints, and snapshots of a settled world.
 25. **[Characters, vehicles, and cloth](25-CharactersAndCloth.md).** The three things a rigid body models badly: a figure that walks, a vehicle on sprung wheels, and cloth, ropes, ragdolls and water.
 26. **[Sculpting with fields](26-SculptingWithFields.md).** Distance fields that merge and blend, in 2D and raymarched 3D, then the finish: measured materials, environments, glass, and light that bounces.
-27. **[Depth and the iPhone as a sensor](27-DepthAndThePhone.md).** Point clouds, recorded and live RGBD, the phone's body, hand, and gaze streams, and scanning the room you're in.
 
 ### Part V: Out into the world
 
+27. **[Depth and the iPhone as a sensor](27-DepthAndThePhone.md).** Point clouds, recorded and live RGBD, the phone's body, hand, and gaze streams, and scanning the room you're in.
 28. **[Sound and control](28-SoundAndControl.md).** Hearing loudness, spectrum, beats, speech and sound events, then the hands on the other side: MIDI, OSC, and game controllers, all bound to the same knobs.
 29. **[Making sound](29-MakingSound.md).** A sketch that plays: synths and the voices inside them, instruments built by patching or recorded, the modelled string, struck shape, bow and tube, then rhythms, scales, chords and tunings, sonification, and sound placed in a room.
 30. **[Seeing](30-Seeing.md).** The webcam as input; faces, hands, bodies, edges, and motion as typed values; video as material.

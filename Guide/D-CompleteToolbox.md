@@ -254,13 +254,18 @@ Use it two ways. It is an index for the moment you remember the guide showing bl
 | Beat detection | Onsets as events: `beat`, `beatCount`, `timeSinceBeat` | [Ch 28](28-SoundAndControl.md) | [Audio](../Docs/Helpers/Audio.md) |
 | Audio sources | Microphone, audio files (export-reproducible), test tones, a video's soundtrack | [Ch 28](28-SoundAndControl.md), [Ch 30](30-Seeing.md) | [Audio](../Docs/Helpers/Audio.md) |
 | Listening | Speech as a caption that corrects itself and phrases you can trigger from, plus 300-odd everyday sounds named as they happen | [Ch 28](28-SoundAndControl.md) | [Listening](../Docs/Helpers/Listening.md) |
-| Synthesis | A `Synth` the sketch plays: notes by name or number, voice presets, envelopes, filters, delay and reverb, two physical models (a plucked string and a struck shape), sound placed in the 3D scene, and a soundtrack in an export | [Ch 29](29-MakingSound.md) | [Synthesis](../Docs/Helpers/Synthesis.md) |
-| Composition | Working out what to play: Euclidean rhythms, scales and chords, arpeggios, Markov sequences, all on a step number | [Ch 29](29-MakingSound.md) | [Composition](../Docs/Helpers/Composition.md) |
-| Sonification | Numbers read out as notes: a table column, a terrain profile, or a picture row spread over a range of pitch and snapped to a scale | [Ch 29](29-MakingSound.md) | [Sonification](../Docs/Helpers/Sonification.md) |
 | MIDI | Knobs, notes, and messages from hardware controllers, in and out | [Ch 28](28-SoundAndControl.md) | [MIDI](../Docs/Integration/MIDI.md) |
 | OSC | Network control messages from tablets, DAWs, and other machines | [Ch 28](28-SoundAndControl.md) | [OSC](../Docs/Integration/OSC.md) |
 | Game controllers | Sticks, triggers, and buttons read in `draw()`, plus motion and a touchpad on hardware that has them, with several players at once and a null read when nothing is plugged in | [Ch 28](28-SoundAndControl.md) | [Controller](../Docs/Integration/Controller.md) |
 | Parameter binding | One `@Param` driven by MIDI, OSC, and the inspector alike, with smoothing | [Ch 28](28-SoundAndControl.md) | [Parameters](../Docs/Helpers/Parameters.md) |
+
+## Making sound
+
+| Capability | What it is | Guide | Reference |
+|---|---|---|---|
+| Synthesis | A `Synth` the sketch plays: notes by name or number, voice presets, envelopes, filters, delay and reverb, two physical models (a plucked string and a struck shape), sound placed in the 3D scene, and a soundtrack in an export | [Ch 29](29-MakingSound.md) | [Synthesis](../Docs/Helpers/Synthesis.md) |
+| Composition | Working out what to play: Euclidean rhythms, scales and chords, arpeggios, Markov sequences, all on a step number | [Ch 29](29-MakingSound.md) | [Composition](../Docs/Helpers/Composition.md) |
+| Sonification | Numbers read out as notes: a table column, a terrain profile, or a picture row spread over a range of pitch and snapped to a scale | [Ch 29](29-MakingSound.md) | [Sonification](../Docs/Helpers/Sonification.md) |
 
 ## Seeing and video
 
@@ -295,15 +300,20 @@ Use it two ways. It is an index for the moment you remember the guide showing bl
 | Contact sheets | `--export-grid` tiles one frame per seed into a labeled proof sheet; `--seed` re-renders a keeper | [Ch 4](04-Randomness.md) | [Variations](../Docs/Core/Variations.md) |
 | Syphon | Publish frames to (and read frames from) other Mac apps, GPU to GPU | [Ch 31](31-SharingAndPerforming.md) | [Syphon](../Docs/Integration/Syphon.md) |
 | Virtual camera | Your sketch as a system-wide webcam every video app can pick, including the browser, which Syphon cannot reach | [Ch 31](31-SharingAndPerforming.md) | [VirtualCamera](../Docs/Integration/VirtualCamera.md) |
-| DMX lighting | Real lights driven from `draw()` over Art-Net or sACN: a 512-channel universe filled through named fixtures and sent every frame, and a lighting console driving the sketch back | [Ch 32](32-Installations.md) | [DMX](../Docs/Integration/DMX.md) |
 | Screen capture | Any display, app, or window on the Mac as a live frame source, whether or not it cooperates the way Syphon needs; a tracker reads it like a camera, and leaving your own window in gives you the feedback tunnel | [Ch 30](30-Seeing.md) | [ScreenCapture](../Docs/Integration/ScreenCapture.md) |
 | Live coding | `swift run OllinLiveCoding`: code over visuals, evaluate mid-motion, perform | [Ch 31](31-SharingAndPerforming.md) | [LiveCoding](../Docs/Tools/LiveCoding.md) |
 | Extensions | `Sketch.extend`: hooks before, during, and after each frame, for recorders and chrome | [Ch 31](31-SharingAndPerforming.md) | [Sketch](../Docs/Core/Sketch.md#extensions) |
+| Writing an extension | `ollin new --kind extension`: a library other sketches import, the `ollinx-` naming convention, and the four seams to build on | [Ch 31](31-SharingAndPerforming.md) | [Extensions](../Docs/Tools/Extensions.md) |
+| Accessibility | See your colors through the three kinds of color vision, check whether a palette holds apart, and read the reduce-motion setting | [Ch 2](02-Color.md), [Ch 3](03-MotionAndTime.md) | [Accessibility](../Docs/Helpers/Accessibility.md) |
+
+## Installations
+
+| Capability | What it is | Guide | Reference |
+|---|---|---|---|
+| DMX lighting | Real lights driven from `draw()` over Art-Net or sACN: a 512-channel universe filled through named fixtures and sent every frame, and a lighting console driving the sketch back | [Ch 32](32-Installations.md) | [DMX](../Docs/Integration/DMX.md) |
 | Running unattended | `installation` puts a piece on a wall: full screen, no pointer, the display kept awake, and a clock that survives a gap in the frames and a week of running | [Ch 32](32-Installations.md) | [Installation](../Docs/Output/Installation.md) |
 | Resuming after a stop | `@Saved` properties and a checkpoint cadence write the run down, so a relaunch picks the piece up where it was rather than starting it over | [Ch 32](32-Installations.md) | [Installation](../Docs/Output/Installation.md) |
 | Profiling | The inspector's cost row: CPU against GPU on one frame's scale, the draw, pass and batch counts, and a frame handed to Xcode | [Ch 32](32-Installations.md) | [Profiling](../Docs/Tools/Profiling.md) |
-| Writing an extension | `ollin new --kind extension`: a library other sketches import, the `ollinx-` naming convention, and the four seams to build on | [Ch 31](31-SharingAndPerforming.md) | [Extensions](../Docs/Tools/Extensions.md) |
-| Accessibility | See your colors through the three kinds of color vision, check whether a palette holds apart, and read the reduce-motion setting | [Ch 2](02-Color.md), [Ch 3](03-MotionAndTime.md) | [Accessibility](../Docs/Helpers/Accessibility.md) |
 
 ---
 
