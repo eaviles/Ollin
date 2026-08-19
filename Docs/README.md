@@ -119,6 +119,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 - [`Input`](./Helpers/Input.md) - mouse and keyboard
 - [`Accessibility`](./Helpers/Accessibility.md) - seeing your colors as the three kinds of color vision do, checking whether a palette holds apart, and reading the system's reduce-motion setting
 - [`Data`](./Helpers/Data.md) - `loadTable` for CSV and TSV files (typed reads by column name) and `loadJSON` for documents you reach through by name and index
+- [`LiveData`](./Helpers/LiveData.md) - `DataFeed`, one address read over and over on a background queue, so a sketch draws what is true now; conditional polling, backoff, and one fixed answer in an export
 - [`Audio`](./Helpers/Audio.md) - `import OllinAudio` for microphone, file, and oscillator sources, analyzed into `amplitude`/`spectrum`/band values you read in `draw()`
 - [`Listening`](./Helpers/Listening.md) - speech as a caption you can draw and phrases you can act on, plus 300-odd everyday sounds named as they happen, over any audio source
 - [`Synthesis`](./Helpers/Synthesis.md) - `Synth`, the instrument a sketch plays: notes by name or number, `Voice` presets over a shaped and filtered oscillator, delay and reverb

@@ -220,6 +220,49 @@ Reach in by name or index, then ask for the kind you want at the end: `.string`,
 
 Both loaders belong in `setup()`. Reading a file is slow next to drawing one frame, and a network URL blocks until it arrives.
 
+## Numbers that keep arriving: DataFeed
+
+Reading once is right for a file. It is wrong for a number that changes while your sketch is up. A `DataFeed` reads one address over and over, in the background, so the sketch draws what is true now rather than what was true at launch.
+
+<img src="Images/09-Pictures/NumbersThatKeepArriving.jpg" alt="A diagram on cream paper. A row of request marks along a time line, labeled 200, 304, 304, then three red crosses labeled 500 with widening gaps between them marked wait, twice, four times, then 200 and 304. Below, a green staircase labeled updates steps from 1 to 2 only at the second 200, and under that a red band labeled problem covers the failing stretch" width="680">
+
+```swift
+final class Tide: Sketch {
+    private let tide = DataFeed("https://example.org/tide.json", every: 600)
+
+    override func setup() {
+        tide.start()
+    }
+
+    override func draw() {
+        background(.white)
+        let height = tide.json["height"].number ?? 0
+        drawCircle(center: center, radius: 40 + height * 20)
+    }
+}
+```
+
+`every:` is in seconds. What comes back is the same `JSON` and `Table` you just read out of files. The drawing code doesn't change at all when the numbers start arriving from the world instead of the disk.
+
+Before the first answer arrives, `json` reads as null and `table` and `text` are `nil`. That is also what they read when the network is down. A feed with nothing to draw is one state and not two, which is why the fallback in the line above covers both.
+
+When something goes wrong, `problem` says what, in a sentence you can put on the canvas. It never takes away what the feed already had. Keep drawing the last good answer and put the notice over the top, the way the figure shows.
+
+The number to watch is `updates`. It counts the answers that *differed* from the one before, so a poll that brought back the same bytes doesn't move it:
+
+```swift
+if tide.updates != seen {
+    seen = tide.updates
+    arrivedAt = time            // start a fade from this moment
+}
+```
+
+That distinction is most of what makes a feed pleasant. Ask a server every ten minutes and most answers will be the ones you already have. Only the changes are news.
+
+The rest is politeness, and the framework handles it. The next request waits for the last one to finish. An unchanged answer is asked for conditionally, so a well-behaved server can reply with a header and no body. And a run of failures backs off instead of hammering a machine that is already down. A sketch on a wall for three weeks is a guest on somebody's server.
+
+One more thing worth knowing before you export. A headless export reads the feed once and holds that answer for every frame. An export that fetched per frame would render something different each time you ran it.
+
 ## Putting it together: a picture painted with type
 
 This is the piece from the top of the chapter, and it's the whole chapter in one grid: words drawn with `drawText`, a picture read with `image[x, y]`, and the two fused so the picture is *made of* the words. A message repeats across a grid in reading order, and each letter samples the sunset at its own position, takes the pixel's color, and scales by its brightness.
@@ -339,10 +382,11 @@ Stippling with dots of even weight was a hand discipline in scientific illustrat
 - [String art](../Docs/Generators/StringArt.md): the pins and the ink dial, and `inverted` for a pale thread on a dark ground.
 - [Pixel sorting](../Docs/Drawing/PixelSorting.md): every key and direction, and how to get each of the classic looks.
 - [Data](../Docs/Helpers/Data.md): `loadTable` and `loadJSON` in full, including the separator and header guesses, the two ways a column reads back, and what a missing key does.
+- [Live data](../Docs/Helpers/LiveData.md): every knob on `DataFeed`, what decides how the bytes are read, the conditional request and the backoff, and the entitlement a sandboxed app needs.
 - Appendix B draws this chapter's math, one picture per idea: [Fractions, mapping, and wrapping](B-JustEnoughMath.md#fractions-mapping-and-wrapping), [Shaping a value](B-JustEnoughMath.md#shaping-a-value), [Color and light as numbers](B-JustEnoughMath.md#color-and-light-as-numbers).
 - Worked examples: [`Examples/Images/GlyphMosaic`](../Examples/Images/GlyphMosaic/Sketch.swift), [`Halftone`](../Examples/Images/Halftone/Sketch.swift), [`PixelSort`](../Examples/Images/PixelSort/Sketch.swift), [`SingleLine`](../Examples/Images/SingleLine/Sketch.swift), [`SpanningTree`](../Examples/Images/SpanningTree/Sketch.swift), [`StringArt`](../Examples/Images/StringArt/Sketch.swift), and [`PixelField`](../Examples/Images/PixelField/Sketch.swift) (authoring an image pixel by pixel and reading it back).
-- Worked examples for data: [`Examples/Data/Readings`](../Examples/Data/Readings/Sketch.swift) (a CSV as a range chart) and [`Examples/Data/Places`](../Examples/Data/Places/Sketch.swift) (a JSON survey).
-- Ahead of you: live data from the world, meaning weather, location, and a paired Watch's heart rate, is not in the framework yet. When it lands it gets a chapter of its own in Part V, beside the other things a sketch listens to.
+- Worked examples for data: [`Examples/Data/Readings`](../Examples/Data/Readings/Sketch.swift) (a CSV as a range chart), [`Examples/Data/Places`](../Examples/Data/Places/Sketch.swift) (a JSON survey), and [`Examples/Data/Quakes`](../Examples/Data/Quakes/Sketch.swift) (an hour of earthquakes, redrawn as the list changes).
+- Ahead of you: the sensors, meaning weather, location, and a paired Watch's heart rate, are not in the framework yet. Each needs its own permission prompt, and a feed you point at an address needs none. When they land they get a chapter of their own in Part V, beside the other things a sketch listens to.
 
 ---
 

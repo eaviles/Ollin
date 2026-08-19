@@ -10,6 +10,7 @@
 - [`Input`](./Input.md) - mouse and keyboard
 - [`Accessibility`](./Accessibility.md) - color vision simulation, a palette check, the published safe set, and the reduce-motion setting
 - [`Data`](./Data.md) - `loadTable` for CSV and TSV files, and `loadJSON` for documents you reach through by name and index
+- [`LiveData`](./LiveData.md) - `DataFeed`, one address read over and over, so a sketch draws what is true now rather than what was true at launch
 - [`Audio`](./Audio.md) - `import OllinAudio` for microphone, file, and oscillator sources, analyzed into `amplitude`/`spectrum`/band values you read in `draw()`
 - [`Listening`](./Listening.md) - speech as a caption you can draw and phrases you can act on, plus 300-odd everyday sounds named as they happen, over any audio source
 - [`Synthesis`](./Synthesis.md) - `Synth`, the instrument a sketch plays: notes by name or number, `Voice` presets over a shaped and filtered oscillator, delay and reverb

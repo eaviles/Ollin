@@ -77,6 +77,7 @@ All of it is the interop posture: play in someone's existing rig, not replace it
 
 More of the platform's live signals, each a `FrameSource` or a simple value read in `draw()`:
 
+- **A feed that is pushed rather than polled.** A socket held open, so a machine can say something the moment it happens rather than waiting for the next poll.
 - **Apple Pencil.** Tilt, azimuth, and hover on the iOS leg, with its force joining the pressure a sketch already reads.
 - **Body and world data.** Heart rate from a paired Watch for biofeedback, and real-world ambient data (weather, location) as a slow live input.
 
