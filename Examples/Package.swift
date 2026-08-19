@@ -383,6 +383,7 @@ let package = Package(
         example("Patterns/WarpGrid"),
         example("Patterns/EnergyGrid"),
         example("Randomness/NoiseField"),
+        example("Randomness/TilingNoise"),
         example("Randomness/RandomBand"),
         example("Randomness/NoiseWave"),
         example("Motion/Triangles"),

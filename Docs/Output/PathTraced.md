@@ -12,7 +12,9 @@ swift run Example-3D-Effects-PathTraced --export out.png --path-traced 512
 swift run Example-3D-Effects-PathTraced --export-video out.mp4 --seconds 4 --path-traced 256
 ```
 
-The number is how many light paths each pixel traces. More samples make a smoother image and take linearly longer. Left off, the count follows `--render-quality` (64, 256, or 512 for performance, default, and detail). A progress line reports a still's render, and a sequence keeps its usual per-frame line. It needs a ray-tracing GPU, which every Apple-silicon Mac has. Elsewhere the export prints a note and renders the raster pipeline.
+The number is how many light paths each pixel traces. More samples make a smoother image, and the cost is linear. Know it before you wait for it. On an M2 at 1080x1080 the example scene takes 83 s at 512, 157 s at 1024, 296 s at 2048, and 589 s at 4096.
+
+Left off, the count follows `--render-quality`: 64, 256, or 4096 for performance, default, and detail. **The detail tier is a final render, so name a count for anything else.** It is the leave-it-running setting, about ten minutes for one still on the machine above. A *sequence* multiplies that by every frame, which is days rather than hours. The video example below names 256 for that reason. A progress line reports a still's render, and a sequence keeps its usual per-frame line. It needs a ray-tracing GPU, which every Apple-silicon Mac has. Elsewhere the export prints a note and renders the raster pipeline.
 
 ### What the traced frame adds
 

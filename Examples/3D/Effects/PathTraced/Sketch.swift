@@ -19,8 +19,9 @@ import Ollin
 ///
 /// The trace needs an Apple-silicon (ray-tracing) GPU; elsewhere the export falls
 /// back to the raster pipeline with a note. Samples: 64 sketches the light in
-/// seconds, 512 is clean, more is smoother still. `--pt-depth` caps the mirror
-/// recursion (8 is plenty).
+/// seconds and 512 carries the picture, though the two rough spheres still hold a
+/// little grain there; each doubling halves it, at linearly more time. `--pt-depth`
+/// caps the mirror recursion (8 is plenty).
 @main
 final class PathTraced: Sketch {
 

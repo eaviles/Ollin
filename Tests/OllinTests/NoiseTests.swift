@@ -20,6 +20,61 @@ struct NoiseTests {
         #expect(sketch.noise(loop: 3) == sketch.noise(loop: 0), "any whole number of laps is home")
     }
 
+    @Test func tilingClosesOnBothEdges() {
+        let sketch = Sketch()
+        sketch.noiseSeed(7)
+        for t in [0.0, 0.13, 0.5, 0.87] {
+            #expect(sketch.tilingNoise(0, t) == sketch.tilingNoise(1, t), "the left edge meets the right")
+            #expect(sketch.tilingNoise(t, 0) == sketch.tilingNoise(t, 1), "the top edge meets the bottom")
+            #expect(sketch.tilingFbm(0, t, octaves: 5) == sketch.tilingFbm(1, t, octaves: 5))
+            #expect(sketch.tilingFbm(t, 0, octaves: 5) == sketch.tilingFbm(t, 1, octaves: 5))
+            #expect(sketch.signedTilingNoise(0, t) == sketch.signedTilingNoise(1, t))
+            #expect(sketch.signedTilingFbm(t, 0) == sketch.signedTilingFbm(t, 1))
+        }
+    }
+
+    @Test func tilingIsContinuousAcrossTheJoin() {
+        let sketch = Sketch()
+        sketch.noiseSeed(7)
+        // A field that merely *matches* at the edge can still kink there. The
+        // step across the join must be no worse than a step of the same size
+        // taken in the middle of the tile, which is what makes the repeat
+        // invisible rather than merely continuous.
+        let d = 0.002
+        let across = abs(sketch.tilingFbm(1 - d, 0.4, detail: 4, octaves: 5)
+                       - sketch.tilingFbm(d, 0.4, detail: 4, octaves: 5))
+        let inside = abs(sketch.tilingFbm(0.5 - d, 0.4, detail: 4, octaves: 5)
+                       - sketch.tilingFbm(0.5 + d, 0.4, detail: 4, octaves: 5))
+        #expect(across < inside + 0.02, "the join is as smooth as the middle")
+    }
+
+    @Test func tilingActuallyVaries() {
+        let sketch = Sketch()
+        sketch.noiseSeed(7)
+        // A constant field would pass every seam test above, so pin that the
+        // tile carries real structure, and that a bigger radius carries more.
+        func spread(_ detail: Double) -> Double {
+            var lo = 1.0, hi = 0.0
+            for i in 0 ..< 24 {
+                for j in 0 ..< 24 {
+                    let n = sketch.tilingFbm(Double(i) / 24, Double(j) / 24, detail: detail, octaves: 5)
+                    lo = min(lo, n); hi = max(hi, n)
+                }
+            }
+            return hi - lo
+        }
+        #expect(spread(4) > 0.2)
+        #expect(spread(8) > spread(1), "a bigger tile tours more of the field")
+    }
+
+    @Test func tilingIsSeededAndDeterministic() {
+        let a = Sketch(); a.noiseSeed(11)
+        let b = Sketch(); b.noiseSeed(11)
+        let c = Sketch(); c.noiseSeed(12)
+        #expect(a.tilingFbm(0.3, 0.7) == b.tilingFbm(0.3, 0.7))
+        #expect(a.tilingFbm(0.3, 0.7) != c.tilingFbm(0.3, 0.7))
+    }
+
     @Test func loopIsContinuousAtTheSeam() {
         let sketch = Sketch()
         sketch.noiseSeed(7)

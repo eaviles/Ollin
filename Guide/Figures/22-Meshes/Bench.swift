@@ -98,12 +98,14 @@ final class Bench: Sketch {
         noiseSeed(714)
 
         // The bench has no uvs worth having, so its stone is projected, grain and all.
+        // A projected picture repeats, so both of these have to tile, or the
+        // stone draws a straight line wherever the picture wraps.
         let stone = picture(size: 512) { u, v in
-            let grain = fbm(u * 5, v * 5, octaves: 5)
+            let grain = tilingFbm(u, v, detail: 5, octaves: 5)
             return Color.mix(Color(hex: 0x585A5C), Color(hex: 0x7C7B74), t: grain)
         }
         let stoneRelief = normalMap(size: 512, strength: 0.35) { u, v in
-            fbm(u * 8, v * 8, octaves: 5) * 0.5
+            tilingFbm(u, v, detail: 8, octaves: 5) * 0.5
         }
         bench = Mesh.box(width: 9, height: 0.5, depth: 5)
             .triplanarTextured(stone, normal: stoneRelief, scale: 2.6)
@@ -233,11 +235,12 @@ final class Bench: Sketch {
                 scale(1.35, 0.36, 1.35)
                 drawMesh(cushion)
             }
-            translate(0, 0.26, 0)
+            translate(0, 0.45, 0)
             fill(Color(hex: 0xF2E3C0))
             var wax = Material.marble(radius: 0.12)
             wax.scatteringColor = Color(red: 1, green: 0.66, blue: 0.34)
             material(wax)
+            scale(0.84, 1.2, 0.84)
             drawMesh(egg)
         }
     }

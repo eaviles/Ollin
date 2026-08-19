@@ -12,6 +12,7 @@ Perlin `noise` is coherent: nearby inputs give nearby outputs, which reads as sm
 - [signedNoise](#signedNoise)
 - [Looping noise: `loop:`](#loop)
 - [fbm / signedFbm](#fbm)
+- [Tiling noise: a picture that repeats](#tiling)
 - [curlNoise](#curlNoise)
 - [simplexNoise / signedSimplexNoise](#simplexNoise)
 - [worley](#worley)
@@ -99,6 +100,31 @@ let weather = fbm(x * 0.003, y * 0.003, loop: loopProgress(over: 8))
 ```
 
 `signedFbm` is the same value spoken in `-1...1`. In the looping form every octave tours its own closed circle, so the layered field loops too.
+
+<a name="tiling"></a>
+
+#### Tiling noise: a picture that repeats
+
+```swift
+tilingNoise(_ u: Double, _ v: Double, detail: Double = 4) -> Double
+signedTilingNoise(_ u: Double, _ v: Double, detail: Double = 4) -> Double
+tilingFbm(_ u: Double, _ v: Double, detail: Double = 4, octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double
+signedTilingFbm(/* the same form */) -> Double
+```
+
+Noise that tiles. As `u` and `v` each run `0...1` the sample tours a closed circle in *both* directions, so the field meets itself at every edge. Lay the picture down beside itself and you cannot find the join.
+
+Reach for it whenever a picture will be repeated. A projected one always is. [`triplanarTextured`](../3D/3D.md#triplanar) carries its picture across the whole surface, so a map written the ordinary way draws a line wherever the picture wraps. A normal map is the loud case. The two sides of the join light differently, so the line reads as a crease in the surface.
+
+```swift
+// filling a 512-square map, one texel at a time
+let u = (Double(x) + 0.5) / 512, v = (Double(y) + 0.5) / 512
+let shade = Color(white: tilingFbm(u, v, detail: 5, octaves: 5))
+```
+
+`detail` is roughly how many features fit across one tile, which is the frequency you would otherwise multiply into the coordinates. That makes moving a map across a direct swap: `fbm(u * 8, v * 8)` becomes `tilingFbm(u, v, detail: 8)` and keeps its grain. Under the hood both directions ride the same 4D construction the [looping forms](#loop) spend on time, spent on space twice instead.
+
+The example is [`Randomness/TilingNoise`](../../Examples/Randomness/TilingNoise/Sketch.swift): one tile laid down nine times, from `fbm` and from `tilingFbm` side by side.
 
 <a name="curlNoise"></a>
 

@@ -239,6 +239,15 @@ drawMesh(grown.triplanarTextured(stone, normal: veins, scale: 0.9))
 
 `scale` is the size of one tile in world units, and a `normal:` map rides the same projection. So the veins in the figure are engraved relief, not just darker paint. Notice what you did *not* do. There are no uvs, no tangent basis, and no unwrapping, and the projection works on any mesh you can make or load.
 
+One thing the projection asks of you in return: **the picture has to tile.** It repeats across the whole surface, so if the left edge and the right edge of your map disagree, every wrap draws a straight line. Authoring a map with `fbm(u * 8, v * 8)` does exactly that, because the field at u=0 and the field at u=1 are unrelated. Use `tilingFbm` instead, which closes on itself in both directions:
+
+```swift
+// u and v run 0...1 across the map you are filling
+let shade = Color(white: tilingFbm(u, v, detail: 5, octaves: 5))
+```
+
+`detail` is the frequency you would otherwise have multiplied in, so moving a map across is a straight swap. A mismatched *normal* map is the one that will catch you. The two sides of the join light differently, so the line reads as a crease in the stone rather than as a change of pattern. The bench at the end of this chapter wears its stone this way.
+
 The picture stands still and the surface moves through it. That is the one thing to understand about triplanar, and it cuts both ways. The cairn is three separate boxes drawn one after another, and the pattern runs unbroken across all three, because they stand in the same standing field. That is why the technique is beloved for terrain and rockwork. But a mesh you animate through the transform stack slides through the pattern rather than carrying it along, so a body that travels should wear uvs. A form that grows or morphs in place, like the blob in the `3D/Materials/Triplanar` example, flows through the pattern like a shape turning under falling light, which is its own kind of beautiful.
 
 The projection carries the base texture and a normal map, while the rest of the map set stays with uvs. The [reference page](../Docs/3D/3D.md#triplanar) has the edges of the envelope. The example puts the tile size and the relief on knobs.
@@ -551,12 +560,14 @@ The second part builds the objects. The slab has no texture coordinates worth ha
         noiseSeed(714)
 
         // The bench has no uvs worth having, so its stone is projected, grain and all.
+        // A projected picture repeats, so both of these have to tile, or the
+        // stone draws a straight line wherever the picture wraps.
         let stone = picture(size: 512) { u, v in
-            let grain = fbm(u * 5, v * 5, octaves: 5)
+            let grain = tilingFbm(u, v, detail: 5, octaves: 5)
             return Color.mix(Color(hex: 0x585A5C), Color(hex: 0x7C7B74), t: grain)
         }
         let stoneRelief = normalMap(size: 512, strength: 0.35) { u, v in
-            fbm(u * 8, v * 8, octaves: 5) * 0.5
+            tilingFbm(u, v, detail: 8, octaves: 5) * 0.5
         }
         bench = Mesh.box(width: 9, height: 0.5, depth: 5)
             .triplanarTextured(stone, normal: stoneRelief, scale: 2.6)
@@ -691,11 +702,12 @@ The third part is the frame. There is one directional light and one environment,
                 scale(1.35, 0.36, 1.35)
                 drawMesh(cushion)
             }
-            translate(0, 0.26, 0)
+            translate(0, 0.45, 0)
             fill(Color(hex: 0xF2E3C0))
             var wax = Material.marble(radius: 0.12)
             wax.scatteringColor = Color(red: 1, green: 0.66, blue: 0.34)
             material(wax)
+            scale(0.84, 1.2, 0.84)
             drawMesh(egg)
         }
     }

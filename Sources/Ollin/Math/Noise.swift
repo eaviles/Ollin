@@ -238,6 +238,61 @@ public extension Sketch {
         fbm(x, y, loop: loop, radius: radius, octaves: octaves, gain: gain, lacunarity: lacunarity) * 2 - 1
     }
 
+    // MARK: Tiling noise
+
+    /// 2D noise that tiles. As `u` and `v` each run `0...1` the sample tours a
+    /// closed circle in *both* directions, so the field meets itself at every
+    /// edge and a picture drawn from it repeats with no seam.
+    ///
+    /// This is what a picture wants whenever it will be repeated, and the case
+    /// that catches people out is a projected one: `triplanarTextured(_:)`
+    /// repeats its picture across the whole surface, so an ordinary
+    /// `fbm(u * 8, v * 8)` map draws a straight line wherever the picture wraps.
+    /// The mismatch is loudest in a normal map, where the two sides of the join
+    /// light differently and the line reads as a crease.
+    ///
+    /// `detail` is roughly how many features fit across one tile, so it reads
+    /// as the frequency you would otherwise multiply into the coordinates: a
+    /// map written `fbm(u * 8, v * 8)` becomes `tilingFbm(u, v, detail: 8)` and
+    /// keeps its grain.
+    ///
+    /// ```swift
+    /// // filling a map, one texel at a time
+    /// let u = (Double(x) + 0.5) / 512, v = (Double(y) + 0.5) / 512
+    /// let shade = Color(white: tilingFbm(u, v, detail: 5, octaves: 5))
+    /// ```
+    ///
+    /// Under the hood both directions ride the 4D construction the looping
+    /// forms use for time, spent on space twice instead.
+    func tilingNoise(_ u: Double, _ v: Double, detail: Double = 4) -> Double {
+        let (ux, uy) = tilePoint(u, detail)
+        let (vx, vy) = tilePoint(v, detail)
+        return perlin.value(ux, uy, vx, vy)
+    }
+    /// 2D signed tiling noise in `-1...1` (see `tilingNoise(_:_:detail:)`).
+    func signedTilingNoise(_ u: Double, _ v: Double, detail: Double = 4) -> Double {
+        let (ux, uy) = tilePoint(u, detail)
+        let (vx, vy) = tilePoint(v, detail)
+        return perlin.signedValue(ux, uy, vx, vy)
+    }
+    /// 2D fractal noise that tiles: every octave tours its own pair of closed
+    /// circles, so the layered field still meets itself at every edge (see
+    /// `tilingNoise(_:_:detail:)`).
+    func tilingFbm(_ u: Double, _ v: Double, detail: Double = 4,
+                   octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
+        fbmSum(octaves, gain, lacunarity) { f in
+            let (ux, uy) = tilePoint(u, detail * f)
+            let (vx, vy) = tilePoint(v, detail * f)
+            return perlin.value(ux, uy, vx, vy)
+        }
+    }
+    /// 2D signed tiling fractal noise in `-1...1` (see
+    /// `tilingFbm(_:_:detail:octaves:gain:lacunarity:)`).
+    func signedTilingFbm(_ u: Double, _ v: Double, detail: Double = 4,
+                         octaves: Int = 4, gain: Double = 0.5, lacunarity: Double = 2) -> Double {
+        tilingFbm(u, v, detail: detail, octaves: octaves, gain: gain, lacunarity: lacunarity) * 2 - 1
+    }
+
     // MARK: Ridged and turbulence fbm
 
     /// 1D ridged fractal noise in `0...1`: fbm's mountainous sibling. Each
@@ -354,6 +409,15 @@ public extension Sketch {
     private func loopPoint(_ loop: Double, _ radius: Double) -> (Double, Double) {
         let angle = fract(loop) * .tau
         return (0.5 + cos(angle) * radius, 0.5 + sin(angle) * radius)
+    }
+
+    /// A point on the circle one *tile* tours (see `tilingNoise(_:_:detail:)`).
+    /// `detail` is the field distance the tile covers, so it becomes the
+    /// circle's circumference rather than its radius, and the caller's number
+    /// reads as a frequency: `detail: 8` tours the same 8 units of field that
+    /// `fbm(u * 8, ...)` walks in a straight line.
+    private func tilePoint(_ t: Double, _ detail: Double) -> (Double, Double) {
+        loopPoint(t, detail / .tau)
     }
 
     /// The shared fbm accumulator: sums `octaves` samples, each taken at a

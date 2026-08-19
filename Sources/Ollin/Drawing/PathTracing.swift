@@ -12,7 +12,10 @@
 public struct PathTracing: Equatable, Sendable {
     /// Light paths traced per pixel. More samples, less noise, linearly more time;
     /// the flag with no count picks a tier default from the render quality
-    /// (64 / 256 / 512 for performance / default / detail).
+    /// (64 / 256 / 4096 for performance / default / detail). The detail tier is
+    /// the leave-it-running one: it is a final render, and on a still it costs
+    /// minutes rather than seconds. Name a count for anything shorter, and name
+    /// one for a *sequence*, where the tier cost multiplies by the frame count.
     public var samplesPerPixel: Int
     /// The longest path traced, in surface bounces. 8 covers mirror-in-mirror
     /// scenes; unbiased termination (Russian roulette) trims most paths earlier.
@@ -28,7 +31,7 @@ public struct PathTracing: Equatable, Sendable {
         switch quality {
         case .performance: return 64
         case .default: return 256
-        case .detail: return 512
+        case .detail: return 4096
         }
     }
 }
