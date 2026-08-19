@@ -12,6 +12,8 @@ The 3D features are designed to stack: lights over materials, an environment ove
 - [What lights and shades what](#shading)
 - [Who casts, receives, and appears in reflections](#matrix)
 - [Effects that read depth](#depth-effects)
+- [Atmosphere and the temporal passes](#atmosphere)
+- [What the path-traced export leaves behind](#traced)
 - [Paths that skip parts of 3D](#skips)
 - [The realism recipe](#realism)
 - [Quick recipes](#recipes)
@@ -44,6 +46,7 @@ Five kinds of things can be on screen in a 3D frame, and they don't all take the
 | | Lights + `material(_:)` | `matcap(_:)` | `environment(_:)` light | Gradient paint |
 | --- | --- | --- | --- | --- |
 | Solid / textured meshes | yes | yes (replaces the lit model) | yes | no (solid `fill` only) |
+| Instanced meshes, mesh fields, strand fields | yes | no | yes | no |
 | Wireframe meshes | no (edges take `stroke`) | no | no | no |
 | Point clouds | no (each point has its own color) | no | no | no (color per point instead) |
 | Raymarched fields (`drawSDF3D`) | yes | no | yes | yes (screen-space) |
@@ -51,6 +54,7 @@ Five kinds of things can be on screen in a 3D frame, and they don't all take the
 
 Notes worth knowing:
 
+- **Geometry drawn in bulk shades like a mesh.** `drawMesh(_:instances:)`, `drawMeshField(_:)` and `drawStrands(_:)` all run the same lit fragment as a solid mesh, so lights, materials, the environment, shadows they receive, bounce light and fog all apply exactly as they would to one copy drawn on its own. What they do not join is the ray-traced side, below.
 - **Meshes** are the full-featured citizens: Blinn-Phong by default, the stylized `material(_:)` library, the physically based metals, textures. All of it is lit by lights and the environment together.
 - **A matcap replaces lighting** for the meshes it wraps. The whole look is painted into its sphere image, so lights, materials, shadows, and the environment don't apply to a matcap'd mesh.
 - **Point clouds are unlit on purpose.** Each point carries its own color, usually sampled from a camera or an image, so lighting them would fight the data they carry.
@@ -65,12 +69,16 @@ Shadows (with [`castShadows()`](./3D.md#shadows)), the two reflection systems, a
 | | Casts shadows | Receives shadows | Appears in ray-traced reflections | Can mirror the scene (ray-traced) | Appears in screen-space reflections | Gathers bounce light (GI) |
 | --- | --- | --- | --- | --- | --- | --- |
 | Solid / textured meshes | yes | yes | yes | yes, with a PBR material | yes | yes |
+| Instanced meshes, mesh fields | yes (not for a point light on a ray-tracing GPU) | yes | no | no | yes | yes |
+| Strand fields | no | yes | no | no | yes | yes |
 | Wireframe meshes | no | no | no | no | yes (their visible edges) | no |
 | Point clouds | no | no | no | no | yes | no |
 | Raymarched fields | yes | yes | no | yes, with a PBR finish | yes | yes |
 | 2D drawing placed in depth | no | no | no | no | yes | no |
 
 The asymmetries that surprise people:
+
+- **Geometry drawn in bulk is shaded, but not traced.** Instanced meshes, mesh fields and strand fields are absent from the ray-tracing acceleration structure, which holds solid mesh batches only. So they never appear inside a traced mirror, and on a ray-tracing GPU a point light's shadow does not see them either, since that shadow is traced too. Their shadows from directional and spot lights are ordinary shadow maps and work normally. Strand fields receive shadows without casting any, which is what keeps a field of grass affordable.
 
 - **Screen-space reflections mirror the *picture*, so everything visible appears in them**, point clouds and wireframes included. Ray-traced reflections trace the *mesh geometry*, so only solid meshes appear inside a traced mirror image.
 - **A raymarched field can show traced reflections on its own surface** if you give it a PBR finish. It doesn't *appear* in another object's traced reflection, though, because it isn't part of the mesh index the rays test. If you need a merged-blob sculpture visible in a chrome sphere, build it from meshes instead.
@@ -89,6 +97,26 @@ Three of the two-layer combine effects read a depth layer as their second input:
 - **`.defocus` also accepts a depth layer you draw by hand** (its luminance is the depth), so tilt-shift gradients and hand-painted focus maps work with no 3D at all.
 
 Ambient occlusion and screen-space reflections read true surface normals where meshes provided them. Over point clouds and raymarched fields they reconstruct normals from depth, which works but is a little less stable at silhouettes.
+
+<a id="atmosphere"></a>
+### Atmosphere and the temporal passes
+
+[`fog(_:density:heightFalloff:)`](./Atmosphere.md#fog) tints every 3D surface by its own depth. **2D drawing never fogs**, and neither does the backdrop, so a sketch keeps its overlays and its sky clear while the geometry recedes. [`volumetricLight()`](./Atmosphere.md#volumetric) makes the beams in the air visible and pairs with fog, though it does not need it: alone, the air stays clear and only the beams appear.
+
+Three passes work on the finished frame rather than on any one surface, and they share an envelope worth stating once. [Temporal anti-aliasing](./3D.md#temporal-antialiasing), [motion blur](./3D.md#motion-blur) and [temporal upscaling](./3D.md#temporal-upscaling) all apply to the **main canvas with an active 3D camera** and nothing else. A 2D sketch gets a note rather than an effect, and render targets, the accumulation surface and the texture hand-off are outside them. Upscaling replaces temporal anti-aliasing rather than stacking with it, and an export never upscales.
+
+<a id="traced"></a>
+### What the path-traced export leaves behind
+
+[`--path-traced`](../Output/PathTraced.md) is the biggest single split in this page, because it swaps the renderer rather than adding to it. The trace covers the **solid 3D meshes**. Everything else keeps its ordinary pipeline and composites with the traced layer by depth, in draw order:
+
+- 2D drawing, before and after the 3D.
+- Wireframes, the ground grid, and matcap meshes. A matcap is an unlit finish, so a glowing prop drawn over an area light keeps its glow and never blocks the light's rays.
+- Point clouds, strand fields, raymarched fields, instanced meshes, and mesh fields.
+
+Two more things thin out inside a traced frame. The **layered lobes simplify**: clearcoat, sheen, iridescence, anisotropy and subsurface all trace as their metallic-roughness base, and toon and gooch trace as matte. And three **surface tricks stay raster**: a height map's parallax relief, the tiled detail pair, and decals, so a traced hit reads the flat surface at its plain uv.
+
+The practical reading is simple. A scene built from meshes and physically based finishes gains the most from tracing. A scene built from fields, clouds, strands or stylized finishes gains the least. [Caustics](./Caustics.md) are the sharpest example. The bent, focused bright lines under glass are a live feature, and the trace puts a straight tinted shadow there instead.
 
 <a id="skips"></a>
 ### Paths that skip parts of 3D

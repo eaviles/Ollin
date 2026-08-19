@@ -105,6 +105,13 @@ extension ThreeDOption {
         rule: "A matcap replaces lighting for the mesh it wraps, so lights, shadows, and an environment stop applying to it, and a raymarched field cannot take one."
     )
 
+    public static let glass = ThreeDOption(
+        id: "glass", title: "Glass", slot: .finish,
+        summary: "A solid that light bends through, tinted along the way.",
+        conflicts: [wireframe.id, pointCloud.id],
+        rule: "Needs a surface to refract through. What you see through it is the environment, and the actual scene once ray-traced reflections are on."
+    )
+
     public static let unlit = ThreeDOption(
         id: "unlit", title: "None", slot: .finish,
         summary: "No surface finish: the geometry's own color is the whole look.",
@@ -136,6 +143,31 @@ extension ThreeDOption {
         rule: "Needs an environment to catch rays and a physically based finish to mirror with, and runs only on a ray-tracing GPU (it is a safe no-op elsewhere)."
     )
 
+    public static let screenSpaceReflections = ThreeDOption(
+        id: "ssr", title: "Screen-space reflections", slot: .extra,
+        summary: "Reflections painted from the picture and its depth, on any Mac and any surface.",
+        rule: "Reflects the picture rather than the geometry, so it runs anywhere and mirrors every surface, and it cannot show what the camera cannot see: a contact zone stays approximate."
+    )
+
+    public static let ambientOcclusion = ThreeDOption(
+        id: "ambient-occlusion", title: "Ambient occlusion", slot: .extra,
+        summary: "Darkens contacts and crevices, which is what settles an object onto its floor.",
+        rule: "Reads the scene's depth and normals, so the 3D is drawn into a render target first."
+    )
+
+    public static let depthOfField = ThreeDOption(
+        id: "depth-of-field", title: "Depth of field", slot: .extra,
+        summary: "A lens that holds one distance sharp and softens the rest.",
+        rule: "Reads the scene's own depth, so the 3D is drawn into a render target first."
+    )
+
+    public static let globalIllumination = ThreeDOption(
+        id: "gi", title: "Bounce light", slot: .extra,
+        summary: "Light bounces, so a red wall tints the white floor beside it.",
+        conflicts: [matcap.id, wireframe.id, pointCloud.id],
+        rule: "Every lit surface gathers it, so it does nothing for a wireframe, a point cloud, or a matcap'd mesh, and it needs a ray-tracing GPU (a safe no-op elsewhere)."
+    )
+
     public static let toneMap = ThreeDOption(
         id: "tone-map", title: "Filmic tone map", slot: .extra,
         summary: "Rolls bright highlights off instead of clipping them.",
@@ -150,8 +182,9 @@ extension ThreeDOption {
 
     public static let all: [ThreeDOption] = [
         .mesh, .wireframe, .pointCloud, .field,
-        .lit, .physicallyBased, .matcap, .unlit,
-        .environment, .shadows, .rayTraced, .toneMap, .fog,
+        .lit, .physicallyBased, .glass, .matcap, .unlit,
+        .environment, .shadows, .rayTraced, .globalIllumination,
+        .screenSpaceReflections, .ambientOcclusion, .depthOfField, .toneMap, .fog,
     ]
 
     public static func named(_ id: String) -> ThreeDOption? {

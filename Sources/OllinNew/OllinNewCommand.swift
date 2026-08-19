@@ -411,12 +411,15 @@ enum OllinNewCommand {
     /// is the thing worth knowing before starting a 3D sketch.
     static func printThreeDOptions() {
         print("3D options (--3d a,b,c), used with `--template 3d`:\n")
+        // Width from the longest id present, so adding a longer one keeps the
+        // two columns lined up instead of shunting one row out of true.
+        let width = (ThreeDOption.all.map(\.id.count).max() ?? 12) + 2
         for slot in ThreeDOption.Slot.allCases {
             print("\(slot.title):")
             for option in ThreeDOption.inSlot(slot) {
-                print("    \(pad(option.id, 14))\(option.summary)")
+                print("    \(pad(option.id, width))\(option.summary)")
                 if !option.rule.isEmpty {
-                    print("    \(pad("", 14))\(option.rule)")
+                    print("    \(pad("", width))\(option.rule)")
                 }
             }
             print("")

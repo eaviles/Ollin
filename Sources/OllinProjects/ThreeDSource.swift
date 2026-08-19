@@ -33,7 +33,7 @@ enum ThreeDSource {
             draw.append("toneMap(.aces)")
         }
 
-        if has(.lit) || has(.physicallyBased) {
+        if has(.lit) || has(.physicallyBased) || has(.glass) {
             draw.append("ambientLight(Color(white: 0.14))")
             draw.append("directionalLight(.white, direction: Vector3(-0.4, -0.85, -0.45), intensity: 0.9)")
         }
@@ -43,6 +43,10 @@ enum ThreeDSource {
         if has(.rayTraced) {
             draw.append("// A safe no-op on a machine without ray tracing.")
             draw.append("rayTracedReflections()")
+        }
+        if has(.globalIllumination) {
+            draw.append("// Light bounces off what it lands on. Ray tracing again, so again a no-op without it.")
+            draw.append("globalIllumination()")
         }
         if !draw.last!.isEmpty { draw.append("") }
 
@@ -54,6 +58,11 @@ enum ThreeDSource {
         case ThreeDOption.lit.id:
             draw.append("material(.physicallyBased(metallic: 0.1, roughness: 0.45))")
             draw.append("fill(Color(hue: 0.57, saturation: 0.45, brightness: 0.95))")
+        case ThreeDOption.glass.id:
+            draw.append("// What you see through it is the environment, and the actual")
+            draw.append("// scene wherever ray-traced reflections are on.")
+            draw.append("material(.glass(thickness: 1.2))")
+            draw.append("fill(Color(hex: 0xDCEEF6))")
         case ThreeDOption.matcap.id:
             draw.append("// One image is the entire look: no lights, no material.")
             draw.append("matcap(.chrome)")
@@ -111,6 +120,38 @@ enum ThreeDSource {
             draw.append("material(.dielectric(roughness: 0.85))")
             draw.append("fill(Color(white: 0.42))")
             draw.append("drawPlane(width: 12, depth: 12)")
+        }
+
+        // The three effects that read depth need the scene in a layer they can
+        // read it from, so they wrap the whole draw rather than adding a line to
+        // it. One wrapper serves all three, and the order below is the order the
+        // reference recipe gives: ground it, reflect it, then put a lens on it.
+        let reads: [ThreeDOption] = [.ambientOcclusion, .screenSpaceReflections, .depthOfField]
+        if reads.contains(where: has) {
+            var wrapped = ["// Everything is drawn into a layer, because the effects below",
+                           "// read the scene's own depth.",
+                           "let scene = renderTarget()",
+                           "withTarget(scene) {"]
+            wrapped += draw.map { $0.isEmpty ? "" : "    " + $0 }
+            wrapped.append("}")
+            wrapped.append("")
+            var current = "scene"
+            if has(.ambientOcclusion) {
+                wrapped.append("let grounded = \(current).combined(with: scene.depth, .ambientOcclusion())")
+                current = "grounded"
+            }
+            if has(.screenSpaceReflections) {
+                wrapped.append("let reflections = Combine.screenSpaceReflections(intensity: 0.8, roughness: 0.25)")
+                wrapped.append("let mirrored = \(current).combined(with: scene.depth, reflections)")
+                current = "mirrored"
+            }
+            if has(.depthOfField) {
+                wrapped.append("let lens = Combine.defocus(focus: 0.5, range: 0.12, maxBlur: 0.02)")
+                wrapped.append("let lensed = \(current).combined(with: scene.depth, lens)")
+                current = "lensed"
+            }
+            wrapped.append("drawImage(\(current).image, 0, 0)")
+            draw = wrapped
         }
 
         let properties = recipe.geometry.id == ThreeDOption.pointCloud.id
