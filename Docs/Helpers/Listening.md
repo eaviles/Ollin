@@ -43,7 +43,7 @@ Everything here runs on this Mac. Nothing is uploaded, and speech recognition as
 
 This is the whole design, and it comes from how recognition works: it guesses early and corrects itself as it hears more. The words on screen a moment ago may not be the words it settles on.
 
-<img src="../../Guide/Images/20-SoundAndControl/Listening.jpg" alt="A spoken sentence transcribed from growing prefixes of its audio, and three synthesized sounds with the labels the classifier gave them" width="680">
+<img src="../../Guide/Images/21-SoundAndControl/Listening.jpg" alt="A spoken sentence transcribed from growing prefixes of its audio, and three synthesized sounds with the labels the classifier gave them" width="680">
 
 So there are two reads:
 
@@ -158,5 +158,5 @@ let heard = try SoundClassifier.classify(resource: "field", withExtension: "wav"
 - [Audio](Audio.md) covers level, spectrum, bands, and beat detection over the same sources.
 - [Vision](../Vision/Vision.md) is the seeing half, whose tracker shape this follows.
 - [Synthesis](Synthesis.md) is making sound rather than listening to it.
-- Guide [Chapter 20](../../Guide/20-SoundAndControl.md) teaches it, under *Words, and what that noise was*.
+- Guide [Chapter 21](../../Guide/21-SoundAndControl.md) teaches it, under *Words, and what that noise was*.
 - `Examples/Audio/Listening` is a caption and named sounds over the live microphone.

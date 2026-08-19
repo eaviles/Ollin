@@ -123,7 +123,7 @@ drawCircle(x, height / 2, 50)
 
 Same dot, same three seconds, but now it *departs* and *arrives*. (Under the hood the S is one line of algebra, `t * t * (3 - 2 * t)`. You'll never need to write it, but it's nice to know the whole curve is that small.)
 
-Because the edges are yours to place, smoothstep does more than reshape a progress. It also works as a **window cutter**. Read `smoothstep(0.3, 1.0, wave)` as "0 until the wave climbs past 0.3, then 1 once it reaches the top, with a soft shoulder in between". That gives you a way of turning any signal into a smooth spotlight. Hold on to that, because the piece at the end of this chapter runs on it. This little S-curve is one of the great workhorses of computer graphics. When you reach shaders in [Chapter 15](15-YourFirstShader.md) you'll find it waiting there, spelled exactly the same. It does per-pixel what it does per-frame here.
+Because the edges are yours to place, smoothstep does more than reshape a progress. It also works as a **window cutter**. Read `smoothstep(0.3, 1.0, wave)` as "0 until the wave climbs past 0.3, then 1 once it reaches the top, with a soft shoulder in between". That gives you a way of turning any signal into a smooth spotlight. Hold on to that, because the piece at the end of this chapter runs on it. This little S-curve is one of the great workhorses of computer graphics. When you reach shaders in [Chapter 16](16-YourFirstShader.md) you'll find it waiting there, spelled exactly the same. It does per-pixel what it does per-frame here.
 
 ## A catalog of curves
 

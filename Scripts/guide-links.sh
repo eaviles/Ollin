@@ -183,6 +183,29 @@ for image in sorted((GUIDE / "Images").rglob("*")):
     if image.is_file() and image.resolve() not in referenced:
         fail(str(image), "image is not referenced by any page")
 
+# Nearly every figure sketch opens by naming the chapter it serves. That is a
+# chapter reference like any other, and it goes stale on a renumber, so it gets
+# checked like any other.
+for sketch in sorted((GUIDE / "Figures").rglob("*.swift")):
+    folder = re.match(r"(\d+)-", sketch.parent.name)
+    if not folder:
+        continue
+    # Only the first mention identifies the figure. A header may name another
+    # chapter after it ("the Chapter 11 flock, rebuilt out of light"), and that
+    # is a cross-reference, checked below like any other chapter token.
+    for n, line in enumerate(sketch.read_text().splitlines(), 1):
+        if not line.lstrip().startswith("//"):
+            break
+        found = re.findall(r"\bChapter (\d+)\b", line)
+        if not found:
+            continue
+        if found[0] != str(int(folder.group(1))):
+            fail(f"{sketch}:{n}", f"names Chapter {found[0]}, but sits in chapter {int(folder.group(1))}")
+        for other in found[1:] + []:
+            if other not in numbers:
+                fail(f"{sketch}:{n}", f"cross-references Chapter {other}, which is not a chapter")
+        break
+
 # --------------------------------------------------------- 5: the footer chain
 FOOTER = re.compile(
     r"^\[Contents\]\(README\.md#contents\)"
@@ -258,6 +281,14 @@ for name in sorted(on_disk - listed):
     fail("Guide/README.md", f"contents list is missing {name}")
 for name in sorted(listed - on_disk):
     fail("Guide/README.md", f"contents list names a file that does not exist: {name}")
+
+# The list marker is written out rather than left to markdown's own counting,
+# so it can disagree with the file it points at. It reads as the chapter number
+# and a reader will quote it, so it has to be the chapter number.
+for n, line in enumerate(lines[GUIDE / "README.md"], 1):
+    m = re.match(r"^(\d+)\. \*\*\[[^\]]+\]\((\d\d)-[A-Za-z0-9]+\.md\)", line)
+    if m and m.group(1) != str(int(m.group(2))):
+        fail(f"Guide/README.md:{n}", f"contents entry is numbered {m.group(1)}, the chapter is {int(m.group(2))}")
 
 # A row still at `not started` is a chapter the plan has reserved and nobody
 # has written yet, so it is the one row allowed to name a file that is not

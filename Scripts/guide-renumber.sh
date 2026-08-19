@@ -106,6 +106,10 @@ def renumbered(old, name):
 FORMS = (
     r"(?P<pnum>\d\d)-(?P<pname>[A-Za-z0-9]+)\.md"
     r"|(?P<atree>(?:Images|Figures)/)(?P<anum>\d\d)-(?P<aname>[A-Za-z0-9]+)"
+    # A figure is often cited by its folder alone, with no tree in front of it
+    # (`16-Simulations/ArtificialLife`). Gated on the stem matching a chapter,
+    # so an ordinary number followed by a slash cannot be caught by accident.
+    r"|(?<![\w/-])(?P<dnum>\d\d)-(?P<dname>[A-Za-z0-9]+)(?=/)"
     r"|\[Chapter (?P<label>\d+)(?=[,:\]])"
     r"|\[Ch (?P<short>\d+)\]"
     r"|\bGuide(?:'s)? Ch\.? *(?P<named>\d+)"
@@ -128,6 +132,14 @@ scope = [p for p in scope if p.exists()]
 
 bare_scope = {p for p in scope if p.parts[0] == "Guide"}
 
+# Nearly every figure sketch opens with a comment naming the chapter it serves,
+# so those go stale on a renumber exactly like the prose does. Only comment
+# lines are touched, and only the `Chapter N` form, so nothing can reach code.
+# A line often names two chapters ("the Chapter 10 flock, rebuilt"), so the
+# whole line is rewritten rather than its first match.
+figures = sorted(GUIDE.glob("Figures/**/*.swift"))
+CHAPTER = re.compile(r"\bChapter (\d+)\b")
+
 
 def moved(n):
     return mapping.get(int(n), int(n))
@@ -141,6 +153,9 @@ def substitute(m):
     if g["anum"] is not None:
         n, name = int(g["anum"]), g["aname"]
         return f"{g['atree']}{renumbered(n, name)}" if stems.get(n) == name else m.group(0)
+    if g["dnum"] is not None:
+        n, name = int(g["dnum"]), g["dname"]
+        return renumbered(n, name) if stems.get(n) == name else m.group(0)
     if g["label"] is not None:
         return f"[Chapter {moved(g['label'])}"
     if g["short"] is not None:
@@ -170,6 +185,17 @@ changed = []
 for path in scope:
     before = path.read_text()
     after = rewrite(path, before)
+    if after != before:
+        changed.append(path)
+        if not dry_run:
+            path.write_text(after)
+
+for path in figures:
+    before = path.read_text()
+    after = "".join(
+        CHAPTER.sub(lambda m: f"Chapter {moved(m.group(1))}", line) if line.lstrip().startswith("//") else line
+        for line in before.splitlines(keepends=True)
+    )
     if after != before:
         changed.append(path)
         if not dry_run:
