@@ -15,7 +15,7 @@ import Testing
 ///
 /// The two failure modes worth guarding are not obvious ones. A gain map worked
 /// out from image statistics throws a *small* highlight away, and a gain map
-/// with one channel instead of three wrecks a *coloured* one. Both look fine in
+/// with one channel instead of three wrecks a *colored* one. Both look fine in
 /// a thumbnail and both are measured below.
 @Suite
 @MainActor
@@ -60,7 +60,7 @@ struct GainMapExportTests {
         return out
     }
 
-    /// The brightest component in a buffer, and the colour of the pixel holding
+    /// The brightest component in a buffer, and the color of the pixel holding
     /// it.
     private func brightest(_ buffer: [Float]) -> (peak: Float, colour: SIMD3<Float>) {
         var peak: Float = -1

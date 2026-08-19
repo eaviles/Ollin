@@ -27,7 +27,7 @@ struct AxisWidget: View {
     @State private var pointer: CGPoint?
     @State private var hoveredControl: Control?
     @State private var isDragging = false
-    /// The last drag translation forwarded, so a *cancelled* gesture can release the
+    /// The last drag translation forwarded, so a *canceled* gesture can release the
     /// synthetic mouse press where it stood (a cancellation never calls `onEnded`).
     @State private var lastDragTranslation: CGSize = .zero
     /// Mirrors the drag's lifetime; a gesture the system cancels resets this without

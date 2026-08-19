@@ -132,7 +132,7 @@ struct FringeStrokeTests {
 
     /// On the inside of a turn the two segments' edges cross, so a segment that
     /// ends on its own perpendicular runs past the crossing and into its
-    /// neighbour. Opaque ink hides that; translucent ink composites the wedge
+    /// neighbor. Opaque ink hides that; translucent ink composites the wedge
     /// twice and the corner grows a hard darker patch, a full second coat at a
     /// right angle (224 against 197, which is 0.75 against 0.75 squared in the
     /// linear light everything composites in).
@@ -164,7 +164,7 @@ struct FringeStrokeTests {
     }
 
     /// The same defect spread thin. Every join on a curve overlaps its
-    /// neighbour a little, always on the inside, and the wedge grows with the
+    /// neighbor a little, always on the inside, and the wedge grows with the
     /// distance from the centerline, so the stroke used to darken as a graded
     /// band down its inner half (mean 224.6 falling to 221.5, with single
     /// pixels as low as 197). Across the band the coat is now flat.

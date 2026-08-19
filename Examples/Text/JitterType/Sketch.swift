@@ -26,7 +26,7 @@ final class JitterType: Sketch {
         textSize(280 * scale)
         // One resampled shape per glyph, centered on the canvas. Glyph fills need
         // the non-zero winding rule (even-odd cuts the bowls of a/e/o/g/s). The
-        // spacing is wider than the jitter below, so neighbours rarely cross — the
+        // spacing is wider than the jitter below, so neighbors rarely cross — the
         // outline wobbles and rounds over instead of shattering into shards.
         glyphs = textToShapes("hello", width / 2, height / 2).map { shape in
             let dense = shape.contours.map { $0.resampled(spacing: 12 * scale) }

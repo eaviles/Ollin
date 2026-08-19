@@ -2,7 +2,7 @@ import Foundation
 
 /// A resonant state-variable filter, solved by trapezoidal integration.
 ///
-/// The plain way to write a digital filter samples the circuit's behaviour and
+/// The plain way to write a digital filter samples the circuit's behavior and
 /// then folds the answer, which pulls the cutoff away from where it was asked
 /// for as it climbs and makes resonance misbehave near the top. Integrating the
 /// circuit equations instead keeps the cutoff where it was asked for across the

@@ -190,7 +190,7 @@ public struct LSystem: Sendable {
         return contours.map { Contour($0.points.map(place), closed: $0.isClosed) }
     }
 
-    /// The scale-and-centre map that fits `points` inside `bounds`, or `nil`
+    /// The scale-and-center map that fits `points` inside `bounds`, or `nil`
     /// when there are no points to measure. Shared with the parametric
     /// L-system's own fit, so a grammar of either kind lands the same way in the
     /// same frame.

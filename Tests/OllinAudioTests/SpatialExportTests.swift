@@ -94,7 +94,7 @@ import Testing
     }
 
     /// The counterfactual for the whole feature: with no placing at all, the
-    /// export is centred. This is what says the listener is only ever built for
+    /// export is centered. This is what says the listener is only ever built for
     /// an instrument that asked for one.
     ///
     /// It is also the regression test for an instrument that reaches the file

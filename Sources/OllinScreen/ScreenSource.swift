@@ -134,7 +134,7 @@ public struct ScreenApp: Sendable, Identifiable, Equatable {
 /// the decisions here (which name matches, which window wins, which display a
 /// window is on) means the part a sketch actually depends on is testable with no
 /// screen, no stream, and no permission, and the code below is plumbing with no
-/// judgement left in it.
+/// judgment left in it.
 enum ScreenMatch {
 
     /// An application matches a written name if it equals either the name shown

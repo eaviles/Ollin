@@ -1060,7 +1060,7 @@ static inline float meshRTThickness(float3 worldPos, float3 normal,
 // corners), interpolates the world-space normal + color by the barycentric coordinate, and
 // shades the hit **one bounce** (no recursion), **metalness-aware**: the hit's metalness +
 // roughness are baked per vertex (the spare `OllinMeshVertex` w slots), so a metal hit shows
-// its colour-tinted environment reflection (reading as the metal it is, and a near-mirror floor
+// its color-tinted environment reflection (reading as the metal it is, and a near-mirror floor
 // shows a reflection rather than its raw albedo) while a dielectric shows a diffuse body (the
 // environment's irradiance + the scene's direct lights as Lambert). One bounce, so a reflected
 // metal mirrors the *environment*, not recursively the rest of the scene. **Glossy:** one ray is
@@ -1292,7 +1292,7 @@ static inline float3 ollin_rt_hit_radiance(OllinRTSurface s1, float3 rayOrigin, 
     }
 
     // First hit: specular (the traced second bounce, F0-tinted, so a metal reads as a
-    // colour-tinted mirror rather than a flat blob) + diffuse (the environment's
+    // color-tinted mirror rather than a flat blob) + diffuse (the environment's
     // irradiance, or the probe field's bounce where it's active, + the scene's direct
     // lights as Lambert, faded out as metalness rises).
     float3 col = envAtHit * F;
@@ -4224,7 +4224,7 @@ fragment float4 ollin_grid_fragment(MeshOut in [[stage_in]],
 
     // Canonical infinite-grid LOD: "major" is expressed as line WIDTH only, in a single line
     // color, so every scale fades by the same rule (a line thinning below a pixel) and
-    // neighbouring scales hand off seamlessly. Giving majors a brighter colour or a separate
+    // neighboring scales hand off seamlessly. Giving majors a brighter color or a separate
     // per-class fade instead makes the levels vanish at different depths and read as stacked
     // planes at different heights, so keep it width-only. Three widths span the decade: the
     // finest (A) thins to nothing as it densifies, the middle (B) hands off from major width
@@ -4252,7 +4252,7 @@ fragment float4 ollin_grid_fragment(MeshOut in [[stage_in]],
     float dist = length(P - g.cameraPos.xz);
     float t = smoothstep(g.fadeStart, g.fadeEnd, dist);   // 0 near the camera … 1 at the fade edge
 
-    // Compose in linear light: one grid colour for every line, colored axes on top.
+    // Compose in linear light: one grid color for every line, colored axes on top.
     float3 color = srgbToLinear(g.lineColor.rgb);
     float coverage = grid * g.lineColor.a;
     color = mix(color, srgbToLinear(g.zAxisColor.rgb), zAxisCov);

@@ -33,7 +33,7 @@ extension World3D {
     /// is moving, and how a snapshot of this world names its geometry.
     ///
     /// What comes across: rigid bodies (falling, driven, or scenery) with
-    /// their mass, density, centre of mass, velocity, and whether they start
+    /// their mass, density, center of mass, velocity, and whether they start
     /// asleep; colliders as boxes, balls, capsules, cylinders, cones, hulls,
     /// and exact meshes, several in one subtree fusing into one compound body;
     /// friction and restitution from a bound physics material; the fixed,

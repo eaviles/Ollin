@@ -3,7 +3,7 @@ import Testing
 import simd
 import Foundation
 
-/// Pure CPU checks on the pose graph that straightens a scan once the camera recognises
+/// Pure CPU checks on the pose graph that straightens a scan once the camera recognizes
 /// a place it has already been: the small-turn algebra it is built on, the straightening
 /// itself, and the guards around a match that cannot be trusted. No Metal device, so
 /// these run everywhere.
@@ -143,7 +143,7 @@ struct PoseGraphTests {
         }
     }
 
-    /// The real case: the moves between neighbours are each a little wrong, so the chain
+    /// The real case: the moves between neighbors are each a little wrong, so the chain
     /// bends, and the last pose ends up far from the first even though the camera came
     /// back to it. Measuring that one move directly is what fixes the whole chain.
     @Test func aLoopSharesTheDriftOutOverTheWholeChain() {
@@ -200,7 +200,7 @@ struct PoseGraphTests {
         #expect(disagreement(held, graph.poses[graph.held]) == 0)
     }
 
-    /// A place wrongly recognised is the one failure that can wreck a whole scan, so a
+    /// A place wrongly recognized is the one failure that can wreck a whole scan, so a
     /// loop is allowed to pull only so hard. The same wrong match left uncapped drags
     /// the map after it.
     @Test func aWrongLoopIsCappedRatherThanBelieved() {

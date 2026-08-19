@@ -105,7 +105,7 @@ extension Sketch {
     /// }
     /// ```
     ///
-    /// The turn is the rod's own, not one worked out from the neighbouring
+    /// The turn is the rod's own, not one worked out from the neighboring
     /// points, so it carries the rope's twist as well as its bend.
     public func withSegment(_ segment: RopeSegment, _ draw: () -> Void) {
         let q = segment.rotation.normalized

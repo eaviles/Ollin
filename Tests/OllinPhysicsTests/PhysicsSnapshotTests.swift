@@ -34,7 +34,7 @@ struct PhysicsSnapshotTests {
 
     /// The headline: a settled heap restored from its own snapshot stands in
     /// exactly the poses it was captured in, to the last bit. The twin is the
-    /// same heap after it has been knocked over, which is metres away, so the
+    /// same heap after it has been knocked over, which is meters away, so the
     /// zero is the snapshot's doing and not a heap that never moved.
     @Test func aRestoredPileStandsExactlyWhereItWasSaved() {
         let world = World3D()
@@ -115,7 +115,7 @@ struct PhysicsSnapshotTests {
                 "and the measurement is not blind to a real difference")
     }
 
-    /// A body in motion keeps it: the restored ball is travelling and spinning
+    /// A body in motion keeps it: the restored ball is traveling and spinning
     /// at the speed it was captured at, where a body rebuilt by hand starts
     /// from rest.
     @Test func aMovingBodyCarriesItsMotion() {
@@ -686,7 +686,7 @@ struct SnapshotTierTests {
                 "and walks on to the same place")
 
         // The twin: a figure that came back standing where it started, or one
-        // not walking at all, is a metre and a half away. (A character has no
+        // not walking at all, is a meter and a half away. (A character has no
         // inertia to lose, so the counterfactual has to be about the carried
         // position rather than about carried speed.)
         let idle = World3D()
@@ -752,7 +752,7 @@ struct SnapshotTierTests {
 
     /// A parked machine comes back parked, and stepping it on moves it not at
     /// all: the chassis is in the same pose and everything under it is still.
-    /// The twin is the same machine under power, which is metres away.
+    /// The twin is the same machine under power, which is meters away.
     @Test func aParkedMachineComesBackParked() throws {
         let world = World3D()
         let still = try #require(machine(in: world))

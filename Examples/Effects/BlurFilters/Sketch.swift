@@ -45,7 +45,7 @@ final class BlurFilters_Example: Sketch {
     }
 }
 
-/// Tile a family's filters into a near-square grid, labelled. (Each family example
+/// Tile a family's filters into a near-square grid, labeled. (Each family example
 /// carries its own copy so the file stays standalone.)
 @MainActor
 func drawFilterSheet(_ s: Sketch, _ scene: RenderTarget,

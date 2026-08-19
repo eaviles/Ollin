@@ -1,7 +1,7 @@
 import Foundation
 
 /// A built-in feedback **simulation**: a field that evolves on the GPU each frame by
-/// reading its own neighbourhood, the stateful sibling of the stateless `Filter`.
+/// reading its own neighborhood, the stateful sibling of the stateless `Filter`.
 /// Where a `Filter` transforms an image once, a `Sim` runs on a *persistent* layer
 /// (a `SimField`) whose state carries from one frame to the next — reaction-diffusion
 /// patterns spreading, cellular-automaton cells living and dying.
@@ -90,7 +90,7 @@ public struct Sim: Sendable {
                                      toFeed: max(0, toFeed), toKill: max(0, toKill)))
     }
 
-    /// Conway's **Game of Life**: each cell lives or dies by its eight neighbours
+    /// Conway's **Game of Life**: each cell lives or dies by its eight neighbors
     /// (B3/S23). Draw white to make cells alive, black to kill them, then watch the
     /// gliders and oscillators evolve. A cell is read alive where its red channel is
     /// > 0.5, so the `image` is crisp black-and-white. Use a low `scale` on the field
@@ -160,9 +160,9 @@ public struct Sim: Sendable {
         Sim(kind: .ripples(speed: min(max(speed, 0.05), 1), damping: min(max(damping, 0), 1)))
     }
 
-    /// A real-time **fluid**: an incompressible flow that carries colour. Draw into the
-    /// field to inject dye (the mark's colour) and push the fluid with `withField`'s
-    /// `force:` (so dragging or an animated force swirls the colour). The flow advects,
+    /// A real-time **fluid**: an incompressible flow that carries color. Draw into the
+    /// field to inject dye (the mark's color) and push the fluid with `withField`'s
+    /// `force:` (so dragging or an animated force swirls the color). The flow advects,
     /// confines its vorticity (for fine swirling detail), and stays divergence-free via
     /// a Jacobi pressure solve. The raw `image` is the dye, ready to composite or
     /// `.filtered(.bloom)`. `curl` sets the swirliness, the dissipations how fast flow
@@ -224,7 +224,7 @@ public struct Sim: Sendable {
 
     /// The **Abelian sandpile**: grains pile up on a grid, and any cell holding four
     /// or more topples, keeping the rest and sending one grain to each of its four
-    /// neighbours. A toppling can tip its neighbours over too, so one grain dropped
+    /// neighbors. A toppling can tip its neighbors over too, so one grain dropped
     /// on a settled pile can set off an avalanche of any size (the model that named
     /// *self-organized criticality*). All the unstable cells topple together each
     /// pass, as many times as each can, which is safe because topplings commute
@@ -256,12 +256,12 @@ public struct Sim: Sendable {
 
     /// Griffeath's **cyclic cellular automaton**: every cell holds one of `states`
     /// colors arranged in a circle, and a cell advances to the next color the moment
-    /// at least `threshold` of its neighbours already wear it, so each color eats
+    /// at least `threshold` of its neighbors already wear it, so each color eats
     /// the one before it and is eaten by the one after. From its random start the
     /// field self-organizes through the famous four acts: colored static, then
     /// growing single-color droplets, then the first spiral defects, and finally a
     /// field of turning spiral cores that own everything. The defaults are the
-    /// classic rule (14 states, threshold 1, the four edge-sharing neighbours);
+    /// classic rule (14 states, threshold 1, the four edge-sharing neighbors);
     /// raising `threshold` with a wider `range` trades spirals for churning block
     /// turbulence, and a high enough threshold freezes the field into still color
     /// fields.
@@ -280,12 +280,12 @@ public struct Sim: Sendable {
     /// - Parameters:
     ///   - states: How many colors chase each other (2...64). More states make
     ///     slower, broader spirals; fewer make a faster boil.
-    ///   - threshold: How many neighbours of the next color it takes to advance
+    ///   - threshold: How many neighbors of the next color it takes to advance
     ///     (1...16). 1 is the classic spiral regime; higher thresholds want a wider
     ///     `range` to fire at all.
-    ///   - range: How far a cell looks, in cells (1...4). The neighbourhood is the
+    ///   - range: How far a cell looks, in cells (1...4). The neighborhood is the
     ///     full block within that distance, or the diamond under `.vonNeumann`.
-    ///   - neighborhood: Which cells count as neighbours. `.vonNeumann` is the edge
+    ///   - neighborhood: Which cells count as neighbors. `.vonNeumann` is the edge
     ///     sharers (the classic); `.moore` adds the corners.
     ///   - seed: Picks the random start, so the same seed replays the same run.
     public static func cyclic(states: Int = 14, threshold: Int = 1, range: Int = 1,
@@ -299,7 +299,7 @@ public struct Sim: Sendable {
 
     /// The Greenberg-Hastings model, the classic cellular automaton of **excitable
     /// media** (heart tissue, neurons, a chemical oscillator). A resting cell fires
-    /// when at least `threshold` of its neighbours are firing, then climbs alone
+    /// when at least `threshold` of its neighbors are firing, then climbs alone
     /// through its refractory tail back to rest, and a cell mid-recovery cannot be
     /// re-excited, which is exactly what turns a spark into a traveling wave with a
     /// dead zone behind it. Sparks grow into rings, rings annihilate where they
@@ -321,7 +321,7 @@ public struct Sim: Sendable {
     /// - Parameters:
     ///   - states: The full cycle length: rest, firing, then `states - 2` refractory
     ///     steps (3...64). Longer tails make wider dead zones and broader spirals.
-    ///   - threshold: How many firing neighbours it takes to fire (1...16).
+    ///   - threshold: How many firing neighbors it takes to fire (1...16).
     ///   - range: How far a cell looks, in cells (1...4).
     ///   - neighborhood: `.vonNeumann` (the classic four) or `.moore` (eight).
     public static func excitable(states: Int = 3, threshold: Int = 1, range: Int = 1,
@@ -334,7 +334,7 @@ public struct Sim: Sendable {
 
     /// Silverman's **Brian's Brain**: the three-state automaton where every cell is
     /// ready, firing, or resting. A ready cell fires when exactly two of its eight
-    /// neighbours are firing; every firing cell spends the next step resting (and
+    /// neighbors are firing; every firing cell spends the next step resting (and
     /// can't be re-lit); every resting cell returns to ready. Because nothing
     /// settles (almost every pattern explodes into gliders) the field boils forever
     /// with ships racing along diagonals and orthogonals, an automaton that reads
@@ -353,8 +353,8 @@ public struct Sim: Sendable {
     /// oscillating chemical reaction (its waves are dead ringers for the
     /// Belousov-Zhabotinsky reaction in a dish). Cells run from healthy (0) through
     /// degrees of infection to ill (`states`): a healthy cell catches infection from
-    /// its infected and ill neighbours (`⌊a/k1⌋ + ⌊b/k2⌋`), an infected cell's state
-    /// climbs to its neighbourhood's average infection plus the constant `g`, and an
+    /// its infected and ill neighbors (`⌊a/k1⌋ + ⌊b/k2⌋`), an infected cell's state
+    /// climbs to its neighborhood's average infection plus the constant `g`, and an
     /// ill cell recovers to healthy at once. From a random start the field passes
     /// through churning noise into curling wavefronts and finally locked spiral
     /// cores shedding rings, the tempo set by `g`, the speed of infection.
@@ -371,13 +371,13 @@ public struct Sim: Sendable {
     /// - Parameters:
     ///   - states: The ill state, the top of the ladder (4...200). The classic runs
     ///     use 100.
-    ///   - k1: Divides the infected-neighbour count in a healthy cell's catch rule
+    ///   - k1: Divides the infected-neighbor count in a healthy cell's catch rule
     ///     (1...9). Higher is harder to catch.
-    ///   - k2: Divides the ill-neighbour count in the same rule (1...9).
+    ///   - k2: Divides the ill-neighbor count in the same rule (1...9).
     ///   - g: How much sicker an infected cell gets per step (1...100), the speed of
     ///     infection and the behavior dial: low g dies out, mid g plateaus, high g
     ///     locks into the spiral regime.
-    ///   - neighborhood: `.moore` (the eight-neighbour classic for these spirals) or
+    ///   - neighborhood: `.moore` (the eight-neighbor classic for these spirals) or
     ///     `.vonNeumann` (the original experiment's four).
     ///   - seed: Picks the random start, so the same seed replays the same run.
     public static func hodgepodge(states: Int = 100, k1: Int = 2, k2: Int = 3,
@@ -562,7 +562,7 @@ public struct Sim: Sendable {
     }
 }
 
-/// Which cells count as a cell's neighbours in the grid automata (`Sim.cyclic`,
+/// Which cells count as a cell's neighbors in the grid automata (`Sim.cyclic`,
 /// `Sim.excitable`, `Sim.hodgepodge`). With a `range` above 1 the same two shapes
 /// scale up: `.moore` is the full block within that distance, `.vonNeumann` the
 /// diamond.
@@ -620,7 +620,7 @@ public struct TuringScale: Sendable, Equatable {
     /// point, a fine scale's disagreement passes through zero along every contour of its
     /// own structure, and since the *least* disagreement wins, it would take a dense web
     /// of pixels everywhere and bury the coarse scales. Averaging over the scale's own
-    /// neighbourhood removes those accidental zeros. Defaults to `inhibitorRadius`;
+    /// neighborhood removes those accidental zeros. Defaults to `inhibitorRadius`;
     /// smaller sharpens the boundaries between scale regions, and 0 (single point) gives
     /// the finest, most detailed picture, which is also the least multi-scale one.
     public var variationRadius: Double

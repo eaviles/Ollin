@@ -64,7 +64,7 @@ struct SupervisorTests {
         #expect(!Supervisor.hasStalled(quietFor: 60, answered: false, limit: 30))
         #expect(Supervisor.hasStalled(quietFor: Supervisor.startupGrace + 1,
                                       answered: false, limit: 30))
-        // A limit longer than the grace is honoured as stated.
+        // A limit longer than the grace is honored as stated.
         #expect(!Supervisor.hasStalled(quietFor: Supervisor.startupGrace + 1,
                                        answered: false, limit: 600))
     }

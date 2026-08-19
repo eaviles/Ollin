@@ -208,7 +208,7 @@ public final class World {
 
     /// Push overlapping disks apart, broad-phased through a uniform spatial hash:
     /// bucket each disk into a grid sized to the largest radius, then test only
-    /// the same and neighbouring cells. That drops the pass from O(n²) toward
+    /// the same and neighboring cells. That drops the pass from O(n²) toward
     /// O(n), so thousands of disks stay interactive.
     private func solveCollisions() {
         var maxRadius = 0.0
@@ -226,7 +226,7 @@ public final class World {
             grid[cell, default: []].append(i)
         }
 
-        // Each disk against its own and the eight neighbouring buckets, walked
+        // Each disk against its own and the eight neighboring buckets, walked
         // in particle-index order with a fixed cell scan. Resolution shifts
         // positions as it goes, so the pair order changes the outcome; a
         // Dictionary walk here would reorder per process and a seeded pile

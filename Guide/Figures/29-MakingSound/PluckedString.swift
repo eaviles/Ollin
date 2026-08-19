@@ -1,7 +1,7 @@
 // figure: frame=0
 //
 // Guide diagram (Chapter 29): why a plucked string is a model rather than a
-// wave. The top panel is the loop itself, labelled. Below it, the same note
+// wave. The top panel is the loop itself, labeled. Below it, the same note
 // plucked at four points along the string: the shape is the sum of the modes
 // that pluck actually excites, and the bars beside it are those modes, so the
 // missing ones are visible as gaps rather than described.

@@ -13,7 +13,7 @@ import Ollin
 /// A type-specimen sheet — A–Z and 0–9 — in a square-module font, after Osamu
 /// Sato's shape-built alphabets. Each glyph is a 5×7 grid of square modules drawn
 /// with `drawRect`. Sato's pages are still; here the sheet is alive: every square
-/// shimmers (its size eased by a wave travelling diagonally across the whole
+/// shimmers (its size eased by a wave traveling diagonally across the whole
 /// sheet), and a red highlight sweeps through the glyphs like a moving accent.
 @main
 final class Alphabet: Sketch {
@@ -88,7 +88,7 @@ final class Alphabet: Sketch {
 
             for (my, line) in pattern.enumerated() {
                 for (mx, bit) in line.enumerated() where bit == "#" {
-                    // The square's size eases on a wave travelling across the sheet,
+                    // The square's size eases on a wave traveling across the sheet,
                     // keyed to its absolute module position, so the shimmer flows
                     // glyph-to-glyph instead of resetting per cell.
                     let phase = Double(cell.column * 6 + mx + cell.row * 8 + my) * 0.35 - time * 3.0

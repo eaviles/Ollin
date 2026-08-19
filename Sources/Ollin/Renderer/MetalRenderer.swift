@@ -2134,7 +2134,7 @@ final class MetalRenderer {
                               supersample: true, pooled: false)
         encodeEffectTargets(drawer, into: commandBuffer, buffers: buffers, pooled: false, gi: gi)
 
-        // Half-res raymarch pre-pass: honours the resolution tier on export too, so an
+        // Half-res raymarch pre-pass: honors the resolution tier on export too, so an
         // explicit `.performance`/`.default` raymarch quality downscales here as it does live.
         // At `.detail` (the export default) the scale is 1 and this is nil (full resolution).
         let halfResField = makeRaymarchUniforms3D(drawer, viewport: viewport).flatMap { u3 in

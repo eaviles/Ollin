@@ -39,7 +39,7 @@ final class Relight_Example: Sketch {
     }
 }
 
-/// Tile the finishes into a labelled grid. (Each family example carries its own
+/// Tile the finishes into a labeled grid. (Each family example carries its own
 /// copy so the file stays standalone.)
 @MainActor
 func drawRelightSheet(_ s: Sketch, _ scene: RenderTarget,

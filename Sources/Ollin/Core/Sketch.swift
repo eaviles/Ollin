@@ -62,7 +62,7 @@ open class Sketch {
     /// proportions at any canvas size (and scales up cleanly for hi-res export).
     public var scale: Double { Swift.min(width, height) / 1000 }
 
-    /// The centre of the canvas, `(width / 2, height / 2)`.
+    /// The center of the canvas, `(width / 2, height / 2)`.
     public var center: Vector2 { Vector2(width / 2, height / 2) }
 
     /// The canvas as a `Rectangle`, `(0, 0, width, height)` — terse for a physics
@@ -2363,7 +2363,7 @@ open class Sketch {
     }
 
     /// A smooth curve through `points` — a Catmull-Rom spline that passes through
-    /// each point with tangents derived from its neighbours. `closed: false` (the
+    /// each point with tangents derived from its neighbors. `closed: false` (the
     /// default) draws an open, stroked "wiggle"; `closed: true` makes a closed,
     /// fillable loop. Sugar over `Path` + `curve(to:)`.
     public func drawCurve(_ points: [Vector2], closed: Bool = false) {
@@ -2537,13 +2537,13 @@ open class Sketch {
     /// Draw into `field` to seed or force its simulation: the marks land on the field's
     /// current state, which then evolves one step. What a mark means is per-sim (white
     /// = alive for Game of Life, injected chemical for reaction-diffusion, the mark's
-    /// colour as injected dye for a fluid). Composite the field onto the canvas with
+    /// color as injected dye for a fluid). Composite the field onto the canvas with
     /// `drawImage(field.image, 0, 0)`. Scoped like `withTarget { }`; leave the block
     /// empty to let the field evolve untouched.
     ///
     /// `force` is the velocity impulse a `.fluid` field receives where the block's marks
     /// land — pass the brush's motion (the change in `mouseX`/`mouseY` since last frame)
-    /// or an animated vector so the painted colour swirls. The single-field sims ignore it.
+    /// or an animated vector so the painted color swirls. The single-field sims ignore it.
     public func withField(_ field: SimField, force: Vector2 = .zero, _ body: () -> Void) {
         drawer.withField(field, force: force, body)
     }

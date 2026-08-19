@@ -10,7 +10,7 @@ import Ollin
 /// all, which takes the picture away and lets the display sleep until the doors
 /// open again.
 ///
-/// The sky here is one pair of colours per part of the day, and the piece slides
+/// The sky here is one pair of colors per part of the day, and the piece slides
 /// from one pair into the next over the last stretch of each, so the change
 /// arrives the way light does rather than as a switch. `scheduledPeriod` gives
 /// the name and `scheduledProgress` gives how far through it the day has got.
@@ -65,7 +65,7 @@ final class Hours: Sketch {
         label()
     }
 
-    /// The two sky colours for now: this part of the day, slid into the next
+    /// The two sky colors for now: this part of the day, slid into the next
     /// over its last quarter so nothing jumps at the hour.
     private func sky() -> (high: Color, low: Color) {
         guard let index = day.firstIndex(where: { $0.name == scheduledPeriod }) else {

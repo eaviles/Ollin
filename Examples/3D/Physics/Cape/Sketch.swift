@@ -65,7 +65,7 @@ final class Cape: Sketch {
     func hangTheCape() {
         cape = world.addSoftBody(
             from: Cape.sheet,
-            // The sheet is centred on its own origin, so standing the collar at
+            // The sheet is centered on its own origin, so standing the collar at
             // the shoulders puts the body half a cape lower.
             at: Vector3(0, 1.45 - Cape.length / 2, -0.13),
             rotation: .pi / 2, axis: Vector3(1, 0, 0),

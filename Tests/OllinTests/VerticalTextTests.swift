@@ -302,7 +302,7 @@ struct VerticalTextTests {
     }
 
     /// The last line of a paragraph keeps its natural width. Stretching a line that
-    /// is short because the writing ended is the mistake everybody recognises, so it
+    /// is short because the writing ended is the mistake everybody recognizes, so it
     /// is checked on its own, against the same line unjustified.
     @Test func theLastLineOfAParagraphIsLeftAlone() {
         let box = Rectangle(x: 0, y: 0, width: 520, height: 400)

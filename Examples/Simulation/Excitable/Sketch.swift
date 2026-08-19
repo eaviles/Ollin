@@ -2,7 +2,7 @@ import Ollin
 
 /// The Greenberg-Hastings model of an **excitable medium**, the cellular automaton
 /// behind heart tissue, neurons, and chemical oscillators. A resting cell fires
-/// when a neighbour is firing, then climbs alone through a refractory tail back to
+/// when a neighbor is firing, then climbs alone through a refractory tail back to
 /// rest, and mid-recovery it cannot be re-lit, which is exactly what turns a spark
 /// into a traveling ring with a dead zone behind it. The sketch scripts the classic
 /// demonstration: sparks grow into rings, rings annihilate where they collide, and

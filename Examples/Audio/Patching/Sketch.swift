@@ -141,7 +141,7 @@ final class Patching: Sketch {
         drawText(label, at: Vector2(point.x, point.y + 6 * scale))
         fill(Color(white: 0.5))
         textSize(13 * scale)
-        // The heard one is labelled below and the felt one above, so neither
+        // The heard one is labeled below and the felt one above, so neither
         // label sits under the line running between them.
         drawText(heard ? "heard" : "felt",
                  at: Vector2(point.x, point.y + (heard ? 68 : -58) * scale))

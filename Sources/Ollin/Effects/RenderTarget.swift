@@ -187,8 +187,8 @@ public final class RenderTarget {
 /// layer (0 near … 1 far). A unified form for all three projections: `tanHalfFov*` are
 /// the view-frustum half-extents at unit distance (perspective and the intrinsic pinhole
 /// frustum) or the framed half-size (orthographic, where `isPerspective` is false and the
-/// XY isn't scaled by distance); `principal*` shift the projection centre for an off-axis
-/// intrinsic frustum (0.5 for a centred one). View-space distance is `near + t·(far−near)`.
+/// XY isn't scaled by distance); `principal*` shift the projection center for an off-axis
+/// intrinsic frustum (0.5 for a centered one). View-space distance is `near + t·(far−near)`.
 struct DepthReconstruction {
     var near: Float
     var far: Float
@@ -206,7 +206,7 @@ struct DepthReconstruction {
     var inverseView: simd_float4x4 = matrix_identity_float4x4
 
     /// A neutral default used when a depth combine reads an aux that carries no camera
-    /// (a hand-drawn depth map): a centred 60° perspective over a 0.1 … 100 range, so the
+    /// (a hand-drawn depth map): a centered 60° perspective over a 0.1 … 100 range, so the
     /// op still produces a plausible result rather than nothing.
     static let neutral = DepthReconstruction(
         near: 0.1, far: 100, tanHalfFovX: 0.5774, tanHalfFovY: 0.5774,
@@ -222,7 +222,7 @@ struct DepthReconstruction {
 
     /// Build the reconstruction for `camera` at a layer of `pixelWidth` × `pixelHeight`.
     /// Perspective/orthographic fold the layer aspect into the X half-extent; the
-    /// intrinsic frustum takes its aspect (and off-axis centre) from the calibration.
+    /// intrinsic frustum takes its aspect (and off-axis center) from the calibration.
     init(camera: Camera3D, pixelWidth: Int, pixelHeight: Int) {
         let aspect = Float(pixelWidth) / Float(max(1, pixelHeight))
         near = Float(camera.near)

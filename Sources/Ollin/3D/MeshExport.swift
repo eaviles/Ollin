@@ -123,7 +123,7 @@ public extension Mesh {
     /// coming from a sketch needs:
     ///
     /// - **Vertices are merged.** Ollin's generators are flat-shaded, so every
-    ///   triangle carries its own three corners and neighbours share no vertex
+    ///   triangle carries its own three corners and neighbors share no vertex
     ///   at all. A slicer reading that sees a pile of loose triangles rather
     ///   than a solid, so the writers merge coincident corners first.
     /// - **Degenerate triangles are dropped.** A triangle with no area is a

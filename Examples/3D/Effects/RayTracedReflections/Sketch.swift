@@ -19,7 +19,7 @@ import Ollin
 /// ```
 ///
 /// A near-mirror metal floor reflects a ring of metal spheres orbiting a polished monolith;
-/// each sphere also catches its neighbours and the floor. The camera orbits on its own, and
+/// each sphere also catches its neighbors and the floor. The camera orbits on its own, and
 /// the mouse takes it over (drag to orbit, scroll to dolly). **Hold the space bar** to drop
 /// ray-traced reflections and compare: the metals fall back to reflecting only the studio
 /// *environment*, so the scene's mirror images vanish. Needs an Apple-silicon (ray-tracing)
@@ -49,7 +49,7 @@ final class RayTracedReflections: Sketch {
             drawBox(width: 26, height: 1.0, depth: 26)
         }
 
-        // A polished monolith at the centre.
+        // A polished monolith at the center.
         withState {
             material(.polishedMetal)
             fill(Color(hex: 0xe8ebf2))

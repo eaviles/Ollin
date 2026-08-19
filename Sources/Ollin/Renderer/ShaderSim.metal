@@ -8,7 +8,7 @@
 // A SimField renders the drawn seed marks into one texture, then the renderer runs
 // these passes on its persistent front buffer: `inject` composites the seeds onto the
 // state, then a step fragment advances it. params[0] is the texel size, params[1] the
-// sim's parameters. Neighbour reads wrap toroidally (fract of the uv), except where a
+// sim's parameters. Neighbor reads wrap toroidally (fract of the uv), except where a
 // sim's physics forbids it: ripples clamp (rings don't teleport) and the sandpile is
 // open (grains fall off the edge).
 
@@ -182,8 +182,8 @@ fragment float4 ollin_sim_reaction_diffusion_modulated(PresentOut in [[stage_in]
 }
 
 // Conway's Game of Life: a cell is alive where its red channel > 0.5; it survives on
-// 2-3 live neighbours, is born on exactly 3 (B3/S23). Sampling at exact texel-centre
-// offsets returns each neighbour's value exactly, so the integer counts are exact.
+// 2-3 live neighbors, is born on exactly 3 (B3/S23). Sampling at exact texel-center
+// offsets returns each neighbor's value exactly, so the integer counts are exact.
 fragment float4 ollin_sim_life(PresentOut in [[stage_in]],
                                texture2d<float> src [[texture(0)]],
                                sampler samp [[sampler(0)]],
@@ -200,11 +200,11 @@ fragment float4 ollin_sim_life(PresentOut in [[stage_in]],
     return float4(float3(alive), 1.0);
 }
 
-// One sandpile neighbour's contribution: a quarter (one grain) per toppling it
+// One sandpile neighbor's contribution: a quarter (one grain) per toppling it
 // performs this pass, i.e. floor of its stored quarters (a cell holding 4k...4k+3
 // grains topples k times at once; see the step below). Off the edge there is no
-// neighbour at all, so the guard must reject the position rather than let the
-// clamping sampler read the edge texel back as its own neighbour: the open
+// neighbor at all, so the guard must reject the position rather than let the
+// clamping sampler read the edge texel back as its own neighbor: the open
 // boundary is load-bearing. Grains toppled across it are simply gone, and that
 // dissipation is what lets a fed pile keep settling; on a wrapped field sand
 // only accumulates until every cell topples forever.
@@ -217,8 +217,8 @@ static inline float ollin_sandpile_gives(texture2d<float> src, sampler samp, flo
 // count stored in quarters (one grain = 0.25, so a stable cell reads 0, 1/4, 1/2,
 // or 3/4 gray), read from .r and written as gray. Each pass, every cell holding
 // at least four grains topples as many times as it can at once: for every four
-// grains it holds it sends one to each of its four neighbours, keeping the
-// remainder, so the update is q' = fract(q) + sum of floor(neighbour q) / 4.
+// grains it holds it sends one to each of its four neighbors, keeping the
+// remainder, so the update is q' = fract(q) + sum of floor(neighbor q) / 4.
 // Any parallel schedule is safe because topplings commute (Dhar's abelian
 // property): the settled pile is the same in any order, and toppling k times in
 // one pass is just the k-fold toppling operator. Where every cell holds fewer
@@ -248,20 +248,20 @@ fragment float4 ollin_sim_sandpile(PresentOut in [[stage_in]],
 //
 // A shared encoding: a cell's integer state s (of N levels) is stored as
 // s / (N - 1) in .r (gray across the channels for a readable raw image), decoded
-// with rint. Texel-centre sampling returns each neighbour's value exactly and a
+// with rint. Texel-center sampling returns each neighbor's value exactly and a
 // half-float texel holds these levels well past the decode's half-step margin, so
-// states and counts are exact integers throughout. Edges wrap; the neighbourhood is
+// states and counts are exact integers throughout. Edges wrap; the neighborhood is
 // the full block within `range` (moore) or the diamond |dx|+|dy| <= range
 // (von Neumann).
 
-// One decoded neighbour state.
+// One decoded neighbor state.
 static inline float ollin_cell_state(texture2d<float> src, sampler samp,
                                      float2 uv, float levelsMinusOne) {
     return rint(src.sample(samp, uv).r * levelsMinusOne);
 }
 
 // Griffeath's cyclic cellular automaton: N states arranged in a circle, and a cell
-// advances to the next state (wrapping to 0) when at least `threshold` neighbours
+// advances to the next state (wrapping to 0) when at least `threshold` neighbors
 // already hold that next state, so each color eats the one before it. From a random
 // start the field passes through droplets and defects into turning spirals.
 // params[1] = (states, threshold, range, moore).
@@ -293,7 +293,7 @@ fragment float4 ollin_sim_cyclic(PresentOut in [[stage_in]],
 
 // The Greenberg-Hastings excitable medium: state 0 rests, state 1 fires, and the
 // remaining states are the refractory tail. A resting cell fires when at least
-// `threshold` neighbours are firing; every other cell advances one step on its own,
+// `threshold` neighbors are firing; every other cell advances one step on its own,
 // around to rest, and cannot be re-excited on the way. That one-way recovery is
 // what turns a spark into a traveling ring with a dead zone behind it, and a broken
 // front into a spiral pair. params[1] = (states, threshold, range, moore).
@@ -329,7 +329,7 @@ fragment float4 ollin_sim_excitable(PresentOut in [[stage_in]],
 
 // Brian's Brain: ready (0), firing (2), resting (1), stored as state/2 so the raw
 // image is already the classic picture: white fire, mid-gray afterglow, black
-// ground. A ready cell fires on exactly two firing Moore neighbours (the birth rule
+// ground. A ready cell fires on exactly two firing Moore neighbors (the birth rule
 // of the two-state Seeds automaton this extends); a firing cell rests for one step
 // and can't be re-lit; a resting cell returns to ready. Nothing settles, so the
 // field boils with gliders.
@@ -353,9 +353,9 @@ fragment float4 ollin_sim_brain(PresentOut in [[stage_in]],
 
 // The Gerhardt-Schuster hodgepodge machine, in Dewdney's formulation: states 0..n,
 // healthy at 0, ill at n, infected between. A healthy cell catches
-// floor(A/k1) + floor(B/k2), where A counts its infected neighbours and B its ill
-// ones; an infected cell takes its neighbourhood's average infection plus the speed
-// g, floor(S / (A + 1)) + g, where S sums its own state and all its neighbours'
+// floor(A/k1) + floor(B/k2), where A counts its infected neighbors and B its ill
+// ones; an infected cell takes its neighborhood's average infection plus the speed
+// g, floor(S / (A + 1)) + g, where S sums its own state and all its neighbors'
 // (healthy cells add zero, so this is the infection total) and the +1 counts the
 // cell itself among the infected cells being averaged, which also keeps an isolated
 // infected cell from dividing by zero; an ill cell recovers to 0 at once.
@@ -429,7 +429,7 @@ fragment float4 ollin_sim_lenia(PresentOut in [[stage_in]],
 // MARK: - Fluid simulation (a real-time, splat-driven fluid on the SimField path)
 //
 // A *multi-field* stateful sim, unlike the single-texture RD / Game-of-Life above: it
-// keeps a velocity field and a dye (colour) field across frames, and each frame runs
+// keeps a velocity field and a dye (color) field across frames, and each frame runs
 // the classic incompressible-flow pipeline — splat the drawn seed in, confine the
 // vorticity, make the velocity divergence-free with a Jacobi pressure solve plus a
 // gradient subtraction, then carry velocity and dye along the flow by semi-Lagrangian
@@ -437,7 +437,7 @@ fragment float4 ollin_sim_lenia(PresentOut in [[stage_in]],
 // iterations; these are the per-pass kernels. params[0].xy is the texel size; later
 // rows carry each pass's parameters (noted per fragment). Velocity rides in .xy, dye in
 // .rgb, the scalar fields (curl / divergence / pressure) in .x. The clamp-to-edge
-// sampler approximates a closed boundary — neighbour reads clamp at the border — so no
+// sampler approximates a closed boundary — neighbor reads clamp at the border — so no
 // explicit boundary pass is needed.
 
 // splat velocity: add the forcing velocity, scaled by the seed's coverage, to the
@@ -455,8 +455,8 @@ fragment float4 ollin_fluid_splat_velocity(PresentOut in [[stage_in]],
     return float4(v, 0.0, 1.0);
 }
 
-// splat dye: add the seed's colour into the dye field where drawn, so painting injects
-// colour the flow then carries. The seed arrives premultiplied (geometry output), so
+// splat dye: add the seed's color into the dye field where drawn, so painting injects
+// color the flow then carries. The seed arrives premultiplied (geometry output), so
 // it's a premultiplied add — no un-premultiply needed.
 fragment float4 ollin_fluid_splat_dye(PresentOut in [[stage_in]],
                                       texture2d<float> dye [[texture(0)]],
@@ -469,7 +469,7 @@ fragment float4 ollin_fluid_splat_dye(PresentOut in [[stage_in]],
 }
 
 // curl: the scalar vorticity (the z of ∇×u) at each texel, from central differences of
-// the velocity's neighbours — the swirl strength the confinement pass reads back.
+// the velocity's neighbors — the swirl strength the confinement pass reads back.
 fragment float4 ollin_fluid_curl(PresentOut in [[stage_in]],
                                 texture2d<float> velocity [[texture(0)]],
                                 sampler samp [[sampler(0)]],
@@ -485,7 +485,7 @@ fragment float4 ollin_fluid_curl(PresentOut in [[stage_in]],
 // vorticity confinement (+ optional buoyancy): push velocity back toward the swirl that
 // numerical advection smears out, along the gradient of |curl| scaled by the local
 // curl, restoring fine turbulent detail. Buoyancy adds a lift (toward -y, screen-up)
-// proportional to dye brightness, so painted colour can rise like smoke.
+// proportional to dye brightness, so painted color can rise like smoke.
 // params[1] = (curlStrength, dt, buoyancy, 0).
 fragment float4 ollin_fluid_vorticity(PresentOut in [[stage_in]],
                                      texture2d<float> velocity [[texture(0)]],
@@ -525,7 +525,7 @@ fragment float4 ollin_fluid_divergence(PresentOut in [[stage_in]],
 
 // pressure (one Jacobi iteration): relax the pressure field toward solving the Poisson
 // equation ∇²p = divergence. The renderer runs this many times, ping-ponging; each
-// texel becomes the average of its four neighbours minus the local divergence.
+// texel becomes the average of its four neighbors minus the local divergence.
 fragment float4 ollin_fluid_pressure(PresentOut in [[stage_in]],
                                     texture2d<float> pressure [[texture(0)]],
                                     texture2d<float> divergence [[texture(1)]],
@@ -854,7 +854,7 @@ fragment float4 ollin_sim_turing_normalize(PresentOut in [[stage_in]],
 // Conventions: params[0].xy is the texel size; later rows are per-pass (noted on
 // each fragment). Off-canvas is dry paper: every flow/pig tap goes through a
 // bounds-rejecting helper (the clamp sampler would reflect the edge back as its
-// own neighbour), which is also what zeroes velocities at the canvas edge.
+// own neighbor), which is also what zeroes velocities at the canvas edge.
 // Reflectance channels are display-space sRGB throughout the optical passes (the
 // space the pigment coefficients are specified in); the render pass converts to
 // linear only at output.
@@ -965,7 +965,7 @@ fragment float4 ollin_wash_velocity(PresentOut in [[stage_in]],
         v -= (hT - h);
     }
 
-    // u at (i+.5, j): cell-centred u to its left and right, corner (uv) products.
+    // u at (i+.5, j): cell-centered u to its left and right, corner (uv) products.
     float uC = 0.5 * (fL.x + u);            // u_{i,j}
     float uR = 0.5 * (u + fR.x);            // u_{i+1,j}
     float uvTop = 0.5 * (u + fT.x) * 0.5 * (f.y + fR.y);      // (uv)_{i+.5,j+.5}
@@ -995,7 +995,7 @@ fragment float4 ollin_wash_velocity(PresentOut in [[stage_in]],
 // nudges its pressure and its four faces to cancel it, so water added anywhere
 // pushes water everywhere (the condition that makes a wash feel like one body
 // of liquid). Gather form: a face carries its own cell's correction minus its
-// right/top neighbour's. Faces on the mask boundary stay pinned to zero.
+// right/top neighbor's. Faces on the mask boundary stay pinned to zero.
 // params[1] = (xi, 0, 0, 0).
 fragment float4 ollin_wash_relax(PresentOut in [[stage_in]],
                                  texture2d<float> flow [[texture(0)]],
@@ -1078,7 +1078,7 @@ fragment float4 ollin_wash_outward(PresentOut in [[stage_in]],
 
 // One upwind advection substep of the suspended pigment: each cell sends a
 // fraction of its pigment across each face flowing outward and receives what its
-// neighbours send in. With velocities clamped to one texel per unit time and
+// neighbors send in. With velocities clamped to one texel per unit time and
 // dt = 1/4, the four outflows can never exceed the cell's pigment, so
 // concentrations stay non-negative and the total is conserved (both sides of a
 // face compute the same transfer from the same snapshot). Dry faces carry zero
@@ -1104,8 +1104,8 @@ fragment float4 ollin_wash_pigment(PresentOut in [[stage_in]],
     float outL = clamp(max(0.0, -fL.x) * dt, 0.0, 0.25);  // across my left face
     float outT = clamp(max(0.0,  f.y) * dt, 0.0, 0.25);
     float outB = clamp(max(0.0, -fB.y) * dt, 0.0, 0.25);
-    float inL = clamp(max(0.0,  fL.x) * dt, 0.0, 0.25);   // my left neighbour, rightward
-    float inR = clamp(max(0.0, -f.x) * dt, 0.0, 0.25);    // my right neighbour, leftward
+    float inL = clamp(max(0.0,  fL.x) * dt, 0.0, 0.25);   // my left neighbor, rightward
+    float inR = clamp(max(0.0, -f.x) * dt, 0.0, 0.25);    // my right neighbor, leftward
     float inB = clamp(max(0.0,  fB.y) * dt, 0.0, 0.25);
     float inT = clamp(max(0.0, -f.y) * dt, 0.0, 0.25);
 

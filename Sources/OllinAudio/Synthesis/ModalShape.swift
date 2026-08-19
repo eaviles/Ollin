@@ -158,7 +158,7 @@ public extension ModalBody {
 /// reliable way to get those is to work with the inverse, whose *largest*
 /// eigenvalues they are. That needs a solve rather than a multiply, which is
 /// what the banded factorization below is for: numbering the cells row by row
-/// keeps every neighbour within one grid width, so the matrix is a band and
+/// keeps every neighbor within one grid width, so the matrix is a band and
 /// factorizing it is cheap.
 enum ShapeModes {
 
@@ -194,11 +194,11 @@ enum ShapeModes {
 
     /// The shape's interior as cells, numbered row by row.
     struct Grid {
-        /// For each cell, its four neighbours, or -1 where the shape ends.
+        /// For each cell, its four neighbors, or -1 where the shape ends.
         var neighbors: [Int32]
         var positions: [Vector2]
         var count: Int
-        /// The widest a neighbour's number can be from its own, which is what
+        /// The widest a neighbor's number can be from its own, which is what
         /// makes the matrix a band.
         var band: Int
         var defaultStrike: Vector2
@@ -270,7 +270,7 @@ enum ShapeModes {
         }
 
         /// Multiplies by the grid's own Laplacian: four times a cell, less each
-        /// of its neighbours. Cells past the edge count as zero, which is the
+        /// of its neighbors. Cells past the edge count as zero, which is the
         /// shape being held still there.
         func apply(_ vector: UnsafePointer<Double>, into result: UnsafeMutablePointer<Double>) {
             neighbors.withUnsafeBufferPointer { table in
@@ -408,7 +408,7 @@ enum ShapeModes {
     // MARK: - The banded factorization
 
     /// The grid's Laplacian, taken apart once so it can be solved against many
-    /// times. Only the band is stored, since a cell's neighbours are all within
+    /// times. Only the band is stored, since a cell's neighbors are all within
     /// one grid width of its own number.
     private struct BandFactorization {
         let n: Int

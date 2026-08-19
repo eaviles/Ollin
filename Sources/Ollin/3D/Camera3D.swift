@@ -58,7 +58,7 @@ public struct Camera3D: Equatable, Sendable {
     /// camera keeps its subject sharp with no extra bookkeeping.
     public var focusDistance: Double? = nil
 
-    /// How far this camera has already stepped sideways off the centre line of a
+    /// How far this camera has already stepped sideways off the center line of a
     /// stereo pair, in world units, and the distance at which the two eyes agree.
     /// Zero for every ordinary camera, which is what leaves the projection of one
     /// untouched. Set by `stereoEye(lateral:convergence:)`; see `Stereo.swift`.

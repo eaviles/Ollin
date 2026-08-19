@@ -6,7 +6,7 @@ import OllinAudio
 /// A `PluckedString` voice is not a wave being drawn. It is a delay line as
 /// long as one period with a filtered loop round it, which is a disturbance
 /// running up and down a string and losing a little at each end. Everything you
-/// hear falls out of that rather than being dialled in.
+/// hear falls out of that rather than being dialed in.
 ///
 /// Where you click along a string is the pick position, and it is the setting
 /// that sounds least like a synthesizer. A string held at a point cannot move

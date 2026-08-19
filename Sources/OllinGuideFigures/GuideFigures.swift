@@ -397,7 +397,7 @@ enum GuideFigures {
     /// Split the work across child copies of this executable and merge what
     /// they report. Figures are dealt round-robin rather than in contiguous
     /// blocks, so the handful of slow figures spread across shards instead of
-    /// landing in one and stranding the others (chapter neighbours tend to cost
+    /// landing in one and stranding the others (chapter neighbors tend to cost
     /// about the same, and they sort together).
     @MainActor
     private static func renderSharded(_ stale: [Work], workers: Int,

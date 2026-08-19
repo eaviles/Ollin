@@ -49,7 +49,7 @@ public final class Particle {
     public var pinned: Bool = false
 
     /// Free-form tag so a sketch can hang its own data off a particle (an index,
-    /// a colour, a group id) without a parallel array.
+    /// a color, a group id) without a parallel array.
     public var userData: Any?
 
     /// Create a particle at `position`.

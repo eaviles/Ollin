@@ -147,7 +147,7 @@ public func kleinianLimitSet(ta: Vector2, tb: Vector2,
             return
         }
         // Children in cyclic order: right turn, straight, left turn. The
-        // cancelling letter (tag + 2) is never taken, so words stay reduced.
+        // canceling letter (tag + 2) is never taken, so words stay reduced.
         walk(matrix * gens[(tag + 1) % 4], (tag + 1) % 4, depth + 1)
         walk(matrix * gens[tag], tag, depth + 1)
         walk(matrix * gens[(tag + 3) % 4], (tag + 3) % 4, depth + 1)

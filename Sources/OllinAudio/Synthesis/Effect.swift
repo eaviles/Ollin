@@ -166,7 +166,7 @@ public struct Equalizer: Sendable, Hashable, Codable {
 ///
 /// The mildest settings are a warm edge on something clean; the strongest stop
 /// being a treatment and become the instrument. `mix` is how much of the result
-/// is the driven sound rather than the original, so it can be dialled all the
+/// is the driven sound rather than the original, so it can be dialed all the
 /// way back to nothing.
 ///
 /// ```swift

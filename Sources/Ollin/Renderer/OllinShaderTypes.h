@@ -821,7 +821,7 @@ typedef struct {
                                   // (the grid's first probe); w = 1 while the frame's probe
                                   // atlases are bound at fragment textures 13/14 (the gate:
                                   // 0 leaves every carrier's GI branch untaken, byte-identical).
-    simd_float4 giSpacing;        // xyz = the per-axis distance between neighbouring probes;
+    simd_float4 giSpacing;        // xyz = the per-axis distance between neighboring probes;
                                   // w = the sketch's GI intensity (a multiplier on the sampled
                                   // bounce light, 1 = physical).
     simd_float4 giCounts;         // xyz = probes per axis (as floats, for grid math); w = the

@@ -64,7 +64,7 @@ public extension Installation {
         /// 1 at the next one. Zero when the schedule names no parts.
         ///
         /// This is the dial for a piece that changes with the day rather than
-        /// switching: a colour that warms towards evening, a pace that slows
+        /// switching: a color that warms towards evening, a pace that slows
         /// after dark.
         public func progress(at date: Date, calendar: Calendar = .current) -> Double {
             guard let current = period(at: date, calendar: calendar),

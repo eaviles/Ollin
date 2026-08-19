@@ -39,7 +39,7 @@ final class GalleryHours: Sketch {
         caption()
     }
 
-    /// The day as one bar, each part labelled with the name the sketch reads.
+    /// The day as one bar, each part labeled with the name the sketch reads.
     func strip(y: Double) {
         let height = 54.0
         fill(ink)

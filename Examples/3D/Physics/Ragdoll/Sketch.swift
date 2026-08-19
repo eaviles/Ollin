@@ -32,7 +32,7 @@ final class Ragdoll: Sketch {
     var showBones = false
     var grabbed: Joint3D?
 
-    /// How hard a joint may pull toward the pose, in newton-metres. Low is a
+    /// How hard a joint may pull toward the pose, in newton-meters. Low is a
     /// figure too tired to hold itself up; high is one that will not be moved.
     @Param(2 ... 400, icon: "figure.strengthtraining.traditional") var effort = 120.0
     /// How far a joint may bend away from where it started. Loose is rubbery;

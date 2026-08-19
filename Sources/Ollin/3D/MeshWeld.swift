@@ -5,7 +5,7 @@ import Foundation
 ///
 /// Ollin's mesh generators emit flat-shaded surfaces: every triangle carries
 /// its own three vertices so each face can hold its own normal, which means
-/// neighbouring triangles share no vertex index at all. Anything that treats a
+/// neighboring triangles share no vertex index at all. Anything that treats a
 /// mesh as a *connected surface* rather than a bag of triangles has to merge
 /// those duplicates first, or it sees a pile of loose triangles.
 ///

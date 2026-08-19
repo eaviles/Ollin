@@ -35,7 +35,7 @@ final class ColorOutput_Example: Sketch {
 
     override var colorOutput: ColorOutput { .extended }
 
-    // Left of each pair is named in Display P3, right is the sRGB neighbour.
+    // Left of each pair is named in Display P3, right is the sRGB neighbor.
     private let pairs: [(name: String, wide: Color, plain: Color)] = [
         ("red",   Color(displayP3: 1, green: 0, blue: 0),   Color(red: 1, green: 0, blue: 0)),
         ("green", Color(displayP3: 0, green: 1, blue: 0),   Color(red: 0, green: 1, blue: 0)),

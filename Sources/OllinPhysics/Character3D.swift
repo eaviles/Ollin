@@ -85,7 +85,7 @@ public final class Character3D {
     }
 
     /// The tallest step the character walks up without jumping, in world
-    /// units: a stair, a kerb, a ledge. `0` turns stepping off, and the
+    /// units: a stair, a curb, a ledge. `0` turns stepping off, and the
     /// character stops at anything it can't slide over.
     public var stepHeight: Double {
         didSet { cjolt_character_set_step_height(handle, world.meters(from: stepHeight)) }

@@ -121,6 +121,6 @@ struct AssetFingerprint: Equatable {
 }
 
 /// Says what a name means when a world comes back. Return `nil` for a name you
-/// do not recognise, and whatever it named is left out of the restored world
+/// do not recognize, and whatever it named is left out of the restored world
 /// with a note rather than failing the whole restore.
 public typealias PhysicsAssetResolver = (String) -> PhysicsAsset?

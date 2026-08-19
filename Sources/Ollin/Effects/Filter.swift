@@ -136,14 +136,14 @@ public struct Filter: Sendable {
         case crosshatch(scale: Double, foreground: SIMD4<Float>, background: SIMD4<Float>)
         /// Cel shading: quantize luminance into `levels` bands and ink `edges` (Sobel) over them.
         case toon(levels: Double, edges: Double)
-        /// 3×3 median: replace each pixel with the per-channel median of its neighbourhood
+        /// 3×3 median: replace each pixel with the per-channel median of its neighborhood
         /// (removes speckle while keeping edges).
         case median
         /// Iso-luminance contour lines: dark lines where brightness crosses each of `levels`
         /// steps, drawn over the image at `intensity` (the topographic look).
         case contour(levels: Double, intensity: Double)
         /// CMYK halftone: four rotated dot screens (cyan/magenta/yellow/black at the classic
-        /// print angles), dot size tracking each channel — the colour-process look.
+        /// print angles), dot size tracking each channel — the color-process look.
         case cmykHalftone(scale: Double)
         /// Height-field normal map: encode the luminance gradient as an RGB surface normal
         /// (feeds `displace` or lighting). `strength` exaggerates the slope.
@@ -459,7 +459,7 @@ public struct Filter: Sendable {
     }
 
     /// Bilateral blur: smooth flat areas while keeping edges sharp (the cartoon/denoise
-    /// base). `radius` is the blur extent in pixels, `sigma` how different a neighbour's
+    /// base). `radius` is the blur extent in pixels, `sigma` how different a neighbor's
     /// color may be before it stops blending (smaller = more edges preserved).
     public static func bilateral(radius: Double = 4, sigma: Double = 0.2) -> Filter {
         Filter(kind: .bilateral(radius: max(1, radius), sigma: max(0.001, sigma)))
@@ -494,7 +494,7 @@ public struct Filter: Sendable {
         Filter(kind: .toon(levels: max(2, levels), edges: max(0, edges)))
     }
 
-    /// Median: replace each pixel with the median of its 3×3 neighbourhood, knocking out
+    /// Median: replace each pixel with the median of its 3×3 neighborhood, knocking out
     /// speckle and stray pixels while leaving edges sharp.
     public static func median() -> Filter { Filter(kind: .median) }
 

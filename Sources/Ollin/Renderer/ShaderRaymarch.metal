@@ -800,11 +800,11 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
 
 // Upsample a reduced-resolution raymarched field to full resolution and composite it. On the
 // reduced raymarch tiers the expensive sphere-tracing ran once at a coverage-adaptive scale
-// into a viewport subrect of `halfColor` (premultiplied: the field's straight-alpha colour
+// into a viewport subrect of `halfColor` (premultiplied: the field's straight-alpha color
 // composited over a transparent clear) + `halfDepth` (each hit's clip-space z); `region`
 // carries that subrect (.xy = the UV scale into it, .zw = a half-texel-inside clamp so
 // bilinear filtering never reads the cleared texels past it; the textures are grow-only, so
-// the subrect moves with the scale). This fullscreen pass reads them back: colour bilinear
+// the subrect moves with the scale). This fullscreen pass reads them back: color bilinear
 // (a soft silhouette, the cost of the tier) but depth POINT-sampled (so the field's depth
 // never bleeds across its own edge), then re-emits the depth as the fragment's own, so the
 // hardware depth test lets a rasterised mesh occlude or interpenetrate the field exactly as

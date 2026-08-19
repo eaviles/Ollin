@@ -11,7 +11,7 @@ import Metal
 /// frame is encoded for an 8-bit sRGB display. This setting decides how much of
 /// it survives instead.
 ///
-/// - `standard` keeps today's behaviour exactly: 8-bit sRGB, dithered at the
+/// - `standard` keeps today's behavior exactly: 8-bit sRGB, dithered at the
 ///   quantization. Every sketch that says nothing gets this.
 /// - `wide` presents through Display P3 in a floating-point drawable. Two things
 ///   change: colors named outside sRGB (see `Color(displayP3:green:blue:)`)
@@ -133,13 +133,13 @@ enum PresentEncoding: Int32 {
 public extension ColorOutput {
 
     /// The luminance 1.0 stands for when a frame is written as HDR video, in
-    /// candelas per square metre. 203 is the standard's own reference white
+    /// candelas per square meter. 203 is the standard's own reference white
     /// (ITU-R BT.2408), which is what makes an exported clip's paper white land
     /// where every other HDR video's does.
     static let referenceWhiteNits: Double = 203
 
     /// The brightest highlight an exported HDR video carries, in candelas per
-    /// square metre, about 4.9x white. Values above it are clipped, and the
+    /// square meter, about 4.9x white. Values above it are clipped, and the
     /// figure is what the file declares it was mastered for.
     static let peakNits: Double = 1000
 }

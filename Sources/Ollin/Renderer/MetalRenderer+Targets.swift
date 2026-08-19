@@ -628,7 +628,7 @@ extension MetalRenderer {
 
     /// Resolve a `.ambientOcclusion` quality tier to a gather sample count. Fewer samples
     /// than the bokeh gather (each reconstructs a view-space position and accumulates a
-    /// scalar, not a colour), distributed over the same smooth golden-angle spiral so the
+    /// scalar, not a color), distributed over the same smooth golden-angle spiral so the
     /// occlusion needs no noise texture or separate blur.
     func resolveSSAOSamples(_ quality: RenderQuality) -> Int {
         if let override = ssaoSamplesOverride { return max(4, min(override, 256)) }
@@ -1594,7 +1594,7 @@ extension MetalRenderer {
         return resolve
     }
 
-    /// A multisample `linearFormat` colour target that is *also* shader-readable (per-sample,
+    /// A multisample `linearFormat` color target that is *also* shader-readable (per-sample,
     /// as a `texture2d_ms`), for the depth-aware mesh-normal resolve. `.private` + `.store`,
     /// unlike the geometry path's memoryless MSAA (which is hardware-resolved within its pass).
     private func makeReadableFloatMSAA(width: Int, height: Int) -> MTLTexture? {

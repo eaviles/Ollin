@@ -59,7 +59,7 @@ final class ColorFilters_Example: Sketch {
     }
 }
 
-/// Tile a family's filters into a near-square grid, labelled. Shared shape for the
+/// Tile a family's filters into a near-square grid, labeled. Shared shape for the
 /// color / blur / stylize / retro family sheets (each example carries its own copy,
 /// so the file stays standalone — examples are meant to be read and copied).
 @MainActor

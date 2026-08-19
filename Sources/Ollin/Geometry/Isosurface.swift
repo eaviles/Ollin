@@ -32,7 +32,7 @@ import Foundation
 /// the longest side of `bounds` (so the shorter sides get proportionally
 /// fewer); raise it for finer detail, at cubically more field samples. Faces
 /// where the surface could be joined two ways are settled by the asymptotic
-/// decider, which reads only the four values on that face, so neighbouring
+/// decider, which reads only the four values on that face, so neighboring
 /// cells always agree and the surface never cracks. Deterministic.
 public func isosurface(at level: Double = 0,
                        in bounds: (min: Vector3, max: Vector3),
@@ -84,7 +84,7 @@ private enum Cube {
     /// The axis an edge runs along: 0 = x, 1 = y, 2 = z.
     static func axis(of edge: Int) -> Int { edge / 4 }
 
-    /// Which edge joins two corners, or -1 if they aren't neighbours. Indexed
+    /// Which edge joins two corners, or -1 if they aren't neighbors. Indexed
     /// `a * 8 + b`, symmetric.
     static let edgeBetween: [Int] = {
         var table = [Int](repeating: -1, count: 64)
@@ -132,7 +132,7 @@ struct IsosurfaceGrid {
         nz = max(1, Int((size.z / spacing).rounded(.up)))
         sx = nx + 1; sy = ny + 1; sz = nz + 1
 
-        // Cubic cells rarely tile the box exactly, so centre the overshoot
+        // Cubic cells rarely tile the box exactly, so center the overshoot
         // rather than piling it against the far corner.
         let covered = Vector3(Double(nx), Double(ny), Double(nz)) * spacing
         origin = bounds.min - (covered - size) * 0.5
@@ -390,7 +390,7 @@ struct IsosurfaceGrid {
 
     /// Triangulate one closed loop, walked backwards so the triangles face out.
     /// A triangle goes straight through; a quad splits on its shorter diagonal;
-    /// anything larger fans from its own centre, since a five- or six-sided
+    /// anything larger fans from its own center, since a five- or six-sided
     /// loop through a cube is rarely flat and a corner fan would fold.
     private func emit(loop: [Int], crossing: [Int],
                       positions: inout [Vector3], normals: inout [Vector3],

@@ -71,7 +71,7 @@ final class Drape: Sketch {
         // the `pinned` test still reads the mesh's own coordinates: its far
         // edge in z becomes the top edge once it is up.
         // `at:` places the mesh's own origin, and this plane's origin is its
-        // centre, so the body is dropped half its depth below the line for its
+        // center, so the body is dropped half its depth below the line for its
         // pegged edge to land on it.
         banner = world.addSoftBody(from: .plane(width: 3.2, depth: 2.2, segments: 20),
                                    at: Vector3(-1.0, lineY - 1.1, -1.4),

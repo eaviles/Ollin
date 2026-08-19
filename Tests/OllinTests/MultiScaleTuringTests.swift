@@ -30,7 +30,7 @@ struct MultiScaleTuringTests {
         let later = try grid(probe(), frame: 120)
         #expect(spread(early) > 0.25)      // the noise seed actually filled the field
         #expect(spread(later) > 0.5)       // and every step renormalizes to the range
-        // Structure means neighbours agree far more than random noise does.
+        // Structure means neighbors agree far more than random noise does.
         #expect(neighbourCorrelation(early) < 0.35)
         #expect(neighbourCorrelation(later) > 0.8)
     }
@@ -52,7 +52,7 @@ struct MultiScaleTuringTests {
         // With the variation read at a single point the finest scale claims a dense web
         // of pixels (its disagreement crosses zero along every contour of its own
         // structure, and least disagreement wins), so the picture is all fine grain.
-        // Averaging it over each scale's own neighbourhood is what lets coarse regions
+        // Averaging it over each scale's own neighborhood is what lets coarse regions
         // form, which shows up as markedly less high-frequency energy.
         let averaged = highFrequencyEnergy(try grid(probe(), frame: 200))
         let pointwise = highFrequencyEnergy(try grid(probe(variationRadius: 0), frame: 200))
@@ -124,7 +124,7 @@ struct MultiScaleTuringTests {
         return (flat.max() ?? 0) - (flat.min() ?? 0)
     }
 
-    /// Correlation between each texel and its right-hand neighbour: near 0 for noise,
+    /// Correlation between each texel and its right-hand neighbor: near 0 for noise,
     /// near 1 once the field has organized into smooth structure.
     private func neighbourCorrelation(_ g: [[Double]]) -> Double {
         var a: [Double] = [], b: [Double] = []
@@ -148,7 +148,7 @@ struct MultiScaleTuringTests {
     /// against the diagonals does not separate the two cases (a diagonal step across a
     /// vertical edge crosses it about as steeply as a horizontal one does).
     ///
-    /// Sobel rather than central differences, since Sobel's diagonal neighbours keep the
+    /// Sobel rather than central differences, since Sobel's diagonal neighbors keep the
     /// operator itself from favouring the axes it is being used to measure.
     private func axisPreference(_ g: [[Double]]) -> Double {
         var weighted = 0.0, total = 0.0
@@ -171,7 +171,7 @@ struct MultiScaleTuringTests {
     }
 
     /// How much of the field sits at the finest wavelength: the mean difference between
-    /// a texel and the average of its four neighbours (a discrete Laplacian magnitude).
+    /// a texel and the average of its four neighbors (a discrete Laplacian magnitude).
     private func highFrequencyEnergy(_ g: [[Double]]) -> Double {
         var total = 0.0, n = 0.0
         for y in 1 ..< g.count - 1 {

@@ -133,7 +133,7 @@ struct TrackedVehicle3DTests {
     }
 
     /// Both bands run together in a straight line, at the speed the machine is
-    /// travelling: what a drawn track is scrolled by.
+    /// traveling: what a drawn track is scrolled by.
     @Test func bothBandsRunTogetherInAStraightLine() {
         let (world, crawler) = standing()
         crawler.throttle = 1

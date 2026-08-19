@@ -63,7 +63,7 @@ public struct Combine: Sendable {
         /// Screen-space reflections: reflect the rendered scene onto its own surfaces,
         /// reading the aux as a depth map and the base's mesh normals. Each pixel's
         /// reflection ray is marched through screen space; where it meets the scene the
-        /// base colour there is sampled and composited back, weighted by Fresnel, an edge
+        /// base color there is sampled and composited back, weighted by Fresnel, an edge
         /// fade, and reflection distance. `roughness` blurs the reflection for a glossy
         /// finish. Only on-screen geometry can reflect (the screen-space limit).
         case screenSpaceReflections(intensity: Double, maxDistance: Double, thickness: Double,
@@ -171,9 +171,9 @@ public struct Combine: Sendable {
     /// (`scene.combined(with: scene.depth, .screenSpaceReflections())`); view-space
     /// position and surface normal are reconstructed from it (a true mesh normal when the
     /// base holds a 3D scene), the reflection ray is marched through the depth buffer, and
-    /// the scene colour at the hit is composited back over the surface.
+    /// the scene color at the hit is composited back over the surface.
     ///
-    /// It's a post-process over colour + depth + normal, so every surface reflects
+    /// It's a post-process over color + depth + normal, so every surface reflects
     /// (modulated by Fresnel and view angle), rather than a per-material property. Only
     /// what's already on screen can appear in a reflection: rays that leave the frame fade
     /// out (`edgeFade`), and off-screen or hidden geometry can't be reflected.

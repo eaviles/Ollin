@@ -15,7 +15,7 @@ import Testing
         #expect(Rhythm(5, in: 13).description == "x..x.x..x.x..")
     }
 
-    /// The two most travelled rhythms the algorithm gives, by name.
+    /// The two most traveled rhythms the algorithm gives, by name.
     @Test func theCubanPairComeOutRight() {
         #expect(Rhythm(3, in: 8).description == "x..x..x.")     // tresillo
         #expect(Rhythm(5, in: 8).description == "x.xx.xx.")     // cinquillo

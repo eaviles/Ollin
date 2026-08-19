@@ -67,7 +67,7 @@ public class SoftBody3D {
     /// The solver handle.
     let handle: OpaquePointer
 
-    /// The solver's id for the body, so a ray cast hit can be recognised.
+    /// The solver's id for the body, so a ray cast hit can be recognized.
     let bodyID: CJoltBodyID
 
     /// The source mesh's vertices merged onto particles, plus the map back.
@@ -82,7 +82,7 @@ public class SoftBody3D {
     /// water pushes on when it drags the body along.
     let dragArea: Double
 
-    /// The mean distance between neighbouring particles, in meters. Buoyancy
+    /// The mean distance between neighboring particles, in meters. Buoyancy
     /// ramps in over about this much depth, since that is the width of surface
     /// one particle stands for.
     let particleSpacing: Double
@@ -283,7 +283,7 @@ public class SoftBody3D {
         let complianceScale = meanEdge * Double(welding.count).squareRoot()
             / (massKg * gravity)
 
-        // A rope's rods run down its spine, and every neighbouring pair holds
+        // A rope's rods run down its spine, and every neighboring pair holds
         // the other's orientation: without those links a rod's frame spins
         // about its own axis forever and carries nothing.
         var rods: [UInt32] = []
@@ -990,7 +990,7 @@ public class SoftBody3D {
         return welding.remap[vertex]
     }
 
-    /// Maps a 0…1 stiffness onto the solver's compliance: the metres a spring
+    /// Maps a 0…1 stiffness onto the solver's compliance: the meters a spring
     /// gives per newton pulling on it.
     ///
     /// Compliance is a physical quantity, so a fixed number means different

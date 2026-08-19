@@ -397,7 +397,7 @@ public struct ParametricLSystem: Sendable {
         return marks(iterations: iterations, step: step, start: start, heading: heading, using: &rng)
     }
 
-    /// Turn walked branches into marks, normalising the widths so the widest is
+    /// Turn walked branches into marks, normalizing the widths so the widest is
     /// 1. A branch of one point draws nothing, so it is dropped.
     static func marks(from branches: [LSystemBranch]) -> [StrokeMark] {
         let widest = branches.flatMap(\.widths).max() ?? 1

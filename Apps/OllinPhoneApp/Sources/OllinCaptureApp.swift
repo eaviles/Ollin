@@ -25,7 +25,7 @@ struct OllinCaptureApp: App {
 /// skeleton; Face the expression mesh; Segment a person matte (+ color) for a
 /// silhouette/cutout; Selfie the same matte from the front camera, mirrored like
 /// the preview; Room the reconstructed surface, block by block, with each triangle
-/// labelled, and the flat planes found alongside it; Hands the 21-joint hand
+/// labeled, and the flat planes found alongside it; Hands the 21-joint hand
 /// skeletons in view, lifted to metric 3D through the LiDAR depth where the device
 /// has it; Text the lines it can read in the scene, their corners lifted the same
 /// way.

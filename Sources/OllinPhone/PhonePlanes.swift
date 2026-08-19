@@ -182,7 +182,7 @@ public struct PhonePlanes: Sendable {
     /// places to hang something.
     public var upright: [PhonePlane] { planes.filter { $0.alignment == .vertical } }
 
-    /// Only the surfaces the phone labelled as one of `wanted`.
+    /// Only the surfaces the phone labeled as one of `wanted`.
     ///
     /// ```swift
     /// for wall in device.planes.planes(of: .wall) { drawMesh(wall.mesh) }
@@ -191,7 +191,7 @@ public struct PhonePlanes: Sendable {
         planes(of: Set(wanted))
     }
 
-    /// Only the surfaces labelled as one of `wanted`, taking a set (the variadic
+    /// Only the surfaces labeled as one of `wanted`, taking a set (the variadic
     /// `planes(of:)` is the everyday form).
     public func planes(of wanted: Set<PhoneSurface>) -> [PhonePlane] {
         planes.filter { wanted.contains($0.surface) }
@@ -209,7 +209,7 @@ public struct PhonePlanes: Sendable {
         planes(of: Set(wanted)).max { $0.area < $1.area }
     }
 
-    /// The floor: the biggest surface the phone labelled as one, or failing that the
+    /// The floor: the biggest surface the phone labeled as one, or failing that the
     /// lowest flat surface it has found. A sketch that wants a ground to stand on
     /// asks for this and gets an answer before ARKit has finished deciding.
     public var floor: PhonePlane? {

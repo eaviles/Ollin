@@ -23,7 +23,7 @@ final class CanvasVsWindow: Sketch {
         art(in: canvas)
         art(in: window)
 
-        // The canvas: labelled in real pixels.
+        // The canvas: labeled in real pixels.
         noFill()
         stroke(ink)
         strokeWeight(2)

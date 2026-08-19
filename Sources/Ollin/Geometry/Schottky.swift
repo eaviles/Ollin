@@ -77,8 +77,8 @@ private let schottkyCircleLimit = 2_000_000
 ///
 /// Letters run `0 ..< 2n`: letter `i < n` is pairing `i`, letter `i + n` its
 /// inverse, so `inverse(i) = (i + n) % 2n` and a word stays reduced by never
-/// following the cancelling letter. Circle `i` is pairing `i`'s target and
-/// circle `i + n` its source, which is exactly the labelling that makes
+/// following the canceling letter. Circle `i` is pairing `i`'s target and
+/// circle `i + n` its source, which is exactly the labeling that makes
 /// generator `i` carry circle `inverse(i)` onto circle `i`.
 ///
 /// A `viewpoint` re-seats the whole picture before the walk begins: the group
@@ -381,7 +381,7 @@ private func tracedSchottkyGroup(ta: Vector2, tb: Vector2, in bounds: Rectangle)
 /// symmetric family the classic figures are drawn from.
 ///
 /// `tightness` runs 0 to 1 as a fraction of the kissing radius, so 1 is the
-/// arrangement where neighbours just touch and anything above overlaps.
+/// arrangement where neighbors just touch and anything above overlaps.
 /// Loosen it and the limit set is a dust; tighten it and the dust fuses.
 ///
 /// - Parameters:

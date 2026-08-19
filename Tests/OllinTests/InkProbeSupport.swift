@@ -22,7 +22,7 @@ struct InkProbe {
 
     /// The ink value covering the most pixels. The present pass dithers, so one
     /// coat straddles two 8-bit levels and the thresholds below leave room for
-    /// the mode's neighbour.
+    /// the mode's neighbor.
     let coat: Int
     /// How many pixels carry that coat, for a probe to check it found the mark.
     let coatArea: Int
@@ -58,7 +58,7 @@ struct InkProbe {
 
     /// The same count with some discs left out, for a path that genuinely folds
     /// over itself somewhere known. Where the crossing would fall outside a
-    /// neighbouring segment the ends stay square and overlap, which is the
+    /// neighboring segment the ends stay square and overlap, which is the
     /// documented fallback, so a corner between a long edge and a finely sampled
     /// curve is expected to double up.
     func paintedTwice(ignoring discs: [(center: Vector2, radius: Double)]) -> Int {

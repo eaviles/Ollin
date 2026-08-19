@@ -24,7 +24,7 @@ struct WaveguideLine {
         buffer.update(repeating: 0, count: capacity)
     }
 
-    /// Reads the sample that has travelled the whole line.
+    /// Reads the sample that has traveled the whole line.
     var head: Double {
         let read = write >= length ? write - length : write + capacity - length
         return buffer[read]

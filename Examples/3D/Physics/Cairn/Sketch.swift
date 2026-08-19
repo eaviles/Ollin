@@ -180,7 +180,7 @@ final class Cairn: Sketch {
         if let lamp { pointLight(flame, at: lamp.position, intensity: 6) }
 
         for (i, body) in world.bodies.enumerated() {
-            // Colour comes from where the body sits in the list, which is the
+            // Color comes from where the body sits in the list, which is the
             // one thing that survives a restore: the objects themselves do not.
             let isLamp = i == 1
             fill(i == 0 ? timber : (isLamp ? flame : stones[i % stones.count]))

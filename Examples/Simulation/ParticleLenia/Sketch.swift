@@ -8,7 +8,7 @@ import Ollin
 /// From those three lines come membranes, cells that hold their shape, rotors, and
 /// things that split in two. The knobs are the whole model: `muK` and `sigmaK` are the
 /// ring a particle reaches with, `muG` and `sigmaG` the crowding it prefers, and `cRep`
-/// how hard it refuses to be crowded. Colour is that crowding measured against what the
+/// how hard it refuses to be crowded. Color is that crowding measured against what the
 /// rule wants, so an interior, a membrane, and a particle out on its own look different.
 @main
 final class ParticleLenia_Example: Sketch {

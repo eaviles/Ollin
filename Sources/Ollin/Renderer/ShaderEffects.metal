@@ -152,7 +152,7 @@ static inline float ollin_fade_ramp(float t, float width, float p) {
 // canvas, z how much of the pixel the picture covers (0 outside it), w the fade.
 //
 // Every step is taken unconditionally, including the ones a fragment outside the
-// picture has no use for. `fwidth` reads its neighbours in the same quad, and a
+// picture has no use for. `fwidth` reads its neighbors in the same quad, and a
 // lane that has already returned has nothing to read, so the guard is applied to
 // the answer rather than to the flow.
 static inline float4 ollin_projection_at(float2 uv, constant OllinProjectionUniforms &p) {
@@ -411,7 +411,7 @@ fragment float4 ollin_fx_edges(PresentOut in [[stage_in]],
     return float4(float3(mag), 1.0);
 }
 
-// sharpen: unsharp mask against a 4-neighbour blur (params[0].xy texel, .z amount).
+// sharpen: unsharp mask against a 4-neighbor blur (params[0].xy texel, .z amount).
 fragment float4 ollin_fx_sharpen(PresentOut in [[stage_in]],
                                  texture2d<float> src [[texture(0)]],
                                  sampler samp [[sampler(0)]],
@@ -545,7 +545,7 @@ fragment float4 ollin_fx_pixelate(PresentOut in [[stage_in]],
     return ollin_premul(c, s.a);
 }
 
-// lineScreen: per-cell brightness drives a centred bar's width, painted fg over bg
+// lineScreen: per-cell brightness drives a centered bar's width, painted fg over bg
 // (params: scale, softness, angle, aspect; params[1] fg, params[2] bg).
 fragment float4 ollin_fx_linescreen(PresentOut in [[stage_in]],
                                     texture2d<float> src [[texture(0)]],
@@ -604,7 +604,7 @@ fragment float4 ollin_fx_temperature(PresentOut in [[stage_in]],
     return ollin_premul(max(c, 0.0), s.a);
 }
 
-// vibrance: lift saturation most on the muted colours, least on the already-vivid ones
+// vibrance: lift saturation most on the muted colors, least on the already-vivid ones
 // (params: amount). Negative dulls.
 fragment float4 ollin_fx_vibrance(PresentOut in [[stage_in]],
                                   texture2d<float> src [[texture(0)]],
@@ -707,7 +707,7 @@ fragment float4 ollin_fx_radial_blur(PresentOut in [[stage_in]],
 }
 
 // bilateral: edge-preserving smoothing — a spatial Gaussian weighted down where a
-// neighbour's color differs (params: texel.xy, radius, sigma). Flat areas blur, edges stay.
+// neighbor's color differs (params: texel.xy, radius, sigma). Flat areas blur, edges stay.
 fragment float4 ollin_fx_bilateral(PresentOut in [[stage_in]],
                                    texture2d<float> src [[texture(0)]],
                                    sampler samp [[sampler(0)]],
@@ -752,7 +752,7 @@ fragment float4 ollin_fx_emboss(PresentOut in [[stage_in]],
 }
 
 // oil paint (Kuwahara region filter, written from the technique): replace each pixel with
-// the mean of whichever of its four corner quadrants has the least colour variance, so
+// the mean of whichever of its four corner quadrants has the least color variance, so
 // detail flattens into paint patches but edges stay crisp (params: texel.xy, radius).
 fragment float4 ollin_fx_oilpaint(PresentOut in [[stage_in]],
                                   texture2d<float> src [[texture(0)]],

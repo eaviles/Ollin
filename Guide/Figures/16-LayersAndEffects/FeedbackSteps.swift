@@ -45,7 +45,7 @@ final class FeedbackSteps: Sketch {
             }
         }
 
-        // Lay the four results out as panels, each labelled inside.
+        // Lay the four results out as panels, each labeled inside.
         let w = 424.0, h = 265.0
         for (i, panel) in panels.enumerated() {
             let x = 10 + Double(i % 2) * (w + 12)

@@ -52,7 +52,7 @@ public final class Body3D {
     /// the one crate that has to bob higher than the rest.
     public var buoyancy: Double = 1
 
-    /// Free-form tag so a sketch can hang its own data off a body (its colour,
+    /// Free-form tag so a sketch can hang its own data off a body (its color,
     /// its mesh, a group id) without a parallel array.
     public var userData: Any?
 
@@ -90,7 +90,7 @@ public final class Body3D {
         self.overriddenMass = overriddenMass
     }
 
-    /// The body's centre, in world units.
+    /// The body's center, in world units.
     public var position: Vector3 {
         get {
             let out = readFloats3 { cjolt_body_get_position(world.handle, id, $0) }
@@ -333,7 +333,7 @@ public final class Body3D {
         world.contacts.compactMap { $0.phase == .ended ? $0.other(than: self) : nil }
     }
 
-    /// Push the body's centre of mass with a steady force (units/s² · mass),
+    /// Push the body's center of mass with a steady force (units/s² · mass),
     /// accumulated for the next `step`. Use for thrust, wind, attraction.
     public func applyForce(_ force: Vector3) {
         withFloats3(world.meters(from: force)) {
@@ -341,7 +341,7 @@ public final class Body3D {
         }
     }
 
-    /// Kick the body's centre of mass with an instantaneous impulse (a sudden
+    /// Kick the body's center of mass with an instantaneous impulse (a sudden
     /// change in velocity · mass): a hit, a launch.
     public func applyImpulse(_ impulse: Vector3) {
         withFloats3(world.meters(from: impulse)) {
@@ -349,7 +349,7 @@ public final class Body3D {
         }
     }
 
-    /// Apply a torque (spin) about each axis through the centre of mass.
+    /// Apply a torque (spin) about each axis through the center of mass.
     public func applyTorque(_ torque: Vector3) {
         let scale = 1 / (world.unitsPerMeter * world.unitsPerMeter)
         withFloats3((Float(torque.x * scale), Float(torque.y * scale),
@@ -375,19 +375,19 @@ extension Body3D.Kind {
 }
 
 /// The shape of a rigid `Body3D`. Position and orientation come from the body,
-/// so a collider is just its local geometry, centred on the body's origin.
+/// so a collider is just its local geometry, centered on the body's origin.
 public enum Collider3D {
     /// A ball of the given radius.
     case sphere(radius: Double)
     /// A box of the given size, before the body's rotation.
     case box(width: Double, height: Double, depth: Double)
     /// A capsule standing along the body's y axis: a segment of `height`
-    /// between the two cap centres, thickened to `radius` with rounded ends.
+    /// between the two cap centers, thickened to `radius` with rounded ends.
     case capsule(height: Double, radius: Double)
     /// A flat-capped cylinder standing along the body's y axis.
     case cylinder(height: Double, radius: Double)
     /// A capsule whose two caps differ in radius (a club, a bowling-pin
-    /// segment): cap centres at `±height/2` along y, the wall sloping between
+    /// segment): cap centers at `±height/2` along y, the wall sloping between
     /// `bottomRadius` and `topRadius`. Both radii must be positive; a cap the
     /// other fully contains collapses to that sphere.
     case taperedCapsule(height: Double, topRadius: Double, bottomRadius: Double)
@@ -407,7 +407,7 @@ public enum Collider3D {
     /// compound of primitives) for moving shapes.
     case mesh(Mesh)
     /// A `Heightfield` as solid terrain, sized exactly like its
-    /// `mesh(width:depth:height:)`: a `width` × `depth` grid centred on the
+    /// `mesh(width:depth:height:)`: a `width` × `depth` grid centered on the
     /// body's origin in the ground plane, each sample lifted to
     /// `height · value` on +y, so the collider and the drawn mesh trace one
     /// surface. The field is resampled onto a square power-of-two grid (at
@@ -427,7 +427,7 @@ public enum Collider3D {
     public struct Part {
         /// The part's shape (any collider; a nested compound is allowed).
         public var collider: Collider3D
-        /// The part's centre in the body's local space.
+        /// The part's center in the body's local space.
         public var position: Vector3
         /// The part's local rotation: `angle` radians about `axis`.
         public var angle: Double
@@ -545,7 +545,7 @@ extension Collider3D {
             desc.type = CJOLT_SHAPE_HEIGHT_FIELD
             desc.heights = arena.store(heights)
             desc.sampleCount = Int32(n)
-            // Surface = offset + scale · (ix, height, iz): centred like the
+            // Surface = offset + scale · (ix, height, iz): centered like the
             // drawn mesh, sample heights scaled by the mesh's own `height`.
             desc.fieldOffset = (m(-width / 2), 0, m(-depth / 2))
             desc.fieldScale = (m(width / Double(n - 1)), m(height),

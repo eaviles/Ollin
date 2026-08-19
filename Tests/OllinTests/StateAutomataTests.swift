@@ -6,8 +6,8 @@ import Testing
 /// `.briansBrain`, `.hodgepodge`), run headless on a 64-texel field and compared
 /// **cell for cell** against a plain sequential CPU reference stepping the same
 /// published rule from the same start. The match pins the shared state encoding
-/// (s/(levels-1) in .r, decoded with rint), the exact neighbour counts under both
-/// neighbourhood shapes, the toroidal wrap, and the injects: the full-texel stamps
+/// (s/(levels-1) in .r, decoded with rint), the exact neighbor counts under both
+/// neighborhood shapes, the toroidal wrap, and the injects: the full-texel stamps
 /// override the seeded-noise start everywhere they land, so the initial state is
 /// known by construction (abutting unit rects tile seamlessly under the
 /// inside-biased fill ramp, which is what makes per-texel stamping exact).
@@ -169,7 +169,7 @@ struct StateAutomataTests {
         return (0 ..< 64).map { _ in (0 ..< 64).map { _ in rng.next(levels) } }
     }
 
-    /// The neighbourhood's offsets: the block within `range`, or the diamond.
+    /// The neighborhood's offsets: the block within `range`, or the diamond.
     private func offsets(range: Int, moore: Bool) -> [(Int, Int)] {
         var list: [(Int, Int)] = []
         for dy in -range ... range {
@@ -280,7 +280,7 @@ private final class AutomatonProbeSketch: Sketch {
                     fill(Color(white: s.white))
                     // A polygon, not a drawRect: the polygon renders on the
                     // triangle path, whose MSAA coverage is purely geometric, so
-                    // the stamped texel resolves to alpha 1 and its neighbours to
+                    // the stamped texel resolves to alpha 1 and its neighbors to
                     // exactly 0. An SDF rect's analytic halo is about one render
                     // pixel wide, which at one texel per pixel leaves the
                     // edge-adjacent texels hovering right at the injects' 0.5

@@ -1,7 +1,7 @@
 import Ollin
 import OllinPhysics
 
-/// A harbour after a spill. Crates of every weight ride the swell at their own
+/// A harbor after a spill. Crates of every weight ride the swell at their own
 /// depth, a stone anchor sits on the bottom, and the current carries the lot
 /// slowly past. **Drag** a crate under and let go to watch it surface.
 ///
@@ -92,8 +92,8 @@ final class Flotsam: Sketch {
         // An open sky rather than one of the bundled interiors: it is what the
         // water has to reflect for a swell to read as water at all.
         environment(.sky(turbidity: 3.2, sunElevation: 0.95))
-        // The sky alone is a soft blue dome, which leaves the cargo grey. A
-        // warm key gives the crates their own colour back and tells the light
+        // The sky alone is a soft blue dome, which leaves the cargo gray. A
+        // warm key gives the crates their own color back and tells the light
         // in the scene where the sun is.
         lightingPreset(.goldenHour)
         castShadows()
@@ -135,7 +135,7 @@ final class Flotsam: Sketch {
         fill(Color(hex: 0x2C7C96))
         // Rough rather than mirror-smooth, and not only for the look: a
         // near-perfect mirror reflects the environment's lower half wherever a
-        // wave tilts the reflection below the horizon, which lays flat grey
+        // wave tilts the reflection below the horizon, which lays flat gray
         // patches along the troughs. A little roughness blurs that boundary
         // away, and a sea this size is not a mirror anyway.
         material(.dielectric(roughness: 0.3))

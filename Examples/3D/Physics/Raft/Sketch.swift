@@ -2,7 +2,7 @@ import Ollin
 import OllinPhysics
 
 /// A raft made of cloth, riding a swell with cargo on it. **Drag** the deck to
-/// sail her: under the sounding line, or through the harbour gate. **Space**
+/// sail her: under the sounding line, or through the harbor gate. **Space**
 /// drops another crate.
 ///
 /// The showcase for a soft body being part of the world rather than a thing

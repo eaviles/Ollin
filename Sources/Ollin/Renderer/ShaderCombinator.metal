@@ -78,7 +78,7 @@ static inline float ollin_emod(float x, float y) { return x - y * floor(x / y); 
 
 // The stairs union: n steps of size r carved along the 45° seam between two fields
 // (treating the two distances as a local 2D frame at the seam). The subtract and
-// intersect flavours negate through it. Like every joint op it assumes the two
+// intersect flavors negate through it. Like every joint op it assumes the two
 // surfaces meet near a right angle; where they graze (near-parallel gradients) the
 // periodic staircase can echo faint steps past the seam, the technique's documented
 // envelope, so pair it with surfaces that cross frankly. Shared by the 2D and 3D
@@ -94,7 +94,7 @@ static inline float ollin_op_stairs(float a, float b, float r, float n) {
 // The reference's own band guard (`a < r && b < r`) restricts the rib math to the seam
 // region; outside it the plain union is returned (the reference notes the guard can
 // leave a field discontinuity at the band edge, away from the surface). The difference
-// flavour evaluates the same construction on (-a, b) and negates; intersect negates b
+// flavor evaluates the same construction on (-a, b) and negates; intersect negates b
 // through difference. Shared by the 2D and 3D combine switches.
 static float ollin_op_columns_union(float a, float b, float r, float n) {
     if (a < r && b < r) {

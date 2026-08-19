@@ -19,7 +19,7 @@ struct ColorOutputTests {
 
     // MARK: Sketches under test
 
-    /// A saturated P3 red beside its sRGB neighbour, and a lamp core well above
+    /// A saturated P3 red beside its sRGB neighbor, and a lamp core well above
     /// white: the two things the two settings are each supposed to carry.
     private final class Swatches: Sketch {
         var output: ColorOutput = .standard

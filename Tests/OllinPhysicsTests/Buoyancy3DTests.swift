@@ -302,7 +302,7 @@ struct Buoyancy3DTests {
                                                   pressure: 3))
         let cloth = try #require(world.addSoftBody(from: Self.sheet,
                                                    at: Vector3(4, 1.5, 0), mass: 2))
-        // A 1 kg ball half a metre across is a balloon: light enough to ride
+        // A 1 kg ball half a meter across is a balloon: light enough to ride
         // almost wholly out of the water.
         #expect(ball.density < 0.01)
         #expect(cloth.density == 1)

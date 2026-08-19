@@ -125,7 +125,7 @@ struct GeometryBatch {
     var blendMode: BlendMode = .normal
     /// Texture source for an `.image` batch — `nil` otherwise. Each image draw is
     /// its own batch (one texture per draw call), so it never merges with a
-    /// neighbour.
+    /// neighbor.
     var image: Image?
     /// SDF atlas for a `.glyphAtlas` batch — `nil` otherwise. One `drawText` call
     /// is one batch (a paragraph's glyphs all sample the same atlas).
@@ -1894,7 +1894,7 @@ final class Drawer {
     ///
     /// What this cannot re-aim is anything the sketch already flattened during
     /// `draw()`: a `project()`, a `depth(at:)` placement, a billboard. Those keep
-    /// the centre camera's answer in both eyes, which puts them flat on the
+    /// the center camera's answer in both eyes, which puts them flat on the
     /// screen plane, and for the notices and overlays that use them that is
     /// usually what you want anyway.
     func aimStereoEye(_ camera: Camera3D?, previous: Camera3D?) {

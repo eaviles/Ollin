@@ -37,7 +37,7 @@ final class Imported: Sketch {
     let world = World3D()
     var scene: Scene!
 
-    /// A colour per prim name, so the drawing loop can tell the parts apart
+    /// A color per prim name, so the drawing loop can tell the parts apart
     /// without a parallel array: every body knows the name it came in under.
     let colors: [String: Color] = [
         "Ground": Color(hex: 0x6E6A55), "Fulcrum": Color(hex: 0x53503F),

@@ -15,7 +15,7 @@ import Compression
 /// 4 GB.
 struct ZIPArchive {
 
-    /// One catalogued entry: its name and where/how its bytes are stored.
+    /// One cataloged entry: its name and where/how its bytes are stored.
     private struct Entry {
         let method: UInt16
         let compressedSize: Int

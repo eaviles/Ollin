@@ -172,7 +172,7 @@ import Testing
         #expect(dampedHigh < 0.2 * ringingHigh,
                 "above 4 kHz: damped \(dampedHigh) vs ringing \(ringingHigh)")
         // The fundamental is still there in both, which is what makes the line
-        // above about colour rather than about one of them having stopped.
+        // above about color rather than about one of them having stopped.
         #expect(dampedLow > 0.3 * ringingLow,
                 "fundamental: damped \(dampedLow) vs ringing \(ringingLow)")
     }

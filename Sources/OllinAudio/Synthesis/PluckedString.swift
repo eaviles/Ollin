@@ -5,10 +5,10 @@ import Foundation
 /// A plucked string is not a shape an oscillator traces. It is a length of
 /// something under tension with a disturbance running up and down it, losing a
 /// little at each end and losing the high part of itself faster than the low
-/// part. Modelling that directly, rather than approximating the result, is what
+/// part. Modeling that directly, rather than approximating the result, is what
 /// makes it move the way a string does: the attack, the way the tone darkens as
 /// it rings, and the difference between plucking near the bridge and over the
-/// hole all come out of the model rather than being dialled in.
+/// hole all come out of the model rather than being dialed in.
 ///
 /// ```swift
 /// let synth = Synth(.nylon)
@@ -91,7 +91,7 @@ public struct PluckedString: Sendable, Hashable, Codable {
 
 /// What a voice is built from.
 ///
-/// A wave is drawn; the rest are modelled. They all end up as one stream of
+/// A wave is drawn; the rest are modeled. They all end up as one stream of
 /// samples the envelope and filter shape the same way, so everything else about
 /// a `Voice` is unchanged whichever it is.
 ///

@@ -193,7 +193,7 @@ public extension Palette {
     /// worst pair first.
     ///
     /// Distance is measured in OKLab, across lightness as well as hue, which is
-    /// the whole judgement rather than half of it. Red and green look alike to a
+    /// the whole judgment rather than half of it. Red and green look alike to a
     /// protanope in hue, but one is much darker than the other, so the pair is
     /// still usable. Two colors of the same lightness that differ only in hue
     /// are the ones that merge.

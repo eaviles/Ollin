@@ -220,7 +220,7 @@ struct Contact3DTests {
         #expect(through.events.map(\.phase) == [.began, .ended])
         #expect(through.events[0].speed > 3)
         // The solid twin is struck rather than entered: it reports the hit and
-        // the ball comes to rest on top of it, a body radius above its centre.
+        // the ball comes to rest on top of it, a body radius above its center.
         #expect(blocked.events.first?.phase == .began)
         #expect(blocked.rest > 4)
     }

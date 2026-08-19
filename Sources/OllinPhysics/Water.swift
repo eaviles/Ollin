@@ -81,7 +81,7 @@ public struct Water: Equatable, Sendable {
 
         /// The three crossed components, as (weight, wavelength scale, heading
         /// offset). One sine reads as corrugated metal; three at odd angles and
-        /// odd sizes read as water. The weights are normalised at use, so
+        /// odd sizes read as water. The weights are normalized at use, so
         /// `amplitude` stays the true height of a crest.
         static let components: [(weight: Double, scale: Double, turn: Double)] = [
             (1.00, 1.00, 0.00),
@@ -147,7 +147,7 @@ public struct Water: Equatable, Sendable {
     }
 
     /// One component's wave number, direction in the xz plane, and how far it
-    /// has travelled by `phase`.
+    /// has traveled by `phase`.
     private func wave(_ component: (weight: Double, scale: Double, turn: Double),
                       _ waves: Waves,
                       _ phase: Double) -> (k: Double, direction: Vector2,
@@ -169,7 +169,7 @@ extension World3D {
         water?.height(at: point, phase: waterPhase)
     }
 
-    /// A patch of the water's surface as a `Mesh`, centred on `around`, so the
+    /// A patch of the water's surface as a `Mesh`, centered on `around`, so the
     /// water can be drawn with whatever material the sketch likes:
     ///
     /// ```swift
@@ -315,7 +315,7 @@ extension World3D {
         let scale = unitsPerMeter
         for soft in softBodies where soft.density > 0 {
             // Where a rigid body is handed one tangent plane through its own
-            // centre, every particle is handed the surface directly above it.
+            // center, every particle is handed the surface directly above it.
             // A sheet is wide enough that one plane would have its far edges
             // riding a wave that is not under them, which curls a raft into a
             // bowl; this is the same surface function, asked more often.

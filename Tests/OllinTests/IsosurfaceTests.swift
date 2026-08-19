@@ -147,7 +147,7 @@ struct IsosurfaceTests {
     }
 
     /// The same, over a field dense with saddles. These are the configurations
-    /// where two neighbouring cells can disagree about how to join a shared
+    /// where two neighboring cells can disagree about how to join a shared
     /// face; the asymptotic decider reads only that face's four values, so
     /// they cannot. An odd resolution keeps the lattice off the field's own.
     @Test func aSaddleRichFieldHasNoCracks() {
@@ -224,7 +224,7 @@ struct IsosurfaceTests {
 
     // MARK: Metaballs
 
-    /// The soft-object falloff runs 1 at the centre to 0 at the reach, and is
+    /// The soft-object falloff runs 1 at the center to 0 at the reach, and is
     /// exactly a half at the quarter point. That last value is what makes a
     /// lone ball read at its own radius.
     @Test func theFalloffHitsItsThreeKnownValues() {

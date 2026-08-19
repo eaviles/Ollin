@@ -214,7 +214,7 @@ import Testing
         let samples = synth.renderExportAudio(upTo: 1.0, sampleRate: 44100)
 
         #expect(samples.contains { abs($0) > 0.005 })
-        // Still centred, since nothing in an empty chain can move it.
+        // Still centered, since nothing in an empty chain can move it.
         var identical = true
         for frame in 0..<(samples.count / 2) where samples[frame * 2] != samples[frame * 2 + 1] {
             identical = false

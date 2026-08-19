@@ -75,7 +75,7 @@ struct ColorVisionTests {
         }
     }
 
-    /// A severity the table does not hold interpolates its two neighbours, the
+    /// A severity the table does not hold interpolates its two neighbors, the
     /// approximation the model's authors describe.
     @Test func anUntabulatedSeverityInterpolatesItsNeighbours() {
         let low = ColorVision(.deuteranomaly, severity: 0.8).matrix
@@ -230,7 +230,7 @@ struct ColorVisionTests {
     }
 }
 
-/// A palette is judged by whether its colors stay apart, and that judgement is
+/// A palette is judged by whether its colors stay apart, and that judgment is
 /// the whole of both axes: two colors close in hue survive a difference in
 /// lightness. These pin the measured tolerance against the two sets it was
 /// calibrated on, and pin the report's order and determinism.

@@ -7,7 +7,7 @@ import Ollin
 ///
 /// A sketch hands over bare points, because that is what a track looks like
 /// when you draw it. The curve through them is a cardinal spline (each point's
-/// tangent is half the span between its neighbours), and the normals are
+/// tangent is half the span between its neighbors), and the normals are
 /// carried along the curve by parallel transport, which is what keeps a frame
 /// from spinning about the track for no reason. One consequence worth knowing:
 /// on a closed loop the frame that comes back around need not match the one it

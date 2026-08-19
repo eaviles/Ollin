@@ -1288,7 +1288,7 @@ extension Drawer {
                            paint: vertexPaint(stroke, anchor: points[0]))
     }
 
-    /// Stroke a recorded `StrokeMark`: the path it travelled, drawn at the width
+    /// Stroke a recorded `StrokeMark`: the path it traveled, drawn at the width
     /// and opacity it asked for at every point.
     ///
     /// The mark reaches the same fringe expander every other stroke goes through,

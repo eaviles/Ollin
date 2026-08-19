@@ -3,7 +3,7 @@ import Ollin
 /// The Gerhardt-Schuster **hodgepodge machine**, the automaton built to mimic an
 /// oscillating chemical reaction: its curling wavefronts are dead ringers for the
 /// Belousov-Zhabotinsky reaction in a dish. Cells run from healthy through degrees
-/// of infection to ill and back to healthy at once, catching from their neighbours
+/// of infection to ill and back to healthy at once, catching from their neighbors
 /// on the way up, and from a random start the field churns through noise into
 /// waves and finally locked spiral cores shedding rings. `speed` is the constant
 /// the original authors called *g*, how much sicker an infected cell gets each

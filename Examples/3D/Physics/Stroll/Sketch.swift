@@ -59,7 +59,7 @@ final class Stroll: Sketch {
     func buildIsland() {
         let bumps = Heightfield.diamondSquare(size: 129, roughness: 0.55, seed: 7)
         land = Heightfield(columns: 129, rows: 129) { u, v in
-            let d = (Vector2(u - 0.5, v - 0.5).length) * 2      // 0 centre … 1 edge
+            let d = (Vector2(u - 0.5, v - 0.5).length) * 2      // 0 center … 1 edge
             // Flat out to the plaza, then hills, then falling into the water.
             let hills = smoothstep(0.3, 0.78, d) * (1 - smoothstep(0.82, 1, d))
             let shore = 1 - smoothstep(0.86, 1.0, d)
@@ -154,7 +154,7 @@ final class Stroll: Sketch {
         walker.move(heading.length > 0 ? heading.normalized * walkSpeed : .zero)
         if isKeyDown(" ") { walker.jump(4.6) }
 
-        // Face the way it is actually travelling, and swing the legs by the
+        // Face the way it is actually traveling, and swing the legs by the
         // ground covered rather than the clock, so walking into a crate that
         // will not move stops the stride too.
         let travel = Vector3(walker.actualVelocity.x, 0, walker.actualVelocity.z)
@@ -173,7 +173,7 @@ final class Stroll: Sketch {
         camera(.perspective(eye: eye, target: focus, fieldOfView: .pi / 3.4))
     }
 
-    /// The figure: modelled facing its own +z, so `withCharacter` turns it by
+    /// The figure: modeled facing its own +z, so `withCharacter` turns it by
     /// `facing` and stands it on the ground at the character's feet.
     func drawWalker() {
         let swing = sin(stride) * 0.42
@@ -244,7 +244,7 @@ final class Stroll: Sketch {
         }
     }
 
-    /// The field as a mesh wearing a height-coloured texture: sand at the
+    /// The field as a mesh wearing a height-colored texture: sand at the
     /// waterline, grass on the plaza, rock and scrub up the hills.
     private func terrainMesh(_ field: Heightfield) -> Mesh {
         let ramp = Ramp([Color(hex: 0xE4D2A6), Color(hex: 0x8FAE63),

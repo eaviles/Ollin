@@ -66,7 +66,7 @@ public final class Record3DRecording {
     public init(data: Data) throws {
         archive = try ZIPArchive(data: data)
 
-        // Catalogue per-frame files by their integer stem (e.g. `rgbd/12.jpg`).
+        // Catalog per-frame files by their integer stem (e.g. `rgbd/12.jpg`).
         var byStem: [Int: (jpg: String?, depth: String?, conf: String?)] = [:]
         for name in archive.entryNames {
             let base = (name as NSString).lastPathComponent

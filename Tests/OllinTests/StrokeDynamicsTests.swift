@@ -213,7 +213,7 @@ struct StrokeDynamicsTests {
         #expect(abs(StrokeProfile.values([0, 1, 2], at: [0, 1])(1) - 1) < 1e-12)
     }
 
-    // MARK: Rendered behaviour
+    // MARK: Rendered behavior
 
     /// A mark whose dynamics ask for nothing is a plain polyline, drawn through
     /// the same expander with the same state. This is the guarantee that the
@@ -228,7 +228,7 @@ struct StrokeDynamicsTests {
         #expect(pixels(of: mark).bytes == pixels(of: line).bytes)
     }
 
-    /// The headline behaviour: ink follows the hand. The probe's mark is walked
+    /// The headline behavior: ink follows the hand. The probe's mark is walked
     /// slowly down its left half and quickly down its right, so the left carries
     /// visibly more ink than the right even though the path and the stroke weight
     /// are the same all the way across.

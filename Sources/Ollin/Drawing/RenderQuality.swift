@@ -10,7 +10,7 @@
 /// path*, resolving to `.default` on the live window (frame-rate-safe) and `.detail` on
 /// `--export`/headless (no frame-rate pressure, so best quality; the `--render-quality` flag
 /// overrides it). A sketch that dials a *non-default* tier is making an explicit choice and is
-/// honoured on every path. For an exact, hardware-independent value use the feature's raw setter
+/// honored on every path. For an exact, hardware-independent value use the feature's raw setter
 /// instead (for shadows, `Sketch.shadowSamples`; for the raymarch, `Sketch.raymarchSteps`).
 ///
 /// **Scope: GPU sampling budgets only.** Every consumer trades sampling density for frame rate

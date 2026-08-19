@@ -6,7 +6,7 @@ import Ollin
 /// nearby boids, and drift toward their center, and the coherent motion emerges.
 ///
 /// The boids are drawn as little triangles pointing along their velocity and
-/// tinted by heading, so boids travelling the same way share a color and each
+/// tinted by heading, so boids traveling the same way share a color and each
 /// sub-flock reads as its own band. It's pure simulation, so it never settles.
 @main
 final class Flocking: Sketch {

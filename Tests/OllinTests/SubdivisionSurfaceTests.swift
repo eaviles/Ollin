@@ -354,7 +354,7 @@ struct SubdivisionSurfaceTests {
         #expect(sub.colors.allSatisfy { $0.green <= 1e-9 })
         #expect(sub.colors.allSatisfy { $0.red >= -1e-9 && $0.red <= 1 + 1e-9 })
         // The two originals survive somewhere, and the seam carries genuine mixtures
-        // (a nearest-neighbour transfer would give only the two endpoint colors).
+        // (a nearest-neighbor transfer would give only the two endpoint colors).
         #expect(sub.colors.contains { $0.red > 0.9 })
         #expect(sub.colors.contains { $0.blue > 0.9 })
         #expect(sub.colors.contains { $0.red > 0.2 && $0.red < 0.8 })

@@ -21,7 +21,7 @@ final class Defocus_Example: Sketch {
     /// One orb: a depth (0 near … 1 far), a screen position, and a hue.
     struct Orb { let depth, x, y, hue: Double }
 
-    /// A fixed scatter, sorted far-first so nearer orbs occlude — in both the colour
+    /// A fixed scatter, sorted far-first so nearer orbs occlude — in both the color
     /// scene and the depth map, which must agree on what's in front.
     lazy var orbs: [Orb] = {
         seed(7)

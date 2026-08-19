@@ -2,7 +2,7 @@ import Ollin
 
 /// Griffeath's **cyclic cellular automaton**: every cell wears one of `states`
 /// colors arranged in a circle, and a cell advances to the next color the moment
-/// enough neighbours already wear it, so each color eats the one before it and is
+/// enough neighbors already wear it, so each color eats the one before it and is
 /// eaten by the one after. From pure noise the field self-organizes through the
 /// famous four acts, colored static, growing droplets, the first spiral defects,
 /// and finally a field of turning spiral cores that own everything. A cyclic hue
@@ -15,7 +15,7 @@ final class CyclicAutomaton: Sketch {
 
     @Param(2 ... 24, icon: "circle.grid.3x3", group: "Rule") var states = 14
     @Param(1 ... 4, icon: "chart.bar.fill", group: "Rule") var threshold = 1
-    /// Count the corner neighbours too (the eight-cell block instead of the four).
+    /// Count the corner neighbors too (the eight-cell block instead of the four).
     @Param(icon: "square.grid.3x3", group: "Rule") var corners = false
 
     private var field: SimField!

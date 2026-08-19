@@ -69,7 +69,7 @@ struct StrokeProfileTests {
     }
 
     /// A nib is widest across its edge and thinnest along it, which is the whole
-    /// thick-and-thin behaviour of broad-edge calligraphy.
+    /// thick-and-thin behavior of broad-edge calligraphy.
     @Test
     func nibIsWidestAcrossItsEdge() {
         let angle = Double.pi / 4
@@ -155,7 +155,7 @@ struct StrokeProfileTests {
         #expect(abs(area - 2000) / 2000 < 0.02)
     }
 
-    // MARK: Rendered behaviour
+    // MARK: Rendered behavior
 
     /// A taper thins the mark toward its end rather than fading the whole thing:
     /// the middle stays solid ink, the ink falls off monotonically over the last
@@ -185,7 +185,7 @@ struct StrokeProfileTests {
         let a = try #require(OllinApp.image(of: UniformStrokeProbe()))
         let b = try #require(OllinApp.image(of: UniformStrokeProbe()))
         #expect(pixels(of: a).bytes == pixels(of: b).bytes)
-        // A 6px stroke covers its full width: the centre is solid ink.
+        // A 6px stroke covers its full width: the center is solid ink.
         #expect(pixels(of: a).gray(128, 64) <= 12)
     }
 }

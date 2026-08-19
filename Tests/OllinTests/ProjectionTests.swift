@@ -81,7 +81,7 @@ struct ProjectionTests {
     // MARK: What a fitted picture works out to
 
     @Test func aFitPictureKeepsItsProportions() {
-        // A square canvas on a wide display: full height, centred, with a
+        // A square canvas on a wide display: full height, centered, with a
         // quarter of the width dark on each side.
         let corners = Installation.Projection.Corners.fit
             .resolved(outputAspect: 2, pictureAspect: 1)
@@ -293,7 +293,7 @@ struct ProjectionTests {
     /// The picture arrives the right way up and the right way round.
     ///
     /// Every claim above would still pass with the picture mirrored, so this one
-    /// hands the present pass a canvas whose four quarters are four colours and
+    /// hands the present pass a canvas whose four quarters are four colors and
     /// reads them back out of the corners of the warped picture. It also reads a
     /// point well outside the shape, which has to be black: a projector must
     /// light only what it was aimed at.
@@ -424,7 +424,7 @@ struct ProjectionTests {
     @MainActor
     private struct Wall {
 
-        /// What the canvas holds: four coloured quarters, or plain white for
+        /// What the canvas holds: four colored quarters, or plain white for
         /// measuring a fade.
         enum Canvas { case quarters, white }
 

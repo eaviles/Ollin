@@ -64,7 +64,7 @@ struct RigidBody3DTests {
 
         run(world, steps: 300)   // fall and settle
 
-        // Resting on the floor, the centre sits one radius above it.
+        // Resting on the floor, the center sits one radius above it.
         #expect(abs(ball.position.y - 0.5) < 0.05)
     }
 
@@ -80,7 +80,7 @@ struct RigidBody3DTests {
 
         run(world, steps: 420)   // seven simulated seconds
 
-        // Each box rests on the one below: centres near 0.5, 1.5, 2.5.
+        // Each box rests on the one below: centers near 0.5, 1.5, 2.5.
         for (level, box) in boxes.enumerated() {
             #expect(abs(box.position.y - (0.5 + Double(level))) < 0.1)
             #expect(abs(box.position.x) < 0.2)
@@ -138,7 +138,7 @@ struct RigidBody3DTests {
             world.step(dt: 1.0 / 60)
         }
 
-        // The grip reached the target and the box dangles from it: its centre
+        // The grip reached the target and the box dangles from it: its center
         // hangs half a unit (the grip's local offset) from the target, calm.
         #expect(abs((box.position - target).length - 0.5) < 0.2)
         #expect(box.velocity.length < 0.5)

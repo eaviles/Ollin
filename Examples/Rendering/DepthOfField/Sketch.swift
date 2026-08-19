@@ -25,12 +25,12 @@ import simd
 /// bloom into big soft discs while distant ones stay small — the look of a fast lens.
 /// The scene turns slowly, so each ribbon racks through the fixed focal plane as it
 /// rotates. **Drag left↔right to move the focal plane** and pull focus through the
-/// depth yourself. **Press any key** to toggle colour-shift: each sample is drawn as
+/// depth yourself. **Press any key** to toggle color-shift: each sample is drawn as
 /// three particles (its R, G, B channels) displaced by slightly different radii, so
 /// the bokeh grows chromatic-aberration fringes — the same emergent trick, per
 /// channel.
 ///
-/// Inspired by Anders Hoff's depth-of-field and colour-shift technique (inconvergent).
+/// Inspired by Anders Hoff's depth-of-field and color-shift technique (inconvergent).
 @main
 final class DepthOfField_Example: Sketch {
     private var ribbons: Particles!

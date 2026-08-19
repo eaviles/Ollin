@@ -20,7 +20,7 @@ import OllinPhysics
 final class Blobs: Sketch {
     let world = World()
 
-    /// One soft body: the particles that make it and the colour it draws in.
+    /// One soft body: the particles that make it and the color it draws in.
     final class Blob {
         let rim: [Particle]
         let color: Color

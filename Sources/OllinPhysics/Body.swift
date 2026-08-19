@@ -36,7 +36,7 @@ public final class Body {
     /// The underlying Box2D body handle.
     let id: b2BodyId
 
-    /// Free-form tag so a sketch can hang its own data off a body (its colour, its
+    /// Free-form tag so a sketch can hang its own data off a body (its color, its
     /// drawn size, a group id) without a parallel array — as `Particle` does.
     public var userData: Any?
 
@@ -45,7 +45,7 @@ public final class Body {
         self.id = id
     }
 
-    /// The body's centre, in sketch points.
+    /// The body's center, in sketch points.
     public var position: Vector2 {
         get { world.points(from: b2Body_GetPosition(id)) }
         set { b2Body_SetTransform(id, world.meters(from: newValue), b2Body_GetRotation(id)) }
@@ -81,19 +81,19 @@ public final class Body {
         set { b2Body_SetType(id, newValue.b2Type) }
     }
 
-    /// Push the body's centre of mass with a steady force (points/s² · mass),
+    /// Push the body's center of mass with a steady force (points/s² · mass),
     /// accumulated for the next `step`. Use for thrust, wind, attraction.
     public func applyForce(_ force: Vector2) {
         b2Body_ApplyForceToCenter(id, world.meters(from: force), true)
     }
 
-    /// Kick the body's centre of mass with an instantaneous impulse (a sudden
+    /// Kick the body's center of mass with an instantaneous impulse (a sudden
     /// change in velocity · mass) — a hit, a launch.
     public func applyImpulse(_ impulse: Vector2) {
         b2Body_ApplyLinearImpulseToCenter(id, world.meters(from: impulse), true)
     }
 
-    /// Apply a torque (spin) about the centre of mass.
+    /// Apply a torque (spin) about the center of mass.
     public func applyTorque(_ torque: Double) {
         b2Body_ApplyTorque(id, Float(torque), true)
     }
@@ -116,7 +116,7 @@ extension Body.Kind {
 }
 
 /// The shape of a rigid `Body`. Position and rotation come from the `Body`, so a
-/// collider is just its local geometry (centred on the body's origin).
+/// collider is just its local geometry (centered on the body's origin).
 public enum Collider {
     /// A disk of the given radius (points).
     case circle(radius: Double)

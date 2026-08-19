@@ -27,7 +27,7 @@ public struct Hit3D {
     public let normal: Vector3
 
     /// How far along the query the touch is, in world units: the distance from
-    /// a ray's start, or how far a swept shape travelled before it landed. `0`
+    /// a ray's start, or how far a swept shape traveled before it landed. `0`
     /// for a sweep that was already touching when it set off.
     public let distance: Double
 }
@@ -99,7 +99,7 @@ extension World3D {
     /// let height = (below?.point.y ?? 0) + 1.5
     /// ```
     ///
-    /// `distance` on the hit is how far the shape travelled, so its centre
+    /// `distance` on the hit is how far the shape traveled, so its center
     /// stopped at `origin + (end - origin).normalized * distance`. Mesh and
     /// height-field colliders describe scenery rather than a probe and cannot
     /// be swept.

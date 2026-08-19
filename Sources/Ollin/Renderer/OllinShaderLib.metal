@@ -123,7 +123,7 @@ static inline float3 hash33(float3 p3) {
 }
 
 // A point in the unit disc, uniform over its *area* (radius via sqrt so samples
-// don't bunch at the centre), the right scatter for energy-conserving bokeh.
+// don't bunch at the center), the right scatter for energy-conserving bokeh.
 // `seed` is any per-sample value to decorrelate the draws.
 static inline float2 discSample(float2 seed) {
     float2 h = hash22(seed);

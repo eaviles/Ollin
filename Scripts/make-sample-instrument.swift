@@ -7,7 +7,7 @@
 //
 // The recordings are made here rather than sourced, which is the same choice
 // the sample scenes and the ragdoll asset make. Nothing third party ends up in
-// the repository, there is no licence to honour, and the whole instrument is a
+// the repository, there is no license to honor, and the whole instrument is a
 // hundred kilobytes or so.
 //
 // What it records is a struck bar: a bank of resonators at inharmonic ratios,
@@ -52,7 +52,7 @@ for root in roots {
         guard hz < rate / 2 else { continue }          // never record what cannot be played back
         let omega = 2 * Double.pi * hz / rate
         // Each partial falls away at its own rate, high ones fastest, which is
-        // most of what makes a struck sound change colour as it rings.
+        // most of what makes a struck sound change color as it rings.
         let halfLife = seconds * decays[index]
         let damping = exp(-1 / (halfLife * rate))
         var amplitude = levels[index]

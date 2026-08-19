@@ -65,7 +65,7 @@ final class MongolianColumns: Sketch {
         // that next column stands to the *right* of the one before it.
         let block = Array(repeating: phrase, count: columnCount).joined(separator: "\n")
         // Asked at the origin with this alignment, the reported box is the block's
-        // own size, which is enough to centre it before anything is drawn.
+        // own size, which is enough to center it before anything is drawn.
         let extent = textBounds(block, 0, 0)
         let corner = Vector2((1080 - extent.width) / 2, (1080 - extent.height) / 2)
         drawText(block, corner.x, corner.y)

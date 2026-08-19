@@ -5,7 +5,7 @@ public enum StereoEye: String, CaseIterable, Sendable {
     case left
     case right
 
-    /// Which way this eye steps off the centre line: left is negative along the
+    /// Which way this eye steps off the center line: left is negative along the
     /// camera's own right axis.
     var sign: Double { self == .left ? -1 : 1 }
 }

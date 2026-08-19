@@ -28,7 +28,7 @@ final class Feedback_Example: Sketch {
         background(Color(white: 0.02))   // clear the canvas first (it resets the frame)
 
         withFeedback(trail) { prev in
-            // Draw last frame back, transformed about the canvas centre so it
+            // Draw last frame back, transformed about the canvas center so it
             // spirals inward into a tunnel, and faded a little so trails decay.
             withState {
                 translate(width / 2, height / 2)

@@ -8,7 +8,7 @@ internal import CJolt
 ///
 /// The orientation is the point of the thing. A chain of springs knows where
 /// its particles are and nothing else, so geometry hung along it can only be
-/// guessed at from the neighbours. A rod is a Cosserat rod: it holds a frame of
+/// guessed at from the neighbors. A rod is a Cosserat rod: it holds a frame of
 /// its own, which turns with the rope and twists along it, so a link, a leaf, or
 /// a bead placed by `rotation` sits on the rope the way it would in the world.
 public struct RopeSegment: Sendable {

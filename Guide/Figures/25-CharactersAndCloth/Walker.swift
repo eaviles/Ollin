@@ -86,7 +86,7 @@ final class Walker: Sketch {
         drawWalker()
     }
 
-    /// Modelled facing its own +z, standing on the origin, so `withCharacter`
+    /// Modeled facing its own +z, standing on the origin, so `withCharacter`
     /// turns it by `facing` and stands it on the ground at the feet.
     func drawWalker() {
         let swing = sin(stride) * 0.42

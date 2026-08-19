@@ -12,7 +12,7 @@ import Compression
 /// out of scope.
 struct USDZipArchive {
 
-    /// One catalogued entry: where and how its bytes are stored.
+    /// One cataloged entry: where and how its bytes are stored.
     private struct Entry {
         let name: String
         let method: UInt16

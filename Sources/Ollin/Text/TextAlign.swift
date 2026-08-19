@@ -130,7 +130,7 @@ struct TextJustification {
     /// The lines that must be left alone, by index in the block: the last of each
     /// paragraph. Those are short because the writing ended, not because the box ran
     /// out, and stretching one of them across the box is the mistake everybody
-    /// recognises even when they cannot name it.
+    /// recognizes even when they cannot name it.
     let naturalLines: Set<Int>
 }
 

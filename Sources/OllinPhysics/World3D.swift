@@ -75,7 +75,7 @@ public final class World3D {
     /// `bodies` draws only what the sketch built; it is `groundBody`.
     public private(set) var bodies: [Body3D] = []
 
-    /// The static slab behind `ground`, so a contact can be recognised as a
+    /// The static slab behind `ground`, so a contact can be recognized as a
     /// landing: `contact.other(than: ball) === world.groundBody`. `nil` when
     /// the world has no ground.
     public private(set) var groundBody: Body3D?
@@ -402,7 +402,7 @@ public final class World3D {
     ///     Wheels level with each other along the vehicle share an axle.
     ///   - mass: the whole machine's weight in kilograms, whatever the
     ///     chassis shape's volume would otherwise give.
-    ///   - engineTorque: how hard the engine pulls, in newton-metres.
+    ///   - engineTorque: how hard the engine pulls, in newton-meters.
     ///   - topSpeed: the speed the gearing tops out at, in world units per
     ///     second. Lower gears the vehicle down for more pull.
     ///   - centerOfMass: where the weight hangs, in the chassis's local space.
@@ -546,7 +546,7 @@ public final class World3D {
     ///     … `1` inextensible.
     ///   - bend: how hard it resists being folded, `0` (the default) limp like
     ///     fabric … `1` stiff like card. Anything above 0 costs a constraint
-    ///     per pair of neighbouring faces.
+    ///     per pair of neighboring faces.
     ///   - pressure: how hard the inside of a closed surface pushes out, in
     ///     gravities: `1` just holds its own weight up, `2`…`4` reads as a firm
     ///     ball. Ignored on an open sheet.

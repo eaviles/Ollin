@@ -134,7 +134,7 @@ public struct Population: Sendable, RandomAccessCollection {
         /// two most thoroughly, and the usual choice.
         case independent
         /// Genes before a random point come from one parent, the rest from the other.
-        /// Keeps runs of genes together, which matters when neighbouring genes work as
+        /// Keeps runs of genes together, which matters when neighboring genes work as
         /// a group.
         case split
         /// Every gene lands part way between the parents. Makes a child that looks like

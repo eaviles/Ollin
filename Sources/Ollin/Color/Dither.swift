@@ -4,7 +4,7 @@ import Foundation
 //
 // Two families, sharing one pass. *Error diffusion* (Floyd-Steinberg and its
 // descendants) quantizes a pixel, then pushes the rounding error onto the
-// neighbours it has not visited yet, so the mistake is paid back nearby. It is
+// neighbors it has not visited yet, so the mistake is paid back nearby. It is
 // serial by nature: a pixel's value depends on every pixel before it, which is
 // why this is CPU work and not a fragment shader. *Threshold maps* (an ordered
 // Bayer matrix, a blue-noise tile) instead nudge each pixel by a fixed
@@ -412,7 +412,7 @@ private struct PaletteQuantizer: Quantizing {
     /// white, and red as a red-and-white pink.
     ///
     /// The winning pair is oriented dark to light, so a rising threshold always
-    /// flips toward the lighter color and neighbouring tones lay down the same
+    /// flips toward the lighter color and neighboring tones lay down the same
     /// pattern in the same phase. Choosing the light color at exactly the
     /// fraction of the pixel's linear light is what reproduces the tone once
     /// the dots blur: over a flat field the threshold sweeps uniformly, so the
@@ -725,7 +725,7 @@ enum BlueNoiseTile {
             }
 
             /// The cell of the tightest cluster: the filled cell with the most
-            /// filled neighbours. Ties go to the lowest index, so the tile is
+            /// filled neighbors. Ties go to the lowest index, so the tile is
             /// deterministic.
             func tightestCluster(_ pattern: UnsafeMutablePointer<Bool>,
                                  _ energy: UnsafeMutablePointer<Double>) -> Int {
@@ -738,7 +738,7 @@ enum BlueNoiseTile {
             }
 
             /// The cell of the largest void: the empty cell with the fewest
-            /// filled neighbours.
+            /// filled neighbors.
             ///
             /// Past the halfway point the roles invert and the algorithm wants
             /// the tightest cluster of *empty* cells instead. It needs no

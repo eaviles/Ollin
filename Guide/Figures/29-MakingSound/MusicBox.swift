@@ -3,7 +3,7 @@
 // Guide payoff (Chapter 29): the music box. A piece that plays itself out of
 // the chapter's parts (a step counter, three Euclidean rhythms, a scale, a
 // chord built from that scale, an arpeggio over it, and a Markov chain that
-// keeps a motif's habits) through three kinds of voice: a modelled steel
+// keeps a motif's habits) through three kinds of voice: a modeled steel
 // string, an FM bell patched by hand, and a breath pad. What it draws is its
 // own score scrolling past, so the picture is a record of what you can hear.
 import Ollin

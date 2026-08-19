@@ -8,7 +8,7 @@ import Foundation
 ///
 /// `feed` and `kill` are the same two numbers the texture-space simulation
 /// takes, so a pairing that gives a look there gives the same look here. The
-/// presets are the well-travelled corners of that parameter space.
+/// presets are the well-traveled corners of that parameter space.
 public struct SurfaceChemistry: Sendable, Equatable {
 
     /// How fast the first chemical is replenished. Higher values fill the

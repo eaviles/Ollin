@@ -2,12 +2,12 @@ import Ollin
 
 /// Silverman's **Brian's Brain**, the three-state automaton that reads as pure
 /// electricity: every cell is ready, firing, or resting. A ready cell fires when
-/// exactly two of its eight neighbours are firing, a firing cell spends the next
+/// exactly two of its eight neighbors are firing, a firing cell spends the next
 /// step resting (and cannot be re-lit), and a resting cell returns to ready.
 /// Almost any random soup explodes into permanent traffic, gliders racing along
 /// the diagonals and orthogonals trailed by their afterglow, though a *solid* blob
 /// dies at once (every interior cell rests together, and a flat edge shows three
-/// neighbours where a birth needs exactly two), so the brush here sprinkles loose
+/// neighbors where a birth needs exactly two), so the brush here sprinkles loose
 /// cells rather than painting a disc. The ramp keeps the classic reading (black
 /// ground, cool afterglow, white fire). Drag to sprinkle more; hold a key and
 /// drag to wipe a region clear.

@@ -179,7 +179,7 @@ public final class SampledInstrument: @unchecked Sendable {
     ///
     /// A struck bar, recorded at five pitches a fourth apart. It is generated
     /// rather than sourced (`Scripts/make-sample-instrument.swift`), so it is
-    /// Ollin's own and carries no licence of anyone else's. It is a
+    /// Ollin's own and carries no license of anyone else's. It is a
     /// demonstration and not a library: five recordings and a few hundred
     /// kilobytes, where a real instrument is hundreds of recordings and
     /// gigabytes.

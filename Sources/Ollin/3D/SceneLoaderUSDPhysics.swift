@@ -18,7 +18,7 @@ import simd
 //   PhysicsCollisionAPI, no body    → a static collider: scenery.
 //   physics:kinematicEnabled        → driven rather than simulated
 //   physics:rigidBodyEnabled false  → static after all
-//   PhysicsMassAPI                  → mass, density, centre of mass
+//   PhysicsMassAPI                  → mass, density, center of mass
 //   PhysicsMaterialAPI (bound)      → friction and restitution
 //   PhysicsMeshCollisionAPI         → how a mesh is approximated
 //   PhysicsScene                    → gravity
@@ -58,7 +58,7 @@ package struct ScenePhysicsShape: Sendable {
     package enum Form: Sendable {
         case box(width: Double, height: Double, depth: Double)
         case sphere(radius: Double)
-        /// A capsule standing on y, `height` between the cap centres.
+        /// A capsule standing on y, `height` between the cap centers.
         case capsule(height: Double, radius: Double)
         case cylinder(height: Double, radius: Double)
         case cone(height: Double, radius: Double)
@@ -81,7 +81,7 @@ package struct ScenePhysicsShape: Sendable {
 
 /// One rigid body the file describes.
 package struct ScenePhysicsBody: Sendable {
-    /// The prim's name, which is what a sketch recognises it by.
+    /// The prim's name, which is what a sketch recognizes it by.
     package var name: String
     /// The prim's path, which is what a joint names it by.
     package var path: String

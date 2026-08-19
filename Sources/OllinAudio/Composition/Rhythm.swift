@@ -14,7 +14,7 @@ import Foundation
 /// many of the rhythms people already play: `Rhythm(3, in: 8)` is the Cuban
 /// tresillo, `Rhythm(5, in: 8)` the cinquillo, and `Rhythm(7, in: 12)` started
 /// three onsets in is the bell pattern heard across west Africa. The named ones
-/// are collected under ``tresillo`` and its neighbours.
+/// are collected under ``tresillo`` and its neighbors.
 ///
 /// A rhythm can also be written out, which is what you want when you have a
 /// pattern in mind rather than a count:
@@ -180,7 +180,7 @@ extension Rhythm: ExpressibleByStringLiteral {
 // MARK: - Rhythms people already play
 
 extension Rhythm {
-    /// Three strikes over eight steps, the most widely travelled of these:
+    /// Three strikes over eight steps, the most widely traveled of these:
     /// the Cuban tresillo, and the left hand of a great deal of rock and roll.
     public static let tresillo = Rhythm(3, in: 8)
 

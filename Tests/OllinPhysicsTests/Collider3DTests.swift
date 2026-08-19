@@ -39,7 +39,7 @@ struct Collider3DTests {
 
     /// The Windmill proof, distilled: a two-box bar hinged at its middle. With
     /// equal part densities it balances; make one end heavy and the assembly's
-    /// centre of mass moves off the pivot, so gravity tips it. A welded pair
+    /// center of mass moves off the pivot, so gravity tips it. A welded pair
     /// of separate bodies can fake the pose but the compound carries the true
     /// mass properties in one body.
     @Test func compoundBalanceFollowsPartDensity() {
@@ -134,7 +134,7 @@ struct Collider3DTests {
         let plateau = Heightfield(columns: 33, rows: 33, repeating: 0.5)
         world.addBody(.heightfield(plateau, width: 8, depth: 8, height: 2),
                       at: .zero, kind: .static)
-        // Surface at 0.5 · 2 = 1; the ball's centre rests a radius above it,
+        // Surface at 0.5 · 2 = 1; the ball's center rests a radius above it,
         // away from the middle so the extent mapping is exercised too.
         let ball = world.addBody(.sphere(radius: 0.3), at: Vector3(1.4, 3, -2.1))
 

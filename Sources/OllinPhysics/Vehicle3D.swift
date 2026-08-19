@@ -117,7 +117,7 @@ public final class Vehicle3D {
 
     // MARK: The machine
 
-    /// How hard the engine pulls, in newton-metres at the crank. More torque
+    /// How hard the engine pulls, in newton-meters at the crank. More torque
     /// spins the wheels sooner rather than accelerating harder: grip is the
     /// ceiling, not power.
     public var engineTorque: Double {
@@ -163,7 +163,7 @@ public final class Vehicle3D {
     }
 
     /// How stiffly the two wheels of an axle are tied together, in newtons per
-    /// metre: the outside wheel's compression lifts the inside one, which is
+    /// meter: the outside wheel's compression lifts the inside one, which is
     /// what keeps a vehicle flat through a corner. `0` unties them.
     public var antiRollStiffness: Double = 1000 {
         didSet { cjolt_vehicle_set_anti_roll(handle, Float(max(0, antiRollStiffness))) }
@@ -171,7 +171,7 @@ public final class Vehicle3D {
 
     // MARK: Where it is and what it is doing
 
-    /// How fast the vehicle is travelling along its own forward axis, in world
+    /// How fast the vehicle is traveling along its own forward axis, in world
     /// units per second. Negative while reversing.
     public var speed: Double {
         body.velocity.dot(forward)
@@ -296,7 +296,7 @@ public final class Vehicle3D {
 
     /// The machine's weight, kept because a track band's inertia is derived
     /// from it (see `driveLayout`), and because it is not something a chassis
-    /// body can be asked for once its centre of mass has been moved.
+    /// body can be asked for once its center of mass has been moved.
     let chassisMass: Double
 
     /// Where the weight hangs inside the chassis, in its local space: what
@@ -442,7 +442,7 @@ public final class Vehicle3D {
         }
         var bands: [TrackBand] = []
         var driven = [Bool](repeating: false, count: wheels.count)
-        // Newton-metres over a world whose metre is `unitsPerMeter`, so a
+        // Newton-meters over a world whose meter is `unitsPerMeter`, so a
         // torque scales with the square of it.
         let torqueScale = 1 / (world.unitsPerMeter * world.unitsPerMeter)
         for side in sides {
@@ -637,7 +637,7 @@ public final class Wheel3D {
     /// overshooting, and lower values wallow.
     public var suspensionDamping: Double = 0.5 { didSet { pushSettings() } }
 
-    /// How hard the brakes bite on this wheel, in newton-metres. On a tracked
+    /// How hard the brakes bite on this wheel, in newton-meters. On a tracked
     /// machine the brake belongs to the whole band, so this is that band's
     /// share of it.
     public var brakeTorque: Double = 1500 {
@@ -649,7 +649,7 @@ public final class Wheel3D {
         }
     }
 
-    /// How hard the hand brake bites on this wheel, in newton-metres. Zero on
+    /// How hard the hand brake bites on this wheel, in newton-meters. Zero on
     /// the front wheels of a car, so pulling it slides the back out.
     public var handBrakeTorque: Double = 0 { didSet { pushSettings() } }
 
@@ -813,7 +813,7 @@ public final class Wheel3D {
         desc.casterAngle = Float(casterAngle)
         desc.maxSteerAngle = Float(steers ? max(0, maxSteerAngle) : 0)
         // A torque scales with the square of the unit scale, the way a torque
-        // does: newton-metres over a world whose metre is `unitsPerMeter`.
+        // does: newton-meters over a world whose meter is `unitsPerMeter`.
         let torqueScale = 1 / (world.unitsPerMeter * world.unitsPerMeter)
         desc.maxBrakeTorque = Float(max(0, brakeTorque) * torqueScale)
         desc.maxHandBrakeTorque = Float(max(0, handBrakeTorque) * torqueScale)

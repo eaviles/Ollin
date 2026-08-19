@@ -559,7 +559,7 @@ private struct MonitorCostRow: View {
         .padding(.bottom, 10)
     }
 
-    /// One labelled bar: icon and name, a track filled to the share of the frame
+    /// One labeled bar: icon and name, a track filled to the share of the frame
     /// this side took, and the number in milliseconds.
     private func costBar(icon: String, value: Double,
                          tint: SwiftUI.Color, label: String) -> some View {
@@ -1040,7 +1040,7 @@ private struct ParamRangeSlider: View {
     }
 }
 
-/// A labelled slider: icon + label and the scrubbable value pill on top, a thin
+/// A labeled slider: icon + label and the scrubbable value pill on top, a thin
 /// tinted slider below. Local state drives smooth dragging and the readout; a
 /// user edit is written into the live `Param` and reported to `onChange`.
 ///

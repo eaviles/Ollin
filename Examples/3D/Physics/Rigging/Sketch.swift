@@ -124,7 +124,7 @@ final class Rigging: Sketch {
     }
 
     /// Leaves along the stem, each one standing off its own segment. They are
-    /// placed by the rod's frame rather than by the line between neighbouring
+    /// placed by the rod's frame rather than by the line between neighboring
     /// points, so they turn with the stem as it twists rather than only as it
     /// bends.
     func drawVine() {

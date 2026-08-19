@@ -31,7 +31,7 @@ public struct Metaballs: Sendable, Equatable {
         /// The radius this ball reads at on its own, at the default `level`.
         public var radius: Double
         /// How hard the ball pushes. Above 1 it swells and merges more eagerly;
-        /// a negative strength carves into its neighbours instead of joining
+        /// a negative strength carves into its neighbors instead of joining
         /// them.
         public var strength: Double
 
@@ -112,7 +112,7 @@ public struct Metaballs: Sendable, Equatable {
     }
 
     /// The soft-object falloff, in terms of `u`, the squared distance over the
-    /// squared reach. It runs from 1 at the centre to 0 at the reach, flattening
+    /// squared reach. It runs from 1 at the center to 0 at the reach, flattening
     /// out at both ends, and is written in `u` so a distance never needs a
     /// square root. At `u` = 1/4, that is halfway out, it is exactly 1/2, which
     /// is what puts a lone ball's surface on its own `radius`.
@@ -122,7 +122,7 @@ public struct Metaballs: Sendable, Equatable {
 }
 
 public extension Metaballs {
-    /// A field built from centres that all share one radius and strength.
+    /// A field built from centers that all share one radius and strength.
     init(centers: [Vector3], radius: Double, strength: Double = 1, level: Double = 0.5) {
         self.init(centers.map { Ball(center: $0, radius: radius, strength: strength) }, level: level)
     }

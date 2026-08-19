@@ -47,7 +47,7 @@ public extension Installation {
         public var shows: Rectangle
 
         /// Where that part lands on the output, in fractions of the display.
-        /// ``Corners/fit`` keeps its proportions and centres it, which is what
+        /// ``Corners/fit`` keeps its proportions and centers it, which is what
         /// you see before anybody drags anything.
         public var corners: Corners
 
@@ -102,7 +102,7 @@ public extension Installation {
         public struct Corners: Sendable, Equatable, Codable {
 
             /// Keep the picture's own proportions, as large as it can be,
-            /// centred. What every run starts from.
+            /// centered. What every run starts from.
             public static let fit = Corners()
 
             /// Stretch the picture to the whole output, proportions and all.
@@ -139,7 +139,7 @@ public extension Installation {
                     return Corners.filling.points ?? []
                 }
                 // The largest box of the picture's shape inside a unit box of
-                // the display's, then centred in what is left over.
+                // the display's, then centered in what is left over.
                 let wide = pictureAspect > outputAspect
                 let width = wide ? 1 : pictureAspect / outputAspect
                 let height = wide ? outputAspect / pictureAspect : 1

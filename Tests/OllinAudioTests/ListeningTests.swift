@@ -9,7 +9,7 @@ import Testing
 /// There is no pixel snapshot here (a sound cannot be snapshotted) and no
 /// microphone (a test cannot make a noise in the room). Instead every check
 /// runs over audio the test synthesizes itself, which is also what keeps them
-/// deterministic: the same samples always produce the same judgement, and each
+/// deterministic: the same samples always produce the same judgment, and each
 /// claim is measured against a counterfactual made of different samples.
 @Suite struct ListeningTests {
 

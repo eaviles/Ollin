@@ -6,7 +6,7 @@ import Ollin
 /// `.post(...)` filters, and composited in its `.blend(...)` mode, in the order
 /// written. The intermediate layers are managed for you.
 ///
-/// Three layers here: a **blurred** colour-field backdrop (rendered at half
+/// Three layers here: a **blurred** color-field backdrop (rendered at half
 /// resolution, since a blur throws detail away), a ring of **bloomed** dots added
 /// as light, and a slowly turning lattice **screened** on top as a faint structural
 /// overlay.

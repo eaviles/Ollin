@@ -271,7 +271,7 @@ struct ComplexTextTests {
     /// built from is already the unit that may not be split: a comma arrives joined
     /// to the character it follows, an opening bracket to the one it precedes.
     /// Filling greedily by whole pieces therefore carries the forbidden character
-    /// onto the next line along with its neighbour, which is what the rules ask for.
+    /// onto the next line along with its neighbor, which is what the rules ask for.
     ///
     /// The second half of the test is the counterfactual, and it is why the first
     /// half means anything: the obvious way to wrap a language with no spaces is to

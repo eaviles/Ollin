@@ -105,7 +105,7 @@ public final class DMXSender {
         guard !closed else { return }
         closed = true
         if dmxProtocol == .sACN, !pacers.isEmpty {
-            // Wait (briefly) for the goodbyes to reach the wire; cancelling
+            // Wait (briefly) for the goodbyes to reach the wire; canceling
             // right away would drop sends still queued on the connection.
             let inFlight = DispatchGroup()
             for universe in pacers.keys.sorted() {

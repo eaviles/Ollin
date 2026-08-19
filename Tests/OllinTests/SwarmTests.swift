@@ -53,7 +53,7 @@ struct SwarmTests {
     func cohesionCrowdsAndSeparationOpensUp() throws {
         // Both are measured as how far an agent sits from its *nearest* neighbor,
         // which is the thing each behavior is actually about, and which works on a
-        // uniformly seeded torus where distance from the centre would not move.
+        // uniformly seeded torus where distance from the center would not move.
         let coasting = try nearestNeighborDistance { _ in }
         let gathered = try nearestNeighborDistance { $0.cohesion = 2 }
         let spread = try nearestNeighborDistance {
@@ -78,7 +78,7 @@ struct SwarmTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func arriveStopsWhereSeekKeepsOvershooting() throws {
         // Both crowds end up on the target; the difference is that arrive is *done*
-        // and seek never is, because seek always wants to be travelling at top speed
+        // and seek never is, because seek always wants to be traveling at top speed
         // and so keeps sailing through and turning back. The ramp that stops arrive
         // lives in the force's magnitude, which is why arrive is the one behavior
         // whose steering must not be normalized.

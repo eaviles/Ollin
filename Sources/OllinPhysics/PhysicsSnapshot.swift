@@ -633,7 +633,7 @@ extension World3D {
     private func place(_ body: Body3D, at pose: Pose3D) {
         guard body !== groundBody else { return }
         // Both at once, never one then the other: the solver holds a body by
-        // its centre of mass, so a position written against the orientation
+        // its center of mass, so a position written against the orientation
         // the body still has lands a shape that sits off its own origin (a
         // ragdoll limb) a fraction out of place.
         withFloats3(meters(from: pose.position)) { position in

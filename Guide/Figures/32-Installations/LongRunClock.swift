@@ -99,7 +99,7 @@ final class LongRunClock: Sketch {
         drawText(text, p.x, p.y)
     }
 
-    /// One reading of that frame: a coloured dot, how it was measured, the
+    /// One reading of that frame: a colored dot, how it was measured, the
     /// number it gives, and what that costs.
     func answer(mark: String, value: String, note: String, tint: Color, y: Double) {
         noStroke()

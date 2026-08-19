@@ -13,7 +13,7 @@ final class Tumble: Sketch {
     let world = World()
     let maxBodies = 150
 
-    /// A shape's geometry (in body-local space) plus its colour, hung off
+    /// A shape's geometry (in body-local space) plus its color, hung off
     /// `Body.userData`. The same `Form` drives both the collider and the drawing,
     /// so they can't drift apart.
     enum Form {

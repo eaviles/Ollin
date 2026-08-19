@@ -6028,7 +6028,7 @@ private final class EffectsCatalog: Sketch {
 
 /// A representative sample of the extended filter catalog — one tile per family,
 /// covering a color/tone pass (vibrance), a multi-tap stylize gather (oilPaint), a
-/// neighbourhood pass (emboss), a print screen (cmykHalftone), a uv warp
+/// neighborhood pass (emboss), a print screen (cmykHalftone), a uv warp
 /// (kaleidoscope), and a retro pass (scanlines). Deterministic (no time/random), so
 /// it pins the added `applyFilter` dispatch and the new `ollin_fx_*` fragments.
 private final class EffectsFilters: Sketch {
@@ -6498,7 +6498,7 @@ private final class EffectsFluid: Sketch {
 
     override func setup() {
         fluid = simField(.fluid(curl: 30), scale: 0.5)
-        prev = Vector2(width / 2, height / 2)   // start at centre = the path's t = 0 (no jump)
+        prev = Vector2(width / 2, height / 2)   // start at center = the path's t = 0 (no jump)
     }
 
     override func draw() {
@@ -6600,7 +6600,7 @@ private final class EffectsCombine: Sketch {
         drawImage(scene().combined(with: mask.filtered(.gaussianBlur(radius: 8)), .mask()).image,
                   in: Rectangle(x: 0, y: 0, width: 128, height: 128))
 
-        // displace: the scene pushed around by a blurred off-centre bump on mid-gray.
+        // displace: the scene pushed around by a blurred off-center bump on mid-gray.
         let dmap = renderTarget()
         withTarget(dmap) { background(Color(white: 0.5)); noStroke(); fill(.white); drawCircle(width * 0.65, height * 0.35, 80) }
         drawImage(scene().combined(with: dmap.filtered(.gaussianBlur(radius: 20)), .displace(amount: 0.08)).image,
@@ -6651,7 +6651,7 @@ private final class EffectsDefocus: Sketch {
     override func draw() {
         background(Color(white: 0.05))
         // Drawn far → near (blue, green, red) so the nearer discs occlude, in both the
-        // colour scene and the matching depth map.
+        // color scene and the matching depth map.
         let far   = (x: 0.60, gray: 0.82, color: Color(red: 0.3, green: 0.6, blue: 1))
         let mid   = (x: 0.50, gray: 0.50, color: Color(red: 0.3, green: 1, blue: 0.5))
         let near  = (x: 0.40, gray: 0.18, color: Color(red: 1, green: 0.35, blue: 0.2))

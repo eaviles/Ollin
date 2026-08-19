@@ -5,16 +5,16 @@ import Testing
 /// Behavioral probes for the `.defocus` depth-of-field combine, rendered headless and
 /// read back. The pixel snapshots pin the *look* of a whole defocused scene but average
 /// away the defects that show up while a focal plane racks, so these pin the gather's
-/// rules directly: a near spread invents no colour, a sharp subject rejects the blurred
+/// rules directly: a near spread invents no color, a sharp subject rejects the blurred
 /// backdrop behind it, a lightly defocused midground keeps its silhouette against a
 /// heavily defocused backdrop, and a layer with transparency blurs its coverage along
-/// with its colour. Metal-gated.
+/// with its color. Metal-gated.
 @Suite
 @MainActor
 struct DefocusTests {
 
     /// Blurring white with white must give white. The near (foreground) field is a
-    /// running average, and seeding it with black rather than the centre texel left it
+    /// running average, and seeding it with black rather than the center texel left it
     /// converging *from* black, so a partly covered foreground composited a dark ring
     /// over the background: this scene came back with a ~12% dip at the edge of the
     /// near spread.
@@ -36,7 +36,7 @@ struct DefocusTests {
     @Test(.enabled(if: Snapshot.hasMetal))
     func sharpSubjectRejectsTheBackdrop() throws {
         let image = try #require(OllinApp.image(of: MidgroundProbe.make(depth: 0.30), frame: 1))
-        // 20px inside the silhouette, the square is its own colour and nothing else.
+        // 20px inside the silhouette, the square is its own color and nothing else.
         #expect(redRun(of: image, y: 300, from: 170, to: 280).min ?? 0 >= 250)
     }
 
@@ -49,7 +49,7 @@ struct DefocusTests {
     func midgroundKeepsItsEdgeAgainstAFarBackdrop() throws {
         let image = try #require(OllinApp.image(of: MidgroundProbe.make(depth: 0.52), frame: 1))
         // Depth 0.52 gives the square a 4.8px circle of confusion against the backdrop's
-        // 48px, so it must be back to its own colour within a few px of its edge.
+        // 48px, so it must be back to its own color within a few px of its edge.
         // (Measured: 5px with the clamp, 30px without.)
         let recovery = try #require(firstX(inImage: image, y: 300, from: 150, to: 260,
                                            reaching: 250))
@@ -75,8 +75,8 @@ struct DefocusTests {
         #expect(run[360 - 318] > 40)
     }
 
-    /// The layers are premultiplied, so the gather has to carry alpha with the colour.
-    /// Blurring only rgb left a hard alpha edge around a soft colour edge: the shape
+    /// The layers are premultiplied, so the gather has to carry alpha with the color.
+    /// Blurring only rgb left a hard alpha edge around a soft color edge: the shape
     /// stopped being premultiplied, and its silhouette stayed razor sharp no matter how
     /// much blur was asked for.
     @Test(.enabled(if: Snapshot.hasMetal))
@@ -143,7 +143,7 @@ struct DefocusTests {
 // MARK: Probe sketches
 
 /// A uniformly white layer defocused by a depth map whose only feature is a *near* disc:
-/// the near field spreads, but there is no second colour anywhere for it to spread.
+/// the near field spreads, but there is no second color anywhere for it to spread.
 private final class NearSpreadProbe: Sketch {
     override var canvasSize: CanvasSize { .square(600) }
     override func draw() {
@@ -160,7 +160,7 @@ private final class NearSpreadProbe: Sketch {
 }
 
 /// A red square at `depth` over a far backdrop, with the depth map's square drawn 10px
-/// proud of the colour square so its anti-aliased rim sits away from the colour edge
+/// proud of the color square so its anti-aliased rim sits away from the color edge
 /// (that rim is its own, separate artifact and would muddy the reading here).
 /// focus 0.30, range 0.20, maxBlur 48, so depth 0.30 is sharp and 0.55 blurs by 12px
 /// while the backdrop blurs by the full 48.
@@ -216,7 +216,7 @@ private final class NearEdgeProbe: Sketch {
 }
 
 /// A red disc on an otherwise *transparent* layer, defocused, composited over white:
-/// the coverage has to blur with the colour or the silhouette stays hard.
+/// the coverage has to blur with the color or the silhouette stays hard.
 private final class TransparentEdgeProbe: Sketch {
     override var canvasSize: CanvasSize { .square(600) }
     override func draw() {

@@ -55,7 +55,7 @@ public struct Matcap {
     @MainActor public static let bronze = Matcap(bundled("bronze"))
     /// Glossy candy car paint (a clear-coat metallic red).
     @MainActor public static let carpaint = Matcap(bundled("carpaint"))
-    /// Machined hard-surface metal, neutral grey.
+    /// Machined hard-surface metal, neutral gray.
     @MainActor public static let hardSurfaceGrey = Matcap(bundled("hardSurfaceGrey"))
     /// Machined hard-surface metal, red.
     @MainActor public static let hardSurfaceRed = Matcap(bundled("hardSurfaceRed"))
@@ -84,14 +84,14 @@ public struct Matcap {
     /// Amber translucent resin.
     @MainActor public static let resin = Matcap(bundled("resin"))
 
-    // Neutral studio greys
-    /// A clean neutral-grey reference sphere — the plain "show me the form" finish.
+    // Neutral studio grays
+    /// A clean neutral-gray reference sphere — the plain "show me the form" finish.
     @MainActor public static let studio = Matcap(bundled("studio"))
-    /// Bright, evenly-lit neutral grey.
+    /// Bright, evenly-lit neutral gray.
     @MainActor public static let basicBright = Matcap(bundled("basicBright"))
-    /// Dim neutral grey.
+    /// Dim neutral gray.
     @MainActor public static let basicDark = Matcap(bundled("basicDark"))
-    /// Side-lit neutral grey (strong directional modeling).
+    /// Side-lit neutral gray (strong directional modeling).
     @MainActor public static let basicSide = Matcap(bundled("basicSide"))
 
     // Toon / cel

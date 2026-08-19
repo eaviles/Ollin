@@ -149,7 +149,7 @@ struct SoftBody3DTests {
     }
 
     @Test func stiffnessMeansTheSameAtAnyWeight() throws {
-        // Compliance is metres per newton, so a fixed number would soften a
+        // Compliance is meters per newton, so a fixed number would soften a
         // heavy cloth and do nothing to a light one. The knob is normalized by
         // the body's own weight, and this is what pins that.
         func stretch(mass: Double) throws -> Double {

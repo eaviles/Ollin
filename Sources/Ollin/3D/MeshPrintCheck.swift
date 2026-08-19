@@ -22,7 +22,7 @@ public struct MeshPrintCheck: Sendable {
     /// Whether every edge is shared by exactly two triangles, so the surface
     /// encloses a solid with no holes and no loose flaps.
     public var isClosed: Bool
-    /// Whether neighbouring triangles agree on which side is out. Two triangles
+    /// Whether neighboring triangles agree on which side is out. Two triangles
     /// sharing an edge agree when they run along it in opposite directions.
     public var isConsistentlyOriented: Bool
     /// Whether the surface is closed but wound inward, so the solid a printer

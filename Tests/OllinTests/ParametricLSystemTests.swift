@@ -547,7 +547,7 @@ struct ParametricLSystemTests {
     @Test func theTaperedTreeThinsTowardsItsTwigs() {
         let marks = ParametricLSystem.taperedTree().marks(iterations: 8, step: 1)
         let widths = marks.flatMap { $0.samples.map(\.width) }
-        #expect(abs(widths.max()! - 1) < 1e-9)   // normalised to the widest
+        #expect(abs(widths.max()! - 1) < 1e-9)   // normalized to the widest
         #expect(widths.min()! < 0.2)
     }
 

@@ -486,8 +486,8 @@ extension Drawer {
     /// not be split, so a closing bracket, a full stop and a small kana all arrive
     /// joined to the character they follow, and an opening bracket to the one it
     /// precedes. Filling greedily by whole pieces is therefore what pushes a
-    /// forbidden character onto the next line along with its neighbour, which is the
-    /// behaviour those rules ask for.
+    /// forbidden character onto the next line along with its neighbor, which is the
+    /// behavior those rules ask for.
     func wrapToExtent(_ string: String, _ maxExtent: Double) -> String {
         wrappedLines(string, maxExtent).lines.joined(separator: "\n")
     }
@@ -555,7 +555,7 @@ extension Drawer {
         let vertical = runsVertically
 
         // Where the run starts, and the fixed coordinate it holds across its own
-        // axis: the baseline of a line, the centre axis of a column.
+        // axis: the baseline of a line, the center axis of a column.
         // How wide the column is, and where its axis sits inside it: an em square
         // either side of the middle where the glyphs stand upright, the ascent and
         // the descent either side of the baseline where they are turned.

@@ -154,7 +154,7 @@ extension Drawer {
     ///
     /// A stroke is expanded segment by segment, and if each segment ends on its
     /// own perpendicular it runs past the point where its inner edge meets its
-    /// neighbour's, so both quads cover the wedge between the two perpendiculars.
+    /// neighbor's, so both quads cover the wedge between the two perpendiculars.
     /// Opaque ink hides that. Ink that is not opaque composites the wedge twice:
     /// a hard darker patch at every corner (a full second coat at a right angle),
     /// a graded dark band down the inside of a dense curve, a comb of dark radial
@@ -165,7 +165,7 @@ extension Drawer {
     /// exactly `off` from *both* centerlines, which is what lets a caller keep
     /// using its own offsets (and any coverage ramp derived from them) unchanged.
     /// `halfWidth` reports the outermost offset the caller will apply at a vertex,
-    /// since that is what has to stay inside the neighbouring segments.
+    /// since that is what has to stay inside the neighboring segments.
     static func innerCrossings(_ pts: [Vector2], closed: Bool,
                                halfWidth: (Int) -> Double) -> [Vector2?] {
         let n = pts.count
@@ -185,7 +185,7 @@ extension Drawer {
             guard dmr2 > 1e-6 else { continue }         // a hairpin has no crossing
             let scale = 1 / dmr2                        // |bisector| is cos(half the turn)
             guard scale <= 600 else { continue }        // near enough to a hairpin
-            // The crossing has to fall inside both neighbouring segments, or the
+            // The crossing has to fall inside both neighboring segments, or the
             // stroke turns itself inside out. Where it does not the ends stay
             // square: a corner that sharp folds over itself whatever we do, and an
             // overlap is a kinder failure than a crack. Clamping the crossing to a

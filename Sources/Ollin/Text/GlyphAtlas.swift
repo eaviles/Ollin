@@ -43,7 +43,7 @@ final class GlyphAtlas: @unchecked Sendable {
     private static let atlasFontSize: CGFloat = 48
     /// SDF range / padding in texels: the field saturates to fully-in / fully-out
     /// at ±`spread` texels from the edge, and each cell carries a `spread` margin
-    /// so neighbours can't bleed under linear sampling.
+    /// so neighbors can't bleed under linear sampling.
     private static let spread = 6
     /// A guard texel between packed cells.
     private static let gutter = 1

@@ -43,7 +43,7 @@ struct LiveRootView: View {
 
     /// Briefly shown after a successful hot reload.
     @State private var showReloadedToast = false
-    /// The pending hide of the reload toast — cancelled and rescheduled by each
+    /// The pending hide of the reload toast — canceled and rescheduled by each
     /// reload, so rapid saves don't let an earlier timer cut the toast short.
     @State private var toastHide: Task<Void, Never>?
     /// Whether the inspector sidebar is shown. Owned here (not NavigationSplitView,

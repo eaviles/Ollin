@@ -7,7 +7,7 @@ import Foundation
 /// into an image so lights and shadows stop applying, and traced reflections
 /// need an environment and a physically based finish before they do anything.
 /// That map already exists in prose (`Docs/3D/Combining.md`); this is the same
-/// map as data, so a generator can grey out what does not apply and say why
+/// map as data, so a generator can gray out what does not apply and say why
 /// rather than leaving someone to find out by rendering.
 ///
 /// A rule here should be traceable to a line in that page. If the two disagree,
@@ -39,7 +39,7 @@ public struct ThreeDOption: Sendable, Hashable, Identifiable {
     /// Options this one cannot be combined with.
     public let conflicts: [String]
     /// Why it conflicts or what it needs, in one sentence, for the moment
-    /// someone hovers a row that is greyed out.
+    /// someone hovers a row that is grayed out.
     public let rule: String
 
     public init(id: String, title: String, slot: Slot, summary: String,
@@ -192,7 +192,7 @@ public struct ThreeDRecipe: Sendable, Hashable {
     ///
     /// Two reasons only: something already chosen rules it out, or it needs
     /// something that is not chosen. Both answer with the rule that says so,
-    /// since a greyed-out row with no reason is worse than no row.
+    /// since a grayed-out row with no reason is worse than no row.
     public func objection(to option: ThreeDOption) -> String? {
         // The choices are a hierarchy, not a flat set: what is on screen decides
         // what can finish it, and those two together decide what can go on top.

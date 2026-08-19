@@ -9,7 +9,7 @@ import OllinPhysics
 
 /// A field of discs drifting weightlessly, bouncing off the walls and off each
 /// other, each drawn as a slowly spinning token: a translucent disk, a crosshair,
-/// a crisp rim, and a centre dot. The packing and the bouncing are the physics;
+/// a crisp rim, and a center dot. The packing and the bouncing are the physics;
 /// the spin reacts to each token's own speed, so a collision that speeds a token
 /// up spins it faster.
 ///
@@ -100,7 +100,7 @@ final class Packing: Sketch {
             drawLine(-r, 0, r, 0)
             drawLine(0, -r, 0, r)
 
-            // Crisp rim and centre dot.
+            // Crisp rim and center dot.
             noFill()
             stroke(.white)
             drawCircle(center: .zero, radius: r - 1)

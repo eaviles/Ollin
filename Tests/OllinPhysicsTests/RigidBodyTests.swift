@@ -8,7 +8,7 @@ import CBox2D
 /// falls under gravity, a static floor stops it, contacts resolve, and joints
 /// hold. These run in points and convert through `pixelsPerMeter`, so the asserts
 /// are in sketch units. GPU-free, like the Verlet tests beside them. (Box2D's
-/// solver isn't the Verlet solver, so these check behaviour qualitatively, not to
+/// solver isn't the Verlet solver, so these check behavior qualitatively, not to
 /// the last point.)
 ///
 /// `.serialized` is load-bearing: Box2D keeps its worlds in a global pool and is
@@ -68,7 +68,7 @@ struct RigidBodyTests {
 
         run(world, steps: 180, dt: 1.0 / 60)   // let it land and settle
 
-        // It rests on the floor: its centre sits ~halfHeight above the bottom wall.
+        // It rests on the floor: its center sits ~halfHeight above the bottom wall.
         #expect(abs(body.position.y - (600 - halfHeight)) < 6)
         // And it came to rest, not still falling fast.
         #expect(body.velocity.length < 30)
@@ -122,7 +122,7 @@ struct RigidBodyTests {
         // The hinge holds: the bar's near end stays at the pivot throughout…
         let nearEnd = bar.position + Vector2(angle: bar.angle + .pi, length: 100)
         #expect(nearEnd.distance(to: pivot) < 12)
-        // …and gravity swung its centre well below the pivot (toward hanging down).
+        // …and gravity swung its center well below the pivot (toward hanging down).
         #expect(maxY > 180)
     }
 

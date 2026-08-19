@@ -21,7 +21,7 @@ kernel void rd_seed(texture2d<float, access::write> dst [[texture(0)]],
     dst.write(float4(1.0, b, 0.0, 1.0), gid);
 }
 
-// Map chemical B to colour — deep indigo void, lifting through cyan to a hot rim.
+// Map chemical B to color — deep indigo void, lifting through cyan to a hot rim.
 // `srgbToLinear` (from the shader library) authors the palette in sRGB so it lands right
 // under the renderer's linear-light compositing.
 kernel void rd_colorize(texture2d<float, access::read>  src [[texture(0)]],

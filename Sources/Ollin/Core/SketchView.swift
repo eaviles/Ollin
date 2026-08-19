@@ -623,7 +623,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         }
         // The drawable and the present pipeline were built for the running
         // sketch's `colorOutput` and can't be swapped under a live frame, so an
-        // edited one is honoured on the next launch. Said out loud, because
+        // edited one is honored on the next launch. Said out loud, because
         // silently ignoring it looks like the setting doesn't work.
         if newSketch.colorOutput != sketch.colorOutput {
             print("Ollin: colorOutput changed to .\(newSketch.colorOutput.rawValue); "
@@ -1931,8 +1931,8 @@ public enum OllinApp {
     ///
     /// `quality` is the **automatic** render-quality fallback for features the sketch left at
     /// `.default`: it defaults to `.detail` (best quality; export has no frame-rate pressure),
-    /// the `--render-quality` flag overrides it, and a feature the sketch dialled explicitly is
-    /// always honoured regardless.
+    /// the `--render-quality` flag overrides it, and a feature the sketch dialed explicitly is
+    /// always honored regardless.
     /// The offline path-traced render mode for the export paths (the `--path-traced`
     /// flag sets it; a host may set it directly before `image(of:)` / `export`).
     /// nil (the default) keeps every export on the raster pipeline. Stills and the
@@ -2896,7 +2896,7 @@ private final class StandaloneAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// The window for a piece left running: the screen's size, the canvas
-    /// centred inside it at its own proportions on black, and no saved frame
+    /// centered inside it at its own proportions on black, and no saved frame
     /// (a position remembered from a session at a desk is the wrong one here).
     @MainActor
     private func openInstallationWindow(sketch: Sketch, installation: Installation) {

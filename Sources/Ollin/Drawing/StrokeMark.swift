@@ -4,7 +4,7 @@ import Foundation
 /// opacity the hand asked for there. Draw it with `drawMark(_:)`.
 ///
 /// A mark is the recorded half of stroke dynamics. Feed it the pointer once per
-/// frame and it measures how fast the pointer is travelling and how hard it is
+/// frame and it measures how fast the pointer is traveling and how hard it is
 /// pressed, smooths both, runs them through its `StrokeDynamics`, and keeps the
 /// answer alongside the position:
 ///
@@ -92,7 +92,7 @@ public struct StrokeMark: Sendable {
     /// qualifies is what makes the measured speed independent of the frame rate.
     private var pendingTime: Double = 0
 
-    /// Distance travelled so far, handed to the dynamics as `StrokeInput.distance`.
+    /// Distance traveled so far, handed to the dynamics as `StrokeInput.distance`.
     private var travelled: Double = 0
 
     /// The first point, held back until a second one gives it a direction. A
@@ -230,7 +230,7 @@ public struct StrokeMark: Sendable {
     /// (`drawPolyline`, `Contour`, the geometry helpers).
     public var positions: [Vector2] { samples.map(\.position) }
 
-    /// How far the mark has travelled, in canvas points.
+    /// How far the mark has traveled, in canvas points.
     public var length: Double { travelled }
 
     /// The box the recorded points fall in, or `nil` when nothing is recorded.

@@ -742,7 +742,7 @@ extension MetalRenderer {
             //
             // Two passes: a pre-pass reduces the aux depth to per-pixel circle-of-
             // confusion sizes (the size a pixel scatters by, min-filtered so an
-            // anti-aliased silhouette can't fling the colour under it across the whole
+            // anti-aliased silhouette can't fling the color under it across the whole
             // blur radius, and the size it receives, seam-dilated), then the bokeh
             // gather reads that instead of the raw depth. It costs one fullscreen pass
             // and takes the dilation's 8 taps back out of the per-pixel gather.
@@ -891,7 +891,7 @@ extension MetalRenderer {
         }
     }
 
-    /// Evolve a fluid `SimField` one frame: splat the drawn `seed` (its colour into the
+    /// Evolve a fluid `SimField` one frame: splat the drawn `seed` (its color into the
     /// dye, the block's `force` into the velocity), confine the vorticity, project the
     /// velocity to a divergence-free field with a Jacobi pressure solve + gradient
     /// subtraction, then advect velocity and dye along the flow. The persistent
@@ -910,7 +910,7 @@ extension MetalRenderer {
         let texel = SIMD4<Float>(1 / Float(width), 1 / Float(height), 0, 0)
         let dt = config.dt
 
-        // 1. Splat: push the velocity by `force`, add the dye colour, where marks landed.
+        // 1. Splat: push the velocity by `force`, add the dye color, where marks landed.
         //    `force` is canvas points per frame (the brush's motion); dividing by the
         //    timestep turns it into a velocity, so advecting by `dt` moves the dye at the
         //    brush's own speed.

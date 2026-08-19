@@ -257,7 +257,7 @@ final class Crawler: Sketch {
                     radius: radius)
 
         // Walk it at a fixed pitch, sliding the whole run by how far the band
-        // has travelled so the links move rather than the wheels alone.
+        // has traveled so the links move rather than the wheels alone.
         let pitch = 0.34
         var lengths: [Double] = [0]
         for i in 1 ... path.count {

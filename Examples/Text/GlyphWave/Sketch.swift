@@ -3,7 +3,7 @@ import Ollin
 
 /// Per-glyph `drawText`. The closure form hands you every letter — its character,
 /// index, position, and bounds — so you can give each one its own transform and
-/// color before stamping it with `g.draw()`. Here each glyph rides a travelling
+/// color before stamping it with `g.draw()`. Here each glyph rides a traveling
 /// sine wave, tilts into the motion, and takes its own hue: a per-letter effect
 /// that otherwise means measuring and placing each glyph by hand. Uses the bold
 /// system font.

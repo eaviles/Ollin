@@ -33,7 +33,7 @@ struct GlyphStrokeTests {
     }
 
     /// A segment that ends on its own perpendicular overshoots into its
-    /// neighbour and paints the inside of every turn twice: a comb of dark ticks
+    /// neighbor and paints the inside of every turn twice: a comb of dark ticks
     /// along each curve. Fanning the join filler from the path vertex once the
     /// ends bend to the shared crossing leaves a T-junction instead, whose
     /// hairline shows as the same comb in pale. Both have to stay away.

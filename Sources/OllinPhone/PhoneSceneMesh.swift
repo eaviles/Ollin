@@ -67,7 +67,7 @@ public struct PhoneSceneChunk: Sendable, Identifiable {
 /// a sweep of those slices into points. This is the other half of the same idea, but
 /// the phone does the work: ARKit builds a real triangle surface of the room on the
 /// device and streams it block by block, so what arrives is already a mesh with
-/// normals, and already labelled by what each triangle is.
+/// normals, and already labeled by what each triangle is.
 ///
 /// ```swift
 /// let device = PhoneDevice()
@@ -110,7 +110,7 @@ public struct PhoneSceneMesh: Sendable {
     }
 
     /// Drop the block with this `id`, if it is here. The phone retires a block when
-    /// it merges it into a neighbour or decides it was wrong.
+    /// it merges it into a neighbor or decides it was wrong.
     public mutating func remove(_ id: UUID) {
         guard let at = index.removeValue(forKey: id) else { return }
         chunks.remove(at: at)
@@ -187,7 +187,7 @@ public struct PhoneSceneMesh: Sendable {
                     indices: indices)
     }
 
-    /// Just the parts of the room the phone labelled as one of `wanted`: the floor
+    /// Just the parts of the room the phone labeled as one of `wanted`: the floor
     /// on its own, or every seat, or the walls and the ceiling together. A triangle
     /// keeps its vertices, and a vertex no kept triangle uses is dropped, so the
     /// result is as small as the selection.
@@ -202,7 +202,7 @@ public struct PhoneSceneMesh: Sendable {
         mesh(of: Set(wanted))
     }
 
-    /// Just the parts of the room labelled as one of `wanted`, taking a set (the
+    /// Just the parts of the room labeled as one of `wanted`, taking a set (the
     /// variadic `mesh(of:)` is the everyday form).
     public func mesh(of wanted: Set<PhoneSurface>) -> Mesh {
         var positions: [Vector3] = [], normals: [Vector3] = [], indices: [UInt32] = []

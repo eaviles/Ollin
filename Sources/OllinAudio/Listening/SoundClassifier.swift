@@ -83,7 +83,7 @@ public final class SoundClassifier {
     ///   - source: anything that makes sound: an `AudioInput`, an
     ///     `AudioPlayer`, a `Tone`, a playing video.
     ///   - threshold: the confidence a label must reach to count as heard.
-    ///   - windowDuration: how much audio each judgement is made from, in
+    ///   - windowDuration: how much audio each judgment is made from, in
     ///     seconds (clamped to what the classifier supports).
     public init(of source: any AudioTapSource, threshold: Double = 0.6,
                 windowDuration: Double = 1.5) {
@@ -93,7 +93,7 @@ public final class SoundClassifier {
     }
 
     /// Listen to `source` with a sound-classification model of your own: a
-    /// Core ML model that takes audio and reports labelled probabilities (what
+    /// Core ML model that takes audio and reports labeled probabilities (what
     /// Create ML's sound classifier trains).
     public init(of source: any AudioTapSource, model: MLModel, threshold: Double = 0.6,
                 windowDuration: Double = 1.5) {
@@ -133,7 +133,7 @@ public final class SoundClassifier {
     public var classifications: [SoundClassification] { engine.classifications }
 
     /// The single most confident label right now, whatever the threshold, or
-    /// `nil` before the first judgement.
+    /// `nil` before the first judgment.
     public var top: SoundClassification? { engine.top }
 
     /// How sure the classifier is about one label right now, `0...1`, and `0`
@@ -189,7 +189,7 @@ extension SoundClassifier {
     ///   - samples: mono audio, `-1...1`.
     ///   - sampleRate: its rate in Hz.
     ///   - model: a classifier of your own, or `nil` for the built-in one.
-    ///   - windowDuration: how much audio each judgement is made from.
+    ///   - windowDuration: how much audio each judgment is made from.
     nonisolated public static func classify(_ samples: [Float], sampleRate: Double,
                                 model: MLModel? = nil,
                                 windowDuration: Double = 1.5) -> [SoundClassification] {

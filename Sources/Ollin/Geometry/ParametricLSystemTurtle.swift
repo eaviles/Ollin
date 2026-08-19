@@ -170,7 +170,7 @@ extension ParametricLSystem {
         UInt8(ascii: "@"): "is one of the reference implementation's own commands",
     ]
 
-    /// Scale and centre branches to fill `bounds`, keeping their widths. Shares
+    /// Scale and center branches to fill `bounds`, keeping their widths. Shares
     /// its transform with the plain L-system's fit, so a parametric form and a
     /// symbolic one land the same way in the same frame.
     static func fit(_ branches: [LSystemBranch], in bounds: Rectangle,
@@ -187,7 +187,7 @@ extension ParametricLSystem {
 
 public extension Sketch {
 
-    /// The line-work of a parametric L-system, scaled and centred to fill
+    /// The line-work of a parametric L-system, scaled and centered to fill
     /// `bounds` (the whole canvas by default) with a `padding` margin. Driven by
     /// the seeded `random` for a stochastic system, so `seed(_:)` makes the form
     /// reproducible.

@@ -94,7 +94,7 @@ struct Ragdoll3DTests {
         // Left and right are mirror images, so their fits match.
         #expect(abs(try radius("forearmL") - (try radius("forearmR"))) < 1e-3)
         // A limb's shape is pushed out along its bone from the joint it hangs
-        // at, rather than centred on it: the upper arm reaches outward.
+        // at, rather than centered on it: the upper arm reaches outward.
         let armL = try limb(ragdoll, "armL")
         #expect(armL.shapeCenter.x > 0.08)
         #expect(try limb(ragdoll, "armR").shapeCenter.x < -0.08)
@@ -312,7 +312,7 @@ struct Ragdoll3DTests {
 
     @Test func aConeLimitedJointStopsWhereAFreeOneKeepsGoing() {
         /// A rod sticking out sideways from a small fixed post, hung on one
-        /// joint at the post, left to fall under gravity. The rod's centre
+        /// joint at the post, left to fall under gravity. The rod's center
         /// height says how far it got: 0 is still horizontal, -0.5 is hanging
         /// straight down.
         func drop(_ kind: (Vector3, Vector3) -> JointKind3D) -> Double {
@@ -476,7 +476,7 @@ struct Ragdoll3DTests {
         ragdoll.applyImpulse(Vector3(0, 0, 360))
         run(world, steps: 45)
 
-        // It travelled, and it travelled together: every limb took the same
+        // It traveled, and it traveled together: every limb took the same
         // change in velocity, so the shove alone does not fold the figure.
         #expect(ragdoll.position.z > 2)
         #expect(shapeError(ragdoll, from: built) < 0.22)

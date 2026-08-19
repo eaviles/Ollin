@@ -6,8 +6,8 @@ import Ollin
 /// compositor draws it into its own off-screen surface and manages the texture, so
 /// you never thread an intermediate layer by hand.
 ///
-/// Two asides here. The vivid colour field is **displaced** by a blurred, drifting
-/// red/green map (an aside read as a vector field, so the colours ripple as if seen
+/// Two asides here. The vivid color field is **displaced** by a blurred, drifting
+/// red/green map (an aside read as a vector field, so the colors ripple as if seen
 /// through water — mid-gray means no shift, red/green push the sample around). A
 /// fine grid of bright dots is then **masked** by a soft moving spotlight (an aside
 /// read as a reveal) and added as light, so the grid only shows where the light
@@ -21,7 +21,7 @@ final class Aside_Example: Sketch {
     override func draw() {
         background(Color(white: 0.04))
 
-        // The spotlight's drifting centre, shared by the mask aside below.
+        // The spotlight's drifting center, shared by the mask aside below.
         let sx = width * (0.5 + 0.32 * cos(time * 0.5))
         let sy = height * (0.5 + 0.32 * sin(time * 0.4))
 

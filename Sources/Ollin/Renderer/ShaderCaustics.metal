@@ -5,7 +5,7 @@
 // which asks "can the surface see the light" and stops at the first occluder.
 // This chain renders that missing light as photons: emit rays from the caster
 // light through the specular geometry, follow each one through its reflections
-// and refractions while tracking how the bundle of neighbouring rays converges
+// and refractions while tracking how the bundle of neighboring rays converges
 // or spreads (photon differentials), and where a ray finally lands on a rough
 // opaque surface, draw an elliptical footprint whose shape IS that convergence,
 // additively into a screen-space caustics layer the lit mesh fragments then add
@@ -52,7 +52,7 @@ static inline uint ollin_caustics_level_offset(uint level) {
 // Eq. "suggested density" of the technique: d' = d * (a / a_t) + v * g, where a
 // is the texel's average projected footprint area last frame, a_t the target
 // area, v the average temporal variance its photons saw, and g the variance
-// gain. The result is blended with the 3x3 neighbourhood of the *current*
+// gain. The result is blended with the 3x3 neighborhood of the *current*
 // density (temporal weight wt) so small features move smoothly, floored so
 // every texel keeps at least a probe ray (a texel at zero density could never
 // discover a caustic appearing there), and summed (fixed-point atomic) so the
@@ -89,7 +89,7 @@ kernel void ollin_caustics_density(device float *density [[buffer(0)]],
             // probe floor, freeing budget for the texels that do cast.
             suggested = max(d * 0.8, dmin);
         }
-        // Blend with the neighbourhood's current density so a small bright
+        // Blend with the neighborhood's current density so a small bright
         // feature ramps instead of popping (the technique's spatial filter).
         float wt = clamp(cu.feedback.z, 0.0, 1.0);
         float nsum = 0.0; float nw = 0.0;
@@ -244,7 +244,7 @@ fragment CausticGBufFragOut ollin_caustics_gbuffer_fragment(CausticGBufOut in [[
 // MARK: - Photon trace
 //
 // One thread per ray. The thread finds its emission texel through the quadtree,
-// builds the light ray and its two differential neighbours (the u and v
+// builds the light ray and its two differential neighbors (the u and v
 // perturbations, one emission sub-cell apart), and walks the scene: a
 // transmissive hit refracts (Fresnel-weighted, Beer-Lambert-tinted through a
 // solid's interior), a polished metal reflects (F0-tinted), and the first rough
@@ -389,7 +389,7 @@ kernel void ollin_caustics_trace(constant OllinCausticsUniforms &cu [[buffer(0)]
         uint geoId = q.get_committed_geometry_id();
 
         // Transfer the differentials to the hit plane (Igehy): the positional
-        // differential at the hit is the neighbour ray's intersection with it.
+        // differential at the hit is the neighbor ray's intersection with it.
         float3 n = s.N;                              // already faces the ray
         float DdotN = dot(D, n);
         if (fabs(DdotN) < 1e-6) return;
@@ -682,7 +682,7 @@ fragment float4 ollin_caustics_splat_fragment(CausticSplatOut in [[stage_in]],
 //
 // The reflection temporal's scheme on the caustics layer: reproject last frame's
 // resolved caustics through the previous view-projection, clamp to the current
-// 3x3 neighbourhood, blend as an EMA. The alpha channel carries the *variance*
+// 3x3 neighborhood, blend as an EMA. The alpha channel carries the *variance*
 // (how far the clamped history sat from the current frame), which is what the
 // photons sample back into the feedback loop, closing it.
 // params[0] = (texel.xy, alpha, hasHistory); params[4..7] = inverse

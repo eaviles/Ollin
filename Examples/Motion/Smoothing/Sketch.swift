@@ -8,7 +8,7 @@ import Ollin
 /// you already know).
 ///
 /// Here a target sweeps a slow figure-eight with a burst of jitter shaken on top
-/// each frame — a stand-in for a shaky sensor or mouse. The faint grey dots are
+/// each frame — a stand-in for a shaky sensor or mouse. The faint gray dots are
 /// the raw signal; the blue trail and black head are the smoothed `Vector2`,
 /// gliding through the noise.
 @main

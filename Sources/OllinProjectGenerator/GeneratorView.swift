@@ -220,7 +220,7 @@ struct GeneratorView: View {
 
     // MARK: - Left: one sectioned source list
 
-    /// Ten curated starting points and 350 catalogued ones are not two modes:
+    /// Ten curated starting points and 350 cataloged ones are not two modes:
     /// they are a short list and a long one, and the question is the same in
     /// both cases. So one list, with the examples grouped the way the folders
     /// already group them, and one filter over both.
@@ -249,7 +249,7 @@ struct GeneratorView: View {
             }
             .listStyle(.sidebar)
             .environment(\.defaultMinListRowHeight, 22)
-            // Purple is the identity colour the other windows already use for
+            // Purple is the identity color the other windows already use for
             // their own drawing, so it marks selection here. It is applied where
             // it means something rather than to the whole view, which would tint
             // every neutral native control along with it.
@@ -345,9 +345,9 @@ struct GeneratorView: View {
         }
     }
 
-    /// The catalogue's own two levels: a top-level category (`3D`, `Patterns`),
+    /// The catalog's own two levels: a top-level category (`3D`, `Patterns`),
     /// and under the deeper ones a group (`3D/Depth`). Flattening these threw
-    /// away the only structure the catalogue has.
+    /// away the only structure the catalog has.
     struct Category: Identifiable {
         let name: String
         /// Examples filed directly under the category.

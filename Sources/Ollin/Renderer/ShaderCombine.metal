@@ -24,7 +24,7 @@ fragment float4 ollin_fx_mask(PresentOut in [[stage_in]],
     float4 b = base.sample(samp, in.uv);
     float4 m = msk.sample(samp, in.uv);
     // Luminance reads the premultiplied rgb directly, so a transparent texel (rgb 0)
-    // masks out and coverage is honoured; alpha reads the matte straight.
+    // masks out and coverage is honored; alpha reads the matte straight.
     float k = (params[0].x < 0.5) ? ollin_luma(m.rgb) : m.a;
     if (params[0].y > 0.5) k = 1.0 - k;
     return b * clamp(k, 0.0, 1.0);
@@ -74,7 +74,7 @@ static inline float ollin_dof_depth(float4 texel) { return linearToSrgb(float3(o
 #define OLLIN_DOF_TAPS 128
 
 // Depth-of-field pre-pass: reduce the aux depth map to the three per-pixel quantities
-// the gather wants, so a tap costs one sample and no neighbourhood walk. Writes
+// the gather wants, so a tap costs one sample and no neighborhood walk. Writes
 // (scatter size, depth, receive size, 1). Runs at the gather's own resolution, since
 // both sizes are in output pixels.
 //
@@ -84,18 +84,18 @@ static inline float ollin_dof_depth(float4 texel) { return linearToSrgb(float3(o
 // depth map crosses the focal plane at every silhouette (its anti-aliased boundary
 // sweeps through `focus`), leaving a ~1px in-focus ring bracketed by blur that traces
 // each defocused mark and, left sharp, reads as a thin dotted circle. Taking a pixel's
-// blur size as the max over its neighbourhood consumes that seam (it has defocus on
+// blur size as the max over its neighborhood consumes that seam (it has defocus on
 // both sides), while a real in-focus subject is thick enough to keep its own near-zero
 // size and stay sharp but for a few px of softened edge.
 //
-// **Scatter** (`.x`) is the opposite, the min over the immediate neighbourhood, and it
+// **Scatter** (`.x`) is the opposite, the min over the immediate neighborhood, and it
 // answers the same anti-aliased rim from the other side. That rim is a sub-pixel band
 // of in-between depth, so wherever it lands in the fully defocused range it flings the
-// colour beneath it across the entire blur radius; because the whole rim shares one
+// color beneath it across the entire blur radius; because the whole rim shares one
 // depth it also cuts off at one radius, which is why a perfectly in-focus object came
-// out ringed by a faint, hard-edged, concentrically ridged halo of its own colour. A
-// rim texel always has a low-blur neighbour on the object side, so the min erases it,
-// while a genuinely defocused region (every neighbour defocused too) keeps its size.
+// out ringed by a faint, hard-edged, concentrically ridged halo of its own color. A
+// rim texel always has a low-blur neighbor on the object side, so the min erases it,
+// while a genuinely defocused region (every neighbor defocused too) keeps its size.
 // The radius is 2px rather than 1 so the erased band is wider than the gather's
 // bilinear footprint, which would otherwise average half the rim's size straight back.
 fragment float4 ollin_fx_dof_prepass(PresentOut in [[stage_in]],
@@ -166,13 +166,13 @@ fragment float4 ollin_fx_depth_of_field(PresentOut in [[stage_in]],
     float radScale = max(0.5, maxBlur * maxBlur / (budget * 2.0));   // ≈ `budget` taps to the rim
     int maxIters = int(budget * 2.0);                               // safety cap (the break ends it first)
     float4 centerColor = base.sample(samp, in.uv);
-    // Both fields seed with the centre texel, so a field no tap reaches resolves to the
-    // centre rather than to a phantom sample. Seeding the near field with black instead
+    // Both fields seed with the center texel, so a field no tap reaches resolves to the
+    // center rather than to a phantom sample. Seeding the near field with black instead
     // (the obvious "nothing here yet" value) leaves its running average converging *from*
     // black, and a partly covered foreground then composites that bias over the
     // background: a uniformly white layer comes back with a ~12% dark ring at the edge of
     // the near spread. The whole layer is premultiplied, so alpha rides the gather with
-    // the colour; blurring rgb past a sharp alpha would stop the result being
+    // the color; blurring rgb past a sharp alpha would stop the result being
     // premultiplied at all. An opaque layer is unaffected either way.
     // If this pixel is itself under a near blur, whatever sits behind it is hidden, so
     // the background field is allowed to gather from anywhere inside that blur: the
@@ -180,7 +180,7 @@ fragment float4 ollin_fx_depth_of_field(PresentOut in [[stage_in]],
     // for the foreground to become transparent against, and a near object keeps a razor
     // edge on the *inside* while blurring only outward (measured: a step of 36% in one
     // pixel, right at the blob's own silhouette). Reconstructing what a foreground truly
-    // hides is impossible from one image; standing its neighbourhood in for it is the
+    // hides is impossible from one image; standing its neighborhood in for it is the
     // usual approximation and reads correctly.
     float nearReveal = centerDepth < focus ? centerSize : 0.0;
     float4 bgColor = centerColor; float bgTotal = 1.0;   // background + in-focus
@@ -216,7 +216,7 @@ fragment float4 ollin_fx_depth_of_field(PresentOut in [[stage_in]],
     }
     float4 bg = bgColor / bgTotal;
     float4 fg = fgColor / fgTotal;
-    // Resolve the far side first (the sharp centre blended toward its own bokeh by how
+    // Resolve the far side first (the sharp center blended toward its own bokeh by how
     // defocused it is), then composite the near field *over* that by its coverage.
     // Folding both into one `mix(centre, mix(bg, fg, a), max(dof, a))` applies the
     // coverage twice, so a half-covered sharp subject keeps a quarter more of its sharp
@@ -224,10 +224,10 @@ fragment float4 ollin_fx_depth_of_field(PresentOut in [[stage_in]],
     //
     // Coverage is an *area fraction*, and the area it is a fraction of is the widest
     // near blur that reached here, not the whole gather disc. The spiral is equal-area
-    // per tap, so taps inside radius r are `total * (r/maxBlur)^2` of them. Normalising
+    // per tap, so taps inside radius r are `total * (r/maxBlur)^2` of them. Normalizing
     // by the disc instead (with a constant fudge to make up the difference) pins the
     // alpha at 1 well inside a foreground's silhouette, which leaves its inner edge
-    // hard; normalised by the near blur it ramps across the silhouette over that blur's
+    // hard; normalized by the near blur it ramps across the silhouette over that blur's
     // own radius, which is what makes a foreground soften on both sides of itself.
     float nearArea = nearMax / max(maxBlur, 1e-4);
     float fgAlpha = nearMax < 0.5 ? 0.0
@@ -333,7 +333,7 @@ fragment float4 ollin_fx_ssao(PresentOut in [[stage_in]],
     // coverage uses it (renormalize drops the coverage scale, recovering the surface
     // direction), so the edge stays put instead of toggling to the depth reconstruction.
     // Where no mesh covered the pixel (alpha 0), reconstruct it from depth: the
-    // better-facing of paired neighbours a few texels out (a 1-texel stencil is near the
+    // better-facing of paired neighbors a few texels out (a 1-texel stencil is near the
     // 16-bit depth quantisation, which bands flat faces). The G-buffer is stored in the
     // same view space `ollin_ssao_viewpos` works in, so no transform is needed here.
     float3 N;
@@ -378,7 +378,7 @@ fragment float4 ollin_fx_ssao(PresentOut in [[stage_in]],
         // i) rather than random points: far lower variance for the same count, so the
         // per-pixel estimate barely shifts frame to frame and a dense spiral is nearly
         // rotation-invariant, together that's most of what kills the crevice flicker a
-        // random kernel shows. Magnitudes cluster toward the centre (contact-weighted).
+        // random kernel shows. Magnitudes cluster toward the center (contact-weighted).
         float u = (float(i) + 0.5) / float(n);
         float phi = float(i) * 2.399963229728653;                  // golden angle
         float cosT = 1.0 - u;                                      // hemisphere elevation
@@ -442,7 +442,7 @@ fragment float4 ollin_fx_ssao_blur(PresentOut in [[stage_in]],
 }
 
 // Screen-space reflections (pass 1 of 2): march each surface's reflection ray through the
-// depth buffer and return the reflected scene colour, premultiplied by its strength (so the
+// depth buffer and return the reflected scene color, premultiplied by its strength (so the
 // resolve pass blurs and composites it correctly). Reconstruct the view-space position +
 // normal from the aux depth exactly as SSAO does (a true mesh normal when the G-buffer was
 // captured, else a depth-reconstructed one), reflect the eye ray about the normal, then trace
@@ -537,7 +537,7 @@ fragment float4 ollin_fx_ssr(PresentOut in [[stage_in]],
     float invD0 = 1.0 / d0z, invD1 = 1.0 / d1z;
 
     float2 hitUV = float2(-1.0);
-    float hitDist = 0.0;                                          // world distance the ray travelled to the hit
+    float hitDist = 0.0;                                          // world distance the ray traveled to the hit
     bool hit = false;
     // The march starts HALF a stride out, not on the surface: an interval starting exactly
     // ON the receiver's own depth flips between hit and miss with any depth gradient across
@@ -593,7 +593,7 @@ fragment float4 ollin_fx_ssr(PresentOut in [[stage_in]],
     // Strength: a Schlick grazing term blended toward flat reflectivity by `fresnel`
     // (0 = an even mirror at every angle, 1 = reflective only at grazing angles), an edge fade
     // as the hit nears the screen border (hiding the screen-space cutoff), and a **distance
-    // fade by how far the ray travelled to the hit**, physically motivated (a longer
+    // fade by how far the ray traveled to the hit**, physically motivated (a longer
     // reflection path scatters more, so the reflection weakens). It's also the lever that turns
     // the genuine grazing-angle stretch of a reflection into a natural taper instead of a hard,
     // full-strength elongated "cylinder". Fades over a fraction of `maxDistance`, so a near

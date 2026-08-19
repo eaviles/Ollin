@@ -7,7 +7,7 @@ import simd
 /// You give it a size and a per-cell update written as a short MSL **body snippet**;
 /// `Simulation` generates the kernel, owns the ping-pong textures, and hands back an
 /// `image` you draw. It's the engine for reaction-diffusion, cellular automata,
-/// fluid, and any field that evolves by reading its neighbours each step:
+/// fluid, and any field that evolves by reading its neighbors each step:
 ///
 /// ```swift
 /// lazy var gray = Simulation(width: 512, height: 512, subSteps: 12, step: """
@@ -32,7 +32,7 @@ import simd
 /// - `value` (`float4`) — this cell's current value (read).
 /// - `result` (`float4`) — what to write, pre-initialised to `value` (write).
 /// - `tap(dx, dy)` (`float4`) — the source field at integer offset `(dx, dy)`, with
-///   **toroidal wrap** (the edges join), for neighbour stencils.
+///   **toroidal wrap** (the edges join), for neighbor stencils.
 /// - `gid` (`uint2`) — this cell's coordinate; `size` (`uint2`) — the field size.
 /// - `u` (`OllinComputeUniforms` — `u.time`/`u.dt`/`u.frameCount`/…) and `custom`
 ///   (`float4`, the live knobs from `updateSimulation(_:custom:)`), both read-only.
@@ -103,7 +103,7 @@ public final class Simulation {
     }
 
     /// Wrap a body snippet into a complete texture-step kernel: read the source
-    /// field at this cell (and, via `tap`, its neighbours), expose `value`/`result`/
+    /// field at this cell (and, via `tap`, its neighbors), expose `value`/`result`/
     /// `size` around the user's statements, and write the result.
     private static func wrap(_ body: String) -> ComputeKernel {
         let source = """

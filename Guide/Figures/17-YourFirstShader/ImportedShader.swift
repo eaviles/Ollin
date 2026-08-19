@@ -16,7 +16,7 @@ final class ImportedShader: Sketch {
     let paper = Color(hex: 0xF7F5F1)
 
     /// The shader as pasted. Written for this figure, so nobody else's terms
-    /// travel with it. It centres its coordinates and then tiles them, so most
+    /// travel with it. It centers its coordinates and then tiles them, so most
     /// of the plane sits left of and below the origin. That is the case `mod`
     /// decides: with Metal's truncating `fmod` the middle of the frame breaks
     /// into a seam, and with the flooring form the translation writes out, the

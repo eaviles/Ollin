@@ -42,7 +42,7 @@ final class Unattended: Sketch {
             var x = step * 0.5
             while x < width {
                 let point = Vector2(x, y)
-                // One wave, travelling out from the middle. Everything the dot
+                // One wave, traveling out from the middle. Everything the dot
                 // does comes from where it stands and how far along the lap the
                 // piece is, so there is no state to keep and nothing to drift.
                 let reach = point.distance(to: middle) / (min(width, height) * 0.5)

@@ -21,7 +21,7 @@ final class RaymarchedPlane: Sketch {
         material(.glossy)
 
         // An infinite floor at y = -0.85 merged with three shapes as one field, so each shape
-        // casts a soft self-shadow onto the plane (and onto its neighbours).
+        // casts a soft self-shadow onto the plane (and onto its neighbors).
         let floor = SDF3D.plane(offset: -0.85).colored(Color(hex: 0x5b6472))
         let ball = SDF3D.sphere(radius: 0.7).colored(Color(hex: 0x38bdf8))
             .at(x: -1.5, y: -0.15, z: 0.2)

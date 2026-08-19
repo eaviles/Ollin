@@ -74,7 +74,7 @@ public extension Palette {
         Palette(rotations(of: base, by: [0, 1.0 / 3, 2.0 / 3]))
     }
 
-    /// `count` neighbouring hues centered on the base, `spread` turns apart.
+    /// `count` neighboring hues centered on the base, `spread` turns apart.
     static func analogous(of base: Color, count: Int = 3, spread: Double = 1.0 / 12) -> Palette {
         guard count > 0 else { return Palette([]) }
         let offsets = (0..<count).map { (Double($0) - Double(count - 1) / 2) * spread }

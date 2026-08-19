@@ -36,7 +36,7 @@ import Darwin
 ///
 /// In **Room** mode the phone reconstructs the room as a triangle surface and sends
 /// it block by block: `sceneMesh` is the room built up so far, ready to draw as one
-/// `Mesh`, with every triangle labelled as a wall, the floor, a table, and so on.
+/// `Mesh`, with every triangle labeled as a wall, the floor, a table, and so on.
 /// The same mode reports the flat surfaces it finds, which is the short summary of
 /// that room: `planes` holds a floor, a table top, or a wall as an outline to stand
 /// something on or hang something from, and it needs no LiDAR.
@@ -244,7 +244,7 @@ public final class PhoneDevice: FrameSource, VideoFeed {
     public func resetSceneMesh() { reader.resetSceneMesh() }
 
     /// The flat surfaces the phone has found so far: a floor, a table top, a wall,
-    /// each as a labelled outline placed in the room. Populated in **Room** mode
+    /// each as a labeled outline placed in the room. Populated in **Room** mode
     /// beside the reconstructed surface, and unlike that surface it needs no LiDAR,
     /// so it fills in on any phone that runs the capture app.
     ///

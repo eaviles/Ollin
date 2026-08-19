@@ -422,13 +422,13 @@ public struct OutlineFont: @unchecked Sendable {
     ///
     /// The two writing axes need one formula between them, so the returned point
     /// means whatever that axis needs it to mean: across a line it is the line's
-    /// left edge on its baseline; down a column it is the column's centre axis at
+    /// left edge on its baseline; down a column it is the column's center axis at
     /// the column's top edge. Both cases put the glyph in the right place with the
     /// same addition, which is what lets one placement loop serve both, and it is
     /// why this is the only place either layout decides anything.
     ///
     /// `extents` is how far each line runs along its own writing axis, in points.
-    /// Every line is anchored by its own extent, so a short column centres on its
+    /// Every line is anchored by its own extent, so a short column centers on its
     /// own length exactly as a short line does.
     private func lineStarts(extents: [Double], size: Double,
                             alignH: TextAlignH, alignV: TextAlignV,

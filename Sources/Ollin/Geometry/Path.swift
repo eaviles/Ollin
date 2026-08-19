@@ -11,7 +11,7 @@ import Foundation
 ///
 /// The three curve verbs differ in who supplies the bend:
 /// - `curve(to:)` — a smooth curve that passes *through* the points, with the
-///   tangents derived automatically from the neighbours (a Catmull-Rom spline).
+///   tangents derived automatically from the neighbors (a Catmull-Rom spline).
 ///   Consecutive `curve(to:)` calls form one smooth run. This is the "draw a
 ///   wiggle straight from points" curve; see also the top-level `drawCurve`.
 /// - `quadCurve(to:control:)` — a quadratic Bézier; you give one control point.

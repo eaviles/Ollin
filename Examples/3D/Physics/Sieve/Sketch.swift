@@ -143,7 +143,7 @@ final class Sieve: Sketch {
     /// A shallow open tray. Trays stay in the default group, so every one of
     /// them catches every bead: a tray in its window's group would be ignored
     /// by exactly the beads it is there to hold. `backboard` raises the far
-    /// wall, which is how the last tray catches beads still travelling at the
+    /// wall, which is how the last tray catches beads still traveling at the
     /// speed the whole ramp gave them.
     func tray(at center: Vector3, width: Double, depth: Double,
               backboard: Double = 0.7) {

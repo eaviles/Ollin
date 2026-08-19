@@ -463,7 +463,7 @@ private final class VideoFrameTapPump: @unchecked Sendable {
         timer.resume()
     }
 
-    /// A resumed GCD timer is kept alive by the system until cancelled, so the
+    /// A resumed GCD timer is kept alive by the system until canceled, so the
     /// pump must cancel it explicitly (the handler's `weak self` keeps the
     /// timer from retaining the pump, which is what lets `deinit` run at all).
     func cancel() { timer.cancel() }

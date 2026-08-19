@@ -28,7 +28,7 @@ import UniformTypeIdentifiers
 //   writes, and handing it a ready-made map writes the older auxiliary type
 //   instead of the standard one, so the file is assembled through ImageIO.
 // - **The map carries a gain per channel rather than one for all three.** A
-//   single channel can only scale a pixel's colour, and a bright colour clamps
+//   single channel can only scale a pixel's color, and a bright color clamps
 //   unevenly: an amber core of (4.0, 2.2, 0.72) clamps to (1, 1, 0.72), which
 //   needs three different multipliers. Measured with one channel, the green
 //   came back 81% high and the blue 300% high. With three, every channel lands

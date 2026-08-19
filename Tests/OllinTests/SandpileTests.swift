@@ -15,7 +15,7 @@ import Testing
 /// sand would break it), and, in the edge-block variant, the open boundary. The
 /// boundary test was verified against its counterfactual: with the shader's
 /// out-of-field guard removed (the clamping sampler then reads the edge texel back
-/// as its own neighbour, a reflecting wall), the settled edge pile keeps the grains
+/// as its own neighbor, a reflecting wall), the settled edge pile keeps the grains
 /// the reference sheds, and the test goes red.
 @Suite
 @MainActor
@@ -139,7 +139,7 @@ struct SandpileTests {
 /// `pourFrames` frames, then left to settle. The pour rect is inset a quarter texel
 /// inside the block's boundary, so the nine covered texel centers read full
 /// brightness (the region ramp is full to the geometric edge) while the excluded
-/// neighbours sit far enough into the anti-aliased halo that one grain's worth of
+/// neighbors sit far enough into the anti-aliased halo that one grain's worth of
 /// brightness rounds to nothing: the injection is exact by construction.
 @MainActor
 private final class SandpileProbeSketch: Sketch {

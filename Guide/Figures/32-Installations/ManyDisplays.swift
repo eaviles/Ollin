@@ -109,7 +109,7 @@ final class ManyDisplays: Sketch {
         let span = max(to - from, 0.0001)
         func x(_ u: Double) -> Double { frame.x + (u - from) / span * frame.width }
 
-        // A sky in bands, so a part still shows the same sky as its neighbour.
+        // A sky in bands, so a part still shows the same sky as its neighbor.
         noStroke()
         let bands = 26
         let sky = Ramp([Color(hex: 0x0B0E1A), Color(hex: 0x1B2340), Color(hex: 0x59394A)])

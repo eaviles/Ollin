@@ -280,7 +280,7 @@ import Ollin
                       SIMD4<Float>(10, 2, 3, 1))
     }
 
-    /// A four-vertex block of two triangles: the first labelled floor, the second
+    /// A four-vertex block of two triangles: the first labeled floor, the second
     /// wall, sharing two vertices so a filter has something to drop.
     private func block(id: UUID, transform: simd_float4x4) -> PhoneSceneMeshSample {
         PhoneSceneMeshSample(

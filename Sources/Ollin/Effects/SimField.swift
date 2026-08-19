@@ -2,7 +2,7 @@ import Metal
 
 /// A persistent layer that runs a built-in `Sim` on the GPU each frame: the stateful
 /// effects surface for reaction-diffusion, cellular automata, and other fields that
-/// evolve by reading their own neighbourhood. Make one in `setup()` with `simField(_:)`,
+/// evolve by reading their own neighborhood. Make one in `setup()` with `simField(_:)`,
 /// draw into it to seed/force it (`withField`), and composite its `image`.
 ///
 /// ```swift

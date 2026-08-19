@@ -20,7 +20,7 @@ public struct CameraIntrinsics: Equatable, Sendable {
     public var fx: Double
     /// Vertical focal length, in pixels.
     public var fy: Double
-    /// Principal point x (the optical centre), in pixels.
+    /// Principal point x (the optical center), in pixels.
     public var cx: Double
     /// Principal point y, in pixels.
     public var cy: Double

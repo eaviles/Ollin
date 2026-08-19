@@ -39,7 +39,7 @@ final class Stack: Sketch {
         noStroke()
     }
 
-    /// A centred pyramid: each row one brick narrower, offset half a brick so every
+    /// A centered pyramid: each row one brick narrower, offset half a brick so every
     /// upper box straddles the seam of the two below — a classic stable stack that
     /// stands cleanly and topples convincingly when struck.
     func buildStack() {

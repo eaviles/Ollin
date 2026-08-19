@@ -216,7 +216,7 @@ struct DitherTests {
     /// space it carries its error in. Choosing perceptually there traces a thin
     /// false contour of the wrong color along the tone where the rules part, and
     /// the arc is too thin to show up in tile-averaged error statistics, so it is
-    /// pinned here instead: a lone pixel has no neighbours to diffuse onto, which
+    /// pinned here instead: a lone pixel has no neighbors to diffuse onto, which
     /// makes the choice rule directly observable in the output.
     ///
     /// `.none` carries no error, so it is free to take the perceptual pick, and

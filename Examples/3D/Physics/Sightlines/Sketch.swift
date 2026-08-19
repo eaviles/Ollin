@@ -182,7 +182,7 @@ final class Sightlines: Sketch {
         }
     }
 
-    /// Crates in the lamp's colour or the shadow's, with a thin beam drawn to
+    /// Crates in the lamp's color or the shadow's, with a thin beam drawn to
     /// each one it reaches.
     func drawCrates() {
         for (index, crate) in crates.enumerated() {

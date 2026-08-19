@@ -58,7 +58,7 @@ public final class Ragdoll3D {
         public let parent: Int?
         /// The shape fitted to the mesh this joint carries.
         public let collider: Collider3D
-        /// Where that shape's centre sits inside the body, in the body's local
+        /// Where that shape's center sits inside the body, in the body's local
         /// space.
         public let shapeCenter: Vector3
         /// How the shape is turned there: `shapeAngle` radians about
@@ -223,7 +223,7 @@ public final class Ragdoll3D {
     ///   - frequency: how fast a joint pulls, in Hz. 20 holds a pose firmly;
     ///     2 is a slow, rubbery recovery.
     ///   - damping: 1 settles cleanly, lower overshoots and wobbles.
-    ///   - strength: the most torque a joint may use, in newton-metres. Lower
+    ///   - strength: the most torque a joint may use, in newton-meters. Lower
     ///     it and heavy limbs sag out of the pose, which is how a figure looks
     ///     tired rather than switched off.
     ///

@@ -106,7 +106,7 @@ extension SceneNode {
 
     /// Whether the split, composed back in the order a sketch would call it,
     /// lands on the matrix it came from. Measured against the size of the
-    /// matrix itself, so a scene in metres and one in millimetres get the
+    /// matrix itself, so a scene in meters and one in millimetres get the
     /// same answer.
     private func reproduces(_ m: simd_double4x4, _ p: ScenePlacement) -> Bool {
         var rebuilt = matrix_identity_double4x4

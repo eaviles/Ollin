@@ -17,7 +17,7 @@ public struct StrokeInput: Sendable {
     /// The unit direction the mark was heading, for dynamics that care which way
     /// the hand moved (a flat pen, a directional wash).
     public var direction: Vector2
-    /// How far the mark had travelled to reach this point, in canvas points. `0`
+    /// How far the mark had traveled to reach this point, in canvas points. `0`
     /// at the first point and growing from there. It is a distance, not a
     /// fraction, precisely because a mark in progress has no known length.
     public var distance: Double

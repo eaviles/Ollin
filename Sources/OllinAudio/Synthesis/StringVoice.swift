@@ -2,7 +2,7 @@ import Foundation
 
 /// One plucked string's running state: a delay line with a filtered loop.
 ///
-/// The disturbance travelling up and down a string is a delay line, and what
+/// The disturbance traveling up and down a string is a delay line, and what
 /// the string loses at each reflection is a filter in the loop. That is the
 /// whole model. Everything a player hears comes out of three refinements on it,
 /// each of which fixes something audible:
