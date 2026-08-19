@@ -6,7 +6,7 @@
 
 <img src="Images/12-FlocksAndSwarms/Flock.jpg" alt="Hundreds of small triangles sweeping across a dark canvas in bands of color, each band a sub-flock sharing one direction, with soft trails fading behind them" width="560">
 
-[Chapter 10](10-Vectors.md) ended with a swarm chasing the mouse, one steering recipe run over a few hundred movers, all wanting the same thing. This chapter gives each creature wants of its own. You'll build one creature that can chase, stop at its target, and roam on its own. Then you'll set loose a few hundred that watch only each other, which turns out to be enough to make the flock above, with nobody in charge. And at the end, the same neighborly rules get aimed at geometry instead of motion, and a circle grows into coral.
+[Chapter 10](10-Vectors.md) ended with a swarm chasing the mouse, one steering recipe run over a few hundred movers, all wanting the same thing. This chapter gives each creature wants of its own. You'll build one creature that can chase, stop at its target, and roam on its own. Then you'll set loose a few hundred that watch only each other, which turns out to be enough to make the flock above, with nobody in charge.
 
 One word before we start. The field calls these creatures *autonomous agents*, the name Craig Reynolds gave them in 1986, decades before "agent" came to mean software with a chat window. The idea is his either way, and this guide will say creature, boid, and flock.
 
@@ -194,40 +194,6 @@ override func draw() {
 
 The three rule weights (`flock.separation`, `flock.alignment`, `flock.cohesion`) and the two radii are ordinary properties, and tuning them is tuning the flock's temperament. Raise separation and the flock loosens into a crowd keeping polite distance. Raise cohesion and it balls up. Shrink `perceptionRadius` and big flocks fragment into many small ones. There is no right setting. The finished piece below puts all three on knobs so you can search for your own.
 
-## A line that wants space
-
-Before the finished piece, one more system, because it shows how far "local rules, stepped" reaches beyond creatures. Take a closed ring of points. Every step, pull each point toward its neighbors along the line (the line doesn't want to tear), push it away from *every* point that comes near (the line doesn't want to touch itself), and whenever a segment stretches too long, split it in the middle so the line gains a point. That's the whole algorithm. It's called differential growth, and it turns a circle into coral:
-
-<img src="Images/12-FlocksAndSwarms/GrowthStrip.jpg" alt="Five small panels showing the same ring at step 0, 80, 180, 320, and 500: a circle wobbles, then folds into a dense meandering coral-like blob" width="680">
-
-The folding isn't decoration; it's the only shape a growing line can take when it refuses to crowd itself. The same tension between attraction and repulsion that spaced the boids now sculpts geometry. Make `MySketches/Coral.swift`:
-
-```swift
-import Ollin
-
-final class Coral: Sketch {
-    let growth = DifferentialGrowth.ring(
-        center: Vector2(540, 540), radius: 80, count: 40, seed: 7,
-        maxSegmentLength: 8, repulsionRadius: 16, growthRate: 0.9,
-        bounds: Rectangle(x: 70, y: 70, width: 940, height: 940))
-
-    override func draw() {
-        growth.step(4)
-
-        background(Color(hex: 0x101318))
-        noFill()
-        stroke(Color(hex: 0x9AD9CE))
-        strokeWeight(2.2)
-        strokeJoin(.round)
-        drawPolygon(growth.nodes)
-    }
-}
-```
-
-<img src="Images/12-FlocksAndSwarms/Coral.jpg" alt="A dense pale-teal outline folded like brain coral, grown from a circle, centered on a dark canvas" width="560">
-
-Run it live and you can watch the folds negotiate for room in real time. `growth.nodes` is an ordinary point list and `growth.contour` an ordinary contour, so the grown line can be filled, offset, exported for a pen plotter, anything [Chapter 15](15-ShapesAsMaterial.md) will do to geometry. Grown forms are made of the same points as drawn ones.
-
 ## Putting it together: the living flock
 
 The piece at the top of the chapter is the flock with its temperament on knobs and one new trick for the trails. So far every sketch has started `draw()` by wiping the canvas. `noClear()` turns that off, so the canvas keeps everything drawn so far and *you* decide what fades. Painting a translucent rectangle of the background color over the whole canvas each frame dims the past a little instead of erasing it, and moving things grow tails. (That persistent canvas has a whole world in it, accumulation and long-exposure looks, which [Chapter 16](16-LayersAndEffects.md) explores, and this is a first taste.)
@@ -303,7 +269,6 @@ Boids are Craig Reynolds' invention: the 1987 SIGGRAPH paper "Flocks, Herds, and
 
 - [Steering](../Docs/Generators/Steering.md): every `Vehicle` behavior and knob, including pursuit, evasion, and path following.
 - [Flocking](../Docs/Generators/Boids.md): the full `Boids` reference, including flow-field following.
-- [Differential growth](../Docs/Generators/DifferentialGrowth.md): every growth parameter, plus the open-line form (`DifferentialGrowth.line`) whose pinned ends grow meanders.
 - Appendix B draws this chapter's math, one picture per idea: [Vectors, motion, and forces](B-JustEnoughMath.md#vectors-motion-and-forces), [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure).
 - Worked examples: [`Examples/Motion/Steering`](../Examples/Motion/Steering/Sketch.swift) (the behavior shelf in one scene), [`Examples/Patterns/Flocking`](../Examples/Patterns/Flocking/Sketch.swift) (a flock without trails), and [`Examples/Patterns/DifferentialGrowth`](../Examples/Patterns/DifferentialGrowth/Sketch.swift) (growth tinted by depth).
 - [Accumulation](../Docs/Drawing/Accumulation.md): what `noClear()` really does, ahead of [Chapter 16](16-LayersAndEffects.md).

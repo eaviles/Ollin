@@ -132,107 +132,39 @@ Widths arrive as multiples of `strokeWeight`, scaled so the widest is exactly 1.
 
 A plain grammar counts. A parametric one measures. The [reference](../Docs/Generators/LSystem.md#parametric) has the rest. It covers the arithmetic it accepts, weighted rules for stochastic growth, and a shelf of presets from the botany literature.
 
-## The same fern, played as a game: the chaos game
+## Growth by crowding: differential growth
 
-There is a completely different way to grow that fern, and it's strange enough to be worth seeing. Instead of rewriting a sentence and walking it with a turtle, you play a game of chance with a handful of transformations.
+The neighborly rules that steer a flock in [Chapter 12](12-FlocksAndSwarms.md) work just as well on geometry that is not going anywhere. Take a closed ring of points. Every step, pull each point toward its neighbors along the line (the line doesn't want to tear), push it away from *every* point that comes near (the line doesn't want to touch itself), and whenever a segment stretches too long, split it in the middle so the line gains a point. That's the whole algorithm. It's called differential growth, and it turns a circle into coral:
 
-Take four rules, each of which squashes, tilts, and shifts the entire plane. One draws the fern's main body slightly smaller and rotated. One draws the left frond, one the right, one the stem. Now put a dot anywhere at all, pick one of the four rules at random, move the dot by it, and mark where it lands. Then do that again, sixty thousand times.
+<img src="Images/13-GrowingThings/GrowthStrip.jpg" alt="Five small panels showing the same ring at step 0, 80, 180, 320, and 500: a circle wobbles, then folds into a dense meandering coral-like blob" width="680">
 
-<img src="Images/13-GrowingThings/ChaosGame.jpg" alt="Three panels of the Barnsley fern from the chaos game, at 400 jumps a loose dust that vaguely suggests a leaf, at 6,000 a recognizable fern, and at 80,000 a dense one with every frond resolved" width="680">
-
-```swift
-let cloud = ifsPoints(.barnsleyFern, count: 60_000)
-    .map { Vector2($0.x, -$0.y) }        // the fern's own y grows upward
-noStroke()
-fill(Color(hex: 0x2E5E3A))
-drawPoints(fitted(cloud, in: canvasRectangle.inset(by: .all(80))), size: 1.5)
-```
-
-The reason this works is worth sitting with for a second, because it feels like it shouldn't. Every one of the four rules *shrinks* the plane. So wherever your dot started, a few jumps later that starting position has been squashed down to nothing and forgotten. What's left is the only set of points that the four rules, taken together, map exactly onto itself. The dot can't escape it and can't stay away from it, so given enough jumps it traces it out. That set is called the attractor, and the collection of rules is an **iterated function system**.
-
-The picture also explains what the weights are for. The fern's rules aren't chosen with equal probability. The one drawing the main body gets picked about 85 percent of the time. That keeps the fine tip as well drawn as the base. Ollin ships `.barnsleyFern`, `.sierpinskiTriangle`, and `.sierpinskiCarpet`, and a system of your own is six numbers per rule plus a weight.
-
-Two small practical notes come with it. The points arrive in the system's own coordinate space rather than canvas pixels. `fitted` scales and centers them into any rectangle you name. The fern also needs its y negated, because it grows upward while the canvas counts downward.
-
-## Four more games worth knowing
-
-The same move (play transformations at random, see where the orbit lives) generalizes further than ferns, and Ollin ships four of the places it goes.
-
-<img src="Images/13-GrowingThings/FractalFamily.jpg" alt="Three dark panels: a fractal flame in orange and blue smoke, a golden lace of dust sitting among five faint tangent circles, and a pale blue closed curve that spirals into itself at every scale" width="680">
-
-A **fractal flame** is the chaos game with two additions. Each rule finishes with a nonlinear twist, a swirl or a fold or a turning-inside-out. Instead of plotting dots, you have every pixel *count* how many times the orbit visited it. Displaying the logarithm of those counts is what lets the blazing core and the faintest veil appear in one image. The color comes from which rules carried the orbit there, rather than from where it landed.
+The folding isn't decoration; it's the only shape a growing line can take when it refuses to crowd itself. The same tension between attraction and repulsion that spaced the boids now sculpts geometry. Make `MySketches/Coral.swift`:
 
 ```swift
-var source = SplitMix64(seed: 6)
-let flame = FractalFlame.random(using: &source)
-drawImage(flame.render(width: 900, height: 900, quality: 90, using: &source),
-          in: canvasRectangle)
+import Ollin
+
+final class Coral: Sketch {
+    let growth = DifferentialGrowth.ring(
+        center: Vector2(540, 540), radius: 80, count: 40, seed: 7,
+        maxSegmentLength: 8, repulsionRadius: 16, growthRate: 0.9,
+        bounds: Rectangle(x: 70, y: 70, width: 940, height: 940))
+
+    override func draw() {
+        growth.step(4)
+
+        background(Color(hex: 0x101318))
+        noFill()
+        stroke(Color(hex: 0x9AD9CE))
+        strokeWeight(2.2)
+        strokeJoin(.round)
+        drawPolygon(growth.nodes)
+    }
+}
 ```
 
-`quality` is how many samples each output pixel gets, so a few dozen previews and a few hundred makes a clean still. There's also a progressive `Renderer` you feed a slice of samples per frame. That is how flames are meant to be watched, rising out of the noise. Rolling a random flame is genuinely a roll, and some come out muddy. Rerolling until one sings is part of the practice, not a sign you did it wrong.
+<img src="Images/13-GrowingThings/Coral.jpg" alt="A dense pale-teal outline folded like brain coral, grown from a circle, centered on a dark canvas" width="560">
 
-The flame's counting trick has a famous cousin. Square a number, add the point you started from, and repeat. Some starting points fly off to infinity. The ones that never do make up the Mandelbrot set, which [Chapter 18](18-Simulations.md) zooms into. The **Buddhabrot** is what the escapers leave behind. Test random starting points, and every time one escapes, let its whole path brighten each pixel it passed through. The piled-up visits, developed like a photographic plate, form a seated figure that was hiding in the set all along. Melinda Green found it in 1993.
-
-```swift
-let plate = Buddhabrot()      // three caps: long orbits red, short ones blue
-let renderer = Buddhabrot.Renderer(plate, width: 560, height: 560, seed: 7)
-// each frame:
-renderer.accumulate(samples: 20_000)
-drawImage(renderer.image(), in: canvasRectangle)
-```
-
-<img src="Images/13-GrowingThings/BuddhaPlate.jpg" alt="Two dark panels of the Buddhabrot. On the left a grayscale density plate of the seated figure; on the right the same figure in false color, a blue haze around a gold and red core" width="680">
-
-The `iterations` list does the coloring. Give it a single cap and the plate develops in gray. Give it three and the red, green, and blue channels expose at different orbit lengths, so color reads as orbit depth. A plate this deep resolves over many frames, the same way the flame does. Feed the `Renderer` a slice of samples per frame and let the figure rise. `Examples/Patterns/Buddhabrot` leaves one running.
-
-**Inversion** is a different transformation to play with. Inverting a point in a circle turns the plane inside out around that circle. The rim stays exactly where it is, points near the center fly far away, and points far away land near the center. Take an arrangement of circles, repeatedly invert in one picked at random, and the orbit settles onto the arrangement's limit set. The one rule is never to pick the same circle twice in a row, because inverting twice in the same circle just undoes itself.
-
-```swift
-drawPoints(inversionLimitSet(of: mirrors, count: 26_000), size: 1.5)
-```
-
-Since the circles are in canvas coordinates, the dust needs no fitting. It lands among the mirrors that produced it, which is what the middle panel shows. Tangent rings give lace, separated circles give scattered dust, and overlapping ones tear the lace apart.
-
-The third has no randomness in it at all. A **Kleinian limit set** comes from two Möbius transformations, which are the maps that send circles to circles. The set is built from the group of everything you can combine out of them. Walking that group systematically traces the boundary its orbits pile up against.
-
-```swift
-let curve = kleinianLimitSet(.lace)
-noFill()
-drawPolygon(fitted(curve.points, in: canvasRectangle.inset(by: .all(60))))
-```
-
-What makes this one immediately useful is the return type. It's a single `Contour`, one ordered closed curve with evenly spaced points. So it strokes, exports, and plots like any other geometry in this guide, rather than being a cloud you can only splat.
-
-## Circles that pair off: Schottky
-
-Those Möbius maps have a second use, and this one hands you circles rather than a curve.
-
-Start with four circles and pair them up, two and two. A pairing is the map that turns everything outside one circle into the inside of its partner. Whatever you give it comes back smaller, and sitting in the partner. Hand a pairing the other three circles and you get three smaller circles nested inside one of them. Do it again with every pairing and its inverse, in every order, and those nest again, forever. The group you have built is a **Schottky group**, and the lace it leaves behind is that whole group drawn at once.
-
-<img src="Images/13-GrowingThings/CirclesPairOff.jpg" alt="Three dark panels: four circles in two colored pairs touching at two points, then the same circles with a first generation of pale circles nested inside them, then the full lace with a bright ring of cusps" width="680">
-
-```swift
-let pairings = schottkyCuspedPairs(in: canvasRectangle.inset(by: .all(60)))
-noFill()
-drawCircles(schottkyCircles(pairing: pairings))
-```
-
-One thing decides whether that picture comes out full or nearly empty, and it is worth knowing before you touch any of the numbers. When a pairing's two circles *touch*, its map holds the point where they touch perfectly still. Near that point it barely shrinks anything at all. So the orbit keeps handing back large circles generation after generation. They pile into the fan you can see at the left and right of the third panel. Separate that pair by even a third of its radius and every application shrinks harder. The arrangement that gave back nine thousand circles gives back fewer than three thousand. Same code, same four circles, and most of the picture is gone.
-
-That is why `schottkyCuspedPairs` builds its four circles as two touching pairs. It also tells you which dial to reach for when you want motion. `lean` swings each pair around its own tangency point, so the pair goes on touching however far it swings. The picture stays full while the figure opens and closes. `twist`, which rotates a pairing off that setting, gives you spirals instead, and thins the lace as it goes. The `Patterns/Schottky` example walks `lean` back and forth and never drops below ten thousand circles.
-
-What comes back is `[Circle]`, not a cloud of points. A Möbius map sends a circle to a circle, so nothing has to be flattened on the way. The lace exports as real circles, so a pen plotter draws it with the same round strokes you see on screen.
-
-The circles and the Kleinian curves are two views of one thing, and the bridge between them is a pair of numbers. `schottkyCircles(ta:tb:in:)` takes the same two traces that `kleinianLimitSet` takes, and builds the same group. It draws the whole orbit as circles, instead of tracing its boundary as a curve. At traces `(2, 2)` the orbit is the Apollonian gasket. Every nearby pair of traces is another member of the same family. Bend the traces complex and the packing wobbles, or loosen them and it opens.
-
-<img src="Images/13-GrowingThings/GasketFamily.jpg" alt="Four dark panels of golden circle lace: the Apollonian gasket packing, two wobbled variations of it, and a looser open version, each labeled with its pair of traces" width="560">
-
-```swift
-noFill()
-drawCircles(schottkyCircles(.gasket, in: canvasRectangle.inset(by: .all(60))))
-```
-
-The named presets are the same ones the Kleinian curves use, so `.gasket` here and `.gasket` there are the same group wearing different clothes. The `Patterns/Schottky` example animates a small arc of this family, out from the gasket and back.
+Run it live and you can watch the folds negotiate for room in real time. `growth.nodes` is an ordinary point list and `growth.contour` an ordinary contour, so the grown line can be filled, offset, exported for a pen plotter, anything [Chapter 15](15-ShapesAsMaterial.md) will do to geometry. Grown forms are made of the same points as drawn ones.
 
 ## Growth that claims space: space colonization
 
@@ -484,10 +416,10 @@ Then make it yours:
 
 L-systems are Aristid Lindenmayer's 1968 invention. Their visual language comes from *The Algorithmic Beauty of Plants* (1990), written with Przemyslaw Prusinkiewicz. It is still free to read online and still beautiful. The parametric form is that book's section 1.10. James Hanan's 1992 dissertation, from the same group, works it out more fully. The tapered trees and the leaves are their published figures. Space colonization is by Adam Runions, Brendan Lane, and Prusinkiewicz at the University of Calgary's Algorithmic Botany group. The paper is "Modeling Trees with a Space Colonization Algorithm" (2007), after their 2005 leaf-venation work. Diffusion-limited aggregation was described by the physicists Thomas Witten and Leonard Sander in 1981. Generative artists have been growing frost with it ever since. The crack growth is Jared Tarbell's *Substrate*, from 2003. It ran as a Processing applet on his site complexification.net. Its city-block subdivisions are among the best-known images of early generative art. The wandering river is Alan Howard and Thomas Knutson's 1984 simulation. They showed that curvature felt from upstream is enough to make a channel meander. Zoltán Sylvester's meanderpy carries the model in working code. Robert Hodgin's 2020 *Meander* turned it into procedural maps of rivers that never existed, in the manner of Harold Fisk's 1944 Mississippi maps. Wave Function Collapse is Maxim Gumin's 2016 algorithm, named with a physicist's wink. The tile-and-socket form here is its simple-tiled model.
 
-The chance games have their own shelf. Iterated function systems and the chaos game are Michael Barnsley's, from *Fractals Everywhere* (1988), and the fern uses his published four-map table. The fractal flame is Scott Draves and Erik Reckase's algorithm, which Draves began in 1992. It ran for years as a distributed screensaver that evolved flames by popular vote. The Buddhabrot is Melinda Green's 1993 discovery, and the three-cap false-color reading is hers too, named after the astronomical plates it resembles. Circle-inversion limit sets follow Michael Frame and Tatiana Cogevina's 2000 rendering method, and Frame's Yale course pages explain them clearly. The Kleinian curves and the paired circles both come from David Mumford, Caroline Series, and David Wright's *Indra's Pearls*. It runs four hundred pages, making Felix Klein's groups visible. Friedrich Schottky described the paired-circle groups in 1877. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
+- [Differential growth](../Docs/Generators/DifferentialGrowth.md): the resample spacing, the three forces, and the grown line as ordinary geometry.
 - [L-systems](../Docs/Generators/LSystem.md): the grammar type, the turtle alphabet, all thirteen presets, and the [parametric](../Docs/Generators/LSystem.md#parametric) form with its rule language, weighted rules, and botany-literature presets.
 - [Space colonization](../Docs/Generators/SpaceColonization.md): every knob, plus recipes for venation, lightning, and multi-root plantings.
 - [Diffusion-limited aggregation](../Docs/Generators/DiffusionLimitedAggregation.md): stickiness, cages, and drawing the skeleton.
@@ -496,7 +428,6 @@ The chance games have their own shelf. Iterated function systems and the chaos g
 - [Meander](../Docs/Generators/Meander.md): the migration mechanism step by step, every knob, and drawing the oxbows and scars.
 - [Wave Function Collapse](../Docs/Generators/WaveFunctionCollapse.md): sockets, weights, rotations, learning from a picture instead, and what to do when a solve fails.
 - [Blue noise](../Docs/Generators/BlueNoise.md): the even scatter the tree's crown was carved from, properly explained in [Chapter 15](15-ShapesAsMaterial.md).
-- [Fractals](../Docs/Generators/Fractals.md): the `IFS` type and its presets, the whole `FractalFlame` surface including the progressive renderer, inversion limit sets, the Kleinian trace presets, the Schottky circle orbit with both of its family builders, and `fitted` for placing any point cloud.
 - Appendix B draws this chapter's math, one picture per idea: [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure).
 - Worked examples: [`Examples/Patterns/LSystem`](../Examples/Patterns/LSystem/Sketch.swift) (the preset contact sheet), [`Examples/Patterns/ParametricLSystem`](../Examples/Patterns/ParametricLSystem/Sketch.swift) (the parametric one, including a tapered tree), [`Examples/Patterns/Venation`](../Examples/Patterns/Venation/Sketch.swift), [`Examples/Patterns/Dendrite`](../Examples/Patterns/Dendrite/Sketch.swift), [`Examples/Patterns/Cracks`](../Examples/Patterns/Cracks/Sketch.swift), [`Examples/Patterns/Meander`](../Examples/Patterns/Meander/Sketch.swift) (the river and its map of scars), [`Examples/Patterns/WaveFunctionCollapse`](../Examples/Patterns/WaveFunctionCollapse/Sketch.swift), [`Examples/Patterns/TextureSynthesis`](../Examples/Patterns/TextureSynthesis/Sketch.swift), [`Examples/Patterns/IteratedFunctions`](../Examples/Patterns/IteratedFunctions/Sketch.swift), [`Examples/Patterns/FractalFlame`](../Examples/Patterns/FractalFlame/Sketch.swift), [`Examples/Patterns/InversionFractal`](../Examples/Patterns/InversionFractal/Sketch.swift), and [`Examples/Patterns/Kleinian`](../Examples/Patterns/Kleinian/Sketch.swift).
 

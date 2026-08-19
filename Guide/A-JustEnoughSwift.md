@@ -267,4 +267,4 @@ If a chapter's Swift ever still feels like the obstacle, that's a bug in this gu
 
 ---
 
-[Contents](README.md#contents) · Previous: [Chapter 24, Sharing and performing](24-SharingAndPerforming.md) · Next: [Appendix B, Just enough math, visually](B-JustEnoughMath.md)
+[Contents](README.md#contents) · Previous: [Chapter 25, Sharing and performing](25-SharingAndPerforming.md) · Next: [Appendix B, Just enough math, visually](B-JustEnoughMath.md)

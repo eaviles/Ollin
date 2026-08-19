@@ -95,7 +95,7 @@ Rebuilding the `Shader` value every frame is the normal pattern and costs nothin
 
 Ollin splices its own shader library into every shader you write, so the helpers its built-in effects use are yours too, with no import. Several you already know by other names. `fbm` is [Chapter 5](05-Noise.md)'s layered noise as one call, and the rest of that chapter's field family (`simplexNoise`, `worley`, `ridgedFbm`, `turbulence`, `warpedFbm`) is here under the same names. `hash12` is a random number that never changes between frames, so feed it a cell and it's [Chapter 4](04-Randomness.md)'s seeded random, per pixel. The `sd*` family measures distance to ellipses, stars, hearts, and béziers the way `length` measured distance to a point. And `palette(t, a, b, c, d)` turns a `0...1` value into color along a designed gradient, where four `float3`s shape the ramp, so steal starting values from its documentation and nudge.
 
-The word "splices" in that first sentence is doing real work, and it's worth a moment because it explains why the names never drift. There is one library file, and it gets pasted into three different places: the framework's own effect shaders, every shader you write, and every compute kernel from [Chapter 18](18-Simulations.md). So `fbm` in your filter, `fbm` in Ollin's built-in noise generator, and `fbm` in a particle kernel are not three implementations that happen to agree. They are the same source text compiled three times, which is why a field you prototype in a shader behaves identically when you move it into a kernel.
+The word "splices" in that first sentence is doing real work, and it's worth a moment because it explains why the names never drift. There is one library file, and it gets pasted into three different places: the framework's own effect shaders, every shader you write, and every compute kernel from [Chapter 19](19-Simulations.md). So `fbm` in your filter, `fbm` in Ollin's built-in noise generator, and `fbm` in a particle kernel are not three implementations that happen to agree. They are the same source text compiled three times, which is why a field you prototype in a shader behaves identically when you move it into a kernel.
 
 Splicing the whole library into every shader would make every compile larger than it needs to be, so there's an opt-out:
 
@@ -121,7 +121,7 @@ drawImage(generate(.quasicrystal(phase: time)).image, 0, 0)
 
 <img src="Images/17-YourFirstShader/Fields.jpg" alt="Six labeled tiles: a blue quasicrystal of interfering waves, a black and white moire of beating ring gratings, cream interwoven gyroid bands on slate, an orange golden-angle dot spiral, a hexagonal lattice of teal, red and gold cells, and a sandy white Chladni figure of nodal lines on near-black" width="680">
 
-There are six. `.quasicrystal` sums plane waves at evenly spaced angles, so it's ordered but never repeats. `.moire` overlaps ring gratings and shows you their beat, which travels much faster than the rings themselves. `.gyroid` slices a famous minimal surface. `.phyllotaxis` is the sunflower's golden-angle spiral from [Chapter 15](15-ShapesAsMaterial.md), drawn per pixel. `.hexPulse` gives every cell of a hex lattice its own hashed heartbeat. `.chladni` is a ringing plate's standing wave, which [Chapter 18](18-Simulations.md) comes back to and [Chapter 22](22-SoundAndControl.md) plays with sound.
+There are six. `.quasicrystal` sums plane waves at evenly spaced angles, so it's ordered but never repeats. `.moire` overlaps ring gratings and shows you their beat, which travels much faster than the rings themselves. `.gyroid` slices a famous minimal surface. `.phyllotaxis` is the sunflower's golden-angle spiral from [Chapter 15](15-ShapesAsMaterial.md), drawn per pixel. `.hexPulse` gives every cell of a hex lattice its own hashed heartbeat. `.chladni` is a ringing plate's standing wave, which [Chapter 19](19-Simulations.md) comes back to and [Chapter 23](23-SoundAndControl.md) plays with sound.
 
 Here's the part worth doing rather than reading. Take the gyroid, which is genuinely one line: a sum of three `sin` and `cos` products, read at a fixed slice through space.
 
@@ -188,6 +188,35 @@ Whatever cannot come over is written into the file as a comment. A `NOTE(ollin)`
 Then there is the part no tool can decide for you. **A shader belongs to whoever wrote it.** Shadertoy's default is CC BY-NC-SA, and many authors write their own terms into a comment at the top. So the translated file keeps a header naming the shader, its author, and the address it came from. Leave that header where it is, and read the terms before you publish anything made from it.
 
 What you get back is Metal source sitting in your own project, with Ollin's shader library already spliced in. You can call `palette` or `fbm` inside somebody else's plasma and watch what happens. That is the difference between bringing a shader over and admiring it in a browser tab.
+
+## Standing waves: Chladni figures
+
+Not every wave needs simulating, and this one is a formula you can evaluate at a pixel. In 1787 Ernst Chladni scattered sand on a metal plate and drew a bow across its edge. The sand skipped away from the parts that were moving, and settled along the lines that weren't. Those lines are the plate's nodes, and the figures they make are beautiful enough that Chladni toured Europe demonstrating them.
+
+The square plate's answer has a closed form, so Ollin gives you the value directly instead of a simulation:
+
+```swift
+let s = chladni(u, v, m: 5, n: 2)      // -1…1, over plate coordinates 0…1
+```
+
+`u` and `v` run `0...1` across the plate, and `m` and `n` are the mode numbers, which is to say how the plate was driven. The result is how far the plate is displaced at that spot, so sand settles wherever the value is near zero. That's the whole recipe. Scatter grains, and keep the ones sitting near a nodal line.
+
+<img src="Images/17-YourFirstShader/ChladniModes.jpg" alt="Six panels of Chladni figures at different mode numbers, each showing dark sand collected along curved and diagonal nodal lines on a pale plate, the patterns growing more intricate as the numbers rise" width="680">
+
+One rule saves an afternoon. Setting `m` equal to `n` cancels the whole expression to zero, and the plate's diagonal is nodal in every mode. Those are properties of the physics rather than bugs to work around. Keep `m` larger than `n` and every mode gives you a figure.
+
+`m` and `n` don't have to be whole numbers, which is the door to animation. Fractional modes morph continuously from one figure to the next. A slow tour through mode space then makes the sand rearrange itself, in a way that looks like the bow moving. Keep `m` above `n` at every stop along the way, or the tour crosses the degenerate diagonal and the figure blinks out.
+
+For a whole plate at once there's a GPU version, which is the faster way to fill the canvas:
+
+```swift
+drawImage(generate(.chladni(m: 5, n: 2)).image, 0, 0)
+drawImage(generate(.chladni(m: 7, n: 3, style: .wave, phase: time)).image, 0, 0)
+```
+
+`.sand` gathers grains onto the nodes like the figure above, and `.wave` shows the plate swinging through its cycle instead. And the nodal lines are just where the field crosses zero, so the vector version of a Chladni figure is a contour extraction away. The [isolines reference](../Docs/Generators/Isolines.md) covers it.
+
+The natural next step is to stop choosing the mode numbers by hand. [Chapter 23](23-SoundAndControl.md) listens to sound. Pick `m` and `n` by which pitches are actually loud, and a piece of music turns into the plate that would have produced it. The `Audio/ChladniResonance` example does exactly that.
 
 ## Putting it together: aurora
 
@@ -265,14 +294,15 @@ Shaders come out of computer graphics research and the demoscene, but the reason
 
 ## Go deeper
 
+- [Chladni figures](../Docs/Generators/Chladni.md): the mode numbers, the closed form behind the plate, and the knobs on the pattern. The [`Patterns/Chladni`](../Examples/Patterns/Chladni/Sketch.swift) example sweeps the modes, and [`Audio/ChladniResonance`](../Examples/Audio/ChladniResonance/Sketch.swift) drives them from a live signal.
 - [User shaders](../Docs/Shaders/Shaders.md): the full contract, filters and combines that read layers, `.metal` file loading, and the error model.
 - [Bringing a shader over](../Docs/Tools/ShaderImport.md): `ollin new --from-shader` translates a GLSL fragment shader into Metal and writes the project around it, with the `mod` rounding difference, the flipped vertical axis, and the license header explained.
 - [The shader library](../Docs/Shaders/ShaderLibrary.md): every spliced-in helper with its signature.
 - [Visual chains](../Docs/Shaders/Visuals.md): all sources, warps, color ops, combines, and modulations.
-- [Compute](../Docs/Shaders/Compute.md): the sibling world where kernels update buffers of particles instead of pixels, waiting in [Chapter 18](18-Simulations.md).
+- [Compute](../Docs/Shaders/Compute.md): the sibling world where kernels update buffers of particles instead of pixels, waiting in [Chapter 19](19-Simulations.md).
 - Appendix B draws this chapter's math, one picture per idea: [Where things are](B-JustEnoughMath.md#where-things-are), [Per-pixel thinking and distance](B-JustEnoughMath.md#per-pixel-thinking-and-distance).
 - Worked examples: [`Examples/Shaders/HelloShader`](../Examples/Shaders/HelloShader/Sketch.swift), [`Examples/Shaders/ShaderFilter`](../Examples/Shaders/ShaderFilter/Sketch.swift), [`Examples/Shaders/ShaderFile`](../Examples/Shaders/ShaderFile/Sketch.swift) (hot-reloading `.metal`), [`Examples/Shaders/VisualSynth`](../Examples/Shaders/VisualSynth/Sketch.swift), and [`Examples/Effects/PatternFields`](../Examples/Effects/PatternFields/Sketch.swift).
 
 ---
 
-[Contents](README.md#contents) · Previous: [Chapter 16, Layers and effects](16-LayersAndEffects.md) · Next: [Chapter 18, Simulations](18-Simulations.md)
+[Contents](README.md#contents) · Previous: [Chapter 16, Layers and effects](16-LayersAndEffects.md) · Next: [Chapter 18, Iterated forms](18-IteratedForms.md)
