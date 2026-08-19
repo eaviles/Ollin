@@ -8,7 +8,11 @@
 
 So far shapes have mostly been things you *draw*, appearing on the canvas and ending there. This chapter treats shapes as things you *have*, meaning geometry you can hold in a variable. Cut it with other geometry, grow it, shrink it, thicken it, and only then draw it. Or skip the screen entirely and hand it to a pen plotter. Everything in the plate above is line work a real pen could follow. By the end of the chapter you'll have exported it as exactly that.
 
-## Contours, shapes, and holes
+## Shapes you can hold
+
+This first stretch treats geometry as a value. It covers the types that hold an outline, a few ways to get one, and the verbs that edit whatever you're holding.
+
+### Contours, shapes, and holes
 
 Two types carry all the geometry in this chapter, and you've already brushed against both. A `Contour` is a run of points, open (a polyline with two ends) or closed (a loop). A `Shape` is one or more contours plus a rule for what counts as inside. Its everyday superpower is that a contour *nested inside another* becomes a hole. That is how an `o` or a donut is one shape, not two.
 
@@ -46,7 +50,7 @@ final class Leaf: Sketch {
 
 A cubic curve bends from one point to the next, steered by two control points it leans toward but never touches. Two of them, mirrored, make the leaf. The vein uses the friendlier `drawCurve`, which threads a smooth curve *through* the points you give it, no control points to manage. One honest gotcha, learned the honest way. A fill needs a *closed* contour, and ending a path back where it started isn't enough. Forget `p.close()` and the leaf silently refuses to fill, leaving only the vein.
 
-## Curves you can write down
+### Curves you can write down
 
 The leaf was drawn by hand, one control point at a time. Some outlines don't need that, because somebody already found the formula, and the formula is shorter than the drawing. Nine of them come with Ollin, all deterministic and none of them touching randomness.
 
@@ -79,7 +83,7 @@ The last panel isn't a curve at all. `smoothed(iterations:)` is Chaikin's corner
 
 One habit applies to all of them. These come back in their own coordinates, and the way to fit one to your canvas is `fitted(points, in: rect)`, which scales the *points*. Reaching for `scale()` instead would scale your stroke width along with the geometry, which is rarely what you want on a drawing made of lines.
 
-## Circles all the way down
+### Circles all the way down
 
 Here is a fact that sounds false. Any closed outline at all, however irregular, is exactly a sum of circles. Each spins at a whole-number rate, riding on the tip of the one before it. That's Fourier's idea, and Ollin will do the decomposition for you.
 
@@ -95,7 +99,7 @@ drawEpicycles(chain, at: phase, terms: 64)                // the construction it
 
 Two ways to use it. `path(samples:terms:)` hands you the whole traced outline as geometry. A deliberately under-termed version of a shape is then a way to *simplify* it that keeps it smooth. The call `point(at:terms:)` gives one position, which is what you animate. `drawEpicycles` draws the whole nest of circles and spokes at a moment, so the machine is visible. The `Motion/Epicycles` example traces a whale that way, with the pen leaving a fading trail.
 
-## One shape becoming another
+### One shape becoming another
 
 Two shapes and a number between them gives you every shape in between.
 
@@ -117,7 +121,7 @@ Build it once and keep it. Working out which part of the first shape corresponds
 
 The holes are the part worth watching. When the two shapes don't have the same number of contours, the unmatched ones grow out of their own center, or shrink into it. That is why the ring's hole opens from nothing in the middle, instead of flying in from off-screen. Timing lives outside the morph, so pass it an eased phase, a `pingPong` for there-and-back, or a `Timeline`'s progress. For a one-off blend with no state to keep, `star.morphed(toward: ring, 0.5)` gives you the single shape.
 
-## Shape arithmetic
+### Shape arithmetic
 
 Held shapes can be combined like quantities. Four operations do it all:
 
@@ -132,7 +136,21 @@ let rind = circle.symmetricDifference(star)   // either, but not both
 
 These are the **shape booleans**, and they turn drawing into sentence-building. A window is a wall subtracting a rectangle, and a crescent is a circle subtracting a shifted circle. The plate at the top is a mosaic subtracting a ribbon. Holes come along correctly, results are ordinary `Shape`s, and you can chain as deep as the sentence needs. When a boolean's result looks unexpectedly *solid* or *hollow*, the shape's winding rule is usually the reason. The [geometry reference](../Docs/Drawing/Geometry.md#shape-booleans) covers the two rules, and when each reads more naturally.
 
-## A mark, not a line
+### Growing, shrinking, and thickening
+
+Three more verbs finish the shape-editing vocabulary. `offset(by:)` grows a region outward on a positive number and shrinks it inward on a negative one, with holes moving the opposite way. Shrinking a region repeatedly reads as topographic contour lines, until it pinches apart and disappears. The `Patterns/Topography` example is exactly that loop. New in the toolbox, `stroked(width:)` turns a *line* into a *region*. It gives the closed shape a pen stroke of that width would cover, round or square or butt ends included. A closed contour comes back as a band:
+
+```swift
+let ribbon = Contour(wave, closed: false).stroked(width: 120, join: .round, cap: .round)
+```
+
+That one call is the hinge of this chapter's finished piece. Once a stroke is a region, everything above applies to it. You can subtract it from a mosaic, inset rings inside it, or hatch it. You can also export it as a filled outline, instead of a fragile stroke attribute. The `Shapes/InkRibbon` example strokes a drifting brush line and rings contour bands inside it, live.
+
+## Marks and brushes
+
+The next three tools shape the stroke itself, and each answers a different question. A profile shapes a finished path's width, dynamics respond to the hand mid-gesture, and a brush decides what tip lays the ink down.
+
+### A mark, not a line: strokeProfile
 
 Every stroke so far has been one width from end to end. That is the honest look of a machine drawing a line. It is the wrong look for a hand making a mark. `strokeProfile` gives the width a shape of its own along the path.
 
@@ -152,7 +170,7 @@ Two practical notes. The width is read at every point of the path, measured alon
 
 The mark survives the trip out, too. Run the sketch with `--export-svg` and a profiled stroke is written as the region it actually covers, rather than a line with one width attribute. What the plotter draws is what you saw.
 
-## A mark you are still making
+### Painting as it happens: stroke dynamics
 
 A profile asks one question at every point: where am I along this path? That works because the path is finished before you draw it. Now think about painting. You drag the mouse, and the stroke has to appear *as it grows*. There is no finished path, so there is no fraction, and the whole idea falls apart.
 
@@ -197,7 +215,7 @@ Three practical notes. A mark is an ordinary value, so finishing one is `strokes
 
 `Examples/Shapes/Brushwork` is the whole thing to drag around in, and [Marks](../Docs/Drawing/Marks.md) has the rest.
 
-## A mark made of many marks
+### Stamps along the path: brushes
 
 Both tools so far shape one continuous ribbon. A real brush is not continuous. It is a tip pressed down over and over, close enough that the prints run together. `strokeBrush` works that way too.
 
@@ -226,17 +244,11 @@ strokeProfile(.taper())
 
 And each stamp is a real shape rather than a stretch of ribbon. So `--export-svg` writes every one of them as a circle or a polygon a plotter can follow. `Examples/Shapes/Brushes` has the family side by side.
 
-## Growing, shrinking, and thickening
+## Scatters and territories
 
-Three more verbs finish the shape-editing vocabulary. `offset(by:)` grows a region outward on a positive number and shrinks it inward on a negative one, with holes moving the opposite way. Shrinking a region repeatedly reads as topographic contour lines, until it pinches apart and disappears. The `Patterns/Topography` example is exactly that loop. New in the toolbox, `stroked(width:)` turns a *line* into a *region*. It gives the closed shape a pen stroke of that width would cover, round or square or butt ends included. A closed contour comes back as a band:
+Here the material turns from single outlines to populations. Points that spread themselves evenly come first, because nearly everything after them wants a well-mannered scatter to work on.
 
-```swift
-let ribbon = Contour(wave, closed: false).stroked(width: 120, join: .round, cap: .round)
-```
-
-That one call is the hinge of this chapter's finished piece. Once a stroke is a region, everything above applies to it. You can subtract it from a mosaic, inset rings inside it, or hatch it. You can also export it as a filled outline, instead of a fragile stroke attribute. The `Shapes/InkRibbon` example strokes a drifting brush line and rings contour bands inside it, live.
-
-## The well-mannered scatter
+### The well-mannered scatter
 
 [Chapter 11](11-GrowingThings.md) and [Chapter 12](12-FieldsAndFlow.md) borrowed `poissonDisk` with a promise to explain it here. Here is the problem it solves. Plain `random` placement clumps and leaves bare patches, because independent rolls have no manners about each other ([Chapter 4](04-Randomness.md) warned you). Blue noise is the fix, and the recipe, Robert Bridson's, is charmingly physical. Throw a dart, then keep throwing darts *near existing ones*, keeping only throws that land at least `radius` from everybody placed so far. When a dart can't find room after thirty tries, its neighborhood is full. The result is even but never gridded:
 
@@ -264,7 +276,7 @@ Blue noise can't do that. Adding a dart to a Poisson-disk scatter means running 
 
 `halton(i, base:)` is the one-dimensional version, and it pays off well away from scatters. Space hues around a wheel, offset animation phases, or choose sample times. It suits anywhere you want values that spread out evenly, no matter how many you end up taking.
 
-## Territories and neighbors
+### Territories and neighbors
 
 A scatter of points hides two structures, and they're each other turned inside out:
 
@@ -279,7 +291,7 @@ let mesh = delaunay(sites)                  // mesh.triangles, each a real Trian
 
 Every Voronoi cell is a `Shape`, so the whole chapter applies per cell. You can inset them for grout lines, subtract things from them, or hatch them, and the plate does all three. One companion helper is worth naming. `lloyd(sites, in: bounds)` nudges every site to its cell's center and re-tessellates. Each pass makes the mosaic calmer and more even, like a pan of bubbles settling.
 
-## Packing
+### Packing
 
 Packing goes the other way around. Instead of carving space between points, you grow shapes until they claim it. The classic form scatters candidate seeds and grows each circle until it touches whatever arrived first:
 
@@ -310,7 +322,11 @@ The output is `[Shape]`, so it flows straight into everything earlier in this ch
 
 `ContinuousPacking` is the same engine held open instead of run to completion. You `step()` it each frame and the region fills in as you watch. The big gaps go first, so each new shape is smaller than the last. Paired with `noClear()` from [Chapter 14](14-LayersAndEffects.md) it costs almost nothing per frame, because a placed shape never moves and only the new ones need drawing. That's what the `Patterns/ShapePacking` example does, densifying forever.
 
-## What shape are these points?
+## Outlines and bones
+
+A scatter or a shape carries structure you can read back out. Hulls wrap a point set from the outside, and the two skeletons describe a shape from the inside.
+
+### What shape are these points?
 
 A scatter usually has an outline you need for something. It may be the footprint of a drifting herd, or the ground a blue-noise scatter covers. It may be an outline to offset, hatch, or clip against. Three tools answer that question, and they differ in what each one is allowed to do.
 
@@ -334,7 +350,7 @@ Choosing between them comes down to what you'll do next. When the result has to 
 
 The one number that needs care is `alpha`, which is a radius in the same units as your points. It wants to sit a bit above the typical gap between neighbors, and set much below that the shape crumbles into dust. All three are deterministic, so the same points and the same knob give the same outline every run. The `Shapes/Hulls` example breathes `concavity` from 0 to tight so you can watch the band sink into the gulf.
 
-## The skeleton inside
+### The skeleton inside: the medial axis
 
 Hulls describe a region from the outside. The **medial axis** describes it from the inside by finding its middle. Take every disk that fits within the shape while touching the boundary in two or more places. The centers of those disks trace a skeleton. A blob collapses to the veins running down its lobes, and a letterform collapses to the stroke a pen would have made to write it.
 
@@ -354,7 +370,7 @@ What makes this more than a line drawing is that the skeleton remembers thicknes
 
 Skeletons are setup work rather than per-frame work, so extract once and hold the result. Glyph shapes from [Chapter 7](07-WordsAndPictures.md)'s `textToShapes` skeletonize as they are, counters and all. That is what the `Shapes/MedialAxis` example does, to spell a word in bones.
 
-## The other skeleton
+### The straight skeleton
 
 There is a second skeleton, built from a different thought experiment. Shrink the boundary inward at a steady pace, every edge sliding parallel to itself, and watch the corners. Each one travels in a straight line, edges shorten and vanish, and narrow places pinch shut. The paths the corners trace are the **straight skeleton**. Where the medial axis curves around a reflex corner, this one is made entirely of straight segments. Where the medial axis is approximated from a boundary sampling, this one is exact.
 
@@ -382,7 +398,11 @@ That loop is a topographic contour map of any polygon, which is a classic way to
 
 One habit carries over from the medial axis. Every boundary corner grows an arc, so a traced or resampled outline grows one arc per sample point. That is the honest answer, but for clean line work, simplify the outline first. The `Shapes/StraightSkeleton` example grows an island with a lake, and lets the contour ladder drift inward forever. Every ring is a mitered inset read off one skeleton.
 
-## Ink on water
+## Ink and paint
+
+Two wet media come next, and neither involves a drop of simulated fluid. Both are the chapter's dry geometry, bent and stacked until it reads as paint.
+
+### Ink on water
 
 Paper marbling has a few hundred years of craft behind it and a simple physical setup. Ink floats on a bath of thickened water. Because it floats instead of mixing, anything done to the surface moves the ink around without blending it. You drop fresh ink in, and you rake the surface with a stylus or a comb. Then you lay a sheet of paper on top to lift the pattern off.
 
@@ -424,7 +444,7 @@ drawMarbling(bath)      // fills every ink in its own color, oldest first
 
 Later drops sit above earlier ones and drawing runs oldest first, so the stack reads exactly as it was poured. Every ink is a plain `Shape`, which means a marbled sheet leaves through `--export-svg` as real paths like everything else in this chapter.
 
-## Pigment from a polygon
+### Pigment from a polygon
 
 Watercolor is the least geometric-looking thing in this chapter, and that is exactly why it belongs here. A pool of paint on wet paper has a dense middle and an edge that wanders, blooming in some places and staying crisp in others. Ollin gets that look from nothing but polygon deformation and translucency.
 
@@ -446,7 +466,11 @@ This is deliberately heavy drawing, since each layer is a full concave fill. Pai
 
 Two moves are worth knowing once the basic pool works. For two pigments that mix instead of one covering the other, build a typed `Watercolor` base per pool. Interleave their layers a few at a time, so overlaps glaze in both directions. And for the grainy look of pigment settling into paper, speckle small translucent circles inside a `withClip` of the pool's own outline.
 
-## Lines for a pen
+## Toward the pen
+
+The chapter opened by promising a pen plotter, and these last tools close the loop. Fills become line work a pen can follow, and vector files flow in and back out.
+
+### Lines for a pen
 
 Everything so far draws filled regions on a screen. A pen plotter changes the terms, since it offers no fills and no gray, only lines. The bridge is **hatching**, which converts a filled region into parallel line work, and it's a type you can use directly:
 
@@ -461,7 +485,7 @@ for line in hatch.lines(filling: shape) {
 
 Spacing is the pen's whole idea of tone. Holes and concavities are respected, because the lines are clipped by the shape's own inside rule. For getting work *out*, every sketch already knows how. Run it with `--export-svg plate.svg` and the recorded geometry writes as true vector paths. Add `--hatch` and the exporter converts every fill to hatch line work by itself, spacing scaled by each fill's tone. Either way the file opens in any vector tool and feeds any plotter.
 
-## Shapes from a file
+### Shapes from a file
 
 There's one more source of material before the finished piece, which is shapes you didn't draw at all. SVG is the plain-text vector format every design tool exports. `loadSVG` reads a file into the same types this chapter has been editing. Each element arrives as a `Shape` carrying the fill and stroke it was authored with:
 
@@ -486,6 +510,29 @@ for (i, shape) in fitted.shapes.enumerated() {
 ```
 
 A logo, a scanned drawing auto-traced to paths, a file another sketch exported, and they all arrive the same way. They can leave again through `--export-svg`, so a sketch can import a file, rework it, and hand the result to a plotter. Two things are worth knowing before you lean on it. Text doesn't import, so convert it to outlines in the design tool first. A gradient fill falls back to flat gray, so the form stays visible. The [SVG import reference](../Docs/Drawing/SVG.md) lists exactly what the importer reads and skips.
+
+## Record it once: batches
+
+One habit has come up in section after section: build the geometry once, hold it, and let `draw()` only replay it. There's a last step available when even the replaying gets heavy. `draw()` still walks your arrays and re-issues every line to the GPU, sixty times a second, for a picture that never changes.
+
+```swift
+var drawing: Batch?
+
+override func setup() {
+    drawing = makeBatch {
+        // any drawing calls that don't change between frames
+    }
+}
+
+override func draw() {
+    background(.white)
+    if let drawing { drawBatch(drawing) }
+}
+```
+
+`makeBatch { }` records your drawing once into a `Batch` you hold, and `drawBatch` replays it from the GPU's own memory. For static work at scale the difference is not subtle. A hundred and fifty thousand circles cost around thirteen milliseconds a frame drawn the ordinary way, and effectively nothing replayed. The transform in force when you call `drawBatch` still applies, so one recorded batch can be stamped at several positions or sizes.
+
+The rule of thumb is simple. If the drawing doesn't change between frames, it belongs in a batch. If it does change, leave it alone. A few things can't be recorded, namely 3D meshes, particles, layer blocks, and clipping. Rather than silently dropping them, Ollin refuses at the point you draw them and tells you why.
 
 ## Putting it together: the plate
 
@@ -551,28 +598,7 @@ final class Plate: Sketch {
 }
 ```
 
-All the geometry happens once in `setup()` and lands in four plain arrays, and `draw()` only replays lines. That split *is* the plotter mindset, a piece reduced to strokes a machine could follow. It also keeps the sketch fast, no matter how elaborate the geometry gets.
-
-There's one more step available when even the replaying gets heavy. Computing the geometry once is half the saving. The other half is that `draw()` still walks those arrays and re-issues every line to the GPU on every frame. That is sixty times a second, for a picture that never changes.
-
-```swift
-var plate: Batch?
-
-override func setup() {
-    plate = makeBatch {
-        // exactly the drawing calls that are in draw() now
-    }
-}
-
-override func draw() {
-    background(Color(hex: 0xF4F0E6))
-    if let plate { drawBatch(plate) }
-}
-```
-
-`makeBatch { }` records your drawing once into a `Batch` you hold, and `drawBatch` replays it from the GPU's own memory. For static work at scale the difference is not subtle. A hundred and fifty thousand circles cost around thirteen milliseconds a frame drawn the ordinary way, and effectively nothing replayed. The transform in force when you call `drawBatch` still applies, so one recorded batch can be stamped at several positions or sizes.
-
-The rule of thumb is the same one the plate already follows. If the drawing doesn't change between frames, it belongs in a batch, and if it does change, leave it alone. A few things can't be recorded, namely 3D meshes, particles, layer blocks, and clipping. Rather than silently dropping them, Ollin refuses at the point you draw them and tells you why.
+All the geometry happens once in `setup()` and lands in four plain arrays, and `draw()` only replays lines. That split *is* the plotter mindset, a piece reduced to strokes a machine could follow. It also keeps the sketch fast, no matter how elaborate the geometry gets. And nothing in `draw()` changes between frames, so the plate is exactly what `makeBatch` records. Wrap the loops and the whole piece replays as one `Batch`.
 
 Then make it yours:
 

@@ -162,13 +162,10 @@ The setting is read fresh, so turning it on reaches a running sketch on the next
 
 Nothing changes on its own. A sketch decides what less movement means, because only the sketch knows which of its movements carries the piece and which is decoration. Common answers: slow a drift, hold a value that was oscillating, drop a flash, or cut a camera move to a still framing.
 
-## What is not here yet
-
-- **Complex-script text.** Core Text shapes right-to-left scripts, CJK and combining marks correctly, but that path is not yet verified or surfaced here. See the [roadmap](../../ROADMAP.md#accessibility-and-inclusive-text).
-
 ## See also
 
 - [Describing](../../Examples/Basic/Describing/Sketch.swift) - a sketch that says what it shows while it shows it
+- [Text](../Drawing/Text.md#scripts) - complex-script shaping: Arabic, Devanagari, Thai, vertical layouts
 - [Color](../Drawing/Color.md) - the color type, palettes, ramps and mixing
 - [Effects](../Drawing/Effects.md) - the rest of the filter catalog
 - [Parameters](./Parameters.md) - putting the kind on a knob
