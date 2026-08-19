@@ -4,6 +4,8 @@ The working document for writing [the Ollin Guide](README.md). Readers should re
 
 How to use it: pick the next chapter from the status table, read its brief below, then follow the session workflow in [AUTHORING.md](AUTHORING.md). When a chapter ships, update its status here, mark the coverage-matrix rows it satisfies, and check whether any parking-lot item it hosts has shipped in the framework meanwhile.
 
+There is structural work in flight as well as chapters. *The shape ahead* below holds it, and while it has rows in it, read that section first: the chapter numbers everything else in this file uses are about to move.
+
 ## Status
 
 | Chapter | File | Status |
@@ -40,10 +42,101 @@ Statuses: `not started` → `figures` (figure sketches built and rendered) → `
 Also tracked here so they aren't forgotten:
 
 - The figure runner stays a local gate rather than a CI job, and the reason is the runner rather than the cost. Scarce CI minutes were the original reason and no longer decide it, since a full run went from twenty minutes to about three. What decides it now is that a CI runner cannot do this job honestly. Two figures (`21-Seeing/MotionBrush` and `21-Seeing/FlowArrows`) measure optical flow through the same Vision request `build.yml` already skips, because the virtualized runner fails it, and rendered pixels are GPU-specific anyway, so a CI render could only report that a figure compiled and ran, never that it still looks right. Reopen this if those figures are ever reworked, or if the runner grows a compile-only mode, which would catch the real rot (an API rename breaking a figure) without needing a GPU at all.
-- The full run of 213 figures takes about three minutes cold and under a second when nothing changed, so run the whole suite rather than reaching for `--only`. It used to take twenty, which was long enough that a session could talk itself into skipping the gate; the cache and the worker shards that fixed it are described in *Figures* in [AUTHORING.md](AUTHORING.md).
-- The three figures that genuinely cannot reproduce (`16-Simulations/ArtificialLife` and `16-Simulations/FluidAndBlobs`, whose GPU sims are atomic-race-ordered and chaotic, and `21-Seeing/Trajectory`, whose Vision model's fitted parabola drifts in its low-order bits across model/OS updates while staying byte-identical within a session) carry `// figure: unstable`, so the runner verifies them without rewriting their images. There is no `git restore` step any more; a clean `git status` after a run is now the expected result, and churn under `Guide/Images` means something real changed.
+- The suite is 333 figures, and an unchanged run costs a few seconds, so run the whole thing rather than reaching for `--only`. A cold run is several minutes spread over four worker processes; the cache and the shards are described in *Figures* in [AUTHORING.md](AUTHORING.md). Two cautions on the number. It has grown with the figure count (the suite was 213 figures when three minutes was measured), and the runner's own "a full run costs about" line adds up per-figure times rather than reporting wall clock, so it reads about four times worse than the run actually is. Watch the trend anyway: a gate slow enough to skip protects nothing, which is the whole reason the cache exists.
+- The nine figures that genuinely cannot reproduce carry `// figure: unstable`, so the runner verifies them without rewriting their images. Six are the GPU sims in `16-Simulations` (`ArtificialLife`, `Evolution`, `FluidAndBlobs`, `ParticleLenia`, `Swarm`, `SwarmChemistry`), whose neighbor sums are added in an order GPU atomics decide; `18-SculptingWithFields/CausticLight` accumulates photon parcels the same way; and two run on system ML models Ollin does not control, `21-Seeing/Trajectory` and `20-SoundAndControl/Listening`. There is no `git restore` step any more; a clean `git status` after a run is now the expected result, and churn under `Guide/Images` means something real changed.
 - A website (Guide + Docs + gallery) is a later project; keep all markdown portable (plain relative links, standard tables, no HTML beyond the sanctioned `<img width>` figure embed in AUTHORING.md).
 - Translations are out of scope for now.
+
+## The shape ahead: the splits
+
+A structure audit on 2026-08-18 found the Guide out of proportion, in one direction and for one reason. It was written once at a sane size, and then every feature the framework shipped was folded into whichever chapter had been assigned it, so the front half stayed fixed while the back half grew into catalogs. Chapter 17 reached 24,511 words across 48 flat sections, one sixth of the whole Guide. Chapters 16, 20 and 22 each reached about 10,600, and each announces its own seam in its own prose. The cost lands on the anatomy's best rule: Ch 16's payoff composes 1 of its 22 teaching sections, Ch 20's payoff is called "a playable instrument" and plays no note.
+
+Two tiers of fixes shipped on 2026-08-18 and 19: cross-reference linking, appendix wiring, missing figures, then in-chapter regrouping and a heading-findability pass. This third tier is the part that needs renumbering. It takes the Guide to **32 chapters in 5 parts**, no part more than 1.64 times another by words, with every chapter back inside the 2,000 to 8,000 word band the best-reading chapters already occupy.
+
+Rows leave this section as they land, the way `ROADMAP.md` works: when a split ships, its chapters get ordinary rows in the status table above and ordinary briefs below, and the entry here goes. When the section is empty, the tier is done and the section goes too.
+
+**Decisions taken, so they are not re-litigated.** Chapter files and both asset trees renumber together, so file order matches reading order everywhere (`Scripts/guide-renumber.sh` does it in one pass, `Scripts/guide-links.sh` proves it landed). The CSV and JSON section stays a Part I section inside "Pictures and data", because both halves are files you load; live data from the world is a separate future chapter, reserved in the parking lot below. The 3D physics block becomes two chapters rather than one of 12,000 words. The iterated-forms material becomes a new Part III chapter rather than the back half of "Fields and flow", so it gets a payoff of its own.
+
+### The target
+
+| Part | Chapters |
+|---|---|
+| I: Seeing something move | 1 Hello, Ollin · 2 Color that works · 3 Motion and time · 4 Randomness · 5 Noise · **6 Grids and repetition** · **7 Tiles that cover the plane** · **8 Words** · **9 Pictures and data** |
+| II: Systems that come alive | 10 Vectors, gently · 11 Forces and physics · 12 Flocks and swarms · 13 Growing things · 14 Fields and flow · 15 Shapes as material |
+| III: Pixels and light | 16 Layers and effects · 17 Your first shader · **18 Iterated forms** · **19 Simulations on a grid** · **20 Simulations made of particles** |
+| IV: The third dimension | 21 3D, gently · **22 Meshes, maps, and materials** · **23 Landscapes and multitudes** · **24 Worlds with weight** · **25 Characters, vehicles, and cloth** · 26 Sculpting with fields |
+| V: Out into the world | 27 Depth and the iPhone as a sensor · **28 Sound and control** · **29 Making sound** · 30 Seeing · **31 Sharing and performing** · **32 Installations** |
+
+Bold marks a chapter this tier creates or rebuilds. Two chapters change part: Depth and the phone moves to Part V, where it opens the world-as-input run ahead of the ears and the eyes, and the new Iterated forms chapter sits in Part III, because Buddhabrot, escape-time and attractor density are per-pixel plates and the chaos game opens the chapter as the CPU intuition.
+
+### The splits, in order
+
+Each lands complete: no gappy contents list, no chapter without its payoff, every gate green before the commit. Ascending order, because it is the cheaper direction and it settles the most-referenced early chapters first. Chapter 17 is cut from the back, so every intermediate state is still a whole Guide.
+
+| Step | What moves | New payoff |
+|---|---|---|
+| 1 | Ch 6 splits at its line 211. Grids keeps the grid, the transforms, symmetry, the fold and clipping; Tiles takes Truchet, hitomezashi, the aperiodic set and hyperbolic, plus the Meander payoff, which is a Truchet piece. | Grids |
+| 2 | Ch 7 splits at its line 217. Words takes the type half; Pictures and data takes the image half, the CSV and JSON section, and the TypeMosaic payoff, which is a picture reduced to glyph marks. | Words |
+| 3 | Iterated forms gathers three orphans: Ch 11's fractal block, Ch 12's chaos coda, Ch 16's escape-time fractals. Chladni goes to Your first shader. Differential growth goes from Flocks to Growing things. | Iterated forms |
+| 4 | Ch 16 splits at its line 366, where the prose already announces it. The grid half keeps the organism. | Particles |
+| 5 | Ch 17's physics block leaves. Worlds with weight takes bodies, queries, collision filtering, freedoms, machines and snapshots; Characters, vehicles, and cloth takes the animate run, contiguous and unreordered. | Both |
+| 6 | Ch 17's terrain, instancing, culling and strands leave as Landscapes and multitudes. | Landscapes |
+| 7 | Ch 17's mesh and texturing run leaves, and Ch 18's mesh-only materials (PBR, anisotropy, glass, clearcoat and sheen, subsurface) join it. That also settles Ch 17's two principle-1 breaches, since `.dielectric` and `environment(.sky)` stop being used a chapter before they are taught. | Meshes |
+| 8 | Ch 20 splits three ways into two. Listening and control join under the existing title and keep the Resonator, which makes the chapter's hook and its README line accurate as written. Synthesis and composition become Making sound. | Making sound |
+| 9 | Ch 22 splits. Sharing keeps files, feeds, handoff, the stage and the five-evaluation set; Installations takes DMX and LED, the cost row and the whole "Leaving it running" run. | Installations |
+| 10 | The parts are redrawn, Appendix D gains its new sections, README's reader's map replaces the "budget for Chapter 17" line, and every matrix row is re-homed. | none |
+
+### Briefs for the chapters this tier creates
+
+The existing briefs below were written before their chapters grew, so they describe a fraction of what shipped. Derive a new chapter's brief from the coverage-matrix rows and the section headings it inherits, never from the parent's brief.
+
+**6. Grids and repetition.** (rebuilt)
+Teaches: unchanged, the `grid` helper looped once, transforms that move the paper, symmetry by repetition, `symmetry`/`noSymmetry`, and drawing clipped inside a shape.
+Payoff: new, and it has to keep the hook's promise. The current piece uses neither the grid helper nor a transform, which is the finding that split the chapter.
+
+**7. Tiles that cover the plane.**
+Teaches: Truchet tiles and the coin flip that spins them; hitomezashi's one bit per line; the aperiodic set (Penrose, spectre, Wang, girih); hyperbolic tiling on the Poincaré disk.
+Assumes: Ch 6 (the grid and transforms), Ch 4 (seeds).
+Payoff: the meandering tangle, inherited.
+Draws from: `Docs/Drawing/Truchet.md`, `Hitomezashi.md`, `AperiodicTiling.md`, `HyperbolicTiling.md`.
+
+**8. Words.**
+Teaches: `drawText` and its box form; the three kinds of font; letters that move; text as geometry through `textToShapes`; scripts that do not work like English; vertical text and Mongolian; justification; hanging punctuation.
+Payoff: new, and it must reach `textToShapes`, which the chapter calls its biggest idea and which currently reaches no piece.
+
+**9. Pictures and data.**
+Teaches: loading an image and asking it questions; a picture as marks, as one line, wound from thread, and sorted by pixel; then numbers from CSV and JSON, cross-linked forward to the live-data chapter reserved below.
+Payoff: the type mosaic, inherited.
+
+**18. Iterated forms.**
+Teaches: the chaos game as the fern played as a game; four more chance games (flames, Buddhabrot, inversion, Kleinian); Schottky circle pairs; motion found in a formula (the 2D attractor maps as density plates); the bifurcation diagram; escape-time fractals.
+Assumes: Ch 4 (chance), Ch 17 (per-pixel thinking, for the GPU plates).
+Payoff: new. The whole block currently feeds nothing, which is why it reads as an intrusion in two different chapters.
+Draws from: `Docs/Drawing/Attractors.md`, `Docs/Generators/Fractals.md`, `Docs/Patterns/Schottky.md`.
+
+**19. Simulations on a grid.** / **20. Simulations made of particles.**
+Teaches, on a grid: state that lives on the GPU, Life and the wider automata, excitable media, sand, reaction-diffusion, multi-scale Turing, fluid, ripples, watercolor. In particles: a million grains, Physarum, ant colony optimization, Particle Lenia, the flock a thousand times bigger, SPH and soft bodies, evolution and its interactive twin, swarm chemistry.
+Payoff: the organism stays with the grid half, which it genuinely composes. Particles needs a new one.
+
+**22. Meshes, maps, and materials.**
+Teaches: loading a mesh and taking a scene apart; normal, height, triplanar and detail maps; what the surface is per texel; smoothing from a cage and a surface that outgrows itself; decals; then the measured materials that only work on a mesh (PBR, anisotropy, glass, clearcoat and sheen, subsurface).
+Payoff: new. Group the run under `###` families, the way Ch 13 already does.
+
+**23. Landscapes and multitudes.**
+Teaches: growing a landscape from a heightfield; a million riding the same field; ten thousand of the same thing; the world the camera trims; grass that was never built.
+Payoff: new, and assemblable from figures already committed.
+
+**24. Worlds with weight.** / **25. Characters, vehicles, and cloth.**
+Teaches, in weight: bodies in the scene, asking what hit what and what is there, collision filtering, taking a direction away, machines out of joints, keeping what settled. In the animate chapter: someone to be in there, something to drive, turning without steering, letting a figure fall, cloth and a cape, a line that knows how it is turned, water and the raft.
+Payoff: both new. Promote the `3D/Physics/Yard` example for one of them.
+
+**29. Making sound.**
+Teaches: a sketch that plays; building an instrument rather than choosing one; an instrument somebody recorded; the plucked string, modal synthesis, bowed and blown; music the sketch works out for itself; chords out of a key; tunings; tempo sync; sonification; spatial audio.
+Payoff: new, and it has to actually play. `Examples/Audio/Generative` is the candidate. The harmony run and the FM and sampling run are figureless today, and the chapter has no way to hear anything; both are worth fixing here.
+
+**32. Installations.**
+Teaches: light instead of pixels (DMX and LED mapping); the cost row when it gets slow; then the whole unattended run, which is what actually breaks the clock, picking up where it left off, falling over, gallery hours, fitting the wall, several displays and several windows, and the log.
+Payoff: new. `Examples/Installation/Unattended` is the candidate.
 
 ## Chapter briefs
 
@@ -242,9 +335,9 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | `Core/Canvas.md` (canvasSize, windowMode) | Ch 1 | taught ("The canvas is not the window" with a diagram: the two are independent, `width` reports the canvas either way, exports ignore the window, the preset families including paper sizes and `.dpi()`, and the three `windowMode` cases) |
 | `Swift.md` (language primer) | Ch 1 callouts, Appendix A | taught |
 | `Drawing/Drawing.md` (shapes, state, transforms) | Ch 1, Ch 6 | taught |
-| Variable-width strokes (`strokeProfile`/`noStrokeProfile`, `StrokeProfile`, in `Drawing/Drawing.md`) | Ch 13 | taught ("A mark, not a line" with a three-panel figure: the profile as a multiplier on `strokeWeight`, taper/ramp/values along the path against the direction-driven nib, sampling density, why the analytic shapes ignore it, and the filled-outline vector export) |
-| Stroke dynamics (`StrokeMark`/`drawMark`, `StrokeDynamics`/`StrokeResponse`/`StrokeInput`, `pressure`/`pressureIsAvailable`; `Drawing/Marks.md`) | Ch 13 | taught ("A mark you are still making" after the profile section, with a three-panel figure over one paced curve: why a fraction along the path cannot exist mid-stroke, the ten-line paint loop, width and opacity as separate named axes, the pressure fallback read in `mousePressed()`, and profiles composing with dynamics) |
-| Brushes (`strokeBrush`/`noStrokeBrush`, `Brush`; `Drawing/Marks.md#brushes`) | Ch 13 | taught ("A mark made of many marks" after the dynamics section, with a three-panel figure over one S-curve: separate stamps reading as a solid mark, spacing measured in stamp sizes rather than pixels, the jitter/angle/scatter/count knobs as fractions of the stamp, non-circular tips, composing with a profile, and stamps exporting as real shapes) |
+| Variable-width strokes (`strokeProfile`/`noStrokeProfile`, `StrokeProfile`, in `Drawing/Drawing.md`) | Ch 13 | taught ("A mark, not a line: strokeProfile" with a three-panel figure: the profile as a multiplier on `strokeWeight`, taper/ramp/values along the path against the direction-driven nib, sampling density, why the analytic shapes ignore it, and the filled-outline vector export) |
+| Stroke dynamics (`StrokeMark`/`drawMark`, `StrokeDynamics`/`StrokeResponse`/`StrokeInput`, `pressure`/`pressureIsAvailable`; `Drawing/Marks.md`) | Ch 13 | taught ("Painting as it happens: stroke dynamics" after the profile section, with a three-panel figure over one paced curve: why a fraction along the path cannot exist mid-stroke, the ten-line paint loop, width and opacity as separate named axes, the pressure fallback read in `mousePressed()`, and profiles composing with dynamics) |
+| Brushes (`strokeBrush`/`noStrokeBrush`, `Brush`; `Drawing/Marks.md#brushes`) | Ch 13 | taught ("Stamps along the path: brushes" after the dynamics section, with a three-panel figure over one S-curve: separate stamps reading as a solid mark, spacing measured in stamp sizes rather than pixels, the jitter/angle/scatter/count knobs as fractions of the stamp, non-circular tips, composing with a profile, and stamps exporting as real shapes) |
 | Kaleidoscope symmetry (`symmetry`/`noSymmetry`, in `Drawing/Drawing.md`) | Ch 6 | taught ("The fold, done for you" after the hand-rolled rotate loop, with a three-panel figure: symmetry as drawing state, why the mirrored form is the one worth having, and folding around the current origin) |
 | Clipping (`withClip`, in `Drawing/Drawing.md`) | Ch 6 | taught ("Drawing inside a shape" with a three-panel figure: the same stripes confined three ways, all three region types, and nesting as intersection) |
 | `Drawing/Color.md` (Color, OKLab, palettes, colormaps) | Ch 2 | taught |
@@ -296,8 +389,8 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | `Generators/Percolation.md` (`Percolation`, site-percolation clusters) | Ch 4 | taught ("When chance acts as a crowd" with the three-panel threshold figure: the phase transition near 0.5927, largest-first clusters, the spanning question, and the outline loops; `criticalProbability` as the no-magic-number knob) |
 | `Generators/Isolines.md` (`isolines`, marching-squares level curves) | Ch 12 | taught ("Where the field equals something" with a three-panel figure: scalar versus direction fields, marching squares explained by the sixteen corner patterns, `resolution`, why the stacked-levels form costs almost nothing extra, open versus closed contours, and the image form) |
 | `Generators/Hulls.md` (`concaveHull` / `alphaShape`) | Ch 13 | taught ("What shape are these points?" with a three-panel figure over one scatter: convex vs concave vs alpha, the `concavity` and `alpha` ranges that read well, and which to reach for by what happens next) |
-| `Generators/MedialAxis.md` (`medialAxis`, skeletons with radii) | Ch 13 | taught ("The skeleton inside" with a two-panel figure: branches and the inscribed disks, `spacing`/`prune` explained, `isClosed` rings, and what the radii are good for) |
-| `Generators/StraightSkeleton.md` (`straightSkeleton`, mitered insets) | Ch 13 | taught ("The other skeleton" with a two-panel figure: corner arcs and ridges, then the inset ladder splitting at the waist; `inset(by:)` vs `offset(by:)`, `maxInset`, faces as panels, the simplify-first habit) |
+| `Generators/MedialAxis.md` (`medialAxis`, skeletons with radii) | Ch 13 | taught ("The skeleton inside: the medial axis" with a two-panel figure: branches and the inscribed disks, `spacing`/`prune` explained, `isClosed` rings, and what the radii are good for) |
+| `Generators/StraightSkeleton.md` (`straightSkeleton`, mitered insets) | Ch 13 | taught ("The straight skeleton" with a two-panel figure: corner arcs and ridges, then the inset ladder splitting at the waist; `inset(by:)` vs `offset(by:)`, `maxInset`, faces as panels, the simplify-first habit) |
 | `Generators/Marbling.md` (`Marbling`, closed-form paper marbling) | Ch 13 | taught ("Ink on water" with a four-panel figure: the bull's-eye of drops, the area-preserving push, the shared falloff law, all four raking tools, `add`, and the concentric-swirl no-op) |
 | `Generators/Watercolor.md` (`Watercolor` / `drawWatercolor`, layered deformation) | Ch 13 | taught ("Pigment from a polygon" with a three-panel figure: the starting polygon, one 4% layer, forty stacked; layers-vs-opacity, `variance`, the paint-once rule, and interleaving two pigments) |
 | `Generators/Chladni.md` (`chladni` field + `.chladni` generator, mode-by-pitch audio join) | Ch 16 | taught ("Standing waves: Chladni figures" with a six-mode figure: the closed form and plate coordinates, sand settling at the zero crossing, the m == n degeneracy, fractional modes for morphing, both generator styles, and the Ch 20 audio join pointed) |
@@ -443,23 +536,28 @@ No entries. The last one, bringing a GLSL shader over owed to Chapter 15, was cl
 
 Where each open `ROADMAP.md` item will live in the Guide once it ships in the framework. Guide prose is written only for shipped features; this table reserves the seat. When writing a chapter, check whether any of its parked items shipped since this table was made.
 
+Homes are given as the chapter numbers this Guide has today. The splits above renumber most of them, so re-read a row against the target table before acting on it.
+
 | Roadmap item | Future Guide home |
 |---|---|
 | More SDF shapes | Ch 18 / Appendix D |
 | More model examples (ModelTracker) | Ch 21 |
 | Generative-geometry refinements | Ch 11 |
-| Technique catalog: GPU-scale steering agents | Ch 16 |
-| Technique catalog: growth/morphogenesis (growth on meshes) | Ch 17 |
-| Technique catalog: tiling/layout families | Ch 6 |
-| Technique catalog: meshing (point-cloud reconstruction) | Ch 17 |
-| 3D: richer 3D physics (ragdolls, 3D soft bodies) | Ch 17 (soft bodies also Ch 16) |
+| Technique catalog: GPU-scale steering agents | Ch 16, the particles half |
+| Technique catalog: growth/morphogenesis (growth on meshes) | Ch 17, the meshes chapter |
+| Technique catalog: tiling/layout families | Ch 6, the tiles chapter |
+| Technique catalog: meshing (point-cloud reconstruction) | Ch 19 |
+| Expressive brushes and strokes (Apple Pencil tilt and azimuth) | Ch 13, and it waits on the iOS leg |
+| iPhone as a sensor array, the rest of the stream | Ch 19 |
+| 3D mode: soft bodies that meet themselves | Ch 17, the animate physics chapter |
 | Photorealistic 3D tier | Ch 17/18, likely a new chapter when substantial |
-| Sound: physical models, spatial audio, sound in an export | Ch 20, likely splitting into its own chapter |
-| Tempo sync: Ableton Link | Ch 20 |
-| Live rigs (serial/BLE, LED mapping, NDI) | Ch 22, or a future installations chapter |
+| Sound, synthesis, and spatial audio | Ch 20, the making-sound chapter |
+| Tempo sync: Ableton Link | Ch 20, the listening and control chapter |
+| Live rigs (serial/BLE, laser projection, NDI) | Ch 22, the installations chapter |
+| Live data from the world (WeatherKit, Core Location, HealthKit, anything fetched) | a new Part V chapter beside Seeing. The file-loading half is taught in Ch 7's data section, which points forward to it |
 | New input sources | Ch 20/21 |
-| New output surfaces (haptics, screensaver, USDZ) | Ch 22 |
-| Rendering/color frontier (GPU-driven, path tracing) | Ch 14/22 |
+| New output surfaces (haptics, screensaver) | Ch 22 |
+| Rendering/color frontier (GPU-driven) | Ch 14/22 |
 | Authoring/editor tooling | Ch 22 |
 | Collaboration and multi-device | future chapter beside Ch 22 |
 | Learning (user guide, migration guide, tutorials) | this Guide itself; migration guide = Appendix C |

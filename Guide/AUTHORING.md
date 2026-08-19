@@ -63,6 +63,20 @@ A chapter is one markdown file, `NN-PascalCase.md`, and reads like this:
 
 Keep chapters honest about hardware: anything needing a device beyond the Mac (a MIDI controller, an iPhone) leads with the path every reader can follow and treats the hardware as the bonus.
 
+## How big a chapter gets, and when it becomes two
+
+A chapter that reads well runs about 2,000 to 8,000 words over 10 to 14 sections. That is not a budget to write to. It is the range the best-reading chapters already sit in, and it is worth knowing because the failure it describes cannot be seen from inside a session.
+
+The failure is quiet. Each session adds one section to the chapter its feature was assigned to, and every one of those additions is correct and passes every gate. Then one day the chapter is a catalog. That is how a chapter here reached 24,511 words and 48 flat sections with nothing ever catching it, because nothing was wrong with any single step.
+
+So watch for the three signs, which arrive in this order:
+
+- **The payoff stops paying.** The rule is that the finished piece composes what the chapter taught. When it composes a quarter of it, the chapter is carrying more than one subject and the piece is quietly choosing one.
+- **The prose announces a seam.** A sentence like "the other half of GPU simulation evolves particles" is a chapter boundary written in the voice of a transition. So is a section that opens by disclaiming its own membership.
+- **The headings stop working as retrieval.** Evocative headings read beautifully and find nothing at 20 sections, which is why grown chapters need the technique name riding the heading.
+
+When a chapter does split, split it at a seam the prose already has, and give each half the whole anatomy. A new chapter is not a slice. It needs its own hook, its own finished piece, its own credits, and its own "Go deeper", and the parent's credits paragraph for whatever left travels with it. Renumbering is `Scripts/guide-renumber.sh`, and `Scripts/guide-links.sh` is what proves the move landed.
+
 ## Figures
 
 Figure sketches live in `Figures/<NN-ChapterName>/<FigureName>.swift`, rendered to `Images/<NN-ChapterName>/<FigureName>.jpg` (or `.png`/`.gif`) by the runner. Conventions:
@@ -121,6 +135,7 @@ One chapter per session, in this order:
 6. Run `Scripts/guide-figures.sh` (all figures, not just the new ones).
 7. Humanizer pass over the chapter, plus the plain-words check from *Voice and style* (rare words, decorative metaphor, clever flow). Then run `Scripts/prose-lint.sh` and clear its errors.
 8. Update PLAN.md status, link the chapter in `Guide/README.md`'s contents.
-9. Run the docs audit, then commit (Guide chapters are milestones; commit and push per the repo convention).
+9. Run `Scripts/guide-links.sh` and `Scripts/guide-coverage.sh`, and clear both. The first checks that the navigation is real (links, anchors, images, the footer chain, and every chapter pointer including the ones in CAPABILITIES.md); the second checks that the Guide teaches what Ollin ships.
+10. Run the docs audit, then commit (Guide chapters are milestones; commit and push per the repo convention).
 
 If the chapter's scope doesn't fit the session, cut whole steps and write the cut back into the PLAN.md brief. Never ship a half-explained concept to save time; that's the one unforgivable failure (principle 1).
