@@ -51,6 +51,8 @@ It's opt-in, so a 2D sketch never pays for a depth buffer or a perspective divid
 
 The high-end, well-curated realism tier, opt-in on the existing PBR, IBL, ray-traced shadows and reflections, and SDF raymarching, so a 2D or stylized 3D sketch never pays. It grows the way the SDF shape catalog does: when a technique that separates a polished product render or film still from "CG" finds a good fit, it lands Metal-native, written from the published technique and credited in `ATTRIBUTION.md`'s Techniques list. The deeper display levers live under [rendering and color frontier](#rendering-and-color-frontier).
 
+- **Lens flare.** Everything in the renderer today models the light and the surface. A flare is the *camera* misbehaving: light bouncing between the elements of the lens, throwing ghosts back along the axis through the middle of the frame, a halo around the source, and a starburst whose arms count the aperture blades. It belongs with the lights the scene already has that are bright enough to cause one, meaning the volumetric beams, the area-light panels, and emissive meshes, and it has to be driven by how much of each source the camera can actually see, so a light passing behind an object loses its flare instead of shining through it. Opt-in like the rest of the tier, and worth an honesty knob, since the effect is a lens defect that a piece may want in small measure or not at all.
+
 See the [design notes](DESIGN-NOTES.md#photorealistic-3d).
 
 ## Sound, synthesis, and spatial audio
@@ -97,6 +99,7 @@ See the [design notes](DESIGN-NOTES.md#new-output-surfaces).
 Deeper use of the Metal core and Apple displays, all opt-in so the 2D path stays untaxed:
 
 - **Dolby Vision.** Dynamic per-scene HDR metadata, where the static HDR10 metadata a video carries describes the whole file at once. It needs the licensed encoder path rather than AVFoundation's plain HDR writer, so it is a licensing question before it is an API one.
+- **A supersampled render scale.** An opt-in resolution multiplier (`renderScale: 2`), rendering a frame at N× and downsampling, as the explicit quality-over-speed dial. Its home is the export rather than the live window, which already draws at the display's backing scale. Worth knowing before reaching for it: it buys little on the paths that already carry their own coverage, meaning the analytic SDF shapes and the fringe-expanded strokes, so what it sharpens is the tessellated fill, text, and fine dense detail. [Design notes.](DESIGN-NOTES.md#supersampled-render-scale-the-crispness-dial)
 
 See the [design notes](DESIGN-NOTES.md#rendering-and-color-frontier). (The most speculative items here, spectral rendering, AI frame interpolation, optical-flow self-warp, and print color management, sit under [Further out / exploratory](#further-out--exploratory).)
 

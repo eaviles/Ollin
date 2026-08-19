@@ -57,6 +57,8 @@ The realism tier that builds on the physically-based core (PBR metallic-roughnes
 
 All Apple-silicon Metal, the realism direction's "build Ollin APIs for anything Metal offers that enriches 3D."
 
+- **Lens flare.** Two families are worth telling apart before writing any of it. The *image-based* recipe reads a bright pass of the frame and lays ghosts along the vector from each source through the frame's center, at a handful of scales, tinted by a chromatic ramp: cheap, entirely screen-space, and the standard real-time answer. The *lens-prescription* recipe traces the paths through a described stack of elements, which is what makes a specific camera's flare rather than a generic one, and is the direction that fits this tier's "written from the published technique" habit. Either way three things decide whether it reads as light or as a sticker: the flare's strength has to follow the source's *visible* area, so an occluder fades it rather than switching it off; the starburst's arm count has to come from the same aperture the traced camera already takes for depth of field, or the two disagree about what lens this is; and it composites in linear light before the tone map, beside bloom, since a flare is light in the camera and not paint on the picture.
+
 ## AR mode and templates (the Meta Spark gap)
 
 Ollin aims to support AR sketches and offer a template-driven AR framework, filling the gap left when Meta Spark was discontinued (January 2025). Apple-only: ARKit plus RealityKit and Metal on iOS and iPadOS, and the visionOS immersive path.
