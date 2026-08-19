@@ -6,7 +6,9 @@
 
 <img src="Images/19-DepthAndThePhone/GhostRoom.jpg" alt="A room rendered as woven scan-lines of glowing points: pale walls and floor, a coral ball, a teal crate, with dark voids where no camera has seen yet" width="560">
 
-A camera flattens the world, while a depth camera keeps one more number per pixel, and that number is enough to un-flatten it. This chapter is about that number. It covers what a depth frame is, and how a flat picture stands up into a point cloud. Then it covers how many pictures fuse into one scanned room, and how a tethered iPhone becomes a live 3D sensor for your sketches. The scan above was made by the chapter's own code, and every figure here runs on any Mac with no phone required. The phone is the upgrade, not the entry fee.
+A camera flattens the world, while a depth camera keeps one more number per pixel, and that number is enough to un-flatten it. This chapter is about that number. The scan above was made by the chapter's own code, and every figure here runs on any Mac with no phone required. The phone is the upgrade, not the entry fee.
+
+The road runs from what a depth frame is, through a flat picture standing up into a point cloud, to many pictures fusing into one scanned room. Then a tethered iPhone becomes a live 3D sensor for your sketches.
 
 ## What a depth camera sees
 
@@ -146,82 +148,9 @@ device.latestPose               // where the phone is, and which way it looks
 
 Everything these produce lands in types you've already used this chapter, and that's the design. The phone is a sensor array, and the sketch never knows or cares which sensor filled the frame. The [Record3D](../Docs/3D/Record3D.md) and [Phone](../Docs/3D/Phone.md) references cover the setup (both need only a cable), and the `3D/Depth` and `3D/Phone` example groups are live starting points for each stream.
 
-## A pose you can dress in solids
-
-`latestBody` is more than dots. Every joint arrives with an orientation beside its position, so a solid part can sit at a joint and turn with it. `modelTransform(_:)` composes the two into one pose, and `transform(_:)` puts that pose onto the transform stack in a single call. String `drawCapsule(from:to:radius:)` between the joints and the skeleton grows bones you can light:
-
-```swift
-for (a, b) in body.bones() {
-    drawCapsule(from: a, to: b, radius: 0.03)
-}
-if let pose = body.modelTransform(.head) {
-    withState { transform(pose); drawSphere(radius: 0.11) }
-}
-```
-
-<img src="Images/19-DepthAndThePhone/BodyAsFigure.jpg" alt="The same staged mid-stride pose twice: on the left as ivory dots and dotted bones, on the right as a solid mannequin with capsule limbs, a leaning torso box, and a turned head, its left forearm tinted blue" width="680">
-
-The blue forearm is the stream being honest. The camera never saw those joints, the rig filled them in, and `isJointTracked(_:)` says so, part by part. Two more readings ride along. `scaleFactor` sizes the figure to the person in front of the camera. And `worldTransform` stands the whole skeleton where the person really is, in the same ARKit world as the swept cloud and the room mesh, so walking across the room walks the figure across the sketch. The `3D/Phone/PhoneBodyFigure` example is this section live: a mannequin that follows you around the room.
-
-## A hand you can reach in with
-
-The body stream draws a whole person. The hand stream leans in close. In **Hands** mode the phone finds up to four hands, each as 21 joints: the wrist, then four joints along every finger. On a LiDAR phone every joint also carries a real position in meters. It stands in the same world as the swept cloud and the room mesh. A hand is the part of you that points, pinches, and conducts, so this is the stream gestures come from:
-
-```swift
-for hand in device.latestHands {
-    for (a, b) in hand.bones() {
-        drawCapsule(from: a, to: b, radius: 0.006)
-    }
-    if let pinch = hand.pinchDistance, pinch < 0.02 {
-        // thumb and index are touching: a click, made of air
-    }
-}
-```
-
-<img src="Images/19-DepthAndThePhone/HandsAsSkeletons.jpg" alt="Two staged hands drawn as small solid skeletons on a dark ground: an open orange right hand with its thumb spread wide, and a blue left hand whose index finger curls to meet its thumb, a bright white bead sitting where the two fingertips pinch" width="680">
-
-The orange hand is a right hand and the blue one a left, straight from `chirality`. The white bead sits where the blue hand pinches. `pinchDistance` measures thumb tip to index tip in meters. Under about two centimeters, the fingers are touching. That one number is a whole instrument. A pinch can pluck a note, a spread can stretch a shape, a fingertip can draw a ribbon through the room. A joint the model could not see simply stays absent. On a phone with no LiDAR, the same hands arrive flat, ready to map over the canvas with `point(_:in:)`. The `3D/Phone/PhoneHands` example is this section live: hold up a hand and it stands in the room as a small solid skeleton.
-
-## Where a look lands
-
-The face stream carries more than expression. Each face arrives with its two eyes and one extra point: `lookAtPoint`, where those eyes converge. The head says where you face. The eyes say where you look. Those are different things, and the difference is the interesting part. Every reader has a world twin, so three calls draw the whole idea:
-
-```swift
-if let face = device.latestFace {
-    let target = face.worldLookAtPoint
-    for eye in PhoneEye.allCases {
-        drawCapsule(from: face.worldEyePosition(eye), to: target, radius: 0.002)
-    }
-}
-```
-
-<img src="Images/19-DepthAndThePhone/GazeAsBeams.jpg" alt="A staged wireframe face shell on a dark ground, a small nose marker under its two white eyeballs, each pupil turned toward a warm bead floating off to the side, with a thin beam running from each eye to the bead where the two converge" width="680">
-
-The shell is the face mesh drawn under `headTransform`. It stands where the head is and turns the way the head turns. The head points one way. The eyes look another, and both beams land on the same warm bead. That point is a cursor you steer without hands. Park a creature there, or steer a brush with a glance. The blink blendshapes pair naturally with the eyes: `.eyeBlinkLeft` is the left lid closing over `worldEyePosition(.left)`. The mesh also carries its texture coordinates, the same mapping on every face. A painted mask keeps its place while the face deforms. The `3D/Phone/PhoneGaze` example is this section live: look past the phone and the bead lands where you look.
-
-## The words on the wall
-
-The phone can also read. In **Text** mode it runs the on-device recognizer over the rear camera. It streams every line it can make out: a sign, a book spine, a note on a door. Each line arrives as a `PhoneText` with its string and the reader's confidence. On a LiDAR phone its four corners carry real positions in meters, and `worldTransform` folds them into one matrix. Stand a drawing on that matrix and it hangs where the sign hangs:
-
-```swift
-for line in device.latestTexts {
-    guard let placement = line.worldTransform else { continue }
-    withState {
-        transform(placement)   // x along the words, y up the line, z off the surface
-        drawCapsule(from: Vector3(-line.worldWidth / 2, -line.worldHeight / 2, 0),
-                    to: Vector3(line.worldWidth / 2, -line.worldHeight / 2, 0),
-                    radius: 0.004)   // an underline, drawn on the world
-    }
-}
-```
-
-<img src="Images/19-DepthAndThePhone/WordsInPlace.jpg" alt="Two staged lines of wire-frame stroke type on a dark ground: the word OLLIN standing upright inside a framed panel on an implied wall, and the word hello lying flat inside its own panel on a small table slab, each panel outlined and facing its own way" width="680">
-
-The upright word stands on a wall and the flat one lies on a table, and neither needed different code. Each panel is the line's own quad, and the type inside it is `textToShapes` run through `drawTube`, scaled by `worldWidth`. The frame does the placing. A line lifts all four corners or none, so `worldTransform` is either a real place or `nil`. The flat fallback draws the same lines over the canvas with `corners(in:)`. Underline a read word, replace it, translate it, or move it off its wall. The `3D/Phone/PhoneWorldText` example is this section live: aim the phone at anything readable and the words stand in the room.
-
 ## One world from many frames
 
-A single frame is a slice of the world, whatever the lens saw plus voids. The way past that is the last idea of the chapter, and it needs one new ingredient. That is the **pose**, where the camera stood and which way it looked, written as a transform. Given a frame's cloud in camera space, and its pose, `transformed(by:)` places the points where they really are in the room. `WorldCloud` accumulates those placed points, thinning duplicates so overlapping frames don't pile up:
+A single frame is a slice of the world, whatever the lens saw plus voids. The way past that is the heart of the chapter, and it needs one new ingredient. That is the **pose**, where the camera stood and which way it looked, written as a transform. Given a frame's cloud in camera space, and its pose, `transformed(by:)` places the points where they really are in the room. `WorldCloud` accumulates those placed points, thinning duplicates so overlapping frames don't pile up:
 
 ```swift
 var world = WorldCloud(voxelSize: 0.02)
@@ -302,7 +231,11 @@ Because the sketch handed over a `PointCloud` rather than bare positions, the co
 
 What comes back is an ordinary `Mesh`, so everything [Chapter 17](17-3DGently.md) taught applies. That means materials, lighting, cast shadows, even `subdivided(_:)` to soften the scan. Sometimes points are their own material rather than a scan. A splash, say, or a swarm dense enough to read as a body. The sibling `particleSurface` skins them as one blended form, with no cameras involved. The [reference page](../Docs/Generators/SurfaceReconstruction.md) covers both, and the `3D/Geometry/SurfaceFromPoints` example puts the two side by side on one cloud.
 
-## A surface the phone already built
+## The phone's other streams
+
+World depth and its pose carried the scan, and they are one entry on Ollin Capture's menu. The rest of the phone's streams land the same way, as typed values in meters read in `draw()`. Take the tour in any order.
+
+### A surface the phone already built
 
 That whole last section rebuilt a surface on the Mac, out of points you swept and fused yourself. A LiDAR phone can hand you one directly. ARKit reconstructs the room as you walk, on the device, and Ollin Capture streams the result. Tap **Room** and what arrives already has faces and normals, and every triangle already knows what it is.
 
@@ -338,7 +271,7 @@ Early in a scan almost everything reads `unclassified`, because ARKit only decid
 
 So which do you want, points or a surface? Both come off the same sensor. **Points are what the camera saw; the mesh is what the phone decided was there.** Take the points when you want to scatter, drift, or reconstruct them yourself. Take the mesh when you want something to light, to hide things behind, or to bounce something off. The `3D/Phone/PhoneRoomMesh` example is the room painted by label, with a key to keep only the flat things you could set something down on.
 
-## Somewhere to stand, and the light in the room
+### Somewhere to stand, and the light in the room
 
 The mesh is the whole shape of the room, clutter and all. Most of the time you want far less than that: one flat surface to put something on.
 
@@ -368,6 +301,79 @@ ambientLight(device.latestLight?.ambient ?? Color(white: 0.4))
 `ambient` is the room's own white, turned down by how bright the room is. The three swatches under the picture are three readings: a lamp, a working room, a window. Switch a lamp on and the sketch warms with it.
 
 One catch. Only Face mode knows *where* the light comes from, because ARKit works that out from the shading on a face. A world-facing camera has no face to read, so Room mode gives you brightness and color, and you aim your own key light.
+
+### A pose you can dress in solids
+
+`latestBody` is more than dots. Every joint arrives with an orientation beside its position, so a solid part can sit at a joint and turn with it. `modelTransform(_:)` composes the two into one pose, and `transform(_:)` puts that pose onto the transform stack in a single call. String `drawCapsule(from:to:radius:)` between the joints and the skeleton grows bones you can light:
+
+```swift
+for (a, b) in body.bones() {
+    drawCapsule(from: a, to: b, radius: 0.03)
+}
+if let pose = body.modelTransform(.head) {
+    withState { transform(pose); drawSphere(radius: 0.11) }
+}
+```
+
+<img src="Images/19-DepthAndThePhone/BodyAsFigure.jpg" alt="The same staged mid-stride pose twice: on the left as ivory dots and dotted bones, on the right as a solid mannequin with capsule limbs, a leaning torso box, and a turned head, its left forearm tinted blue" width="680">
+
+The blue forearm is the stream being honest. The camera never saw those joints, the rig filled them in, and `isJointTracked(_:)` says so, part by part. Two more readings ride along. `scaleFactor` sizes the figure to the person in front of the camera. And `worldTransform` stands the whole skeleton where the person really is, in the same ARKit world as the swept cloud and the room mesh, so walking across the room walks the figure across the sketch. The `3D/Phone/PhoneBodyFigure` example is this section live: a mannequin that follows you around the room.
+
+### A hand you can reach in with
+
+The body stream draws a whole person. The hand stream leans in close. In **Hands** mode the phone finds up to four hands, each as 21 joints: the wrist, then four joints along every finger. On a LiDAR phone every joint also carries a real position in meters. It stands in the same world as the swept cloud and the room mesh. A hand is the part of you that points, pinches, and conducts, so this is the stream gestures come from:
+
+```swift
+for hand in device.latestHands {
+    for (a, b) in hand.bones() {
+        drawCapsule(from: a, to: b, radius: 0.006)
+    }
+    if let pinch = hand.pinchDistance, pinch < 0.02 {
+        // thumb and index are touching: a click, made of air
+    }
+}
+```
+
+<img src="Images/19-DepthAndThePhone/HandsAsSkeletons.jpg" alt="Two staged hands drawn as small solid skeletons on a dark ground: an open orange right hand with its thumb spread wide, and a blue left hand whose index finger curls to meet its thumb, a bright white bead sitting where the two fingertips pinch" width="680">
+
+The orange hand is a right hand and the blue one a left, straight from `chirality`. The white bead sits where the blue hand pinches. `pinchDistance` measures thumb tip to index tip in meters. Under about two centimeters, the fingers are touching. That one number is a whole instrument. A pinch can pluck a note, a spread can stretch a shape, a fingertip can draw a ribbon through the room. A joint the model could not see simply stays absent. On a phone with no LiDAR, the same hands arrive flat, ready to map over the canvas with `point(_:in:)`. The `3D/Phone/PhoneHands` example is this section live: hold up a hand and it stands in the room as a small solid skeleton.
+
+### Where a look lands
+
+The face stream carries more than expression. Each face arrives with its two eyes and one extra point: `lookAtPoint`, where those eyes converge. The head says where you face. The eyes say where you look. Those are different things, and the difference is the interesting part. Every reader has a world twin, so three calls draw the whole idea:
+
+```swift
+if let face = device.latestFace {
+    let target = face.worldLookAtPoint
+    for eye in PhoneEye.allCases {
+        drawCapsule(from: face.worldEyePosition(eye), to: target, radius: 0.002)
+    }
+}
+```
+
+<img src="Images/19-DepthAndThePhone/GazeAsBeams.jpg" alt="A staged wireframe face shell on a dark ground, a small nose marker under its two white eyeballs, each pupil turned toward a warm bead floating off to the side, with a thin beam running from each eye to the bead where the two converge" width="680">
+
+The shell is the face mesh drawn under `headTransform`. It stands where the head is and turns the way the head turns. The head points one way. The eyes look another, and both beams land on the same warm bead. That point is a cursor you steer without hands. Park a creature there, or steer a brush with a glance. The blink blendshapes pair naturally with the eyes: `.eyeBlinkLeft` is the left lid closing over `worldEyePosition(.left)`. The mesh also carries its texture coordinates, the same mapping on every face. A painted mask keeps its place while the face deforms. The `3D/Phone/PhoneGaze` example is this section live: look past the phone and the bead lands where you look.
+
+### The words on the wall
+
+The phone can also read. In **Text** mode it runs the on-device recognizer over the rear camera. It streams every line it can make out: a sign, a book spine, a note on a door. Each line arrives as a `PhoneText` with its string and the reader's confidence. On a LiDAR phone its four corners carry real positions in meters, and `worldTransform` folds them into one matrix. Stand a drawing on that matrix and it hangs where the sign hangs:
+
+```swift
+for line in device.latestTexts {
+    guard let placement = line.worldTransform else { continue }
+    withState {
+        transform(placement)   // x along the words, y up the line, z off the surface
+        drawCapsule(from: Vector3(-line.worldWidth / 2, -line.worldHeight / 2, 0),
+                    to: Vector3(line.worldWidth / 2, -line.worldHeight / 2, 0),
+                    radius: 0.004)   // an underline, drawn on the world
+    }
+}
+```
+
+<img src="Images/19-DepthAndThePhone/WordsInPlace.jpg" alt="Two staged lines of wire-frame stroke type on a dark ground: the word OLLIN standing upright inside a framed panel on an implied wall, and the word hello lying flat inside its own panel on a small table slab, each panel outlined and facing its own way" width="680">
+
+The upright word stands on a wall and the flat one lies on a table, and neither needed different code. Each panel is the line's own quad, and the type inside it is `textToShapes` run through `drawTube`, scaled by `worldWidth`. The frame does the placing. A line lifts all four corners or none, so `worldTransform` is either a real place or `nil`. The flat fallback draws the same lines over the canvas with `corners(in:)`. Underline a read word, replace it, translate it, or move it off its wall. The `3D/Phone/PhoneWorldText` example is this section live: aim the phone at anything readable and the words stand in the room.
 
 ## Putting it together: the ghost room
 
