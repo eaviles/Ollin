@@ -182,7 +182,7 @@ There is still only one cluster. The domain operator rewrites each query point b
 
 ## The light this needs
 
-A field shades like a mesh, so the finishes of [Chapter 22](22-Meshes.md) reach it. `material(.jade)` gives a melt its glow, an `environment(_:)` lights it exactly as it lights a solid, and `castShadows()` grounds it. A field even self-shadows, and it trades shadows with the meshes around it. What is left is the light itself: what it does when it bounces, what it does on its way through glass, and what a frame can borrow from the frames before it.
+A field shades like a mesh, so the finishes of [Chapter 22](22-Meshes.md) reach it. `material(.jade)` gives a melt its glow, an `environment(_:)` lights it exactly as it lights a solid, and `castShadows()` grounds it. A field even self-shadows, and it trades shadows with the meshes around it. `material(.glass(...))` works on one too. A tinted interior deepens over the same distance it would inside the mesh of that shape. A green blob and a green ball come out the same green. What is left is the light itself: what it does when it bounces, what it does on its way through glass, and what a frame can borrow from the frames before it.
 
 ## Mirrors that see off screen: ray-traced reflections
 

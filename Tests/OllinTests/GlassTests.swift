@@ -76,6 +76,66 @@ struct GlassRenderProbes {
         let r = redness(dT, traced), e = redness(dE, envOnly)
         #expect(r - e > 25, "expected the wall's red through the traced pane: traced \(r), env-only \(e)")
     }
+
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func aGlassFieldAbsorbsLikeAGlassMesh() throws {
+        // The same green-attenuated glass body, once as a mesh sphere and once as a
+        // marched field of the same radius, with a white slab behind. A field owns no
+        // triangles for the traced transmission walk to hit, so it has to hand the walk
+        // its own far interface; without that the walk takes the slab for the exit and
+        // absorbs over the run to it, which reads far darker than the mesh and moves
+        // when the slab does. Two things are pinned: the two shapes agree, and the
+        // field's tint doesn't follow the slab.
+        let meshImg = try #require(OllinApp.image(of: GlassProbe.make(kind: .absorbingMesh), frame: 1))
+        let fieldImg = try #require(OllinApp.image(of: GlassProbe.make(kind: .absorbingField), frame: 1))
+        let farImg = try #require(OllinApp.image(of: GlassProbe.make(kind: .absorbingFieldFarSlab), frame: 1))
+        func center(_ img: CGImage, _ channel: Int) -> Double {
+            mean(pixels(of: img), width: img.width, height: img.height, channel: channel,
+                 x: 0.45...0.55, y: 0.47...0.53)
+        }
+        // The tint has to be there at all, or agreeing on nothing would pass.
+        let meshTint = center(meshImg, 1) - center(meshImg, 0)
+        #expect(meshTint > 60, "expected the mesh body visibly green-tinted: \(meshTint)")
+        for channel in 0...2 {
+            let m = center(meshImg, channel), f = center(fieldImg, channel)
+            #expect(abs(m - f) < 6,
+                    "channel \(channel): field \(f) should absorb like the mesh \(m)")
+        }
+        for channel in 0...2 {
+            let near = center(fieldImg, channel), far = center(farImg, channel)
+            #expect(abs(near - far) < 6,
+                    "channel \(channel): the field's absorption followed the slab, \(near) to \(far)")
+        }
+        // Both bodies sit in the same place, so the interior compares pixel by pixel.
+        // A mean alone would miss a banded interior: a march that resolves the exit at
+        // some radii and not at others prints the body in thin rings that average away.
+        let (meanDiff, peakDiff) = interiorDifference(meshImg, fieldImg)
+        #expect(meanDiff < 8, "the field's interior differs from the mesh's by \(meanDiff)")
+        #expect(peakDiff < 40, "the field's interior is banded, peaking at \(peakDiff)")
+    }
+
+    /// Mean and worst per-pixel channel difference over a disc well inside both
+    /// silhouettes. The mask is a disc, not a square: the body fills most of the frame,
+    /// so a square's corners reach the rim and read its anti-aliasing (analytic on the
+    /// field, multisampled on the mesh) as if it were interior disagreement.
+    private func interiorDifference(_ a: CGImage, _ b: CGImage) -> (Double, Double) {
+        let da = pixels(of: a), db = pixels(of: b)
+        var sum = 0.0, count = 0.0, peak = 0.0
+        let radius = 0.13 * Double(a.width)          // ~57% of the body's screen radius
+        let cx = 0.5 * Double(a.width), cy = 0.5 * Double(a.height)
+        for py in 0..<a.height {
+            for px in 0..<a.width {
+                let dx = Double(px) - cx, dy = Double(py) - cy
+                guard dx * dx + dy * dy <= radius * radius else { continue }
+                for channel in 0...2 {
+                    let i = (py * a.width + px) * 4 + channel
+                    let d = abs(Double(da[i]) - Double(db[i]))
+                    sum += d; count += 1; peak = max(peak, d)
+                }
+            }
+        }
+        return (sum / max(count, 1), peak)
+    }
 }
 
 /// The probe scene, one variant per case: a single glass body under a fixed camera,
@@ -85,6 +145,7 @@ private final class GlassProbe: Sketch {
         case noEnvGlass, noEnvDielectric      // no environment: must match exactly
         case attenuationThin, attenuationThick
         case paneTraced, paneEnvOnly
+        case absorbingMesh, absorbingField, absorbingFieldFarSlab
     }
     var kind: Kind = .noEnvGlass
 
@@ -126,6 +187,25 @@ private final class GlassProbe: Sketch {
             fill(.white)
             material(.glass())
             drawSphere(radius: 1.2)
+        case .absorbingMesh, .absorbingField, .absorbingFieldFarSlab:
+            environment(.studio.intensity(1.4))
+            rayTracedReflections()
+            // The white slab the interior ray would otherwise mistake for the body's exit.
+            withState {
+                translate(0, 0, kind == .absorbingFieldFarSlab ? -9 : -3)
+                fill(.white)
+                material(.matte)
+                drawBox(width: 24, height: 16, depth: 0.2)
+            }
+            fill(.white)
+            material(.glass(thickness: 1.6,
+                            attenuationColor: Color(hue: 0.33, saturation: 0.95, brightness: 0.7),
+                            attenuationDistance: 2))
+            if kind == .absorbingMesh {
+                drawSphere(radius: 0.95)
+            } else {
+                drawSDF3D(.sphere(radius: 0.95))
+            }
         }
     }
 }

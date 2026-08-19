@@ -468,6 +468,43 @@ static float ollin_sdf3d_softshadow(float3 ro, float3 rd, float maxt, float k, i
     return clamp(res, 0.0, 1.0);
 }
 
+// Where an interior ray leaves the body: sphere-trace the *inside* of the field (where
+// the distance reads negative) until the surface comes back, and return that distance
+// along `rd`. A marched field is absent from the ray-tracing acceleration structure,
+// which holds solid mesh batches only, so a refracted ray leaving a transmissive field's
+// surface can never hit a triangle belonging to the body: the shared transmission walk
+// would take whatever stands behind the field for its far interface and absorb over that
+// whole run. This gives the walk the true entry-to-exit chord instead, so a glass field
+// and a glass mesh of the same size absorb the same amount. The step scale is the outward
+// march's, for the same reason (a smooth-min or scaled field returns a bound, not an
+// exact distance).
+//
+// The march starts *on* the surface, and both of the obvious readings of that are wrong.
+// The interior distance there is ~0, so a plain sphere trace crawls (the step is that
+// distance) and a nearness test fires at once (the distance sits within an epsilon of zero
+// from either side, and the outward march leaves a sub-epsilon residual that bands
+// radially). Letting that residual decide prints the body in fine concentric rings, one
+// ring per radius where it tips the first test the other way. So every step carries a
+// floor, which is what keeps the march moving, and the exit counts only once the ray has
+// really been inside. It returns a distance rather than a failure, since the caller's
+// fallback is the very mistake this exists to prevent; a budget that runs out answers with
+// what it marched, bounded by the body's own extent and never by the scene behind it.
+static float ollin_sdf3d_interior_exit(float3 ro, float3 rd, float maxt, int steps,
+                                       SDF3DGroupInstance g, const device SDFNode3D *nodes) {
+    float4 dummy;
+    const float floorStep = OLLIN_RAYMARCH_EPS * 4.0;
+    float t = floorStep;
+    bool entered = false;
+    for (int i = 0; i < steps; i++) {
+        float d = ollin_sdf3d_world(ro + rd * t, g, nodes, dummy);
+        if (d < -floorStep) entered = true;
+        else if (entered || d > floorStep) return t;   // came back out, or never went in
+        t += max(-d, floorStep) * OLLIN_RAYMARCH_STEP_SCALE;
+        if (t >= maxt) return maxt;
+    }
+    return t;
+}
+
 // Ray vs AABB slab test -> [t0, t1] along the ray (t1 < t0 means the ray misses the box).
 // IEEE infinities handle an axis-parallel ray (rd component 0) correctly.
 static float2 ollin_ray_aabb(float3 ro, float3 rd, float3 lo, float3 hi) {
@@ -744,6 +781,29 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
         gi = ollin_gi_sample_cascaded(pw, n, giView, light,
                                       giIrradianceTex, giDepthTex, giOffsetsTex);
     }
+
+    // The body's own far interface for the traced transmission walk. A field owns no
+    // triangles, so the walk cannot find its exit by tracing; march it here, where the
+    // field's own program is in hand, and hand it down (`ollin_sdf3d_interior_exit`).
+    // Only a transmissive solid under a live trace pays for it; every other field skips
+    // the march and passes the inert zero, which the walk reads as "trace it yourself".
+    float4 bodyExit = float4(0.0);
+    float3 bodyExitNormal = float3(0.0);
+    if (light.rtReflections != 0 && light.iblEnabled != 0 && mat.shadingModel == 3
+        && mat.transmission > 0.0 && mat.thickness > 0.0) {
+        float3 viewDir = normalize(light.cameraPosition.xyz - pw);
+        float3 rr = refract(-viewDir, n, 1.0 / mat.ior);   // the same leg the walk refracts
+        if (length_squared(rr) > 1e-6) {
+            float reach = (g.unbounded != 0.0) ? length(farW - nearW)
+                                               : length(g.boundsMax.xyz - g.boundsMin.xyz);
+            float span = ollin_sdf3d_interior_exit(pw, rr, reach, int(u.raymarchSteps.x), g, nodes);
+            float3 exitP = pw + rr * span;
+            // The outward normal at the exit points along the interior ray; refract()
+            // wants the one facing it, the side a traced back face already presents.
+            bodyExit = float4(exitP, 1.0);
+            bodyExitNormal = -ollin_sdf3d_normal(exitP, g, nodes);
+        }
+    }
 #endif
     if (mat.shadingModel == 3 && light.iblEnabled != 0) {
         float3 viewDir = normalize(light.cameraPosition.xyz - pw);
@@ -755,6 +815,10 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
                                          , pw, accel, meshVerts, meshGeoOffsets, float4(0.0),
                                          ltcAmp, iesProfiles, cookies, gi,
                                          giIrradianceTex, giDepthTex, giOffsetsTex
+#endif
+                                         , float4(0.0)   // no per-vertex tangent on a field
+#if OLLIN_RT_SHADOWS
+                                         , bodyExit, bodyExitNormal
 #endif
                                          );
     } else if (light.iblEnabled != 0 && mat.shadingModel != 2) {

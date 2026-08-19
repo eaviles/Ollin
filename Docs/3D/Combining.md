@@ -86,6 +86,8 @@ The asymmetries that surprise people:
 
 And [glass](./3D.md#glass) adds two of its own. A glass mesh still **casts a solid shadow**, because the shadow passes don't read transmission. And glass **appears opaque inside a mirror or through other glass**. A traced hit shades as the surface it struck, without re-entering the transmission math. The view *through* a glass surface you look at directly is the full story. That means the environment everywhere, and the actual scene on a ray-tracing GPU with `rayTracedReflections()` on.
 
+**Glass on a marched field absorbs like glass on a mesh.** The traced view through a solid glass body finds the far side of it by tracing, and a `drawSDF3D` field owns no geometry the rays can hit. So a field marches its own far side instead, and the same `Material.glass(...)` with the same `attenuationColor` and `attenuationDistance` comes out the same on a field as on the mesh of that shape. What lies *behind* a glass field still comes from the mesh scene, which is the rule above read from the other side: a second field standing behind one is not visible through it.
+
 The layered [clearcoat and sheen](./3D.md#clearcoat-sheen) lobes share the mirror half of that envelope. A coated or sheened surface seen *inside* a traced reflection shades as its base material there. [Decals](./3D.md#decals) follow the same split. Every solid, textured, or mapped mesh receives them, while wireframes, matcaps, point clouds, and raymarched fields don't. A stamped surface seen *inside* a traced reflection shows its undecaled base.
 
 <a id="depth-effects"></a>

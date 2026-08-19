@@ -2269,6 +2269,46 @@ it), so every pre-glass frame is bit-identical. The moving parts:
   straight on (a bounded fudge; a real internal bounce recurses without
   bound). Hits shade through `ollin_rt_hit_radiance`, the hit shade *extracted
   from* `ollin_rt_reflection_trace` so mirror and glass shading cannot drift.
+- **A body the accel structure doesn't hold supplies its own far interface.**
+  `buildShadowAccel` admits solid `.mesh3D` batches only, so a raymarched field
+  owns no triangle the interior leg could hit: the walk would take whatever
+  stands *behind* the field for its exit and absorb over that entire run. Green
+  glass on a 0.95-radius sphere read G137 as a field against G189 as the mesh,
+  and slid to G59 when the slab behind it moved twice as far away, which is how
+  the mechanism was isolated (the mesh never budged, and turning absorption off
+  made the two byte-equal, so absorption was the only term involved). The fix
+  keeps the exit where the geometry is known: the raymarch fragment refracts the
+  same entry leg, sphere-traces the *inside* of its own field until the surface
+  comes back (`ollin_sdf3d_interior_exit`, stepping by `-d` since the field reads
+  negative in there), and hands the exit point plus its inward-facing normal down
+  through `ollin_pbr_ibl_ambient` into `ollin_rt_refraction`. Three properties
+  make it safe: the supplied exit stands in **only while it is nearer than any
+  traced hit**, so a mesh embedded in a glass field still shows through the entry
+  interface; the mesh path passes a zero `bodyExit` and takes the traced branch
+  **byte-identically**; and only a transmissive solid under a live trace pays for
+  the extra march. The environment path never had the defect, its span being
+  analytic on both shapes.
+- **The interior march starts *on* the surface, and both naive readings of that
+  are wrong.** The first draft crawled (the sphere-trace step *is* the interior
+  distance, which is ~0 at the entry) and tested nearness to decide it was out
+  (the distance is within an epsilon of zero from either side). What actually
+  decides the test there is the sub-epsilon residual the outward march happens to
+  leave behind, and that residual **bands radially**, since the outward march's own
+  step sequence does. The body came out printed in fine concentric rings, each ring
+  a radius where the residual tipped the first test the other way and the march
+  returned nothing. So the march now carries a **floor under every step**, which is
+  what keeps it moving, and counts the exit **only once the ray has really been
+  inside**; it returns a distance rather than a failure, because the caller's
+  fallback is the very mistake the march exists to prevent, and a budget that runs
+  out answers with what it marched, bounded by the body's own extent. **The rings
+  were invisible to a patch mean** (the centre patch matched the mesh to 0.6/255
+  through them) and only a per-pixel comparison sees them, which is why the probe
+  compares the two bodies pixel by pixel over a **disc** rather than a square: the
+  body fills most of the frame, and a square's corners reach the rim and read its
+  anti-aliasing (analytic on the field, multisampled on the mesh) as interior
+  disagreement. `GlassRenderProbes.aGlassFieldAbsorbsLikeAGlassMesh` pins the
+  agreement, the independence from what stands behind, and the absence of banding
+  (verified red against the unfixed walk *and* against the ringing march).
 - **Documented v1 envelope:** the refraction trace is inline (single-ray) even
   when reflections run deferred; refracted content is usually minified, so
   aliasing stays acceptable where a mirror's would not (revisit if glass

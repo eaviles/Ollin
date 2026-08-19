@@ -1428,7 +1428,15 @@ static inline float3 ollin_rt_refraction(float3 worldPos, float3 n, float3 viewD
                                          texture2d_array<float> cookies,
                                          texture2d<float> giIrradiance,
                                          texture2d<float> giDepth,
-                                         texture2d<float> giOffsets) {
+                                         texture2d<float> giOffsets,
+                                         // A body the acceleration structure doesn't hold
+                                         // (a marched field) supplies its own far interface
+                                         // here: xyz the exit point, w > 0 that it's set,
+                                         // with the normal already facing the interior ray.
+                                         // Zero means "find the exit by tracing", the mesh
+                                         // path, which is byte-identical to before.
+                                         float4 bodyExit = float4(0.0),
+                                         float3 bodyExitNormal = float3(0.0)) {
     float eps = max(light.rtReflectionBias, 1e-4);
     float rough = clamp((float)mat.roughness, 0.045, 1.0);
     float3 col = envTransmitted;
@@ -1442,43 +1450,64 @@ static inline float3 ollin_rt_refraction(float3 worldPos, float3 n, float3 viewD
         r.direction = rr;                 // back half-space, so it can't re-hit the entry plane
         r.min_distance = eps * 0.05;
         r.max_distance = 1e9;
+        // Resolve the far interface first, from whichever source owns it, then leave
+        // through it once below. `span` is the interior run Beer-Lambert absorbs over.
+        bool haveExit = false, embedded = false;
+        float3 exitP = float3(0.0), exitN = float3(0.0);
+        float span = -1.0;
+        OllinRTSurface inside;
         intersection_query<triangle_data> q;
         if (ollin_rt_query(q, r, accel)) {
             bool backface = false;
             OllinRTSurface s = ollin_rt_fetch_surface(q, verts, geoOffsets, r.origin, rr, backface);
-            // Beer-Lambert over the *traced* interior span (the real geometry, not the
-            // analytic thickness estimate the environment path has to settle for).
-            if (mat.attenuation.w > 0.0)
-                absorb = pow(mat.attenuation.rgb, length(s.P - worldPos) / mat.attenuation.w);
-            if (backface) {
-                // The body's exit: refract back out (the fetched normal faces the
-                // interior ray, exactly the side refract() wants) and trace the scene.
-                float3 exitDir = refract(rr, s.N, mat.ior);
-                if (length_squared(exitDir) < 1e-6) exitDir = rr;   // TIR: carry on
-                ray r2;
-                r2.origin = s.P + exitDir * eps;
-                r2.direction = exitDir;
-                r2.min_distance = eps * 0.05;
-                r2.max_distance = 1e9;
-                intersection_query<triangle_data> q2;
-                if (ollin_rt_query(q2, r2, accel)) {
-                    OllinRTSurface s2 = ollin_rt_fetch_surface(q2, verts, geoOffsets,
-                                                               r2.origin, exitDir);
-                    col = ollin_rt_hit_radiance(s2, r2.origin, exitDir, eps, accel, verts,
-                                                geoOffsets, light, irradianceTex, prefilterTex,
-                                                cubeSamp, rot, ltcAmp, iesProfiles, cookies,
-                                                giIrradiance, giDepth, giOffsets);
-                } else {
-                    col = prefilterTex.sample(cubeSamp, rot * exitDir,
-                                              level(rough * light.iblMaxMip)).rgb;
-                }
-            } else {
-                // A front face inside the body: an embedded object, seen through the
-                // entry interface alone.
-                col = ollin_rt_hit_radiance(s, r.origin, rr, eps, accel, verts, geoOffsets,
-                                            light, irradianceTex, prefilterTex, cubeSamp, rot,
-                                            ltcAmp, iesProfiles, cookies,
+            float tracedSpan = length(s.P - worldPos);
+            // A caller's own exit wins only while it really is the nearer surface, so an
+            // object embedded in the body still shows through the entry interface alone.
+            if (bodyExit.w <= 0.0 || length(bodyExit.xyz - worldPos) > tracedSpan) {
+                // Beer-Lambert over the *traced* interior span (the real geometry, not the
+                // analytic thickness estimate the environment path has to settle for).
+                span = tracedSpan;
+                if (backface) { haveExit = true; exitP = s.P; exitN = s.N; }
+                else { embedded = true; inside = s; }
+            }
+        }
+        if (span < 0.0 && bodyExit.w > 0.0) {
+            // The acceleration structure holds nothing of this body: its own exit stands in.
+            haveExit = true;
+            exitP = bodyExit.xyz;
+            exitN = bodyExitNormal;
+            span = length(exitP - worldPos);
+        }
+        if (span > 0.0 && mat.attenuation.w > 0.0)
+            absorb = pow(mat.attenuation.rgb, span / mat.attenuation.w);
+        if (embedded) {
+            // A front face inside the body: an embedded object, seen through the
+            // entry interface alone.
+            col = ollin_rt_hit_radiance(inside, r.origin, rr, eps, accel, verts, geoOffsets,
+                                        light, irradianceTex, prefilterTex, cubeSamp, rot,
+                                        ltcAmp, iesProfiles, cookies,
+                                        giIrradiance, giDepth, giOffsets);
+        } else if (haveExit) {
+            // The body's exit: refract back out (the exit normal faces the interior ray,
+            // exactly the side refract() wants) and trace the scene.
+            float3 exitDir = refract(rr, exitN, mat.ior);
+            if (length_squared(exitDir) < 1e-6) exitDir = rr;   // TIR: carry on
+            ray r2;
+            r2.origin = exitP + exitDir * eps;
+            r2.direction = exitDir;
+            r2.min_distance = eps * 0.05;
+            r2.max_distance = 1e9;
+            intersection_query<triangle_data> q2;
+            if (ollin_rt_query(q2, r2, accel)) {
+                OllinRTSurface s2 = ollin_rt_fetch_surface(q2, verts, geoOffsets,
+                                                           r2.origin, exitDir);
+                col = ollin_rt_hit_radiance(s2, r2.origin, exitDir, eps, accel, verts,
+                                            geoOffsets, light, irradianceTex, prefilterTex,
+                                            cubeSamp, rot, ltcAmp, iesProfiles, cookies,
                                             giIrradiance, giDepth, giOffsets);
+            } else {
+                col = prefilterTex.sample(cubeSamp, rot * exitDir,
+                                          level(rough * light.iblMaxMip)).rgb;
             }
         } else {
             // Nothing along the interior ray at all (an open mesh posing as a solid):
@@ -3687,6 +3716,15 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
                                            // one; zero derives a stable world frame.
                                            // Read only under anisotropy.
                                            , float4 tangent = float4(0.0)
+#if OLLIN_RT_SHADOWS
+                                           // A caller whose body the acceleration structure
+                                           // doesn't hold (a marched field) supplies its own
+                                           // far interface for the transmission walk; see
+                                           // `ollin_rt_refraction`. Zero on every mesh path,
+                                           // which traces its exit as before.
+                                           , float4 bodyExit = float4(0.0)
+                                           , float3 bodyExitNormal = float3(0.0)
+#endif
                                            ) {
     constexpr sampler cubeSamp(filter::linear, mip_filter::linear, address::clamp_to_edge);
     constexpr sampler lutSamp(filter::linear, address::clamp_to_edge);
@@ -3765,7 +3803,8 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
             Ft = ollin_rt_refraction(worldPos, n, viewDir, mat, reflAccel, meshVerts,
                                      meshGeoOffsets, light, irradianceTex, prefilterTex,
                                      cubeSamp, rot, Ft, ltcAmp, iesProfiles, cookies,
-                                     giIrradianceTex, giDepthTex, giOffsetsTex);
+                                     giIrradianceTex, giDepthTex, giOffsetsTex,
+                                     bodyExit, bodyExitNormal);
         }
 #endif
         float3 E = F0 * brdf.x + brdf.y;   // the specular lobe's share of the energy
@@ -3860,6 +3899,15 @@ static inline float3 ollin_pbr_ibl_ambient_mapped(float3 base, float3 n, float3 
                                            // one; zero derives a stable world frame.
                                            // Read only under anisotropy.
                                            , float4 tangent = float4(0.0)
+#if OLLIN_RT_SHADOWS
+                                           // A caller whose body the acceleration structure
+                                           // doesn't hold (a marched field) supplies its own
+                                           // far interface for the transmission walk; see
+                                           // `ollin_rt_refraction`. Zero on every mesh path,
+                                           // which traces its exit as before.
+                                           , float4 bodyExit = float4(0.0)
+                                           , float3 bodyExitNormal = float3(0.0)
+#endif
                                            ) {
     constexpr sampler cubeSamp(filter::linear, mip_filter::linear, address::clamp_to_edge);
     constexpr sampler lutSamp(filter::linear, address::clamp_to_edge);
@@ -3938,7 +3986,8 @@ static inline float3 ollin_pbr_ibl_ambient_mapped(float3 base, float3 n, float3 
             Ft = ollin_rt_refraction(worldPos, n, viewDir, mat, reflAccel, meshVerts,
                                      meshGeoOffsets, light, irradianceTex, prefilterTex,
                                      cubeSamp, rot, Ft, ltcAmp, iesProfiles, cookies,
-                                     giIrradianceTex, giDepthTex, giOffsetsTex);
+                                     giIrradianceTex, giDepthTex, giOffsetsTex,
+                                     bodyExit, bodyExitNormal);
         }
 #endif
         float3 E = F0 * brdf.x + brdf.y;   // the specular lobe's share of the energy
