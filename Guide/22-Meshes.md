@@ -365,7 +365,7 @@ Two knobs come up immediately in practice. An environment paints itself **behind
 Every environment so far was somewhere else: a Venice evening, a studio, a synthetic sky. `Environment.feed(...)` uses somewhere you already are. Hand it the webcam, and its latest frame becomes the surroundings. **The room you are sitting in lights the thing you are making.**
 
 ```swift
-let camera = Camera()          // Chapter 29 introduces it properly; start it in setup()
+let camera = Camera()          // Chapter 30 introduces it properly; start it in setup()
 
 func draw() {
     drawFrame(camera)              // the room as the picture

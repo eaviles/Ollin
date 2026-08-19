@@ -252,11 +252,11 @@ Use it two ways. It is an index for the moment you remember the guide showing bl
 |---|---|---|---|
 | Audio analysis | Amplitude, spectrum, waveform, log-spaced bands ready to draw | [Ch 28](28-SoundAndControl.md) | [Audio](../Docs/Helpers/Audio.md) |
 | Beat detection | Onsets as events: `beat`, `beatCount`, `timeSinceBeat` | [Ch 28](28-SoundAndControl.md) | [Audio](../Docs/Helpers/Audio.md) |
-| Audio sources | Microphone, audio files (export-reproducible), test tones, a video's soundtrack | [Ch 28](28-SoundAndControl.md), [Ch 29](29-Seeing.md) | [Audio](../Docs/Helpers/Audio.md) |
+| Audio sources | Microphone, audio files (export-reproducible), test tones, a video's soundtrack | [Ch 28](28-SoundAndControl.md), [Ch 30](30-Seeing.md) | [Audio](../Docs/Helpers/Audio.md) |
 | Listening | Speech as a caption that corrects itself and phrases you can trigger from, plus 300-odd everyday sounds named as they happen | [Ch 28](28-SoundAndControl.md) | [Listening](../Docs/Helpers/Listening.md) |
-| Synthesis | A `Synth` the sketch plays: notes by name or number, voice presets, envelopes, filters, delay and reverb, two physical models (a plucked string and a struck shape), sound placed in the 3D scene, and a soundtrack in an export | [Ch 28](28-SoundAndControl.md) | [Synthesis](../Docs/Helpers/Synthesis.md) |
-| Composition | Working out what to play: Euclidean rhythms, scales and chords, arpeggios, Markov sequences, all on a step number | [Ch 28](28-SoundAndControl.md) | [Composition](../Docs/Helpers/Composition.md) |
-| Sonification | Numbers read out as notes: a table column, a terrain profile, or a picture row spread over a range of pitch and snapped to a scale | [Ch 28](28-SoundAndControl.md) | [Sonification](../Docs/Helpers/Sonification.md) |
+| Synthesis | A `Synth` the sketch plays: notes by name or number, voice presets, envelopes, filters, delay and reverb, two physical models (a plucked string and a struck shape), sound placed in the 3D scene, and a soundtrack in an export | [Ch 29](29-MakingSound.md) | [Synthesis](../Docs/Helpers/Synthesis.md) |
+| Composition | Working out what to play: Euclidean rhythms, scales and chords, arpeggios, Markov sequences, all on a step number | [Ch 29](29-MakingSound.md) | [Composition](../Docs/Helpers/Composition.md) |
+| Sonification | Numbers read out as notes: a table column, a terrain profile, or a picture row spread over a range of pitch and snapped to a scale | [Ch 29](29-MakingSound.md) | [Sonification](../Docs/Helpers/Sonification.md) |
 | MIDI | Knobs, notes, and messages from hardware controllers, in and out | [Ch 28](28-SoundAndControl.md) | [MIDI](../Docs/Integration/MIDI.md) |
 | OSC | Network control messages from tablets, DAWs, and other machines | [Ch 28](28-SoundAndControl.md) | [OSC](../Docs/Integration/OSC.md) |
 | Game controllers | Sticks, triggers, and buttons read in `draw()`, plus motion and a touchpad on hardware that has them, with several players at once and a null read when nothing is plugged in | [Ch 28](28-SoundAndControl.md) | [Controller](../Docs/Integration/Controller.md) |
@@ -266,43 +266,43 @@ Use it two ways. It is an index for the moment you remember the guide showing bl
 
 | Capability | What it is | Guide | Reference |
 |---|---|---|---|
-| Camera feeds | The webcam (or any frame source) drawn and analyzed live | [Ch 29](29-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
-| People trackers | Faces with landmarks, hands, 2D and 3D body poses, person segmentation | [Ch 29](29-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
-| Scene trackers | Contours, rectangles, barcodes, text (OCR), saliency, classification, subject lift, point-prompted lift | [Ch 29](29-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
-| Motion trackers | Object tracking, thrown-object trajectories, dense optical flow | [Ch 29](29-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
-| `ModelTracker` | Bring any Core ML model: classifiers, detectors, image-to-image maps, segmenters | [Ch 29](29-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
-| Still analysis | Every tracker also runs one-shot on an `Image` | [Ch 29](29-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
-| Video playback | Files as live textures: play, seek, loop, analyze, all export-reproducible | [Ch 29](29-Seeing.md) | [Video](../Docs/Video/Video.md) |
-| Slit scan | A rolling frame history read back through a per-pixel time delay: time as a spatial dimension | [Ch 29](29-Seeing.md) | [SlitScan](../Docs/Video/SlitScan.md) |
+| Camera feeds | The webcam (or any frame source) drawn and analyzed live | [Ch 30](30-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
+| People trackers | Faces with landmarks, hands, 2D and 3D body poses, person segmentation | [Ch 30](30-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
+| Scene trackers | Contours, rectangles, barcodes, text (OCR), saliency, classification, subject lift, point-prompted lift | [Ch 30](30-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
+| Motion trackers | Object tracking, thrown-object trajectories, dense optical flow | [Ch 30](30-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
+| `ModelTracker` | Bring any Core ML model: classifiers, detectors, image-to-image maps, segmenters | [Ch 30](30-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
+| Still analysis | Every tracker also runs one-shot on an `Image` | [Ch 30](30-Seeing.md) | [Vision](../Docs/Vision/Vision.md) |
+| Video playback | Files as live textures: play, seek, loop, analyze, all export-reproducible | [Ch 30](30-Seeing.md) | [Video](../Docs/Video/Video.md) |
+| Slit scan | A rolling frame history read back through a per-pixel time delay: time as a spatial dimension | [Ch 30](30-Seeing.md) | [SlitScan](../Docs/Video/SlitScan.md) |
 
 ## Sharing and performing
 
 | Capability | What it is | Guide | Reference |
 |---|---|---|---|
-| Stills and sequences | `--export` a frame, `--export-sequence` a folder of them | [Ch 30](30-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
-| Path-traced export | `--path-traced` renders the 3D scene by tracing light: soft shadows, bounce color, mirror in mirror, real glass, glowing meshes as lights, textures in the bounces, a real lens | [Ch 30](30-SharingAndPerforming.md) | [Path-traced export](../Docs/Output/PathTraced.md) |
-| Video and GIF | `--export-video` (H.264, HEVC, ProRes) and `--export-gif`, deterministic | [Ch 3](03-MotionAndTime.md), [Ch 30](30-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
-| Live recording | `startRecording()` or ⌘⇧R keeps a run as it happens, sound included, through evaluations | [Ch 30](30-SharingAndPerforming.md) | [Recording](../Docs/Output/Recording.md) |
-| Record & replay | `--record-take` writes a run's seed, clock, inputs, and knobs down; `--replay` plays it back exactly, scrubs it, and re-renders it through any export | [Ch 30](30-SharingAndPerforming.md) | [Replay](../Docs/Core/Replay.md) |
+| Stills and sequences | `--export` a frame, `--export-sequence` a folder of them | [Ch 31](31-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
+| Path-traced export | `--path-traced` renders the 3D scene by tracing light: soft shadows, bounce color, mirror in mirror, real glass, glowing meshes as lights, textures in the bounces, a real lens | [Ch 31](31-SharingAndPerforming.md) | [Path-traced export](../Docs/Output/PathTraced.md) |
+| Video and GIF | `--export-video` (H.264, HEVC, ProRes) and `--export-gif`, deterministic | [Ch 3](03-MotionAndTime.md), [Ch 31](31-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
+| Live recording | `startRecording()` or ⌘⇧R keeps a run as it happens, sound included, through evaluations | [Ch 31](31-SharingAndPerforming.md) | [Recording](../Docs/Output/Recording.md) |
+| Record & replay | `--record-take` writes a run's seed, clock, inputs, and knobs down; `--replay` plays it back exactly, scrubs it, and re-renders it through any export | [Ch 31](31-SharingAndPerforming.md) | [Replay](../Docs/Core/Replay.md) |
 | Perfect loops | Declare `loopDuration` and `--export-loop` renders exactly one seamless lap | [Ch 3](03-MotionAndTime.md) | [Export](../Docs/Output/Export.md) |
-| SVG for plotters | `--export-svg` true vectors, with `--hatch` turning fills into line work | [Ch 15](15-ShapesAsMaterial.md), [Ch 30](30-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
-| Print separations | `--export-separations`: one grayscale master per spot ink, screened, with an overprint preview | [Ch 30](30-SharingAndPerforming.md) | [PrintSeparations](../Docs/Output/PrintSeparations.md) |
-| 3D printing | `mesh.write(to:)` as STL, OBJ, or 3MF at a real size, with `printCheck()` reporting whether the surface is a solid | [Ch 30](30-SharingAndPerforming.md) | [Fabrication](../Docs/Output/Fabrication.md) |
-| Spatial models | `--export-usdz` writes a 3D frame (or any `Scene`) as USDZ: opens in Quick Look, sends in a message, stands on a table in AR | [Ch 30](30-SharingAndPerforming.md) | [Spatial](../Docs/Output/Spatial.md) |
-| Spatial video | `--export-spatial` writes the motion as a stereo pair per frame (MV-HEVC), with `stereoGeometry` naming how far apart the eyes stand and how far away they agree | [Ch 30](30-SharingAndPerforming.md) | [Spatial](../Docs/Output/Spatial.md#spatial-video) |
-| Headless capture | `OllinApp.image(of:frame:)` renders any sketch to a `CGImage` in code, no window; the export flags are wrappers around it, and this guide's figures are made with it | [Ch 30](30-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
-| Reproducibility metadata | Every PNG/SVG/PDF/video embeds its recipe: seed, `@Param` values, git commit, frame | [Ch 30](30-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md#reproducibility-metadata) |
+| SVG for plotters | `--export-svg` true vectors, with `--hatch` turning fills into line work | [Ch 15](15-ShapesAsMaterial.md), [Ch 31](31-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
+| Print separations | `--export-separations`: one grayscale master per spot ink, screened, with an overprint preview | [Ch 31](31-SharingAndPerforming.md) | [PrintSeparations](../Docs/Output/PrintSeparations.md) |
+| 3D printing | `mesh.write(to:)` as STL, OBJ, or 3MF at a real size, with `printCheck()` reporting whether the surface is a solid | [Ch 31](31-SharingAndPerforming.md) | [Fabrication](../Docs/Output/Fabrication.md) |
+| Spatial models | `--export-usdz` writes a 3D frame (or any `Scene`) as USDZ: opens in Quick Look, sends in a message, stands on a table in AR | [Ch 31](31-SharingAndPerforming.md) | [Spatial](../Docs/Output/Spatial.md) |
+| Spatial video | `--export-spatial` writes the motion as a stereo pair per frame (MV-HEVC), with `stereoGeometry` naming how far apart the eyes stand and how far away they agree | [Ch 31](31-SharingAndPerforming.md) | [Spatial](../Docs/Output/Spatial.md#spatial-video) |
+| Headless capture | `OllinApp.image(of:frame:)` renders any sketch to a `CGImage` in code, no window; the export flags are wrappers around it, and this guide's figures are made with it | [Ch 31](31-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
+| Reproducibility metadata | Every PNG/SVG/PDF/video embeds its recipe: seed, `@Param` values, git commit, frame | [Ch 31](31-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md#reproducibility-metadata) |
 | Contact sheets | `--export-grid` tiles one frame per seed into a labeled proof sheet; `--seed` re-renders a keeper | [Ch 4](04-Randomness.md) | [Variations](../Docs/Core/Variations.md) |
-| Syphon | Publish frames to (and read frames from) other Mac apps, GPU to GPU | [Ch 30](30-SharingAndPerforming.md) | [Syphon](../Docs/Integration/Syphon.md) |
-| Virtual camera | Your sketch as a system-wide webcam every video app can pick, including the browser, which Syphon cannot reach | [Ch 30](30-SharingAndPerforming.md) | [VirtualCamera](../Docs/Integration/VirtualCamera.md) |
-| DMX lighting | Real lights driven from `draw()` over Art-Net or sACN: a 512-channel universe filled through named fixtures and sent every frame, and a lighting console driving the sketch back | [Ch 30](30-SharingAndPerforming.md) | [DMX](../Docs/Integration/DMX.md) |
-| Screen capture | Any display, app, or window on the Mac as a live frame source, whether or not it cooperates the way Syphon needs; a tracker reads it like a camera, and leaving your own window in gives you the feedback tunnel | [Ch 29](29-Seeing.md) | [ScreenCapture](../Docs/Integration/ScreenCapture.md) |
-| Live coding | `swift run OllinLiveCoding`: code over visuals, evaluate mid-motion, perform | [Ch 30](30-SharingAndPerforming.md) | [LiveCoding](../Docs/Tools/LiveCoding.md) |
-| Extensions | `Sketch.extend`: hooks before, during, and after each frame, for recorders and chrome | [Ch 30](30-SharingAndPerforming.md) | [Sketch](../Docs/Core/Sketch.md#extensions) |
-| Running unattended | `installation` puts a piece on a wall: full screen, no pointer, the display kept awake, and a clock that survives a gap in the frames and a week of running | [Ch 30](30-SharingAndPerforming.md) | [Installation](../Docs/Output/Installation.md) |
-| Resuming after a stop | `@Saved` properties and a checkpoint cadence write the run down, so a relaunch picks the piece up where it was rather than starting it over | [Ch 30](30-SharingAndPerforming.md) | [Installation](../Docs/Output/Installation.md) |
-| Profiling | The inspector's cost row: CPU against GPU on one frame's scale, the draw, pass and batch counts, and a frame handed to Xcode | [Ch 30](30-SharingAndPerforming.md) | [Profiling](../Docs/Tools/Profiling.md) |
-| Writing an extension | `ollin new --kind extension`: a library other sketches import, the `ollinx-` naming convention, and the four seams to build on | [Ch 30](30-SharingAndPerforming.md) | [Extensions](../Docs/Tools/Extensions.md) |
+| Syphon | Publish frames to (and read frames from) other Mac apps, GPU to GPU | [Ch 31](31-SharingAndPerforming.md) | [Syphon](../Docs/Integration/Syphon.md) |
+| Virtual camera | Your sketch as a system-wide webcam every video app can pick, including the browser, which Syphon cannot reach | [Ch 31](31-SharingAndPerforming.md) | [VirtualCamera](../Docs/Integration/VirtualCamera.md) |
+| DMX lighting | Real lights driven from `draw()` over Art-Net or sACN: a 512-channel universe filled through named fixtures and sent every frame, and a lighting console driving the sketch back | [Ch 31](31-SharingAndPerforming.md) | [DMX](../Docs/Integration/DMX.md) |
+| Screen capture | Any display, app, or window on the Mac as a live frame source, whether or not it cooperates the way Syphon needs; a tracker reads it like a camera, and leaving your own window in gives you the feedback tunnel | [Ch 30](30-Seeing.md) | [ScreenCapture](../Docs/Integration/ScreenCapture.md) |
+| Live coding | `swift run OllinLiveCoding`: code over visuals, evaluate mid-motion, perform | [Ch 31](31-SharingAndPerforming.md) | [LiveCoding](../Docs/Tools/LiveCoding.md) |
+| Extensions | `Sketch.extend`: hooks before, during, and after each frame, for recorders and chrome | [Ch 31](31-SharingAndPerforming.md) | [Sketch](../Docs/Core/Sketch.md#extensions) |
+| Running unattended | `installation` puts a piece on a wall: full screen, no pointer, the display kept awake, and a clock that survives a gap in the frames and a week of running | [Ch 31](31-SharingAndPerforming.md) | [Installation](../Docs/Output/Installation.md) |
+| Resuming after a stop | `@Saved` properties and a checkpoint cadence write the run down, so a relaunch picks the piece up where it was rather than starting it over | [Ch 31](31-SharingAndPerforming.md) | [Installation](../Docs/Output/Installation.md) |
+| Profiling | The inspector's cost row: CPU against GPU on one frame's scale, the draw, pass and batch counts, and a frame handed to Xcode | [Ch 31](31-SharingAndPerforming.md) | [Profiling](../Docs/Tools/Profiling.md) |
+| Writing an extension | `ollin new --kind extension`: a library other sketches import, the `ollinx-` naming convention, and the four seams to build on | [Ch 31](31-SharingAndPerforming.md) | [Extensions](../Docs/Tools/Extensions.md) |
 | Accessibility | See your colors through the three kinds of color vision, check whether a palette holds apart, and read the reduce-motion setting | [Ch 2](02-Color.md), [Ch 3](03-MotionAndTime.md) | [Accessibility](../Docs/Helpers/Accessibility.md) |
 
 ---

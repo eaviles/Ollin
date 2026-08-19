@@ -22,13 +22,13 @@ Every position on the canvas is two numbers, counted in pixels from the top-left
 
 <img src="Images/17-YourFirstShader/UVSpace.jpg" alt="The uv gradient annotated: (0,0) at the top left, (1,1) at the bottom right, the center marked (0.5, 0.5)" width="680">
 
-Instead of pixels, an address can be a *fraction* of the whole, 0 at one edge and 1 at the other. So (0.5, 0.5) is the center of anything, at any resolution. Shaders live entirely in these `uv` coordinates, which is where [Chapter 17](17-YourFirstShader.md) works. Subtracting 0.5 re-centers them, so distances measure from the middle. The same trick names positions inside a camera image regardless of its size ([Chapter 29](29-Seeing.md)).
+Instead of pixels, an address can be a *fraction* of the whole, 0 at one edge and 1 at the other. So (0.5, 0.5) is the center of anything, at any resolution. Shaders live entirely in these `uv` coordinates, which is where [Chapter 17](17-YourFirstShader.md) works. Subtracting 0.5 re-centers them, so distances measure from the middle. The same trick names positions inside a camera image regardless of its size ([Chapter 30](30-Seeing.md)).
 
 ### Putting a normalized point onto the canvas
 
-<img src="Images/29-Seeing/TrackerFlow.jpg" alt="A diagram of camera frames flowing through a tracker, and a normalized lower-left-origin point mapping into the drawn frame's rectangle" width="680">
+<img src="Images/30-Seeing/TrackerFlow.jpg" alt="A diagram of camera frames flowing through a tracker, and a normalized lower-left-origin point mapping into the drawn frame's rectangle" width="680">
 
-A fraction-of-the-image point becomes a canvas point by scaling it into the rectangle you drew the image in. There's one wrinkle. Vision results count y *up* from the bottom-left, while the canvas counts y *down* from the top-left. So the y fraction flips on the way (`1 - y`). [Chapter 29](29-Seeing.md) wraps the flip-and-scale into one call, but this is all that call does.
+A fraction-of-the-image point becomes a canvas point by scaling it into the rectangle you drew the image in. There's one wrinkle. Vision results count y *up* from the bottom-left, while the canvas counts y *down* from the top-left. So the y fraction flips on the way (`1 - y`). [Chapter 30](30-Seeing.md) wraps the flip-and-scale into one call, but this is all that call does.
 
 ### The 3D world frame
 
@@ -252,9 +252,9 @@ Take a formula, feed it a point, feed it its own answer, and keep going, and the
 
 ### Optical flow: a measured field
 
-<img src="Images/29-Seeing/FlowArrows.jpg" alt="A camera frame of two hands, one overlaid with arrows showing its measured motion" width="680">
+<img src="Images/30-Seeing/FlowArrows.jpg" alt="A camera frame of two hands, one overlaid with arrows showing its measured motion" width="680">
 
-Every field so far was invented, while optical flow is *measured*. Comparing one camera frame with the next assigns each point an arrow, "which way did the picture move here". The result is a direction field you can trace, advect particles through, or paint with, exactly like a noise-built one. The camera becomes a field generator in [Chapter 29](29-Seeing.md).
+Every field so far was invented, while optical flow is *measured*. Comparing one camera frame with the next assigns each point an arrow, "which way did the picture move here". The result is a direction field you can trace, advect particles through, or paint with, exactly like a noise-built one. The camera becomes a field generator in [Chapter 30](30-Seeing.md).
 
 ## Local rules, global structure
 
