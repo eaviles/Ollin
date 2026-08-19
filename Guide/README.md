@@ -68,17 +68,18 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 
 ### Part IV: The third dimension
 
-21. **[3D, gently](21-3DGently.md).** A camera, solids, lights and materials, meshes and their maps, terrain, instancing at scale, and a physics world with vehicles, characters, cloth, and water. By far the guide's biggest chapter.
-22. **[Worlds with weight](22-WorldsWithWeight.md).** Rigid bodies in the 3D scene: stacking and contact, asking what a body would hit, collision groups, degrees of freedom, machines made out of joints, and snapshots of a settled world.
-23. **[Characters, vehicles, and cloth](23-CharactersAndCloth.md).** The three things a rigid body models badly: a figure that walks, a vehicle on sprung wheels, and cloth, ropes, ragdolls and water.
-24. **[Sculpting with fields](24-SculptingWithFields.md).** Distance fields that merge and blend, in 2D and raymarched 3D, then the finish: measured materials, environments, glass, and light that bounces.
-25. **[Depth and the iPhone as a sensor](25-DepthAndThePhone.md).** Point clouds, recorded and live RGBD, the phone's body, hand, and gaze streams, and scanning the room you're in.
+21. **[3D, gently](21-3DGently.md).** A camera, solids, lights and materials, air you can see, meshes and their maps, and the depth buffer's own effects.
+22. **[Landscapes and multitudes](22-Landscapes.md).** Ground grown from noise and weathered by rain, then the four ways to draw more copies of something than you could ever place: a field of particles, instanced meshes, a world the camera trims, and grass that is never built.
+23. **[Worlds with weight](23-WorldsWithWeight.md).** Rigid bodies in the 3D scene: stacking and contact, asking what a body would hit, collision groups, degrees of freedom, machines made out of joints, and snapshots of a settled world.
+24. **[Characters, vehicles, and cloth](24-CharactersAndCloth.md).** The three things a rigid body models badly: a figure that walks, a vehicle on sprung wheels, and cloth, ropes, ragdolls and water.
+25. **[Sculpting with fields](25-SculptingWithFields.md).** Distance fields that merge and blend, in 2D and raymarched 3D, then the finish: measured materials, environments, glass, and light that bounces.
+26. **[Depth and the iPhone as a sensor](26-DepthAndThePhone.md).** Point clouds, recorded and live RGBD, the phone's body, hand, and gaze streams, and scanning the room you're in.
 
 ### Part V: Out into the world
 
-26. **[Sound and control](26-SoundAndControl.md).** Hearing loudness, spectrum, beats, and speech; making sound with synths, physical models, and music the sketch composes; MIDI, OSC, and game controllers.
-27. **[Seeing](27-Seeing.md).** The webcam as input; faces, hands, bodies, edges, and motion as typed values; video as material.
-28. **[Sharing and performing](28-SharingAndPerforming.md).** Stills, video, GIF, SVG for plotters, prints and 3D prints, feeding other apps, lighting rigs, pieces that run on a wall for weeks, and live coding on stage.
+27. **[Sound and control](27-SoundAndControl.md).** Hearing loudness, spectrum, beats, and speech; making sound with synths, physical models, and music the sketch composes; MIDI, OSC, and game controllers.
+28. **[Seeing](28-Seeing.md).** The webcam as input; faces, hands, bodies, edges, and motion as typed values; video as material.
+29. **[Sharing and performing](29-SharingAndPerforming.md).** Stills, video, GIF, SVG for plotters, prints and 3D prints, feeding other apps, lighting rigs, pieces that run on a wall for weeks, and live coding on stage.
 
 ### Appendices
 
