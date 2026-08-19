@@ -275,13 +275,15 @@ held?.remove()                          // let go
 
 `grab` returns a `Joint` handle. While it exists, the body is dragged toward its `target` like a puppet on a short string, pushing and toppling whatever stands in the way. Call `remove()` and the body is free again, keeping whatever speed you flung it with. Notice that it's a *pull* rather than a teleport. Grabbing a link mid-chain drags the rest of the chain along behind it, still obeying its hinges.
 
-## Three ready-made motion systems
+## Systems that come assembled
 
-The two approaches so far cover most of what you'll build, but there's a third shelf worth knowing about. Ollin ships three motion systems that come assembled, each a plain object you keep on the sketch and step once a frame. None of them needs a `World`, and all three live in the core framework, so there's no extra import.
+The two approaches so far cover most of what you'll build, but there's a third shelf worth knowing about. Ollin ships four systems that come assembled, each a plain object you keep on the sketch and step once a frame. Three of them move things and the fourth arranges them. None needs a `World`, and all four live in the core framework, so there's no extra import.
 
 <img src="Images/09-ForcesAndPhysics/Articulated.jpg" alt="Three panels: a segmented chain curving so its tip touches a small ringed target while its base stays planted, a double pendulum's two arms with the looping tangle its far bob has traced, and a disk of hundreds of short streaks circling a heavy orange center" width="680">
 
-**`IKChain` is a limb that reaches.** It's a run of rigid segments joined end to end, and it has two verbs. `reach(toward:)` keeps the base planted and bends the chain so the tip strains for a target. That is the arm-and-tentacle move, and the left panel above. `drag(to:)` does the opposite, pinning the tip to the target and letting everything else trail behind it, which is the rope move. Read `joints` to draw it, and a `drawPolyline` is usually the whole body:
+### A limb that reaches: IKChain
+
+An `IKChain` is a run of rigid segments joined end to end, and it has two verbs. `reach(toward:)` keeps the base planted and bends the chain so the tip strains for a target. That is the arm-and-tentacle move, and the left panel above. `drag(to:)` does the opposite, pinning the tip to the target and letting everything else trail behind it, which is the rope move. Read `joints` to draw it, and a `drawPolyline` is usually the whole body:
 
 ```swift
 let arm = IKChain(from: Vector2(540, 1040), segments: 14, length: 36)
@@ -293,11 +295,15 @@ drawPolyline(arm.joints)
 
 Two knobs decide the character, and the first is an aesthetic choice rather than a technical one. `solver` picks how the chain thinks about reaching. The default `.fabrik` spreads the bend evenly along the whole chain, which gives smooth, plant-like poses. `.ccd` favors the joints nearest the tip, so the chain whips and curls instead. `maxBend` is the stiffness limit, the sharpest angle any segment may fold against its neighbor. It's what turns a floppy tentacle into a spine. A target can sit out of reach, either past the chain's `totalLength` or behind its own stiffness. `reach` reports that by returning `false` rather than spinning.
 
-**`DoublePendulum` is the classic chaos machine.** Two weights swing on two rigid arms under gravity. That really is all it takes to get motion nobody can predict. You set the arm lengths, the masses, and the starting angles. Then call `step()` each frame and read `bob1` and `bob2`, both measured from the pivot. Tracing `bob2` is where the drama is, and the middle panel above is a few seconds of exactly that.
+### The classic chaos machine: DoublePendulum
+
+Two weights swing on two rigid arms under gravity. That really is all it takes to get motion nobody can predict. You set the arm lengths, the masses, and the starting angles. Then call `step()` each frame and read `bob1` and `bob2`, both measured from the pivot. Tracing `bob2` is where the drama is, and the middle panel above is a few seconds of exactly that.
 
 The part worth pausing on is that this is *deterministic*. `step()` advances one 60 fps frame in fixed substeps, so a run is a pure function of where you started. The same start replays the same tangle every time. Start a second pendulum a ten-thousandth of a radian away, though, and within a few seconds the two are doing completely different things. That gap between perfectly repeatable and impossible to predict is what chaos actually means. A fan of near-identical pendulums is the cheapest way to watch it happen.
 
-**`NBody` is gravity at scale.** Every body pulls on every other. That one rule is enough to produce orbits, spiral arms, tidal tails, and mergers. It holds a `bodies` array you can read and rearrange between steps, and `step()` advances the lot:
+### Gravity at scale: NBody
+
+In an `NBody`, every body pulls on every other. That one rule is enough to produce orbits, spiral arms, tidal tails, and mergers. It holds a `bodies` array you can read and rearrange between steps, and `step()` advances the lot:
 
 ```swift
 let galaxy = NBody.disk(count: 2000, center: center, radius: 380)
@@ -311,7 +317,7 @@ Doing this honestly for a few thousand bodies would mean millions of pairs every
 
 Two seeded factories stage the usual scenes. `NBody.disk(...)` builds a spinning disk around a heavy center, starting each body on the circular orbit its radius calls for. That is the right panel above, drawn as velocity streaks so the circulation shows. `NBody.cluster(...)` drops a motionless swarm that collapses, swings through itself, and puffs back out into a bound cloud. Because the factories roll from a seed and every step is a fixed size, a run reproduces exactly. A fixed-frame export gives you the same galaxy twice. To stage a collision, build two disks and append one's `bodies` to the other's.
 
-## A graph that lays itself out
+### A graph that lays itself out: ForceLayout
 
 Here's a different job for forces. It is not motion for its own sake, but *arrangement*. A graph is just nodes and the edges that join them, a friend network, a word web, a subway map. The hard part has never been drawing it. It's deciding where everything goes. `ForceLayout` answers with the two forces you already know. Every node pushes every other node apart, and every edge is a spring pulling its two ends together. Let those argue and the graph untangles itself. Nobody places a node, and the forces place them all.
 

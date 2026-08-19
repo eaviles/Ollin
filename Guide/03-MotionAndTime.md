@@ -71,7 +71,7 @@ Run that and you've built the bottom half of the diagram, live. You've also seen
 
 ## map and lerp: moving between ranges
 
-`sin` hands you `-1...1`, but that's rarely the range you actually want. You want 40 to 220 pixels of radius, or `0...1` to feed a color ramp. [Chapter 2](02-Color.md) patched this with the squeeze, `sin(...) * 0.5 + 0.5`. The proper tool is `map`, which carries a value from one range into another by keeping its *fraction along*:
+That was the chapter's first act, a clock and the wave it drives. The second act shapes what they produce, and it starts with the ranges themselves. `sin` hands you `-1...1`, but that's rarely the range you actually want. You want 40 to 220 pixels of radius, or `0...1` to feed a color ramp. [Chapter 2](02-Color.md) patched this with the squeeze, `sin(...) * 0.5 + 0.5`. The proper tool is `map`, which carries a value from one range into another by keeping its *fraction along*:
 
 <img src="Images/03-MotionAndTime/MapAndLerp.jpg" alt="Top: a value carried between two number lines by its fraction along, map. Bottom: dots walking a segment from a to b as t runs 0 to 1, lerp" width="680">
 
@@ -139,9 +139,9 @@ Same start, same finish, same four seconds. The only difference is *when* each d
 
 The full table of thirty names is in the [Animation](../Docs/Helpers/Animation.md#catalog) reference, and the [EasingGallery example](../Examples/Motion/EasingGallery/Sketch.swift) plots them all side by side.
 
-## Values that chase, signals that shake
+## Values that chase, signals that shake: @Eased, @Sprung, @Smoothed
 
-The shaping functions all assume you're steering `t` yourself. Three property wrappers handle the everyday cases where you'd rather not.
+The shaping functions all assume you're steering `t` yourself, which makes them the chapter's second act, curves under your hand. The third act is motion that runs itself. Three property wrappers handle the everyday cases where you'd rather not steer.
 
 **`@Eased`** is for a value with a *target*. Assign where it should go, read where it currently is, and it glides over on its own along a curve and duration you pick once:
 
