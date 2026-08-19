@@ -1,6 +1,6 @@
 // figure: frame=1
 //
-// Guide diagram (Chapter 31): a schedule as the day it describes. The named
+// Guide diagram (Chapter 32): a schedule as the day it describes. The named
 // parts a sketch reads, the stretch with nothing on screen (which crosses
 // midnight, because the last part of the day runs round to the first), and the
 // sketch clock underneath, which stops with the frames rather than skipping.

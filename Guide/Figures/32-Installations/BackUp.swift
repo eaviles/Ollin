@@ -1,6 +1,6 @@
 // figure: frame=1
 //
-// Guide diagram (Chapter 31): the two ways an unattended run ends badly, and
+// Guide diagram (Chapter 32): the two ways an unattended run ends badly, and
 // what the watch does about each. A night on the timeline: a crash, a frame
 // that never finishes, and a piece back up within seconds of both.
 import Ollin

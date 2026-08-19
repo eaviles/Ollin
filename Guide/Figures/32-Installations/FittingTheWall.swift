@@ -1,6 +1,6 @@
 // figure: frame=1
 //
-// Guide diagram (Chapter 31): what a projector does to a picture, and what
+// Guide diagram (Chapter 32): what a projector does to a picture, and what
 // corner-pinning does about it. On the left the picture as it lands, on the
 // right the same picture with its four corners put where they belong. Below,
 // the reason two projectors on one wall each fade out across the band they

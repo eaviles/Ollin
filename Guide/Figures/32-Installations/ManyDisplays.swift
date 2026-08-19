@@ -1,6 +1,6 @@
 // figure: frame=1
 //
-// Guide diagram (Chapter 31): one canvas, three displays. The canvas is drawn
+// Guide diagram (Chapter 32): one canvas, three displays. The canvas is drawn
 // once, at the top, and each display below carries the part of it that its own
 // place in the arrangement covers. The piece is the same picture in both rows,
 // so the reader can see that the three panes are one thing cut in three rather

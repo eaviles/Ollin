@@ -1,6 +1,6 @@
 // figure: frame=1
 //
-// Guide diagram (Chapter 31): the two ways a long run breaks the clock, and what
+// Guide diagram (Chapter 32): the two ways a long run breaks the clock, and what
 // is done about each. Above, a night with no frames: the wall clock hands the
 // piece the whole gap, the summed clock hands it one capped step. Below, the
 // 32-bit clock a shader reads, stuck after a week and exact again once it

@@ -1,6 +1,6 @@
 // figure: frame=1
 //
-// Guide diagram (Chapter 31): the inspector's cost row, annotated. A stylized
+// Guide diagram (Chapter 32): the inspector's cost row, annotated. A stylized
 // card drawn with Ollin itself: the frame-rate strip, the two bars scaled to one
 // frame, and the counts underneath. Callouts name what each part answers.
 import Ollin

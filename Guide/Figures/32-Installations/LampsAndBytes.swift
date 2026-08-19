@@ -1,6 +1,6 @@
 // figure: frame=0
 //
-// Guide diagram (Chapter 31): one DMX universe seen twice. Six RGB pars hang
+// Guide diagram (Chapter 32): one DMX universe seen twice. Six RGB pars hang
 // over a dark stage, lit by the fixture sugar; below them, the same universe's
 // first eighteen channels as labeled meter bars, bracketed by fixture. The
 // point of the figure: the rig is a picture of the bytes.

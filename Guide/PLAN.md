@@ -41,6 +41,7 @@ There is structural work in flight as well as chapters. *The shape ahead* below 
 | 29. Making sound | `29-MakingSound.md` | done |
 | 30. Seeing | `30-Seeing.md` | done |
 | 31. Sharing and performing | `31-SharingAndPerforming.md` | done |
+| 32. Installations | `32-Installations.md` | done |
 | A. Just enough Swift | `A-JustEnoughSwift.md` | done |
 | B. Just enough math, visually | `B-JustEnoughMath.md` | done |
 | C. Coming from p5.js and Processing | `C-ComingFromP5.md` | done |
@@ -86,16 +87,11 @@ Each lands complete: no gappy contents list, no chapter without its payoff, ever
 
 | Step | What moves | New payoff |
 |---|---|---|
-| 9 | Sharing and performing splits. Sharing keeps files, feeds, handoff, the stage and the five-evaluation set; Installations takes DMX and LED, the cost row and the whole "Leaving it running" run. | Installations |
 | 10 | The parts are redrawn, Appendix D gains its new sections, README's reader's map replaces the "budget for the 3D chapter" line, and every matrix row is re-homed. | none |
 
 ### Briefs for the chapters this tier still creates
 
 The existing briefs below were written before their chapters grew, so they describe a fraction of what shipped. Derive a new chapter's brief from the coverage-matrix rows and the section headings it inherits, never from the parent's brief.
-
-**Installations.**
-Teaches: light instead of pixels (DMX and LED mapping); the cost row when it gets slow; then the whole unattended run, which is what actually breaks the clock, picking up where it left off, falling over, gallery hours, fitting the wall, several displays and several windows, and the log.
-Payoff: new. `Examples/Installation/Unattended` is the candidate.
 
 ## Chapter briefs
 
@@ -323,11 +319,19 @@ Figures: tracker-flow diagram; landmark-map figures; a flow-field-from-motion fi
 Draws from: `Docs/Vision/Vision.md`, `Docs/Video/Video.md`; `Examples/Vision/`, `Examples/Video/`.
 
 **31. Sharing and performing.**
-Teaches: exporting stills, sequences, video, GIF; SVG for plotters (closing Ch 15's loop); publishing to other apps (Syphon) and as a system camera; DMX light on a real rig (and a console driving the sketch back); the canvas itself onto LED strips and matrices (`LEDMap`); the live-coding host (`OllinLiveCoding`): evaluate-on-command, code over visuals, performing a set; reproducibility as a sharing feature (seeds, params).
+Teaches: exporting stills, sequences, video, GIF; SVG for plotters (closing Ch 15's loop); print separations and a 3D print; USDZ and spatial video; reproducibility as a sharing feature (seeds, params); describable output; publishing to other apps (Syphon) and as a system camera; adding behavior with a `SketchExtension`; handing the work over; then the live-coding host (`OllinLiveCoding`), evaluate-on-command with the code over the visuals, keeping the take, and replaying a night.
 Assumes: everything before it, lightly.
-Payoff: a short performed piece, live-coded, recorded, and shared.
-Figures: export-formats map; a Syphon-into-another-app screenshot; the lamps-and-bytes DMX diagram; the LED-wall mapping diagram; the performance host annotated; frames from the performance.
-Draws from: `Docs/Output/Export.md`, `Docs/Integration/Syphon.md`, `Docs/Integration/VirtualCamera.md`, `Docs/Integration/DMX.md`, `Docs/Tools/LiveCoding.md`; `Examples/Export/`, `Examples/Live/`.
+Payoff: a set in five evaluations, live-coded and recorded.
+Figures: the export map; the headless capture; the separations; the fabrication sheet; the spatial pair; describable output; the stage diagram; the extension shape; the set's steps and its finale.
+Draws from: `Docs/Output/Export.md`, `Docs/Output/Recording.md`, `Docs/Integration/Syphon.md`, `Docs/Integration/VirtualCamera.md`, `Docs/Tools/LiveCoding.md`, `Docs/Tools/Extensions.md`; `Examples/Export/`, `Examples/Live/`.
+
+**32. Installations.**
+Teaches: light instead of pixels (`DMXSender`, fixtures, universes, the receive direction, and `LEDMap` reading the canvas); the cost row when a piece gets slow; then the whole unattended run: the one-line `Installation`, the clock that a sleeping display breaks, checkpointing and resuming, restarting after a stall, gallery hours and the named parts of the day, fitting a projector to a wall it is not square to, several displays on one machine, several windows on one world, and the log.
+Assumes: Ch 31 (the piece exists and can be handed over), Ch 28 (binding, for the console-drives-the-sketch direction).
+Payoff: the wall piece. One declaration carrying the schedule, the checkpoint and the restart, a three minute lap so nothing drifts, and a strip of lamps reading the bottom of its own canvas.
+Figures: the lamps and their bytes; the LED wall; the cost row; the long-run clock; resuming; the backup; gallery hours; fitting the wall; many displays; one world in many windows; the wall piece.
+Draws from: `Docs/Integration/DMX.md`, `Docs/Output/Installation.md`, `Docs/Tools/Profiling.md`; `Examples/Installation/`, `Examples/Integration/`.
+
 
 ### Appendices
 
@@ -517,7 +521,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | `Video/Video.md` (playback as texture) | Ch 30 | taught |
 | `Integration/Syphon.md` | Ch 31 | taught |
 | `Integration/VirtualCamera.md` | Ch 31 | taught ("The sketch as a webcam": why the browser needs a camera and Syphon cannot cross that line, the system extension and its one-time approval, the test card, the fixed 1280x720 letterbox and 30 fps, and suspecting the viewer first when the picture looks mirrored or cropped) |
-| `Integration/DMX.md` (`DMXUniverse`, `DMXFixture`, `DMXSender`, `DMXReceiver`, `LEDMap`) | Ch 31 | taught ("Light instead of pixels: DMX" with the LampsAndBytes figure: the universe/fixture/channel model in one sentence, sACN multicast as the zero-config default vs Art-Net unicast, send-every-frame with the wire cadence handled, and the reverse direction where a console fader binds onto a `@Param` like Ch 28's MIDI and OSC; the loopback example and the Local Network permission note; and the LEDWall figure: `LEDMap` sampling the canvas onto strips and matrices, the patch-per-LED and whole-LED universe packing rules, the LEDMapping example) |
+| `Integration/DMX.md` (`DMXUniverse`, `DMXFixture`, `DMXSender`, `DMXReceiver`, `LEDMap`) | Ch 32 | taught ("Light instead of pixels: DMX" with the LampsAndBytes figure: the universe/fixture/channel model in one sentence, sACN multicast as the zero-config default vs Art-Net unicast, send-every-frame with the wire cadence handled, and the reverse direction where a console fader binds onto a `@Param` like Ch 28's MIDI and OSC; the loopback example and the Local Network permission note; and the LEDWall figure: `LEDMap` sampling the canvas onto strips and matrices, the patch-per-LED and whole-LED universe packing rules, the LEDMapping example) |
 | `Integration/ScreenCapture.md` | Ch 30 | taught ("Drawing with the screen: ScreenCapture": the third frame source beside the camera and a clip, so every tracker in the chapter reads it too; naming a display, app, or window as a written value and waiting for one not open yet; the backing-resolution `scale` knob; the feedback tunnel with a figure; and the permission attributed to the launching terminal rather than the sketch) |
 | `Output/Export.md` (PNG, sequence, video, GIF, SVG, PDF) | Ch 3 (GIF), Ch 15 (SVG), Ch 31 (all) | taught |
 | Path-traced export (`--path-traced`, `Camera3D.aperture` / `focusDistance`; `Output/PathTraced.md`) | Ch 31 | shown ("The slow render that pays for itself": what tracing adds over the raster export, the flag with its sample count, the real lens, the viewfinder-and-film-back workflow) |
@@ -539,8 +543,8 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | Accessibility (`ColorVision`, `Filter.colorVision`, `Palette.confusions`/`colorblindSafe`, `prefersReducedMotion`, `describe(_:)`/`describe(_:as:in:)`/`noDescription()`; `Helpers/Accessibility.md`) | Ch 2, Ch 3, Ch 31 | taught ("Will everybody see it?" with the ColorVision figure, "When somebody would rather it stopped" in Ch 3, and "Saying what it shows: describable output" in Ch 31 with the SayingWhatItShows figure: one sentence for the canvas, named parts with a region each, the same-numbers habit that keeps words and picture in step, what an SVG and a PDF carry, and why Ollin will not write the description for you) |
 | Examples gallery (`swift run OllinExamples`) | Ch 1 | taught ("The gallery" with a layout diagram: the three panes, the filter field, hiding the knobs, why arrow keys move the list rather than reaching the sketch, and that every entry is an ordinary sketch file to open and copy) |
 | Extension seam (`Sketch.extend`, `SketchExtension`) | Ch 31 | taught ("Adding behavior without touching the sketch: SketchExtension": why cross-cutting behavior does not belong in `draw()`, the built-in stats extension as the example, and the opt-in frame readback) |
-| Installation mode (`installation`, `Installation`, `--installation`; `Output/Installation.md`) | Ch 31 | taught ("Leaving it running" with the LongRunClock figure: the one-line declaration and what it turns on, the two flags, how a loose single file goes up with the same flag, why the sketch clock is the sum of its capped steps rather than the wall clock, why the 32-bit shader clock restarts on a whole lap, and the log) plus "Picking up where it left off" with the Resuming figure (`@Saved` state, the cadence, what a mismatch costs, and `--fresh`). "When it falls over" adds the BackUp figure: `restarts`, the watch process, the heartbeat, the backoff. "Gallery hours" adds the GalleryHours figure: `schedule`, opening hours, `scheduledPeriod`, `scheduledProgress`. "Fitting the wall" adds the FittingTheWall figure: `projection`, Command-K and the four handles, corners kept per display, and two machines sharing a band through `shows` + `blend`. "Several displays, one machine" adds the ManyDisplays figure: `Installation(displays:)`, `.spanning` reading the arrangement the displays are in, `.parts` for two projectors sharing a band, Command-K over the whole wall, and `--rehearse` laying that wall out on one desk. "Several windows, one world" adds the OneWorldManyWindows figure: `canvasOnScreen`, drawing in desk coordinates, and keeping separate programs in step by reading one clock rather than sending messages |
-| Profiling (the inspector's cost row, `FrameProfile`, `captureGPUFrame()`; `Tools/Profiling.md`) | Ch 31 | taught ("When it gets slow: the cost row" with the CostRow figure: the two bars on one frame's scale and why they are not stacked, batches against shape count, what to do about each answer, and the Xcode capture) |
+| Installation mode (`installation`, `Installation`, `--installation`; `Output/Installation.md`) | Ch 32 | taught ("Leaving it running" with the LongRunClock figure: the one-line declaration and what it turns on, the two flags, how a loose single file goes up with the same flag, why the sketch clock is the sum of its capped steps rather than the wall clock, why the 32-bit shader clock restarts on a whole lap, and the log) plus "Picking up where it left off" with the Resuming figure (`@Saved` state, the cadence, what a mismatch costs, and `--fresh`). "When it falls over" adds the BackUp figure: `restarts`, the watch process, the heartbeat, the backoff. "Gallery hours" adds the GalleryHours figure: `schedule`, opening hours, `scheduledPeriod`, `scheduledProgress`. "Fitting the wall" adds the FittingTheWall figure: `projection`, Command-K and the four handles, corners kept per display, and two machines sharing a band through `shows` + `blend`. "Several displays, one machine" adds the ManyDisplays figure: `Installation(displays:)`, `.spanning` reading the arrangement the displays are in, `.parts` for two projectors sharing a band, Command-K over the whole wall, and `--rehearse` laying that wall out on one desk. "Several windows, one world" adds the OneWorldManyWindows figure: `canvasOnScreen`, drawing in desk coordinates, and keeping separate programs in step by reading one clock rather than sending messages |
+| Profiling (the inspector's cost row, `FrameProfile`, `captureGPUFrame()`; `Tools/Profiling.md`) | Ch 32 | taught ("When it gets slow: the cost row" with the CostRow figure: the two bars on one frame's scale and why they are not stacked, batches against shape count, what to do about each answer, and the Xcode capture) |
 | Headless capture (`OllinApp.image(of:)`) | Ch 31; used by the Guide's own figure runner | taught ("Rendering from code": the flags are a wrapper around one call, what it does step by step, the batch cases it unlocks, a figure that renders another sketch four times to demonstrate itself, and the Guide's own figure runner as the worked example) |
 
 ## Guide debt

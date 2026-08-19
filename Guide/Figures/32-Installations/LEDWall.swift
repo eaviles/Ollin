@@ -1,6 +1,6 @@
 // figure: frame=0
 //
-// Guide diagram (Chapter 31): the canvas leaving the screen as LEDs. A strip
+// Guide diagram (Chapter 32): the canvas leaving the screen as LEDs. A strip
 // rides a wave over a colorful field and a matrix reads a panel of it (the
 // rings are the sample points, straight off `LEDMap`'s own geometry); below,
 // the same LEDs lit: the strip laid out straight in wire order, the panel

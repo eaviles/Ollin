@@ -1,6 +1,6 @@
 // figure: frame=1
 //
-// Guide diagram (Chapter 31): three windows of one sketch, open on one desk.
+// Guide diagram (Chapter 32): three windows of one sketch, open on one desk.
 // The world is drawn in desk coordinates, so each window shows the part of it
 // that falls inside its own rectangle, and the rings carry on across the gaps
 // between them. Faint outside the windows is the part nobody is looking at.
