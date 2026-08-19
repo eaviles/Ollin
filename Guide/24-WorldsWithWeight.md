@@ -6,7 +6,7 @@
 
 <img src="Images/24-WorldsWithWeight/Contraption.jpg" alt="A wooden panel carrying two meshed brass and steel wheels, a long bar swung from the larger one sweeping a row of red crates along a shelf, lit from above with soft shadows on a dark floor" width="560">
 
-Nothing in that machine is animated. A motor turns one hinge, a gear link ties it to a second, and everything after that is contact: the bar swings because it is bolted to a wheel, and the crates move because the bar arrives. Take the motor away and the whole thing coasts to a stop on its own.
+That machine has one motor in it. A gear link ties its hinge to a second, and everything after that is contact: the bar swings because it is bolted to a wheel, and the crates move because the bar arrives. Nothing there is animated. Take the motor away and the whole thing coasts to a stop on its own.
 
 [Chapter 21](21-3DGently.md) built a scene you look at. This chapter gives it weight. Bodies fall, stack, and knock each other about; joints tie them into hinges, sliders, gears and ropes; queries let the sketch ask what a body would hit before it hits it; and a snapshot puts a settled arrangement in a file so it comes back exactly as it was. By the end you'll have built the contraption above.
 
