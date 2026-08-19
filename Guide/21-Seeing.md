@@ -62,7 +62,11 @@ The second half of the diagram is the part that bites everyone once. Trackers re
 
 > **Swift note.** `lazy var faces = FaceTracker(camera)` builds the tracker the first time it's touched, which is what lets its declaration mention `camera`, another property of the same class. Plain `let` properties initialize too early for that.
 
-## Hands, faces, bodies
+## The people in the picture
+
+The first family reads whoever stands in front of the camera. It starts with named parts, joints and landmarks you draw with, and ends with the person's own pixels.
+
+### Hands, faces, bodies
 
 Three trackers carry most interactive pieces, and they all speak in named parts:
 
@@ -91,7 +95,29 @@ Those meters drop straight into [Chapter 17](17-3DGently.md)'s world, which is w
 
 Two practical notes are worth keeping. These are neural models, and the heavier ones (body pose, segmentation) want Apple silicon. Every tracker exposes `isAvailable` and `unavailableReason`, and `drawStatus(reason, style: .warning)` turns the reason into the standard on-canvas notice instead of a silent nothing. And every tracker also runs one-shot on a still picture with no camera at all. `try await FaceTracker.detect(in: image)` analyzes a loaded `Image`, which is how you analyze photos, and how this chapter's figures were made honest.
 
-## Edges and motion
+### Lifting the subject
+
+One more pair reads the picture as foreground and background. **`PersonSegmenter`** finds the people in the frame, **`SubjectSegmenter`** finds whatever stands out whether or not it's a person, and both hand back the same two pictures.
+
+```swift
+lazy var people = PersonSegmenter(camera)
+
+override func draw() {
+    background(.black)                       // or anything: this is the new backdrop
+    guard let rect = drawFrame(camera) else { return }
+    if let cutout = people.cutout { drawImage(cutout, in: rect) }
+}
+```
+
+Where the pose trackers reduce a person to joints, these give you their pixels. `matte` is a soft white silhouette, and its alpha says how much each pixel belongs to the subject. `tint(_:)` then turns it into a shadow, a glow, or a flat colored figure. `cutout` is the frame's own pixels with the background gone, ready to composite over whatever your sketch has already drawn. Both come back as ordinary `Image`s, so draw them into the same rectangle as the frame and they land exactly on the picture.
+
+Stamp the matte every frame without clearing and you have a trail of yourself. That is [Chapter 14](14-LayersAndEffects.md)'s accumulation, with a person as the brush. `PersonSegmenter` takes a `quality:` that trades edge detail for speed. `SubjectSegmenter` adds a `count` of how many separate subjects it found, going to `nil` and `0` while nothing in the picture stands out. Both need Apple silicon, like the pose trackers.
+
+## The picture itself
+
+The next family doesn't care who is in frame. It reads the picture as a picture: its edges and motion, its printed things, one patch worth following, and what the whole frame is about.
+
+### Edges and motion
 
 Two more trackers see *qualities* of the picture rather than things in it, and both connect straight back to ideas you already have.
 
@@ -117,50 +143,7 @@ if let field = flow.field {
 
 Motion is only measurable where the picture has texture. A featureless area, a blank wall or a solid backdrop, doesn't politely read as zero. It reads as noise, because there is nothing to match from one frame to the next. If your scene is mostly flat, give it some texture before trusting the field there. Treat the magnitudes as a signal to scale by a gain of your own rather than a calibrated speed. The measured field has its own name, `MotionField`, so you won't confuse it with [Chapter 12](12-FieldsAndFlow.md)'s generative `FlowField`. One is a rule you invent. The other is motion the camera actually saw.
 
-## Lifting the subject
-
-One more pair reads the picture as foreground and background. **`PersonSegmenter`** finds the people in the frame, **`SubjectSegmenter`** finds whatever stands out whether or not it's a person, and both hand back the same two pictures.
-
-```swift
-lazy var people = PersonSegmenter(camera)
-
-override func draw() {
-    background(.black)                       // or anything: this is the new backdrop
-    guard let rect = drawFrame(camera) else { return }
-    if let cutout = people.cutout { drawImage(cutout, in: rect) }
-}
-```
-
-Where the pose trackers reduce a person to joints, these give you their pixels. `matte` is a soft white silhouette, and its alpha says how much each pixel belongs to the subject. `tint(_:)` then turns it into a shadow, a glow, or a flat colored figure. `cutout` is the frame's own pixels with the background gone, ready to composite over whatever your sketch has already drawn. Both come back as ordinary `Image`s, so draw them into the same rectangle as the frame and they land exactly on the picture.
-
-Stamp the matte every frame without clearing and you have a trail of yourself. That is [Chapter 14](14-LayersAndEffects.md)'s accumulation, with a person as the brush. `PersonSegmenter` takes a `quality:` that trades edge detail for speed. `SubjectSegmenter` adds a `count` of how many separate subjects it found, going to `nil` and `0` while nothing in the picture stands out. Both need Apple silicon, like the pose trackers.
-
-## Lifting what you point at
-
-The segmenters above decide for themselves what the subject is. **`PointSegmenter`** hands that decision to you. Click a thing, any thing, and it comes loose from the picture.
-
-```swift
-lazy var picker = PointSegmenter(camera,
-    imageEncoderAt: encoderURL, promptEncoderAt: promptURL, maskDecoderAt: decoderURL)
-
-override func mousePressed() {
-    guard let rect = camera.fittedRect(in: bounds) else { return }
-    picker.pick(at: Vector2(mouseX, mouseY), in: rect)
-}
-
-override func draw() {
-    tint(Color(white: 0.3))                                          // the room, dimmed
-    guard let rect = drawFrame(camera) else { return noTint() }
-    noTint()
-    if let pick = picker.pick { drawImage(pick.cutout, in: rect) }   // the picked thing, lit
-}
-```
-
-A pick answers with the same `matte` and `cutout` pair as the other segmenters, plus a `score` and a `bounds(in:)` box for framing what it found. The first answer takes a beat, because the model studies the clicked frame once. After that the frame stays frozen and refining is nearly free: `include(_:in:)` adds a point the mask must also cover, `exclude(_:in:)` a point it must not. Click the teapot, then shift-click the shadow it dragged along, and the mask lets the shadow go.
-
-Like `ModelTracker`'s models below, this one runs on downloaded weights: run `Scripts/fetch-models.sh` once and pass the three files it fetches. `Examples/Vision/PointLift` is the whole loop, clicks and all.
-
-## Reading what's printed
+### Reading what's printed
 
 The next three trackers aren't looking for people. They look for the flat printed things the world is full of, and none of them needs Apple silicon. Two are classical computer vision with no neural model at all, and the third, the text reader, runs on a model every Mac already has.
 
@@ -184,7 +167,7 @@ A `DetectedRectangle` also offers `center(in:)`, `bounds(in:)`, the upright box 
 
 The figure above used no camera and no photograph. The committed figure [`ReadingACard.swift`](Figures/21-Seeing/ReadingACard.swift) draws the desk, the card and the type into a picture pixel by pixel. The letters are [Chapter 7](07-WordsAndPictures.md)'s `textToShapes` outlines, filled in by hand. It then hands that picture to the two real detectors through `waitFor`. Its right-hand caption is written from the words that came back. If the reader ever came back with something else, the figure would say so rather than keep the old claim.
 
-## Following one thing
+### Following one thing
 
 Detecting and tracking sound like the same job, and they're not. A detector looks at each frame fresh and finds whatever it has a model for. A tracker is handed one thing and keeps up with it, whether or not anything knows what that thing is.
 
@@ -230,7 +213,7 @@ In the figure the detector was shown the first 24 frames of a made-up flight, al
 
 It asks two things of you. Hold the camera still, because a moving camera turns the whole scene into motion. And be patient, because an arc is only reported once its object has been seen `trajectoryLength` times, ten by default. Call `reset()` after the scene jumps, like a clip looping back to its start, so the jump isn't read as something flying. Each arc also keeps a stable `id` as more of it comes into view, so you can gather sightings into trails that outlive any single frame. And `detectedPoints(in:)` gives the raw sightings, where `projectedPoints(in:)` puts them on the fitted curve. The projected ones are smoother, and usually the ones to draw.
 
-## What the picture is about
+### What the picture is about
 
 Two trackers answer a question about the whole picture rather than finding things inside it. Both are neural models, so both want Apple silicon.
 
@@ -255,7 +238,36 @@ The other way to read the same result suits knobs better. `confidence(of: "plant
 
 In the figure the attention piles onto the words rather than onto the card as a whole. That's the model doing exactly what it was trained on, since type and contrast are what people look at. There are two flavors, chosen with `mode:`. The default `.attention` predicts human gaze, while `.objectness` highlights regions likely to hold discrete objects whether or not they draw the eye. The mode is fixed when you make the tracker, so read both by making two.
 
-## Bringing your own model
+## Models of your own
+
+The built-in trackers end somewhere, and these three go past them on weights you bring. That makes this the one corner of the chapter with a download step, because Ollin ships no weights. Run `Scripts/fetch-models.sh` once and every file these sections and their examples need lands in `Models/`, skipping whatever is already there.
+
+### A click cuts it loose: PointSegmenter
+
+The segmenters above decide for themselves what the subject is. **`PointSegmenter`** hands that decision to you. Click a thing, any thing, and it comes loose from the picture.
+
+```swift
+lazy var picker = PointSegmenter(camera,
+    imageEncoderAt: encoderURL, promptEncoderAt: promptURL, maskDecoderAt: decoderURL)
+
+override func mousePressed() {
+    guard let rect = camera.fittedRect(in: bounds) else { return }
+    picker.pick(at: Vector2(mouseX, mouseY), in: rect)
+}
+
+override func draw() {
+    tint(Color(white: 0.3))                                          // the room, dimmed
+    guard let rect = drawFrame(camera) else { return noTint() }
+    noTint()
+    if let pick = picker.pick { drawImage(pick.cutout, in: rect) }   // the picked thing, lit
+}
+```
+
+A pick answers with the same `matte` and `cutout` pair as the other segmenters, plus a `score` and a `bounds(in:)` box for framing what it found. The first answer takes a beat, because the model studies the clicked frame once. After that the frame stays frozen and refining is nearly free: `include(_:in:)` adds a point the mask must also cover, `exclude(_:in:)` a point it must not. Click the teapot, then shift-click the shadow it dragged along, and the mask lets the shadow go.
+
+The three URLs in the listing point at the files the fetch script pulled. `Examples/Vision/PointLift` is the whole loop, clicks and all.
+
+### Bringing your own model
 
 When the built-ins run out, **`ModelTracker`** runs a Core ML model of your own over the same frames, with the same attach-and-read shape. That opens the whole published-model world: depth estimators, object detectors, style transfer, semantic segmentation, anything that converts to Core ML.
 
@@ -272,11 +284,11 @@ override func draw() {
 }
 ```
 
-This is the one corner of the chapter with a download step, because Ollin ships no weights. `Scripts/fetch-models.sh` pulls the ones the examples use, and `Examples/Vision/DepthRelief`, `ObjectDetection`, `DigitReader` and `PaintByClass` each show a different one of the four surfaces above. `StyleMirror` is the odd one out and trains its own model from a style image you pick, so nobody's weights are involved.
+`Examples/Vision/DepthRelief`, `ObjectDetection`, `DigitReader` and `PaintByClass` each show a different one of the four surfaces above. `StyleMirror` is the odd one out and trains its own model from a style image you pick, so nobody's weights are involved.
 
 Loading runs in the background off the frame loop, and `isLoaded` flips when the model is ready, with frames simply passing by until then. Expect the first launch of a freshly built sketch to sit for a few seconds, while Core ML specializes the model for your Mac. Every later launch of that same build starts immediately. A model file that's missing or won't load reports through the same `isAvailable` and `unavailableReason` pair the built-in trackers use. So you can tell the person in front of the screen what to do about it.
 
-## Words as knobs
+### Words as knobs
 
 The classifier's `confidence(of: "plant")` only answers for the 1,300 words it was trained on. **`ConceptTracker`** answers for any phrase you can type. Give it a few phrases in plain language and it scores each one against the picture, every frame. The vocabulary is any phrase you can say.
 
@@ -293,9 +305,13 @@ let spooky = ideas.confidence(of: "a spooky scene")   // 0…1, every frame
 
 Under it are two halves of one model. An image encoder turns each frame into a point in a shared space. A text encoder puts each phrase into the same space once, with the result cached. A score is how close the two land. The scores are shares across your phrase set and sum to 1, so one phrase alone always reads 1. Give the tracker contrasts, the thing and its opposite, and the share maps to a usable range. `similarity(of:)` reads the raw closeness instead, if you'd rather map the space yourself.
 
-The phrases stay live. Set `concepts` to a new list, or ask `confidence(of:)` about a phrase it hasn't seen, and the newcomer joins the scoring a frame later. `Examples/Vision/TugOfWords` wires two phrase knobs to a tug-of-war rope, with each phrase editable in the inspector while the sketch runs. The same download step as above applies, since this tracker's model pair also arrives through `Scripts/fetch-models.sh`.
+The phrases stay live. Set `concepts` to a new list, or ask `confidence(of:)` about a phrase it hasn't seen, and the newcomer joins the scoring a frame later. `Examples/Vision/TugOfWords` wires two phrase knobs to a tug-of-war rope, with each phrase editable in the inspector while the sketch runs.
 
-## Footage as material
+## Footage, the screen, and the past
+
+A camera is one source of frames among three. A clip plays into the same trackers, the screen itself becomes a feed, and a held history of frames turns time into a material.
+
+### Footage as material
 
 Everything above also works on recorded video, because `VideoPlayer` is a frame source exactly like the camera:
 
@@ -311,7 +327,7 @@ override func draw() { drawFrame(player) }
 
 Frames arrive as GPU textures, so drawing them costs almost nothing. `drawFrame` letterboxes them the same way, and trackers analyze the footage as it plays. `snapshot()` hands you a CPU still for the one-shot `detect(in:)` calls. [Chapter 20](20-SoundAndControl.md)'s `Soundtrack(of: player)` completes the loop. One clip can drive a piece with its pixels *and* its music. The `Video/VideoPlayback` example ships with a short clip of the *Voladores de Papantla* to play with, and `Vision/VideoTrace` runs a contour tracker over it live. One export note is worth carrying forward. Headless exports drive the player deterministically, so frame `k` of the export always shows the clip at `k/fps`. But a *tracker* attached to it analyzes nothing during an export, because analysis rides the live clock.
 
-## The screen as material
+### Drawing with the screen: ScreenCapture
 
 There's a third source of pictures, and it's the one already running on your machine. `ScreenCapture` hands over any display, any app, or any single window as a live image. A browser, a map, a video call, a terminal, or another sketch becomes something to draw with.
 
@@ -357,7 +373,7 @@ One thing is worth knowing before you point this at a 5K display. At `scale = 1`
 
 The catch is permission, and it behaves in a way worth understanding rather than being surprised by. Recording the screen needs the user's consent, and macOS grants that to an *application*. A sketch run from the terminal has no application identity of its own. The consent goes to whatever launched it, which is Terminal, iTerm, Ghostty, or whichever you use. The prompt names your terminal, and the entry in System Settings is your terminal. Once you allow it there, every sketch you run from that terminal can capture with no further prompt. That is convenient, and worth being clear-eyed about. Allowing your terminal to record the screen allows everything you run from it to do the same. Granting it doesn't reach a process already running, so allow it and then start the sketch again. `ScreenCapture.isAvailable` and `unavailableReason` tell you where you stand, and `drawFrame` puts the reason on the canvas for you.
 
-## The past as material
+### Every pixel its own moment: SlitScan
 
 Everything so far reads the frame in front of you. Keeping the *previous* frames around opens a different technique, and it's one of the oldest tricks in camera art.
 
