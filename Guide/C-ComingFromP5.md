@@ -200,7 +200,7 @@ Each of these gets a chapter, so the table only points.
 | `WEBGL` mode, `box()`, `sphere()` | `camera()` or `perspective(…)`, then `drawBox()`, `drawSphere()`, … | [Chapter 21](21-3DGently.md) |
 | `orbitControl()` | `cameraControl()` | [Chapter 21](21-3DGently.md) |
 | `ambientLight`, `pointLight`, `directionalLight` | same names | [Chapter 21](21-3DGently.md) |
-| p5.sound: `getLevel()`, `p5.FFT` | `AudioAnalyzer`: `amplitude`, `spectrum`, `bands`, beats | [Chapter 24](24-SoundAndControl.md) |
+| p5.sound: `getLevel()`, `p5.FFT` | `AudioAnalyzer`: `amplitude`, `spectrum`, `bands`, beats | [Chapter 26](26-SoundAndControl.md) |
 
 ### Saving your work
 
@@ -212,7 +212,7 @@ Exporting is a run flag rather than a call in the sketch, so any sketch can rend
 | `saveFrames(…)` | `--export-sequence out --seconds 5` | |
 | `saveGif(…)` | `--export-gif loop.gif --seconds 4` | |
 | video capture libraries | `--export-video out.mp4 --seconds 10` | |
-| (no built-in SVG) | `--export-svg out.svg` | true vectors, plotter-ready ([Chapter 26](26-SharingAndPerforming.md)) |
+| (no built-in SVG) | `--export-svg out.svg` | true vectors, plotter-ready ([Chapter 28](28-SharingAndPerforming.md)) |
 
 ## Different on purpose
 
@@ -228,7 +228,7 @@ Exporting is a run flag rather than a call in the sketch, so any sketch can rend
 
 **The canvas wipes itself.** In p5 the pixels persist, `background()` is the wipe, and leaving it out is the classic trails trick. Ollin clears every frame whether or not you call `background`, so a ported trails sketch loses its trails in silence. The opt-out is one call, `noClear()`, and [Chapter 16](16-LayersAndEffects.md) builds the long-exposure style on it.
 
-**Files, not browser tabs.** The working loop is `swift run OllinLive Pulse.swift`, so you save the file and the running window swaps in the change. What you give up is the browser. Sharing a sketch means exporting an artifact, such as a still, a video, a GIF, or an SVG, rather than sending a URL. [Chapter 26](26-SharingAndPerforming.md) is about doing that well.
+**Files, not browser tabs.** The working loop is `swift run OllinLive Pulse.swift`, so you save the file and the running window swaps in the change. What you give up is the browser. Sharing a sketch means exporting an artifact, such as a still, a video, a GIF, or an SVG, rather than sending a URL. [Chapter 28](28-SharingAndPerforming.md) is about doing that well.
 
 ## Habits worth dropping
 

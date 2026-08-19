@@ -69,14 +69,16 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 ### Part IV: The third dimension
 
 21. **[3D, gently](21-3DGently.md).** A camera, solids, lights and materials, meshes and their maps, terrain, instancing at scale, and a physics world with vehicles, characters, cloth, and water. By far the guide's biggest chapter.
-22. **[Sculpting with fields](22-SculptingWithFields.md).** Distance fields that merge and blend, in 2D and raymarched 3D, then the finish: measured materials, environments, glass, and light that bounces.
-23. **[Depth and the iPhone as a sensor](23-DepthAndThePhone.md).** Point clouds, recorded and live RGBD, the phone's body, hand, and gaze streams, and scanning the room you're in.
+22. **[Worlds with weight](22-WorldsWithWeight.md).** Rigid bodies in the 3D scene: stacking and contact, asking what a body would hit, collision groups, degrees of freedom, machines made out of joints, and snapshots of a settled world.
+23. **[Characters, vehicles, and cloth](23-CharactersAndCloth.md).** The three things a rigid body models badly: a figure that walks, a vehicle on sprung wheels, and cloth, ropes, ragdolls and water.
+24. **[Sculpting with fields](24-SculptingWithFields.md).** Distance fields that merge and blend, in 2D and raymarched 3D, then the finish: measured materials, environments, glass, and light that bounces.
+25. **[Depth and the iPhone as a sensor](25-DepthAndThePhone.md).** Point clouds, recorded and live RGBD, the phone's body, hand, and gaze streams, and scanning the room you're in.
 
 ### Part V: Out into the world
 
-24. **[Sound and control](24-SoundAndControl.md).** Hearing loudness, spectrum, beats, and speech; making sound with synths, physical models, and music the sketch composes; MIDI, OSC, and game controllers.
-25. **[Seeing](25-Seeing.md).** The webcam as input; faces, hands, bodies, edges, and motion as typed values; video as material.
-26. **[Sharing and performing](26-SharingAndPerforming.md).** Stills, video, GIF, SVG for plotters, prints and 3D prints, feeding other apps, lighting rigs, pieces that run on a wall for weeks, and live coding on stage.
+26. **[Sound and control](26-SoundAndControl.md).** Hearing loudness, spectrum, beats, and speech; making sound with synths, physical models, and music the sketch composes; MIDI, OSC, and game controllers.
+27. **[Seeing](27-Seeing.md).** The webcam as input; faces, hands, bodies, edges, and motion as typed values; video as material.
+28. **[Sharing and performing](28-SharingAndPerforming.md).** Stills, video, GIF, SVG for plotters, prints and 3D prints, feeding other apps, lighting rigs, pieces that run on a wall for weeks, and live coding on stage.
 
 ### Appendices
 

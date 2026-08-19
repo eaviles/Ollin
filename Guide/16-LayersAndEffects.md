@@ -134,7 +134,7 @@ withTarget(shape) {
 drawImage(shape.filtered(.liquidMetal(phase: time)).image, 0, 0)
 ```
 
-Any silhouette works, which is the interesting part. It can be text from [Chapter 8](08-Words.md), a shape you built in [Chapter 15](15-ShapesAsMaterial.md), or a tracked hand from [Chapter 25](25-Seeing.md). The filter never knows or cares where the outline came from.
+Any silhouette works, which is the interesting part. It can be text from [Chapter 8](08-Words.md), a shape you built in [Chapter 15](15-ShapesAsMaterial.md), or a tracked hand from [Chapter 27](27-Seeing.md). The filter never knows or cares where the outline came from.
 
 One practical warning, since it cost the figure above a few attempts. These filters are tuned for **full-canvas** use. On a small layer the defaults can look like almost nothing. Push them hard and the distortion reaches past the layer's edge, and drags the transparent surround in as dark smears. The `edges` knob on the distorting ones controls how close to the border they're allowed to work. A continuous field takes a strong refraction more gracefully than a pattern of separate marks does.
 
