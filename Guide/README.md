@@ -31,7 +31,7 @@ Both kinds of image are already at work on this page: the piece above is [`Figur
 
 ## How to read it
 
-Read the chapters in order the first time; each builds only on the ones before it. They also grow as the subject deepens: Chapter 20 is several times the size of its neighbors, so budget for it. Anything needing hardware beyond the Mac always leads with the path every reader can follow. Work along in the live-reload host (`swift run OllinLive path/to/YourSketch.swift`), which recompiles on save so the window never closes while you experiment. [Chapter 1](01-HelloOllin.md) sets this up.
+Read the chapters in order the first time; each builds only on the ones before it. They also grow as the subject deepens: Chapter 21 is several times the size of its neighbors, so budget for it. Anything needing hardware beyond the Mac always leads with the path every reader can follow. Work along in the live-reload host (`swift run OllinLive path/to/YourSketch.swift`), which recompiles on save so the window never closes while you experiment. [Chapter 1](01-HelloOllin.md) sets this up.
 
 If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps what you already know onto Ollin. If you're new to Swift, [Appendix A](A-JustEnoughSwift.md) and the [Swift quick reference](../Docs/Swift.md) cover just enough of the language to be productive.
 
@@ -63,19 +63,20 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 16. **[Layers and effects](16-LayersAndEffects.md).** Off-screen layers, GPU filters, compositing, feedback, accumulation, HDR.
 17. **[Your first shader](17-YourFirstShader.md).** Per-pixel thinking, uv space, writing a `shade` function, chaining visuals.
 18. **[Iterated forms](18-IteratedForms.md).** Pictures that are the density of an orbit rather than a drawn shape: the chaos game, fractal flames, the Buddhabrot, circles used as mirrors, Kleinian and Schottky groups, chaotic maps, the bifurcation diagram, and escape-time fractals.
-19. **[Simulations](19-Simulations.md).** Cellular automata, sand, reaction-diffusion, fluids and waves, a million particles, crowds that organize themselves, and evolution, nearly all of it on the GPU.
+19. **[Simulations on a grid](19-GridSimulations.md).** Fields that carry their own state on the GPU: cellular automata, sand, reaction-diffusion, multi-scale Turing, fluid, ripples, and watercolor.
+20. **[Simulations made of particles](20-ParticleSimulations.md).** A buffer of individuals updated by one small program: a million grains, slime mold, ant colonies, Particle Life, crowds at scale, SPH fluid and jellies, and evolution.
 
 ### Part IV: The third dimension
 
-20. **[3D, gently](20-3DGently.md).** A camera, solids, lights and materials, meshes and their maps, terrain, instancing at scale, and a physics world with vehicles, characters, cloth, and water. By far the guide's biggest chapter.
-21. **[Sculpting with fields](21-SculptingWithFields.md).** Distance fields that merge and blend, in 2D and raymarched 3D, then the finish: measured materials, environments, glass, and light that bounces.
-22. **[Depth and the iPhone as a sensor](22-DepthAndThePhone.md).** Point clouds, recorded and live RGBD, the phone's body, hand, and gaze streams, and scanning the room you're in.
+21. **[3D, gently](21-3DGently.md).** A camera, solids, lights and materials, meshes and their maps, terrain, instancing at scale, and a physics world with vehicles, characters, cloth, and water. By far the guide's biggest chapter.
+22. **[Sculpting with fields](22-SculptingWithFields.md).** Distance fields that merge and blend, in 2D and raymarched 3D, then the finish: measured materials, environments, glass, and light that bounces.
+23. **[Depth and the iPhone as a sensor](23-DepthAndThePhone.md).** Point clouds, recorded and live RGBD, the phone's body, hand, and gaze streams, and scanning the room you're in.
 
 ### Part V: Out into the world
 
-23. **[Sound and control](23-SoundAndControl.md).** Hearing loudness, spectrum, beats, and speech; making sound with synths, physical models, and music the sketch composes; MIDI, OSC, and game controllers.
-24. **[Seeing](24-Seeing.md).** The webcam as input; faces, hands, bodies, edges, and motion as typed values; video as material.
-25. **[Sharing and performing](25-SharingAndPerforming.md).** Stills, video, GIF, SVG for plotters, prints and 3D prints, feeding other apps, lighting rigs, pieces that run on a wall for weeks, and live coding on stage.
+24. **[Sound and control](24-SoundAndControl.md).** Hearing loudness, spectrum, beats, and speech; making sound with synths, physical models, and music the sketch composes; MIDI, OSC, and game controllers.
+25. **[Seeing](25-Seeing.md).** The webcam as input; faces, hands, bodies, edges, and motion as typed values; video as material.
+26. **[Sharing and performing](26-SharingAndPerforming.md).** Stills, video, GIF, SVG for plotters, prints and 3D prints, feeding other apps, lighting rigs, pieces that run on a wall for weeks, and live coding on stage.
 
 ### Appendices
 

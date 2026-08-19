@@ -95,7 +95,7 @@ Rebuilding the `Shader` value every frame is the normal pattern and costs nothin
 
 Ollin splices its own shader library into every shader you write, so the helpers its built-in effects use are yours too, with no import. Several you already know by other names. `fbm` is [Chapter 5](05-Noise.md)'s layered noise as one call, and the rest of that chapter's field family (`simplexNoise`, `worley`, `ridgedFbm`, `turbulence`, `warpedFbm`) is here under the same names. `hash12` is a random number that never changes between frames, so feed it a cell and it's [Chapter 4](04-Randomness.md)'s seeded random, per pixel. The `sd*` family measures distance to ellipses, stars, hearts, and béziers the way `length` measured distance to a point. And `palette(t, a, b, c, d)` turns a `0...1` value into color along a designed gradient, where four `float3`s shape the ramp, so steal starting values from its documentation and nudge.
 
-The word "splices" in that first sentence is doing real work, and it's worth a moment because it explains why the names never drift. There is one library file, and it gets pasted into three different places: the framework's own effect shaders, every shader you write, and every compute kernel from [Chapter 19](19-Simulations.md). So `fbm` in your filter, `fbm` in Ollin's built-in noise generator, and `fbm` in a particle kernel are not three implementations that happen to agree. They are the same source text compiled three times, which is why a field you prototype in a shader behaves identically when you move it into a kernel.
+The word "splices" in that first sentence is doing real work, and it's worth a moment because it explains why the names never drift. There is one library file, and it gets pasted into three different places: the framework's own effect shaders, every shader you write, and every compute kernel from [Chapter 19](19-GridSimulations.md). So `fbm` in your filter, `fbm` in Ollin's built-in noise generator, and `fbm` in a particle kernel are not three implementations that happen to agree. They are the same source text compiled three times, which is why a field you prototype in a shader behaves identically when you move it into a kernel.
 
 Splicing the whole library into every shader would make every compile larger than it needs to be, so there's an opt-out:
 
@@ -121,7 +121,7 @@ drawImage(generate(.quasicrystal(phase: time)).image, 0, 0)
 
 <img src="Images/17-YourFirstShader/Fields.jpg" alt="Six labeled tiles: a blue quasicrystal of interfering waves, a black and white moire of beating ring gratings, cream interwoven gyroid bands on slate, an orange golden-angle dot spiral, a hexagonal lattice of teal, red and gold cells, and a sandy white Chladni figure of nodal lines on near-black" width="680">
 
-There are six. `.quasicrystal` sums plane waves at evenly spaced angles, so it's ordered but never repeats. `.moire` overlaps ring gratings and shows you their beat, which travels much faster than the rings themselves. `.gyroid` slices a famous minimal surface. `.phyllotaxis` is the sunflower's golden-angle spiral from [Chapter 15](15-ShapesAsMaterial.md), drawn per pixel. `.hexPulse` gives every cell of a hex lattice its own hashed heartbeat. `.chladni` is a ringing plate's standing wave, which [Chapter 19](19-Simulations.md) comes back to and [Chapter 23](23-SoundAndControl.md) plays with sound.
+There are six. `.quasicrystal` sums plane waves at evenly spaced angles, so it's ordered but never repeats. `.moire` overlaps ring gratings and shows you their beat, which travels much faster than the rings themselves. `.gyroid` slices a famous minimal surface. `.phyllotaxis` is the sunflower's golden-angle spiral from [Chapter 15](15-ShapesAsMaterial.md), drawn per pixel. `.hexPulse` gives every cell of a hex lattice its own hashed heartbeat. `.chladni` is a ringing plate's standing wave, which [Chapter 19](19-GridSimulations.md) comes back to and [Chapter 24](24-SoundAndControl.md) plays with sound.
 
 Here's the part worth doing rather than reading. Take the gyroid, which is genuinely one line: a sum of three `sin` and `cos` products, read at a fixed slice through space.
 
@@ -216,7 +216,7 @@ drawImage(generate(.chladni(m: 7, n: 3, style: .wave, phase: time)).image, 0, 0)
 
 `.sand` gathers grains onto the nodes like the figure above, and `.wave` shows the plate swinging through its cycle instead. And the nodal lines are just where the field crosses zero, so the vector version of a Chladni figure is a contour extraction away. The [isolines reference](../Docs/Generators/Isolines.md) covers it.
 
-The natural next step is to stop choosing the mode numbers by hand. [Chapter 23](23-SoundAndControl.md) listens to sound. Pick `m` and `n` by which pitches are actually loud, and a piece of music turns into the plate that would have produced it. The `Audio/ChladniResonance` example does exactly that.
+The natural next step is to stop choosing the mode numbers by hand. [Chapter 24](24-SoundAndControl.md) listens to sound. Pick `m` and `n` by which pitches are actually loud, and a piece of music turns into the plate that would have produced it. The `Audio/ChladniResonance` example does exactly that.
 
 ## Putting it together: aurora
 
@@ -299,7 +299,7 @@ Shaders come out of computer graphics research and the demoscene, but the reason
 - [Bringing a shader over](../Docs/Tools/ShaderImport.md): `ollin new --from-shader` translates a GLSL fragment shader into Metal and writes the project around it, with the `mod` rounding difference, the flipped vertical axis, and the license header explained.
 - [The shader library](../Docs/Shaders/ShaderLibrary.md): every spliced-in helper with its signature.
 - [Visual chains](../Docs/Shaders/Visuals.md): all sources, warps, color ops, combines, and modulations.
-- [Compute](../Docs/Shaders/Compute.md): the sibling world where kernels update buffers of particles instead of pixels, waiting in [Chapter 19](19-Simulations.md).
+- [Compute](../Docs/Shaders/Compute.md): the sibling world where kernels update buffers of particles instead of pixels, waiting in [Chapter 19](19-GridSimulations.md).
 - Appendix B draws this chapter's math, one picture per idea: [Where things are](B-JustEnoughMath.md#where-things-are), [Per-pixel thinking and distance](B-JustEnoughMath.md#per-pixel-thinking-and-distance).
 - Worked examples: [`Examples/Shaders/HelloShader`](../Examples/Shaders/HelloShader/Sketch.swift), [`Examples/Shaders/ShaderFilter`](../Examples/Shaders/ShaderFilter/Sketch.swift), [`Examples/Shaders/ShaderFile`](../Examples/Shaders/ShaderFile/Sketch.swift) (hot-reloading `.metal`), [`Examples/Shaders/VisualSynth`](../Examples/Shaders/VisualSynth/Sketch.swift), and [`Examples/Effects/PatternFields`](../Examples/Effects/PatternFields/Sketch.swift).
 

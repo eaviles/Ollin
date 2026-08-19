@@ -6,7 +6,7 @@
 
 <img src="Images/14-FieldsAndFlow/FlowPrint.jpg" alt="A print of flowing ribbons in terracotta, gold, sage, navy, and ink on cream, combed across the canvas in curving non-crossing lines of three different widths" width="560">
 
-Most tricks in this guide do one job. This chapter teaches one that keeps working everywhere. It is the **field**, a question you can ask at every point of the canvas and always get an answer. Noise was your first field, a number at every point. Give the answer a *direction* instead and you get flow. Lines comb themselves into currents, particles ride invisible rivers, and the print above draws itself out of one function. The same mental model comes back per-pixel in [Chapter 17](17-YourFirstShader.md) and as sculpting material in [Chapter 21](21-SculptingWithFields.md). What you learn here keeps working long after this chapter.
+Most tricks in this guide do one job. This chapter teaches one that keeps working everywhere. It is the **field**, a question you can ask at every point of the canvas and always get an answer. Noise was your first field, a number at every point. Give the answer a *direction* instead and you get flow. Lines comb themselves into currents, particles ride invisible rivers, and the print above draws itself out of one function. The same mental model comes back per-pixel in [Chapter 17](17-YourFirstShader.md) and as sculpting material in [Chapter 22](22-SculptingWithFields.md). What you learn here keeps working long after this chapter.
 
 ## An answer at every point
 
@@ -79,7 +79,7 @@ Passing all the levels at once samples the field a single time and traces them a
 
 Two details show up the moment you use this. Curves come back **closed** when they close inside your region and **open** when they run off its edge. That is why `drawPolyline` wants `isClosed` rather than guessing. And there's a version that reads a picture instead of a function, `isolines(of: image, at:)`, which treats the image's tone as the field. That's how you get a contour map of a photograph, or clean vector outlines from anything you can draw.
 
-This is also the general answer to "how do I get a real outline out of a field". Metaball silhouettes, the boundary of a simulation, and the nodal lines of the vibrating plate in [Chapter 19](19-Simulations.md) are all one `isolines` call. What comes back is ordinary geometry you can stroke, offset, or send to a plotter.
+This is also the general answer to "how do I get a real outline out of a field". Metaball silhouettes, the boundary of a simulation, and the nodal lines of the vibrating plate in [Chapter 19](19-GridSimulations.md) are all one `isolines` call. What comes back is ordinary geometry you can stroke, offset, or send to a plotter.
 
 ## Following the flow
 
