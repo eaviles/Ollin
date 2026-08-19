@@ -301,7 +301,7 @@ precisely the span the join's apex edge shares with the ribbon.
 **Consecutive segments end on their shared inner crossing, and that is what
 makes translucent ink lay down one coat.** On the inside of a turn the two
 segments' edges genuinely cross, at the inner miter point. A segment that ends
-on its own perpendicular runs past that crossing and into its neighbour, so both
+on its own perpendicular runs past that crossing and into its neighbor, so both
 quads cover the wedge between the two perpendiculars. Opaque ink hides it. Ink
 that is not opaque composites the wedge twice: a 40pt stroke at alpha 0.25 read
 224 along the arm and 197 in a hard-edged diamond at a right-angle corner, which
@@ -327,9 +327,9 @@ seam onto that crossing draws the same shape, which is why the whole snapshot
 suite passed unrecorded. And **collinear vertices are skipped**, so a straight
 polyline is byte-identical.
 
-Where the crossing falls outside either neighbouring segment the ribbon would
+Where the crossing falls outside either neighboring segment the ribbon would
 turn inside out, so the ends stay square there (NanoVG's inner-bevel case, the
-`dmr2 * limit * limit >= 1` test against the shorter neighbour). A corner that
+`dmr2 * limit * limit >= 1` test against the shorter neighbor). A corner that
 sharp folds over itself whatever we do, and an overlap is a kinder failure than a
 crack. Near-hairpins bail the same way rather than take NanoVG's clamped miter,
 which would pull the two ribbons short of each other and open a white seam.
@@ -779,7 +779,7 @@ to the Turing pipeline above: it is exactly the cheap, generic single-texture
 sim the step path was built for (one gather fragment, no dedicated pipeline).
 Each pass every cell holding at least four grains topples, *as many times as it
 can at once*: for every four grains it holds it sends one to each of its four
-neighbours and keeps the remainder, so in quarters the whole update is
+neighbors and keeps the remainder, so in quarters the whole update is
 `q' = fract(q) + Σ floor(q_n) / 4`. Dhar's 1990 abelian-property result is what
 licenses any parallel schedule, single or k-fold, since topplings commute and
 the settled pile is the same in any order. The k-fold form matters and was
@@ -787,7 +787,7 @@ found empirically (the first render used one toppling per pass): where every
 cell holds fewer than eight grains, the regime a critical pile lives in, the
 two are *identical*, but at a heavy source single toppling pools, because a
 saturated blob's interior is net zero (lose four, receive one from each of
-four toppling neighbours) and only its perimeter drains; a measured 800-frame
+four toppling neighbors) and only its perimeter drains; a measured 800-frame
 run settled just 13% of what was poured, with the rest stacked at the source.
 The k-fold form drains a hot source exponentially instead, which is what makes
 the classic drop-a-mountain-and-let-it-collapse figure renderable in seconds.
@@ -807,12 +807,12 @@ The GPU realization has four more load-bearing choices:
   a readable gray image, but the step and inject read the one channel: a
   luminance dot product is off by an ulp, and the step's `floor`/`fract` at the
   toppling threshold are exact operations an ulp would break.
-- **The boundary is open, never wrapped or clamped.** A neighbour position off
+- **The boundary is open, never wrapped or clamped.** A neighbor position off
   the field contributes nothing, and a toppling cell always loses four, so
   grains crossing the edge are simply gone. That dissipation is what lets a fed
   pile keep settling (on a torus sand only accumulates until every cell topples
   forever), and the guard must reject the position *before* sampling, or the
-  clamping sampler reads the edge texel back as its own neighbour: a reflecting
+  clamping sampler reads the edge texel back as its own neighbor: a reflecting
   wall, the counterfactual `grainsFallOffTheOpenBoundary` was verified against.
 - **The inject rounds to whole grains.** A mark pours
   `rint(luma × pour) / 4` onto the state (additive, like the ripples inject:
@@ -850,7 +850,7 @@ instead of re-stepping).
 its right face, `v` on its top face, pressure and the wet mask at the center.
 Every flow or pigment tap goes through a bounds-rejecting helper that reads
 off-canvas as dry, motionless paper; the clamp sampler would reflect the edge
-texel back as its own neighbour, and the rejection is also what pins velocities
+texel back as its own neighbor, and the rejection is also what pins velocities
 at the canvas edge for free. A face bordering a dry cell is pinned to zero in
 every pass that writes velocities, which is the paper's boundary condition
 (water never leaves the mask) applied at write time rather than as a separate
@@ -862,7 +862,7 @@ continuous equations carry `+μ∇²u` and its own design conditions demand damp
 flow, while the printed pseudocode's sign reads inverted, and anti-diffusion
 detonates the wash within seconds. The divergence relaxation likewise runs in
 the divergence-*reducing* direction (`δ = −ξ·div`), in gather form: a face
-carries its own cell's correction minus its right/top neighbour's, and the
+carries its own cell's correction minus its right/top neighbor's, and the
 per-cell corrections also accumulate into pressure, so water added anywhere
 pushes water everywhere.
 
@@ -1063,7 +1063,7 @@ should not be undone while chasing flicker:
   internal silhouette so it reads as a soft contact rather than a drawn line.
 
 The depth-reconstruction fallback (used when the target holds no meshes, for
-example a hand-drawn depth map) samples paired depth neighbours a few texels out,
+example a hand-drawn depth map) samples paired depth neighbors a few texels out,
 not one: a 1-texel stencil is comparable to the 16-bit depth layer's
 quantization step, so its reconstructed normal stair-steps and bands the flat
 faces (the "dirty faces" bug).
@@ -1142,7 +1142,7 @@ over the fine grazing-contact streaks and never smooths them.
 **Temporal** (`ollin_fx_ssr_temporal`) reprojects last frame's reflection by
 camera motion (reconstruct the receiver's view-space point, lift it to world via
 the scene camera's `inverseView`, project through the previous frame's
-`viewProjection` to its prior uv), neighbourhood-clamps the sampled history to the
+`viewProjection` to its prior uv), neighborhood-clamps the sampled history to the
 current reflection's 3x3 AABB to reject ghosting, then EMA-blends at
 `resolveSSRAlpha`. History is an `SSRHistorySlot` ping-pong keyed by the SSR op's
 **call site** (`#fileID:#line`, captured by the `.screenSpaceReflections`
@@ -1172,7 +1172,7 @@ and the contact-seam streaks of a near-mirror reflecting a curved object's
 grazing silhouette are SSR's inherent limit, which ray-traced reflections answer.
 
 Techniques: linear screen-space tracing (McGuire-Mara, Sugu Lee, 3D Game Shaders
-for Beginners), reprojection temporal accumulation with neighbourhood variance
+for Beginners), reprojection temporal accumulation with neighborhood variance
 clamping (Karis, Pedersen-Playdead), and a stochastic-SSR spatial resolve
 (Frostbite, AMD FidelityFX SSSR). Credited in the README; written from the
 technique.
@@ -1200,15 +1200,15 @@ sub-pixel band of in-between depth:
 - **Receive** is the max over a small ring (the seam dilation). Where that band
   sweeps through `focus` it leaves a ~1px in-focus ring tracing each defocused
   mark, which reads as a thin dotted circle; taking a pixel's own blur as the
-  neighbourhood max consumes it, while a real in-focus subject is thick enough to
+  neighborhood max consumes it, while a real in-focus subject is thick enough to
   keep its near-zero size.
-- **Scatter** is the min over the immediate neighbourhood. Where the band instead
+- **Scatter** is the min over the immediate neighborhood. Where the band instead
   lands in the *fully defocused* range it flings the color beneath it across the
   entire blur radius, and because the whole rim shares one depth it cuts off at
   one radius too: a perfectly in-focus object came out ringed by a faint,
   hard-edged, concentrically ridged halo of its own color (7 to 10% of the
   object's brightness against a dark backdrop, out to `maxBlur`). A rim texel
-  always has a low-blur neighbour on the object side, so the min erases it, while
+  always has a low-blur neighbor on the object side, so the min erases it, while
   a genuinely defocused region keeps its size. The radius is 2px, not 1, so the
   erased band is wider than the gather's bilinear footprint, which would otherwise
   average half the rim's size straight back in.
@@ -1255,12 +1255,12 @@ sharp inward, stepping 40% of the way to the background in a single pixel):
   inside that blur** (`nearReveal`). Otherwise nothing sits behind the foreground
   for it to become transparent against, since the in-focus scene around it never
   "reaches". What a foreground truly hides cannot be recovered from one image;
-  standing its neighbourhood in for it is the usual approximation and reads right.
+  standing its neighborhood in for it is the usual approximation and reads right.
 - **Foreground coverage is an area fraction of that near blur, not of the whole
   gather disc.** The spiral is equal-area per tap, so taps inside radius `r` number
-  `total * (r/maxBlur)^2`; normalising by the disc instead (with a constant fudge
+  `total * (r/maxBlur)^2`; normalizing by the disc instead (with a constant fudge
   to make up the difference) pins the alpha at 1 well inside the silhouette, which
-  is exactly what kept the inner edge hard. Normalised properly the alpha passes
+  is exactly what kept the inner edge hard. Normalized properly the alpha passes
   through the silhouette mid-ramp and falls off over the foreground's own blur
   radius either side.
 
@@ -4475,7 +4475,7 @@ included, which a body pose could not carry) and added as one static mesh
 body at identity, followed by an `OptimizeBroadPhase`. `Collider3DTests`
 pins the tier: compound mass sums and balance against a counterfactual twin,
 offset and rotated part poses, tapered-shape masses against their analytic
-neighbours (a cone weighs a third of its cylinder), the flat and non-square
+neighbors (a cone weighs a third of its cylinder), the flat and non-square
 height-field mappings, the off-the-edge void, the scene-collider transform
 composition, and a byte-identical compound-on-terrain replay.
 
@@ -4807,7 +4807,7 @@ capsule uses. That makes the body's world transform *identical* to the joint's
 world transform, so reading the pose back is an assignment with nothing to
 undo (the write-back test pins node positions equal to body positions to 1e-5),
 and the local rotation a motor is aimed at is exactly the skeleton's own local
-rotation. The alternative (bodies centred on the bones, as the library's own
+rotation. The alternative (bodies centered on the bones, as the library's own
 sample authors them by hand) would need a per-joint offset carried through every
 read and write.
 
@@ -5104,7 +5104,7 @@ seven soft-body constraint families and the bridge built four; this is the
 fifth, and it is the one that carries an *orientation*: a rod holds a rotation
 of its own, integrated beside the particle positions, so geometry attached to it
 turns as the rope bends and twists. A chain of springs cannot express that,
-because a frame guessed from neighbouring points has no roll.
+because a frame guessed from neighboring points has no roll.
 
 **A rope is the first body with no surface at all**, which is why the slice
 starts in the bridge. `cjolt_soft_body_create` refused a description with no
@@ -5121,7 +5121,7 @@ skin already needed.
 **Two things the solver does to the rod list have to be undone on the way out,
 and both are the bridge's to know.** `Optimize()` reorders the rods so it can
 solve them in parallel, and `CalculateRodProperties()` reverses any rod pointing
-against its neighbour, so that neighbouring rods agree on which way is forward.
+against its neighbor, so that neighboring rods agree on which way is forward.
 The handle therefore records, per rod the caller handed over, where it ended up
 and whether it was turned around; the read-back walks that map and multiplies a
 reversed rod's rotation by a half turn about its own x axis, which sends its +z
@@ -5251,7 +5251,7 @@ SwiftPM build step, the backend is Objective-C++ and would have to be admitted
 into a target whose whole point is that `cjolt.cpp` is the only code that ever
 includes a Jolt header, and the simulation's output is a Jolt-owned compute
 buffer that Ollin's renderer would need a new path to draw, since the readback
-the header offers is labelled slow and for debugging. All of that pays for a
+the header offers is labeled slow and for debugging. All of that pays for a
 system that still could not be blown by wind.
 
 `Rope3D`'s own knobs already reach hair scale, which is what makes the
@@ -5290,7 +5290,7 @@ takes a real density and forms the ratio itself:
 deliberately the one `GetSubmergedVolume` just returned rather than the shape's
 own reported volume, so the ratio is formed against exactly the volume the
 submerged fraction was measured against and the waterline lands where the
-displaced volume says. That is what makes the headline behaviour derived rather
+displaced volume says. That is what makes the headline behavior derived rather
 than tuned: a body of density *d* settles with fraction *d* of itself under,
 pinned to within 0.08 across the range (the margin is what sleeping costs,
 since the solver freezes the body wherever its last small oscillation had
@@ -5298,7 +5298,7 @@ reached rather than at the exact equilibrium).
 
 **Waves are a per-body tangent plane.** The impulse takes a surface *point and
 normal* per call, not a world-wide plane, so a swell is expressible: each body
-is handed the plane tangent to the surface under its own centre of mass. This
+is handed the plane tangent to the surface under its own center of mass. This
 is the library's own boat sample's approach, not an invention, and it carries
 the honest envelope that a body much larger than the wavelength it rides is
 approximated. The surface function lives in Swift (`Water.surface(at:phase:)`,
@@ -5346,7 +5346,7 @@ derived-not-tuned rule), and `1` for an open sheet, which has no volume to
 derive one from.
 
 *Every particle gets its own surface height.* Where a rigid body is handed one
-tangent plane sampled under its centre, the call takes an array of per-particle
+tangent plane sampled under its center, the call takes an array of per-particle
 heights above the surface, computed in Swift from the same `Water.height(at:)`
 the drawn mesh uses. This was not a refinement, it was the fix for a real
 defect: with one plane, a 4-unit raft on a 9-unit swell reads its far edges
@@ -5579,14 +5579,14 @@ constraints in one go, where naming bodies would give none of them.
 
 `.path` is `PathConstraint` over a `PathConstraintPathHermite`. Three pieces are
 load-bearing. **The spline frame is built in Swift** (`PathSpline` in
-`JointPath.swift`): tangents are cardinal (half the span between neighbours,
+`JointPath.swift`): tangents are cardinal (half the span between neighbors,
 one-sided at an open path's ends) and normals are carried along the curve by
 **parallel transport**, because re-deriving "world up minus its along-track
 part" per point flips when the track goes vertical and the rider flips with it;
 the holonomy a closed loop comes back with is a stated envelope, not a defect.
 **Points arrive in world space and the bridge takes them into body 1's own
 space** with the settings' path transform left at identity, which is exactly
-what makes path space equal body-1 *body* space (the centre-of-mass offset in
+what makes path space equal body-1 *body* space (the center-of-mass offset in
 `mPathToBody1` cancels against the body's own COM transform), so a track hung
 off a moving body rides it. The rider joins at `GetClosestPoint` of where it
 already is. **Progress is normalized in the bridge**, since a Hermite path's
@@ -5603,7 +5603,7 @@ asserts on non-dynamic bodies (and in a release build would read a kinematic
 body's inertia and shove it off its driven path). The bridge refuses that pair
 and `World3D.connect` notes once; the vendored source stays pristine. The rope's
 default range is `min 0, max -1`, which is the library's "measure the current
-length" sentinel on the max only, and is exactly rope behaviour: resists being
+length" sentinel on the max only, and is exactly rope behavior: resists being
 pulled longer, gives when let slack. `taut:` sets both to -1.
 
 `.allowing` is `SixDOFConstraint` with `ESwingType::Pyramid` (the swing type
@@ -5618,7 +5618,7 @@ The links resolve **which end of each joint actually moves** in the bridge
 can move, matching the order every `connect` call is written in. A hinge hands
 back `GetLocalSpaceHingeAxis1/2`; a slider has no public accessor, so its axis
 is column 0 of `GetConstraintToBody{1,2}Matrix()`, and both are already in the
-body's centre-of-mass space, which is why the settings use
+body's center-of-mass space, which is why the settings use
 `EConstraintSpace::LocalToBodyCOM`. Both links call `SetConstraints` with the
 two source joints so the solver can measure and correct its own drift. Two
 knobs are converted on Ollin's side: `travelPerTurn` becomes the library's
@@ -5691,7 +5691,7 @@ rides uncompressed and the flag says so.
 The checksum is not decoration. **LZFSE's decoder returns the full requested
 length from a truncated stream** rather than reporting the truncation (measured:
 15 bytes of a 46-byte stream decoded to all 825 bytes, none of them right), so
-the old "the reader runs out of bytes" defence silently became "rubbish parses
+the old "the reader runs out of bytes" defense silently became "rubbish parses
 into some world" the moment the payload was packed. The checksum makes *refused
 rather than half-read* true by construction, and it also catches a
 corrupted-but-complete file, which the unpacked format never could.
@@ -5710,7 +5710,7 @@ Four things are load-bearing:
   length-less rod's span, a track's attachment point) rather than per-kind
   arithmetic. Pinned by `aHingeKeepsItsZeroAcrossASnapshot` against the naive
   twin, which reads 0.
-- **The desc grew three fields whose zero is the old behaviour**, the encoding
+- **The desc grew three fields whose zero is the old behavior**, the encoding
   rule from stages 11 and 12: `CJoltBodyDesc.linearVelocity` /
   `angularVelocity` / `startAsleep`. Velocity through
   `BodyCreationSettings` rather than a post-create setter, because
@@ -5782,9 +5782,9 @@ Three findings came out of building it, each measured rather than reasoned:
   re-measures it against the ground), which shows only as the wheels' contact
   cache being rebuilt on the first step.
 - **Never write a pose as a position then a rotation.** The solver holds a body
-  by its **centre of mass**, so `SetPosition` computes it against the
+  by its **center of mass**, so `SetPosition` computes it against the
   orientation the body still has; a following `SetRotation` then leaves the body
-  origin a fraction out. It is invisible for a box or a sphere (centre of mass
+  origin a fraction out. It is invisible for a box or a sphere (center of mass
   at the origin) and real for a **ragdoll limb**, whose shape is pushed out
   along the bone by a `RotatedTranslatedShape`: three of sixteen limbs came back
   up to 4.8e-07 off. The new `cjolt_body_set_pose` (over
@@ -5822,7 +5822,7 @@ the last tier: a soft body is nothing *but* its mesh, so an unnamed one is left
 out with a note while a named one saves the numbers it was built with plus every
 particle's position and velocity and the pinned set. That needed
 `cjolt_soft_body_get_velocities` and `cjolt_soft_body_set_state` (the write goes
-through the body's centre-of-mass transform, mirroring the existing read, and
+through the body's center-of-mass transform, mirroring the existing read, and
 sets `mPreviousPosition` alongside `mPosition` so the first step does not read a
 step's worth of phantom motion). Measured round trip: 289 particles back at
 1.19e-07.
@@ -5878,7 +5878,7 @@ and the schema's shape drove four decisions:
   attribute: `PhysicsCollisionAPI` on a `Cube` means a box. So the reader maps
   gprim types, and the sizes are the gprim's own (`Cube.size` default **2**, not
   three extents; `Capsule` default radius 0.5 / height 1, the height being the
-  span between cap centres, which is already Ollin's meaning).
+  span between cap centers, which is already Ollin's meaning).
 - **USD stands a Capsule, Cylinder, and Cone on z** (`axis`, default `"Z"`)
   where Ollin's stand on y, so the difference is baked into the shape's own turn
   inside its body. A rod authored the default way arrives lying down, and
@@ -6848,7 +6848,7 @@ mix it can actually reach, plus a variance-weighted noisiness penalty
 but bands a sparse one: on plain black+white it hands the whole top of the
 ramp to solid white). The fraction along the winning pair is taken in linear
 light (deciding by OKLab distance instead puts a 25% gray at ~46% white
-instead of 5%), the pair is oriented dark-to-light so neighbouring tones
+instead of 5%), the pair is oriented dark-to-light so neighboring tones
 share pattern phase, and plans are memoized per distinct color. The shipped
 v1 anchored the search on the single nearest color, a real bug: gray on a
 black/white/red palette dithered *pink*.
@@ -6981,7 +6981,7 @@ synthetic frame peaking at 4x white, varying only how much of it is bright:
 | 25% and up | 4.00x |
 
 A sketch's highlights are small by nature (a lamp core, a spark, a specular
-hit), so that behaviour deletes them. Declaring `CIImage.contentHeadroom` does
+hit), so that behavior deletes them. Declaring `CIImage.contentHeadroom` does
 not help, though the header says it drives the calculation: the value is live
 (the tone-map filter reads it) and the writer ignores it. Supplying a
 ready-made map through `kCIImageRepresentationHDRGainMapImage` writes the
@@ -6989,7 +6989,7 @@ legacy Apple auxiliary type rather than the ISO one. So the map, its metadata,
 and the file are built with ImageIO directly.
 
 **The map carries a gain per channel.** Clamping happens per channel, so a
-bright colour clamps unevenly. An amber core of (4.0, 2.2, 0.72) becomes
+bright color clamps unevenly. An amber core of (4.0, 2.2, 0.72) becomes
 (1, 1, 0.72), which needs three different multipliers to undo. Measured with
 one channel for all three: green came back 81% high, blue 300% high. With
 three channels: every channel within 0.6%.
@@ -6997,7 +6997,7 @@ three channels: every channel within 0.6%.
 **The base is written losslessly.** `kCGImageDestinationLossyCompressionQuality`
 is 1.0, so a still export stays as faithful as the PNG it replaces. The
 reconstruction error is then the 8-bit base's own quantization, about 0.6% at
-mid grey and under 2% at the peak.
+mid gray and under 2% at the peak.
 
 The metadata is the `HDRToneMap` namespace ImageIO reads back: `Version`,
 `BaseHeadroom`, `AlternateHeadroom`, `BaseColorIsWorkingColor`, and one
@@ -7010,7 +7010,7 @@ is not.
 
 A frame whose peak is at or below white carries no map at all, and
 `OllinApp.StillExport.keepsHighlights` reports which happened.
-`GainMapExportTests` pins the peak, the colour, the base, the ISO type, and the
+`GainMapExportTests` pins the peak, the color, the base, the ISO type, and the
 declared ceiling; the per-channel map and the true-peak ceiling were both
 verified red by sabotage.
 
@@ -7266,7 +7266,7 @@ renderer's `statefulEncodeIsRepeat` stamp (keyed on drawer identity plus frame
 count) exists for the live frame grab, so the second eye advances no feedback
 slot, no sim, and no GI history. Two consequences fall out and are documented
 rather than fixed: anything the sketch flattened during `draw()` (a `project()`,
-a `depth(at:)` placement, a billboard) keeps the centre camera's answer in both
+a `depth(at:)` placement, a billboard) keeps the center camera's answer in both
 eyes and therefore lands on the screen plane, and an accumulating sketch has one
 persistent surface, so both eyes are handed the same picture with a note. The
 `previous:` half of the seam is not decoration: motion blur measures against the
@@ -7305,7 +7305,7 @@ that plays in stereo; the system calls it *spatial* only with
 (millidegrees), `StereoCameraBaseline` (micrometres), and
 `HorizontalDisparityAdjustment` all present. Drop any one and
 `AVAssetPlaybackAssistant` reports `.stereoMultiviewVideo` but not
-`.spatialVideo`, which is why the near-neighbour options are not the test. The
+`.spatialVideo`, which is why the near-neighbor options are not the test. The
 disparity adjustment is 0 because convergence is already in the pictures: the
 eyes were aimed when the frame was drawn rather than left parallel for a player
 to slide together. The layer/view keys are written as all three of

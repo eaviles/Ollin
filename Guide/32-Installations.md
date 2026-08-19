@@ -139,7 +139,7 @@ Some pieces are the same every launch, because everything they draw comes from t
 
 Others grow. A wall that fills in one tile at a time, a reef that adds a polyp an hour, a drawing that accumulates. Three days in, that piece is not something you can rebuild from its seed. Getting back there means running the three days again.
 
-<img src="Images/32-Installations/Resuming.jpg" alt="Two dark eight-by-eight boards side by side with an arrow labelled relaunch between them: the left holding fourteen coloured tiles, the right holding the same fourteen in the same cells plus three more, ringed in orange" width="680">
+<img src="Images/32-Installations/Resuming.jpg" alt="Two dark eight-by-eight boards side by side with an arrow labeled relaunch between them: the left holding fourteen colored tiles, the right holding the same fourteen in the same cells plus three more, ringed in orange" width="680">
 
 So write the state down. Two lines: how often, and what.
 
@@ -169,7 +169,7 @@ override var installation: Installation {
 
 The process you start becomes a small watch with no window of its own, and your piece runs inside it as a child. When a run ends badly, the watch starts another one. Pair it with a checkpoint, or the piece comes back at the beginning every time.
 
-<img src="Images/32-Installations/BackUp.jpg" alt="A timeline of one night from 22:00 to 08:00: three run bars for the piece, the first ending at a marker labelled crash, the second turning grey before a marker labelled stopped answering, the third still going; underneath, a row of heartbeat ticks that stops where the grey stretch begins" width="680">
+<img src="Images/32-Installations/BackUp.jpg" alt="A timeline of one night from 22:00 to 08:00: three run bars for the piece, the first ending at a marker labeled crash, the second turning gray before a marker labeled stopped answering, the third still going; underneath, a row of heartbeat ticks that stops where the gray stretch begins" width="680">
 
 Two things end a run badly. A crash is the obvious one. The other is a frame that never finishes. The process stays perfectly healthy and the picture freezes, which is what a viewer actually sees. So the piece writes a heartbeat every couple of seconds from the thread that draws. A main thread stuck in a frame stops writing it, and that silence is the only sign there is.
 
@@ -187,7 +187,7 @@ Installation(schedule: .open(from: 10, to: 18))
 
 Outside them the screen goes dark and the display is allowed to sleep. The frames stop with it, and the clock stops with them. In the morning the piece carries on from where it stopped, not from where the day got to.
 
-<img src="Images/32-Installations/GalleryHours.jpg" alt="A day drawn as a coloured bar over a 24-hour axis: a dark stretch until six, then parts named dawn, day, dusk and night, and dark again from eleven at night; below it the sketch clock as a line that lies flat through the dark hours and climbs through the rest" width="680">
+<img src="Images/32-Installations/GalleryHours.jpg" alt="A day drawn as a colored bar over a 24-hour axis: a dark stretch until six, then parts named dawn, day, dusk and night, and dark again from eleven at night; below it the sketch clock as a line that lies flat through the dark hours and climbs through the rest" width="680">
 
 The other half is a piece that changes through the day. Name the parts of the day, and read the one you are in:
 
@@ -212,7 +212,7 @@ A projector is almost never square to what it is aimed at. It hangs off a beam, 
 
 So press **Command-K** on the running piece. Four handles appear on the corners. Drag each one onto the wall, and press Command-K again.
 
-<img src="Images/32-Installations/FittingTheWall.jpg" alt="Left, a rectangle of grid lines landing on a wall as a tilted trapezoid, labelled as it lands. Right, the same grid sitting square inside the wall with a handle on each corner, labelled corner-pinned. Below, two coloured blocks meeting in a shared band where each fades out, with a flat line across the top labelled added up, one coat" width="680">
+<img src="Images/32-Installations/FittingTheWall.jpg" alt="Left, a rectangle of grid lines landing on a wall as a tilted trapezoid, labeled as it lands. Right, the same grid sitting square inside the wall with a handle on each corner, labeled corner-pinned. Below, two colored blocks meeting in a shared band where each fades out, with a flat line across the top labeled added up, one coat" width="680">
 
 The numbers are kept under the display rather than under the sketch. The projector is out of true by the same amount whatever is playing. Line it up once and everything you show there opens square.
 
@@ -238,7 +238,7 @@ override var installation: Installation {
 }
 ```
 
-<img src="Images/32-Installations/ManyDisplays.jpg" alt="A long canvas at the top holding a night sky, a sun and one wave, divided by two lines into three parts labelled shows 0 to 0.33, 0.33 to 0.66, and 0.66 to 1. Three arrows lead down to three display panes, each holding its own third of the same picture, so the wave carries on from one to the next" width="680">
+<img src="Images/32-Installations/ManyDisplays.jpg" alt="A long canvas at the top holding a night sky, a sun and one wave, divided by two lines into three parts labeled shows 0 to 0.33, 0.33 to 0.66, and 0.66 to 1. Three arrows lead down to three display panes, each holding its own third of the same picture, so the wave carries on from one to the next" width="680">
 
 That spreads one canvas over every display the machine has, in the arrangement they are actually in. Two monitors side by side carry a half each. One above the other carries a band each. You declare no numbers at all, because the desk already says them.
 
@@ -269,7 +269,7 @@ The piece is drawn once a frame however many displays it goes on. What grows is 
 
 A piece does not have to be one window. Run the same sketch three times and you have three windows on one desk, and they can look into one world rather than three.
 
-<img src="Images/32-Installations/OneWorldManyWindows.jpg" alt="A pale rectangle labelled the desk, holding faint rings and coloured dots. Three dark window panes sit on it, each showing the part of the rings and dots that falls inside it, so the rings carry on across the gaps between the panes. A bracket under the middle pane is labelled canvasOnScreen: where this one sits on the desk" width="680">
+<img src="Images/32-Installations/OneWorldManyWindows.jpg" alt="A pale rectangle labeled the desk, holding faint rings and colored dots. Three dark window panes sit on it, each showing the part of the rings and dots that falls inside it, so the rings carry on across the gaps between the panes. A bracket under the middle pane is labeled canvasOnScreen: where this one sits on the desk" width="680">
 
 What each window needs is to know where it is. `canvasOnScreen` says where this canvas sits on the desk. It is measured the way the canvas is measured, so all three windows describe the same desk in the same numbers:
 

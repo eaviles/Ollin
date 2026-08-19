@@ -4,7 +4,7 @@ Stroke dynamics: width and opacity driven by how a mark is being made, rather th
 
 [`strokeProfile`](Drawing.md#strokeProfile) shapes a stroke by its *shape*: it reads the fraction along a finished path and answers with a width. That is the right tool for a designed mark, a taper you decided on in advance. It is the wrong tool for a mark someone is drawing right now, because the path has no length yet and there is no fraction to read.
 
-A **`StrokeMark`** is the other half. It records a path as it happens, measuring how fast the pointer is travelling and how hard it is pressed, and keeps the width and opacity the hand asked for at every point.
+A **`StrokeMark`** is the other half. It records a path as it happens, measuring how fast the pointer is traveling and how hard it is pressed, and keeps the width and opacity the hand asked for at every point.
 
 ```swift
 var mark = StrokeMark(.speed(fast: 0.15))

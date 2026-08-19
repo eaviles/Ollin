@@ -198,7 +198,7 @@ Every joint grows a motor pulling toward the pose the target scene is holding. N
 
 Keep two copies of the scene. The animation poses one, the target, and the solver poses the other, the drawn one. A `Scene` is a value type, so that's one assignment. It matters, because a figure driven toward the scene it was just posed from has nowhere left to pull.
 
-`strength` is the knob to play with. It's the most torque a joint may use, in newton-metres. High, and the figure will not be moved. Low, and the heavy limbs sag out of the pose, which is how a figure reads as tired rather than switched off. Sweep it and you get a whole range of characters out of one number.
+`strength` is the knob to play with. It's the most torque a joint may use, in newton-meters. High, and the figure will not be moved. Low, and the heavy limbs sag out of the pose, which is how a figure reads as tired rather than switched off. Sweep it and you get a whole range of characters out of one number.
 
 Nothing drives the root, so a powered figure still falls over as a whole. The motors hold its shape, not its place. Pin the hips (`ragdoll.limbs[0].body.kind = .kinematic`) and it stands there like a puppet on a hook, which is what the [`3D/Physics/Ragdoll`](../Examples/3D/Physics/Ragdoll/) example does. Press space there and the hips let go.
 
@@ -281,7 +281,7 @@ cape.follow(figure)
 world.step(dt: deltaTime)
 ```
 
-Nothing was painted in a modelling tool to make that work. **The pose the figure is standing in when you build the cloth is the bind pose.** So you hang the cape where it belongs and name the joints, and everything the figure does from then on is read as the motion since. `carriedBy:` is handed a vertex in the mesh's own coordinates, the same ones `pinned:` gets. It answers with a joint's name, or `nil` for a part that is just cloth.
+Nothing was painted in a modeling tool to make that work. **The pose the figure is standing in when you build the cloth is the bind pose.** So you hang the cape where it belongs and name the joints, and everything the figure does from then on is read as the motion since. `carriedBy:` is handed a vertex in the mesh's own coordinates, the same ones `pinned:` gets. It answers with a joint's name, or `nil` for a part that is just cloth.
 
 Notice that `pinned:` is doing something new here without changing its meaning. **A pinned vertex is held by whatever holds it.** A joint carries it, so it is held to the figure. If no joint does, it is held to the world, exactly as your banner's top edge was.
 
@@ -397,9 +397,9 @@ if let surface = world.waterMesh(extent: 40) {
 }
 ```
 
-`.dielectric` is the physically based tier's smooth nonmetal, the finish of water and varnish. It reflects more the flatter the view grazes it, and [Chapter 22](22-Meshes.md) opened the family up properly. Keep a little roughness in it. A perfect mirror reflects the lower half of the environment wherever a wave tilts the reflection below the horizon, which lays flat grey patches along the troughs. A sea is not a mirror anyway.
+`.dielectric` is the physically based tier's smooth nonmetal, the finish of water and varnish. It reflects more the flatter the view grazes it, and [Chapter 22](22-Meshes.md) opened the family up properly. Keep a little roughness in it. A perfect mirror reflects the lower half of the environment wherever a wave tilts the reflection below the horizon, which lays flat gray patches along the troughs. A sea is not a mirror anyway.
 
-Two things worth knowing before you build on this. `world.water` is an ocean rather than a pool. Everything below `level` is water, out to the horizon, so a harbour is what you get by putting static walls in it. And the water does not reach everything, on purpose. Sensors, static bodies, and a walking character go where you put them rather than where the water would.
+Two things worth knowing before you build on this. `world.water` is an ocean rather than a pool. Everything below `level` is water, out to the horizon, so a harbor is what you get by putting static walls in it. And the water does not reach everything, on purpose. Sensors, static bodies, and a walking character go where you put them rather than where the water would.
 
 The [`3D/Physics/Flotsam`](../Examples/3D/Physics/Flotsam/) example is the whole thing in one scene. Crates from cork to nearly waterlogged ride a swell at their own depths, a stone anchor sits on the bottom, and a current carries the lot past. Drag one under and let go.
 
@@ -439,7 +439,7 @@ Everything else about touching works the way it did. `raft.touching` is what is 
 
 One asymmetry is worth keeping in mind, because it is useful rather than annoying. A settled *pile of crates* falls asleep and stops reporting its touches, while a settled cloth keeps its list. The solver stops asking a sleeping soft body who it is against, which is not the same as it having let go.
 
-The [`3D/Physics/Raft`](../Examples/3D/Physics/Raft/) example is the three of them in one scene. A cloth raft rides a swell with cargo on it, a sounding line shortens onto her deck when you sail her under it, and a harbour gate lights when she passes through. Drag the deck to steer.
+The [`3D/Physics/Raft`](../Examples/3D/Physics/Raft/) example is the three of them in one scene. A cloth raft rides a swell with cargo on it, a sounding line shortens onto her deck when you sail her under it, and a harbor gate lights when she passes through. Drag the deck to steer.
 
 ## Putting it together: the yard
 

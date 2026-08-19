@@ -42,7 +42,7 @@ final class Flock: Sketch {
 }
 ```
 
-For per-boid color (a common touch is to tint by heading, so boids travelling the same way share a color), draw the triangles yourself from `positions[i]` and `heading(i)`. See the `Flocking` example.
+For per-boid color (a common touch is to tint by heading, so boids traveling the same way share a color), draw the triangles yourself from `positions[i]` and `heading(i)`. See the `Flocking` example.
 
 <a name="tuning"></a>
 

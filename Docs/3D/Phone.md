@@ -6,7 +6,7 @@
 
 Borrow a tethered iPhone's on-device perception in a sketch that still renders on the Mac. **Ollin Capture**, Ollin's own iOS app ([`Apps/OllinPhoneApp`](../../Apps/OllinPhoneApp/README.md)), runs ARKit on the phone's Neural Engine and streams the results over the USB cable. `PhoneDevice` reads them on the Mac as typed values you use in `draw()`.
 
-Eight payloads come over. A **3D body skeleton**. **Faces**, up to 3 at once, each a deforming mesh plus the 52 expression blendshapes. The **hands** in view, up to 4, each a 21-joint skeleton lifted to metric 3D where the phone has LiDAR. The lines of **text** it can read, each with its corners lifted the same way. A world-facing **RGBD depth frame** from the rear LiDAR, which unprojects into a point cloud and carries the camera's 6DoF pose. The **room mesh**, the space itself reconstructed as a labelled triangle surface. A **person-segmentation matte** from the rear camera, as a silhouette and a cutout. And **device motion**.
+Eight payloads come over. A **3D body skeleton**. **Faces**, up to 3 at once, each a deforming mesh plus the 52 expression blendshapes. The **hands** in view, up to 4, each a 21-joint skeleton lifted to metric 3D where the phone has LiDAR. The lines of **text** it can read, each with its corners lifted the same way. A world-facing **RGBD depth frame** from the rear LiDAR, which unprojects into a point cloud and carries the camera's 6DoF pose. The **room mesh**, the space itself reconstructed as a labeled triangle surface. A **person-segmentation matte** from the rear camera, as a silhouette and a cutout. And **device motion**.
 
 Where [`Record3D`](../3D/Record3D.md) borrows another app's color-plus-depth feed, this is Ollin's own app, so the stream carries what ARKit *perceives*. The chain is Ollin's end to end.
 
@@ -42,7 +42,7 @@ final class Pose: Sketch {
 - [The text in view](#the-text-in-view) - `PhoneText`, the corners, `worldTransform`
 - [World depth](#world-depth) - `latestDepthFrame`, `pointCloud(...)`, the camera pose
 - [World fusion](#world-fusion) - `WorldCloud`, sweeping a room into one cloud, [keeping it registered](#drift), and [recognizing a place already scanned](#loops) with `ScanGraph`
-- [The room mesh](#the-room-mesh) - `sceneMesh`, the room as a labelled surface, the Room mode
+- [The room mesh](#the-room-mesh) - `sceneMesh`, the room as a labeled surface, the Room mode
 - [The flat surfaces](#the-flat-surfaces) - `planes`, somewhere to stand something, no LiDAR needed
 - [The room's light](#the-rooms-light) - `latestLight`, how bright and how warm the room is
 - [Segmentation](#segmentation) - `latestSegmentationMatte`, `latestSegmentationCutout`, the Segment mode
@@ -466,7 +466,7 @@ room.mesh { surface in ... }         // Mesh, every surface painted by what it i
 
 **`largest` measures the outline, not the box around it.** A long thin shelf can have a big box and very little surface. Picking it as the ground would put your sketch on a shelf.
 
-**`floor` answers before ARKit has decided.** A label arrives late, so `floor` gives you the labelled floor when there is one and the lowest flat surface until then. A sketch can stand something on the ground a second or two after the app opens.
+**`floor` answers before ARKit has decided.** A label arrives late, so `floor` gives you the labeled floor when there is one and the lowest flat surface until then. A sketch can stand something on the ground a second or two after the app opens.
 
 ```swift
 // A ball resting on the biggest flat thing in the room.

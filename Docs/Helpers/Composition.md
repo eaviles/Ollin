@@ -58,7 +58,7 @@ It returns a range rather than one step. At any real tempo a frame is longer tha
 
 Where `beats` comes from is the sketch's business, which is the point. Use `time * tempo / 60` for the sketch clock, or `clock.beats` from a [`TempoClock`](../Integration/MIDI.md#tempo-sync-tempoclock) to run on a drum machine's. A number you advance yourself works too. Nothing in this file knows what a second is.
 
-Two behaviours are worth knowing:
+Two behaviors are worth knowing:
 
 - **Time going backwards**, on a loop coming round or a seek, reports the step it landed on. A repeating figure still begins, and carries on from there.
 - **Time jumping a long way**, on a stall or a window dragged onto another display, skips ahead rather than emptying the whole pattern into one frame. `maxCatchUp` is where that line is, sixteen steps by default.

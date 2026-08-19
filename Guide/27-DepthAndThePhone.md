@@ -256,7 +256,7 @@ That gate is the one thing to get right. The room arrives in **blocks**. ARKit c
 
 Then the labels. Every triangle carries a `PhoneSurface`, one of wall, floor, ceiling, table, seat, window, door, or unclassified. So the same room can be asked for three ways:
 
-<img src="Images/27-DepthAndThePhone/RoomAsSurface.jpg" alt="Three copies of a small scanned room corner side by side: the whole room in one pale material, the same room painted green for floor, blue-grey for walls, tan for a table and red for a seat, and the same room with the walls dropped so only the floor, table and seat slabs float in place" width="680">
+<img src="Images/27-DepthAndThePhone/RoomAsSurface.jpg" alt="Three copies of a small scanned room corner side by side: the whole room in one pale material, the same room painted green for floor, blue-gray for walls, tan for a table and red for a seat, and the same room with the walls dropped so only the floor, table and seat slabs float in place" width="680">
 
 ```swift
 let scan = device.sceneMesh
@@ -286,9 +286,9 @@ if let ground = device.planes.floor {
 }
 ```
 
-<img src="Images/27-DepthAndThePhone/RoomAsPlanes.jpg" alt="Left, three flat surfaces of a staged room corner drawn as outlined polygons: a green floor, a blue-grey wall, a tan table top. Right, the same three in plain grey with a metal ball resting on the table. Below, three color swatches labelled lamp 480 lm 2700 K, room 1000 lm 5000 K, window 900 lm 9000 K, running from warm brown through cream to pale blue" width="680">
+<img src="Images/27-DepthAndThePhone/RoomAsPlanes.jpg" alt="Left, three flat surfaces of a staged room corner drawn as outlined polygons: a green floor, a blue-gray wall, a tan table top. Right, the same three in plain gray with a metal ball resting on the table. Below, three color swatches labeled lamp 480 lm 2700 K, room 1000 lm 5000 K, window 900 lm 9000 K, running from warm brown through cream to pale blue" width="680">
 
-`floor` is the one to reach for, because it answers early. It gives you the labelled floor once ARKit has decided, and the lowest flat surface until then. `largest` picks by real area, measured on the outline rather than on the box around it, so a long thin shelf never wins.
+`floor` is the one to reach for, because it answers early. It gives you the labeled floor once ARKit has decided, and the lowest flat surface until then. `largest` picks by real area, measured on the outline rather than on the box around it, so a long thin shelf never wins.
 
 Every surface carries that outline: a convex polygon around everything the phone has seen of it. `plane.mesh` fills it in, and `plane.outline` is the same loop closed, ready for `drawTube`.
 

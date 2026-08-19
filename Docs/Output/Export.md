@@ -85,7 +85,7 @@ swift run --package-path Examples Example-Effects-Defocus      --export-video do
 
 It takes `performance`, `default`, or `detail` (aliases: `fast` / `balanced` / `high`) and applies to every raster/video/GIF export. It is **distinct from `--quality`**, which is the video *encoding* quality (0…1) for `--export-video`.
 
-**A quality the sketch sets itself always wins.** `--render-quality` (and the automatic live/export defaults) only fill in features the sketch left alone. If a sketch dials a feature explicitly (`raymarchQuality(.performance)`, `shadowQuality(.detail)`, `.defocus(…, quality: .performance)`), that choice is honoured on every path, live and export alike. In code the same control is the `quality:` argument on `OllinApp.image(of:frame:fps:quality:)`, `export`, and `exportSequence`. It is `renderQuality:` on `exportVideo` and `exportGIF`, and it defaults to `.detail`.
+**A quality the sketch sets itself always wins.** `--render-quality` (and the automatic live/export defaults) only fill in features the sketch left alone. If a sketch dials a feature explicitly (`raymarchQuality(.performance)`, `shadowQuality(.detail)`, `.defocus(…, quality: .performance)`), that choice is honored on every path, live and export alike. In code the same control is the `quality:` argument on `OllinApp.image(of:frame:fps:quality:)`, `export`, and `exportSequence`. It is `renderQuality:` on `exportVideo` and `exportGIF`, and it defaults to `.detail`.
 
 ### Video
 

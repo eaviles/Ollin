@@ -4,7 +4,7 @@
 
 ## Chladni figures
 
-The patterns sand draws on a ringing plate. Bow or drive a square plate at one of its resonant modes and it vibrates everywhere except along its **nodal lines**. Loose sand walks off the moving regions and gathers where the plate stands still, tracing the symmetric figures Ernst Chladni catalogued in 1787. Ollin ships the standing-wave field in closed form. It comes as a per-point function for geometry, and as a GPU [`Generator`](../Drawing/Effects.md#generate) that fills a layer with the finished figure.
+The patterns sand draws on a ringing plate. Bow or drive a square plate at one of its resonant modes and it vibrates everywhere except along its **nodal lines**. Loose sand walks off the moving regions and gathers where the plate stands still, tracing the symmetric figures Ernst Chladni cataloged in 1787. Ollin ships the standing-wave field in closed form. It comes as a per-point function for geometry, and as a GPU [`Generator`](../Drawing/Effects.md#generate) that fills a layer with the finished figure.
 
 ```
    m 5, n 2 (sand)        m 7, n 3 (sand)         wave

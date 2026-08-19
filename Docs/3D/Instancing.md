@@ -111,7 +111,7 @@ Not yet, by design (each lands with a later slice of the GPU-driven tier):
 <a id="notes"></a>
 ### Notes
 
-- A copy field is one batch and never merges with its neighbours, so draw order against other geometry is exactly call order, and the depth buffer sorts the 3D.
+- A copy field is one batch and never merges with its neighbors, so draw order against other geometry is exactly call order, and the depth buffer sorts the 3D.
 - `makeBatch { }` refuses an instanced draw (like plain meshes: a retained copy would silently lose its shadows). Draw the field where the batch is drawn.
 - Spatial export records the `[MeshInstance]` form as one mesh per placement, exactly like a loop of `drawMesh` calls. The GPU-buffer form can't be exported (the placements live on the GPU) and says so once.
 - SVG export skips meshes entirely, instanced or not: a shaded solid has no vector outline.

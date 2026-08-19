@@ -51,7 +51,7 @@ One habit keeps the sugar honest. `flowField` reads the sketch's seeded noise, s
 
 A `FlowField` answers with a direction. The other kind of field answers with a number, and you already have one. [Chapter 5](05-Noise.md)'s noise hands back a value at every point. Fields like that invite a different question. Instead of asking which way to go, you ask where the field equals some particular value, and the answer is a set of curves.
 
-Those curves are **level curves**, or contours, and you have read thousands of them on maps. A contour line on a map is the set of places at exactly 400 metres. Walking along one is flat, and crossing several quickly means the slope is steep.
+Those curves are **level curves**, or contours, and you have read thousands of them on maps. A contour line on a map is the set of places at exactly 400 meters. Walking along one is flat, and crossing several quickly means the slope is steep.
 
 <img src="Images/14-FieldsAndFlow/Isolines.jpg" alt="Three panels of the same noise field: as a grayscale picture, then a single orange contour tracing one level through it, then a full stack of black contours reading as a topographic map" width="680">
 

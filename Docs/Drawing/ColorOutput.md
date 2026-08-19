@@ -92,7 +92,7 @@ swift run --package-path Examples Example-Rendering-ColorOutput --export lamp.he
 # Ollin: exported frame 0 → lamp.heic (1080×1080, highlights to 2.70x white in a gain map)
 ```
 
-The line says what travelled. A frame that never went above white carries no gain map, and says so.
+The line says what traveled. A frame that never went above white carries no gain map, and says so.
 
 What the file guarantees:
 

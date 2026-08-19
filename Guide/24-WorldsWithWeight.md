@@ -346,7 +346,7 @@ Restoring is not "roughly where things were". Every body comes back in the same 
 
 Now, you might reasonably ask why any of this is needed. If the code that built the heap is right there, why not run it again?
 
-<img src="Images/24-WorldsWithWeight/Kept.jpg" alt="Three heaps of flat stones side by side on a dark floor. The first two, labelled saved and restored, are identical stone for stone. The third, labelled simulated again, is a visibly different heap" width="720">
+<img src="Images/24-WorldsWithWeight/Kept.jpg" alt="Three heaps of flat stones side by side on a dark floor. The first two, labeled saved and restored, are identical stone for stone. The third, labeled simulated again, is a visibly different heap" width="720">
 
 Three heaps, all from the same code. The first was simulated and captured. The second is that capture restored, which is exact. The third was simulated again with one stone released a ten-millionth of a unit higher, and that is the whole difference in the setup. Stones landing on stones magnify it: one lands a little differently, which tips the next, and by the twelfth you have a different heap.
 

@@ -156,7 +156,7 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
          ● b
 ```
 
-**In a sketch:** proximity effects, so you can connect dots closer than N, fade things by how near they are, or push neighbours apart when they crowd. (Use the squared form inside big loops to skip the slow `√`.)
+**In a sketch:** proximity effects, so you can connect dots closer than N, fade things by how near they are, or push neighbors apart when they crowd. (Use the squared form inside big loops to skip the slow `√`.)
 
 **`dot(_:)`** is one number measuring how much two vectors point the *same way*, `ax·bx + ay·by`, which equals `|a|·|b|·cos θ`. Its sign alone tells you the rough relationship.
 
@@ -612,7 +612,7 @@ var shape: Shape                // a single-contour Shape, ready for drawShape
 
 The three curve verbs differ in who supplies the bend:
 
-- **`curve(to:)`** is a smooth curve that passes *through* the points, with tangents derived automatically from the neighbours. Consecutive `curve(to:)` calls form one smooth run. This is the "draw a wiggle straight from points" curve, and the bare name `curve` is reserved for it precisely because you give no control point.
+- **`curve(to:)`** is a smooth curve that passes *through* the points, with tangents derived automatically from the neighbors. Consecutive `curve(to:)` calls form one smooth run. This is the "draw a wiggle straight from points" curve, and the bare name `curve` is reserved for it precisely because you give no control point.
 - **`quadCurve(to:control:)`** is a quadratic Bézier, where you supply one control point.
 - **`cubicCurve(to:control1:control2:)`** is a cubic Bézier, where you supply two.
 

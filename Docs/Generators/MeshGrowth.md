@@ -72,7 +72,7 @@ MeshGrowth(mesh: .icosphere(subdivisions: 3),
 
 `.chemical` is the one that composes two processes. A Gray-Scott reaction runs *in the surface* while the surface grows, and the surface grows where the reaction has collected. The pattern decides where to add area, and the new area gives the pattern more room to spread into.
 
-**`SurfaceChemistry`** carries the reaction's settings. The well-travelled corners of the parameter space arrive as presets: `.coral`, the default, plus `.spots`, `.maze`, `.mitosis`, and `.worms`. Its `feed` and `kill` are the same two numbers the texture-space [`Sim.reactionDiffusion`](../Drawing/Effects.md) takes. A pairing that gives a look there gives the same look here.
+**`SurfaceChemistry`** carries the reaction's settings. The well-traveled corners of the parameter space arrive as presets: `.coral`, the default, plus `.spots`, `.maze`, `.mitosis`, and `.worms`. Its `feed` and `kill` are the same two numbers the texture-space [`Sim.reactionDiffusion`](../Drawing/Effects.md) takes. A pairing that gives a look there gives the same look here.
 
 The same reaction runs on a fixed mesh through **`MeshReactionDiffusion`**, which is the surface-texture use rather than the growth one. The pattern develops in the mesh itself, so it has no seam, no stretching, and needs no texture coordinates.
 

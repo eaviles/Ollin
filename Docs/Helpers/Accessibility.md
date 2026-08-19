@@ -126,7 +126,7 @@ if !myPalette.isColorblindSafe() { /* pick again */ }
 
 `confusions()` with no argument checks all three kinds at full severity. Either way the worst pair comes first, so the first entry is the one to fix.
 
-**Lightness is what saves a pair.** The check measures the whole distance, lightness as well as hue, because that is the whole judgement. Red and green look alike to a protanope in hue, but one is much darker than the other, so the pair is still usable. Two colors of the same lightness that differ only in hue are the ones that merge. Measured on a red and a green matched for lightness: 0.281 apart for average vision, and 0.014 apart under the worst kind. Step them apart in lightness and the same two hues stay 0.601 apart.
+**Lightness is what saves a pair.** The check measures the whole distance, lightness as well as hue, because that is the whole judgment. Red and green look alike to a protanope in hue, but one is much darker than the other, so the pair is still usable. Two colors of the same lightness that differ only in hue are the ones that merge. Measured on a red and a green matched for lightness: 0.281 apart for average vision, and 0.014 apart under the worst kind. Step them apart in lightness and the same two hues stay 0.601 apart.
 
 So the practical rule is to vary lightness, not only hue, and to give a shape or a label to anything that color alone distinguishes.
 
@@ -144,7 +144,7 @@ The default tolerance of 0.06 is measured rather than guessed. It sits between t
 
 ### What the model is
 
-The simulation is the physiologically based model of Machado, Oliveira and Fernandes (2009), which treats color vision deficiency as a shift in a cone's spectral absorption. A color is linearized, multiplied by a 3x3 matrix chosen by kind and severity, and encoded back. The published table gives a matrix every 0.1 of severity, and a value in between interpolates its two neighbours, which is the approximation the model's authors describe.
+The simulation is the physiologically based model of Machado, Oliveira and Fernandes (2009), which treats color vision deficiency as a shift in a cone's spectral absorption. A color is linearized, multiplied by a 3x3 matrix chosen by kind and severity, and encoded back. The published table gives a matrix every 0.1 of severity, and a value in between interpolates its two neighbors, which is the approximation the model's authors describe.
 
 The matrices weight the power of the display primaries, so they belong in linear light. Applying them to display values instead is a common mistake and gives a visibly different color.
 

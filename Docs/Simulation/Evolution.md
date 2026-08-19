@@ -174,7 +174,7 @@ Read a gene through one of those rather than by hand. The mapping from 0…1 int
 | | |
 |---|---|
 | `.independent` | Each gene from one parent or the other with an even chance. Mixes the two most thoroughly, and the usual choice. |
-| `.split` | Genes before a random point from one parent, the rest from the other. Keeps runs of genes together, which matters when neighbouring genes work as a group. |
+| `.split` | Genes before a random point from one parent, the rest from the other. Keeps runs of genes together, which matters when neighboring genes work as a group. |
 | `.blend` | Every gene lands part way between the parents. A child that looks like a blend of them rather than a mixture of their parts, which suits genes that are quantities rather than choices. |
 
 `mutationRate` defaults to **0.2** here and 0.04 on the GPU tier, and the gap is on purpose. A person judges maybe twenty candidates a generation, and will sit through maybe twenty generations. So a few hundred looks have to cover ground a scored run covers in millions. Variation has to arrive fast enough to be worth looking at. A scored run wants the published few percent instead, because there the population is large and the generations are cheap.

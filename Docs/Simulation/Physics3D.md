@@ -173,7 +173,7 @@ let pellet = world.addBody(.sphere(radius: 0.05), at: muzzle, checksPath: true)
 pellet.velocity = Vector3(0, 0, 120)
 ```
 
-It costs nothing while the body is slow. The check only runs once a body covers a good fraction of its own size in a step. An ordinary throw lands on exactly the same spot either way. What it does cost is a little honesty about speed. A body that hits something at pace gives up the rest of its step where it struck. (This is continuous collision detection, under a name that says what it does.) Two neighbours have their own answer to the same problem and need nothing turned on. A `Character3D` already tests its path as it walks, and a `Vehicle3D`'s wheels feel for the road by casting rays. So it is the chassis, `vehicle.body.checksPath`, that would want it if anything did.
+It costs nothing while the body is slow. The check only runs once a body covers a good fraction of its own size in a step. An ordinary throw lands on exactly the same spot either way. What it does cost is a little honesty about speed. A body that hits something at pace gives up the rest of its step where it struck. (This is continuous collision detection, under a name that says what it does.) Two neighbors have their own answer to the same problem and need nothing turned on. A `Character3D` already tests its path as it walks, and a `Vehicle3D`'s wheels feel for the road by casting rays. So it is the chassis, `vehicle.body.checksPath`, that would want it if anything did.
 
 <a name="collider3d"></a>
 
@@ -555,7 +555,7 @@ Every answer is a `Hit3D`.
 - `body` is what it ran into. It is typed `any Colliding3D`, since it may be a [soft body](#softbodies).
 - `point` is where the query touched it.
 - `normal` is the outward surface direction there.
-- `distance` is how far along the query the touch was, from a ray's start, or how far a swept shape travelled.
+- `distance` is how far along the query the touch was, from a ray's start, or how far a swept shape traveled.
 
 **Rays.** `raycast(from:to:)` returns the nearest body along a segment, `raycastAll(from:to:)` every body along it, nearest first.
 
@@ -643,7 +643,7 @@ Three settings decide what the geometry does to the character, and each has a vi
 
 | | what it means |
 | --- | --- |
-| `stepHeight` | The tallest step it walks up without jumping, 0.4 by default. A stair, a kerb, a ledge. Set it to `0` and the same stairs become a wall. |
+| `stepHeight` | The tallest step it walks up without jumping, 0.4 by default. A stair, a curb, a ledge. Set it to `0` and the same stairs become a wall. |
 | `maxSlope` | The steepest slope it can climb, in radians (50° by default). A steeper face still holds it up, but it can't get any further up. |
 | `pushStrength` | The hardest it can shove a dynamic body sideways, in newtons (100 by default). At `0` crates become immovable walls to walk around. |
 
@@ -754,7 +754,7 @@ front.grip = 0.4                      // and a slick tire
 | `driven` | Whether the engine turns it. |
 | `suspensionLength` / `suspensionTravel` | How far the wheel hangs with nothing pressing on it, and how much further up it can be pushed before the chassis takes the hit. |
 | `suspensionFrequency` / `suspensionDamping` | The spring, in the same hertz-and-ratio pair a joint's `drive(to:frequency:damping:)` takes. Around 1.5 Hz is a road car, 3 and up feels every stone. |
-| `brakeTorque` / `handBrakeTorque` | How hard each brake bites on this wheel, in newton-metres. Leave `handBrakeTorque` at zero on the front pair. |
+| `brakeTorque` / `handBrakeTorque` | How hard each brake bites on this wheel, in newton-meters. Leave `handBrakeTorque` at zero on the front pair. |
 | `grip` | Scales the tire's own friction, where `1` is normal and lower is slick. The ground's friction combines with it, so slippery ground still slides a grippy tire. |
 | `casterAngle` | How far the fork is raked back. A car leaves it at `0`, and a two-wheeler needs a real rake (see below). |
 
@@ -780,7 +780,7 @@ Both can be changed while driving. The gearbox shifts itself. `gear` reads which
 
 | | |
 | --- | --- |
-| `speed` | How fast it is travelling along its own forward axis. Negative in reverse. |
+| `speed` | How fast it is traveling along its own forward axis. Negative in reverse. |
 | `forward` / `up` | The chassis's axes in world space. A chase camera wants `forward`, and `up` tips as the vehicle leans. |
 | `isOnGround` | Whether any wheel is touching. `false` means nothing the driver does will change anything. |
 | `wheel.center` | Where the wheel is now, suspension travel included. |
@@ -909,7 +909,7 @@ figure.apply(ragdoll)                 // where they actually ended up
 
 Keep the target scene and the drawn scene apart. A `Scene` is a value type, so a second copy is one assignment. A figure driven toward the scene it was just posed from has nowhere to pull. The pose it is chasing has to be re-established each frame.
 
-`strength` is the most torque a joint may use, in newton-metres, and it is the expressive knob. High, and the figure will not be moved. Low, and heavy limbs sag out of the pose, which is how a figure reads as tired rather than switched off. `goLimp()` cuts the power. `pose(from:)` puts every limb back where a scene has it, which is how a figure is stood up again.
+`strength` is the most torque a joint may use, in newton-meters, and it is the expressive knob. High, and the figure will not be moved. Low, and heavy limbs sag out of the pose, which is how a figure reads as tired rather than switched off. `goLimp()` cuts the power. `pose(from:)` puts every limb back where a scene has it, which is how a figure is stood up again.
 
 Nothing drives the root, so a powered figure still falls as a whole. The motors hold its *shape*, not its place. To keep one on its feet, make the root limb kinematic with `ragdoll.limbs[0].body.kind = .kinematic`, and it hangs from its hips like a puppet. Setting `ragdoll.kind = .kinematic` instead makes the whole figure follow the driven pose exactly, shoving whatever is in its way.
 
@@ -1022,7 +1022,7 @@ if let grip { dragSoftGrab(grip, to: Vector2(mouseX, mouseY)) }
 
 **A soft body is a surface, not a filled solid**, and `pressure` is how it reads as full. There is no separate "jelly" model holding the space inside it, and that is a measured choice rather than a missing feature. A pressurised body already holds a weight without squashing, comes back from a dent perfectly, and costs nothing extra. Filling one with tetrahedra costs half again as many particles, and it comes back from a hard squash permanently out of shape. The reasoning and the numbers are in [`ARCHITECTURE.md`](../../ARCHITECTURE.md).
 
-The worked examples are [`3D/Physics/Drape`](../../Examples/3D/Physics/Drape/) and [`3D/Physics/Raft`](../../Examples/3D/Physics/Raft/). Drape has a banner pegged to a washing line that flaps in a gusting wind, a sheet thrown over a crate, and a beach ball you can let the air out of. Raft has a cloth raft riding a swell with cargo on it, a sounding line that stops at her deck, and a harbour gate that reports her sailing through.
+The worked examples are [`3D/Physics/Drape`](../../Examples/3D/Physics/Drape/) and [`3D/Physics/Raft`](../../Examples/3D/Physics/Raft/). Drape has a banner pegged to a washing line that flaps in a gusting wind, a sheet thrown over a crate, and a beach ball you can let the air out of. Raft has a cloth raft riding a swell with cargo on it, a sounding line that stops at her deck, and a harbor gate that reports her sailing through.
 
 <a name="ropes"></a>
 
@@ -1120,7 +1120,7 @@ cape.follow(figure)
 world.step(dt: deltaTime)
 ```
 
-**The pose the figure is standing in when you build the cloth is the bind pose.** Nothing has to be authored in a modelling tool, and no weights have to be painted. Hang the cloth where it belongs, name the joints, and every later pose is read as the motion since. `carriedBy:` is given a vertex in the mesh's own space, the same space `pinned:` reads. It answers with a joint's name, or `nil` for a part that is ordinary cloth. A name the skeleton does not have is skipped with a note. A typo therefore leaves that part hanging free, rather than silently doing something else.
+**The pose the figure is standing in when you build the cloth is the bind pose.** Nothing has to be authored in a modeling tool, and no weights have to be painted. Hang the cloth where it belongs, name the joints, and every later pose is read as the motion since. `carriedBy:` is given a vertex in the mesh's own space, the same space `pinned:` reads. It answers with a joint's name, or `nil` for a part that is ordinary cloth. A name the skeleton does not have is skipped with a note. A typo therefore leaves that part hanging free, rather than silently doing something else.
 
 **`pinned:` means held by whatever holds it.** A pinned vertex a joint carries is held to the *figure*. One no joint carries is held to the *world*, which is what it has always meant. So the same closure clasps a cape at the neck and pegs a banner to a line.
 
@@ -1195,7 +1195,7 @@ if let surface = world.waterMesh(extent: 40) {
 
 **Cloth floats too.** A [soft body](#softbodies) is floated particle by particle, since it has neither the one mass nor the one shape the rigid path works from. Each particle rides the surface directly above it rather than a plane through the body's middle, so a raft follows the swell instead of being curled by it. Its own `density` decides how high it rides. A closed surface derives one from mass and volume, so a beach ball just floats. A sheet holds no volume to derive one from and starts at `1`, so `raft.density = 0.3` is what makes a sail into a raft. Drag bites much harder on cloth than on a crate, because a sheet's area for its weight is enormous. A heavy one sinks slowly, and a floating one is carried by a current rather than left behind by it.
 
-**What the water leaves alone.** Sensors, static and kinematic bodies, and a character's capsule are not floated. A detector volume and a walking figure go where the sketch puts them, not where the water would. The water itself is an ocean rather than a pool. Everything below `level` is water, out to the horizon, so a container of water needs its own walls built from static bodies, which is all a harbour is.
+**What the water leaves alone.** Sensors, static and kinematic bodies, and a character's capsule are not floated. A detector volume and a walking figure go where the sketch puts them, not where the water would. The water itself is an ocean rather than a pool. Everything below `level` is water, out to the horizon, so a container of water needs its own walls built from static bodies, which is all a harbor is.
 
 One thing worth knowing about sleeping. A floating body settles at its waterline and then goes to sleep, which is what you want. It stops costing anything and holds its level exactly. If you move the water afterwards, by changing the level or any other setting, everything afloat is woken so it can follow. A swell wakes only what it actually washes over, which is why a stone that has sunk to the bottom stays asleep under a rolling sea.
 

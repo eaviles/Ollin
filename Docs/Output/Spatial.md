@@ -66,7 +66,7 @@ Both are USD, and the extension picks between them.
 
 Nothing is dropped quietly. Anything the format cannot hold prints one note naming it.
 
-- **2D drawing.** Text, shapes, and overlays are not geometry in a scene. A labelled diagram exports as the solids without the labels.
+- **2D drawing.** Text, shapes, and overlays are not geometry in a scene. A labeled diagram exports as the solids without the labels.
 - **Point clouds, GPU particles, and raymarched fields.** These are not surfaces. `isosurface(at:in:_:)` and `particleSurface(of:)` turn a field or a cloud into a mesh, which does travel.
 - **Stylized finishes.** Toon, gooch, matcap, iridescence, sparkle, rim, sheen, and subsurface are ways of shading rather than descriptions of a material. The surface exports with its color and how shiny it is. A stylized finish's `shininess` converts to roughness through the same curve the renderer's own area lights use. So a polished surface stays polished.
 - **Animation and skinning.** One pose is written, the one the scene is holding. Export several frames if you want several poses.
@@ -175,7 +175,7 @@ let options = await AVAssetPlaybackAssistant(asset: AVURLAsset(url: url))
 options.contains(.spatialVideo)      // true
 ```
 
-Careful with the near neighbours: `.stereoMultiviewVideo` is true for any two-layer file, spatial metadata or not, so it is not the test. On the command line, `ffprobe -show_entries stream_side_data` prints the baseline, the field of view, and which eye is the hero.
+Careful with the near neighbors: `.stereoMultiviewVideo` is true for any two-layer file, spatial metadata or not, so it is not the test. On the command line, `ffprobe -show_entries stream_side_data` prints the baseline, the field of view, and which eye is the hero.
 
 ### Reference
 

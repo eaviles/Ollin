@@ -20,7 +20,7 @@ Command-Q quits, whatever the piece covers. The menu bar is hidden, not gone.
 
 | Part | What it does |
 |---|---|
-| `fillsScreen` | The window takes the whole display, with no title bar, and the menu bar and Dock get out of the way. The canvas keeps its own proportions inside that, centred on black. |
+| `fillsScreen` | The window takes the whole display, with no title bar, and the menu bar and Dock get out of the way. The canvas keeps its own proportions inside that, centered on black. |
 | `hidesPointer` | The pointer goes away. Nobody is holding the mouse, so an arrow parked over the work is only ever a blemish. |
 | `keepsDisplayAwake` | The display stays lit and the screen saver never arms, for as long as the piece runs. |
 | `clock` | When the clock a shader reads starts over, so a run of weeks stays exact. See [the clock](#the-clock-is-the-part-that-breaks) below. |

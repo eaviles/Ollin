@@ -89,7 +89,7 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 
 27. **[Depth and the iPhone as a sensor](27-DepthAndThePhone.md).** Point clouds, recorded and live RGBD, the phone's body, hand, and gaze streams, and scanning the room you're in.
 28. **[Sound and control](28-SoundAndControl.md).** Hearing loudness, spectrum, beats, speech and sound events, then the hands on the other side: MIDI, OSC, and game controllers, all bound to the same knobs.
-29. **[Making sound](29-MakingSound.md).** A sketch that plays: synths and the voices inside them, instruments built by patching or recorded, the modelled string, struck shape, bow and tube, then rhythms, scales, chords and tunings, sonification, and sound placed in a room.
+29. **[Making sound](29-MakingSound.md).** A sketch that plays: synths and the voices inside them, instruments built by patching or recorded, the modeled string, struck shape, bow and tube, then rhythms, scales, chords and tunings, sonification, and sound placed in a room.
 30. **[Seeing](30-Seeing.md).** The webcam as input; faces, hands, bodies, edges, and motion as typed values; video as material.
 31. **[Sharing and performing](31-SharingAndPerforming.md).** Stills, video, GIF, SVG for plotters, prints and 3D prints, USDZ and spatial video, reproducibility, describable output, feeding other apps, handing the work over, and live coding on stage.
 32. **[Installations](32-Installations.md).** A piece that stays where it is: light instead of pixels through DMX and LED maps, the cost row when it gets slow, and everything a room does to a sketch left running for weeks.

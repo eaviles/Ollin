@@ -7,7 +7,7 @@
 A compute shader is a small program that runs on the GPU over a grid of data, one thread per element, all at once. Ollin uses it for the workloads creative coding most wants and the CPU can't reach, in two shapes:
 
 - **Buffers** hold *hundreds of thousands to millions of particles*, each updated and drawn on the GPU so the data never round-trips through the CPU. This is the engine behind the depth-of-field "sandpainting" look, faint particles summed as light, at counts a `draw()` loop could never iterate. The headline is [`Particles`](#particles).
-- **Textures** hold *ping-pong simulations over a 2-D field*: reaction-diffusion, cellular automata, fluid, and image kernels. Each cell reads its neighbours and writes the next state, every frame, on the GPU, and the result draws like any image. The headline is [`Simulation`](#simulation).
+- **Textures** hold *ping-pong simulations over a 2-D field*: reaction-diffusion, cellular automata, fluid, and image kernels. Each cell reads its neighbors and writes the next state, every frame, on the GPU, and the result draws like any image. The headline is [`Simulation`](#simulation).
 
 Both write the per-element update as a short snippet of Metal, and Ollin generates the kernel, owns the double-buffering, and renders the result. Underneath sits one typed core ([`ComputeKernel`](#computekernel), [`ComputeBuffer`](#computebuffer), [`ComputeTexture`](#computetexture), [`compute`](#compute)) you can drop to for full control.
 
@@ -115,7 +115,7 @@ float defocus = abs(depth - custom.x);
 <a id="textures"></a>
 ### Texture kernels & simulations
 
-Where `Particles` evolves a *buffer*, [`Simulation`](#simulation) evolves a *2-D texture*, a field where every cell reads its neighbours and writes the next state each frame. It's the engine for reaction-diffusion, cellular automata, fluid, and any "ping-pong" sim.
+Where `Particles` evolves a *buffer*, [`Simulation`](#simulation) evolves a *2-D texture*, a field where every cell reads its neighbors and writes the next state each frame. It's the engine for reaction-diffusion, cellular automata, fluid, and any "ping-pong" sim.
 
 <a id="simulation"></a>
 #### Simulation
@@ -165,7 +165,7 @@ In the `step:` snippet these are in scope:
 | --- | --- | --- |
 | `value` | `float4` | this cell's current value (read) |
 | `result` | `float4` | what to write, pre-set to `value` (write) |
-| `tap(dx, dy)` | `float4` | the source field at integer offset `(dx, dy)`, **toroidal** (edges wrap), for neighbour stencils |
+| `tap(dx, dy)` | `float4` | the source field at integer offset `(dx, dy)`, **toroidal** (edges wrap), for neighbor stencils |
 | `gid` | `uint2` | this cell's coordinate |
 | `size` | `uint2` | the field's size in texels |
 | `u` | `OllinComputeUniforms` | per-frame constants, read-only (as for particles) |

@@ -181,7 +181,7 @@ Color is the recipe itself. Cohesion, alignment and separation are drawn as red,
 
 Read the state back with `lineageCounts()`, `snapshotRecipes()`, and `snapshotLineages()`. `lineageCounts()` says how many particles each opening line still holds. That is the scoreboard the model never keeps for itself. All three stall until the GPU has caught up, so call them a few times a second rather than every frame.
 
-**Recipes are stored in the published units**, so one written down anywhere means the same behaviour here. That takes a conversion, because those ranges were chosen for a world whose particles sit about fifty units apart. They also carry length, since separation is in length² per step². Ollin derives the conversion from how densely `count` particles fill `bounds`, and derives the sight radius and the contact distance the same way. A particle then sees about as many others as one in the published world did, and there is nothing else for you to name. Dropped in unconverted, separation comes out several times too strong and the swarm blows apart.
+**Recipes are stored in the published units**, so one written down anywhere means the same behavior here. That takes a conversion, because those ranges were chosen for a world whose particles sit about fifty units apart. They also carry length, since separation is in length² per step². Ollin derives the conversion from how densely `count` particles fill `bounds`, and derives the sight radius and the contact distance the same way. A particle then sees about as many others as one in the published world did, and there is nothing else for you to name. Dropped in unconverted, separation comes out several times too strong and the swarm blows apart.
 
 Example: `Examples/Simulation/SwarmChemistry`.
 

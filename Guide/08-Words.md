@@ -122,7 +122,7 @@ One glyph per letter is an English idea.
 
 Every call above works for any script without configuration. Paste in Arabic, Japanese, Devanagari or Thai and it draws. The system's layout engine shapes it. It finds a font that has the right letters. The figure shows four assumptions that stop being true.
 
-<img src="Images/08-Words/EveryScript.jpg" alt="Four panels. A Devanagari syllable inside one box, labelled one call of the closure. An Arabic word with its pieces numbered zero to four from the left, noting that zero is the last letter read. The letter O and a waving-hand emoji drawn twice: once filled, once as outlines where only the O has any. A Japanese paragraph wrapped inside a thin box" width="680">
+<img src="Images/08-Words/EveryScript.jpg" alt="Four panels. A Devanagari syllable inside one box, labeled one call of the closure. An Arabic word with its pieces numbered zero to four from the left, noting that zero is the last letter read. The letter O and a waving-hand emoji drawn twice: once filled, once as outlines where only the O has any. A Japanese paragraph wrapped inside a thin box" width="680">
 
 **A glyph is smaller than a letter, and sometimes larger.** The top-left panel is one Devanagari syllable. It is written with four characters and drawn with three glyphs. One glyph sits to the *left* of the letter it follows. So the closure hands you a **piece**: one thing a reader would point at. `g.text` is therefore a `String`, holding all four characters here. `g.character` still returns a single `Character` for the common case.
 
@@ -204,7 +204,7 @@ drawText(passage, in: box)
 
 <img src="Images/08-Words/HangingStops.jpg" alt="The same Japanese passage in two identical boxes, each with a red rule down its right edge. On the left every character stays inside the rule and the passage runs to six lines. On the right three full stops sit across the rule and the passage fits in five" width="680">
 
-**The stop is allowed outside the box, so the writing can stay inside it.** Both boxes here are the same width and hold the same passage. On the right the stops that would not fit cross the rule instead of pushing their neighbour down. The whole passage comes out a line shorter.
+**The stop is allowed outside the box, so the writing can stay inside it.** Both boxes here are the same width and hold the same passage. On the right the stops that would not fit cross the rule instead of pushing their neighbor down. The whole passage comes out a line shorter.
 
 Japanese calls this ぶら下げ. Latin typesetters do the same thing to keep a right margin looking straight. Only stops and commas hang, in either script. A closing bracket may not open a line either, but hanging one would leave it outside the thing it closes.
 

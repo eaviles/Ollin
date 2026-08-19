@@ -110,7 +110,7 @@ Inside `draw()`, `width` and `height` always hold the canvas size, which is why 
 
 This trips up almost everyone once, so it's worth being clear about early. The thing you draw on and the thing you look at are two different things.
 
-<img src="Images/01-HelloOllin/CanvasVsWindow.jpg" alt="A large dark square labelled as the canvas at 1080 by 1080 pixels, with its corners marked as (0,0) and (1080,1080), and a smaller window containing exactly the same picture scaled down, joined by lines labelled scaled to fit" width="680">
+<img src="Images/01-HelloOllin/CanvasVsWindow.jpg" alt="A large dark square labeled as the canvas at 1080 by 1080 pixels, with its corners marked as (0,0) and (1080,1080), and a smaller window containing exactly the same picture scaled down, joined by lines labeled scaled to fit" width="680">
 
 The **canvas** is a fixed grid of pixels, 1080 by 1080 unless you say otherwise, and it's what all your coordinates are measured against. The **window** is a scaled view of that canvas, sized to fit comfortably on your screen. Drag the window smaller and the picture gets smaller on screen, but nothing about your sketch changes. `width` still reports 1080, a circle at `(540, 540)` is still exactly in the middle, and an exported image comes out at full canvas resolution regardless of how big the window happened to be.
 

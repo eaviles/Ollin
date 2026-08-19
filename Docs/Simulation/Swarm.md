@@ -97,7 +97,7 @@ Three of them are tied to each other, and a swarm that looks wrong is usually on
 
 - **`perceptionRadius` sets how many others an agent sees**, which is `count · π · radius² / canvas area`. Around twenty works. Far more and every agent is averaging over most of the swarm, so alignment and cohesion pull toward the same global mean and the structure washes out.
 - **`separationRadius` should be one or two times the mean spacing** between agents (roughly `√(area / count)`). Much larger and every agent is permanently shoving everyone, which flattens the swarm into an even gas.
-- **The turning circle is `maxSpeed² / maxForce`.** Make it a few times `perceptionRadius`. Much tighter and agents orbit inside their own neighborhood instead of travelling; much wider and they cannot answer their neighbors before leaving them behind. An agent should also take several frames to cross its perception radius.
+- **The turning circle is `maxSpeed² / maxForce`.** Make it a few times `perceptionRadius`. Much tighter and agents orbit inside their own neighborhood instead of traveling; much wider and they cannot answer their neighbors before leaving them behind. An agent should also take several frames to cross its perception radius.
 
 **`minSpeed` is the fix for a swarm that sets solid.** With the plain steering model an agent pushed at from every side simply stops, and in a crowd the stalled ones become a wall the rest jam against, so the whole thing freezes into a fixed pattern. A floor on speed keeps it flowing, on the grounds that a bird cannot hover. It is off by default because stopping is what the published model does.
 

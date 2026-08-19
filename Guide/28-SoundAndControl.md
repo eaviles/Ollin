@@ -177,7 +177,7 @@ Knobs aren't the only thing MIDI carries. Gear with a play button also broadcast
 
 The wire itself is almost comically simple, and knowing that makes everything else make sense. A MIDI clock master sends one tick, twenty-four times per beat, forever. There is no tempo number in the message, no bar count, no position. Twenty-four ticks per beat is the entire protocol, and everything musical you want is derived by counting them.
 
-<img src="Images/28-SoundAndControl/MusicalTime.jpg" alt="A strip of evenly spaced tick marks divided into four labelled beats spanning one bar, with a marker partway through beat two, and a list of what each clock reader returns at that position" width="680">
+<img src="Images/28-SoundAndControl/MusicalTime.jpg" alt="A strip of evenly spaced tick marks divided into four labeled beats spanning one bar, with a marker partway through beat two, and a list of what each clock reader returns at that position" width="680">
 
 ```swift
 lazy var clock = TempoClock(from: midi)

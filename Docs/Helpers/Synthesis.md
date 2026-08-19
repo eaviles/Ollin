@@ -158,7 +158,7 @@ The geometric waves are corrected as they are drawn. A sawtooth therefore still 
 
 ### Physical models
 
-A wave is a shape drawn over and over. A physical model is the thing itself, worked out as it goes, and what you hear falls out of that rather than being dialled in.
+A wave is a shape drawn over and over. A physical model is the thing itself, worked out as it goes, and what you hear falls out of that rather than being dialed in.
 
 There are four, and they split into two kinds. A plucked string and a struck body are **set going once** and then left to fade, so the whole note is decided at its start. A bowed string and a blown tube are **kept going**. The note lasts as long as you keep driving it, and it can change while it sounds. `Synth.drive` is that driving, and it is the difference this section is really about.
 
@@ -280,7 +280,7 @@ synth.drive = 0.7          // and keep moving it while the note sounds
 
 The string is the same string. What is different is that a pluck happens once and a bow keeps happening.
 
-What makes it sound bowed is one nonlinearity. Rosin grips harder when the bow and the string are travelling together than when they are sliding past each other. The string is therefore caught by the bow, dragged sideways, torn loose, snapped back, and caught again, hundreds of times a second. That cycle is the tone, and it is why a bowed note comes out close to a sawtooth. The string spends most of each cycle stuck to the bow.
+What makes it sound bowed is one nonlinearity. Rosin grips harder when the bow and the string are traveling together than when they are sliding past each other. The string is therefore caught by the bow, dragged sideways, torn loose, snapped back, and caught again, hundreds of times a second. That cycle is the tone, and it is why a bowed note comes out close to a sawtooth. The string spends most of each cycle stuck to the bow.
 
 | Setting | What it does |
 |---|---|
@@ -396,7 +396,7 @@ synth.voice = Voice(sampled: Sampled(), envelope: .plucked)
 synth.play("C4", for: 1.5)
 ```
 
-Ollin bundles one small instrument, so this can be heard working without downloading anything. It is a struck bar recorded at five pitches. `Scripts/make-sample-instrument.swift` generates it rather than sourcing it, so it is Ollin's own and carries nobody's licence. It is a demonstration, not a library.
+Ollin bundles one small instrument, so this can be heard working without downloading anything. It is a struck bar recorded at five pitches. `Scripts/make-sample-instrument.swift` generates it rather than sourcing it, so it is Ollin's own and carries nobody's license. It is a demonstration, not a library.
 
 #### Why the instrument is set separately from the voice
 
@@ -427,7 +427,7 @@ The opcodes read are the ones that decide which file plays and at what pitch. Th
 
 #### Where to find instruments
 
-The licences matter here, so they are worth stating alongside the links.
+The licenses matter here, so they are worth stating alongside the links.
 
 **Free to use and to redistribute (CC0, public domain).** These can be bundled into anything, including something you sell.
 
@@ -436,9 +436,9 @@ The licences matter here, so they are worth stating alongside the links.
 | [VCSL](https://github.com/sgossner/VCSL) | Versilian Community Sample Library. CC0, broad, ships in SFZ, and made explicitly for use inside software |
 | [VSCO 2 Community Edition](https://versilian-studios.com/vsco-community/) | CC0 chamber orchestra, about 3 GB |
 | [University of Iowa MIS](https://theremin.music.uiowa.edu/mis.html) | Anechoic instrument recordings, free of restrictions. Raw audio with no SFZ map, so you write the regions |
-| [FreePats](https://freepats.zenvoid.org/) | A collection of free instruments; check each one, since the licences differ across it |
+| [FreePats](https://freepats.zenvoid.org/) | A collection of free instruments; check each one, since the licenses differ across it |
 
-**Free per item.** [Freesound](https://freesound.org/) is enormous, but every upload carries its own licence: CC0, CC-BY, or CC-BY-NC. Filter by licence and check each clip, because the three are mixed together.
+**Free per item.** [Freesound](https://freesound.org/) is enormous, but every upload carries its own license: CC0, CC-BY, or CC-BY-NC. Filter by license and check each clip, because the three are mixed together.
 
 **Free to make music with, but not to redistribute.** The [Philharmonia Orchestra samples](https://philharmonia.co.uk/resources/sound-samples/) are excellent. Their terms say they must not be made available "as is", meaning as samples or as a sampler instrument. That is fine for a piece you release. It is not something to ship inside a sketch you hand to someone else.
 
@@ -641,7 +641,7 @@ Said plainly, so you can plan around it rather than go looking:
 - **No effect of your own.** The chain holds the four kinds above. There is no seam for a filter you wrote yourself, the way [`Shader`](../Shaders/Shaders.md) is that seam for drawing.
 - **No sequencer.** Notes are asked for from `draw()`, on whatever clock the sketch keeps. [`Composition`](./Composition.md) is what decides which notes and when. [`TempoClock`](../Integration/MIDI.md) is the way to run on someone else's clock.
 - **A sampler, but not a sample editor.** [Recordings](#sampled-instruments) are read and played. Nothing here trims, loops by ear, or lays out a map for you. The map is the `.sfz`.
-- **One recording at a time per note.** There is no crossfading between velocity layers, or between neighbouring recordings. A change of layer is a step rather than a fade.
+- **One recording at a time per note.** There is no crossfading between velocity layers, or between neighboring recordings. A change of layer is a step rather than a fade.
 - **No jet-driven tube.** The blown tube is reed-driven. A flute is a jet of air splitting across an edge, which is a different excitation and is not here.
 - **One drive per instrument.** Every note a `Synth` is playing is bowed or blown by the same hand, which is usually what you want. Two independently driven lines means two `Synth`s.
 - **One position per instrument.** A `Synth` is placed as a whole. Several sounds in several places means several `Synth`s, which is fine and cheap.

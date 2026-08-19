@@ -88,7 +88,7 @@ Anything that reads moving pictures in Ollin reads it through a protocol, so a s
 
 | Protocol | What it is for | What it asks for |
 |---|---|---|
-| `FrameSource` | Frames anything can analyse. The vision trackers attach to one. | `var frameTap: FrameTap?` |
+| `FrameSource` | Frames anything can analyze. The vision trackers attach to one. | `var frameTap: FrameTap?` |
 | `VideoFeed` | Frames a sketch draws with `drawFrame`. | `frame`, `frameSize`, `waitingMessage` |
 | `AudioTapSource` | Blocks of samples. The audio analyzer and the listeners attach to one. | `var audioTap: AudioTap?` |
 
@@ -105,7 +105,7 @@ public final class WallSource: FrameSource {
 }
 ```
 
-Conform to more than one where it makes sense. The video player conforms to all three, so one object can be drawn, analysed, and listened to at once. The camera conforms to the first two, having no sound to offer.
+Conform to more than one where it makes sense. The video player conforms to all three, so one object can be drawn, analyzed, and listened to at once. The camera conforms to the first two, having no sound to offer.
 
 Two rules matter here. Frames arrive on whatever thread produced them, which is why the tap is `@Sendable`; hand the frame across rather than touching main-thread state inside it. And there is one tap per source, so setting it replaces the previous consumer rather than adding to it.
 
@@ -189,7 +189,7 @@ From 1.0 that changes. Every public rename or removal ships an `@available(*, de
 The generated README carries this as a checklist. The first item is the one that actually stops people:
 
 - **Point `Package.swift` at the framework's repository**, not at a path on your machine. `ollin new` writes a local path, because that is what builds straight away while you work. Nobody else has that folder.
-- **Add a `LICENSE`.** Your extension is your own work under your own licence. Ollin bundles none of it, so nothing about the framework's licence reaches you.
+- **Add a `LICENSE`.** Your extension is your own work under your own license. Ollin bundles none of it, so nothing about the framework's license reaches you.
 - **Name the repository `ollinx-yourthing`**, so it is recognisable and turns up in a search.
 - **Say which Ollin version it was built against**, and tag a version of your own so a dependant can ask for one.
 

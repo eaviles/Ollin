@@ -197,7 +197,7 @@ growth.step()
 drawMesh(growth.mesh)
 ```
 
-<img src="Images/22-Meshes/GrowingSurface.jpg" alt="Three forms in a row against black: a smooth yellow sphere labelled the seed, an orange ball completely covered in even brain-like folds labelled everywhere, and a flattened orange form with a smooth top and a ruffled rim labelled at the equator" width="680">
+<img src="Images/22-Meshes/GrowingSurface.jpg" alt="Three forms in a row against black: a smooth yellow sphere labeled the seed, an orange ball completely covered in even brain-like folds labeled everywhere, and a flattened orange form with a smooth top and a ruffled rim labeled at the equator" width="680">
 
 That middle one is a plain sphere that grew evenly, and it is worth sitting with, because nobody told it to make lobes. Grow a ball uniformly and it does not become a bigger ball. It becomes a brain. Every fold in it is the surface running out of room.
 
@@ -300,7 +300,7 @@ material(.dielectric(roughness: 0.4))     // a non-metal, satin
 
 **Metal or not** is the first question, and it's close to binary in the real world. Metals tint the light they reflect (gold reflects gold) and have no color of their own underneath. Everything else, called a *dielectric*, reflects white highlights and shows its own color through them. That covers plastic, glass, skin, paint, and stone. **Roughness** is the second, and it's the one you'll actually reach for. It sets how scattered the reflection is, from `0` for a mirror to `1` for chalk.
 
-<img src="Images/22-Meshes/Roughness.jpg" alt="Five identical grey metal spheres in a row labeled 0.02, 0.15, 0.32, 0.6, and 1.0. The first is a dark mirror with a tiny sharp highlight, and each one after it has a broader, softer, paler highlight until the last is an almost flat matte grey" width="680">
+<img src="Images/22-Meshes/Roughness.jpg" alt="Five identical gray metal spheres in a row labeled 0.02, 0.15, 0.32, 0.6, and 1.0. The first is a dark mirror with a tiny sharp highlight, and each one after it has a broader, softer, paler highlight until the last is an almost flat matte gray" width="680">
 
 That is one material with one number changed. The leftmost sphere is a mirror, so what you see on it is mostly a reflection of the room it's standing in. That's why it's dark with one small bright highlight. As roughness grows, that reflection smears out into a wide sheen. By `1.0` it has spread so far that the sphere just reads as its average brightness. `fill` still sets the color, exactly as before, and roughness only decides how the surface handles light.
 
@@ -331,7 +331,7 @@ material(.metal(roughness: 0.12))
 drawMesh(body)
 ```
 
-<img src="Images/22-Meshes/EnvironmentSky.jpg" alt="Three chrome balls resting together on a grey-blue floor under a clear pale blue sky, their whole surfaces reflecting soft sky gradients" width="680">
+<img src="Images/22-Meshes/EnvironmentSky.jpg" alt="Three chrome balls resting together on a gray-blue floor under a clear pale blue sky, their whole surfaces reflecting soft sky gradients" width="680">
 
 <img src="Images/22-Meshes/EnvironmentSunset.jpg" alt="The same three chrome balls in the same position, now under a warm evening HDRI of Venice. Ochre buildings and trees fill the background, and the buildings are clearly visible reflected in the left flank of the largest ball" width="680">
 

@@ -120,7 +120,7 @@ ollin new Listening --with audio,images,params
 
 There are three columns, and the window resizes. The stage takes the slack, because watching the thing run is the reason to open a window rather than type the command.
 
-**Left, one list.** Templates sit as a group at the top. Then come the examples, grouped the way the folders already group them. One filter runs over both, and it matches group names as well as sketch names. Ten curated starting points and 350 catalogued ones are a short list and a long one, not two modes.
+**Left, one list.** Templates sit as a group at the top. Then come the examples, grouped the way the folders already group them. One filter runs over both, and it matches group names as well as sketch names. Ten curated starting points and 350 cataloged ones are a short list and a long one, not two modes.
 
 **Middle, the stage.** The starting point runs here. A line under it says what it is, how fast it is going, and whether it was just built or came from the cache. For the 3D template, the options strip sits under that (see below).
 
