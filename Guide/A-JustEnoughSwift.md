@@ -178,7 +178,7 @@ Read the first line this way. `Meteors` is a new class built on `Sketch`, the fr
 The deeper split behind the keyword is **who copies**. Swift types come in two kinds:
 
 - **Structs are values.** Assigning one, or passing it to a function, copies it, and the copy and the original then lead separate lives. `Vector2`, `Color`, `Rectangle`, and `Shape` are structs, which is why you can hand a position to a function without worrying it'll be changed behind your back.
-- **Classes are references.** Assigning one shares it, so both names point at the same object. Ollin's living, stateful things are classes: the physics `World` and its particles, trackers, your sketch itself. [Chapter 10](10-ForcesAndPhysics.md) leans on this when a `Particle` added to the world and kept in your own array is one object seen from two places.
+- **Classes are references.** Assigning one shares it, so both names point at the same object. Ollin's living, stateful things are classes: the physics `World` and its particles, trackers, your sketch itself. [Chapter 11](11-ForcesAndPhysics.md) leans on this when a `Particle` added to the world and kept in your own array is one object seen from two places.
 
 One consequence trips everyone once: `let` on a class instance means the *reference* can't be reassigned, but the object it points to can still change. `let world = World()` happily accepts `world.gravity = ...` forever. On the struct side the fine print runs the other way, because many Ollin structs are immutable, so instead of assigning into `p.x` you build a changed copy with arithmetic (`p + Vector2(2.3, 0)`) or a helper like `p.with(x: 0)`.
 
@@ -250,7 +250,7 @@ The guide uses three, all from Ollin:
 drawText("frame \(frameCount)", 40, 40)
 ```
 
-Triple quotes make a multiline string, verbatim, line breaks and all. That matters in [Chapter 16](16-YourFirstShader.md), where a fragment shader rides inside your Swift file as one `"""` literal.
+Triple quotes make a multiline string, verbatim, line breaks and all. That matters in [Chapter 17](17-YourFirstShader.md), where a fragment shader rides inside your Swift file as one `"""` literal.
 
 ## What the guide never needed
 
@@ -267,4 +267,4 @@ If a chapter's Swift ever still feels like the obstacle, that's a bug in this gu
 
 ---
 
-[Contents](README.md#contents) · Previous: [Chapter 23, Sharing and performing](23-SharingAndPerforming.md) · Next: [Appendix B, Just enough math, visually](B-JustEnoughMath.md)
+[Contents](README.md#contents) · Previous: [Chapter 24, Sharing and performing](24-SharingAndPerforming.md) · Next: [Appendix B, Just enough math, visually](B-JustEnoughMath.md)

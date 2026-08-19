@@ -190,6 +190,24 @@ for path in scope:
         if not dry_run:
             path.write_text(after)
 
+# The contents list writes its numbers out rather than leaving them to
+# markdown's own counting, so they have to be reset from the file each entry
+# links to. Done after the map pass, when those links are already correct.
+readme = GUIDE / "README.md"
+if readme.exists():
+    before = readme.read_text()
+    after = re.sub(
+        r"^(\d+)\. (\*\*\[[^\]]+\]\((\d\d)-[A-Za-z0-9]+\.md\))",
+        lambda m: f"{int(m.group(3))}. {m.group(2)}",
+        before,
+        flags=re.M,
+    )
+    if after != before:
+        if readme not in changed:
+            changed.append(readme)
+        if not dry_run:
+            readme.write_text(after)
+
 for path in figures:
     before = path.read_text()
     after = "".join(

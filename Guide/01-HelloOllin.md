@@ -161,7 +161,7 @@ Colors come as names (`.white`, `.black`, and the rest of the CSS set) or as hex
 
 When you want a rectangle centered on a point instead of hung from its corner, ask for it by name: `drawRect(center: Vector2(x, y), width: w, height: h)`. Most shapes offer both forms, one taking bare numbers in a fixed order and one naming the anchor, and naming the anchor is how you say which part of the shape the position refers to.
 
-> **Swift note.** `Vector2(x, y)` bundles an x and a y into a single value, so you can pass a position around as one thing instead of two loose numbers. That's all you need from it here. [Chapter 9](09-Vectors.md) gives it a whole chapter, because once a position is one value you can add positions together, and that turns out to be how motion and forces get written.
+> **Swift note.** `Vector2(x, y)` bundles an x and a y into a single value, so you can pass a position around as one thing instead of two loose numbers. That's all you need from it here. [Chapter 10](10-Vectors.md) gives it a whole chapter, because once a position is one value you can add positions together, and that turns out to be how motion and forces get written.
 
 > **Swift note.** Some calls take bare values in a fixed order, like `drawCircle(540, 540, 200)` for x, y, and radius, which is a convention you'll internalize quickly. Others name their values, like `Color(hex: 0xE4572E)`, where the `hex:` is part of the call. And `.white` is shorthand for `Color.white`, because Swift lets you drop the type name when it can already tell what you mean.
 
@@ -316,7 +316,7 @@ Before moving on, make the piece yours. Some directions worth trying:
 
 ## Where this comes from
 
-The `setup()` and `draw()` sketch model comes from [Processing](https://processing.org) (Casey Reas and Ben Fry, 2001), the project that made creative coding a field, and it continues through [p5.js](https://p5js.org), [openFrameworks](https://openframeworks.cc), and [OPENRNDR](https://openrndr.org), each of which shaped Ollin's design. What Ollin does differently is leave motion on by default, turning around the usual arrangement where animation is something you opt into. The name is the Nahuatl word for movement, the seventeenth day sign of the Aztec calendar. The edit-and-watch live-reload loop belongs to a long lineage of live-coding tools, and you'll meet its stage-performance form in [Chapter 23](23-SharingAndPerforming.md).
+The `setup()` and `draw()` sketch model comes from [Processing](https://processing.org) (Casey Reas and Ben Fry, 2001), the project that made creative coding a field, and it continues through [p5.js](https://p5js.org), [openFrameworks](https://openframeworks.cc), and [OPENRNDR](https://openrndr.org), each of which shaped Ollin's design. What Ollin does differently is leave motion on by default, turning around the usual arrangement where animation is something you opt into. The name is the Nahuatl word for movement, the seventeenth day sign of the Aztec calendar. The edit-and-watch live-reload loop belongs to a long lineage of live-coding tools, and you'll meet its stage-performance form in [Chapter 24](24-SharingAndPerforming.md).
 
 ## Go deeper
 

@@ -51,7 +51,7 @@ for p in grid(columns: 12, rows: 12, padding: 70, distribution: .spanning).point
 
 Two more things are worth knowing before we move on. `grid(...)` covers the whole canvas, but `Grid(in: someRectangle, ...)` lays one inside any rectangle. Since a cell's `frame` is itself a rectangle, grids nest. A grid where each cell holds a smaller grid is one more loop, and a classic look. And for margins that differ per edge, `padding:` takes more than a bare number: `.symmetric(horizontal: 40, vertical: 20)`, or any mix via `Insets`.
 
-> **Swift note.** `grid(...).cells` chains a call and a property, building the grid and then asking for its cells. `cell` in the loop is a small value with named parts you read with a dot (`cell.frame`, `cell.column`), and `drawRect` accepts the frame whole, with no unpacking into x and y. `p.position` is a `Vector2`, a pair of coordinates carried as one value, and `drawCircle(center:radius:)` takes it directly. [Chapter 9](09-Vectors.md) makes proper friends with vectors, and until then you can read `Vector2` as "a point".
+> **Swift note.** `grid(...).cells` chains a call and a property, building the grid and then asking for its cells. `cell` in the loop is a small value with named parts you read with a dot (`cell.frame`, `cell.column`), and `drawRect` accepts the frame whole, with no unpacking into x and y. `p.position` is a `Vector2`, a pair of coordinates carried as one value, and `drawCircle(center:radius:)` takes it directly. [Chapter 10](10-Vectors.md) makes proper friends with vectors, and until then you can read `Vector2` as "a point".
 
 ## Move the paper
 
@@ -180,7 +180,7 @@ withClip(star) {
 
 `withClip` takes a `Shape`, a `Rectangle`, or a `Circle`, and confines everything drawn inside the block to that region. What makes it useful rather than merely convenient is that you don't have to work out the intersection yourself. The stripes in the figure are the same handful of long diagonal lines in all three panels. They are drawn straight past the edges, and the region decides what survives.
 
-Nesting is the other half. A clip inside a clip keeps only what falls in both. That is how the third panel gets the lens-shaped overlap, with no geometry on your part. Letters make good clips too, since [Chapter 8](08-WordsAndPictures.md)'s `textToShapes` hands back shapes, so you can pour a whole pattern into a word.
+Nesting is the other half. A clip inside a clip keeps only what falls in both. That is how the third panel gets the lens-shaped overlap, with no geometry on your part. Letters make good clips too, since [Chapter 8](08-Words.md)'s `textToShapes` hands back shapes, so you can pour a whole pattern into a word.
 
 ## Grids that aren't square
 

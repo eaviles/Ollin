@@ -31,7 +31,7 @@ Both kinds of image are already at work on this page: the piece above is [`Figur
 
 ## How to read it
 
-Read the chapters in order the first time; each builds only on the ones before it. They also grow as the subject deepens: Chapter 18 is several times the size of its neighbors, so budget for it. Anything needing hardware beyond the Mac always leads with the path every reader can follow. Work along in the live-reload host (`swift run OllinLive path/to/YourSketch.swift`), which recompiles on save so the window never closes while you experiment. [Chapter 1](01-HelloOllin.md) sets this up.
+Read the chapters in order the first time; each builds only on the ones before it. They also grow as the subject deepens: Chapter 19 is several times the size of its neighbors, so budget for it. Anything needing hardware beyond the Mac always leads with the path every reader can follow. Work along in the live-reload host (`swift run OllinLive path/to/YourSketch.swift`), which recompiles on save so the window never closes while you experiment. [Chapter 1](01-HelloOllin.md) sets this up.
 
 If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps what you already know onto Ollin. If you're new to Swift, [Appendix A](A-JustEnoughSwift.md) and the [Swift quick reference](../Docs/Swift.md) cover just enough of the language to be productive.
 
@@ -46,34 +46,35 @@ If you're coming from p5.js or Processing, [Appendix C](C-ComingFromP5.md) maps 
 5. **[Noise](05-Noise.md).** What Perlin noise is, what it's for, and how to drive motion and form with it.
 6. **[Grids and repetition](06-GridsAndRepetition.md).** The grid helper, moving the paper with transforms, symmetry and the kaleidoscope fold, clipping, and the divisions that aren't square: hex, triangle, recursive panels, mazes, and circle foam.
 7. **[Tiles that cover the plane](07-Tiles.md).** Tiles that agree at their edges: Truchet, hitomezashi, the never-repeating sets (Penrose, Wang, girih, and the single-shape spectre), and hyperbolic tiling on the Poincaré disk.
-8. **[Words and pictures](08-WordsAndPictures.md).** Drawing text, the three font kinds, text as geometry, typesetting in any script, pictures reduced to marks, and numbers from CSV and JSON.
+8. **[Words](08-Words.md).** Drawing text, the three kinds of font, per-glyph motion, letters as geometry you can warp and respace, and typesetting in any script: vertical, justified, and with punctuation that hangs.
+9. **[Pictures and data](09-Pictures.md).** A picture as something to read rather than display: marks, stipple, one unbroken line, thread between pins, halftone, sorted pixels, and numbers from CSV and JSON.
 
 ### Part II: Systems that come alive
 
-9. **[Vectors, gently](09-Vectors.md).** Vectors as arrows; position, velocity, acceleration; steering toward a target.
-10. **[Forces and physics](10-ForcesAndPhysics.md).** Forces by hand, then a physics world: springs and particles, rigid bodies and joints, grabbing with the mouse.
-11. **[Flocks and swarms](11-FlocksAndSwarms.md).** One creature that steers (seek, arrive, wander), then flocking from three local rules, then a line that grows into coral.
-12. **[Growing things](12-GrowingThings.md).** A recursive tree, L-system grammars, the chaos game and its fractal cousins, growth that claims space, frost from frozen walkers, and tiles that must agree.
-13. **[Fields and flow](13-FieldsAndFlow.md).** A direction at every point: streamlines, evenly spaced flow, riding particles, and attractors found in formulas.
-14. **[Shapes as material](14-ShapesAsMaterial.md).** Geometry you hold and edit: booleans, offsets, strokes as regions, Voronoi mosaics, packing, and hatching for pen plotters.
+10. **[Vectors, gently](10-Vectors.md).** Vectors as arrows; position, velocity, acceleration; steering toward a target.
+11. **[Forces and physics](11-ForcesAndPhysics.md).** Forces by hand, then a physics world: springs and particles, rigid bodies and joints, grabbing with the mouse.
+12. **[Flocks and swarms](12-FlocksAndSwarms.md).** One creature that steers (seek, arrive, wander), then flocking from three local rules, then a line that grows into coral.
+13. **[Growing things](13-GrowingThings.md).** A recursive tree, L-system grammars, the chaos game and its fractal cousins, growth that claims space, frost from frozen walkers, and tiles that must agree.
+14. **[Fields and flow](14-FieldsAndFlow.md).** A direction at every point: streamlines, evenly spaced flow, riding particles, and attractors found in formulas.
+15. **[Shapes as material](15-ShapesAsMaterial.md).** Geometry you hold and edit: booleans, offsets, strokes as regions, Voronoi mosaics, packing, and hatching for pen plotters.
 
 ### Part III: Pixels and light
 
-15. **[Layers and effects](15-LayersAndEffects.md).** Off-screen layers, GPU filters, compositing, feedback, accumulation, HDR.
-16. **[Your first shader](16-YourFirstShader.md).** Per-pixel thinking, uv space, writing a `shade` function, chaining visuals.
-17. **[Simulations](17-Simulations.md).** Cellular automata, sand, reaction-diffusion, fluids and waves, a million particles, crowds that organize themselves, and evolution, nearly all of it on the GPU.
+16. **[Layers and effects](16-LayersAndEffects.md).** Off-screen layers, GPU filters, compositing, feedback, accumulation, HDR.
+17. **[Your first shader](17-YourFirstShader.md).** Per-pixel thinking, uv space, writing a `shade` function, chaining visuals.
+18. **[Simulations](18-Simulations.md).** Cellular automata, sand, reaction-diffusion, fluids and waves, a million particles, crowds that organize themselves, and evolution, nearly all of it on the GPU.
 
 ### Part IV: The third dimension
 
-18. **[3D, gently](18-3DGently.md).** A camera, solids, lights and materials, meshes and their maps, terrain, instancing at scale, and a physics world with vehicles, characters, cloth, and water. By far the guide's biggest chapter.
-19. **[Sculpting with fields](19-SculptingWithFields.md).** Distance fields that merge and blend, in 2D and raymarched 3D, then the finish: measured materials, environments, glass, and light that bounces.
-20. **[Depth and the iPhone as a sensor](20-DepthAndThePhone.md).** Point clouds, recorded and live RGBD, the phone's body, hand, and gaze streams, and scanning the room you're in.
+19. **[3D, gently](19-3DGently.md).** A camera, solids, lights and materials, meshes and their maps, terrain, instancing at scale, and a physics world with vehicles, characters, cloth, and water. By far the guide's biggest chapter.
+20. **[Sculpting with fields](20-SculptingWithFields.md).** Distance fields that merge and blend, in 2D and raymarched 3D, then the finish: measured materials, environments, glass, and light that bounces.
+21. **[Depth and the iPhone as a sensor](21-DepthAndThePhone.md).** Point clouds, recorded and live RGBD, the phone's body, hand, and gaze streams, and scanning the room you're in.
 
 ### Part V: Out into the world
 
-21. **[Sound and control](21-SoundAndControl.md).** Hearing loudness, spectrum, beats, and speech; making sound with synths, physical models, and music the sketch composes; MIDI, OSC, and game controllers.
-22. **[Seeing](22-Seeing.md).** The webcam as input; faces, hands, bodies, edges, and motion as typed values; video as material.
-23. **[Sharing and performing](23-SharingAndPerforming.md).** Stills, video, GIF, SVG for plotters, prints and 3D prints, feeding other apps, lighting rigs, pieces that run on a wall for weeks, and live coding on stage.
+22. **[Sound and control](22-SoundAndControl.md).** Hearing loudness, spectrum, beats, and speech; making sound with synths, physical models, and music the sketch composes; MIDI, OSC, and game controllers.
+23. **[Seeing](23-Seeing.md).** The webcam as input; faces, hands, bodies, edges, and motion as typed values; video as material.
+24. **[Sharing and performing](24-SharingAndPerforming.md).** Stills, video, GIF, SVG for plotters, prints and 3D prints, feeding other apps, lighting rigs, pieces that run on a wall for weeks, and live coding on stage.
 
 ### Appendices
 
