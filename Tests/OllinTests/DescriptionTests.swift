@@ -51,7 +51,7 @@ struct DescriptionTests {
         let s = sketch()
         for frame in 0..<10 {
             s.describe("sun", as: "a yellow disc at \(frame)")
-            s.describe("sea", as: "a grey band at \(frame)")
+            s.describe("sea", as: "a gray band at \(frame)")
         }
         #expect(s.accessibleDescription.elements.count == 2)
         #expect(s.accessibleDescription.elements.map(\.name) == ["sun", "sea"])
@@ -78,7 +78,7 @@ struct DescriptionTests {
     @Test func emptyTextDropsOnePartAndLeavesTheRest() {
         let s = sketch()
         s.describe("sun", as: "a yellow disc")
-        s.describe("sea", as: "a grey band")
+        s.describe("sea", as: "a gray band")
         s.describe("sun", as: "")
         #expect(s.accessibleDescription.elements.map(\.name) == ["sea"])
     }
@@ -125,7 +125,7 @@ struct DescriptionTests {
         description.setElement(name: "sun", text: "a pale disc, lower now", region: nil)
         #expect(description.shape == first)          // same parts, new words
 
-        description.setElement(name: "sea", text: "a grey band", region: nil)
+        description.setElement(name: "sea", text: "a gray band", region: nil)
         #expect(description.shape != first)          // a part that was not there
 
         var withSummary = SketchDescription()

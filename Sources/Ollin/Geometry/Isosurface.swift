@@ -408,14 +408,14 @@ struct IsosurfaceGrid {
                 indices.append(contentsOf: [v[1], v[2], v[3], v[1], v[3], v[0]])
             }
         default:
-            var centre = Vector3.zero, normal = Vector3.zero
+            var center = Vector3.zero, normal = Vector3.zero
             for index in v {
-                centre += positions[Int(index)]
+                center += positions[Int(index)]
                 normal += normals[Int(index)]
             }
-            centre *= 1 / Double(v.count)
+            center *= 1 / Double(v.count)
             let hub = UInt32(positions.count)
-            positions.append(centre)
+            positions.append(center)
             normals.append(normal.lengthSquared > 0 ? normal.normalized : Vector3(0, 1, 0))
             for step in 0 ..< v.count {
                 indices.append(contentsOf: [hub, v[step], v[(step + 1) % v.count]])

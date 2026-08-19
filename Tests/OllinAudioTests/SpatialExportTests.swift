@@ -104,17 +104,17 @@ import Testing
     /// channel alone and the right is digital silence.
     @MainActor
     @Test func anUnplacedInstrumentStaysInTheMiddle() {
-        let centred = placed(at: nil)
-        #expect(centred.contains { abs($0) > 0.005 })
+        let centered = placed(at: nil)
+        #expect(centered.contains { abs($0) > 0.005 })
 
         // Both ears carry the sound, and carry the same sound.
-        #expect(left(centred) > 0.005, "left is silent")
-        #expect(right(centred) > 0.005, "right is silent")
+        #expect(left(centered) > 0.005, "left is silent")
+        #expect(right(centered) > 0.005, "right is silent")
 
         // The same sample for sample rather than merely the same loudness.
-        let frames = centred.count / 2
+        let frames = centered.count / 2
         var identical = true
-        for frame in 0..<frames where centred[frame * 2] != centred[frame * 2 + 1] {
+        for frame in 0..<frames where centered[frame * 2] != centered[frame * 2 + 1] {
             identical = false
             break
         }
@@ -125,9 +125,9 @@ import Testing
     /// paths really are different rather than the placing being ignored.
     @MainActor
     @Test func placingChangesTheSoundtrackAtAll() {
-        let centred = placed(at: nil)
+        let centered = placed(at: nil)
         let offToOneSide = placed(at: Vector3(-6, 0, 0))
-        #expect(centred != offToOneSide)
+        #expect(centered != offToOneSide)
     }
 
     // MARK: - What the listener does

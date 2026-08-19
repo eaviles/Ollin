@@ -32,7 +32,7 @@ final class HangingStops: Sketch {
         fill(faint)
         textSize(14)
         textAlign(.left, .top)
-        drawText("the stop takes its neighbour with it", 40, 400)
+        drawText("the stop takes its neighbor with it", 40, 400)
         fill(accent)
         drawText("the stop crosses the rule, and the pair stays", 464, 400)
     }

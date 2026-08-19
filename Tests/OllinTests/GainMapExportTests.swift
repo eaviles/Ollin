@@ -62,14 +62,14 @@ struct GainMapExportTests {
 
     /// The brightest component in a buffer, and the color of the pixel holding
     /// it.
-    private func brightest(_ buffer: [Float]) -> (peak: Float, colour: SIMD3<Float>) {
+    private func brightest(_ buffer: [Float]) -> (peak: Float, color: SIMD3<Float>) {
         var peak: Float = -1
-        var colour = SIMD3<Float>()
+        var color = SIMD3<Float>()
         for p in stride(from: 0, to: buffer.count, by: 4) {
             let c = SIMD3(buffer[p], buffer[p + 1], buffer[p + 2])
-            if c.max() > peak { peak = c.max(); colour = c }
+            if c.max() > peak { peak = c.max(); color = c }
         }
-        return (peak, colour)
+        return (peak, color)
     }
 
     private func temporary(_ name: String) -> URL {
@@ -107,7 +107,7 @@ struct GainMapExportTests {
         try? FileManager.default.removeItem(at: url)
     }
 
-    @Test("a coloured highlight keeps its colour")
+    @Test("a colored highlight keeps its color")
     func colouredHighlightKeepsItsHue() throws {
         let sketch = Core()
         // Clamping this per channel gives (1, 1, 0.72), so the three channels
@@ -115,11 +115,11 @@ struct GainMapExportTests {
         sketch.core = Color(red: 4, green: 2.2, blue: 0.72)
         let (image, frame) = try rendered(sketch)
 
-        let url = temporary("colour.heic")
+        let url = temporary("color.heic")
         _ = try #require(OllinApp.writeHEIC(image, to: url.path))
         let expanded = try pixels(of: url, expanded: true, width: image.width, height: image.height)
-        let got = brightest(expanded).colour
-        let want = brightest(frame.pixels).colour
+        let got = brightest(expanded).color
+        let want = brightest(frame.pixels).color
         for channel in 0..<3 {
             let error = abs(got[channel] / max(want[channel], 1e-4) - 1)
             #expect(error < 0.03,

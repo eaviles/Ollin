@@ -65,7 +65,7 @@ public struct MeshPrintCheck: Sendable {
             found.append("\(nonManifoldEdgeCount) edge\(nonManifoldEdgeCount == 1 ? "" : "s") join more than two triangles")
         }
         if !isConsistentlyOriented {
-            found.append("neighbouring triangles disagree about which side is out")
+            found.append("neighboring triangles disagree about which side is out")
         }
         if isInsideOut {
             found.append("the surface is wound inward, so it describes the space around the model")

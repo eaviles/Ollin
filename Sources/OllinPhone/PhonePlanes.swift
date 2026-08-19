@@ -213,7 +213,7 @@ public struct PhonePlanes: Sendable {
     /// lowest flat surface it has found. A sketch that wants a ground to stand on
     /// asks for this and gets an answer before ARKit has finished deciding.
     public var floor: PhonePlane? {
-        if let labelled = largest(of: .floor) { return labelled }
+        if let labeled = largest(of: .floor) { return labeled }
         return flat.min { $0.center.y < $1.center.y }
     }
 

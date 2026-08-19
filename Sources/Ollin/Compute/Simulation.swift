@@ -115,7 +115,7 @@ public final class Simulation {
             uint2 gid [[thread_position_in_grid]]) {
             uint2 size = uint2(_dst.get_width(), _dst.get_height());
             if (gid.x >= size.x || gid.y >= size.y) { return; }
-            // Toroidal neighbour read: positive-modulo wrap so any integer offset is
+            // Toroidal neighbor read: positive-modulo wrap so any integer offset is
             // in range and the field's edges join.
             #define _wrap(V, N) ((((int(V)) % int(N)) + int(N)) % int(N))
             #define tap(DX, DY) _src.read(uint2(_wrap(int(gid.x) + (DX), size.x), _wrap(int(gid.y) + (DY), size.y)))

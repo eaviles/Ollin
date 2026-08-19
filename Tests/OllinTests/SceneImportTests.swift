@@ -197,7 +197,7 @@ struct SceneImportTests {
         #expect(abs(framed.target.y - center.y) < 1e-6)
     }
 
-    @Test("Lights keep their kind, their place and their colour")
+    @Test("Lights keep their kind, their place and their color")
     func lightsCarryOver() throws {
         let opened = Ollin.Scene(contentsOf: Self.sampleScene)
         let scene = try #require(opened)

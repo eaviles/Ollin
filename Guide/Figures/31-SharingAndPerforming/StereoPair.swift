@@ -17,7 +17,7 @@ final class StereoPair: Sketch {
     /// The plan view, in canvas points: the eyes low down, the screen across.
     private let eyeY = 470.0
     private let screenY = 250.0
-    private let centre = 440.0
+    private let centerX = 440.0
     private let interocular = 64.0
 
     private let ink = Color(hex: 0x2B2B2B)
@@ -26,8 +26,8 @@ final class StereoPair: Sketch {
     private let far = Color(hex: 0x3E7CB1)
     private let onScreen = Color(hex: 0x4F8F5B)
 
-    private var leftEye: Vector2 { Vector2(centre - interocular / 2, eyeY) }
-    private var rightEye: Vector2 { Vector2(centre + interocular / 2, eyeY) }
+    private var leftEye: Vector2 { Vector2(centerX - interocular / 2, eyeY) }
+    private var rightEye: Vector2 { Vector2(centerX + interocular / 2, eyeY) }
 
     override func draw() {
         background(Color(hex: 0xF7F5F1))
@@ -157,7 +157,7 @@ final class StereoPair: Sketch {
             fill(ink)
             textSize(16)
             textAlign(.center, .top)
-            drawText("interocular", centre, eyeY + 40)
+            drawText("interocular", centerX, eyeY + 40)
             fill(quiet)
             textSize(14)
             textAlign(.right, .middle)

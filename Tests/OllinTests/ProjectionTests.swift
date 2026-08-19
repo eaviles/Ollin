@@ -505,17 +505,17 @@ struct ProjectionTests {
                 for y in 0..<side {
                     for x in 0..<side {
                         // Red, green, blue, white, clockwise from the top left.
-                        let colour: (Float16, Float16, Float16)
+                        let color: (Float16, Float16, Float16)
                         switch (x < side / 2, y < side / 2) {
-                        case (true, true):   colour = (1, 0, 0)
-                        case (false, true):  colour = (0, 1, 0)
-                        case (false, false): colour = (0, 0, 1)
-                        case (true, false):  colour = (1, 1, 1)
+                        case (true, true):   color = (1, 0, 0)
+                        case (false, true):  color = (0, 1, 0)
+                        case (false, false): color = (0, 0, 1)
+                        case (true, false):  color = (1, 1, 1)
                         }
                         let at = (y * side + x) * 4
-                        texels[at] = colour.0
-                        texels[at + 1] = colour.1
-                        texels[at + 2] = colour.2
+                        texels[at] = color.0
+                        texels[at + 1] = color.1
+                        texels[at + 2] = color.2
                         texels[at + 3] = 1
                     }
                 }

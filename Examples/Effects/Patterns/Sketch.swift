@@ -31,7 +31,7 @@ final class Patterns_Example: Sketch {
         let mixGrid = generate(.gridLines(scale: s * 4, weight: 0.08,
                                           foreground: Color(white: 0.1), background: .white))
 
-        let labelled: [(String, RenderTarget)] = [
+        let labeled: [(String, RenderTarget)] = [
             ("checkers", checkers), ("gridLines", gridTile), ("bars", bars),
             ("noise", clouds), ("noise → turbo", mapped), ("mix: noise × grid", mapped),
         ]
@@ -39,7 +39,7 @@ final class Patterns_Example: Sketch {
         // Six tiles with an even gutter inside and between them.
         let gutter = width * 0.015
         let g = grid(columns: 3, rows: 2, padding: .all(gutter), gutter: gutter)
-        for (i, (cell, item)) in zip(g.cells, labelled).enumerated() {
+        for (i, (cell, item)) in zip(g.cells, labeled).enumerated() {
             let rect = cell.frame
             drawImage(item.1.image, in: rect)
             if i == 5 {                                  // the last tile multiplies a grid over the field

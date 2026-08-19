@@ -238,8 +238,8 @@ public final class World {
             let cy = Int((p.y / cellSize).rounded(.down))
             for dx in -1 ... 1 {
                 for dy in -1 ... 1 {
-                    guard let neighbours = grid[Cell(x: cx + dx, y: cy + dy)] else { continue }
-                    for j in neighbours where j > i {
+                    guard let neighbors = grid[Cell(x: cx + dx, y: cy + dy)] else { continue }
+                    for j in neighbors where j > i {
                         resolveCollision(particles[i], particles[j])
                     }
                 }

@@ -336,9 +336,9 @@ extension OllinApp {
             sketch.performDraw()
 
             let accumulates = sketch.drawer.accumulates
-            let centre = sketch.drawer.camera3D
-            let pair = centre?.stereoPair(geometry, aspect: aspect)
-            let resolved = centre.map { geometry.resolved(for: $0, aspect: aspect) }
+            let center = sketch.drawer.camera3D
+            let pair = center?.stereoPair(geometry, aspect: aspect)
+            let resolved = center.map { geometry.resolved(for: $0, aspect: aspect) }
 
             var frame: StereoFrame?
             if accumulates || k >= skipFrames {
@@ -355,7 +355,7 @@ extension OllinApp {
                     }
                     let convergence = resolved?.convergence ?? 1
                     frame = StereoFrame(left: image, right: image, interocular: 0,
-                                        fieldOfView: centre?.horizontalFieldOfView(
+                                        fieldOfView: center?.horizontalFieldOfView(
                                             aspect: aspect, convergence: convergence) ?? .pi / 3)
                 } else if let pair, let resolved {
                     sketch.drawer.aimStereoEye(pair.left, previous: previous?.left)

@@ -157,10 +157,10 @@ struct AerialRenderProbes {
     func turningItOffRestoresTheFrame() throws {
         // `noAerialPerspective()` leaves the gate untaken: byte-identical to a
         // frame that never asked.
-        let cancelled = AerialSlabProbe()
-        cancelled.mode = .cancelled
+        let canceled = AerialSlabProbe()
+        canceled.mode = .canceled
         let off = try pixels(AerialSlabProbe())
-        let with = try pixels(cancelled)
+        let with = try pixels(canceled)
         #expect(off.data == with.data)
     }
 
@@ -277,7 +277,7 @@ struct AerialRenderProbes {
 // MARK: - Probe scenes (fixed cameras, no time, no rng)
 
 private final class AerialSlabProbe: Sketch {
-    enum Mode { case off, near, far, cancelled }
+    enum Mode { case off, near, far, canceled }
     var mode: Mode = .off
     var aerial = true
     var haziness = 0.3
@@ -290,13 +290,13 @@ private final class AerialSlabProbe: Sketch {
             // The sun sits overhead so left/right framing doesn't bias the phase.
             aerialPerspective(density: 0.03, haziness: haziness, sun: Vector3(0, 1, 0))
         }
-        if mode == .cancelled {
+        if mode == .canceled {
             aerialPerspective(density: 0.03)
             noAerialPerspective()
         }
         fill(Color(white: 0.05))
         switch mode {
-        case .near, .cancelled, .off:
+        case .near, .canceled, .off:
             withState { translate(0, 0, -5); drawBox(width: 2, height: 2, depth: 0.2) }
         case .far:
             withState { translate(0, 0, -30); drawBox(width: 12, height: 12, depth: 0.2) }

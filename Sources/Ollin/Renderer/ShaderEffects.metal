@@ -715,8 +715,8 @@ fragment float4 ollin_fx_bilateral(PresentOut in [[stage_in]],
     float2 texel = params[0].xy;
     int radius = int(clamp(params[0].z, 1.0, 6.0));
     float sigma = params[0].w;
-    float4 centre = src.sample(samp, in.uv);
-    float3 cc = ollin_unpremul(centre);
+    float4 center = src.sample(samp, in.uv);
+    float3 cc = ollin_unpremul(center);
     float sigS = max(1.0, float(radius)) * 0.5;
     float3 sum = float3(0.0); float wsum = 0.0;
     for (int j = -6; j <= 6; j++) {
@@ -732,7 +732,7 @@ fragment float4 ollin_fx_bilateral(PresentOut in [[stage_in]],
             sum += s * w; wsum += w;
         }
     }
-    return ollin_premul(sum / max(wsum, 1e-4), centre.a);
+    return ollin_premul(sum / max(wsum, 1e-4), center.a);
 }
 
 // MARK: - More stylize filters
@@ -760,9 +760,9 @@ fragment float4 ollin_fx_oilpaint(PresentOut in [[stage_in]],
                                   constant float4 *params [[buffer(0)]]) {
     float2 t = params[0].xy;
     int radius = int(clamp(params[0].z, 1.0, 8.0));
-    float4 centre = src.sample(samp, in.uv);
+    float4 center = src.sample(samp, in.uv);
     float n = float((radius + 1) * (radius + 1));
-    float3 bestMean = ollin_unpremul(centre);
+    float3 bestMean = ollin_unpremul(center);
     float bestVar = 1e9;
     int2 quad[4] = { int2(-1, -1), int2(1, -1), int2(-1, 1), int2(1, 1) };
     for (int k = 0; k < 4; k++) {
@@ -781,7 +781,7 @@ fragment float4 ollin_fx_oilpaint(PresentOut in [[stage_in]],
         float v = v3.r + v3.g + v3.b;
         if (v < bestVar) { bestVar = v; bestMean = m; }
     }
-    return ollin_premul(bestMean, centre.a);
+    return ollin_premul(bestMean, center.a);
 }
 
 // One AA'd hatch stripe set: ~0 on a stripe, →1 between, oriented by `angle`.

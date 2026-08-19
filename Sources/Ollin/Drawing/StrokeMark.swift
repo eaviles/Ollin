@@ -93,7 +93,7 @@ public struct StrokeMark: Sendable {
     private var pendingTime: Double = 0
 
     /// Distance traveled so far, handed to the dynamics as `StrokeInput.distance`.
-    private var travelled: Double = 0
+    private var traveled: Double = 0
 
     /// The first point, held back until a second one gives it a direction. A
     /// mark of one point draws nothing anyway, so nothing is lost by waiting,
@@ -125,7 +125,7 @@ public struct StrokeMark: Sendable {
         self.init(dynamics, smoothing: smoothing, minimumSpacing: minimumSpacing)
         self.samples = samples
         for (a, b) in zip(samples, samples.dropFirst()) {
-            travelled += (b.position - a.position).length
+            traveled += (b.position - a.position).length
         }
     }
 
@@ -180,10 +180,10 @@ public struct StrokeMark: Sendable {
             pending = nil
         }
 
-        travelled += distance
+        traveled += distance
         store(position,
               StrokeInput(speed: speed, pressure: smoothedForce,
-                          direction: direction, distance: travelled))
+                          direction: direction, distance: traveled))
     }
 
     /// Throw away everything recorded and reset the measurement, ready for the
@@ -193,7 +193,7 @@ public struct StrokeMark: Sendable {
         speedFilter = OneEuroFilter<Double>(minCutoff: 3, beta: 0.03)
         pressureFilter = OneEuroFilter<Double>(minCutoff: 3, beta: 0.03)
         pendingTime = 0
-        travelled = 0
+        traveled = 0
         pending = nil
     }
 
@@ -201,7 +201,7 @@ public struct StrokeMark: Sendable {
     /// not see it, which is the point: this is how a mark is built from
     /// something that is not a pointer, or replayed exactly.
     public mutating func append(_ sample: Sample) {
-        if let last = samples.last { travelled += (sample.position - last.position).length }
+        if let last = samples.last { traveled += (sample.position - last.position).length }
         samples.append(sample)
     }
 
@@ -231,7 +231,7 @@ public struct StrokeMark: Sendable {
     public var positions: [Vector2] { samples.map(\.position) }
 
     /// How far the mark has traveled, in canvas points.
-    public var length: Double { travelled }
+    public var length: Double { traveled }
 
     /// The box the recorded points fall in, or `nil` when nothing is recorded.
     /// It ignores stroke width, like every other `bounds` in the geometry

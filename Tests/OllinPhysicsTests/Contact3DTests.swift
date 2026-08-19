@@ -313,7 +313,7 @@ struct Contact3DTests {
         world.ground = 0
         let crate = world.addBody(.box(width: 1, height: 1, depth: 1),
                                   at: Vector3(0, 0.6, 0))
-        let neighbour = world.addBody(.box(width: 1, height: 1, depth: 1),
+        let neighbor = world.addBody(.box(width: 1, height: 1, depth: 1),
                                       at: Vector3(1.02, 0.6, 0))
         // Removed while the pile is still awake and reporting.
         run(world, steps: 20)
@@ -323,7 +323,7 @@ struct Contact3DTests {
         world.remove(crate)
         run(world, steps: 5)
         #expect(floor.touching.contains { $0 === crate } == false)
-        #expect(floor.touching.contains { $0 === neighbour })
+        #expect(floor.touching.contains { $0 === neighbor })
         #expect(world.contacts.allSatisfy { !$0.involves(crate) })
     }
 

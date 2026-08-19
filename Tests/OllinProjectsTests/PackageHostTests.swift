@@ -39,7 +39,7 @@ struct PackageHostTests {
         #expect(PackageHost.nearest(from: root, limit: 1) == nil)
     }
 
-    @Test("A package that cannot reach Ollin is recognised as such")
+    @Test("A package that cannot reach Ollin is recognized as such")
     func noticesAMissingDependency() throws {
         let root = try temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }

@@ -69,10 +69,10 @@ struct EvolutionTests {
         let genes = 24, count = 400
         let seeded = Evolution.seedGenomes(count: count, genes: genes, seed: 5)
         #expect(seeded.count == count * genes)
-        var travelled = 0.0, walked = 0.0
+        var traveled = 0.0, walked = 0.0
         for i in 0..<count {
             let own = Array(seeded[(i * genes)..<((i + 1) * genes)])
-            travelled += Double(simd_length(own.reduce(SIMD2<Float>.zero, +)))
+            traveled += Double(simd_length(own.reduce(SIMD2<Float>.zero, +)))
             walked += Double(own.map { simd_length($0) }.reduce(0, +))
         }
         // An arc keeps about half its length as displacement, against the fifth a walk
@@ -92,10 +92,10 @@ struct EvolutionTests {
             walkTravelled += Double(simd_length(sum))
             walkWalked += length
         }
-        #expect(travelled / walked > 0.4,
-                "opening genomes travelled \(travelled / walked) of their own length")
-        #expect(travelled / walked > (walkTravelled / walkWalked) * 2.2,
-                "arcs \(travelled / walked) against a random walk's \(walkTravelled / walkWalked)")
+        #expect(traveled / walked > 0.4,
+                "opening genomes traveled \(traveled / walked) of their own length")
+        #expect(traveled / walked > (walkTravelled / walkWalked) * 2.2,
+                "arcs \(traveled / walked) against a random walk's \(walkTravelled / walkWalked)")
     }
 
     // MARK: Metal-gated: the mechanism against its counterfactuals

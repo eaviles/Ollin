@@ -274,8 +274,8 @@ struct SoftBody3DTests {
         // Moving it pinned it, and the sheet came with it rather than tearing
         // one particle away from the rest.
         #expect(cloth.isPinned(corner))
-        let neighbours = cloth.positions.filter { ($0 - target).length < 0.35 }
-        #expect(neighbours.count > 3)
+        let neighbors = cloth.positions.filter { ($0 - target).length < 0.35 }
+        #expect(neighbors.count > 3)
     }
 
     @Test func aPushedBodyLeansIntoTheForce() throws {

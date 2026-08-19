@@ -64,7 +64,7 @@ final class DepthOfField_Example: Sketch {
             const float3 phase[9] = { \(phase) };
             const float3 col[9]   = { \(col) };
 
-            // Each particle is one colour channel (id % 3) of one sample (id / 3).
+            // Each particle is one color channel (id % 3) of one sample (id / 3).
             // Re-roll the sample each frame so the spray refines and animates.
             uint sample = id / 3u;
             uint channel = id % 3u;
@@ -96,7 +96,7 @@ final class DepthOfField_Example: Sketch {
             // total brightness stays roughly constant. Faint, because a million sum.
             float alpha = 0.0009 / (1.0 + defocus * 6.0);
 
-            // An offset within the bokeh disc; colour-shift (custom.y) spreads the
+            // An offset within the bokeh disc; color-shift (custom.y) spreads the
             // three channels to slightly different radii for chromatic fringes.
             float2 off = discSample(rseed + 3.3) * blur;
             float shift = custom.y * min(defocus, 1.0);
@@ -123,6 +123,6 @@ final class DepthOfField_Example: Sketch {
         drawParticles(ribbons)
 
         blendMode(.normal)
-        drawCaption("drag to rack focus · press a key: colour-shift \(colourShift ? "on" : "off")")
+        drawCaption("drag to rack focus · press a key: color-shift \(colourShift ? "on" : "off")")
     }
 }

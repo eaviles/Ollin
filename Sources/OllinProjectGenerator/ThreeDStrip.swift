@@ -24,9 +24,9 @@ struct ThreeDStrip: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top, spacing: 0) {
                 group(.geometry, note: "pick one")
-                arrow(active: travelled(into: .finish))
+                arrow(active: traveled(into: .finish))
                 group(.finish, note: "pick one")
-                arrow(active: travelled(into: .extra))
+                arrow(active: traveled(into: .extra))
                 group(.extra, note: "any number")
                 Spacer(minLength: 0)
             }
@@ -62,7 +62,7 @@ struct ThreeDStrip: View {
 
     /// The accent travels along the arrow into a group whose options something
     /// on the left is currently ruling out, so the edge is visible as a path.
-    private func travelled(into slot: ThreeDOption.Slot) -> Bool {
+    private func traveled(into slot: ThreeDOption.Slot) -> Bool {
         ThreeDOption.inSlot(slot).contains { recipe.blocker(of: $0) != nil }
     }
 

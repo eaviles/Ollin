@@ -281,7 +281,7 @@ struct UsdPhysicsTests {
         """))
         #expect(abs(try body(world, "Light").mass - 3) < 1e-4)
         #expect(try body(world, "Unsaid").mass > 100,
-                "an unsaid mass comes from the volume, which for half a metre of water is a lot")
+                "an unsaid mass comes from the volume, which for half a meter of water is a lot")
     }
 
     /// A bound physics material carries its friction and restitution. The twin

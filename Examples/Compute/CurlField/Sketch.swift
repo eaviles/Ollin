@@ -32,7 +32,7 @@ final class CurlField_Example: Sketch {
         position += flow * 95.0 * u.dt;
         life -= u.dt;
 
-        // Colour by flow direction; faint, so crossing streams sum into bright veins.
+        // Color by flow direction; faint, so crossing streams sum into bright veins.
         float angle = atan2(flow.y, flow.x);
         color = float4(0.5 + 0.5 * cos(angle + float3(0.0, 2.1, 4.2)), 0.45);
         size = 1.3;

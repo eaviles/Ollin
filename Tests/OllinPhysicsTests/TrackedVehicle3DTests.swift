@@ -180,13 +180,13 @@ struct TrackedVehicle3DTests {
         let (straightWorld, straight) = standing()
         straight.throttle = 1
         run(straightWorld, steps: 300)
-        let travelled = straight.body.position.z
+        let traveled = straight.body.position.z
 
         // It turns through more than a full circle without leaving its own
         // length, where the twin covers ground and barely changes heading.
         #expect(turned > 2 * .pi)
         #expect(wandered < 1.5)
-        #expect(travelled > 15)
+        #expect(traveled > 15)
         #expect(abs(heading(straight)) < 0.05)
     }
 

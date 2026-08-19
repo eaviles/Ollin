@@ -416,7 +416,7 @@ struct JointKind3DTests {
     /// One turn of the pinion moves the rack exactly the distance asked for,
     /// and doubling that distance doubles the travel.
     @Test func aPinionMovesItsRackByTheTravelAsked() {
-        func travelled(perTurn: Double) -> Double {
+        func traveled(perTurn: Double) -> Double {
             let world = World3D()
             world.ground = nil
             let frame = world.addBody(.box(width: 0.2, height: 0.2, depth: 0.2),
@@ -434,9 +434,9 @@ struct JointKind3DTests {
             run(world, steps: 60)
             return slider.offset
         }
-        #expect(abs(travelled(perTurn: 2) - 2) < 0.05)
-        #expect(abs(travelled(perTurn: 4) - 4) < 0.05)
-        #expect(abs(travelled(perTurn: -2) + 2) < 0.05, "a negative one runs back")
+        #expect(abs(traveled(perTurn: 2) - 2) < 0.05)
+        #expect(abs(traveled(perTurn: 4) - 4) < 0.05)
+        #expect(abs(traveled(perTurn: -2) + 2) < 0.05, "a negative one runs back")
     }
 
     // MARK: Swing-twist motors

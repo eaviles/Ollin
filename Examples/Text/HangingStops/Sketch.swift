@@ -79,7 +79,7 @@ final class HangingStops: Sketch {
         fill(ink.withAlpha(0.5))
         textSize(15)
         textAlign(.center, .top)
-        drawText("a stop that will not fit takes its neighbour to the next line, unless it may hang",
+        drawText("a stop that will not fit takes its neighbor to the next line, unless it may hang",
                  540, 664)
     }
 }

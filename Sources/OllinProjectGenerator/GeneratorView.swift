@@ -206,15 +206,15 @@ struct GeneratorView: View {
     }
 
     private var statusChip: some View {
-        let (text, colour): (String, SwiftUI.Color) = switch preview {
+        let (text, color): (String, SwiftUI.Color) = switch preview {
         case .running: ("Running", OllinInspector.green)
         case .compiling: ("Building", OllinInspector.amber)
         case .failed: ("Compile error", OllinInspector.red)
         case .idle: ("Idle", OllinInspector.amber)
         }
         return HStack(spacing: 6) {
-            Circle().fill(colour).frame(width: 7, height: 7)
-            Text(text).font(.system(size: 11.5)).foregroundStyle(colour)
+            Circle().fill(color).frame(width: 7, height: 7)
+            Text(text).font(.system(size: 11.5)).foregroundStyle(color)
         }
     }
 

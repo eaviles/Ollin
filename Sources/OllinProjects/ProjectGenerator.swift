@@ -382,7 +382,7 @@ public enum ProjectGenerator {
         ## Before publishing
 
         - [ ] Point `dependencies` in `Package.swift` at the framework's repository rather than a path on this machine. A path nobody else has is the one thing that stops a package building for them.
-        - [ ] Add a `LICENSE`. An extension is your own work under your own licence, and Ollin bundles nothing of yours, so the choice is entirely yours.
+        - [ ] Add a `LICENSE`. An extension is your own work under your own license, and Ollin bundles nothing of yours, so the choice is entirely yours.
         - [ ] Name the repository `\(package)`, so it is recognisable and turns up in a search.
         - [ ] Say in this README which version of Ollin it was built against. The framework is before 1.0 and its API still moves.
         - [ ] Tag a version, so a dependant can ask for one.

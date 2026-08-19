@@ -137,7 +137,7 @@ final class FittingTheWall: Sketch {
         // Each machine as the light it puts on the wall: full brightness over
         // its own stretch, and the published fade across the band. The one on
         // the right is the mirror of the one on the left.
-        for (index, colour) in [beam, other].enumerated() {
+        for (index, color) in [beam, other].enumerated() {
             let from = index == 0 ? 0.06 : bandFrom
             let to = index == 0 ? bandTo : 0.94
             var edge: [Vector2] = []
@@ -150,7 +150,7 @@ final class FittingTheWall: Sketch {
             // an S is not convex, so it goes through the path builder, which
             // triangulates it, rather than through `drawPolygon`.
             noStroke()
-            fill(colour.withAlpha(0.30))
+            fill(color.withAlpha(0.30))
             drawShape { path in
                 path.move(to: Vector2(across(from), level(0)))
                 for point in edge { path.line(to: point) }
@@ -158,7 +158,7 @@ final class FittingTheWall: Sketch {
                 path.close()
             }
             noFill()
-            stroke(colour)
+            stroke(color)
             strokeWeight(2.4)
             drawPolyline(edge)
         }

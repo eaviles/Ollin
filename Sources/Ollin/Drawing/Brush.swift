@@ -179,16 +179,16 @@ public struct Brush {
         let step = max(brush.spacing, 0.02)
         let perStep = max(brush.count, 1)
         var stamps: [Stamp] = []
-        var travelled = 0.0
+        var traveled = 0.0
         var index = 0
         // A stamp cannot be smaller than this and still be worth placing, and the
         // floor also stops a profile that tapers to nothing from stepping by zero.
         let minimumSize = 0.05
 
-        while travelled <= total {
-            let t = travelled / total
+        while traveled <= total {
+            let t = traveled / total
             let base = max(width(t), 0)
-            let (point, direction) = sample(travelled)
+            let (point, direction) = sample(traveled)
             if base >= minimumSize {
                 let alpha = opacity(t)
                 for k in 0..<perStep {
@@ -223,7 +223,7 @@ public struct Brush {
                 }
             }
             index += 1
-            travelled += max(base, minimumSize) * step
+            traveled += max(base, minimumSize) * step
         }
         return stamps
     }

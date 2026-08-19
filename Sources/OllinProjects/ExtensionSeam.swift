@@ -64,7 +64,7 @@ extension ExtensionSeam {
         import Foundation
         import Ollin
 
-        /// The points of a spiral whose distance from the centre grows evenly
+        /// The points of a spiral whose distance from the center grows evenly
         /// with its angle.
         ///
         /// The geometry is public and separate from the drawing on purpose. A
@@ -119,12 +119,12 @@ extension ExtensionSeam {
         struct {{NAME}}Tests {
 
             @Test func theSpiralStartsAtTheCentreAndEndsAtTheRadius() {
-                let centre = Vector2(100, 100)
-                let points = spiralPoints(center: centre, radius: 50, turns: 2, steps: 64)
+                let center = Vector2(100, 100)
+                let points = spiralPoints(center: center, radius: 50, turns: 2, steps: 64)
 
                 #expect(points.count == 65)
-                #expect((points.first! - centre).length < 1e-9)
-                #expect(abs((points.last! - centre).length - 50) < 1e-9)
+                #expect((points.first! - center).length < 1e-9)
+                #expect(abs((points.last! - center).length - 50) < 1e-9)
             }
 
             @Test func everyTurnAddsOneFullLap() {
@@ -174,7 +174,7 @@ extension ExtensionSeam {
 
         // The contract is one function. `uv` runs 0...1 with its origin at the
         // top left, `sample(info, uv)` reads the input layer, `param(info, 0)`
-        // reads the first number passed in, and the returned colour is straight
+        // reads the first number passed in, and the returned color is straight
         // sRGB. Ollin generates everything around it.
         //
         // The shader compiles once per source, so a filter rebuilt every frame
@@ -234,7 +234,7 @@ extension ExtensionSeam {
         import CoreGraphics
         import Ollin
 
-        /// A source of frames a sketch can draw and any tracker can analyse.
+        /// A source of frames a sketch can draw and any tracker can analyze.
         ///
         /// The whole contract is one property: hold a `frameTap` and call it with
         /// each new frame. That is what lets frame *analysis* run over any source

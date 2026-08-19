@@ -166,8 +166,8 @@ private func schottkyOrbitWalk(generators baseGenerators: [MobiusMap],
     }
 
     func walk(_ matrix: MobiusMap, _ last: Int, _ depth: Int) {
-        let cancelling = (last + n) % letters
-        for k in 0 ..< letters where k != cancelling {
+        let canceling = (last + n) % letters
+        for k in 0 ..< letters where k != canceling {
             guard emitted < schottkyCircleLimit else { return }
             guard let image = matrix.discImage(of: circles[k].circle,
                                                exterior: circles[k].exterior)

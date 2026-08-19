@@ -59,7 +59,7 @@ final class Describing: Sketch {
                  ? "\(sunColor(daylight)) disc \(place(of: sunCenter)), \(Int(sunRadius * 2)) wide"
                  : "", in: sun)
         describe("the water", as: "a flat band across the lower third, "
-                 + "\(daylight > 0.15 ? "blue-grey and lit" : "almost black")",
+                 + "\(daylight > 0.15 ? "blue-gray and lit" : "almost black")",
                  in: Rectangle(x: 0, y: horizon, width: width, height: height - horizon))
         describe("the boat", as: "a small dark hull with one sail, "
                  + "\(Int(boatX / width * 100))% of the way across", in: boat)
