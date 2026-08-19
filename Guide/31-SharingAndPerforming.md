@@ -153,7 +153,7 @@ And a frame becomes a scene when you ask for it:
 let scene = OllinApp.spatialScene(of: sketch, frame: 120)
 ```
 
-That hands back an ordinary `Scene`, the same kind [Chapter 21](21-3DGently.md) loaded from a file. You can look at what your own frame is made of, move a node, and write it out. One writer serves both paths, which is why the file and the frame cannot disagree.
+That hands back an ordinary `Scene`, the same kind [Chapter 22](22-Meshes.md) loaded from a file. You can look at what your own frame is made of, move a node, and write it out. One writer serves both paths, which is why the file and the frame cannot disagree.
 
 Here is a frame drawn the ordinary way, beside the same frame written to a `.usdz` and opened again:
 

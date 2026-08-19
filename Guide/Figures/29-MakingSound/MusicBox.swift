@@ -74,7 +74,8 @@ final class MusicBox: Sketch {
             }
             if high[step] {
                 let inBar = ((step % steps) + steps) % steps
-                play(air, Pitch(76 + Double(inBar % 3) * 5), at: at, beats: 2.4,
+                let breath = Pitch(76 + Double(inBar % 3) * 5)
+                play(air, key.snap(breath), at: at, beats: 2.4,
                      voice: 2, velocity: 0.35)
             }
         }

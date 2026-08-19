@@ -8,7 +8,7 @@
 
 Nobody placed a tree in that picture. The ground grew out of noise and then had rain run over it for a while. Everything standing on it was scattered by asking the ground where a pine could take root. The grass in the foreground was never built at all. The GPU works it out while drawing it and keeps nothing afterwards.
 
-[Chapter 21](21-3DGently.md) placed things one at a time, which is how you compose a scene you can hold in your head. This chapter is for the scenes you cannot hold. A million particles riding one field, ten thousand copies of one mesh, a quarter of a million solids the camera trims for you, half a million blades of grass. It starts with the ground, because once you have a landscape you can ask it where everything else goes. Each step after that hands more of the work to the GPU.
+[Chapter 22](22-Meshes.md) finished one object until it read as real. That is the far end of placing things one at a time, and it works on a scene you can hold in your head. Here there is too much to hold. A million particles riding one field, ten thousand copies of one mesh, a quarter of a million solids the camera trims for you, half a million blades of grass. It starts with the ground, because once you have a landscape you can ask it where everything else goes. Each step after that hands more of the work to the GPU.
 
 ## A landscape you grow
 

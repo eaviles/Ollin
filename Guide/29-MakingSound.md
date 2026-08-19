@@ -337,7 +337,7 @@ Degrees, because that is the fact that survives changing key. `I vi IV V` is the
 
 <img src="Images/29-MakingSound/Changes.jpg" alt="Two rows of four chord stacks. The top row, in C major, reads C major, A minor, F major, G major; the bottom row, the same numerals in C minor, reads C minor, G sharp major, F minor, G minor. Each stack shows the three notes the progression hands back, at their own pitches" width="680">
 
-Those are the notes `pitches(at:)` actually hands back, in two keys, with nothing else changed. Every chord comes out different, and each one is whatever the scale's own notes make of that degree. Watch the second column, which is minor in the major key and major in the minor one. That is not a special case. It is what happens when the numeral only ever meant "start here and take every other note". `Examples/Audio/Changes` puts the key on a knob so you can hear this happen while it plays.
+Those are the notes `pitches(at:)` actually hands back, in two keys, with nothing else changed. Every chord comes out different, and each one is whatever the scale's own notes make of that degree. Watch the second column, which is minor in the major key and major in the minor one. That is not a special case. It is what happens when the numeral only ever meant "start here and take every other note". `Examples/Audio/Changes` puts the key on a knob so you can hear this happen while it plays. One thing about the labels. Ollin names every black key with a sharp, so the minor row's `G#` is the A flat a score would print. It is the same pitch either way.
 
 There are named ones (`.pop`, `.blues`, `.twoFiveOne`, `.andalusian`), and there is a way to leave the cycle:
 
@@ -373,7 +373,7 @@ Past that there are more steps rather than different ones, in `.nineteen`, `.thi
 
 ## Playing along with the room: tempo sync
 
-The beat detector at the start of this chapter told you *that* a beat happened. Getting from there to playing in time with one is a bit more:
+[Chapter 28](28-SoundAndControl.md)'s beat detector told you *that* a beat happened. Getting from there to playing in time with one is a bit more:
 
 ```swift
 lazy var room = BeatFollower(mic)
@@ -531,7 +531,8 @@ final class MusicBox: Sketch {
             }
             if high[step] {
                 let inBar = ((step % steps) + steps) % steps
-                play(air, Pitch(76 + Double(inBar % 3) * 5), at: at, beats: 2.4,
+                let breath = Pitch(76 + Double(inBar % 3) * 5)
+                play(air, key.snap(breath), at: at, beats: 2.4,
                      voice: 2, velocity: 0.35)
             }
         }

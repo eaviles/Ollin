@@ -298,6 +298,7 @@ Shaders come out of computer graphics research and the demoscene, but the reason
 - [User shaders](../Docs/Shaders/Shaders.md): the full contract, filters and combines that read layers, `.metal` file loading, and the error model.
 - [Bringing a shader over](../Docs/Tools/ShaderImport.md): `ollin new --from-shader` translates a GLSL fragment shader into Metal and writes the project around it, with the `mod` rounding difference, the flipped vertical axis, and the license header explained.
 - [The shader library](../Docs/Shaders/ShaderLibrary.md): every spliced-in helper with its signature.
+- [Generators](../Docs/Drawing/Effects.md#generate): `Generator` and `generate(_:)`, the whole pattern-field catalog with every knob, and how a generated layer feeds the rest of an effect chain.
 - [Visual chains](../Docs/Shaders/Visuals.md): all sources, warps, color ops, combines, and modulations.
 - [Compute](../Docs/Shaders/Compute.md): the sibling world where kernels update buffers of particles instead of pixels, waiting in [Chapter 19](19-GridSimulations.md).
 - Appendix B draws this chapter's math, one picture per idea: [Where things are](B-JustEnoughMath.md#where-things-are), [Per-pixel thinking and distance](B-JustEnoughMath.md#per-pixel-thinking-and-distance).

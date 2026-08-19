@@ -397,7 +397,7 @@ if let surface = world.waterMesh(extent: 40) {
 }
 ```
 
-`.dielectric` is the physically based tier's smooth nonmetal, the finish of water and varnish. It reflects more the flatter the view grazes it, and the next chapter opens the family up properly. Keep a little roughness in it. A perfect mirror reflects the lower half of the environment wherever a wave tilts the reflection below the horizon, which lays flat grey patches along the troughs. A sea is not a mirror anyway.
+`.dielectric` is the physically based tier's smooth nonmetal, the finish of water and varnish. It reflects more the flatter the view grazes it, and [Chapter 22](22-Meshes.md) opened the family up properly. Keep a little roughness in it. A perfect mirror reflects the lower half of the environment wherever a wave tilts the reflection below the horizon, which lays flat grey patches along the troughs. A sea is not a mirror anyway.
 
 Two things worth knowing before you build on this. `world.water` is an ocean rather than a pool. Everything below `level` is water, out to the horizon, so a harbour is what you get by putting static walls in it. And the water does not reach everything, on purpose. Sensors, static bodies, and a walking character go where you put them rather than where the water would.
 
@@ -405,7 +405,7 @@ The [`3D/Physics/Flotsam`](../Examples/3D/Physics/Flotsam/) example is the whole
 
 ## A raft made of cloth
 
-The sheet from two sections ago floats too. It is worth a section of its own because it is where the two halves of this chapter meet. The thing with no pose turns out to be an ordinary member of the world.
+The sheet you draped earlier floats too. It is worth a section of its own because it is where the two halves of this chapter meet. The thing with no pose turns out to be an ordinary member of the world.
 
 Floating it is one number.
 

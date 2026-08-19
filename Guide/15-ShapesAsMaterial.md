@@ -627,6 +627,7 @@ The skeleton is Harry Blum's medial axis, proposed in 1967 as a way to describe 
 - [Shape morphing](../Docs/Drawing/Morphing.md): the correspondence rules, `spacing`, and `Tweenable` geometry inside a `Timeline`. The [`Examples/Motion/Morphing`](../Examples/Motion/Morphing/Sketch.swift) example loops a star through a blob and a donut.
 - [Classic curves](../Docs/Drawing/Curves.md): every parameter of all nine, including what closes each curve exactly once.
 - [Low-discrepancy sampling](../Docs/Generators/LowDiscrepancy.md): Halton bases, Sobol, `startIndex`, and the scalar `halton`.
+- [Stroke profiles](../Docs/Drawing/Drawing.md#strokeProfile): `.taper`, `.ramp`, `.nib` and `.values` with every argument, the by-hand closure form, which primitives honor a profile, and what vector export writes.
 - [Marks](../Docs/Drawing/Marks.md): `StrokeMark`, the response and dynamics types, what the smoothing and spacing knobs do, building a mark without a pointer, and what survives vector export.
 - [Retained batches](../Docs/Drawing/Batches.md): what a `Batch` can and can't record, how transforms apply at replay, and the measured numbers.
 - [Voronoi & Delaunay](../Docs/Drawing/Voronoi.md): cells, triangles, neighbors, and Lloyd relaxation.

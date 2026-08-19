@@ -67,7 +67,7 @@ Hinges and sliders can also be *powered*. Give one `limits` when you connect it,
 
 One motored hinge does all the animating here. The compound blade cross from above rides a `.revolute` driven at a constant rate. The balls it bats away shove through swing gates on either side, each a limited hinge with springy stops (`softenLimits`), held shut by a `drive(to: 0)` closer too weak to argue with a rolling ball. The interactive version is the [`3D/Physics/Windmill`](../Examples/3D/Physics/Windmill/) example, where the space bar cuts the motor and you can watch hinge friction coast the mill to a stop.
 
-And the landscape you grew a few pages back can hold all of this up. `.heightfield` takes a `Heightfield` directly, sized exactly like its `mesh(width:depth:height:)`, so the collider and the drawn mesh trace one surface:
+And the landscape you grew in [Chapter 23](23-Landscapes.md) can hold all of this up. `.heightfield` takes a `Heightfield` directly, sized exactly like its `mesh(width:depth:height:)`, so the collider and the drawn mesh trace one surface:
 
 ```swift
 world.addBody(.heightfield(land, width: 14, depth: 14, height: 4.2),
