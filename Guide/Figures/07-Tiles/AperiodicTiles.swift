@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide diagram (Chapter 7): the tilings that never repeat. Penrose kites
 // and darts with their matching-rule arcs, Penrose rhombs, a girih star

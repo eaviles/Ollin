@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide figure (Chapter 27): the picture, stood up. Every pixel of the
 // stand-in camera's frame is unprojected by its depth into a point cloud,

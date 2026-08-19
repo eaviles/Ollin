@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide diagram (Chapter 30): a picture becomes geometry. Left: a generated
 // ink study (blobby splashes and a ring, built pixel by pixel, standing in

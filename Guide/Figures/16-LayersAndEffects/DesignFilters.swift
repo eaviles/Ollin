@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide figure (Chapter 16): the two kinds of design filter. The top row starts
 // from one plain white heart on a transparent layer, and three filters read only

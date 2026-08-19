@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide diagram: smoothing a jittery signal. The gray path is a clean sweep
 // with seeded jitter added; the accent path is the same samples run through

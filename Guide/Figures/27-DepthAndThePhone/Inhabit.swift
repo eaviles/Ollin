@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide figure (Chapter 27): drawing inside a depth scene. The stand-in
 // camera's frame is drawn as a metric depth scene, and solid spheres placed

@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide payoff (Chapter 14): a flow-field print. Evenly-spaced streamlines
 // traced through one noise field, drawn as ribbons of three weights in a

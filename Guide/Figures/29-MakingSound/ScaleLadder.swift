@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide diagram (Chapter 29): what a scale does to numbers, and what chords
 // are made of. Left: A minor pentatonic as a ladder over the semitone grid;

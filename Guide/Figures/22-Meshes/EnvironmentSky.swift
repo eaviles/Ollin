@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide figure (Chapter 22): the same glossy cluster under the procedural sky.
 // Pairs with EnvironmentSunset, which is this sketch with one word changed, so

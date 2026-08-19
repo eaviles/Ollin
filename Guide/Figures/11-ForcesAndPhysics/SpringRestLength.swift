@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide diagram (Chapter 11): a spring has one happy distance, its rest
 // length. Stretched past it, the spring pulls its ends back in; squeezed

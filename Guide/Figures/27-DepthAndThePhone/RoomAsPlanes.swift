@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide figure (Chapter 27): the other half of what the phone hands over about a
 // room. Left, the flat surfaces it finds, each as its real outline and painted by

@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide diagram (Chapter 1): why fractions beat pixels for layout. The same
 // three marks placed by fixed pixel coordinates and then by 0…1 fractions,

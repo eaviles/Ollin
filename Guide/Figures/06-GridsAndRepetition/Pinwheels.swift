@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide figure (Chapter 6): one right triangle per cell, spun to a seeded
 // quarter turn with translate + rotate. Identical parts, four orientations,

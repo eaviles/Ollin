@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide figure: the Appendix C translated sketch. One breathing circle,
 // dead center, shown at its first frame.

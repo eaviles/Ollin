@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide listing (Chapter 17): the first shader. Two coordinates in, one
 // color out: red is u, green is v, and the whole canvas is the answer.

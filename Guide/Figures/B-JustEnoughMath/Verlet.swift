@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide diagram (Appendix B): Verlet motion. No stored velocity: the gap
 // between the previous and current positions is the velocity, carried

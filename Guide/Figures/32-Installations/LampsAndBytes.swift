@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide diagram (Chapter 32): one DMX universe seen twice. Six RGB pars hang
 // over a dark stage, lit by the fixture sugar; below them, the same universe's

@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide diagram (Chapter 8): the three kinds of font, one word each. An
 // outline font fills vector contours (and can stroke them), a bitmap font

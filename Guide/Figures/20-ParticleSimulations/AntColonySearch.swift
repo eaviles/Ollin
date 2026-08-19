@@ -1,3 +1,5 @@
+// figure: probe
+//
 // Guide diagram (Chapter 20): one ant-colony search shown at three moments.
 // The same seeded colony solves the same cities in every panel. After one
 // iteration the pheromone web is a haze over every pair; a few iterations

@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide diagram: chance with and without memory. Top: a fresh roll decides
 // each value outright, so the trace is hash. Bottom: each roll only nudges

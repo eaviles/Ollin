@@ -1,4 +1,4 @@
-// figure: frame=90
+// figure: frame=90 probe
 //
 // Guide diagram (Chapter 23): a field of pillars drawn as ONE instanced mesh
 // call. Each copy carries its own position, height, and tint; the wave and the

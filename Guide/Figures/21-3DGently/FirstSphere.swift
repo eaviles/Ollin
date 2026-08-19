@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide listing (Chapter 21): the first 3D sketch. One camera call, one
 // sphere, and the auto-lit default does the shading.

@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide diagram (Chapter 31): every way a sketch leaves the machine. Files on
 // one side (still, sequence, video, GIF, SVG), live feeds on the other

@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide figure (Chapter 27): 2D drawing inside a 3D depth buffer. Three pillars
 // at increasing distance, each ringed by an ordinary drawCircle given that

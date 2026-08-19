@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide diagram (Chapter 10): arrow arithmetic in four panels. Adding walks
 // one arrow then the other; subtracting gives the arrow from here to there;

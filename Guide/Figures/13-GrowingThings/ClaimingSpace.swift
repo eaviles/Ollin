@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide figure (Chapter 13): space colonization, four moments of the same
 // growth. Dots are attraction points; the structure branches toward them,

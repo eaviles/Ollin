@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide listing (Chapter 26): the first 3D field. Two spheres melt into one
 // body, a third is carved away, and the merged surface is traced through the

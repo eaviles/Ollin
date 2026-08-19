@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide diagram (Chapter 16): the blend modes. The same two shaded discs in
 // every tile; only the mode the second disc composites with changes.

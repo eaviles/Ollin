@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide diagram: layering two scales of noise by hand. A big-scale sample
 // gives the shape, a small-scale sample gives the detail, and a weighted

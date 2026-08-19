@@ -1,4 +1,4 @@
-// figure: frame=100
+// figure: frame=100 probe
 //
 // Guide diagram (Chapter 23): half a million blades of grass a mesh pipeline
 // grows inside the draw call, individually curved and tinted, receiving the

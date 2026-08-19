@@ -30,6 +30,11 @@ import OllinRuntime
 ///   to the framework itself (`Sources/`, `External/`, `Package.swift`, or the
 ///   Swift toolchain) invalidates every entry, since that can change what any
 ///   figure renders.
+/// - **A probe sample.** Most framework edits move no pixels at all, so a
+///   framework change renders the figures marked `// figure: probe` first (a
+///   sample chosen to witness every drawing path) and compares each to the
+///   image committed beside it. All identical means the change was
+///   render-neutral, and the rest keep their cache entries.
 /// - **Sharded worker processes.** The work left after the cache is split
 ///   across child copies of this executable. Sharding rather than in-process
 ///   concurrency is deliberate: the expensive figures spend their time in
@@ -56,6 +61,12 @@ enum GuideFigures {
         /// then keys it on its source alone, ignoring the committed image, so a
         /// suite run stops reporting it as changed every time.
         var unstable = false
+        /// `probe` puts a figure in the sample rendered first when the
+        /// framework changes, to find out whether the change moved any pixels
+        /// at all. Mark a figure that is the cheapest honest witness for one
+        /// drawing path, and never an `unstable` one, whose render cannot be
+        /// compared to anything.
+        var probe = false
 
         init(source: String) {
             let head = source.split(separator: "\n", omittingEmptySubsequences: false).prefix(8)
@@ -70,6 +81,7 @@ enum GuideFigures {
                 switch (key, value) {
                 case ("gif", _): gif = true
                 case ("unstable", _): unstable = true
+                case ("probe", _): probe = true
                 case ("format", "png"): png = true
                 case ("format", "jpg"), ("format", "jpeg"): png = false
                 case ("frame", let v?): frame = Int(v) ?? frame
@@ -118,27 +130,36 @@ enum GuideFigures {
         var unstable = false
     }
 
-    /// One figure to render, plus whether its committed image is allowed to
-    /// change. `verifyOnly` is set for an `unstable` figure that is being redone
-    /// only because the framework moved: the render still has to succeed, but
-    /// its image is arbitrary, so overwriting it would report a change that
-    /// means nothing and leave a diff to throw away.
+    /// One figure to render, plus what may happen to its committed image.
+    /// `verifyOnly` is set for an `unstable` figure that is being redone only
+    /// because the framework moved: the render still has to succeed, but its
+    /// image is arbitrary, so overwriting it would report a change that means
+    /// nothing and leave a diff to throw away. `probeOnly` also leaves the
+    /// committed image alone, but it *hashes* the fresh render instead of
+    /// discarding it, which is how the probe phase learns whether the pixels
+    /// moved.
     struct Work {
         var figure: String
         var verifyOnly: Bool
+        var probeOnly = false
 
-        init(figure: String, verifyOnly: Bool) {
+        init(figure: String, verifyOnly: Bool, probeOnly: Bool = false) {
             self.figure = figure
             self.verifyOnly = verifyOnly
+            self.probeOnly = probeOnly
         }
 
         init(line: String) {
             let parts = line.split(separator: "\t", maxSplits: 1)
             figure = String(parts[0])
             verifyOnly = parts.count > 1 && parts[1] == "verify"
+            probeOnly = parts.count > 1 && parts[1] == "probe"
         }
 
-        var line: String { verifyOnly ? "\(figure)\tverify" : figure }
+        var line: String {
+            if probeOnly { return "\(figure)\tprobe" }
+            return verifyOnly ? "\(figure)\tverify" : figure
+        }
     }
 
     // MARK: - Entry point
@@ -157,6 +178,7 @@ enum GuideFigures {
         var resultsPath: String?
         var progressPath: String?
 
+        var probing = true
         var arguments = Array(CommandLine.arguments.dropFirst())
         while let argument = arguments.first {
             arguments.removeFirst()
@@ -168,6 +190,7 @@ enum GuideFigures {
             switch argument {
             case "--only": only = value("--only")
             case "--force": force = true
+            case "--no-probe": probing = false
             case "--verbose": verbose = true
             case "--jobs": jobs = max(1, Int(value("--jobs")) ?? 1)
             case "--list": listPath = value("--list")
@@ -228,10 +251,37 @@ enum GuideFigures {
         var renderAll = force
         if frameworkChanged || cache.version != Cache.currentVersion {
             if only == nil || cache.version != Cache.currentVersion {
-                if !cache.figures.isEmpty {
+                // Most framework edits move no pixels at all: a new function, a
+                // comment, a type nothing draws through. Rendering the whole
+                // suite to learn that costs ten minutes, so render the probe
+                // sample first and ask. A probe is only trusted when it is
+                // *identical*, and any probe that moved or failed hands the run
+                // back to the full re-render below.
+                if only == nil, !force, cache.version == Cache.currentVersion,
+                   !cache.figures.isEmpty, probing,
+                   case let sample = probeFigures(figures, figuresDir: figuresDir),
+                   !sample.isEmpty {
+                    let moved = runProbe(sample, imagesDir: imagesDir, figuresDir: figuresDir,
+                                         jobs: jobs, verbose: verbose)
+                    if moved.isEmpty {
+                        cache.framework = digest
+                        saveCache(cache, to: cachePath)
+                        print("guide-figures: the framework changed, but all"
+                              + " \(sample.count) probe figure\(plural(sample.count)) drew the"
+                              + " same pixels, so the rest are left alone."
+                              + " Run with --no-probe to re-render everything anyway.")
+                        exit(0)
+                    }
+                    print("guide-figures: the probe found \(moved.count) changed"
+                          + " figure\(plural(moved.count)) (\(moved.joined(separator: ", "))),"
+                          + " so every figure is re-rendered")
+                    cache = Cache(version: Cache.currentVersion, framework: digest, figures: [:])
+                } else if !cache.figures.isEmpty {
                     print("guide-figures: the framework changed, so every figure is re-rendered")
+                    cache = Cache(version: Cache.currentVersion, framework: digest, figures: [:])
+                } else {
+                    cache = Cache(version: Cache.currentVersion, framework: digest, figures: [:])
                 }
-                cache = Cache(version: Cache.currentVersion, framework: digest, figures: [:])
             } else {
                 // A filtered run keeps the cache exactly as it was: adopting
                 // the new digest while recording only the matches would leave
@@ -319,6 +369,48 @@ enum GuideFigures {
         exit(1)
     }
 
+    // MARK: - The probe
+
+    /// The figures marked `// figure: probe`, minus any that cannot be
+    /// compared. An `unstable` figure renders differently every time, so a
+    /// probe made of one would report a change on every run and the sample
+    /// would never pass.
+    private static func probeFigures(_ figures: [String], figuresDir: String) -> [String] {
+        figures.filter { figure in
+            guard let data = FileManager.default.contents(atPath: figuresDir + "/" + figure),
+                  let source = String(data: data, encoding: .utf8) else { return false }
+            let directive = Directive(source: source)
+            if directive.probe, directive.unstable {
+                warn("\(figure) is marked both probe and unstable; ignoring the probe mark")
+                return false
+            }
+            return directive.probe
+        }
+    }
+
+    /// Render the sample and report which of them no longer match the image
+    /// committed beside them. A figure that fails to render counts as changed:
+    /// the point of the probe is to hand any doubt to the full run.
+    @MainActor
+    private static func runProbe(_ sample: [String], imagesDir: String, figuresDir: String,
+                                 jobs: Int, verbose: Bool) -> [String] {
+        print("guide-figures: the framework changed; probing \(sample.count)"
+              + " figure\(plural(sample.count)) to see whether it moved any pixels")
+        let work = sample.map { Work(figure: $0, verifyOnly: false, probeOnly: true) }
+        let workers = min(jobs, work.count)
+        let results = workers <= 1
+            ? render(work, figuresDir: figuresDir, imagesDir: imagesDir,
+                     progressPath: nil, echo: verbose)
+            : renderSharded(work, workers: workers, verbose: verbose)
+        return results.filter { result in
+            guard result.ok, !result.output.isEmpty else { return true }
+            let committed = imagesDir + "/"
+                + ((result.figure as NSString).deletingLastPathComponent)
+                + "/" + result.outputPath
+            return fileHash(committed) != result.output
+        }.map(\.figure).sorted()
+    }
+
     // MARK: - Rendering
 
     /// Compile and render each listed figure in this process, in order. The
@@ -337,6 +429,7 @@ enum GuideFigures {
             var sourceHash = ""
             var ok = false
             var unstable = false
+            var probeHash = ""
 
             if let data = FileManager.default.contents(atPath: sourcePath),
                let source = String(data: data, encoding: .utf8) {
@@ -352,10 +445,15 @@ enum GuideFigures {
                     atPath: directory, withIntermediateDirectories: true)
 
                 // Verifying rather than recording: render beside the committed
-                // image and throw the result away.
+                // image and throw the result away. Probing is the same detour
+                // with the result hashed first, so the caller can compare it to
+                // what is committed without ever overwriting that.
                 let verifying = work.verifyOnly
                     && FileManager.default.fileExists(atPath: outPath)
-                let writePath = verifying ? directory + "/.verify-" + name : outPath
+                let probing = work.probeOnly
+                let writePath = verifying || probing
+                    ? directory + "/." + (probing ? "probe-" : "verify-") + name
+                    : outPath
 
                 if echo { print("guide-figures: \(relative)") }
                 switch SketchLoader(sketchPath: sourcePath).load() {
@@ -374,7 +472,10 @@ enum GuideFigures {
                     } else {
                         log = "no output written"
                     }
-                    if verifying { try? FileManager.default.removeItem(atPath: writePath) }
+                    if probing { probeHash = fileHash(writePath) }
+                    if verifying || probing {
+                        try? FileManager.default.removeItem(atPath: writePath)
+                    }
                 case .failure(let error):
                     log = "\(error)"
                 }
@@ -382,7 +483,10 @@ enum GuideFigures {
                 log = "unreadable"
             }
 
-            let outputHash = ok && !unstable ? fileHash(outPath) : ""
+            // A probe reports the hash of what it just drew; everything else
+            // reports the hash of the image now on disk.
+            let outputHash = work.probeOnly ? probeHash
+                : (ok && !unstable ? fileHash(outPath) : "")
             results.append(Rendered(
                 figure: relative, ok: ok, seconds: Date().timeIntervalSince(started),
                 source: sourceHash, output: outputHash,
@@ -680,6 +784,7 @@ enum GuideFigures {
 
           --only <substring>   only figures whose path contains this
           --force              re-render even figures the cache calls unchanged
+          --no-probe           skip the probe sample; re-render everything
           --jobs <n>           worker processes (default \(defaultJobs))
           --verbose            print each shard's full log
           --help               this message
@@ -694,6 +799,15 @@ enum GuideFigures {
         A figure whose first line carries `// figure: unstable` is cached on its
         source alone: its render is genuinely not reproducible, so its committed
         image cannot say whether it needs redoing.
+
+        Most framework edits move no pixels: a new function, a comment, a type
+        nothing draws through. So a framework change first renders the figures
+        marked `// figure: probe`, a sample covering every drawing path, and
+        compares each to the image committed beside it. All identical means the
+        change was render-neutral and the rest are left alone, which turns a ten
+        minute gate into about fifteen seconds. Any probe that moved or failed
+        hands the run back to the full re-render. --no-probe skips the sample
+        and re-renders everything.
         """)
         exit(0)
     }

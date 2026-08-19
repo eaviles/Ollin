@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide diagram (Chapter 18): four members of the two-generator trace family,
 // drawn as circle orbits. The gasket at traces (2, 2), two complex-trace

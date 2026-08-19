@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide figure (Appendix A): the sketch the appendix reads line by line.
 // Sixty streaks drifting across a night sky.

@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide diagram (Chapter 28): what a tempo clock counts. MIDI clock sends
 // twenty-four ticks per beat and nothing else; everything musical is derived

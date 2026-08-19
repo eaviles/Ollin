@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide diagram: the color kits on one shelf. A discrete palette, a harmony
 // built from one base color, a smooth ramp, and two ready-made ramps.

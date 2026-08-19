@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide payoff (Chapter 18): a plate of four orbits. Four different iterated
 // rules, all of them handed to the same plotting function, because the

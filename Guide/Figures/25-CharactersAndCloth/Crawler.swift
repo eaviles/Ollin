@@ -1,4 +1,4 @@
-// figure: frame=150
+// figure: frame=150 probe
 //
 // Guide listing (Chapter 25): a machine on tracks turning without steering.
 // It drives up to the markers, then holds the throttle with the stick hard

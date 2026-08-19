@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide diagram (Chapter 26): sphere tracing, one ray. From the eye, ask the
 // field how far the nearest surface is; that distance is a safe hop, because

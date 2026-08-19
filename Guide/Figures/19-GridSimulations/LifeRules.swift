@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide diagram (Chapter 19): Conway's rules. Three neighborhoods, three
 // fates: a cell with two or three live neighbors survives, any other count

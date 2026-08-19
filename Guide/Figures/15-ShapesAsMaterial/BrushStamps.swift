@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide diagram (Chapter 15): the same curve stamped three ways at one
 // strokeWeight. Close-packed circles that read as a solid mark, squares that

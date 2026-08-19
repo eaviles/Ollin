@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide diagram (Chapter 22): a scene taken apart. Left, part of the draw() the
 // generator writes from a scene file. Right, the scene those very placements

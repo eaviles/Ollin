@@ -1,4 +1,4 @@
-// figure: frame=90
+// figure: frame=90 probe
 //
 // Guide listing (Chapter 19): the Game of Life on a SimField, seeded with a
 // random soup on the first frame and left to run. By frame 90 the soup has

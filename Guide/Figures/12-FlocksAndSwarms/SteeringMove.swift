@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide diagram (Chapter 12): the steering move. Left, a creature with a
 // velocity and a target it wants. Right, the same two arrows drawn from one

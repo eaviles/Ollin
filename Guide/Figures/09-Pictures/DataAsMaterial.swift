@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide diagram (Chapter 9): a file as material. Left, the bytes of a small
 // CSV, shown as they sit on disk. Right, what `Table` makes of them: one bar

@@ -1,4 +1,4 @@
-// figure: frame=0 width=680
+// figure: frame=0 width=680 probe
 //
 // Guide figure (Chapter 22): a raymarched cloudscape baked into the procedural
 // sky. A chrome ball and a matte plain under a scattered deck: the same weather

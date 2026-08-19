@@ -1,4 +1,4 @@
-// figure: frame=260
+// figure: frame=260 probe
 //
 // Guide payoff (Chapter 24): the contraption. Nothing here is animated. A
 // motor turns one hinge, a gear link ties it to a second, and a paddle on the

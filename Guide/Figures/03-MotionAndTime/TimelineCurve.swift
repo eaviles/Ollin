@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide diagram: a Timeline's value over its whole run, sampled by advancing
 // a fresh timeline in small steps. Keyframes are dots; each segment carries

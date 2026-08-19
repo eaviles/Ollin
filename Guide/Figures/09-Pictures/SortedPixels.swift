@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide diagram (Chapter 9): pixel sorting. The chapter's sunset, and the
 // same picture with each column's mid-tone runs reordered by brightness.
