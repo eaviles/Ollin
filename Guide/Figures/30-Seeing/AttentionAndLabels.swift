@@ -40,7 +40,7 @@ final class AttentionAndLabels: Sketch {
         textSize(40)
         let title = tilted(textToShapes("SEEING", 0, 0), centeredOn: Vector2(160, 132))
         textSize(22)
-        let sub = tilted(textToShapes("chapter 21", 0, 0), centeredOn: Vector2(160, 188))
+        let sub = tilted(textToShapes("chapter 30", 0, 0), centeredOn: Vector2(160, 188))
 
         let image = AttentionAndLabels.render(glyphs: title + sub)
         scene = image

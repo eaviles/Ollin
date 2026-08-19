@@ -61,7 +61,7 @@ final class FlowArrows: Sketch {
         drawText("what the camera sees", leftPanel.center.x, 472)
         drawText("how it moved since the frame before", rightPanel.center.x, 472)
         fill(soft)
-        drawText("a direction and a speed at every point: Chapter 12's field, measured from the world",
+        drawText("a direction and a speed at every point: Chapter 14's field, measured from the world",
                  width / 2, 512)
     }
 }

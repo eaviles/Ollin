@@ -29,6 +29,10 @@
 #   Scripts/ is read at all, which keeps the Osamu Sato recreations safe: their
 #   "Chapter N" comments are chapters of somebody else's book.
 #
+#   A figure that *draws* a chapter number is reported rather than rewritten,
+#   since that number is a string on a code line and changing it blind could
+#   change what the picture says. Fix those by hand and re-render them.
+#
 # Run Scripts/guide-links.sh afterwards. That is the check that the move landed.
 
 cd "$(dirname "$0")/.." || exit 1
@@ -208,12 +212,28 @@ if readme.exists():
         if not dry_run:
             readme.write_text(after)
 
+# A figure can also *draw* a chapter number into its own picture, and that is
+# a string on a code line, so the rule above deliberately leaves it alone:
+# rewriting arbitrary code would risk changing what a figure means. Warning is
+# safe where rewriting is not, so the operator is told and fixes it by hand.
+# The failure this catches is invisible otherwise, because no gate reads a
+# figure's drawn text: Seeing moved 21 to 30 across four commits while the card
+# in two of its figures went on saying "chapter 21", and a third went on
+# labelling the flow field as Chapter 12's when the prose beside it said 14.
+DRAWN = re.compile(r'"([^"]*\b[Cc]hapter \d+[^"]*)"')
+drawn = []
+
 for path in figures:
     before = path.read_text()
     after = "".join(
         CHAPTER.sub(lambda m: f"Chapter {moved(m.group(1))}", line) if line.lstrip().startswith("//") else line
         for line in before.splitlines(keepends=True)
     )
+    for number, line in enumerate(before.splitlines(), 1):
+        if line.lstrip().startswith("//"):
+            continue
+        for m in DRAWN.finditer(line):
+            drawn.append(f"{path}:{number}: {m.group(1).strip()}")
     if after != before:
         changed.append(path)
         if not dry_run:
@@ -239,6 +259,11 @@ if not dry_run:
 
 print(f"guide-renumber: {'would move' if dry_run else 'moved'} " + ", ".join(f"{o}->{n}" for o, n in sorted(mapping.items())))
 print(f"guide-renumber: {len(moves)} paths, {len(changed)} files rewritten")
+if drawn:
+    print(f"guide-renumber: {len(drawn)} figure(s) draw a chapter number into the picture.")
+    print("guide-renumber: these are not rewritten. Check each, then re-render.")
+    for line in drawn:
+        print(f"  {line}")
 if dry_run:
     for path in changed:
         print(f"  {path}")
