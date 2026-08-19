@@ -311,7 +311,7 @@ drawSphere(radius: 0.62)
 
 There's a further tier, the physically based metals and plastics (`material(.metal(roughness: 0.2))`), that really comes alive once a scene has surroundings to reflect. That's the next chapter's territory, where environments light the scene, so treat it as a pointer for now.
 
-## Shading from a picture
+## Shading from a picture: matcaps
 
 Matcaps are the shortcut of the sculpting world. Instead of lights and materials, the entire look, lighting included, is painted into one photograph of a sphere. Every surface point borrows the color the sphere would have there.
 
@@ -416,7 +416,7 @@ So this is the lossy direction, and it says what it lost. Animation stays behind
 
 Both directions are worth having. `loadScene` is for a set that is still being built. This one is for the moment the file stops being the piece and becomes the material. [Bringing a scene over](../Docs/Tools/SceneImport.md) has the details.
 
-## Relief from a picture
+## Relief from a picture: normal maps
 
 A texture changes a surface's color. A **normal map** changes how it catches light. Each texel stores a surface direction instead of a color, and at shading time the lighting normal bends by it. The result is relief without geometry.
 
@@ -454,7 +454,7 @@ An **emissive map** makes texels give off light of their own, tinted and dimmed 
 
 Loaded glTF and USD models carry all of these in and out without being asked, and the round trip through `saveScene` keeps them. Like the normal maps above, every map in the figure is authored from a function in `setup()`. The `3D/Materials/SurfaceMaps` example is the worked version with a glow knob.
 
-## Depth from a picture
+## Depth from a picture: height maps
 
 A normal map tilts the light. A **height map** goes one further and stores the depth itself. The red channel is height, white is the surface, and darker is carved in below it. One image, and Ollin reads it two ways.
 
@@ -529,7 +529,7 @@ There is a fourth driver, `.chemical`, that runs a reaction-diffusion pattern in
 
 Growth is slow on purpose. A form takes hundreds of steps, and stepping once a frame while you watch it develop is most of the pleasure. `maxVertices` is the ceiling that keeps it interactive, and it also decides how far a form gets before it settles.
 
-## A picture from three sides
+## A picture from three sides: triplanar
 
 The last two sections left you holding a small problem. A texture maps through uv coordinates, a little address on every vertex saying where on the picture it sits. The surfaces you just made have none. Nobody unwrapped the grown ball, a subdivided cage comes back without its uvs, and the marched blobs of the next chapter are the same way. `textured(_:)` has nothing to hold onto.
 
@@ -566,7 +566,7 @@ Two conventions make the pair behave. The detail color map multiplies the base w
 
 `scale` is how many times the pair repeats across the base, and `strength` fades it out, with zero the honest off switch. One caution is worth keeping. The detail maps carry no mips, so a very high tile count can shimmer when the surface gets small on screen. Keep the scale in the range your framing actually shows, which is what the `3D/Materials/Detail` example is for. It puts the same base maps on two spheres, the detail pair on one of them, and the tile count and strength on knobs while the camera sways close.
 
-## A picture stamped onto the scene
+## A picture stamped onto the scene: decals
 
 Everything so far dressed one mesh. A sticker does not care about meshes. Slap it on a crate and it wraps whatever it lands on, the crate, the pallet under it, half of the wall behind.
 

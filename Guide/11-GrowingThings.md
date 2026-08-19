@@ -132,7 +132,7 @@ Widths arrive as multiples of `strokeWeight`, scaled so the widest is exactly 1.
 
 A plain grammar counts. A parametric one measures. The [reference](../Docs/Generators/LSystem.md#parametric) has the rest. It covers the arithmetic it accepts, weighted rules for stochastic growth, and a shelf of presets from the botany literature.
 
-## The same fern, played as a game
+## The same fern, played as a game: the chaos game
 
 There is a completely different way to grow that fern, and it's strange enough to be worth seeing. Instead of rewriting a sentence and walking it with a turtle, you play a game of chance with a handful of transformations.
 
@@ -203,7 +203,7 @@ drawPolygon(fitted(curve.points, in: canvasRectangle.inset(by: .all(60))))
 
 What makes this one immediately useful is the return type. It's a single `Contour`, one ordered closed curve with evenly spaced points. So it strokes, exports, and plots like any other geometry in this guide, rather than being a cloud you can only splat.
 
-## Circles that pair off
+## Circles that pair off: Schottky
 
 Those Möbius maps have a second use, and this one hands you circles rather than a curve.
 
@@ -234,7 +234,7 @@ drawCircles(schottkyCircles(.gasket, in: canvasRectangle.inset(by: .all(60))))
 
 The named presets are the same ones the Kleinian curves use, so `.gasket` here and `.gasket` there are the same group wearing different clothes. The `Patterns/Schottky` example animates a small arc of this family, out from the gasket and back.
 
-## Growth that claims space
+## Growth that claims space: space colonization
 
 Grammars grow blind, and the fern doesn't know where the canvas ends or where its own leaves already are. The next grower looks before it grows. Scatter *attraction points* over the region you want filled, plant a root, then repeat three moves. Every attractor pulls on the closest branch tip within its reach. Every pulled tip grows one small step toward the average of its pulls. Every attractor a branch reaches is consumed, so its pull disappears and the growth moves on:
 
@@ -253,7 +253,7 @@ Three distances shape the result, and they want a particular relationship. `step
 
 The last touch is weight. `thicknesses(leafWidth:exponent:)` gives every node a stroke width by the pipe model. Tips are hairline, and every fork is as thick as its children can justify, the way a real trunk carries its crown. The `Patterns/Venation` example grows a whole leaf's veins this way, live.
 
-## Growth by chance
+## Growth by chance: DLA
 
 The third grower has no goals at all. Freeze one particle in the middle. Release a random walker from somewhere far away and let it wander. The moment it touches the frozen cluster it freezes too, and the next walker sets out:
 
@@ -275,7 +275,7 @@ override func draw() {
 
 Because particles freeze in arrival order, `cluster.particles[i]` froze `i`-th, and tinting by index paints the cluster's whole life story as rings of color. Each particle also remembers which particle it stuck to, so `segments` gives the branching skeleton as plain lines. `stickiness` below `1` lets walkers slide deeper before freezing, giving denser, mossier clusters. Seeding a *row* of points instead of one center grows frost creeping up from an edge. The `Patterns/Dendrite` example is the ring-tinted version.
 
-## Growth by voltage
+## Growth by voltage: dielectric breakdown
 
 DLA's walkers are secretly measuring something. Where walkers arrive often, an electric field would be strong too. The **dielectric breakdown model** drops the walkers and measures the field directly. Hold the discharge at one voltage and the surroundings at another, solve the field between them, and grow where it's strongest. This is how a spark decides, and it's the physics burned into wood and acrylic as Lichtenberg figures.
 
@@ -296,7 +296,7 @@ override func draw() {
 
 It's the same stepper shape as the others, with three gifts on top. `thicknesses(tipWidth:exponent:)` thickens trunks toward the seed, the way a real discharge brightens its main channel. `branches()` hands back whole channels as polylines, ready for smoothing or a plotter. And `potential(at:)` reads the solved field itself, so the glow around the figure can be drawn from the same physics that grew it. The `Patterns/Lichtenberg` example watches one arc to the rim.
 
-## Growth by collision
+## Growth by collision: crack growth
 
 The fourth grower makes cities. Start three straight cracks moving across the canvas, each remembering its angle in a grid as it goes. A crack that reaches a cell holding some *other* angle has met an older line. It stops there. Then it restarts perpendicular to a random point on the existing pattern, and one more crack joins the population:
 
@@ -320,7 +320,7 @@ override func draw() {
 
 `noClear()` keeps every frame's marks on the canvas, so the picture is the accumulation, the same trick the chance games below use. Each `mark` also carries a wash: the open span beside the crack, plus a `gain` that drifts up and down. `CrackGrowth.grains(from:to:gain:)` turns that span into translucent grains crowded against the line, and one ink per `mark.crack` colors each street. The `Patterns/Cracks` example is the full painting.
 
-## Growth by wandering
+## Growth by wandering: meander
 
 The fifth grower is a river. Water on the outside of a bend runs faster, so it eats that bank away. Water on the inside runs slower, so it drops the sand it carries. The bend deepens. And because each bend is pushed by the water that entered it upstream, the whole train of bends slides downstream as it grows. The river turns hardest where the water arrived already turning.
 
@@ -343,7 +343,7 @@ override func draw() {
 
 `centerline` is the river now. `oxbows` holds the lakes it has cut off, each fading away over time. And `recordEvery` keeps a copy of the channel every forty steps in `scars`. Draw those under the water in fading inks, and the picture becomes a map of everywhere the river has ever been. Only the starting waves are random: the migration itself is the same every run, so the seed *and the frame you stop at* pick the picture. The `Patterns/Meander` example is the full map.
 
-## Every neighbor must agree
+## Every neighbor must agree: Wave Function Collapse
 
 The last technique in this chapter grows nothing, strictly speaking, but it belongs with the growers because its results read as one organism. Wave Function Collapse fills a grid from a small set of tiles under one law. Neighboring tiles must agree along their shared edge. Each tile declares a *socket* per edge, pipe or blank in the classic set. The solver keeps every cell's options open, repeatedly settling the most-constrained cell and propagating what that choice forbids:
 
@@ -363,7 +363,7 @@ let grid = wfc(tiles: tiles, columns: 11, rows: 11)   // [[Int]] of tile indices
 
 `wfc` is seeded like everything else. `drawWFC` walks the solved grid cell by cell, handing you the tile index to draw. The figure above draws a stroke from each cell's center to every edge whose socket is `1`. That is the entire renderer for a pipe network. One draw block covers a tile *and* its rotations, because you draw from the sockets, not from a picture per tile. The `Patterns/WaveFunctionCollapse` example re-rolls a fresh legal network every few seconds.
 
-## Or hand it a picture instead
+## Or hand it a picture instead: overlapping WFC
 
 Declaring tiles and sockets is most of the work, and some textures don't come apart into tiles at all. So there's a second way to run the same solver. Give it a small picture and let it work the rules out itself.
 

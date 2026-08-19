@@ -208,7 +208,7 @@ drawMaze(maze(columns: 24, rows: 24))
 
 One more member of this family is a circle rather than a grid. `apollonianGasket(in:minRadius:)` fills a circle with the classic foam of ever-smaller kissing circles, each one the single circle that exactly touches its three neighbors. There's no randomness in it at all, so the same circle always gives the same foam. The circles come back in the order they were created, so their index doubles as an age you can color by.
 
-## Tiles that agree at their edges
+## Tiles that agree at their edges: Truchet
 
 The pinwheel quilt hinted at this. When identical parts meet their cell edges the same way, random spins still fit. In 1704 a French priest named Sébastien Truchet worked out how far that idea goes, and the tiles named after him are its purest form. Ollin ships two as `drawTruchet`:
 
@@ -231,7 +231,7 @@ The arc tile touches its cell's boundary in only four places, the edge midpoints
 
 The tiling is drawn from the seeded `random`, so it's reproducible like everything since [Chapter 4](04-Randomness.md). Same seed, same maze. And when the plain white line-work isn't enough, `truchet(columns:rows:tile:)` hands you the raw strands instead of drawing them. That is one list of points per arc, which is exactly what the finished piece wants.
 
-## One coin per line
+## One coin per line: hitomezashi
 
 Truchet spent one coin flip per cell. Hitomezashi, the one-stitch pattern of Japanese sashiko embroidery, spends even less: one flip per grid *line*. Every line carries a row of short dashes over alternating cells. The line's single bit picks which alternation, starting on the edge or one cell in. That's the whole rule. Neighboring lines shift against each other, so the dashes meet at the crossings and join into steps, staircases, and closed loops. A handful of coin flips reads as woven cloth.
 
@@ -257,7 +257,7 @@ for dash in design.stitches { drawPolyline(dash.points, closed: false) }
 
 Bias the flips with `probability:` and the weave drifts into long diagonal staircases. Or skip the coin entirely. `Hitomezashi(grid:rowBits:columnBits:)` takes explicit bits, and shorter arrays repeat along their lines. A favorite trick encodes a word as bits, a vowel as a 1, so a name becomes a design.
 
-## Tiles that never repeat
+## Tiles that never repeat: aperiodic tilings
 
 Everything so far repeats. Slide a hex grid one cell over and it lands on itself. That regularity is most of its charm. But there are tile sets that *cannot* do this. However you lay them, the pattern never repeats, anywhere, ever. Order without repetition is a real, buildable thing.
 
@@ -284,7 +284,7 @@ stroke(.white); noFill()
 drawGirih(over: cells, angle: 60)   // 54° is the classic girih-tile angle
 ```
 
-## More room than the page has
+## More room than the page has: hyperbolic tiling
 
 One last kind of repetition bends the page itself. Only three regular tilings fit on flat paper: triangles, squares, hexagons. The corners meeting at a vertex must sum to a full turn, and no other shape obliges. Hyperbolic geometry has room for all the rest. Seven-sided tiles meeting three to a corner, pentagons meeting four to a corner, any pair you like, as long as `(sides - 2) * (meeting - 2) > 4`. The Poincaré disk shows the whole infinite tiling at once: every tile is the same true size, only drawn smaller as it nears the circular horizon.
 

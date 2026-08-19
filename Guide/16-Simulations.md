@@ -89,7 +89,7 @@ dish = simField(.lenia(radius: 13), scale: 0.55)
 
 Those knobs are the model's whole personality. `radius` is how far the ring reaches. The growth center and width are the target mass, and how forgiving the rule is about missing it. The one thing to know before running it is that **Lenia needs a dense seed**. Sparse mass starves and fades to nothing, which looks like a bug and isn't. So give it a generous soup of soft marks, and a few hundred frames. What grows are colonies with soft glowing edges, and at the right settings, small self-contained creatures that swim.
 
-## The medium that has to rest
+## The medium that has to rest: excitable media
 
 There is a family of automata built on one restriction: a cell that fires cannot fire again until it has rested. That is the whole secret of an *excitable medium*, which is how nerve fibers, heart muscle, and certain chemical reactions carry their signals. An excitable medium remembers where a wave has just been, and that memory is what pushes the wave forward. A spark cannot spread back into the spent cells behind it, so it has nowhere to go but outward.
 
@@ -149,7 +149,7 @@ Everything in that figure came out of the rule. Nobody drew the circle, the four
 
 `topplings` is the pacing dial. An avalanche front moves one cell per pass, so `.sandpile(topplings: 1)` lets you watch each wave roll across the pile, and 128 hurries a collapse. And a mark you *hold* is a torrent rather than a drop. Its middle stays molten for as long as you keep pouring, with cells at four grains and above churning at the top of the ramp. It crystallizes into lacework when you stop. The `Simulation/Sandpile` example is exactly that piece, a mountain collapsing in front of you, and a torrent wherever you hold the mouse.
 
-## Two chemicals
+## Two chemicals: reaction-diffusion
 
 Reaction-diffusion is the Game of Life's continuous cousin, and the engine of this chapter's finished piece. The idea comes from Alan Turing. Two chemicals spread through a surface and react, one feeding the pattern and one killing it. In the balance between those two rates, patterns *make themselves*. Ollin ships it as `.reactionDiffusion(feed:kill:)`, and those two numbers are the whole temperament of the system:
 
@@ -165,7 +165,7 @@ Seeding is drawing, same as before, and it's worth watching what one mark become
 
 One more habit is worth forming here. The raw field is *data*, not a picture. Reaction-diffusion's state reads as dim red-green, so you give it a look by filtering. The catalog is the same one as everything else. Try `dish.filtered(.gradientMap(.viridis))`, a `.threshold` for hard ink, or [Chapter 14](14-LayersAndEffects.md)'s `.relight` to light it as matter.
 
-## The same rule at many sizes
+## The same rule at many sizes: multi-scale Turing
 
 Turing's idea has another descendant worth knowing, and it takes a different turn. Instead of two chemicals, it uses one substance, and instead of one scale, it runs several at once.
 
@@ -200,7 +200,7 @@ Add `symmetry` and the field folds around its center. `.rosette(n)` does it to e
 field = simField(.multiScaleTuring(scales: .rosette(9)), scale: 0.5)
 ```
 
-## Water you can stir
+## Water you can stir: fluid
 
 The third built-in sim is a real fluid: an incompressible flow that carries color. Marks inject dye, and `withField`'s `force:` pushes the flow where the marks land, so a moving brush stirs what it paints:
 
@@ -229,7 +229,7 @@ override func draw() {
 
 `curl` sets how much fine swirling detail the flow keeps, the dissipations how fast motion and color fade, and a mouse delta makes the obvious `force`. Hand this sketch a trackpad and it disappears people for a while.
 
-## A pool you can drop things into
+## A pool you can drop things into: ripples
 
 The fluid above carries color around. The fourth built-in sim is water of a different kind, a surface that goes up and down. That is the 2D wave equation running on a height field. It's the interactive ripple pool, and it's the sim with the most direct relationship between what you draw and what happens.
 
@@ -266,7 +266,7 @@ Two things about dropping follow from that, and both are easy to get wrong. The 
 
 The other thing worth knowing is that this field's raw `image` is not a picture of water. It stores height in the red channel and velocity in green, both signed, which makes it a debugging view. Shading it is a separate step, and `.relight` is the natural one because it reads the height as a real surface and lights it.
 
-## Paint that behaves
+## Paint that behaves: watercolor
 
 Every sim so far has been a system you seed and watch. The watercolor field is a sim about a *material*. It is a sheet of rough paper where water flows, carries pigment, and dries the way real paint does. You don't imitate watercolor's look with filters. You lay down wet paint, and the physics produces the look.
 
@@ -296,7 +296,7 @@ Two verbs manage the sheet between washes. `paint.dry()` bakes everything so far
 
 There are knobs for the paper too. `dryBrush` above zero makes strokes skip across the raised tooth and break up, `grain` sizes the tooth, and `paperSeed` picks the sheet. A pigment you can't find in the twelve presets you can invent by describing it. `WatercolorPigment(overWhite:overBlack:)` takes the color a layer shows over white and over black paper, and works out the optics from those two swatches. The full model, effect by effect, is on the [watercolor page](../Docs/Simulation/Watercolor.md).
 
-## Standing waves
+## Standing waves: Chladni figures
 
 Not every wave needs simulating. In 1787 Ernst Chladni scattered sand on a metal plate and drew a bow across its edge. The sand skipped away from the parts that were moving, and settled along the lines that weren't. Those lines are the plate's nodes, and the figures they make are beautiful enough that Chladni toured Europe demonstrating them.
 
@@ -325,7 +325,7 @@ drawImage(generate(.chladni(m: 7, n: 3, style: .wave, phase: time)).image, 0, 0)
 
 The natural next step is to stop choosing the mode numbers by hand. [Chapter 20](20-SoundAndControl.md) listens to sound. Pick `m` and `n` by which pitches are actually loud, and a piece of music turns into the plate that would have produced it. The `Audio/ChladniResonance` example does exactly that.
 
-## Iteration without memory
+## Iteration without memory: escape-time fractals
 
 Does everything that iterates need a field that persists? No, and the counterexample is the most famous iteration in mathematics. The **escape-time fractals** run their whole life inside a single frame:
 
@@ -363,7 +363,7 @@ All three panels are the same Julia set. Only the question changes. The first as
 
 Which brings the sidebar back to the chapter. The simulation fields spread their iteration across *frames*, because their rules need neighbors and memory. A Gray-Scott pattern at frame 900 genuinely required the 899 before it. The fractal needs neither, so its whole life fits in one evaluation and any frame can be computed on its own. Both are the same lesson at different speeds. Iterate something simple, and structure appears. `Examples/Effects/Fractals` sets a Julia's `c` drifting so the filigree morphs continuously, which is the best argument for the technique that exists.
 
-## A million grains
+## A million grains: GPU particles
 
 The fields so far evolved *textures*. The other half of GPU simulation evolves *particles*. That is a buffer of hundreds of thousands of individuals, each updated by a small program, none of them ever touching the CPU. In Ollin that's `Particles`, and the update is a snippet of Metal, the same language as [Chapter 15](15-YourFirstShader.md)'s shaders. It is presented here as a recipe you can adapt without ceremony:
 
@@ -393,7 +393,7 @@ Inside the snippet, each particle's `position`, `color`, `size`, and `life` are 
 
 Each grain sheds the same faint light, and density does the drawing. At ten thousand you see individuals, at a million you see a *material*. Pair this with [Chapter 14](14-LayersAndEffects.md)'s `noClear()` and `toneMap(.aces)`, and the grains deposit into the long-exposure sandpainting look. The `Rendering/DepthOfField` example pushes it all the way to a photographic bokeh field. The [compute reference](../Docs/Shaders/Compute.md) has the full snippet vocabulary, `.metal`-file loading, and the typed core underneath.
 
-## Crowds that organize themselves
+## Crowds that organize themselves: Physarum
 
 The grains in the last section never noticed each other. Making a hundred thousand particles *aware* of their neighbors is a harder problem than it looks. Asking "who is near me" the obvious way means comparing everyone against everyone, which is billions of comparisons a frame. The standard fix is to sort the particles into a grid of cells first, so each one only ever checks the nine cells around it. Ollin ships that sort as `SpatialHash`, and it's public, so you can build your own neighbor-aware system on it. Three classic ones come already built.
 
@@ -425,7 +425,7 @@ drawImage(slime.image, in: bounds)
 
 One honest caveat covers all three. The neighbor sort settles ties with a race between GPU threads, and these systems are chaotic, so a run is not reproducible frame for frame. Seed them for a repeatable *starting* layout, but don't expect two exports to match.
 
-## A search you can watch
+## A search you can watch: ant colony optimization
 
 Physarum's talk-through-the-floor trick has a CPU cousin that actually finishes something. **Ant-colony optimization** points the pheromone at a task: visit every city once, briefly. Each `step()` the whole colony walks a tour, choosing the next city by trail strength and closeness. Then the map evaporates a little, and every ant lays trail along its route, more for shorter tours.
 
@@ -447,7 +447,7 @@ drawPolyline(colony.bestTourPoints, closed: true)   // the answer so far
 
 Two knobs set the search's temperament. `evaporation` is the forgetting rate: high keeps exploring, low commits early, sometimes to a rut. `elitism` re-lays the best tour every iteration, which sharpens the web onto the current answer. Unlike its GPU cousins this one runs on the CPU and reproduces exactly from its seed. `bestTour` never worsens, so you can stop whenever the web looks done. The `Patterns/AntColony` example runs the whole search as a living sketch; the [reference](../Docs/Generators/AntColony.md) has the rest of the knobs.
 
-## Matter that decides what shape to be
+## Matter that decides what shape to be: Particle Lenia
 
 The three systems above are written as forces: something pushes, something pulls. **Particle Lenia** is written a different way, and it is worth seeing because the difference is the whole idea. There is no force law. There is a landscape, and particles walk downhill on it.
 
@@ -498,7 +498,7 @@ One more, which is not in the original model: `minSpeed`. Left to itself, a stee
 
 A still frame of a swarm is a picture of where everyone is, not of how they are moving. That is why all three panels above are drawn as trails. Use `noClear()`, then a nearly transparent rectangle over the whole canvas each frame, so old marks fade instead of vanishing. Use a rectangle rather than `background`, which wipes the canvas outright no matter how little alpha its color carries.
 
-## Liquids and jellies
+## Liquids and jellies: SPH and soft bodies
 
 That same neighbor search carries two more systems, and these two behave like matter.
 
@@ -529,7 +529,7 @@ drawParticles(blobs)
 
 Bodies collide with each other and flatten where they press together, which is the pile on the right. Both systems run fixed substeps against a clamped clock, so a dropped frame slows them down rather than detonating them. Both carry the same reproducibility caveat as the last section.
 
-## Letting the sketch find it
+## Letting the sketch find it: evolution
 
 Every other system in this chapter runs a *rule*. This one runs a *search*.
 
@@ -560,7 +560,7 @@ One decision in there is easy to overlook, and it decides whether any of this wo
 
 Mutation is what keeps that going. Each gene, as it is copied into a child, has a small chance of being nudged. And it really is a nudge, a random amount added to what the gene already held rather than a fresh random value. Turn mutation off and a run still improves for a while, on the variety generation 1 happened to contain. Then it stops, because copying can only ever narrow. Selection chooses. It never invents.
 
-## Sixteen things and no opinion about them
+## Sixteen things and no opinion about them: interactive evolution
 
 The other half of evolution has no score at all.
 
@@ -586,7 +586,7 @@ The mutation rate here defaults far higher than the scored version's, and the re
 
 The two halves are not the same tool at two sizes. A scored search can only ever find what the score was written to want. A search judged by eye can arrive somewhere you did not know you were going, because you are allowed to change your mind between generations.
 
-## A rule that spreads by winning arguments
+## A rule that spreads by winning arguments: swarm chemistry
 
 Both halves above have generations: everybody flies, everybody is judged, everybody is replaced. **Swarm chemistry** takes the generation away and sees what is left.
 

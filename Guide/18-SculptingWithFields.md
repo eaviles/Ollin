@@ -107,7 +107,7 @@ final class FirstMarch: Sketch {
 
 Try building that from triangle meshes and you'll appreciate what just happened. The two spheres aren't two surfaces joined at a seam. They are *one* surface, because the field underneath is one function. The leaf catalog matches the mesh primitives. Sphere, box, torus, capsule, cylinder, cone, octahedron, and more are all there. So is `line(from:to:radius:)`, a stroke between two points that's perfect for sketching limbs and branches for the melt to flesh out. Fields and meshes coexist in one scene and correctly hide each other. The [combinators reference](../Docs/Drawing/Combinators.md#fields-3d) has the whole catalog.
 
-## How the picture gets made
+## How the picture gets made: sphere tracing
 
 A mesh is triangles, and the GPU knows how to draw triangles. A field is just a function, so how does it become pixels? By *asking it the right question, repeatedly*. For each pixel, a ray leaves the camera, and the field is asked how far the nearest surface is. The answer is a promise, nothing is closer than this, so the ray can safely hop exactly that far. Ask again, hop again:
 
@@ -117,7 +117,7 @@ The hops shrink as the ray nears a surface and grow again in open space, so the 
 
 You get all of this without writing any of it. The one practical knob is `raymarchQuality(_:)`. Tracing costs by the pixel, so the live window traces at a resolution budget by default while exports always render at full quality. If a heavy field stutters while you sketch, `raymarchQuality(.performance)` loosens that budget further.
 
-## The other way out
+## The other way out: field to mesh
 
 Everything so far turns a field into pixels. Sometimes you want it to turn into an object instead.
 
@@ -166,7 +166,7 @@ sculpt {
 
 Flip one `add()` to `carve()` and a bump becomes a dent, which is exactly the kind of edit live coding thrives on. A further set of distortions bends whole forms. `.twisted(1.2)` screws a shape around its axis, `.bent(0.6)` curls it, and `.displaced` / `.roughened` ripple or roughen the surface, the rock look. They're all safe to stack, because the tracer compensates for the distortion on its own.
 
-## Folding space
+## Folding space: domain repetition
 
 The last trick is the strangest one. Instead of copying a shape, you can fold the *space it lives in*, so one shape answers for many:
 
@@ -184,7 +184,7 @@ There is still only one cluster. The domain operator rewrites each query point b
 
 A field shades like a mesh, so all of [Chapter 17](17-3DGently.md) applies. `material(.jade)` gives a melt its glow, and `castShadows()` grounds it. A field even self-shadows, and it trades shadows with the meshes around it. But there is one family of finishes [Chapter 17](17-3DGently.md) deliberately left for here. It doesn't work without something this chapter's sculptures finally give it a reason to set up.
 
-### Two numbers for most real surfaces
+### Two numbers for most real surfaces: PBR
 
 The materials in [Chapter 17](17-3DGently.md) were named looks, like velvet, jade, and toon. The **physically based** ones are different in kind. Instead of a name, you give two properties, and the renderer works out how light should behave:
 
@@ -201,7 +201,7 @@ That is one material with one number changed. The leftmost sphere is a mirror, s
 
 There are ready-made ones for the common cases, like `.polishedMetal`, `.smoothPlastic`, and `.roughPlastic`. They're the same two properties underneath. Watch the naming, though. Plain `.plastic` is one of the *stylized* finishes from [Chapter 17](17-3DGently.md), not a physically based one, so reach for `.smoothPlastic` when you want this family.
 
-### A streak instead of a dot
+### A streak instead of a dot: anisotropy
 
 Roughness sets how *wide* the highlight is. One more number sets its *shape*. Look at the base of a frying pan, or a laptop lid. The highlight there isn't a dot but a streak, because fine parallel grooves from brushing or machining cover the surface. **anisotropy** is that streak. It runs `-1…1`: `0` keeps the round highlight, and either end pulls it into a line. **anisotropyRotation** spins the line, in radians.
 
@@ -214,7 +214,7 @@ material(Material(shading: .physicallyBased, metallic: 1,
 
 **The whole picture answers to one number.** The first two spheres are the same steel, and the streak is what `0.8` does to it. The reflections smear the same way, so under an environment a brushed metal drags what it mirrors into stripes. The ring at the end is the ready-made `.brushedMetal` preset. On a curved body the streak follows the surface around, exactly how a machined ring or a lathed bowl reads. One thing to keep in mind: the streak is stretched *roughness*, so a mirror at roughness `0` has nothing to stretch. Give it a little roughness first. The [`BrushedMetal` example](../Examples/3D/Materials/BrushedMetal/Sketch.swift) sweeps the strength and the rotation side by side.
 
-### Surroundings as the light
+### Surroundings as the light: environments
 
 Here's the catch that makes this a Chapter 18 topic. A mirror reflects its surroundings, so **a physically based surface with no surroundings has almost nothing to work with** and goes dark and dull. Named lights don't fix it, because a point light is a point. It makes a highlight, not a reflection.
 
@@ -257,7 +257,7 @@ Two knobs come up immediately in practice. An environment paints itself **behind
 
 `SDF3D.plane()` is worth knowing about here too, since it's an infinite floor you can merge into the field for true horizon-to-horizon self-shadowing.
 
-### The room as the light
+### The room as the light: Environment.feed
 
 Every environment so far was somewhere else: a Venice evening, a studio, a synthetic sky. `Environment.feed(...)` uses somewhere you already are. Hand it the webcam, and its latest frame becomes the surroundings. **The room you are sitting in lights the thing you are making.**
 
@@ -278,7 +278,7 @@ Walk past the camera and the reflections move with you. Hold up something red an
 
 That figure fakes the webcam with one authored picture, so the guide reproduces; everything after the frame is the real path. The picture behind the spheres is also the light on them, which is the whole point: show the feed yourself with `drawFrame`, and the picture and the lighting stay one world. The feed deliberately never draws as its own backdrop the way an HDRI does, because the wrap is made for lighting, not for looking at. Any `VideoFeed` works the same way (a playing video, a screen capture, the phone's camera), and until the first frame arrives a neutral sky stands in. The `3D/Environments/LiveEnvironment` example is this section, live.
 
-## Mirrors that see off screen
+## Mirrors that see off screen: ray-traced reflections
 
 [Chapter 17](17-3DGently.md) finished with screen-space reflections and an honest limit. They reflect what is on the screen, so they cannot show you anything the camera can't already see. `rayTracedReflections()` is the answer to that, and it works differently enough to be worth understanding.
 
@@ -300,7 +300,7 @@ There's one behavior worth expecting rather than being puzzled by. Reflections a
 
 Meshes and fields differ in a few places over which finish applies to which. The [combining reference](../Docs/3D/Combining.md) is the table for that.
 
-## Light that bounces
+## Light that bounces: global illumination
 
 Every light in the last two chapters worked the same way. It left the lamp, hit a surface, and stopped. Real light doesn't stop. The sun patch on your floor lights your ceiling from below. A red wall tints the white shelf beside it, and the dark side of everything in the room is filled in by light arriving second-hand. **Direct light only ever explains half a picture.** The other half has bounced at least once. One call turns that half on:
 
@@ -324,7 +324,7 @@ Like the reflections, the probe field settles over a few frames live, so a sudde
 
 The [`GlobalIllumination` example](../Examples/3D/Lighting/GlobalIllumination/Sketch.swift) is this room with the lamp swinging. The space bar toggles the bounce, which is the clearest before-and-after you can give yourself. The bounce follows the picture wherever it goes. A wall seen *inside a mirror* carries the same second-hand light as the wall itself, and a scene drawn into a layer for depth of field gathers it like the canvas does. If a heavy scene stutters while you sketch, `globalIlluminationQuality(.performance)` trades a grainier bounce for frame rate, the same kind of dial shadows have. Exports always take the fine end on their own. Scale isn't your problem either. On a terrain-sized scene the scene-wide probe grid would spread too thin, so finer probe volumes gather around the camera on their own and travel with it. The bounce near what you're looking at stays room-quality with nothing to configure.
 
-## Edges that settle
+## Edges that settle: temporal anti-aliasing
 
 The last two sections shared a trick worth naming. Render a slightly different estimate every frame, and average. The reflections jitter their rays, and the probes rotate their fans. `temporalAntialiasing()` applies the same idea to **every edge in the 3D picture**:
 
@@ -339,7 +339,7 @@ One thing the average can't know on its own is where a *moving object* was last 
 
 The [`TemporalAA` example](../Examples/3D/Effects/TemporalAA/Sketch.swift) is a trellis of thin tilted rods under a slow camera sway, with the toggle on a knob. An orbiting bar has a `withMotion` knob of its own. Flip them mid-motion and watch the edges stop crawling. The scenes where it makes the most difference are exactly that kind, so hairline geometry, high contrast, and movement.
 
-## The streak a shutter leaves
+## The streak a shutter leaves: motion blur
 
 A rendered frame is an instant: everything in it is perfectly sharp, no matter how fast it was going. A film frame is not. A real camera's shutter stays open for a slice of each frame, and anything that moved during that slice smears along its path. Your eye has spent a lifetime learning that fast things streak. That's why rendered motion can feel like a strobe, since the picture keeps saying *is* when it should sometimes say *was going*. A sharp frame says where things are, and a streak says where they're going.
 
@@ -360,7 +360,7 @@ The figure is one still frame, and it already tells you who is moving and how fa
 
 The [`MotionBlur` example](../Examples/3D/Effects/MotionBlur/Sketch.swift) is the figure's scene live, with the toggle and the shutter on knobs. Slide the shutter while the spheres orbit and watch the same motion go from strobe to smear. Captions, 2D overlays, and the environment backdrop never streak, so the interface stays still while the world moves.
 
-## Rendering fewer pixels
+## Rendering fewer pixels: temporal upscaling
 
 Almost everything in this chapter charges by the pixel. The mirrors trace one ray per pixel, the fields march per pixel, and the bounce is gathered per pixel. When a scene gets heavy, the honest lever is to render fewer of them. `temporalUpscaling()` pulls it without giving up the full-size picture:
 
@@ -369,7 +369,7 @@ rayTracedReflections()
 temporalUpscaling()      // render at two-thirds size, reconstruct the full canvas
 ```
 
-The live window draws the whole frame at a fraction of the canvas. The platform's temporal scaler then rebuilds the full-size image from the same jittered history that "Edges that settle" accumulates. You render fewer pixels, and the history remembers the rest. The tier picks how few. `.performance` renders at half size per side, a quarter of the pixels, `.default` at two-thirds, and `.detail` at three-quarters. It replaces `temporalAntialiasing()` while it runs, since it *is* that accumulation aimed at resolution. It reads the same `withMotion { }` declarations, so a mover reconstructs cleanly mid-flight. It needs Apple silicon, and anywhere else the call renders normally, with a note.
+The live window draws the whole frame at a fraction of the canvas. The platform's temporal scaler then rebuilds the full-size image from the same jittered history that "Edges that settle: temporal anti-aliasing" accumulates. You render fewer pixels, and the history remembers the rest. The tier picks how few. `.performance` renders at half size per side, a quarter of the pixels, `.default` at two-thirds, and `.detail` at three-quarters. It replaces `temporalAntialiasing()` while it runs, since it *is* that accumulation aimed at resolution. It reads the same `withMotion { }` declarations, so a mover reconstructs cleanly mid-flight. It needs Apple silicon, and anywhere else the call renders normally, with a note.
 
 What you keep is never the preview. Exports and snapshots render at full resolution with the deterministic average. So upscaling is purely a live-window trade, and the same sketch previews fast and exports full. The [`Upscaling` example](../Examples/3D/Effects/Upscaling/Sketch.swift) is a mirror floor tracing a ring of columns, with the toggle and the tier on knobs. Watch the FPS readout while you flip them, since that scene runs about twice as fast at `.performance` on an M2. Like temporal AA, the win is temporal and a still can't show it, so the example carries the demonstration.
 
@@ -396,7 +396,7 @@ And the one glass object everyone knows is a soap bubble, which is thin glass pl
 
 Two honest edges, so they don't puzzle you later. Glass still casts a solid shadow. Glass seen *inside a mirror*, or through other glass, reads as a shiny opaque ball, because a traced ray doesn't re-enter the transmission math. Both are the standard real-time compromises, and both have follow-ups on the roadmap.
 
-## The light the glass takes, given back
+## The light the glass takes, given back: caustics
 
 Set a real glass on a sunlit table and look next to it. Inside its shadow there's a bright loop, brighter than the open table around it. The glass didn't destroy the light it blocked. It bent all of it into one small place. That focused light is a *caustic*, and one call turns it on:
 
@@ -416,7 +416,7 @@ drawSphere(radius: 0.9)               // its bright spot lands inside its own sh
 
 Two knobs. `caustics(intensity: 1.6)` turns the patterns up past physical, for drama. `caustics(dispersion: 1)` gives every parcel its own wavelength, so a prism's edge fans into a real rainbow and even a plain sphere's spot picks up red and blue fringes. If the patterns look coarse, `causticsQuality(.detail)` traces more parcels; exports always use the fine setting on their own. Like the other traced light, it needs a Mac that traces and quietly does nothing elsewhere, so the call can stay in the sketch. The [`Caustics` example](../Examples/3D/Lighting/Caustics/Sketch.swift) is the sunlit-table scene: two glass spheres and a chrome ring, with the space bar to compare.
 
-## Paint and cloth
+## Paint and cloth: clearcoat and sheen
 
 Two more finishes are built by *layering* rather than by choosing numbers for one surface, because that's how the real things are made. Car paint is a metallic base under a thin polished lacquer. Velvet is a matte body under a haze of stray fibers. Each layer gets its own knob on the physically based material, and each has presets so you can start from the name.
 
@@ -436,7 +436,7 @@ Now the second pair. The felt sphere is the same blue as its neighbor, but its s
 
 Both layers work under ordinary lights, under the area-light panels of [Chapter 17](17-3DGently.md), and from an environment. Under `rayTracedReflections()` the coat's reflection upgrades to the traced scene along with everything else. The one honest edge matches glass. Seen *inside a mirror*, a coated or fuzzed surface shows only its base there.
 
-## Skin, wax, and stone
+## Skin, wax, and stone: subsurface scattering
 
 Every surface so far bounces light off its outside. Skin doesn't. Hold a flashlight against your fingers and the flesh glows red around it. Some of the light went *in*, wandered a little way under the surface, and came back out somewhere else. Marble, wax, milk, and jade all do this, and the eye is remarkably good at noticing when a render of them doesn't. **A surface without it reads as painted plastic no matter how carefully it's colored.**
 

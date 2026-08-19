@@ -134,7 +134,7 @@ A line can hold both directions at once. Then the neutral characters (spaces, br
 
 Box layout carries the Japanese rules along with it. A full stop may not open a line, and an opening bracket may not close one. The system's break set already knows, so a comma arrives joined to the character before it and travels with it.
 
-## Down the page
+## Down the page: vertical text
 
 Japanese is also written the other way.
 
@@ -153,7 +153,7 @@ Which is why the face decides what happens to English inside a column. A Japanes
 
 Turning the writing turns the settings with it. A `\n` starts the next column, to the left. `textWidth` measures how long the column is. A box wraps against its height, because that is the room a column has to run in. And the two halves of `textAlign` swap jobs: the vertical one says where a column starts, the horizontal one places the block of columns. So vertical text in a box usually wants `textAlign(.right, .top)`, which is the corner the writing opens at.
 
-## The other way down
+## The other way down: Mongolian
 
 Mongolian runs down the page too. Its columns fill the other way.
 
@@ -175,7 +175,7 @@ Two things change with the turn. A column is as wide as the face's ascent and de
 
 Japanese wants `.topToBottom`. This mode would lay every character on its side.
 
-## Both edges flush
+## Both edges flush: justification
 
 So far every string has been one line hung from a point. The box form wraps a paragraph instead. Hand `drawText` a `Rectangle` and it breaks the text to fit inside, line by line. Down-the-page writing fills it in columns instead.
 
@@ -191,7 +191,7 @@ Justification needs to know how far a line should run, and only a box says that.
 
 Where the extra room goes is the layout engine's business. English opens the spaces between words. Japanese has no spaces, so it opens the gaps between characters instead. Either way you ask for the same thing.
 
-## Letting a stop hang
+## Letting a stop hang: hanging punctuation
 
 A full stop may not open a line. So a stop that will not fit takes the character it follows to the next line with it. That leaves a hole at the edge where the two of them used to be.
 
@@ -368,7 +368,7 @@ Two honest notes. The look needs some texture in the source, because run boundar
 
 Everything in these three sections reads real pixels on the CPU, which means two practical things. A texture-backed image needs `snapshot()` first, and all of it is setup work: run it once, hold the result, and let `draw()` replay it.
 
-## Numbers you didn't type
+## Numbers you didn't type: CSV and JSON
 
 Words and pictures are material you bring in. So are numbers.
 

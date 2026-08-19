@@ -272,7 +272,7 @@ let piano = SampledInstrument(sfz: "Piano.sfz", in: .module)
 
 Where to find them, and the licences, are on the [Synthesis](../Docs/Helpers/Synthesis.md#where-to-find-instruments) page. Here is the short version. [VCSL](https://github.com/sgossner/VCSL) and [VSCO 2 Community Edition](https://versilian-studios.com/vsco-community/) are CC0, so you can do anything with them, including ship them. [Freesound](https://freesound.org/) is per-clip and mixes CC0 with non-commercial, so check each one. The [Philharmonia](https://philharmonia.co.uk/resources/sound-samples/) samples are free to make music with, but explicitly not free to pass on as a sampler instrument. That distinction is worth reading before you build something on them.
 
-## A string, worked out rather than drawn
+## A string, worked out rather than drawn: the plucked string
 
 Every voice so far starts with a wave, a shape an oscillator traces over and over. You then carve it with an envelope and a filter until it sounds like something. That works, and it is what most synthesizers are. But it is a description of a result, and there is another way in.
 
@@ -303,7 +303,7 @@ Three more things are worth knowing. `hardness` is how quickly you let go, which
 
 The tuning is the part you would never think to check and would certainly hear. A loop has to come out exactly one period long, and a whole number of samples cannot do that. At the bottom of the keyboard the rounding error hides in a loop hundreds of samples long. At the top, where a period is ten samples, rounding is out by most of a semitone. So the fraction left over is handled by a filter that supplies a fraction of a sample. The loop filter's own delay is counted into the same budget, which is why turning `damping` up cannot pull the note flat.
 
-## A shape you can hit
+## A shape you can hit: modal synthesis
 
 A string is one length of one thing, and its model is one loop. Something struck is different. Hit a plate or a bell or a sheet of glass and it does not make a wave at all. It makes a handful of pure tones at once, each fading at its own rate.
 
@@ -338,7 +338,7 @@ Two practical things. **Measuring is the expensive part and striking is free**, 
 
 `Examples/Audio/StruckShapes` is six of these you can click, and the bars under each one move as you move where you hit it.
 
-## A note you keep playing
+## A note you keep playing: bowed and blown
 
 The string and the shape have something in common that is easy to miss. Both are set going once. You pluck, or you strike, and the whole note is decided at that instant. Everything after is the thing fading.
 
@@ -489,7 +489,7 @@ let chord: Chord = "F#m7"
 
 Symbols do not survive a change of key and degrees do, which is the whole trade between the two.
 
-## Twelve is a choice
+## Twelve is a choice: tunings
 
 Everything so far has divided the octave into twelve, because almost all the music you are likely to make does. It is worth knowing that this is a decision and not a law.
 
@@ -504,7 +504,7 @@ Equal temperament is a compromise: it makes every key equally usable by making e
 
 Past that there are more steps rather than different ones, in `.nineteen`, `.thirtyOne`, and `.quarterTones`. Then there is `.bohlenPierce`, which divides a *third* into thirteen and so contains no octave at all. Doubling a frequency is so familiar that a tuning without it sounds wrong before it sounds strange, and then stops sounding wrong. It works because odd harmonics still line up, which is why it suits the clarinet from earlier in this chapter and suits almost nothing else.
 
-## Playing along with the room
+## Playing along with the room: tempo sync
 
 The beat detector at the start of this chapter told you *that* a beat happened. Getting from there to playing in time with one is a bit more:
 
@@ -526,7 +526,7 @@ Two things it does that are easy to get wrong if you write this yourself. A dete
 
 It hears arrivals rather than the beat a drummer would tap. A steady loop is followed well, and rubato is followed badly. `room.steadiness` is how much to trust it.
 
-## Numbers you can hear
+## Numbers you can hear: sonification
 
 Everything so far invents what it plays. The other way to fill a scale with notes is to already have the numbers, and read them out.
 
@@ -559,7 +559,7 @@ A reference sounds one named value on exactly the same footing as the reading. W
 
 Which is the other reason this exists. A sketch that draws a column can read the same column out loud, from the same numbers, in one more line. `Examples/Audio/Sonification` does exactly that. A line across a landscape is drawn as a profile and played as a tune, with the playhead marking the note sounding. The picture and the sound are two views of one series, and one of them works for someone who is not looking.
 
-## Sound that comes from somewhere, and sound you can keep
+## Spatial audio, and sound you can keep
 
 Two things are left, and both are one line each.
 
@@ -663,7 +663,7 @@ override func setup() {
 
 Each incoming value is mapped into the parameter's own range and assigned. The sketch keeps reading plain `radius`, without ever knowing who moved it. The inspector slider, the hardware, the phone, and plain assignment in code all stay live at once, and whichever moved most recently wins. One more line makes hardware feel good. Give the parameter a `smoothing:` and every source glides instead of stepping. `.eased(0.3)` is a fixed glide, and `.smoothed` is the adaptive filter that stays steady at rest and opens up under a moving hand. The softening belongs to the knob rather than to the wire.
 
-## Something to hold
+## Something to hold: game controllers
 
 A knob box is one kind of hand and a phone fader is another. A game controller is a third, and it's the one most people already own.
 
