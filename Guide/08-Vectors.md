@@ -29,6 +29,55 @@ Vectors add, subtract, and scale, and each operation has a picture worth keeping
 - **Subtracting** answers the most useful question in this half of the guide: `target - pos` is *the arrow that goes from here to there*. Every chase, spring, and look-at in the chapters ahead starts with this line.
 - **Scaling** multiplies by a plain number: `v * 2` is twice as far in the same direction, `v * 0.5` half, `v * -1` the same road walked backward.
 
+The pictures above can move. Make `MySketches/ArrowWalk.swift` and push them around:
+
+```swift
+import Ollin
+
+final class ArrowWalk: Sketch {
+    override func setup() {
+        noiseSeed(8)
+    }
+
+    override func draw() {
+        background(Color(hex: 0xF7F5F1))
+
+        let home = Vector2(width * 0.3, height * 0.68)
+        var target = Vector2(noise(time * 0.25, 3) * width,
+                             noise(time * 0.25, 77) * height * 0.55)
+        if mouseIsPressed { target = Vector2(mouseX, mouseY) }
+
+        let trip = target - home            // the arrow from here to there
+        let breeze = Vector2(170, -240)     // a second arrow, always the same
+
+        // Scaling: stones along the same road, at fractions of the trip.
+        noStroke()
+        fill(Color(hex: 0x2B2B2B, alpha: 0.28))
+        for s in [-0.5, 0.25, 0.5, 0.75, 1.5] {
+            drawCircle(center: home + trip * s, radius: 9)
+        }
+
+        // The trip itself, then the breeze walked from its end.
+        strokeWeight(4)
+        stroke(Color(hex: 0xE4572E))
+        drawLine(home, home + trip)
+        stroke(Color(hex: 0x2B2B2B))
+        drawLine(home + trip, home + trip + breeze)
+
+        noStroke()
+        fill(Color(hex: 0x2B2B2B))
+        drawCircle(center: home, radius: 12)
+        drawCircle(center: target, radius: 8)
+        fill(Color(hex: 0xE4572E))
+        drawCircle(center: home + trip + breeze, radius: 12)
+    }
+}
+```
+
+<img src="Images/08-Vectors/ArrowWalk.jpg" alt="A cream canvas with a dark home dot at lower left, an orange line running to a small wandering target, gray stones spaced along and beyond that line, and a dark line continuing from the target to an orange dot up and to the right" width="560">
+
+The orange line is the subtraction. It is `trip`, the arrow from `home` to the target, and it stretches and swings as the target wanders on [Chapter 5](05-Noise.md)'s noise. Hold the mouse down and the target is yours. The stones are the scaling, the same trip cut to fractions, one of them negative and walking backward, one overshooting past the target. And the dark line is the addition, `breeze` walked from wherever the trip ended. The orange dot is `home + trip + breeze`, a place named by one sentence of arithmetic.
+
 Two spellings make these read like sentences. `pos += step` moves a point by an arrow in place, and `v * deltaTime` is [Chapter 3](03-MotionAndTime.md)'s frame-rate rule wearing vector clothes, so you write speeds per second and scale by the frame's slice of a second.
 
 ## Length and direction
@@ -105,6 +154,57 @@ velocity = (velocity + steer * deltaTime).limited(to: maxSpeed)
 ```
 
 In words, you figure out the velocity you *wish* you had, straight at the target at full speed. Then you subtract the velocity you actually have, which gives the correction arrow between them. You cap that correction, because nothing real turns instantly, and finally you apply it like any other acceleration. The two caps are the character knobs. `maxSpeed` is how fast it can go, and `maxForce` is how sharply it can turn. High force snaps onto the target like a hunting fly, while low force sails past and swings back in wide, lazy arcs. The misses are where the life is: the chaser overshoots *because* it has momentum, and the correction is visible.
+
+Watch the two temperaments race. Make `MySketches/Chasers.swift`, two chasers with one number different between them:
+
+```swift
+import Ollin
+
+final class Chasers: Sketch {
+    var positions = [Vector2(240, 880), Vector2(840, 880)]
+    var velocities = [Vector2.zero, Vector2.zero]
+    var trails: [[Vector2]] = [[], []]
+    let forces = [2200.0, 320.0]        // how sharply each may turn
+    let tints = [Color(hex: 0xF25C54), Color(hex: 0x4CC9F0)]
+    let maxSpeed = 420.0
+
+    override func draw() {
+        background(Color(hex: 0x0E1116))
+
+        let spots = [Vector2(250, 330), Vector2(830, 380), Vector2(620, 840)]
+        var lure = spots[Int(time / 4) % spots.count]
+        if mouseIsPressed { lure = Vector2(mouseX, mouseY) }
+
+        for i in positions.indices {
+            let desired = (lure - positions[i]).normalized * maxSpeed
+            let steer = (desired - velocities[i]).limited(to: forces[i])
+            velocities[i] = (velocities[i] + steer * deltaTime).limited(to: maxSpeed)
+            positions[i] += velocities[i] * deltaTime
+
+            trails[i].append(positions[i])
+            if trails[i].count > 300 { trails[i].removeFirst() }
+
+            noFill()
+            stroke(tints[i].withAlpha(0.5))
+            strokeWeight(2.5)
+            drawPolyline(trails[i])
+            noStroke()
+            fill(tints[i])
+            drawCircle(center: positions[i], radius: 13)
+        }
+
+        noStroke()
+        fill(Color(white: 1, alpha: 0.8))
+        drawCircle(center: lure, radius: 6)
+    }
+}
+```
+
+<img src="Images/08-Vectors/Chasers.jpg" alt="Two chaser trails on a dark canvas following a lure that hops between spots: the coral trail curls tightly at the old spot, darts straight to the lure and buzzes around it, while the sky-blue trail sweeps wide past both spots and sails beyond the lure into the corner" width="560">
+
+Both share the lure and the top speed, and only `maxForce` differs. The coral chaser corrects hard, so each time the lure hops it turns, darts, and settles into a tight little orbit around the new spot. It never quite stops, because the recipe always asks for full speed toward the target, and the buzzing knot is that honesty drawn. The blue one can barely turn. It sails past the lure, swings back in the wide arcs its momentum writes, and often meets the next hop before it ever settles. Hold the mouse down and both come to you, each in its own way.
+
+> **Swift note.** `[Vector2]` is a list that grows: `append` adds to the end, `removeFirst()` and `removeLast(n)` trim either end, `count` is the size, and `positions.indices` counts `0..<count` so one `i` can index parallel lists together. Lists like these are how a sketch keeps state for *many* things, and Part II leans on them everywhere.
 
 Every line is arithmetic you already have: a subtraction pointing from here to there, a normalize choosing a speed, a limit keeping it honest. [Chapter 10](10-FlocksAndSwarms.md) builds whole flocks from exactly this correction, aimed at neighbors instead of a target.
 
@@ -193,8 +293,6 @@ Run it with `swift run OllinLive MySketches/Swarm.swift`, watch the school wheel
 - The steering block is the chase recipe verbatim, aimed at `lure`. Turn `Chase` down and the school swings in long arcs past the dot; turn it up and the swarm snaps tight around it.
 - Each mover draws as a `drawLine` from a little behind itself (`- velocities[i] * 0.11`) to where it is, giving a streak that grows with speed and points where it's going, with no rotation math needed.
 - The lure is two `noise` calls on far-apart rows of the field, [Chapter 5](05-Noise.md)'s trick for unrelated drifts, and `mouseIsPressed` swaps it for your cursor. In a still export nobody is pressing, which is why the committed figure shows the noise chase.
-
-> **Swift note.** `[Vector2]` is a list that grows: `append` adds to the end, `removeLast(n)` trims, `count` is the size, and `positions.indices` counts `0..<count` so one `i` can index all three lists together. Lists like these are how a sketch keeps state for *many* things, and Part II leans on them everywhere.
 
 Then make it yours:
 
