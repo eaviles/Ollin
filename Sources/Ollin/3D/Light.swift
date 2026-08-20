@@ -104,6 +104,22 @@ public struct Light: Equatable, Sendable {
     /// a real fixture in its yoke turns both. Ignored with neither set.
     public var roll: Double
 
+    /// Whether this light throws a shadow while the scene casts them
+    /// (`castShadows()`); `true` by default.
+    ///
+    /// A frame can carry several casters at once, so a key light and a spot both
+    /// throw. Set this to `false` on a light that should only add brightness: a
+    /// bounce or fill light usually reads better with no shadow of its own, and each
+    /// caster costs its own depth pass over the scene. A frame casts from at most four
+    /// lights, the ones set first. Two kinds never take an extra slot: a **tube**, which
+    /// emits radially and so has no direction to render a map from, and a **point**
+    /// light, which casts only when it is the frame's primary caster (it needs the one
+    /// cube map, or the one acceleration structure, that belongs to that caster). With
+    /// `castShadows()` off, nothing casts and this is ignored.
+    ///
+    /// Use `castingShadow(_:)` to set it on a light from a factory.
+    public var castsShadow: Bool
+
     /// The most general initializer; prefer the `.directional`/`.point`/`.spot`/
     /// `.rect`/`.disk`/`.tube` factories, which fill in the fields that don't
     /// apply to a kind.
@@ -114,7 +130,7 @@ public struct Light: Equatable, Sendable {
                 width: Double = 1, height: Double = 1, radius: Double = 0.5,
                 length: Double = 1, up: Vector3 = .unitY, twoSided: Bool = false,
                 profile: IESProfile? = nil, cookie: LightCookie? = nil,
-                roll: Double = 0) {
+                roll: Double = 0, castsShadow: Bool = true) {
         self.kind = kind
         self.color = color
         self.intensity = intensity
@@ -133,6 +149,15 @@ public struct Light: Equatable, Sendable {
         self.profile = profile
         self.cookie = cookie
         self.roll = roll
+        self.castsShadow = castsShadow
+    }
+
+    /// This light with its shadow turned on or off: `Light.point(...).castingShadow(false)`
+    /// adds a fill that lights the scene and throws nothing. See `castsShadow`.
+    public func castingShadow(_ on: Bool = true) -> Light {
+        var copy = self
+        copy.castsShadow = on
+        return copy
     }
 
     /// A directional light (parallel rays, like sunlight). `direction` is the way
@@ -141,9 +166,11 @@ public struct Light: Equatable, Sendable {
     /// terminator for a gentler shaded edge.
     public static func directional(_ color: Color, direction: Vector3,
                                    intensity: Double = 1,
-                                   specular: Color? = nil, softness: Double = 0) -> Light {
+                                   specular: Color? = nil, softness: Double = 0,
+                                   castsShadow: Bool = true) -> Light {
         Light(kind: .directional, color: color, intensity: intensity,
-              specular: specular, softness: softness, direction: direction)
+              specular: specular, softness: softness, direction: direction,
+              castsShadow: castsShadow)
     }
 
     /// A point light: an omnidirectional source at a world position. `specular`
@@ -156,10 +183,11 @@ public struct Light: Equatable, Sendable {
                              specular: Color? = nil, softness: Double = 0,
                              profile: IESProfile? = nil,
                              axis: Vector3 = Vector3(0, -1, 0),
-                             roll: Double = 0) -> Light {
+                             roll: Double = 0, castsShadow: Bool = true) -> Light {
         Light(kind: .point, color: color, intensity: intensity,
               specular: specular, softness: softness, position: position,
-              direction: axis, profile: profile, roll: roll)
+              direction: axis, profile: profile, roll: roll,
+              castsShadow: castsShadow)
     }
 
     /// A spot light: a point source at `position` narrowed to a cone aimed along
@@ -173,11 +201,11 @@ public struct Light: Equatable, Sendable {
                             intensity: Double = 1,
                             specular: Color? = nil, softness: Double = 0,
                             profile: IESProfile? = nil, cookie: LightCookie? = nil,
-                            roll: Double = 0) -> Light {
+                            roll: Double = 0, castsShadow: Bool = true) -> Light {
         Light(kind: .spot, color: color, intensity: intensity,
               specular: specular, softness: softness,
               position: position, direction: direction, coneAngle: angle, penumbra: penumbra,
-              profile: profile, cookie: cookie, roll: roll)
+              profile: profile, cookie: cookie, roll: roll, castsShadow: castsShadow)
     }
 
     /// A rect area light: a glowing `width` × `height` panel centered at `position`,
@@ -189,10 +217,11 @@ public struct Light: Equatable, Sendable {
     public static func rect(_ color: Color, at position: Vector3, direction: Vector3,
                             width: Double, height: Double, up: Vector3 = .unitY,
                             twoSided: Bool = false, intensity: Double = 1,
-                            specular: Color? = nil) -> Light {
+                            specular: Color? = nil, castsShadow: Bool = true) -> Light {
         Light(kind: .rect, color: color, intensity: intensity, specular: specular,
               position: position, direction: direction,
-              width: width, height: height, up: up, twoSided: twoSided)
+              width: width, height: height, up: up, twoSided: twoSided,
+              castsShadow: castsShadow)
     }
 
     /// A disk area light: a glowing circular panel of `radius` centered at `position`,
@@ -201,10 +230,10 @@ public struct Light: Equatable, Sendable {
     /// `specular` (default `nil` = `color`) tints its highlight.
     public static func disk(_ color: Color, at position: Vector3, direction: Vector3,
                             radius: Double, twoSided: Bool = false, intensity: Double = 1,
-                            specular: Color? = nil) -> Light {
+                            specular: Color? = nil, castsShadow: Bool = true) -> Light {
         Light(kind: .disk, color: color, intensity: intensity, specular: specular,
               position: position, direction: direction,
-              radius: radius, twoSided: twoSided)
+              radius: radius, twoSided: twoSided, castsShadow: castsShadow)
     }
 
     /// A tube area light: a glowing cylinder of `radius` running `from` one point `to`

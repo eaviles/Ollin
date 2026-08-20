@@ -2201,6 +2201,58 @@ the `OLLIN_RT_SHADOWS` compile gate) with a mid-point cube fallback elsewhere;
 a rect/disk area panel is ray-traced on an RT GPU with a 2D-map fallback (below);
 `shadowQuality(_:)` maps hardware-relative ray counts through `RenderQuality`.
 
+**A frame casts from a list of lights, not one.** `Drawer.makeLighting` resolves
+up to `OLLIN_MAX_SHADOW_CASTERS` (4) casters into `OllinLighting.shadowCasters`,
+each an `OllinShadowCaster` (stride 112) carrying its own view-projection,
+texel size, penumbra radius, linearization constants, sample budget, and kind.
+Three decisions make the change cheap to reason about:
+
+- **Slot 0 is the primary caster**, chosen by exactly the priority the single
+  caster used (directional → spot → point → rect/disk), and the single-caster
+  fields on `OllinLighting` mirror it field for field. Everything written
+  against those fields therefore reads what it always read: fog and volumetric
+  shafts, subsurface transmittance, contact shadows, the marched-field cast,
+  caustics, GI, the traced export, and the raymarch carrier all still follow
+  one caster. A one-caster frame packs exactly what it packed before the list
+  existed, which is why the whole snapshot suite passed unrecorded.
+- **A 2D caster's map layer is its slot index.** The shadow map became a
+  `depth2d_array` sized to the frame's caster count (a fresh texture when it
+  must grow, never a resize in place), one depth-only pass per caster into its
+  own `depthAttachment.slice`. Because slot 0 owns layer 0 whether or not it is
+  a 2D caster, every helper that reads the primary caster names layer 0 as a
+  constant, and a cube or traced primary simply leaves that layer cleared.
+- **A point light casts only as the primary.** There is one cube texture and
+  one acceleration structure, and both belong to slot 0, so the packing never
+  puts a point light in an extra slot: every extra caster is a 2D one. Routing
+  a non-primary point light to the cube instead was built and rejected. It
+  works on the CPU side (the caster list, the cube pass, and the bindings all
+  came out correct), but it lands on the rasterized cube fallback, and that
+  path is already wrong in a large-floor scene: forcing `rayTracedShadows =
+  false` on clean HEAD dims the whole floor past the far plane and drops the
+  box's shadow entirely. On a ray-tracing machine the fallback never runs,
+  because a primary point caster is traced there, which is why the defect has
+  stayed hidden. Fixing it is the precondition for a second point caster, and
+  both live in `DESIGN-NOTES.md`.
+
+The lit mesh loop resolves a light's caster slot by scanning the list, and
+`cs == 0` gates the primary-only terms (`rtShadow`, `fieldShadow`, and the
+marched-field multiplier). A marched field is in no map, so a field carrier
+takes the primary caster alone. Facts the renderer settles after
+`makeLighting` (the flip to the traced path, the ray or tap counts, whether a
+map was produced at all) are carried back into slot 0 by
+`finalizeShadowCasters`, which also budgets taps for the extra casters and
+drops them when no map was rendered.
+
+**Per-light opt-out, and why the presets use it.** `Light.castsShadow`
+(default true, with a `castsShadow:` argument on every factory and bare call
+and a chainable `castingShadow(_:)`) is how a light declines. Every curated
+`LightingPreset` sets it false on its fill and rim lights. That is not
+housekeeping: a fill exists to open the shadow side, so a shadow of its own
+works against the rig, and without the flag every preset would suddenly cast
+two or three shadows and pay a depth pass for each. It is also the measured
+answer, since it is what returns the Guide's 26 three-dimensional figures to
+their committed pixels.
+
 **Area (rect/disk) casters shadow from the panel's real extent.** The caster
 search reaches them after the punctual kinds (directional → spot → point →
 rect/disk), so every existing scene keeps its caster. On an RT device each lit

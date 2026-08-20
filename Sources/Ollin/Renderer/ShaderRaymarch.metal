@@ -582,7 +582,7 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
                                                  constant OllinLighting &light [[buffer(2)]],
                                                  constant OllinMaterial &mat [[buffer(3)]],
                                                  constant Uniforms3D &u [[buffer(4)]],
-                                                 depth2d<float> shadowMap [[texture(1)]],
+                                                 depth2d_array<float> shadowMap [[texture(1)]],
                                                  sampler shadowSamp [[sampler(1)]],
                                                  texturecube<float> shadowCube [[texture(2)]],
                                                  sampler shadowCubeSamp [[sampler(2)]],
@@ -721,13 +721,14 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
             // a soft (PCSS) directional/spot caster, 0 the legacy hard 3x3, so the
             // same cast shadow reads the same on a field surface as on the mesh
             // floor beside it (contact-soft on both, not hard-edged on one).
+            // Layer 0: a field takes the primary caster, the one it self-shadows toward.
             float mapLit = (light.shadowDepthA > 0.0)
                 ? shadowFactorPCSS(pw, n, toLight, light.lightViewProjection,
                                    light.shadowTexelWorld, light.shadowDepthA,
                                    light.shadowDepthB, light.shadowSamples,
-                                   shadowMap, shadowSamp, shadowCubeSamp)
+                                   shadowMap, 0, shadowSamp, shadowCubeSamp)
                 : shadowFactor(pw, n, toLight, light.lightViewProjection,
-                               light.shadowTexelWorld, shadowMap, shadowSamp);
+                               light.shadowTexelWorld, shadowMap, 0, shadowSamp);
             fieldShadow = min(fieldShadow, mapLit);
         } else if (light.shadowKind == 1) {
             float cubeLit = shadowFactorCube(pw, n, caster.position.xyz, light.shadowDepthA,

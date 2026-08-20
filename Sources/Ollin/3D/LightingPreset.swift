@@ -27,6 +27,10 @@ public struct LightingPreset: Equatable, Sendable {
     public var ambient: Color
 
     /// The lights in the rig (directional / point / spot).
+    /// The rig's lights. In every curated preset the **key casts and the rest do not**
+    /// (`Light.castsShadow`): a fill or a rim exists to open the shadow side, so giving
+    /// it a shadow of its own works against the rig, and each caster costs a pass over
+    /// the scene. A rig of your own decides for itself.
     public var lights: [Light]
 
     /// Build a lighting preset from an ambient term and a set of lights.
@@ -57,7 +61,8 @@ public extension LightingPreset {
         ambient: Color(white: 0.26),
         lights: [
             .directional(.white, direction: Vector3(-0.4, -0.7, -0.6), intensity: 0.9, softness: 0.12),
-            .directional(Color(white: 0.6), direction: Vector3(0.5, 0.3, 0.4), intensity: 0.42, softness: 0.4),
+            .directional(Color(white: 0.6), direction: Vector3(0.5, 0.3, 0.4), intensity: 0.42, softness: 0.4,
+                         castsShadow: false),
         ])
 
     /// A classic film three-point rig: a daylight **key** from the front-left with a
@@ -71,9 +76,9 @@ public extension LightingPreset {
             .directional(Color(kelvin: 5200), direction: Vector3(0.55, -0.55, -0.6), intensity: 1.0,
                          specular: .white, softness: 0.12),
             .directional(Color(kelvin: 7000), direction: Vector3(-0.6, -0.2, -0.5), intensity: 0.45,
-                         softness: 0.55),
+                         softness: 0.55, castsShadow: false),
             .directional(Color(kelvin: 7200), direction: Vector3(0.1, -0.4, 0.9), intensity: 0.8,
-                         specular: .white),
+                         specular: .white, castsShadow: false),
         ])
 
     /// Warm, low, raking sun near the horizon with a cool sky bounce from above: the
@@ -85,7 +90,7 @@ public extension LightingPreset {
             .directional(Color(kelvin: 3300), direction: Vector3(-0.75, -0.22, -0.4), intensity: 1.2,
                          specular: Color(kelvin: 3800), softness: 0.15),
             .directional(Color(kelvin: 8500), direction: Vector3(0.2, -0.9, 0.25), intensity: 0.4,
-                         softness: 0.6),
+                         softness: 0.6, castsShadow: false),
         ])
 
     /// High-contrast, single hard key: a neutral, almost white raking light with a
@@ -97,7 +102,8 @@ public extension LightingPreset {
         lights: [
             .directional(Color(kelvin: 5800), direction: Vector3(-0.85, -0.3, -0.35), intensity: 1.6,
                          specular: .white),
-            .directional(Color(kelvin: 9500), direction: Vector3(0.6, -0.1, 0.5), intensity: 0.05),
+            .directional(Color(kelvin: 9500), direction: Vector3(0.6, -0.1, 0.5), intensity: 0.05,
+                         castsShadow: false),
         ])
 
     /// Bright, soft, even daylight from several directions: the studio softbox /
@@ -110,9 +116,9 @@ public extension LightingPreset {
             .directional(Color(kelvin: 5600), direction: Vector3(-0.35, -0.6, -0.5), intensity: 0.7,
                          softness: 0.5),
             .directional(Color(kelvin: 5600), direction: Vector3(0.45, -0.45, -0.4), intensity: 0.6,
-                         softness: 0.6),
+                         softness: 0.6, castsShadow: false),
             .directional(Color(kelvin: 6500), direction: Vector3(0.0, -1.0, 0.15), intensity: 0.45,
-                         softness: 0.6),
+                         softness: 0.6, castsShadow: false),
         ])
 
     /// Cool, dim, blue night light: a high-temperature "moon" key with a faint
@@ -124,6 +130,6 @@ public extension LightingPreset {
             .directional(Color(kelvin: 9500), direction: Vector3(-0.4, -0.7, -0.5), intensity: 0.75,
                          softness: 0.4),
             .directional(Color(kelvin: 13000), direction: Vector3(0.5, -0.2, 0.4), intensity: 0.18,
-                         softness: 0.6),
+                         softness: 0.6, castsShadow: false),
         ])
 }

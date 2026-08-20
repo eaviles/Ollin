@@ -2397,12 +2397,21 @@ final class Drawer {
                 }
             }
         }
-        // Shadow caster: the first directional light, or, when the scene has no
-        // directional, the first spot light. Both render into the same 2D shadow map
-        // and are sampled by the same `shadowFactor` (which already does the
-        // perspective divide), so the only difference is the projection: a directional
-        // caster is an orthographic box auto-fit around the camera target, a spot
-        // caster is a perspective frustum from the light's position along its cone.
+        // Shadow casters. A frame casts from a small ordered list of lights, so a key
+        // light and a spot both throw a shadow. Slot 0 is the
+        // *primary* caster: it keeps the priority the single caster had (a directional,
+        // else a spot, else a point, else a rect/disk panel), the single-caster fields
+        // below mirror it, and every dependent system still follows it alone (fog and
+        // volumetric shafts, subsurface transmittance, contact shadows, the marched-field
+        // cast, caustics, the traced export). The rest fill slots 1 upward in the order
+        // the sketch set them, and only the lit mesh path dims by them.
+        //
+        // Each 2D caster renders into its own layer of the shadow-map array, and **the
+        // layer index is the slot index**, so slot 0 owns layer 0 whatever kind it is and
+        // a helper that reads the primary caster can name layer 0 as a constant. A tube
+        // emits radially with no facing axis to render a map from, so it never casts. A
+        // point light casts only as the primary: it needs the frame's one cube texture or
+        // its one acceleration structure, and both belong to slot 0.
         if castsShadows, let camera = camera3D {
             let target = camera.target.simd3
             // The eye→target distance (the orbit radius) is the scene-size proxy that
@@ -2413,138 +2422,182 @@ final class Drawer {
             // scales with the scene, so the world penumbra (size · texelWorld) scales with it too,
             // and `castShadows()` "just works" at any scale with no per-scene tuning.
             let lightSizeTexels = shadowSoftnessAmount <= 0 ? Float(0) : Float(1 + shadowSoftnessAmount * 18)
-            if let caster = (0..<count).first(where: { activeLights[$0].kind == .directional }) {
-                // Directional: look from above the target along the light's travel
-                // direction, an orthographic box sized to the scene.
-                let dirToLight = simd_normalize((activeLights[caster].direction * -1).normalized.simd3)
-                let d = 2 * r
-                let eye = target + dirToLight * d
-                // Pick an up vector not parallel to the light direction.
-                let up: SIMD3<Float> = abs(dirToLight.y) > 0.99 ? SIMD3<Float>(0, 0, 1) : SIMD3<Float>(0, 1, 0)
-                let view = Camera3D.lookAt(eye: eye, center: target, up: up)
-                let proj = Camera3D.orthographic(height: 2 * r, aspect: 1,
-                                                 near: max(0.01, d - 1.5 * r), far: d + 1.5 * r)
-                u.lightViewProjection = proj * view
-                u.shadowLight = Int32(caster)
-                u.shadowStrength = 1
-                u.shadowTexelWorld = (2 * r) / Float(Drawer.shadowMapResolution)
-                // PCSS (`shadowKind` 0): the penumbra radius in texels, and `shadowDepthB` = 0,
-                // the sentinel for an orthographic map (the shader uses plain depth separation,
-                // no perspective linearization).
-                u.shadowDepthA = lightSizeTexels
-                u.shadowDepthB = 0
-                // Depth→world-distance constants for the transmittance thickness read:
-                // an orthographic map's depth is already linear, so the shader only
-                // needs the projection's own scale to speak world units (z = 0 flags
-                // the orthographic form).
-                u.shadowLinearize = SIMD4<Float>(proj.columns.2.z, proj.columns.3.z, 0, 0)
-            } else if let caster = (0..<count).first(where: { activeLights[$0].kind == .spot }) {
-                // Spot: a perspective frustum from the light's position, aimed down its
-                // cone axis, the vertical field of view set to the full cone angle (a
-                // small margin so the soft penumbra edge isn't clipped).
-                let light = activeLights[caster]
-                let eye = light.position.simd3
-                let axis = simd_normalize(light.direction.normalized.simd3)
-                let dist = max(simd_distance(eye, target), 1)
-                let center = eye + axis * dist
-                let up: SIMD3<Float> = abs(axis.y) > 0.99 ? SIMD3<Float>(0, 0, 1) : SIMD3<Float>(0, 1, 0)
-                let view = Camera3D.lookAt(eye: eye, center: center, up: up)
-                let fovY = Float(min(light.coneAngle * 1.05, Double.pi - 0.05))
-                let proj = Camera3D.perspective(fovY: fovY, aspect: 1,
-                                                near: max(0.1, dist - 1.5 * r), far: dist + 1.5 * r)
-                u.lightViewProjection = proj * view
-                u.shadowLight = Int32(caster)
-                u.shadowStrength = 1
-                // A perspective texel grows with depth; size the normal-offset bias from
-                // the frustum at the scene center (where the receivers mostly sit).
-                u.shadowTexelWorld = (2 * tan(fovY * 0.5) * dist) / Float(Drawer.shadowMapResolution)
-                // PCSS (`shadowKind` 0): the penumbra radius in texels. `shadowDepthB` carries
-                // the projection's [2][2] term (column 2, z in column-major simd), which is all
-                // the shader needs to linearize the perspective depth for the penumbra ratio
-                // (the [3][2] term cancels). It's negative, which also flags the spot path.
-                u.shadowDepthA = lightSizeTexels
-                u.shadowDepthB = proj.columns.2.z
-                // Both projection constants, for the transmittance thickness read: an
-                // absolute world distance (unlike the penumbra ratio) needs [3][2] too
-                // (z = 1 flags the perspective form).
-                u.shadowLinearize = SIMD4<Float>(proj.columns.2.z, proj.columns.3.z, 1, 0)
-            } else if let caster = (0..<count).first(where: { activeLights[$0].kind == .point }) {
-                // Point: an omnidirectional caster. The renderer renders the scene into a
-                // six-face cube from the light, each face storing the nearest occluder's
-                // *linear distance to the light* normalized by the far plane. So all we
-                // carry is that far plane (to denormalize the sampled distance) — the
-                // light position comes from the light entry. The far plane reaches past
-                // the scene from the light.
-                let light = activeLights[caster]
-                let dist = max(Float(simd_distance(light.position.simd3, target)), 1)
-                u.shadowLight = Int32(caster)
-                u.shadowKind = 1
-                u.shadowStrength = 1
-                u.shadowDepthA = dist + 1.5 * r      // far plane (linear-distance normalizer)
-                // A 90° cube face spans 2·d wide at distance d, so a texel there is
-                // 2·dist/resolution, the world-space unit for the bias and PCF spread.
-                u.shadowTexelWorld = (2 * dist) / Float(Drawer.pointShadowMapResolution)
-                // On a ray-tracing device the renderer traces this caster instead of
-                // sampling the cube (it bumps `shadowKind` to 2); `shadowDepthB` then
-                // carries the area-light radius that softens the traced shadow into a
-                // contact-hardening penumbra (light-relative, so it's camera-independent).
-                // The cube path ignores it, so it's harmless to always pack. Driven by the
-                // same `shadowSoftness` knob as the 2D casters (one control for every kind);
-                // the default 0.5 reproduces the previous fixed `dist · 0.03` exactly.
-                u.shadowDepthB = dist * 0.06 * Float(shadowSoftnessAmount)
-                // `shadowSamples` (rays/pixel) is resolved by the renderer from the GPU's
-                // capability + the sketch's quality tier; left 0 here (it has no device).
-            } else if let caster = (0..<count).first(where: {
-                activeLights[$0].kind == .rect || activeLights[$0].kind == .disk
-            }) {
-                // Rect/disk area caster: a spot-style perspective map rendered from the
-                // panel's center, aimed at the scene (the camera target, the same framing
-                // proxy the directional box uses; a panel lights its whole front
-                // hemisphere, so unlike a spot it has no cone to aim by), its PCSS
-                // penumbra sized by the panel's *real extent* rather than the knob-only
-                // size, so a bigger softbox casts a proportionally softer shadow. The map
-                // is a from-the-center approximation of the panel; on a ray-tracing
-                // device the renderer traces visibility to the panel's actual surface
-                // instead (which also captures a rect's anisotropic penumbra). A tube
-                // emits radially (no facing axis to render a map from), so it never
-                // casts. Receivers outside the fitted frustum shade lit, the same
-                // envelope as the other 2D casters.
-                let light = activeLights[caster]
-                let eye = light.position.simd3
-                let toTarget = target - eye
-                let span = simd_length(toTarget)
-                let dist = max(span, 1)
-                // A panel sitting on the target aims along its own facing normal instead.
-                let axis = span > 1e-5 ? toTarget / span
-                                       : simd_normalize(light.direction.normalized.simd3)
-                let up: SIMD3<Float> = abs(axis.y) > 0.99 ? SIMD3<Float>(0, 0, 1) : SIMD3<Float>(0, 1, 0)
-                let view = Camera3D.lookAt(eye: eye, center: eye + axis * dist, up: up)
-                // Cover the scene sphere around the target (a margin past the framing
-                // radius), clamped like the spot frustum; a panel inside the scene clamps
-                // wide and loses depth precision (the documented envelope).
-                let fovY = Float(min(Double(2 * atan(1.2 * r / dist)), Double.pi - 0.05))
-                let proj = Camera3D.perspective(fovY: fovY, aspect: 1,
-                                                near: max(0.1, dist - 1.5 * r), far: dist + 1.5 * r)
-                u.lightViewProjection = proj * view
-                u.shadowLight = Int32(caster)
-                u.shadowStrength = 1
-                u.shadowTexelWorld = (2 * tan(fovY * 0.5) * dist) / Float(Drawer.shadowMapResolution)
-                // The PCSS penumbra radius is the panel's own half-extent (the disk's
-                // radius; a rect's geometric-mean half-extent, so a thin strip doesn't
-                // blur like a square of its long side) in map texels. `shadowSoftness`
-                // stays the one dial across every caster: 0 routes to the hard legacy
-                // 3×3, the 0.5 default is the physical extent exactly, 1 doubles it.
-                // The radius caps at 40 texels; past that the fixed tap budget spreads
-                // too thin and the penumbra dissolves into dither.
-                let halfExtent = light.kind == .disk
-                    ? light.radius
-                    : (light.width * light.height).squareRoot() / 2
-                let sizeTexels = Float(halfExtent) / u.shadowTexelWorld * Float(shadowSoftnessAmount * 2)
-                u.shadowDepthA = min(max(sizeTexels, 0), 40)
-                // The perspective linearization term for the PCSS ratio, like the spot.
-                // On a ray-tracing device the renderer overwrites this with the traced
-                // panel's sampling scale when it flips `shadowKind` to 2.
-                u.shadowDepthB = proj.columns.2.z
+
+            /// One light packed as a caster: the projection its map is rendered with and
+            /// the constants the fragment samples that map by. Every field a kind leaves
+            /// alone stays zero, which is the sentinel each consumer already reads.
+            func packCaster(at index: Int) -> OllinShadowCaster {
+                var c = OllinShadowCaster()
+                c.lightIndex = Int32(index)
+                c.strength = 1
+                let light = activeLights[index]
+                switch light.kind {
+                case .directional:
+                    // Look from above the target along the light's travel direction, an
+                    // orthographic box sized to the scene.
+                    let dirToLight = simd_normalize((light.direction * -1).normalized.simd3)
+                    let d = 2 * r
+                    let eye = target + dirToLight * d
+                    // Pick an up vector not parallel to the light direction.
+                    let up: SIMD3<Float> = abs(dirToLight.y) > 0.99 ? SIMD3<Float>(0, 0, 1) : SIMD3<Float>(0, 1, 0)
+                    let view = Camera3D.lookAt(eye: eye, center: target, up: up)
+                    let proj = Camera3D.orthographic(height: 2 * r, aspect: 1,
+                                                     near: max(0.01, d - 1.5 * r), far: d + 1.5 * r)
+                    c.lightViewProjection = proj * view
+                    c.texelWorld = (2 * r) / Float(Drawer.shadowMapResolution)
+                    // PCSS (`kind` 0): the penumbra radius in texels, and `depthB` = 0, the
+                    // sentinel for an orthographic map (the shader uses plain depth
+                    // separation, no perspective linearization).
+                    c.depthA = lightSizeTexels
+                    c.depthB = 0
+                    // Depth→world-distance constants for the transmittance thickness read:
+                    // an orthographic map's depth is already linear, so the shader only
+                    // needs the projection's own scale to speak world units (z = 0 flags
+                    // the orthographic form).
+                    c.linearize = SIMD4<Float>(proj.columns.2.z, proj.columns.3.z, 0, 0)
+                case .spot:
+                    // A perspective frustum from the light's position, aimed down its cone
+                    // axis, the vertical field of view set to the full cone angle (a small
+                    // margin so the soft penumbra edge isn't clipped).
+                    let eye = light.position.simd3
+                    let axis = simd_normalize(light.direction.normalized.simd3)
+                    let dist = max(simd_distance(eye, target), 1)
+                    let center = eye + axis * dist
+                    let up: SIMD3<Float> = abs(axis.y) > 0.99 ? SIMD3<Float>(0, 0, 1) : SIMD3<Float>(0, 1, 0)
+                    let view = Camera3D.lookAt(eye: eye, center: center, up: up)
+                    let fovY = Float(min(light.coneAngle * 1.05, Double.pi - 0.05))
+                    let proj = Camera3D.perspective(fovY: fovY, aspect: 1,
+                                                    near: max(0.1, dist - 1.5 * r), far: dist + 1.5 * r)
+                    c.lightViewProjection = proj * view
+                    // A perspective texel grows with depth; size the normal-offset bias from
+                    // the frustum at the scene center (where the receivers mostly sit).
+                    c.texelWorld = (2 * tan(fovY * 0.5) * dist) / Float(Drawer.shadowMapResolution)
+                    // PCSS (`kind` 0): the penumbra radius in texels. `depthB` carries the
+                    // projection's [2][2] term (column 2, z in column-major simd), which is
+                    // all the shader needs to linearize the perspective depth for the
+                    // penumbra ratio (the [3][2] term cancels). It's negative, which also
+                    // flags the spot path.
+                    c.depthA = lightSizeTexels
+                    c.depthB = proj.columns.2.z
+                    // Both projection constants, for the transmittance thickness read: an
+                    // absolute world distance (unlike the penumbra ratio) needs [3][2] too
+                    // (z = 1 flags the perspective form).
+                    c.linearize = SIMD4<Float>(proj.columns.2.z, proj.columns.3.z, 1, 0)
+                case .point:
+                    // An omnidirectional caster. The renderer renders the scene into a
+                    // six-face cube from the light, each face storing the nearest occluder's
+                    // *linear distance to the light* normalized by the far plane. So all we
+                    // carry is that far plane (to denormalize the sampled distance): the
+                    // light position comes from the light entry. The far plane reaches past
+                    // the scene from the light.
+                    let dist = max(Float(simd_distance(light.position.simd3, target)), 1)
+                    c.kind = 1
+                    c.depthA = dist + 1.5 * r      // far plane (linear-distance normalizer)
+                    // A 90° cube face spans 2·d wide at distance d, so a texel there is
+                    // 2·dist/resolution, the world-space unit for the bias and PCF spread.
+                    c.texelWorld = (2 * dist) / Float(Drawer.pointShadowMapResolution)
+                    // On a ray-tracing device the renderer traces this caster instead of
+                    // sampling the cube (it bumps `kind` to 2); `depthB` then carries the
+                    // area-light radius that softens the traced shadow into a
+                    // contact-hardening penumbra (light-relative, so it's camera-independent).
+                    // The cube path ignores it, so it's harmless to always pack. Driven by the
+                    // same `shadowSoftness` knob as the 2D casters (one control for every kind);
+                    // the default 0.5 reproduces the previous fixed `dist · 0.03` exactly.
+                    c.depthB = dist * 0.06 * Float(shadowSoftnessAmount)
+                    // `samples` (rays/pixel) is resolved by the renderer from the GPU's
+                    // capability + the sketch's quality tier; left 0 here (it has no device).
+                case .rect, .disk:
+                    // Rect/disk area caster: a spot-style perspective map rendered from the
+                    // panel's center, aimed at the scene (the camera target, the same framing
+                    // proxy the directional box uses; a panel lights its whole front
+                    // hemisphere, so unlike a spot it has no cone to aim by), its PCSS
+                    // penumbra sized by the panel's *real extent* rather than the knob-only
+                    // size, so a bigger softbox casts a proportionally softer shadow. The map
+                    // is a from-the-center approximation of the panel; on a ray-tracing
+                    // device the renderer traces visibility to the panel's actual surface
+                    // instead (which also captures a rect's anisotropic penumbra). Receivers
+                    // outside the fitted frustum shade lit, the same envelope as the other 2D
+                    // casters.
+                    let eye = light.position.simd3
+                    let toTarget = target - eye
+                    let span = simd_length(toTarget)
+                    let dist = max(span, 1)
+                    // A panel sitting on the target aims along its own facing normal instead.
+                    let axis = span > 1e-5 ? toTarget / span
+                                           : simd_normalize(light.direction.normalized.simd3)
+                    let up: SIMD3<Float> = abs(axis.y) > 0.99 ? SIMD3<Float>(0, 0, 1) : SIMD3<Float>(0, 1, 0)
+                    let view = Camera3D.lookAt(eye: eye, center: eye + axis * dist, up: up)
+                    // Cover the scene sphere around the target (a margin past the framing
+                    // radius), clamped like the spot frustum; a panel inside the scene clamps
+                    // wide and loses depth precision (the documented envelope).
+                    let fovY = Float(min(Double(2 * atan(1.2 * r / dist)), Double.pi - 0.05))
+                    let proj = Camera3D.perspective(fovY: fovY, aspect: 1,
+                                                    near: max(0.1, dist - 1.5 * r), far: dist + 1.5 * r)
+                    c.lightViewProjection = proj * view
+                    c.texelWorld = (2 * tan(fovY * 0.5) * dist) / Float(Drawer.shadowMapResolution)
+                    // The PCSS penumbra radius is the panel's own half-extent (the disk's
+                    // radius; a rect's geometric-mean half-extent, so a thin strip doesn't
+                    // blur like a square of its long side) in map texels. `shadowSoftness`
+                    // stays the one dial across every caster: 0 routes to the hard legacy
+                    // 3×3, the 0.5 default is the physical extent exactly, 1 doubles it.
+                    // The radius caps at 40 texels; past that the fixed tap budget spreads
+                    // too thin and the penumbra dissolves into dither.
+                    let halfExtent = light.kind == .disk
+                        ? light.radius
+                        : (light.width * light.height).squareRoot() / 2
+                    let sizeTexels = Float(halfExtent) / c.texelWorld * Float(shadowSoftnessAmount * 2)
+                    c.depthA = min(max(sizeTexels, 0), 40)
+                    // The perspective linearization term for the PCSS ratio, like the spot.
+                    // On a ray-tracing device the renderer overwrites this with the traced
+                    // panel's sampling scale when it flips `kind` to 2.
+                    c.depthB = proj.columns.2.z
+                case .tube:
+                    break   // never eligible: a tube has no facing axis to render a map from
+                }
+                return c
+            }
+
+            // A tube never casts, and a light opts out with `castsShadow`.
+            let eligible = (0..<count).filter {
+                activeLights[$0].castsShadow && activeLights[$0].kind != .tube
+            }
+            var slots: [Int] = []
+            if let primary = eligible.first(where: { activeLights[$0].kind == .directional })
+                ?? eligible.first(where: { activeLights[$0].kind == .spot })
+                ?? eligible.first(where: { activeLights[$0].kind == .point })
+                ?? eligible.first(where: { activeLights[$0].kind == .rect || activeLights[$0].kind == .disk }) {
+                slots.append(primary)
+            }
+            // Only slot 0 can be a point light. A point caster needs the frame's one cube
+            // texture (or its one acceleration structure), and both belong to the primary,
+            // so a point light beside a directional key lights the scene and throws
+            // nothing. Every extra caster is therefore a 2D one with a map layer of its own.
+            for i in eligible where !slots.contains(i) {
+                if slots.count >= Int(OLLIN_MAX_SHADOW_CASTERS) { break }
+                if activeLights[i].kind == .point { continue }
+                slots.append(i)
+            }
+            let built = slots.map(packCaster(at:))
+            u.shadowCasterCount = Int32(built.count)
+            // A C fixed-size array imports as a homogeneous tuple; fill it through a
+            // typed pointer rather than naming each element.
+            withUnsafeMutablePointer(to: &u.shadowCasters) { tuplePtr in
+                tuplePtr.withMemoryRebound(to: OllinShadowCaster.self,
+                                           capacity: Int(OLLIN_MAX_SHADOW_CASTERS)) { buf in
+                    for (slot, c) in built.enumerated() { buf[slot] = c }
+                }
+            }
+            // The single-caster fields mirror slot 0, which is what every consumer that
+            // follows one caster alone reads.
+            if let primary = built.first {
+                u.shadowLight = primary.lightIndex
+                u.shadowKind = primary.kind
+                u.shadowStrength = primary.strength
+                u.lightViewProjection = primary.lightViewProjection
+                u.shadowTexelWorld = primary.texelWorld
+                u.shadowDepthA = primary.depthA
+                u.shadowDepthB = primary.depthB
+                u.shadowLinearize = primary.linearize
             }
             // Contact shadows refine whichever caster the frame resolved: pack the
             // screen-space ray's world length (the gate the mesh carriers and the

@@ -675,7 +675,7 @@ fragment float4 ollin_ibl_skybox_fragment(OllinSkyboxOut in [[stage_in]],
 fragment float4 ollin_fog_air_fragment(OllinSkyboxOut in [[stage_in]],
                                        constant Uniforms3D &u [[buffer(0)]],
                                        constant OllinLighting &light [[buffer(1)]],
-                                       depth2d<float> shadowMap [[texture(1)]],
+                                       depth2d_array<float> shadowMap [[texture(1)]],
                                        sampler shadowSamp [[sampler(1)]],
                                        texture2d_array<float> iesProfiles [[texture(10)]],
                                        texture2d_array<float> cookies [[texture(11)]]) {

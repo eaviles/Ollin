@@ -33,7 +33,8 @@ final class InstancedField_Figure: Sketch {
         ambientLight(Color(white: 0.14))
         directionalLight(Color(hue: 0.09, saturation: 0.22, brightness: 1.0),
                          direction: Vector3(-0.5, -0.85, -0.35), intensity: 1.0)
-        directionalLight(Color(white: 0.5), direction: Vector3(0.55, 0.35, 0.5), intensity: 0.25)
+        directionalLight(Color(white: 0.5), direction: Vector3(0.55, 0.35, 0.5), intensity: 0.25,
+                         castsShadow: false)   // a fill, so one shadow and one pass
         castShadows()
 
         withState {

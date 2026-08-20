@@ -36,7 +36,8 @@ final class Subsurface: Sketch {
         let a = time * 0.35
         directionalLight(.white, direction: Vector3(-cos(a), -0.3, -sin(a) * 0.8),
                          intensity: 1.3)
-        pointLight(Color(hex: 0xdfe8ff), at: Vector3(-4, 3, 4), intensity: 0.3)
+        pointLight(Color(hex: 0xdfe8ff), at: Vector3(-4, 3, 4), intensity: 0.3,
+                   castsShadow: false)   // a fill, and the key is what transmits
         // The caster is what lets the scattering transmit: its depth map is the
         // thickness gauge, so thin parts glow through when the key swings behind.
         castShadows()

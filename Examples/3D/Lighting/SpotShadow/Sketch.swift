@@ -2,14 +2,12 @@ import Ollin
 
 /// SpotShadow — a spot light throwing a cone of light, and the shadows inside it.
 ///
-/// `castShadows()` casts from the scene's primary caster: the first directional light
-/// or, when there's no directional, the first spot light, as here. A spot caster is a
-/// perspective shadow map fit to its cone, so the solids inside the beam drop crisp
-/// shadows onto the floor and across one another, and everything outside the cone falls
-/// to the dim fill. The spot sweeps, so the lit pool and its shadows slide over the
-/// scene; the camera orbits so you see them from every side.
-///
-/// (A point/omnidirectional caster is a later step.)
+/// `castShadows()` casts from every light that will, and the primary caster is the
+/// first directional light or, with no directional, the first spot, as here. A spot
+/// caster is a perspective shadow map fit to its cone, so the solids inside the beam
+/// drop crisp shadows onto the floor and across one another, and everything outside the
+/// cone falls to the dim fill. The spot sweeps, so the lit pool and its shadows slide
+/// over the scene; the camera orbits so you see them from every side.
 @main
 final class SpotShadow3D: Sketch {
 
@@ -19,13 +17,12 @@ final class SpotShadow3D: Sketch {
         cameraShowcase(.turntable(period: .tau / 0.18), target: Vector3(0, 1.0, 0), radius: 14,
                     elevation: 0.5, fieldOfView: .pi / 4.4)
 
-        // No directional light in the scene, so the spot is the caster. A dim point
-        // light fills the shaded sides (point lights aren't shadow casters yet, so it
-        // doesn't steal the caster role from the spot), and a little ambient lifts the
-        // black.
+        // No directional light in the scene, so the spot is the primary caster. A dim
+        // point light fills the shaded sides, told not to cast so this stays a study of
+        // one beam, and a little ambient lifts the black.
         ambientLight(Color(white: 0.10))
         pointLight(Color(hue: 0.6, saturation: 0.35, brightness: 0.5),
-                   at: Vector3(-6, 5, 6), intensity: 0.5)
+                   at: Vector3(-6, 5, 6), intensity: 0.5, castsShadow: false)
 
         // The spot: high and raking in from the left, aimed at a point that circles
         // near the cluster, so the beam (and the long shadows it casts) sweeps across

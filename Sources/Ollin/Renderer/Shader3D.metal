@@ -197,7 +197,8 @@ fragment float4 ollin_mesh_velocity_fragment(VelocityOut in [[stage_in]],
 // it here behind the same call.
 static inline float shadowFactor(float3 worldPos, float3 n, float3 toLight,
                                  float4x4 lightVP, float texelWorld,
-                                 depth2d<float> shadowMap, sampler shadowSamp) {
+                                 depth2d_array<float> shadowMap, uint layer,
+                                 sampler shadowSamp) {
     float cosTheta = clamp(dot(n, toLight), 0.0, 1.0);
     float3 biased = worldPos + n * (texelWorld * (1.5 + 2.0 * (1.0 - cosTheta)));
     float4 lc = lightVP * float4(biased, 1.0);
@@ -212,7 +213,7 @@ static inline float shadowFactor(float3 worldPos, float3 n, float3 toLight,
     float sum = 0.0;
     for (int dy = -1; dy <= 1; dy++) {
         for (int dx = -1; dx <= 1; dx++) {
-            sum += shadowMap.sample_compare(shadowSamp, uv + float2(dx, dy) * texel, ref);
+            sum += shadowMap.sample_compare(shadowSamp, uv + float2(dx, dy) * texel, layer, ref);
         }
     }
     return sum / 9.0;
@@ -243,7 +244,7 @@ static inline float2 vogelDisk(int i, int n, float rot) {
 static inline float shadowFactorPCSS(float3 worldPos, float3 n, float3 toLight,
                                      float4x4 lightVP, float texelWorld,
                                      float lightSize, float linA, int taps,
-                                     depth2d<float> shadowMap,
+                                     depth2d_array<float> shadowMap, uint layer,
                                      sampler shadowSamp, sampler depthSamp) {
     float cosTheta = clamp(dot(n, toLight), 0.0, 1.0);
     float3 biased = worldPos + n * (texelWorld * (1.5 + 2.0 * (1.0 - cosTheta)));
@@ -273,10 +274,10 @@ static inline float shadowFactorPCSS(float3 worldPos, float3 n, float3 toLight,
     // out, so a very thin occluder crossing only the receiver's own texel would
     // otherwise count zero blockers and return fully lit (a wire's shadow speckling
     // away where the legacy 3x3, which reads the center, still shadowed it).
-    float dc = shadowMap.sample(depthSamp, uv);
+    float dc = shadowMap.sample(depthSamp, uv, layer);
     if (dc < ref) { blockerSum += dc; blockerCount++; }
     for (int i = 0; i < blockerTaps; i++) {
-        float d = shadowMap.sample(depthSamp, uv + vogelDisk(i, blockerTaps, rot) * searchRadius * texel);
+        float d = shadowMap.sample(depthSamp, uv + vogelDisk(i, blockerTaps, rot) * searchRadius * texel, layer);
         if (d < ref) { blockerSum += d; blockerCount++; }
     }
     if (blockerCount == 0) return 1.0;               // no occluder found → fully lit
@@ -291,7 +292,7 @@ static inline float shadowFactorPCSS(float3 worldPos, float3 n, float3 toLight,
     // Phase 3: variable-kernel PCF over the comparison sampler, sized by the penumbra.
     float sum = 0.0;
     for (int i = 0; i < pcfTaps; i++) {
-        sum += shadowMap.sample_compare(shadowSamp, uv + vogelDisk(i, pcfTaps, rot) * penumbra * texel, ref);
+        sum += shadowMap.sample_compare(shadowSamp, uv + vogelDisk(i, pcfTaps, rot) * penumbra * texel, layer, ref);
     }
     return sum / float(pcfTaps);
 }
@@ -382,15 +383,16 @@ static inline float3 ollin_sss_transmit(float s, float3 falloff) {
 // ramp; across a silhouette in the map the blend ramps the thickness over one
 // texel instead of stepping. `lin` = `OllinLighting.shadowLinearize`.
 static inline float transmitOccluderDistance(float2 uv, float2 dims, float4 lin,
-                                             depth2d<float> shadowMap, sampler depthSamp) {
+                                             depth2d_array<float> shadowMap, sampler depthSamp) {
     float2 texel = 1.0 / dims;
     float2 tc = uv * dims - 0.5;
     float2 f = fract(tc);
     float2 corner = (floor(tc) + 0.5) / dims;
-    float4 z = float4(shadowMap.sample(depthSamp, corner),
-                      shadowMap.sample(depthSamp, corner + float2(texel.x, 0.0)),
-                      shadowMap.sample(depthSamp, corner + float2(0.0, texel.y)),
-                      shadowMap.sample(depthSamp, corner + texel));
+    // The primary caster owns layer 0, and it is the only one this reads.
+    float4 z = float4(shadowMap.sample(depthSamp, corner, 0),
+                      shadowMap.sample(depthSamp, corner + float2(texel.x, 0.0), 0),
+                      shadowMap.sample(depthSamp, corner + float2(0.0, texel.y), 0),
+                      shadowMap.sample(depthSamp, corner + texel, 0));
     // Perspective (spot): d = [3][2] / (z + [2][2]); orthographic (directional):
     // d = ([3][2] − z) / [2][2].
     float4 d = (lin.z > 0.5) ? lin.y / (z + lin.x) : (lin.y - z) / lin.x;
@@ -426,7 +428,7 @@ static inline float transmitOccluderDistance(float2 uv, float2 dims, float4 lin,
 // inside, so the weights can't sum to zero.
 static inline bool transmitGather2D(float3 worldPos, float3 n, float4x4 lightVP,
                                     float texelWorld, float4 lin, float4 scatter,
-                                    depth2d<float> shadowMap, sampler depthSamp,
+                                    depth2d_array<float> shadowMap, sampler depthSamp,
                                     thread float3 &T) {
     float3 inner = worldPos - n * (texelWorld * 2.0);
     float4 lc = lightVP * float4(inner, 1.0);
@@ -666,13 +668,13 @@ static inline float ollin_ign(float2 p) {
 // bias alone suffices (an air sample is never its own occluder). Outside the
 // caster's box nothing was rendered, so the air there counts as lit.
 static inline float ollin_fog_shadow_tap(float3 p, float4x4 lightVP,
-                                         depth2d<float> shadowMap, sampler shadowSamp) {
+                                         depth2d_array<float> shadowMap, sampler shadowSamp) {
     float4 lc = lightVP * float4(p, 1.0);
     if (lc.w <= 0.0) return 1.0;
     float3 ndc = lc.xyz / lc.w;
     if (ndc.x < -1.0 || ndc.x > 1.0 || ndc.y < -1.0 || ndc.y > 1.0 || ndc.z > 1.0) return 1.0;
     float2 uv = ndc.xy * float2(0.5, -0.5) + 0.5;
-    return shadowMap.sample_compare(shadowSamp, uv, ndc.z - 0.0015);
+    return shadowMap.sample_compare(shadowSamp, uv, 0, ndc.z - 0.0015);
 }
 
 // The view ray's crossing of a spot's outer cone: the t-interval of o + t*r inside
@@ -719,7 +721,7 @@ static inline bool ollin_ray_cone_span(float3 o, float3 r, float tEnd,
 // path keeps zero dimming (the dark-stage look).
 static inline float3 ollin_fog_inscatter(float3 o, float3 r, float tEnd, float2 pixel,
                                          constant OllinLighting &light,
-                                         depth2d<float> shadowMap, sampler shadowSamp,
+                                         depth2d_array<float> shadowMap, sampler shadowSamp,
                                          texture2d_array<float> iesProfiles,
                                          texture2d_array<float> cookies) {
     float gain = light.fogParams.z;
@@ -813,7 +815,7 @@ static inline float3 ollin_fog_inscatter(float3 o, float3 r, float tEnd, float2 
 // `light.fogColor.w` (0 leaves the branch untaken, byte-identical).
 static inline float3 ollin_apply_fog(float3 rgb, float3 worldPos, float2 pixel,
                                      constant OllinLighting &light,
-                                     depth2d<float> shadowMap, sampler shadowSamp,
+                                     depth2d_array<float> shadowMap, sampler shadowSamp,
                                      texture2d_array<float> iesProfiles,
                                      texture2d_array<float> cookies) {
     float3 o = light.cameraPosition.xyz;
@@ -866,7 +868,7 @@ static inline void ollin_aerial_split(float tau, float3 rd,
 // where the fog color stood, and the same volumetric march riding on top.
 static inline float3 ollin_apply_aerial(float3 rgb, float3 worldPos, float2 pixel,
                                         constant OllinLighting &light,
-                                        depth2d<float> shadowMap, sampler shadowSamp,
+                                        depth2d_array<float> shadowMap, sampler shadowSamp,
                                         texture2d_array<float> iesProfiles,
                                         texture2d_array<float> cookies) {
     float3 o = light.cameraPosition.xyz;
@@ -2195,7 +2197,7 @@ static inline void ollin_aniso_frame(float3 n, float4 vertexTangent,
 static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                                   float3 worldPos, constant OllinMaterial &mat,
                                   constant OllinLighting &light,
-                                  depth2d<float> shadowMap, sampler shadowSamp,
+                                  depth2d_array<float> shadowMap, sampler shadowSamp,
                                   texturecube<float> shadowCube, sampler shadowCubeSamp,
                                   // The two LTC lookup tables (fragment textures 8/9),
                                   // read only by the area light kinds.
@@ -2300,6 +2302,17 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
     for (int i = 0; i < light.lightCount; i++) {
         OllinLight L = light.lights[i];
 
+        // Which caster this light is, if any. The slot index is also the layer of the
+        // shadow-map array this caster rendered into, and slot 0 is the primary caster
+        // (the one every other system follows). A marched field is in no map: it
+        // self-shadows analytically toward the primary caster alone, so a field carrier
+        // takes that caster and no other.
+        int cs = -1;
+        for (int c = 0; c < light.shadowCasterCount; c++) {
+            if (light.shadowCasters[c].lightIndex == i) { cs = c; break; }
+        }
+        if (cs > 0 && fieldShadow >= 0.0) cs = -1;
+
         // Area kinds (rect / disk / tube) shade through the LTC integrals and skip the
         // whole punctual path below, so a frame with no area light is byte-identical.
         // Gated on the tables being bound (`ltcEnabled`; the loader logs a failure once).
@@ -2314,25 +2327,28 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
             // center through PCSS with the penumbra sized by the panel's extent.
             // Ambient stays; only this light's integrals dim.
             float atten = 1.0;
-            if (i == light.shadowLight) {
+            if (cs >= 0) {
+                constant OllinShadowCaster &sc = light.shadowCasters[cs];
                 float lit01;
                 if (fieldShadow >= 0.0) {
                     lit01 = fieldShadow;   // a marched field self-shadows (it isn't in the maps)
                 } else {
 #if OLLIN_RT_SHADOWS
-                    if (light.shadowKind == 2) lit01 = rtShadow;
+                    if (sc.kind == 2) lit01 = rtShadow;
                     else
 #endif
-                    lit01 = (light.shadowDepthA > 0.0)
-                        ? shadowFactorPCSS(worldPos, n, toCenter, light.lightViewProjection,
-                                           light.shadowTexelWorld, light.shadowDepthA,
-                                           light.shadowDepthB, light.shadowSamples,
-                                           shadowMap, shadowSamp, shadowCubeSamp)
-                        : shadowFactor(worldPos, n, toCenter, light.lightViewProjection,
-                                       light.shadowTexelWorld, shadowMap, shadowSamp);
-                    lit01 *= meshFieldShadow;   // also occluded by the marched fields (RT; 1.0 otherwise)
+                    lit01 = (sc.depthA > 0.0)
+                        ? shadowFactorPCSS(worldPos, n, toCenter, sc.lightViewProjection,
+                                           sc.texelWorld, sc.depthA,
+                                           sc.depthB, sc.samples,
+                                           shadowMap, (uint)cs, shadowSamp, shadowCubeSamp)
+                        : shadowFactor(worldPos, n, toCenter, sc.lightViewProjection,
+                                       sc.texelWorld, shadowMap, (uint)cs, shadowSamp);
+                    // The marched fields occlude the primary caster only (RT; 1.0 otherwise):
+                    // an extra caster reads them out of its own map instead.
+                    if (cs == 0) lit01 *= meshFieldShadow;
                 }
-                atten = mix(1.0, lit01, light.shadowStrength);
+                atten = mix(1.0, lit01, sc.strength);
             }
 
             // The LUT texel for this surface: the physically-based model brings its own
@@ -2480,31 +2496,33 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
         }
         // Dim only the casting light where this surface is in shadow (ambient stays).
         // A directional/spot caster samples the 2D map; a point caster the cube.
-        if (i == light.shadowLight) {
+        if (cs >= 0) {
+            constant OllinShadowCaster &sc = light.shadowCasters[cs];
             float lit01;
             if (fieldShadow >= 0.0) {
                 lit01 = fieldShadow;   // a marched field self-shadows (it isn't in the maps)
             } else {
 #if OLLIN_RT_SHADOWS
-                // shadowKind 2 = ray-traced point caster (computed in the fragment).
-                if (light.shadowKind == 2) lit01 = rtShadow;
+                // kind 2 = ray-traced point caster (computed in the fragment).
+                if (sc.kind == 2) lit01 = rtShadow;
                 else
 #endif
-                lit01 = (light.shadowKind == 1)
-                    ? shadowFactorCube(worldPos, n, L.position.xyz, light.shadowDepthA,
-                                       light.shadowTexelWorld, shadowCube, shadowCubeSamp)
-                    // shadowDepthA > 0 = a soft (PCSS) directional/spot caster; 0 = the legacy
+                lit01 = (sc.kind == 1)
+                    ? shadowFactorCube(worldPos, n, L.position.xyz, sc.depthA,
+                                       sc.texelWorld, shadowCube, shadowCubeSamp)
+                    // depthA > 0 = a soft (PCSS) directional/spot caster; 0 = the legacy
                     // hard 3x3 (so `shadowSoftness(0)` is byte-identical to before).
-                    : (light.shadowDepthA > 0.0)
-                        ? shadowFactorPCSS(worldPos, n, toLight, light.lightViewProjection,
-                                           light.shadowTexelWorld, light.shadowDepthA,
-                                           light.shadowDepthB, light.shadowSamples,
-                                           shadowMap, shadowSamp, shadowCubeSamp)
-                        : shadowFactor(worldPos, n, toLight, light.lightViewProjection,
-                                       light.shadowTexelWorld, shadowMap, shadowSamp);
-                lit01 *= meshFieldShadow;   // also occluded by the marched fields (point/RT; 1.0 otherwise)
+                    : (sc.depthA > 0.0)
+                        ? shadowFactorPCSS(worldPos, n, toLight, sc.lightViewProjection,
+                                           sc.texelWorld, sc.depthA,
+                                           sc.depthB, sc.samples,
+                                           shadowMap, (uint)cs, shadowSamp, shadowCubeSamp)
+                        : shadowFactor(worldPos, n, toLight, sc.lightViewProjection,
+                                       sc.texelWorld, shadowMap, (uint)cs, shadowSamp);
+                // The marched fields occlude the primary caster only (point/RT; 1.0 otherwise).
+                if (cs == 0) lit01 *= meshFieldShadow;
             }
-            atten *= mix(1.0, lit01, light.shadowStrength);
+            atten *= mix(1.0, lit01, sc.strength);
         }
         if (!haveKey) { keyToLight = toLight; haveKey = true; }
 
@@ -2705,7 +2723,7 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
                                   float pxMetal, float pxRough, float pxAO,
                                   constant OllinMaterial &mat,
                                   constant OllinLighting &light,
-                                  depth2d<float> shadowMap, sampler shadowSamp,
+                                  depth2d_array<float> shadowMap, sampler shadowSamp,
                                   texturecube<float> shadowCube, sampler shadowCubeSamp,
                                   // The two LTC lookup tables (fragment textures 8/9),
                                   // read only by the area light kinds.
@@ -2810,6 +2828,17 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
     for (int i = 0; i < light.lightCount; i++) {
         OllinLight L = light.lights[i];
 
+        // Which caster this light is, if any. The slot index is also the layer of the
+        // shadow-map array this caster rendered into, and slot 0 is the primary caster
+        // (the one every other system follows). A marched field is in no map: it
+        // self-shadows analytically toward the primary caster alone, so a field carrier
+        // takes that caster and no other.
+        int cs = -1;
+        for (int c = 0; c < light.shadowCasterCount; c++) {
+            if (light.shadowCasters[c].lightIndex == i) { cs = c; break; }
+        }
+        if (cs > 0 && fieldShadow >= 0.0) cs = -1;
+
         // Area kinds (rect / disk / tube) shade through the LTC integrals and skip the
         // whole punctual path below, so a frame with no area light is byte-identical.
         // Gated on the tables being bound (`ltcEnabled`; the loader logs a failure once).
@@ -2824,25 +2853,28 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
             // center through PCSS with the penumbra sized by the panel's extent.
             // Ambient stays; only this light's integrals dim.
             float atten = 1.0;
-            if (i == light.shadowLight) {
+            if (cs >= 0) {
+                constant OllinShadowCaster &sc = light.shadowCasters[cs];
                 float lit01;
                 if (fieldShadow >= 0.0) {
                     lit01 = fieldShadow;   // a marched field self-shadows (it isn't in the maps)
                 } else {
 #if OLLIN_RT_SHADOWS
-                    if (light.shadowKind == 2) lit01 = rtShadow;
+                    if (sc.kind == 2) lit01 = rtShadow;
                     else
 #endif
-                    lit01 = (light.shadowDepthA > 0.0)
-                        ? shadowFactorPCSS(worldPos, n, toCenter, light.lightViewProjection,
-                                           light.shadowTexelWorld, light.shadowDepthA,
-                                           light.shadowDepthB, light.shadowSamples,
-                                           shadowMap, shadowSamp, shadowCubeSamp)
-                        : shadowFactor(worldPos, n, toCenter, light.lightViewProjection,
-                                       light.shadowTexelWorld, shadowMap, shadowSamp);
-                    lit01 *= meshFieldShadow;   // also occluded by the marched fields (RT; 1.0 otherwise)
+                    lit01 = (sc.depthA > 0.0)
+                        ? shadowFactorPCSS(worldPos, n, toCenter, sc.lightViewProjection,
+                                           sc.texelWorld, sc.depthA,
+                                           sc.depthB, sc.samples,
+                                           shadowMap, (uint)cs, shadowSamp, shadowCubeSamp)
+                        : shadowFactor(worldPos, n, toCenter, sc.lightViewProjection,
+                                       sc.texelWorld, shadowMap, (uint)cs, shadowSamp);
+                    // The marched fields occlude the primary caster only (RT; 1.0 otherwise):
+                    // an extra caster reads them out of its own map instead.
+                    if (cs == 0) lit01 *= meshFieldShadow;
                 }
-                atten = mix(1.0, lit01, light.shadowStrength);
+                atten = mix(1.0, lit01, sc.strength);
             }
 
             // The LUT texel for this surface: the physically-based model brings its own
@@ -2990,31 +3022,33 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
         }
         // Dim only the casting light where this surface is in shadow (ambient stays).
         // A directional/spot caster samples the 2D map; a point caster the cube.
-        if (i == light.shadowLight) {
+        if (cs >= 0) {
+            constant OllinShadowCaster &sc = light.shadowCasters[cs];
             float lit01;
             if (fieldShadow >= 0.0) {
                 lit01 = fieldShadow;   // a marched field self-shadows (it isn't in the maps)
             } else {
 #if OLLIN_RT_SHADOWS
-                // shadowKind 2 = ray-traced point caster (computed in the fragment).
-                if (light.shadowKind == 2) lit01 = rtShadow;
+                // kind 2 = ray-traced point caster (computed in the fragment).
+                if (sc.kind == 2) lit01 = rtShadow;
                 else
 #endif
-                lit01 = (light.shadowKind == 1)
-                    ? shadowFactorCube(worldPos, n, L.position.xyz, light.shadowDepthA,
-                                       light.shadowTexelWorld, shadowCube, shadowCubeSamp)
-                    // shadowDepthA > 0 = a soft (PCSS) directional/spot caster; 0 = the legacy
+                lit01 = (sc.kind == 1)
+                    ? shadowFactorCube(worldPos, n, L.position.xyz, sc.depthA,
+                                       sc.texelWorld, shadowCube, shadowCubeSamp)
+                    // depthA > 0 = a soft (PCSS) directional/spot caster; 0 = the legacy
                     // hard 3x3 (so `shadowSoftness(0)` is byte-identical to before).
-                    : (light.shadowDepthA > 0.0)
-                        ? shadowFactorPCSS(worldPos, n, toLight, light.lightViewProjection,
-                                           light.shadowTexelWorld, light.shadowDepthA,
-                                           light.shadowDepthB, light.shadowSamples,
-                                           shadowMap, shadowSamp, shadowCubeSamp)
-                        : shadowFactor(worldPos, n, toLight, light.lightViewProjection,
-                                       light.shadowTexelWorld, shadowMap, shadowSamp);
-                lit01 *= meshFieldShadow;   // also occluded by the marched fields (point/RT; 1.0 otherwise)
+                    : (sc.depthA > 0.0)
+                        ? shadowFactorPCSS(worldPos, n, toLight, sc.lightViewProjection,
+                                           sc.texelWorld, sc.depthA,
+                                           sc.depthB, sc.samples,
+                                           shadowMap, (uint)cs, shadowSamp, shadowCubeSamp)
+                        : shadowFactor(worldPos, n, toLight, sc.lightViewProjection,
+                                       sc.texelWorld, shadowMap, (uint)cs, shadowSamp);
+                // The marched fields occlude the primary caster only (point/RT; 1.0 otherwise).
+                if (cs == 0) lit01 *= meshFieldShadow;
             }
-            atten *= mix(1.0, lit01, light.shadowStrength);
+            atten *= mix(1.0, lit01, sc.strength);
         }
         if (!haveKey) { keyToLight = toLight; haveKey = true; }
 
@@ -4061,7 +4095,7 @@ static inline float3 ollin_caustics_add(float2 fragXY, constant OllinLighting &l
 fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                     constant OllinLighting &light [[buffer(0)]],
                                     constant OllinMaterial &mat [[buffer(1)]],
-                                    depth2d<float> shadowMap [[texture(1)]],
+                                    depth2d_array<float> shadowMap [[texture(1)]],
                                     sampler shadowSamp [[sampler(1)]],
                                     texturecube<float> shadowCube [[texture(2)]],
                                     sampler shadowCubeSamp [[sampler(2)]],
@@ -4346,7 +4380,7 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                              constant OllinMaterial &mat [[buffer(1)]],
                                              texture2d<float> baseColorTex [[texture(0)]],
                                              sampler samp [[sampler(0)]],
-                                             depth2d<float> shadowMap [[texture(1)]],
+                                             depth2d_array<float> shadowMap [[texture(1)]],
                                              sampler shadowSamp [[sampler(1)]],
                                              texturecube<float> shadowCube [[texture(2)]],
                                              sampler shadowCubeSamp [[sampler(2)]],
@@ -4515,7 +4549,7 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
                                        constant OllinMaterial &mat [[buffer(1)]],
                                        texture2d<float> baseColorTex [[texture(0)]],
                                        sampler samp [[sampler(0)]],
-                                       depth2d<float> shadowMap [[texture(1)]],
+                                       depth2d_array<float> shadowMap [[texture(1)]],
                                        sampler shadowSamp [[sampler(1)]],
                                        texturecube<float> shadowCube [[texture(2)]],
                                        sampler shadowCubeSamp [[sampler(2)]],
@@ -4819,7 +4853,7 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
                                          constant OllinMaterial &mat [[buffer(1)]],
                                          texture2d<float> baseColorTex [[texture(0)]],
                                          sampler samp [[sampler(0)]],
-                                         depth2d<float> shadowMap [[texture(1)]],
+                                         depth2d_array<float> shadowMap [[texture(1)]],
                                          sampler shadowSamp [[sampler(1)]],
                                          texturecube<float> shadowCube [[texture(2)]],
                                          sampler shadowCubeSamp [[sampler(2)]],

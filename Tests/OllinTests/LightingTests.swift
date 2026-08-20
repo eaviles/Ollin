@@ -288,6 +288,144 @@ struct LightingTests {
         #expect(u.shadowLight == 1)     // the directional's index, not the point's
     }
 
+    // MARK: More than one caster
+
+    /// The frame's caster list, read out of the packed uniform (a C fixed-size array
+    /// imports as a homogeneous tuple).
+    private func casters(_ u: OllinLighting) -> [OllinShadowCaster] {
+        var u = u
+        let n = min(Int(u.shadowCasterCount), Int(OLLIN_MAX_SHADOW_CASTERS))
+        guard n > 0 else { return [] }
+        return withUnsafePointer(to: &u.shadowCasters) { ptr in
+            ptr.withMemoryRebound(to: OllinShadowCaster.self,
+                                  capacity: Int(OLLIN_MAX_SHADOW_CASTERS)) { buf in
+                (0..<n).map { buf[$0] }
+            }
+        }
+    }
+
+    @Test func aKeyLightAndASpotBothCast() {
+        // The headline: two lights that each render a 2D map, so neither waits for
+        // the other. The layer each one renders into is its slot index.
+        let d = freshDrawer()
+        d.addLight(.directional(.white, direction: Vector3(0, -1, 0)))
+        d.addLight(.spot(.white, at: Vector3(2, 3, 0), direction: Vector3(0, -1, 0)))
+        d.castShadows()
+        let list = casters(d.makeLighting())
+        #expect(list.count == 2)
+        #expect(list[0].lightIndex == 0 && list[0].kind == 0)
+        #expect(list[1].lightIndex == 1 && list[1].kind == 0)
+    }
+
+    @Test func aPointLightCastsOnlyAsThePrimary() {
+        // A point caster needs the frame's one cube texture (or its one acceleration
+        // structure), and both belong to slot 0. So a point light beside a directional
+        // key lights the scene and throws nothing, while the same light alone casts.
+        let d = freshDrawer()
+        d.addLight(.directional(.white, direction: Vector3(0, -1, 0)))
+        d.addLight(.point(.white, at: Vector3(0, 3, 0)))
+        d.castShadows()
+        let beside = casters(d.makeLighting())
+        #expect(beside.count == 1)
+        #expect(beside[0].kind == 0)    // the directional's 2D map
+
+        let alone = freshDrawer()
+        alone.addLight(.point(.white, at: Vector3(0, 3, 0)))
+        alone.castShadows()
+        #expect(casters(alone.makeLighting()).map(\.kind) == [1])
+    }
+
+    @Test func theSingleCasterFieldsMirrorSlotZero() {
+        // Every system that predates the list still reads the single-caster fields, so
+        // they must carry exactly what slot 0 carries.
+        let d = freshDrawer()
+        d.addLight(.spot(.white, at: Vector3(2, 3, 0), direction: Vector3(0, -1, 0)))
+        d.addLight(.directional(.white, direction: Vector3(0, -1, 0)))
+        d.castShadows()
+        let u = d.makeLighting()
+        let primary = casters(u)[0]
+        #expect(u.shadowLight == primary.lightIndex)
+        #expect(u.shadowKind == primary.kind)
+        #expect(close(u.shadowStrength, primary.strength))
+        #expect(close(u.shadowTexelWorld, primary.texelWorld))
+        #expect(close(u.shadowDepthA, primary.depthA))
+        #expect(close(u.shadowDepthB, primary.depthB))
+        #expect(u.lightViewProjection == primary.lightViewProjection)
+        #expect(u.shadowLinearize == primary.linearize)
+    }
+
+    @Test func aLightCanOptOutOfCasting() {
+        // A fill light lights the scene and throws nothing.
+        let d = freshDrawer()
+        d.addLight(.directional(.white, direction: Vector3(0, -1, 0)))
+        d.addLight(.spot(.white, at: Vector3(2, 3, 0),
+                         direction: Vector3(0, -1, 0)).castingShadow(false))
+        d.castShadows()
+        let list = casters(d.makeLighting())
+        #expect(list.count == 1)
+        #expect(list[0].lightIndex == 0)
+    }
+
+    @Test func optingThePrimaryOutHandsTheJobOn() {
+        let d = freshDrawer()
+        d.addLight(.directional(.white, direction: Vector3(0, -1, 0)).castingShadow(false))
+        d.addLight(.spot(.white, at: Vector3(2, 3, 0), direction: Vector3(0, -1, 0)))
+        d.castShadows()
+        let u = d.makeLighting()
+        #expect(u.shadowLight == 1)     // the spot, not the opted-out directional
+        #expect(casters(u).count == 1)
+    }
+
+    @Test func aPointLightNeverTakesAnExtraSlot() {
+        // The spot is the primary here (a spot outranks a point), so neither point light
+        // casts: every extra slot is a 2D caster with a map layer of its own.
+        let d = freshDrawer()
+        d.addLight(.point(.white, at: Vector3(0, 3, 0)))
+        d.addLight(.point(.white, at: Vector3(3, 3, 0)))
+        d.addLight(.spot(.white, at: Vector3(2, 3, 0), direction: Vector3(0, -1, 0)))
+        d.castShadows()
+        let list = casters(d.makeLighting())
+        #expect(list.count == 1)
+        #expect(list[0].lightIndex == 2 && list[0].kind == 0)
+    }
+
+    @Test func theCasterListCapsAtFour() {
+        let d = freshDrawer()
+        for k in 0..<6 {
+            d.addLight(.spot(.white, at: Vector3(Double(k), 3, 0), direction: Vector3(0, -1, 0)))
+        }
+        d.castShadows()
+        let u = d.makeLighting()
+        #expect(u.shadowCasterCount == Int32(OLLIN_MAX_SHADOW_CASTERS))
+        #expect(casters(u).map { Int($0.lightIndex) } == [0, 1, 2, 3])   // the ones set first
+    }
+
+    @Test func aTubeIsNeverInTheCasterList() {
+        let d = freshDrawer()
+        d.addLight(.directional(.white, direction: Vector3(0, -1, 0)))
+        d.addLight(.tube(.white, from: Vector3(-1, 2, 0), to: Vector3(1, 2, 0)))
+        d.castShadows()
+        #expect(casters(d.makeLighting()).count == 1)
+    }
+
+    @Test func noShadowsMeansNoCasters() {
+        let d = freshDrawer()
+        d.addLight(.directional(.white, direction: Vector3(0, -1, 0)))
+        d.addLight(.spot(.white, at: Vector3(2, 3, 0), direction: Vector3(0, -1, 0)))
+        #expect(d.makeLighting().shadowCasterCount == 0)
+    }
+
+    @Test func eachCasterCarriesItsOwnProjection() {
+        // Two casters must not share one map: their view-projections differ, which is
+        // what puts each shadow where its own light throws it.
+        let d = freshDrawer()
+        d.addLight(.directional(.white, direction: Vector3(0, -1, 0)))
+        d.addLight(.spot(.white, at: Vector3(2, 3, 0), direction: Vector3(-0.4, -1, 0)))
+        d.castShadows()
+        let list = casters(d.makeLighting())
+        #expect(list[0].lightViewProjection != list[1].lightViewProjection)
+    }
+
     @Test func pointCasterPacksFarPlane() {
         // A point light with no directional/spot is the caster: an omnidirectional cube
         // map storing linear distance. It carries the far plane in `shadowDepthA` (the
@@ -1081,6 +1219,128 @@ private final class ContactShadowProbe: Sketch {
                 translate(0.6, 0.5, -1.4)
                 drawCylinder(radius: 0.5, height: 1.0)
             }
+        }
+    }
+}
+
+/// Behavioral probes for **more than one shadow caster in a frame**: a floor under a
+/// hovering box, lit by two lights that throw their shadows to opposite sides. Each
+/// light is switched on and off as a caster while everything else stays put, so the
+/// per-pixel difference isolates one shadow at a time. The check that matters is the
+/// second caster's shadow surviving into the both-cast render: with one caster per
+/// frame that region reads fully lit.
+@Suite
+@MainActor
+struct MultipleCasterRenderProbes {
+
+    private func pixels(_ sketch: Sketch) throws -> [UInt8] {
+        let image = try #require(OllinApp.image(of: sketch, frame: 1))
+        let w = image.width, h = image.height
+        var data = [UInt8](repeating: 0, count: w * h * 4)
+        let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
+                            bytesPerRow: w * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+        return data
+    }
+
+    /// Red-channel darkening against the unshadowed render (the scene is grayscale).
+    private func darkening(_ mode: TwoCasterProbe.Mode, fillIsSpot: Bool = false) throws -> [Int] {
+        let lit = try pixels(TwoCasterProbe.make(.none, fillIsSpot: fillIsSpot))
+        let shadowed = try pixels(TwoCasterProbe.make(mode, fillIsSpot: fillIsSpot))
+        return stride(from: 0, to: lit.count, by: 4).map { Int(lit[$0]) - Int(shadowed[$0]) }
+    }
+
+    /// How much of the second caster's own shadow (the part the first caster does not
+    /// darken) survives into the render where both cast.
+    private func secondShadowSurvival(fillIsSpot: Bool) throws -> (region: Int, kept: Int) {
+        let onlyKey = try darkening(.keyOnly, fillIsSpot: fillIsSpot)
+        let onlyFill = try darkening(.fillOnly, fillIsSpot: fillIsSpot)
+        let both = try darkening(.both, fillIsSpot: fillIsSpot)
+        var region = 0, kept = 0
+        for i in 0..<both.count where onlyFill[i] > 20 && onlyKey[i] < 5 {
+            region += 1
+            if both[i] > 20 { kept += 1 }
+        }
+        return (region, kept)
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func theSecondCasterThrowsItsOwnShadow() throws {
+        // The fill light's own shadow: darkened when it alone casts, untouched by the
+        // key light's shadow, so this region belongs to the second caster only.
+        let (region, kept) = try secondShadowSurvival(fillIsSpot: false)
+        #expect(region > 200, "expected a clear second shadow, got \(region) pixels")
+        #expect(kept > region * 9 / 10,
+                "the second caster's shadow must survive with both casting: kept \(kept) of \(region)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func bothShadowsLandTogether() throws {
+        // The mirror of the check above: the key light's own region survives too, so
+        // neither caster overwrites the other's map.
+        let onlyKey = try darkening(.keyOnly)
+        let onlyFill = try darkening(.fillOnly)
+        let both = try darkening(.both)
+        var region = 0, kept = 0
+        for i in 0..<both.count where onlyKey[i] > 20 && onlyFill[i] < 5 {
+            region += 1
+            if both[i] > 20 { kept += 1 }
+        }
+        #expect(region > 200, "expected a clear first shadow, got \(region) pixels")
+        #expect(kept > region * 9 / 10, "kept \(kept) of \(region)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aSpotCastsBesideADirectional() throws {
+        // The pair a sketch actually reaches for: a key light plus a stage light. The
+        // spot is the second caster, so its map is a layer of its own.
+        let (region, kept) = try secondShadowSurvival(fillIsSpot: true)
+        #expect(region > 200, "expected the spot's own shadow, got \(region) pixels")
+        #expect(kept > region * 9 / 10, "kept \(kept) of \(region)")
+    }
+}
+
+/// The two-caster probe scene: a gray floor, a box hovering over it, and two lights
+/// aimed from opposite sides so their shadows fall apart from each other. `mode` picks
+/// which of them casts, through the per-light `castsShadow` opt-out, so every render
+/// shares one lighting rig and differs only in what throws.
+private final class TwoCasterProbe: Sketch {
+    enum Mode { case none, keyOnly, fillOnly, both }
+
+    var mode: Mode = .both
+    var fillIsSpot = false
+
+    static func make(_ mode: Mode, fillIsSpot: Bool = false) -> TwoCasterProbe {
+        let probe = TwoCasterProbe()
+        probe.mode = mode
+        probe.fillIsSpot = fillIsSpot
+        return probe
+    }
+
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(.black)
+        camera(.orbiting(radius: 9, elevation: 1.0))
+        let keyCasts = mode == .keyOnly || mode == .both
+        let fillCasts = mode == .fillOnly || mode == .both
+        light(Light.directional(.white, direction: Vector3(1, -1.1, 0), intensity: 0.9)
+                .castingShadow(keyCasts))
+        if fillIsSpot {
+            light(Light.spot(.white, at: Vector3(3.4, 4, 0), direction: Vector3(-0.7, -1, 0),
+                             angle: 1.1, intensity: 2.2)
+                    .castingShadow(fillCasts))
+        } else {
+            light(Light.directional(.white, direction: Vector3(-1, -1.1, 0), intensity: 0.9)
+                    .castingShadow(fillCasts))
+        }
+        if mode != .none { castShadows() }
+        fill(Color(white: 0.85))
+        drawPlane(width: 24, depth: 24)
+        withState {
+            translate(0, 1.6, 0)
+            drawBox(size: 1.4)
         }
     }
 }

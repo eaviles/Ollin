@@ -30,7 +30,10 @@ final class Shadows3D: Sketch {
         directionalLight(Color(hue: 0.09, saturation: 0.25, brightness: 1.0),
                          direction: Vector3(-0.55 + sin(time * 0.25) * 0.3, -0.85, -0.4),
                          intensity: 1.0)
-        directionalLight(Color(white: 0.5), direction: Vector3(0.5, 0.4, 0.5), intensity: 0.3)
+        // A dim fill for the shaded sides. It throws nothing: one key shadow reads
+        // cleaner here, and every caster costs its own pass over the scene.
+        directionalLight(Color(white: 0.5), direction: Vector3(0.5, 0.4, 0.5), intensity: 0.3,
+                         castsShadow: false)
         castShadows()
 
         // The ground that catches the shadows (nearly matte, so they read clearly).

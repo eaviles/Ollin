@@ -920,9 +920,11 @@ open class Sketch {
     /// `nil` = `color`) tints its highlight; `softness` (`0…1`) wraps the terminator for
     /// a gentler shaded edge.
     public func directionalLight(_ color: Color, direction: Vector3, intensity: Double = 1,
-                                 specular: Color? = nil, softness: Double = 0) {
+                                 specular: Color? = nil, softness: Double = 0,
+                                 castsShadow: Bool = true) {
         drawer.addLight(.directional(color, direction: direction, intensity: intensity,
-                                     specular: specular, softness: softness))
+                                     specular: specular, softness: softness,
+                                     castsShadow: castsShadow))
     }
 
     /// Add a point light: an omnidirectional source at a world position. `specular`
@@ -933,10 +935,12 @@ open class Sketch {
     public func pointLight(_ color: Color, at position: Vector3, intensity: Double = 1,
                            specular: Color? = nil, softness: Double = 0,
                            profile: IESProfile? = nil,
-                           axis: Vector3 = Vector3(0, -1, 0), roll: Double = 0) {
+                           axis: Vector3 = Vector3(0, -1, 0), roll: Double = 0,
+                           castsShadow: Bool = true) {
         drawer.addLight(.point(color, at: position, intensity: intensity,
                                specular: specular, softness: softness,
-                               profile: profile, axis: axis, roll: roll))
+                               profile: profile, axis: axis, roll: roll,
+                               castsShadow: castsShadow))
     }
 
     /// Add a spot light: a point source at `position` aimed along `direction`,
@@ -949,11 +953,12 @@ open class Sketch {
                           angle: Double = .pi / 6, penumbra: Double = 0.2, intensity: Double = 1,
                           specular: Color? = nil, softness: Double = 0,
                           profile: IESProfile? = nil, cookie: LightCookie? = nil,
-                          roll: Double = 0) {
+                          roll: Double = 0, castsShadow: Bool = true) {
         drawer.addLight(.spot(color, at: position, direction: direction,
                               angle: angle, penumbra: penumbra, intensity: intensity,
                               specular: specular, softness: softness,
-                              profile: profile, cookie: cookie, roll: roll))
+                              profile: profile, cookie: cookie, roll: roll,
+                              castsShadow: castsShadow))
     }
 
     /// Add a rect area light: a glowing `width` × `height` panel centered at `position`,
@@ -965,10 +970,11 @@ open class Sketch {
     public func rectLight(_ color: Color, at position: Vector3, direction: Vector3,
                           width: Double, height: Double, up: Vector3 = .unitY,
                           twoSided: Bool = false, intensity: Double = 1,
-                          specular: Color? = nil) {
+                          specular: Color? = nil, castsShadow: Bool = true) {
         drawer.addLight(.rect(color, at: position, direction: direction,
                               width: width, height: height, up: up,
-                              twoSided: twoSided, intensity: intensity, specular: specular))
+                              twoSided: twoSided, intensity: intensity, specular: specular,
+                              castsShadow: castsShadow))
     }
 
     /// Add a disk area light: a glowing circular panel of `radius` centered at
@@ -976,10 +982,11 @@ open class Sketch {
     /// can). Shades and falls off like the rect panel; `twoSided` makes both faces emit.
     public func diskLight(_ color: Color, at position: Vector3, direction: Vector3,
                           radius: Double, twoSided: Bool = false, intensity: Double = 1,
-                          specular: Color? = nil) {
+                          specular: Color? = nil, castsShadow: Bool = true) {
         drawer.addLight(.disk(color, at: position, direction: direction,
                               radius: radius, twoSided: twoSided,
-                              intensity: intensity, specular: specular))
+                              intensity: intensity, specular: specular,
+                              castsShadow: castsShadow))
     }
 
     /// Add a tube area light: a glowing cylinder of `radius` running `from` one point

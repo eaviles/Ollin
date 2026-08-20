@@ -115,29 +115,44 @@ extension MetalRenderer {
         return output
     }
 
-    /// The shadow map: a square single-sample `.private` depth texture the shadow
-    /// pass renders into and the lit mesh fragment samples. Allocated lazily on the
-    /// first shadow-casting frame (a sketch that never casts shadows allocates none),
-    /// then reused.
-    private func ensureShadowMap() -> MTLTexture? {
-        if let m = shadowMap { return m }
+    /// The shadow map: a square single-sample `.private` depth **array** the shadow
+    /// pass renders into, one layer per 2D caster, and the lit mesh fragment samples.
+    /// The layer index is the caster's slot index (`OllinLighting.shadowCasters`), so
+    /// the primary caster always owns layer 0 and a cube or ray-traced primary simply
+    /// leaves that layer cleared. Allocated lazily on the first shadow-casting frame (a
+    /// sketch that never casts shadows allocates none), then reused; a frame that wants
+    /// more layers than the current one holds allocates a fresh, wider texture rather
+    /// than growing it, since an in-flight frame may still be reading the old one. A
+    /// one-caster frame holds exactly one layer, so the common case costs what it always
+    /// did.
+    private func ensureShadowMap(layers: Int) -> MTLTexture? {
+        let want = max(1, min(layers, Int(OLLIN_MAX_SHADOW_CASTERS)))
+        if let m = shadowMap, m.arrayLength >= want { return m }
         let n = MetalRenderer.shadowMapResolution
-        let desc = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: depthPixelFormat, width: n, height: n, mipmapped: false)
+        let desc = MTLTextureDescriptor()
+        desc.textureType = .type2DArray
+        desc.pixelFormat = depthPixelFormat
+        desc.width = n
+        desc.height = n
+        desc.arrayLength = want
         desc.usage = [.renderTarget, .shaderRead]
         desc.storageMode = .private
         shadowMap = device.makeTexture(descriptor: desc)
         return shadowMap
     }
 
-    /// A 1×1 depth texture bound to the mesh fragment's shadow slot when shadows are
-    /// off, so its declared `depth2d` argument is always satisfied (the fragment only
-    /// samples it when `shadowLight >= 0`). Cleared once on creation so it's never
-    /// read uninitialized.
+    /// A 1×1 single-layer depth array bound to the mesh fragment's shadow slot when
+    /// shadows are off, so its declared `depth2d_array` argument is always satisfied (the
+    /// fragment only samples it when a caster names it). Cleared once on creation so it's
+    /// never read uninitialized.
     func ensureDummyShadowMap() -> MTLTexture? {
         if let m = dummyShadowMap { return m }
-        let desc = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: depthPixelFormat, width: 1, height: 1, mipmapped: false)
+        let desc = MTLTextureDescriptor()
+        desc.textureType = .type2DArray
+        desc.pixelFormat = depthPixelFormat
+        desc.width = 1
+        desc.height = 1
+        desc.arrayLength = 1
         desc.usage = [.renderTarget, .shaderRead]
         desc.storageMode = .private
         guard let texture = device.makeTexture(descriptor: desc) else { return nil }
@@ -294,125 +309,181 @@ extension MetalRenderer {
             }
         }
 
-        // A point caster: ray-trace it on a capable device (exact, no cube/depth-compare
-        // artifacts), else render the omnidirectional mid-point cube. The one accel serves
-        // both the shadow (shadowKind 2) and, when on, reflections. The traced path needs
-        // real mesh geometry in the accel; a frame with only instanced casters falls to
-        // the cube, which they render into.
+        // The 2D casters, each with the array layer it renders into (the layer index is
+        // the caster's slot). A frame whose only caster is a point light has none.
+        let twoDCasters = shadowCasters(lighting).enumerated()
+            .filter { $0.element.kind == 0 }
+            .map { (layer: $0.offset, caster: $0.element) }
+
+        // A point primary caster: ray-trace it on a capable device (exact, no
+        // cube/depth-compare artifacts), else render the omnidirectional mid-point cube.
+        // The one accel serves both the shadow (shadowKind 2) and, when on, reflections.
+        // The traced path needs real mesh geometry in the accel; a frame with only
+        // instanced casters falls to the cube, which they render into.
+        var accel: MTLAccelerationStructure?
+        var accelOffsets: MTLBuffer?
+        var accelCausticMats: MTLBuffer?
+        var cube: MTLTexture?
+        var tracedPrimary = false
         if lighting.shadowLight >= 0, lighting.shadowKind == 1 {
             if rayTracedShadows, let meshBuffer, !meshVertices.isEmpty,
                let built = buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer,
                                             causticMats: wantCaustics) {
-                return ShadowMaps(accel: built.accel,
-                                  reflectAccel: wantReflect ? built.accel : nil,
-                                  reflectGeoOffsets: wantReflect ? built.offsets : nil,
-                                  giAccel: wantGI ? built.accel : nil,
-                                  giGeoOffsets: wantGI ? built.offsets : nil,
-                                  causticAccel: wantCaustics ? built.accel : nil,
-                                  causticGeoOffsets: wantCaustics ? built.offsets : nil,
-                                  causticGeoMats: wantCaustics ? built.causticMats : nil)
+                accel = built.accel
+                accelOffsets = built.offsets
+                accelCausticMats = built.causticMats
+                tracedPrimary = true
             }
-            let cube = encodePointShadowPass(drawer, lighting: lighting,
-                                             into: commandBuffer, meshBuffer: meshBuffer,
-                                             instancedMeshBuffer: hasInstancedCasters ? instancedMeshBuffer : nil,
-                                             meshInstanceBuffer: meshInstanceBuffer)
-            return ShadowMaps(cube: cube)
+        }
+        // The frame's one cube belongs to its cube caster, which the packing only ever
+        // puts in slot 0 (a point light casts as the primary caster or not at all).
+        if !tracedPrimary, let point = shadowCasters(lighting).first(where: { $0.kind == 1 }) {
+            cube = encodePointShadowPass(drawer, lighting: lighting, caster: point,
+                                         into: commandBuffer, meshBuffer: meshBuffer,
+                                         instancedMeshBuffer: hasInstancedCasters ? instancedMeshBuffer : nil,
+                                         meshInstanceBuffer: meshInstanceBuffer)
         }
 
-        // An area (rect/disk) caster on a ray-tracing device: trace visibility to the
-        // panel's actual surface instead of rendering the spot-style map (the exact
-        // penumbra, including a rect's anisotropy). Elsewhere it falls through to the
-        // 2D map below, whose PCSS penumbra the packing already sized from the panel's
+        // A rect/disk **area** primary caster on a ray-tracing device: trace visibility to
+        // the panel's actual surface instead of rendering its spot-style map (the exact
+        // penumbra, including a rect's anisotropy). Elsewhere it falls through to the 2D
+        // map below, whose PCSS penumbra the packing already sized from the panel's
         // extent, so both devices soften by the same physical size.
-        if lighting.shadowLight >= 0, casterGPUKind(lighting) >= 3, rayTracedShadows,
+        if !tracedPrimary, lighting.shadowLight >= 0, casterGPUKind(lighting) >= 3, rayTracedShadows,
            let meshBuffer, !meshVertices.isEmpty,
            let built = buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer,
                                         causticMats: wantCaustics) {
-            return ShadowMaps(accel: built.accel,
-                              reflectAccel: wantReflect ? built.accel : nil,
-                              reflectGeoOffsets: wantReflect ? built.offsets : nil,
-                              giAccel: wantGI ? built.accel : nil,
-                              giGeoOffsets: wantGI ? built.offsets : nil,
-                              causticAccel: wantCaustics ? built.accel : nil,
-                              causticGeoOffsets: wantCaustics ? built.offsets : nil,
-                              causticGeoMats: wantCaustics ? built.causticMats : nil)
+            accel = built.accel
+            accelOffsets = built.offsets
+            accelCausticMats = built.causticMats
+            tracedPrimary = true
+        }
+        // A traced primary caster renders no map of its own, so drop its layer from the
+        // 2D list; the extra casters beside it keep theirs.
+        let mapCasters = tracedPrimary ? twoDCasters.filter { $0.layer != 0 } : twoDCasters
+
+        // Reflections, GI, and/or caustics want the same structure with none of the above
+        // conditions (the probe trace needs no environment and no caster), so build it once
+        // for whichever of them is on. All of these precede the main geometry pass, so
+        // trace order is satisfied either way.
+        if accel == nil, wantReflect || wantGI || wantCaustics, !meshVertices.isEmpty,
+           let meshBuffer,
+           let built = buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer,
+                                        causticMats: wantCaustics) {
+            accel = built.accel
+            accelOffsets = built.offsets
+            accelCausticMats = built.causticMats
         }
 
-        // Reflections, GI, and/or caustics with no shadow-casting light: build only the accel.
-        if lighting.shadowLight < 0 {
-            guard let meshBuffer, !meshVertices.isEmpty,
-                  let built = buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer,
-                                               causticMats: wantCaustics)
-            else { return ShadowMaps() }
-            return ShadowMaps(reflectAccel: wantReflect ? built.accel : nil,
-                              reflectGeoOffsets: wantReflect ? built.offsets : nil,
-                              giAccel: wantGI ? built.accel : nil,
-                              giGeoOffsets: wantGI ? built.offsets : nil,
-                              causticAccel: wantCaustics ? built.accel : nil,
-                              causticGeoOffsets: wantCaustics ? built.offsets : nil,
-                              causticGeoMats: wantCaustics ? built.causticMats : nil)
+        /// Everything this frame produced, with each accel consumer taking it only when
+        /// its own switch is on.
+        func maps(twoD: MTLTexture?) -> ShadowMaps {
+            ShadowMaps(twoD: twoD, cube: cube,
+                       accel: tracedPrimary ? accel : nil,
+                       reflectAccel: wantReflect ? accel : nil,
+                       reflectGeoOffsets: wantReflect ? accelOffsets : nil,
+                       giAccel: wantGI ? accel : nil,
+                       giGeoOffsets: wantGI ? accelOffsets : nil,
+                       causticAccel: wantCaustics ? accel : nil,
+                       causticGeoOffsets: wantCaustics ? accelOffsets : nil,
+                       causticGeoMats: wantCaustics ? accelCausticMats : nil)
         }
 
-        // A directional/spot caster's 2D map below, plus a reflection/GI/caustics accel when
-        // any is on (all precede the main geometry pass, so trace order is satisfied either way).
-        let reflect = (wantReflect || wantGI || wantCaustics) && !meshVertices.isEmpty
-            ? meshBuffer.flatMap { buildShadowAccel(drawer, into: commandBuffer, meshBuffer: $0,
-                                                    causticMats: wantCaustics) }
-            : nil
-        guard let shadowMap = ensureShadowMap(),
-              let shadowPipeline = try? pipeline(.meshShadow) else {
-            return ShadowMaps(reflectAccel: wantReflect ? reflect?.accel : nil,
-                              reflectGeoOffsets: wantReflect ? reflect?.offsets : nil,
-                              giAccel: wantGI ? reflect?.accel : nil,
-                              giGeoOffsets: wantGI ? reflect?.offsets : nil,
-                              causticAccel: wantCaustics ? reflect?.accel : nil,
-                              causticGeoOffsets: wantCaustics ? reflect?.offsets : nil,
-                              causticGeoMats: wantCaustics ? reflect?.causticMats : nil)
+        guard !mapCasters.isEmpty else { return maps(twoD: nil) }
+        guard let shadowMap = ensureShadowMap(layers: Int(lighting.shadowCasterCount)),
+              let shadowPipeline = try? pipeline(.meshShadow) else { return maps(twoD: nil) }
+
+        // One depth-only pass per 2D caster, each into its own array layer. Separate
+        // passes rather than one layered pass: every caster has its own projection, and
+        // the depth-only vertex takes exactly one.
+        for (layer, caster) in mapCasters {
+            let pass = MTLRenderPassDescriptor()
+            pass.depthAttachment.texture = shadowMap
+            pass.depthAttachment.slice = layer
+            pass.depthAttachment.loadAction = .clear
+            pass.depthAttachment.clearDepth = 1.0
+            pass.depthAttachment.storeAction = .store
+            guard let encoder = countedEncoder(commandBuffer, pass) else { return maps(twoD: nil) }
+            encoder.setRenderPipelineState(shadowPipeline)
+            encoder.setDepthStencilState(depthTestState)
+            // Slope-scaled depth bias on the stored depth keeps self-shadowing acne off
+            // (paired with the fragment's normal-offset + constant bias).
+            encoder.setDepthBias(0.0015, slopeScale: 2.0, clamp: 0.01)
+            var lightVP = caster.lightViewProjection
+            encoder.setVertexBytes(&lightVP, length: MemoryLayout<simd_float4x4>.stride, index: 2)
+            if let meshBuffer, !meshVertices.isEmpty {
+                drawShadowCasters(drawer, encoder: encoder, meshBuffer: meshBuffer, instanceCount: 1)
+            }
+            // Instanced-mesh copies cast into the same map through their own depth-only
+            // pipeline (the instance matrices applied per vertex, then the light's clip).
+            if hasInstancedCasters, let ip = try? pipeline(.meshInstancedShadow) {
+                encoder.setRenderPipelineState(ip)
+                drawInstancedShadowCasters(drawer, encoder: encoder,
+                                           instancedMeshBuffer: instancedMeshBuffer,
+                                           meshInstanceBuffer: meshInstanceBuffer, faces: 1)
+            }
+            // MeshFields cast from their retained buffers, whole (no culling here).
+            if hasFieldCasters, let fp = try? pipeline(.meshFieldShadow) {
+                encoder.setRenderPipelineState(fp)
+                drawFieldShadowCasters(drawer, encoder: encoder, faces: 1)
+            }
+            // Marched 3D fields cast into the same map: sphere-trace each from the light's POV and
+            // write its depth, z-tested against the mesh casters already there, so meshes receive a
+            // field's shadow too. The field keeps its analytic self-shadow in the main pass and
+            // doesn't sample this map, so there's no double-shadowing (directional/spot only).
+            encodeFieldShadowCasters(drawer, encoder: encoder, lightViewProjection: caster.lightViewProjection,
+                                     groupBuffer: sdf3DGroupBuffer, nodeBuffer: sdf3DNodeBuffer)
+            encoder.endEncoding()
         }
-        let pass = MTLRenderPassDescriptor()
-        pass.depthAttachment.texture = shadowMap
-        pass.depthAttachment.loadAction = .clear
-        pass.depthAttachment.clearDepth = 1.0
-        pass.depthAttachment.storeAction = .store
-        guard let encoder = countedEncoder(commandBuffer, pass) else { return ShadowMaps() }
-        encoder.setRenderPipelineState(shadowPipeline)
-        encoder.setDepthStencilState(depthTestState)
-        // Slope-scaled depth bias on the stored depth keeps self-shadowing acne off
-        // (paired with the fragment's normal-offset + constant bias).
-        encoder.setDepthBias(0.0015, slopeScale: 2.0, clamp: 0.01)
-        var lightVP = lighting.lightViewProjection
-        encoder.setVertexBytes(&lightVP, length: MemoryLayout<simd_float4x4>.stride, index: 2)
-        if let meshBuffer, !meshVertices.isEmpty {
-            drawShadowCasters(drawer, encoder: encoder, meshBuffer: meshBuffer, instanceCount: 1)
+        return maps(twoD: shadowMap)
+    }
+
+    /// Carry the frame's resolved single-caster fields back into slot 0, and give every
+    /// extra caster its own tap budget.
+    ///
+    /// The renderer owns the device, so several caster facts are only settled after
+    /// `makeLighting`: the flip to the traced path, the ray or tap counts, and whether a
+    /// map was produced at all. Slot 0 mirrors those, so the lit mesh path can read one
+    /// caster the same way whichever slot it sits in. Every extra caster is a 2D one (the
+    /// packing allows one cube and one traced caster, and both take slot 0), so extras
+    /// budget texture taps and need a rendered map: with none, the list shrinks back to
+    /// the primary and the frame behaves as it did with one caster.
+    func finalizeShadowCasters(_ drawer: Drawer, _ lighting: inout OllinLighting,
+                               renderedMap: Bool) {
+        guard lighting.shadowCasterCount > 0 else { return }
+        guard lighting.shadowLight >= 0 else { lighting.shadowCasterCount = 0; return }
+        var casters = shadowCasters(lighting)
+        casters[0].lightIndex = lighting.shadowLight
+        casters[0].kind = lighting.shadowKind
+        casters[0].strength = lighting.shadowStrength
+        casters[0].samples = lighting.shadowSamples
+        casters[0].depthB = lighting.shadowDepthB
+        if renderedMap {
+            let taps = resolveShadowTaps2D(drawer.shadowQualitySetting)
+            for k in 1..<casters.count { casters[k].samples = taps }
+        } else {
+            casters = [casters[0]]
         }
-        // Instanced-mesh copies cast into the same map through their own depth-only
-        // pipeline (the instance matrices applied per vertex, then the light's clip).
-        if hasInstancedCasters, let ip = try? pipeline(.meshInstancedShadow) {
-            encoder.setRenderPipelineState(ip)
-            drawInstancedShadowCasters(drawer, encoder: encoder,
-                                       instancedMeshBuffer: instancedMeshBuffer,
-                                       meshInstanceBuffer: meshInstanceBuffer, faces: 1)
+        lighting.shadowCasterCount = Int32(casters.count)
+        withUnsafeMutablePointer(to: &lighting.shadowCasters) { tuplePtr in
+            tuplePtr.withMemoryRebound(to: OllinShadowCaster.self,
+                                       capacity: Int(OLLIN_MAX_SHADOW_CASTERS)) { buf in
+                for (slot, c) in casters.enumerated() { buf[slot] = c }
+            }
         }
-        // MeshFields cast from their retained buffers, whole (no culling here).
-        if hasFieldCasters, let fp = try? pipeline(.meshFieldShadow) {
-            encoder.setRenderPipelineState(fp)
-            drawFieldShadowCasters(drawer, encoder: encoder, faces: 1)
+    }
+
+    /// The frame's shadow casters as a plain array: a C fixed-size array imports as a
+    /// homogeneous tuple, so reading one needs a typed pointer.
+    func shadowCasters(_ lighting: OllinLighting) -> [OllinShadowCaster] {
+        let n = min(Int(lighting.shadowCasterCount), Int(OLLIN_MAX_SHADOW_CASTERS))
+        guard n > 0 else { return [] }
+        return withUnsafePointer(to: lighting.shadowCasters) { ptr in
+            ptr.withMemoryRebound(to: OllinShadowCaster.self,
+                                  capacity: Int(OLLIN_MAX_SHADOW_CASTERS)) { buf in
+                (0..<n).map { buf[$0] }
+            }
         }
-        // Marched 3D fields cast into the same map: sphere-trace each from the light's POV and
-        // write its depth, z-tested against the mesh casters already there, so meshes receive a
-        // field's shadow too. The field keeps its analytic self-shadow in the main pass and
-        // doesn't sample this map, so there's no double-shadowing (directional/spot only).
-        encodeFieldShadowCasters(drawer, encoder: encoder, lighting: lighting,
-                                 groupBuffer: sdf3DGroupBuffer, nodeBuffer: sdf3DNodeBuffer)
-        encoder.endEncoding()
-        return ShadowMaps(twoD: shadowMap,
-                          reflectAccel: wantReflect ? reflect?.accel : nil,
-                          reflectGeoOffsets: wantReflect ? reflect?.offsets : nil,
-                          giAccel: wantGI ? reflect?.accel : nil,
-                          giGeoOffsets: wantGI ? reflect?.offsets : nil,
-                          causticAccel: wantCaustics ? reflect?.accel : nil,
-                          causticGeoOffsets: wantCaustics ? reflect?.offsets : nil,
-                          causticGeoMats: wantCaustics ? reflect?.causticMats : nil)
     }
 
     /// Render the marched 3D fields into the active 2D shadow map (directional/spot). Each field
@@ -420,7 +491,7 @@ extension MetalRenderer {
     /// point of view and writes the hit's light-clip depth (depth-only, z-tested against the
     /// mesh casters already in the map). A no-op when the frame has no fields or no buffers.
     private func encodeFieldShadowCasters(_ drawer: Drawer, encoder: MTLRenderCommandEncoder,
-                                          lighting: OllinLighting,
+                                          lightViewProjection: simd_float4x4,
                                           groupBuffer: MTLBuffer?, nodeBuffer: MTLBuffer?) {
         let groups3D = drawer.sdf3DGroups
         let nodes3D = drawer.sdf3DNodes
@@ -437,8 +508,8 @@ extension MetalRenderer {
         }
         let casterSteps = resolveRaymarchSteps(drawer.raymarchQualitySetting).march
         var u = OllinRaymarchShadowUniforms(
-            lightViewProjection: lighting.lightViewProjection,
-            inverseLightViewProjection: simd_inverse(lighting.lightViewProjection),
+            lightViewProjection: lightViewProjection,
+            inverseLightViewProjection: simd_inverse(lightViewProjection),
             raymarchSteps: Float(casterSteps))
         encoder.setRenderPipelineState(fieldPipeline)
         encoder.setFragmentBuffer(groupBuffer, offset: 0, index: 0)
@@ -455,6 +526,7 @@ extension MetalRenderer {
     /// lit mesh fragment later compares plain world-space distances. The light position
     /// and far plane come from the lighting uniform. Returns the populated cube.
     private func encodePointShadowPass(_ drawer: Drawer, lighting: OllinLighting,
+                                       caster: OllinShadowCaster,
                                        into commandBuffer: MTLCommandBuffer,
                                        meshBuffer: MTLBuffer?,
                                        instancedMeshBuffer: MTLBuffer? = nil,
@@ -464,19 +536,21 @@ extension MetalRenderer {
               let maxPipeline = try? pipeline(.meshPointShadowMax) else { return nil }
 
         // The casting light's world position from the uniform's fixed-size light array.
-        let caster = Int(lighting.shadowLight)
+        // The caster is passed in rather than read off `shadowLight`: the frame's one
+        // cube belongs to whichever caster wants it, which need not be the primary.
+        let index = Int(caster.lightIndex)
         var lightPos = SIMD3<Float>(0, 0, 0)
         withUnsafePointer(to: lighting.lights) { ptr in
             ptr.withMemoryRebound(to: OllinLight.self, capacity: Int(OLLIN_MAX_LIGHTS)) { buf in
-                let p = buf[caster].position
+                let p = buf[index].position
                 lightPos = SIMD3<Float>(p.x, p.y, p.z)
             }
         }
-        // The far plane is carried directly (`shadowDepthA`); the fragment normalizes the
+        // The far plane is carried directly (`depthA`); the fragment normalizes the
         // stored linear distance by it. The face perspective near/far only frame the
         // rasterization (the stored value is the fragment's own linear distance), so a
         // small near and that far suffice.
-        let far = lighting.shadowDepthA
+        let far = caster.depthA
         let near = max(Float(0.05), far * 0.02)
         let proj = Camera3D.perspective(fovY: .pi / 2, aspect: 1, near: near, far: far)
         // The six cube faces (forward axis, up), in Metal's +X/−X/+Y/−Y/+Z/−Z order.
@@ -861,6 +935,7 @@ extension MetalRenderer {
         } else if lighting.shadowLight >= 0 && lighting.shadowKind == 0 {
             lighting.shadowSamples = resolveShadowTaps2D(drawer.shadowQualitySetting)
         }
+        finalizeShadowCasters(drawer, &lighting, renderedMap: shadowMap != nil)
         // Image-based lighting, mirroring the main encode's setup (resolveIBL already ran
         // this frame), so a field marched at half resolution takes the same environment
         // ambient, and traces the same reflections, as the full-res inline march.

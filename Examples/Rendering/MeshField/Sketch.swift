@@ -88,7 +88,8 @@ final class MeshFieldSketch: Sketch {
         ambientLight(Color(white: 0.16))
         directionalLight(Color(hue: 0.09, saturation: 0.2, brightness: 1.0),
                          direction: Vector3(-0.45, -0.8, -0.4), intensity: 1.0)
-        directionalLight(Color(white: 0.45), direction: Vector3(0.5, 0.35, 0.55), intensity: 0.25)
+        directionalLight(Color(white: 0.45), direction: Vector3(0.5, 0.35, 0.55), intensity: 0.25,
+                         castsShadow: false)   // a fill: one shadow pass, not two
         castShadows()
         fog(Color(hex: 0x0D1017), density: 0.042)
 

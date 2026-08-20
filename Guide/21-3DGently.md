@@ -183,12 +183,38 @@ Some practical notes, in the order they tend to bite:
 
 - **You need something to catch a shadow.** A sphere alone in space casts into nothing. A floor, or another object, is what makes the shadow visible.
 - **It's opt-in and per-frame.** A sketch that never calls `castShadows()` pays nothing at all, so shadows cost you only when you ask. Call it in `draw()` alongside the lights, and `noShadows()` turns it back off.
-- **One light does the casting**, chosen for you. It's the first directional light, or a spot if there's no directional, or a point light failing that. A glowing panel can cast too, which is the next section. The default rig's key light is directional, so a scene you haven't relit already works.
+- **Every light casts**, up to four of them, and the section below is about what that means. The default rig's key light is directional, so a scene you haven't relit already works.
 - **Nothing needs aiming.** The shadow's frame auto-fits around whatever the camera is looking at.
 
 The three kinds of light cast by different routes, which mostly matters because it explains the cost. A directional or spot light renders the scene once from the light's own viewpoint and darkens whatever that view can't see. A point light casts in every direction at once. So on Apple silicon it traces actual rays from each lit pixel toward the light, which is exact, with no bias artifacts, and the most expensive of the three. On a GPU that can't trace rays it falls back to a depth map sampled by direction. Point shadows still work everywhere, and your sketch doesn't change either way.
 
 If a penumbra looks grainy rather than smooth, that's the sample count, not the softness. `shadowQuality(.detail)` asks for more samples relative to whatever GPU is running, and `shadowSamples(16)` sets an exact number.
+
+### Two lights, two shadows
+
+Stand under a streetlight with a lit shop window behind you and you have two shadows. So does a sketch. `castShadows()` casts from every light in the frame, and each shadow lands where its own light puts it:
+
+```swift
+directionalLight(Color(hex: 0xFFD9A8), direction: Vector3(0.62, -0.72, -0.3))    // warm, from the left
+directionalLight(Color(hex: 0xA8CCFF), direction: Vector3(-0.62, -0.72, -0.3))   // cool, from the right
+castShadows()
+```
+
+<img src="Images/21-3DGently/TwoLightsTwoShadows.jpg" alt="One orange box on a pale blue floor, lit warm from the left and cool from the right, dropping two soft shadows that fan out to either side: the left one warm brown, the right one blue" width="680">
+
+Two shadows, one per light, fanning apart. Nothing chose between the lights. Now look at their color. The left shadow is warm and the right one is blue. A shadow is not an absence of light. It is what is left when one light is blocked. The patch on the left has lost the cool light and kept the warm one. That is worth more than the two shadows themselves, and a second caster gives it to you for free.
+
+Now the part worth learning, because it is the dial you will actually reach for. **A light can be told not to cast:**
+
+```swift
+directionalLight(Color(white: 0.7), direction: Vector3(0, -1, 0.5), intensity: 0.25,
+                 castsShadow: false)          // a fill: it lifts the dark faces and throws nothing
+```
+
+Reach for that on a fill light. A fill exists to open up the shadow side, so a shadow of its own works against it. The picture usually reads better with one clear shadow than with three faint ones fighting. It is also where the cost sits. Every caster renders the scene again from its own point of view, so three casters is three passes. The rigs `lightingPreset(_:)` installs already do this: the key casts, the fill and rim do not. That is why a preset gives you one clean shadow rather than a thicket.
+
+Two limits round it out. A frame casts from **four** lights at most, the ones you set first. The rest still light the scene. And a **point light** casts only when it is the one the renderer picked first, because a point light needs a whole cube of depth around it and the frame holds one of those. A point light on its own throws a shadow; the same light standing beside a directional key does not.
+
 
 There is one place even a good shadow map falls short, and it is the most important few pixels in the picture. That's the exact line where an object touches the ground. A map has finite resolution, and the bias that keeps its speckle off nudges its shadow slightly away from the caster. The last sliver of contact opens up, and a resting box can read as floating a hair above the floor. **`contactShadows()`** closes that seam. For each pixel the renderer walks a short ray toward the casting light through the scene's own depth. It darkens the pixel where something nearby blocks the way, which draws the fine dark line a map can't hold at any resolution.
 

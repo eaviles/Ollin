@@ -273,6 +273,7 @@ let package = Package(
         example("3D/Materials/Matcap"),
         example("3D/Lighting/Shadows"),
         example("3D/Lighting/SpotShadow"),
+        example("3D/Lighting/TwoCasters"),
         example("3D/Lighting/PointShadow"),
         example("3D/Depth/DepthCompositing"),
         example("3D/Depth/DepthCloud", [.vision]),

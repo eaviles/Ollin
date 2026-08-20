@@ -2045,6 +2045,9 @@ extension MetalRenderer {
             // not rays, and the count is hardware-independent (cheap samples on any GPU).
             lighting.shadowSamples = resolveShadowTaps2D(drawer.shadowQualitySetting)
         }
+        // The caster list follows those device-side decisions: slot 0 mirrors them, and
+        // every extra caster gets its tap budget (or drops, with no map to sample).
+        finalizeShadowCasters(drawer, &lighting, renderedMap: shadowMap != nil)
         // Ray-traced reflections: a physically-based metal traces the caster accel for its
         // reflection (replacing the IBL prefilter sample). The flag gates it; off → the
         // byte-identical IBL-prefilter path. The renderer owns the hardware check, so this is

@@ -32,7 +32,8 @@ final class GrassMeadow_Figure: Sketch {
         ambientLight(Color(white: 0.15))
         directionalLight(Color(hue: 0.1, saturation: 0.25, brightness: 1.0),
                          direction: Vector3(-0.5, -0.75, -0.4), intensity: 1.0)
-        directionalLight(Color(white: 0.4), direction: Vector3(0.55, 0.3, 0.5), intensity: 0.25)
+        directionalLight(Color(white: 0.4), direction: Vector3(0.55, 0.3, 0.5), intensity: 0.25,
+                         castsShadow: false)   // a fill, so one shadow and one pass
         castShadows()
         fog(Color(hex: 0x11141B), density: 0.03)
         withState {
