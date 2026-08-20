@@ -1162,4 +1162,13 @@ extension simd_float4x4 {
     /// 3×3, correct under non-uniform scale (a plain 3×3 would skew normals when x,
     /// y, z scale differently).
     var normalMatrix: simd_float3x3 { upperLeft3x3.inverse.transpose }
+
+    /// The longest of the three column lengths: how far this matrix can stretch a
+    /// length, whichever way that length points. A bounding sphere scaled by it
+    /// still holds what it held, under non-uniform scale and shear as well.
+    var largestColumnScale: Float {
+        let m = upperLeft3x3
+        return max(simd_length(m.columns.0),
+                   max(simd_length(m.columns.1), simd_length(m.columns.2)))
+    }
 }

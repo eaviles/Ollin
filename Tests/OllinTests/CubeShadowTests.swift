@@ -86,6 +86,32 @@ struct CubeShadowTests {
     }
 
     @Test(.enabled(if: CubeShadowTests.runsTheCube))
+    func distantInstancedCopiesStillCastThem() throws {
+        // The same distant pillar, drawn as an instanced copy over an instanced floor, so
+        // the frame holds no plain mesh at all. A copy carries a matrix rather than
+        // vertices the frame scans, so fitting the far plane to the scanned vertices alone
+        // left this frame nothing to fit to: it kept the camera's own framing radius, and
+        // the pillar stood well outside the cube and threw nothing.
+        let image = try #require(OllinApp.image(of: CubeShadowScene.make(.distantCopies), frame: 1))
+        let shadow = mean(image, x: 0.46...0.60, y: 0.500...0.545)
+        let beside = mean(image, x: 0.10...0.30, y: 0.500...0.545)
+        #expect(beside - shadow > 40,
+                "the far copy should throw its shadow: in it \(shadow), beside it \(beside)")
+    }
+
+    @Test(.enabled(if: CubeShadowTests.runsTheCube))
+    func aDistantFieldCopyStillCastsIt() throws {
+        // The same again from a `MeshField`, whose copies live in the field's own retained
+        // buffers. The field answers for them with its own bound, which is the only way a
+        // frame drawn by one call can say how far its casters reach.
+        let image = try #require(OllinApp.image(of: CubeShadowScene.make(.distantField), frame: 1))
+        let shadow = mean(image, x: 0.46...0.60, y: 0.500...0.545)
+        let beside = mean(image, x: 0.10...0.30, y: 0.500...0.545)
+        #expect(beside - shadow > 40,
+                "the far field copy should throw its shadow: in it \(shadow), beside it \(beside)")
+    }
+
+    @Test(.enabled(if: CubeShadowTests.runsTheCube))
     func aGrazedFloorClimbsSmoothly() throws {
         // A light barely above a long floor, read as a column of rows running away from it.
         // A point light does not fall off with distance here, so the floor is shaded by the
@@ -112,11 +138,23 @@ struct CubeShadowTests {
     }
 }
 
-/// The three scenes the cube probes read. Each puts a point light over a floor with no
+/// The five scenes the cube probes read. Each puts a point light over a floor with no
 /// directional or spot light, so the point light is the frame's caster.
 private final class CubeShadowScene: Sketch {
-    enum Kind { case pillar, distantPillar, grazedFloor }
+    enum Kind { case pillar, distantPillar, distantCopies, distantField, grazedFloor }
     var kind: Kind = .pillar
+
+    /// The distant-copy scenes' geometry: one box, placed twice. The floor is a copy
+    /// as well, so the frame holds no plain mesh and the far-plane fit has only the
+    /// copies to work from.
+    private let box = Mesh.box(size: 1)
+    private let field = MeshField()
+    private static let floorCopy = MeshInstance(position: Vector3(0, -0.05, 0),
+                                                scale: Vector3(90, 0.1, 90),
+                                                color: Color(white: 0.85))
+    private static let pillarCopy = MeshInstance(position: Vector3(0, 1.4, -8.0),
+                                                 scale: Vector3(2.4, 2.8, 1.0),
+                                                 color: Color(white: 0.6))
 
     static func make(_ kind: Kind) -> CubeShadowScene {
         let scene = CubeShadowScene()
@@ -157,6 +195,21 @@ private final class CubeShadowScene: Sketch {
                 translate(0, 1.4, -8.0)
                 fill(Color(white: 0.6)); specular(0)
                 drawBox(width: 2.4, height: 2.8, depth: 1.0)
+            }
+        case .distantCopies, .distantField:
+            // The distant-pillar camera and light exactly, over copies rather than meshes.
+            let eye = Vector3(12, 4, 10)
+            let aim = Vector3(0, 1.0, -14)
+            camera(Camera3D(eye: eye, target: eye + (aim - eye).normalized,
+                            projection: .perspective(fieldOfView: .pi / 3)))
+            pointLight(.white, at: Vector3(0, 6, 10), intensity: 1.6)
+            specular(0)
+            let copies = [CubeShadowScene.floorCopy, CubeShadowScene.pillarCopy]
+            if kind == .distantCopies {
+                drawMesh(box, instances: copies)
+            } else {
+                if field.isEmpty { field.place(box, at: copies) }
+                drawMeshField(field)
             }
         case .grazedFloor:
             // A light barely above a long floor: every part of it the camera sees is lit

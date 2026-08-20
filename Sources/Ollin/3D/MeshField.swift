@@ -110,6 +110,38 @@ public final class MeshField {
         return (center, radius)
     }
 
+    /// The box every copy in this field fits inside, in the field's own space
+    /// (before the draw-time transform). Each copy's bounding sphere goes
+    /// through its own matrix the same conservative way the cull kernel takes
+    /// it, so the box answers for the copies without reading a vertex. Cached
+    /// against `generation`: a retained field works this out once, however many
+    /// copies it holds and however often a frame asks. `nil` when the field is
+    /// empty. The point-shadow pass reads it to fit its cube far plane around
+    /// copies no CPU-side vertex scan can see.
+    func localBounds() -> (lo: SIMD3<Float>, hi: SIMD3<Float>)? {
+        if boundsGeneration == generation { return cachedBounds }
+        var lo = SIMD3<Float>(repeating: .greatestFiniteMagnitude)
+        var hi = SIMD3<Float>(repeating: -.greatestFiniteMagnitude)
+        for entry in entries {
+            let center = SIMD3<Float>(entry.center.x, entry.center.y, entry.center.z)
+            let first = Int(entry.copyStart)
+            for i in first ..< first + Int(entry.copyCount) {
+                let model = instances[i].model
+                let placed = model * SIMD4<Float>(center.x, center.y, center.z, 1)
+                let world = SIMD3<Float>(placed.x, placed.y, placed.z)
+                let radius = entry.radius * model.largestColumnScale
+                lo = simd_min(lo, world - radius)
+                hi = simd_max(hi, world + radius)
+            }
+        }
+        cachedBounds = lo.x <= hi.x ? (lo, hi) : nil
+        boundsGeneration = generation
+        return cachedBounds
+    }
+
+    private var boundsGeneration = -1
+    private var cachedBounds: (lo: SIMD3<Float>, hi: SIMD3<Float>)?
+
     // MARK: GPU residence
 
     /// The field's persistent GPU state: the once-written geometry (base

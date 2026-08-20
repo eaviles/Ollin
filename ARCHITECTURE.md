@@ -2278,12 +2278,34 @@ adds 2% (so the farthest surface still stores under the "nothing here"
 sentinel), and the value travels to the fragment through
 `MetalRenderer.pointShadowFars`, keyed by the casting light, which
 `finalizeShadowCasters` writes into each cube caster beside the facts it already
-carries back. The vertex scan itself runs once a frame and every point caster
+carries back. The scan itself runs once a frame and every point caster
 shares its box, so a second cube caster costs a corner measurement, not a second
 walk over the geometry. A traced frame renders no cube, leaves the table empty,
-and keeps every packed field exactly as it was. Instanced and field casters are not in the scan
-(their copies are a matrix each, and a field's live in a GPU buffer), so a frame
-holding them keeps the old camera-derived value as a floor.
+and keeps every packed field exactly as it was.
+
+**A copy has no vertices to scan, so it is bounded by its sphere instead.** The
+scan above reads `drawer.meshVertices`, which holds the plain meshes and nothing
+else: an instanced batch expands its base mesh once, in local space, and each
+copy is a matrix in another buffer, while a `MeshField` keeps both in buffers of
+its own. So a frame whose casters are *all* copies had an empty box, fell back
+to the camera-derived guess, and threw no shadow from anything past it. The
+missing sources join the same box in `pointCasterBounds`. An instanced batch
+takes its base run's local bounding sphere once, then folds `center` through
+each placement matrix with the radius stretched by that matrix's
+`largestColumnScale` (the longest of its three column lengths, so the sphere
+still holds what it held under non-uniform scale or shear). A field answers with
+`localBounds()`, the same per-copy sphere fold worked out in field space and
+**cached against the field's `generation`**, since a retained field is placed
+once and asked every frame; the box's eight corners then go through the
+draw-time matrix, which can turn it as well as move it. The per-copy formula is
+deliberately the cull kernel's own (`ollin_field_cull` scales `en.radius` by the
+largest column of `fieldModel * model`), so a copy is bounded here exactly as it
+is bounded there. The one caster left out is a **compute-written placement
+buffer**: those matrices never come back to the CPU, by design, which is what
+`CasterBounds.complete` reports so the caller keeps the camera-derived guess as
+a floor for that frame. `CubeShadowTests` carries a probe per source (a plain
+mesh, an instanced copy, a field copy), each reading the same distant pillar's
+shadow wedge and each verified red with the fold-in removed.
 
 **The bias was measured in the wrong place, and then was the wrong shape.** A
 cube texel covers `2·d/N` world units at distance `d` from the light, and the

@@ -610,15 +610,13 @@ extension MetalRenderer {
         // The far plane each caster's packing carried (`depthA`) is fitted from the camera's
         // own framing radius, which says nothing about how far the light reaches: a wide floor
         // under a near light runs well past it, and everything out there is clipped out of
-        // the cube while still comparing against it. So fit it to the geometry instead, and
-        // hand the same number to the fragment through `pointShadowFars`. The vertex scan
-        // runs once for the whole frame, and only here, on the rasterized path, so a device
-        // that traces its point casters never pays for it.
-        let bounds = meshCasterBounds(drawer)
-        let hasInstanced = instancedMeshBuffer != nil
+        // the cube while still comparing against it. So fit it to the casters instead, and
+        // hand the same number to the fragment through `pointShadowFars`. The scan runs once
+        // for the whole frame, and only here, on the rasterized path, so a device that traces
+        // its point casters never pays for it.
+        let bounds = pointCasterBounds(drawer)
         let fars: [Float] = zip(casters, lightPositions).map { caster, lightPos in
-            let far = pointCasterFar(drawer, bounds: bounds, from: lightPos,
-                                     fallback: caster.depthA, hasInstancedCasters: hasInstanced)
+            let far = pointCasterFar(bounds: bounds, from: lightPos, fallback: caster.depthA)
             pointShadowFars[caster.lightIndex] = far
             return far
         }
@@ -712,35 +710,114 @@ extension MetalRenderer {
         return cube
     }
 
-    /// The frame's plain mesh geometry as one world-space box, or nil when it has none.
-    /// Scanned once per frame and shared by every point caster's far-plane fit.
-    private func meshCasterBounds(_ drawer: Drawer) -> (lo: SIMD3<Float>, hi: SIMD3<Float>)? {
+    /// Everything that casts into the frame's cube maps, as one world-space box.
+    /// Worked out once per frame and shared by every point caster's far-plane fit.
+    /// The plain meshes are a scan of the frame's own vertices. An instanced copy
+    /// and a field's copy hold a matrix each instead, in a buffer of their own, so
+    /// each carries its base mesh's bounding sphere into the world here: without
+    /// that, a frame whose casters are all copies has nothing to fit to, and every
+    /// copy past the caller's guess falls outside the cube and throws nothing.
+    private func pointCasterBounds(_ drawer: Drawer) -> CasterBounds {
+        var bounds = CasterBounds()
+        for v in drawer.meshVertices {
+            bounds.fold(SIMD3<Float>(v.position.x, v.position.y, v.position.z))
+        }
+        for batch in drawer.batches {
+            switch batch.kind {
+            case .meshInstanced:
+                guard batch.instancedVertexCount > 0 else { continue }
+                // Placements a compute kernel wrote never come back to the CPU, by
+                // design, so this is the one caster the scan cannot see at all.
+                guard batch.particleBuffer == nil else { bounds.complete = false; continue }
+                guard batch.meshInstanceCount > 0 else { continue }
+                let base = instancedBaseSphere(drawer, batch)
+                for i in batch.meshInstanceStart ..< batch.meshInstanceStart + batch.meshInstanceCount {
+                    bounds.fold(sphere: base, through: drawer.meshInstances[i].model)
+                }
+            case .meshField:
+                guard let box = batch.field?.localBounds() else { continue }
+                // The field's box sits in the field's own space, and the draw-time
+                // transform can turn it as well as move it, so every corner goes
+                // through and the box is taken again around what comes out.
+                for corner in 0 ..< 8 {
+                    let local = SIMD3<Float>(corner & 1 == 0 ? box.lo.x : box.hi.x,
+                                             corner & 2 == 0 ? box.lo.y : box.hi.y,
+                                             corner & 4 == 0 ? box.lo.z : box.hi.z)
+                    let placed = batch.fieldTransform * SIMD4<Float>(local.x, local.y, local.z, 1)
+                    bounds.fold(SIMD3<Float>(placed.x, placed.y, placed.z))
+                }
+            default:
+                continue
+            }
+        }
+        return bounds
+    }
+
+    /// The world box the point-shadow cube has to reach around, and whether the scan
+    /// saw everything that casts into it. `complete` is false only for placements the
+    /// CPU cannot read, which is what makes the caller keep its own guess as a floor.
+    private struct CasterBounds {
         var lo = SIMD3<Float>(repeating: .greatestFiniteMagnitude)
         var hi = SIMD3<Float>(repeating: -.greatestFiniteMagnitude)
-        for v in drawer.meshVertices {
-            let p = SIMD3<Float>(v.position.x, v.position.y, v.position.z)
+        var complete = true
+        var isEmpty: Bool { lo.x > hi.x }
+
+        mutating func fold(_ p: SIMD3<Float>) {
             lo = simd_min(lo, p)
             hi = simd_max(hi, p)
         }
-        return lo.x <= hi.x ? (lo, hi) : nil
+
+        /// Fold in a local bounding sphere placed by `model`: the center through the
+        /// matrix, the radius stretched by the most that matrix can stretch a length.
+        /// It is the conservative world sphere the field cull kernel works out per
+        /// copy, so a copy is bounded here exactly as it is bounded there.
+        mutating func fold(sphere: (center: SIMD3<Float>, radius: Float), through model: simd_float4x4) {
+            let c = sphere.center
+            let placed = model * SIMD4<Float>(c.x, c.y, c.z, 1)
+            let world = SIMD3<Float>(placed.x, placed.y, placed.z)
+            let radius = sphere.radius * model.largestColumnScale
+            fold(world - radius)
+            fold(world + radius)
+        }
+    }
+
+    /// The local bounding sphere of an instanced batch's base mesh, over the run of
+    /// vertices that batch expanded (local space, one copy of the mesh however many
+    /// copies are placed). Each placement then carries it into the world.
+    private func instancedBaseSphere(_ drawer: Drawer, _ batch: GeometryBatch)
+        -> (center: SIMD3<Float>, radius: Float) {
+        let run = batch.instancedVertexStart ..< batch.instancedVertexStart + batch.instancedVertexCount
+        var lo = SIMD3<Float>(repeating: .greatestFiniteMagnitude)
+        var hi = SIMD3<Float>(repeating: -.greatestFiniteMagnitude)
+        for i in run {
+            let p = drawer.instancedMeshVertices[i].position
+            let v = SIMD3<Float>(p.x, p.y, p.z)
+            lo = simd_min(lo, v)
+            hi = simd_max(hi, v)
+        }
+        guard lo.x <= hi.x else { return (.zero, 0) }
+        let center = (lo + hi) / 2
+        var radius: Float = 0
+        for i in run {
+            let p = drawer.instancedMeshVertices[i].position
+            radius = max(radius, simd_length(SIMD3<Float>(p.x, p.y, p.z) - center))
+        }
+        return (center, radius)
     }
 
     /// How far the point caster's cube must reach: the distance from the light to the
-    /// farthest corner of the frame's mesh geometry, plus a small margin so the farthest
-    /// surface still stores under the "nothing here" sentinel. A frame whose casters are
-    /// instanced or field copies keeps the caller's value as a floor as well, since those
-    /// live in their own buffers with a matrix each and are not in this scan.
-    private func pointCasterFar(_ drawer: Drawer, bounds: (lo: SIMD3<Float>, hi: SIMD3<Float>)?,
-                                from lightPos: SIMD3<Float>,
-                                fallback: Float, hasInstancedCasters: Bool) -> Float {
+    /// farthest corner of everything that casts into it, plus a small margin so the
+    /// farthest surface still stores under the "nothing here" sentinel. The caller's
+    /// value stays a floor when the frame holds a caster the scan could not read.
+    private func pointCasterFar(bounds: CasterBounds, from lightPos: SIMD3<Float>,
+                                fallback: Float) -> Float {
         var far: Float = 0
-        if let bounds {
+        if !bounds.isEmpty {
             // The farthest corner: per axis, whichever end of the box is further away.
             let arm = simd_max(abs(bounds.lo - lightPos), abs(bounds.hi - lightPos))
             far = simd_length(arm) * 1.02
         }
-        let fieldCasters = drawer.batches.contains { $0.kind == .meshField }
-        if far <= 0 || hasInstancedCasters || fieldCasters { far = max(far, fallback) }
+        if far <= 0 || !bounds.complete { far = max(far, fallback) }
         return max(far, 0.01)
     }
 
