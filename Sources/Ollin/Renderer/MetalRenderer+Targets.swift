@@ -170,31 +170,46 @@ extension MetalRenderer {
         return dummyShadowMap
     }
 
-    /// The omnidirectional (point) shadow map, a `.private` **`rg32Float` cube** for
-    /// mid-point shadow mapping: R holds the nearest occluder's distance to the light
+    /// The omnidirectional (point) shadow maps, a `.private` **`rg32Float` cube array**
+    /// for mid-point shadow mapping: R holds the nearest occluder's distance to the light
     /// (normalized by the far plane), G the farthest, per direction. The lit fragment
-    /// shadows where the receiver's distance exceeds the midpoint `(R+G)/2`. Allocated
-    /// lazily on the first point-casting frame, then reused.
+    /// shadows where the receiver's distance exceeds the midpoint `(R+G)/2`. One cube per
+    /// point caster, in slot order, so a point light casts from any slot. Allocated lazily
+    /// on the first point-casting frame, then reused; a frame wanting more cubes than the
+    /// current one holds allocates a fresh, wider texture rather than growing it, since an
+    /// in-flight frame may still be reading the old one. A cube costs 6 faces of
+    /// `pointShadowMapResolution` squared at 8 bytes a texel (50 MB at 1024), so the array
+    /// is sized to the frame and never to the caster ceiling.
     static let pointShadowColorFormat: MTLPixelFormat = .rg32Float
-    private func ensurePointShadowMap() -> MTLTexture? {
-        if let m = pointShadowMap { return m }
+    private func ensurePointShadowMap(cubes: Int) -> MTLTexture? {
+        let want = max(1, min(cubes, Int(OLLIN_MAX_SHADOW_CASTERS)))
+        if let m = pointShadowMap, m.arrayLength >= want { return m }
         let n = MetalRenderer.pointShadowMapResolution
-        let desc = MTLTextureDescriptor.textureCubeDescriptor(
-            pixelFormat: MetalRenderer.pointShadowColorFormat, size: n, mipmapped: false)
+        let desc = MTLTextureDescriptor()
+        desc.textureType = .typeCubeArray
+        desc.pixelFormat = MetalRenderer.pointShadowColorFormat
+        desc.width = n
+        desc.height = n
+        desc.arrayLength = want
         desc.usage = [.renderTarget, .shaderRead]
         desc.storageMode = .private
         pointShadowMap = device.makeTexture(descriptor: desc)
         return pointShadowMap
     }
 
-    /// A 1×1 `rg32Float` cube bound to the mesh fragment's cube-shadow slot when no point
-    /// caster is active, so its declared `texturecube` argument is always satisfied (the
-    /// fragment only samples it when `shadowKind == 1`). Cleared to (1, 0) once on
-    /// creation (all six faces in one layered pass) so it's never read uninitialized.
+    /// A 1×1 single-cube `rg32Float` cube array bound to the mesh fragment's cube-shadow
+    /// slot when no point caster is active, so its declared `texturecube_array` argument is
+    /// always satisfied (the fragment only samples it for a caster of kind 1). Cleared to
+    /// (1, 0) once on creation (all six faces in one layered pass) so it's never read
+    /// uninitialized.
     func ensureDummyPointShadowMap() -> MTLTexture? {
         if let m = dummyPointShadowMap { return m }
-        let desc = MTLTextureDescriptor.textureCubeDescriptor(
-            pixelFormat: MetalRenderer.pointShadowColorFormat, size: 1, mipmapped: false)
+        let desc = MTLTextureDescriptor()
+        desc.textureType = .typeCubeArray
+        desc.pixelFormat = MetalRenderer.pointShadowColorFormat
+        desc.width = 1
+        desc.height = 1
+        desc.arrayLength = 1
         desc.usage = [.renderTarget, .shaderRead]
         desc.storageMode = .private
         guard let texture = device.makeTexture(descriptor: desc) else { return nil }
@@ -256,7 +271,7 @@ extension MetalRenderer {
                                   meshInstanceBuffer: MTLBuffer? = nil,
                                   sdf3DGroupBuffer: MTLBuffer? = nil,
                                   sdf3DNodeBuffer: MTLBuffer? = nil) -> ShadowMaps {
-        pointShadowFar = nil
+        pointShadowFars.removeAll(keepingCapacity: true)
         let lighting = drawer.makeLighting()
         let meshVertices = drawer.meshVertices
         // Instanced-mesh copies cast into the rasterized maps (2D + cube) but not
@@ -316,30 +331,31 @@ extension MetalRenderer {
             .filter { $0.element.kind == 0 }
             .map { (layer: $0.offset, caster: $0.element) }
 
-        // A point primary caster: ray-trace it on a capable device (exact, no
-        // cube/depth-compare artifacts), else render the omnidirectional mid-point cube.
-        // The one accel serves both the shadow (shadowKind 2) and, when on, reflections.
+        // The point casters, in slot order (a point light casts from any slot): ray-trace
+        // every one of them on a capable device (exact, no cube/depth-compare artifacts),
+        // else render each into its own cube of the omnidirectional mid-point cube array.
+        // The one accel serves the shadows (shadowKind 2) and, when on, reflections.
         // The traced path needs real mesh geometry in the accel; a frame with only
-        // instanced casters falls to the cube, which they render into.
+        // instanced casters falls to the cubes, which they render into.
         var accel: MTLAccelerationStructure?
         var accelOffsets: MTLBuffer?
         var accelCausticMats: MTLBuffer?
         var cube: MTLTexture?
         var tracedPrimary = false
-        if lighting.shadowLight >= 0, lighting.shadowKind == 1 {
-            if rayTracedShadows, let meshBuffer, !meshVertices.isEmpty,
-               let built = buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer,
-                                            causticMats: wantCaustics) {
-                accel = built.accel
-                accelOffsets = built.offsets
-                accelCausticMats = built.causticMats
-                tracedPrimary = true
-            }
+        var tracedPoints = false
+        let pointCasters = shadowCasters(lighting).filter { $0.kind == 1 }
+        if !pointCasters.isEmpty, rayTracedShadows, let meshBuffer, !meshVertices.isEmpty,
+           let built = buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer,
+                                        causticMats: wantCaustics) {
+            accel = built.accel
+            accelOffsets = built.offsets
+            accelCausticMats = built.causticMats
+            tracedPoints = true
+            // Slot 0 is one of them exactly when the primary itself is a point caster.
+            tracedPrimary = lighting.shadowKind == 1
         }
-        // The frame's one cube belongs to its cube caster, which the packing only ever
-        // puts in slot 0 (a point light casts as the primary caster or not at all).
-        if !tracedPrimary, let point = shadowCasters(lighting).first(where: { $0.kind == 1 }) {
-            cube = encodePointShadowPass(drawer, lighting: lighting, caster: point,
+        if !tracedPoints, !pointCasters.isEmpty {
+            cube = encodePointShadowPass(drawer, lighting: lighting, casters: pointCasters,
                                          into: commandBuffer, meshBuffer: meshBuffer,
                                          instancedMeshBuffer: hasInstancedCasters ? instancedMeshBuffer : nil,
                                          meshInstanceBuffer: meshInstanceBuffer)
@@ -351,13 +367,18 @@ extension MetalRenderer {
         // map below, whose PCSS penumbra the packing already sized from the panel's
         // extent, so both devices soften by the same physical size.
         if !tracedPrimary, lighting.shadowLight >= 0, casterGPUKind(lighting) >= 3, rayTracedShadows,
-           let meshBuffer, !meshVertices.isEmpty,
-           let built = buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer,
-                                        causticMats: wantCaustics) {
-            accel = built.accel
-            accelOffsets = built.offsets
-            accelCausticMats = built.causticMats
-            tracedPrimary = true
+           let meshBuffer, !meshVertices.isEmpty {
+            // A point caster beside it has already built the one structure; take that
+            // rather than building a second copy of the same geometry.
+            if accel != nil {
+                tracedPrimary = true
+            } else if let built = buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer,
+                                                   causticMats: wantCaustics) {
+                accel = built.accel
+                accelOffsets = built.offsets
+                accelCausticMats = built.causticMats
+                tracedPrimary = true
+            }
         }
         // A traced primary caster renders no map of its own, so drop its layer from the
         // 2D list; the extra casters beside it keep theirs.
@@ -380,7 +401,7 @@ extension MetalRenderer {
         /// its own switch is on.
         func maps(twoD: MTLTexture?) -> ShadowMaps {
             ShadowMaps(twoD: twoD, cube: cube,
-                       accel: tracedPrimary ? accel : nil,
+                       accel: (tracedPrimary || tracedPoints) ? accel : nil,
                        reflectAccel: wantReflect ? accel : nil,
                        reflectGeoOffsets: wantReflect ? accelOffsets : nil,
                        giAccel: wantGI ? accel : nil,
@@ -440,38 +461,66 @@ extension MetalRenderer {
     }
 
     /// Carry the frame's resolved single-caster fields back into slot 0, and give every
-    /// extra caster its own tap budget.
+    /// extra caster what the device settled for its own kind.
     ///
     /// The renderer owns the device, so several caster facts are only settled after
-    /// `makeLighting`: the flip to the traced path, the ray or tap counts, and whether a
-    /// map was produced at all. Slot 0 mirrors those, so the lit mesh path can read one
-    /// caster the same way whichever slot it sits in. Every extra caster is a 2D one (the
-    /// packing allows one cube and one traced caster, and both take slot 0), so extras
-    /// budget texture taps and need a rendered map: with none, the list shrinks back to
-    /// the primary and the frame behaves as it did with one caster.
+    /// `makeLighting`: the flip to the traced path, the ray or tap counts, the far plane a
+    /// cube was actually rendered with, and whether a map was produced at all. Slot 0
+    /// mirrors those, so the lit mesh path can read one caster the same way whichever slot
+    /// it sits in. Every extra caster then needs the resource its own kind names: a 2D one
+    /// a rendered map layer, a point one either a rendered cube or the frame's acceleration
+    /// structure. A caster whose resource is missing drops out of the list, and with none
+    /// of them left the frame behaves as it did with one caster.
     func finalizeShadowCasters(_ drawer: Drawer, _ lighting: inout OllinLighting,
-                               renderedMap: Bool) {
+                               renderedMap: Bool, renderedCube: Bool = false,
+                               traced: Bool = false) {
         guard lighting.shadowCasterCount > 0 else { return }
         guard lighting.shadowLight >= 0 else { lighting.shadowCasterCount = 0; return }
         var casters = shadowCasters(lighting)
         // The cube pass fits its own far plane to what the light reaches (the packing
         // could only guess from the camera), so the fragment must compare against that
-        // one and not the guess. A traced point caster renders no cube, leaves this nil,
-        // and keeps every packed field exactly as it was.
-        if lighting.shadowKind == 1, let far = pointShadowFar {
+        // one and not the guess. A traced point caster renders no cube, leaves this
+        // empty, and keeps every packed field exactly as it was.
+        for k in casters.indices where casters[k].kind == 1 {
+            if let far = pointShadowFars[casters[k].lightIndex] { casters[k].depthA = far }
+        }
+        if lighting.shadowKind == 1, let far = pointShadowFars[lighting.shadowLight] {
             lighting.shadowDepthA = far
-            casters[0].depthA = far
         }
         casters[0].lightIndex = lighting.shadowLight
         casters[0].kind = lighting.shadowKind
         casters[0].strength = lighting.shadowStrength
         casters[0].samples = lighting.shadowSamples
         casters[0].depthB = lighting.shadowDepthB
-        if renderedMap {
-            let taps = resolveShadowTaps2D(drawer.shadowQualitySetting)
-            for k in 1..<casters.count { casters[k].samples = taps }
-        } else {
-            casters = [casters[0]]
+        let taps = resolveShadowTaps2D(drawer.shadowQualitySetting)
+        let rays = resolveShadowSamples(drawer.shadowQualitySetting)
+        var kept = [casters[0]]
+        for k in 1..<casters.count {
+            var c = casters[k]
+            switch c.kind {
+            case 0:
+                guard renderedMap else { continue }
+                c.samples = taps
+            case 1:
+                // A point caster traces beside the primary, or reads its own cube.
+                if traced {
+                    c.kind = 2
+                    c.samples = rays
+                } else if !renderedCube {
+                    continue
+                }
+            default:
+                continue
+            }
+            kept.append(c)
+        }
+        casters = kept
+        // A cube caster's cube is its rank among the cube casters, which is the order the
+        // cube pass rendered them in, so a cube primary is always cube 0.
+        var cube: Int32 = 0
+        for k in casters.indices where casters[k].kind == 1 {
+            casters[k].cubeIndex = cube
+            cube += 1
         }
         lighting.shadowCasterCount = Int32(casters.count)
         withUnsafeMutablePointer(to: &lighting.shadowCasters) { tuplePtr in
@@ -528,44 +577,52 @@ extension MetalRenderer {
                                instanceCount: groups3D.count)
     }
 
-    /// The omnidirectional (point) shadow pass: render the scene into all six cube faces
-    /// in **one** layered pass (the geometry instanced six times, each instance routed to
-    /// a face by `render_target_array_index`). The fragment writes each occluder's linear
-    /// distance to the light (normalized by the far plane) as the stored value, so the
-    /// lit mesh fragment later compares plain world-space distances. The light position
-    /// and far plane come from the lighting uniform. Returns the populated cube.
+    /// The omnidirectional (point) shadow pass: render the scene into all six faces of
+    /// every point caster's cube in **one** layered pass (the geometry instanced six times
+    /// per caster, each instance routed to a slice by `render_target_array_index`). The
+    /// fragment writes each occluder's linear distance to the light (normalized by the far
+    /// plane) as the stored value, so the lit mesh fragment later compares plain
+    /// world-space distances. `casters` is the frame's kind-1 casters in slot order, and
+    /// that order is the cube index each one carries, so a cube *primary* is always cube 0.
+    /// Returns the populated cube array.
     private func encodePointShadowPass(_ drawer: Drawer, lighting: OllinLighting,
-                                       caster: OllinShadowCaster,
+                                       casters: [OllinShadowCaster],
                                        into commandBuffer: MTLCommandBuffer,
                                        meshBuffer: MTLBuffer?,
                                        instancedMeshBuffer: MTLBuffer? = nil,
                                        meshInstanceBuffer: MTLBuffer? = nil) -> MTLTexture? {
-        guard let cube = ensurePointShadowMap(),
+        guard !casters.isEmpty,
+              let cube = ensurePointShadowMap(cubes: casters.count),
               let minPipeline = try? pipeline(.meshPointShadowMin),
               let maxPipeline = try? pipeline(.meshPointShadowMax) else { return nil }
 
-        // The casting light's world position from the uniform's fixed-size light array.
-        // The caster is passed in rather than read off `shadowLight`: the frame's one
-        // cube belongs to whichever caster wants it, which need not be the primary.
-        let index = Int(caster.lightIndex)
-        var lightPos = SIMD3<Float>(0, 0, 0)
-        withUnsafePointer(to: lighting.lights) { ptr in
+        // The casting lights' world positions from the uniform's fixed-size light array.
+        // The casters are passed in rather than read off `shadowLight`: a cube belongs to
+        // whichever caster wants one, which need not be the primary.
+        let lightPositions: [SIMD3<Float>] = withUnsafePointer(to: lighting.lights) { ptr in
             ptr.withMemoryRebound(to: OllinLight.self, capacity: Int(OLLIN_MAX_LIGHTS)) { buf in
-                let p = buf[index].position
-                lightPos = SIMD3<Float>(p.x, p.y, p.z)
+                casters.map { c in
+                    let p = buf[Int(c.lightIndex)].position
+                    return SIMD3<Float>(p.x, p.y, p.z)
+                }
             }
         }
-        // The far plane the packing carried (`depthA`) is fitted from the camera's own
-        // framing radius, which says nothing about how far the light reaches: a wide floor
+        // The far plane each caster's packing carried (`depthA`) is fitted from the camera's
+        // own framing radius, which says nothing about how far the light reaches: a wide floor
         // under a near light runs well past it, and everything out there is clipped out of
         // the cube while still comparing against it. So fit it to the geometry instead, and
-        // hand the same number to the fragment through `pointShadowFar`. The scan is one
-        // pass over the frame's mesh vertices and it happens only here, on the rasterized
-        // path, so a device that traces its point casters never pays for it.
-        let far = pointCasterFar(drawer, from: lightPos, fallback: caster.depthA,
-                                 hasInstancedCasters: instancedMeshBuffer != nil)
-        pointShadowFar = far
-        let near = max(Float(0.05), far * 0.02)
+        // hand the same number to the fragment through `pointShadowFars`. The vertex scan
+        // runs once for the whole frame, and only here, on the rasterized path, so a device
+        // that traces its point casters never pays for it.
+        let bounds = meshCasterBounds(drawer)
+        let hasInstanced = instancedMeshBuffer != nil
+        let fars: [Float] = zip(casters, lightPositions).map { caster, lightPos in
+            let far = pointCasterFar(drawer, bounds: bounds, from: lightPos,
+                                     fallback: caster.depthA, hasInstancedCasters: hasInstanced)
+            pointShadowFars[caster.lightIndex] = far
+            return far
+        }
+
         // The six face views below use the standard cube-face basis, which is written for
         // an API whose framebuffer origin sits at the *bottom* left. Metal's sits at the
         // top left, while a cube face is addressed from the top left in both, so rendering
@@ -576,9 +633,7 @@ extension MetalRenderer {
         // projection's y row flips each face back. Horizontal `u` already agrees, so only
         // this one row moves. It reverses the triangles' screen winding, which costs
         // nothing here: the pass culls no faces, by design.
-        var proj = Camera3D.perspective(fovY: .pi / 2, aspect: 1, near: near, far: far)
-        proj.columns.1.y = -proj.columns.1.y
-        // The six cube faces (forward axis, up), in Metal's +X/−X/+Y/−Y/+Z/−Z order.
+        // The six cube faces (forward axis, up), in Metal's +X/-X/+Y/-Y/+Z/-Z order.
         let faces: [(SIMD3<Float>, SIMD3<Float>)] = [
             (SIMD3(1,  0,  0), SIMD3(0, -1,  0)),
             (SIMD3(-1,  0,  0), SIMD3(0, -1,  0)),
@@ -587,10 +642,15 @@ extension MetalRenderer {
             (SIMD3(0,  0,  1), SIMD3(0, -1,  0)),
             (SIMD3(0,  0, -1), SIMD3(0, -1,  0)),
         ]
-        let faceVP = faces.map { proj * Camera3D.lookAt(eye: lightPos, center: lightPos + $0.0, up: $0.1) }
+        let faceVPs: [[simd_float4x4]] = zip(lightPositions, fars).map { lightPos, far in
+            let near = max(Float(0.05), far * 0.02)
+            var proj = Camera3D.perspective(fovY: .pi / 2, aspect: 1, near: near, far: far)
+            proj.columns.1.y = -proj.columns.1.y
+            return faces.map { proj * Camera3D.lookAt(eye: lightPos, center: lightPos + $0.0, up: $0.1) }
+        }
 
         // Mid-point shadow mapping: clear R = 1 (far, for the MIN pass) and G = 0 (near,
-        // for the MAX pass), then make two draws of the scene with NO culling — the MIN
+        // for the MAX pass), then make two draws of the scene with NO culling: the MIN
         // pass fills R with the nearest occluder distance per direction, the MAX pass
         // fills G with the farthest. The receiver shadows past the midpoint (R+G)/2, so a
         // surface compares against a point *inside* the occluder: no self-shadow acne on
@@ -600,11 +660,8 @@ extension MetalRenderer {
         pass.colorAttachments[0].loadAction = .clear
         pass.colorAttachments[0].clearColor = MTLClearColor(red: 1, green: 0, blue: 0, alpha: 0)
         pass.colorAttachments[0].storeAction = .store
-        pass.renderTargetArrayLength = 6
+        pass.renderTargetArrayLength = 6 * casters.count
         guard let encoder = countedEncoder(commandBuffer, pass) else { return nil }
-        faceVP.withUnsafeBytes { encoder.setVertexBytes($0.baseAddress!, length: $0.count, index: 2) }
-        var lightPosFar = SIMD4<Float>(lightPos.x, lightPos.y, lightPos.z, far)
-        encoder.setFragmentBytes(&lightPosFar, length: MemoryLayout<SIMD4<Float>>.stride, index: 0)
         // The instanced siblings share the pass: each phase draws the plain casters,
         // then the instanced ones under the matching MIN/MAX pipeline (blend rides
         // the pipeline, so order within a phase doesn't matter).
@@ -612,47 +669,52 @@ extension MetalRenderer {
             ? try? pipeline(.meshInstancedPointShadowMin) : nil
         let instancedMax = instancedMeshBuffer != nil
             ? try? pipeline(.meshInstancedPointShadowMax) : nil
-        encoder.setRenderPipelineState(minPipeline)   // nearest -> R
-        if let meshBuffer {
-            drawShadowCasters(drawer, encoder: encoder, meshBuffer: meshBuffer, instanceCount: 6)
-        }
-        if let instancedMin {
-            encoder.setRenderPipelineState(instancedMin)
-            drawInstancedShadowCasters(drawer, encoder: encoder,
-                                       instancedMeshBuffer: instancedMeshBuffer,
-                                       meshInstanceBuffer: meshInstanceBuffer, faces: 6)
-        }
-        if drawer.batches.contains(where: { $0.kind == .meshField }),
-           let fieldMin = try? pipeline(.meshFieldPointShadowMin) {
-            encoder.setRenderPipelineState(fieldMin)
-            drawFieldShadowCasters(drawer, encoder: encoder, faces: 6)
-        }
-        encoder.setRenderPipelineState(maxPipeline)   // farthest -> G
-        if let meshBuffer {
-            drawShadowCasters(drawer, encoder: encoder, meshBuffer: meshBuffer, instanceCount: 6)
-        }
-        if let instancedMax {
-            encoder.setRenderPipelineState(instancedMax)
-            drawInstancedShadowCasters(drawer, encoder: encoder,
-                                       instancedMeshBuffer: instancedMeshBuffer,
-                                       meshInstanceBuffer: meshInstanceBuffer, faces: 6)
-        }
-        if drawer.batches.contains(where: { $0.kind == .meshField }),
-           let fieldMax = try? pipeline(.meshFieldPointShadowMax) {
-            encoder.setRenderPipelineState(fieldMax)
-            drawFieldShadowCasters(drawer, encoder: encoder, faces: 6)
+        let hasFields = drawer.batches.contains { $0.kind == .meshField }
+        for (cubeIndex, faceVP) in faceVPs.enumerated() {
+            // Each cube writes the six slices from `6 * cubeIndex`; the vertex adds that
+            // base to its face, so the same layered draw fills any cube of the array.
+            var base = UInt32(6 * cubeIndex)
+            encoder.setVertexBytes(&base, length: MemoryLayout<UInt32>.stride, index: 3)
+            faceVP.withUnsafeBytes { encoder.setVertexBytes($0.baseAddress!, length: $0.count, index: 2) }
+            let lp = lightPositions[cubeIndex]
+            var lightPosFar = SIMD4<Float>(lp.x, lp.y, lp.z, fars[cubeIndex])
+            encoder.setFragmentBytes(&lightPosFar, length: MemoryLayout<SIMD4<Float>>.stride, index: 0)
+            encoder.setRenderPipelineState(minPipeline)   // nearest -> R
+            if let meshBuffer {
+                drawShadowCasters(drawer, encoder: encoder, meshBuffer: meshBuffer, instanceCount: 6)
+            }
+            if let instancedMin {
+                encoder.setRenderPipelineState(instancedMin)
+                drawInstancedShadowCasters(drawer, encoder: encoder,
+                                           instancedMeshBuffer: instancedMeshBuffer,
+                                           meshInstanceBuffer: meshInstanceBuffer, faces: 6)
+            }
+            if hasFields, let fieldMin = try? pipeline(.meshFieldPointShadowMin) {
+                encoder.setRenderPipelineState(fieldMin)
+                drawFieldShadowCasters(drawer, encoder: encoder, faces: 6)
+            }
+            encoder.setRenderPipelineState(maxPipeline)   // farthest -> G
+            if let meshBuffer {
+                drawShadowCasters(drawer, encoder: encoder, meshBuffer: meshBuffer, instanceCount: 6)
+            }
+            if let instancedMax {
+                encoder.setRenderPipelineState(instancedMax)
+                drawInstancedShadowCasters(drawer, encoder: encoder,
+                                           instancedMeshBuffer: instancedMeshBuffer,
+                                           meshInstanceBuffer: meshInstanceBuffer, faces: 6)
+            }
+            if hasFields, let fieldMax = try? pipeline(.meshFieldPointShadowMax) {
+                encoder.setRenderPipelineState(fieldMax)
+                drawFieldShadowCasters(drawer, encoder: encoder, faces: 6)
+            }
         }
         encoder.endEncoding()
         return cube
     }
 
-    /// How far the point caster's cube must reach: the distance from the light to the
-    /// farthest corner of the frame's mesh geometry, plus a small margin so the farthest
-    /// surface still stores under the "nothing here" sentinel. A frame whose casters are
-    /// instanced or field copies keeps the caller's value as a floor as well, since those
-    /// live in their own buffers with a matrix each and are not in this scan.
-    private func pointCasterFar(_ drawer: Drawer, from lightPos: SIMD3<Float>,
-                                fallback: Float, hasInstancedCasters: Bool) -> Float {
+    /// The frame's plain mesh geometry as one world-space box, or nil when it has none.
+    /// Scanned once per frame and shared by every point caster's far-plane fit.
+    private func meshCasterBounds(_ drawer: Drawer) -> (lo: SIMD3<Float>, hi: SIMD3<Float>)? {
         var lo = SIMD3<Float>(repeating: .greatestFiniteMagnitude)
         var hi = SIMD3<Float>(repeating: -.greatestFiniteMagnitude)
         for v in drawer.meshVertices {
@@ -660,10 +722,21 @@ extension MetalRenderer {
             lo = simd_min(lo, p)
             hi = simd_max(hi, p)
         }
+        return lo.x <= hi.x ? (lo, hi) : nil
+    }
+
+    /// How far the point caster's cube must reach: the distance from the light to the
+    /// farthest corner of the frame's mesh geometry, plus a small margin so the farthest
+    /// surface still stores under the "nothing here" sentinel. A frame whose casters are
+    /// instanced or field copies keeps the caller's value as a floor as well, since those
+    /// live in their own buffers with a matrix each and are not in this scan.
+    private func pointCasterFar(_ drawer: Drawer, bounds: (lo: SIMD3<Float>, hi: SIMD3<Float>)?,
+                                from lightPos: SIMD3<Float>,
+                                fallback: Float, hasInstancedCasters: Bool) -> Float {
         var far: Float = 0
-        if lo.x <= hi.x {
+        if let bounds {
             // The farthest corner: per axis, whichever end of the box is further away.
-            let arm = simd_max(abs(lo - lightPos), abs(hi - lightPos))
+            let arm = simd_max(abs(bounds.lo - lightPos), abs(bounds.hi - lightPos))
             far = simd_length(arm) * 1.02
         }
         let fieldCasters = drawer.batches.contains { $0.kind == .meshField }
@@ -973,7 +1046,7 @@ extension MetalRenderer {
         if shadowMap == nil && shadowCube == nil && !shadowAccelPresent && drawer.sdf3DGroups.isEmpty {
             lighting.shadowLight = -1
         }
-        if shadowAccelPresent {
+        if shadowAccelPresent, lighting.shadowKind == 1 || casterGPUKind(lighting) >= 3 {
             lighting.shadowKind = 2
             lighting.shadowSamples = resolveShadowSamples(drawer.shadowQualitySetting)
             // A traced *panel* caster reads `shadowDepthB` as the sampled panel's scale
@@ -985,7 +1058,8 @@ extension MetalRenderer {
         } else if lighting.shadowLight >= 0 && lighting.shadowKind == 0 {
             lighting.shadowSamples = resolveShadowTaps2D(drawer.shadowQualitySetting)
         }
-        finalizeShadowCasters(drawer, &lighting, renderedMap: shadowMap != nil)
+        finalizeShadowCasters(drawer, &lighting, renderedMap: shadowMap != nil,
+                              renderedCube: shadowCube != nil, traced: shadowAccelPresent)
         // Image-based lighting, mirroring the main encode's setup (resolveIBL already ran
         // this frame), so a field marched at half resolution takes the same environment
         // ambient, and traces the same reflections, as the full-res inline march.

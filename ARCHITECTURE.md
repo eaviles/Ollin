@@ -2221,11 +2221,24 @@ Three decisions make the change cheap to reason about:
   own `depthAttachment.slice`. Because slot 0 owns layer 0 whether or not it is
   a 2D caster, every helper that reads the primary caster names layer 0 as a
   constant, and a cube or traced primary simply leaves that layer cleared.
-- **A point light casts only as the primary.** There is one cube texture and
-  one acceleration structure, and both belong to slot 0, so the packing never
-  puts a point light in an extra slot: every extra caster is a 2D one. Lifting
-  that needs a `depthcube_array` for the cubes and a per-caster trace against
-  the shared structure, which is in `DESIGN-NOTES.md`.
+- **A point light casts from any slot.** Both of its paths grew a dimension
+  rather than a second mechanism. The cubes are a `texturecube_array` holding a
+  cube per point caster, ranked in slot order (so a cube *primary* is cube 0 and
+  the helpers that follow the primary keep naming it as a constant), and the one
+  layered pass renders them all: the vertex adds a per-caster `cubeBase` to its
+  face index, so the same six-face draw fills any cube of the array. On a
+  ray-tracing device every point caster traces against the frame's one
+  acceleration structure instead, and the fragment computes them together:
+  `meshRTShadowAll` returns a `float4` of per-slot factors and the shading tail
+  reads its own slot. Two things had to move with it. The structure is bound
+  whenever *any* caster traces, so the two sites that flip `shadowKind` to 2 ask
+  whether the **primary** is a kind that traces, rather than whether a structure
+  exists: a directional key beside a traced point light keeps its own 2D map.
+  And one structure serves every caster, so an area primary beside a point
+  caster takes the built one rather than building a second copy of the same
+  geometry. `finalizeShadowCasters` then drops any extra caster whose own
+  resource was not produced, so a frame missing a map, a cube, or the structure
+  falls back to casting from the primary alone.
 
 #### The rasterized cube, and why it was wrong for so long
 
@@ -2262,10 +2275,13 @@ The fit belongs in the renderer, because only the renderer knows it is rendering
 a cube at all, and a traced frame must not pay for the scan: `pointCasterFar`
 takes the frame's mesh-vertex AABB, measures the farthest corner from the light,
 adds 2% (so the farthest surface still stores under the "nothing here"
-sentinel), and the value travels to the fragment as `MetalRenderer.pointShadowFar`,
-which `finalizeShadowCasters` writes into slot 0 beside the facts it already
-carries back. A traced frame renders no cube, leaves it nil, and keeps every
-packed field exactly as it was. Instanced and field casters are not in the scan
+sentinel), and the value travels to the fragment through
+`MetalRenderer.pointShadowFars`, keyed by the casting light, which
+`finalizeShadowCasters` writes into each cube caster beside the facts it already
+carries back. The vertex scan itself runs once a frame and every point caster
+shares its box, so a second cube caster costs a corner measurement, not a second
+walk over the geometry. A traced frame renders no cube, leaves the table empty,
+and keeps every packed field exactly as it was. Instanced and field casters are not in the scan
 (their copies are a matrix each, and a field's live in a GPU buffer), so a frame
 holding them keeps the old camera-derived value as a floor.
 

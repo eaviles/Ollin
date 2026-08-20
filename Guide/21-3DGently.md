@@ -213,7 +213,21 @@ directionalLight(Color(white: 0.7), direction: Vector3(0, -1, 0.5), intensity: 0
 
 Reach for that on a fill light. A fill exists to open up the shadow side, so a shadow of its own works against it. The picture usually reads better with one clear shadow than with three faint ones fighting. It is also where the cost sits. Every caster renders the scene again from its own point of view, so three casters is three passes. The rigs `lightingPreset(_:)` installs already do this: the key casts, the fill and rim do not. That is why a preset gives you one clean shadow rather than a thicket.
 
-Two limits round it out. A frame casts from **four** lights at most, the ones you set first. The rest still light the scene. And a **point light** casts only when it is the one the renderer picked first, because a point light needs a whole cube of depth around it and the frame holds one of those. A point light on its own throws a shadow; the same light standing beside a directional key does not.
+Mixing kinds is fine. A point light standing beside a directional key throws its own shadow, and so does a second point light beside the first:
+
+```swift
+directionalLight(.white, direction: Vector3(0, -1, 0))   // straight down: its shadow hides under the box
+pointLight(.white, at: Vector3(-3, 6, 0))                // from the left: its shadow reaches right
+castShadows()
+```
+
+<img src="Images/21-3DGently/PointBesideKey.jpg" alt="An orange box and a green post on a pale floor: each drops a warm-lit shadow to the left from the cool key on the right, and a cool-lit shadow to the right from the warm lamp on the left, the two crossing in a darker patch between them" width="680">
+
+Read the colors again. The patch on the left is warm because the lamp still reaches it, and the band on the right is cool because the key does. Where the two cross, neither does.
+
+A point light is the expensive kind, since it casts every way at once, and a frame can hold several of them. That cost is the reason for the last limit: a frame casts from **four** lights at most, the ones you set first. The rest still light the scene.
+
+One thing to watch for. A light is a position, not an object, so nothing stops you drawing a small ball there to show where it sits. Do that with a casting point light and the ball wraps the light in its own shadow, and the scene goes dark. Either mark it with something the light stands clear of, or tell that light not to cast.
 
 
 There is one place even a good shadow map falls short, and it is the most important few pixels in the picture. That's the exact line where an object touches the ground. A map has finite resolution, and the bias that keeps its speckle off nudges its shadow slightly away from the caster. The last sliver of contact opens up, and a resting box can read as floating a hair above the floor. **`contactShadows()`** closes that seam. For each pixel the renderer walks a short ray toward the casting light through the scene's own depth. It darkens the pixel where something nearby blocks the way, which draws the fine dark line a map can't hold at any resolution.

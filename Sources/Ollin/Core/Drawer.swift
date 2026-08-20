@@ -2411,8 +2411,9 @@ final class Drawer {
         // layer index is the slot index**, so slot 0 owns layer 0 whatever kind it is and
         // a helper that reads the primary caster can name layer 0 as a constant. A tube
         // emits radially with no facing axis to render a map from, so it never casts. A
-        // point light casts only as the primary: it needs the frame's one cube texture or
-        // its one acceleration structure, and both belong to slot 0.
+        // point light casts from any slot: the renderer hands each point caster its own
+        // cube of the cube-map array, or traces every one of them against the frame's one
+        // acceleration structure.
         if castsShadows, let camera = camera3D {
             let target = camera.target.simd3
             // The eye→target distance (the orbit radius) is the scene-size proxy that
@@ -2569,13 +2570,11 @@ final class Drawer {
                 ?? eligible.first(where: { activeLights[$0].kind == .rect || activeLights[$0].kind == .disk }) {
                 slots.append(primary)
             }
-            // Only slot 0 can be a point light. A point caster needs the frame's one cube
-            // texture (or its one acceleration structure), and both belong to the primary,
-            // so a point light beside a directional key lights the scene and throws
-            // nothing. Every extra caster is therefore a 2D one with a map layer of its own.
+            // A point light casts from any slot, beside a directional key or a spot: the
+            // renderer gives each point caster its own cube of the cube-map array, or
+            // traces every one of them against the frame's one acceleration structure.
             for i in eligible where !slots.contains(i) {
                 if slots.count >= Int(OLLIN_MAX_SHADOW_CASTERS) { break }
-                if activeLights[i].kind == .point { continue }
                 slots.append(i)
             }
             let built = slots.map(packCaster(at:))

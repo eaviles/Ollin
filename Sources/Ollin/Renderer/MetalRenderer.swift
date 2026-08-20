@@ -720,18 +720,21 @@ final class MetalRenderer {
     static let shadowMapResolution = 2048
     var shadowMap: MTLTexture?
     var dummyShadowMap: MTLTexture?
-    /// The omnidirectional (point) shadow map: a `depthcube` rendered by the layered
-    /// six-face pass and sampled by direction. Per-face resolution; allocated lazily on
-    /// the first point-casting frame. `dummyPointShadowMap` is a 1×1 cube bound when no
-    /// point caster is active, so the fragment's declared `depthcube` is always satisfied.
+    /// The omnidirectional (point) shadow maps: a **cube array** rendered by the layered
+    /// six-face pass and sampled by direction, one cube per point caster in the frame (a
+    /// point light casts from any slot). Per-face resolution; allocated lazily on the
+    /// first point-casting frame and re-made wider when a frame wants more cubes.
+    /// `dummyPointShadowMap` is a 1x1 single-cube array bound when no point caster is
+    /// active, so the fragment's declared `texturecube_array` is always satisfied.
     static let pointShadowMapResolution = Int(OLLIN_POINT_SHADOW_RESOLUTION)
     var pointShadowMap: MTLTexture?
     var dummyPointShadowMap: MTLTexture?
-    /// The far plane the cube pass fitted to the frame's geometry, carried from that pass
-    /// to the lighting the fragment reads (the packing's own guess is the camera's framing
-    /// radius, which the light does not respect). nil whenever no cube was rendered, which
-    /// is every frame on a device that traces its point casters.
-    var pointShadowFar: Float?
+    /// The far plane the cube pass fitted to the frame's geometry, per casting light
+    /// (keyed by its index in the packed light array), carried from that pass to the
+    /// lighting the fragment reads (the packing's own guess is the camera's framing
+    /// radius, which the light does not respect). Empty whenever no cube was rendered,
+    /// which is every frame on a device that traces its point casters.
+    var pointShadowFars: [Int32: Float] = [:]
     /// Whether this device can trace rays from the render stages. When true, a point
     /// caster is shadowed by *ray tracing* (an exact visibility ray against a per-frame
     /// acceleration structure built from the shadow casters) instead of the mid-point

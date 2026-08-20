@@ -711,13 +711,16 @@ typedef struct {
 // The rest are extra casters the lit mesh path dims by, and nothing else reads.
 //
 // `lightIndex` is the caster's entry in `lights` (-1 = an unused slot). `kind` matches
-// `OllinLighting.shadowKind`: 0 = a layer of the 2D shadow-map array, 1 = the cube map,
-// 2 = ray traced. **A 2D caster's map layer is its own slot index**, so slot 0 always
-// renders into layer 0 and a helper that reads the primary caster can name layer 0 as a
-// constant. A cube or ray-traced slot leaves its layer cleared (nothing occludes), which
-// is what keeps a scene whose primary caster is a point light byte-identical. At most one
-// cube caster and at most one ray-traced caster exist per frame (there is one cube texture
-// and one acceleration structure), so extra point lights past the first do not cast.
+// `OllinLighting.shadowKind`: 0 = a layer of the 2D shadow-map array, 1 = a cube of the
+// cube-map array, 2 = ray traced. **A 2D caster's map layer is its own slot index**, so
+// slot 0 always renders into layer 0 and a helper that reads the primary caster can name
+// layer 0 as a constant. A cube or ray-traced slot leaves its layer cleared (nothing
+// occludes), which is what keeps a scene whose primary caster is a point light
+// byte-identical. A **point light casts from any slot**: the cubes are an array with a
+// cube per point caster (`cubeIndex`, assigned in slot order, so a cube *primary* is
+// always cube 0 and every helper that follows the primary can name it as a constant), and
+// a ray-tracing device traces each point caster against the frame's one acceleration
+// structure instead.
 //
 // The remaining fields carry per-caster what the single-caster fields carry for the
 // primary: see `OllinLighting.lightViewProjection`, `shadowTexelWorld`, `shadowDepthA`,
@@ -739,7 +742,8 @@ typedef struct {
     float texelWorld;                   // world-space size of one texel of this caster's map
     float depthA;                       // cube: the far plane; 2D: the PCSS penumbra in texels
     float depthB;                       // see `OllinLighting.shadowDepthB`, per kind
-    float pad;                          // keeps the 16-byte rows
+    int   cubeIndex;                    // cube kind: this caster's cube in the cube-map array
+                                        // (slot order, so a cube primary is cube 0); 0 otherwise
 } OllinShadowCaster;
 
 // One camera-anchored global-illumination probe cascade (the vast-scene ladder;

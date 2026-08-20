@@ -17,7 +17,11 @@ final class LightKinds: Sketch {
         ambientLight(Color(white: 0.1))
         directionalLight(Color(hex: 0xFFD9A8), direction: Vector3(-0.6, -1, -0.35),
                          intensity: 0.7)
-        pointLight(Color(hex: 0x39D8E8), at: Vector3(2.7, 1.7, 1.9), intensity: 0.9)
+        // The marker ball below sits at this light's own position, so a shadow from it
+        // would put the whole scene in its own marker's shade. The figure is about where
+        // each kind of light lands, not about shadows, so this one only lights.
+        pointLight(Color(hex: 0x39D8E8), at: Vector3(2.7, 1.7, 1.9), intensity: 0.9,
+                   castsShadow: false)
         spotLight(Color(hex: 0xE85FD0), at: Vector3(-3.4, 4.6, 2.6),
                   direction: Vector3(0, -1, 0), angle: .pi / 5, penumbra: 0.4,
                   intensity: 1.2)

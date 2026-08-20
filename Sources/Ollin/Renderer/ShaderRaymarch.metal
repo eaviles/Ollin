@@ -584,7 +584,7 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
                                                  constant Uniforms3D &u [[buffer(4)]],
                                                  depth2d_array<float> shadowMap [[texture(1)]],
                                                  sampler shadowSamp [[sampler(1)]],
-                                                 texturecube<float> shadowCube [[texture(2)]],
+                                                 texturecube_array<float> shadowCube [[texture(2)]],
                                                  sampler shadowCubeSamp [[sampler(2)]],
                                                  texture2d<float> gradients [[texture(0)]],
                                                  sampler gradientSamp [[sampler(0)]],
@@ -731,13 +731,15 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
                                light.shadowTexelWorld, shadowMap, 0, shadowSamp);
             fieldShadow = min(fieldShadow, mapLit);
         } else if (light.shadowKind == 1) {
+            // Cube 0: a field takes the primary caster, which owns the first cube.
             float cubeLit = shadowFactorCube(pw, n, caster.position.xyz, light.shadowDepthA,
-                                             light.shadowTexelWorld, shadowCube, shadowCubeSamp);
+                                             light.shadowTexelWorld, shadowCube, 0, shadowCubeSamp);
             fieldShadow = min(fieldShadow, cubeLit);
         }
 #if OLLIN_RT_SHADOWS
         else if (light.shadowKind == 2) {
-            fieldShadow = min(fieldShadow, meshRTShadow(pw, n, light, accel));
+            // The primary caster owns slot 0, the one a field self-shadows toward.
+            fieldShadow = min(fieldShadow, meshRTShadowOne(pw, n, light, light.shadowCasters[0], accel));
         }
 #endif
     }
@@ -765,7 +767,7 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
                               shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
                               ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT
 #if OLLIN_RT_SHADOWS
-                              , 1.0
+                              , float4(1.0)
 #endif
                               , fieldShadow);
 

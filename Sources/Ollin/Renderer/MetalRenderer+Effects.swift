@@ -2030,8 +2030,11 @@ extension MetalRenderer {
             lighting.shadowLight = -1
         }
         // A ray-traced point or area caster: switch the fragment to the RT path (shadowKind 2)
-        // and resolve the sketch's quality tier to a concrete ray count for this GPU.
-        if shadowAccel != nil {
+        // and resolve the sketch's quality tier to a concrete ray count for this GPU. The
+        // structure is bound whenever *any* caster traces against it, so the flip asks
+        // whether the primary is one of the kinds that trace: a directional key beside a
+        // traced point light keeps its own 2D map.
+        if shadowAccel != nil, lighting.shadowKind == 1 || casterGPUKind(lighting) >= 3 {
             lighting.shadowKind = 2
             lighting.shadowSamples = resolveShadowSamples(drawer.shadowQualitySetting)
             // A traced *panel* caster reads `shadowDepthB` as the sampled panel's scale
@@ -2046,8 +2049,10 @@ extension MetalRenderer {
             lighting.shadowSamples = resolveShadowTaps2D(drawer.shadowQualitySetting)
         }
         // The caster list follows those device-side decisions: slot 0 mirrors them, and
-        // every extra caster gets its tap budget (or drops, with no map to sample).
-        finalizeShadowCasters(drawer, &lighting, renderedMap: shadowMap != nil)
+        // every extra caster takes what its own kind needs (or drops, with no map, cube,
+        // or structure to read).
+        finalizeShadowCasters(drawer, &lighting, renderedMap: shadowMap != nil,
+                              renderedCube: shadowCube != nil, traced: shadowAccel != nil)
         // Ray-traced reflections: a physically-based metal traces the caster accel for its
         // reflection (replacing the IBL prefilter sample). The flag gates it; off → the
         // byte-identical IBL-prefilter path. The renderer owns the hardware check, so this is

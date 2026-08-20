@@ -101,7 +101,7 @@ Under [`castShadows()`](./3D.md#shadows) every light casts, up to **four** of th
 | | Casts | Why |
 | --- | --- | --- |
 | Directional, spot, rect, disk | yes | Each renders its own 2D shadow map, one layer per caster |
-| Point | only as the [primary](#primary-caster) | It needs the frame's one cube map, or its one acceleration structure |
+| Point | yes | Each gets its own cube map, or its own rays on a ray-tracing GPU: the expensive kind, since it casts every way at once |
 | Tube | no | It emits radially, so there is no side to render a map from |
 | A light with `castsShadow: false` | no | You said so |
 | The fill and rim of a `lightingPreset(_:)` rig | no | The rigs set `castsShadow: false` on them; see [Lighting presets](./3D.md#lights) |

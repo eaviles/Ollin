@@ -317,17 +317,18 @@ struct LightingTests {
         #expect(list[1].lightIndex == 1 && list[1].kind == 0)
     }
 
-    @Test func aPointLightCastsOnlyAsThePrimary() {
-        // A point caster needs the frame's one cube texture (or its one acceleration
-        // structure), and both belong to slot 0. So a point light beside a directional
-        // key lights the scene and throws nothing, while the same light alone casts.
+    @Test func aPointLightCastsFromAnySlot() {
+        // A point light beside a directional key takes a slot of its own, and keeps its
+        // own kind there: the renderer hands each point caster a cube of the cube-map
+        // array, or traces every one of them against the frame's one structure.
         let d = freshDrawer()
         d.addLight(.directional(.white, direction: Vector3(0, -1, 0)))
         d.addLight(.point(.white, at: Vector3(0, 3, 0)))
         d.castShadows()
         let beside = casters(d.makeLighting())
-        #expect(beside.count == 1)
-        #expect(beside[0].kind == 0)    // the directional's 2D map
+        #expect(beside.count == 2)
+        #expect(beside[0].lightIndex == 0 && beside[0].kind == 0)   // the key's 2D map
+        #expect(beside[1].lightIndex == 1 && beside[1].kind == 1)   // the point light's cube
 
         let alone = freshDrawer()
         alone.addLight(.point(.white, at: Vector3(0, 3, 0)))
@@ -376,17 +377,19 @@ struct LightingTests {
         #expect(casters(u).count == 1)
     }
 
-    @Test func aPointLightNeverTakesAnExtraSlot() {
-        // The spot is the primary here (a spot outranks a point), so neither point light
-        // casts: every extra slot is a 2D caster with a map layer of its own.
+    @Test func severalPointLightsEachTakeASlot() {
+        // The spot is the primary here (a spot outranks a point), and both point lights
+        // cast beside it, each from a slot of its own and each still a cube caster.
         let d = freshDrawer()
         d.addLight(.point(.white, at: Vector3(0, 3, 0)))
         d.addLight(.point(.white, at: Vector3(3, 3, 0)))
         d.addLight(.spot(.white, at: Vector3(2, 3, 0), direction: Vector3(0, -1, 0)))
         d.castShadows()
         let list = casters(d.makeLighting())
-        #expect(list.count == 1)
-        #expect(list[0].lightIndex == 2 && list[0].kind == 0)
+        #expect(list.count == 3)
+        #expect(list[0].lightIndex == 2 && list[0].kind == 0)   // the spot, the primary
+        #expect(list[1].lightIndex == 0 && list[1].kind == 1)
+        #expect(list[2].lightIndex == 1 && list[2].kind == 1)
     }
 
     @Test func theCasterListCapsAtFour() {
