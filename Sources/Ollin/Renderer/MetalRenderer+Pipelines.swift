@@ -870,7 +870,7 @@ extension MetalRenderer {
     /// so it goes first (Metal needs a declaration before its use); `ShaderCore`
     /// follows with the 2D core pipelines. The single `Shaders.metal` split into
     /// these once it crossed ~2,000 lines; the renderer never assumes one file.
-    static let shaderSourceNames = ["OllinShaderLib", "ShaderCore", "ShaderShapes", "ShaderCombinator", "Shader3D", "ShaderRaymarch", "ShaderStrands", "ShaderEffects", "ShaderCombine", "ShaderGI", "ShaderCaustics", "ShaderSim", "ShaderPatterns", "ShaderIBL", "ShaderPathTrace"]
+    static let shaderSourceNames = ["OllinShaderLib", "ShaderCore", "ShaderShapes", "ShaderCombinator", "Shader3D", "ShaderRaymarch", "ShaderStrands", "ShaderEffects", "ShaderCombine", "ShaderFlare", "ShaderGI", "ShaderCaustics", "ShaderSim", "ShaderPatterns", "ShaderIBL", "ShaderPathTrace"]
 
     /// Read and concatenate the shader segments from a filesystem `directory`, in
     /// `shaderSourceNames` order. This is the source live shader reload feeds back

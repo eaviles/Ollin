@@ -499,6 +499,13 @@ final class Drawer {
     /// non-ray-tracing GPU (the IBL-prefilter reflection remains).
     private(set) var rayTracedReflectionsEnabled = false
 
+    /// The lens flare this frame adds, or nil for none (see `lensFlare`). Per-frame
+    /// state like the lights. When set, the renderer works out the ghosts the lens
+    /// makes of each bright source and adds them to the resolved frame in linear
+    /// light, before the tone map. A no-op without a perspective 3D camera and at
+    /// least one light.
+    private(set) var lensFlareSetting: LensFlare?
+
     /// Whether this frame gathers real-time global illumination (see `globalIllumination`).
     /// Per-frame state like the lights. When on (and the device can trace), the renderer
     /// keeps a grid of irradiance probes over the scene, re-traced each frame, and the lit
@@ -2132,6 +2139,14 @@ final class Drawer {
         motionBlurShutter = max(0, shutter)
     }
 
+    /// Add the flare this lens makes of the frame's bright lights. Per-frame state
+    /// like the lights; set it in `draw()`. A no-op without a perspective 3D camera
+    /// or with no lights set.
+    func lensFlare(_ flare: LensFlare = LensFlare()) { lensFlareSetting = flare }
+
+    /// Stop flaring (the default). Per-frame state.
+    func noLensFlare() { lensFlareSetting = nil }
+
     /// Stop motion-blurring (the default). Per-frame state.
     func noMotionBlur() { motionBlurEnabled = false }
 
@@ -3470,6 +3485,7 @@ final class Drawer {
         temporalUpscalingQuality = .default
         motionBlurEnabled = false
         motionBlurShutter = 0.5
+        lensFlareSetting = nil
         // Atmosphere is per-frame like the lights (the quality setting persists).
         fogColor = nil
         fogDensity = 0

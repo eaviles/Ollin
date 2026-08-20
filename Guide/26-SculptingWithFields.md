@@ -286,6 +286,39 @@ The figure is one still frame, and it already tells you who is moving and how fa
 
 The [`MotionBlur` example](../Examples/3D/Effects/MotionBlur/Sketch.swift) is the figure's scene live, with the toggle and the shutter on knobs. Slide the shutter while the spheres orbit and watch the same motion go from strobe to smear. Captions, 2D overlays, and the environment backdrop never streak, so the interface stays still while the world moves.
 
+## Light in the camera: lens flare
+
+Everything else in this chapter is the light and the thing it lands on. A flare is the camera admitting that it is there.
+
+A lens is supposed to bend light onto the sensor. Some of it does not. At every surface a little reflects instead of passing through, and light that reflects twice ends up going the right way again. It lands on the sensor, but in the wrong place. That misplaced light is a **ghost**. A row of ghosts, on the line from a bright source through the middle of the frame, is what a lens flare is.
+
+```swift
+var camera = Camera3D(eye: ..., target: ...)
+camera.apertureBlades = 6            // the iris has six blades
+self.camera(camera)
+
+pointLight(.white, at: lamp, intensity: 20)
+lensFlare()                          // the ghosts that lamp leaves in the lens
+```
+
+<img src="Images/26-SculptingWithFields/GhostChain.jpg" alt="A dark room with a small bright lamp. A dark red hexagon sits on the lamp and a teal hexagon sits up and to the left of it, lying on top of a near black slab" width="640">
+
+Both ghosts in the figure are hexagons, because the iris has six blades and a ghost is a picture of the opening its light came through. Their colors differ because each surface of the lens is coated for a different wavelength. A coating passes on whatever it fails to cancel. And look where the teal one is. It lies *over* the near black slab, not behind it. Nothing in the room is glowing. The light never reached that slab. It only reached the glass in front of the sensor.
+
+So the call asks for a lens, not for a look:
+
+```swift
+lensFlare(strength: 0.6, lens: .heliar.stopped(to: 11))
+```
+
+`Lens.heliar` is a real prescription, a 1950s portrait lens. Its nine surfaces decide how many ghosts there are, where each sits, how big it is, and what color it comes out. `stopped(to:)` closes the iris, and every ghost shrinks together. `multicoated()` coats each surface for a different wavelength, the way a modern lens is made. That is what puts the ghosts in different colors instead of all in one. Type in a different prescription and you get a different camera's flare.
+
+`strength` is the honesty dial, and it is worth being honest about. A flare is a defect. Sometimes you want it, often you want a trace of it, and plenty of pieces want none. `0` removes it.
+
+The last part is what keeps a flare from reading as a sticker stuck to the lens. Its strength follows how much of the source the camera can actually **see**. Walk something in front of the lamp and the flare fades as the lamp is covered. It does not switch off the moment the lamp's center goes behind. That is one of those details you never notice when it is right and cannot stop noticing when it is wrong.
+
+The [`LensFlare` example](../Examples/3D/Effects/LensFlare/Sketch.swift) drifts a lamp back and forth behind a slab with the strength, the f-number, and the blade count on knobs. Watch the ghosts fade as the lamp goes behind, and watch them shrink together as you stop down.
+
 ## Rendering fewer pixels: temporal upscaling
 
 Almost everything in this chapter charges by the pixel. The mirrors trace one ray per pixel, the fields march per pixel, and the bounce is gathered per pixel. When a scene gets heavy, the honest lever is to render fewer of them. `temporalUpscaling()` pulls it without giving up the full-size picture:
@@ -355,7 +388,7 @@ Then make it yours:
 
 ## Where this comes from
 
-Distance fields as a drawing medium are the craft of the demoscene and Shadertoy communities, and above all of Inigo Quilez. His catalogs of distance functions, the polynomial smooth minimum, and the raymarching articles underlie nearly everything here, and they are credited throughout Ollin's implementation. Sphere tracing was formalized by John C. Hart in 1996. The blobby, merging-spheres idea is much older, going back to Jim Blinn's 1982 "blobby model" and the metaballs of 1980s Japanese graphics research. The space-folding domain operators follow the hg_sdf library by the demogroup Mercury. The sculpt-block idea of building form by adding and carving under a melt radius is the working model of digital clay tools, studied from Shader Park's composable API. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Distance fields as a drawing medium are the craft of the demoscene and Shadertoy communities, and above all of Inigo Quilez. His catalogs of distance functions, the polynomial smooth minimum, and the raymarching articles underlie nearly everything here, and they are credited throughout Ollin's implementation. Sphere tracing was formalized by John C. Hart in 1996. The blobby, merging-spheres idea is much older, going back to Jim Blinn's 1982 "blobby model" and the metaballs of 1980s Japanese graphics research. The space-folding domain operators follow the hg_sdf library by the demogroup Mercury. The sculpt-block idea of building form by adding and carving under a melt radius is the working model of digital clay tools, studied from Shader Park's composable API. The lens flare is written from the matrix formulation of Sungkil Lee and Elmar Eisemann, and the color its coatings leave from the thin-film reflectance of Matthias Hullin and colleagues. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
@@ -364,6 +397,7 @@ Distance fields as a drawing medium are the craft of the demoscene and Shadertoy
 - [Combining 3D features](../Docs/3D/Combining.md): what fields take (materials, shadows, environments) and where they differ from meshes.
 - [The traced and temporal tiers](../Docs/3D/3D.md): ray-traced reflections, the global-illumination probe field, temporal anti-aliasing with `withMotion`, motion blur, and temporal upscaling, each with what it needs and what it costs.
 - [Caustics](../Docs/3D/Caustics.md): what casts and what receives, the emitting light's priority, dispersion, the quality dial, and how the photon chain works.
+- [Lens flare](../Docs/3D/LensFlare.md): the lens as a stack of interfaces, writing your own prescription, the iris and its blades, which sources flare, and how a flare follows what the camera can see.
 - Appendix B draws this chapter's math, one picture per idea: [Per-pixel thinking and distance](B-JustEnoughMath.md#per-pixel-thinking-and-distance).
 - Worked examples for this section: [`Examples/3D/Materials/PhysicalMaterials`](../Examples/3D/Materials/PhysicalMaterials/Sketch.swift), [`Examples/3D/Materials/Glass`](../Examples/3D/Materials/Glass/Sketch.swift) (hold space to drop the traced view through the glass), [`Examples/3D/Environments/ImageBasedLighting`](../Examples/3D/Environments/ImageBasedLighting/Sketch.swift), [`EnvironmentGallery`](../Examples/3D/Environments/EnvironmentGallery/Sketch.swift) (steps through all twenty), and [`ProceduralSky`](../Examples/3D/Environments/ProceduralSky/Sketch.swift).
 - Worked example for the mesh route: [`Examples/3D/Geometry/Metaballs`](../Examples/3D/Geometry/Metaballs/Sketch.swift), a cluster that keeps fusing and parting, with the merge level and the grid detail on knobs.

@@ -53,6 +53,13 @@ public struct Camera3D: Equatable, Sendable {
     /// everything is sharp; larger values blur away from the focus plane. The live
     /// raster view ignores it (screen-space defocus stays the live-preview blur).
     public var aperture: Double = 0
+    /// How many blades the iris has, which decides the shape of the opening light
+    /// passes through: `0` (the default) is a round iris, and 5 to 11 is what a
+    /// real lens carries. It shapes anything that draws the opening rather than a
+    /// point of light: the out-of-focus highlights the path-traced export renders
+    /// through `aperture`, and every ghost `lensFlare()` puts on the frame. One
+    /// setting drives both, so the two cannot disagree about what lens this is.
+    public var apertureBlades: Int = 0
     /// The distance from the camera at which the path-traced export focuses, along
     /// the view axis. `nil` (the default) focuses on the `target`, so an orbiting
     /// camera keeps its subject sharp with no extra bookkeeping.

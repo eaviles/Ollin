@@ -689,9 +689,27 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
             float3 fp = ro + rd * t;
             float3 lt, lb;
             ollin_pt_basis(forward, lt, lb);
-            float lr = sqrt(u0.z) * pt.lens.x;
-            float lphi = 6.28318530718 * u0.w;
-            ro += lt * (lr * cos(lphi)) + lb * (lr * sin(lphi));
+            float2 lp;
+            if (pt.lens.z >= 2.5) {
+                // A bladed iris: the opening is a polygon, so an out-of-focus
+                // highlight takes its shape. Pick a wedge, then a point in it,
+                // which covers the polygon evenly. The same blade count shapes
+                // every lens-flare ghost, so the two agree about the lens.
+                float blades = pt.lens.z;
+                float walk = u0.z * blades;
+                float wedge = floor(walk);
+                float along = sqrt(walk - wedge);
+                float a0 = 6.28318530718 * wedge / blades;
+                float a1 = 6.28318530718 * (wedge + 1.0) / blades;
+                float2 v0 = float2(cos(a0), sin(a0)) * pt.lens.x;
+                float2 v1 = float2(cos(a1), sin(a1)) * pt.lens.x;
+                lp = v0 * (along * (1.0 - u0.w)) + v1 * (along * u0.w);
+            } else {
+                float lr = sqrt(u0.z) * pt.lens.x;
+                float lphi = 6.28318530718 * u0.w;
+                lp = float2(lr * cos(lphi), lr * sin(lphi));
+            }
+            ro += lt * lp.x + lb * lp.y;
             rd = normalize(fp - ro);
         }
 

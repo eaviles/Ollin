@@ -102,7 +102,8 @@ extension MetalRenderer {
         let eye = SIMD3<Float>(Float(camera.eye.x), Float(camera.eye.y), Float(camera.eye.z))
         pt.cameraPosition = SIMD4<Float>(eye, max(lighting.rtReflectionBias, 1e-4))
         let focus = camera.focusDistance ?? camera.eye.distance(to: camera.target)
-        pt.lens = SIMD4<Float>(Float(camera.aperture), Float(max(focus, 1e-3)), 0, 0)
+        pt.lens = SIMD4<Float>(Float(camera.aperture), Float(max(focus, 1e-3)),
+                               Float(max(0, camera.apertureBlades)), 0)
         pt.miss = SIMD4<Float>(lighting.ambient.x, lighting.ambient.y, lighting.ambient.z,
                                envTableLOD)
         let total = max(1, settings.samplesPerPixel)

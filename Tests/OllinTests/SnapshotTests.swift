@@ -644,6 +644,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("taa",
                  note: "Thin tilted slats and a sphere under temporalAntialiasing(): pins the deterministic export path (N jittered geometry renders under the fixed sequence, averaged within the frame), the jittered-projection plumbing on the mesh path, and the weighted-sum normalization. Fixed camera, no time; runs on any Metal GPU.",
                  make: { TAAScene() }),
+    SnapshotCase("lens-flare",
+                 note: "A lamp over a floor with slabs, drawn through the bundled Heliar prescription with lensFlare() on. Pins the whole optical chain: the ghost enumeration over the interface pairs that keep both bounces on one side of the iris, the paraxial matrices that place and size each one, the bladed iris shaping them, the anti-reflective coating coloring them, and the source-visibility fade. Fixed camera and lamp, no time; runs on any Metal GPU.",
+                 make: { LensFlareScene() }),
     SnapshotCase("motion-blur", frame: 2,
                  note: "A sphere mover crossing a still colonnade under a panning camera with motionBlur() on, captured at frame 2 (frame k reads frame k-1's camera and movers, so the streak is a pure function of the frame pair). Pins the whole chain: the full-screen velocity fill (the mover texture over the depth-reprojected camera motion), the tile/neighbor dominant-velocity pyramid, the three-case reconstruction gather with its position-pure jitter, and the shutter scale. Runs on any Metal GPU.",
                  make: { MotionBlurScene() }),
@@ -739,6 +742,48 @@ private final class MotionBlurScene: Sketch {
             }
         }
         withState { fill(Color(white: 0.3)); translate(0, -0.1, 0); drawPlane(width: 9, depth: 9) }
+    }
+}
+
+/// A lamp near the middle of the frame with `lensFlare()` on: the chain of ghosts
+/// the bundled prescription makes of it, marching from the far side of the frame
+/// center out past the lamp, each shaped by the six-bladed iris and colored by the
+/// coating. One slab stands where it covers nothing, so the visibility term is at
+/// full and the ghosts are at their brightest. Fixed camera and lamp, no time.
+private final class LensFlareScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    private let bulb = Image(width: 1, height: 1, color: Color(hex: 0xFFF6E2))
+    private let lamp = Vector3(1.05, 2.1, -2)
+
+    override func draw() {
+        background(Color(white: 0.03))
+        var camera = Camera3D(eye: Vector3(0, 1.5, 7.4), target: Vector3(0, 1.5, 0),
+                              near: 0.2, far: 60,
+                              projection: .perspective(fieldOfView: .pi / 3.2))
+        camera.apertureBlades = 6
+        self.camera(camera)
+        ambientLight(Color(white: 0.06))
+        directionalLight(Color(white: 0.85), direction: Vector3(-0.5, -0.8, -0.4), intensity: 0.35)
+        pointLight(Color(hex: 0xFFF2D6), at: lamp, intensity: 18)
+        lensFlare(strength: 1, lens: Lens.heliar.multicoated().stopped(to: 4.5))
+
+        fill(.white)
+        matcap(bulb)
+        withState { translate(lamp); drawSphere(radius: 0.17) }
+        matcap(nil)
+
+        fill(Color(white: 0.30))
+        withState { translate(-1.5, 1.9, -1.2); drawBox(width: 1.1, height: 3.4, depth: 0.5) }
+        fill(Color(white: 0.22))
+        withState { translate(0, -0.05, 0); drawBox(width: 22, height: 0.1, depth: 22) }
+        fill(Color(hex: 0x2E4658))
+        for i in 0..<5 {
+            withState {
+                translate(-4.4 + Double(i) * 2.2, 0.45, -5.0)
+                drawBox(width: 0.7, height: 0.9, depth: 0.7)
+            }
+        }
     }
 }
 

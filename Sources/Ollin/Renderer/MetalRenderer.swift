@@ -1010,6 +1010,11 @@ final class MetalRenderer {
     /// surface) when temporal AA is on, read by the resolve's camera reprojection.
     /// Cached by size; a TAA-off frame attaches no resolve and stays byte-identical.
     var mainDepthResolve: MTLTexture?
+    /// The paraxial description of the lens the flare is drawn through, kept for the
+    /// lens it was worked out from. None of it moves when the light does, so a sketch
+    /// that holds one lens pays for the ghost enumeration once rather than per frame.
+    var flareOpticsCache: (lens: Lens, optics: LensOptics)?
+
     /// The mover-velocity pass's texture pair (rg16Float screen motion + its own
     /// depth), cached by size like `scatterMaskCache`. Only allocated the first
     /// frame that runs the pass (live TAA + declared movers), so a frame without
@@ -1477,7 +1482,7 @@ final class MetalRenderer {
                 geomPass.depthAttachment.clearDepth = 1.0
                 geomPass.depthAttachment.storeAction = .dontCare
                 passDepthFormat = depthPixelFormat
-                if taaActive || blurActive || fxActive {
+                if taaActive || blurActive || fxActive || lensFlareActive(drawer) {
                     if mainDepthResolve?.width != renderWidth || mainDepthResolve?.height != renderHeight {
                         mainDepthResolve = makeDepthResolve(width: renderWidth, height: renderHeight)
                     }
@@ -1707,7 +1712,13 @@ final class MetalRenderer {
                                       moverVelocity: blurMover, meshBuffer: meshBuf,
                                       into: commandBuffer, width: width, height: height,
                                       pooled: true, moverScale: blurMoverScale)
-        let presented = applyFrameFilters(drawer, resolved: blurred, width: width, height: height,
+        // The lens flare, after the blur (a flare is the camera's own light, so
+        // the scene's motion never streaks it) and before the filters (so a bloom
+        // reads the ghosts as light, which is what they are).
+        let flared = applyLensFlare(drawer, resolved: blurred, depth: mainDepthResolve,
+                                    into: commandBuffer, width: width, height: height,
+                                    pooled: true)
+        let presented = applyFrameFilters(drawer, resolved: flared, width: width, height: height,
                                           into: commandBuffer, pooled: true)
         if let presentEncoder = countedEncoder(commandBuffer, presentPass(into: drawable.texture), caller: "present") {
             encodePresent(from: presented, drawer: drawer, into: presentEncoder, projected: true)
@@ -2053,23 +2064,24 @@ final class MetalRenderer {
 
         // A 3D camera or a depth scene adds a (freshly allocated, memoryless) depth
         // attachment so the headless/snapshot path z-tests exactly like the live window.
-        // Motion blur additionally resolves the depth (`.min`, the front surface, the
-        // live path's rule) for its velocity fill; a blur-free frame attaches no
+        // Motion blur and the lens flare additionally resolve the depth (`.min`, the
+        // front surface, the live path's rule) for the velocity fill and for reading
+        // how much of a source the camera can see; a frame using neither attaches no
         // resolve and stays byte-identical.
         var passDepthFormat: MTLPixelFormat? = nil
-        var blurDepthResolve: MTLTexture? = nil
+        var sceneDepthResolve: MTLTexture? = nil
         if drawer.usesDepthBuffer, let depth = makeDepthMSAA(width: width, height: height) {
             pass.depthAttachment.texture = depth
             pass.depthAttachment.loadAction = .clear
             pass.depthAttachment.clearDepth = 1.0
             pass.depthAttachment.storeAction = .dontCare
             passDepthFormat = depthPixelFormat
-            if motionBlurActive(drawer),
+            if motionBlurActive(drawer) || lensFlareActive(drawer),
                let resolve = makeDepthResolve(width: width, height: height) {
                 pass.depthAttachment.resolveTexture = resolve
                 pass.depthAttachment.storeAction = .multisampleResolve
                 pass.depthAttachment.depthResolveFilter = .min
-                blurDepthResolve = resolve
+                sceneDepthResolve = resolve
             }
         }
         // A clipping frame adds a stencil attachment, so exports clip like the window.
@@ -2250,11 +2262,16 @@ final class MetalRenderer {
             // after-TAA slot); the depth resolve holds the last jittered pass's
             // depth, at most half a pixel off, which the average's own tolerance
             // already accepts. Untouched when the blur is off.
-            let blurred = applyMotionBlur(drawer, resolved: accFront, depth: blurDepthResolve,
+            let blurred = applyMotionBlur(drawer, resolved: accFront, depth: sceneDepthResolve,
                                           moverVelocity: nil, meshBuffer: meshBuf,
                                           into: commandBuffer, width: width, height: height,
                                           pooled: false)
-            presented = applyFrameFilters(drawer, resolved: blurred, width: width, height: height,
+            // The flare goes on the averaged frame, not into each jittered pass,
+            // so it is added once and reads the same as it does live.
+            let flared = applyLensFlare(drawer, resolved: blurred, depth: sceneDepthResolve,
+                                        into: commandBuffer, width: width, height: height,
+                                        pooled: false)
+            presented = applyFrameFilters(drawer, resolved: flared, width: width, height: height,
                                           into: commandBuffer, pooled: false)
         } else {
             guard let encoder = countedEncoder(commandBuffer, pass, caller: "canvas (headless supersample)") else { return nil }
@@ -2287,11 +2304,14 @@ final class MetalRenderer {
             let scattered = applySubsurfaceScattering(drawer, resolved: resolveTexture, meshBuffer: meshBuf,
                                                       into: commandBuffer, width: width, height: height,
                                                       pooled: false)
-            let blurred = applyMotionBlur(drawer, resolved: scattered, depth: blurDepthResolve,
+            let blurred = applyMotionBlur(drawer, resolved: scattered, depth: sceneDepthResolve,
                                           moverVelocity: nil, meshBuffer: meshBuf,
                                           into: commandBuffer, width: width, height: height,
                                           pooled: false)
-            presented = applyFrameFilters(drawer, resolved: blurred, width: width, height: height,
+            let flared = applyLensFlare(drawer, resolved: blurred, depth: sceneDepthResolve,
+                                        into: commandBuffer, width: width, height: height,
+                                        pooled: false)
+            presented = applyFrameFilters(drawer, resolved: flared, width: width, height: height,
                                           into: commandBuffer, pooled: false)
         }
         guard let presentEncoder = countedEncoder(commandBuffer, presentPass(into: displayTexture)) else { return nil }

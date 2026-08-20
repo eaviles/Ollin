@@ -1273,4 +1273,44 @@ typedef struct {
     float gammaExponent;       // the standard curve (2.2) over the projector's own
 } OllinProjectionUniforms;
 
+// Lens flare (`Sketch.lensFlare`): the light a bright source leaves on the sensor
+// after reflecting off two of the lens's own interfaces instead of passing through
+// them. Everything else the renderer draws is the light and the surface; this is the
+// camera misbehaving, so it composites in linear light with the rest of the frame,
+// before the tone map.
+//
+// The optics are worked out on the CPU once per frame (`LensFlare.swift`), because
+// first-order optics makes every ghost a *linear* map: a point on the entrance pupil
+// reaches the sensor at `a·pupil + b·angle`, one scale and one shift. So the fragment
+// never traces anything. It runs each ghost's map backwards from the pixel it is
+// shading to the pupil point that would have landed there, and asks two questions:
+// did that point start inside the front opening, and did it clear the iris.
+//
+// The flare works in *y-normalized* frame coordinates: y runs -1…1 over the frame's
+// height and x is scaled by the aspect, so a round lens stays round on a wide canvas.
+#define OLLIN_MAX_FLARE_LIGHTS 4
+#define OLLIN_MAX_FLARE_GHOSTS 24
+
+typedef struct {
+    // Per ghost: xy map the pupil point to the sensor, zw to the iris plane.
+    //   sensor = x·pupil + y·angle      iris = z·pupil + w·angle
+    simd_float4 ghosts[OLLIN_MAX_FLARE_GHOSTS];
+    // Per light and ghost (indexed light * OLLIN_MAX_FLARE_GHOSTS + ghost): the
+    // color this ghost adds where it covers a pixel, already multiplied out from
+    // the two coating reflectances, the light's own linear color, the strength
+    // dial, and how far the ghost spreads its light over the sensor. w unused.
+    simd_float4 tints[OLLIN_MAX_FLARE_LIGHTS * OLLIN_MAX_FLARE_GHOSTS];
+    // Per light: xy = the angle the light arrives at the front of the lens, in
+    // radians; zw = where it sits on the frame, in y-normalized coordinates.
+    simd_float4 lights[OLLIN_MAX_FLARE_LIGHTS];
+    simd_float4 optics;   // x = entrance pupil radius (mm), y = iris radius (mm),
+                          // z = sensor millimeters per y-normalized frame unit,
+                          // w = the canvas aspect (width / height)
+    simd_float4 iris;     // x = blade count (0 = a round iris), y = iris roll (radians),
+                          // z = how soft the iris edge is, as a fraction of its radius,
+                          // w = how soft the front opening's edge is, same units
+    int lightCount;
+    int ghostCount;
+} OllinLensFlareUniforms;
+
 #endif /* OLLIN_SHADER_TYPES_H */

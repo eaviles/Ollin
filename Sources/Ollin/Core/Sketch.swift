@@ -1238,6 +1238,37 @@ open class Sketch {
     /// Stop motion-blurring (the default).
     public func noMotionBlur() { drawer.noMotionBlur() }
 
+    /// Let the camera flare on the frame's bright lights.
+    ///
+    /// Everything else the renderer draws is the light and the surface. A flare is
+    /// neither: it is the *camera* misbehaving. Some of a bright source reflects off
+    /// the lens's own interfaces instead of passing through them and lands on the
+    /// sensor in the wrong place, which is what strings ghosts along the line from
+    /// the source through the middle of the frame. Which ghosts appear, where they
+    /// sit, how big they are and what color they are all follow from the lens, so
+    /// this asks for a lens rather than for a look.
+    ///
+    /// It composites in linear light before the tone map, beside a bloom, because a
+    /// flare is light in the camera and not paint on the picture. Its strength
+    /// follows how much of each source the camera can actually *see*, so something
+    /// passing in front of a light fades its flare rather than switching it off.
+    ///
+    /// Per-frame state like the lights and camera, so call it in `draw()`. It needs
+    /// a perspective 3D camera and at least one light, and it does nothing without
+    /// them. `LensFlare.strength` is the honesty dial: a flare is a lens defect, and
+    /// a piece may want it in small measure or not at all. Works on any Metal GPU.
+    /// Call `noLensFlare()` to turn it back off.
+    public func lensFlare(_ flare: LensFlare = LensFlare()) { drawer.lensFlare(flare) }
+
+    /// Flare on the frame's bright lights, naming just the two things most worth
+    /// changing: how strong it is, and which lens makes it.
+    public func lensFlare(strength: Double, lens: Lens = .heliar) {
+        drawer.lensFlare(LensFlare(lens: lens, strength: strength))
+    }
+
+    /// Stop flaring (the default).
+    public func noLensFlare() { drawer.noLensFlare() }
+
     /// Set the global-illumination quality (how many rays each light probe traces per
     /// update) as a **hardware-relative** tier, the `shadowQuality` dial's GI sibling:
     /// `.performance` favors frame rate with a grainier, slower-converging bounce,
