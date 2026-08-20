@@ -1256,11 +1256,15 @@ extension MetalRenderer {
     }
 
     /// The number of raymarched SDF fields casting onto meshes under a point/ray-traced caster
-    /// (0 for a mesh-only or directional/spot scene, the byte-identical mesh path). Shared by the
-    /// main encode and the half-res field-shadow pre-pass so both agree on whether the cast is on.
+    /// (0 for a mesh-only or directional/spot scene, the byte-identical mesh path). Any caster in
+    /// the frame's list turns it on, not the primary alone: the mesh fragments march one channel
+    /// per such caster. A 2D caster is not counted here because a field renders into its own map
+    /// layer instead. Shared by the main encode and the half-res field-shadow pre-pass so both
+    /// agree on whether the cast is on.
     func resolveFieldCasterCount(_ lighting: OllinLighting, _ drawer: Drawer) -> Int32 {
-        (lighting.shadowLight >= 0 && lighting.shadowKind != 0 && !drawer.sdf3DGroups.isEmpty)
-            ? Int32(drawer.sdf3DGroups.count) : 0
+        guard !drawer.sdf3DGroups.isEmpty,
+              shadowCasters(lighting).contains(where: { $0.kind != 0 }) else { return 0 }
+        return Int32(drawer.sdf3DGroups.count)
     }
 
     /// The GPU kind of this frame's shadow-casting light (0 directional / 1 point / 2 spot /

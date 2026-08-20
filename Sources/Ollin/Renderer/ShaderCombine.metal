@@ -1578,9 +1578,10 @@ fragment float4 ollin_sss_blur(PresentOut in [[stage_in]],
 // MARK: - Contact shadows
 
 // The contact-shadow march (`contactShadows()`): one short screen-space ray per
-// pixel, from the surface the depth pre-pass saw toward the casting light, looking
-// for scene depth crossing in front of it. Writes the visibility factor (R: 1 = lit,
-// 0 = occluded) the mesh fragments fold into the caster's shadow attenuation.
+// pixel and per caster, from the surface the depth pre-pass saw toward that caster's
+// light, looking for scene depth crossing in front of it. Each caster's visibility
+// factor (1 = lit, 0 = occluded) lands in the mask channel its slot names, and the
+// mesh fragments fold each one into that caster's own shadow attenuation.
 // The mechanics, each load-bearing:
 // - The ray start is pulled a small fraction of its view distance toward the
 //   camera (params[0].w, 0.002 of the eye distance). Without the lift, a convex
@@ -1600,47 +1601,32 @@ fragment float4 ollin_sss_blur(PresentOut in [[stage_in]],
 // - A verdict fades through a clip-space vignette as the evidence approaches the
 //   screen edge, and the march stops where the segment leaves the screen: past
 //   that line the depth buffer holds no answer, and guessing paints false shadow.
-fragment float4 ollin_contact_shadow(PresentOut in [[stage_in]],
-                                     constant float4 *params [[buffer(0)]],
-                                     constant OllinLighting &light [[buffer(1)]],
-                                     constant Uniforms3D &u [[buffer(2)]],
-                                     depth2d<float> sceneDepth [[texture(0)]]) {
-    float rayLen = params[0].x;
-    int steps = int(max(2.0, params[0].z));
-    float biasFraction = params[0].w;
-    if (light.shadowLight < 0 || rayLen <= 0.0) return float4(1.0);
-
+// One caster's march, from a pixel's world position toward its light. Returns the
+// visibility factor (1 = lit, 0 = occluded); the fragment below runs it once per
+// caster in the frame's list and writes each answer into its own channel.
+static inline float ollin_contact_march(OllinLight cl, float3 world, float3 eye,
+                                        constant Uniforms3D &u, depth2d<float> sceneDepth,
+                                        float rayLen, int steps, float biasFraction,
+                                        float2 pixel) {
     constexpr sampler dsamp(filter::nearest, address::clamp_to_edge);
-    float z = sceneDepth.sample(dsamp, in.uv);
-    if (z >= 1.0) return float4(1.0);   // background: nothing to shadow
-
-    // The pixel's world position from its depth (uv is top-left origin, NDC y up).
-    float2 ndc = float2(in.uv.x * 2.0 - 1.0, 1.0 - in.uv.y * 2.0);
-    float4 wh = u.inverseViewProjection * float4(ndc, z, 1.0);
-    float3 world = wh.xyz / wh.w;
-
-    // March direction: toward the caster. A directional caster's stored direction
-    // already points to the light; a positional kind (point/spot/area) aims at its
-    // position, the ray capped short of arriving so the light itself never occludes.
-    constant OllinLight &cl = light.lights[light.shadowLight];
     float3 toLight;
     if (cl.kind == 0) {
         toLight = normalize(cl.direction.xyz);
     } else {
         float3 d = cl.position.xyz - world;
         float dist = length(d);
-        if (dist < 1e-4) return float4(1.0);
+        if (dist < 1e-4) return 1.0;
         toLight = d / dist;
         rayLen = min(rayLen, 0.9 * dist);
     }
 
     // The camera-ward lift, then both ray ends and the view-axis reference point
     // projected into clip space once; the loop is pure segment interpolation.
-    float3 startWS = world + (light.cameraPosition.xyz - world) * biasFraction;
+    float3 startWS = world + (eye - world) * biasFraction;
     float4x4 vp = u.projection * u.view;
     float4 startClip = vp * float4(startWS, 1.0);
     float4 endClip = vp * float4(startWS + toLight * rayLen, 1.0);
-    if (startClip.w <= 1e-4 || endClip.w <= 1e-4) return float4(1.0);
+    if (startClip.w <= 1e-4 || endClip.w <= 1e-4) return 1.0;
     float3 startNDC = startClip.xyz / startClip.w;
     float3 endNDC = endClip.xyz / endClip.w;
     // The same-length ray pointed straight down the view axis: its device-z span
@@ -1656,7 +1642,7 @@ fragment float4 ollin_contact_shadow(PresentOut in [[stage_in]],
                            (startNDC.y - endNDC.y) * 0.5,
                            endNDC.z - startNDC.z);
 
-    float dither = ollin_ign(in.position.xy) - 0.5;
+    float dither = ollin_ign(pixel) - 0.5;
     float t = stepT + dither * stepT;
     float occluded = 0.0;
     for (int i = 0; i < steps; i++) {
@@ -1677,5 +1663,39 @@ fragment float4 ollin_contact_shadow(PresentOut in [[stage_in]],
     float2 exitNDC = startNDC.xy + (endNDC.xy - startNDC.xy) * t;
     float2 vig = max(6.0 * abs(exitNDC) - 5.0, 0.0);
     float occlusion = occluded * saturate(1.0 - dot(vig, vig));
-    return float4(1.0 - occlusion);
+    return 1.0 - occlusion;
+}
+
+// The mask itself: one channel per shadow caster, indexed by slot, so a frame casting
+// from a key and a spot gets a contact term under each of them. A slot with no caster
+// stays lit, and the mesh fragments read the channel their own slot names, so a
+// one-caster frame marches once and reads that one march.
+fragment float4 ollin_contact_shadow(PresentOut in [[stage_in]],
+                                     constant float4 *params [[buffer(0)]],
+                                     constant OllinLighting &light [[buffer(1)]],
+                                     constant Uniforms3D &u [[buffer(2)]],
+                                     depth2d<float> sceneDepth [[texture(0)]]) {
+    float rayLen = params[0].x;
+    int steps = int(max(2.0, params[0].z));
+    float biasFraction = params[0].w;
+    if (light.shadowCasterCount <= 0 || rayLen <= 0.0) return float4(1.0);
+
+    constexpr sampler dsamp(filter::nearest, address::clamp_to_edge);
+    float z = sceneDepth.sample(dsamp, in.uv);
+    if (z >= 1.0) return float4(1.0);   // background: nothing to shadow
+
+    // The pixel's world position from its depth (uv is top-left origin, NDC y up).
+    float2 ndc = float2(in.uv.x * 2.0 - 1.0, 1.0 - in.uv.y * 2.0);
+    float4 wh = u.inverseViewProjection * float4(ndc, z, 1.0);
+    float3 world = wh.xyz / wh.w;
+
+    float4 mask = float4(1.0);
+    for (int c = 0; c < light.shadowCasterCount; c++) {
+        int li = light.shadowCasters[c].lightIndex;
+        if (li < 0) continue;
+        mask[c] = ollin_contact_march(light.lights[li], world, light.cameraPosition.xyz,
+                                      u, sceneDepth, rayLen, steps, biasFraction,
+                                      in.position.xy);
+    }
+    return mask;
 }

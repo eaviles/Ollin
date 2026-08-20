@@ -2587,8 +2587,9 @@ final class Drawer {
                     for (slot, c) in built.enumerated() { buf[slot] = c }
                 }
             }
-            // The single-caster fields mirror slot 0, which is what every consumer that
-            // follows one caster alone reads.
+            // The single-caster fields mirror slot 0. Every dependent system reads the
+            // list itself, so this mirror is only what keeps a one-caster frame
+            // byte-identical to an unlisted one.
             if let primary = built.first {
                 u.shadowLight = primary.lightIndex
                 u.shadowKind = primary.kind

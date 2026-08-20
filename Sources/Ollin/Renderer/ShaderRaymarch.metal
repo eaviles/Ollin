@@ -688,60 +688,65 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
     }
     float3 n = ollin_sdf3d_normal(pw, g, nodes);
 
-    // Shadow toward the casting light, but only when one is set (castShadows()); otherwise -1
-    // tells the shading tail to shade unshadowed. The field gets an analytic self-shadow (it
-    // sculpts its own form) and, under a directional/spot caster, also *receives* a rasterized
-    // mesh's cast shadow from the 2D map. Either way the marched field uses this factor in place
-    // of the maps in `meshLitColor` (>= 0), so the sentinel for a mesh stays -1.
-    float fieldShadow = -1.0;
-    if (light.enabled != 0 && light.shadowLight >= 0 && light.shadowLight < light.lightCount) {
-        OllinLight caster = light.lights[light.shadowLight];
+    // Shadow toward each casting light, but only where one is set (castShadows()); a slot
+    // with no caster keeps -1, and slot 0 at -1 tells the shading tail this is a mesh, to
+    // shade through the maps as usual. The field gets an analytic self-shadow toward every
+    // caster (it sculpts its own form) and also *receives* a rasterized mesh's cast shadow
+    // from that caster's own map, cube, or trace. The marched field uses these factors in
+    // place of the maps in `meshLitColor`, one per slot.
+    float4 fieldShadow = float4(-1.0);
+    if (light.enabled != 0) {
         float fieldDiag = length(g.boundsMax.xyz - g.boundsMin.xyz);
-        float3 toLight; float maxt;
-        if (caster.kind == 0) {                       // directional: a fixed direction
-            toLight = caster.direction.xyz; maxt = fieldDiag;
-        } else {                                      // point / spot: toward its position
-            float3 dl = caster.position.xyz - pw;
-            float dist = length(dl);
-            toLight = dl / max(dist, 1e-5);
-            maxt = min(dist, fieldDiag);
-        }
-        fieldShadow = ollin_sdf3d_softshadow(pw + n * 0.015, toLight, maxt,
+        for (int c = 0; c < light.shadowCasterCount; c++) {
+            constant OllinShadowCaster &sc = light.shadowCasters[c];
+            if (sc.lightIndex < 0 || sc.lightIndex >= light.lightCount) continue;
+            OllinLight caster = light.lights[sc.lightIndex];
+            float3 toLight; float maxt;
+            if (caster.kind == 0) {                       // directional: a fixed direction
+                toLight = caster.direction.xyz; maxt = fieldDiag;
+            } else {                                      // point / spot: toward its position
+                float3 dl = caster.position.xyz - pw;
+                float dist = length(dl);
+                toLight = dl / max(dist, 1e-5);
+                maxt = min(dist, fieldDiag);
+            }
+            float f = ollin_sdf3d_softshadow(pw + n * 0.015, toLight, maxt,
                                              OLLIN_SDF3D_SHADOW_K, int(u.raymarchSteps.y), g, nodes);
-        // Receive a mesh's cast shadow, keeping the darker of it and the self-shadow. Where the
-        // mesh occluder lives depends on the caster: a directional/spot caster renders the casters
-        // (and this field's own cast) into the 2D map, a point caster into the omnidirectional
-        // cube, and a ray-traced point caster leaves them in the acceleration structure to trace.
-        // Sample whichever the same way a mesh receiver does; the normal-offset bias keeps the
-        // field's own lit front surface out of it (its self-occlusion stays the analytic march's
-        // job). A scene with no mesh occluder samples an all-lit map/cube (or skips the trace),
-        // so the factor stays 1 and the field receives self-shadow only.
-        if (light.shadowKind == 0) {
-            // Match the mesh receivers' routing (`meshLitColor`): shadowDepthA > 0 is
-            // a soft (PCSS) directional/spot caster, 0 the legacy hard 3x3, so the
-            // same cast shadow reads the same on a field surface as on the mesh
-            // floor beside it (contact-soft on both, not hard-edged on one).
-            // Layer 0: a field takes the primary caster, the one it self-shadows toward.
-            float mapLit = (light.shadowDepthA > 0.0)
-                ? shadowFactorPCSS(pw, n, toLight, light.lightViewProjection,
-                                   light.shadowTexelWorld, light.shadowDepthA,
-                                   light.shadowDepthB, light.shadowSamples,
-                                   shadowMap, 0, shadowSamp, shadowCubeSamp)
-                : shadowFactor(pw, n, toLight, light.lightViewProjection,
-                               light.shadowTexelWorld, shadowMap, 0, shadowSamp);
-            fieldShadow = min(fieldShadow, mapLit);
-        } else if (light.shadowKind == 1) {
-            // Cube 0: a field takes the primary caster, which owns the first cube.
-            float cubeLit = shadowFactorCube(pw, n, caster.position.xyz, light.shadowDepthA,
-                                             light.shadowTexelWorld, shadowCube, 0, shadowCubeSamp);
-            fieldShadow = min(fieldShadow, cubeLit);
-        }
+            // Receive a mesh's cast shadow, keeping the darker of it and the self-shadow. Where
+            // the mesh occluder lives depends on the caster: a directional/spot caster renders
+            // the casters (and this field's own cast) into its map layer, a point caster into
+            // its cube of the array, and a ray-traced point caster leaves them in the
+            // acceleration structure to trace. Sample whichever the same way a mesh receiver
+            // does; the normal-offset bias keeps the field's own lit front surface out of it
+            // (its self-occlusion stays the analytic march's job). A scene with no mesh
+            // occluder samples an all-lit map/cube (or skips the trace), so the factor stays 1
+            // and the field receives self-shadow only.
+            if (sc.kind == 0) {
+                // Match the mesh receivers' routing (`meshLitColor`): depthA > 0 is a soft
+                // (PCSS) directional/spot caster, 0 the legacy hard 3x3, so the same cast
+                // shadow reads the same on a field surface as on the mesh floor beside it
+                // (contact-soft on both, not hard-edged on one). The layer is the slot.
+                float mapLit = (sc.depthA > 0.0)
+                    ? shadowFactorPCSS(pw, n, toLight, sc.lightViewProjection,
+                                       sc.texelWorld, sc.depthA,
+                                       sc.depthB, sc.samples,
+                                       shadowMap, (uint)c, shadowSamp, shadowCubeSamp)
+                    : shadowFactor(pw, n, toLight, sc.lightViewProjection,
+                                   sc.texelWorld, shadowMap, (uint)c, shadowSamp);
+                f = min(f, mapLit);
+            } else if (sc.kind == 1) {
+                float cubeLit = shadowFactorCube(pw, n, caster.position.xyz, sc.depthA,
+                                                 sc.texelWorld, shadowCube, (uint)sc.cubeIndex,
+                                                 shadowCubeSamp);
+                f = min(f, cubeLit);
+            }
 #if OLLIN_RT_SHADOWS
-        else if (light.shadowKind == 2) {
-            // The primary caster owns slot 0, the one a field self-shadows toward.
-            fieldShadow = min(fieldShadow, meshRTShadowOne(pw, n, light, light.shadowCasters[0], accel));
-        }
+            else if (sc.kind == 2) {
+                f = min(f, meshRTShadowOne(pw, n, light, sc, accel));
+            }
 #endif
+            fieldShadow[c] = f;
+        }
     }
 
     // The surface color: a solid `fill` comes from the leaves (the VM-melted `col`, linearized
@@ -761,8 +766,8 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
     }
 
     // Shade through the shared mesh tail (returns the surface flat when no light is set, so an
-    // unlit field shows its colors). The marched field's own shadow factor (`fieldShadow` >= 0)
-    // stands in for the map sampling there; pass a lit (1.0) ray-traced point factor.
+    // unlit field shows its colors). The marched field's own shadow factors (`fieldShadow`,
+    // slot 0 >= 0) stand in for the map sampling there; pass lit (1.0) ray-traced factors.
     float4 lit = meshLitColor(baseRGB, baseA, n, pw, mat, light,
                               shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
                               ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT

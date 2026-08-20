@@ -2209,12 +2209,12 @@ Three decisions make the change cheap to reason about:
 
 - **Slot 0 is the primary caster**, chosen by exactly the priority the single
   caster used (directional → spot → point → rect/disk), and the single-caster
-  fields on `OllinLighting` mirror it field for field. Everything written
-  against those fields therefore reads what it always read: fog and volumetric
-  shafts, subsurface transmittance, contact shadows, the marched-field cast,
-  caustics, GI, the traced export, and the raymarch carrier all still follow
-  one caster. A one-caster frame packs exactly what it packed before the list
-  existed, which is why the whole snapshot suite passed unrecorded.
+  fields on `OllinLighting` mirror it field for field. That mirror is what let
+  the list land without touching anything downstream: a one-caster frame packs
+  exactly what it packed before the list existed, which is why the whole
+  snapshot suite passed unrecorded. The systems that used to read those fields
+  alone now read the list (below); the mirror stays because it is also the
+  cheapest way to keep a single-caster frame byte-identical.
 - **A 2D caster's map layer is its slot index.** The shadow map became a
   `depth2d_array` sized to the frame's caster count (a fresh texture when it
   must grow, never a resize in place), one depth-only pass per caster into its
@@ -2307,13 +2307,58 @@ wrong side and combed the floor. On this machine the whole path is inert, so all
 of it is snapshot- and figure-neutral.
 
 The lit mesh loop resolves a light's caster slot by scanning the list, and
-`cs == 0` gates the primary-only terms (`rtShadow`, `fieldShadow`, and the
-marched-field multiplier). A marched field is in no map, so a field carrier
-takes the primary caster alone. Facts the renderer settles after
-`makeLighting` (the flip to the traced path, the ray or tap counts, whether a
-map was produced at all) are carried back into slot 0 by
+every per-caster term is indexed by that slot (`rtShadow[cs]`,
+`fieldShadow[cs]`, `meshFieldShadow[cs]`, `rtThickness[cs]`). Facts the
+renderer settles after `makeLighting` (the flip to the traced path, the ray or
+tap counts, whether a map was produced at all) are carried back into slot 0 by
 `finalizeShadowCasters`, which also budgets taps for the extra casters and
 drops them when no map was rendered.
+
+#### Everything downstream follows the list
+
+Each system that once read the primary caster's mirrored fields now walks the
+caster list, and each pays only for the casters a frame actually declares (the
+loops break at `shadowCasterCount`, so a one-caster frame does exactly the work
+it did before). The shape is the same everywhere: **a `float4` indexed by slot**,
+which is why `OLLIN_MAX_SHADOW_CASTERS` being 4 is load-bearing beyond the cap.
+
+- **Fog and volumetric shafts.** The march looks up the caster for the light it
+  is integrating and taps that caster's own map layer. A cube or traced caster
+  is skipped, because an air sample has no map to read there, which is exactly
+  what the single-caster path did for those kinds.
+- **Contact shadows.** `ollin_contact_march` was split out of the fragment, and
+  the mask pass runs it once per caster, writing each factor into the channel
+  its slot names. The mesh fragments multiply the whole `float4` into
+  `meshFieldShadow` and read channel `cs`, so the mask carries a term per light
+  instead of one factor smeared across all four channels.
+- **Subsurface transmittance.** The gate moved from "this light is the primary"
+  to "this light is a caster", and each caster reads its own layer, its own cube
+  (`cubeIndex`), or its own traced thickness. `meshRTThickness` became
+  `meshRTThicknessAll`, the same per-slot `float4` shape as `meshRTShadowAll`,
+  and it walks only for a traced caster whose light is a point light.
+- **The marched-field cast.** `meshFieldShadowFactor` marches the fields toward
+  each point/ray-traced caster and returns a channel each; a 2D caster's channel
+  stays lit because the fields render into that caster's own map layer already.
+  The half-res pre-pass carries all four channels, and `resolveFieldCasterCount`
+  asks whether *any* caster needs the march, not whether the primary does.
+- **The raymarch carrier.** A field is in no map, so it marches its own
+  self-shadow toward every caster and takes the darker of that and what that
+  caster's map, cube, or trace puts on it, one channel per slot. Slot 0 holding
+  `-1` is still the sentinel that tells the shading tail "this is a mesh".
+- **Global illumination.** The probe pass's direct term traces occlusion for
+  every caster with that caster's own strength. This one had the loudest failure
+  mode: a bright light outside a sealed room lit the room's interior surfels
+  through the wall, so the bounce field leaked light the raster had correctly
+  blocked (measured 188 against 108 on the interior wall).
+
+Two systems deliberately do not follow the list. **Caustics** emit from one
+caster, because a frame traces a fixed photon budget and dividing it between
+lights makes each pattern noisier rather than richer. The **path-traced export**
+never read the caster list at all: it traces next-event visibility for every
+light, which is the physical answer and the reason its shadows are soft. That
+leaves one honest inconsistency, recorded in `DESIGN-NOTES.md` rather than
+silently fixed: a light with `castsShadow: false` throws nothing in the raster
+and still throws in the traced export, so a preset's fill casts there.
 
 **Per-light opt-out, and why the presets use it.** `Light.castsShadow`
 (default true, with a `castsShadow:` argument on every factory and bare call

@@ -1,4 +1,4 @@
-// figure: frame=0 width=680
+// figure: frame=0 width=680 probe
 //
 // Guide figure (Chapter 21): air you can see. A window-gobo spot marched as a
 // beam through thin haze over a dark set: the panes read as tilted bars of

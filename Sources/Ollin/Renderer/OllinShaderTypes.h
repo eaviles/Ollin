@@ -704,23 +704,24 @@ typedef struct {
 // unused for the remaining kinds.
 // One shadow-casting light in the frame. The frame resolves a small ordered list of
 // them (`OllinLighting.shadowCasters`, `shadowCasterCount`), so a key light and a
-// spot both throw a shadow. Slot 0 is the
-// *primary* caster: the light the single-caster fields on `OllinLighting` mirror, and
-// the one every dependent system (fog and volumetric shafts, subsurface transmittance,
-// contact shadows, the marched-field cast, caustics, the traced export) still follows.
-// The rest are extra casters the lit mesh path dims by, and nothing else reads.
+// spot both throw a shadow. Slot 0 is the *primary* caster: the light the
+// single-caster fields on `OllinLighting` mirror, which is what keeps a one-caster
+// frame byte-identical. Every dependent system walks the list itself (fog and
+// volumetric shafts, contact shadows, subsurface transmittance, the marched-field
+// cast, the raymarch carrier, GI), each carrying a `float4` indexed by slot, which
+// is why the cap of four is load-bearing beyond the cost. Caustics are the one
+// system that still reads the primary alone (a fixed photon budget does not divide).
 //
 // `lightIndex` is the caster's entry in `lights` (-1 = an unused slot). `kind` matches
 // `OllinLighting.shadowKind`: 0 = a layer of the 2D shadow-map array, 1 = a cube of the
 // cube-map array, 2 = ray traced. **A 2D caster's map layer is its own slot index**, so
-// slot 0 always renders into layer 0 and a helper that reads the primary caster can name
+// slot 0 always renders into layer 0 and whatever still reads the primary can name
 // layer 0 as a constant. A cube or ray-traced slot leaves its layer cleared (nothing
 // occludes), which is what keeps a scene whose primary caster is a point light
 // byte-identical. A **point light casts from any slot**: the cubes are an array with a
 // cube per point caster (`cubeIndex`, assigned in slot order, so a cube *primary* is
-// always cube 0 and every helper that follows the primary can name it as a constant), and
-// a ray-tracing device traces each point caster against the frame's one acceleration
-// structure instead.
+// always cube 0), and a ray-tracing device traces each point caster against the frame's
+// one acceleration structure instead.
 //
 // The remaining fields carry per-caster what the single-caster fields carry for the
 // primary: see `OllinLighting.lightViewProjection`, `shadowTexelWorld`, `shadowDepthA`,
@@ -909,7 +910,8 @@ typedef struct {
                                   // caster branch stays untaken, byte-identical to the unshadowed
                                   // path). Slot 0 is the primary caster the single-caster fields
                                   // above mirror, field for field, so the two say the same thing
-                                  // about it.
+                                  // about it. Every dependent system loops to this count, so a
+                                  // one-caster frame does exactly the work it always did.
     OllinShadowCaster shadowCasters[OLLIN_MAX_SHADOW_CASTERS];
 } OllinLighting;
 

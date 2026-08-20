@@ -190,10 +190,16 @@ fragment float4 ollin_gi_trace(PresentOut in [[stage_in]],
             toLight = d / len;
             tmax = len * 0.99;
         }
+        // Every caster in the frame's list dims its own light, by its own strength.
+        // The probe pass has no shadow map to read, so the caster's kind does not
+        // matter here: occlusion is one trace against the same structure either way.
         float vis = 1.0;
-        if (i == light.shadowLight
-            && ollin_gi_occluded(s.P + s.N * eps, toLight, tmax, eps, accel)) {
-            vis = 1.0 - light.shadowStrength;
+        for (int c = 0; c < light.shadowCasterCount; c++) {
+            if (light.shadowCasters[c].lightIndex != i) continue;
+            if (ollin_gi_occluded(s.P + s.N * eps, toLight, tmax, eps, accel)) {
+                vis = 1.0 - light.shadowCasters[c].strength;
+            }
+            break;
         }
         if (L.kind >= 3) {
             if (light.ltcEnabled != 0) {
@@ -304,10 +310,16 @@ fragment float4 ollin_gi_trace_cascaded(PresentOut in [[stage_in]],
             toLight = d / len;
             tmax = len * 0.99;
         }
+        // Every caster in the frame's list dims its own light, by its own strength.
+        // The probe pass has no shadow map to read, so the caster's kind does not
+        // matter here: occlusion is one trace against the same structure either way.
         float vis = 1.0;
-        if (i == light.shadowLight
-            && ollin_gi_occluded(s.P + s.N * eps, toLight, tmax, eps, accel)) {
-            vis = 1.0 - light.shadowStrength;
+        for (int c = 0; c < light.shadowCasterCount; c++) {
+            if (light.shadowCasters[c].lightIndex != i) continue;
+            if (ollin_gi_occluded(s.P + s.N * eps, toLight, tmax, eps, accel)) {
+                vis = 1.0 - light.shadowCasters[c].strength;
+            }
+            break;
         }
         if (L.kind >= 3) {
             if (light.ltcEnabled != 0) {

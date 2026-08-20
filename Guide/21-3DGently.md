@@ -227,10 +227,12 @@ Read the colors again. The patch on the left is warm because the lamp still reac
 
 A point light is the expensive kind, since it casts every way at once, and a frame can hold several of them. That cost is the reason for the last limit: a frame casts from **four** lights at most, the ones you set first. The rest still light the scene.
 
+And the shadow on the floor is only the visible half. Everything else that reads a shadow follows every caster too. Lit air is carved by each beam. A resting thing gets its own seam under each light, and a translucent body passes each one through. So a second caster does not just add a shadow. It doubles all of that, which is what the limit of four is really protecting.
+
 One thing to watch for. A light is a position, not an object, so nothing stops you drawing a small ball there to show where it sits. Do that with a casting point light and the ball wraps the light in its own shadow, and the scene goes dark. Either mark it with something the light stands clear of, or tell that light not to cast.
 
 
-There is one place even a good shadow map falls short, and it is the most important few pixels in the picture. That's the exact line where an object touches the ground. A map has finite resolution, and the bias that keeps its speckle off nudges its shadow slightly away from the caster. The last sliver of contact opens up, and a resting box can read as floating a hair above the floor. **`contactShadows()`** closes that seam. For each pixel the renderer walks a short ray toward the casting light through the scene's own depth. It darkens the pixel where something nearby blocks the way, which draws the fine dark line a map can't hold at any resolution.
+There is one place even a good shadow map falls short, and it is the most important few pixels in the picture. That's the exact line where an object touches the ground. A map has finite resolution, and the bias that keeps its speckle off nudges its shadow slightly away from the caster. The last sliver of contact opens up, and a resting box can read as floating a hair above the floor. **`contactShadows()`** closes that seam. For each pixel the renderer walks a short ray toward each casting light through the scene's own depth. It darkens the pixel where something nearby blocks the way, which draws the fine dark line a map can't hold at any resolution.
 
 ```swift
 castShadows()
@@ -240,7 +242,7 @@ contactShadows()      // the short march that seats them again
 
 <img src="Images/21-3DGently/Seated.jpg" alt="An orange box, a blue sphere, and a yellow cylinder resting on a pale floor under wide soft shadows, each base hugged by a fine dark seam that pins it to the ground. A small white sphere hovers at the upper left with only a soft detached blob of shadow on the floor below it, and no seam" width="680">
 
-The three resting solids each get the tight dark line at their base. The hovering sphere, the one thing genuinely off the ground, gets only the soft drifted blob a real gap produces. That difference is the whole feature. It refines whatever caster `castShadows()` picked, works on any Mac, and takes one optional dial. `contactShadows(length: 8)` sets the ray's reach in world units, and with no length a short reach comes from the scene's own scale. The honest limit is that the march can only consult what the camera sees. Off-screen geometry casts no contact shadow, and a curved surface can pick up a touch of extra shading just inside its silhouette. For the seam under a resting thing, which is what it's for, it simply works.
+The three resting solids each get the tight dark line at their base. The hovering sphere, the one thing genuinely off the ground, gets only the soft drifted blob a real gap produces. That difference is the whole feature. It seats an object under every light that casts, works on any Mac, and takes one optional dial. `contactShadows(length: 8)` sets the ray's reach in world units, and with no length a short reach comes from the scene's own scale. The honest limit is that the march can only consult what the camera sees. Off-screen geometry casts no contact shadow, and a curved surface can pick up a touch of extra shading just inside its silhouette. For the seam under a resting thing, which is what it's for, it simply works.
 
 ## A light with a body
 

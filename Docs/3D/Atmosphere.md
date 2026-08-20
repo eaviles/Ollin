@@ -109,7 +109,7 @@ The march is deterministic. Its per-pixel jitter is a pure function of pixel pos
 
 Fog applies to the lit 3D surfaces (solid and textured meshes), the raymarched [SDF fields](../Drawing/Combinators.md), the environment skybox behind them, and the empty air. Ray-traced [reflections](./3D.md#ray-traced-reflections) see a fogged scene too. The reflected leg dims through the same medium, so a mirror never shows a crisply clear copy of a hazed room. Aerial perspective reaches the same carriers, with the skybox exception above: the sky keeps its own color.
 
-Beams come from **directional and spot** lights. Point and area lights keep lighting surfaces but do not glow in the air. Ollin's punctual lights have no distance falloff, which is fine on a surface but gives an omnidirectional glow no shape to march. Only the shadow-casting light's beam is carved by shadows, the same one-caster rule as the surfaces.
+Beams come from **directional and spot** lights. Point and area lights keep lighting surfaces but do not glow in the air. Ollin's punctual lights have no distance falloff, which is fine on a surface but gives an omnidirectional glow no shape to march. Every shadow-casting light's beam is carved, each by what stands in it, so a frame with two casting spots gets two sets of shafts.
 
 Four things are not fogged, by design. **2D drawing**, since fog is a property of the 3D air. **Point-cloud splats and particles**, which composite *over* the fogged backdrop, so beams still read through them. **Matcap surfaces**, whose whole look is baked into the capture. And **the live ground grid**, which is host chrome.
 

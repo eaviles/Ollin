@@ -453,7 +453,7 @@ There's a second half, and it asks for one more call. Turn on `castShadows()` an
 
 <img src="Images/22-Meshes/Translucency.jpg" alt="Two upright skin slabs and a ball, lit from behind so their dark sides face the viewer. The thin slab glows deep red across its whole face, the deep slab stays black except for a warm rim at its edges, and the ball carries a red crescent where its edge thins" width="680">
 
-Put the light behind your subject and this carries the picture. A body about one `scatteringRadius` thick passes mostly red, the blood-red of a hand against the sun. The deep slab goes dark except at its rim, where the crossing is short. The ball keeps a warm crescent along its thinning edge. There are no new knobs, because the material already says everything. The radius sets what counts as thin, and `scatteringColor` decides what survives the trip. One edge to know is that only the shadow-casting light transmits, since its depth is the one that's known. A directional, spot, or point caster all work.
+Put the light behind your subject and this carries the picture. A body about one `scatteringRadius` thick passes mostly red, the blood-red of a hand against the sun. The deep slab goes dark except at its rim, where the crossing is short. The ball keeps a warm crescent along its thinning edge. There are no new knobs, because the material already says everything. The radius sets what counts as thin, and `scatteringColor` decides what survives the trip. One edge to know is that only a shadow-casting light transmits, since its depth is the one that's known. Every light that casts does, and a directional, spot, or point caster all work.
 
 
 ## Putting it together: the bench

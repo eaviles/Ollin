@@ -109,18 +109,21 @@ Under [`castShadows()`](./3D.md#shadows) every light casts, up to **four** of th
 The last row is the one that surprises people. `lightingPreset(.studio)` installs three lights and you get one shadow, not three, because a fill exists to open the shadow side rather than to make one. Every caster also costs a pass over the scene from its own point of view, so the rigs stay at one. To change it, copy the rig and set the flag yourself.
 
 <a id="primary-caster"></a>
-One caster is the **primary**: the first directional light, then the first spot, then the first point, then the first rect or disk panel. It matters because several features follow that one caster alone rather than the whole list:
+Almost everything follows the whole list. One feature reads a single caster, and one caster is named the **primary** for it: the first directional light, then the first spot, then the first point, then the first rect or disk panel.
 
 | Feature | Follows |
 | --- | --- |
-| [Volumetric shafts](./Atmosphere.md) | the primary caster only |
-| [Subsurface transmission](./3D.md#subsurface-scattering) | the primary caster only |
-| [Contact shadows](./3D.md#contact-shadows) | the primary caster only |
-| A [marched SDF field](../Drawing/Combinators.md) shadowing itself | the primary caster only |
-| [Caustics](./Caustics.md) and [global illumination](./3D.md#global-illumination) | the primary caster only |
 | Solid, textured, instanced, field and strand geometry | every caster |
+| [Volumetric shafts](./Atmosphere.md) | every caster that renders a map (a directional or a spot) |
+| [Contact shadows](./3D.md#contact-shadows) | every caster |
+| [Subsurface transmission](./3D.md#subsurface-scattering) | every caster |
+| [Global illumination](./3D.md#global-illumination) | every caster |
+| A [marched SDF field](../Drawing/Combinators.md), throwing and receiving | every caster |
+| [Caustics](./Caustics.md) | the primary caster only |
 
-So a scene with a key and a stage light gets two shadows on the floor, and shafts in the air from the key alone. Put the light you want those effects to follow first, and make it a directional or a spot.
+So a scene with a key and a stage light gets two shadows on the floor, two carved shafts in the air, and two contact seams under a resting object. Each of those is another march or another pass, so more casters cost more.
+
+Caustics stay with one caster because a frame traces a fixed number of photons: split between two lights, each pattern gets noisier rather than richer. Put the light you want the caustics to follow first.
 
 <a id="depth-effects"></a>
 ### Effects that read depth

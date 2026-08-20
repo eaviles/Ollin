@@ -409,16 +409,17 @@ static inline float3 ollin_sss_transmit(float s, float3 falloff) {
 // ramp; across a silhouette in the map the blend ramps the thickness over one
 // texel instead of stepping. `lin` = `OllinLighting.shadowLinearize`.
 static inline float transmitOccluderDistance(float2 uv, float2 dims, float4 lin,
-                                             depth2d_array<float> shadowMap, sampler depthSamp) {
+                                             depth2d_array<float> shadowMap, uint layer,
+                                             sampler depthSamp) {
     float2 texel = 1.0 / dims;
     float2 tc = uv * dims - 0.5;
     float2 f = fract(tc);
     float2 corner = (floor(tc) + 0.5) / dims;
-    // The primary caster owns layer 0, and it is the only one this reads.
-    float4 z = float4(shadowMap.sample(depthSamp, corner, 0),
-                      shadowMap.sample(depthSamp, corner + float2(texel.x, 0.0), 0),
-                      shadowMap.sample(depthSamp, corner + float2(0.0, texel.y), 0),
-                      shadowMap.sample(depthSamp, corner + texel, 0));
+    // The caster's own layer of the map array (its slot index).
+    float4 z = float4(shadowMap.sample(depthSamp, corner, layer),
+                      shadowMap.sample(depthSamp, corner + float2(texel.x, 0.0), layer),
+                      shadowMap.sample(depthSamp, corner + float2(0.0, texel.y), layer),
+                      shadowMap.sample(depthSamp, corner + texel, layer));
     // Perspective (spot): d = [3][2] / (z + [2][2]); orthographic (directional):
     // d = ([3][2] − z) / [2][2].
     float4 d = (lin.z > 0.5) ? lin.y / (z + lin.x) : (lin.y - z) / lin.x;
@@ -454,8 +455,8 @@ static inline float transmitOccluderDistance(float2 uv, float2 dims, float4 lin,
 // inside, so the weights can't sum to zero.
 static inline bool transmitGather2D(float3 worldPos, float3 n, float4x4 lightVP,
                                     float texelWorld, float4 lin, float4 scatter,
-                                    depth2d_array<float> shadowMap, sampler depthSamp,
-                                    thread float3 &T) {
+                                    depth2d_array<float> shadowMap, uint layer,
+                                    sampler depthSamp, thread float3 &T) {
     float3 inner = worldPos - n * (texelWorld * 2.0);
     float4 lc = lightVP * float4(inner, 1.0);
     if (lc.w <= 0.0) return false;
@@ -510,7 +511,7 @@ static inline bool transmitGather2D(float3 worldPos, float3 n, float4x4 lightVP,
                            taps[i].x * sa + taps[i].y * ca);
         float2 tuv = uv + tp * (profileWorld / (texelWorld * dims));
         if (tuv.x < 0.0 || tuv.x > 1.0 || tuv.y < 0.0 || tuv.y > 1.0) continue;
-        float dOcc = transmitOccluderDistance(tuv, dims, lin, shadowMap, depthSamp);
+        float dOcc = transmitOccluderDistance(tuv, dims, lin, shadowMap, layer, depthSamp);
         float tW = max(dRecv - dOcc, 0.0);
         // Depth and lateral offset in per-channel profile units (the falloff
         // stretch: red diffuses farthest laterally too).
@@ -537,13 +538,14 @@ static inline bool transmitGather2D(float3 worldPos, float3 n, float4x4 lightVP,
 // (the open-sheet rule above).
 static inline float transmitThicknessCube(float3 worldPos, float3 n, float3 lightPos,
                                           float farPlane, float texelWorld,
-                                          texturecube_array<float> shadowCube, sampler samp) {
+                                          texturecube_array<float> shadowCube, uint cube,
+                                          sampler samp) {
     float texel = max(2.0 * length(worldPos - lightPos) / float(OLLIN_POINT_SHADOW_RESOLUTION),
                       texelWorld);
     float3 inner = worldPos - n * (texel * 2.0);
     float3 v = inner - lightPos;
-    // The primary caster owns cube 0, and it is the only one this reads.
-    float nearest = shadowCube.sample(samp, v, 0).r;
+    // This caster's own cube of the array (`cubeIndex`, assigned in slot order).
+    float nearest = shadowCube.sample(samp, v, cube).r;
     if (nearest >= 0.999) return 0.0;
     return max(length(v) - nearest * farPlane, 0.0);
 }
@@ -696,14 +698,14 @@ static inline float ollin_ign(float2 p) {
 // the air, so there is no surface normal to bias along; the small constant depth
 // bias alone suffices (an air sample is never its own occluder). Outside the
 // caster's box nothing was rendered, so the air there counts as lit.
-static inline float ollin_fog_shadow_tap(float3 p, float4x4 lightVP,
+static inline float ollin_fog_shadow_tap(float3 p, float4x4 lightVP, uint layer,
                                          depth2d_array<float> shadowMap, sampler shadowSamp) {
     float4 lc = lightVP * float4(p, 1.0);
     if (lc.w <= 0.0) return 1.0;
     float3 ndc = lc.xyz / lc.w;
     if (ndc.x < -1.0 || ndc.x > 1.0 || ndc.y < -1.0 || ndc.y > 1.0 || ndc.z > 1.0) return 1.0;
     float2 uv = ndc.xy * float2(0.5, -0.5) + 0.5;
-    return shadowMap.sample_compare(shadowSamp, uv, 0, ndc.z - 0.0015);
+    return shadowMap.sample_compare(shadowSamp, uv, layer, ndc.z - 0.0015);
 }
 
 // The view ray's crossing of a spot's outer cone: the t-interval of o + t*r inside
@@ -760,11 +762,22 @@ static inline float3 ollin_fog_inscatter(float3 o, float3 r, float tEnd, float2 
     float extinction = light.fogParams.x;
     float scatterBase = extinction > 0.0 ? extinction : 0.05;
     float falloff = light.fogParams.y;
-    bool caster2D = (light.shadowLight >= 0 && light.shadowKind == 0);
     float3 sum = float3(0.0);
     for (int li = 0; li < light.lightCount; li++) {
         OllinLight L0 = light.lights[li];
         if (L0.kind != 0 && L0.kind != 2) continue;
+        // Which caster this light is, if it throws through a 2D map, and which layer
+        // of the array that map is (the slot index). Every caster in the frame's list
+        // carves its own beam. A cube or ray-traced caster is skipped: an air sample
+        // has no map to read there, so its beam stays undimmed, which is what the
+        // single-caster path did for the same kinds.
+        int cs = -1;
+        for (int c = 0; c < light.shadowCasterCount; c++) {
+            if (light.shadowCasters[c].lightIndex == li && light.shadowCasters[c].kind == 0) {
+                cs = c;
+                break;
+            }
+        }
         // The sub-march range: a transverse spot crossing is bounded to the
         // ray-cone interval so every stratum lands where the beam is; anything
         // else (directional, or riding a beam) marches the whole ray under a
@@ -827,8 +840,9 @@ static inline float3 ollin_fog_inscatter(float3 o, float3 r, float tEnd, float2 
                 if (atten <= 1e-4) continue;
                 ollin_apply_light_shaping(L, light, toLight, p, iesProfiles, cookies);
             }
-            float vis = (caster2D && li == light.shadowLight)
-                      ? ollin_fog_shadow_tap(p, light.lightViewProjection, shadowMap, shadowSamp)
+            float vis = (cs >= 0)
+                      ? ollin_fog_shadow_tap(p, light.shadowCasters[cs].lightViewProjection,
+                                             (uint)cs, shadowMap, shadowSamp)
                       : 1.0;
             if (vis <= 0.0) continue;
             float phase = ollin_hg_phase(dot(toLight, r), g);
@@ -1061,20 +1075,16 @@ static inline float4 meshRTShadowAll(float3 worldPos, float3 normal,
     return factors;
 }
 
-// The transmittance thickness on the ray-traced point caster (`shadowKind` 2, the
-// caster a point light): from just inside the surface (the same normal shrink the
-// map paths use), the first triangle toward the light is where the light entered
-// the body, so the committed closest hit's distance is the exact crossing. No map
-// resolution, no linearization; a miss is an open sheet, zero thickness (the cube
-// path's rule). Computed by the solid/textured fragments only when the material
-// scatters (a closest-hit walk costs more than a shadow ray, so it never runs on
-// a surface that won't read it) and handed to `meshLitColor` beside `rtShadow`.
-static inline float meshRTThickness(float3 worldPos, float3 normal,
-                                    constant OllinLighting &light,
-                                    primitive_acceleration_structure accel) {
-    OllinLight caster = light.lights[light.shadowLight];
+// The transmittance thickness on one ray-traced point caster (`kind` 2, its light a
+// point light): from just inside the surface (the same normal shrink the map paths
+// use), the first triangle toward the light is where the light entered the body, so
+// the committed closest hit's distance is the exact crossing. No map resolution, no
+// linearization; a miss is an open sheet, zero thickness (the cube path's rule).
+static inline float meshRTThicknessOne(float3 worldPos, float3 normal, OllinLight caster,
+                                       float texelWorld,
+                                       primitive_acceleration_structure accel) {
     float3 n = normalize(normal);
-    float3 origin = worldPos - n * (light.shadowTexelWorld * 2.0);
+    float3 origin = worldPos - n * (texelWorld * 2.0);
     float3 sv = caster.position.xyz - origin;
     float sd = length(sv);
     ray r;
@@ -1091,6 +1101,28 @@ static inline float meshRTThickness(float3 worldPos, float3 normal,
     }
     if (q.get_committed_intersection_type() == intersection_type::none) return 0.0;
     return q.get_committed_distance();
+}
+
+// Every caster's thickness at once, one per slot, the shape `meshRTShadowAll` uses.
+// Only a traced caster whose light is a point light walks (an area panel has no
+// single entry point to measure toward, and reads zero thickness the way it did as
+// the single caster). Computed by the solid/textured fragments only when the
+// material scatters (a closest-hit walk costs more than a shadow ray, so it never
+// runs on a surface that won't read it) and handed to `meshLitColor` beside
+// `rtShadow`.
+static inline float4 meshRTThicknessAll(float3 worldPos, float3 normal,
+                                        constant OllinLighting &light,
+                                        primitive_acceleration_structure accel) {
+    float4 t = float4(0.0);
+    for (int c = 0; c < OLLIN_MAX_SHADOW_CASTERS; c++) {
+        if (c >= light.shadowCasterCount) break;
+        constant OllinShadowCaster &sc = light.shadowCasters[c];
+        if (sc.kind != 2 || sc.lightIndex < 0) continue;
+        OllinLight caster = light.lights[sc.lightIndex];
+        if (caster.kind != 1) continue;
+        t[c] = meshRTThicknessOne(worldPos, normal, caster, sc.texelWorld, accel);
+    }
+    return t;
 }
 
 // A ray-traced scene reflection for a physically-based surface: the hybrid-rendering
@@ -1611,30 +1643,39 @@ static float ollin_fields_shadow(float3 worldPos, float3 n, float3 lightPos,
                                  const device SDFNode3D *fieldNodes,
                                  int fieldCount, int steps);
 
-// The mesh-receiver field-shadow factor: march the SDF fields toward the caster (gated on
-// `fieldCasterCount`, which the renderer sets only for a point/ray-traced caster; a
-// directional/spot caster has the field in the 2D map instead). 1.0 when there are no field
-// casters, so a mesh-only / directional scene takes the byte-identical path.
-static inline float meshFieldShadowFactor(float3 worldPos, float3 normal,
-                                          constant OllinLighting &light,
-                                          const device SDF3DGroupInstance *fields,
-                                          const device SDFNode3D *fieldNodes) {
-    if (light.fieldCasterCount <= 0 || light.shadowLight < 0) { return 1.0; }
-    float3 lightPos = light.lights[light.shadowLight].position.xyz;
-    return ollin_fields_shadow(worldPos, normalize(normal), lightPos,
-                               fields, fieldNodes, light.fieldCasterCount,
-                               OLLIN_MESH_FIELD_SHADOW_STEPS);
+// The mesh-receiver field-shadow factor, one channel per shadow caster: march the SDF
+// fields toward each point / ray-traced caster's light (gated on `fieldCasterCount`,
+// which the renderer sets only when some caster needs the march). A directional or spot
+// caster has the field rendered into its own map layer instead, so its channel stays
+// lit, and so does a slot with no caster. float4(1) when there are no field casters, so
+// a mesh-only / directional scene takes the byte-identical path, and a frame with one
+// caster marches exactly once.
+static inline float4 meshFieldShadowFactor(float3 worldPos, float3 normal,
+                                           constant OllinLighting &light,
+                                           const device SDF3DGroupInstance *fields,
+                                           const device SDFNode3D *fieldNodes) {
+    float4 f = float4(1.0);
+    if (light.fieldCasterCount <= 0) { return f; }
+    float3 n = normalize(normal);
+    for (int c = 0; c < light.shadowCasterCount; c++) {
+        constant OllinShadowCaster &sc = light.shadowCasters[c];
+        if (sc.lightIndex < 0 || sc.kind == 0) continue;
+        f[c] = ollin_fields_shadow(worldPos, n, light.lights[sc.lightIndex].position.xyz,
+                                   fields, fieldNodes, light.fieldCasterCount,
+                                   OLLIN_MESH_FIELD_SHADOW_STEPS);
+    }
+    return f;
 }
 
 // How a lit mesh resolves its point/RT field-cast shadow: march the field inline (full-res /
 // export, byte-identical), or, in the live preview where the per-pixel march is the bottleneck,
 // sample the precomputed half-res field-shadow texture by screen position (the RenderQuality dial,
 // `fieldShadowMode == 1`). The half-res factor is low-frequency, so bilinear upsampling is clean.
-static inline float ollin_resolve_mesh_field_shadow(float2 screenPos, float3 worldPos, float3 normal,
-                                                    constant OllinLighting &light,
-                                                    const device SDF3DGroupInstance *fields,
-                                                    const device SDFNode3D *fieldNodes,
-                                                    texture2d<float> fieldShadowTex) {
+static inline float4 ollin_resolve_mesh_field_shadow(float2 screenPos, float3 worldPos, float3 normal,
+                                                     constant OllinLighting &light,
+                                                     const device SDF3DGroupInstance *fields,
+                                                     const device SDFNode3D *fieldNodes,
+                                                     texture2d<float> fieldShadowTex) {
     if (light.fieldShadowMode == 1) {
         constexpr sampler s(filter::linear, address::clamp_to_edge);
         // The half-res texture covers the full framebuffer; `position.xy` (full-res pixels) maps to
@@ -1642,22 +1683,22 @@ static inline float ollin_resolve_mesh_field_shadow(float2 screenPos, float3 wor
         // logical viewport (which differs from the pixel size on a Retina drawable).
         float2 texSize = float2(fieldShadowTex.get_width(), fieldShadowTex.get_height());
         float2 uv = screenPos * light.fieldShadowScale / max(texSize, float2(1.0));
-        return fieldShadowTex.sample(s, uv).r;
+        return fieldShadowTex.sample(s, uv);
     }
     return meshFieldShadowFactor(worldPos, normal, light, fields, fieldNodes);
 }
 
 // The half-res field-shadow pre-pass fragment (the live RenderQuality path): re-renders the
-// receiver meshes at reduced resolution and outputs only their point/RT field-cast shadow factor
-// (the inline march) into R, depth-tested like the main mesh pass so the front surface wins. The
-// full-res mesh fragments then sample it instead of marching per pixel. The target clears to 1
-// (lit), so background / silhouette texels read lit.
+// receiver meshes at reduced resolution and outputs only their point/RT field-cast shadow
+// factors (the inline march), a channel per caster, depth-tested like the main mesh pass so
+// the front surface wins. The full-res mesh fragments then sample it instead of marching per
+// pixel. The target clears to 1 (lit), so background / silhouette texels read lit in every
+// channel.
 fragment float4 ollin_mesh_fieldshadow_fragment(MeshOut in [[stage_in]],
                                                 constant OllinLighting &light [[buffer(0)]],
                                                 const device SDF3DGroupInstance *fields [[buffer(4)]],
                                                 const device SDFNode3D *fieldNodes [[buffer(5)]]) {
-    float f = meshFieldShadowFactor(in.worldPos, in.normal, light, fields, fieldNodes);
-    return float4(f, f, f, 1.0);
+    return meshFieldShadowFactor(in.worldPos, in.normal, light, fields, fieldNodes);
 }
 
 // Physically-based (Cook-Torrance microfacet) BRDF terms for the metallic-roughness
@@ -2261,19 +2302,21 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
 #if OLLIN_RT_SHADOWS
                                   , float4 rtShadow
 #endif
-                                  // A marched SDF field passes its own self-shadow factor
-                                  // (0…1) here since it isn't in the shadow maps; a mesh
-                                  // passes -1 to sample the maps as usual (byte-identical).
-                                  , float fieldShadow
+                                  // A marched SDF field passes its own self-shadow factors
+                                  // (0…1, one per caster slot) here since it isn't in the
+                                  // shadow maps; a mesh passes -1 to sample the maps as usual
+                                  // (byte-identical). Slot 0 is what tells the two apart.
+                                  , float4 fieldShadow
                                   // A mesh receiver also folds in its occlusion by the marched
                                   // SDF fields under a point/RT caster (1.0 = lit / none, the
                                   // byte-identical default; the raymarch caller leaves it 1.0).
-                                  , float meshFieldShadow = 1.0
+                                  , float4 meshFieldShadow = float4(1.0)
                                   // World-units thickness for the scattering transmittance on a
-                                  // ray-traced point caster, traced by the solid/textured
-                                  // fragments (`meshRTThickness`); every other carrier leaves
-                                  // the default (unread unless `shadowKind` is 2).
-                                  , float rtThickness = 0.0
+                                  // ray-traced point caster, one per slot, traced by the
+                                  // solid/textured fragments (`meshRTThicknessAll`); every other
+                                  // carrier leaves the default (a slot is unread unless that
+                                  // caster's kind is 2).
+                                  , float4 rtThickness = float4(0.0)
                                   // The per-vertex tangent basis (xyz + bitangent
                                   // handedness w) from a pipeline that carries one;
                                   // the zero default derives a stable world frame.
@@ -2296,7 +2339,7 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
     // plain shading, so the term is mesh-only like the blur; at strength 0 or with
     // no caster the branch is never taken, byte-identical.
     bool transmits = mat.scatterStrength > 0.0 && mat.scatter.w > 0.0
-                  && light.shadowLight >= 0 && fieldShadow < 0.0;
+                  && light.shadowLight >= 0 && fieldShadow.x < 0.0;
     // Transmission swaps the physically-based diffuse body for the transmitted lobe the
     // IBL ambient adds, so the direct lights' diffuse scales down with it. Only when an
     // environment supplies that lobe: with no IBL, transmission is inert (the surface
@@ -2351,15 +2394,13 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
         OllinLight L = light.lights[i];
 
         // Which caster this light is, if any. The slot index is also the layer of the
-        // shadow-map array this caster rendered into, and slot 0 is the primary caster
-        // (the one every other system follows). A marched field is in no map: it
-        // self-shadows analytically toward the primary caster alone, so a field carrier
-        // takes that caster and no other.
+        // shadow-map array this caster rendered into, and slot 0 is the primary caster.
+        // A marched field is in no map, so a field carrier reads the factor it marched
+        // for this same slot instead.
         int cs = -1;
         for (int c = 0; c < light.shadowCasterCount; c++) {
             if (light.shadowCasters[c].lightIndex == i) { cs = c; break; }
         }
-        if (cs > 0 && fieldShadow >= 0.0) cs = -1;
 
         // Area kinds (rect / disk / tube) shade through the LTC integrals and skip the
         // whole punctual path below, so a frame with no area light is byte-identical.
@@ -2378,8 +2419,8 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
             if (cs >= 0) {
                 constant OllinShadowCaster &sc = light.shadowCasters[cs];
                 float lit01;
-                if (fieldShadow >= 0.0) {
-                    lit01 = fieldShadow;   // a marched field self-shadows (it isn't in the maps)
+                if (fieldShadow.x >= 0.0) {
+                    lit01 = fieldShadow[cs];   // a marched field self-shadows (it isn't in the maps)
                 } else {
 #if OLLIN_RT_SHADOWS
                     if (sc.kind == 2) lit01 = rtShadow[cs];
@@ -2392,9 +2433,10 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                                            shadowMap, (uint)cs, shadowSamp, shadowCubeSamp)
                         : shadowFactor(worldPos, n, toCenter, sc.lightViewProjection,
                                        sc.texelWorld, shadowMap, (uint)cs, shadowSamp);
-                    // The marched fields occlude the primary caster only (RT; 1.0 otherwise):
-                    // an extra caster reads them out of its own map instead.
-                    if (cs == 0) lit01 *= meshFieldShadow;
+                    // The marched fields and the contact march occlude this caster (a 2D
+                    // caster reads the fields out of its own map layer instead, so its
+                    // field channel stays lit).
+                    lit01 *= meshFieldShadow[cs];
                 }
                 atten = mix(1.0, lit01, sc.strength);
             }
@@ -2503,8 +2545,9 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
         }
         // Transmittance: the light this caster pours onto the body's far side, seen
         // through it (the translucency half of `Material.scattering`; the shadow-map
-        // technique, see ATTRIBUTION.md). Only the casting light can say how thick
-        // the body is here, so only it transmits. The term sits *before* the shadow
+        // technique, see ATTRIBUTION.md). Only a casting light can say how thick the
+        // body is here, so only a caster transmits, each reading its own map layer,
+        // its own cube, or its own traced thickness. The term sits *before* the shadow
         // dim on purpose: a backlit surface stands in its own body's shadow, and
         // dimming by that factor would erase exactly the light being transported.
         // It rides the shaped/tinted local light copy and the cone attenuation, and
@@ -2512,24 +2555,27 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
         // reflectance (the published treatment). The reversed-normal irradiance
         // keeps it off lit faces (no double count with the diffuse), its 0.3 wrap
         // easing the handoff across the terminator.
-        if (transmits && i == light.shadowLight) {
+        if (transmits && cs >= 0) {
+            constant OllinShadowCaster &tc = light.shadowCasters[cs];
             float t = -1.0;   // world-units thickness; < 0 = no estimate, term skips
             bool haveT = false;
             float3 T = float3(0.0);
 #if OLLIN_RT_SHADOWS
-            if (light.shadowKind == 2) t = rtThickness;
+            if (tc.kind == 2) t = rtThickness[cs];
             else
 #endif
-            if (light.shadowKind == 1)
-                t = transmitThicknessCube(worldPos, n, L.position.xyz, light.shadowDepthA,
-                                          light.shadowTexelWorld, shadowCube, shadowCubeSamp);
-            else if (light.shadowLinearize.x != 0.0)
+            if (tc.kind == 1)
+                t = transmitThicknessCube(worldPos, n, L.position.xyz, tc.depthA,
+                                          tc.texelWorld, shadowCube, (uint)tc.cubeIndex,
+                                          shadowCubeSamp);
+            else if (tc.linearize.x != 0.0)
                 // The 2D map gathers the transmittance over the diffusion's entry
                 // footprint (banding treatment; the cube/ray paths keep the single
                 // thickness read below).
-                haveT = transmitGather2D(worldPos, n, light.lightViewProjection,
-                                         light.shadowTexelWorld, light.shadowLinearize,
-                                         mat.scatter, shadowMap, shadowCubeSamp, T);
+                haveT = transmitGather2D(worldPos, n, tc.lightViewProjection,
+                                         tc.texelWorld, tc.linearize,
+                                         mat.scatter, shadowMap, (uint)cs,
+                                         shadowCubeSamp, T);
             if (t >= 0.0) {
                 // World thickness → profile units: the diffusion kernel spans ±3
                 // units over the scattering radius, so both halves share one ruler.
@@ -2547,8 +2593,8 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
         if (cs >= 0) {
             constant OllinShadowCaster &sc = light.shadowCasters[cs];
             float lit01;
-            if (fieldShadow >= 0.0) {
-                lit01 = fieldShadow;   // a marched field self-shadows (it isn't in the maps)
+            if (fieldShadow.x >= 0.0) {
+                lit01 = fieldShadow[cs];   // a marched field self-shadows (it isn't in the maps)
             } else {
 #if OLLIN_RT_SHADOWS
                 // kind 2 = ray-traced point caster (computed in the fragment).
@@ -2568,8 +2614,9 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                                            shadowMap, (uint)cs, shadowSamp, shadowCubeSamp)
                         : shadowFactor(worldPos, n, toLight, sc.lightViewProjection,
                                        sc.texelWorld, shadowMap, (uint)cs, shadowSamp);
-                // The marched fields occlude the primary caster only (point/RT; 1.0 otherwise).
-                if (cs == 0) lit01 *= meshFieldShadow;
+                // The marched fields and the contact march occlude this caster (a 2D caster
+                // reads the fields out of its own map layer, so its field channel stays lit).
+                lit01 *= meshFieldShadow[cs];
             }
             atten *= mix(1.0, lit01, sc.strength);
         }
@@ -2788,19 +2835,21 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
 #if OLLIN_RT_SHADOWS
                                   , float4 rtShadow
 #endif
-                                  // A marched SDF field passes its own self-shadow factor
-                                  // (0…1) here since it isn't in the shadow maps; a mesh
-                                  // passes -1 to sample the maps as usual (byte-identical).
-                                  , float fieldShadow
+                                  // A marched SDF field passes its own self-shadow factors
+                                  // (0…1, one per caster slot) here since it isn't in the
+                                  // shadow maps; a mesh passes -1 to sample the maps as usual
+                                  // (byte-identical). Slot 0 is what tells the two apart.
+                                  , float4 fieldShadow
                                   // A mesh receiver also folds in its occlusion by the marched
                                   // SDF fields under a point/RT caster (1.0 = lit / none, the
                                   // byte-identical default; the raymarch caller leaves it 1.0).
-                                  , float meshFieldShadow = 1.0
+                                  , float4 meshFieldShadow = float4(1.0)
                                   // World-units thickness for the scattering transmittance on a
-                                  // ray-traced point caster, traced by the solid/textured
-                                  // fragments (`meshRTThickness`); every other carrier leaves
-                                  // the default (unread unless `shadowKind` is 2).
-                                  , float rtThickness = 0.0
+                                  // ray-traced point caster, one per slot, traced by the
+                                  // solid/textured fragments (`meshRTThicknessAll`); every other
+                                  // carrier leaves the default (a slot is unread unless that
+                                  // caster's kind is 2).
+                                  , float4 rtThickness = float4(0.0)
                                   // The per-vertex tangent basis (xyz + bitangent
                                   // handedness w) from a pipeline that carries one;
                                   // the zero default derives a stable world frame.
@@ -2823,7 +2872,7 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
     // plain shading, so the term is mesh-only like the blur; at strength 0 or with
     // no caster the branch is never taken, byte-identical.
     bool transmits = mat.scatterStrength > 0.0 && mat.scatter.w > 0.0
-                  && light.shadowLight >= 0 && fieldShadow < 0.0;
+                  && light.shadowLight >= 0 && fieldShadow.x < 0.0;
     // Transmission swaps the physically-based diffuse body for the transmitted lobe the
     // IBL ambient adds, so the direct lights' diffuse scales down with it. Only when an
     // environment supplies that lobe: with no IBL, transmission is inert (the surface
@@ -2878,15 +2927,13 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
         OllinLight L = light.lights[i];
 
         // Which caster this light is, if any. The slot index is also the layer of the
-        // shadow-map array this caster rendered into, and slot 0 is the primary caster
-        // (the one every other system follows). A marched field is in no map: it
-        // self-shadows analytically toward the primary caster alone, so a field carrier
-        // takes that caster and no other.
+        // shadow-map array this caster rendered into, and slot 0 is the primary caster.
+        // A marched field is in no map, so a field carrier reads the factor it marched
+        // for this same slot instead.
         int cs = -1;
         for (int c = 0; c < light.shadowCasterCount; c++) {
             if (light.shadowCasters[c].lightIndex == i) { cs = c; break; }
         }
-        if (cs > 0 && fieldShadow >= 0.0) cs = -1;
 
         // Area kinds (rect / disk / tube) shade through the LTC integrals and skip the
         // whole punctual path below, so a frame with no area light is byte-identical.
@@ -2905,8 +2952,8 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
             if (cs >= 0) {
                 constant OllinShadowCaster &sc = light.shadowCasters[cs];
                 float lit01;
-                if (fieldShadow >= 0.0) {
-                    lit01 = fieldShadow;   // a marched field self-shadows (it isn't in the maps)
+                if (fieldShadow.x >= 0.0) {
+                    lit01 = fieldShadow[cs];   // a marched field self-shadows (it isn't in the maps)
                 } else {
 #if OLLIN_RT_SHADOWS
                     if (sc.kind == 2) lit01 = rtShadow[cs];
@@ -2919,9 +2966,10 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
                                            shadowMap, (uint)cs, shadowSamp, shadowCubeSamp)
                         : shadowFactor(worldPos, n, toCenter, sc.lightViewProjection,
                                        sc.texelWorld, shadowMap, (uint)cs, shadowSamp);
-                    // The marched fields occlude the primary caster only (RT; 1.0 otherwise):
-                    // an extra caster reads them out of its own map instead.
-                    if (cs == 0) lit01 *= meshFieldShadow;
+                    // The marched fields and the contact march occlude this caster (a 2D
+                    // caster reads the fields out of its own map layer instead, so its
+                    // field channel stays lit).
+                    lit01 *= meshFieldShadow[cs];
                 }
                 atten = mix(1.0, lit01, sc.strength);
             }
@@ -3030,8 +3078,9 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
         }
         // Transmittance: the light this caster pours onto the body's far side, seen
         // through it (the translucency half of `Material.scattering`; the shadow-map
-        // technique, see ATTRIBUTION.md). Only the casting light can say how thick
-        // the body is here, so only it transmits. The term sits *before* the shadow
+        // technique, see ATTRIBUTION.md). Only a casting light can say how thick the
+        // body is here, so only a caster transmits, each reading its own map layer,
+        // its own cube, or its own traced thickness. The term sits *before* the shadow
         // dim on purpose: a backlit surface stands in its own body's shadow, and
         // dimming by that factor would erase exactly the light being transported.
         // It rides the shaped/tinted local light copy and the cone attenuation, and
@@ -3039,24 +3088,27 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
         // reflectance (the published treatment). The reversed-normal irradiance
         // keeps it off lit faces (no double count with the diffuse), its 0.3 wrap
         // easing the handoff across the terminator.
-        if (transmits && i == light.shadowLight) {
+        if (transmits && cs >= 0) {
+            constant OllinShadowCaster &tc = light.shadowCasters[cs];
             float t = -1.0;   // world-units thickness; < 0 = no estimate, term skips
             bool haveT = false;
             float3 T = float3(0.0);
 #if OLLIN_RT_SHADOWS
-            if (light.shadowKind == 2) t = rtThickness;
+            if (tc.kind == 2) t = rtThickness[cs];
             else
 #endif
-            if (light.shadowKind == 1)
-                t = transmitThicknessCube(worldPos, n, L.position.xyz, light.shadowDepthA,
-                                          light.shadowTexelWorld, shadowCube, shadowCubeSamp);
-            else if (light.shadowLinearize.x != 0.0)
+            if (tc.kind == 1)
+                t = transmitThicknessCube(worldPos, n, L.position.xyz, tc.depthA,
+                                          tc.texelWorld, shadowCube, (uint)tc.cubeIndex,
+                                          shadowCubeSamp);
+            else if (tc.linearize.x != 0.0)
                 // The 2D map gathers the transmittance over the diffusion's entry
                 // footprint (banding treatment; the cube/ray paths keep the single
                 // thickness read below).
-                haveT = transmitGather2D(worldPos, n, light.lightViewProjection,
-                                         light.shadowTexelWorld, light.shadowLinearize,
-                                         mat.scatter, shadowMap, shadowCubeSamp, T);
+                haveT = transmitGather2D(worldPos, n, tc.lightViewProjection,
+                                         tc.texelWorld, tc.linearize,
+                                         mat.scatter, shadowMap, (uint)cs,
+                                         shadowCubeSamp, T);
             if (t >= 0.0) {
                 // World thickness → profile units: the diffusion kernel spans ±3
                 // units over the scattering radius, so both halves share one ruler.
@@ -3074,8 +3126,8 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
         if (cs >= 0) {
             constant OllinShadowCaster &sc = light.shadowCasters[cs];
             float lit01;
-            if (fieldShadow >= 0.0) {
-                lit01 = fieldShadow;   // a marched field self-shadows (it isn't in the maps)
+            if (fieldShadow.x >= 0.0) {
+                lit01 = fieldShadow[cs];   // a marched field self-shadows (it isn't in the maps)
             } else {
 #if OLLIN_RT_SHADOWS
                 // kind 2 = ray-traced point caster (computed in the fragment).
@@ -3095,8 +3147,9 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
                                            shadowMap, (uint)cs, shadowSamp, shadowCubeSamp)
                         : shadowFactor(worldPos, n, toLight, sc.lightViewProjection,
                                        sc.texelWorld, shadowMap, (uint)cs, shadowSamp);
-                // The marched fields occlude the primary caster only (point/RT; 1.0 otherwise).
-                if (cs == 0) lit01 *= meshFieldShadow;
+                // The marched fields and the contact march occlude this caster (a 2D caster
+                // reads the fields out of its own map layer, so its field channel stays lit).
+                lit01 *= meshFieldShadow[cs];
             }
             atten *= mix(1.0, lit01, sc.strength);
         }
@@ -4191,38 +4244,39 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
     // on-screen pixel at the fill color, then shade + shadow it through the shared
     // tail (which returns it flat unchanged when no light is set).
     float3 base = srgbToLinear(in.color.rgb);
-    float meshFieldShadow = ollin_resolve_mesh_field_shadow(in.position.xy, in.worldPos, in.normal,
-                                                            light, fields, fieldNodes, fieldShadowTex);
-    // Contact shadows: the pre-marched screen-space visibility toward the caster,
+    float4 meshFieldShadow = ollin_resolve_mesh_field_shadow(in.position.xy, in.worldPos, in.normal,
+                                                             light, fields, fieldNodes, fieldShadowTex);
+    // Contact shadows: the pre-marched screen-space visibility toward each caster,
     // sampled by screen position (the fieldShadowScale rule) and folded into the
-    // same caster dimmer the marched fields ride, so it lands in `lit01` at both
-    // shadow sites with no shading-tail change. x == 0 leaves the branch untaken.
+    // same per-caster dimmer the marched fields ride, so each one lands in its own
+    // `lit01` at both shadow sites with no shading-tail change. x == 0 leaves the
+    // branch untaken.
     if (light.contactShadow.x > 0.0) {
         constexpr sampler contactSamp(filter::linear, address::clamp_to_edge);
         float2 cts = float2(contactShadowTex.get_width(), contactShadowTex.get_height());
         meshFieldShadow *= contactShadowTex.sample(contactSamp,
-            in.position.xy * light.contactShadow.y / max(cts, float2(1.0))).r;
+            in.position.xy * light.contactShadow.y / max(cts, float2(1.0)));
     }
 #if OLLIN_RT_SHADOWS
     float4 rtShadow = meshRTShadowAll(in.worldPos, in.normal, light, shadowAccel);
-    // The transmittance thickness on a traced point caster: one closest-hit ray,
-    // gated exactly like the term itself so a non-scattering surface never traces.
-    float rtThickness = 0.0;
-    if (light.shadowKind == 2 && mat.scatterStrength > 0.0 && mat.scatter.w > 0.0
-        && light.shadowLight >= 0 && light.lights[light.shadowLight].kind == 1) {
-        rtThickness = meshRTThickness(in.worldPos, in.normal, light, shadowAccel);
+    // The transmittance thickness on each traced point caster: one closest-hit ray
+    // apiece, gated exactly like the term itself so a non-scattering surface never
+    // traces, and a frame with one caster walks exactly once.
+    float4 rtThickness = float4(0.0);
+    if (mat.scatterStrength > 0.0 && mat.scatter.w > 0.0) {
+        rtThickness = meshRTThicknessAll(in.worldPos, in.normal, light, shadowAccel);
     }
     float4 c = meshLitColor(base, in.color.a, in.normal,
                             in.worldPos, mat, light, shadowMap, shadowSamp,
                             shadowCube, shadowCubeSamp, ltcMat, ltcAmp,
                             iesProfiles, cookies, sheenLUT,
-                            rtShadow, -1.0, meshFieldShadow, rtThickness);
+                            rtShadow, float4(-1.0), meshFieldShadow, rtThickness);
 #else
     float4 c = meshLitColor(base, in.color.a, in.normal,
                             in.worldPos, mat, light, shadowMap, shadowSamp,
                             shadowCube, shadowCubeSamp, ltcMat, ltcAmp,
                             iesProfiles, cookies, sheenLUT,
-                            -1.0, meshFieldShadow);
+                            float4(-1.0), meshFieldShadow);
 #endif
     // Physically-based surfaces gather their ambient + reflections from the environment;
     // the other lit materials take the diffuse irradiance as their ambient (Gooch excepted).
@@ -4469,32 +4523,31 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
     float4 tex = baseColorTex.sample(samp, in.uv);
     float3 base = tex.rgb * srgbToLinear(in.color.rgb);
     float alpha = in.color.a * tex.a;
-    float meshFieldShadow = ollin_resolve_mesh_field_shadow(in.position.xy, in.worldPos, in.normal,
-                                                            light, fields, fieldNodes, fieldShadowTex);
+    float4 meshFieldShadow = ollin_resolve_mesh_field_shadow(in.position.xy, in.worldPos, in.normal,
+                                                             light, fields, fieldNodes, fieldShadowTex);
     // Contact shadows, folded into the caster dimmer exactly as on the solid path.
     if (light.contactShadow.x > 0.0) {
         constexpr sampler contactSamp(filter::linear, address::clamp_to_edge);
         float2 cts = float2(contactShadowTex.get_width(), contactShadowTex.get_height());
         meshFieldShadow *= contactShadowTex.sample(contactSamp,
-            in.position.xy * light.contactShadow.y / max(cts, float2(1.0))).r;
+            in.position.xy * light.contactShadow.y / max(cts, float2(1.0)));
     }
 #if OLLIN_RT_SHADOWS
     float4 rtShadow = meshRTShadowAll(in.worldPos, in.normal, light, shadowAccel);
-    // The traced transmittance thickness, gated as on the solid path.
-    float rtThickness = 0.0;
-    if (light.shadowKind == 2 && mat.scatterStrength > 0.0 && mat.scatter.w > 0.0
-        && light.shadowLight >= 0 && light.lights[light.shadowLight].kind == 1) {
-        rtThickness = meshRTThickness(in.worldPos, in.normal, light, shadowAccel);
+    // The traced transmittance thickness per caster, gated as on the solid path.
+    float4 rtThickness = float4(0.0);
+    if (mat.scatterStrength > 0.0 && mat.scatter.w > 0.0) {
+        rtThickness = meshRTThicknessAll(in.worldPos, in.normal, light, shadowAccel);
     }
     float4 c = meshLitColor(base, alpha, in.normal, in.worldPos, mat, light,
                             shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
                             ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT,
-                            rtShadow, -1.0, meshFieldShadow, rtThickness);
+                            rtShadow, float4(-1.0), meshFieldShadow, rtThickness);
 #else
     float4 c = meshLitColor(base, alpha, in.normal, in.worldPos, mat, light,
                             shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
                             ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT,
-                            -1.0, meshFieldShadow);
+                            float4(-1.0), meshFieldShadow);
 #endif
 #if OLLIN_RT_SHADOWS
     // Probe-field bounce light, as on the solid path.
@@ -4647,30 +4700,29 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
     float3 bent = t * nmS.x + b * nmS.y + gn * nmS.z;
     float bentLen = length(bent);
     float3 N = (bentLen > 1e-6) ? bent / bentLen : normalize(gn);
-    float meshFieldShadow = ollin_resolve_mesh_field_shadow(in.position.xy, in.worldPos, in.normal,
-                                                            light, fields, fieldNodes, fieldShadowTex);
+    float4 meshFieldShadow = ollin_resolve_mesh_field_shadow(in.position.xy, in.worldPos, in.normal,
+                                                             light, fields, fieldNodes, fieldShadowTex);
     if (light.contactShadow.x > 0.0) {
         constexpr sampler contactSamp(filter::linear, address::clamp_to_edge);
         float2 cts = float2(contactShadowTex.get_width(), contactShadowTex.get_height());
         meshFieldShadow *= contactShadowTex.sample(contactSamp,
-            in.position.xy * light.contactShadow.y / max(cts, float2(1.0))).r;
+            in.position.xy * light.contactShadow.y / max(cts, float2(1.0)));
     }
 #if OLLIN_RT_SHADOWS
     float4 rtShadow = meshRTShadowAll(in.worldPos, in.normal, light, shadowAccel);
-    float rtThickness = 0.0;
-    if (light.shadowKind == 2 && mat.scatterStrength > 0.0 && mat.scatter.w > 0.0
-        && light.shadowLight >= 0 && light.lights[light.shadowLight].kind == 1) {
-        rtThickness = meshRTThickness(in.worldPos, in.normal, light, shadowAccel);
+    float4 rtThickness = float4(0.0);
+    if (mat.scatterStrength > 0.0 && mat.scatter.w > 0.0) {
+        rtThickness = meshRTThicknessAll(in.worldPos, in.normal, light, shadowAccel);
     }
     float4 c = meshLitColor(base, alpha, N, in.worldPos, mat, light,
                             shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
                             ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT,
-                            rtShadow, -1.0, meshFieldShadow, rtThickness, in.tangent);
+                            rtShadow, float4(-1.0), meshFieldShadow, rtThickness, in.tangent);
 #else
     float4 c = meshLitColor(base, alpha, N, in.worldPos, mat, light,
                             shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
                             ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT,
-                            -1.0, meshFieldShadow, 0.0, in.tangent);
+                            float4(-1.0), meshFieldShadow, float4(0.0), in.tangent);
 #endif
 #if OLLIN_RT_SHADOWS
     float3 gi = float3(0.0);
@@ -5077,30 +5129,29 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
     }
     float3 emissive = mat.emissive.rgb;
     if (mat.emissive.w > 0.0) emissive *= emissiveTex.sample(samp, uv).rgb;
-    float meshFieldShadow = ollin_resolve_mesh_field_shadow(in.position.xy, in.worldPos, in.normal,
-                                                            light, fields, fieldNodes, fieldShadowTex);
+    float4 meshFieldShadow = ollin_resolve_mesh_field_shadow(in.position.xy, in.worldPos, in.normal,
+                                                             light, fields, fieldNodes, fieldShadowTex);
     if (light.contactShadow.x > 0.0) {
         constexpr sampler contactSamp(filter::linear, address::clamp_to_edge);
         float2 cts = float2(contactShadowTex.get_width(), contactShadowTex.get_height());
         meshFieldShadow *= contactShadowTex.sample(contactSamp,
-            in.position.xy * light.contactShadow.y / max(cts, float2(1.0))).r;
+            in.position.xy * light.contactShadow.y / max(cts, float2(1.0)));
     }
 #if OLLIN_RT_SHADOWS
     float4 rtShadow = meshRTShadowAll(in.worldPos, in.normal, light, shadowAccel);
-    float rtThickness = 0.0;
-    if (light.shadowKind == 2 && mat.scatterStrength > 0.0 && mat.scatter.w > 0.0
-        && light.shadowLight >= 0 && light.lights[light.shadowLight].kind == 1) {
-        rtThickness = meshRTThickness(in.worldPos, in.normal, light, shadowAccel);
+    float4 rtThickness = float4(0.0);
+    if (mat.scatterStrength > 0.0 && mat.scatter.w > 0.0) {
+        rtThickness = meshRTThicknessAll(in.worldPos, in.normal, light, shadowAccel);
     }
     float4 c = meshLitColorMapped(base, alpha, N, in.worldPos, pxMetal, pxRough, pxAO, mat, light,
                             shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
                             ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT,
-                            rtShadow, -1.0, meshFieldShadow, rtThickness, in.tangent);
+                            rtShadow, float4(-1.0), meshFieldShadow, rtThickness, in.tangent);
 #else
     float4 c = meshLitColorMapped(base, alpha, N, in.worldPos, pxMetal, pxRough, pxAO, mat, light,
                             shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
                             ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT,
-                            -1.0, meshFieldShadow, 0.0, in.tangent);
+                            float4(-1.0), meshFieldShadow, float4(0.0), in.tangent);
 #endif
 #if OLLIN_RT_SHADOWS
     float3 gi = float3(0.0);
