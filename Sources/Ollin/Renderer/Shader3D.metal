@@ -331,11 +331,36 @@ static inline float shadowFactorCube(float3 worldPos, float3 n, float3 lightPos,
     // (where the ray grazes the edge and reads thin), pushing that corner's sample off and
     // notching the base ("teeth"). A flat offset has no teeth; a softer PCF then blends the
     // small residual contact gap into a natural penumbra rather than a hard step.
-    float3 biased = worldPos + n * (texelWorld * 2.0);
+    // A cube texel covers 2·d/N world units at distance d from the light, so the offset,
+    // the bias, and the tap spread are all worked out from THIS receiver's own distance.
+    // The caster's packed `texelWorld` is measured once, where the camera looks; using it
+    // whole leaves every surface further out under-biased, which combs a wide floor with
+    // rings of its own self-shadow. Only its scene-scale role is kept, as a floor under
+    // the receiver-relative figure, so a receiver almost on top of the light still holds
+    // an offset.
+    float toReceiver = length(worldPos - lightPos);
+    float texel = max(2.0 * toReceiver / float(OLLIN_POINT_SHADOW_RESOLUTION), texelWorld);
+    float3 biased = worldPos + n * (texel * 2.0);
     float3 v = biased - lightPos;                          // light → receiver direction
     float current = length(v) / farPlane;                 // receiver distance (normalized)
-    float bias = (texelWorld / farPlane) * 0.6;           // small lit-eager depth bias
-    float diskRadius = texelWorld * 3.0;                   // PCF tap spread (world units)
+    // Past the far plane the cube knows nothing, so shade lit rather than dark: the same
+    // envelope the 2D casters state for a receiver outside their fitted frustum. Without
+    // it a surface out there compares against an occluder nearer than itself and the
+    // whole of it goes dim at once.
+    if (current >= 1.0) return 1.0;
+    // A surface the light grazes crosses many texels' worth of distance inside one texel,
+    // so a flat bias holds only where the light strikes it near square on: a wide floor
+    // under a low light combs itself with its own rings. Scale the *depth* bias by the
+    // tangent of the incidence angle, capped so a near-edge-on surface cannot ask for an
+    // unbounded one. The normal offset stays flat, because moving the sample is what
+    // notches a box's bottom corners; a depth bias only makes the compare lit-eager. A
+    // surface square on to the light has a tangent of zero, so it takes the plain bias.
+    float ndl = max(dot(n, normalize(lightPos - worldPos)), 1e-3);
+    float slope = min(sqrt(max(1.0 - ndl * ndl, 0.0)) / ndl, 12.0);
+    float diskRadius = texel * 3.0;                        // PCF tap spread (world units)
+    // The taps reach three texels out, so the slack has to cover the distance the surface
+    // crosses over that whole spread, not over one texel.
+    float bias = (texel / farPlane) * (0.6 + 2.0 * slope);
     float lit = 0.0;
     for (int i = 0; i < 20; i++) {
         float2 rg = shadowCube.sample(shadowSamp, v + cubePCFOffsets[i] * diskRadius).rg;
@@ -512,7 +537,9 @@ static inline bool transmitGather2D(float3 worldPos, float3 n, float4x4 lightVP,
 static inline float transmitThicknessCube(float3 worldPos, float3 n, float3 lightPos,
                                           float farPlane, float texelWorld,
                                           texturecube<float> shadowCube, sampler samp) {
-    float3 inner = worldPos - n * (texelWorld * 2.0);
+    float texel = max(2.0 * length(worldPos - lightPos) / float(OLLIN_POINT_SHADOW_RESOLUTION),
+                      texelWorld);
+    float3 inner = worldPos - n * (texel * 2.0);
     float3 v = inner - lightPos;
     float nearest = shadowCube.sample(samp, v).r;
     if (nearest >= 0.999) return 0.0;

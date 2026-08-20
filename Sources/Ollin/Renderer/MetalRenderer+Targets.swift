@@ -256,6 +256,7 @@ extension MetalRenderer {
                                   meshInstanceBuffer: MTLBuffer? = nil,
                                   sdf3DGroupBuffer: MTLBuffer? = nil,
                                   sdf3DNodeBuffer: MTLBuffer? = nil) -> ShadowMaps {
+        pointShadowFar = nil
         let lighting = drawer.makeLighting()
         let meshVertices = drawer.meshVertices
         // Instanced-mesh copies cast into the rasterized maps (2D + cube) but not
@@ -453,6 +454,14 @@ extension MetalRenderer {
         guard lighting.shadowCasterCount > 0 else { return }
         guard lighting.shadowLight >= 0 else { lighting.shadowCasterCount = 0; return }
         var casters = shadowCasters(lighting)
+        // The cube pass fits its own far plane to what the light reaches (the packing
+        // could only guess from the camera), so the fragment must compare against that
+        // one and not the guess. A traced point caster renders no cube, leaves this nil,
+        // and keeps every packed field exactly as it was.
+        if lighting.shadowKind == 1, let far = pointShadowFar {
+            lighting.shadowDepthA = far
+            casters[0].depthA = far
+        }
         casters[0].lightIndex = lighting.shadowLight
         casters[0].kind = lighting.shadowKind
         casters[0].strength = lighting.shadowStrength
@@ -546,13 +555,29 @@ extension MetalRenderer {
                 lightPos = SIMD3<Float>(p.x, p.y, p.z)
             }
         }
-        // The far plane is carried directly (`depthA`); the fragment normalizes the
-        // stored linear distance by it. The face perspective near/far only frame the
-        // rasterization (the stored value is the fragment's own linear distance), so a
-        // small near and that far suffice.
-        let far = caster.depthA
+        // The far plane the packing carried (`depthA`) is fitted from the camera's own
+        // framing radius, which says nothing about how far the light reaches: a wide floor
+        // under a near light runs well past it, and everything out there is clipped out of
+        // the cube while still comparing against it. So fit it to the geometry instead, and
+        // hand the same number to the fragment through `pointShadowFar`. The scan is one
+        // pass over the frame's mesh vertices and it happens only here, on the rasterized
+        // path, so a device that traces its point casters never pays for it.
+        let far = pointCasterFar(drawer, from: lightPos, fallback: caster.depthA,
+                                 hasInstancedCasters: instancedMeshBuffer != nil)
+        pointShadowFar = far
         let near = max(Float(0.05), far * 0.02)
-        let proj = Camera3D.perspective(fovY: .pi / 2, aspect: 1, near: near, far: far)
+        // The six face views below use the standard cube-face basis, which is written for
+        // an API whose framebuffer origin sits at the *bottom* left. Metal's sits at the
+        // top left, while a cube face is addressed from the top left in both, so rendering
+        // those views unchanged stores every face upside down: a receiver then samples the
+        // mirror of the direction it meant, and a shadow lands on the wrong side of the
+        // light (a box over a floor throws its shadow behind itself, and the floor's own
+        // occlusion reads from the wrong place, which ripples it). Negating the
+        // projection's y row flips each face back. Horizontal `u` already agrees, so only
+        // this one row moves. It reverses the triangles' screen winding, which costs
+        // nothing here: the pass culls no faces, by design.
+        var proj = Camera3D.perspective(fovY: .pi / 2, aspect: 1, near: near, far: far)
+        proj.columns.1.y = -proj.columns.1.y
         // The six cube faces (forward axis, up), in Metal's +X/−X/+Y/−Y/+Z/−Z order.
         let faces: [(SIMD3<Float>, SIMD3<Float>)] = [
             (SIMD3(1,  0,  0), SIMD3(0, -1,  0)),
@@ -619,6 +644,31 @@ extension MetalRenderer {
         }
         encoder.endEncoding()
         return cube
+    }
+
+    /// How far the point caster's cube must reach: the distance from the light to the
+    /// farthest corner of the frame's mesh geometry, plus a small margin so the farthest
+    /// surface still stores under the "nothing here" sentinel. A frame whose casters are
+    /// instanced or field copies keeps the caller's value as a floor as well, since those
+    /// live in their own buffers with a matrix each and are not in this scan.
+    private func pointCasterFar(_ drawer: Drawer, from lightPos: SIMD3<Float>,
+                                fallback: Float, hasInstancedCasters: Bool) -> Float {
+        var lo = SIMD3<Float>(repeating: .greatestFiniteMagnitude)
+        var hi = SIMD3<Float>(repeating: -.greatestFiniteMagnitude)
+        for v in drawer.meshVertices {
+            let p = SIMD3<Float>(v.position.x, v.position.y, v.position.z)
+            lo = simd_min(lo, p)
+            hi = simd_max(hi, p)
+        }
+        var far: Float = 0
+        if lo.x <= hi.x {
+            // The farthest corner: per axis, whichever end of the box is further away.
+            let arm = simd_max(abs(lo - lightPos), abs(hi - lightPos))
+            far = simd_length(arm) * 1.02
+        }
+        let fieldCasters = drawer.batches.contains { $0.kind == .meshField }
+        if far <= 0 || hasInstancedCasters || fieldCasters { far = max(far, fallback) }
+        return max(far, 0.01)
     }
 
     /// Resolve the sketch's soft-shadow quality intent to a concrete ray count for this GPU.

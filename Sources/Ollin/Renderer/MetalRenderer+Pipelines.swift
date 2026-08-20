@@ -894,7 +894,7 @@ extension MetalRenderer {
     /// the shared header, and compile at runtime. We still try a precompiled
     /// `default.metallib` first in case a future build step produces one.
     static func loadLibrary(device: MTLDevice) throws -> MTLLibrary {
-        let rt = device.supportsRaytracing && device.supportsRaytracingFromRender
+        let rt = MetalRenderer.rayTracingAvailable(on: device)
         // A precompiled `default.metallib` is built without the device-conditional
         // `OLLIN_RT_SHADOWS` define (it can hold only one variant — the *non*-RT
         // mesh-shadow path). Use it only on a device without render-stage ray tracing;

@@ -724,6 +724,11 @@ typedef struct {
 // `shadowDepthB`, `shadowSamples`, `shadowStrength`, and `shadowLinearize` for what each
 // one means under each kind. Stride 112 (seven 16-byte rows).
 #define OLLIN_MAX_SHADOW_CASTERS 4
+// The per-face resolution of the omnidirectional (point) shadow cube. Shared because
+// the fragment sizes its own bias from it: a cube texel covers 2·d/N world units at
+// distance d from the light, so a receiver works out its own texel rather than taking
+// one measured somewhere else in the scene.
+#define OLLIN_POINT_SHADOW_RESOLUTION 1024
 typedef struct {
     simd_float4x4 lightViewProjection;  // world -> this caster's clip space (2D kind)
     simd_float4 linearize;              // the 2D map's depth->world-distance constants

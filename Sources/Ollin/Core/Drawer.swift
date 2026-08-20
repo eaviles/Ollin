@@ -634,8 +634,9 @@ final class Drawer {
     /// renderer owns the actual texture and must use the same value (`MetalRenderer`).
     static let shadowMapResolution = 2048
     /// The per-face resolution of the omnidirectional (point) shadow cube. Same role as
-    /// `shadowMapResolution` for the cube bias; mirror of `MetalRenderer`'s value.
-    static let pointShadowMapResolution = 1024
+    /// `shadowMapResolution` for the cube bias, and the fragment sizes its own bias from
+    /// the same number, so it lives in the shared header rather than in two places.
+    static let pointShadowMapResolution = Int(OLLIN_POINT_SHADOW_RESOLUTION)
 
     /// The default lighting rig — used when a sketch draws meshes without setting any
     /// light, so a solid is shaded out of the box. It *is* `LightingPreset.standard`

@@ -48,7 +48,12 @@ enum Snapshot {
     /// Whether the default device can ray-trace from the render stages, the gate for
     /// ray-traced point shadows + reflections. RT-only snapshots use it so they skip
     /// (rather than diverge) on a non-ray-tracing GPU / CI runner.
+    /// `OLLIN_NO_RAY_TRACING=1` answers false here too, so a run that forces the
+    /// rasterized fallbacks (to exercise the point caster's cube on a machine that would
+    /// otherwise trace) skips the snapshots whose references were recorded traced,
+    /// instead of failing them.
     static var hasRaytracing: Bool {
+        guard ProcessInfo.processInfo.environment["OLLIN_NO_RAY_TRACING"] != "1" else { return false }
         guard let device = MTLCreateSystemDefaultDevice() else { return false }
         return device.supportsRaytracing && device.supportsRaytracingFromRender
     }

@@ -724,9 +724,14 @@ final class MetalRenderer {
     /// six-face pass and sampled by direction. Per-face resolution; allocated lazily on
     /// the first point-casting frame. `dummyPointShadowMap` is a 1×1 cube bound when no
     /// point caster is active, so the fragment's declared `depthcube` is always satisfied.
-    static let pointShadowMapResolution = 1024
+    static let pointShadowMapResolution = Int(OLLIN_POINT_SHADOW_RESOLUTION)
     var pointShadowMap: MTLTexture?
     var dummyPointShadowMap: MTLTexture?
+    /// The far plane the cube pass fitted to the frame's geometry, carried from that pass
+    /// to the lighting the fragment reads (the packing's own guess is the camera's framing
+    /// radius, which the light does not respect). nil whenever no cube was rendered, which
+    /// is every frame on a device that traces its point casters.
+    var pointShadowFar: Float?
     /// Whether this device can trace rays from the render stages. When true, a point
     /// caster is shadowed by *ray tracing* (an exact visibility ray against a per-frame
     /// acceleration structure built from the shadow casters) instead of the mid-point
@@ -734,6 +739,15 @@ final class MetalRenderer {
     /// mesh fragments are compiled with `OLLIN_RT_SHADOWS` set from this, and the cube
     /// path stays the byte-identical fallback on devices without it.
     let rayTracedShadows: Bool
+    /// Whether render-stage ray tracing is available *and* wanted. `OLLIN_NO_RAY_TRACING=1`
+    /// in the environment answers false on a device that can trace, which is the only way
+    /// to exercise the rasterized fallbacks (chiefly the point caster's mid-point cube) on
+    /// a machine that always traces instead. Read in the two places that decide the render
+    /// path: this initializer, and the shader compile that sets `OLLIN_RT_SHADOWS`.
+    static func rayTracingAvailable(on device: MTLDevice) -> Bool {
+        if ProcessInfo.processInfo.environment["OLLIN_NO_RAY_TRACING"] == "1" { return false }
+        return device.supportsRaytracing && device.supportsRaytracingFromRender
+    }
     /// Whether the GPU has *dedicated* ray-tracing units (the A17/M3 generation and later,
     /// `MTLGPUFamily.apple9`+). The M1/M2 trace in software, ~5-10× slower, so the hardware-
     /// relative `Quality` tiers map to a higher ray count here than on a software-RT GPU.
@@ -1378,7 +1392,7 @@ final class MetalRenderer {
             throw RendererError.commandQueue
         }
         self.commandQueue = queue
-        self.rayTracedShadows = device.supportsRaytracing && device.supportsRaytracingFromRender
+        self.rayTracedShadows = MetalRenderer.rayTracingAvailable(on: device)
         self.hasHardwareRayTracing = device.supportsFamily(.apple9)
 
         let samplerDesc = MTLSamplerDescriptor()

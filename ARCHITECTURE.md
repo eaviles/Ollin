@@ -2223,16 +2223,72 @@ Three decisions make the change cheap to reason about:
   constant, and a cube or traced primary simply leaves that layer cleared.
 - **A point light casts only as the primary.** There is one cube texture and
   one acceleration structure, and both belong to slot 0, so the packing never
-  puts a point light in an extra slot: every extra caster is a 2D one. Routing
-  a non-primary point light to the cube instead was built and rejected. It
-  works on the CPU side (the caster list, the cube pass, and the bindings all
-  came out correct), but it lands on the rasterized cube fallback, and that
-  path is already wrong in a large-floor scene: forcing `rayTracedShadows =
-  false` on clean HEAD dims the whole floor past the far plane and drops the
-  box's shadow entirely. On a ray-tracing machine the fallback never runs,
-  because a primary point caster is traced there, which is why the defect has
-  stayed hidden. Fixing it is the precondition for a second point caster, and
-  both live in `DESIGN-NOTES.md`.
+  puts a point light in an extra slot: every extra caster is a 2D one. Lifting
+  that needs a `depthcube_array` for the cubes and a per-caster trace against
+  the shared structure, which is in `DESIGN-NOTES.md`.
+
+#### The rasterized cube, and why it was wrong for so long
+
+The mid-point cube is what a GPU without render-stage ray tracing renders for a
+point caster, and it is the one 3D path an Apple-silicon machine never takes.
+Nothing exercised it: the snapshot named `point-shadows` renders *traced* here,
+so it pinned the traced picture and said nothing about the fallback. It was
+wrong in three separate ways at once, and each one is now a probe in
+`CubeShadowTests` that was watched fail with its fix removed.
+
+**Forcing the path.** `MetalRenderer.rayTracingAvailable(on:)` answers false when
+`OLLIN_NO_RAY_TRACING=1` is in the environment, and both places that decide the
+render path read it: the renderer's own `rayTracedShadows`, and the shader
+compile that sets `OLLIN_RT_SHADOWS`. So the fallback can be rendered, measured,
+and tested on the machine the framework is developed on. `CubeShadowTests` runs
+under it, and also runs unasked on a GPU that genuinely cannot trace.
+
+**Every face was stored upside down.** The six face view matrices use the
+standard cube-face basis, which is written for an API whose framebuffer origin
+is the *bottom* left. Metal's is the top left, while a cube face is addressed
+from the top left in both, so rendering those views unchanged flips each face
+vertically. A receiver then samples the mirror of the direction it meant: a box
+over a floor threw its shadow behind itself, and the floor's own occlusion came
+from the wrong place, which rippled it. Working the render's `u` and `v` out
+against the cube-lookup table shows `u` already agreeing on all six faces and
+`v` inverted on all six, so the fix is one row: negate the projection's y. The
+pass culls nothing, so the winding it also flips is free.
+
+**The far plane was fitted to the camera, not to the light.** The packing had
+only `Drawer`, so it sized the cube from the camera's framing radius, which says
+nothing about how far the light reaches. A caster further from the light than
+the camera is was clipped straight out of the cube: it lit up and threw nothing.
+The fit belongs in the renderer, because only the renderer knows it is rendering
+a cube at all, and a traced frame must not pay for the scan: `pointCasterFar`
+takes the frame's mesh-vertex AABB, measures the farthest corner from the light,
+adds 2% (so the farthest surface still stores under the "nothing here"
+sentinel), and the value travels to the fragment as `MetalRenderer.pointShadowFar`,
+which `finalizeShadowCasters` writes into slot 0 beside the facts it already
+carries back. A traced frame renders no cube, leaves it nil, and keeps every
+packed field exactly as it was. Instanced and field casters are not in the scan
+(their copies are a matrix each, and a field's live in a GPU buffer), so a frame
+holding them keeps the old camera-derived value as a floor.
+
+**The bias was measured in the wrong place, and then was the wrong shape.** A
+cube texel covers `2·d/N` world units at distance `d` from the light, and the
+packed `texelWorld` is that figure taken once, where the camera looks. Used
+whole, it under-biases every surface further out. Worse, a surface the light
+*grazes* crosses many texels' worth of distance inside one texel, and the 20-tap
+PCF reaches three texels out, so the slack has to cover the distance crossed
+over that whole spread: it grows as `tan` of the incidence angle, without bound
+as the light nears the surface plane. So the fragment now works its own texel out
+from its own distance (`OLLIN_POINT_SHADOW_RESOLUTION` moved into the shared
+header for it, retiring the two Swift copies), and scales the *depth* bias by
+that tangent, capped at 12. Only the depth bias is scaled: moving the sample is
+what notches a box's bottom corners, and a surface square on to the light has a
+tangent of zero and the bias it always had. Past the far plane a receiver reads
+**lit**, which is the envelope the 2D casters already state for a receiver
+outside their fitted frustum.
+
+Measured against the traced render of the same scene, the fixed cube path sits
+at a mean 0.34 to 0.40 per channel, where the old one put the shadow on the
+wrong side and combed the floor. On this machine the whole path is inert, so all
+of it is snapshot- and figure-neutral.
 
 The lit mesh loop resolves a light's caster slot by scanning the list, and
 `cs == 0` gates the primary-only terms (`rtShadow`, `fieldShadow`, and the
