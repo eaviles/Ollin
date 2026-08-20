@@ -933,7 +933,9 @@ typedef struct {
                                    // (emissive luminance x area, the area-pdf
                                    // normalizer), z = 1 when any traced geometry
                                    // transmits (gates the transparent shadow walk),
-                                   // w unused
+                                   // w = 1 when the render will be denoised, which
+                                   // is what tells the kernel to fill the two guide
+                                   // layers (they are a one-pixel stand-in otherwise)
 } OllinPathTraceUniforms;
 
 // One emissive triangle for the traced export's mesh-light sampling: the CPU lays the

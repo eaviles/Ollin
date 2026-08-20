@@ -620,7 +620,9 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
                            texture2d<float, access::read_write> depthOut [[texture(1)]],
                            texture2d<float> equirect [[texture(2)]],
                            texture2d_array<float> iesProfiles [[texture(3)]],
-                           texture2d_array<float> cookies [[texture(4)]]) {
+                           texture2d_array<float> cookies [[texture(4)]],
+                           texture2d<float, access::read_write> guideColor [[texture(5)]],
+                           texture2d<float, access::read_write> guideSurface [[texture(6)]]) {
     if (gid.x >= pt.window.x || gid.y >= pt.window.y) return;
     float eps = pt.cameraPosition.w;
     uint maxDepth = max(pt.counts.y, 1u);
@@ -628,6 +630,9 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
     // carries their grid width; a flat-ambient scene skips it, and the lobe
     // strategy alone integrates a uniform field exactly).
     bool envSampling = pt.counts.z > 0 && light.iblEnabled != 0;
+    // The denoiser's guide layers are filled only when the export asks to be
+    // denoised; with the flag down the two textures are a one-pixel stand-in.
+    bool wantsGuides = pt.meshLights.w > 0.5;
     float csR = cos(light.iblRotation), snR = sin(light.iblRotation);
     float3x3 envRot = float3x3(float3(csR, 0.0, -snR), float3(0.0, 1.0, 0.0),
                                float3(snR, 0.0, csR));
@@ -665,10 +670,21 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
         }
         depthOut.write(float4(d, 0.0, 0.0, 0.0), gid);
         accum.write(float4(0.0), gid);
+        if (wantsGuides) {
+            guideColor.write(float4(0.0), gid);
+            guideSurface.write(float4(0.0), gid);
+        }
     }
 
     float3 sumRadiance = float3(0.0);
     float sumCoverage = 0.0;
+    // The guide sums: the first surface's own color and normal (which carry no path
+    // noise), how far away it is, and the square of each sample's brightness, which
+    // is what lets the denoiser measure the grain it has to remove.
+    float3 sumAlbedo = float3(0.0);
+    float3 sumNormal = float3(0.0);
+    float sumDistance = 0.0;
+    float sumLumaSq = 0.0;
 
     for (uint s = 0; s < pt.window.w; s++) {
         uint sampleIndex = pt.window.z + s;
@@ -728,6 +744,8 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
                                 // halves of the pairing scale together, which is
                                 // what keeps the combined estimator consistent)
         float pathDist = 0.0;   // distance traveled so far (grows the texture ray cone)
+        float3 firstAlbedo = float3(1.0);   // the first surface's own color, and
+        float3 firstNormal = float3(0.0);   // the direction it faces (the guides)
         float4 medium = float4(0.0);   // inside a solid glass body: its attenuation
                                        // color (rgb) + distance (w); w = 0 outside
 
@@ -790,6 +808,18 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
             OllinPTMapped mapped = ollin_pt_apply_maps(h, q, verts, geoOffsets,
                                                        geoTextures, rd, backface,
                                                        pt.cone.x + pt.cone.y * pathDist);
+
+            if (depth == 0 && wantsGuides) {
+                // What the denoiser separates the light from: the surface's own
+                // color, after its maps, so a texture edge stays an edge; and its
+                // shading normal, so a crease stays a crease. Mostly transparent
+                // glass keeps a color of 1: what shows through it is not its own
+                // tint, so dividing the light by that tint would smear the view
+                // behind it rather than protect it.
+                firstAlbedo = max(h.s.albedo, float3(0.02));
+                if (h.mat.transmission > 0.5) firstAlbedo = float3(1.0);
+                firstNormal = h.s.N;
+            }
 
             // The glass share of the mix: `transmission` is the fraction of light
             // the surface passes, so that share of the paths takes the dielectric
@@ -1016,11 +1046,171 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
             }
             sumRadiance += radiance;
             sumCoverage += 1.0;
+            if (wantsGuides) {
+                sumAlbedo += firstAlbedo;
+                sumNormal += firstNormal;
+                sumDistance += primaryDist;
+                float luma = dot(radiance, float3(0.2126, 0.7152, 0.0722));
+                sumLumaSq += luma * luma;
+            }
         }
     }
 
     float4 prev = accum.read(gid);
     accum.write(prev + float4(sumRadiance, sumCoverage), gid);
+    if (wantsGuides) {
+        float4 prevC = guideColor.read(gid);
+        guideColor.write(prevC + float4(sumAlbedo, sumLumaSq), gid);
+        float4 prevS = guideSurface.read(gid);
+        guideSurface.write(prevS + float4(sumNormal, sumDistance), gid);
+    }
+}
+
+// MARK: - The denoiser
+
+// A traced still is an unbiased estimate, so what is left of the error shows as
+// grain rather than as a wrong picture, and sending it away by sampling costs the
+// square: four times the paths halve the grain. The other half of the answer is to
+// filter what the trace already knows about the surfaces it hit.
+//
+// Three ideas carry it, each implemented from its published technique (see
+// ATTRIBUTION.md's Techniques list):
+// - Separate the light from the surface. Divide the traced radiance by the first
+//   hit's own color before filtering and put it back after, so a texture edge or a
+//   painted pattern is never blurred, only the light falling on it.
+// - Filter with a wavelet that skips pixels. The blur runs several times and
+//   doubles the gap between the pixels it reads each time, so a wide reach costs
+//   the same 25 reads as a narrow one. Each read is weighed by how much its
+//   normal, its distance, and its brightness agree with the middle pixel's, which
+//   is what keeps the blur inside one surface.
+// - Take the strength from the measured variance. The trace records the spread of
+//   its own samples per pixel, and the brightness weight divides by it. A thin
+//   render therefore filters hard and a converged one filters almost nothing, with
+//   no dial to set per scene, and more samples always move the picture toward the
+//   true answer instead of toward a smoother wrong one.
+//
+// The chain runs prepare, then the wavelet a few times over two textures in turn,
+// then finish, which writes the result back into the accumulation in the units the
+// composite already reads. A pixel no sample covered stays untouched throughout.
+
+constant float3 ollin_pt_luma = float3(0.2126, 0.7152, 0.0722);
+
+// Turn the running sums into the per-pixel values the filter reads: the mean
+// radiance divided by the surface color (the light alone), the surface color and
+// its coverage, the normal and the distance, and the variance of this pixel's own
+// mean, which is the spread of its samples divided by how many there were.
+kernel void ollin_pt_denoise_prepare(uint2 gid [[thread_position_in_grid]],
+                                     texture2d<float, access::read> accum [[texture(0)]],
+                                     texture2d<float, access::read> guideColor [[texture(1)]],
+                                     texture2d<float, access::read> guideSurface [[texture(2)]],
+                                     texture2d<float, access::write> lightOut [[texture(3)]],
+                                     texture2d<float, access::write> albedoOut [[texture(4)]],
+                                     texture2d<float, access::write> surfaceOut [[texture(5)]]) {
+    if (gid.x >= accum.get_width() || gid.y >= accum.get_height()) return;
+    float4 a = accum.read(gid);
+    if (a.a <= 0.0) {
+        lightOut.write(float4(0.0), gid);
+        albedoOut.write(float4(0.0), gid);
+        surfaceOut.write(float4(0.0), gid);
+        return;
+    }
+    float inv = 1.0 / a.a;
+    float3 radiance = a.rgb * inv;
+    float4 gc = guideColor.read(gid);
+    float3 albedo = max(gc.rgb * inv, float3(0.02));
+    float4 gs = guideSurface.read(gid);
+    float3 normal = length(gs.xyz) > 1e-6 ? normalize(gs.xyz) : float3(0.0, 0.0, 1.0);
+    float3 light = radiance / albedo;
+    // The variance of the mean, carried in the same units the filter compares:
+    // the spread of the samples over one less than their number (which is what
+    // makes it an honest estimate from a sample rather than from a whole), divided
+    // again by the surface color the light was divided by. One sample has no
+    // spread to measure, which is why the pass never runs on a single-sample render.
+    float luma = dot(radiance, ollin_pt_luma);
+    float albedoLuma = max(dot(albedo, ollin_pt_luma), 1e-3);
+    float spread = max(gc.a * inv - luma * luma, 0.0) / max(a.a - 1.0, 1.0);
+    float variance = spread / (albedoLuma * albedoLuma);
+    lightOut.write(float4(light, variance), gid);
+    albedoOut.write(float4(albedo, a.a), gid);
+    surfaceOut.write(float4(normal, gs.w * inv), gid);
+}
+
+// One pass of the wavelet. `params` carries the gap between the pixels read (1, 2,
+// 4 and so on), then the three agreement widths: brightness, distance, and normal.
+kernel void ollin_pt_denoise_atrous(uint2 gid [[thread_position_in_grid]],
+                                    constant float4 &params [[buffer(0)]],
+                                    texture2d<float, access::read> light [[texture(0)]],
+                                    texture2d<float, access::read> albedo [[texture(1)]],
+                                    texture2d<float, access::read> surface [[texture(2)]],
+                                    texture2d<float, access::write> lightOut [[texture(3)]]) {
+    int w = int(light.get_width()), h = int(light.get_height());
+    if (int(gid.x) >= w || int(gid.y) >= h) return;
+    float4 center = light.read(gid);
+    if (albedo.read(gid).a <= 0.0) { lightOut.write(center, gid); return; }
+    float4 centerSurface = surface.read(gid);
+
+    // The variance drives the brightness weight, so read it through a small blur of
+    // its own first: a single pixel's estimate of its own spread is itself noisy,
+    // and an under-reported one would freeze that pixel's grain in place.
+    float blurred = 0.0, blurredWeight = 0.0;
+    for (int dy = -1; dy <= 1; dy++) {
+        for (int dx = -1; dx <= 1; dx++) {
+            int2 p = int2(gid) + int2(dx, dy);
+            if (p.x < 0 || p.y < 0 || p.x >= w || p.y >= h) continue;
+            uint2 up = uint2(p);
+            if (albedo.read(up).a <= 0.0) continue;
+            float k = (dx == 0 ? 2.0 : 1.0) * (dy == 0 ? 2.0 : 1.0);
+            blurred += light.read(up).a * k;
+            blurredWeight += k;
+        }
+    }
+    float variance = blurredWeight > 0.0 ? blurred / blurredWeight : center.a;
+
+    const float spline[3] = { 3.0 / 8.0, 1.0 / 4.0, 1.0 / 16.0 };
+    int step = max(int(params.x), 1);
+    float centerLuma = dot(center.rgb, ollin_pt_luma);
+    float lumaWidth = params.y * sqrt(max(variance, 0.0)) + 1e-5;
+    float3 sum = float3(0.0);
+    float varianceSum = 0.0, weightSum = 0.0;
+    for (int dy = -2; dy <= 2; dy++) {
+        for (int dx = -2; dx <= 2; dx++) {
+            int2 p = int2(gid) + int2(dx, dy) * step;
+            if (p.x < 0 || p.y < 0 || p.x >= w || p.y >= h) continue;
+            uint2 up = uint2(p);
+            if (albedo.read(up).a <= 0.0) continue;
+            float4 tap = light.read(up);
+            float4 tapSurface = surface.read(up);
+            float normalWeight = pow(max(dot(centerSurface.xyz, tapSurface.xyz), 0.0), params.w);
+            // Distance is compared as a fraction of how far away the middle pixel
+            // is, so one width reads the same on a near surface and a far one, and
+            // it opens with the gap, since a wider reach crosses more real depth.
+            float depthWidth = params.z * max(centerSurface.w, 1e-3) * float(step) + 1e-6;
+            float depthWeight = exp(-abs(centerSurface.w - tapSurface.w) / depthWidth);
+            float lumaWeight = exp(-abs(centerLuma - dot(tap.rgb, ollin_pt_luma)) / lumaWidth);
+            float kernelWeight = spline[abs(dx)] * spline[abs(dy)];
+            float weight = kernelWeight * normalWeight * depthWeight * lumaWeight;
+            sum += tap.rgb * weight;
+            // Variance is a squared quantity, so it carries the squared weights.
+            varianceSum += tap.a * weight * weight;
+            weightSum += weight;
+        }
+    }
+    if (weightSum <= 0.0) { lightOut.write(center, gid); return; }
+    lightOut.write(float4(sum / weightSum, varianceSum / (weightSum * weightSum)), gid);
+}
+
+// Put the surface color back and write the result into the accumulation in its own
+// units (a sum over the covered samples), so the composite needs to know nothing
+// about any of this.
+kernel void ollin_pt_denoise_finish(uint2 gid [[thread_position_in_grid]],
+                                    texture2d<float, access::read> light [[texture(0)]],
+                                    texture2d<float, access::read> albedo [[texture(1)]],
+                                    texture2d<float, access::read_write> accum [[texture(2)]]) {
+    if (gid.x >= accum.get_width() || gid.y >= accum.get_height()) return;
+    float4 a = accum.read(gid);
+    if (a.a <= 0.0) return;
+    float3 radiance = max(light.read(gid).rgb * albedo.read(gid).rgb, float3(0.0));
+    accum.write(float4(radiance * a.a, a.a), gid);
 }
 
 // MARK: - The composite

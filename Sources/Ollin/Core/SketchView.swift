@@ -2375,9 +2375,14 @@ public extension OllinApp {
             let depth: Int? = args.firstIndex(of: "--pt-depth").flatMap { j in
                 j + 1 < args.count ? Int(args[j + 1]) : nil
             }
+            // `--denoise` filters the grain out of the finished render. It takes
+            // its strength from the trace's own measured variance, so it smooths a
+            // thin render hard and a nearly converged one only a little. Off unless
+            // asked for: the plain flag renders the estimate the tracer arrived at.
             pathTracedExport = PathTracing(
                 samplesPerPixel: n ?? PathTracing.tierSamples(for: renderQuality),
-                maxDepth: depth ?? 8)
+                maxDepth: depth ?? 8,
+                denoise: args.contains("--denoise"))
         }
         // `--seed N` reseeds the sketch before its `setup()` on every export
         // path, so a variation found in the inspector or on a contact sheet

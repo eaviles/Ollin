@@ -53,12 +53,34 @@ The contact sheets, the vector exports (SVG and PDF), and the benchmark keep the
 - **Glass shadows are tinted, not focused.** Light through glass reaches a shadow as a straight, tinted pass; the bent, bunched-up bright lines of a real caustic stay with the live [`caustics()`](../3D/Caustics.md) feature.
 - **Volumetric shafts stay raster features.** Height fog and aerial perspective do apply to the traced frame along the eye's path.
 
+### The grain filter
+
+What is left of the error in a traced render shows as grain. Sampling it away costs the square: four times the paths halve it. `--denoise` filters the finished render instead, for a fraction of a second of work. It is off unless you ask for it, so the plain flag always renders the estimate the tracer arrived at.
+
+The filter is told about the surface separately from the light. While it traces, the tracer records the first surface each pixel hit: its own color, the direction it faces, and how far away it is. The light is then divided by that color, filtered, and multiplied back. So a texture, a painted pattern, or a silhouette is never blurred. Only the light on it is.
+
+Its strength is measured rather than set. The tracer records the spread of each pixel's own samples, and the filter blends across a pixel only as far as that spread allows. A thin render is smoothed hard, a nearly converged one only a little, and there is no dial to get wrong per scene.
+
+It also does not trade the picture for smoothness. The example scene was measured against an 8192-sample render. The filtered frame sits closer to it than the raw frame at every count tried. At 64 samples the error falls from 17.6 to 9.1, and at 2048 from 5.5 to 3.9. Read as samples, 64 filtered ones land where about 240 raw ones would. At 2048 they land where about 4000 would. That saves five minutes of tracing on an M2.
+
+```sh
+swift run Example-3D-Effects-PathTraced --export out.png --path-traced 64            # the raw estimate
+swift run Example-3D-Effects-PathTraced --export out.png --path-traced 64 --denoise  # filtered
+```
+
+On a sequence it steadies the picture rather than shaking it. The filter runs on each frame by itself. But most of what separates two consecutive raw frames is grain, so filtering brings them closer together. On the example scene's moving camera at 48 samples, the difference between one frame and the next falls from 2.85 to 1.21.
+
+Two things to know about it:
+
+- **A real sparkle reads softer.** A rough metal catching a small bright source produces true glitter, and the filter cannot tell that from grain. Where the sparkle is the subject, leave the filter off and raise the sample count.
+- **One sample has nothing to measure.** `--path-traced 1` has no spread to read, so the filter does not run.
+
 ### Determinism and the programmatic surface
 
-Sampling is a pure function of pixel, sample index, and bounce, so the same command renders the same bytes, and a video export cannot flicker. Set the mode in code with the same options the flag carries:
+Sampling is a pure function of pixel, sample index, and bounce. The filter is a pure function of what the sampling left behind. So the same command renders the same bytes, and a video export cannot flicker. Set the mode in code with the same options the flag carries:
 
 ```swift
-OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 512, maxDepth: 8)
+OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 512, maxDepth: 8, denoise: true)  // the flag's `--denoise`
 OllinApp.export(sketch, to: "out.png", frame: 120)
 OllinApp.pathTracedExport = nil
 ```

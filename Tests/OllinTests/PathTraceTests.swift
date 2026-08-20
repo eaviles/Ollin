@@ -74,8 +74,12 @@ struct PathTraceTests {
         return Double(sum) / Double(max(count, 1))
     }
 
+    /// The integrator probes read the raw estimate: they measure what the sampling
+    /// returns, and the filter is pinned separately below. Each names `denoise`
+    /// rather than leaning on its default, so changing that default later cannot
+    /// quietly re-aim them.
     private func pathTraced(_ kind: Probe.Kind, samples: Int = 96) -> CGImage? {
-        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples)
+        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, denoise: false)
         defer { OllinApp.pathTracedExport = nil }
         return OllinApp.image(of: Probe.make(kind), frame: 1)
     }
@@ -130,7 +134,7 @@ struct PathTraceTests {
     /// tolerance only absorbs cross-GPU float drift.
     @Test(.enabled(if: Snapshot.hasRaytracing))
     func theTracedFrameMatchesItsReference() throws {
-        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 48)
+        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 48, denoise: false)
         defer { OllinApp.pathTracedExport = nil }
         let diff = try Snapshot.meanDifference(of: SnapshotScene(), against: "path-traced-3d",
                                                frame: 1)
@@ -351,7 +355,8 @@ struct PathTraceTests {
 
     private func pathTracedSlice(_ kind: SliceProbe.Kind, samples: Int = 96,
                                  depth: Int = 8) -> CGImage? {
-        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, maxDepth: depth)
+        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, maxDepth: depth,
+                                                denoise: false)
         defer { OllinApp.pathTracedExport = nil }
         return OllinApp.image(of: SliceProbe.make(kind), frame: 1)
     }
@@ -626,7 +631,8 @@ struct PathTraceTests {
 
     private func pathTracedMaps(_ kind: MapsProbe.Kind, samples: Int = 96,
                                 depth: Int = 8) -> CGImage? {
-        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, maxDepth: depth)
+        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, maxDepth: depth,
+                                                denoise: false)
         defer { OllinApp.pathTracedExport = nil }
         return OllinApp.image(of: MapsProbe.make(kind), frame: 1)
     }
@@ -728,6 +734,189 @@ struct PathTraceTests {
     func theMappedPathsStayDeterministic() throws {
         let a = try #require(pathTracedMaps(.mapsEverything, samples: 12))
         let b = try #require(pathTracedMaps(.mapsEverything, samples: 12))
+        #expect(pixels(of: a) == pixels(of: b))
+    }
+
+    // MARK: - The grain filter
+
+    /// Scenes built to be grainy at a low sample count. One small bright panel is
+    /// the only light in the room, so most of what the picture shows arrived after
+    /// a bounce and a thin render speckles. The second kind puts a hard two-tone
+    /// texture in front of the camera under the same light: that edge belongs to
+    /// the surface, not to the light, so the filter must leave it alone.
+    final class GrainProbe: Sketch {
+        enum Kind { case room, splitFace }
+        var kind: Kind = .room
+
+        override var canvasSize: CanvasSize { .square(160) }
+
+        static func make(_ kind: Kind) -> GrainProbe {
+            let p = GrainProbe()
+            p.kind = kind
+            return p
+        }
+
+        /// A hard vertical split, white against near-black, with nothing gradual
+        /// anywhere: a filter that blurs across it cannot hide.
+        static let split: Image = {
+            var bytes = [UInt8]()
+            bytes.reserveCapacity(64 * 64 * 4)
+            for _ in 0..<64 {
+                for x in 0..<64 {
+                    let v: UInt8 = x < 32 ? 245 : 20
+                    bytes.append(contentsOf: [v, v, v, 255])
+                }
+            }
+            return Image(width: 64, height: 64, premultipliedRGBA: bytes)!
+        }()
+
+        /// The one light: small, bright, and off to the side, which is the shape
+        /// that makes an unfinished render speckle.
+        private func oneSmallPanel() {
+            ambientLight(Color(white: 0.03))
+            rectLight(Color(white: 7), at: Vector3(1.7, 2.4, 1.6),
+                      direction: Vector3(-0.6, -1, -0.6), width: 0.45, height: 0.45)
+        }
+
+        override func draw() {
+            background(.black)
+            oneSmallPanel()
+            fill(Color(white: 0.75))
+            material(Material())
+            switch kind {
+            case .room:
+                camera(Camera3D(eye: Vector3(0, 1.3, 4), target: Vector3(0, 0.35, 0)))
+                withState {
+                    translate(0, -0.55, 0)
+                    drawBox(width: 9, height: 0.6, depth: 9)
+                }
+                withState {
+                    translate(0, 0.45, 0)
+                    drawSphere(radius: 0.9)
+                }
+            case .splitFace:
+                camera(Camera3D(eye: Vector3(0, 0, 3.6), target: .zero))
+                withState {
+                    rotateX(.pi / 2)
+                    drawMesh(Mesh.plane(width: 3.4, depth: 3.4).textured(Self.split))
+                }
+            }
+        }
+    }
+
+    private func pathTracedGrain(_ kind: GrainProbe.Kind, samples: Int,
+                                 denoise: Bool) -> CGImage? {
+        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, denoise: denoise)
+        defer { OllinApp.pathTracedExport = nil }
+        return OllinApp.image(of: GrainProbe.make(kind), frame: 1)
+    }
+
+    /// How far two renders of the same frame sit apart, in 8-bit levels.
+    private func rootMeanSquare(_ a: CGImage, _ b: CGImage) -> Double {
+        let x = pixels(of: a), y = pixels(of: b)
+        var sum = 0.0
+        var count = 0
+        for i in stride(from: 0, to: min(x.count, y.count), by: 4) {
+            for c in 0..<3 {
+                let d = Double(x[i + c]) - Double(y[i + c])
+                sum += d * d
+                count += 1
+            }
+        }
+        return (sum / Double(max(count, 1))).squareRoot()
+    }
+
+    /// The filter is asked for, never assumed: a command that names no filter must
+    /// render the raw estimate, byte for byte. This pins the *default* rather than
+    /// the pass, which is what keeps every command written before the filter
+    /// existed rendering what it always did.
+    @Test(.enabled(if: Snapshot.hasRaytracing))
+    func theFilterIsOffUnlessAskedFor() throws {
+        #expect(PathTracing(samplesPerPixel: 8).denoise == false)
+        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 8)
+        let byDefault = OllinApp.image(of: GrainProbe.make(.room), frame: 1)
+        OllinApp.pathTracedExport = nil
+        let named = try #require(pathTracedGrain(.room, samples: 8, denoise: false))
+        #expect(pixels(of: try #require(byDefault)) == pixels(of: named))
+    }
+
+    /// The headline claim, measured against the truth rather than against taste: a
+    /// thin render is filtered *closer* to a converged one, not merely smoother.
+    /// A blur that lost the picture would move away from the reference instead.
+    @Test(.enabled(if: Snapshot.hasRaytracing))
+    func theFilterMovesAThinRenderTowardTheTruth() throws {
+        let reference = try #require(pathTracedGrain(.room, samples: 384, denoise: false))
+        let raw = try #require(pathTracedGrain(.room, samples: 8, denoise: false))
+        let filtered = try #require(pathTracedGrain(.room, samples: 8, denoise: true))
+        let rawError = rootMeanSquare(raw, reference)
+        let filteredError = rootMeanSquare(filtered, reference)
+        #expect(filteredError < rawError * 0.7,
+                "raw \(rawError) vs filtered \(filteredError) against the reference")
+    }
+
+    /// The property that makes the filter safe to leave on, and the one worth
+    /// pinning: it never trades the picture for smoothness. A render already close
+    /// to converged must come out *closer* still, not merely softer, which is what
+    /// says the pass is removing what is left of the error rather than removing
+    /// detail. The second read is the strength following the measurement: the same
+    /// filter moves a thin render far and a deep one only a little.
+    @Test(.enabled(if: Snapshot.hasRaytracing))
+    func theFilterStillHelpsANearlyConvergedRender() throws {
+        let reference = try #require(pathTracedGrain(.room, samples: 2048, denoise: false))
+        let deepRaw = try #require(pathTracedGrain(.room, samples: 256, denoise: false))
+        let deepFiltered = try #require(pathTracedGrain(.room, samples: 256, denoise: true))
+        let rawError = rootMeanSquare(deepRaw, reference)
+        let filteredError = rootMeanSquare(deepFiltered, reference)
+        #expect(filteredError < rawError,
+                "deep raw \(rawError) vs deep filtered \(filteredError)")
+
+        let thinRaw = try #require(pathTracedGrain(.room, samples: 8, denoise: false))
+        let thinFiltered = try #require(pathTracedGrain(.room, samples: 8, denoise: true))
+        let thinMove = rootMeanSquare(thinRaw, thinFiltered)
+        let deepMove = rootMeanSquare(deepRaw, deepFiltered)
+        #expect(thinMove > deepMove * 3,
+                "thin render moved \(thinMove), deep one moved \(deepMove)")
+    }
+
+    /// The demodulation claim: the light is divided by the surface's own color
+    /// before filtering and put back after, so a hard texture edge keeps its step.
+    /// The probe reads two narrow bands either side of the split and asks that the
+    /// filtered step stay nearly the raw one; a filter working on the finished
+    /// picture instead would round this edge off.
+    @Test(.enabled(if: Snapshot.hasRaytracing))
+    func theFilterKeepsAHardTextureEdge() throws {
+        func step(_ image: CGImage) -> Double {
+            let left = regionMean(image, x0: 0.44, x1: 0.49, y0: 0.35, y1: 0.65)
+            let right = regionMean(image, x0: 0.51, x1: 0.56, y0: 0.35, y1: 0.65)
+            return left - right
+        }
+        let raw = try #require(pathTracedGrain(.splitFace, samples: 16, denoise: false))
+        let filtered = try #require(pathTracedGrain(.splitFace, samples: 16, denoise: true))
+        let rawStep = step(raw), filteredStep = step(filtered)
+        #expect(rawStep > 60, "the probe's own edge only reads \(rawStep) levels")
+        #expect(filteredStep > rawStep * 0.9,
+                "the edge fell from \(rawStep) to \(filteredStep) levels")
+    }
+
+    /// The furnace again, filtered this time: a uniform field is a fixed point of
+    /// the filter (every neighbor agrees, so any weighting returns the same value),
+    /// which is what says the pass conserves energy rather than merely hiding error.
+    @Test(.enabled(if: Snapshot.hasRaytracing))
+    func theFurnaceSurvivesTheFilter() throws {
+        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: 96, denoise: true)
+        defer { OllinApp.pathTracedExport = nil }
+        let image = try #require(OllinApp.image(of: Probe.make(.furnaceMatte), frame: 1))
+        let m = centerMean(image)
+        #expect(abs(m - 127.5) < 3.0, "filtered furnace mean \(m), expected ~127.5")
+    }
+
+    /// The house determinism rule reaches the filter too: it is a pure function of
+    /// the buffers the trace left behind, so the same command still renders the
+    /// same bytes.
+    @Test(.enabled(if: Snapshot.hasRaytracing))
+    func theFilteredFrameStaysDeterministic() throws {
+        let a = try #require(pathTracedGrain(.room, samples: 12, denoise: true))
+        let b = try #require(pathTracedGrain(.room, samples: 12, denoise: true))
         #expect(pixels(of: a) == pixels(of: b))
     }
 }

@@ -79,6 +79,8 @@ extension MetalRenderer {
             envTableLOD = max(0, log2(Float(equirect.width) / Float(Self.envGridW)))
         }
 
+        let total = max(1, settings.samplesPerPixel)
+
         // The accumulation (radiance sum, hit count) and primary-depth layers.
         let accumDesc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .rgba32Float, width: width, height: height, mipmapped: false)
@@ -90,6 +92,19 @@ extension MetalRenderer {
         depthDesc.storageMode = .private
         guard let accum = device.makeTexture(descriptor: accumDesc),
               let depthTex = device.makeTexture(descriptor: depthDesc) else { return nil }
+
+        // The denoiser's guide layers, filled by the trace itself: the first hit's
+        // own color plus the running square of each sample's brightness (which is
+        // what measures the grain), and the first hit's normal plus its distance.
+        // With the filter off they are a single pixel the kernel never writes.
+        let wantsGuides = settings.denoise && total > 1
+        let guideDesc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .rgba32Float, width: wantsGuides ? width : 1,
+            height: wantsGuides ? height : 1, mipmapped: false)
+        guideDesc.usage = [.shaderRead, .shaderWrite]
+        guideDesc.storageMode = .private
+        guard let guideColor = device.makeTexture(descriptor: guideDesc),
+              let guideSurface = device.makeTexture(descriptor: guideDesc) else { return nil }
 
         // Per-dispatch constants. The camera frame comes from the same uniforms
         // builder the raster pass uses (unjittered), so the traced framing matches
@@ -106,7 +121,6 @@ extension MetalRenderer {
                                Float(max(0, camera.apertureBlades)), 0)
         pt.miss = SIMD4<Float>(lighting.ambient.x, lighting.ambient.y, lighting.ambient.z,
                                envTableLOD)
-        let total = max(1, settings.samplesPerPixel)
         pt.counts = SIMD4<UInt32>(UInt32(total), UInt32(max(1, settings.maxDepth)),
                                   envTables != nil ? UInt32(Self.envGridW) : 0,
                                   envTables != nil ? UInt32(Self.envGridH) : 0)
@@ -127,7 +141,8 @@ extension MetalRenderer {
         pt.cone = SIMD4<Float>(simd_length(o1 - o0), simd_length(d1 - d0), 0, 0)
         pt.meshLights = SIMD4<Float>(Float(scene.emissiveCount),
                                      max(scene.emissivePower, 1e-6),
-                                     scene.anyTransmission ? 1 : 0, 0)
+                                     scene.anyTransmission ? 1 : 0,
+                                     wantsGuides ? 1 : 0)
 
         let envTexture = (lighting.iblEnabled != 0 ? currentIBL?.equirect : nil) ?? whiteStandIn()
         let shapingArray = shapingStandIn()
@@ -161,6 +176,8 @@ extension MetalRenderer {
             enc.setTexture(envTexture, index: 2)
             enc.setTexture(iesArrayTexture ?? shapingArray, index: 3)
             enc.setTexture(cookieArrayTexture ?? shapingArray, index: 4)
+            enc.setTexture(guideColor, index: 5)
+            enc.setTexture(guideSurface, index: 6)
             enc.dispatchThreads(MTLSize(width: width, height: height, depth: 1),
                                 threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: 1))
             enc.endEncoding()
@@ -180,7 +197,86 @@ extension MetalRenderer {
         if pathTraceReportsProgress {
             FileHandle.standardError.write(Data("\n".utf8))
         }
+        if wantsGuides {
+            encodePathTraceDenoise(accum: accum, guideColor: guideColor,
+                                   guideSurface: guideSurface, width: width, height: height)
+        }
         return (accum, depthTex, 1 / Float(total))
+    }
+
+    /// Filter the grain out of the finished accumulation, in place, so the composite
+    /// reads exactly what it always did. The trace has already written what the
+    /// filter needs to keep its edges: the first hit's own color and normal, its
+    /// distance, and the spread of the samples at that pixel.
+    ///
+    /// The light is divided by the surface color first and multiplied back at the
+    /// end, so nothing painted on a surface is ever blurred, only the light on it.
+    /// Between the two, one wavelet pass runs five times over a pair of textures in
+    /// turn, doubling the gap between the pixels it reads each time, which is what
+    /// buys a wide reach for 25 reads. Every pass weighs each read by how well its
+    /// normal, its distance, and its brightness agree with the middle pixel's, and
+    /// the brightness width is the measured variance, so the whole filter fades out
+    /// by itself as a render converges.
+    private func encodePathTraceDenoise(accum: MTLTexture, guideColor: MTLTexture,
+                                        guideSurface: MTLTexture, width: Int, height: Int) {
+        guard let prepare = try? libraryComputePipeline("ollin_pt_denoise_prepare"),
+              let atrous = try? libraryComputePipeline("ollin_pt_denoise_atrous"),
+              let finish = try? libraryComputePipeline("ollin_pt_denoise_finish") else { return }
+        let lightDesc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .rgba32Float, width: width, height: height, mipmapped: false)
+        lightDesc.usage = [.shaderRead, .shaderWrite]
+        lightDesc.storageMode = .private
+        // The two guide layers are read far more often than they are written, and
+        // half precision is plenty for a direction and a distance that are only
+        // ever compared against a neighbor's.
+        let guideOutDesc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .rgba16Float, width: width, height: height, mipmapped: false)
+        guideOutDesc.usage = [.shaderRead, .shaderWrite]
+        guideOutDesc.storageMode = .private
+        guard let lightA = device.makeTexture(descriptor: lightDesc),
+              let lightB = device.makeTexture(descriptor: lightDesc),
+              let albedo = device.makeTexture(descriptor: guideOutDesc),
+              let surface = device.makeTexture(descriptor: guideOutDesc),
+              let cb = commandQueue.makeCommandBuffer(),
+              let enc = cb.makeComputeCommandEncoder() else { return }
+        let grid = MTLSize(width: width, height: height, depth: 1)
+        let group = MTLSize(width: 8, height: 8, depth: 1)
+
+        enc.setComputePipelineState(prepare)
+        enc.setTexture(accum, index: 0)
+        enc.setTexture(guideColor, index: 1)
+        enc.setTexture(guideSurface, index: 2)
+        enc.setTexture(lightA, index: 3)
+        enc.setTexture(albedo, index: 4)
+        enc.setTexture(surface, index: 5)
+        enc.dispatchThreads(grid, threadsPerThreadgroup: group)
+
+        // Five passes reach 32 pixels out. The widths are the published defaults for
+        // this filter: a brightness width of four standard deviations, a distance
+        // width of a fiftieth of the distance itself (opened by the gap, since a
+        // wider reach crosses more real depth), and a normal agreement raised to
+        // 128, which holds the blur to one flat face.
+        var source = lightA, target = lightB
+        for pass in 0..<5 {
+            enc.setComputePipelineState(atrous)
+            var params = SIMD4<Float>(Float(1 << pass), 4, 0.02, 128)
+            enc.setBytes(&params, length: MemoryLayout<SIMD4<Float>>.stride, index: 0)
+            enc.setTexture(source, index: 0)
+            enc.setTexture(albedo, index: 1)
+            enc.setTexture(surface, index: 2)
+            enc.setTexture(target, index: 3)
+            enc.dispatchThreads(grid, threadsPerThreadgroup: group)
+            swap(&source, &target)
+        }
+
+        enc.setComputePipelineState(finish)
+        enc.setTexture(source, index: 0)
+        enc.setTexture(albedo, index: 1)
+        enc.setTexture(accum, index: 2)
+        enc.dispatchThreads(grid, threadsPerThreadgroup: group)
+        enc.endEncoding()
+        cb.commit()
+        cb.waitUntilCompleted()
     }
 
     /// Draw the traced layer into the geometry pass at the point the first solid

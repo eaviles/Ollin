@@ -20,10 +20,19 @@ public struct PathTracing: Equatable, Sendable {
     /// The longest path traced, in surface bounces. 8 covers mirror-in-mirror
     /// scenes; unbiased termination (Russian roulette) trims most paths earlier.
     public var maxDepth: Int
+    /// Filter the grain out of the finished render (off by default, `--denoise` to
+    /// turn it on). The trace measures the spread of its own samples at each pixel,
+    /// and the filter takes its strength from that measurement, so a thin render is
+    /// smoothed hard and a nearly converged one only a little. It costs a fraction
+    /// of a second against minutes of tracing, and it keeps texture and silhouette
+    /// edges, which it is told about separately from the light. What it cannot keep
+    /// is a true sparkle: glitter and grain are the same signal to it.
+    public var denoise: Bool
 
-    public init(samplesPerPixel: Int = 256, maxDepth: Int = 8) {
+    public init(samplesPerPixel: Int = 256, maxDepth: Int = 8, denoise: Bool = false) {
         self.samplesPerPixel = max(1, samplesPerPixel)
         self.maxDepth = max(1, maxDepth)
+        self.denoise = denoise
     }
 
     /// The tier default sample count the bare `--path-traced` flag resolves to.
