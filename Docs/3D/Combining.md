@@ -11,6 +11,7 @@ The 3D features are designed to stack: lights over materials, an environment ove
 - [Two ways to get reflections](#reflections)
 - [What lights and shades what](#shading)
 - [Who casts, receives, and appears in reflections](#matrix)
+- [Which lights cast, and which one the rest follows](#casters)
 - [Effects that read depth](#depth-effects)
 - [Atmosphere and the temporal passes](#atmosphere)
 - [What the path-traced export leaves behind](#traced)
@@ -89,6 +90,37 @@ And [glass](./3D.md#glass) adds two of its own. A glass mesh still **casts a sol
 **Glass on a marched field absorbs like glass on a mesh.** The traced view through a solid glass body finds the far side of it by tracing, and a `drawSDF3D` field owns no geometry the rays can hit. So a field marches its own far side instead, and the same `Material.glass(...)` with the same `attenuationColor` and `attenuationDistance` comes out the same on a field as on the mesh of that shape. What lies *behind* a glass field still comes from the mesh scene, which is the rule above read from the other side: a second field standing behind one is not visible through it.
 
 The layered [clearcoat and sheen](./3D.md#clearcoat-sheen) lobes share the mirror half of that envelope. A coated or sheened surface seen *inside* a traced reflection shades as its base material there. [Decals](./3D.md#decals) follow the same split. Every solid, textured, or mapped mesh receives them, while wireframes, matcaps, point clouds, and raymarched fields don't. A stamped surface seen *inside* a traced reflection shows its undecaled base.
+
+<a id="casters"></a>
+### Which lights cast, and which one the rest follows
+
+The table above is about geometry. This is the other half of the same question: of the lights in the frame, which ones throw a shadow.
+
+Under [`castShadows()`](./3D.md#shadows) every light casts, up to **four** of them, in the order you set them. Three kinds of light sit outside that:
+
+| | Casts | Why |
+| --- | --- | --- |
+| Directional, spot, rect, disk | yes | Each renders its own 2D shadow map, one layer per caster |
+| Point | only as the [primary](#primary-caster) | It needs the frame's one cube map, or its one acceleration structure |
+| Tube | no | It emits radially, so there is no side to render a map from |
+| A light with `castsShadow: false` | no | You said so |
+| The fill and rim of a `lightingPreset(_:)` rig | no | The rigs set `castsShadow: false` on them; see [Lighting presets](./3D.md#lights) |
+
+The last row is the one that surprises people. `lightingPreset(.studio)` installs three lights and you get one shadow, not three, because a fill exists to open the shadow side rather than to make one. Every caster also costs a pass over the scene from its own point of view, so the rigs stay at one. To change it, copy the rig and set the flag yourself.
+
+<a id="primary-caster"></a>
+One caster is the **primary**: the first directional light, then the first spot, then the first point, then the first rect or disk panel. It matters because several features follow that one caster alone rather than the whole list:
+
+| Feature | Follows |
+| --- | --- |
+| [Volumetric shafts](./Atmosphere.md) | the primary caster only |
+| [Subsurface transmission](./3D.md#subsurface-scattering) | the primary caster only |
+| [Contact shadows](./3D.md#contact-shadows) | the primary caster only |
+| A [marched SDF field](../Drawing/Combinators.md) shadowing itself | the primary caster only |
+| [Caustics](./Caustics.md) and [global illumination](./3D.md#global-illumination) | the primary caster only |
+| Solid, textured, instanced, field and strand geometry | every caster |
+
+So a scene with a key and a stage light gets two shadows on the floor, and shafts in the air from the key alone. Put the light you want those effects to follow first, and make it a directional or a spot.
 
 <a id="depth-effects"></a>
 ### Effects that read depth
