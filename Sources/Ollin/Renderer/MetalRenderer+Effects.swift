@@ -734,7 +734,7 @@ extension MetalRenderer {
             return pass("ollin_fx_displace", [SIMD4(Float(amount), 0, 0, 0)])
         case let .mix(amount):
             return pass("ollin_fx_mix", [SIMD4(Float(amount), 0, 0, 0)])
-        case let .defocus(focus, range, maxBlur, quality):
+        case let .defocus(focus, range, maxBlur, quality, blades, irisAngle, catsEye):
             // maxBlur is in layer pixels; the gather works in texels, so at this
             // layer's resolution one is the other (the texel-size row keeps the disk
             // round on a non-square layer). The third texel slot carries the resolved
@@ -746,16 +746,24 @@ extension MetalRenderer {
             // blur radius, and the size it receives, seam-dilated), then the bokeh
             // gather reads that instead of the raw depth. It costs one fullscreen pass
             // and takes the dilation's 8 taps back out of the per-pixel gather.
+            //
+            // The shape of the opening rides the spare slots: the blade count falls back
+            // to the camera that drew the depth layer, so a scene defocused by its own
+            // depth wears the same iris its flare ghosts and its path-traced export do.
+            // A hand-drawn depth map carries no camera, so it stays round until the call
+            // names a blade count itself.
             let taps = Float(resolveDofTaps(quality))
+            let irisBlades = blades ?? depth?.apertureBlades ?? 0
             let texel = SIMD4<Float>(1 / Float(width), 1 / Float(height), taps, 0)
-            let dof = SIMD4(Float(focus), Float(range), Float(maxBlur), 0)
+            let dof = SIMD4(Float(focus), Float(range), Float(maxBlur), Float(max(0, irisBlades)))
+            let iris = SIMD4(Float(irisAngle), Float(catsEye), 0, 0)
             guard let coc = acquireFilterTexture(width: width, height: height, pooled: pooled),
                   let out = acquireFilterTexture(width: width, height: height, pooled: pooled)
             else { return nil }
             encodeEffectFragment("ollin_fx_dof_prepass", inputs: [aux], output: coc,
                                  params: [dof, texel], into: cb)
             encodeEffectFragment("ollin_fx_depth_of_field", inputs: [base, coc], output: out,
-                                 params: [dof, texel], into: cb)
+                                 params: [dof, texel, iris], into: cb)
             return out
         case let .ambientOcclusion(radius, intensity, bias, quality):
             // Two passes: a hemisphere-kernel occlusion estimate (rebuilding view-space

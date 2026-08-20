@@ -1270,6 +1270,75 @@ An expanding golden-angle spiral (`radius += radScale/radius`, with `radScale`
 proportional to `maxBlur` squared) packs rings denser toward the rim so the bokeh
 edge is smooth without jitter.
 
+**The shape of the opening is a parameter of that gather, not a second path.** An
+out-of-focus point of light is a picture of the opening its light came through, so
+`blades` / `irisAngle` / `catsEye` enter at exactly one place: the reach test. The
+circular test asks whether a tap's own blur spans its distance. The general test
+asks the same question in units of how far the opening reaches *that way*
+(`ollin_dof_aperture`), so the distance is divided by that reach and the ~1px soft
+edge is divided by it too, which is what keeps the edge about a pixel wide on screen
+whether the opening runs near or far in that direction. A round opening reaches
+exactly 1 everywhere, so it is byte-identical: the whole snapshot suite and all 49
+Guide probe figures passed unrecorded.
+
+Two decisions inside that helper are worth keeping:
+
+- **A polygon is taken at the *area* of the round opening it replaces**, not at its
+  radius: `R = sqrt(pi / (n sin(pi/n) cos(pi/n)))`, from `n R^2 sin(2 pi / n) / 2 =
+  pi`. So changing the blade count changes the shape of a highlight and not how
+  large it reads, which is the behavior a blade *slider* wants. The cost is that the
+  corners now poke past `maxBlur`, so the gather's rim goes out to `maxBlur * R` and
+  the tap spacing widens with it (the tap count stays at the budget). The
+  foreground-coverage normalization moves to that same rim, or a near field would
+  read its area against the wrong disc.
+- **Cat's eye is the aperture intersected with two discs pushed apart** by `pinch`
+  along the line to the middle of the frame, `pinch` growing with the pixel's
+  distance from that middle and capped at 0.9 so an opening never closes entirely.
+  This is the geometry of optical vignetting: what an off-axis image point sees of
+  the aperture is what the barrel's own openings leave of it, front and rear, which
+  is why the shape is a symmetric lemon rather than a disc with one flat side.
+  Solving `|t u -/+ pinch f| <= 1` for the larger root gives the reach in closed
+  form, `sqrt(pinch^2 c^2 + 1 - pinch^2) - pinch |c|` with `c` the cosine between
+  the tap direction and the line to the middle, so it costs one dot product and one
+  square root per tap. The reach is `1 - pinch` along that line and
+  `sqrt(1 - pinch^2)` across it, and since the second is always the larger the lemon
+  lies the long way around the frame, as a real one does. It changes *shape* only;
+  the gather normalizes by its accumulated weight, so nothing darkens (`.vignette`
+  is the filter for that).
+
+**`blades` defaults to the camera, not to round.** `DepthReconstruction` already
+carries the camera geometry stamped on a 3D target's depth layer for the ambient
+occlusion and reflection combines, so it carries `apertureBlades` too, and
+`.defocus` falls back to it. That is what makes one line, `camera.apertureBlades =
+6`, shape the live blur, every lens-flare ghost, and the path-traced export's own
+highlights together. A hand-drawn depth ramp carries no camera and stays round
+unless the call names a count itself.
+
+**The round path pays nothing, and that took one branch.** Folding the general form
+into the loop unconditionally cost **19.6 ms against 14.7 ms** at 192 taps (M2,
+1080x1080, old and new alternated back to back), which is a 33% tax on every sketch
+that never asked for an iris: a divide, two multiplies and a call per tap add up over
+192 of them. The shaping now sits behind a `shaped` test hoisted out of the loop, read
+off the *settings* (`blades >= 3 || catsEye > 0`) rather than off the per-pixel pinch,
+so it is one answer for the whole pass and the round branch runs exactly the
+instructions it ran before: **14.4 ms against 14.7 ms**, parity within the noise. An
+opening that *is* shaped costs about a third more GPU time (15.1 ms to 20.1 ms at the
+`Effects/Bokeh` example's settings, 66 fps to 50 fps), which is the right shape for an
+opt-in.
+
+**The envelope is the tap budget, and it is worth stating plainly.** The spiral is
+equal-area per tap, so the spacing between taps is `sqrt(pi / budget)` of the rim:
+about 13% at `.default` (192 taps) and 8% at `.detail` (512). A source smaller than
+that spacing is hit or missed rather than resolved, and comes out wearing the
+spiral instead of a clean edge. Meanwhile a regular polygon's corners stick out by
+`1 - cos(pi/n)` of the rim: 50% for a triangle, 19% for a pentagon, 13.4% for a
+hexagon. So at `.default` a hexagon's corners sit exactly at the sampling limit,
+which is why a low blade count reads and a high one does not, and why the Guide
+figure uses five blades at `.detail`. The scalloped rim and the faint dark core an
+HDR point source shows are the **pre-existing** gather's (the center hole starts at
+`radScale`), verified by rendering the same scene at `blades: 0`; the aperture
+neither causes nor cures them.
+
 The seam was the most stubborn artifact in this effect, and the lesson is general:
 an artifact that survives every change to subsystem X is not in X. The seam
 survived every gather rewrite because it lived in the CoC/depth, not in the

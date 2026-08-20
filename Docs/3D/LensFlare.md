@@ -128,7 +128,7 @@ camera.apertureBlades = 6            // 0 (the default) is a round iris
 self.camera(camera)
 ```
 
-Five to eleven blades is what a real lens carries. The same setting shapes the out-of-focus highlights the [path-traced export](../Output/PathTraced.md) renders through `Camera3D.aperture`, so the two cannot disagree about what lens this is.
+Five to eleven blades is what a real lens carries. The same setting shapes the out-of-focus highlights the [path-traced export](../Output/PathTraced.md) renders through `Camera3D.aperture`, and the highlights of a scene defocused by its own depth in the live view ([`.defocus`](../Drawing/Effects.md#combined)), so none of the three can disagree about what lens this is.
 
 <a id="sources"></a>
 ### Which sources flare

@@ -53,7 +53,8 @@ public struct Combine: Sendable {
         /// Depth-of-field: blur the base by the aux read as a depth map. The band
         /// `focus ± range` stays sharp; the blur radius grows with distance from it
         /// up to `maxBlur` pixels. `quality` sets the bokeh sample count tier.
-        case defocus(focus: Double, range: Double, maxBlur: Double, quality: RenderQuality)
+        case defocus(focus: Double, range: Double, maxBlur: Double, quality: RenderQuality,
+                     blades: Int?, irisAngle: Double, catsEye: Double)
         /// Ambient occlusion: darken the base in crevices and contacts, reading the aux
         /// as a depth map. View-space position and normal are reconstructed from the
         /// depth, and obscurance is gathered over a hemisphere `radius` world units
@@ -120,6 +121,11 @@ public struct Combine: Sendable {
     /// in-focus subject it sits in front of); and a sharp in-focus subject occludes the
     /// blurred things behind it with a crisp edge.
     ///
+    /// A highlight comes out shaped like the opening the light passed through. An iris
+    /// with `blades` makes it a polygon of that many sides, and `catsEye` clips it toward
+    /// the corners the way a lens barrel does. Both leave the middle of a round opening
+    /// exactly as it was.
+    ///
     /// - Parameters:
     ///   - focus: the depth (0…1) that stays in focus.
     ///   - range: half-width of the sharp band, *and* the width of the falloff beyond
@@ -127,10 +133,28 @@ public struct Combine: Sendable {
     ///   - maxBlur: the largest blur radius, in layer pixels.
     ///   - quality: the bokeh sample-count tier (`.default`/`.performance`/`.detail`,
     ///     hardware-relative). More taps trade frame rate for creamier, structure-free blur.
+    ///   - blades: how many blades the iris has, which is the shape an out-of-focus
+    ///     highlight takes: `0` is a round opening, and 5 to 11 is what a real lens
+    ///     carries. `nil` (the default) takes the blade count from the camera that drew
+    ///     the depth layer (`Camera3D.apertureBlades`), so one setting shapes the live
+    ///     blur, the path-traced export's own blur, and every flare ghost alike. Name it
+    ///     here to shape a blur the camera knows nothing about, such as a tilt-shift over
+    ///     a hand-drawn depth ramp.
+    ///   - irisAngle: how far the opening is turned, in radians. It turns the highlights
+    ///     with it, and has no effect on a round opening.
+    ///   - catsEye: how hard the barrel clips the opening away from the middle of the
+    ///     frame (0 = not at all, the default; 1 = as hard as a fast lens wide open).
+    ///     Highlights stay whole in the middle and lie down into lemon shapes toward the
+    ///     corners, the long way around the frame. It changes the *shape* only: reach for
+    ///     the `.vignette` filter to darken the corners as well.
     public static func defocus(focus: Double = 0.5, range: Double = 0.1,
-                               maxBlur: Double = 24, quality: RenderQuality = .default) -> Combine {
+                               maxBlur: Double = 24, quality: RenderQuality = .default,
+                               blades: Int? = nil, irisAngle: Double = 0,
+                               catsEye: Double = 0) -> Combine {
         Combine(kind: .defocus(focus: min(max(focus, 0), 1),
-                               range: max(0.001, range), maxBlur: max(0, maxBlur), quality: quality))
+                               range: max(0.001, range), maxBlur: max(0, maxBlur), quality: quality,
+                               blades: blades.map { max(0, $0) }, irisAngle: irisAngle,
+                               catsEye: min(max(catsEye, 0), 1)))
     }
 
     /// Ambient occlusion: darken the base layer where the aux layer's depth says it

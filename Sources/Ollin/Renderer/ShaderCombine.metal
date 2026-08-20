@@ -59,7 +59,10 @@ fragment float4 ollin_fx_mix(PresentOut in [[stage_in]],
 // (a running-average form; details and rationale on the gather below).
 // An in-focus region stays crisp, a defocused foreground spills over what's behind
 // it, and overlapping defocused regions blend like real bokeh rather than hard-cutting.
-// params[0] = (focus, range, maxBlur px), params[1].xy = texel size.
+// The highlight wears the shape of the opening it came through (`ollin_dof_aperture`),
+// which is round until an iris with blades says otherwise.
+// params[0] = (focus, range, maxBlur px, blades), params[1].xy = texel size,
+// params[2] = (iris angle, cat's eye, 0, 0). The prepass reads the first two rows only.
 // Premultiplied-linear in and out.
 //
 // Depth is read perceptually (linearToSrgb of luminance), matching the depth-feed
@@ -127,6 +130,37 @@ fragment float4 ollin_fx_dof_prepass(PresentOut in [[stage_in]],
     return float4(scatter, depth, receive, 1.0);
 }
 
+// The opening the light came through, as a reach in units of the round opening's own
+// radius: a round iris reaches 1 in every direction. Three or more blades give a
+// regular polygon of the *same area*, so changing the blade count changes the shape of
+// a highlight without changing how big it reads.
+//
+// Away from the middle of the frame the barrel clips the opening from both sides, and
+// what is left is the overlap of the opening with two discs pushed apart along the line
+// to the middle. `pinch` is how far apart they are pushed, as a fraction of the radius.
+// The overlap reaches `1 - pinch` along that line and `sqrt(1 - pinch^2)` across it, so
+// it lies down the long way around the frame, which is the way a real one does.
+//
+// `angle` is the direction of the tap and `dir` is the same thing as a unit vector.
+static inline float ollin_dof_aperture(float angle, float2 dir, float blades,
+                                       float rotation, float2 fieldDir, float pinch) {
+    float reach = 1.0;
+    if (blades >= 3.0) {
+        float wedge = M_PI_F / blades;                    // half of what one blade spans
+        // Equal area with the round opening: n R^2 sin(2 pi / n) / 2 = pi.
+        float circum = sqrt(M_PI_F / (blades * sin(wedge) * cos(wedge)));
+        float a = angle - rotation;
+        a -= 2.0 * wedge * floor(a / (2.0 * wedge) + 0.5);  // fold onto one blade
+        reach = circum * cos(wedge) / cos(a);
+    }
+    if (pinch > 0.0) {
+        float c = abs(dot(dir, fieldDir));
+        float overlap = sqrt(max(0.0, pinch * pinch * c * c + 1.0 - pinch * pinch)) - pinch * c;
+        reach = min(reach, overlap);
+    }
+    return reach;
+}
+
 fragment float4 ollin_fx_depth_of_field(PresentOut in [[stage_in]],
                                         texture2d<float> base [[texture(0)]],
                                         texture2d<float> cocMap [[texture(1)]],
@@ -163,7 +197,33 @@ fragment float4 ollin_fx_depth_of_field(PresentOut in [[stage_in]],
     // that doesn't reach contributes the current average, keeping every field grain-free)
     // — and the near field carries a **coverage** that composites it over the background.
     const float goldenAngle = 2.399963229728653;
-    float radScale = max(0.5, maxBlur * maxBlur / (budget * 2.0));   // ≈ `budget` taps to the rim
+    // The opening this lens has, and how far the gather must reach to hold all of it.
+    // A polygon of the same area as the round opening pokes past its radius at the
+    // corners, so the rim goes out with it and the tap spacing widens to match: the
+    // tap count stays at the budget and the corners are not cut off. A round opening
+    // reaches exactly 1, which is what leaves that case byte-identical.
+    float blades = floor(max(0.0, params[0].w) + 0.5);
+    float rotation = params[2].x;
+    float catsEye = saturate(params[2].y);
+    float apertureReach = blades >= 3.0
+        ? sqrt(M_PI_F / (blades * sin(M_PI_F / blades) * cos(M_PI_F / blades)))
+        : 1.0;
+    float rim = maxBlur * apertureReach;
+    // Where this pixel sits in the frame decides how hard the barrel clips its
+    // opening: nothing in the middle, most in the corners. The clip stops short of a
+    // full pinch, since an opening squeezed to a line passes no light at all.
+    float2 halfLayer = 0.5 / texel;
+    float2 fromCenter = (in.uv - 0.5) / texel;
+    float fieldLength = length(fromCenter);
+    float2 fieldDir = fieldLength > 1e-4 ? fromCenter / fieldLength : float2(1.0, 0.0);
+    float pinch = catsEye * saturate(fieldLength / max(length(halfLayer), 1e-4)) * 0.9;
+    // Whether this pass has an opening to honor at all, tested on the *settings* rather
+    // than on the per-pixel pinch, so it is one answer for the whole pass. A round
+    // opening then runs the plain arithmetic it always ran, with none of the shaping
+    // in the loop: measured 14.8 ms at 192 taps either way, where folding the shaped
+    // form into the round path cost 19.6 ms (M2, 1080 square, back to back).
+    bool shaped = blades >= 3.0 || catsEye > 0.0;
+    float radScale = max(0.5, rim * rim / (budget * 2.0));          // ≈ `budget` taps to the rim
     int maxIters = int(budget * 2.0);                               // safety cap (the break ends it first)
     float4 centerColor = base.sample(samp, in.uv);
     // Both fields seed with the center texel, so a field no tap reaches resolves to the
@@ -188,9 +248,10 @@ fragment float4 ollin_fx_depth_of_field(PresentOut in [[stage_in]],
     float fgCoverage = 0.0, nearMax = 0.0;
     float radius = radScale;
     for (int i = 0; i < maxIters; i++) {
-        if (radius >= maxBlur) break;
+        if (radius >= rim) break;
         float a = float(i) * goldenAngle;
-        float2 uv = clamp(in.uv + float2(cos(a), sin(a)) * radius * texel, 0.0, 1.0);
+        float2 dir = float2(cos(a), sin(a));
+        float2 uv = clamp(in.uv + dir * radius * texel, 0.0, 1.0);
         float4 s = base.sample(samp, uv);
         float4 tap = cocMap.sample(samp, uv);
         float sd = tap.y;
@@ -203,10 +264,25 @@ fragment float4 ollin_fx_depth_of_field(PresentOut in [[stage_in]],
         // backdrop). Two comparably defocused regions are each within 2x the other, so
         // overlapping bokeh still merges instead of hard-cutting along a silhouette.
         if (sd > centerDepth) sSize = min(sSize, centerSize * 2.0);
-        float reach = smoothstep(radius - 0.5, radius + 0.5, sSize);
+        // How far the opening reaches this way, so a tap is caught by the shape the
+        // iris actually has. Dividing the distance by the reach turns the test back
+        // into a scalar one; scaling the soft edge by the same amount keeps it about a
+        // pixel wide on screen wherever the shape runs near or far.
+        float reach, nearProbe;
+        if (shaped) {
+            float invReach = 1.0 / max(ollin_dof_aperture(a, dir, blades, rotation,
+                                                          fieldDir, pinch), 1e-3);
+            float effRadius = radius * invReach;
+            float band = 0.5 * invReach;
+            reach = smoothstep(effRadius - band, effRadius + band, sSize);
+            nearProbe = smoothstep(effRadius - band, effRadius + band, nearReveal);
+        } else {
+            reach = smoothstep(radius - 0.5, radius + 0.5, sSize);
+            nearProbe = smoothstep(radius - 0.5, radius + 0.5, nearReveal);
+        }
         // background + in-focus field, then the near field: each a running average, plus
         // how much foreground covers this pixel and how wide that foreground's blur is.
-        float bgReach = isNear ? 0.0 : max(reach, smoothstep(radius - 0.5, radius + 0.5, nearReveal));
+        float bgReach = isNear ? 0.0 : max(reach, nearProbe);
         bgColor += mix(bgColor / bgTotal, s, bgReach); bgTotal += 1.0;
         float fgReach = isNear ? reach : 0.0;
         fgColor += mix(fgColor / fgTotal, s, fgReach); fgTotal += 1.0;
@@ -229,7 +305,7 @@ fragment float4 ollin_fx_depth_of_field(PresentOut in [[stage_in]],
     // alpha at 1 well inside a foreground's silhouette, which leaves its inner edge
     // hard; normalized by the near blur it ramps across the silhouette over that blur's
     // own radius, which is what makes a foreground soften on both sides of itself.
-    float nearArea = nearMax / max(maxBlur, 1e-4);
+    float nearArea = nearMax / max(rim, 1e-4);
     float fgAlpha = nearMax < 0.5 ? 0.0
                                   : saturate(fgCoverage / max(fgTotal * nearArea * nearArea, 1e-4));
     float dofStrength = smoothstep(0.5, 1.5, centerSize);

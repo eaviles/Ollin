@@ -57,8 +57,10 @@ public struct Camera3D: Equatable, Sendable {
     /// passes through: `0` (the default) is a round iris, and 5 to 11 is what a
     /// real lens carries. It shapes anything that draws the opening rather than a
     /// point of light: the out-of-focus highlights the path-traced export renders
-    /// through `aperture`, and every ghost `lensFlare()` puts on the frame. One
-    /// setting drives both, so the two cannot disagree about what lens this is.
+    /// through `aperture`, every ghost `lensFlare()` puts on the frame, and the
+    /// highlights of a scene defocused by its own depth in the live view
+    /// (`.defocus`, which reads this unless the call names a blade count itself).
+    /// One setting drives all three, so they cannot disagree about what lens this is.
     public var apertureBlades: Int = 0
     /// The distance from the camera at which the path-traced export focuses, along
     /// the view axis. `nil` (the default) focuses on the `target`, so an orbiting

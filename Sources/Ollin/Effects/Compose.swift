@@ -130,13 +130,19 @@ public struct ComposeLayer {
     /// layer { drawScene() }
     ///     .defocused(by: aside { drawDepthRamp() }, focus: 0.4, maxBlur: 28)
     /// ```
+    ///
+    /// `blades`, `irisAngle`, and `catsEye` shape the out-of-focus highlights the way an
+    /// iris and a lens barrel do; see `Combine.defocus(focus:range:maxBlur:quality:blades:irisAngle:catsEye:)`.
     public func defocused(by aside: ComposeLayer, focus: Double = 0.5,
                           range: Double = 0.1, maxBlur: Double = 24,
-                          quality: RenderQuality = .default) -> ComposeLayer {
+                          quality: RenderQuality = .default,
+                          blades: Int? = nil, irisAngle: Double = 0,
+                          catsEye: Double = 0) -> ComposeLayer {
         var copy = self
         copy.steps.append(.combine(aside: aside,
                                    op: .defocus(focus: focus, range: range, maxBlur: maxBlur,
-                                                quality: quality)))
+                                                quality: quality, blades: blades,
+                                                irisAngle: irisAngle, catsEye: catsEye)))
         return copy
     }
 

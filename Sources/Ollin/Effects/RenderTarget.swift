@@ -204,6 +204,11 @@ struct DepthReconstruction {
     /// them, so every other depth combine is unaffected.
     var viewProjection: simd_float4x4 = matrix_identity_float4x4
     var inverseView: simd_float4x4 = matrix_identity_float4x4
+    /// How many blades the scene camera's iris has, stamped so the depth-of-field
+    /// combine shapes its highlights like the opening the rest of the camera already
+    /// uses. `0` (a round opening) whenever the aux carries no camera, which is what
+    /// leaves a hand-drawn depth ramp round unless the call names a blade count itself.
+    var apertureBlades: Int = 0
 
     /// A neutral default used when a depth combine reads an aux that carries no camera
     /// (a hand-drawn depth map): a centered 60° perspective over a 0.1 … 100 range, so the
@@ -251,5 +256,6 @@ struct DepthReconstruction {
         let view = camera.viewMatrix
         viewProjection = camera.projectionMatrix(aspect: Double(aspect)) * view
         inverseView = simd_inverse(view)
+        apertureBlades = max(0, camera.apertureBlades)
     }
 }

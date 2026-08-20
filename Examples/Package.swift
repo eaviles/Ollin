@@ -106,6 +106,7 @@ let package = Package(
         example("Effects/Compose"),
         example("Effects/Aside"),
         example("Effects/Defocus"),
+        example("Effects/Bokeh"),
         example("Rendering/Accumulation"),
         example("Effects/ColorFilters"),
         example("Effects/BlurFilters"),
