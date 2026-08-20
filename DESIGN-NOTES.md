@@ -57,7 +57,6 @@ The realism tier that builds on the physically-based core (PBR metallic-roughnes
 
 All Apple-silicon Metal, the realism direction's "build Ollin APIs for anything Metal offers that enriches 3D."
 
-- **The diffraction star.** The other half of a flare, beside its chain of ghosts: the star that sits on the source itself. Its arms are light bending at the blades of the iris, so the pattern is the far-field (Fraunhofer) diffraction of the opening, which is the scaled Fourier transform of the aperture's own image, summed over a few wavelengths so the arms fan into color. That makes it a bake rather than a per-frame cost: the opening only changes when the blade count or the f-number does, so the transform can be computed once on the CPU and sampled as a texture, turned with the camera and scaled by how bright the source is. Two things have to hold. The arm count comes from `Camera3D.apertureBlades`, the same setting the ghosts and the path-traced bokeh already read, so the three cannot disagree about what lens this is (an even blade count gives that many arms, an odd one twice as many, because opposite edges stop being parallel). And it belongs at the source, where the ghosts deliberately are not: it wants the halo around the source as well as the arms, and both ride the same visibility term the ghosts already fade with.
 
 ## AR mode and templates (the Meta Spark gap)
 

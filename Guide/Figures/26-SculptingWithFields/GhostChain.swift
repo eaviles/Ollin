@@ -5,7 +5,8 @@
 // blades, and each a different color because each surface of the lens is coated
 // for a different wavelength. The second one lies over the near black slab
 // rather than behind it, which is the point: a ghost is in the camera, not in
-// the room.
+// the room. The star is turned off here, so the ghosts are what the eye lands
+// on; StarPoints is the figure for the star.
 import Ollin
 
 final class GhostChain: Sketch {
@@ -25,7 +26,7 @@ final class GhostChain: Sketch {
         ambientLight(Color(white: 0.05))
         directionalLight(Color(white: 0.8), direction: Vector3(-0.5, -0.8, -0.4), intensity: 0.30)
         pointLight(Color(hex: 0xFFF0D0), at: lamp, intensity: 20)
-        lensFlare(strength: 1.0, lens: Lens.heliar.multicoated().stopped(to: 5.6))
+        lensFlare(LensFlare(lens: Lens.heliar.multicoated().stopped(to: 5.6), star: 0))
 
         // The lamp itself. A flat single-color matcap ignores the scene
         // lighting, which is what a glowing thing looks like.

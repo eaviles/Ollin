@@ -49,9 +49,7 @@ It's opt-in, so a 2D sketch never pays for a depth buffer or a perspective divid
 
 ## Photorealistic 3D
 
-The high-end, well-curated realism tier, opt-in on the existing PBR, IBL, ray-traced shadows and reflections, and SDF raymarching, so a 2D or stylized 3D sketch never pays. It grows the way the SDF shape catalog does: when a technique that separates a polished product render or film still from "CG" finds a good fit, it lands Metal-native, written from the published technique and credited in `ATTRIBUTION.md`'s Techniques list. The deeper display levers live under [rendering and color frontier](#rendering-and-color-frontier).
-
-- **The diffraction star.** A lens's ghosts are one half of a flare and the star around the source is the other. The arms are the light bending at the edges of the iris, so their count comes from the same blades the ghosts are already shaped by, and the pattern is the far-field diffraction of that opening rather than a drawn sprite. It sits at the source itself, where the ghosts deliberately do not, and it wants the halo that goes with it.
+The high-end, well-curated realism tier, opt-in on the existing PBR, IBL, ray-traced shadows and reflections, and SDF raymarching, so a 2D or stylized 3D sketch never pays. It grows the way the SDF shape catalog does: when a technique that separates a polished product render or film still from "CG" finds a good fit, it lands Metal-native, written from the published technique and credited in `ATTRIBUTION.md`'s Techniques list. The deeper display levers live under [rendering and color frontier](#rendering-and-color-frontier). There is no queue here, by design: the tier takes the next technique that earns its place rather than working through a list.
 
 See the [design notes](DESIGN-NOTES.md#photorealistic-3d).
 

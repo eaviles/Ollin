@@ -26,19 +26,35 @@ struct LensFlareRenderProbes {
     /// comparable: whatever the occluder does to the scene cancels, and what is
     /// left is the flare alone.
     private func flareAdded(_ occluder: FlareProbe.Occluder,
-                            fStop: Double = 4.5) throws -> Double {
-        let on = try #require(OllinApp.image(of: FlareProbe.make(occluder: occluder,
-                                                                flare: true, fStop: fStop),
+                            fStop: Double = 4.5, star: Double = 0,
+                            near: Bool = false) throws -> Double {
+        let on = try #require(OllinApp.image(of: FlareProbe.make(occluder: occluder, flare: true,
+                                                                fStop: fStop, star: star),
                                              frame: 1))
-        let off = try #require(OllinApp.image(of: FlareProbe.make(occluder: occluder,
-                                                                 flare: false, fStop: fStop),
+        let off = try #require(OllinApp.image(of: FlareProbe.make(occluder: occluder, flare: false,
+                                                                 fStop: fStop, star: star),
                                               frame: 1))
-        let a = pixels(of: on), b = pixels(of: off)
-        var sum = 0.0
-        for i in stride(from: 0, to: a.count, by: 4) {
-            for c in 0..<3 { sum += max(0, Double(a[i + c]) - Double(b[i + c])) }
+        return rise(pixels(of: on), over: pixels(of: off),
+                    width: on.width, height: on.height, near: near)
+    }
+
+    /// The mean rise of one frame over another, either over the whole picture or
+    /// only over the patch the source sits in.
+    private func rise(_ a: [UInt8], over b: [UInt8], width: Int, height: Int,
+                      near: Bool) -> Double {
+        // The lamp projects a little right of and above the middle in the probe
+        // scene; this patch holds its star and almost none of the ghost chain.
+        let xs = near ? Int(Double(width) * 0.55)..<Int(Double(width) * 0.67) : 0..<width
+        let ys = near ? Int(Double(height) * 0.38)..<Int(Double(height) * 0.50) : 0..<height
+        var sum = 0.0, count = 0
+        for y in ys {
+            for x in xs {
+                let i = (y * width + x) * 4
+                for c in 0..<3 { sum += max(0, Double(a[i + c]) - Double(b[i + c])) }
+                count += 3
+            }
         }
-        return sum / Double(a.count / 4 * 3)
+        return sum / Double(max(count, 1))
     }
 
     /// How much of the frame the flare covers brightly, which is what the iris
@@ -91,6 +107,47 @@ struct LensFlareRenderProbes {
     /// A sketch that does not ask for a flare pays nothing and renders exactly
     /// as it did before there was one, and turning it back off is the same as
     /// never turning it on.
+    /// The star is the flare's other half: it sits on the source itself, where
+    /// the ghosts deliberately do not.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func theStarLandsOnTheSourceItself() throws {
+        let without = try flareAdded(.none, star: 0, near: true)
+        let with = try flareAdded(.none, star: 1, near: true)
+        #expect(with > without + 3,
+                "the star should light the source's own patch: \(without) without, \(with) with")
+        // And it is separable: turning it off leaves the chain across the frame.
+        let chain = try flareAdded(.none, star: 0)
+        #expect(chain > 4, "the ghosts should still be there without a star: \(chain)")
+    }
+
+    /// The star is light bending at the blades, so a round iris has no arms to
+    /// throw and a bladed one does. Comparing the same pair with the star turned
+    /// off is what makes this about the star rather than about the ghosts, which
+    /// the blade count also shapes.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func theBladesShapeTheStar() throws {
+        func spread(star: Double) throws -> Int {
+            let round = try #require(OllinApp.image(of: FlareProbe.make(
+                occluder: .none, flare: true, star: star, blades: 0), frame: 1))
+            let bladed = try #require(OllinApp.image(of: FlareProbe.make(
+                occluder: .none, flare: true, star: star, blades: 6), frame: 1))
+            let a = pixels(of: round), b = pixels(of: bladed)
+            let width = round.width, height = round.height
+            var differing = 0
+            for y in Int(Double(height) * 0.30)..<Int(Double(height) * 0.58) {
+                for x in Int(Double(width) * 0.47)..<Int(Double(width) * 0.75) {
+                    let i = (y * width + x) * 4
+                    if abs(Double(a[i + 1]) - Double(b[i + 1])) > 8 { differing += 1 }
+                }
+            }
+            return differing
+        }
+        let withStar = try spread(star: 1)
+        let withoutStar = try spread(star: 0)
+        #expect(withStar > withoutStar * 2 + 40,
+                "the blades should reshape the star: \(withoutStar) without, \(withStar) with")
+    }
+
     @Test(.enabled(if: Snapshot.hasMetal))
     func askingForNoFlareLeavesTheFrameUntouched() throws {
         let never = try #require(OllinApp.image(of: FlareProbe.make(occluder: .none, flare: false),
@@ -113,14 +170,18 @@ private final class FlareProbe: Sketch {
     var wantsFlare = false
     var cancels = false
     var fStop = 4.5
+    var star = 0.0
+    var blades = 6
 
-    static func make(occluder: Occluder, flare: Bool,
-                     cancel: Bool = false, fStop: Double = 4.5) -> FlareProbe {
+    static func make(occluder: Occluder, flare: Bool, cancel: Bool = false,
+                     fStop: Double = 4.5, star: Double = 0, blades: Int = 6) -> FlareProbe {
         let probe = FlareProbe()
         probe.occluder = occluder
         probe.wantsFlare = flare
         probe.cancels = cancel
         probe.fStop = fStop
+        probe.star = star
+        probe.blades = blades
         return probe
     }
 
@@ -133,12 +194,15 @@ private final class FlareProbe: Sketch {
 
     override func draw() {
         background(Color(white: 0.03))
-        perspective(eye: eye, target: Vector3(0, 1.5, 0),
-                    fieldOfView: .pi / 3.2, near: 0.2, far: 60)
+        var view = Camera3D(eye: eye, target: Vector3(0, 1.5, 0), near: 0.2, far: 60,
+                            projection: .perspective(fieldOfView: .pi / 3.2))
+        view.apertureBlades = blades
+        camera(view)
         ambientLight(Color(white: 0.05))
         pointLight(Color(hex: 0xFFF2D6), at: lamp, intensity: 14)
         if wantsFlare {
-            lensFlare(strength: 1, lens: Lens.heliar.multicoated().stopped(to: fStop))
+            lensFlare(LensFlare(lens: Lens.heliar.multicoated().stopped(to: fStop),
+                                strength: 1, star: star))
         }
         if cancels { noLensFlare() }
 

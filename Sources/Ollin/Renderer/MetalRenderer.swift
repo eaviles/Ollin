@@ -1010,6 +1010,11 @@ final class MetalRenderer {
     /// surface) when temporal AA is on, read by the resolve's camera reprojection.
     /// Cached by size; a TAA-off frame attaches no resolve and stays byte-identical.
     var mainDepthResolve: MTLTexture?
+    /// The baked star pattern and the blade count it was baked for. The opening
+    /// only changes when the blades or the f-number do, and the f-number scales the
+    /// drawn size rather than the pattern, so one bake serves every frame.
+    var flareStarCache: (blades: Int, texture: MTLTexture)?
+
     /// The paraxial description of the lens the flare is drawn through, kept for the
     /// lens it was worked out from. None of it moves when the light does, so a sketch
     /// that holds one lens pays for the ghost enumeration once rather than per frame.

@@ -16,6 +16,11 @@ import Ollin
 /// the opening the light came through. That is also the opening the path-traced
 /// export makes its out-of-focus highlights from, so the two cannot disagree.
 ///
+/// The star on the lamp itself is the other half of a flare, and it comes from
+/// the same opening: it is the far-field diffraction of the iris, so six blades
+/// put six arms on it and a round iris puts none. Turn the blades to 0 and watch
+/// both the ghosts and the star lose their corners together.
+///
 /// Watch the lamp go behind the slab. The flare does not switch off: it fades
 /// as the slab covers the source, because the strength follows how much of the
 /// lamp the camera can actually see.
@@ -37,6 +42,12 @@ final class LensFlare: Sketch {
     @Param(icon: "swatchpalette", group: "Flare")
     var multicoated = true
 
+    @Param(0...2, icon: "sparkle", group: "Star")
+    var star = 1.0
+
+    @Param(0.1...0.8, icon: "arrow.up.left.and.arrow.down.right", group: "Star")
+    var starSize = 0.35
+
     // A flat white matcap for the bulb prop (cached; an `Image` keeps its texture).
     private let bulbGlow = Image(width: 1, height: 1, color: Color(hex: 0xFFF6E2))
 
@@ -57,7 +68,10 @@ final class LensFlare: Sketch {
         let lamp = Vector3(1.05 * cos(time * 0.35), 2.1 + 0.3 * sin(time * 0.27), -2.0)
         pointLight(Color(hex: 0xFFF2D6), at: lamp, intensity: 18)
         let lens = multicoated ? Lens.heliar.multicoated() : .heliar
-        if flare { lensFlare(strength: strength, lens: lens.stopped(to: fStop)) }
+        if flare {
+            lensFlare(Ollin.LensFlare(lens: lens.stopped(to: fStop), strength: strength,
+                                      star: star, starSize: starSize))
+        }
 
         // The bulb itself, so there is something on screen for the flare to come
         // from. A flat single-color matcap ignores the scene lighting, which is

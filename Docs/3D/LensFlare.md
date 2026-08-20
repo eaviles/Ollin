@@ -23,6 +23,7 @@ Per-frame state like the lights and camera: call it in `draw()`, after both. A f
 ### Contents
 
 - [Turning it on](#on) - `lensFlare(...)` / `noLensFlare()`
+- [The star on the source](#star) - `star`, `starSize`
 - [The lens](#lens) - `Lens.heliar`, `stopped(to:)`, `multicoated()`
 - [Writing your own prescription](#prescription)
 - [The iris](#iris) - `Camera3D.apertureBlades`
@@ -46,10 +47,36 @@ noLensFlare()                                     // back off (the default)
 
 - `lens` - the glass the ghosts come from. [`Lens.heliar`](#lens) by default.
 - `strength` - how strong the flare is. `1` is the default reading, `0` removes it, higher pushes it past what a lens would really do. **This is the honesty dial.** A flare is a lens defect, and a piece may want it in small measure or not at all, so turn it down until the flare reads as light in the camera rather than as paint on the picture.
+- `star` - how strong the [star on the source](#star) is, over and above `strength`. `0` leaves the ghosts alone without it.
+- `starSize` - how far the star reaches from its source, as a fraction of the frame height, with the iris wide open. Stopping down grows it from there.
 - `reach` - how far outside the frame a source still flares, as a fraction of the frame height. A source just off the edge is the classic flare, so this reaches past the frame by default.
 - `sourceSize` - how large the source is treated as being, as a fraction of the frame height. It is the disc the [visibility test](#seeing) reads, so a bigger source fades more gradually as something crosses it.
 
 Needs a **perspective** 3D camera and at least one light. An orthographic camera has no angle to give a source, so it never flares.
+
+<a id="star"></a>
+### The star on the source
+
+The ghosts are one half of a flare. The star is the other, and it sits on the source itself, where the ghosts deliberately do not.
+
+Its arms are light **bending at the edges of the iris**. Far from an opening, what its edges do to a wave is the opening's own Fourier transform, so what lands on the sensor is a picture of the opening turned inside out. Six blades put six arms on the star for the same reason they put six sides on a ghost.
+
+```swift
+lensFlare(LensFlare(strength: 1, star: 1.4, starSize: 0.5))   // a bigger, stronger star
+lensFlare(LensFlare(star: 0))                                 // the ghosts, and no star
+```
+
+Three things follow from where the arms come from:
+
+- An **odd** blade count gives **twice** as many arms, because no two of its edges are parallel, so each throws its own. Five blades, ten arms.
+- A **round** iris (`apertureBlades` at 0, the default) throws no arms at all, only a halo.
+- **Stopping down grows the star** while it shrinks the ghosts. Light spreads more around a smaller opening, which is why a landscape at f/16 gets long rays and a portrait wide open gets almost none.
+
+The tips fan into color because a longer wavelength bends further, so red reaches past blue.
+
+The pattern is worked out once, not per frame: the opening only changes when the blade count does, and the f-number scales the drawn size rather than the shape. The first frame that flares pays for the transform, around 15ms, and every frame after it samples the result.
+
+Its size is chosen rather than measured, and it is worth saying why. A real star's arms are visible only because the source is thousands of times brighter than the scene, so its faint tail still clears the black point; that reach is far outside what a bake of this size can hold. What stays physical is the shape and how it answers the iris. `starSize` is the dial.
 
 <a id="lens"></a>
 ### The lens
@@ -141,6 +168,8 @@ Because that product is linear, a ghost maps a point on the front opening to the
 
 Color comes from the anti-reflective coating. A coating is a quarter of a wavelength thick, so the reflections off its two faces cancel, but only for the wavelength it was cut for and only head on. What survives is both colored and angle dependent, which is why a ghost near the corner of the frame is a different color from one near the middle. A cemented junction between two glasses carries no coating, since the cement is already between them, so it reflects the little that plain Fresnel gives it.
 
+The star is the same opening read a different way. Its pattern is the power spectrum of the opening's own image, taken once with a Fourier transform and sampled a wavelength at a time, each at its own scale, which is what fans the arms into color. Nearly all of a star's light is in its core, so the bake is scaled to put its *mean* at 1: the core then runs thousands of times above that and blows out, which is what a source does.
+
 The whole flare composites into the linear frame after the temporal resolve and the motion blur and before the frame filters, which puts it in linear light and ahead of the tone map. A flare is light arriving at the sensor, not paint on the finished picture.
 
 <a id="notes"></a>
@@ -150,6 +179,6 @@ The whole flare composites into the linear frame after the temporal resolve and 
 - **The scale is anchored, not physical.** Two coated interfaces pass on a few parts in ten thousand, and a real flare shows only because the sun is many thousands of times brighter than anything it lights. A sketch's lights carry no such range, so one number sets the level and everything under it stays as the optics worked it out: how the ghosts compare to each other in size, place, and color, and how each source compares to the others in the same frame.
 - **One ghost usually blows out.** A lens generally has a ghost that lands near focus, which puts all its light in a small hot dot. That is what it does in a photograph too.
 - **The scene's motion never streaks it.** The flare is added after the motion blur, because it belongs to the camera and not to anything moving in front of it.
-- **Cost** is about a millisecond at 1080 square for one source on an M2, spent entirely on the GPU.
+- **Cost** is a tenth of a millisecond to about one at 1080 square for one source on an M2, spent on the GPU. What moves it is how much of the frame the ghosts cover, since a pixel no ghost reaches leaves the loop immediately. The star's pattern is baked once on the CPU and costs one texture read after that.
 - **2D pays nothing.** No camera means no flare, and the pass is never encoded.
 - The example is [`Examples/3D/Effects/LensFlare`](../../Examples/3D/Effects/LensFlare/Sketch.swift); run it with `swift run --package-path Examples Example-3D-Effects-LensFlare`.

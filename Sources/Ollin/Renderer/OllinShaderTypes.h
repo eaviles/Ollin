@@ -1306,9 +1306,14 @@ typedef struct {
     simd_float4 optics;   // x = entrance pupil radius (mm), y = iris radius (mm),
                           // z = sensor millimeters per y-normalized frame unit,
                           // w = the canvas aspect (width / height)
-    simd_float4 iris;     // x = blade count (0 = a round iris), y = iris roll (radians),
-                          // z = how soft the iris edge is, as a fraction of its radius,
-                          // w = how soft the front opening's edge is, same units
+    simd_float4 iris;     // x = blade count (0 = a round iris), y = how far the star
+                          // reaches from its source, in y-normalized frame units
+                          // (0 = no star), z = how soft the iris edge is, as a
+                          // fraction of its radius, w = the same on the front opening
+    // Per light: the color the star adds where the baked pattern is 1. The pattern
+    // itself (the opening's own power spectrum, one texture for the whole frame)
+    // is bound at fragment texture 2. w unused.
+    simd_float4 starTints[OLLIN_MAX_FLARE_LIGHTS];
     int lightCount;
     int ghostCount;
 } OllinLensFlareUniforms;

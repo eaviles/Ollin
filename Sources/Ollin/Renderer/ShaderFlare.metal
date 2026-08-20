@@ -78,6 +78,7 @@ fragment float4 ollin_flare_visibility(PresentOut in [[stage_in]],
 fragment float4 ollin_flare_composite(PresentOut in [[stage_in]],
                                       texture2d<float> frame [[texture(0)]],
                                       texture2d<float> visibility [[texture(1)]],
+                                      texture2d<float> starPattern [[texture(2)]],
                                       sampler samp [[sampler(0)]],
                                       constant OllinLensFlareUniforms &flare [[buffer(0)]]) {
     float4 base = frame.sample(samp, in.uv);
@@ -85,8 +86,11 @@ fragment float4 ollin_flare_composite(PresentOut in [[stage_in]],
     float iris = flare.optics.y;
     float sensor = flare.optics.z;
     float aspect = flare.optics.w;
-    // Where this pixel sits on the sensor, in millimeters.
-    float2 here = float2((in.uv.x * 2.0 - 1.0) * aspect, 1.0 - in.uv.y * 2.0) * sensor;
+    // Where this pixel sits on the frame, and where that is on the sensor in
+    // millimeters. The star is placed on the frame and the ghosts on the sensor,
+    // which are the same line measured in two units.
+    float2 screen = float2((in.uv.x * 2.0 - 1.0) * aspect, 1.0 - in.uv.y * 2.0);
+    float2 here = screen * sensor;
 
     float3 sum = float3(0.0);
     for (int i = 0; i < flare.lightCount; i++) {
@@ -107,6 +111,22 @@ fragment float4 ollin_flare_composite(PresentOut in [[stage_in]],
             float shape = clamp(-edge / max(iris * flare.iris.z, 1e-5), 0.0, 1.0);
             float rim = clamp((pupil - reach) / max(pupil * flare.iris.w, 1e-5), 0.0, 1.0);
             sum += flare.tints[i * OLLIN_MAX_FLARE_GHOSTS + g].rgb * (shape * rim * seen);
+        }
+        // The star sits on the source itself, where the ghosts deliberately do
+        // not. Its pattern is the opening's own power spectrum, baked once, so
+        // the arms count the blades and their tips fan into color.
+        float reachOut = flare.iris.y;
+        if (reachOut > 0.0) {
+            float2 offset = (screen - flare.lights[i].zw) / reachOut;
+            if (abs(offset.x) < 1.0 && abs(offset.y) < 1.0) {
+                // The frame measures y upward and the baked pattern downward, so
+                // the read turns that axis over. Every regular opening's pattern
+                // happens to be even about it, but the coordinate is still the
+                // coordinate.
+                float2 uv = float2(offset.x * 0.5 + 0.5, 0.5 - offset.y * 0.5);
+                float3 pattern = starPattern.sample(samp, uv).rgb;
+                sum += pattern * flare.starTints[i].rgb * seen;
+            }
         }
     }
     return float4(base.rgb + sum, base.a);

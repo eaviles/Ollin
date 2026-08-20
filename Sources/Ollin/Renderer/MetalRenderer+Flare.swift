@@ -65,6 +65,35 @@ extension MetalRenderer {
     /// The same feather on the front opening, which is a wider and harder stop.
     static let flarePupilSoftness = 0.05
 
+    /// What one arm of the star is worth where the baked pattern reads 1, at
+    /// `strength` and `star` both 1.
+    ///
+    /// The pattern's mean is 1 and its core runs thousands of times above that,
+    /// so this level blows the core out (which is what a source does) and leaves
+    /// the arms in a range the picture can hold.
+    static let lensFlareStarGain = 0.4
+
+    /// The star pattern for a blade count, baked once and kept.
+    func flareStar(blades: Int) -> MTLTexture? {
+        if let cached = flareStarCache, cached.blades == blades { return cached.texture }
+        let pattern = ApertureStar.bake(blades: blades)
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .rgba16Float, width: pattern.size, height: pattern.size,
+            mipmapped: false)
+        descriptor.usage = .shaderRead
+        guard let texture = device.makeTexture(descriptor: descriptor) else { return nil }
+        // The bake is worked out in full floats and the texture holds halves, so
+        // the core's ceiling is what keeps the brightest texels representable.
+        let half = pattern.pixels.map { Float16($0) }
+        half.withUnsafeBytes { bytes in
+            texture.replace(region: MTLRegionMake2D(0, 0, pattern.size, pattern.size),
+                            mipmapLevel: 0, withBytes: bytes.baseAddress!,
+                            bytesPerRow: pattern.size * 8)
+        }
+        flareStarCache = (blades, texture)
+        return texture
+    }
+
     /// One source, worked out into the terms the flare uses.
     private struct FlareSource {
         /// The angle the source arrives at the front of the lens, in radians.
@@ -178,9 +207,30 @@ extension MetalRenderer {
         uniforms.optics = SIMD4<Float>(Float(optics.pupilRadius), Float(optics.irisRadius),
                                        Float(optics.directScale * tanHalfFieldOfView),
                                        Float(lensAspect))
-        uniforms.iris = SIMD4<Float>(Float(max(0, camera.apertureBlades)), 0,
+        // The star's drawn size is measured at the iris wide open and grows as the
+        // iris closes, since light bending around a smaller opening spreads
+        // further. The size itself is chosen rather than physical: a real star's
+        // arms are visible only because the source is thousands of times brighter
+        // than the scene, and that reach is far outside what a bake of this size
+        // can hold. What stays physical is its shape and how it answers the iris.
+        let blades = max(0, camera.apertureBlades)
+        // Held at eight times, since a lens stopped past that is a pinhole and its
+        // star would otherwise reach across the whole picture.
+        let openness = optics.irisRadius > 0 ? optics.openIrisRadius / optics.irisRadius : 1
+        let starExtent = flare.star > 0 ? flare.starSize * min(openness, 8) : 0
+        uniforms.iris = SIMD4<Float>(Float(blades), Float(starExtent),
                                      Float(MetalRenderer.flareIrisSoftness),
                                      Float(MetalRenderer.flarePupilSoftness))
+        withUnsafeMutablePointer(to: &uniforms.starTints) { tuple in
+            tuple.withMemoryRebound(to: simd_float4.self,
+                                   capacity: Int(OLLIN_MAX_FLARE_LIGHTS)) { buffer in
+                for (index, source) in sources.enumerated() {
+                    let level = flare.strength * flare.star * MetalRenderer.lensFlareStarGain
+                    let color = (source.color / brightest) * level
+                    buffer[index] = SIMD4(Float(color.x), Float(color.y), Float(color.z), 0)
+                }
+            }
+        }
         withUnsafeMutablePointer(to: &uniforms.ghosts) { tuple in
             tuple.withMemoryRebound(to: simd_float4.self,
                                    capacity: Int(OLLIN_MAX_FLARE_GHOSTS)) { buffer in
@@ -238,6 +288,7 @@ extension MetalRenderer {
         encoder.setRenderPipelineState(state)
         encoder.setFragmentTexture(resolved, index: 0)
         encoder.setFragmentTexture(visibility, index: 1)
+        encoder.setFragmentTexture(starExtent > 0 ? flareStar(blades: blades) : visibility, index: 2)
         encoder.setFragmentSamplerState(imageSampler, index: 0)
         encoder.setFragmentBytes(&uniforms, length: MemoryLayout<OllinLensFlareUniforms>.stride,
                                  index: 0)

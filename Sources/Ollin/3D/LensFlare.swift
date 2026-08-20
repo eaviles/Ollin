@@ -172,16 +172,30 @@ public struct LensFlare: Equatable, Sendable {
     /// so this reaches past the frame by default.
     public var reach: Double
 
+    /// How strong the star on the source itself is, over and above `strength`.
+    /// `0` leaves the ghosts alone without it, which is a real choice: the chain
+    /// across the frame and the star on the source are two different effects and
+    /// a piece may want one and not the other.
+    public var star: Double
+
+    /// How far the star reaches from its source, as a fraction of the frame
+    /// height, with the iris wide open. Stopping down grows it from there, since
+    /// light bending around a smaller opening spreads further.
+    public var starSize: Double
+
     /// How much of the frame the visibility test looks at around a source, as a
     /// fraction of the frame height. This is the size the source is treated as
     /// having: a flare fades as an occluder covers that disc, rather than
     /// switching off the moment the source's center goes behind something.
     public var sourceSize: Double
 
-    public init(lens: Lens = .heliar, strength: Double = 1,
-                reach: Double = 0.55, sourceSize: Double = 0.035) {
+    public init(lens: Lens = .heliar, strength: Double = 1, star: Double = 1,
+                starSize: Double = 0.35, reach: Double = 0.55,
+                sourceSize: Double = 0.035) {
         self.lens = lens
         self.strength = max(0, strength)
+        self.star = max(0, star)
+        self.starSize = max(0, starSize)
         self.reach = max(0, reach)
         self.sourceSize = max(0.001, sourceSize)
     }
@@ -268,6 +282,9 @@ struct LensOptics: Equatable {
     var pupilRadius: Double
     /// The radius of the iris opening after the f-number is applied.
     var irisRadius: Double
+    /// The radius the prescription gives the iris with nothing stopped down,
+    /// which is the reference the star's size is measured against.
+    var openIrisRadius: Double
     /// Sensor height per unit ray angle for light that goes straight through,
     /// which is the scale that puts a ghost where the picture is.
     var directScale: Double
@@ -351,7 +368,7 @@ extension Lens {
     /// opening is small, so that path carries almost nothing.
     func optics() -> LensOptics {
         guard interfaces.count >= 2 else {
-            return LensOptics(ghosts: [], pupilRadius: 0, irisRadius: 0,
+            return LensOptics(ghosts: [], pupilRadius: 0, irisRadius: 0, openIrisRadius: 0,
                               directScale: 0, focalLength: 0)
         }
         let irisIndex = interfaces.firstIndex { $0.isIris }
@@ -398,6 +415,7 @@ extension Lens {
         return LensOptics(ghosts: ghosts,
                           pupilRadius: interfaces[0].height,
                           irisRadius: min(openHeight, stopped),
+                          openIrisRadius: openHeight,
                           directScale: directMatrix.b,
                           focalLength: f)
     }

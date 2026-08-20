@@ -305,6 +305,20 @@ lensFlare()                          // the ghosts that lamp leaves in the lens
 
 Both ghosts in the figure are hexagons, because the iris has six blades and a ghost is a picture of the opening its light came through. Their colors differ because each surface of the lens is coated for a different wavelength. A coating passes on whatever it fails to cancel. And look where the teal one is. It lies *over* the near black slab, not behind it. Nothing in the room is glowing. The light never reached that slab. It only reached the glass in front of the sensor.
 
+That is one half of a flare. The other sits on the source itself.
+
+<img src="Images/26-SculptingWithFields/StarPoints.jpg" alt="A dark room with a small bright lamp above a row of blocks. Six golden arms reach out from the lamp, fanning into color at their tips, around a blown-out core" width="640">
+
+Those arms are light **bending at the edges of the iris**. Far from an opening, what its edges do to a wave is exactly the opening's own Fourier transform, so what lands on the sensor is a picture of the opening turned inside out. Six blades put six arms on the star for the same reason they put six sides on a ghost.
+
+Three things follow from that, and all three are worth knowing:
+
+- An **odd** number of blades gives **twice** as many arms. No two of its edges are parallel, so each throws its own.
+- A **round** iris throws no arms at all, only a halo. Set `apertureBlades` to 0 and watch the arms go with the hexagons.
+- **Stopping down grows the star** while it shrinks the ghosts. Light spreads more around a smaller opening, so a landscape shot at f/16 gets long rays and a portrait wide open gets almost none.
+
+The arms fan into color at their tips because a longer wavelength bends further, so red reaches past blue. `star:` scales it, and `star: 0` leaves the ghosts alone without it, which is a real choice: they are two different effects and a piece may want one and not the other.
+
 So the call asks for a lens, not for a look:
 
 ```swift
