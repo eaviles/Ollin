@@ -114,14 +114,65 @@ struct GlassRenderProbes {
         #expect(peakDiff < 40, "the field's interior is banded, peaking at \(peakDiff)")
     }
 
-    /// Mean and worst per-pixel channel difference over a disc well inside both
-    /// silhouettes. The mask is a disc, not a square: the body fills most of the frame,
-    /// so a square's corners reach the rim and read its anti-aliasing (analytic on the
-    /// field, multisampled on the mesh) as if it were interior disagreement.
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func aFieldRimShadesLikeAMeshRim() throws {
+        // The silhouette rim, pixel by pixel: the one region the interior disc
+        // deliberately leaves out. A field is absent from the deferred reflection
+        // layer, so its fragment must trace reflections inline; if the deferred
+        // flag reaches the field's lighting, the ambient's deferred branch reads the
+        // fragment's zero stand-in sample and quietly leaves the raw environment in
+        // place of the traced scene. The environment outshines the traced slab at
+        // grazing incidence, so the field wears a blown-white band three or four
+        // pixels wide just inside its silhouette, with one dark pixel outside it,
+        // where the mesh descends smoothly. A patch mean cannot see a band this
+        // thin; only a scanline can, which is how it survived the snapshot suite
+        // and was found by eye. Each row aligns on its own first covered pixel, so
+        // a sub-pixel silhouette offset between the two bodies doesn't register.
+        let meshImg = try #require(OllinApp.image(of: GlassProbe.make(kind: .absorbingMesh), frame: 1))
+        let fieldImg = try #require(OllinApp.image(of: GlassProbe.make(kind: .absorbingField), frame: 1))
+        let dm = pixels(of: meshImg), df = pixels(of: fieldImg)
+        let w = meshImg.width
+        func edge(_ data: [UInt8], row: Int) -> Int? {
+            // The slab reference comes from a column strip left of the body.
+            var ref = [0.0, 0.0, 0.0]
+            for x in 20..<30 { for c in 0...2 { ref[c] += Double(data[(row * w + x) * 4 + c]) } }
+            for c in 0...2 { ref[c] /= 10 }
+            for x in 35..<(w / 2) {
+                for c in 0...2 where abs(Double(data[(row * w + x) * 4 + c]) - ref[c]) > 30 {
+                    return x
+                }
+            }
+            return nil
+        }
+        var worst = 0.0
+        for fraction in [0.40, 0.50, 0.60] {
+            let row = Int(Double(meshImg.height) * fraction)
+            let me = try #require(edge(dm, row: row), "no mesh silhouette on row \(row)")
+            let fe = try #require(edge(df, row: row), "no field silhouette on row \(row)")
+            // The first pixel is the two AA models disagreeing (multisampled against
+            // analytic), so the shading comparison starts one pixel inside the edge.
+            for offset in 1...5 {
+                for c in 0...2 {
+                    let m = Double(dm[(row * w + me + offset) * 4 + c])
+                    let f = Double(df[(row * w + fe + offset) * 4 + c])
+                    worst = max(worst, abs(m - f))
+                }
+            }
+        }
+        #expect(worst < 45, "the field's rim shading diverges from the mesh's by \(worst)")
+    }
+
+    /// Mean and worst per-pixel channel difference over a disc that stops a few
+    /// pixels short of the silhouette. The mask is a disc, not a square: the body
+    /// fills most of the frame, so a square's corners reach the rim, and the
+    /// outermost pixels legitimately differ (the AA models disagree, multisampled
+    /// against analytic, and the rim compresses the mirror image so the field's
+    /// single inline reflection ray reads a value the mesh's supersampled deferred
+    /// layer averages). The rim's own agreement is `aFieldRimShadesLikeAMeshRim`.
     private func interiorDifference(_ a: CGImage, _ b: CGImage) -> (Double, Double) {
         let da = pixels(of: a), db = pixels(of: b)
         var sum = 0.0, count = 0.0, peak = 0.0
-        let radius = 0.13 * Double(a.width)          // ~57% of the body's screen radius
+        let radius = 0.19 * Double(a.width)          // ~81% of the body's screen radius
         let cx = 0.5 * Double(a.width), cy = 0.5 * Double(a.height)
         for py in 0..<a.height {
             for px in 0..<a.width {

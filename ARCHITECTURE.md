@@ -2303,10 +2303,14 @@ it), so every pre-glass frame is bit-identical. The moving parts:
   out answers with what it marched, bounded by the body's own extent. **The rings
   were invisible to a patch mean** (the centre patch matched the mesh to 0.6/255
   through them) and only a per-pixel comparison sees them, which is why the probe
-  compares the two bodies pixel by pixel over a **disc** rather than a square: the
-  body fills most of the frame, and a square's corners reach the rim and read its
-  anti-aliasing (analytic on the field, multisampled on the mesh) as interior
-  disagreement. `GlassRenderProbes.aGlassFieldAbsorbsLikeAGlassMesh` pins the
+  compares the two bodies pixel by pixel over a **disc that stops a few pixels
+  short of the rim** rather than a square: a square's corners reach the
+  silhouette, where the outermost pixels legitimately differ (the AA models
+  disagree, multisampled against analytic, and the field's single inline
+  reflection ray meets the rim-compressed mirror image a mesh's supersampled
+  deferred layer averages; the rim's own shading agreement is pinned separately
+  by `aFieldRimShadesLikeAMeshRim`, see *Deferred ray-traced reflection AA*).
+  `GlassRenderProbes.aGlassFieldAbsorbsLikeAGlassMesh` pins the
   agreement, the independence from what stands behind, and the absence of banding
   (verified red against the unfixed walk *and* against the ringing march).
 - **Documented v1 envelope:** the refraction trace is inline (single-ray) even
@@ -2969,8 +2973,36 @@ The lit mesh fragments sample the finished layer by screen position
 texture 7) when `rtReflectionDeferred` is set, compositing `hit.rgb + prefiltered
 · (1 − hit.a)` through the same Fresnel/BRDF weighting, identical math to the
 inline form when coverage is 0 or 1. **Render targets and the raymarched fields
-keep the inline single-ray trace** (their lighting never sets the deferred flag);
-the deferred chain covers the canvas render, live and headless. Measured against
+keep the inline single-ray trace**: a render target's lighting never sets the
+deferred flag, and the main encode hands the `.sdfGroup3D` batches their own copy
+of the frame's lighting with `rtReflectionDeferred` cleared. That clearing is
+load-bearing, and it was a defect before it was a rule. A field's pixels are not
+in the deferred layer (its G-buffer re-encodes mesh batches only), so the
+raymarch fragment passes a zero `deferredReflection` stand-in; while the full-res
+inline field path still bound the shared lighting with the flag set, the
+ambient's deferred branch composited `0 + prefiltered · (1 − 0)` and the traced
+reflection silently no-opped for every field in a deferred frame. Nothing
+crashed, and no snapshot moved, because no snapshot scene combines a field with
+`rayTracedReflections()`. The visible symptom was the silhouette: at grazing
+incidence the reflection is most of the picture, and the raw environment there
+outshines the traced scene, so a field wore a 3-4px blown-white rim band plus one
+dark pixel (the reflection sweeping a dark environment region just past the
+body), while the mesh beside it, compositing the traced slab, descended smoothly.
+The isolation is worth recording. A patch mean and the snapshot tolerance both
+average the band away (it was found by eye); per-pixel scanlines showed it, and
+the decisive instrument was a diagnostic return inside `ollin_pbr_ibl_ambient`
+itself (NoV, prefiltered luminance, and `brdf.y` written out as RGB), which
+showed the mesh and field paths agreeing on every shading input except the
+prefiltered radiance, an order of magnitude apart at matched NoV. A 4096²
+render settled that the band was not an unaveraged sub-pixel highlight (it kept
+its angular width under supersampling), and a no-tracing render settled that it
+was not field-specific (the mesh rim blows out identically without tracing:
+that band is the honest picture of a hot environment at grazing Fresnel under
+the clamp tone map, on either geometry). `GlassRenderProbes.aFieldRimShadesLikeAMeshRim`
+pins the fixed rim with an edge-aligned scanline comparison, verified red
+against the flag leak. The residual envelope: the rim compresses the mirror
+image, so the field's single inline ray can read one bright pixel where the
+mesh's supersampled layer averages (noted in `Docs/3D/Combining.md`). Measured against
 a 2× supersampled ground truth, the deferred export lands ~32% closer (contact-
 region RMSE) than the single-ray form, with the remaining delta shared with
 everything else 2× supersampling touches.

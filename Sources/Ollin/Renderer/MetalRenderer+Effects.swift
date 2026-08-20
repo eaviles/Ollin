@@ -2412,7 +2412,15 @@ extension MetalRenderer {
                 encoder.setRenderPipelineState(state)
                 encoder.setFragmentBuffer(sdf3DGroupBuffer, offset: batch.sdf3DGroupStart * group3DStride, index: 0)
                 encoder.setFragmentBuffer(sdf3DNodeBuffer, offset: 0, index: 1)
-                encoder.setFragmentBytes(&lighting, length: MemoryLayout<OllinLighting>.stride, index: 2)
+                // A field is absent from the deferred reflection layer (that pre-pass
+                // traces the mesh carriers only), so its fragment must trace inline:
+                // clear the deferred flag on the field's own lighting copy, or the
+                // ambient's deferred branch reads the fragment's zero stand-in sample
+                // and quietly leaves the raw environment in place of the traced scene
+                // (a blinding silhouette rim wherever the environment outshines it).
+                var fieldLighting = lighting
+                fieldLighting.rtReflectionDeferred = 0
+                encoder.setFragmentBytes(&fieldLighting, length: MemoryLayout<OllinLighting>.stride, index: 2)
                 var finish3D = batch.finish
                 encoder.setFragmentBytes(&finish3D, length: MemoryLayout<OllinMaterial>.stride, index: 3)
                 encoder.setFragmentBytes(&u3, length: MemoryLayout<Uniforms3D>.stride, index: 4)

@@ -810,8 +810,13 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
         lit.rgb += ollin_pbr_ibl_ambient(baseRGB, n, viewDir, mat, light,
                                          iblIrradiance, iblPrefilter, iblBRDF, sheenLUT
 #if OLLIN_RT_SHADOWS
-                                         // Fields always trace inline (their lighting never sets
-                                         // rtReflectionDeferred), so no deferred sample to pass.
+                                         // Fields always trace inline: a field's pixels are not
+                                         // in the deferred reflection layer, so every encode
+                                         // binds this fragment lighting with rtReflectionDeferred
+                                         // cleared, and there is no deferred sample to pass. With
+                                         // the flag set, the ambient's deferred branch would read
+                                         // this zero stand-in and quietly leave the raw
+                                         // environment in place of the traced scene.
                                          , pw, accel, meshVerts, meshGeoOffsets, float4(0.0),
                                          ltcAmp, iesProfiles, cookies, gi,
                                          giIrradianceTex, giDepthTex, giOffsetsTex
