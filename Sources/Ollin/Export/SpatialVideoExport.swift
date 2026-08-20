@@ -314,6 +314,7 @@ extension OllinApp {
             fatalError("Ollin: failed to initialize the Metal renderer: \(error)")
         }
         renderer.automaticQuality = quality
+        renderer.renderScale = OllinApp.exportRenderScale
         isRenderingHeadless = true
         defer { isRenderingHeadless = false }
 

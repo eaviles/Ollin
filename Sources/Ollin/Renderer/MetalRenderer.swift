@@ -775,6 +775,34 @@ final class MetalRenderer {
     /// it on (a minutes-long render should say where it is); the sequence and video
     /// drivers turn it off and keep their own per-frame line instead.
     var pathTraceReportsProgress = true
+    /// Export-only spatial supersampling: the frame is drawn `renderScale` times
+    /// across the canvas, then averaged back down to canvas size in linear light,
+    /// ahead of the tone map. 1 (the default, and always the live window) renders
+    /// exactly as before. `--render-scale` sets it through `OllinApp.exportRenderScale`.
+    var renderScale = 1
+    /// Whether the clamp notice was printed, so a sequence says it once, not per frame.
+    private var reportedRenderScaleClamp = false
+    /// The same, for the notice that a piling canvas does not take the supersample.
+    private var reportedAccumulationScale = false
+    /// The ceiling on the supersample. 4x is already 16x the fragment work.
+    static let maxRenderScale = 4
+    /// The widest a Metal 2D texture can be on the supported devices.
+    static let maxTextureSide = 16384
+
+    /// How much of the asked-for `renderScale` a frame of this size can take: at
+    /// most `maxRenderScale`, and never wider than a texture can be. A reduction
+    /// is said out loud once, never silently.
+    func supersampleScale(width: Int, height: Int) -> Int {
+        let asked = max(1, renderScale)
+        guard asked > 1 else { return 1 }
+        var scale = min(asked, MetalRenderer.maxRenderScale)
+        while scale > 1, max(width, height) * scale > MetalRenderer.maxTextureSide { scale -= 1 }
+        if scale < asked, !reportedRenderScaleClamp {
+            reportedRenderScaleClamp = true
+            print("Ollin: a render scale of \(asked)x is more than this canvas can take; rendering at \(scale)x.")
+        }
+        return scale
+    }
     /// The environment-sampling tables (luminance CDFs + solid-angle pdf grid) the
     /// path-traced export builds per equirect, cached by texture identity so a
     /// sequence export builds them once. Export-only and small (a few hundred KB per
@@ -1846,6 +1874,11 @@ final class MetalRenderer {
     /// themselves are the only honest form.
     func accumulatedFrame(of drawer: Drawer, viewport: SIMD2<Float>,
                           width: Int, height: Int) -> (buffer: MTLBuffer, bytesPerRow: Int)? {
+        if renderScale > 1, !reportedAccumulationScale {
+            reportedAccumulationScale = true
+            print("Ollin: a piling canvas (noClear) keeps one surface across frames, "
+                  + "so it renders at 1x and the render scale does not reach it.")
+        }
         guard width > 0, height > 0,
               let pass = accumulationPass(drawer, width: width, height: height),
               let resolve = accumResolve, let display = accumDisplay,
@@ -2045,8 +2078,16 @@ final class MetalRenderer {
     /// `image(of:…)` stopping at the read-back buffer instead of building an
     /// image (see `accumulatedFrame` for why the HDR video writer needs this).
     func renderedFrame(of drawer: Drawer, viewport: SIMD2<Float>,
-                       width: Int, height: Int) -> (buffer: MTLBuffer, bytesPerRow: Int)? {
-        guard width > 0, height > 0 else { return nil }
+                       width outWidth: Int, height outHeight: Int) -> (buffer: MTLBuffer, bytesPerRow: Int)? {
+        guard outWidth > 0, outHeight > 0 else { return nil }
+        // The export supersample (`--render-scale`): the geometry is drawn `scale`
+        // times across the canvas and averaged back down before the picture-side
+        // chain (motion blur, the flare, the frame filters, the tone map), which
+        // stays at canvas size and therefore reads exactly as it does at 1x. The
+        // viewport is still in canvas units, so this is a sampling rate rather
+        // than a size: the sketch draws in the same canvas either way.
+        let scale = supersampleScale(width: outWidth, height: outHeight)
+        let width = outWidth * scale, height = outHeight * scale
 
         // Headless renders count too, so a test (and a batch export) can read the
         // same profile the live window reports. This path waits for the GPU, so
@@ -2058,7 +2099,7 @@ final class MetalRenderer {
         // texture the present pass tone-maps into and we read back.
         guard let msaaTexture = makeFloatMSAA(width: width, height: height, storage: .memoryless),
               let resolveTexture = makeFloatResolve(width: width, height: height),
-              let displayTexture = makeDisplayTexture(width: width, height: height) else { return nil }
+              let displayTexture = makeDisplayTexture(width: outWidth, height: outHeight) else { return nil }
 
         let pass = MTLRenderPassDescriptor()
         pass.colorAttachments[0].texture = msaaTexture
@@ -2093,8 +2134,8 @@ final class MetalRenderer {
         let passHasStencil = attachClipStencil(to: pass, active: drawer.usesClipStencil,
                                                width: width, height: height)
 
-        let bytesPerRow = width * displayBytesPerPixel
-        let byteCount = bytesPerRow * height
+        let bytesPerRow = outWidth * displayBytesPerPixel
+        let byteCount = bytesPerRow * outHeight
 
         guard let readback = device.makeBuffer(length: byteCount, options: .storageModeShared),
               let commandBuffer = commandQueue.makeCommandBuffer() else { return nil }
@@ -2263,20 +2304,25 @@ final class MetalRenderer {
                                      into: commandBuffer)
                 swap(&accFront, &accBack)
             }
+            // Down to the canvas first (nothing at all at scale 1), so everything
+            // below measures in canvas pixels exactly as it does at 1x.
+            let sampled = encodeSupersampleResolve(accFront, scale: scale,
+                                                   width: outWidth, height: outHeight,
+                                                   into: commandBuffer)
             // Motion blur streaks the supersampled average (the live path's
             // after-TAA slot); the depth resolve holds the last jittered pass's
             // depth, at most half a pixel off, which the average's own tolerance
             // already accepts. Untouched when the blur is off.
-            let blurred = applyMotionBlur(drawer, resolved: accFront, depth: sceneDepthResolve,
+            let blurred = applyMotionBlur(drawer, resolved: sampled, depth: sceneDepthResolve,
                                           moverVelocity: nil, meshBuffer: meshBuf,
-                                          into: commandBuffer, width: width, height: height,
+                                          into: commandBuffer, width: outWidth, height: outHeight,
                                           pooled: false)
             // The flare goes on the averaged frame, not into each jittered pass,
             // so it is added once and reads the same as it does live.
             let flared = applyLensFlare(drawer, resolved: blurred, depth: sceneDepthResolve,
-                                        into: commandBuffer, width: width, height: height,
+                                        into: commandBuffer, width: outWidth, height: outHeight,
                                         pooled: false)
-            presented = applyFrameFilters(drawer, resolved: flared, width: width, height: height,
+            presented = applyFrameFilters(drawer, resolved: flared, width: outWidth, height: outHeight,
                                           into: commandBuffer, pooled: false)
         } else {
             guard let encoder = countedEncoder(commandBuffer, pass, caller: "canvas (headless supersample)") else { return nil }
@@ -2309,14 +2355,19 @@ final class MetalRenderer {
             let scattered = applySubsurfaceScattering(drawer, resolved: resolveTexture, meshBuffer: meshBuf,
                                                       into: commandBuffer, width: width, height: height,
                                                       pooled: false)
-            let blurred = applyMotionBlur(drawer, resolved: scattered, depth: sceneDepthResolve,
+            // Down to the canvas first (nothing at all at scale 1), so everything
+            // below measures in canvas pixels exactly as it does at 1x.
+            let sampled = encodeSupersampleResolve(scattered, scale: scale,
+                                                   width: outWidth, height: outHeight,
+                                                   into: commandBuffer)
+            let blurred = applyMotionBlur(drawer, resolved: sampled, depth: sceneDepthResolve,
                                           moverVelocity: nil, meshBuffer: meshBuf,
-                                          into: commandBuffer, width: width, height: height,
+                                          into: commandBuffer, width: outWidth, height: outHeight,
                                           pooled: false)
             let flared = applyLensFlare(drawer, resolved: blurred, depth: sceneDepthResolve,
-                                        into: commandBuffer, width: width, height: height,
+                                        into: commandBuffer, width: outWidth, height: outHeight,
                                         pooled: false)
-            presented = applyFrameFilters(drawer, resolved: flared, width: width, height: height,
+            presented = applyFrameFilters(drawer, resolved: flared, width: outWidth, height: outHeight,
                                           into: commandBuffer, pooled: false)
         }
         guard let presentEncoder = countedEncoder(commandBuffer, presentPass(into: displayTexture)) else { return nil }
@@ -2328,7 +2379,7 @@ final class MetalRenderer {
         guard let blit = commandBuffer.makeBlitCommandEncoder() else { return nil }
         blit.copy(from: displayTexture, sourceSlice: 0, sourceLevel: 0,
                   sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
-                  sourceSize: MTLSize(width: width, height: height, depth: 1),
+                  sourceSize: MTLSize(width: outWidth, height: outHeight, depth: 1),
                   to: readback, destinationOffset: 0,
                   destinationBytesPerRow: bytesPerRow, destinationBytesPerImage: byteCount)
         blit.endEncoding()

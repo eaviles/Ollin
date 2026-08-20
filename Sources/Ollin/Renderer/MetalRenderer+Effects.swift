@@ -1798,6 +1798,21 @@ extension MetalRenderer {
         return device.makeTexture(descriptor: desc)
     }
 
+    /// Average a supersampled frame back down to the canvas: one box pass over the
+    /// `scale` x `scale` block under each output pixel, in linear light and ahead of
+    /// the tone map, so the one 8-bit quantization point stays in the present pass.
+    /// At scale 1 it hands the input straight back, so an ordinary export never
+    /// touches this and stays byte-identical.
+    func encodeSupersampleResolve(_ source: MTLTexture, scale: Int, width: Int, height: Int,
+                                  into cb: MTLCommandBuffer) -> MTLTexture {
+        guard scale > 1, let output = makeFilterTexture(width: width, height: height) else { return source }
+        encodeEffectFragment("ollin_fx_supersample_resolve", inputs: [source], output: output,
+                             params: [SIMD4(1 / Float(source.width), 1 / Float(source.height),
+                                            Float(scale), 0)],
+                             into: cb)
+        return output
+    }
+
     /// Upload `drawer`'s recorded geometry and issue its draws into `encoder`,
     /// one per batch in call order so triangles and SDF shapes composite
     /// front-to-back as the sketch drew them. Shared by the on-screen and

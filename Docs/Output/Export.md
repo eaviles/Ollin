@@ -23,6 +23,7 @@ swift run OllinLive MySketches/Loop.swift --export poster.png --frame 90
 
 - [Raster: PNG and sequences](#raster-png-and-sequences) - `--export` (PNG, or HEIC to keep highlights), `--export-sequence`
 - [Render quality](#render-quality) - `--render-quality`, the live vs. export default
+- [Render scale](#render-scale) - `--render-scale`, drawing a frame more finely than it is saved
 - [Path-traced render](PathTraced.md) - `--path-traced`, the offline light-tracing mode for 3D scenes (its own page)
 - [Sound](#sound) - a sketch's own music, in the file
 - [Video](#video) - `--export-video`, `OllinApp.exportVideo`
@@ -86,6 +87,28 @@ swift run --package-path Examples Example-Effects-Defocus      --export-video do
 It takes `performance`, `default`, or `detail` (aliases: `fast` / `balanced` / `high`) and applies to every raster/video/GIF export. It is **distinct from `--quality`**, which is the video *encoding* quality (0…1) for `--export-video`.
 
 **A quality the sketch sets itself always wins.** `--render-quality` (and the automatic live/export defaults) only fill in features the sketch left alone. If a sketch dials a feature explicitly (`raymarchQuality(.performance)`, `shadowQuality(.detail)`, `.defocus(…, quality: .performance)`), that choice is honored on every path, live and export alike. In code the same control is the `quality:` argument on `OllinApp.image(of:frame:fps:quality:)`, `export`, and `exportSequence`. It is `renderQuality:` on `exportVideo` and `exportGIF`, and it defaults to `.detail`.
+
+### Render scale
+
+`--render-scale N` draws each exported frame N times across the canvas and averages every block of N by N samples back into one pixel. The picture keeps its canvas size. What changes is how finely it was sampled:
+
+```sh
+swift run --package-path Examples Example-Text-OutlineText --export poster.png --render-scale 2
+swift run --package-path Examples Example-Shapes-NamedPolygons --export poster.png --render-scale 4
+```
+
+It is the quality-over-speed dial for a frame that is off the clock. The work grows with the square of the number: four times the pixels at 2, sixteen at 4. That is why the live window never uses it, and why 4 is the ceiling. Ask for more and it renders at the ceiling and says so.
+
+**What it sharpens.** Filled shapes and polygons, the glyph outlines that text is made of, and fine dense detail. That is everything which reaches the screen as triangles. It leaves the analytic shapes (circles, rectangles, arcs, the marker catalog), every stroked path, and atlas text (`textMode(.atlas)`) where they were. Each of those carries its own coverage, and is already crisp at 1.
+
+**What it does not change.** Everything that treats the finished frame as a picture runs at canvas size at every scale. That is motion blur, the lens flare, `postProcess` filters, and the tone map. A `.gaussianBlur(radius: 12)` is twelve canvas pixels wide whatever the dial says. Two other things stay at 1 as well. A layer built with `renderTarget` keeps the size it was made at. A piling canvas (`noClear`) carries one surface across frames, so it renders at 1 and prints a line saying so.
+
+In code the same control is `OllinApp.exportRenderScale`, set before the export call:
+
+```swift
+OllinApp.exportRenderScale = 2
+OllinApp.export(sketch, to: "poster.png")
+```
 
 ### Video
 

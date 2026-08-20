@@ -449,7 +449,9 @@ length**, not `fwidth`: a unit-gradient distance field's L1 norm overshoots by
 sqrt(2) at 45 degrees, which had been fading diagonal 1px lines as if
 sub-pixel. Verified near-optimal for the raster path: 4x SSAA barely beats it;
 a 1px diagonal's residual softness is fundamental to native-resolution
-rasterization (see `DESIGN-NOTES.md` on the supersampled render scale).
+rasterization, which is what the export supersample (`--render-scale`, see
+`Docs/Output/Export.md`) exists to spend time on and what makes it worth
+little on the paths that carry their own coverage.
 
 ### Retained batches (`Batch` / `makeBatch` / `drawBatch`)
 

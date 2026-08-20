@@ -100,6 +100,7 @@ extension OllinApp {
             return nil
         }
         renderer.automaticQuality = quality
+        renderer.renderScale = OllinApp.exportRenderScale
         isRenderingHeadless = true
         defer { isRenderingHeadless = false }
 

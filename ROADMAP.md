@@ -97,7 +97,6 @@ See the [design notes](DESIGN-NOTES.md#new-output-surfaces).
 Deeper use of the Metal core and Apple displays, all opt-in so the 2D path stays untaxed:
 
 - **Dolby Vision.** Dynamic per-scene HDR metadata, where the static HDR10 metadata a video carries describes the whole file at once. It needs the licensed encoder path rather than AVFoundation's plain HDR writer, so it is a licensing question before it is an API one.
-- **A supersampled render scale.** An opt-in resolution multiplier (`renderScale: 2`), rendering a frame at N× and downsampling, as the explicit quality-over-speed dial. Its home is the export rather than the live window, which already draws at the display's backing scale. Worth knowing before reaching for it: it buys little on the paths that already carry their own coverage, meaning the analytic SDF shapes and the fringe-expanded strokes, so what it sharpens is the tessellated fill, text, and fine dense detail. [Design notes.](DESIGN-NOTES.md#supersampled-render-scale-the-crispness-dial)
 
 See the [design notes](DESIGN-NOTES.md#rendering-and-color-frontier). (The most speculative items here, spectral rendering, AI frame interpolation, optical-flow self-warp, and print color management, sit under [Further out / exploratory](#further-out--exploratory).)
 

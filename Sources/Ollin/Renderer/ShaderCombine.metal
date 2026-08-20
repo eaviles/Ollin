@@ -1173,6 +1173,27 @@ fragment float4 ollin_fx_weighted_sum(PresentOut in [[stage_in]],
     return accum.sample(samp, in.uv) + add.sample(samp, in.uv) * params[0].x;
 }
 
+// Box resolve for the spatial export supersample: average the n x n block of
+// source texels that sits under one output pixel (params[0]: source texel size,
+// n). The taps land on texel centers, so each fetch reads one texel exactly
+// instead of blending two. It runs on the linear-light frame, ahead of the tone
+// map, which is what keeps the one 8-bit quantization point in the present pass.
+fragment float4 ollin_fx_supersample_resolve(PresentOut in [[stage_in]],
+                                             texture2d<float> src [[texture(0)]],
+                                             sampler samp [[sampler(0)]],
+                                             constant float4 *params [[buffer(0)]]) {
+    float2 texel = params[0].xy;
+    int n = max(1, int(params[0].z));
+    float4 sum = float4(0.0);
+    for (int j = 0; j < n; ++j) {
+        for (int i = 0; i < n; ++i) {
+            float2 offset = (float2(float(i), float(j)) + 0.5 - float(n) * 0.5) * texel;
+            sum += src.sample(samp, in.uv + offset);
+        }
+    }
+    return sum / float(n * n);
+}
+
 // MARK: - Motion blur (the velocity-buffer reconstruction filter)
 //
 // Four fullscreen passes over the resolved linear pre-tonemap frame, written

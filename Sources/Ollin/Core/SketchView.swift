@@ -1940,6 +1940,21 @@ public enum OllinApp {
     /// stay raster (a sheet of tiles at minutes per tile helps nobody).
     public static var pathTracedExport: PathTracing?
 
+    /// How many samples across a canvas pixel an export renders: 1 (the default)
+    /// draws the frame at canvas size, 2 draws it twice as wide and twice as tall
+    /// and averages each 2x2 block back into one pixel, and so on up to 4. The
+    /// exported picture keeps its canvas size; what changes is how finely it was
+    /// sampled. It is the quality-over-speed dial for a frame off the clock: the
+    /// work grows with the square of the number, so the live window never uses it.
+    ///
+    /// `--render-scale N` sets it for every raster export. What it sharpens is the
+    /// tessellated fill, text, and fine dense detail; the analytic shapes and the
+    /// stroked paths carry their own coverage and are already crisp at 1. The
+    /// picture-side chain (motion blur, the lens flare, the frame filters, the
+    /// tone map) runs at canvas size either way, so a blur stays the width the
+    /// sketch asked for.
+    public static var exportRenderScale = 1
+
     public static func image(of sketch: Sketch, frame: Int = 0, fps: Double = 60,
                              quality: RenderQuality = .detail) -> CGImage? {
         guard let device = MTLCreateSystemDefaultDevice(),
@@ -1953,6 +1968,7 @@ public enum OllinApp {
         defer { isRenderingHeadless = false }
         renderer.automaticQuality = quality
         renderer.pathTracing = pathTracedExport
+        renderer.renderScale = exportRenderScale
         return renderImage(of: sketch, frame: frame, fps: fps, renderer: renderer)
     }
 
@@ -2140,6 +2156,7 @@ public enum OllinApp {
         }
         renderer.automaticQuality = quality   // the fallback for features the sketch left at .default
         renderer.pathTracing = pathTracedExport
+        renderer.renderScale = exportRenderScale
         renderer.pathTraceReportsProgress = false   // the loop below prints its own line
         isRenderingHeadless = true
         defer { isRenderingHeadless = false }
@@ -2340,6 +2357,13 @@ public extension OllinApp {
                   let q = RenderQuality(name: args[i + 1]) else { return .detail }
             return q
         }()
+        // `--render-scale N` draws each exported frame N times across the canvas and
+        // averages it back down (see `exportRenderScale`). Pre-parsed like the
+        // quality, so it applies to whichever export flag follows.
+        if let i = args.firstIndex(of: "--render-scale"), i + 1 < args.count,
+           let n = Int(args[i + 1]) {
+            exportRenderScale = max(1, n)
+        }
         // `--path-traced [N]` switches the still/sequence/video exports to the
         // offline path tracer (see `PathTracing`), N samples per pixel; bare, the
         // count comes from the render-quality tier. Pre-parsed like the quality so
