@@ -1,5 +1,35 @@
 import Foundation
 
+/// What a texture does past its own edges, when a mesh's uvs run outside the
+/// 0…1 square.
+///
+/// A uv of 2.5 asks for a point two and a half tiles across an image that is one
+/// tile wide, and every renderer needs an answer. `clamp` holds the edge pixel,
+/// which is the safe answer for a picture mapped once onto a shape (a globe, a
+/// portrait on a plane): the picture never repeats, and its border smears out
+/// instead. `tile` repeats the image, which is what a floor, a wall, or a strip
+/// of fabric wants, and what a model authored with tiling uvs was drawn against.
+/// `mirror` repeats it flipped each time, so the tiles meet edge to edge with no
+/// seam even when the image was not made to tile.
+///
+/// ```swift
+/// var floor = Mesh.plane(width: 800, depth: 800)
+/// floor.uvs = floor.uvs.map { $0 * 8 }             // eight tiles across
+/// floor.material = MeshMaterial(texture: tile, wrap: .tile)
+/// ```
+///
+/// A loaded model brings its file's own answer (see `loadMesh`), so a tiling
+/// floor arrives tiling.
+public enum TextureWrap: String, Sendable, Hashable, CaseIterable {
+    /// The edge pixel holds past the edge. The default, and right for a picture
+    /// mapped once onto a shape.
+    case clamp
+    /// The image repeats.
+    case tile
+    /// The image repeats, flipped every other tile, so neighbors always meet.
+    case mirror
+}
+
 /// The surface look of a `Mesh` beyond its raw geometry: a base color and an
 /// optional texture image, mapped onto the mesh through its `uvs`.
 ///
@@ -52,6 +82,13 @@ public struct MeshMaterial: @unchecked Sendable {
     /// The diffuse texture, sampled at each vertex's UV and multiplied onto
     /// `baseColor × fill`. `nil` means a flat (untextured) surface.
     public var texture: Image?
+    /// What every one of this material's textures does past its own edges, for
+    /// uvs outside the 0…1 square: `.clamp` (the default) holds the edge pixel,
+    /// `.tile` repeats the image, `.mirror` repeats it flipped. One answer covers
+    /// the whole map set, since a surface that tiles tiles all of its maps
+    /// together. The triplanar projection and the detail pair repeat regardless,
+    /// having no uv tile of their own to stay inside.
+    public var wrap: TextureWrap
     /// A tangent-space normal map, sampled at each vertex's UV as raw data (no
     /// sRGB decode) and used to bend the lighting normal per pixel. `nil` means
     /// the geometry's own normals light the surface. Needs the mesh to carry
@@ -147,6 +184,7 @@ public struct MeshMaterial: @unchecked Sendable {
     public var clearcoatRoughness: Double
 
     public init(baseColor: Color = .white, texture: Image? = nil,
+                wrap: TextureWrap = .clamp,
                 normalTexture: Image? = nil, normalScale: Double = 1,
                 metallicRoughnessTexture: Image? = nil,
                 occlusionTexture: Image? = nil, occlusionStrength: Double = 1,
@@ -159,6 +197,7 @@ public struct MeshMaterial: @unchecked Sendable {
                 ior: Double = 1.5, clearcoat: Double = 0, clearcoatRoughness: Double = 0.01) {
         self.baseColor = baseColor
         self.texture = texture
+        self.wrap = wrap
         self.normalTexture = normalTexture
         self.normalScale = normalScale
         self.metallicRoughnessTexture = metallicRoughnessTexture
@@ -179,5 +218,19 @@ public struct MeshMaterial: @unchecked Sendable {
         self.ior = ior
         self.clearcoat = clearcoat
         self.clearcoatRoughness = clearcoatRoughness
+    }
+}
+
+extension TextureWrap {
+    /// The address mode as the material uniform carries it: 0 clamp, 1 repeat,
+    /// 2 mirrored repeat. The fragment picks a `constexpr sampler` by this
+    /// number, so clamp being 0 is what keeps an unstated material's bytes and
+    /// its picture unchanged.
+    var gpuValue: Float {
+        switch self {
+        case .clamp: 0
+        case .tile: 1
+        case .mirror: 2
+        }
     }
 }

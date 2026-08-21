@@ -2941,6 +2941,10 @@ final class Drawer {
                 finish.normalScale = Float(mat.normalScale)
             }
             if let mat = material {
+                // What the maps do outside the uv square. One answer covers the
+                // set, and clamp is the zero, so a material that says nothing
+                // packs the same bytes it always did.
+                finish.uvWrap = mat.wrap.gpuValue
                 if triplanar {
                     // The gate carries tiles per world unit; the projected
                     // normal map needs no tangent basis, so its gate rides the
@@ -2985,6 +2989,7 @@ final class Drawer {
             if normalMapped, let mat = material {
                 finish.normalScale = Float(mat.normalScale)
             }
+            if let mat = material { finish.uvWrap = mat.wrap.gpuValue }
             beginMeshBatch(material: material, finish: finish)
         } else {
             ensureSolidMeshBatch(currentMaterial)

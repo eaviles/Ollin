@@ -265,8 +265,15 @@ struct USDSceneWriter {
             s += "    uniform token info:id = \"UsdUVTexture\"\n"
             s += "    asset inputs:file = @\(file)@\n"
             s += "    float2 inputs:st.connect = <\(path)/st.outputs:result>\n"
-            s += "    token inputs:wrapS = \"repeat\"\n"
-            s += "    token inputs:wrapT = \"repeat\"\n"
+            // The material's own answer for uvs outside the square, so a tiling
+            // floor is still tiling when the file is read back.
+            let wrapToken = switch material.wrap {
+            case .clamp: "clamp"
+            case .tile: "repeat"
+            case .mirror: "mirror"
+            }
+            s += "    token inputs:wrapS = \"\(wrapToken)\"\n"
+            s += "    token inputs:wrapT = \"\(wrapToken)\"\n"
             if raw { s += "    token inputs:sourceColorSpace = \"raw\"\n" }
             if let scale { s += "    float4 inputs:scale = \(scale)\n" }
             if let bias { s += "    float4 inputs:bias = \(bias)\n" }

@@ -580,6 +580,15 @@ typedef struct {
                                   // highlight along the surface's u/tangent axis, negative
                                   // across it); y/z = cos/sin of the brushing rotation, packed
                                   // CPU-side so the fragment never evaluates the angle; w pads.
+    float uvWrap;                 // what every one of this material's textures does outside the
+                                  // 0…1 uv square (`MeshMaterial.wrap`): 0 = clamp to the edge
+                                  // pixel, 1 = repeat, 2 = mirrored repeat. 0 on every batch that
+                                  // says nothing, and clamp and repeat agree inside the square,
+                                  // so a mesh whose uvs stay in range is untouched either way.
+                                  // The fragment picks a `constexpr sampler` by this rather than
+                                  // the bound one, which is why no sampler state rides a batch.
+                                  // (Both sides round the struct up to its 16-byte alignment, so
+                                  // the trailing float needs no hand-written padding.)
 } OllinMaterial;
 
 // A projected decal (see `Sketch.decal(_:at:...)`): a picture stamped onto whatever

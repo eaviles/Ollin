@@ -80,6 +80,16 @@ withState { fill(.white); drawMesh(globe.textured(checker)) }    // wrapped in a
 
 **`textured(_:)`** returns a copy of a mesh wrapped in an `Image`. Texture coordinates decide where each part of the picture lands, and the sphere, the plane, and the parametric surfaces are the generators that carry them, which is why the checker above reads cleanly. The rest arrive without any, and the triplanar section below is what you reach for there. The squares stay square around the middle and narrow to slivers at the poles. That's what wrapping a flat rectangle onto a ball does, and you'll meet it whenever you texture a sphere. A textured mesh still lights normally, so it takes materials and shadows like any other surface. Keep the `fill` white unless you want the image tinted, the same rule as a loaded model.
 
+One question comes with every texture: what happens where the picture runs out. A globe never asks it, since its coordinates run 0 to 1 and stop there. A floor asks it at once. Give a floor coordinates that run to 8 and it is asking for eight copies of the picture across its width, not one copy with its border smeared over the other seven.
+
+```swift
+var floor = Mesh.plane(width: 800, depth: 800)
+floor.uvs = floor.uvs.map { $0 * 8 }                  // eight tiles across
+drawMesh(floor.textured(planks, wrap: .tile))         // .clamp is the default
+```
+
+`.tile` starts the picture again, `.mirror` starts it flipped so copies always meet on the same pixels, and `.clamp`, the default, holds that last row of pixels forever. Inside 0 to 1 all three draw the same thing, so the choice only ever shows where you left the square. A model you load brings its file's own answer with it, which is why a floor somebody authored to tile arrives tiling.
+
 Both are ordinary drawing state, saved by `withState`, so one frame holds all three treatments (the figure is a single render).
 
 ### A scene you can take apart

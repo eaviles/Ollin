@@ -552,6 +552,12 @@ extension Scene {
         var channel: Int
         var scale: [Double]?
         var bias: [Double]?
+        /// What the texture does outside the 0…1 square, from the shader's own
+        /// `wrapS`. The spec's unstated value defers to the image file's
+        /// metadata, which Ollin does not read, so an unstated tap keeps the
+        /// clamp default rather than guessing. `black` has no border color here
+        /// and reads as clamp too.
+        var wrap: TextureWrap = .clamp
 
         /// The scale on the tapped channel, the slot a preview surface keeps a
         /// factor in (1 when none is authored).
@@ -595,8 +601,15 @@ extension Scene {
                 (texture.attribute("inputs:" + name) ?? texture.attribute(name))?
                     .authoredValue?.usdComponents(count: 4)
             }
+            let wrapToken = (texture.attribute("inputs:wrapS")
+                ?? texture.attribute("wrapS"))?.authoredValue?.usdToken
+            let wrap: TextureWrap = switch wrapToken {
+            case "repeat": .tile
+            case "mirror": .mirror
+            default: .clamp
+            }
             return USDTextureTap(image: image, channel: channel,
-                                 scale: four("scale"), bias: four("bias"))
+                                 scale: four("scale"), bias: four("bias"), wrap: wrap)
         }
         func scalar(_ attr: USDAttribute?) -> Double? {
             switch attr?.authoredValue {
@@ -613,6 +626,7 @@ extension Scene {
         let diffuse = input("diffuseColor")
         if let t = tap(diffuse) {
             out.texture = t.image
+            out.wrap = t.wrap
             any = true
         } else if let c = diffuse?.authoredValue?.usdComponents(count: 3) {
             out.baseColor = encodedColor(c[0], c[1], c[2])
@@ -625,6 +639,7 @@ extension Scene {
         // decode, and an unauthored one, both read back as 1).
         if let t = tap(input("normal")) {
             out.normalTexture = t.image
+            if out.texture == nil { out.wrap = t.wrap }
             if let s = t.scale, s.count == 4, s[0] != 0 { out.normalScale = abs(s[0]) / 2 }
             any = true
         }

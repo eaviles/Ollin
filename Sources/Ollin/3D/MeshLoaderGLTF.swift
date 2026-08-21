@@ -642,6 +642,30 @@ struct GLTFDocument {
                   let data = imageData(src) else { return nil }
             return Image(data: data)
         }
+        // What the maps do outside the uv square. glTF states it per texture,
+        // Ollin holds one answer per material, and an exporter gives a
+        // material's maps one sampler, so the base color's decides. The
+        // format's own default is repeat, so a file that says nothing tiles:
+        // that is what a tiling floor was authored against.
+        func textureWrap(_ ti: Int) -> TextureWrap {
+            let textures = gltf.textures ?? []
+            guard ti >= 0, ti < textures.count else { return .tile }
+            guard let si = textures[ti].sampler, let samplers = gltf.samplers,
+                  si >= 0, si < samplers.count else { return .tile }
+            switch samplers[si].wrapS ?? samplers[si].wrapT ?? 10497 {
+            case 33071: return .clamp
+            case 33648: return .mirror
+            default: return .tile
+            }
+        }
+        // The first map the material carries decides, and a material with no
+        // map at all keeps the clamp default, having nothing to wrap.
+        let wrap = [pbr?.baseColorTexture?.index,
+                    materials[matIndex].normalTexture?.index,
+                    pbr?.metallicRoughnessTexture?.index,
+                    materials[matIndex].occlusionTexture?.index,
+                    materials[matIndex].emissiveTexture?.index]
+            .compactMap { $0 }.first.map(textureWrap) ?? .clamp
         var texture: Image?
         if let ti = pbr?.baseColorTexture?.index {
             texture = textureImage(ti)
@@ -676,7 +700,7 @@ struct GLTFDocument {
         let emissiveOn = emissiveFactor.red > 0 || emissiveFactor.green > 0 || emissiveFactor.blue > 0
         if texture == nil, normalTexture == nil, pbr == nil,
            occlusionTexture == nil, emissiveTexture == nil, !emissiveOn { return nil }
-        return MeshMaterial(baseColor: baseColor, texture: texture,
+        return MeshMaterial(baseColor: baseColor, texture: texture, wrap: wrap,
                             normalTexture: normalTexture, normalScale: normalScale,
                             metallicRoughnessTexture: mrTexture,
                             occlusionTexture: occlusionTexture, occlusionStrength: occlusionStrength,
@@ -1031,6 +1055,10 @@ struct GLTF: Decodable {
     struct NormalTextureInfo: Decodable { var index: Int; var texCoord: Int?; var scale: Double? }
     struct OcclusionTextureInfo: Decodable { var index: Int; var texCoord: Int?; var strength: Double? }
     struct TextureDef: Decodable { var source: Int?; var sampler: Int? }
+    /// A texture sampler. Only the wrap modes are read: `10497` repeat (the
+    /// format's own default, which is why an unstated texture tiles), `33648`
+    /// mirrored repeat, `33071` clamp to edge.
+    struct SamplerDef: Decodable { var wrapS: Int?; var wrapT: Int? }
     struct ImageDef: Decodable { var uri: String?; var bufferView: Int?; var mimeType: String? }
     struct Accessor: Decodable {
         var bufferView: Int?
@@ -1110,6 +1138,7 @@ struct GLTF: Decodable {
     var buffers: [BufferDef]?
     var materials: [Material]?
     var textures: [TextureDef]?
+    var samplers: [SamplerDef]?
     var images: [ImageDef]?
     var cameras: [CameraDef]?
     var animations: [AnimationDef]?

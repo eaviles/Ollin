@@ -126,16 +126,22 @@ public extension Mesh {
     /// surface draws flat in `baseColor`. Mirrors `normalized(scale:)`: a value
     /// transform returning a new mesh.
     ///
+    /// `wrap` decides what the image does where the mesh's uvs leave the 0…1
+    /// square: `.clamp` (the default) holds the edge pixel, `.tile` repeats, and
+    /// `.mirror` repeats flipped. It covers the material's whole map set.
+    ///
     /// ```swift
     /// drawMesh(.sphere(radius: 200).textured(earthImage))
     /// ```
-    func textured(_ image: Image, baseColor: Color = .white) -> Mesh {
+    func textured(_ image: Image, baseColor: Color = .white,
+                  wrap: TextureWrap = .clamp) -> Mesh {
         var copy = self
         // Keep an already-attached normal map: `textured` sets the color side of
         // the material, so `.normalMapped(bumps).textured(wood)` composes.
         var m = copy.material ?? MeshMaterial()
         m.baseColor = baseColor
         m.texture = image
+        m.wrap = wrap
         copy.material = m
         return copy
     }

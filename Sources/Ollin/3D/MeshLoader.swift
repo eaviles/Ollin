@@ -206,7 +206,7 @@ extension Mesh {
     private static func loadMTL(_ url: URL, use name: String?) -> MeshMaterial? {
         guard let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
         let dir = url.deletingLastPathComponent()
-        struct M { var kd: Color?; var mapKd: String? }
+        struct M { var kd: Color?; var mapKd: String?; var clamped = false }
         var mats: [String: M] = [:]
         var order: [String] = []
         var cur: String?
@@ -225,6 +225,12 @@ extension Mesh {
             case "map_Kd":
                 // The map path is the last token (earlier tokens are options like -s).
                 if let file = vals.last, let c = cur { mats[c]?.mapKd = String(file) }
+                // The format has one word about wrapping, and it turns tiling
+                // *off*: `-clamp on`. So an unmarked map tiles, which is what
+                // every renderer of this format does with it.
+                if let c = cur, let i = vals.firstIndex(of: "-clamp") {
+                    mats[c]?.clamped = vals.count > i + 1 && vals[i + 1] == "on"
+                }
             default:
                 continue
             }
@@ -237,7 +243,8 @@ extension Mesh {
             if let data = try? Data(contentsOf: dir.appendingPathComponent(path)) { texture = Image(data: data) }
         }
         if m.kd == nil, texture == nil { return nil }
-        return MeshMaterial(baseColor: m.kd ?? .white, texture: texture)
+        return MeshMaterial(baseColor: m.kd ?? .white, texture: texture,
+                            wrap: texture == nil ? .clamp : (m.clamped ? .clamp : .tile))
     }
 }
 
@@ -480,10 +487,19 @@ extension Mesh {
         guard let prop = mdlMaterial.property(with: .baseColor) else { return nil }
         var baseColor: Color?
         var texture: Image?
+        var wrap = TextureWrap.clamp
         switch prop.type {
         case .texture:
             if let cg = prop.textureSamplerValue?.texture?.imageFromTexture()?.takeRetainedValue() {
                 texture = Image(cgImage: cg)
+            }
+            // The file's own answer for uvs outside the square, as Model I/O read
+            // it. It reports clamp when the format said nothing, which is the
+            // conservative reading and the one Ollin defaults to anyway.
+            switch prop.textureSamplerValue?.hardwareFilter?.sWrapMode {
+            case .some(.repeat): wrap = .tile
+            case .some(.mirror): wrap = .mirror
+            default: break
             }
         case .color:
             if let comps = prop.color?.components, comps.count >= 3 {
@@ -496,7 +512,7 @@ extension Mesh {
             break
         }
         if baseColor == nil, texture == nil { return nil }
-        return MeshMaterial(baseColor: baseColor ?? .white, texture: texture)
+        return MeshMaterial(baseColor: baseColor ?? .white, texture: texture, wrap: wrap)
     }
 }
 #endif

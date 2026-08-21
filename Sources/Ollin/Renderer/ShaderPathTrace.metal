@@ -317,6 +317,21 @@ static inline float ollin_pt_map_lod(float lodBias, texture2d<float> tex) {
 // grown to at this distance, over the triangle's own texel density, the standard
 // texture-LOD scheme for a ray that has no screen-space derivatives.
 //
+// A surface map read at a traced hit, through the material's own address mode
+// (`OllinMaterial.uvWrap`: 0 clamp, 1 repeat, 2 mirrored repeat), at the ray
+// cone's mip. Samplers are compile-time objects, so the mode is a select between
+// three of them; clamp is the zero, so a material that says nothing reads exactly
+// as it did. Raster parity: the live view picks the same three modes.
+static inline float4 ollin_pt_sample_map(texture2d<float> tex, float2 uv,
+                                         float lod, float wrap) {
+    constexpr sampler sClamp(filter::linear, mip_filter::linear, address::clamp_to_edge);
+    constexpr sampler sTile(filter::linear, mip_filter::linear, address::repeat);
+    constexpr sampler sMirror(filter::linear, mip_filter::linear, address::mirrored_repeat);
+    if (wrap >= 1.5) { return tex.sample(sMirror, uv, level(lod)); }
+    if (wrap >= 0.5) { return tex.sample(sTile, uv, level(lod)); }
+    return tex.sample(sClamp, uv, level(lod));
+}
+
 // Mutates the hit's albedo, shading normal, and metal/rough in place; `h.Ng`
 // keeps the geometric (pre-bend) normal for the ray machinery, the raster's own
 // split (a map is surface *detail*, not surface *position*). The bend runs on
@@ -361,17 +376,17 @@ static inline OllinPTMapped ollin_pt_apply_maps(thread OllinPTHit &h,
         lodBias = 0.5 * log2(uvTwoArea / twoWorld)
                 + log2(max(coneWidth, 1e-6) / max(abs(dot(h.s.N, rayDir)), 1e-3));
     }
-    constexpr sampler s(filter::linear, mip_filter::linear,
-                        address::clamp_to_edge);
-    h.s.albedo *= maps.base.sample(s, uv, level(ollin_pt_map_lod(lodBias, maps.base))).rgb;
+    float wrap = h.mat.uvWrap;
+    h.s.albedo *= ollin_pt_sample_map(maps.base, uv,
+                                      ollin_pt_map_lod(lodBias, maps.base), wrap).rgb;
     if (h.mat.normalScale > 0.0) {
         float3 gn = a.normal.xyz * w.x + b.normal.xyz * w.y + c.normal.xyz * w.z;
         float4 tangent = float4(a.tangent) * w.x + float4(b.tangent) * w.y
                        + float4(c.tangent) * w.z;
         float3 t = tangent.xyz;
         float3 bt = cross(gn, t) * tangent.w;
-        float3 nmS = maps.normalMap.sample(s, uv,
-            level(ollin_pt_map_lod(lodBias, maps.normalMap))).xyz * 2.0 - 1.0;
+        float3 nmS = ollin_pt_sample_map(maps.normalMap, uv,
+            ollin_pt_map_lod(lodBias, maps.normalMap), wrap).xyz * 2.0 - 1.0;
         nmS.xy *= h.mat.normalScale;
         float3 bent = t * nmS.x + bt * nmS.y + gn * nmS.z;
         float bentLen = length(bent);
@@ -381,18 +396,19 @@ static inline OllinPTMapped ollin_pt_apply_maps(thread OllinPTHit &h,
         // The composed finish factors times the sampled channels (the finish
         // table carries the drawing-state × mesh-material product for a gated
         // geometry, which is what the raster's per-pixel resolve multiplies).
-        float4 mr = maps.mr.sample(s, uv, level(ollin_pt_map_lod(lodBias, maps.mr)));
+        float4 mr = ollin_pt_sample_map(maps.mr, uv,
+                                        ollin_pt_map_lod(lodBias, maps.mr), wrap);
         h.s.rough = clamp(h.mat.roughness * mr.g, 0.045, 1.0);
         h.s.metal = clamp(h.mat.metallic * mr.b, 0.0, 1.0);
     }
     if (h.mat.occlusionStrength > 0.0) {
-        float occ = maps.occlusion.sample(s, uv,
-            level(ollin_pt_map_lod(lodBias, maps.occlusion))).r;
+        float occ = ollin_pt_sample_map(maps.occlusion, uv,
+            ollin_pt_map_lod(lodBias, maps.occlusion), wrap).r;
         out.ao = 1.0 + h.mat.occlusionStrength * (occ - 1.0);
     }
     if (h.mat.emissive.w > 0.0) {
-        out.emissive *= maps.emissive.sample(s, uv,
-            level(ollin_pt_map_lod(lodBias, maps.emissive))).rgb;
+        out.emissive *= ollin_pt_sample_map(maps.emissive, uv,
+            ollin_pt_map_lod(lodBias, maps.emissive), wrap).rgb;
     }
     return out;
 }
@@ -491,8 +507,8 @@ static inline float3 ollin_pt_mesh_light(OllinPTHit h, float3 wo, float eps,
     if (lum <= 0.0) return float3(0.0);
     if (geoMats[e.geo].emissive.w > 0.0) {
         float2 uvL = A.uv * (1.0 - su) + B.uv * b1 + C.uv * b2;
-        constexpr sampler sE(filter::linear, address::clamp_to_edge);
-        Le *= geoTextures[e.geo].emissive.sample(sE, uvL, level(0.0)).rgb;
+        Le *= ollin_pt_sample_map(geoTextures[e.geo].emissive, uvL, 0.0,
+                                  geoMats[e.geo].uvWrap).rgb;
     }
     float areaPdf = lum / pt.meshLights.y;        // uniform-in-power: luminance / total
     float pdfSA = areaPdf * dist2 / cosL;

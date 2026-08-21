@@ -4484,6 +4484,35 @@ vertex MeshTexturedOut ollin_mesh_textured_vertex(uint vid [[vertex_id]],
     return out;
 }
 
+// MARK: - The material's own address mode
+
+// What a texture does outside the 0…1 uv square, from `OllinMaterial.uvWrap`
+// (0 clamp, 1 repeat, 2 mirrored repeat). A sampler is a compile-time object in
+// MSL, so the choice is a select between three `constexpr` ones rather than
+// sampler state riding the batch: the branch is uniform across a draw, and the
+// bound sampler is the clamp case itself, so an unstated material samples through
+// exactly the path it always did. One answer serves every map a material carries,
+// since a surface that tiles tiles all of its maps together.
+static inline float4 ollin_sample_wrapped(texture2d<float> tex, sampler clampSamp,
+                                          float2 uv, float wrap) {
+    constexpr sampler tileSamp(filter::linear, address::repeat);
+    constexpr sampler mirrorSamp(filter::linear, address::mirrored_repeat);
+    if (wrap >= 1.5) { return tex.sample(mirrorSamp, uv); }
+    if (wrap >= 0.5) { return tex.sample(tileSamp, uv); }
+    return tex.sample(clampSamp, uv);
+}
+
+// The same choice at an explicit level 0, for the parallax march (whose loop exit
+// varies per pixel, so implicit derivatives are undefined there).
+static inline float4 ollin_sample_wrapped_level0(texture2d<float> tex, float2 uv, float wrap) {
+    constexpr sampler clampSamp(filter::linear, address::clamp_to_edge);
+    constexpr sampler tileSamp(filter::linear, address::repeat);
+    constexpr sampler mirrorSamp(filter::linear, address::mirrored_repeat);
+    if (wrap >= 1.5) { return tex.sample(mirrorSamp, uv, level(0.0)); }
+    if (wrap >= 0.5) { return tex.sample(tileSamp, uv, level(0.0)); }
+    return tex.sample(clampSamp, uv, level(0.0));
+}
+
 fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                              constant OllinLighting &light [[buffer(0)]],
                                              constant OllinMaterial &mat [[buffer(1)]],
@@ -4520,7 +4549,7 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
     // premultiplied. The milestone contract is opaque textures, so rgb is the
     // straight base color; tint it by the linearized baked vertex color
     // (fill × material base color).
-    float4 tex = baseColorTex.sample(samp, in.uv);
+    float4 tex = ollin_sample_wrapped(baseColorTex, samp, in.uv, mat.uvWrap);
     float3 base = tex.rgb * srgbToLinear(in.color.rgb);
     float alpha = in.color.a * tex.a;
     float4 meshFieldShadow = ollin_resolve_mesh_field_shadow(in.position.xy, in.worldPos, in.normal,
@@ -4685,7 +4714,7 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
                                        , texture2d<float> causticsTex [[texture(25)]]
 #endif
                                        ) {
-    float4 tex = baseColorTex.sample(samp, in.uv);
+    float4 tex = ollin_sample_wrapped(baseColorTex, samp, in.uv, mat.uvWrap);
     float3 base = tex.rgb * srgbToLinear(in.color.rgb);
     float alpha = in.color.a * tex.a;
     // Bend the shading normal by the map: raw data (the texture is non-sRGB),
@@ -4695,7 +4724,7 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
     float3 gn = in.normal;
     float3 t = in.tangent.xyz;
     float3 b = cross(gn, t) * in.tangent.w;
-    float3 nmS = normalMapTex.sample(samp, in.uv).xyz * 2.0 - 1.0;
+    float3 nmS = ollin_sample_wrapped(normalMapTex, samp, in.uv, mat.uvWrap).xyz * 2.0 - 1.0;
     nmS.xy *= mat.normalScale;
     float3 bent = t * nmS.x + b * nmS.y + gn * nmS.z;
     float bentLen = length(bent);
@@ -4827,8 +4856,8 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
 // there, not assumed.
 static inline float2 ollin_parallax_uv(float2 uv, float3 worldPos, float3 rawNormal,
                                        float4 rawTangent, float3 cameraPos,
-                                       float scale, texture2d<float> heightTex) {
-    constexpr sampler heightSamp(filter::linear, address::clamp_to_edge);
+                                       float scale, texture2d<float> heightTex,
+                                       float wrap) {
     float3 N = normalize(rawNormal);
     float3 T = rawTangent.xyz;
     float tLen = length(T);
@@ -4850,7 +4879,7 @@ static inline float2 ollin_parallax_uv(float2 uv, float3 worldPos, float3 rawNor
     // Explicit lod: the loop's exit varies per pixel, where implicit
     // derivatives are undefined (the map carries no mips anyway).
     float2 cur = uv;
-    float surf = 1.0 - heightTex.sample(heightSamp, cur, level(0.0)).r;
+    float surf = 1.0 - ollin_sample_wrapped_level0(heightTex, cur, wrap).r;
     if (surf <= 0.0) { return uv; }   // the plane itself: nothing carved here
     float depth = 0.0;
     float prevSurf = surf;
@@ -4858,7 +4887,7 @@ static inline float2 ollin_parallax_uv(float2 uv, float3 worldPos, float3 rawNor
         cur += delta;
         depth += layer;
         prevSurf = surf;
-        surf = 1.0 - heightTex.sample(heightSamp, cur, level(0.0)).r;
+        surf = 1.0 - ollin_sample_wrapped_level0(heightTex, cur, wrap).r;
     }
     float after = surf - depth;                  // <= 0: how far below the field the ray ended
     if (after > 0.0) { return cur; }             // no crossing within the march (depth 1 bounds it)
@@ -5003,7 +5032,8 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
     float2 uv = in.uv;
     if (mat.parallax > 0.0) {
         uv = ollin_parallax_uv(in.uv, in.worldPos, in.normal, in.tangent,
-                               light.cameraPosition.xyz, mat.parallax, heightTex);
+                               light.cameraPosition.xyz, mat.parallax, heightTex,
+                               mat.uvWrap);
     }
     // Triplanar first: with that gate up (a mesh with no uvs to map through),
     // the base color and any normal map read by world position instead of uv,
@@ -5019,7 +5049,7 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
         tex = triSurf.color;
         N = triSurf.normal;
     } else {
-        tex = baseColorTex.sample(samp, uv);
+        tex = ollin_sample_wrapped(baseColorTex, samp, uv, mat.uvWrap);
         // The normal-map bend, exactly the nm twin's math but behind its gate: this
         // pipeline also serves meshes whose only map is metallic-roughness or
         // emissive, whose tangent slots are zero and must never be read.
@@ -5028,7 +5058,7 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
             float3 gn = in.normal;
             float3 t = in.tangent.xyz;
             float3 b = cross(gn, t) * in.tangent.w;
-            float3 nmS = normalMapTex.sample(samp, uv).xyz * 2.0 - 1.0;
+            float3 nmS = ollin_sample_wrapped(normalMapTex, samp, uv, mat.uvWrap).xyz * 2.0 - 1.0;
             nmS.xy *= mat.normalScale;
             float3 bent = t * nmS.x + b * nmS.y + gn * nmS.z;
             float bentLen = length(bent);
@@ -5063,7 +5093,7 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
             float3 b = cross(gn, t) * in.tangent.w;
             float3 nb = float3(0.0, 0.0, 1.0);
             if (mat.normalScale > 0.0) {
-                nb = normalMapTex.sample(samp, uv).xyz * 2.0 - 1.0;
+                nb = ollin_sample_wrapped(normalMapTex, samp, uv, mat.uvWrap).xyz * 2.0 - 1.0;
                 nb.xy *= mat.normalScale;
                 float nbLen = length(nb);
                 if (nbLen > 1e-6) { nb /= nbLen; }
@@ -5119,16 +5149,16 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
     float pxRough = mat.roughness;
     float pxAO = 1.0;
     if (mat.mrGate > 0.0) {
-        float4 mr = mrTex.sample(samp, uv);
+        float4 mr = ollin_sample_wrapped(mrTex, samp, uv, mat.uvWrap);
         pxRough = mat.roughness * mr.g;
         pxMetal = mat.metallic * mr.b;
     }
     if (mat.occlusionStrength > 0.0) {
-        float occ = occlusionTex.sample(samp, uv).r;
+        float occ = ollin_sample_wrapped(occlusionTex, samp, uv, mat.uvWrap).r;
         pxAO = 1.0 + mat.occlusionStrength * (occ - 1.0);
     }
     float3 emissive = mat.emissive.rgb;
-    if (mat.emissive.w > 0.0) emissive *= emissiveTex.sample(samp, uv).rgb;
+    if (mat.emissive.w > 0.0) emissive *= ollin_sample_wrapped(emissiveTex, samp, uv, mat.uvWrap).rgb;
     float4 meshFieldShadow = ollin_resolve_mesh_field_shadow(in.position.xy, in.worldPos, in.normal,
                                                              light, fields, fieldNodes, fieldShadowTex);
     if (light.contactShadow.x > 0.0) {
