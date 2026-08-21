@@ -90,6 +90,8 @@ drawMesh(floor.textured(planks, wrap: .tile))         // .clamp is the default
 
 `.tile` starts the picture again, `.mirror` starts it flipped so copies always meet on the same pixels, and `.clamp`, the default, holds that last row of pixels forever. Inside 0 to 1 all three draw the same thing, so the choice only ever shows where you left the square. A model you load brings its file's own answer with it, which is why a floor somebody authored to tile arrives tiling.
 
+Distance asks the second question. Send that floor off to the horizon and one screen pixel covers many of the picture's own pixels. Reading just one of them is the difference between a floor and a swarm of bees. So Ollin keeps every picture you load at half size, and half of that, down to a single pixel. It reads whichever copy matches what the screen pixel covers, and the far floor settles into the gray the checker really is. Nothing to switch on. One thing to know: a picture whose pixels you wrote yourself keeps only its full-size self. It goes up again on every frame it changes, so that one still swarms in the distance.
+
 Both are ordinary drawing state, saved by `withState`, so one frame holds all three treatments (the figure is a single render).
 
 ### A scene you can take apart

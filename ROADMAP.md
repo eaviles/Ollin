@@ -97,6 +97,7 @@ See the [design notes](DESIGN-NOTES.md#new-output-surfaces).
 Deeper use of the Metal core and Apple displays, all opt-in so the 2D path stays untaxed:
 
 - **Dolby Vision.** Dynamic per-scene HDR metadata, where the static HDR10 metadata a video carries describes the whole file at once. It needs the licensed encoder path rather than AVFoundation's plain HDR writer, so it is a licensing question before it is an API one.
+- **Anisotropic texture filtering.** A surface at a glancing angle covers a long thin strip of its texture in one pixel, and the level it reads is picked for the long side, so a floor running away from the camera softens along the view. Sixteen taps along that axis is the standard answer and the sampler asks for it in one line. It is off for a reason worth solving rather than working around: switching it on makes the same frame render *differently on every run*, on a scene with no image in it at all, so something upstream is reading a footprint it should not. Finding that is the work.
 
 See the [design notes](DESIGN-NOTES.md#rendering-and-color-frontier). (The most speculative items here, spectral rendering, AI frame interpolation, optical-flow self-warp, and print color management, sit under [Further out / exploratory](#further-out--exploratory).)
 

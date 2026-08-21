@@ -80,6 +80,8 @@ withState {
 
 Because it's recorded in call order with everything else, a shape drawn after `drawImage` paints over it, and one drawn before sits behind it.
 
+**Drawn smaller than it is**, a loaded image reads through its own smaller copies (a mip chain). A photograph at a quarter size is then a quarter-size photograph, not a quarter of its pixels picked out. The copies are averaged in linear light, so the tone holds. Drawn at its own size or larger nothing changes. Pixels the sketch wrote itself through [`image[x, y]`](#pixels) keep the single level they uploaded with. The full story is under [textures](../3D/3D.md#texture-filtering).
+
 <a name="tint"></a>
 
 ### tint

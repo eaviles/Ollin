@@ -281,8 +281,13 @@ public final class Image {
         // `.SRGB: true` makes the texture sRGB, so the GPU decodes each sample to
         // linear on read — matching the renderer's linear-light blending, where
         // the shaders also linearize the solid colors drawn beside the image.
+        // `.generateMipmaps` builds the smaller levels the sampler reads when a
+        // texture lands on fewer pixels than it has (a floor running to the
+        // horizon, a picture drawn small). Each level averages in *linear* light
+        // because the format is sRGB, which is the light the renderer blends in.
         let options: [MTKTextureLoader.Option: Any] = [
             .SRGB: true,
+            .generateMipmaps: NSNumber(value: true),
             .textureUsage: NSNumber(value: MTLTextureUsage.shaderRead.rawValue),
             .textureStorageMode: NSNumber(value: MTLStorageMode.private.rawValue),
         ]
@@ -337,6 +342,13 @@ public final class Image {
         // format holding the file's bytes is exactly the data read we want.
         let options: [MTKTextureLoader.Option: Any] = [
             .SRGB: false,
+            // A value map needs its own mip chain as much as a color one: without
+            // it a normal map keeps flickering at a distance the base color has
+            // stopped flickering at, which reads as sparkle. The levels average
+            // the stored values (no sRGB decode, the format is linear), and the
+            // fragment renormalizes the bent normal, so a shortened average
+            // direction stays a direction.
+            .generateMipmaps: NSNumber(value: true),
             .textureUsage: NSNumber(value: MTLTextureUsage.shaderRead.rawValue),
             .textureStorageMode: NSNumber(value: MTLStorageMode.private.rawValue),
         ]
@@ -351,6 +363,12 @@ public final class Image {
     /// Upload RGBA8 `bytes` as a plain `.rgba8Unorm` texture: the bytes pass
     /// through verbatim and read back as the same values. The data twin of
     /// `sRGBTexture(premultipliedRGBA:...)` below.
+    ///
+    /// One level, no mip chain: this is the path a sketch that writes pixels
+    /// takes *every frame*, and building the chain there costs about 0.7 ms a
+    /// frame at canvas size to smooth a read that a full-size image never makes.
+    /// The decoded-once paths above, which is where a mesh's maps come from,
+    /// carry the chain.
     private static func linearTexture(rgba bytes: [UInt8], width: Int,
                                       height: Int, on device: MTLDevice) -> MTLTexture? {
         let descriptor = MTLTextureDescriptor.texture2DDescriptor(
@@ -368,7 +386,8 @@ public final class Image {
 
     /// Upload premultiplied RGBA8 `bytes` as an `.rgba8Unorm_srgb` texture: the
     /// bytes pass through verbatim, and each sample decodes sRGB → linear on
-    /// read. The fast path for buffer-backed pixels — no decode, no redraw.
+    /// read. The fast path for buffer-backed pixels: no decode, no redraw, and
+    /// one level for the reason stated above.
     private static func sRGBTexture(premultipliedRGBA bytes: [UInt8], width: Int,
                                     height: Int, on device: MTLDevice) -> MTLTexture? {
         let descriptor = MTLTextureDescriptor.texture2DDescriptor(
@@ -402,13 +421,30 @@ public final class Image {
         context.draw(source, in: CGRect(x: 0, y: 0, width: width, height: height))
 
         let descriptor = MTLTextureDescriptor.texture2DDescriptor(
-            pixelFormat: .bgra8Unorm_srgb, width: width, height: height, mipmapped: false)
+            pixelFormat: .bgra8Unorm_srgb, width: width, height: height, mipmapped: true)
         descriptor.usage = .shaderRead
         descriptor.storageMode = .managed
         guard let texture = device.makeTexture(descriptor: descriptor) else { return nil }
         texture.replace(region: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0,
                         withBytes: bytes, bytesPerRow: bytesPerRow)
+        Image.fillSmallerLevels(of: texture, on: device)
         return texture
+    }
+
+    /// Fill a hand-built texture's smaller levels. `MTKTextureLoader` runs this
+    /// blit itself for the textures it makes; a texture uploaded by hand asks for
+    /// it. An sRGB format averages each level in linear light (a black-and-white
+    /// checker comes back 188, not 128), so a level agrees with the light the
+    /// renderer blends in.
+    private static func fillSmallerLevels(of texture: MTLTexture, on device: MTLDevice) {
+        guard texture.mipmapLevelCount > 1,
+              let queue = device.makeCommandQueue(),
+              let buffer = queue.makeCommandBuffer(),
+              let blit = buffer.makeBlitCommandEncoder() else { return }
+        blit.generateMipmaps(for: texture)
+        blit.endEncoding()
+        buffer.commit()
+        buffer.waitUntilCompleted()
     }
 
     // MARK: Pixel access

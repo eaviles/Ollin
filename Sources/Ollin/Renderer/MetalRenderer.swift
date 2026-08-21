@@ -1398,9 +1398,25 @@ final class MetalRenderer {
         self.rayTracedShadows = MetalRenderer.rayTracingAvailable(on: device)
         self.hasHardwareRayTracing = device.supportsFamily(.apple9)
 
+        // The sampler every picture is read through: the image quads, a mesh's
+        // maps, and the effect chain's own targets. `mipFilter` is what a texture
+        // standing away from the camera needs: one screen pixel covers many
+        // texels there, and reading a single one of them makes the surface crawl
+        // as the camera moves. A target the chain renders into carries one level,
+        // so it reads exactly as it did; only a texture that *has* smaller levels
+        // can land on one.
+        //
+        // `maxAnisotropy` stays at 1, against every textbook. Sixteen taps along
+        // the long axis is the right filter for a floor at a grazing angle, and
+        // setting it here made a plain lit box render *differently on every run*
+        // (about 450 bytes at up to 12 of 255 between two renders of one scene),
+        // which the reproducibility probes caught at once. A frame that cannot be
+        // drawn twice is worth more than the sharpness, so this waits until that
+        // is understood.
         let samplerDesc = MTLSamplerDescriptor()
         samplerDesc.minFilter = .linear
         samplerDesc.magFilter = .linear
+        samplerDesc.mipFilter = .linear
         samplerDesc.sAddressMode = .clampToEdge
         samplerDesc.tAddressMode = .clampToEdge
         self.imageSampler = device.makeSamplerState(descriptor: samplerDesc)

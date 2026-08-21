@@ -4495,8 +4495,12 @@ vertex MeshTexturedOut ollin_mesh_textured_vertex(uint vid [[vertex_id]],
 // since a surface that tiles tiles all of its maps together.
 static inline float4 ollin_sample_wrapped(texture2d<float> tex, sampler clampSamp,
                                           float2 uv, float wrap) {
-    constexpr sampler tileSamp(filter::linear, address::repeat);
-    constexpr sampler mirrorSamp(filter::linear, address::mirrored_repeat);
+    // The two written-here samplers carry the mip setting the bound one (the
+    // clamp case) already has, or a floor would stop crawling only until it was
+    // told to tile.
+    constexpr sampler tileSamp(filter::linear, mip_filter::linear, address::repeat);
+    constexpr sampler mirrorSamp(filter::linear, mip_filter::linear,
+                                 address::mirrored_repeat);
     if (wrap >= 1.5) { return tex.sample(mirrorSamp, uv); }
     if (wrap >= 0.5) { return tex.sample(tileSamp, uv); }
     return tex.sample(clampSamp, uv);
