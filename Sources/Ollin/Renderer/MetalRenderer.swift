@@ -1706,12 +1706,18 @@ final class MetalRenderer {
         // temporally accumulate it, so the reflection edges (a pillar's mirror image on a
         // polished floor) converge to anti-aliased instead of staying 1px-hard. Nil when
         // reflections aren't active this frame; the mesh fragments then keep the inline path.
+        // At `.performance` the layer renders at half the drawable and the fragments read
+        // it scaled, which is where a reflective scene buys back most of its frame time.
+        let reflectionScale = resolveReflectionScale(drawer.reflectionQualitySetting)
+        let reflectionWidth = max(1, Int((Double(renderWidth) * reflectionScale).rounded()))
+        let reflectionHeight = max(1, Int((Double(renderHeight) * reflectionScale).rounded()))
         let deferredReflection = encodeReflectionPass(
             drawer, into: commandBuffer, meshBuffer: meshBuf,
             reflectAccel: renderedShadow.reflectAccel,
             reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
-            width: renderWidth, height: renderHeight, supersample: false, pooled: true,
+            width: reflectionWidth, height: reflectionHeight, supersample: false, pooled: true,
             gi: gi, taaJitter: taaJitter)
+            .map { (texture: $0, scale: Float(reflectionScale)) }
         // Caustics (live): trace this frame's photons through the specular casters,
         // splat them, and temporally resolve the layer the mesh fragments add by
         // screen position. Nil when caustics aren't active this frame; the carriers'
@@ -2300,12 +2306,19 @@ final class MetalRenderer {
         // Encoded once, outside any TAA sample loop (it is already supersampled
         // internally; the composite reads it at most half a pixel off, which the
         // average absorbs).
+        // The same tier the live path reads. An export resolves `.default` to `.detail`, so
+        // an exported frame and a snapshot render the layer full size and are never
+        // downscaled; only a frame that explicitly asked for `.performance` is halved.
+        let reflectionScale = resolveReflectionScale(drawer.reflectionQualitySetting)
+        let reflectionWidth = max(1, Int((Double(width) * reflectionScale).rounded()))
+        let reflectionHeight = max(1, Int((Double(height) * reflectionScale).rounded()))
         let deferredReflection = encodeReflectionPass(
             drawer, into: commandBuffer, meshBuffer: meshBuf,
             reflectAccel: renderedShadow.reflectAccel,
             reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
-            width: width, height: height, supersample: true, pooled: false,
+            width: reflectionWidth, height: reflectionHeight, supersample: true, pooled: false,
             gi: gi)
+            .map { (texture: $0, scale: Float(reflectionScale)) }
         // Caustics, historyless: uniform emission at the export budget, no history
         // slot touched, so a single export is a pure function of the frame and the
         // live frame-grab re-render never steps the on-screen adaptation.
@@ -2536,6 +2549,13 @@ final class MetalRenderer {
                 instancedMeshBuffer: buffers.instancedMesh,
                 meshInstanceBuffer: buffers.meshInstance,
                 sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode)
+            // Every iteration re-encodes the same sketch frame, which the stateful passes
+            // read as a repeat and skip (the frame-grab rule, so a second encode of one
+            // frame never steps a history twice). Clearing the stamp makes each iteration
+            // a fresh frame to them, which is what puts the reflection trace, the photons,
+            // and the probe update inside the number: the passes a heavy scene spends most
+            // of its frame on.
+            lastStatefulEncode = nil
             beginStatefulEncode(drawer)
             let taaJitter: SIMD2<Float> = taaActive
                 ? taaJitterNDC(index: Int(frameComputeUniforms.frameCount % 8),
@@ -2577,6 +2597,18 @@ final class MetalRenderer {
             let contactShadow = encodeContactShadowPass(
                 drawer, into: cb, meshBuffer: buffers.mesh,
                 width: width, height: height, taaJitter: taaJitter)
+            // The deferred reflection layer, the same one the live drive traces. It has to
+            // be here, or the fragments fall back to the inline trace and a reflective
+            // scene is timed as a different frame from the one it renders.
+            let reflectionScale = resolveReflectionScale(drawer.reflectionQualitySetting)
+            let deferredReflection = encodeReflectionPass(
+                drawer, into: cb, meshBuffer: meshBuf,
+                reflectAccel: renderedShadow.reflectAccel,
+                reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
+                width: max(1, Int((Double(width) * reflectionScale).rounded())),
+                height: max(1, Int((Double(height) * reflectionScale).rounded())),
+                supersample: false, pooled: false, gi: gi, taaJitter: taaJitter)
+                .map { (texture: $0, scale: Float(reflectionScale)) }
             guard let encoder = countedEncoder(cb, pass) else { continue }
             encode(drawer, viewport: viewport, into: encoder,
                    triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,
@@ -2593,6 +2625,7 @@ final class MetalRenderer {
                    reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
                    halfResField: halfResField,
                    halfResFieldShadow: halfResFieldShadow,
+                   deferredReflection: deferredReflection,
                    contactShadow: contactShadow,
                    gi: gi,
                    taaJitter: taaJitter)
@@ -2711,6 +2744,11 @@ final class MetalRenderer {
     /// An exact ambient-occlusion sample count overriding the resolved `.ambientOcclusion`
     /// quality tier, the sweep hook mirroring `dofTapsOverride`. `nil` in normal use.
     var ssaoSamplesOverride: Int?
+
+    /// An exact fraction of the drawable for the deferred reflection layer, overriding the
+    /// tier `resolveReflectionScale` resolves: the sweep hook mirroring `ssrScaleOverride`.
+    /// `nil` in normal use.
+    var reflectionScaleOverride: Double?
 
     /// An exact SSR march-step count overriding the resolved `.screenSpaceReflections`
     /// quality tier, the sweep hook mirroring `ssaoSamplesOverride`. `nil` in normal use.

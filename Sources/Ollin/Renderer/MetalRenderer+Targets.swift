@@ -948,6 +948,24 @@ extension MetalRenderer {
         }
     }
 
+    /// The fraction of the drawable the deferred ray-traced reflection layer renders at.
+    /// `reflectionQuality(_:)` sets it: `.detail` and `.default` keep reflections full
+    /// size, because a mirror image is the thing a viewer looks straight at, and
+    /// `.performance` halves it in each direction, so the trace does a quarter of the work.
+    /// The lit fragment already reads the layer as `position · scale / texture size`, so
+    /// nothing in the shaders changes. An export resolves `.default` to `.detail`, so an
+    /// exported frame and a snapshot render the layer full size and are never downscaled;
+    /// only a frame that explicitly asked for `.performance` is halved. Mirrors
+    /// `resolveSSRScale`.
+    func resolveReflectionScale(_ quality: RenderQuality) -> Double {
+        if let s = reflectionScaleOverride { return min(1.0, max(0.1, s)) }
+        switch effectiveQuality(quality) {
+        case .detail:      return 1.0
+        case .default:     return 1.0
+        case .performance: return 0.5
+        }
+    }
+
     /// Resolve a `.screenSpaceReflections` quality tier to the temporal history weight (the
     /// exponential-moving-average factor): more accumulation at higher tiers (steadier, slower to
     /// react), lighter at `.performance`. Reprojection + neighborhood clamping keep it responsive.

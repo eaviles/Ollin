@@ -1843,7 +1843,7 @@ extension MetalRenderer {
                         reflectGeoOffsets: MTLBuffer? = nil,
                         halfResField: (color: MTLTexture, depth: MTLTexture, region: SIMD4<Float>)? = nil,
                         halfResFieldShadow: MTLTexture? = nil,
-                        deferredReflection: MTLTexture? = nil,
+                        deferredReflection: (texture: MTLTexture, scale: Float)? = nil,
                         contactShadow: MTLTexture? = nil,
                         gi: GIResolved? = nil,
                         caustics: MTLTexture? = nil,
@@ -2061,9 +2061,9 @@ extension MetalRenderer {
         // fragments sample that texture by screen position instead of tracing inline (the
         // anti-aliased path); the scale is 1 while the layer renders at full resolution.
         if reflectAccel != nil { lighting.rtReflections = 1 }
-        if deferredReflection != nil {
+        if let deferredReflection {
             lighting.rtReflectionDeferred = 1
-            lighting.rtReflectionScale = 1.0
+            lighting.rtReflectionScale = deferredReflection.scale
         }
         // Caustics: the resolved photon layer this frame's caustics pass produced
         // (nil keeps `causticsEnabled` 0 and every carrier's branch untaken,
@@ -2235,7 +2235,7 @@ extension MetalRenderer {
             // a never-sampled stand-in otherwise (`rtReflectionDeferred` gates the
             // read). Only part of the RT-compiled fragment signature.
             if rayTracedShadows {
-                encoder.setFragmentTexture(deferredReflection ?? strip, index: 7)
+                encoder.setFragmentTexture(deferredReflection?.texture ?? strip, index: 7)
                 // The GI probe atlases + relocation offsets (tex 13/14/15);
                 // never-sampled stand-ins unless the frame resolved a probe
                 // field (`giOrigin.w` gates).

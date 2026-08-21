@@ -1299,6 +1299,20 @@ open class Sketch {
     /// directional/spot shadows and the non-RT cube fallback are unaffected.
     public func shadowQuality(_ quality: RenderQuality = .default) { drawer.shadowQuality(quality) }
 
+    /// How finely [ray-traced reflections](../../Docs/3D/3D.md#rt-reflections) are traced.
+    /// The reflection layer traces one ray per pixel of the drawable, which is most of what
+    /// a reflective frame costs. `.performance` halves the layer in each direction, so the
+    /// trace does a quarter of the work and the surfaces read it scaled back up. The picture
+    /// pays for it twice. A curved mirror quantizes, since one traced ray now serves four
+    /// screen pixels facing different ways. And a mirror reads a little weaker, since the
+    /// layer's hit coverage smears at every silhouette. `.default` and `.detail` keep the
+    /// layer full size. A persistent setting; set it once in `setup()` or `draw()`. An
+    /// export resolves `.default` up to `.detail`, so exported art keeps the full-size
+    /// layer unless you ask for `.performance` outright.
+    public func reflectionQuality(_ quality: RenderQuality = .default) {
+        drawer.reflectionQuality(quality)
+    }
+
     /// Set the soft-shadow ray count to an **exact** value (1…64), the hardware-independent
     /// alternative to `shadowQuality` — for fine control, pushing past the presets on a fast
     /// GPU, or a render that should look identical across machines. Persistent.

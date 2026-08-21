@@ -577,6 +577,14 @@ final class Drawer {
     /// would then light an export differently from the live window.
     private(set) var giQualitySetting: RenderQuality = .default
 
+    /// The ray-traced-reflection resolution knob (`reflectionQuality`): a persistent
+    /// `RenderQuality` tier (like `giQualitySetting`) the renderer resolves to the fraction
+    /// of the drawable the deferred reflection layer traces at. `.performance` halves it in
+    /// each direction, so the trace does a quarter of the work; the other tiers keep it
+    /// full size. An export resolves `.default` up to `.detail`, so exported art is never
+    /// downscaled unless a sketch asks for `.performance` outright.
+    private(set) var reflectionQualitySetting: RenderQuality = .default
+
     /// The soft-shadow quality knob (`shadowQuality`/`shadowSamples`) — a persistent setting
     /// (not reset each frame, like `toneMap`): more rays give a smoother ray-traced penumbra
     /// at proportional GPU cost. A `Quality` tier scales with the GPU (the renderer resolves
@@ -2164,6 +2172,8 @@ final class Drawer {
     /// Set the soft-shadow quality to a hardware-relative tier (the renderer picks the ray
     /// count for the GPU). Persistent (set once, in `setup()` or `draw()`).
     func shadowQuality(_ quality: RenderQuality) { shadowQualitySetting = .tier(quality) }
+
+    func reflectionQuality(_ quality: RenderQuality) { reflectionQualitySetting = quality }
 
     /// Set the soft-shadow ray count to an exact value, clamped to 1…64 (hardware-independent).
     /// Persistent.

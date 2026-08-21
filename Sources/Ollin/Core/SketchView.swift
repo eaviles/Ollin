@@ -2219,7 +2219,8 @@ public enum OllinApp {
     /// `performDraw()` (the tessellation that builds `drawer.vertices`). Prints
     /// ms/frame, vertices/frame, and the implied CPU-bound FPS ceiling, so a
     /// rendering-performance change can be measured deterministically.
-    static func benchmark(_ sketch: Sketch, frames: Int = 600, fps: Double = 60, gpu: Bool = false) {
+    static func benchmark(_ sketch: Sketch, frames: Int = 600, fps: Double = 60, gpu: Bool = false,
+                          quality: RenderQuality = .default) {
         isRenderingHeadless = true
         defer { isRenderingHeadless = false }
         let n = max(1, frames)
@@ -2251,6 +2252,10 @@ public enum OllinApp {
                                                     encoding: sketch.colorOutput.presentEncoding) else {
                 fatalError("Ollin: failed to initialize the Metal renderer.")
             }
+            // The tier the numbers describe, so a `--render-quality` on the command line
+            // reaches the benchmark as well: a tier that trades quality for frame rate is
+            // measurable here rather than only settable elsewhere.
+            renderer.automaticQuality = quality
             let w = size.width, h = size.height
             let viewport = SIMD2<Float>(Float(size.width), Float(size.height))
             // Warm up: render several real frames so first-time buffer growth is paid and
@@ -2781,7 +2786,8 @@ public extension OllinApp {
         if let i = args.firstIndex(of: "--bench") {
             var frames = 600
             if i + 1 < args.count, let f = Int(args[i + 1]) { frames = f }
-            OllinApp.benchmark(make(), frames: frames, gpu: args.contains("--gpu"))
+            OllinApp.benchmark(make(), frames: frames, gpu: args.contains("--gpu"),
+                               quality: args.contains("--render-quality") ? renderQuality : .default)
             return true
         }
         return false

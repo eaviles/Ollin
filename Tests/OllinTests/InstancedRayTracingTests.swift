@@ -112,6 +112,64 @@ struct InstancedRayTracingTests {
     }
 }
 
+/// The half-resolution reflection tier. `.performance` renders the deferred reflection
+/// layer at half the drawable and the lit fragments read it scaled, so the picture has to
+/// hold: the mirror image must land in the same place and keep its color, only coarser.
+/// A tier that shifted or dropped the layer would read here as a mirrored band that lost
+/// its subject, which is what the empty-scene control measures the distance to.
+@Suite
+@MainActor
+struct ReflectionResolutionTierTests {
+
+    private func mirroredBoxMean(_ how: InstancedReflectionProbe.How,
+                                 _ quality: RenderQuality) throws -> Double {
+        let scene = InstancedReflectionProbe.make(how)
+        let image = try #require(OllinApp.image(of: scene, frame: 1, quality: quality))
+        let w = image.width, h = image.height
+        var data = [UInt8](repeating: 0, count: w * h * 4)
+        let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
+                            bytesPerRow: w * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+        var sum = 0, count = 0
+        for y in (h * 58 / 100)..<(h * 74 / 100) {
+            for x in (w * 40 / 100)..<(w * 60 / 100) {
+                let i = (y * w + x) * 4
+                sum += Int(data[i]) - Int(data[i + 2]); count += 1
+            }
+        }
+        return Double(sum) / Double(count)
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func theHalfSizeLayerStillPutsTheMirrorImageWhereItBelongs() throws {
+        // The band reads the box's reflection either way, and the empty scene sits about
+        // 68 below it, so a layer that went missing or landed elsewhere could not pass.
+        // The half-size layer does read weaker, by about 15% of the signal, and that is
+        // the documented cost of the tier rather than a fault: the layer carries its hit
+        // coverage per pixel, so a coarser one smears that coverage at every silhouette
+        // and each smeared pixel falls part of the way back to the environment.
+        let full = try mirroredBoxMean(.plain, .detail)
+        let half = try mirroredBoxMean(.plain, .performance)
+        let empty = try mirroredBoxMean(.nothing, .detail)
+        #expect(full - empty > 20, "the control: full \(full), empty \(empty)")
+        #expect(half - empty > 40,
+                "expected the half-size layer to still hold the mirror image: half \(half), empty \(empty)")
+        #expect(full - half < 20,
+                "expected the half-size layer to dim rather than drop the image: full \(full), half \(half)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func aCopyReachesTheHalfSizeLayerToo() throws {
+        // The two features meet here: a copy is in the traced scene, and the layer that
+        // traces it is half size. Neither may lose the other.
+        let plain = try mirroredBoxMean(.plain, .performance)
+        let instanced = try mirroredBoxMean(.instanced, .performance)
+        #expect(abs(plain - instanced) < 4,
+                "expected an instanced copy to mirror at the lower tier too: plain \(plain), instanced \(instanced)")
+    }
+}
+
 /// The shadow probe scene: one box over a plain white floor under a single point light
 /// standing above it, so the box's shadow lands in the measured patch.
 private final class InstancedShadowProbe: Sketch {
