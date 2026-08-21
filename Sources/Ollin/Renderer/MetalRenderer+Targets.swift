@@ -344,7 +344,8 @@ extension MetalRenderer {
         var tracedPrimary = false
         var tracedPoints = false
         let pointCasters = shadowCasters(lighting).filter { $0.kind == 1 }
-        if !pointCasters.isEmpty, rayTracedShadows, let meshBuffer, !meshVertices.isEmpty,
+        if !pointCasters.isEmpty, rayTracedShadows, let meshBuffer,
+           !meshVertices.isEmpty || !drawer.instancedMeshVertices.isEmpty || hasFieldCasters,
            let built = buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer,
                                         causticMats: wantCaustics) {
             accel = built.accel
@@ -367,7 +368,8 @@ extension MetalRenderer {
         // map below, whose PCSS penumbra the packing already sized from the panel's
         // extent, so both devices soften by the same physical size.
         if !tracedPrimary, lighting.shadowLight >= 0, casterGPUKind(lighting) >= 3, rayTracedShadows,
-           let meshBuffer, !meshVertices.isEmpty {
+           let meshBuffer,
+           !meshVertices.isEmpty || !drawer.instancedMeshVertices.isEmpty || hasFieldCasters {
             // A point caster beside it has already built the one structure; take that
             // rather than building a second copy of the same geometry.
             if accel != nil {
@@ -389,9 +391,9 @@ extension MetalRenderer {
         // for whichever of them is on. All of these precede the main geometry pass, so
         // trace order is satisfied either way.
         // A frame whose meshes are all copies still has a scene to trace, so the
-        // instanced vertices count as geometry here as well.
+        // instanced vertices and the drawn fields count as geometry here as well.
         if accel == nil, wantReflect || wantGI || wantCaustics,
-           !meshVertices.isEmpty || !drawer.instancedMeshVertices.isEmpty,
+           !meshVertices.isEmpty || !drawer.instancedMeshVertices.isEmpty || hasFieldCasters,
            let meshBuffer,
            let built = buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer,
                                         causticMats: wantCaustics) {
@@ -3051,28 +3053,90 @@ extension MetalRenderer {
         struct CopyGroup {
             var vertexStart = 0, vertexCount = 0, instanceStart = 0, instanceCount = 0
         }
+        // The GPU-resident sibling of a copy group: an instanced draw whose
+        // placements live in a compute buffer a kernel writes, so the CPU knows
+        // how many copies there are and which base mesh they wear, but never
+        // where one stands. Its instance descriptors are written by a kernel
+        // (`encodeRTInstanceWrites`) into slots reserved here.
+        struct GPUCopyGroup {
+            var vertexStart = 0, vertexCount = 0
+            var placements: MTLBuffer
+            var count = 0
+        }
         var copyGroups: [CopyGroup] = []
+        var gpuGroups: [GPUCopyGroup] = []
         let copyVertexBase = meshVertices.count
         let copyVertices = drawer.instancedMeshVertices
         if !pathTraceMats, !copyVertices.isEmpty,
            meshBuffer.length >= (copyVertexBase + copyVertices.count) * meshStride {
-            for batch in batches where batch.kind == .meshInstanced && batch.meshInstanceCount > 0 {
-                guard batch.instancedVertexCount >= 3,
-                      batch.meshInstanceStart + batch.meshInstanceCount <= drawer.meshInstances.count
-                else { continue }
-                copyGroups.append(CopyGroup(vertexStart: batch.instancedVertexStart,
-                                            vertexCount: batch.instancedVertexCount,
-                                            instanceStart: batch.meshInstanceStart,
-                                            instanceCount: batch.meshInstanceCount))
+            for batch in batches where batch.kind == .meshInstanced {
+                guard batch.instancedVertexCount >= 3 else { continue }
+                if batch.meshInstanceCount > 0 {
+                    guard batch.meshInstanceStart + batch.meshInstanceCount <= drawer.meshInstances.count
+                    else { continue }
+                    copyGroups.append(CopyGroup(vertexStart: batch.instancedVertexStart,
+                                                vertexCount: batch.instancedVertexCount,
+                                                instanceStart: batch.meshInstanceStart,
+                                                instanceCount: batch.meshInstanceCount))
+                } else if batch.particleCount > 0,
+                          let placements = batch.particleBuffer?.metalBuffer(for: device) {
+                    gpuGroups.append(GPUCopyGroup(vertexStart: batch.instancedVertexStart,
+                                                  vertexCount: batch.instancedVertexCount,
+                                                  placements: placements,
+                                                  count: batch.particleCount))
+                }
             }
-            if !copyGroups.isEmpty {
+            if !copyGroups.isEmpty || !gpuGroups.isEmpty {
                 copyVertices.withUnsafeBytes { raw in
                     meshBuffer.contents().advanced(by: copyVertexBase * meshStride)
                         .copyMemory(from: raw.baseAddress!, byteCount: raw.count)
                 }
             }
         }
-        guard !geometries.isEmpty || !copyGroups.isEmpty else { return nil }
+
+        // The retained fields. A field's base meshes live on the field rather than
+        // in the frame's vertex list, so they are appended after the instanced
+        // copies (the same one-pointer rule) and each entry takes its own
+        // structure. EVERY copy joins the scene, culled or not: the cull the raster
+        // draw runs is against the camera, and a reflection sees what the camera
+        // cannot. Their placements never visit the CPU, so the kernel writes them.
+        struct FieldRun {
+            var entry: OllinFieldEntry
+            var vertexBase = 0
+            var placements: MTLBuffer
+            var model: simd_float4x4
+        }
+        var fieldRuns: [FieldRun] = []
+        if !pathTraceMats {
+            var offset = copyVertexBase + copyVertices.count
+            for batch in batches where batch.kind == .meshField {
+                guard let field = batch.field, !field.baseVertices.isEmpty,
+                      field.fitsTracedBudget(),
+                      let resources = field.gpuResources(for: device),
+                      meshBuffer.length >= (offset + field.baseVertices.count) * meshStride
+                else { continue }
+                field.baseVertices.withUnsafeBytes { raw in
+                    meshBuffer.contents().advanced(by: offset * meshStride)
+                        .copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+                }
+                for entry in field.entries where entry.copyCount > 0 && entry.vertexCount >= 3 {
+                    fieldRuns.append(FieldRun(entry: entry,
+                                              vertexBase: offset + Int(entry.vertexStart),
+                                              placements: resources.instances,
+                                              model: batch.fieldTransform))
+                }
+                offset += field.baseVertices.count
+            }
+        }
+        // A run whose descriptors no kernel can write stays out of the scene rather
+        // than reserving slots nothing fills.
+        if !gpuGroups.isEmpty || !fieldRuns.isEmpty,
+           (try? computePipeline(for: MetalRenderer.rtInstanceKernel)) == nil {
+            gpuGroups.removeAll()
+            fieldRuns.removeAll()
+        }
+        guard !geometries.isEmpty || !copyGroups.isEmpty || !gpuGroups.isEmpty
+                || !fieldRuns.isEmpty else { return nil }
 
         // A plain (non-refittable) build: a refittable structure trades traversal speed for
         // the cheaper refit, and on a software-ray-tracing GPU (no RT hardware, e.g. M1/M2)
@@ -3086,17 +3150,32 @@ extension MetalRenderer {
             descs.append(d)
         }
         let hasScene = !geometries.isEmpty
-        for group in copyGroups {
+        // One structure per base mesh, over its own run of the appended vertices.
+        // A copy then costs a matrix on the instance rather than a triangle list,
+        // which is the whole reason the instanced call exists.
+        func appendBaseStructure(vertexBase: Int, vertexCount: Int) {
             let geo = MTLAccelerationStructureTriangleGeometryDescriptor()
             geo.vertexBuffer = meshBuffer
-            geo.vertexBufferOffset = (copyVertexBase + group.vertexStart) * meshStride
+            geo.vertexBufferOffset = vertexBase * meshStride
             geo.vertexStride = meshStride
             geo.vertexFormat = .float3
-            geo.triangleCount = group.vertexCount / 3
+            geo.triangleCount = vertexCount / 3
             geo.opaque = true
             let d = MTLPrimitiveAccelerationStructureDescriptor()
             d.geometryDescriptors = [geo]
             descs.append(d)
+        }
+        for group in copyGroups {
+            appendBaseStructure(vertexBase: copyVertexBase + group.vertexStart,
+                                vertexCount: group.vertexCount)
+        }
+        for group in gpuGroups {
+            appendBaseStructure(vertexBase: copyVertexBase + group.vertexStart,
+                                vertexCount: group.vertexCount)
+        }
+        for run in fieldRuns {
+            appendBaseStructure(vertexBase: run.vertexBase,
+                                vertexCount: Int(run.entry.vertexCount))
         }
 
         // Every structure this frame needs, allocated (and grown) before anything builds,
@@ -3173,8 +3252,36 @@ extension MetalRenderer {
             }
         }
 
+        // The GPU-resident runs take the slots after them. Only their COUNT is
+        // known here, so the slots are reserved and a kernel fills them below,
+        // reading the same placements the draw itself reads.
+        var runs: [RTInstanceRun] = []
+        var gpuInstanceCount = 0
+        for (i, group) in gpuGroups.enumerated() {
+            runs.append(RTInstanceRun(vertexBase: copyVertexBase + group.vertexStart,
+                                      structureIndex: (hasScene ? 1 : 0) + copyGroups.count + i,
+                                      instanceBase: instanceDescs.count + gpuInstanceCount,
+                                      placements: group.placements,
+                                      placementOffset: 0,
+                                      count: group.count,
+                                      model: matrix_identity_float4x4))
+            gpuInstanceCount += group.count
+        }
+        for (i, run) in fieldRuns.enumerated() {
+            runs.append(RTInstanceRun(vertexBase: run.vertexBase,
+                                      structureIndex: (hasScene ? 1 : 0) + copyGroups.count
+                                          + gpuGroups.count + i,
+                                      instanceBase: instanceDescs.count + gpuInstanceCount,
+                                      placements: run.placements,
+                                      placementOffset: Int(run.entry.copyStart),
+                                      count: Int(run.entry.copyCount),
+                                      model: run.model))
+            gpuInstanceCount += Int(run.entry.copyCount)
+        }
+        let totalInstances = instanceDescs.count + gpuInstanceCount
+
         let instanceStride = MemoryLayout<MTLAccelerationStructureInstanceDescriptor>.stride
-        let instanceLength = max(instanceStride, instanceDescs.count * instanceStride)
+        let instanceLength = max(instanceStride, totalInstances * instanceStride)
         if (rtInstanceDescriptorBuffers[frameIndex]?.length ?? 0) < instanceLength {
             rtInstanceDescriptorBuffers[frameIndex] = device.makeBuffer(length: instanceLength,
                                                                         options: .storageModeShared)
@@ -3185,8 +3292,34 @@ extension MetalRenderer {
         }
         let instanceDesc = MTLInstanceAccelerationStructureDescriptor()
         instanceDesc.instancedAccelerationStructures = structures
-        instanceDesc.instanceCount = instanceDescs.count
+        instanceDesc.instanceCount = totalInstances
         instanceDesc.instanceDescriptorBuffer = instanceBuffer
+
+        // The hit-lookup table, uploaded for the reflection hit fetch. Layout, which
+        // `ollin_rt_hit_lookup` reads back: the instance count, then that many four-uint
+        // records, then one base-vertex index per geometry of the plain-mesh instance.
+        // The CPU fills it here (before the command buffer commits), so the main pass
+        // reads it this frame, through the frame ring, never a shared buffer an
+        // in-flight frame still reads. The records of the GPU-resident runs are a gap
+        // the kernel fills; they sit between the CPU records and the geometry tail, so
+        // the two CPU pieces are written around it rather than as one array.
+        var head: [UInt32] = [UInt32(totalInstances)]
+        head.append(contentsOf: records)
+        let tailStart = 1 + totalInstances * 4
+        let offsetsLength = max(MemoryLayout<UInt32>.stride,
+                                (tailStart + geoOffsets.count) * MemoryLayout<UInt32>.stride)
+        if (meshGeoOffsetBuffers[frameIndex]?.length ?? 0) < offsetsLength {
+            meshGeoOffsetBuffers[frameIndex] = device.makeBuffer(length: offsetsLength,
+                                                                 options: .storageModeShared)
+        }
+        guard let offsetsBuffer = meshGeoOffsetBuffers[frameIndex] else { return nil }
+        head.withUnsafeBytes { raw in
+            offsetsBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+        }
+        geoOffsets.withUnsafeBytes { raw in
+            offsetsBuffer.contents().advanced(by: tailStart * MemoryLayout<UInt32>.stride)
+                .copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+        }
         let instanceSizes = device.accelerationStructureSizes(descriptor: instanceDesc)
         if rtInstanceAccel == nil || rtInstanceAccelCapacity < instanceSizes.accelerationStructureSize {
             rtInstanceAccel = device.makeAccelerationStructure(size: instanceSizes.accelerationStructureSize)
@@ -3199,6 +3332,12 @@ extension MetalRenderer {
                                                    options: .storageModePrivate)
         }
         rtReferencedAccels = structures
+        // The GPU-resident runs' descriptors and hit records, written before the
+        // builds read them: encoders in one command buffer run in the order they
+        // were made. A run that could not be encoded would leave last frame's
+        // descriptors in those slots, so the whole traced scene stands down.
+        guard encodeRTInstanceWrites(runs, descriptors: instanceBuffer, table: offsetsBuffer,
+                                     into: commandBuffer) else { return nil }
         guard let accel = rtInstanceAccel, let scratch = shadowAccelScratch,
               let enc = commandBuffer.makeAccelerationStructureCommandEncoder() else { return nil }
         for (i, d) in descs.enumerated() {
@@ -3212,22 +3351,6 @@ extension MetalRenderer {
         instanceEnc.build(accelerationStructure: accel, descriptor: instanceDesc,
                           scratchBuffer: scratch, scratchBufferOffset: instanceScratchOffset)
         instanceEnc.endEncoding()
-        // The hit-lookup table, uploaded for the reflection hit fetch. Filled CPU-side here
-        // (before the command buffer commits), so the main pass reads it this frame, through
-        // the frame ring, never a shared buffer an in-flight frame still reads. Layout, which
-        // `ollin_rt_hit_lookup` reads back: the instance count, then that many four-uint
-        // records, then one base-vertex index per geometry of the plain-mesh instance.
-        var table: [UInt32] = [UInt32(instanceDescs.count)]
-        table.append(contentsOf: records)
-        table.append(contentsOf: geoOffsets)
-        let offsetsLength = max(MemoryLayout<UInt32>.stride, table.count * MemoryLayout<UInt32>.stride)
-        if (meshGeoOffsetBuffers[frameIndex]?.length ?? 0) < offsetsLength {
-            meshGeoOffsetBuffers[frameIndex] = device.makeBuffer(length: offsetsLength, options: .storageModeShared)
-        }
-        guard let offsetsBuffer = meshGeoOffsetBuffers[frameIndex] else { return nil }
-        table.withUnsafeBytes { raw in
-            offsetsBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
-        }
         // The per-geometry caustic materials, riding the same per-frame ring.
         var matsBuffer: MTLBuffer? = nil
         if causticMats {

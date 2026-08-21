@@ -432,6 +432,24 @@ typedef struct {
     unsigned int _fc0;
 } OllinFieldCullParams;
 
+// Per-dispatch parameters for `ollin_rt_instance_write`, the kernel that fills the
+// traced scene's instance descriptors for an instanced draw whose placements live
+// on the GPU. The CPU knows how MANY copies there are, so it reserves their slots
+// and their hit records; where each copy sits is known only on the GPU, so the
+// kernel reads the placements and writes both. One dispatch per run of copies that
+// shares a base mesh (the buffer form has one run; a field has one per entry).
+typedef struct {
+    simd_float4x4 fieldModel;      // composed onto every placement (identity for the buffer form)
+    unsigned int count;            // copies in this run (the dispatch width)
+    unsigned int instanceBase;     // first instance slot this run owns
+    unsigned int structureIndex;   // the base mesh's own primitive structure
+    unsigned int vertexBase;       // first vertex of the base mesh in the mesh buffer
+    unsigned int options;          // MTLAccelerationStructureInstanceOptions, opaque
+    unsigned int mask;             // instance visibility mask
+    unsigned int _ri0;
+    unsigned int _ri1;
+} OllinRTInstanceParams;
+
 // Parameters for a `StrandField` (`drawStrands`): a patch of grass-like blades
 // generated ENTIRELY on the GPU by a mesh pipeline. No vertex or instance
 // buffer exists anywhere: every blade's position, height, lean, sway phase, and

@@ -1,6 +1,8 @@
 @testable import Ollin
+import COllinShaders
 import CoreGraphics
 import Foundation
+import simd
 import Testing
 
 /// Behavioral probes for instanced copies inside the ray-traced passes. A copy
@@ -92,6 +94,75 @@ struct InstancedRayTracingTests {
     }
 
     @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func theGPUResidentFormsCastATracedPointShadowToo() throws {
+        // A point caster traces rather than rendering its cube map here, so a copy the
+        // traced scene never held would leave the floor patch as bright as an empty one.
+        let plain = try shadowedFloorMean(.plain)
+        let gpu = try shadowedFloorMean(.gpuBuffer)
+        let field = try shadowedFloorMean(.field)
+        #expect(abs(plain - gpu) < 4,
+                "expected a GPU-placed copy to shade like the plain mesh: plain \(plain), gpu \(gpu)")
+        #expect(abs(plain - field) < 4,
+                "expected a field copy to shade like the plain mesh: plain \(plain), field \(field)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func aGPUResidentCopyShowsInTheMirrorFloorToo() throws {
+        // The same box again, placed by a matrix that lives in a compute buffer. Only
+        // the count of those copies is known on the CPU, so this reads whether the
+        // kernel that writes their instance descriptors put them where they belong.
+        let plain = try mirroredBoxMean(.plain)
+        let gpu = try mirroredBoxMean(.gpuBuffer)
+        #expect(abs(plain - gpu) < 4,
+                "expected a GPU-placed copy to mirror like the plain mesh: plain \(plain), gpu \(gpu)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func aGPUResidentCopyCarriesItsOwnColorIntoTheMirror() throws {
+        // The tint rides the same GPU-written hit record as the placement, so a copy
+        // that mirrored in the base mesh's color would say the record never landed.
+        let white = try mirroredBoxMean(.whiteCopy)
+        let tinted = try mirroredBoxMean(.tintedGPUBuffer)
+        #expect(tinted - white > 20,
+                "expected a GPU-placed copy to mirror in its own color: white \(white), tinted \(tinted)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func aFieldCopyShowsInTheMirrorFloorToo() throws {
+        // A retained field holds its base meshes and its copies itself, so this reads
+        // whether the build appended those meshes to the traced vertex list and whether
+        // the kernel placed the copies over them.
+        let plain = try mirroredBoxMean(.plain)
+        let field = try mirroredBoxMean(.field)
+        #expect(abs(plain - field) < 6,
+                "expected a field copy to mirror like the plain mesh: plain \(plain), field \(field)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func aFieldCopyCarriesItsOwnColorIntoTheMirror() throws {
+        // The field's baked surface reaches the mirror: the same field untinted has to
+        // read clearly cooler, or the tint never made it into the hit record.
+        let white = try mirroredBoxMean(.whiteField)
+        let tinted = try mirroredBoxMean(.field)
+        #expect(tinted - white > 20,
+                "expected a tinted field copy to mirror in its own color: white \(white), tinted \(tinted)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func aFieldOverItsTracedBudgetStaysOutOfTheMirror() throws {
+        // The budget is what keeps a field of a few hundred thousand copies from
+        // spending the whole frame in the traced scene. A closed budget has to read
+        // like an empty floor, while the same field with the default budget does not.
+        let budgeted = try mirroredBoxMean(.budgetedOutField)
+        let empty = try mirroredBoxMean(.nothing)
+        let included = try mirroredBoxMean(.field)
+        #expect(abs(budgeted - empty) < 2,
+                "expected a budgeted-out field to leave the mirror alone: budgeted \(budgeted), empty \(empty)")
+        #expect(included - budgeted > 20,
+                "the control: the same field inside its budget mirrors, included \(included), budgeted \(budgeted)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
     func aPlainBoxCastsATracedPointShadow() throws {
         // The control: a point light traces its shadow on a ray-tracing GPU, so the
         // plain box must darken the floor patch it stands over.
@@ -173,7 +244,7 @@ struct ReflectionResolutionTierTests {
 /// The shadow probe scene: one box over a plain white floor under a single point light
 /// standing above it, so the box's shadow lands in the measured patch.
 private final class InstancedShadowProbe: Sketch {
-    enum How { case plain, instanced, nothing }
+    enum How { case plain, instanced, nothing, gpuBuffer, field }
     var how: How = .plain
 
     static func make(_ how: How) -> InstancedShadowProbe {
@@ -185,6 +256,21 @@ private final class InstancedShadowProbe: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 
     private let box = Mesh.box(width: 1.6, height: 1.6, depth: 1.6)
+
+    /// The same box placed by a matrix that lives on the GPU.
+    private lazy var placements: ComputeBuffer<OllinMeshInstance> = {
+        var one = OllinMeshInstance()
+        one.model = MeshInstance(position: Vector3(0, 1.6, 0)).matrix
+        one.color = SIMD4<Float>(1, 1, 1, 1)
+        return ComputeBuffer([one])
+    }()
+
+    /// The same box held by a retained field.
+    private lazy var field: MeshField = {
+        let f = MeshField()
+        f.place(box, at: [MeshInstance(position: Vector3(0, 1.6, 0))])
+        return f
+    }()
 
     override func draw() {
         background(.black)
@@ -206,6 +292,10 @@ private final class InstancedShadowProbe: Sketch {
                 drawMesh(box, instances: [MeshInstance(position: Vector3(0, 1.6, 0))])
             case .nothing:
                 break
+            case .gpuBuffer:
+                drawMesh(box, instances: placements)
+            case .field:
+                drawMeshField(field)
             }
         }
     }
@@ -215,7 +305,10 @@ private final class InstancedShadowProbe: Sketch {
 /// environment, its reflection the thing measured. `How` draws the box through the
 /// plain call, through the instanced call at the same place, or not at all.
 private final class InstancedReflectionProbe: Sketch {
-    enum How { case plain, instanced, nothing, whiteCopy, tintedCopy }
+    enum How {
+        case plain, instanced, nothing, whiteCopy, tintedCopy, gpuBuffer, tintedGPUBuffer
+        case field, whiteField, budgetedOutField
+    }
     var how: How = .plain
 
     static func make(_ how: How) -> InstancedReflectionProbe {
@@ -227,6 +320,51 @@ private final class InstancedReflectionProbe: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 
     private let box = Mesh.box(width: 1.6, height: 1.6, depth: 1.6)
+
+    /// The GPU-resident placement of the same copy, seeded rather than written by
+    /// a kernel: where the matrices come from does not change what the traced
+    /// scene has to do with them, and a seeded buffer keeps the probe readable.
+    private lazy var placements: ComputeBuffer<OllinMeshInstance> = {
+        var one = OllinMeshInstance()
+        one.model = MeshInstance(position: Vector3(0, 1.5, 0)).matrix
+        one.color = SIMD4<Float>(1, 1, 1, 1)
+        return ComputeBuffer([one])
+    }()
+
+    /// The same copy again, this time held by a retained field. A field bakes its
+    /// surface color when a mesh is placed, so the red arrives as the copy's own
+    /// tint rather than through the draw-time `fill`.
+    private lazy var field: MeshField = {
+        let f = MeshField()
+        f.place(box, at: [MeshInstance(position: Vector3(0, 1.5, 0),
+                                       color: Color(red: 1.0, green: 0.05, blue: 0.05))])
+        return f
+    }()
+
+    /// The same tinted field with its traced budget closed, so its copies stay
+    /// out of the traced passes while still drawing.
+    private lazy var budgetedField: MeshField = {
+        let f = MeshField()
+        f.tracedCopyBudget = 0
+        f.place(box, at: [MeshInstance(position: Vector3(0, 1.5, 0),
+                                       color: Color(red: 1.0, green: 0.05, blue: 0.05))])
+        return f
+    }()
+
+    /// The untinted field, the control the tinted one is read against.
+    private lazy var plainField: MeshField = {
+        let f = MeshField()
+        f.place(box, at: [MeshInstance(position: Vector3(0, 1.5, 0))])
+        return f
+    }()
+
+    /// The same placement wearing a per-copy tint.
+    private lazy var tintedPlacements: ComputeBuffer<OllinMeshInstance> = {
+        var one = OllinMeshInstance()
+        one.model = MeshInstance(position: Vector3(0, 1.5, 0)).matrix
+        one.color = SIMD4<Float>(1, 0.05, 0.05, 1)
+        return ComputeBuffer([one])
+    }()
 
     override func draw() {
         background(.black)
@@ -259,6 +397,18 @@ private final class InstancedReflectionProbe: Sketch {
             case .tintedCopy:
                 fill(.white)
                 drawMesh(box, instances: [MeshInstance(position: up, color: red)])
+            case .gpuBuffer:
+                fill(red)
+                drawMesh(box, instances: placements)
+            case .tintedGPUBuffer:
+                fill(.white)
+                drawMesh(box, instances: tintedPlacements)
+            case .field:
+                drawMeshField(field)
+            case .whiteField:
+                drawMeshField(plainField)
+            case .budgetedOutField:
+                drawMeshField(budgetedField)
             }
         }
     }

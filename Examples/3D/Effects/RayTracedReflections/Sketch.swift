@@ -20,13 +20,32 @@ import Ollin
 ///
 /// A near-mirror metal floor reflects a ring of metal spheres orbiting a polished monolith;
 /// each sphere also catches its neighbors and the floor. An outer ring of posts is drawn as
-/// instanced *copies*, one call for all of them, and they mirror like everything else. The camera orbits on its own, and
+/// instanced *copies*, one call for all of them, and a retained `MeshField` scatters a drift
+/// of pebbles past them. All three ways of placing a mesh mirror alike. The camera orbits on its own, and
 /// the mouse takes it over (drag to orbit, scroll to dolly). **Hold the space bar** to drop
 /// ray-traced reflections and compare: the metals fall back to reflecting only the studio
 /// *environment*, so the scene's mirror images vanish. Needs an Apple-silicon (ray-tracing)
 /// GPU; on other GPUs the environment reflection is all you get.
 @main
 final class RayTracedReflections: Sketch {
+
+    /// The pebble drift, built once and held: a field places its copies on the GPU
+    /// and still stands in the traced scene, up to its `tracedCopyBudget`.
+    private let pebbles = MeshField()
+
+    override func setup() {
+        seed(11)
+        var drift: [MeshInstance] = []
+        for _ in 0 ..< 700 {
+            let a = random(.tau), r = random(7.6, 12.6)
+            drift.append(MeshInstance(position: Vector3(cos(a) * r, 0.08, sin(a) * r),
+                                      rotation: Vector3(0, random(.tau), 0),
+                                      scale: Vector3(random(0.5, 1.1), random(0.3, 0.7),
+                                                     random(0.5, 1.1)),
+                                      color: Color(hue: random(1), saturation: 0.16, brightness: 0.72)))
+        }
+        pebbles.place(Mesh.box(width: 0.46, height: 0.3, depth: 0.46), at: drift)
+    }
 
     override func draw() {
         background(Color(hex: 0x14171d))
@@ -92,6 +111,14 @@ final class RayTracedReflections: Sketch {
             material(.metal(roughness: 0.18))
             fill(.white)
             drawMesh(Mesh.box(width: 0.34, height: 1.9, depth: 0.34), instances: posts)
+        }
+
+        // A drift of pebbles held in a retained field. The GPU places every copy and
+        // decides per copy what the camera can see, and they still mirror in the floor.
+        withState {
+            material(.metal(roughness: 0.3))
+            fill(.white)
+            drawMeshField(pebbles)
         }
 
         drawCaption(isKeyDown(" ")

@@ -558,11 +558,18 @@ extension MetalRenderer {
     }
 
     /// How many mesh vertices a frame's buffer has to hold: the plain meshes, plus the
-    /// base meshes of the instanced draws. The traced build appends those after the
-    /// plain ones so that a single pointer still serves the hit fetch, so the room for
-    /// them is reserved wherever the buffer is asked for.
+    /// base meshes of the instanced draws, plus the base meshes of every drawn field.
+    /// The traced build appends those after the plain ones so that a single pointer
+    /// still serves the hit fetch, so the room for them is reserved wherever the
+    /// buffer is asked for. A field's base meshes are one expansion per distinct mesh,
+    /// never per copy, so the room is the field's mesh set rather than its world.
     func tracedMeshVertexCount(_ drawer: Drawer) -> Int {
-        drawer.meshVertices.count + drawer.instancedMeshVertices.count
+        var fields = 0
+        for batch in drawer.batches where batch.kind == .meshField {
+            guard let field = batch.field, field.withinTracedBudget else { continue }
+            fields += field.baseVertices.count
+        }
+        return drawer.meshVertices.count + drawer.instancedMeshVertices.count + fields
     }
 
     /// Return the solid-mesh ring buffer at `index`, grown on demand. Mirrors

@@ -1456,10 +1456,10 @@ open class Sketch {
     /// position, rotation, scale, and an optional tint; copies shade exactly
     /// like solid meshes (the current `fill` and `material(_:)` finish, lights,
     /// shadows received, image-based lighting, fog) and cast into the shadow
-    /// maps. The transform stack moves the whole field together. Copies draw on
-    /// the solid lit path: textures, wireframe, and matcap don't apply to them
-    /// yet, and the ray-traced passes (reflections of them, ray-traced shadows)
-    /// don't see them yet. A no-op without a camera.
+    /// maps. They stand in the ray-traced scene as well, so a mirror shows them
+    /// and a traced shadow falls from them. The transform stack moves the whole
+    /// field together. Copies draw on the solid lit path: textures, wireframe,
+    /// and matcap don't apply to them yet. A no-op without a camera.
     public func drawMesh(_ mesh: Mesh, instances: [MeshInstance]) {
         drawer.drawMeshInstanced(mesh, instances: instances)
     }
@@ -1470,6 +1470,8 @@ open class Sketch {
     /// copies without the positions ever visiting the CPU. The matrices are
     /// absolute world space (the kernel owns the placement, so the transform
     /// stack is not composed on top); `color` multiplies the surface color.
+    /// These copies stand in the ray-traced scene too, at roughly two
+    /// microseconds of GPU time each per frame while a traced pass is on.
     public func drawMesh(_ mesh: Mesh, instances: ComputeBuffer<OllinMeshInstance>,
                          count: Int? = nil) {
         drawer.drawMeshInstanced(mesh, instanceBuffer: instances, count: count ?? instances.count)
@@ -1479,7 +1481,8 @@ open class Sketch {
     /// every frame, with the GPU deciding per copy what the camera can see.
     /// Build the field in `setup()` (`field.place(mesh, at: copies)`), hold it,
     /// and draw it here; the transform stack moves the whole field, and copies
-    /// out of view cost (almost) nothing. Once per frame per field; a no-op
+    /// out of view cost (almost) nothing. A field also stands in the ray-traced
+    /// scene, up to its `tracedCopyBudget`. Once per frame per field; a no-op
     /// without a camera.
     public func drawMeshField(_ field: MeshField) { drawer.drawMeshField(field) }
 

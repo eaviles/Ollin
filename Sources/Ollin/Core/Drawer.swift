@@ -3098,9 +3098,9 @@ final class Drawer {
     /// `material(_:)` finish, lights, shadows received, IBL, GI, fog); the
     /// per-copy `color` tints on top. The surrounding 3D transform stack moves
     /// the whole field. Instanced copies cast into the directional/spot and
-    /// point shadow maps; they are not yet part of the ray-traced passes
-    /// (reflections and ray-traced shadows do not see them) or the screen-space
-    /// pre-passes.
+    /// point shadow maps, and they stand in the ray-traced scene as well
+    /// (reflections, ray-traced shadows, and global illumination all see them);
+    /// the screen-space pre-passes still leave them out.
     func drawMeshInstanced(_ mesh: Mesh, instances: [MeshInstance]) {
         guard !instances.isEmpty else { return }
         guard prepareInstancedMeshDraw(mesh) else { return }
@@ -3133,7 +3133,9 @@ final class Drawer {
     /// placements live in a compute buffer a kernel writes (positions never
     /// round-trip through the CPU, the particle/point-cloud rule). The matrices
     /// are absolute world space: the transform stack is NOT composed on top,
-    /// since the kernel owns the placement.
+    /// since the kernel owns the placement. These copies reach the ray-traced
+    /// scene too: their placements never visit the CPU, so a kernel writes their
+    /// instance descriptors beside the ones the CPU writes for a list.
     func drawMeshInstanced(_ mesh: Mesh, instanceBuffer: ComputeBindable, count: Int) {
         guard count > 0 else { return }
         guard prepareInstancedMeshDraw(mesh) else { return }

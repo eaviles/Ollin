@@ -59,6 +59,40 @@ public final class MeshField {
     /// (a culled copy was off-screen by definition).
     public var cullingEnabled = true
 
+    /// How many copies this field may put into the ray-traced passes
+    /// (reflections, ray-traced shadows, global illumination). A copy there is
+    /// not free the way a drawn copy is: the traced scene is rebuilt every
+    /// frame, and each copy costs roughly two microseconds of GPU time in it, so
+    /// a field of a few hundred thousand would spend the whole frame on it. A
+    /// field over the budget stays out of those passes and says so once; the
+    /// picture keeps every copy, and the mirrors do not show them.
+    ///
+    /// Raise it for an offline render, where seconds a frame are fine, or set it
+    /// to `0` to keep a field out of the traced passes whatever its size. Camera
+    /// culling does not apply here: a reflection sees what the camera cannot, so
+    /// the budget counts every copy the field holds.
+    public var tracedCopyBudget = 20_000
+
+    /// Whether this field's copies fit inside `tracedCopyBudget`.
+    var withinTracedBudget: Bool { copyCount <= tracedCopyBudget }
+
+    /// The same answer, said out loud once when it is no: the note names both
+    /// numbers so the budget is findable from the message alone.
+    func fitsTracedBudget() -> Bool {
+        if withinTracedBudget { return true }
+        if !notedTracedBudget {
+            notedTracedBudget = true
+            let plural = copyCount == 1 ? "copy" : "copies"
+            print("Ollin: a MeshField of \(copyCount) \(plural) stays out of the ray-traced passes "
+                  + "(reflections, traced shadows, global illumination); the budget is "
+                  + "\(tracedCopyBudget) copies. Raise tracedCopyBudget to include them, at "
+                  + "roughly two microseconds of GPU time per copy per frame.")
+        }
+        return false
+    }
+
+    private var notedTracedBudget = false
+
     public init() {}
 
     /// Total copies across every entry.

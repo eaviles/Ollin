@@ -101,12 +101,21 @@ As a reference point, the example's 240,000-copy plain, lit, shadowed, and fogge
 
 Everything the solid lit path does. That means `fill` and per-vertex mesh colors, every `material(_:)` finish including physically based, lights and `lightingPreset`, shadows received, image-based lighting and the procedural sky, global illumination, fog and aerial perspective, clipping, blend modes, and `depth(at:)` compositing. Instanced copies also cast into the directional/spot shadow map and the point-light shadow cube.
 
-Copies drawn from an `[MeshInstance]` list also reach the ray-traced passes. They show in a ray-traced reflection. They cast a ray-traced point or area shadow, and they bounce light in global illumination. Each copy carries its own placement and its own `color` there. A copy costs a matrix rather than a triangle list, so a field of them is cheap to trace.
+Copies also reach the ray-traced passes, whichever of the three forms placed them. They show in a ray-traced reflection. They cast a ray-traced point or area shadow, and they bounce light in global illumination. Each copy carries its own placement and its own `color` there. A copy costs a matrix rather than a triangle list, so a field of them is cheap to trace.
+
+A list gives its placements to the build directly. The other two forms never hand a placement to the CPU at all. The compute-buffer form keeps its matrices in a buffer a kernel writes, and a field holds more copies than a frame can afford to walk. For both, the CPU reserves the slots, since it knows the count, and a kernel fills them from the same placements the draw reads.
+
+Traced copies are not free the way drawn copies are. The traced scene is rebuilt every frame. Each copy in it costs roughly two microseconds of GPU time on an M2, whatever placed it. A few thousand is comfortable. A few hundred thousand would spend the whole frame there, which is why a field carries a budget:
+
+```swift
+field.tracedCopyBudget = 20_000     // the default
+```
+
+A field over its budget stays out of the traced passes and says so once, naming both numbers. Its copies still draw, still receive reflections, and still cast into the shadow maps; the mirrors just do not show them. Raise it for an offline render, where seconds a frame are fine. Set it to `0` to keep a field out of the traced passes whatever its size. Camera culling does not enter into it: a reflection sees what the camera cannot, so the budget counts every copy the field holds.
 
 Not yet, by design (each lands with a later slice of the GPU-driven tier):
 
 - **Textures and surface maps.** A textured mesh draws untextured; its base color still tints. Wireframe and matcap fall back to the solid look, with a one-time note.
-- **The ray-traced passes, for the two GPU-held forms.** The compute-buffer form and `MeshField` stay out of the traced scene. One keeps its placements on the GPU. The other holds far too many to hand over one at a time each frame. Their copies still *receive* reflections and bounce light. They still cast into the shadow map and the cube. On a ray-tracing GPU a point light's caster set is traced, so those two forms cast no point shadow there.
 - **The path-traced export.** `--path-traced` takes the plain meshes alone, because its material tables are per geometry and a copy carries none of its own.
 - **The screen-space pre-passes.** Contact shadows, ambient-occlusion normals, and subsurface scattering skip the copies.
 - **Motion vectors.** Copies are not `withMotion` movers; temporal anti-aliasing covers them through its depth reprojection instead.
@@ -118,6 +127,6 @@ Not yet, by design (each lands with a later slice of the GPU-driven tier):
 - `makeBatch { }` refuses an instanced draw (like plain meshes: a retained copy would silently lose its shadows). Draw the field where the batch is drawn.
 - Spatial export records the `[MeshInstance]` form as one mesh per placement, exactly like a loop of `drawMesh` calls. The GPU-buffer form can't be exported (the placements live on the GPU) and says so once.
 - SVG export skips meshes entirely, instanced or not: a shaded solid has no vector outline.
-- A `MeshField` exports spatially like a loop of `drawMesh` calls (its placements stay on the CPU for exactly this). The not-yet list above applies to fields too, and under a point light on a ray-tracing GPU a field's copies do not cast (the caster set is traced there).
+- A `MeshField` exports spatially like a loop of `drawMesh` calls (its placements stay on the CPU for exactly this). The not-yet list above applies to fields too.
 - The [`InstancedMesh`](../../Examples/Rendering/InstancedMesh/Sketch.swift) example draws 12,000 wave-riding pillars with a knob that flips between the instanced path and a per-copy `drawMesh` loop. The cost difference shows live in the inspector.
 - The [`MeshField`](../../Examples/Rendering/MeshField/Sketch.swift) example scatters 240,000 solids across a foggy plain and flies through them, with a knob that turns the culling off. The picture stays the same; the frame rate does not.
