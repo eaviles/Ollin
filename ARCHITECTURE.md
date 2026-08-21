@@ -1676,6 +1676,43 @@ and non-uniform scale still lights correctly with no inverse-transpose to
 precompute. The A/B against the CPU path's true inverse-transpose held under
 mean 0.5/255 with non-uniform scales in the fixture.
 
+### A copy in the traced scene
+
+The traced passes see one *instance* acceleration structure. Instance 0 holds
+every mesh drawn on its own (their vertices already carry their placement, so
+its matrix is the identity), and each copy of an `[MeshInstance]` draw is one
+more instance over its base mesh's own small structure, carrying that copy's
+matrix. So a copy costs a matrix in the structure rather than a triangle list,
+which is the same saving the raster path takes, and one structure serves the
+reflections, the traced point and area shadows, the GI probes and the photons
+alike.
+
+Three decisions carry the weight:
+
+- **One vertex pointer.** The hit fetch reads a single mesh buffer, so the
+  instanced base vertices are appended to it after the plain ones rather than
+  kept in their own buffer. That is a copy of each *base* mesh per frame, never
+  per copy, and it saved binding a second pointer to ten tracing entry points.
+  `tracedMeshVertexCount` reserves the room wherever the buffer is asked for; a
+  buffer without room leaves the copies out instead of writing past its end.
+- **A table with a header.** The per-geometry base-vertex array grew a prefix:
+  its instance count, then one four-uint record per instance (the copy's base
+  vertex, then its tint as three float bit patterns), then the old array.
+  `ollin_rt_hit_lookup` reads it back, and a record marked `OLLIN_RT_PLAIN_MESH`
+  reads the geometry table instead, which is what instance 0 always does. The
+  prefix is what let the per-copy tint arrive without a new binding.
+- **The normal needs the copy's placement.** A copy's vertices are in its base
+  mesh's own space, so the interpolated normal is mapped by the transpose of the
+  query's world-to-object matrix. That is the inverse transpose, so an unevenly
+  scaled copy still shades square to its surface.
+
+Two forms stay out, both for the same reason. The compute-buffer form keeps its
+placements on the GPU, and a `MeshField` holds hundreds of thousands of them, so
+neither can have its instance descriptors written one at a time by the CPU each
+frame; they want a kernel writing that buffer, next to the culling pass that
+already fills one. The path-traced export stays out too, because its material
+tables are per geometry and a copy carries none of its own.
+
 ### The field's frame
 
 `encodeMeshFieldCulling` runs at drive level (after `encodeCompute`, before any

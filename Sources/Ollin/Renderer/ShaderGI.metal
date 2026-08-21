@@ -90,13 +90,13 @@ static inline int ollin_gi_local_count(int cascade, int count0,
 
 // One occlusion ray: anything committed between the point and the light.
 static inline bool ollin_gi_occluded(float3 origin, float3 dir, float tmax, float eps,
-                                     primitive_acceleration_structure accel) {
+                                     instance_acceleration_structure accel) {
     ray r;
     r.origin = origin;
     r.direction = dir;
     r.min_distance = eps * 0.05;
     r.max_distance = tmax;
-    intersection_query<triangle_data> q;
+    intersection_query<triangle_data, instancing> q;
     return ollin_rt_query(q, r, accel);
 }
 
@@ -119,7 +119,7 @@ static inline bool ollin_gi_occluded(float3 origin, float3 dir, float tmax, floa
 fragment float4 ollin_gi_trace(PresentOut in [[stage_in]],
                                constant float4 *params [[buffer(0)]],
                                constant OllinLighting &light [[buffer(1)]],
-                               primitive_acceleration_structure accel [[buffer(3)]],
+                               instance_acceleration_structure accel [[buffer(3)]],
                                const device OllinMeshVertex *verts [[buffer(6)]],
                                const device uint *geoOffsets [[buffer(7)]],
                                texturecube<float> prefilterTex [[texture(5)]],
@@ -152,7 +152,7 @@ fragment float4 ollin_gi_trace(PresentOut in [[stage_in]],
     r.direction = dir;
     r.min_distance = 0.0;
     r.max_distance = 1e9;
-    intersection_query<triangle_data> q;
+    intersection_query<triangle_data, instancing> q;
     if (!ollin_rt_query(q, r, accel)) {
         float3 sky = float3(0.0);
         if (light.iblEnabled != 0) {
@@ -239,7 +239,7 @@ fragment float4 ollin_gi_trace(PresentOut in [[stage_in]],
 fragment float4 ollin_gi_trace_cascaded(PresentOut in [[stage_in]],
                                         constant float4 *params [[buffer(0)]],
                                         constant OllinLighting &light [[buffer(1)]],
-                                        primitive_acceleration_structure accel [[buffer(3)]],
+                                        instance_acceleration_structure accel [[buffer(3)]],
                                         const device OllinMeshVertex *verts [[buffer(6)]],
                                         const device uint *geoOffsets [[buffer(7)]],
                                         texturecube<float> prefilterTex [[texture(5)]],
@@ -273,7 +273,7 @@ fragment float4 ollin_gi_trace_cascaded(PresentOut in [[stage_in]],
     r.direction = dir;
     r.min_distance = 0.0;
     r.max_distance = 1e9;
-    intersection_query<triangle_data> q;
+    intersection_query<triangle_data, instancing> q;
     if (!ollin_rt_query(q, r, accel)) {
         float3 sky = float3(0.0);
         if (light.iblEnabled != 0) {

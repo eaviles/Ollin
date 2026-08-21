@@ -923,7 +923,7 @@ fragment float4 ollin_rt_reflect_trace(PresentOut in [[stage_in]],
                                        constant float4 *params [[buffer(0)]],
                                        constant OllinLighting &light [[buffer(1)]],
                                        constant Uniforms3D &u [[buffer(2)]],
-                                       primitive_acceleration_structure accel [[buffer(3)]],
+                                       instance_acceleration_structure accel [[buffer(3)]],
                                        const device OllinMeshVertex *verts [[buffer(6)]],
                                        const device uint *geoOffsets [[buffer(7)]]) {
     // The G-buffer holds per-pixel surface data, so every read is nearest-filtered,

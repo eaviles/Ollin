@@ -285,7 +285,7 @@ kernel void ollin_caustics_trace(constant OllinCausticsUniforms &cu [[buffer(0)]
                                  device atomic_uint *feedback [[buffer(5)]],
                                  const device OllinMeshVertex *verts [[buffer(6)]],
                                  const device uint *geoOffsets [[buffer(7)]],
-                                 primitive_acceleration_structure accel [[buffer(8)]],
+                                 instance_acceleration_structure accel [[buffer(8)]],
                                  const device OllinCausticGeo *geoMats [[buffer(9)]],
                                  texture2d<float> prevCaustics [[texture(0)]],
                                  uint tid [[thread_position_in_grid]]) {
@@ -381,12 +381,16 @@ kernel void ollin_caustics_trace(constant OllinCausticsUniforms &cu [[buffer(0)]
         r.direction = D;
         r.min_distance = eps * 0.05;   // the origin lift is the real self-hit guard
         r.max_distance = INFINITY;
-        intersection_query<triangle_data> q;
+        intersection_query<triangle_data, instancing> q;
         if (!ollin_rt_query(q, r, accel)) return;    // left the scene: no deposit
         bool backface = false;
         OllinRTSurface s = ollin_rt_fetch_surface(q, verts, geoOffsets, P, D, backface);
         float t = q.get_committed_distance();
         uint geoId = q.get_committed_geometry_id();
+        // A copy of an instanced draw carries no caustic material of its own (the
+        // per-geometry table describes the plain meshes), so a photon treats one as
+        // the plain opaque surface it deposits on.
+        OllinRTHit chit = ollin_rt_hit_lookup(geoOffsets, q.get_committed_instance_id(), geoId);
 
         // Transfer the differentials to the hit plane (Igehy): the positional
         // differential at the hit is the neighbor ray's intersection with it.
@@ -411,7 +415,7 @@ kernel void ollin_caustics_trace(constant OllinCausticsUniforms &cu [[buffer(0)]
 
         // The interpolated normal's own variation across the triangle, projected
         // through the positional differentials (what makes a curved surface focus).
-        uint base = geoOffsets[geoId] + q.get_committed_primitive_id() * 3u;
+        uint base = chit.base + q.get_committed_primitive_id() * 3u;
         float3 p0 = verts[base + 0u].position.xyz;
         float3 n0 = verts[base + 0u].normal.xyz;
         float3 n1 = verts[base + 1u].normal.xyz;
@@ -427,7 +431,8 @@ kernel void ollin_caustics_trace(constant OllinCausticsUniforms &cu [[buffer(0)]
         dnu -= n * dot(n, dnu);
         dnv -= n * dot(n, dnv);
 
-        OllinCausticGeo gm = geoMats[geoId];
+        OllinCausticGeo gm = {};
+        if (!chit.copied) gm = geoMats[geoId];
         bool isGlass = gm.refractive.x > 0.0;
         bool isMirror = !isGlass && s.metal > 0.5 && s.rough < 0.25;
 

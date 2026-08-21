@@ -19,7 +19,8 @@ import Ollin
 /// ```
 ///
 /// A near-mirror metal floor reflects a ring of metal spheres orbiting a polished monolith;
-/// each sphere also catches its neighbors and the floor. The camera orbits on its own, and
+/// each sphere also catches its neighbors and the floor. An outer ring of posts is drawn as
+/// instanced *copies*, one call for all of them, and they mirror like everything else. The camera orbits on its own, and
 /// the mouse takes it over (drag to orbit, scroll to dolly). **Hold the space bar** to drop
 /// ray-traced reflections and compare: the metals fall back to reflecting only the studio
 /// *environment*, so the scene's mirror images vanish. Needs an Apple-silicon (ray-tracing)
@@ -75,6 +76,22 @@ final class RayTracedReflections: Sketch {
                 translate(cos(a) * 3.6, 0.9, sin(a) * 3.6)
                 drawSphere(radius: 0.9)
             }
+        }
+
+        // A ring of small posts drawn as *copies* (one `drawMesh` call, one placement each).
+        // Copies reach the traced scene like any other mesh, so they stand in the floor's
+        // reflection and in the spheres' too, each carrying its own color.
+        var posts: [MeshInstance] = []
+        for i in 0 ..< 24 {
+            let a = Double(i) / 24 * .tau + 0.13
+            posts.append(MeshInstance(position: Vector3(cos(a) * 6.2, 0.45, sin(a) * 6.2),
+                                      rotation: Vector3(0, -a, 0),
+                                      color: Color(hue: Double(i) / 24, saturation: 0.5, brightness: 1)))
+        }
+        withState {
+            material(.metal(roughness: 0.18))
+            fill(.white)
+            drawMesh(Mesh.box(width: 0.34, height: 1.9, depth: 0.34), instances: posts)
         }
 
         drawCaption(isKeyDown(" ")

@@ -101,10 +101,13 @@ As a reference point, the example's 240,000-copy plain, lit, shadowed, and fogge
 
 Everything the solid lit path does. That means `fill` and per-vertex mesh colors, every `material(_:)` finish including physically based, lights and `lightingPreset`, shadows received, image-based lighting and the procedural sky, global illumination, fog and aerial perspective, clipping, blend modes, and `depth(at:)` compositing. Instanced copies also cast into the directional/spot shadow map and the point-light shadow cube.
 
+Copies drawn from an `[MeshInstance]` list also reach the ray-traced passes. They show in a ray-traced reflection. They cast a ray-traced point or area shadow, and they bounce light in global illumination. Each copy carries its own placement and its own `color` there. A copy costs a matrix rather than a triangle list, so a field of them is cheap to trace.
+
 Not yet, by design (each lands with a later slice of the GPU-driven tier):
 
 - **Textures and surface maps.** A textured mesh draws untextured; its base color still tints. Wireframe and matcap fall back to the solid look, with a one-time note.
-- **The ray-traced passes.** Ray-traced reflections and ray-traced point shadows do not see the copies (a copy still *receives* reflections of the plain-mesh scene). On a ray-tracing GPU a point light's caster set is traced, so instanced copies only cast for a point light on GPUs using the cube path.
+- **The ray-traced passes, for the two GPU-held forms.** The compute-buffer form and `MeshField` stay out of the traced scene. One keeps its placements on the GPU. The other holds far too many to hand over one at a time each frame. Their copies still *receive* reflections and bounce light. They still cast into the shadow map and the cube. On a ray-tracing GPU a point light's caster set is traced, so those two forms cast no point shadow there.
+- **The path-traced export.** `--path-traced` takes the plain meshes alone, because its material tables are per geometry and a copy carries none of its own.
 - **The screen-space pre-passes.** Contact shadows, ambient-occlusion normals, and subsurface scattering skip the copies.
 - **Motion vectors.** Copies are not `withMotion` movers; temporal anti-aliasing covers them through its depth reprojection instead.
 

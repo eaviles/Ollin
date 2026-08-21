@@ -335,7 +335,7 @@ extension MetalRenderer {
         compute.setBuffer(feedback, offset: 0, index: 5)
         compute.setBuffer(meshBuffer, offset: 0, index: 6)
         compute.setBuffer(geoOffsets, offset: 0, index: 7)
-        compute.useResource(accel, usage: .read)
+        useTracedScene(compute, accel)
         compute.setAccelerationStructure(accel, bufferIndex: 8)
         compute.setBuffer(geoMats, offset: 0, index: 9)
         compute.setTexture(prevResolved, index: 0)

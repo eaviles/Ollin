@@ -2183,7 +2183,7 @@ extension MetalRenderer {
             // Ray-traced point shadows: the fragment traces this acceleration
             // structure at buffer 3 (a dummy when shadowKind != 2, never traced).
             if let accel = shadowAccelStructure {
-                encoder.useResource(accel, usage: .read, stages: .fragment)
+                useTracedScene(encoder, accel)
                 encoder.setFragmentAccelerationStructure(accel, bufferIndex: 3)
             }
             // Ray-traced reflections: the flat mesh buffer (whole, offset 0, for absolute
@@ -2494,7 +2494,7 @@ extension MetalRenderer {
                 // reverse of the cast). A dummy when shadowKind != 2, never traced; the cube path
                 // (shadowKind 1) needs nothing, its cube + sampler are already bound at 2.
                 if let accel = shadowAccelStructure {
-                    encoder.useResource(accel, usage: .read, stages: .fragment)
+                    useTracedScene(encoder, accel)
                     encoder.setFragmentAccelerationStructure(accel, bufferIndex: 5)
                 }
                 // The reflection-trace inputs (buffers 6/7), read only under `lighting.rtReflections`

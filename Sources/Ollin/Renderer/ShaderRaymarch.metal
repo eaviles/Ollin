@@ -601,7 +601,7 @@ fragment RaymarchFragOut ollin_raymarch_fragment(RaymarchOut in [[stage_in]],
                                                  texture2d_array<float> cookies [[texture(11)]],
                                                  texture2d<float> sheenLUT [[texture(12)]]
 #if OLLIN_RT_SHADOWS
-                                                 , primitive_acceleration_structure accel [[buffer(5)]]
+                                                 , instance_acceleration_structure accel [[buffer(5)]]
                                                  // The reflection-trace inputs (see ollin_rt_reflection),
                                                  // read only when `light.rtReflections != 0`: a
                                                  // physically-based field traces the same caster accel a

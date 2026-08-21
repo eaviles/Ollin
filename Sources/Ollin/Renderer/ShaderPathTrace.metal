@@ -219,14 +219,13 @@ struct OllinPTHit {
 // silhouette into tinted light. With no transmissive geometry in the frame the
 // cheap any-hit ray answers instead (the `anyTransmission` gate).
 static inline float3 ollin_pt_transmittance(float3 origin, float3 target, float eps,
-                                            primitive_acceleration_structure accel,
+                                            instance_acceleration_structure accel,
                                             const device OllinMeshVertex *verts,
                                             const device uint *geoOffsets,
                                             const device OllinMaterial *geoMats,
                                             bool anyTransmission) {
     if (!anyTransmission) {
-        intersection_params p;
-        p.accept_any_intersection(true);
+        intersection_params p = ollin_rt_params(true);
         return float3(traceShadowRay(origin, target, eps, accel, p));
     }
     float3 tint = float3(1.0);
@@ -243,7 +242,7 @@ static inline float3 ollin_pt_transmittance(float3 origin, float3 target, float 
         r.direction = dir;
         r.min_distance = eps;
         r.max_distance = remaining;
-        intersection_query<triangle_data> q;
+        intersection_query<triangle_data, instancing> q;
         if (!ollin_rt_query(q, r, accel)) break;
         OllinMaterial m = geoMats[q.get_committed_geometry_id()];
         if (m.shadingModel != 3 || m.transmission <= 0.0) return float3(0.0);
@@ -338,7 +337,7 @@ static inline float4 ollin_pt_sample_map(texture2d<float> tex, float2 uv,
 // the raw interpolated frame and flips to the viewed side after, so a back face
 // shows the same relief mirrored to its side.
 static inline OllinPTMapped ollin_pt_apply_maps(thread OllinPTHit &h,
-                                                thread intersection_query<triangle_data> &q,
+                                                thread intersection_query<triangle_data, instancing> &q,
                                                 const device OllinMeshVertex *verts,
                                                 const device uint *geoOffsets,
                                                 const device OllinPTTexEntry *geoTextures,
@@ -359,7 +358,8 @@ static inline OllinPTMapped ollin_pt_apply_maps(thread OllinPTHit &h,
         if (h.mat.normalScale > 0.0) h.s.N = backface ? -tri.normal : tri.normal;
         return out;
     }
-    uint base = geoOffsets[q.get_committed_geometry_id()]
+    uint base = ollin_rt_hit_lookup(geoOffsets, q.get_committed_instance_id(),
+                                    q.get_committed_geometry_id()).base
               + q.get_committed_primitive_id() * 3u;
     OllinMeshVertex a = verts[base + 0u];
     OllinMeshVertex b = verts[base + 1u];
@@ -468,7 +468,7 @@ static inline float ollin_pt_bsdf_pdf(OllinPTHit h, float3 wo, float3 wi) {
 // surface, so the two strategies split the light the way the environment pair
 // does). Emission is two-sided, matching the constant term a direct hit adds.
 static inline float3 ollin_pt_mesh_light(OllinPTHit h, float3 wo, float eps,
-                                         primitive_acceleration_structure accel,
+                                         instance_acceleration_structure accel,
                                          const device OllinMeshVertex *verts,
                                          const device uint *geoOffsets,
                                          const device OllinMaterial *geoMats,
@@ -533,7 +533,7 @@ static inline float3 ollin_pt_mesh_light(OllinPTHit h, float3 wo, float eps,
 // soft shadows come from. Visibility runs through the transparent walk, so glass
 // between a surface and a light passes tinted light instead of an opaque shadow.
 static inline float3 ollin_pt_direct(OllinPTHit h, float3 wo, float eps,
-                                     primitive_acceleration_structure accel,
+                                     instance_acceleration_structure accel,
                                      constant OllinLighting &light,
                                      uint2 gid, uint sampleIndex, uint dim,
                                      texture2d_array<float> iesProfiles,
@@ -635,7 +635,7 @@ static inline float3 ollin_pt_direct(OllinPTHit h, float3 wo, float eps,
 kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
                            constant OllinPathTraceUniforms &pt [[buffer(0)]],
                            constant OllinLighting &light [[buffer(1)]],
-                           primitive_acceleration_structure accel [[buffer(3)]],
+                           instance_acceleration_structure accel [[buffer(3)]],
                            const device OllinMeshVertex *verts [[buffer(6)]],
                            const device uint *geoOffsets [[buffer(7)]],
                            const device OllinMaterial *geoMats [[buffer(9)]],
@@ -687,7 +687,7 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
         r.direction = rd;
         r.min_distance = 0.0;
         r.max_distance = 1e9;
-        intersection_query<triangle_data> q;
+        intersection_query<triangle_data, instancing> q;
         float d = 1.0;
         if (ollin_rt_query(q, r, accel)) {
             float3 P = ro + rd * q.get_committed_distance();
@@ -781,7 +781,7 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
             r.direction = rd;
             r.min_distance = (depth == 0) ? 0.0 : eps * 0.05;
             r.max_distance = 1e9;
-            intersection_query<triangle_data> q;
+            intersection_query<triangle_data, instancing> q;
             if (!ollin_rt_query(q, r, accel)) {
                 // A bounced ray that leaves the scene picks up the environment (or
                 // the flat ambient); a primary miss leaves the pixel to the backdrop.

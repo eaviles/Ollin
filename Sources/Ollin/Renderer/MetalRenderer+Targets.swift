@@ -388,7 +388,10 @@ extension MetalRenderer {
         // conditions (the probe trace needs no environment and no caster), so build it once
         // for whichever of them is on. All of these precede the main geometry pass, so
         // trace order is satisfied either way.
-        if accel == nil, wantReflect || wantGI || wantCaustics, !meshVertices.isEmpty,
+        // A frame whose meshes are all copies still has a scene to trace, so the
+        // instanced vertices count as geometry here as well.
+        if accel == nil, wantReflect || wantGI || wantCaustics,
+           !meshVertices.isEmpty || !drawer.instancedMeshVertices.isEmpty,
            let meshBuffer,
            let built = buildShadowAccel(drawer, into: commandBuffer, meshBuffer: meshBuffer,
                                         causticMats: wantCaustics) {
@@ -1292,7 +1295,7 @@ extension MetalRenderer {
         // shadows received by the field, and the reflection trace when `rtReflections`
         // is set. A dummy when neither is active, never traced.
         if let accel = rayTracedShadows ? (traceAccel ?? ensureDummyShadowAccel()) : nil {
-            enc.useResource(accel, usage: .read, stages: .fragment)
+            useTracedScene(enc, accel)
             enc.setFragmentAccelerationStructure(accel, bufferIndex: 5)
         }
         // The reflection-trace inputs (buffers 6/7), read only under `lighting.rtReflections`;
@@ -1560,7 +1563,7 @@ extension MetalRenderer {
     /// a live frame applies). Tests only.
     func debugVelocityReadback(_ drawer: Drawer, width: Int, height: Int,
                                previousViewProjection: simd_float4x4) -> [SIMD2<Float>]? {
-        guard let meshBuffer = exportMeshBuffer(for: drawer.meshVertices.count) else { return nil }
+        guard let meshBuffer = exportMeshBuffer(for: tracedMeshVertexCount(drawer)) else { return nil }
         if !drawer.meshVertices.isEmpty {
             drawer.meshVertices.withUnsafeBytes { raw in
                 meshBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
@@ -2057,7 +2060,7 @@ extension MetalRenderer {
         trace.setFragmentBytes(&traceParams, length: MemoryLayout<SIMD4<Float>>.stride, index: 0)
         trace.setFragmentBytes(&lighting, length: MemoryLayout<OllinLighting>.stride, index: 1)
         trace.setFragmentBytes(&u3, length: MemoryLayout<Uniforms3D>.stride, index: 2)
-        trace.useResource(accel, usage: .read, stages: .fragment)
+        useTracedScene(trace, accel)
         trace.setFragmentAccelerationStructure(accel, bufferIndex: 3)
         trace.setFragmentBuffer(meshBuffer, offset: 0, index: 6)
         trace.setFragmentBuffer(geoOffsets, offset: 0, index: 7)
@@ -2644,7 +2647,7 @@ extension MetalRenderer {
                 trace.setFragmentBytes(raw.baseAddress!, length: raw.count, index: 0)
             }
             trace.setFragmentBytes(&lighting, length: MemoryLayout<OllinLighting>.stride, index: 1)
-            trace.useResource(accel, usage: .read, stages: .fragment)
+            useTracedScene(trace, accel)
             trace.setFragmentAccelerationStructure(accel, bufferIndex: 3)
             trace.setFragmentBuffer(meshBuffer, offset: 0, index: 6)
             trace.setFragmentBuffer(geoOffsets, offset: 0, index: 7)
@@ -3018,38 +3021,193 @@ extension MetalRenderer {
             }
         }
         flushRun()
-        guard !geometries.isEmpty else { return nil }
+
+        // The copies of every instanced draw. Each becomes one instance of its base
+        // mesh's own structure, so the copy costs a matrix rather than a triangle list,
+        // which is the whole reason the instanced call exists. Their base vertices are
+        // appended to the mesh buffer after the plain ones, so a single pointer still
+        // serves the hit fetch. Two exclusions: the path-traced export takes the plain
+        // meshes alone (its material tables are per geometry, and a copy has none of its
+        // own), and a mesh buffer that has no room for the appended vertices leaves the
+        // copies out rather than writing past its end.
+        struct CopyGroup {
+            var vertexStart = 0, vertexCount = 0, instanceStart = 0, instanceCount = 0
+        }
+        var copyGroups: [CopyGroup] = []
+        let copyVertexBase = meshVertices.count
+        let copyVertices = drawer.instancedMeshVertices
+        if !pathTraceMats, !copyVertices.isEmpty,
+           meshBuffer.length >= (copyVertexBase + copyVertices.count) * meshStride {
+            for batch in batches where batch.kind == .meshInstanced && batch.meshInstanceCount > 0 {
+                guard batch.instancedVertexCount >= 3,
+                      batch.meshInstanceStart + batch.meshInstanceCount <= drawer.meshInstances.count
+                else { continue }
+                copyGroups.append(CopyGroup(vertexStart: batch.instancedVertexStart,
+                                            vertexCount: batch.instancedVertexCount,
+                                            instanceStart: batch.meshInstanceStart,
+                                            instanceCount: batch.meshInstanceCount))
+            }
+            if !copyGroups.isEmpty {
+                copyVertices.withUnsafeBytes { raw in
+                    meshBuffer.contents().advanced(by: copyVertexBase * meshStride)
+                        .copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+                }
+            }
+        }
+        guard !geometries.isEmpty || !copyGroups.isEmpty else { return nil }
 
         // A plain (non-refittable) build: a refittable structure trades traversal speed for
         // the cheaper refit, and on a software-ray-tracing GPU (no RT hardware, e.g. M1/M2)
         // the per-ray traversal — millions of rays — dwarfs the per-frame build, so the
-        // faster-to-traverse tree wins. Rebuild each frame; grow the structure in place only
-        // when the scene outgrows it.
-        let desc = MTLPrimitiveAccelerationStructureDescriptor()
-        desc.geometryDescriptors = geometries
-        let sizes = device.accelerationStructureSizes(descriptor: desc)
-        if shadowAccel == nil || shadowAccelCapacity < sizes.accelerationStructureSize {
-            shadowAccel = device.makeAccelerationStructure(size: sizes.accelerationStructureSize)
-            shadowAccelCapacity = sizes.accelerationStructureSize
+        // faster-to-traverse tree wins. Rebuild each frame; grow the structures in place
+        // only when the scene outgrows them.
+        var descs: [MTLPrimitiveAccelerationStructureDescriptor] = []
+        if !geometries.isEmpty {
+            let d = MTLPrimitiveAccelerationStructureDescriptor()
+            d.geometryDescriptors = geometries
+            descs.append(d)
         }
-        if (shadowAccelScratch?.length ?? 0) < sizes.buildScratchBufferSize {
-            shadowAccelScratch = device.makeBuffer(length: max(1, sizes.buildScratchBufferSize),
+        let hasScene = !geometries.isEmpty
+        for group in copyGroups {
+            let geo = MTLAccelerationStructureTriangleGeometryDescriptor()
+            geo.vertexBuffer = meshBuffer
+            geo.vertexBufferOffset = (copyVertexBase + group.vertexStart) * meshStride
+            geo.vertexStride = meshStride
+            geo.vertexFormat = .float3
+            geo.triangleCount = group.vertexCount / 3
+            geo.opaque = true
+            let d = MTLPrimitiveAccelerationStructureDescriptor()
+            d.geometryDescriptors = [geo]
+            descs.append(d)
+        }
+
+        // Every structure this frame needs, allocated (and grown) before anything builds,
+        // so the one scratch buffer below can be sized for the whole set at once.
+        var structures: [MTLAccelerationStructure] = []
+        var scratchNeeded = 0
+        var scratchOffsets: [Int] = []
+        for (i, d) in descs.enumerated() {
+            let sizes = device.accelerationStructureSizes(descriptor: d)
+            let structure: MTLAccelerationStructure?
+            if i == 0 && hasScene {
+                if shadowAccel == nil || shadowAccelCapacity < sizes.accelerationStructureSize {
+                    shadowAccel = device.makeAccelerationStructure(size: sizes.accelerationStructureSize)
+                    shadowAccelCapacity = sizes.accelerationStructureSize
+                }
+                structure = shadowAccel
+            } else {
+                let slot = hasScene ? i - 1 : i
+                while rtCopyAccels.count <= slot {
+                    guard let fresh = device.makeAccelerationStructure(size: max(1, sizes.accelerationStructureSize))
+                    else { return nil }
+                    rtCopyAccels.append(fresh)
+                    rtCopyAccelCapacities.append(sizes.accelerationStructureSize)
+                }
+                if rtCopyAccelCapacities[slot] < sizes.accelerationStructureSize {
+                    guard let grown = device.makeAccelerationStructure(size: sizes.accelerationStructureSize)
+                    else { return nil }
+                    rtCopyAccels[slot] = grown
+                    rtCopyAccelCapacities[slot] = sizes.accelerationStructureSize
+                }
+                structure = rtCopyAccels[slot]
+            }
+            guard let structure else { return nil }
+            structures.append(structure)
+            scratchOffsets.append(scratchNeeded)
+            scratchNeeded += (sizes.buildScratchBufferSize + 255) / 256 * 256
+        }
+
+        // One instance per copy, plus one for the plain meshes when the frame drew any.
+        // The plain-mesh instance goes first and sits square at the origin: its vertices
+        // carry their own placement already, so its matrix is the identity.
+        var instanceDescs: [MTLAccelerationStructureInstanceDescriptor] = []
+        var records: [UInt32] = []
+        func record(vertexBase: UInt32, tint: SIMD4<Float>) {
+            records.append(vertexBase)
+            records.append(tint.x.bitPattern)
+            records.append(tint.y.bitPattern)
+            records.append(tint.z.bitPattern)
+        }
+        func instance(_ model: simd_float4x4, structureIndex: Int) {
+            var d = MTLAccelerationStructureInstanceDescriptor()
+            d.accelerationStructureIndex = UInt32(structureIndex)
+            d.options = .opaque
+            d.mask = 0xFF
+            d.intersectionFunctionTableOffset = 0
+            d.transformationMatrix = MTLPackedFloat4x3(columns: (
+                MTLPackedFloat3Make(model.columns.0.x, model.columns.0.y, model.columns.0.z),
+                MTLPackedFloat3Make(model.columns.1.x, model.columns.1.y, model.columns.1.z),
+                MTLPackedFloat3Make(model.columns.2.x, model.columns.2.y, model.columns.2.z),
+                MTLPackedFloat3Make(model.columns.3.x, model.columns.3.y, model.columns.3.z)))
+            instanceDescs.append(d)
+        }
+        if hasScene {
+            instance(matrix_identity_float4x4, structureIndex: 0)
+            record(vertexBase: MetalRenderer.rtPlainMesh, tint: SIMD4<Float>(1, 1, 1, 1))
+        }
+        for (i, group) in copyGroups.enumerated() {
+            let structureIndex = (hasScene ? 1 : 0) + i
+            let base = UInt32(copyVertexBase + group.vertexStart)
+            for k in 0..<group.instanceCount {
+                let placement = drawer.meshInstances[group.instanceStart + k]
+                instance(placement.model, structureIndex: structureIndex)
+                record(vertexBase: base, tint: placement.color)
+            }
+        }
+
+        let instanceStride = MemoryLayout<MTLAccelerationStructureInstanceDescriptor>.stride
+        let instanceLength = max(instanceStride, instanceDescs.count * instanceStride)
+        if (rtInstanceDescriptorBuffers[frameIndex]?.length ?? 0) < instanceLength {
+            rtInstanceDescriptorBuffers[frameIndex] = device.makeBuffer(length: instanceLength,
+                                                                        options: .storageModeShared)
+        }
+        guard let instanceBuffer = rtInstanceDescriptorBuffers[frameIndex] else { return nil }
+        instanceDescs.withUnsafeBytes { raw in
+            instanceBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+        }
+        let instanceDesc = MTLInstanceAccelerationStructureDescriptor()
+        instanceDesc.instancedAccelerationStructures = structures
+        instanceDesc.instanceCount = instanceDescs.count
+        instanceDesc.instanceDescriptorBuffer = instanceBuffer
+        let instanceSizes = device.accelerationStructureSizes(descriptor: instanceDesc)
+        if rtInstanceAccel == nil || rtInstanceAccelCapacity < instanceSizes.accelerationStructureSize {
+            rtInstanceAccel = device.makeAccelerationStructure(size: instanceSizes.accelerationStructureSize)
+            rtInstanceAccelCapacity = instanceSizes.accelerationStructureSize
+        }
+        let instanceScratchOffset = scratchNeeded
+        scratchNeeded += (instanceSizes.buildScratchBufferSize + 255) / 256 * 256
+        if (shadowAccelScratch?.length ?? 0) < scratchNeeded {
+            shadowAccelScratch = device.makeBuffer(length: max(1, scratchNeeded),
                                                    options: .storageModePrivate)
         }
-        guard let accel = shadowAccel, let scratch = shadowAccelScratch,
+        rtReferencedAccels = structures
+        guard let accel = rtInstanceAccel, let scratch = shadowAccelScratch,
               let enc = commandBuffer.makeAccelerationStructureCommandEncoder() else { return nil }
-        enc.build(accelerationStructure: accel, descriptor: desc,
-                  scratchBuffer: scratch, scratchBufferOffset: 0)
+        for (i, d) in descs.enumerated() {
+            enc.build(accelerationStructure: structures[i], descriptor: d,
+                      scratchBuffer: scratch, scratchBufferOffset: scratchOffsets[i])
+        }
         enc.endEncoding()
-        // The per-geometry base-vertex offsets, uploaded for the reflection hit fetch. Filled
-        // CPU-side here (before the command buffer commits), so the main pass reads them this
-        // frame, through the frame ring, never a shared buffer an in-flight frame still reads.
-        let offsetsLength = max(MemoryLayout<UInt32>.stride, geoOffsets.count * MemoryLayout<UInt32>.stride)
+        // The instance structure refers to the ones just built, so it takes its own
+        // encoder: two encoders in one command buffer run in the order they were made.
+        guard let instanceEnc = commandBuffer.makeAccelerationStructureCommandEncoder() else { return nil }
+        instanceEnc.build(accelerationStructure: accel, descriptor: instanceDesc,
+                          scratchBuffer: scratch, scratchBufferOffset: instanceScratchOffset)
+        instanceEnc.endEncoding()
+        // The hit-lookup table, uploaded for the reflection hit fetch. Filled CPU-side here
+        // (before the command buffer commits), so the main pass reads it this frame, through
+        // the frame ring, never a shared buffer an in-flight frame still reads. Layout, which
+        // `ollin_rt_hit_lookup` reads back: the instance count, then that many four-uint
+        // records, then one base-vertex index per geometry of the plain-mesh instance.
+        var table: [UInt32] = [UInt32(instanceDescs.count)]
+        table.append(contentsOf: records)
+        table.append(contentsOf: geoOffsets)
+        let offsetsLength = max(MemoryLayout<UInt32>.stride, table.count * MemoryLayout<UInt32>.stride)
         if (meshGeoOffsetBuffers[frameIndex]?.length ?? 0) < offsetsLength {
             meshGeoOffsetBuffers[frameIndex] = device.makeBuffer(length: offsetsLength, options: .storageModeShared)
         }
         guard let offsetsBuffer = meshGeoOffsetBuffers[frameIndex] else { return nil }
-        geoOffsets.withUnsafeBytes { raw in
+        table.withUnsafeBytes { raw in
             offsetsBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
         }
         // The per-geometry caustic materials, riding the same per-frame ring.
@@ -3177,8 +3335,24 @@ extension MetalRenderer {
     /// ray-traced point shadow is active this frame, so the fragment's declared
     /// `primitive_acceleration_structure` argument is always satisfied (it only traces
     /// when `shadowKind == 2`). Built once, far from any scene so it never matters.
+    /// Bind-time residency for the traced scene. The bound structure is an *instance*
+    /// structure, which reaches the structures it was built over indirectly, and an
+    /// encoder does not make those resident on its own. Every site that binds the scene
+    /// goes through here so none of them can forget.
+    func useTracedScene(_ enc: MTLRenderCommandEncoder, _ accel: MTLAccelerationStructure) {
+        enc.useResource(accel, usage: .read, stages: .fragment)
+        let referenced = rtReferencedAccels + [dummyShadowAccel].compactMap { $0 }
+        if !referenced.isEmpty { enc.useResources(referenced, usage: .read, stages: .fragment) }
+    }
+
+    func useTracedScene(_ enc: MTLComputeCommandEncoder, _ accel: MTLAccelerationStructure) {
+        enc.useResource(accel, usage: .read)
+        let referenced = rtReferencedAccels + [dummyShadowAccel].compactMap { $0 }
+        if !referenced.isEmpty { enc.useResources(referenced, usage: .read) }
+    }
+
     func ensureDummyShadowAccel() -> MTLAccelerationStructure? {
-        if let a = dummyShadowAccel { return a }
+        if let a = dummyInstanceAccel { return a }
         var verts: [SIMD3<Float>] = [SIMD3(1e6, 1e6, 1e6), SIMD3(1e6 + 1, 1e6, 1e6),
                                      SIMD3(1e6, 1e6 + 1, 1e6)]
         let vbuf = device.makeBuffer(bytes: &verts, length: MemoryLayout<SIMD3<Float>>.stride * 3,
@@ -3191,16 +3365,43 @@ extension MetalRenderer {
         let desc = MTLPrimitiveAccelerationStructureDescriptor()
         desc.geometryDescriptors = [geo]
         let sizes = device.accelerationStructureSizes(descriptor: desc)
+        // The bound argument is an instance structure, so the stand-in is one too: one
+        // instance of the single far-away triangle, at the origin.
+        var one = MTLAccelerationStructureInstanceDescriptor()
+        one.accelerationStructureIndex = 0
+        one.options = .opaque
+        one.mask = 0xFF
+        one.transformationMatrix = MTLPackedFloat4x3(columns: (
+            MTLPackedFloat3Make(1, 0, 0), MTLPackedFloat3Make(0, 1, 0),
+            MTLPackedFloat3Make(0, 0, 1), MTLPackedFloat3Make(0, 0, 0)))
         guard let accel = device.makeAccelerationStructure(size: sizes.accelerationStructureSize),
-              let scratch = device.makeBuffer(length: max(1, sizes.buildScratchBufferSize),
-                                              options: .storageModePrivate),
+              let instanceBuffer = device.makeBuffer(
+                  bytes: &one,
+                  length: MemoryLayout<MTLAccelerationStructureInstanceDescriptor>.stride,
+                  options: .storageModeShared)
+        else { return nil }
+        let instanceDesc = MTLInstanceAccelerationStructureDescriptor()
+        instanceDesc.instancedAccelerationStructures = [accel]
+        instanceDesc.instanceCount = 1
+        instanceDesc.instanceDescriptorBuffer = instanceBuffer
+        let instanceSizes = device.accelerationStructureSizes(descriptor: instanceDesc)
+        guard let instanceAccel = device.makeAccelerationStructure(size: instanceSizes.accelerationStructureSize),
+              let scratch = device.makeBuffer(
+                  length: max(1, max(sizes.buildScratchBufferSize,
+                                     instanceSizes.buildScratchBufferSize)),
+                  options: .storageModePrivate),
               let cb = commandQueue.makeCommandBuffer(),
               let enc = cb.makeAccelerationStructureCommandEncoder() else { return nil }
         enc.build(accelerationStructure: accel, descriptor: desc,
                   scratchBuffer: scratch, scratchBufferOffset: 0)
-        enc.endEncoding(); cb.commit(); cb.waitUntilCompleted()
-        dummyShadowAccel = accel
-        return dummyShadowAccel
+        enc.endEncoding()
+        guard let instanceEnc = cb.makeAccelerationStructureCommandEncoder() else { return nil }
+        instanceEnc.build(accelerationStructure: instanceAccel, descriptor: instanceDesc,
+                          scratchBuffer: scratch, scratchBufferOffset: 0)
+        instanceEnc.endEncoding(); cb.commit(); cb.waitUntilCompleted()
+        dummyShadowAccel = accel        // held: the instance structure refers to it
+        dummyInstanceAccel = instanceAccel
+        return dummyInstanceAccel
     }
 
     /// A 1-element per-geometry-offset buffer bound at fragment buffer 7 whenever ray-traced
@@ -3209,8 +3410,11 @@ extension MetalRenderer {
     /// reflection hit, which can't happen when `lighting.rtReflections == 0`).
     func ensureDummyGeoOffsets() -> MTLBuffer? {
         if let b = dummyGeoOffsets { return b }
-        var zero: UInt32 = 0
-        dummyGeoOffsets = device.makeBuffer(bytes: &zero, length: MemoryLayout<UInt32>.stride,
+        // Two elements, not one: the lookup table reads its instance count first, and a
+        // count of zero then sends the geometry read to the element after it.
+        var empty: [UInt32] = [0, 0]
+        dummyGeoOffsets = device.makeBuffer(bytes: &empty,
+                                            length: MemoryLayout<UInt32>.stride * 2,
                                             options: .storageModeShared)
         return dummyGeoOffsets
     }

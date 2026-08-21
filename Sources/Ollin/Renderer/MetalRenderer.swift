@@ -759,12 +759,34 @@ final class MetalRenderer {
     /// shadow-caster triangles) and its scratch buffer, both grown in place as the scene
     /// size demands. `dummyShadowAccel` is a 1-triangle structure bound to the lit mesh
     /// fragment whenever no RT point shadow is active this frame, so its declared
-    /// `primitive_acceleration_structure` argument is always satisfied (the fragment only
+    /// `instance_acceleration_structure` argument is always satisfied (the fragment only
     /// traces it when `shadowKind == 2`).
     var shadowAccel: MTLAccelerationStructure?
     var shadowAccelScratch: MTLBuffer?
     var shadowAccelCapacity = 0
     var dummyShadowAccel: MTLAccelerationStructure?
+    /// The traced scene is an *instance* structure over the structures above: one
+    /// instance for every mesh drawn on its own (`shadowAccel`, its vertices already
+    /// placed) and one per copy of an instanced draw, each referring to its base
+    /// mesh's own structure (`rtCopyAccels`, one per instanced batch) and carrying
+    /// that copy's matrix. That is what puts a copy in a mirror, in a traced shadow,
+    /// and in the bounce light, all of which see one structure. Same grow-in-place
+    /// rule as the scene structure, and the descriptors ride the per-frame ring
+    /// because the build reads them on the GPU.
+    var rtCopyAccels: [MTLAccelerationStructure] = []
+    var rtCopyAccelCapacities: [Int] = []
+    var rtInstanceAccel: MTLAccelerationStructure?
+    var rtInstanceAccelCapacity = 0
+    var rtInstanceDescriptorBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
+    var dummyInstanceAccel: MTLAccelerationStructure?
+    /// The structures the traced scene's instance structure is built over. An instance
+    /// structure reaches them indirectly, so an encoder that binds the top one has to
+    /// mark these resident itself, which `useTracedScene` does at every bind site.
+    var rtReferencedAccels: [MTLAccelerationStructure] = []
+    /// The base-vertex value that marks the plain-mesh instance in the hit-lookup
+    /// table: it reads the per-geometry table instead of carrying one vertex of its
+    /// own. Mirrors `OLLIN_RT_PLAIN_MESH` in the shader library.
+    static let rtPlainMesh: UInt32 = 0xFFFF_FFFF
     /// Ray-traced reflections: per-geometry base-vertex offsets (one `UInt32` per coalesced
     /// caster geometry in `shadowAccel`) so a reflection hit's `(geometryId, primitiveId)`
     /// resolves to a vertex in the flat mesh buffer. Filled CPU-side in `buildShadowAccel`,
@@ -1597,7 +1619,7 @@ final class MetalRenderer {
         // Shadow depth pass from the casting light, ahead of the geometry pass in the
         // same command buffer (a no-op returning nil when this frame casts no shadow).
         // It shares the mesh vertex buffer the geometry pass uses.
-        let meshBuf = meshBuffer(at: frameIndex, for: drawer.meshVertices.count)
+        let meshBuf = meshBuffer(at: frameIndex, for: tracedMeshVertexCount(drawer))
         let renderedShadow = encodeShadowPass(
             drawer, into: commandBuffer, meshBuffer: meshBuf,
             instancedMeshBuffer: drawer.instancedMeshVertices.isEmpty ? nil
@@ -1865,7 +1887,7 @@ final class MetalRenderer {
                imageBuffer: imageBuffer(at: frameIndex, for: drawer.imageVertices.count),
                glyphBuffer: glyphBuffer(at: frameIndex, for: drawer.glyphVertices.count),
                pointBuffer: pointBuffer(at: frameIndex, for: drawer.points.count),
-               meshBuffer: meshBuffer(at: frameIndex, for: drawer.meshVertices.count),
+               meshBuffer: meshBuffer(at: frameIndex, for: tracedMeshVertexCount(drawer)),
                sdfGroupBuffer: sdfGroupBuffer(at: frameIndex, for: drawer.sdfGroups.count),
                sdfNodeBuffer: sdfNodeBuffer(at: frameIndex, for: drawer.sdfNodes.count),
                sdf3DGroupBuffer: sdf3DGroupBuffer(at: frameIndex, for: drawer.sdf3DGroups.count),
@@ -1945,7 +1967,7 @@ final class MetalRenderer {
                imageBuffer: exportImageBuffer(for: drawer.imageVertices.count),
                glyphBuffer: exportGlyphBuffer(for: drawer.glyphVertices.count),
                pointBuffer: exportPointBuffer(for: drawer.points.count),
-               meshBuffer: exportMeshBuffer(for: drawer.meshVertices.count),
+               meshBuffer: exportMeshBuffer(for: tracedMeshVertexCount(drawer)),
                sdfGroupBuffer: exportSDFGroupBuffer(for: drawer.sdfGroups.count),
                sdfNodeBuffer: exportSDFNodeBuffer(for: drawer.sdfNodes.count),
                sdf3DGroupBuffer: exportSDF3DGroupBuffer(for: drawer.sdf3DGroups.count),
@@ -2203,7 +2225,7 @@ final class MetalRenderer {
         ensureSheenLUT(for: drawer, commandBuffer: commandBuffer)
         // Shadow depth pass (nil when this frame casts no shadow), sharing the export
         // mesh buffer; so the headless/snapshot path shadows exactly like the window.
-        let meshBuf = exportMeshBuffer(for: drawer.meshVertices.count)
+        let meshBuf = exportMeshBuffer(for: tracedMeshVertexCount(drawer))
         let renderedShadow = encodeShadowPass(
             drawer, into: commandBuffer, meshBuffer: meshBuf,
             instancedMeshBuffer: drawer.instancedMeshVertices.isEmpty ? nil
@@ -2453,7 +2475,7 @@ final class MetalRenderer {
               let resolveTexture = makeFloatResolve(width: width, height: height),
               let displayTexture = makeDisplayTexture(width: width, height: height) else { return 0 }
         let depthTexture = drawer.usesDepthBuffer ? makeDepthMSAA(width: width, height: height) : nil
-        let meshBuf = exportMeshBuffer(for: drawer.meshVertices.count)
+        let meshBuf = exportMeshBuffer(for: tracedMeshVertexCount(drawer))
         // The frame's geometry uploads, shared by the effect-target passes and the main
         // pass, so a sketch that uses effects (e.g. a `.defocus` combine) is timed in full.
         let buffers = GeometryBuffers(
@@ -2652,7 +2674,7 @@ final class MetalRenderer {
                imageBuffer: exportImageBuffer(for: drawer.imageVertices.count),
                glyphBuffer: exportGlyphBuffer(for: drawer.glyphVertices.count),
                pointBuffer: exportPointBuffer(for: drawer.points.count),
-               meshBuffer: exportMeshBuffer(for: drawer.meshVertices.count),
+               meshBuffer: exportMeshBuffer(for: tracedMeshVertexCount(drawer)),
                sdfGroupBuffer: exportSDFGroupBuffer(for: drawer.sdfGroups.count),
                sdfNodeBuffer: exportSDFNodeBuffer(for: drawer.sdfNodes.count),
                sdf3DGroupBuffer: exportSDF3DGroupBuffer(for: drawer.sdf3DGroups.count),

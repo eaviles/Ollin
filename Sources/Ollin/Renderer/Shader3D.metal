@@ -928,12 +928,24 @@ static inline float3 ollin_apply_aerial(float3 rgb, float3 worldPos, float2 pixe
 }
 
 #if OLLIN_RT_SHADOWS
+// What every query in this file assumes about the traced scene: triangles only, and all
+// of them opaque (the structure is built that way). Saying so lets traversal commit a hit
+// on its own, so the candidate loop each caller writes never has to run, and it costs the
+// same whether the scene is one structure or one per copy.
+static inline intersection_params ollin_rt_params(bool anyHit = false) {
+    intersection_params p;
+    p.assume_geometry_type(geometry_type::triangle);
+    p.force_opacity(forced_opacity::opaque);
+    if (anyHit) p.accept_any_intersection(true);
+    return p;
+}
+
 // One shadow ray from `origin` toward `target`: 1 if that light point is visible, 0 if an
 // occluder lies between. The structure is built opaque, so an opaque triangle hit commits
 // automatically and `accept_any_intersection` stops at the first one (a shadow ray needs
 // no closest hit); the candidate-commit loop covers the general case.
 static inline float traceShadowRay(float3 origin, float3 target, float eps,
-                                   primitive_acceleration_structure accel,
+                                   instance_acceleration_structure accel,
                                    intersection_params params) {
     float3 sv = target - origin;
     float sd = length(sv);
@@ -942,7 +954,7 @@ static inline float traceShadowRay(float3 origin, float3 target, float eps,
     r.direction = sv / max(sd, 1e-5);
     r.min_distance = eps;
     r.max_distance = sd - eps;                     // stop just short of the light
-    intersection_query<triangle_data> q;
+    intersection_query<triangle_data, instancing> q;
     q.reset(r, accel, params);
     while (q.next()) {
         if (q.get_candidate_intersection_type() == intersection_type::triangle)
@@ -967,14 +979,13 @@ static inline float traceShadowRay(float3 origin, float3 target, float eps,
 // per-hardware ray budget is a clean future refinement). Same swap-point as `shadowFactorCube`.
 static inline float shadowFactorRayTraced(float3 worldPos, float3 n, float3 lightPos,
                                           float lightRadius, float eps, int samples,
-                                          primitive_acceleration_structure accel) {
+                                          instance_acceleration_structure accel) {
     float3 origin = worldPos + n * eps;            // lift off the surface (self-hit guard)
     float3 dir = normalize(lightPos - origin);
     float3 up = abs(dir.y) > 0.99 ? float3(0, 0, 1) : float3(0, 1, 0);
     float3 tangent = normalize(cross(up, dir));
     float3 bitangent = cross(dir, tangent);
-    intersection_params params;
-    params.accept_any_intersection(true);
+    intersection_params params = ollin_rt_params(true);
     int n_samples = max(samples, 1);               // rays/pixel (the resolved quality tier)
     float lit = 0.0;
     for (int i = 0; i < n_samples; i++) {
@@ -999,10 +1010,9 @@ static inline float shadowFactorRayTraced(float3 worldPos, float3 n, float3 ligh
 // point path.
 static inline float shadowFactorRayTracedArea(float3 worldPos, float3 n, OllinLight L,
                                               float scale, float eps, int samples,
-                                              primitive_acceleration_structure accel) {
+                                              instance_acceleration_structure accel) {
     float3 origin = worldPos + n * eps;            // lift off the surface (self-hit guard)
-    intersection_params params;
-    params.accept_any_intersection(true);
+    intersection_params params = ollin_rt_params(true);
     int n_samples = max(samples, 1);               // rays/pixel (the resolved quality tier)
     float lit = 0.0;
     if (L.kind == 4) {
@@ -1042,7 +1052,7 @@ static inline float shadowFactorRayTracedArea(float3 worldPos, float3 n, OllinLi
 static inline float meshRTShadowOne(float3 worldPos, float3 normal,
                                     constant OllinLighting &light,
                                     constant OllinShadowCaster &sc,
-                                    primitive_acceleration_structure accel) {
+                                    instance_acceleration_structure accel) {
     if (sc.kind != 2) return 1.0;
     OllinLight caster = light.lights[sc.lightIndex];
     if (caster.kind >= 3) {
@@ -1063,7 +1073,7 @@ static inline float meshRTShadowOne(float3 worldPos, float3 normal,
 // is a float4.
 static inline float4 meshRTShadowAll(float3 worldPos, float3 normal,
                                      constant OllinLighting &light,
-                                     primitive_acceleration_structure accel) {
+                                     instance_acceleration_structure accel) {
     float4 factors = float4(1.0);
     // A constant trip count, with the frame's own count as the exit: the compiler then
     // unrolls it and each write lands on a named component, rather than indexing a vector
@@ -1082,7 +1092,7 @@ static inline float4 meshRTShadowAll(float3 worldPos, float3 normal,
 // linearization; a miss is an open sheet, zero thickness (the cube path's rule).
 static inline float meshRTThicknessOne(float3 worldPos, float3 normal, OllinLight caster,
                                        float texelWorld,
-                                       primitive_acceleration_structure accel) {
+                                       instance_acceleration_structure accel) {
     float3 n = normalize(normal);
     float3 origin = worldPos - n * (texelWorld * 2.0);
     float3 sv = caster.position.xyz - origin;
@@ -1092,8 +1102,8 @@ static inline float meshRTThicknessOne(float3 worldPos, float3 normal, OllinLigh
     r.direction = sv / max(sd, 1e-5);
     r.min_distance = 0.0;
     r.max_distance = sd;
-    intersection_params params;
-    intersection_query<triangle_data> q;
+    intersection_params params = ollin_rt_params();
+    intersection_query<triangle_data, instancing> q;
     q.reset(r, accel, params);
     while (q.next()) {
         if (q.get_candidate_intersection_type() == intersection_type::triangle)
@@ -1112,7 +1122,7 @@ static inline float meshRTThicknessOne(float3 worldPos, float3 normal, OllinLigh
 // `rtShadow`.
 static inline float4 meshRTThicknessAll(float3 worldPos, float3 normal,
                                         constant OllinLighting &light,
-                                        primitive_acceleration_structure accel) {
+                                        instance_acceleration_structure accel) {
     float4 t = float4(0.0);
     for (int c = 0; c < OLLIN_MAX_SHADOW_CASTERS; c++) {
         if (c >= light.shadowCasterCount) break;
@@ -1138,7 +1148,7 @@ static inline float4 meshRTThicknessAll(float3 worldPos, float3 normal,
 // the scene, so it returns the environment reflection (`envReflection`, the prefilter sample
 // the caller already computed), the standard hybrid-rendering miss fallback.
 // On a **hit** it fetches the hit triangle's three vertices from the flat (non-indexed) mesh
-// buffer (`geoOffsets[geometryId]` is the geometry's base vertex, `primId·3 + {0,1,2}` the
+// buffer (the lookup table gives the geometry's base vertex, `primId·3 + {0,1,2}` the
 // corners), interpolates the world-space normal + color by the barycentric coordinate, and
 // shades the hit **one bounce** (no recursion), **metalness-aware**: the hit's metalness +
 // roughness are baked per vertex (the spare `OllinMeshVertex` w slots), so a metal hit shows
@@ -1159,13 +1169,56 @@ struct OllinRTSurface {
     float  rough;     // baked per-vertex roughness (position.w), clamped
 };
 
-static inline OllinRTSurface ollin_rt_fetch_surface(thread intersection_query<triangle_data> &q,
+// Where a hit's triangle sits, and what the copy that carries it does to the color.
+// The traced scene is an instance structure: one instance holds every mesh drawn on
+// its own (their vertices already in world space), and one instance holds each copy
+// of an instanced draw (its vertices in the base mesh's own space, the copy's matrix
+// on the instance). `table` resolves which is which. Its layout, filled beside the
+// structure on the CPU: [0] is the instance-record count N, then N records of four
+// uints each (the copy's base vertex, then its tint as three float bit patterns),
+// then one base-vertex index per geometry of the plain-mesh instance. A record whose
+// base vertex reads OLLIN_RT_PLAIN_MESH takes the geometry table instead, which is
+// what the plain-mesh instance always does.
+#define OLLIN_RT_PLAIN_MESH 0xFFFFFFFFu
+
+struct OllinRTHit {
+    uint   base;      // first vertex of the hit triangle in the mesh buffer
+    float3 tint;      // the copy's own color, white for a plain mesh
+    bool   copied;    // true when the hit is a copy, so its vertices are unplaced
+};
+
+static inline OllinRTHit ollin_rt_hit_lookup(const device uint *table,
+                                             uint instanceId, uint geometryId) {
+    OllinRTHit h;
+    h.tint = float3(1.0);
+    h.copied = false;
+    uint n = table[0];
+    uint vertexBase = OLLIN_RT_PLAIN_MESH;
+    if (instanceId < n) {
+        uint r = 1u + instanceId * 4u;
+        vertexBase = table[r];
+        h.tint = float3(as_type<float>(table[r + 1u]),
+                        as_type<float>(table[r + 2u]),
+                        as_type<float>(table[r + 3u]));
+    }
+    if (vertexBase == OLLIN_RT_PLAIN_MESH) {
+        h.base = table[1u + n * 4u + geometryId];
+    } else {
+        h.base = vertexBase;
+        h.copied = true;
+    }
+    return h;
+}
+
+static inline OllinRTSurface ollin_rt_fetch_surface(thread intersection_query<triangle_data, instancing> &q,
                                                     const device OllinMeshVertex *verts,
                                                     const device uint *geoOffsets,
                                                     float3 origin, float3 dir,
                                                     thread bool &backface) {
     // Fetch the hit triangle from the flat mesh buffer and interpolate its attributes.
-    uint base = geoOffsets[q.get_committed_geometry_id()] + q.get_committed_primitive_id() * 3u;
+    OllinRTHit hit = ollin_rt_hit_lookup(geoOffsets, q.get_committed_instance_id(),
+                                         q.get_committed_geometry_id());
+    uint base = hit.base + q.get_committed_primitive_id() * 3u;
     OllinMeshVertex a = verts[base + 0u];
     OllinMeshVertex b = verts[base + 1u];
     OllinMeshVertex c = verts[base + 2u];
@@ -1173,6 +1226,14 @@ static inline OllinRTSurface ollin_rt_fetch_surface(thread intersection_query<tr
     float3 w = float3(1.0 - bc.x - bc.y, bc.x, bc.y);
     OllinRTSurface s;
     s.N = normalize(w.x * a.normal.xyz + w.y * b.normal.xyz + w.z * c.normal.xyz);
+    // A copy's vertices are in the base mesh's own space, so its normal needs the
+    // copy's placement. The correct map for a normal is the inverse transpose of the
+    // placement, which is the transpose of the world-to-object matrix the query
+    // already holds, so an unevenly scaled copy still shades square to its surface.
+    if (hit.copied) {
+        float4x3 w2o = q.get_committed_world_to_object_transform();
+        s.N = normalize(float3(dot(w2o[0], s.N), dot(w2o[1], s.N), dot(w2o[2], s.N)));
+    }
     // An open mesh's back face (or a ray that started inside geometry) hits with
     // its normal pointing away from the ray; flip it toward the ray so Fresnel and
     // irradiance shade the visible side instead of blowing out white at NoV 0.
@@ -1181,7 +1242,7 @@ static inline OllinRTSurface ollin_rt_fetch_surface(thread intersection_query<tr
     backface = dot(s.N, dir) > 0.0;
     if (backface) s.N = -s.N;
     // Vertex color is straight sRGB (the baked `fill`), like the rasterized fragment.
-    s.albedo = srgbToLinear(w.x * a.color.rgb + w.y * b.color.rgb + w.z * c.color.rgb);
+    s.albedo = srgbToLinear(w.x * a.color.rgb + w.y * b.color.rgb + w.z * c.color.rgb) * hit.tint;
     // Metalness + roughness are baked per vertex into the spare w slots (constant across
     // the triangle), so a hit shades as the surface it is.
     s.metal = clamp(a.normal.w, 0.0, 1.0);
@@ -1190,7 +1251,7 @@ static inline OllinRTSurface ollin_rt_fetch_surface(thread intersection_query<tr
     return s;
 }
 
-static inline OllinRTSurface ollin_rt_fetch_surface(thread intersection_query<triangle_data> &q,
+static inline OllinRTSurface ollin_rt_fetch_surface(thread intersection_query<triangle_data, instancing> &q,
                                                     const device OllinMeshVertex *verts,
                                                     const device uint *geoOffsets,
                                                     float3 origin, float3 dir) {
@@ -1201,9 +1262,9 @@ static inline OllinRTSurface ollin_rt_fetch_surface(thread intersection_query<tr
 // Run one closest-hit query: reset, drain the candidates, and report whether a triangle
 // committed. The three ray walks below (reflection first + second bounce, refraction)
 // share it so their traversal loops cannot drift.
-static inline bool ollin_rt_query(thread intersection_query<triangle_data> &q, ray r,
-                                  primitive_acceleration_structure accel) {
-    intersection_params params;           // default = closest hit (no accept_any)
+static inline bool ollin_rt_query(thread intersection_query<triangle_data, instancing> &q, ray r,
+                                  instance_acceleration_structure accel) {
+    intersection_params params = ollin_rt_params();   // closest hit (no accept_any)
     q.reset(r, accel, params);
     while (q.next()) {
         if (q.get_candidate_intersection_type() == intersection_type::triangle)
@@ -1306,7 +1367,7 @@ static inline float3 ollin_gi_sample_cascaded(float3 worldPos, float3 n, float3 
 // glass). Un-exposed radiance; the caller scales by the IBL intensity.
 static inline float3 ollin_rt_hit_radiance(OllinRTSurface s1, float3 rayOrigin, float3 rayDir,
                                            float eps,
-                                           primitive_acceleration_structure accel,
+                                           instance_acceleration_structure accel,
                                            const device OllinMeshVertex *verts,
                                            const device uint *geoOffsets,
                                            constant OllinLighting &light,
@@ -1337,7 +1398,7 @@ static inline float3 ollin_rt_hit_radiance(OllinRTSurface s1, float3 rayOrigin, 
     r2.direction = secDir;
     r2.min_distance = eps * 0.05;         // same corner rule as the first trace
     r2.max_distance = 1e9;
-    intersection_query<triangle_data> q2;
+    intersection_query<triangle_data, instancing> q2;
     float3 envAtHit;
     if (ollin_rt_query(q2, r2, accel)) {
         OllinRTSurface s2 = ollin_rt_fetch_surface(q2, verts, geoOffsets, r2.origin, secDir);
@@ -1408,7 +1469,7 @@ static inline float3 ollin_rt_hit_radiance(OllinRTSurface s1, float3 rayOrigin, 
 }
 
 static inline float4 ollin_rt_reflection_trace(float3 worldPos, float3 n, float3 R,
-                                               primitive_acceleration_structure accel,
+                                               instance_acceleration_structure accel,
                                                const device OllinMeshVertex *verts,
                                                const device uint *geoOffsets,
                                                constant OllinLighting &light,
@@ -1433,7 +1494,7 @@ static inline float4 ollin_rt_reflection_trace(float3 worldPos, float3 n, float3
     // and every contact edge grows a 1-2px black seam no anti-aliasing can remove.
     r.min_distance = eps * 0.05;
     r.max_distance = 1e9;                 // exact trace; a long ray is no costlier than a short one
-    intersection_query<triangle_data> q;
+    intersection_query<triangle_data, instancing> q;
     if (!ollin_rt_query(q, r, accel))
         return float4(0.0);               // the ray left the scene -> the environment (caller's fallback)
 
@@ -1451,7 +1512,7 @@ static inline float4 ollin_rt_reflection_trace(float3 worldPos, float3 n, float3
 // returns `envReflection` exactly (mixing env toward env is the identity), so hit
 // and miss both shade the same as a direct single-expression evaluation.
 static inline float3 ollin_rt_reflection(float3 worldPos, float3 n, float3 R, float rough,
-                                         primitive_acceleration_structure accel,
+                                         instance_acceleration_structure accel,
                                          const device OllinMeshVertex *verts,
                                          const device uint *geoOffsets,
                                          constant OllinLighting &light,
@@ -1497,7 +1558,7 @@ static inline float3 ollin_rt_reflection(float3 worldPos, float3 n, float3 R, fl
 // it would be without its own transmission (the documented v1 envelope).
 static inline float3 ollin_rt_refraction(float3 worldPos, float3 n, float3 viewDir,
                                          constant OllinMaterial &mat,
-                                         primitive_acceleration_structure accel,
+                                         instance_acceleration_structure accel,
                                          const device OllinMeshVertex *verts,
                                          const device uint *geoOffsets,
                                          constant OllinLighting &light,
@@ -1538,7 +1599,7 @@ static inline float3 ollin_rt_refraction(float3 worldPos, float3 n, float3 viewD
         float3 exitP = float3(0.0), exitN = float3(0.0);
         float span = -1.0;
         OllinRTSurface inside;
-        intersection_query<triangle_data> q;
+        intersection_query<triangle_data, instancing> q;
         if (ollin_rt_query(q, r, accel)) {
             bool backface = false;
             OllinRTSurface s = ollin_rt_fetch_surface(q, verts, geoOffsets, r.origin, rr, backface);
@@ -1579,7 +1640,7 @@ static inline float3 ollin_rt_refraction(float3 worldPos, float3 n, float3 viewD
             r2.direction = exitDir;
             r2.min_distance = eps * 0.05;
             r2.max_distance = 1e9;
-            intersection_query<triangle_data> q2;
+            intersection_query<triangle_data, instancing> q2;
             if (ollin_rt_query(q2, r2, accel)) {
                 OllinRTSurface s2 = ollin_rt_fetch_surface(q2, verts, geoOffsets,
                                                            r2.origin, exitDir);
@@ -1608,7 +1669,7 @@ static inline float3 ollin_rt_refraction(float3 worldPos, float3 n, float3 viewD
             r.direction = dir;
             r.min_distance = eps * 0.05;
             r.max_distance = 1e9;
-            intersection_query<triangle_data> q;
+            intersection_query<triangle_data, instancing> q;
             if (!ollin_rt_query(q, r, accel)) {
                 col = envTransmitted;     // left the scene: the environment sample
                 break;
@@ -3830,7 +3891,7 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
                                            // `light.rtReflectionDeferred` is set; zero otherwise.
                                            // `ltcAmp` feeds the hit shade's exact area-light diffuse.
                                            , float3 worldPos,
-                                           primitive_acceleration_structure reflAccel,
+                                           instance_acceleration_structure reflAccel,
                                            const device OllinMeshVertex *meshVerts,
                                            const device uint *meshGeoOffsets,
                                            float4 deferredReflection,
@@ -4013,7 +4074,7 @@ static inline float3 ollin_pbr_ibl_ambient_mapped(float3 base, float3 n, float3 
                                            // `light.rtReflectionDeferred` is set; zero otherwise.
                                            // `ltcAmp` feeds the hit shade's exact area-light diffuse.
                                            , float3 worldPos,
-                                           primitive_acceleration_structure reflAccel,
+                                           instance_acceleration_structure reflAccel,
                                            const device OllinMeshVertex *meshVerts,
                                            const device uint *meshGeoOffsets,
                                            float4 deferredReflection,
@@ -4220,7 +4281,7 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                     texture2d<float> sheenLUT [[texture(12)]],
                                     texture2d<float> contactShadowTex [[texture(16)]]
 #if OLLIN_RT_SHADOWS
-                                    , primitive_acceleration_structure shadowAccel [[buffer(3)]]
+                                    , instance_acceleration_structure shadowAccel [[buffer(3)]]
                                     // The flat mesh buffer + its per-geometry base-vertex offsets, so a
                                     // physically-based fragment can fetch a reflection hit's triangle.
                                     , const device OllinMeshVertex *meshVerts [[buffer(6)]]
@@ -4570,7 +4631,7 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                              texture2d<float> sheenLUT [[texture(12)]],
                                              texture2d<float> contactShadowTex [[texture(16)]]
 #if OLLIN_RT_SHADOWS
-                                             , primitive_acceleration_structure shadowAccel [[buffer(3)]]
+                                             , instance_acceleration_structure shadowAccel [[buffer(3)]]
                                              , const device OllinMeshVertex *meshVerts [[buffer(6)]]
                                              , const device uint *meshGeoOffsets [[buffer(7)]]
                                              , texture2d<float> rtReflectionTex [[texture(7)]]
@@ -4739,7 +4800,7 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
                                        texture2d<float> contactShadowTex [[texture(16)]],
                                        texture2d<float> normalMapTex [[texture(17)]]
 #if OLLIN_RT_SHADOWS
-                                       , primitive_acceleration_structure shadowAccel [[buffer(3)]]
+                                       , instance_acceleration_structure shadowAccel [[buffer(3)]]
                                        , const device OllinMeshVertex *meshVerts [[buffer(6)]]
                                        , const device uint *meshGeoOffsets [[buffer(7)]]
                                        , texture2d<float> rtReflectionTex [[texture(7)]]
@@ -5055,7 +5116,7 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
                                          constant OllinDecals &decals [[buffer(2)]],
                                          texture2d_array<float> decalTex [[texture(24)]]
 #if OLLIN_RT_SHADOWS
-                                         , primitive_acceleration_structure shadowAccel [[buffer(3)]]
+                                         , instance_acceleration_structure shadowAccel [[buffer(3)]]
                                          , const device OllinMeshVertex *meshVerts [[buffer(6)]]
                                          , const device uint *meshGeoOffsets [[buffer(7)]]
                                          , texture2d<float> rtReflectionTex [[texture(7)]]

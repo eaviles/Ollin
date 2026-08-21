@@ -32,7 +32,7 @@ extension MetalRenderer {
             return nil
         }
         guard let camera = drawer.camera3D, !drawer.meshVertices.isEmpty,
-              let meshBuffer = exportMeshBuffer(for: drawer.meshVertices.count) else { return nil }
+              let meshBuffer = exportMeshBuffer(for: tracedMeshVertexCount(drawer)) else { return nil }
 
         // Upload the frame's mesh bytes now; the shadow pass later re-copies the
         // same bytes into the same buffer, which is idempotent.
@@ -160,7 +160,7 @@ extension MetalRenderer {
             enc.setComputePipelineState(pipeline)
             enc.setBytes(&pt, length: MemoryLayout<OllinPathTraceUniforms>.stride, index: 0)
             enc.setBytes(&lighting, length: MemoryLayout<OllinLighting>.stride, index: 1)
-            enc.useResource(built.accel, usage: .read)
+            useTracedScene(enc, built.accel)
             enc.setAccelerationStructure(built.accel, bufferIndex: 3)
             enc.setBuffer(meshBuffer, offset: 0, index: 6)
             enc.setBuffer(built.offsets, offset: 0, index: 7)

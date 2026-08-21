@@ -557,6 +557,14 @@ extension MetalRenderer {
         return pointExportBuffer
     }
 
+    /// How many mesh vertices a frame's buffer has to hold: the plain meshes, plus the
+    /// base meshes of the instanced draws. The traced build appends those after the
+    /// plain ones so that a single pointer still serves the hit fetch, so the room for
+    /// them is reserved wherever the buffer is asked for.
+    func tracedMeshVertexCount(_ drawer: Drawer) -> Int {
+        drawer.meshVertices.count + drawer.instancedMeshVertices.count
+    }
+
     /// Return the solid-mesh ring buffer at `index`, grown on demand. Mirrors
     /// `pointBuffer(at:for:)`.
     func meshBuffer(at index: Int, for count: Int) -> MTLBuffer? {
