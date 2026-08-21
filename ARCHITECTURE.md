@@ -1696,11 +1696,12 @@ Three decisions carry the weight:
   `tracedMeshVertexCount` reserves the room wherever the buffer is asked for; a
   buffer without room leaves the copies out instead of writing past its end.
 - **A table with a header.** The per-geometry base-vertex array grew a prefix:
-  its instance count, then one four-uint record per instance (the copy's base
-  vertex, then its tint as three float bit patterns), then the old array.
-  `ollin_rt_hit_lookup` reads it back, and a record marked `OLLIN_RT_PLAIN_MESH`
-  reads the geometry table instead, which is what instance 0 always does. The
-  prefix is what let the per-copy tint arrive without a new binding.
+  its instance count, then one five-uint record per instance (the copy's base
+  vertex, its tint as three float bit patterns, and the material slot its whole
+  run shares), then the old array. `ollin_rt_hit_lookup` reads it back, and a
+  record marked `OLLIN_RT_PLAIN_MESH` reads the geometry table instead, which is
+  what instance 0 always does. The prefix is what let the per-copy tint arrive
+  without a new binding, and later the material slot as well.
 - **The normal needs the copy's placement.** A copy's vertices are in its base
   mesh's own space, so the interpolated normal is mapped by the transpose of the
   query's world-to-object matrix. That is the inverse transpose, so an unevenly
@@ -1710,8 +1711,31 @@ Two forms stay out, both for the same reason. The compute-buffer form keeps its
 placements on the GPU, and a `MeshField` holds hundreds of thousands of them, so
 neither can have its instance descriptors written one at a time by the CPU each
 frame; they want a kernel writing that buffer, next to the culling pass that
-already fills one. The path-traced export stays out too, because its material
-tables are per geometry and a copy carries none of its own.
+already fills one.
+
+### The material slot, and why the record has a fifth uint
+
+The path-traced export resolves a hit's finish through per-geometry tables, and
+every copy of one base mesh shares a single geometry, so `geometryId` cannot
+tell two instanced draws apart. The answer is the record's fifth uint: each run
+appends its finish (and its empty map set) to those tables past the plain
+geometries and carries that index, while a plain-mesh hit sets the slot to its
+own `geometryId` inside the lookup. One field serves both, and every reader is
+unchanged in form. Two details are easy to get wrong. A copy's finish enters
+with the map gates lowered, because its raster draw binds no textures and an
+unbound bindless slot holds the white stand-in, which a raised gate would read
+as a real normal or roughness map. And a batch the traced scene turns away (an
+over-budget field, a matcap prop, a run whose kernel would not build) must keep
+rasterizing over the traced layer, or it disappears from the export entirely;
+`pathTracedCopyBatches` is the set the composite arm consults to tell the two
+apart.
+
+The one thing a copy cannot be there is a *mesh light*. The emissive CDF weighs
+each glowing triangle by its area in the world, and a copy's triangles are
+unplaced, so the scan runs over the plain geometries alone and a copy's own
+emission is credited at full MIS weight instead of against a strategy that never
+competed for it. That is unbiased and grainier, which is the trade the docs
+state rather than hide.
 
 ### The field's frame
 

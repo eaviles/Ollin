@@ -1174,17 +1174,24 @@ struct OllinRTSurface {
 // its own (their vertices already in world space), and one instance holds each copy
 // of an instanced draw (its vertices in the base mesh's own space, the copy's matrix
 // on the instance). `table` resolves which is which. Its layout, filled beside the
-// structure on the CPU: [0] is the instance-record count N, then N records of four
-// uints each (the copy's base vertex, then its tint as three float bit patterns),
-// then one base-vertex index per geometry of the plain-mesh instance. A record whose
-// base vertex reads OLLIN_RT_PLAIN_MESH takes the geometry table instead, which is
-// what the plain-mesh instance always does.
+// structure on the CPU: [0] is the instance-record count N, then N records of five
+// uints each (the copy's base vertex, its tint as three float bit patterns, and the
+// material slot its whole run shares), then one base-vertex index per geometry of the
+// plain-mesh instance. A record whose base vertex reads OLLIN_RT_PLAIN_MESH takes the
+// geometry table instead, which is what the plain-mesh instance always does.
+//
+// The material slot answers a question only the path-traced export asks. Its material
+// tables are per geometry, and every copy of one base mesh shares a single geometry,
+// so `geometryId` cannot tell two instanced draws apart. The slot indexes the same
+// tables past their plain-geometry entries, so a copy resolves its own finish. The
+// live passes shade from the vertex attributes and never read it.
 #define OLLIN_RT_PLAIN_MESH 0xFFFFFFFFu
 
 struct OllinRTHit {
     uint   base;      // first vertex of the hit triangle in the mesh buffer
     float3 tint;      // the copy's own color, white for a plain mesh
     bool   copied;    // true when the hit is a copy, so its vertices are unplaced
+    uint   mat;       // material slot: the geometry's own for a plain mesh, the run's for a copy
 };
 
 static inline OllinRTHit ollin_rt_hit_lookup(const device uint *table,
@@ -1194,18 +1201,22 @@ static inline OllinRTHit ollin_rt_hit_lookup(const device uint *table,
     h.copied = false;
     uint n = table[0];
     uint vertexBase = OLLIN_RT_PLAIN_MESH;
+    uint mat = 0u;
     if (instanceId < n) {
-        uint r = 1u + instanceId * 4u;
+        uint r = 1u + instanceId * 5u;
         vertexBase = table[r];
         h.tint = float3(as_type<float>(table[r + 1u]),
                         as_type<float>(table[r + 2u]),
                         as_type<float>(table[r + 3u]));
+        mat = table[r + 4u];
     }
     if (vertexBase == OLLIN_RT_PLAIN_MESH) {
-        h.base = table[1u + n * 4u + geometryId];
+        h.base = table[1u + n * 5u + geometryId];
+        h.mat = geometryId;
     } else {
         h.base = vertexBase;
         h.copied = true;
+        h.mat = mat;
     }
     return h;
 }

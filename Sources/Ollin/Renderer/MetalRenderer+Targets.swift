@@ -3049,12 +3049,16 @@ extension MetalRenderer {
         // mesh's own structure, so the copy costs a matrix rather than a triangle list,
         // which is the whole reason the instanced call exists. Their base vertices are
         // appended to the mesh buffer after the plain ones, so a single pointer still
-        // serves the hit fetch. Two exclusions: the path-traced export takes the plain
-        // meshes alone (its material tables are per geometry, and a copy has none of its
-        // own), and a mesh buffer that has no room for the appended vertices leaves the
-        // copies out rather than writing past its end.
+        // serves the hit fetch. Two exclusions: a mesh buffer with no room for the
+        // appended vertices leaves the copies out rather than writing past its end, and
+        // a `pathTraceMats` build skips the batches the export keeps rastering (matcap,
+        // wireframe, the grid), exactly as it does for a plain mesh. In that build each
+        // group also takes a material slot past the plain geometries, since the export
+        // resolves a hit's finish per geometry and every copy of one base mesh shares a
+        // single geometry.
         struct CopyGroup {
             var vertexStart = 0, vertexCount = 0, instanceStart = 0, instanceCount = 0
+            var mat = 0, batch = 0
         }
         // The GPU-resident sibling of a copy group: an instanced draw whose
         // placements live in a compute buffer a kernel writes, so the CPU knows
@@ -3065,28 +3069,55 @@ extension MetalRenderer {
             var vertexStart = 0, vertexCount = 0
             var placements: MTLBuffer
             var count = 0
+            var mat = 0, batch = 0
         }
         var copyGroups: [CopyGroup] = []
         var gpuGroups: [GPUCopyGroup] = []
+        // A copy carries no surface maps (its raster draw binds none), so its finish
+        // enters the export's tables with the map gates down. An unbound slot samples
+        // the white stand-in, which a raised gate would read as a real map.
+        func copyFinish(_ batch: GeometryBatch) -> OllinMaterial {
+            var f = batch.finish
+            f.normalScale = 0
+            f.mrGate = 0
+            f.occlusionStrength = 0
+            f.emissive.w = 0
+            f.triplanar = 0
+            return f
+        }
         let copyVertexBase = meshVertices.count
         let copyVertices = drawer.instancedMeshVertices
-        if !pathTraceMats, !copyVertices.isEmpty,
+        if !copyVertices.isEmpty,
            meshBuffer.length >= (copyVertexBase + copyVertices.count) * meshStride {
-            for batch in batches where batch.kind == .meshInstanced {
+            for (i, batch) in batches.enumerated() where batch.kind == .meshInstanced {
                 guard batch.instancedVertexCount >= 3 else { continue }
+                if pathTraceMats, batch.matcap != nil || batch.meshWireframe || batch.meshGrid {
+                    continue
+                }
+                // The material slot is claimed only once the group is certain to
+                // join, so a batch that falls out at the guards below leaves no
+                // orphan entry in the tables.
+                func claimSlot() -> Int {
+                    guard pathTraceMats else { return 0 }
+                    geoFinishes.append(copyFinish(batch))
+                    geoTextures.append(PTGeoMaps())
+                    return geoFinishes.count - 1
+                }
                 if batch.meshInstanceCount > 0 {
                     guard batch.meshInstanceStart + batch.meshInstanceCount <= drawer.meshInstances.count
                     else { continue }
                     copyGroups.append(CopyGroup(vertexStart: batch.instancedVertexStart,
                                                 vertexCount: batch.instancedVertexCount,
                                                 instanceStart: batch.meshInstanceStart,
-                                                instanceCount: batch.meshInstanceCount))
+                                                instanceCount: batch.meshInstanceCount,
+                                                mat: claimSlot(), batch: i))
                 } else if batch.particleCount > 0,
                           let placements = batch.particleBuffer?.metalBuffer(for: device) {
                     gpuGroups.append(GPUCopyGroup(vertexStart: batch.instancedVertexStart,
                                                   vertexCount: batch.instancedVertexCount,
                                                   placements: placements,
-                                                  count: batch.particleCount))
+                                                  count: batch.particleCount,
+                                                  mat: claimSlot(), batch: i))
                 }
             }
             if !copyGroups.isEmpty || !gpuGroups.isEmpty {
@@ -3108,25 +3139,39 @@ extension MetalRenderer {
             var vertexBase = 0
             var placements: MTLBuffer
             var model: simd_float4x4
+            var mat = 0, batch = 0
         }
         var fieldRuns: [FieldRun] = []
-        if !pathTraceMats {
+        do {
             var offset = copyVertexBase + copyVertices.count
-            for batch in batches where batch.kind == .meshField {
+            for (i, batch) in batches.enumerated() where batch.kind == .meshField {
                 guard let field = batch.field, !field.baseVertices.isEmpty,
                       field.fitsTracedBudget(),
                       let resources = field.gpuResources(for: device),
+                      field.entries.contains(where: { $0.copyCount > 0 && $0.vertexCount >= 3 }),
                       meshBuffer.length >= (offset + field.baseVertices.count) * meshStride
                 else { continue }
+                if pathTraceMats, batch.matcap != nil || batch.meshWireframe || batch.meshGrid {
+                    continue
+                }
                 field.baseVertices.withUnsafeBytes { raw in
                     meshBuffer.contents().advanced(by: offset * meshStride)
                         .copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+                }
+                // One material slot for the whole field: its entries share the
+                // draw's finish, the way its one raster binding does.
+                var slot = 0
+                if pathTraceMats {
+                    geoFinishes.append(copyFinish(batch))
+                    geoTextures.append(PTGeoMaps())
+                    slot = geoFinishes.count - 1
                 }
                 for entry in field.entries where entry.copyCount > 0 && entry.vertexCount >= 3 {
                     fieldRuns.append(FieldRun(entry: entry,
                                               vertexBase: offset + Int(entry.vertexStart),
                                               placements: resources.instances,
-                                              model: batch.fieldTransform))
+                                              model: batch.fieldTransform,
+                                              mat: slot, batch: i))
                 }
                 offset += field.baseVertices.count
             }
@@ -3222,11 +3267,12 @@ extension MetalRenderer {
         // carry their own placement already, so its matrix is the identity.
         var instanceDescs: [MTLAccelerationStructureInstanceDescriptor] = []
         var records: [UInt32] = []
-        func record(vertexBase: UInt32, tint: SIMD4<Float>) {
+        func record(vertexBase: UInt32, tint: SIMD4<Float>, mat: Int) {
             records.append(vertexBase)
             records.append(tint.x.bitPattern)
             records.append(tint.y.bitPattern)
             records.append(tint.z.bitPattern)
+            records.append(UInt32(mat))
         }
         func instance(_ model: simd_float4x4, structureIndex: Int) {
             var d = MTLAccelerationStructureInstanceDescriptor()
@@ -3243,7 +3289,7 @@ extension MetalRenderer {
         }
         if hasScene {
             instance(matrix_identity_float4x4, structureIndex: 0)
-            record(vertexBase: MetalRenderer.rtPlainMesh, tint: SIMD4<Float>(1, 1, 1, 1))
+            record(vertexBase: MetalRenderer.rtPlainMesh, tint: SIMD4<Float>(1, 1, 1, 1), mat: 0)
         }
         for (i, group) in copyGroups.enumerated() {
             let structureIndex = (hasScene ? 1 : 0) + i
@@ -3251,7 +3297,7 @@ extension MetalRenderer {
             for k in 0..<group.instanceCount {
                 let placement = drawer.meshInstances[group.instanceStart + k]
                 instance(placement.model, structureIndex: structureIndex)
-                record(vertexBase: base, tint: placement.color)
+                record(vertexBase: base, tint: placement.color, mat: group.mat)
             }
         }
 
@@ -3267,7 +3313,8 @@ extension MetalRenderer {
                                       placements: group.placements,
                                       placementOffset: 0,
                                       count: group.count,
-                                      model: matrix_identity_float4x4))
+                                      model: matrix_identity_float4x4,
+                                      matIndex: group.mat))
             gpuInstanceCount += group.count
         }
         for (i, run) in fieldRuns.enumerated() {
@@ -3278,7 +3325,8 @@ extension MetalRenderer {
                                       placements: run.placements,
                                       placementOffset: Int(run.entry.copyStart),
                                       count: Int(run.entry.copyCount),
-                                      model: run.model))
+                                      model: run.model,
+                                      matIndex: run.mat))
             gpuInstanceCount += Int(run.entry.copyCount)
         }
         let totalInstances = instanceDescs.count + gpuInstanceCount
@@ -3299,7 +3347,7 @@ extension MetalRenderer {
         instanceDesc.instanceDescriptorBuffer = instanceBuffer
 
         // The hit-lookup table, uploaded for the reflection hit fetch. Layout, which
-        // `ollin_rt_hit_lookup` reads back: the instance count, then that many four-uint
+        // `ollin_rt_hit_lookup` reads back: the instance count, then that many five-uint
         // records, then one base-vertex index per geometry of the plain-mesh instance.
         // The CPU fills it here (before the command buffer commits), so the main pass
         // reads it this frame, through the frame ring, never a shared buffer an
@@ -3308,7 +3356,7 @@ extension MetalRenderer {
         // the two CPU pieces are written around it rather than as one array.
         var head: [UInt32] = [UInt32(totalInstances)]
         head.append(contentsOf: records)
-        let tailStart = 1 + totalInstances * 4
+        let tailStart = 1 + totalInstances * 5
         let offsetsLength = max(MemoryLayout<UInt32>.stride,
                                 (tailStart + geoOffsets.count) * MemoryLayout<UInt32>.stride)
         if (meshGeoOffsetBuffers[frameIndex]?.length ?? 0) < offsetsLength {
@@ -3335,6 +3383,14 @@ extension MetalRenderer {
                                                    options: .storageModePrivate)
         }
         rtReferencedAccels = structures
+        // Which copy batches the traced scene took. The path-traced export reads it
+        // to decide what its traced layer already stands in for: a batch that fell
+        // out here (an over-budget field, a run whose kernel would not build, a
+        // matcap prop) must keep rastering, or it would vanish from the picture.
+        if pathTraceMats {
+            pathTracedCopyBatches = Set(copyGroups.map(\.batch))
+                .union(gpuGroups.map(\.batch)).union(fieldRuns.map(\.batch))
+        }
         // The GPU-resident runs' descriptors and hit records, written before the
         // builds read them: encoders in one command buffer run in the order they
         // were made. A run that could not be encoded would leave last frame's
@@ -3430,10 +3486,18 @@ extension MetalRenderer {
         // The emissive-triangle table: every triangle of every glowing geometry,
         // weighted by luminance x area into a running CDF, so the kernel draws
         // mesh-light samples by each triangle's share of the scene's power.
+        //
+        // The plain geometries only, which is what `geoCounts` holds: a copy's
+        // triangles are in its base mesh's own space, and where each copy stands is
+        // a matrix on its instance (for two of the three placement forms, a matrix
+        // the CPU never sees at all), so their world areas cannot be weighed here. A
+        // glowing copy still glows; it is found by the paths that reach it rather
+        // than sampled as a light, which the hit's own emission credits at full
+        // weight (see `ollin_rt_hit_lookup`'s `copied`).
         var tris: [OllinPTEmissiveTri] = []
         var totalPower = 0.0
         let verts = drawer.meshVertices
-        for g in geoFinishes.indices {
+        for g in geoCounts.indices {
             let e = geoFinishes[g].emissive
             let lum = Double(0.2126 * e.x + 0.7152 * e.y + 0.0722 * e.z)
             guard lum > 0 else { continue }

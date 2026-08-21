@@ -810,6 +810,13 @@ final class MetalRenderer {
     /// drivers (`--path-traced`); nil live and everywhere else, which is what keeps
     /// the raster pipeline byte-identical whenever the mode is off.
     var pathTracing: PathTracing?
+    /// The instanced and field batches this frame's traced scene took, by index into
+    /// the drawer's batch list. Filled by the path-traced build, read by the geometry
+    /// pass: a batch in the set is already in the traced layer and skips its raster
+    /// draw, while one that fell out (an over-budget field, a matcap prop) rasters
+    /// instead, depth-tested against the traced depth. Empty whenever the mode is
+    /// off, so nothing outside the export ever consults it.
+    var pathTracedCopyBatches: Set<Int> = []
     /// Whether the trace prints its rewriting progress line. The still export leaves
     /// it on (a minutes-long render should say where it is); the sequence and video
     /// drivers turn it off and keep their own per-frame line instead.

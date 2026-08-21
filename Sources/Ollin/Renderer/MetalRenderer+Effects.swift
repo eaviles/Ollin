@@ -2255,10 +2255,17 @@ extension MetalRenderer {
         // On the half-res raymarch tier all fields composite in one upsample at the first field
         // batch; this flag skips the rest (their geometry already merged into the half-res target).
         var compositedHalfResFields = false
-        // The path-traced export layer composites once, at the first solid mesh batch
-        // (the traced image covers every solid mesh, so draw order against the 2D
+        // The path-traced export layer composites once, at the first batch the trace
+        // took (the traced image covers all of them, so draw order against the 2D
         // content around them holds); this flag skips the rest.
         var pathTracedComposited = false
+        func compositePathTraced(_ layer: (color: MTLTexture, depth: MTLTexture,
+                                           invSamples: Float)) {
+            guard !pathTracedComposited else { return }
+            encodePathTraceComposite(layer, into: encoder, uniforms3D: uniforms3D,
+                                     depthFormat: depthFormat, hasStencil: hasStencil)
+            pathTracedComposited = true
+        }
         for i in batches.indices {
             let batch = batches[i]
             let next = i + 1 < batches.count ? batches[i + 1] : nil
@@ -2581,13 +2588,7 @@ extension MetalRenderer {
                 // stylized finish, e.g. an area light's glowing prop) are not in the
                 // traced scene and keep rastering, depth-tested against the traced depth.
                 if let pathTraced, !batch.meshWireframe, !batch.meshGrid, batch.matcap == nil {
-                    if !pathTracedComposited {
-                        encodePathTraceComposite(pathTraced, into: encoder,
-                                                 uniforms3D: uniforms3D,
-                                                 depthFormat: depthFormat,
-                                                 hasStencil: hasStencil)
-                        pathTracedComposited = true
-                    }
+                    compositePathTraced(pathTraced)
                     continue
                 }
                 // Solid 3D mesh: a flat triangle list (indices already expanded), drawn
@@ -2705,6 +2706,15 @@ extension MetalRenderer {
                 // buffer 0 and the per-copy matrices at 4, placed per vertex on
                 // the GPU, so the whole field is one draw. Copies shade through
                 // the solid lit fragment, so the full lit binding set applies.
+                //
+                // Path-traced export: the traced layer stands in for the copies the
+                // trace took. One it left out (a matcap prop, a run whose kernel
+                // would not build) is not in the set and rasters here instead,
+                // depth-tested against the traced depth.
+                if let pathTraced, pathTracedCopyBatches.contains(i) {
+                    compositePathTraced(pathTraced)
+                    continue
+                }
                 guard batch.instancedVertexCount > 0, drawer.camera3D != nil,
                       let instancedMeshBuffer else { continue }
                 let copies: Int
@@ -2740,6 +2750,15 @@ extension MetalRenderer {
                 // requirement is load-bearing: only depth-carrying drives encode
                 // the cull, so it also keeps stale arguments from ever drawing
                 // (the accumulating drives pass no depth format).
+                //
+                // Path-traced export: as for the instanced draw above, a field the
+                // trace took is already in the traced layer. One over its traced
+                // copy budget is not, and keeps rastering, which is what its budget
+                // promises: the copies still draw, the mirrors just miss them.
+                if let pathTraced, pathTracedCopyBatches.contains(i) {
+                    compositePathTraced(pathTraced)
+                    continue
+                }
                 guard depthFormat != nil, drawer.camera3D != nil,
                       let fieldHandle = batch.field,
                       let resources = fieldHandle.gpuResources(for: device) else { continue }

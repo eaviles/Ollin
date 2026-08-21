@@ -207,6 +207,8 @@ struct OllinPTHit {
                            // ray machinery (epsilon offsets, the below-horizon
                            // check) keeps it while shading uses the bent `s.N`,
                            // the raster's own detail-vs-position split
+    bool copied;           // a copy of an instanced draw, so it is outside the
+                           // mesh-light table and its glow takes full weight
 };
 
 // Next-event visibility with glass in the scene: walk the shadow segment hit by
@@ -244,7 +246,9 @@ static inline float3 ollin_pt_transmittance(float3 origin, float3 target, float 
         r.max_distance = remaining;
         intersection_query<triangle_data, instancing> q;
         if (!ollin_rt_query(q, r, accel)) break;
-        OllinMaterial m = geoMats[q.get_committed_geometry_id()];
+        OllinMaterial m = geoMats[ollin_rt_hit_lookup(geoOffsets,
+                                                      q.get_committed_instance_id(),
+                                                      q.get_committed_geometry_id()).mat];
         if (m.shadingModel != 3 || m.transmission <= 0.0) return float3(0.0);
         bool backface = false;
         OllinRTSurface s = ollin_rt_fetch_surface(q, verts, geoOffsets, o, dir, backface);
@@ -346,7 +350,13 @@ static inline OllinPTMapped ollin_pt_apply_maps(thread OllinPTHit &h,
     OllinPTMapped out;
     out.emissive = h.mat.emissive.rgb;
     out.ao = 1.0;
-    OllinPTTexEntry maps = geoTextures[q.get_committed_geometry_id()];
+    // One lookup for both halves: which material slot the hit wears (its own
+    // geometry's for a plain mesh, its run's for a copy), and where its triangle
+    // begins. A copy's slot carries the map gates down, so the reads below are
+    // the ones its raster draw makes: none.
+    OllinRTHit hit = ollin_rt_hit_lookup(geoOffsets, q.get_committed_instance_id(),
+                                         q.get_committed_geometry_id());
+    OllinPTTexEntry maps = geoTextures[hit.mat];
     if (h.mat.triplanar > 0.0) {
         // The raster's cut applies here too: a triplanar mesh projects its base
         // color and normal map only, so the uv-mapped reads below never run.
@@ -358,9 +368,7 @@ static inline OllinPTMapped ollin_pt_apply_maps(thread OllinPTHit &h,
         if (h.mat.normalScale > 0.0) h.s.N = backface ? -tri.normal : tri.normal;
         return out;
     }
-    uint base = ollin_rt_hit_lookup(geoOffsets, q.get_committed_instance_id(),
-                                    q.get_committed_geometry_id()).base
-              + q.get_committed_primitive_id() * 3u;
+    uint base = hit.base + q.get_committed_primitive_id() * 3u;
     OllinMeshVertex a = verts[base + 0u];
     OllinMeshVertex b = verts[base + 1u];
     OllinMeshVertex c = verts[base + 2u];
@@ -813,7 +821,10 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
             OllinPTHit h;
             bool backface = false;
             h.s = ollin_rt_fetch_surface(q, verts, geoOffsets, ro, rd, backface);
-            h.mat = geoMats[q.get_committed_geometry_id()];
+            OllinRTHit lookup = ollin_rt_hit_lookup(geoOffsets, q.get_committed_instance_id(),
+                                                    q.get_committed_geometry_id());
+            h.mat = geoMats[lookup.mat];
+            h.copied = lookup.copied;
             h.physical = h.mat.shadingModel == 3;
             h.Ng = h.s.N;
             float hitDist = q.get_committed_distance();
@@ -865,10 +876,15 @@ kernel void ollin_pt_trace(uint2 gid [[thread_position_in_grid]],
             // the power heuristic against that strategy (full strength when no
             // next-event pass competed). The reverse pdf prices the *factor*, the
             // basis the selection CDF ran on, exactly as the strategy's own pdf does.
+            // A copy is outside the mesh-light table (its triangles are unplaced,
+            // and two of the three placement forms never hand the CPU a matrix to
+            // weigh them by), so no next-event pass competed for it and its glow
+            // is credited whole. It reaches the scene through the paths that find
+            // it, which is unbiased but grainier than a plain emissive mesh.
             if (any(mapped.emissive > float3(0.0))) {
                 float wE = 1.0;
                 float lum = dot(h.mat.emissive.rgb, float3(0.2126, 0.7152, 0.0722));
-                if (depth > 0 && prevNEE && pt.meshLights.x > 0.5 && lum > 0.0) {
+                if (depth > 0 && prevNEE && !h.copied && pt.meshLights.x > 0.5 && lum > 0.0) {
                     // The geometric normal: the strategy's own pdf prices the
                     // triangle plane, so a normal-map bend must not shift this.
                     float cosL = max(abs(dot(h.Ng, rd)), 1e-4);

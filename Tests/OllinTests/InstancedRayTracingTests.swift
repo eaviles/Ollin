@@ -492,3 +492,225 @@ private final class InstancedReflectionProbe: Sketch {
         }
     }
 }
+
+/// Instanced copies inside the offline path-traced export (`--path-traced`).
+///
+/// A copy belongs to the traced scene the way the mesh it stands for does: it
+/// throws a traced shadow, bounces light, and stands in a mirror. These probes read
+/// the same mirror band the live suite above reads, so a copy missing from the
+/// traced scene shows up as a floor that mirrors nothing, while the copy's own
+/// raster body stays out of the band either way.
+///
+/// The sample counts are small on purpose: every reading here is a large signal
+/// against an empty-scene control, so grain costs nothing and the suite stays quick.
+@Suite(.serialized)
+@MainActor
+struct InstancedPathTracedTests {
+
+    /// Red minus blue over the mirror band, rendered through the path-traced export.
+    private func mirroredBoxMean(_ how: InstancedReflectionProbe.How,
+                                 samples: Int = 24) throws -> Double {
+        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, denoise: false)
+        defer { OllinApp.pathTracedExport = nil }
+        let image = try #require(OllinApp.image(of: InstancedReflectionProbe.make(how), frame: 1))
+        let w = image.width, h = image.height
+        var data = [UInt8](repeating: 0, count: w * h * 4)
+        let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
+                            bytesPerRow: w * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+        var sum = 0, count = 0
+        for y in (h * 58 / 100)..<(h * 74 / 100) {
+            for x in (w * 40 / 100)..<(w * 60 / 100) {
+                let i = (y * w + x) * 4
+                sum += Int(data[i]) - Int(data[i + 2]); count += 1
+            }
+        }
+        return Double(sum) / Double(count)
+    }
+
+    /// Mean red over the box's own body, well inside its silhouette. A copy the
+    /// traced layer does not carry has to keep rastering, or it leaves a hole.
+    private func boxBodyRed(_ how: InstancedReflectionProbe.How,
+                            samples: Int = 24) throws -> Double {
+        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, denoise: false)
+        defer { OllinApp.pathTracedExport = nil }
+        let image = try #require(OllinApp.image(of: InstancedReflectionProbe.make(how), frame: 1))
+        let w = image.width, h = image.height
+        var data = [UInt8](repeating: 0, count: w * h * 4)
+        let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
+                            bytesPerRow: w * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+        var sum = 0, count = 0
+        for y in (h * 35 / 100)..<(h * 41 / 100) {
+            for x in (w * 44 / 100)..<(w * 56 / 100) {
+                let i = (y * w + x) * 4
+                sum += Int(data[i]); count += 1
+            }
+        }
+        return Double(sum) / Double(count)
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func aPlainBoxShowsInTheTracedMirror() throws {
+        // The control that gives the rest their teeth: through the traced export the
+        // plain box reddens the band it mirrors in, and an empty scene does not.
+        let there = try mirroredBoxMean(.plain)
+        let gone = try mirroredBoxMean(.nothing)
+        #expect(there - gone > 20,
+                "expected a plain box to redden the traced mirror: with \(there), without \(gone)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func anInstancedCopyShowsInTheTracedMirror() throws {
+        // The same box through the instanced call. This is the reading the export
+        // could not make before: the copy is in the traced scene, so it mirrors.
+        let plain = try mirroredBoxMean(.plain)
+        let instanced = try mirroredBoxMean(.instanced)
+        #expect(abs(plain - instanced) < 6,
+                "expected a copy to mirror like the plain mesh it stands for: plain \(plain), instanced \(instanced)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func theGPUResidentFormsShowInTheTracedMirrorToo() throws {
+        // The two forms whose placements the CPU never sees. Their instance
+        // descriptors and hit records are written by a kernel, and the material slot
+        // this export resolves a finish through rides the same record.
+        let plain = try mirroredBoxMean(.plain)
+        let gpu = try mirroredBoxMean(.gpuBuffer)
+        let field = try mirroredBoxMean(.field)
+        #expect(abs(plain - gpu) < 6,
+                "expected a GPU-placed copy to mirror like the plain mesh: plain \(plain), gpu \(gpu)")
+        #expect(abs(plain - field) < 8,
+                "expected a field copy to mirror like the plain mesh: plain \(plain), field \(field)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func aFieldOverItsBudgetKeepsDrawingInTheExport() throws {
+        // The budget's promise, and the trap this slice had to avoid: a field the
+        // traced scene turned away must keep rastering over the traced layer. It is
+        // out of the mirror, like the live path, but it is still in the picture.
+        let budgeted = try mirroredBoxMean(.budgetedOutField)
+        let empty = try mirroredBoxMean(.nothing)
+        #expect(abs(budgeted - empty) < 3,
+                "expected a budgeted-out field to leave the traced mirror alone: budgeted \(budgeted), empty \(empty)")
+        let body = try boxBodyRed(.budgetedOutField)
+        let nothing = try boxBodyRed(.nothing)
+        #expect(body - nothing > 30,
+                "expected a budgeted-out field to keep drawing its body: field \(body), empty \(nothing)")
+    }
+}
+
+/// The material a copy wears in the path-traced export.
+///
+/// The export resolves a hit's finish through a per-geometry table, and every copy
+/// of one base mesh shares a single geometry, so the geometry alone cannot tell two
+/// instanced draws apart. Each run therefore carries its own slot in that table. A
+/// slot that resolved wrongly would dress a copy in another draw's finish, which is
+/// what this reads: two copies of one box in one frame, one glass and one opaque,
+/// over a red wall. Glass shows the wall through it; the opaque one does not.
+@Suite(.serialized)
+@MainActor
+struct InstancedPathTracedMaterialTests {
+
+    /// Red minus green over one box's body: high where the red wall shows through,
+    /// near zero on a white surface.
+    private func bodies(_ how: InstancedMaterialProbe.How,
+                        samples: Int = 32) throws -> (glass: Double, opaque: Double) {
+        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, denoise: false)
+        defer { OllinApp.pathTracedExport = nil }
+        let image = try #require(OllinApp.image(of: InstancedMaterialProbe.make(how), frame: 1))
+        let w = image.width, h = image.height
+        var data = [UInt8](repeating: 0, count: w * h * 4)
+        let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
+                            bytesPerRow: w * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+        func mean(_ x0: Int, _ x1: Int) -> Double {
+            var sum = 0, count = 0
+            for y in (h * 45 / 100)..<(h * 55 / 100) {
+                for x in (w * x0 / 100)..<(w * x1 / 100) {
+                    let i = (y * w + x) * 4
+                    sum += Int(data[i]) - Int(data[i + 1]); count += 1
+                }
+            }
+            return Double(sum) / Double(count)
+        }
+        return (mean(28, 38), mean(62, 72))
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func twoPlainBoxesWearTheirOwnFinishes() throws {
+        // The control: drawn on their own, the glass box shows the red wall and the
+        // opaque one does not, so the reading separates the two finishes.
+        let plain = try bodies(.plainPair)
+        #expect(plain.glass - plain.opaque > 30,
+                "the control: glass \(plain.glass), opaque \(plain.opaque)")
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func twoCopiesWearTheirOwnFinishesToo() throws {
+        // The same pair through two instanced draws. One shared material slot, or a
+        // slot pointing at the wall's own finish, would collapse this difference.
+        let plain = try bodies(.plainPair)
+        let copied = try bodies(.copiedPair)
+        #expect(copied.glass - copied.opaque > 30,
+                "expected each copy to wear its own finish: glass \(copied.glass), opaque \(copied.opaque)")
+        #expect(abs(copied.glass - plain.glass) < 12,
+                "expected a glass copy to read like the glass mesh it stands for: copy \(copied.glass), plain \(plain.glass)")
+        #expect(abs(copied.opaque - plain.opaque) < 12,
+                "expected an opaque copy to read like the opaque mesh it stands for: copy \(copied.opaque), plain \(plain.opaque)")
+    }
+}
+
+/// Two boxes over a red wall, one glass and one opaque, drawn either on their own or
+/// through two instanced calls. What the reading separates is the finish, which is
+/// the part of a copy's surface the export resolves per run rather than per vertex.
+private final class InstancedMaterialProbe: Sketch {
+    enum How { case plainPair, copiedPair }
+    var how: How = .plainPair
+
+    static func make(_ how: How) -> InstancedMaterialProbe {
+        let probe = InstancedMaterialProbe()
+        probe.how = how
+        return probe
+    }
+
+    override var canvasSize: CanvasSize { .square(256) }
+
+    private let box = Mesh.box(width: 1.6, height: 1.6, depth: 1.6)
+
+    override func draw() {
+        background(.black)
+        camera(Camera3D(eye: Vector3(0, 0, 6), target: .zero))
+        ambientLight(Color(white: 0.35))
+        directionalLight(Color(white: 0.8), direction: Vector3(-0.3, -0.4, -1))
+        withState {
+            // The wall, and the frame's one plain mesh: its finish is the first
+            // entry of the table the copies index past.
+            fill(Color(red: 1.0, green: 0.02, blue: 0.02))
+            material(Material())
+            translate(0, 0, -3)
+            rotateX(Double.pi / 2)
+            drawPlane(width: 24, depth: 24)
+        }
+        let left = Vector3(-1.2, 0, 0), right = Vector3(1.2, 0, 0)
+        withState {
+            fill(.white)
+            material(.glass())
+            switch how {
+            case .plainPair: translate(left); drawMesh(box)
+            case .copiedPair: drawMesh(box, instances: [MeshInstance(position: left)])
+            }
+        }
+        withState {
+            fill(.white)
+            material(.dielectric(roughness: 0.6))
+            switch how {
+            case .plainPair: translate(right); drawMesh(box)
+            case .copiedPair: drawMesh(box, instances: [MeshInstance(position: right)])
+            }
+        }
+    }
+}

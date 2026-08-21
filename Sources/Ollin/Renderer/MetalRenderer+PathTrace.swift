@@ -21,6 +21,7 @@ extension MetalRenderer {
     /// (no camera or no solid meshes); the caller then renders pure raster.
     func encodePathTracePass(_ drawer: Drawer, width: Int, height: Int)
         -> (color: MTLTexture, depth: MTLTexture, invSamples: Float)? {
+        pathTracedCopyBatches = []
         guard let settings = pathTracing else { return nil }
         guard rayTracedShadows else {
             Self.warnedNoPathTraceGPU.withLock { warned in
@@ -31,13 +32,21 @@ extension MetalRenderer {
             }
             return nil
         }
-        guard let camera = drawer.camera3D, !drawer.meshVertices.isEmpty,
+        // A traceable scene is any solid mesh content: meshes drawn on their own, or
+        // the copies of an instanced draw or a retained field. A scene made only of
+        // copies is traced like any other; `buildShadowAccel` is the one that decides
+        // what actually reaches the structure, and returns nil when nothing does.
+        let hasCopies = drawer.batches.contains {
+            $0.kind == .meshInstanced || $0.kind == .meshField
+        }
+        guard let camera = drawer.camera3D, !drawer.meshVertices.isEmpty || hasCopies,
               let meshBuffer = exportMeshBuffer(for: tracedMeshVertexCount(drawer)) else { return nil }
 
         // Upload the frame's mesh bytes now; the shadow pass later re-copies the
         // same bytes into the same buffer, which is idempotent.
         drawer.meshVertices.withUnsafeBytes { raw in
-            meshBuffer.contents().copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+            guard let base = raw.baseAddress, raw.count > 0 else { return }
+            meshBuffer.contents().copyMemory(from: base, byteCount: raw.count)
         }
 
         // Setup: bake the environment (cache-keyed, so the frame's own resolve

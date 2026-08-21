@@ -8,7 +8,9 @@ import Ollin
 /// distance, the floor picks up color bled from the spheres, every polished
 /// surface mirrors the scene at any depth, the amber sphere turns to real solid
 /// glass (light bends through it, its shadow glows amber instead of going black),
-/// the glowing bar lights the set by its own surface, the hammered panel's
+/// the glowing bar lights the set by its own surface, the scattered pebbles
+/// (sixty-four copies of one mesh, one draw call) drop their own contact shadows and
+/// stand in the floor's reflection, the hammered panel's
 /// normal and roughness maps ride every traced hit (its relief ripples the
 /// reflections), and the camera's aperture turns into a real thin-lens depth of
 /// field (the raster view stays sharp; the lens is the traced camera's). That is
@@ -27,6 +29,13 @@ final class PathTraced: Sketch {
 
     @Param(0...0.4, icon: "camera.aperture") var aperture = 0.12
     @Param(3...14, icon: "scope") var focusOn = 7.4
+
+    /// The pebbles scattered over the floor, placed once and drawn as copies of
+    /// one small mesh. They are in the traced scene like anything else: each drops
+    /// its own soft shadow, stands in the floor's reflection, and bleeds a little
+    /// of its color onto its neighbors.
+    private let pebble = Mesh.sphere(radius: 0.13, segments: 16)
+    private var pebbles: [MeshInstance] = []
 
     /// A hammered-metal relief, built in code: a staggered grid of rounded dents
     /// baked into a normal map, with a matching metallic-roughness map that
@@ -70,6 +79,24 @@ final class PathTraced: Sketch {
                 Image(width: size, height: size, premultipliedRGBA: mrBytes)!)
     }()
 
+    override func setup() {
+        seed(4_120)
+        // Scattered over the open floor, kept clear of the sphere row so the
+        // shadows stay readable. Seeded, so the export renders the same set.
+        let seats = [Vector3(-3, 0, 0), Vector3(-1.5, 0, -1.3), Vector3(0, 0, 0),
+                     Vector3(1.5, 0, -1.3), Vector3(3, 0, 0)]
+        while pebbles.count < 64 {
+            let p = Vector3(random(-5.2, 5.2), 0.13, random(-2.8, 2.4))
+            guard seats.allSatisfy({ Vector2($0.x, $0.z).distance(to: Vector2(p.x, p.z)) > 1.1 })
+            else { continue }
+            pebbles.append(MeshInstance(position: p,
+                                        rotation: Vector3(0, random(.tau), 0),
+                                        scale: Vector3(1, random(0.7, 1.0), 1),
+                                        color: Color(hue: 0.08, saturation: random(0.15, 0.35),
+                                                     brightness: random(0.3, 0.6))))
+        }
+    }
+
     override func draw() {
         background(Color(hex: 0x0B0C10))
 
@@ -100,6 +127,15 @@ final class PathTraced: Sketch {
             fill(Color(white: 0.35))
             material(.metal(roughness: 0.12))
             drawBox(width: 24, height: 1, depth: 18)
+        }
+
+        // The pebbles: one mesh, sixty-four placements, one draw call. A copy is in
+        // the traced scene the way the meshes around it are, so the export shows
+        // sixty-four small contact shadows and sixty-four reflections in the floor.
+        withState {
+            fill(Color(white: 0.9))
+            material(.dielectric(roughness: 0.35))
+            drawMesh(pebble, instances: pebbles)
         }
 
         // The row: chrome, colored gloss, solid amber glass, and matte side by

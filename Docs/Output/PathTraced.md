@@ -25,6 +25,7 @@ Left off, the count follows `--render-quality`: 64, 256, or 4096 for performance
 - **Emissive surfaces are lights.** A mesh with an emissive material does not just glow, it lights its surroundings: the tracer samples glowing surfaces directly, the way it samples an area light's panel, so a neon bar throws smooth, soft-shadowed light instead of waiting for lucky bounces.
 - **Textures travel with the light.** A traced hit reads the mesh's base-color texture at the hit point, so a textured floor shows its picture in a mirror, keeps it through a glass sphere, and bleeds its colors onto neighbors.
 - **The surface maps travel too.** A normal map bends the traced shading the way it bends the raster's, so its relief shows in reflections and in bounce light. A metallic-roughness map varies the finish across the surface, and an occlusion map dims the environment's light in its crevices. An emissive map shapes where a glowing mesh emits, including the light it throws on the room. A triplanar texture (and its normal map) projects at a traced hit exactly as it does live.
+- **Copies are part of the scene.** They trace like the meshes they stand for, whichever of the three forms placed them: an [instanced draw](../3D/Instancing.md), a placement buffer a kernel writes, or a retained [`MeshField`](../3D/Instancing.md#meshfield). Each copy carries its own placement, its own tint, and its draw's own finish. So a field of pebbles shadows, mirrors, and bleeds color the way a hand-placed pebble does. A copy costs a matrix rather than a triangle list, so a large field is cheap to trace.
 - **A real lens.** `Camera3D.aperture` (a thin-lens radius, world units) and `Camera3D.focusDistance` give the traced camera depth of field. The live view ignores both and stays pinhole-sharp while you frame. `focusDistance` left `nil` focuses on the camera's `target`.
 
 ```swift
@@ -44,7 +45,8 @@ The trace covers the solid 3D meshes. Everything else keeps its ordinary pipelin
 
 - 2D drawing, before and after the 3D content.
 - Wireframe meshes, the ground grid, and matcap meshes. A matcap is the unlit stylized finish, so a glowing prop drawn over an area light keeps its glow and never blocks the light's rays.
-- Point clouds, strand fields, raymarched SDF fields, instanced meshes, and mesh fields.
+- Point clouds, strand fields, and raymarched SDF fields.
+- A [`MeshField`](../3D/Instancing.md#meshfield) over its `tracedCopyBudget`, which keeps a huge field out of the traced scene by the same rule the live mirrors use. Its copies still draw here; they just draw rasterized.
 
 The contact sheets, the vector exports (SVG and PDF), and the benchmark keep the raster path outright.
 
@@ -52,6 +54,7 @@ The contact sheets, the vector exports (SVG and PDF), and the benchmark keep the
 
 - **Height, detail, and decals stay raster refinements.** A height map's parallax relief, the tiled detail pair, and projected decals apply in the raster view only; a traced hit reads the flat surface at its plain uv. The occlusion map dims the environment's share at a hit (the raster's own convention); light carried surface to surface is real traced transport, occluded by the actual geometry.
 - **The layered lobes simplify.** Clearcoat, sheen, iridescence, anisotropy, and subsurface trace as their metallic-roughness base. Toon, gooch, and the standard finish trace as matte surfaces with their raster brightness.
+- **A glowing copy is not sampled as a light.** An emissive *mesh* is a light the tracer aims at. An emissive *copy* glows, and its light still reaches the scene. But it arrives only through the paths that happen to find it, so it converges more slowly. The reason is the light table. It weighs each glowing triangle by its area in the world, and a copy's triangles are unplaced. For two of the three placement forms, the CPU never sees where a copy stands at all. Give a shape that has to light the room a plain `drawMesh` or an area light.
 - **Glass shadows are tinted, not focused.** Light through glass reaches a shadow as a straight, tinted pass; the bent, bunched-up bright lines of a real caustic stay with the live [`caustics()`](../3D/Caustics.md) feature.
 - **Volumetric shafts stay raster features.** Height fog and aerial perspective do apply to the traced frame along the eye's path.
 

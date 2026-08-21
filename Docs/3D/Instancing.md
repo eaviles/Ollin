@@ -101,7 +101,7 @@ As a reference point, the example's 240,000-copy plain, lit, shadowed, and fogge
 
 Everything the solid lit path does. That means `fill` and per-vertex mesh colors, every `material(_:)` finish including physically based, lights and `lightingPreset`, shadows received, image-based lighting and the procedural sky, global illumination, fog and aerial perspective, clipping, blend modes, and `depth(at:)` compositing. Instanced copies also cast into the directional/spot shadow map and the point-light shadow cube.
 
-Copies also reach the ray-traced passes, whichever of the three forms placed them. They show in a ray-traced reflection. They cast a ray-traced point or area shadow, and they bounce light in global illumination. Each copy carries its own placement and its own `color` there. A copy costs a matrix rather than a triangle list, so a field of them is cheap to trace.
+Copies also reach the ray-traced passes, whichever of the three forms placed them. They show in a ray-traced reflection. They cast a ray-traced point or area shadow, and they bounce light in global illumination. They are in the [path-traced export](../Output/PathTraced.md) too, where they shadow, mirror, and bleed color like the meshes they stand for, wearing their own draw's finish. Each copy carries its own placement and its own `color` there. A copy costs a matrix rather than a triangle list, so a field of them is cheap to trace.
 
 A list gives its placements to the build directly. The other two forms never hand a placement to the CPU at all. The compute-buffer form keeps its matrices in a buffer a kernel writes, and a field holds more copies than a frame can afford to walk. For both, the CPU reserves the slots, since it knows the count, and a kernel fills them from the same placements the draw reads.
 
@@ -111,12 +111,12 @@ Traced copies are not free the way drawn copies are. The traced scene is rebuilt
 field.tracedCopyBudget = 20_000     // the default
 ```
 
-A field over its budget stays out of the traced passes and says so once, naming both numbers. Its copies still draw, still receive reflections, and still cast into the shadow maps; the mirrors just do not show them. Raise it for an offline render, where seconds a frame are fine. Set it to `0` to keep a field out of the traced passes whatever its size. Camera culling does not enter into it: a reflection sees what the camera cannot, so the budget counts every copy the field holds.
+A field over its budget stays out of the traced passes and says so once, naming both numbers. Its copies still draw, still receive reflections, and still cast into the shadow maps; the mirrors just do not show them. The same holds in the path-traced export: an over-budget field rasterizes over the traced layer rather than vanishing from it. Raise it for an offline render, where seconds a frame are fine. Set it to `0` to keep a field out of the traced passes whatever its size. Camera culling does not enter into it: a reflection sees what the camera cannot, so the budget counts every copy the field holds.
 
 Not yet, by design (each lands with a later slice of the GPU-driven tier):
 
 - **Textures and surface maps.** A textured mesh draws untextured; its base color still tints. Wireframe and matcap fall back to the solid look, with a one-time note.
-- **The path-traced export.** `--path-traced` takes the plain meshes alone, because its material tables are per geometry and a copy carries none of its own.
+- **A glowing copy is not a light in the path-traced export.** It glows, and its light does reach the scene. But the tracer never aims at it. Its [light table](../Output/PathTraced.md) weighs each glowing triangle by its area in the world, and a copy's triangles are unplaced. Expect more grain than a plain emissive mesh gives.
 - **The screen-space pre-passes.** Contact shadows, ambient-occlusion normals, and subsurface scattering skip the copies.
 - **Motion vectors.** Copies are not `withMotion` movers; temporal anti-aliasing covers them through its depth reprojection instead.
 

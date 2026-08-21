@@ -446,7 +446,7 @@ typedef struct {
     unsigned int vertexBase;       // first vertex of the base mesh in the mesh buffer
     unsigned int options;          // MTLAccelerationStructureInstanceOptions, opaque
     unsigned int mask;             // instance visibility mask
-    unsigned int _ri0;
+    unsigned int matIndex;         // the run's material slot (the path-traced export; 0 elsewhere)
     unsigned int _ri1;
 } OllinRTInstanceParams;
 

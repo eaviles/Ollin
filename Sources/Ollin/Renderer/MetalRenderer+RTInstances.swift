@@ -50,13 +50,15 @@ extension MetalRenderer {
         descs[slot].functionTableOffset = 0u;
         descs[slot].structureIndex = p.structureIndex;
         // The hit record for this slot, in the same layout the CPU writes for a
-        // list copy: the base mesh's first vertex, then the tint as three floats.
-        uint r = 1u + slot * 4u;
+        // list copy: the base mesh's first vertex, the tint as three floats, and
+        // the material slot every copy of this run shares.
+        uint r = 1u + slot * 5u;
         float4 tint = placements[tid].color;
         table[r + 0u] = p.vertexBase;
         table[r + 1u] = as_type<uint>(tint.x);
         table[r + 2u] = as_type<uint>(tint.y);
         table[r + 3u] = as_type<uint>(tint.z);
+        table[r + 4u] = p.matIndex;
     }
     """)
 
@@ -77,6 +79,10 @@ extension MetalRenderer {
         /// Composed onto every placement (identity for the compute-buffer form,
         /// the draw-time 3D transform for a field).
         var model: simd_float4x4
+        /// The run's slot in the path-traced export's per-geometry material
+        /// tables, past their plain-geometry entries. Zero for a live build,
+        /// which shades a copy from its vertex attributes and never reads it.
+        var matIndex: Int = 0
     }
 
     /// Encode the descriptor writes for every GPU-resident run, ahead of the
@@ -102,6 +108,7 @@ extension MetalRenderer {
             params.vertexBase = UInt32(run.vertexBase)
             params.options = UInt32(MTLAccelerationStructureInstanceOptions.opaque.rawValue)
             params.mask = 0xFF
+            params.matIndex = UInt32(run.matIndex)
             compute.setBuffer(run.placements, offset: run.placementOffset * stride, index: 2)
             compute.setBytes(&params, length: MemoryLayout<OllinRTInstanceParams>.stride, index: 3)
             compute.dispatchThreads(MTLSize(width: run.count, height: 1, depth: 1),
