@@ -4958,7 +4958,12 @@ static inline TriplanarSurface ollin_triplanar_surface(float3 worldPos, float3 r
                                                        float tiles, float normalScale,
                                                        texture2d<float> baseTex,
                                                        texture2d<float> normalTex) {
-    constexpr sampler tri(filter::linear, address::repeat);
+    // The same settings the uv-mapped path reads through: the smaller copies, and
+    // sixteen readings along the long axis of the footprint. A projected surface
+    // is the one most likely to be a floor running away from the camera, so
+    // leaving them off here is exactly where they are missed most.
+    constexpr sampler tri(filter::linear, mip_filter::linear, address::repeat,
+                          max_anisotropy(16));
     float3 g = normalize(rawNormal);
     float3 w = ollin_triplanar_weights(g);
     float3 s = sign(g);
@@ -5114,7 +5119,11 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
     // triplanar, so every other batch keeps `detailScale` zero and skips this
     // whole block.
     if (mat.detailScale > 0.0) {
-        constexpr sampler detailSamp(filter::linear, address::repeat);
+        // Same settings as every other map read: a detail pair is tiled many
+        // times over the base uv, so it is the *first* thing to break up under
+        // minification if it has no smaller copies to fall back on.
+        constexpr sampler detailSamp(filter::linear, mip_filter::linear,
+                                     address::repeat, max_anisotropy(16));
         float2 duv = uv * mat.detailScale;
         if (mat.detailGates.x > 0.0) {
             // The color map is data with 128 gray the neutral: the sample × 2

@@ -87,6 +87,42 @@ struct TextureFilteringTests {
         }
     }
 
+    /// The same floor with no uvs at all, wearing the picture by world position
+    /// instead: the projected read, which has its own sampler written into the
+    /// mesh fragment.
+    final class TriplanarFloor: Sketch {
+        var texture: Image = TextureFilteringTests.loaded()
+        override var canvasSize: CanvasSize { .square(256) }
+        override func draw() {
+            background(.black)
+            perspective(eye: Vector3(0, 1.2, 6), target: Vector3(0, 0.6, -40),
+                        fieldOfView: .pi / 3)
+            ambientLight(.white)
+            var floor = Mesh.plane(width: 80, depth: 400)
+            floor.uvs = []
+            fill(.white)
+            drawMesh(floor.triplanarTextured(texture, scale: 0.5))
+        }
+    }
+
+    /// The same floor carrying a *detail* map: a second, much finer picture tiled
+    /// over the base uv, which reads through a third sampler of its own. Tiled
+    /// many times over, it is the first thing to break up in the distance.
+    final class DetailFloor: Sketch {
+        var texture: Image = TextureFilteringTests.loaded()
+        override var canvasSize: CanvasSize { .square(256) }
+        override func draw() {
+            background(.black)
+            perspective(eye: Vector3(0, 1.2, 6), target: Vector3(0, 0.6, -40),
+                        fieldOfView: .pi / 3)
+            ambientLight(.white)
+            var floor = Mesh.plane(width: 80, depth: 400)
+            floor.uvs = floor.uvs.map { Vector2($0.x * 5, $0.y * 25) }
+            fill(Color(white: 0.3))
+            drawMesh(floor.detailMapped(texture, scale: 8))
+        }
+    }
+
     /// The same picture tiled far past the pixels there are to hold it, looked at
     /// straight on: the even case, where a pixel covers many texels each way and
     /// the long-axis taps have nothing to give.
@@ -297,5 +333,43 @@ struct TextureFilteringTests {
         let noisy = spread(try #require(OllinApp.image(of: { let s = Wall(); s.texture = Self.authored(); return s }(), frame: 1)))
         #expect(smooth.sd < 2, "the traced plane should be flat: \(smooth)")
         #expect(noisy.sd > 10, "sixteen samples hide some of it, never all: \(noisy)")
+    }
+    /// A picture *projected* on a surface reads the same way. The projection has
+    /// its own sampler written into the mesh fragment, and a surface with no uvs
+    /// is the one most likely to be a landscape running away from the camera, so
+    /// a sampler there that reads neither the smaller copies nor along the
+    /// footprint is missed where it matters most. Its far band used to read 150.8
+    /// with a spread of 103.2, and a picture carrying the smaller copies read
+    /// *exactly* the same as one without, which is the reading that says the
+    /// levels were never reached.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aProjectedFloorReadsTheSameLevels() throws {
+        func band(_ picture: Image) throws -> (mean: Double, sd: Double) {
+            let s = TriplanarFloor(); s.texture = picture
+            return spread(try #require(OllinApp.image(of: s, frame: 1)), y0: 0.52, y1: 0.62)
+        }
+        let smooth = try band(Self.loaded()), noisy = try band(Self.authored())
+        #expect(smooth.sd < 3, "the projected floor should be flat: \(smooth)")
+        #expect(abs(smooth.mean - 188) < 3, "and hold the checker's tone: \(smooth)")
+        #expect(noisy.sd > 8, "one level keeps some of the noise, or this proves nothing: \(noisy)")
+    }
+    /// And so does a detail map, the third sampler written into that fragment.
+    /// A detail pair is tiled many times over the base uv on purpose, so it is
+    /// the first thing to break up in the distance: this band read 59.3 with a
+    /// spread of 46.9, and a picture carrying the smaller copies read *exactly*
+    /// the same as one without. It now reads 76.4 with a spread of 3.7, and the
+    /// one-level picture beside it keeps more of the noise, which is what says
+    /// the copies are being reached rather than the readings alone doing it.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aDetailMapReadsTheSameLevels() throws {
+        func band(_ picture: Image) throws -> (mean: Double, sd: Double) {
+            let s = DetailFloor(); s.texture = picture
+            return spread(try #require(OllinApp.image(of: s, frame: 1)), y0: 0.52, y1: 0.62)
+        }
+        let smooth = try band(Self.loaded()), noisy = try band(Self.authored())
+        #expect(smooth.sd < 5, "the detail has broken up: \(smooth)")
+        #expect(abs(smooth.mean - 76.4) < 3, "and it must hold its tone: \(smooth)")
+        #expect(noisy.sd > smooth.sd * 1.2,
+                "one level must keep more of it: \(noisy) against \(smooth)")
     }
 }
