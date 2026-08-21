@@ -1366,8 +1366,18 @@ final class MetalRenderer {
 
     /// Sampler for the image pipeline: linear filtering, clamp to edge. Built once.
     /// Also samples the gradient strip (the same filtering is exactly what a LUT
-    /// row wants).
+    /// row wants), and every screen-space pass in the effect chain.
     let imageSampler: MTLSamplerState?
+
+    /// The same sampler for a picture that lies on a *surface*, where the pixel's
+    /// footprint on the picture is a real shape rather than one texel. A floor
+    /// running away from the camera covers a long thin strip of its texture in one
+    /// screen pixel, and a level picked for the long side of that strip softens it
+    /// along the view; sixteen readings taken along that axis hold the sharpness
+    /// instead. Bound by the textured-mesh draws alone, whose fragment derives the
+    /// footprint from an interpolated uv every lane carries. See `imageSampler`
+    /// above for why the chain must not have it.
+    let surfaceSampler: MTLSamplerState?
 
     /// The gradient strip: one row per distinct gradient ramp this frame, baked
     /// on the CPU (see `BakedGradient`) and sampled by the SDF fragment. Reused
@@ -1406,13 +1416,19 @@ final class MetalRenderer {
         // so it reads exactly as it did; only a texture that *has* smaller levels
         // can land on one.
         //
-        // `maxAnisotropy` stays at 1, against every textbook. Sixteen taps along
-        // the long axis is the right filter for a floor at a grazing angle, and
-        // setting it here made a plain lit box render *differently on every run*
-        // (about 450 bytes at up to 12 of 255 between two renders of one scene),
-        // which the reproducibility probes caught at once. A frame that cannot be
-        // drawn twice is worth more than the sharpness, so this waits until that
-        // is understood.
+        // `maxAnisotropy` stays at 1 on this one, and the second sampler below is
+        // the reason. A chain pass reads its input one texel to one pixel: there is
+        // no long thin footprint to resolve, the extra readings would buy nothing,
+        // and asking for them makes the sampler work out a *derivative* that
+        // several of those passes cannot give it. A filter that returns early for a
+        // pixel it does not touch (the scatter blur's mark test, the sandpile's
+        // open edge, a disoccluded pixel in the temporal resolve) leaves the four
+        // neighbors the derivative is formed across missing some of their number,
+        // and what the sampler reads then is undefined. That is what made a plain
+        // lit box render *differently on every run* on a scene with no picture in
+        // it at all: about 450 bytes at up to 12 of 255 between two renders of one
+        // frame, which the reproducibility probes caught at once. Those passes name
+        // level 0 instead, and the footprint lives where a footprint means something.
         let samplerDesc = MTLSamplerDescriptor()
         samplerDesc.minFilter = .linear
         samplerDesc.magFilter = .linear
@@ -1420,6 +1436,8 @@ final class MetalRenderer {
         samplerDesc.sAddressMode = .clampToEdge
         samplerDesc.tAddressMode = .clampToEdge
         self.imageSampler = device.makeSamplerState(descriptor: samplerDesc)
+        samplerDesc.maxAnisotropy = 16
+        self.surfaceSampler = device.makeSamplerState(descriptor: samplerDesc)
 
         self.library = try MetalRenderer.loadLibrary(device: device)
 

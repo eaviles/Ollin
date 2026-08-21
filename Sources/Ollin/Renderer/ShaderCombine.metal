@@ -1087,15 +1087,18 @@ static inline float4 ollin_taa_history(texture2d<float> tex, sampler samp,
     float2 tc0 = (center - 1.0) * texel;
     float2 tc12 = (center + w2 / w12) * texel;
     float2 tc3 = (center + 2.0) * texel;
-    return tex.sample(samp, float2(tc0.x,  tc0.y))  * (w0.x  * w0.y)
-         + tex.sample(samp, float2(tc12.x, tc0.y))  * (w12.x * w0.y)
-         + tex.sample(samp, float2(tc3.x,  tc0.y))  * (w3.x  * w0.y)
-         + tex.sample(samp, float2(tc0.x,  tc12.y)) * (w0.x  * w12.y)
-         + tex.sample(samp, float2(tc12.x, tc12.y)) * (w12.x * w12.y)
-         + tex.sample(samp, float2(tc3.x,  tc12.y)) * (w3.x  * w12.y)
-         + tex.sample(samp, float2(tc0.x,  tc3.y))  * (w0.x  * w3.y)
-         + tex.sample(samp, float2(tc12.x, tc3.y))  * (w12.x * w3.y)
-         + tex.sample(samp, float2(tc3.x,  tc3.y))  * (w3.x  * w3.y);
+    // Every tap names level 0. The resolve calls this only after it has sent the
+    // disoccluded pixels home, so the quad is already broken here, and the history
+    // front is full size: there is no other level to reach for.
+    return tex.sample(samp, float2(tc0.x,  tc0.y),  level(0.0)) * (w0.x  * w0.y)
+         + tex.sample(samp, float2(tc12.x, tc0.y),  level(0.0)) * (w12.x * w0.y)
+         + tex.sample(samp, float2(tc3.x,  tc0.y),  level(0.0)) * (w3.x  * w0.y)
+         + tex.sample(samp, float2(tc0.x,  tc12.y), level(0.0)) * (w0.x  * w12.y)
+         + tex.sample(samp, float2(tc12.x, tc12.y), level(0.0)) * (w12.x * w12.y)
+         + tex.sample(samp, float2(tc3.x,  tc12.y), level(0.0)) * (w3.x  * w12.y)
+         + tex.sample(samp, float2(tc0.x,  tc3.y),  level(0.0)) * (w0.x  * w3.y)
+         + tex.sample(samp, float2(tc12.x, tc3.y),  level(0.0)) * (w12.x * w3.y)
+         + tex.sample(samp, float2(tc3.x,  tc3.y),  level(0.0)) * (w3.x  * w3.y);
 }
 
 // The resolve. Inputs: the frame's resolved color (rendered under this frame's
@@ -1200,11 +1203,14 @@ fragment float4 ollin_fx_taa_resolve(PresentOut in [[stage_in]],
     // stale value (a mover with no motion vector, a shading change) is pulled
     // into this frame's local distribution instead of trailing. Moments ignore
     // the single outlier tap that would inflate a min/max box.
+    // Level 0 by name here, where the first 3x3 above could leave it implicit: the
+    // disocclusion tests in between have already sent whole lanes home.
     float4 m1 = 0.0, m2 = 0.0;
     for (int y = -1; y <= 1; y++) {
         for (int x = -1; x <= 1; x++) {
             float4 s = ollin_taa_compress(
-                current.sample(samp, in.uv + float2(float(x), float(y)) * texel));
+                current.sample(samp, in.uv + float2(float(x), float(y)) * texel,
+                               level(0.0)));
             m1 += s;
             m2 += s * s;
         }
@@ -1562,12 +1568,16 @@ fragment float4 ollin_sss_blur(PresentOut in [[stage_in]],
     float radiusWorld = 2.0 * m.x * (ortho ? 1.0 : depthM) / p11;
     float followScale = 0.25 / max(radiusWorld, 1e-6);
 
+    // Every tap names level 0. The mark test above returns for every pixel that is
+    // not a scattering surface, so by here the quad the sampler would derive a level
+    // from is missing lanes; the frame and the mask are both full size, so level 0 is
+    // the reading either way.
     float4 blurred = colorM;
     blurred.rgb *= taps[0].rgb;
     for (int i = 1; i < 25; ++i) {
         float2 offset = in.uv + taps[i].w * finalStep;
-        float3 tap = color.sample(samp, offset).rgb;
-        float depthTap = mask.sample(samp, offset).z;
+        float3 tap = color.sample(samp, offset, level(0.0)).rgb;
+        float depthTap = mask.sample(samp, offset, level(0.0)).z;
         float gap = saturate(followScale * abs(depthM - depthTap));   // 1 at four radii of depth gap
         tap = mix(tap, colorM.rgb, gap);
         blurred.rgb += taps[i].rgb * tap;

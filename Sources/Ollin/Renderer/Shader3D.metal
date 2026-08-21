@@ -4496,14 +4496,45 @@ vertex MeshTexturedOut ollin_mesh_textured_vertex(uint vid [[vertex_id]],
 static inline float4 ollin_sample_wrapped(texture2d<float> tex, sampler clampSamp,
                                           float2 uv, float wrap) {
     // The two written-here samplers carry the mip setting the bound one (the
-    // clamp case) already has, or a floor would stop crawling only until it was
-    // told to tile.
-    constexpr sampler tileSamp(filter::linear, mip_filter::linear, address::repeat);
+    // clamp case) already has, and the same count of readings along the long axis
+    // of the footprint, or a floor would stop crawling and stay soft only until it
+    // was told to tile.
+    constexpr sampler tileSamp(filter::linear, mip_filter::linear, address::repeat,
+                               max_anisotropy(16));
     constexpr sampler mirrorSamp(filter::linear, mip_filter::linear,
-                                 address::mirrored_repeat);
+                                 address::mirrored_repeat, max_anisotropy(16));
     if (wrap >= 1.5) { return tex.sample(mirrorSamp, uv); }
     if (wrap >= 0.5) { return tex.sample(tileSamp, uv); }
     return tex.sample(clampSamp, uv);
+}
+
+// The same choice again, reading a footprint handed in rather than worked out
+// here. A parallax read lands at a uv the eye ray found step by step, and that uv
+// jumps between one pixel and the next wherever the relief steps, so a sampler
+// left to derive the footprint from it resolves a long smear that says nothing
+// about how much of the picture the pixel actually covers. What the pixel covers
+// is what the *surface* covers, so the march hands over the plain uv's own
+// gradients and every map reads through those.
+static inline float4 ollin_sample_wrapped_grad(texture2d<float> tex, sampler clampSamp,
+                                               float2 uv, float wrap,
+                                               float2 dPdx, float2 dPdy) {
+    constexpr sampler tileSamp(filter::linear, mip_filter::linear, address::repeat,
+                               max_anisotropy(16));
+    constexpr sampler mirrorSamp(filter::linear, mip_filter::linear,
+                                 address::mirrored_repeat, max_anisotropy(16));
+    if (wrap >= 1.5) { return tex.sample(mirrorSamp, uv, gradient2d(dPdx, dPdy)); }
+    if (wrap >= 0.5) { return tex.sample(tileSamp, uv, gradient2d(dPdx, dPdy)); }
+    return tex.sample(clampSamp, uv, gradient2d(dPdx, dPdy));
+}
+
+// One map read for the pipeline that carries them all: through the surface's own
+// footprint once the uv has been marched, and through the sampler's own reading
+// otherwise, which is the reading a batch with no height map takes.
+static inline float4 ollin_sample_map(texture2d<float> tex, sampler clampSamp,
+                                      float2 uv, float wrap,
+                                      bool marched, float2 dPdx, float2 dPdy) {
+    if (marched) { return ollin_sample_wrapped_grad(tex, clampSamp, uv, wrap, dPdx, dPdy); }
+    return ollin_sample_wrapped(tex, clampSamp, uv, wrap);
 }
 
 // The same choice at an explicit level 0, for the parallax march (whose loop exit
@@ -5034,7 +5065,12 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
     // eye ray meets the carved relief. Gated on `mat.parallax`, zero on every
     // batch without a height map, so those keep sampling at the raw uv.
     float2 uv = in.uv;
-    if (mat.parallax > 0.0) {
+    // The footprint the maps read through, taken from the plain uv before the
+    // march moves it (see `ollin_sample_map`). Worked out here, where every lane
+    // is still present, because a derivative needs all four of them.
+    float2 duvdx = dfdx(in.uv), duvdy = dfdy(in.uv);
+    bool marched = mat.parallax > 0.0;
+    if (marched) {
         uv = ollin_parallax_uv(in.uv, in.worldPos, in.normal, in.tangent,
                                light.cameraPosition.xyz, mat.parallax, heightTex,
                                mat.uvWrap);
@@ -5053,7 +5089,7 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
         tex = triSurf.color;
         N = triSurf.normal;
     } else {
-        tex = ollin_sample_wrapped(baseColorTex, samp, uv, mat.uvWrap);
+        tex = ollin_sample_map(baseColorTex, samp, uv, mat.uvWrap, marched, duvdx, duvdy);
         // The normal-map bend, exactly the nm twin's math but behind its gate: this
         // pipeline also serves meshes whose only map is metallic-roughness or
         // emissive, whose tangent slots are zero and must never be read.
@@ -5062,7 +5098,8 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
             float3 gn = in.normal;
             float3 t = in.tangent.xyz;
             float3 b = cross(gn, t) * in.tangent.w;
-            float3 nmS = ollin_sample_wrapped(normalMapTex, samp, uv, mat.uvWrap).xyz * 2.0 - 1.0;
+            float3 nmS = ollin_sample_map(normalMapTex, samp, uv, mat.uvWrap,
+                                          marched, duvdx, duvdy).xyz * 2.0 - 1.0;
             nmS.xy *= mat.normalScale;
             float3 bent = t * nmS.x + b * nmS.y + gn * nmS.z;
             float bentLen = length(bent);
@@ -5097,7 +5134,8 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
             float3 b = cross(gn, t) * in.tangent.w;
             float3 nb = float3(0.0, 0.0, 1.0);
             if (mat.normalScale > 0.0) {
-                nb = ollin_sample_wrapped(normalMapTex, samp, uv, mat.uvWrap).xyz * 2.0 - 1.0;
+                nb = ollin_sample_map(normalMapTex, samp, uv, mat.uvWrap,
+                                      marched, duvdx, duvdy).xyz * 2.0 - 1.0;
                 nb.xy *= mat.normalScale;
                 float nbLen = length(nb);
                 if (nbLen > 1e-6) { nb /= nbLen; }
@@ -5153,16 +5191,18 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
     float pxRough = mat.roughness;
     float pxAO = 1.0;
     if (mat.mrGate > 0.0) {
-        float4 mr = ollin_sample_wrapped(mrTex, samp, uv, mat.uvWrap);
+        float4 mr = ollin_sample_map(mrTex, samp, uv, mat.uvWrap, marched, duvdx, duvdy);
         pxRough = mat.roughness * mr.g;
         pxMetal = mat.metallic * mr.b;
     }
     if (mat.occlusionStrength > 0.0) {
-        float occ = ollin_sample_wrapped(occlusionTex, samp, uv, mat.uvWrap).r;
+        float occ = ollin_sample_map(occlusionTex, samp, uv, mat.uvWrap, marched, duvdx, duvdy).r;
         pxAO = 1.0 + mat.occlusionStrength * (occ - 1.0);
     }
     float3 emissive = mat.emissive.rgb;
-    if (mat.emissive.w > 0.0) emissive *= ollin_sample_wrapped(emissiveTex, samp, uv, mat.uvWrap).rgb;
+    if (mat.emissive.w > 0.0) {
+        emissive *= ollin_sample_map(emissiveTex, samp, uv, mat.uvWrap, marched, duvdx, duvdy).rgb;
+    }
     float4 meshFieldShadow = ollin_resolve_mesh_field_shadow(in.position.xy, in.worldPos, in.normal,
                                                              light, fields, fieldNodes, fieldShadowTex);
     if (light.contactShadow.x > 0.0) {

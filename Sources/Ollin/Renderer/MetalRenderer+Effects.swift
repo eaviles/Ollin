@@ -2603,7 +2603,11 @@ extension MetalRenderer {
                     let base = batch.material?.texture?.texture(for: device) ?? whiteStandIn()
                     guard let texture = base else { continue }
                     encoder.setFragmentTexture(texture, index: 0)
-                    encoder.setFragmentSamplerState(imageSampler, index: 0)
+                    // The one place a picture lies on a surface, so the one place a
+                    // pixel's footprint is a long thin shape worth resolving: the
+                    // maps read through `surfaceSampler`, everything else in the
+                    // frame through the plain one.
+                    encoder.setFragmentSamplerState(surfaceSampler, index: 0)
                     if meshNormalMapped {
                         guard let nm = batch.material?.normalTexture?.linearTexture(for: device)
                         else { continue }

@@ -227,11 +227,10 @@ struct TextureFilteringTests {
 
     /// The stretched case, measured over time rather than in one frame: creep the
     /// camera forward by a fraction of a texel and ask how much the far floor
-    /// changed. That is the crawl, and the chain takes a third of it away. It
-    /// cannot take all of it: one level has to cover a footprint that is long and
-    /// thin, so what is left over is a soft field still shifting rather than a
-    /// hard one (the sampler that would answer that is the anisotropic one the
-    /// next probe explains).
+    /// changed. That is the crawl, and the chain takes a third of it away. What is
+    /// left over is a soft field still shifting rather than a hard one; the
+    /// sharpness it gave up to get there is what the anisotropic probe below
+    /// takes back.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aRecedingFloorCrawlsLess() throws {
         func crawl(_ picture: Image) throws -> Double {
@@ -253,12 +252,13 @@ struct TextureFilteringTests {
         #expect(filtered < raw * 0.8, "the far floor still crawls: \(filtered) against \(raw)")
     }
 
-    /// The same frame twice, byte for byte. Reading a smaller level must not cost
-    /// the export its promise, and this is the probe that would have caught the
-    /// anisotropic sampler that did: sixteen taps along the long axis is the
-    /// textbook answer to a floor at a grazing angle, and switching it on here
-    /// made a plain lit box render differently on every run (about 450 bytes at
-    /// up to 12 of 255), so the picture stays trilinear until that is understood.
+    /// The same frame twice, byte for byte, now that the floor is read with
+    /// sixteen readings taken along the long axis of the footprint. This is the
+    /// probe that caught what those readings cost when the *whole* renderer was
+    /// asked for them: a plain lit box rendered differently on every run (about
+    /// 450 bytes at up to 12 of 255), because a screen-space pass that returns
+    /// early has no four neighbors left to work a footprint out from. Only a
+    /// picture on a surface is read that way now.
     @Test(.enabled(if: Snapshot.hasMetal))
     func aFilteredFloorRendersTheSameTwice() throws {
         func render() throws -> [UInt8] {
@@ -266,6 +266,24 @@ struct TextureFilteringTests {
             return pixels(of: try #require(OllinApp.image(of: s, frame: 1)))
         }
         #expect(try render() == render())
+    }
+
+    /// The long thin footprint, answered. A pixel on a receding floor covers many
+    /// texels along the view and few across it, and one level has to be picked for
+    /// the long side, so the picture goes soft in *both* directions and the far
+    /// band flattens to the checker's own grey. Sixteen readings taken along that
+    /// long axis average only what the pixel really covers, so the rows stay
+    /// apart. The same band of the same frame reads a spread of 0.51 with one
+    /// reading and 8.20 with sixteen, which is what makes a threshold between them
+    /// mean something. The tone is the guard on the other side: contrast bought by
+    /// reading a sharper level than the pixel covers would pull the mean off 188,
+    /// and it holds at 187.3.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func aRecedingFloorKeepsItsRowsApart() throws {
+        let s = Floor(); s.texture = Self.loaded()
+        let band = spread(try #require(OllinApp.image(of: s, frame: 1)), y0: 0.52, y1: 0.62)
+        #expect(band.sd > 4, "the far floor has gone flat: \(band)")
+        #expect(abs(band.mean - 188) < 3, "and it must still be the checker's tone: \(band)")
     }
 
     /// The traced export reads the same levels. It already worked out a mip level

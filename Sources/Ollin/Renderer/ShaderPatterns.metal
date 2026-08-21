@@ -1484,10 +1484,12 @@ fragment float4 ollin_fx_poisson_jacobi(PresentOut in [[stage_in]],
     float C = params[0].z;
     float seedZero = params[0].w;
     if (mask.sample(samp, in.uv).r < 0.5) { return float4(0.0, 0.0, 0.0, 1.0); }
-    float sum = uPrev.sample(samp, in.uv - float2(texel.x, 0.0)).r
-              + uPrev.sample(samp, in.uv + float2(texel.x, 0.0)).r
-              + uPrev.sample(samp, in.uv - float2(0.0, texel.y)).r
-              + uPrev.sample(samp, in.uv + float2(0.0, texel.y)).r;
+    // Named level past that test: outside the mask a pixel is already gone, so the
+    // four neighbor reads run on a broken quad and have no derivative to offer.
+    float sum = uPrev.sample(samp, in.uv - float2(texel.x, 0.0), level(0.0)).r
+              + uPrev.sample(samp, in.uv + float2(texel.x, 0.0), level(0.0)).r
+              + uPrev.sample(samp, in.uv - float2(0.0, texel.y), level(0.0)).r
+              + uPrev.sample(samp, in.uv + float2(0.0, texel.y), level(0.0)).r;
     float u = (1.0 - seedZero) * sum * 0.25 + C * 0.25;
     return float4(u, 0.0, 0.0, 1.0);
 }

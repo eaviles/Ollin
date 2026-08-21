@@ -140,7 +140,7 @@ fragment float4 ollin_sim_reaction_diffusion(PresentOut in [[stage_in]],
     float2 t = params[0].xy;
     float feed = params[1].x, kill = params[1].y;
     float2 uv = in.uv;
-#define TAP(DX, DY) src.sample(samp, fract(uv + float2(float(DX), float(DY)) * t)).xy
+#define TAP(DX, DY) src.sample(samp, fract(uv + float2(float(DX), float(DY)) * t), level(0.0)).xy
     float2 c = src.sample(samp, uv).xy;
     float2 lap = -c
         + 0.20 * (TAP(-1, 0) + TAP(1, 0) + TAP(0, -1) + TAP(0, 1))
@@ -169,7 +169,7 @@ fragment float4 ollin_sim_reaction_diffusion_modulated(PresentOut in [[stage_in]
     float feed = mix(params[1].x, params[1].z, m);
     float kill = mix(params[1].y, params[1].w, m);
     float2 uv = in.uv;
-#define TAP(DX, DY) src.sample(samp, fract(uv + float2(float(DX), float(DY)) * t)).xy
+#define TAP(DX, DY) src.sample(samp, fract(uv + float2(float(DX), float(DY)) * t), level(0.0)).xy
     float2 c = src.sample(samp, uv).xy;
     float2 lap = -c
         + 0.20 * (TAP(-1, 0) + TAP(1, 0) + TAP(0, -1) + TAP(0, 1))
@@ -190,7 +190,7 @@ fragment float4 ollin_sim_life(PresentOut in [[stage_in]],
                                constant float4 *params [[buffer(0)]]) {
     float2 t = params[0].xy;
     float2 uv = in.uv;
-#define ALIVE(DX, DY) step(0.5, src.sample(samp, fract(uv + float2(float(DX), float(DY)) * t)).r)
+#define ALIVE(DX, DY) step(0.5, src.sample(samp, fract(uv + float2(float(DX), float(DY)) * t), level(0.0)).r)
     float n = ALIVE(-1, -1) + ALIVE(0, -1) + ALIVE(1, -1) + ALIVE(-1, 0)
             + ALIVE(1, 0) + ALIVE(-1, 1) + ALIVE(0, 1) + ALIVE(1, 1);
 #undef ALIVE
@@ -210,7 +210,10 @@ fragment float4 ollin_sim_life(PresentOut in [[stage_in]],
 // only accumulates until every cell topples forever.
 static inline float ollin_sandpile_gives(texture2d<float> src, sampler samp, float2 p) {
     if (p.x <= 0.0 || p.x >= 1.0 || p.y <= 0.0 || p.y >= 1.0) { return 0.0; }
-    return floor(src.sample(samp, p).r) * 0.25;
+    // Level named, never derived: the guard above sends the edge lanes home, and a
+    // sampler asked for its own level reads a derivative across a quad that is no
+    // longer whole. A field read one texel to one pixel has no other level anyway.
+    return floor(src.sample(samp, p, level(0.0)).r) * 0.25;
 }
 
 // The Abelian sandpile, the classic toppling automaton: the state is a grain
@@ -254,10 +257,13 @@ fragment float4 ollin_sim_sandpile(PresentOut in [[stage_in]],
 // the full block within `range` (moore) or the diamond |dx|+|dy| <= range
 // (von Neumann).
 
-// One decoded neighbor state.
+// One decoded neighbor state. The level is named because the callers wrap the
+// coordinate: `fract` sends a tap that walked off one side back to the other, so
+// between two neighboring pixels at that seam the coordinate jumps a whole field,
+// and a sampler left to read how fast it moves sees a step the picture never took.
 static inline float ollin_cell_state(texture2d<float> src, sampler samp,
                                      float2 uv, float levelsMinusOne) {
-    return rint(src.sample(samp, uv).r * levelsMinusOne);
+    return rint(src.sample(samp, uv, level(0.0)).r * levelsMinusOne);
 }
 
 // Griffeath's cyclic cellular automaton: N states arranged in a circle, and a cell
@@ -377,7 +383,7 @@ fragment float4 ollin_sim_hodgepodge(PresentOut in [[stage_in]],
             if (dx == 0 && dy == 0) { continue; }
             if (!moore && abs(dx) + abs(dy) > 1) { continue; }
             float2 p = fract(uv + float2(float(dx), float(dy)) * t);
-            float v = rint(src.sample(samp, p).r * n);
+            float v = rint(src.sample(samp, p, level(0.0)).r * n);   // wrapped: see ollin_cell_state
             S += v;
             A += (v > 0.5 && v < n - 0.5) ? 1.0 : 0.0;
             B += (v > n - 0.5) ? 1.0 : 0.0;
@@ -416,7 +422,8 @@ fragment float4 ollin_sim_lenia(PresentOut in [[stage_in]],
             float qq = q * (1.0 - q);
             if (qq <= 0.0) continue;                     // ring edges (and the site itself) weigh 0
             float w = rings[int(ringPos)] * exp(4.0 - 1.0 / qq);   // exponential kernel core
-            sum += w * src.sample(samp, fract(in.uv + float2(float(dx), float(dy)) * t)).r;
+            sum += w * src.sample(samp, fract(in.uv + float2(float(dx), float(dy)) * t),
+                                  level(0.0)).r;   // wrapped: see ollin_cell_state
             weight += w;
         }
     }
@@ -862,13 +869,13 @@ fragment float4 ollin_sim_turing_normalize(PresentOut in [[stage_in]],
 // A flow tap that treats everything off-canvas as dry, motionless paper.
 static inline float4 ollin_wash_flow(texture2d<float> t, sampler s, float2 uv) {
     if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) { return float4(0.0); }
-    return t.sample(s, uv);
+    return t.sample(s, uv, level(0.0));   // named level: the guard breaks the quad
 }
 
 // A pigment/saturation tap: off-canvas paper holds no pigment and no moisture.
 static inline float4 ollin_wash_pig(texture2d<float> t, sampler s, float2 uv) {
     if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) { return float4(0.0); }
-    return t.sample(s, uv);
+    return t.sample(s, uv, level(0.0));   // named level: the guard breaks the quad
 }
 
 // paper generation: the height field h in .r, strictly inside (0, 1) so slope,
