@@ -36,6 +36,8 @@ camera(cam)
 
 The scene needs no other change: the same lights, materials, environment, and camera the raster path draws are what the tracer reads, in the same units, so the traced frame reads as the same picture with the light finished.
 
+**Which lights throw.** The tracer follows the light itself, so it needs no [`castShadows()`](../3D/3D.md#shadows). Every light in the frame throws, and the raster's four-caster cap does not apply. A light still declines with `castsShadow: false`, and the export honors it, so the fill and rim of a [`lightingPreset(_:)`](../3D/3D.md#lights) rig throw nothing here either. In the raster that flag is a cost dial too, since each caster is a pass over the scene. Here it only decides the picture, and the picture it decides is the one you framed.
+
 ### What stays raster
 
 The trace covers the solid 3D meshes. Everything else keeps its ordinary pipeline and composites with the traced layer by depth, in draw order:

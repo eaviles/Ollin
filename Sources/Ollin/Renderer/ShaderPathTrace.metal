@@ -507,7 +507,11 @@ static inline float3 ollin_pt_mesh_light(OllinPTHit h, float3 wo, float eps,
 
 // Next-event estimation over the frame's light list: for each light, pick the point
 // the surface would see, trace one visibility ray, and add the light's contribution
-// through the surface's reflectance. Punctual kinds keep the raster conventions
+// through the surface's reflectance. A light that declines to throw a shadow
+// (`Light.castsShadow == false`, packed in `shaping.w`) skips that ray and lights
+// the surface through every occluder, which is what the raster does with it: a fill
+// exists to open the shadow side, and the export must show the picture the sketch
+// composed. Punctual kinds keep the raster conventions
 // (intensity-premultiplied color, no distance falloff, the spot cone, IES/cookie
 // shaping); area kinds sample their real surface, which is where the physically
 // soft shadows come from. Visibility runs through the transparent walk, so glass
@@ -540,10 +544,13 @@ static inline float3 ollin_pt_direct(OllinPTHit h, float3 wo, float eps,
             }
             ollin_apply_light_shaping(L, light, toLight, h.s.P, iesProfiles, cookies);
             float3 target = (L.kind == 0) ? h.s.P + toLight * 1e6 : L.position.xyz;
-            float3 vis = ollin_pt_transmittance(origin, target, eps, accel,
-                                                verts, geoOffsets, geoMats,
-                                                anyTransmission);
-            if (all(vis <= float3(0.0))) continue;
+            float3 vis = float3(1.0);
+            if (L.shaping.w < 0.5) {                 // this light throws
+                vis = ollin_pt_transmittance(origin, target, eps, accel,
+                                             verts, geoOffsets, geoMats,
+                                             anyTransmission);
+                if (all(vis <= float3(0.0))) continue;
+            }
             // Raster parity: the physically-based finish shades the premultiplied
             // color through the microfacet BRDF; a legacy finish keeps the raster's
             // un-normalized Lambert (albedo · color · N·L, no 1/π).
@@ -588,10 +595,13 @@ static inline float3 ollin_pt_direct(OllinPTHit h, float3 wo, float eps,
             float cosL = dot(-wi, lightN);
             if (L.direction.w > 0.5) cosL = abs(cosL);   // two-sided panel
             if (cosL <= 0.0) continue;
-            float3 vis = ollin_pt_transmittance(origin, p, eps, accel,
-                                                verts, geoOffsets, geoMats,
-                                                anyTransmission);
-            if (all(vis <= float3(0.0))) continue;
+            float3 vis = float3(1.0);
+            if (L.shaping.w < 0.5) {                 // this light throws
+                vis = ollin_pt_transmittance(origin, p, eps, accel,
+                                             verts, geoOffsets, geoMats,
+                                             anyTransmission);
+                if (all(vis <= float3(0.0))) continue;
+            }
             float3 f = ollin_pt_bsdf(h, wo, wi);
             direct += f * L.color.rgb * vis * (NoL * cosL * area / dist2);
         }

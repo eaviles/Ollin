@@ -919,4 +919,82 @@ struct PathTraceTests {
         let b = try #require(pathTracedGrain(.room, samples: 12, denoise: true))
         #expect(pixels(of: a) == pixels(of: b))
     }
+
+    // MARK: - A light that declines to throw
+
+    /// A floor, a sphere above it, and one light: the scene where a cast shadow is
+    /// the only thing on the floor to read. Ambient stays near zero so the shadow
+    /// patch is dark for one reason alone, and the sphere sits off the light's
+    /// axis so its shadow lands clear of its own silhouette.
+    final class CasterProbe: Sketch {
+        var throwsShadow = true
+
+        override var canvasSize: CanvasSize { .square(256) }
+
+        static func make(_ throwsShadow: Bool) -> CasterProbe {
+            let p = CasterProbe()
+            p.throwsShadow = throwsShadow
+            return p
+        }
+
+        override func draw() {
+            background(.black)
+            ambientLight(Color(white: 0.02))
+            camera(Camera3D(eye: Vector3(0, 3.2, 6.4), target: Vector3(0, 0, 0)))
+            // The casting half names nothing, so it also pins the default: a light
+            // that says nothing about shadows throws one.
+            if throwsShadow {
+                directionalLight(Color(white: 0.9), direction: Vector3(1, -0.8, -0.1))
+            } else {
+                directionalLight(Color(white: 0.9), direction: Vector3(1, -0.8, -0.1),
+                                 castsShadow: false)
+            }
+            fill(Color(white: 0.85))
+            material(Material())
+            withState {
+                translate(0, -0.8, 0)
+                drawBox(width: 16, height: 0.4, depth: 16)
+            }
+            withState {
+                translate(0, 0.7, 0)
+                drawSphere(radius: 0.7)
+            }
+        }
+    }
+
+    private func casterProbe(_ throwsShadow: Bool, samples: Int = 24) -> CGImage? {
+        OllinApp.pathTracedExport = PathTracing(samplesPerPixel: samples, denoise: false)
+        defer { OllinApp.pathTracedExport = nil }
+        return OllinApp.image(of: CasterProbe.make(throwsShadow), frame: 1)
+    }
+
+    /// The ruling: `castsShadow: false` reaches the traced export. The tracer keeps
+    /// no caster list, so without the flag it throws a shadow from every light in the
+    /// frame, and a curated preset's fill would cast one there while casting nothing
+    /// in the preview. The probe reads the floor where the shadow falls: with the flag
+    /// set the patch must come back to the brightness of the lit floor beside it.
+    @Test(.enabled(if: Snapshot.hasRaytracing))
+    func aLightThatDeclinesToThrowCastsNothingInTheTrace() throws {
+        let casting = try #require(casterProbe(true))
+        let open = try #require(casterProbe(false))
+        let shadow = (x0: 0.64, x1: 0.72, y0: 0.52, y1: 0.60)
+        let lit = (x0: 0.24, x1: 0.32, y0: 0.52, y1: 0.60)
+
+        let castShadowPatch = regionMean(casting, x0: shadow.x0, x1: shadow.x1,
+                                         y0: shadow.y0, y1: shadow.y1)
+        let castLitPatch = regionMean(casting, x0: lit.x0, x1: lit.x1,
+                                      y0: lit.y0, y1: lit.y1)
+        // The probe must actually cast, or the comparison below proves nothing.
+        #expect(castLitPatch - castShadowPatch > 40,
+                "the probe casts no shadow: \(castShadowPatch) against \(castLitPatch)")
+
+        let openShadowPatch = regionMean(open, x0: shadow.x0, x1: shadow.x1,
+                                         y0: shadow.y0, y1: shadow.y1)
+        let openLitPatch = regionMean(open, x0: lit.x0, x1: lit.x1,
+                                      y0: lit.y0, y1: lit.y1)
+        #expect(abs(openShadowPatch - openLitPatch) < 6,
+                "the floor still darkens: \(openShadowPatch) against \(openLitPatch)")
+        #expect(openShadowPatch - castShadowPatch > 40,
+                "the flag moved the patch only \(openShadowPatch - castShadowPatch) levels")
+    }
 }

@@ -674,8 +674,14 @@ typedef struct {
     simd_float4 shaping;     // light shaping (point/spot): x = IES profile layer in the array at
                              // fragment texture 10 (-1 = none), y = cookie layer in the array at
                              // fragment texture 11 (-1 = none, spot only), z = roll about the beam
-                             // axis in radians (spins profile azimuth + cookie together), w unused.
+                             // axis in radians (spins profile azimuth + cookie together).
                              // The point kind's fixture axis rides `direction` (unused before).
+                             // w = 1 when the light declines to throw a shadow
+                             // (`Light.castsShadow == false`), 0 when it throws, so a
+                             // default light packs byte-identically. The raster resolves
+                             // its casters on the CPU (`shadowCasters`), so this lane
+                             // exists for the traced export, which has no caster list and
+                             // would otherwise throw from every light in the frame.
 } OllinLight;
 
 // Shadow mapping (opt-in, `castShadows()`): one light casts. The caster's

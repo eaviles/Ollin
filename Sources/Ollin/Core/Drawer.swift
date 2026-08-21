@@ -2620,9 +2620,12 @@ final class Drawer {
         var l = OllinLight()
         // Light shaping: the layer indices into the frame's IES/cookie texture
         // arrays (-1 = none; a zero-initialized struct would wrongly point at
-        // layer 0) and the roll about the beam axis.
+        // layer 0) and the roll about the beam axis. The last lane carries the
+        // light's own answer to "do you throw a shadow": the raster resolves that
+        // on the CPU into `shadowCasters`, but the traced export sees only this
+        // list, so without the flag every light there throws.
         l.shaping = SIMD4<Float>(Float(profileLayer), Float(cookieLayer),
-                                 Float(light.roll), 0)
+                                 Float(light.roll), light.castsShadow ? 0 : 1)
         let i = light.intensity
         l.color = SIMD4<Float>(Float(Color.srgbToLinear(light.color.red) * i),
                                Float(Color.srgbToLinear(light.color.green) * i),
