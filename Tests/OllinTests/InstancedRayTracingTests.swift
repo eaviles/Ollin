@@ -215,19 +215,60 @@ struct ReflectionResolutionTierTests {
     @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
     func theHalfSizeLayerStillPutsTheMirrorImageWhereItBelongs() throws {
         // The band reads the box's reflection either way, and the empty scene sits about
-        // 68 below it, so a layer that went missing or landed elsewhere could not pass.
-        // The half-size layer does read weaker, by about 15% of the signal, and that is
-        // the documented cost of the tier rather than a fault: the layer carries its hit
-        // coverage per pixel, so a coarser one smears that coverage at every silhouette
-        // and each smeared pixel falls part of the way back to the environment.
+        // 69 below it, so a layer that went missing or landed elsewhere could not pass.
+        // The half-size layer keeps nearly all of that. What it costs is reflected
+        // *detail*, the honest price of tracing a quarter as many rays, and this
+        // reading is what says it costs nothing else.
         let full = try mirroredBoxMean(.plain, .detail)
         let half = try mirroredBoxMean(.plain, .performance)
         let empty = try mirroredBoxMean(.nothing, .detail)
         #expect(full - empty > 20, "the control: full \(full), empty \(empty)")
-        #expect(half - empty > 40,
-                "expected the half-size layer to still hold the mirror image: half \(half), empty \(empty)")
-        #expect(full - half < 20,
-                "expected the half-size layer to dim rather than drop the image: full \(full), half \(half)")
+        #expect(half - empty > 0.9 * (full - empty),
+                "expected the half-size layer to keep the mirror image, not dim it: full \(full), half \(half), empty \(empty)")
+    }
+
+    /// The upsample guide. Two mirror faces of one box meet at a vertical edge down the
+    /// middle of the frame, each facing its own colored panel, so a texel that straddles
+    /// them holds two different reflections. Read flat, a half-size layer hands each face
+    /// a share of the other one's color for a pixel or two along the joint; guided by the
+    /// reflection G-buffer's own normal, each face keeps its own.
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func aMirrorEdgeKeepsItsOwnReflectionAtHalfSize() throws {
+        // Blue minus red down the middle rows, column by column: strongly negative on the
+        // left face (which reflects the red panel), strongly positive on the right one.
+        func profile(_ quality: RenderQuality) throws -> [Double] {
+            let scene = MirrorEdgeProbe()
+            let image = try #require(OllinApp.image(of: scene, frame: 1, quality: quality))
+            let w = image.width, h = image.height
+            var data = [UInt8](repeating: 0, count: w * h * 4)
+            let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8,
+                                bytesPerRow: w * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+            ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+            return (0..<w).map { x in
+                var sum = 0, count = 0
+                for y in (h * 42 / 100)..<(h * 58 / 100) {
+                    let i = (y * w + x) * 4
+                    sum += Int(data[i + 2]) - Int(data[i]); count += 1
+                }
+                return Double(sum) / Double(count)
+            }
+        }
+        let full = try profile(.detail)
+        let half = try profile(.performance)
+        // The joint is where the profile climbs fastest, and both tiers draw the box in
+        // the same place, so the full-size picture locates it for the pair.
+        let joint = (1..<(full.count - 1)).max(by: { full[$0 + 1] - full[$0] < full[$1 + 1] - full[$1] }) ?? 0
+        let left = joint - 2
+        #expect(full[left] < -100, "the control: the left face reflects the red panel, \(full[left])")
+        #expect(full[joint + 3] > 50, "the control: the right face reflects the blue one, \(full[joint + 3])")
+        // The two pixels the joint runs between, one on each face. They are the whole
+        // reading: a flat blend of the coarse layer's four taps hands each of them a
+        // share of the other face's color, which measures here as about 50 and 100.
+        for x in joint...(joint + 1) {
+            #expect(abs(half[x] - full[x]) < 20,
+                    "expected each face to keep its own reflection at the joint, column \(x): full \(full[x]), half \(half[x])")
+        }
     }
 
     @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
@@ -238,6 +279,44 @@ struct ReflectionResolutionTierTests {
         let instanced = try mirroredBoxMean(.instanced, .performance)
         #expect(abs(plain - instanced) < 4,
                 "expected an instanced copy to mirror at the lower tier too: plain \(plain), instanced \(instanced)")
+    }
+}
+
+/// The upsample-guide scene: one mirror box turned a half-turn so two of its faces meet
+/// at a vertical edge down the middle of the frame, with a red panel to the left of the
+/// camera and a blue one to the right. Each face reflects one panel and not the other.
+private final class MirrorEdgeProbe: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    private let box = Mesh.box(width: 2.4, height: 2.4, depth: 2.4)
+    private let panel = Mesh.box(width: 9, height: 9, depth: 0.2)
+
+    override func draw() {
+        background(.black)
+        camera(.orbiting(target: Vector3(0, 0, 0), radius: 8, azimuth: 0.785398, elevation: 0.0))
+        environment(.night)
+        rayTracedReflections()
+        withState {
+            fill(Color(white: 0.95))
+            material(.metal(roughness: 0.04))
+            drawMesh(box)
+        }
+        // Each face throws the eye ray back the way it came about its own normal, so a
+        // panel that shows in one of them sits opposite the other. The red one lands
+        // behind the camera, which also keeps it out of the picture.
+        withState {
+            material(.dielectric(roughness: 0.5))
+            fill(Color(red: 1.0, green: 0.04, blue: 0.04))
+            withState {
+                translate(-8, 0, 8)
+                drawMesh(panel)
+            }
+            fill(Color(red: 0.04, green: 0.04, blue: 1.0))
+            withState {
+                translate(8, 0, -8)
+                drawMesh(panel)
+            }
+        }
     }
 }
 

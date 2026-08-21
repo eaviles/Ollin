@@ -1717,7 +1717,7 @@ final class MetalRenderer {
             reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
             width: reflectionWidth, height: reflectionHeight, supersample: false, pooled: true,
             gi: gi, taaJitter: taaJitter)
-            .map { (texture: $0, scale: Float(reflectionScale)) }
+            .map { (texture: $0.traced, guide: $0.guide, scale: Float(reflectionScale)) }
         // Caustics (live): trace this frame's photons through the specular casters,
         // splat them, and temporally resolve the layer the mesh fragments add by
         // screen position. Nil when caustics aren't active this frame; the carriers'
@@ -2318,7 +2318,7 @@ final class MetalRenderer {
             reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
             width: reflectionWidth, height: reflectionHeight, supersample: true, pooled: false,
             gi: gi)
-            .map { (texture: $0, scale: Float(reflectionScale)) }
+            .map { (texture: $0.traced, guide: $0.guide, scale: Float(reflectionScale)) }
         // Caustics, historyless: uniform emission at the export budget, no history
         // slot touched, so a single export is a pure function of the frame and the
         // live frame-grab re-render never steps the on-screen adaptation.
@@ -2608,7 +2608,7 @@ final class MetalRenderer {
                 width: max(1, Int((Double(width) * reflectionScale).rounded())),
                 height: max(1, Int((Double(height) * reflectionScale).rounded())),
                 supersample: false, pooled: false, gi: gi, taaJitter: taaJitter)
-                .map { (texture: $0, scale: Float(reflectionScale)) }
+                .map { (texture: $0.traced, guide: $0.guide, scale: Float(reflectionScale)) }
             guard let encoder = countedEncoder(cb, pass) else { continue }
             encode(drawer, viewport: viewport, into: encoder,
                    triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,

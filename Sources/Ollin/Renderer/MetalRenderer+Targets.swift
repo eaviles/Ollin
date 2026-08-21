@@ -1946,7 +1946,8 @@ extension MetalRenderer {
                                       width: Int, height: Int,
                                       supersample: Bool, pooled: Bool,
                                       gi: GIResolved? = nil,
-                                      taaJitter: SIMD2<Float> = .zero) -> MTLTexture? {
+                                      taaJitter: SIMD2<Float> = .zero)
+                                      -> (traced: MTLTexture, guide: MTLTexture)? {
         guard let camera = drawer.camera3D, let meshBuffer,
               let accel = reflectAccel, let geoOffsets = reflectGeoOffsets,
               let irradiance = currentIBLIrradiance, let prefilter = currentIBLPrefilter,
@@ -1954,10 +1955,12 @@ extension MetalRenderer {
                                                && !$0.meshWireframe && !$0.meshGrid })
         else { return nil }
 
-        // Same-frame repeat (live): the history already holds this frame's accumulation.
+        // Same-frame repeat (live): the history already holds this frame's accumulation,
+        // and the G-buffer beside it still describes the same frame's surfaces.
         if !supersample, statefulEncodeIsRepeat,
-           let slot = rtReflectHistory, slot.valid, slot.w == width, slot.h == height {
-            return slot.flipped ? slot.b : slot.a
+           let slot = rtReflectHistory, slot.valid, slot.w == width, slot.h == height,
+           let gbuf = rtReflectGBuf, gbuf.w == width, gbuf.h == height {
+            return (slot.flipped ? slot.b : slot.a, gbuf.normal)
         }
 
         // Lighting for the trace pass: the same IBL exposure/rotation the main pass
@@ -2088,7 +2091,7 @@ extension MetalRenderer {
         trace.endEncoding()
 
         // Headless/export: the in-frame average IS the anti-aliased reflection.
-        if supersample { return traced }
+        if supersample { return (traced, gbuf.normal) }
 
         // 3. The temporal resolve (live): reproject + clamp + EMA into the history's back.
         let slot: SSRHistorySlot
@@ -2096,7 +2099,7 @@ extension MetalRenderer {
             slot = existing
         } else {
             guard let a = makeFloatResolve(width: width, height: height),
-                  let b = makeFloatResolve(width: width, height: height) else { return traced }
+                  let b = makeFloatResolve(width: width, height: height) else { return (traced, gbuf.normal) }
             let clear = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
             clearFloatTexture(a, color: clear, into: cb)
             clearFloatTexture(b, color: clear, into: cb)
@@ -2125,7 +2128,7 @@ extension MetalRenderer {
         slot.previousViewProjection = viewProjection
         slot.valid = true
         slot.flipped.toggle()   // the just-written back is next frame's (and any repeat's) front
-        return back
+        return (back, gbuf.normal)
     }
 
     /// EMA history weight for the deferred reflection's temporal accumulation, resolved

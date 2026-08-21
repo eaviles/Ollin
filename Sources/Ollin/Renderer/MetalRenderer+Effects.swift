@@ -1843,7 +1843,8 @@ extension MetalRenderer {
                         reflectGeoOffsets: MTLBuffer? = nil,
                         halfResField: (color: MTLTexture, depth: MTLTexture, region: SIMD4<Float>)? = nil,
                         halfResFieldShadow: MTLTexture? = nil,
-                        deferredReflection: (texture: MTLTexture, scale: Float)? = nil,
+                        deferredReflection: (texture: MTLTexture, guide: MTLTexture,
+                                             scale: Float)? = nil,
                         contactShadow: MTLTexture? = nil,
                         gi: GIResolved? = nil,
                         caustics: MTLTexture? = nil,
@@ -2236,6 +2237,10 @@ extension MetalRenderer {
             // read). Only part of the RT-compiled fragment signature.
             if rayTracedShadows {
                 encoder.setFragmentTexture(deferredReflection?.texture ?? strip, index: 7)
+                // The reflection G-buffer's normal + coverage (tex 26): the guide the
+                // half-size layer's four taps are weighted by. Read only inside the
+                // same `rtReflectionDeferred` branch, so the stand-in is never sampled.
+                encoder.setFragmentTexture(deferredReflection?.guide ?? strip, index: 26)
                 // The GI probe atlases + relocation offsets (tex 13/14/15);
                 // never-sampled stand-ins unless the frame resolved a probe
                 // field (`giOrigin.w` gates).

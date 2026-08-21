@@ -204,7 +204,7 @@ Three conditions come with it. It needs an `environment(_:)` to fall back to, it
 
 There's one behavior worth expecting rather than being puzzled by. Reflections are traced with a limited number of rays and cleaned up over time while the camera holds still. So a fresh view can look faintly noisy for a moment before it settles. Exports don't have that problem, because there Ollin averages several rays within each frame instead of across frames. That's also why a video export can't flicker.
 
-Tracing a mirror is the most expensive thing in a reflective frame, so there is a dial for it, the same kind shadows have. If a mirrored scene stutters while you sketch, `reflectionQuality(.performance)` traces the reflection at half size and stretches it back. On an M2 that takes the example scene from 49 frames a second to 70. You pay for it where you would expect. A curved mirror gets blockier, and every mirror reads a little weaker near an edge. Exports take the fine end on their own.
+Tracing a mirror is the most expensive thing in a reflective frame, so there is a dial for it, the same kind shadows have. If a mirrored scene stutters while you sketch, `reflectionQuality(.performance)` traces the reflection at half size and stretches it back. On an M2 that takes the example scene from 45 frames a second to 71. You pay for it where you would expect. A curved mirror gets blockier, and fine detail inside a mirror image softens. What you do not pay is the mirror itself: each surface keeps its own reflection right up to its edge. Exports take the fine end on their own.
 
 Meshes and fields differ in a few places over which finish applies to which. The [combining reference](../Docs/3D/Combining.md) is the table for that.
 

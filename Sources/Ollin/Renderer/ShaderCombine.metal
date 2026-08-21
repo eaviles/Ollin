@@ -904,6 +904,9 @@ static inline float2 ollin_rt_reflect_jitter(float2 px, float n) {
 // LTC amp table at 9, feeding the hit shade's exact area-light diffuse).
 fragment float4 ollin_rt_reflect_trace(PresentOut in [[stage_in]],
                                        texture2d<float> normalTex [[texture(0)]],
+                                       // Bound with the rest of the G-buffer and read by
+                                       // nothing here: whether a texel is worth a ray at
+                                       // all rides the normal's alpha flag.
                                        texture2d<float> materialTex [[texture(1)]],
                                        depth2d<float> depthTex [[texture(2)]],
                                        texturecube<float> irradianceTex [[texture(4)]],
@@ -932,13 +935,13 @@ fragment float4 ollin_rt_reflect_trace(PresentOut in [[stage_in]],
     // reflection ray then leaves one surface's point in the other's direction.
     constexpr sampler dsamp(filter::nearest);
     float4 nrm = normalTex.sample(dsamp, in.uv);
-    if (nrm.a < 0.5) return float4(0.0);          // no mesh surface here
+    // The G-buffer's alpha carries both halves of the question: a surface is here, and
+    // it is smooth enough to be worth a ray (past ~0.55 roughness the mesh fragment's
+    // glossy blend lands wholly on the prefiltered environment, so the traced value
+    // would go unused). The same flag guides the half-size layer's upsample.
+    if (nrm.a < 0.5) return float4(0.0);
     float d = depthTex.sample(dsamp, in.uv);
     if (d >= 1.0) return float4(0.0);
-    float rough = clamp(materialTex.sample(dsamp, in.uv).y, 0.045, 1.0);
-    // At roughness ≥ 0.55 the glossy blend in the mesh fragment lands fully on the
-    // prefiltered environment, so the traced value is unused; skip the rays.
-    if (rough >= 0.55) return float4(0.0);
     float3 n = normalize(nrm.xyz);
     constexpr sampler cubeSamp(filter::linear, mip_filter::linear, address::clamp_to_edge);
     float cs = cos(light.iblRotation), sn = sin(light.iblRotation);
@@ -947,19 +950,33 @@ fragment float4 ollin_rt_reflect_trace(PresentOut in [[stage_in]],
     int samples = max(1, int(params[0].z));
     float seed = params[0].w;
     float3 eye = light.cameraPosition.xyz;
+    // This pixel's own point on the surface, and with the normal the tangent plane
+    // every jittered sample below has to land on.
+    float2 ndc0 = float2(in.uv.x * 2.0 - 1.0, 1.0 - in.uv.y * 2.0);
+    float4 wp0 = u.inverseViewProjection * float4(ndc0, d, 1.0);
+    float3 P0 = wp0.xyz / wp0.w;
     float4 acc = float4(0.0);
     for (int s = 0; s < samples; s++) {
-        // Pixel-footprint jitter: reconstruct the surface point at a sub-pixel offset
-        // (this pixel's depth, the jittered NDC through the inverse view-projection)
-        // and reflect the eye ray off it: exactly a ray through a different sub-pixel
-        // position of this pixel bouncing off the locally-planar surface, so the
-        // *reflected* image is what gets supersampled.
+        // Pixel-footprint jitter: take the ray through a sub-pixel offset of this
+        // pixel, meet the surface with it, and reflect it there, so what gets
+        // supersampled is the *reflected* image.
+        //
+        // Meeting the tangent plane is the load-bearing half. Unprojecting the
+        // jittered position at this pixel's own depth (the obvious form) lands on the
+        // plane of constant depth instead, which cuts through the surface at every
+        // oblique angle: about half of those points fall *under* a mirror floor, and a
+        // ray that starts under the floor finds its underside a hair away rather than
+        // the scene above it. That form loses energy wherever the view grazes, and it
+        // loses more of it the wider the footprint is: at half size it costs about 15%
+        // of the mirror image.
         float2 j = ollin_rt_reflect_jitter(in.position.xy, seed + float(s));
         float2 uvj = in.uv + j * texel;
         float2 ndc = float2(uvj.x * 2.0 - 1.0, 1.0 - uvj.y * 2.0);
         float4 wp = u.inverseViewProjection * float4(ndc, d, 1.0);
-        float3 P = wp.xyz / wp.w;
-        float3 R = reflect(normalize(P - eye), n);
+        float3 dir = normalize(wp.xyz / wp.w - eye);   // the ray through the jittered position
+        float slope = dot(dir, n);                     // edge-on: keep the pixel's own point
+        float3 P = abs(slope) > 1e-4 ? eye + dir * (dot(P0 - eye, n) / slope) : P0;
+        float3 R = reflect(dir, n);
         // No roughness-cone spread: glossiness stays with the mesh fragment's env blend
         // (the inline path's rule: one ray can't blur). A wide stochastic cone at these
         // sample counts reads as sparkle on brushed metals; integrating it properly

@@ -4259,6 +4259,69 @@ static inline float3 ollin_caustics_add(float2 fragXY, constant OllinLighting &l
     float2 ts = float2(causticsTex.get_width(), causticsTex.get_height());
     return causticsTex.sample(cs, fragXY * light.causticsScale / max(ts, float2(1.0))).rgb;
 }
+
+// The pre-traced reflection layer, read at this fragment's screen position (position.xy
+// * scale / texture size, the fieldShadowScale rule).
+//
+// At full size that is one linear tap, and it is the right one: the layer and the
+// picture share a grid, so a pixel reads its own texel. A half-size layer does not
+// share it, and each of the four taps under a pixel can belong to a different
+// surface. Blending them then hands a mirror whatever its neighbor reflects, and a
+// tap with no reflecting surface behind it (the sky past a mirror's edge, a rough
+// floor beside it) carries nothing at all, so the read falls part of the way back to
+// the plain environment, up or down. Measured on the reflections example at half
+// size: over the pixels where the filter has a choice to make, a flat blend runs 11%
+// brighter than the full-size picture it stands in for.
+//
+// So the four taps are weighted by the reflection G-buffer's own coverage and normal,
+// the joint-bilateral shape: a tap that is not this fragment's surface loses its vote,
+// and if none of them is, the flat blend stands rather than nothing. Four agreeing
+// taps give that same flat blend back, so only the edges move.
+//
+// The guide is the surface normal rather than the depth on purpose. A relative depth
+// test reads a floor running away from the camera as a discontinuity at every step,
+// which turns the whole grazing half of a mirror floor blocky; what the question is
+// really about is which surface a texel sits on, and the normal answers that directly.
+static inline float4 ollin_rt_reflection_read(texture2d<float> layer,
+                                              texture2d<float> guide,
+                                              float2 fragXY, float3 fragNormal,
+                                              constant OllinLighting &light) {
+    constexpr sampler reflSamp(filter::linear, address::clamp_to_edge);
+    float2 rts = max(float2(layer.get_width(), layer.get_height()), float2(1.0));
+    float2 uv = fragXY * light.rtReflectionScale / rts;
+    if (light.rtReflectionScale >= 0.999) return layer.sample(reflSamp, uv);
+
+    constexpr sampler tapSamp(filter::nearest, address::clamp_to_edge);
+    float2 tc = uv * rts - 0.5;              // the four texels under this pixel
+    float2 base = floor(tc);
+    float2 f = tc - base;
+    float3 n = normalize(fragNormal);
+    float weight[4], agree[4];
+    float lost = 0.0, keptWeight = 0.0;
+    for (int k = 0; k < 4; k++) {
+        float2 o = float2(float(k & 1), float(k >> 1));
+        float4 g = guide.sample(tapSamp, (base + o + 0.5) / rts, level(0));
+        weight[k] = mix(1.0 - f.x, f.x, o.x) * mix(1.0 - f.y, f.y, o.y);
+        // Coverage first: an empty texel has no surface to agree with, and its zero
+        // vector would not normalize.
+        agree[k] = g.a < 0.5 ? 0.0 : smoothstep(0.72, 0.94, dot(normalize(g.xyz), n));
+        lost += weight[k] * (1.0 - agree[k]);
+        keptWeight += weight[k] * agree[k];
+    }
+    // Every tap that carries any weight belongs here, which is most of the picture: the
+    // weighted average is then the flat blend exactly, so take the flat blend and leave
+    // the three extra reads unmade.
+    if (lost < 1e-3) return layer.sample(reflSamp, uv);
+    float4 flatRead = float4(0.0), kept = float4(0.0);
+    for (int k = 0; k < 4; k++) {
+        float2 o = float2(float(k & 1), float(k >> 1));
+        float4 c = layer.sample(tapSamp, (base + o + 0.5) / rts, level(0));
+        flatRead += weight[k] * c;
+        kept += (weight[k] * agree[k]) * c;
+    }
+    // Nothing under this pixel is its own surface: rather than nothing, the flat blend.
+    return keptWeight > 1e-3 ? kept / keptWeight : flatRead;
+}
 #endif
 
 fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
@@ -4291,6 +4354,10 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                     // `light.rtReflectionDeferred` is set; a never-sampled stand-in
                                     // otherwise.
                                     , texture2d<float> rtReflectionTex [[texture(7)]]
+                                    // The reflection G-buffer's world normal + coverage: the guide a
+                                    // coarser layer's four taps are weighted by (tex 26); the same
+                                    // never-sampled stand-in otherwise.
+                                    , texture2d<float> rtReflectionGuideTex [[texture(26)]]
                                     // The GI probe atlases (irradiance + distance moments);
                                     // never-sampled stand-ins unless `light.giOrigin.w` is set.
                                     , texture2d<float> giIrradianceTex [[texture(13)]]
@@ -4356,14 +4423,12 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
         float3 viewDir = normalize(light.cameraPosition.xyz - in.worldPos);
 #if OLLIN_RT_SHADOWS
         // Deferred reflections: read the pre-traced sample at this fragment's screen
-        // position (position.xy · scale / texture size; resolution-fraction aware,
-        // the fieldShadowScale rule), handed to the ambient below.
+        // position, guided by the surface where the layer is coarser than the
+        // picture, and handed to the ambient below.
         float4 deferredRefl = float4(0.0);
         if (light.rtReflections != 0 && light.rtReflectionDeferred != 0) {
-            constexpr sampler reflSamp(filter::linear, address::clamp_to_edge);
-            float2 rts = float2(rtReflectionTex.get_width(), rtReflectionTex.get_height());
-            deferredRefl = rtReflectionTex.sample(reflSamp,
-                in.position.xy * light.rtReflectionScale / max(rts, float2(1.0)));
+            deferredRefl = ollin_rt_reflection_read(rtReflectionTex, rtReflectionGuideTex,
+                                                    in.position.xy, in.normal, light);
         }
 #endif
         c.rgb += ollin_pbr_ibl_ambient(base, normalize(in.normal), viewDir, mat, light,
@@ -4635,6 +4700,10 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                              , const device OllinMeshVertex *meshVerts [[buffer(6)]]
                                              , const device uint *meshGeoOffsets [[buffer(7)]]
                                              , texture2d<float> rtReflectionTex [[texture(7)]]
+                                             // The reflection G-buffer's world normal + coverage: the guide a
+                                             // coarser layer's four taps are weighted by (tex 26); the same
+                                             // never-sampled stand-in otherwise.
+                                             , texture2d<float> rtReflectionGuideTex [[texture(26)]]
                                              , texture2d<float> giIrradianceTex [[texture(13)]]
                                              , texture2d<float> giDepthTex [[texture(14)]]
                                              , texture2d<float> giOffsetsTex [[texture(15)]]
@@ -4686,13 +4755,11 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
     if (mat.shadingModel == 3 && light.iblEnabled != 0) {
         float3 viewDir = normalize(light.cameraPosition.xyz - in.worldPos);
 #if OLLIN_RT_SHADOWS
-        // Deferred reflections: same screen-position sample as the solid fragment.
+        // Deferred reflections: same screen-position read as the solid fragment.
         float4 deferredRefl = float4(0.0);
         if (light.rtReflections != 0 && light.rtReflectionDeferred != 0) {
-            constexpr sampler reflSamp(filter::linear, address::clamp_to_edge);
-            float2 rts = float2(rtReflectionTex.get_width(), rtReflectionTex.get_height());
-            deferredRefl = rtReflectionTex.sample(reflSamp,
-                in.position.xy * light.rtReflectionScale / max(rts, float2(1.0)));
+            deferredRefl = ollin_rt_reflection_read(rtReflectionTex, rtReflectionGuideTex,
+                                                    in.position.xy, in.normal, light);
         }
 #endif
         c.rgb += ollin_pbr_ibl_ambient(base, normalize(in.normal), viewDir, mat, light,
@@ -4804,6 +4871,10 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
                                        , const device OllinMeshVertex *meshVerts [[buffer(6)]]
                                        , const device uint *meshGeoOffsets [[buffer(7)]]
                                        , texture2d<float> rtReflectionTex [[texture(7)]]
+                                       // The reflection G-buffer's world normal + coverage: the guide a
+                                       // coarser layer's four taps are weighted by (tex 26); the same
+                                       // never-sampled stand-in otherwise.
+                                       , texture2d<float> rtReflectionGuideTex [[texture(26)]]
                                        , texture2d<float> giIrradianceTex [[texture(13)]]
                                        , texture2d<float> giDepthTex [[texture(14)]]
                                        , texture2d<float> giOffsetsTex [[texture(15)]]
@@ -4862,10 +4933,8 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
 #if OLLIN_RT_SHADOWS
         float4 deferredRefl = float4(0.0);
         if (light.rtReflections != 0 && light.rtReflectionDeferred != 0) {
-            constexpr sampler reflSamp(filter::linear, address::clamp_to_edge);
-            float2 rts = float2(rtReflectionTex.get_width(), rtReflectionTex.get_height());
-            deferredRefl = rtReflectionTex.sample(reflSamp,
-                in.position.xy * light.rtReflectionScale / max(rts, float2(1.0)));
+            deferredRefl = ollin_rt_reflection_read(rtReflectionTex, rtReflectionGuideTex,
+                                                    in.position.xy, in.normal, light);
         }
 #endif
         c.rgb += ollin_pbr_ibl_ambient(base, N, viewDir, mat, light,
@@ -5120,6 +5189,10 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
                                          , const device OllinMeshVertex *meshVerts [[buffer(6)]]
                                          , const device uint *meshGeoOffsets [[buffer(7)]]
                                          , texture2d<float> rtReflectionTex [[texture(7)]]
+                                         // The reflection G-buffer's world normal + coverage: the guide a
+                                         // coarser layer's four taps are weighted by (tex 26); the same
+                                         // never-sampled stand-in otherwise.
+                                         , texture2d<float> rtReflectionGuideTex [[texture(26)]]
                                          , texture2d<float> giIrradianceTex [[texture(13)]]
                                          , texture2d<float> giDepthTex [[texture(14)]]
                                          , texture2d<float> giOffsetsTex [[texture(15)]]
@@ -5310,10 +5383,8 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
 #if OLLIN_RT_SHADOWS
         float4 deferredRefl = float4(0.0);
         if (light.rtReflections != 0 && light.rtReflectionDeferred != 0) {
-            constexpr sampler reflSamp(filter::linear, address::clamp_to_edge);
-            float2 rts = float2(rtReflectionTex.get_width(), rtReflectionTex.get_height());
-            deferredRefl = rtReflectionTex.sample(reflSamp,
-                in.position.xy * light.rtReflectionScale / max(rts, float2(1.0)));
+            deferredRefl = ollin_rt_reflection_read(rtReflectionTex, rtReflectionGuideTex,
+                                                    in.position.xy, in.normal, light);
         }
 #endif
         // The whole environment ambient is indirect light, so the occlusion map
@@ -5483,7 +5554,14 @@ vertex MeshGBufferOut ollin_mesh_gbuffer_vertex(uint vid [[vertex_id]],
 
 fragment MeshGBufferFragOut ollin_mesh_gbuffer_fragment(MeshGBufferOut in [[stage_in]]) {
     MeshGBufferFragOut out;
-    out.normal = float4(normalize(in.worldNormal), 1.0);
+    // The normal's alpha says "a traced reflection stands behind this texel", which is
+    // both halves of the trace's own question: a surface is here, and it is smooth
+    // enough to be worth a ray (past ~0.55 the fragment's glossy blend lands wholly on
+    // the environment, so the trace skips it). One flag then answers the trace and the
+    // half-size layer's upsample guide alike, and a mirror beside a rough neighbor
+    // never reads that neighbor's empty texel as a reflection of nothing.
+    float smoothEnough = clamp(in.roughness, 0.0, 1.0) < 0.55 ? 1.0 : 0.0;
+    out.normal = float4(normalize(in.worldNormal), smoothEnough);
     out.material = float4(clamp(in.metalness, 0.0, 1.0), clamp(in.roughness, 0.0, 1.0), 0.0, 1.0);
     return out;
 }
