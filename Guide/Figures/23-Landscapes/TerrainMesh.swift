@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 probe
 //
 // Guide diagram (Chapter 23): the eroded heightfield read out as a solid
 // mesh and lit, wearing a texture that colors each sample by its own height.
