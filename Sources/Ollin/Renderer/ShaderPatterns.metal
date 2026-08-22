@@ -45,6 +45,15 @@ static inline float4 ollin_pat_ramp(constant float4 *colors, int count, float t)
     int i = min(int(x), count - 2);
     return mix(ollin_pat_stop(colors[i]), ollin_pat_stop(colors[i + 1]), x - float(i));
 }
+// Walk the same palette around a circle: t wraps, and the last stop blends back
+// into the first, so a quantity that has no end (an angle) gets no seam either.
+static inline float4 ollin_pat_wheel(constant float4 *colors, int count, float t) {
+    if (count <= 1) { return ollin_pat_stop(colors[0]); }
+    float x = fract(t) * float(count);
+    int i = min(int(x), count - 1);
+    int j = (i + 1) % count;
+    return mix(ollin_pat_stop(colors[i]), ollin_pat_stop(colors[j]), x - float(i));
+}
 // Premultiplied sRGB working color -> the premultiplied linear a layer holds.
 static inline float4 ollin_pat_out(float4 c) {
     float3 straight = c.a > 1e-4 ? c.rgb / c.a : c.rgb;
@@ -1811,4 +1820,120 @@ fragment float4 ollin_gen_orbittrap(PresentOut in [[stage_in]],
         if (dot(z, z) > 256.0) { break; }
     }
     return ollin_pat_out(ollin_pat_ramp(colors, count, exp(-dist / glow)));
+}
+
+// MARK: - domainColoring
+//
+// Domain coloring: a complex function drawn over the plane it acts on. A
+// complex function would need four dimensions to graph, so instead every pixel
+// stands for one number z, the function is evaluated there, and the *direction*
+// its answer points picks a color off a wheel that wraps. What that buys is the
+// argument principle made visible: around a zero the whole wheel appears once
+// counter-clockwise, around a pole once clockwise, so the picture counts its own
+// zeros and poles.
+//
+// The plane runs the way mathematics writes it, imaginary axis up, so the uv's
+// y (which runs down the canvas) is negated once on the way in. Everything
+// downstream, the placed zeros and poles included, then reads as written.
+//
+// Shading adds what the color alone cannot say. `modulus` ramps dark to light
+// between one doubling of |f| and the next, a contour map of size. `conformal`
+// rules the direction the same way, twelve sectors to the turn; away from the
+// zeros and poles the two rulings meet at right angles, in the little squares
+// that are what "conformal" means. The rulings read |f| and arg(f) directly
+// rather than the palette position, so `phase` only ever recolors.
+// (params[0]: colorCount, aspect, mode, shading; params[1]: center.xy, zoom,
+// phase; params[2]: strength, exponent, zeroCount, poleCount; params[3..4]: up
+// to four zeros, two per row; params[5..6]: up to four poles; then colors.)
+
+static inline float2 ollin_cmul(float2 a, float2 b) {
+    return float2(a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x);
+}
+
+static inline float2 ollin_cdiv(float2 a, float2 b) {
+    float d = max(dot(b, b), 1e-24);
+    return float2(a.x * b.x + a.y * b.y, a.y * b.x - a.x * b.y) / d;
+}
+
+// z^n by polar form. A fractional n is multi-valued, and this takes the
+// principal branch, so the seam along the negative real axis is real and shown.
+static inline float2 ollin_cpow(float2 z, float n) {
+    float r = length(z);
+    if (r < 1e-24) { return float2(0.0); }
+    float a = atan2(z.y, z.x);
+    return pow(r, n) * float2(cos(n * a), sin(n * a));
+}
+
+// The three transcendentals clamp their input before the exponential, so a
+// far-out pixel saturates instead of returning an infinity that atan2 cannot
+// take a direction from.
+static inline float2 ollin_cexp(float2 z) {
+    return exp(clamp(z.x, -60.0, 60.0)) * float2(cos(z.y), sin(z.y));
+}
+
+static inline float2 ollin_csin(float2 z) {
+    float y = clamp(z.y, -60.0, 60.0);
+    return float2(sin(z.x) * cosh(y), cos(z.x) * sinh(y));
+}
+
+static inline float2 ollin_ccos(float2 z) {
+    float y = clamp(z.y, -60.0, 60.0);
+    return float2(cos(z.x) * cosh(y), -sin(z.x) * sinh(y));
+}
+
+fragment float4 ollin_gen_domain(PresentOut in [[stage_in]],
+                                 constant float4 *params [[buffer(0)]]) {
+    int count = int(params[0].x);
+    float aspect = params[0].y;
+    int mode = int(params[0].z);
+    int shading = int(params[0].w);
+    float2 center = params[1].xy;
+    float zoom = max(params[1].z, 1e-3);
+    float phase = params[1].w;
+    float strength = params[2].x;
+    float exponent = params[2].y;
+    int zeroCount = int(params[2].z);
+    int poleCount = int(params[2].w);
+    float2 zeros[4] = { params[3].xy, params[3].zw, params[4].xy, params[4].zw };
+    float2 poles[4] = { params[5].xy, params[5].zw, params[6].xy, params[6].zw };
+    constant float4 *colors = params + 7;
+
+    float2 q = ollin_pat_square(in.uv, aspect) * (3.0 / zoom);
+    float2 p = float2(q.x, -q.y) + center;
+
+    float2 f;
+    if (mode == 0) {
+        float2 num = float2(1.0, 0.0);
+        for (int i = 0; i < 4; i++) {
+            if (i >= zeroCount) { break; }
+            num = ollin_cmul(num, p - zeros[i]);
+        }
+        float2 den = float2(1.0, 0.0);
+        for (int i = 0; i < 4; i++) {
+            if (i >= poleCount) { break; }
+            den = ollin_cmul(den, p - poles[i]);
+        }
+        f = ollin_cdiv(num, den);
+    } else if (mode == 1) {
+        f = ollin_cpow(p, exponent);
+    } else if (mode == 2) {
+        f = ollin_cexp(p);
+    } else if (mode == 3) {
+        f = ollin_csin(p);
+    } else if (mode == 4) {
+        f = ollin_cdiv(ollin_csin(p), ollin_ccos(p));
+    } else {
+        f = float2(log(max(length(p), 1e-24)), atan2(p.y, p.x));
+    }
+
+    float arg = atan2(f.y, f.x);
+    float turn = arg * 0.15915494;                     // arg / 2 pi, in turns
+    float4 color = ollin_pat_wheel(colors, count, turn + phase);
+
+    if (shading > 0) {
+        float ruling = 0.55 + 0.45 * fract(log2(max(length(f), 1e-24)));
+        if (shading > 1) { ruling *= 0.6 + 0.4 * fract(turn * 12.0); }
+        color.rgb *= mix(1.0, ruling, strength);
+    }
+    return ollin_pat_out(color);
 }

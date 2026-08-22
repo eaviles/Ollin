@@ -182,6 +182,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("orbit-trap",
                  note: "The four orbit traps tiled 2x2 at fixed framing and angles (no time, no random): a turned cross on a Julia set, a point on the Mandelbrot plane, a circle and a turned square on two more Julia sets. Pins the orbit-trap generator: the minimum-distance tracking through the iteration, each trap's distance formula, the trap rotation, and the exp glow ramp.",
                  make: { OrbitTrapScene() }),
+    SnapshotCase("domain-coloring",
+                 note: "The domain-coloring generator tiled 2x2 at a fixed phase (no time, no random): a rational function with two placed zeros and two poles, z cubed and tan z under the conformal ruling, and log z with its branch cut. Pins the complex evaluation of every mode, the wrapping palette wheel (the last stop blending back into the first), the plane written with the imaginary axis up, and the modulus and direction rulings.",
+                 make: { DomainColoringScene() }),
     SnapshotCase("noise-toolkit",
                  note: "The noise-toolkit generators tiled 2x2 at a fixed phase (no time, no random): domain-warped noise (the warp knob on .noise), and the cellular generator in its three styles (cells, borders at reduced jitter, mosaic). Pins the warped-fbm displacement chain, the wandering-feature-point Worley scan, the border AA, and the per-cell mosaic hash, plus that each tile generates at its own size.",
                  make: { NoiseToolkitScene() }),
@@ -6239,6 +6242,31 @@ private final class OrbitTrapScene: Sketch {
                                       c: Vector2(-0.4, 0.6), zoom: 1.2,
                                       iterations: 120, glow: 0.05, angle: 0.5),
                            width: w, height: h).image, in: tile(1, 1))
+    }
+}
+
+/// Four complex functions painted over the plane at a fixed phase (no time, no
+/// random): a rational function with placed zeros and poles, z cubed and tan z
+/// under the conformal ruling, and log z with its cut. Pins each mode of the
+/// evaluation, the wrapping wheel, and both rulings.
+private final class DomainColoringScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        let w = 126, h = 126
+        let tile: (Int, Int) -> Rectangle = { col, row in
+            Rectangle(x: 1 + Double(col) * 128, y: 1 + Double(row) * 128,
+                      width: Double(w), height: Double(h))
+        }
+        drawImage(generate(.domainColoring(phase: 0.2), width: w, height: h).image,
+                  in: tile(0, 0))
+        drawImage(generate(.domainColoring(.power(3), shading: .conformal),
+                           width: w, height: h).image, in: tile(1, 0))
+        drawImage(generate(.domainColoring(.tangent, shading: .conformal, zoom: 0.8),
+                           width: w, height: h).image, in: tile(0, 1))
+        drawImage(generate(.domainColoring(.logarithm, zoom: 0.7), width: w, height: h).image,
+                  in: tile(1, 1))
     }
 }
 

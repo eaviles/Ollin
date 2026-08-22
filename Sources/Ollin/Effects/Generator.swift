@@ -117,6 +117,13 @@ public struct Generator: Sendable {
         case orbitTrap(colors: [SIMD4<Float>], trap: OrbitTrap, mode: Double,
                        c: Vector2, center: Vector2, zoom: Double, iterations: Double,
                        glow: Double, angle: Double)
+        /// A complex function painted over the plane it acts on: the direction
+        /// its value points picks the color, its size shades it. `mode` selects
+        /// the function (see `ComplexFunction`).
+        case domainColoring(colors: [SIMD4<Float>], mode: Double, exponent: Double,
+                            zeros: [Vector2], poles: [Vector2],
+                            shading: DomainShading, strength: Double,
+                            center: Vector2, zoom: Double, phase: Double)
     }
 
     let kind: Kind
@@ -685,6 +692,138 @@ public struct Generator: Sendable {
                                    zoom: min(max(zoom, 0.1), 100_000),
                                    iterations: min(max(iterations, 8), 400),
                                    glow: min(max(glow, 0.001), 4), angle: angle))
+    }
+
+    // MARK: Domain coloring
+
+    /// The complex function a `domainColoring` generator paints over the plane.
+    ///
+    /// A complex function takes a point of the plane and answers with another
+    /// point, so its graph would need four dimensions. Domain coloring shows it
+    /// in two by painting the answer as a color at the place it came from.
+    public enum ComplexFunction: Sendable {
+        /// A rational function: the product of `(z - zero)` over the zeros,
+        /// divided by the product of `(z - pole)` over the poles. Up to four of
+        /// each (later ones are dropped). Repeat a point to raise its
+        /// multiplicity, and leave `poles` empty for a plain polynomial. This
+        /// is the placeable one: move a zero or a pole and the whole field
+        /// reorganizes around it.
+        case rational(zeros: [Vector2], poles: [Vector2])
+        /// `z` raised to `exponent`: the color wheel wrapped that many times
+        /// around the origin. A whole number winds cleanly; a fraction leaves a
+        /// seam along the negative real axis, where the two ends of the wheel
+        /// meet.
+        case power(Double)
+        /// `e^z`: the wheel repeats up the imaginary axis every 2 pi, while the
+        /// size runs from almost nothing to enormous across the real axis.
+        case exponential
+        /// `sin z`: a zero at every multiple of pi along the real axis, the
+        /// value growing fast away from it.
+        case sine
+        /// `tan z`: zeros and poles alternate along the real axis half a period
+        /// apart, so one picture shows both kinds of point.
+        case tangent
+        /// `log z`: the principal branch, cut along the negative real axis,
+        /// where the colors jump. The cut is the point: it is what a branch
+        /// looks like.
+        case logarithm
+
+        /// The shader's function index (kept in step with `ollin_gen_domain`).
+        var rawIndex: Double {
+            switch self {
+            case .rational: return 0
+            case .power: return 1
+            case .exponential: return 2
+            case .sine: return 3
+            case .tangent: return 4
+            case .logarithm: return 5
+            }
+        }
+
+        /// The exponent `.power` carries; every other function ignores it.
+        var exponent: Double {
+            switch self {
+            case .power(let n): return min(max(n, -8), 8)
+            default: return 1
+            }
+        }
+
+        /// Where the rational function reads zero.
+        var zeroPoints: [Vector2] {
+            if case .rational(let zeros, _) = self { return Array(zeros.prefix(4)) }
+            return []
+        }
+
+        /// Where the rational function blows up.
+        var polePoints: [Vector2] {
+            if case .rational(_, let poles) = self { return Array(poles.prefix(4)) }
+            return []
+        }
+    }
+
+    /// How much a `domainColoring` generator says about the *size* of a value,
+    /// beside the direction its color already carries.
+    public enum DomainShading: Sendable {
+        /// Color alone. Every point is fully lit, so the picture says only which
+        /// way the value points: the plain phase portrait.
+        case phase
+        /// Bands that ramp from dark to light between one doubling of the size
+        /// and the next, so the picture reads as a contour map as well.
+        case modulus
+        /// Bands in both size and direction. Away from the zeros and poles the
+        /// two rulings cross at right angles in little squares, which is what
+        /// makes the function conformal visible.
+        case conformal
+
+        /// The shader's shading index (kept in step with `ollin_gen_domain`).
+        var rawIndex: Float {
+            switch self {
+            case .phase: return 0
+            case .modulus: return 1
+            case .conformal: return 2
+            }
+        }
+    }
+
+    /// **Domain coloring**: paint a complex function over the plane it acts on.
+    /// Every pixel stands for one number, the function is evaluated there, and
+    /// the direction its answer points picks a color off a wheel that wraps, so
+    /// the palette runs all the way around with no seam.
+    ///
+    /// The two features worth knowing are readable straight off the picture. A
+    /// **zero** shows the whole wheel once, turning counter-clockwise around it;
+    /// a **pole** shows the whole wheel once the other way. Count the wheels and
+    /// you have counted the zeros and poles, which is a real theorem drawn
+    /// rather than proved.
+    ///
+    /// `shading` adds what color alone cannot say (see `DomainShading`),
+    /// `strength` how hard, `center` and `zoom` frame the plane (zoom 1 shows
+    /// about 3 units across), and `phase` turns the palette around the wheel:
+    /// it recolors rather than recomputes, so feeding it your `time` costs
+    /// nothing.
+    ///
+    /// ```swift
+    /// drawImage(generate(.domainColoring(.tangent, shading: .conformal)).image, 0, 0)
+    /// ```
+    public static func domainColoring(
+        _ function: ComplexFunction = .rational(zeros: [Vector2(-0.55, -0.4), Vector2(0.8, 0.5)],
+                                                poles: [Vector2(0.62, -0.55), Vector2(-0.75, 0.6)]),
+        colors: [Color] = [Color(hex: 0xE2544C), Color(hex: 0xE7A33C), Color(hex: 0x8FBF45),
+                           Color(hex: 0x3FA9A0), Color(hex: 0x4A6FC4), Color(hex: 0x9B58B5)],
+        shading: DomainShading = .modulus,
+        strength: Double = 0.6,
+        center: Vector2 = .zero, zoom: Double = 1,
+        phase: Double = 0) -> Generator {
+        Generator(kind: .domainColoring(colors: colorRows(colors, max: 8),
+                                        mode: function.rawIndex,
+                                        exponent: function.exponent,
+                                        zeros: function.zeroPoints,
+                                        poles: function.polePoints,
+                                        shading: shading,
+                                        strength: min(max(strength, 0), 1),
+                                        center: center,
+                                        zoom: min(max(zoom, 0.01), 10_000),
+                                        phase: phase))
     }
 }
 

@@ -182,6 +182,7 @@ Use it two ways. It is an index for the moment you remember the guide showing bl
 | Design filters | Fluted glass, water, and paper that transform a picture; liquid metal, heatmap, and gem smoke that read a shape's silhouette | [Ch 16](16-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
 | Pattern fields | Closed-form animated fields: quasicrystal, moire, gyroid, phyllotaxis, hex pulse, Chladni | [Ch 17](17-YourFirstShader.md) | [Effects](../Docs/Drawing/Effects.md) |
 | Escape-time fractals | The Mandelbrot set and Julia sets, colored by how fast each point escapes, zoomable; orbit traps color by the closest pass to a shape instead | [Ch 18](18-IteratedForms.md) | [Effects](../Docs/Drawing/Effects.md) |
+| Domain coloring | A complex function painted over its own plane: color for direction, optional rulings for size; placeable zeros and poles, and the named functions with their branch cuts | [Ch 18](18-IteratedForms.md) | [Effects](../Docs/Drawing/Effects.md) |
 | The compose DSL | `compose { layer { } … }`: a stack of layers, filters, and blends in one block | [Ch 16](16-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |
 | Combines | Two-layer ops: mask, displace, mix, depth-of-field, SSAO, reflections | [Ch 16](16-LayersAndEffects.md), [Ch 21](21-3DGently.md) | [Effects](../Docs/Drawing/Effects.md) |
 | Feedback | A layer that remembers last frame: trails, tunnels, video feedback | [Ch 16](16-LayersAndEffects.md) | [Effects](../Docs/Drawing/Effects.md) |

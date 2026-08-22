@@ -439,6 +439,33 @@ See `Examples/Effects/PatternFields` for the first five (plus a field chained in
   filaments. `angle` turns the trap about its own center; feed it your `time` and
   the stalks sweep.
 
+**Domain coloring**: the same plane, asked a different question. Instead of iterating,
+evaluate a complex function once at every pixel and paint the *direction* its answer
+points, off a palette wheel that wraps (the last stop blends back into the first, so a
+turn has no seam). What you get is readable: a **zero** shows the whole wheel once
+turning counter-clockwise, a **pole** shows it once the other way, and a repeated zero
+shows it twice. Counting wheels counts zeros and poles, which is the argument principle
+drawn rather than proved.
+
+- **`.domainColoring(_:colors:shading:strength:center:zoom:phase:)`** the function is a
+  `Generator.ComplexFunction`: `.rational(zeros:poles:)` places up to four of each (repeat
+  a point for a double zero, leave `poles` empty for a polynomial) and is the one to move
+  around; `.power(_:)` winds the wheel that many times, and a fractional exponent leaves
+  the seam of its branch cut on show; `.exponential`, `.sine`, and `.tangent` are the
+  classics, `tan z` alternating zeros and poles along the real axis; `.logarithm` draws
+  its own cut down the negative real axis.
+- `shading` is a `Generator.DomainShading`: `.phase` is color alone (the plain phase
+  portrait, every point fully lit), `.modulus` ramps dark to light between each doubling
+  of the value's size (a contour map of magnitude), and `.conformal` rules direction too,
+  twelve sectors to the turn, so away from the interesting points the field tiles into
+  little squares. `strength` (0…1) sets how hard the rulings press.
+- `center` and `zoom` frame the plane as they do for the fractals (zoom 1 shows about
+  3 units across), the imaginary axis running **up** the canvas as it is written on paper.
+  `phase` turns the palette around the wheel and recolors only, so `phase: time * 0.05`
+  is free.
+
+See `Examples/Effects/DomainColoring` for the four above, one of them swimming its zeros.
+
 See `Examples/Effects/Fractals` for the first two, with the Julia's `c` on a slow
 orbit, and `Examples/Effects/OrbitTraps` for all four traps, two of them turning.
 

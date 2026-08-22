@@ -1493,6 +1493,14 @@ extension MetalRenderer {
                                           SIMD4(Float(c.x), Float(c.y), trap.rawIndex, Float(angle)),
                                           SIMD4(Float(trap.trapCenter.x), Float(trap.trapCenter.y),
                                                 Float(trap.trapRadius), 0)] + colors, into: cb)
+        case let .domainColoring(colors, mode, exponent, zeros, poles, shading,
+                                 strength, center, zoom, phase):
+            encodeEffectFragment("ollin_gen_domain", inputs: [], output: output,
+                                 params: [SIMD4(Float(colors.count), aspect, Float(mode), shading.rawIndex),
+                                          SIMD4(Float(center.x), Float(center.y), Float(zoom), Float(phase)),
+                                          SIMD4(Float(strength), Float(exponent),
+                                                Float(zeros.count), Float(poles.count))]
+                                         + pointPairRows(zeros) + pointPairRows(poles) + colors, into: cb)
         }
     }
 
@@ -3212,5 +3220,16 @@ extension MetalRenderer {
                             bytesPerRow: bytesPerRow)
         }
         return texture
+    }
+}
+
+/// Pack up to four plane points two to a params row (the domain-coloring zeros
+/// and poles), zero-filling the slots a shorter list leaves empty, so the colors
+/// that follow always start at the same row.
+private func pointPairRows(_ points: [Vector2]) -> [SIMD4<Float>] {
+    stride(from: 0, to: 4, by: 2).map { i in
+        let a = i < points.count ? points[i] : Vector2.zero
+        let b = i + 1 < points.count ? points[i + 1] : Vector2.zero
+        return SIMD4(Float(a.x), Float(a.y), Float(b.x), Float(b.y))
     }
 }

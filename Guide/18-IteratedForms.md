@@ -184,6 +184,38 @@ All three panels are the same Julia set. Only the question changes. The first as
 
 Which brings the sidebar back to the chapter. The simulation fields spread their iteration across *frames*, because their rules need neighbors and memory. A Gray-Scott pattern at frame 900 genuinely required the 899 before it. The fractal needs neither, so its whole life fits in one evaluation and any frame can be computed on its own. Both are the same lesson at different speeds. Iterate something simple, and structure appears. `Examples/Effects/Fractals` sets a Julia's `c` drifting so the filigree morphs continuously, which is the best argument for the technique that exists.
 
+## A picture of a function: domain coloring
+
+Everything so far asked a question about a **loop**. There is one more thing worth doing with this plane, and it asks about a single step.
+
+A complex function takes a point of the plane and hands back another point. Graphing it the way you graph a sine wave would need four axes: two for what goes in, two for what comes out. Nobody has four axes. **Domain coloring** spends the two you have on the input, and paints the answer as a color:
+
+```swift
+drawImage(generate(.domainColoring(.power(3))).image, 0, 0)
+```
+
+Every pixel stands for one number. The function is worked out there, and the *direction* its answer points picks the color. Size is thrown away at first, which sounds like a loss and is the whole trick. Direction is the part that carries the structure.
+
+<img src="Images/18-IteratedForms/DomainColoring.jpg" alt="Three panels. A smooth color wheel filling a square, all hues meeting at the middle; two color wheels side by side on a plain field, ringed and labeled zero and pole; and tan z ruled into a grid of curved tiles, with small wheels marching along a line" width="680">
+
+The left panel is the simplest function there is: hand back whatever you were given. Its picture is the wheel itself, and it is how you read the other two. Red points right, and the colors run counter-clockwise from there, the way the plane is drawn on paper.
+
+Now look at the middle panel. Two places show the entire wheel at once. The left one is a **zero**, where the function comes out as nothing, and the right one is a **pole**, where it blows up. They look alike until you follow the colors around. Then they are opposites. The wheel turns one way around a zero, and the other way around a pole. Count the wheels and you have counted the zeros and the poles. That is a real theorem, drawn instead of proved, and a repeated zero draws its wheel twice.
+
+You place them yourself, which is what makes this one to play with rather than to look at:
+
+```swift
+.domainColoring(.rational(zeros: [Vector2(-0.55, 0)], poles: [Vector2(0.55, 0)]))
+```
+
+Move a zero and the whole field reorganizes around it. Repeat a point for a double zero. Leave the poles out and you have a polynomial. There are named functions too: `.power`, `.exponential`, `.sine`, `.tangent`, and `.logarithm`. Two of them draw something you may have only been told about. A fractional `.power` and the `.logarithm` both leave a **branch cut**. That is a line where the colors jump, because the answer had to pick one of two equally good values. It is worth seeing once.
+
+The size you threw away can come back as shading. `.modulus` ramps from dark to light between one doubling of the value and the next, which draws contour rings. `.conformal` rules the direction the same way, and the two rulings cross. That is the right panel, and away from the interesting points its tiles are little squares. Squares are not a coincidence. A function like this one turns and stretches small shapes but never shears them, and the grid is that fact made visible.
+
+One knob is free. `phase` turns the palette around the wheel without recomputing anything, so `phase: time * 0.05` costs nothing and the color drifts forever.
+
+`Examples/Effects/DomainColoring` swims a pair of zeros around a pair of poles. It is the best argument for the technique that exists. The field pours from one arrangement into the next, and nothing was animated except two points.
+
 ## Putting it together: a plate of four orbits
 
 Now you can build the plate at the top. It is a naturalist's specimen sheet, four systems laid out under one hand, and the reason it works as a finished piece rather than a figure is that the four panels really do share their machinery. One function turns a rule into a cloud of points. One other function fits that cloud into a panel and lays it down. Make a new file, `MySketches/OrbitPlate.swift`:
@@ -292,6 +324,7 @@ The formula-driven maps come from elsewhere again. The Clifford attractor is nam
 - [Attractors](../Docs/Drawing/Attractors.md): every `ChaoticMap`, the `IteratedMap` family, `bifurcationImage`, and the GPU tier that carries a million orbits at once, which [Chapter 23](23-Landscapes.md) puts to work as a field of drifting points.
 - [Chaotic maps and bifurcation](../Docs/Generators/Bifurcation.md): the one-dimensional families, the diagram's dot and density forms, cobwebs, and Lyapunov exponents.
 - [Escape time as a generator](../Docs/Drawing/Effects.md#generate): `.mandelbrot`, `.julia`, and `.orbitTrap` as layers a chain can filter, with the center, zoom, iteration, and banding knobs.
+- [Domain coloring](../Docs/Drawing/Effects.md#generate): `.domainColoring` with its placeable zeros and poles, the named functions, and the modulus and conformal rulings.
 - Appendix B draws the idea underneath all of this, one picture per entry: [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure), and [Where things are](B-JustEnoughMath.md#where-things-are) for the coordinates the orbits live in.
 - Worked examples: [`Patterns/FractalFlame`](../Examples/Patterns/FractalFlame/Sketch.swift), [`Patterns/Buddhabrot`](../Examples/Patterns/Buddhabrot/Sketch.swift), [`Patterns/Kleinian`](../Examples/Patterns/Kleinian/Sketch.swift), [`Patterns/Schottky`](../Examples/Patterns/Schottky/Sketch.swift) (the lean swung back and forth), [`Patterns/CliffordAttractor`](../Examples/Patterns/CliffordAttractor/Sketch.swift) (the density bloom), [`GumowskiMira`](../Examples/Patterns/GumowskiMira/Sketch.swift), [`Bifurcation`](../Examples/Patterns/Bifurcation/Sketch.swift), and [`Effects/Fractals`](../Examples/Effects/Fractals/Sketch.swift) (the escape-time pair as a shader).
 
