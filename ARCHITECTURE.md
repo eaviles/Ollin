@@ -2549,8 +2549,50 @@ in *Deferred ray-traced reflection AA* below. The integration facts live here:
 - **v1 limits:** two bounces (the third order terminates at the environment);
   full resolution (a half-res `RenderQuality` tier, deeper bounces, a dedicated
   all-mesh accel, and the glossy-cone denoise are the follow-ups). The
-  per-hit-material gap is closed for the PBR finish via the baked vertex slots;
-  the non-PBR stylized finishes still shade as plain diffuse in a reflection.
+  per-hit-material gap is closed: the PBR finish through the baked vertex slots,
+  and the stylized ones through a compact per-geometry `OllinRTFinish` record
+  riding the hit table's own buffer (see *Stylized finishes through the trace*).
+
+### Stylized finishes through the trace
+
+A reflection shades the surface it finds, and that shade is the physically-based
+one, so a surface whose look comes from somewhere else used to arrive in a mirror
+as the plain diffuse body underneath it: a cel-shaded prop lost its bands, a Gooch
+one its warm-cool ramp, a velvet one its rim. Metalness and roughness ride the
+spare `OllinMeshVertex` w slots, but a shading model and its tones do not fit
+there, and they are per batch rather than per vertex anyway.
+
+- The finish travels as **`OllinRTFinish`** (five `float4` rows, stride 80): the
+  shading model with its cel-band count and Blinn-Phong pair, the Gooch warm and
+  cool tones, the rim color/strength/exponent, and the fake-subsurface tint and
+  strength. One record per acceleration-structure geometry, then one per copy
+  group, indexed by the hit record's material slot, so a copy resolves the finish
+  of the draw that placed it.
+- The records **ride the hit table's own buffer**, past a four-word-aligned base
+  named in a two-word header, rather than taking a binding of their own. That is
+  the rule the hit records already follow, and it is why none of the tracing entry
+  points gained an argument. The block is written **guarded by that base, never by
+  the flag that set it**: a block written at offset 0 lands on the header it is
+  reached through, and a table corrupted that way still renders a plausible
+  picture, which is how the first sabotage run read as a run-break artifact rather
+  than as the corruption it was.
+- A geometry has to be finish-uniform for a hit to resolve one, so a change in the
+  record breaks the accel's coalesced run, the way `causticMats` and
+  `pathTraceMats` already do. The **compact record is the key**, not the whole
+  `OllinMaterial`, so two batches that differ only in something the trace ignores
+  stay one geometry. A frame that declares nothing stylized writes no table, breaks
+  no extra run, and shades exactly as it did, with a zero base as the gate.
+- The shade itself mirrors `meshLitColor` term for term: cel bands and a snapped
+  highlight per light, the Gooch tone from the first punctual light with the
+  ambient withheld (`ollin_rt_ambient`, matching the primary path's own gate on
+  that model), the wrap term accumulated in the light loop, and the rim applied
+  after it. The light-driven terms ride the same exposure divide as the direct
+  lights.
+- **Still outside the trace:** the standard model's Blinn-Phong highlight (adding it
+  would move every existing reflective frame), iridescence and sparkle (both need
+  their own fields), and, under an area panel, the stylized highlight and the
+  subsurface wrap (the wrap needs a second, back-facing LTC integral). Coat, sheen,
+  and decals keep their own documented envelopes.
 
 ### Glass: transmission and refraction
 

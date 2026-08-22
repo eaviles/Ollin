@@ -21,7 +21,10 @@ import Ollin
 /// A near-mirror metal floor reflects a ring of metal spheres orbiting a polished monolith;
 /// each sphere also catches its neighbors and the floor. An outer ring of posts is drawn as
 /// instanced *copies*, one call for all of them, and a retained `MeshField` scatters a drift
-/// of pebbles past them. All three ways of placing a mesh mirror alike. The camera orbits on its own, and
+/// of pebbles past them. All three ways of placing a mesh mirror alike. A cel-shaded torus
+/// and a Gooch-shaded cone stand among them to show the other half of that: a traced hit is
+/// shaded in the finish its surface wears, so the torus keeps its hard bands in the floor
+/// and the cone its warm-to-cool ramp. The camera orbits on its own, and
 /// the mouse takes it over (drag to orbit, scroll to dolly). **Hold the space bar** to drop
 /// ray-traced reflections and compare: the metals fall back to reflecting only the studio
 /// *environment*, so the scene's mirror images vanish. Needs an Apple-silicon (ray-tracing)
@@ -111,6 +114,25 @@ final class RayTracedReflections: Sketch {
             material(.metal(roughness: 0.18))
             fill(.white)
             drawMesh(Mesh.box(width: 0.34, height: 1.9, depth: 0.34), instances: posts)
+        }
+
+        // Two stylized props: a cel-shaded torus and a Gooch-shaded cone. Neither is a
+        // metal, so neither mirrors anything itself, but both are *seen* in the mirrors
+        // around them, and a traced hit shades a surface in the finish it wears. The torus
+        // keeps its hard cel bands in the floor, and the cone its warm-to-cool ramp,
+        // instead of flattening into the plain diffuse body underneath.
+        withState {
+            material(.toon)
+            fill(Color(hex: 0xff8a3d))
+            translate(cos(0.5) * 2.2, 0.75, sin(0.5) * 2.2)
+            rotateX(.pi / 2.4)
+            drawTorus(radius: 0.62, tube: 0.24)
+        }
+        withState {
+            material(.gooch)
+            fill(Color(hex: 0xc9ccd6))
+            translate(cos(3.9) * 2.2, 0.6, sin(3.9) * 2.2)
+            drawCone(radius: 0.62, height: 1.3)
         }
 
         // A drift of pebbles held in a retained field. The GPU places every copy and

@@ -991,6 +991,30 @@ typedef struct {
                              // (0 = no attenuation)
 } OllinCausticGeo;
 
+// What a traced hit needs of a surface's *finish*, past the metalness and roughness its
+// vertices already carry. A reflection shades the surface it finds, so a surface whose look
+// comes from a stylized model (cel bands, a warm-cool tone ramp) or from a light-independent
+// layer (the Fresnel rim, the fake subsurface glow) needs that finish carried to the hit, or
+// it reads in a mirror as the plain diffuse body underneath it. One entry per
+// acceleration-structure geometry, then one per copy group, indexed by the hit record's
+// material slot, so a copy resolves the finish of the draw that placed it.
+//
+// Every field is zero for a standard or physically-based finish with no rim and no
+// subsurface, which is what a frame of ordinary materials writes: the whole table is then
+// left out (the hit table's header says so with a zero base) and the traced shade is the
+// plain physically-based one. Stride 80.
+typedef struct {
+    simd_float4 model;   // x = shading model: 0 standard/physically-based, 1 toon, 2 Gooch
+                         // y = cel bands (toon), z = Blinn-Phong specular strength,
+                         // w = shininess. The last two are read by the stylized models
+                         // only: the standard model's highlight is not traced, the
+                         // envelope that keeps every existing reflective frame unmoved.
+    simd_float4 warm;    // rgb = Gooch warm tone (lit side); w = the rim's Fresnel exponent
+    simd_float4 cool;    // rgb = Gooch cool tone (shadow side); w unused
+    simd_float4 rim;     // rgb = linear rim color; w = rim strength (0 = no rim)
+    simd_float4 sss;     // rgb = fake-subsurface tint; w = its strength (0 = none)
+} OllinRTFinish;
+
 // Per-dispatch constants for the offline path-traced export (`--path-traced`): the
 // camera frame rays leave through, the sample window this dispatch integrates, and
 // the miss/lens model. One struct feeds the trace kernel and the composite fragment.

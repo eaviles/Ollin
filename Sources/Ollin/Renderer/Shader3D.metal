@@ -1167,6 +1167,7 @@ struct OllinRTSurface {
     float3 albedo;    // linearized vertex color (the baked fill)
     float  metal;     // baked per-vertex metalness (normal.w)
     float  rough;     // baked per-vertex roughness (position.w), clamped
+    OllinRTFinish fin;// the batch's stylized finish, all zero where the frame has none
 };
 
 // Where a hit's triangle sits, and what the copy that carries it does to the color.
@@ -1174,17 +1175,21 @@ struct OllinRTSurface {
 // its own (their vertices already in world space), and one instance holds each copy
 // of an instanced draw (its vertices in the base mesh's own space, the copy's matrix
 // on the instance). `table` resolves which is which. Its layout, filled beside the
-// structure on the CPU: [0] is the instance-record count N, then N records of five
-// uints each (the copy's base vertex, its tint as three float bit patterns, and the
-// material slot its whole run shares), then one base-vertex index per geometry of the
-// plain-mesh instance. A record whose base vertex reads OLLIN_RT_PLAIN_MESH takes the
-// geometry table instead, which is what the plain-mesh instance always does.
+// structure on the CPU: [0] is the instance-record count N and [1] is where the finish
+// records start (0 = none), then N records of five uints each (the copy's base vertex,
+// its tint as three float bit patterns, and the material slot its whole run shares),
+// then one base-vertex index per geometry of the plain-mesh instance, then the finish
+// records. A record whose base vertex reads OLLIN_RT_PLAIN_MESH takes the geometry
+// table instead, which is what the plain-mesh instance always does.
 //
-// The material slot answers a question only the path-traced export asks. Its material
-// tables are per geometry, and every copy of one base mesh shares a single geometry,
-// so `geometryId` cannot tell two instanced draws apart. The slot indexes the same
-// tables past their plain-geometry entries, so a copy resolves its own finish. The
-// live passes shade from the vertex attributes and never read it.
+// The material slot indexes both per-slot tables: the path-traced export's full
+// `OllinMaterial` list, and the live trace's compact `OllinRTFinish` list, which shares
+// this buffer. Their tables are per geometry, and every copy of one base mesh shares a
+// single geometry, so `geometryId` cannot tell two instanced draws apart; the slot
+// indexes past the plain-geometry entries, so a copy resolves the finish of the draw
+// that placed it. The finish table is written only for a frame that holds a stylized
+// finish, so an ordinary frame reads a zero base and shades from the vertex attributes
+// alone.
 #define OLLIN_RT_PLAIN_MESH 0xFFFFFFFFu
 
 struct OllinRTHit {
@@ -1192,7 +1197,20 @@ struct OllinRTHit {
     float3 tint;      // the copy's own color, white for a plain mesh
     bool   copied;    // true when the hit is a copy, so its vertices are unplaced
     uint   mat;       // material slot: the geometry's own for a plain mesh, the run's for a copy
+    OllinRTFinish fin;// the surface's stylized finish, all zero where the frame has none
 };
+
+// The finish every hit carries in a frame that declares none: the standard shading model
+// with no rim and no subsurface, which is what the shade below treats as "nothing to add".
+static inline OllinRTFinish ollin_rt_plain_finish() {
+    OllinRTFinish f;
+    f.model = float4(0.0);
+    f.warm  = float4(0.0);
+    f.cool  = float4(0.0);
+    f.rim   = float4(0.0);
+    f.sss   = float4(0.0);
+    return f;
+}
 
 static inline OllinRTHit ollin_rt_hit_lookup(const device uint *table,
                                              uint instanceId, uint geometryId) {
@@ -1200,10 +1218,11 @@ static inline OllinRTHit ollin_rt_hit_lookup(const device uint *table,
     h.tint = float3(1.0);
     h.copied = false;
     uint n = table[0];
+    uint finishBase = table[1];
     uint vertexBase = OLLIN_RT_PLAIN_MESH;
     uint mat = 0u;
     if (instanceId < n) {
-        uint r = 1u + instanceId * 5u;
+        uint r = 2u + instanceId * 5u;
         vertexBase = table[r];
         h.tint = float3(as_type<float>(table[r + 1u]),
                         as_type<float>(table[r + 2u]),
@@ -1211,13 +1230,18 @@ static inline OllinRTHit ollin_rt_hit_lookup(const device uint *table,
         mat = table[r + 4u];
     }
     if (vertexBase == OLLIN_RT_PLAIN_MESH) {
-        h.base = table[1u + n * 5u + geometryId];
+        h.base = table[2u + n * 5u + geometryId];
         h.mat = geometryId;
     } else {
         h.base = vertexBase;
         h.copied = true;
         h.mat = mat;
     }
+    // The finish block starts on a four-word boundary, so a record reads as its five
+    // `float4` rows rather than twenty scalars. A zero base means the frame wrote none.
+    h.fin = (finishBase != 0u)
+        ? ((const device OllinRTFinish *)(table + finishBase))[h.mat]
+        : ollin_rt_plain_finish();
     return h;
 }
 
@@ -1258,6 +1282,9 @@ static inline OllinRTSurface ollin_rt_fetch_surface(thread intersection_query<tr
     // the triangle), so a hit shades as the surface it is.
     s.metal = clamp(a.normal.w, 0.0, 1.0);
     s.rough = clamp(a.position.w, 0.045, 1.0);
+    // The rest of the finish, which no vertex slot can carry: the stylized shading model
+    // and the two layers that ride any model. Zero unless the frame declared one.
+    s.fin = hit.fin;
     s.P = origin + dir * q.get_committed_distance();
     return s;
 }
@@ -1289,7 +1316,11 @@ static inline bool ollin_rt_query(thread intersection_query<triangle_data, insta
 static inline float ollin_ltc_diffuse(OllinLight L, float3 n, float3 viewDir,
                                       float3 worldPos, texture2d<float> ltcAmp);
 
-// The scene's direct lights on a traced surface, as Lambert. An area light adds its
+// The scene's direct lights on a traced surface, in the finish that surface wears: as
+// Lambert for a standard or physically-based one, in cel bands for a toon one, and as a
+// warm-cool ramp off the key light for a Gooch one, plus the rim and the subsurface bleed
+// that ride any of the three. A surface therefore reads in a mirror the way it reads head
+// on, rather than as the plain diffuse body underneath its finish. An area light adds its
 // exact LTC diffuse integral (the identity transform is exact Lambert over the shape,
 // the same term the primary shading computes), so a panel-lit surface reads the same
 // in a mirror as head-on; only the disk's horizon factor reads a table (the amp
@@ -1304,12 +1335,30 @@ static inline float3 ollin_rt_direct(OllinRTSurface s, constant OllinLighting &l
                                      texture2d_array<float> iesProfiles,
                                      texture2d_array<float> cookies) {
     float3 direct = float3(0.0);
+    // The surface's finish, where the frame declared one. Every field is zero otherwise,
+    // and each branch below is written so a zero record runs the plain Lambert sum,
+    // instruction for instruction.
+    OllinRTFinish f = s.fin;
+    int model = (int)f.model.x;              // 0 standard / physically-based, 1 toon, 2 Gooch
+    float bands = max(f.model.y, 1.0);
+    float specStrength = f.model.z;
+    float shininess = max(f.model.w, 1.0);
+    bool wantsSSS = f.sss.w > 0.0;
+    float3 sssAccum = float3(0.0);
+    float3 keyToLight = float3(0.0);
+    bool haveKey = false;
     for (int i = 0; i < light.lightCount; i++) {
         OllinLight L = light.lights[i];
         if (L.kind >= 3) {
             if (light.ltcEnabled != 0) {
-                direct += s.albedo * L.color.rgb
-                        * ollin_ltc_diffuse(L, s.N, viewDir, s.P, ltcAmp);
+                // A panel's exact diffuse integral, banded for a cel surface and left to
+                // the tone ramp for a Gooch one, the way the primary path treats it. Its
+                // highlight is not traced (the standard model's is not either), and the
+                // subsurface wrap needs a second, back-facing integral, so a panel adds
+                // no glow through a mirror. Both are the reflection's documented envelope.
+                float diffI = ollin_ltc_diffuse(L, s.N, viewDir, s.P, ltcAmp);
+                if (model == 1) diffI = ceil(saturate(diffI) * bands) / bands;
+                if (model != 2) direct += s.albedo * L.color.rgb * diffI;
             }
             continue;
         }
@@ -1319,9 +1368,56 @@ static inline float3 ollin_rt_direct(OllinRTSurface s, constant OllinLighting &l
         // The same profile/cookie shaping the primary path applies, so a
         // shaped light's pattern survives into its reflections.
         ollin_apply_light_shaping(L, light, toLight, s.P, iesProfiles, cookies);
-        direct += s.albedo * L.color.rgb * (max(dot(s.N, toLight), 0.0) * atten);
+        // Gooch takes its tone from the first punctual light, the key, exactly as the
+        // primary path does (a panel is skipped above before this runs).
+        if (!haveKey) { keyToLight = toLight; haveKey = true; }
+        if (model == 1) {
+            // Toon: hard cel bands on the diffuse, the highlight snapped to a blob.
+            float ndl = max(dot(s.N, toLight), 0.0);
+            float d = ceil(ndl * bands) / bands;
+            float3 h = normalize(toLight + viewDir);
+            float specRaw = (ndl > 0.0) ? pow(max(dot(s.N, h), 0.0), shininess) : 0.0;
+            float spec = (specRaw > 0.5) ? specStrength : 0.0;
+            direct += atten * (s.albedo * L.color.rgb * d + L.specular.rgb * spec);
+        } else if (model == 2) {
+            // Gooch: the tone is set after the loop; each light still adds a highlight.
+            float ndl = max(dot(s.N, toLight), 0.0);
+            float3 h = normalize(toLight + viewDir);
+            float specRaw = (ndl > 0.0) ? pow(max(dot(s.N, h), 0.0), shininess) : 0.0;
+            direct += atten * L.specular.rgb * (specRaw * specStrength);
+        } else {
+            direct += s.albedo * L.color.rgb * (max(dot(s.N, toLight), 0.0) * atten);
+        }
+        // Subsurface: light seen coming through thin geometry from behind (the wrap term).
+        if (wantsSSS) {
+            float back = pow(max(dot(viewDir, -toLight), 0.0), 3.0);
+            sssAccum += atten * L.color.rgb * back;
+        }
+    }
+    // Gooch warm-cool tone from the key light, which replaces the ambient and the
+    // Lambert diffuse (`ollin_rt_ambient` withholds the environment term for it).
+    if (model == 2 && haveKey) {
+        float t = dot(s.N, keyToLight) * 0.5 + 0.5;
+        direct += mix(f.cool.rgb, f.warm.rgb, t) * s.albedo;
+    }
+    // The soft translucent bleed, and the Fresnel rim, both as the primary path writes
+    // them: display-linear like the direct terms, so they ride the same exposure divide.
+    if (wantsSSS) {
+        direct += f.sss.w * f.sss.rgb * s.albedo * sssAccum;
+    }
+    if (f.rim.w > 0.0) {
+        float rim = pow(1.0 - clamp(dot(s.N, viewDir), 0.0, 1.0), f.warm.w);
+        direct += f.rim.w * rim * f.rim.rgb;
     }
     return direct / max(light.iblIntensity, 1e-3);
+}
+
+// The environment's share of a traced surface's body. A Gooch surface takes none: its
+// warm-cool ramp stands in for the ambient as well as the diffuse, which is what the
+// primary path does when it withholds the IBL ambient and the probe field from that
+// model. Every other finish reads the plain product, as it always did.
+static inline float3 ollin_rt_ambient(OllinRTSurface s, float3 irr) {
+    return ((int)s.fin.model.x == 2) ? float3(0.0) : s.albedo * irr;
 }
 
 // The environment reflected off a traced surface, sampled at a lobe width that accounts
@@ -1425,7 +1521,7 @@ static inline float3 ollin_rt_specular_tail(OllinRTSurface s, float3 inDir, int 
             ? ollin_gi_sample_cascaded(sn.P, sn.N, -dir, light, giIrradiance, giDepth, giOffsets)
               / max(light.iblIntensity, 1e-3)
             : irradianceTex.sample(cubeSamp, rot * sn.N).rgb;
-        acc += tp * (sn.albedo * irrn
+        acc += tp * (ollin_rt_ambient(sn, irrn)
                      + ollin_rt_direct(sn, light, -dir, ltcAmp, iesProfiles, cookies))
                * (1.0 - sn.metal);
         tp *= Fn;                         // what this surface hands to the one behind it
@@ -1521,7 +1617,7 @@ static inline float3 ollin_rt_hit_radiance(OllinRTSurface s1, float3 rayOrigin, 
             ? ollin_gi_sample_cascaded(s2.P, s2.N, -secDir, light, giIrradiance, giDepth, giOffsets)
               / max(light.iblIntensity, 1e-3)
             : irradianceTex.sample(cubeSamp, rot * s2.N).rgb;
-        float3 diffuse2 = s2.albedo * irr2
+        float3 diffuse2 = ollin_rt_ambient(s2, irr2)
                         + ollin_rt_direct(s2, light, -secDir, ltcAmp, iesProfiles, cookies);
         envAtHit = env2 * Fb + diffuse2 * (1.0 - s2.metal);
         // A rough first hit cannot show a sharp mirror. One traced ray carries no lobe
@@ -1550,7 +1646,7 @@ static inline float3 ollin_rt_hit_radiance(OllinRTSurface s1, float3 rayOrigin, 
         ? ollin_gi_sample_cascaded(s1.P, s1.N, -rayDir, light, giIrradiance, giDepth, giOffsets)
           / max(light.iblIntensity, 1e-3)
         : irradianceTex.sample(cubeSamp, rot * s1.N).rgb;
-    float3 diffuse = s1.albedo * irr1
+    float3 diffuse = ollin_rt_ambient(s1, irr1)
                    + ollin_rt_direct(s1, light, -rayDir, ltcAmp, iesProfiles, cookies);
     col += diffuse * (1.0 - s1.metal);
     // Atmosphere: the reflected leg crosses the same medium, so the hit's radiance

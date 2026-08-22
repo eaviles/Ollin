@@ -2944,6 +2944,40 @@ extension MetalRenderer {
         let meshStride = MemoryLayout<OllinMeshVertex>.stride
         let meshVertices = drawer.meshVertices
         let batches = drawer.batches
+        // What a traced hit needs of a batch's finish past the metalness and roughness its
+        // vertices carry: the stylized shading models, and the two light-independent layers
+        // that ride any of them. Every field is zero for a standard or physically-based
+        // finish with neither, which is the whole of an ordinary scene, so the record
+        // doubles as the gate: nothing to say means no table, no run broken where two
+        // batches differ only in something the trace never looks at, and the plain
+        // physically-based shade.
+        func stylizedFinish(_ f: OllinMaterial) -> OllinRTFinish {
+            var r = OllinRTFinish()
+            if f.shadingModel == 1 || f.shadingModel == 2 {
+                r.model = SIMD4(Float(f.shadingModel), max(f.toonBands, 1),
+                                f.specular, max(f.shininess, 1))
+                r.warm = SIMD4(f.goochWarm.x, f.goochWarm.y, f.goochWarm.z, 0)
+                r.cool = SIMD4(f.goochCool.x, f.goochCool.y, f.goochCool.z, 0)
+            }
+            if f.rimColor.w > 0 {
+                r.rim = f.rimColor
+                r.warm.w = f.rimPower
+            }
+            if f.subsurfaceColor.w > 0 { r.sss = f.subsurfaceColor }
+            return r
+        }
+        func sameStylized(_ a: OllinRTFinish, _ b: OllinRTFinish) -> Bool {
+            a.model == b.model && a.warm == b.warm && a.cool == b.cool
+                && a.rim == b.rim && a.sss == b.sss
+        }
+        let plainFinish = OllinRTFinish()
+        let wantStylized = batches.contains { b in
+            (b.kind == .mesh3D || b.kind == .meshInstanced || b.kind == .meshField)
+                && !sameStylized(stylizedFinish(b.finish), plainFinish)
+        }
+        // A copy resolves its finish through the material slot its run claims, so the
+        // slots exist whenever either table does.
+        let wantFinishes = pathTraceMats || wantStylized
         // Coalesce maximal runs of contiguous caster batches into one geometry descriptor
         // each (a non-casting batch — wireframe, or a non-mesh kind — breaks the run). The
         // caster vertices of a run are contiguous in `meshBuffer`, so one descriptor covers
@@ -3032,6 +3066,14 @@ extension MetalRenderer {
                        || !PTGeoMaps.same(ptMaps(batch), runMaps) {
                     flushRun()
                 }
+                // A geometry has to be finish-uniform for a hit to resolve one, so a
+                // change in what the trace reads breaks the run. The compact record is
+                // what is compared, not the whole finish, so two batches that differ only
+                // in something the trace ignores stay one geometry.
+                if runStart >= 0, wantStylized,
+                   !sameStylized(stylizedFinish(batch.finish), stylizedFinish(runFinish)) {
+                    flushRun()
+                }
                 if runStart < 0 {
                     runStart = batch.meshStart
                     runMat = mat
@@ -3098,7 +3140,7 @@ extension MetalRenderer {
                 // join, so a batch that falls out at the guards below leaves no
                 // orphan entry in the tables.
                 func claimSlot() -> Int {
-                    guard pathTraceMats else { return 0 }
+                    guard wantFinishes else { return 0 }
                     geoFinishes.append(copyFinish(batch))
                     geoTextures.append(PTGeoMaps())
                     return geoFinishes.count - 1
@@ -3161,7 +3203,7 @@ extension MetalRenderer {
                 // One material slot for the whole field: its entries share the
                 // draw's finish, the way its one raster binding does.
                 var slot = 0
-                if pathTraceMats {
+                if wantFinishes {
                     geoFinishes.append(copyFinish(batch))
                     geoTextures.append(PTGeoMaps())
                     slot = geoFinishes.count - 1
@@ -3347,18 +3389,29 @@ extension MetalRenderer {
         instanceDesc.instanceDescriptorBuffer = instanceBuffer
 
         // The hit-lookup table, uploaded for the reflection hit fetch. Layout, which
-        // `ollin_rt_hit_lookup` reads back: the instance count, then that many five-uint
-        // records, then one base-vertex index per geometry of the plain-mesh instance.
+        // `ollin_rt_hit_lookup` reads back: the instance count and the finish table's
+        // base, then that many five-uint records, then one base-vertex index per geometry
+        // of the plain-mesh instance, then the finish records where the frame has any.
         // The CPU fills it here (before the command buffer commits), so the main pass
         // reads it this frame, through the frame ring, never a shared buffer an
         // in-flight frame still reads. The records of the GPU-resident runs are a gap
         // the kernel fills; they sit between the CPU records and the geometry tail, so
         // the two CPU pieces are written around it rather than as one array.
-        var head: [UInt32] = [UInt32(totalInstances)]
+        var head: [UInt32] = [UInt32(totalInstances), 0]
         head.append(contentsOf: records)
-        let tailStart = 1 + totalInstances * 5
+        let tailStart = 2 + totalInstances * 5
+        // The finish table rides the same buffer rather than a binding of its own, the
+        // rule the hit records already follow, so no tracing entry point gains an
+        // argument. It sits past the geometry tail on a four-word boundary, since a
+        // record reads as five `float4` rows. A frame with nothing stylized to say leaves
+        // the block out and writes a zero base, which is the shader's gate.
+        let finishWords = MemoryLayout<OllinRTFinish>.stride / MemoryLayout<UInt32>.stride
+        let finishBase = wantStylized ? ((tailStart + geoOffsets.count + 3) / 4) * 4 : 0
+        head[1] = UInt32(finishBase)
+        let tableWords = max(tailStart + geoOffsets.count,
+                             finishBase == 0 ? 0 : finishBase + geoFinishes.count * finishWords)
         let offsetsLength = max(MemoryLayout<UInt32>.stride,
-                                (tailStart + geoOffsets.count) * MemoryLayout<UInt32>.stride)
+                                tableWords * MemoryLayout<UInt32>.stride)
         if (meshGeoOffsetBuffers[frameIndex]?.length ?? 0) < offsetsLength {
             meshGeoOffsetBuffers[frameIndex] = device.makeBuffer(length: offsetsLength,
                                                                  options: .storageModeShared)
@@ -3370,6 +3423,15 @@ extension MetalRenderer {
         geoOffsets.withUnsafeBytes { raw in
             offsetsBuffer.contents().advanced(by: tailStart * MemoryLayout<UInt32>.stride)
                 .copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+        }
+        // Guarded by the base itself, never by the flag that set it: a block written at
+        // offset zero would land on the header it is reached through.
+        if finishBase != 0 {
+            let finishes = geoFinishes.map(stylizedFinish)
+            finishes.withUnsafeBytes { raw in
+                offsetsBuffer.contents().advanced(by: finishBase * MemoryLayout<UInt32>.stride)
+                    .copyMemory(from: raw.baseAddress!, byteCount: raw.count)
+            }
         }
         let instanceSizes = device.accelerationStructureSizes(descriptor: instanceDesc)
         if rtInstanceAccel == nil || rtInstanceAccelCapacity < instanceSizes.accelerationStructureSize {
@@ -3618,11 +3680,12 @@ extension MetalRenderer {
     /// reflection hit, which can't happen when `lighting.rtReflections == 0`).
     func ensureDummyGeoOffsets() -> MTLBuffer? {
         if let b = dummyGeoOffsets { return b }
-        // Two elements, not one: the lookup table reads its instance count first, and a
-        // count of zero then sends the geometry read to the element after it.
-        var empty: [UInt32] = [0, 0]
+        // Three elements, not one: the lookup reads a two-word header (the instance count
+        // and where the finish table starts), and a count of zero then sends the geometry
+        // read to the word after it.
+        var empty: [UInt32] = [0, 0, 0]
         dummyGeoOffsets = device.makeBuffer(bytes: &empty,
-                                            length: MemoryLayout<UInt32>.stride * 2,
+                                            length: MemoryLayout<UInt32>.stride * 3,
                                             options: .storageModeShared)
         return dummyGeoOffsets
     }

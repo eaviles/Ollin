@@ -51,8 +51,9 @@ extension MetalRenderer {
         descs[slot].structureIndex = p.structureIndex;
         // The hit record for this slot, in the same layout the CPU writes for a
         // list copy: the base mesh's first vertex, the tint as three floats, and
-        // the material slot every copy of this run shares.
-        uint r = 1u + slot * 5u;
+        // the material slot every copy of this run shares. The records follow the
+        // table's two-word header (the instance count, the finish table's base).
+        uint r = 2u + slot * 5u;
         float4 tint = placements[tid].color;
         table[r + 0u] = p.vertexBase;
         table[r + 1u] = as_type<uint>(tint.x);
