@@ -1325,6 +1325,24 @@ open class Sketch {
     /// `setup()` or `draw()`. Read only where `rayTracedReflections()` is on.
     public func reflectionBounces(_ count: Int = 2) { drawer.reflectionBounces(count) }
 
+    /// Trace a rough surface's [reflection](../../Docs/3D/3D.md#rt-reflections) as a
+    /// spread lobe rather than as a single mirror ray.
+    ///
+    /// A mirror sends every ray one way, so one ray describes it. A satin floor, brushed
+    /// steel, or a waxed table sends each ray a slightly different way, and what you see
+    /// in it is the average of all of them. Without this, Ollin traces the mirror ray and
+    /// then fades it into the blurred environment as the surface gets rougher, so a satin
+    /// floor in a room reflects the sky instead of the room. With it on, the rays spread
+    /// by the surface's own roughness and each pixel also borrows the rays its neighbors
+    /// sent, which is what turns a handful of rays into a smooth reflection instead of
+    /// glitter. A near-mirror surface looks the same either way.
+    ///
+    /// It costs one more full-screen pass, and it reaches surfaces up to about
+    /// three-quarters rough; past that the environment is the honest answer and Ollin
+    /// goes back to it. Needs `rayTracedReflections()` and a ray-tracing GPU. A
+    /// persistent setting; set it once in `setup()` or `draw()`.
+    public func glossyReflections(_ on: Bool = true) { drawer.glossyReflections(on) }
+
     /// Set the soft-shadow ray count to an **exact** value (1…64), the hardware-independent
     /// alternative to `shadowQuality` — for fine control, pushing past the presets on a fast
     /// GPU, or a render that should look identical across machines. Persistent.

@@ -592,6 +592,19 @@ final class Drawer {
     /// per reflected pixel per step.
     private(set) var reflectionBouncesSetting: Int = 2
 
+    /// Whether a rough surface's reflection is traced as a *lobe* (`glossyReflections`):
+    /// a persistent setting like `reflectionBouncesSetting`. Off, one reflected ray is a
+    /// mirror ray, and roughness is served by fading that mirror into the prefiltered
+    /// environment, so a satin floor shows the sky where it should show a blurred room.
+    /// On, each ray is spread by the surface's own microfacet distribution and the
+    /// neighborhood estimator gathers its neighbors' rays back into one integral.
+    private(set) var glossyReflectionsEnabled = false
+
+    /// The roughness a traced glossy lobe reaches. Past it the lobe is wide enough that
+    /// the prefiltered environment is the honest answer, and the ray budget buys nothing;
+    /// the lit fragment fades into that environment over the last fifth of the range.
+    static let glossyReflectionCeiling: Float = 0.75
+
     /// The soft-shadow quality knob (`shadowQuality`/`shadowSamples`) — a persistent setting
     /// (not reset each frame, like `toneMap`): more rays give a smoother ray-traced penumbra
     /// at proportional GPU cost. A `Quality` tier scales with the GPU (the renderer resolves
@@ -2187,6 +2200,9 @@ final class Drawer {
         reflectionBouncesSetting = max(2, min(count, Int(OLLIN_MAX_REFLECTION_BOUNCES)))
     }
 
+    /// Trace a rough surface's reflection as a lobe rather than a mirror ray. Persistent.
+    func glossyReflections(_ enabled: Bool) { glossyReflectionsEnabled = enabled }
+
     /// Set the soft-shadow ray count to an exact value, clamped to 1…64 (hardware-independent).
     /// Persistent.
     func shadowSamples(_ count: Int) { shadowQualitySetting = .absolute(max(1, min(count, 64))) }
@@ -2376,6 +2392,10 @@ final class Drawer {
         // The reflection chain's length. Packed always (the shader reads it only past the
         // shipped pair, and only with `rtReflections` on), so it needs no renderer gate.
         u.rtReflectionBounces = Int32(reflectionBouncesSetting)
+        // The glossy lobe's roughness ceiling. Packed always and inert until the renderer
+        // turns the deferred reflection on (the trace and the fragment both read it inside
+        // that branch), so it needs no gate of its own.
+        u.rtReflectionGloss = glossyReflectionsEnabled ? Drawer.glossyReflectionCeiling : 0
         // Ray-traced reflections' self-hit ray-origin offset, sized to the scene (the
         // eye→target distance, the scene-scale proxy the shadow framing also uses). The
         // renderer sets `rtReflections` itself (it owns the hardware check); this is inert

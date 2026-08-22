@@ -662,6 +662,9 @@ private let snapshotRaytracingCases: [SnapshotCase] = [
     SnapshotCase("rt-reflections-3d",
                  note: "A near-mirror metal floor under fixed metal spheres + a cube, lit by an environment, with rayTracedReflections() on. Pins the hybrid reflection path: the per-pixel closest-hit trace against the caster acceleration structure, the barycentric attribute fetch + 1-bounce hit shade, and the environment miss fallback composited through the PBR IBL specular. RT-gated, so it only runs (and is recorded) on a ray-tracing GPU.",
                  make: { RayTracedReflectionsScene() }),
+    SnapshotCase("glossy-reflections",
+                 note: "A satin metal floor between two colored walls, with rayTracedReflections() + glossyReflections() on. Pins the whole glossy chain on the deterministic export path: the visible-normal lobe sample per ray, the ray layer the trace writes beside its radiance, the neighborhood estimator that gathers the neighbors' rays back into one integral, the path-roughness widening that keeps a mirror ball's pinpoint light from returning as speckle, the several-pass in-frame average, and the composite's hand-back to the environment at the ceiling. RT-gated, so it only runs (and is recorded) on a ray-tracing GPU.",
+                 make: { GlossyReflectionsScene() }),
     SnapshotCase("rt-refraction-3d",
                  note: "Glass bodies in front of colored pillars with rayTracedReflections() on: pins the traced refraction walk (the solid's interior leg finding its real exit back face and refracting out, the thin walk hopping through its own shell, Beer-Lambert over the traced span, the shared hit shade, and the environment miss fallback). RT-gated, so it only runs (and is recorded) on a ray-tracing GPU.",
                  make: { GlassRefractionScene() }),
@@ -1182,6 +1185,42 @@ private final class RayTracedReflectionsScene: Sketch {
         withState {
             material(.polishedMetal); fill(Color(hex: 0xe2e6f0))
             translate(0, 1.1, -1.2); drawBox(width: 0.9, height: 2.2, depth: 0.9)
+        }
+    }
+}
+
+/// A satin metal floor between two colored walls under a bundled environment, with the
+/// traced reflection's lobe on: the floor shows the room, blurred by how rough it is, and
+/// the row of balls climbs from mirror to past the glossy ceiling. Fixed camera, no time.
+private final class GlossyReflectionsScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0b0d11))
+        camera(.orbiting(target: Vector3(0, 0.9, 0), radius: 9.0,
+                         azimuth: 0.35, elevation: 0.28,
+                         fieldOfView: .pi / 4, near: 1, far: 40))
+        environment(.studio.intensity(1.0))
+        directionalLight(.white, direction: Vector3(-0.35, -1, -0.3), intensity: 0.8)
+        rayTracedReflections()
+        glossyReflections()
+        withState {
+            material(.metal(roughness: 0.3)); fill(Color(hex: 0x9298a2))
+            translate(0, -0.4, 0); drawBox(width: 26, height: 0.8, depth: 26)
+        }
+        withState {
+            material(.matte); fill(Color(red: 0.85, green: 0.27, blue: 0.16))
+            translate(-5.0, 2.2, -1.0); drawBox(width: 0.4, height: 4.4, depth: 10)
+        }
+        withState {
+            material(.matte); fill(Color(red: 0.18, green: 0.44, blue: 0.85))
+            translate(5.0, 2.2, -1.0); drawBox(width: 0.4, height: 4.4, depth: 10)
+        }
+        for (i, r) in [0.02, 0.2, 0.4, 0.62].enumerated() {
+            withState {
+                material(.metal(roughness: r)); fill(Color(hex: 0xcfd4dc))
+                translate(-2.7 + Double(i) * 1.8, 0.9, 0); drawSphere(radius: 0.85)
+            }
         }
     }
 }

@@ -899,14 +899,78 @@ static inline float2 ollin_rt_reflect_jitter(float2 px, float n) {
     return fract(seq + rot) - 0.5;
 }
 
+// The lobe's own random pair, in [0, 1)^2 and decorrelated from the footprint jitter
+// above (a different per-pixel phase), so the two sub-samplings never march together.
+static inline float2 ollin_rt_lobe_random(float2 px, float n) {
+    const float2 R2 = float2(0.7548776662, 0.5698402910);
+    float2 seq = fract((n + 0.5) * R2);
+    float2 rot = float2(hash12(px + 41.17), hash12(px + 93.73));
+    return fract(seq + rot);
+}
+
+// How many rays one pixel gathers: its own, and the rest from the ring around it. Eight
+// against four takes that measured error from 2.4% to 2.2% and the grain down with it;
+// twelve buys a third as much again for half as much more work, so eight.
+#define OLLIN_RT_RESOLVE_TAPS 8
+
+// One microfacet normal drawn from the GGX distribution of *visible* normals, in the
+// surface's tangent frame (z = the normal). Written from the published routine: stretch
+// the view into the hemisphere configuration, sample the projected disc uniformly with
+// the far half sheared to the visible crescent, lift back onto the hemisphere, and
+// unstretch. `alpha` is the linear roughness (perceptual squared).
+//
+// The distribution is drawn from whole. Narrowing it toward its center is the published
+// answer to the noise in its tail, and it was tried here (`r = sqrt(u1 * (1 - bias))`,
+// whose changed normalization the estimator below absorbs on its own): measured against a
+// 256-ray reference it makes the picture quieter and *less* right, 2.4% error unbiased
+// against 4.5% at 0.4 and 6.2% at 0.7, where not having the feature at all is 7.0%. That
+// trade was made for a budget of one ray at half resolution; this path spends four times
+// as many and clamps the path's roughness instead, so it keeps the honest lobe.
+static inline float3 ollin_rt_sample_vndf(float3 Ve, float alpha, float u1, float u2) {
+    float3 Vh = normalize(float3(alpha * Ve.x, alpha * Ve.y, Ve.z));
+    float lensq = Vh.x * Vh.x + Vh.y * Vh.y;
+    float3 T1 = lensq > 0.0 ? float3(-Vh.y, Vh.x, 0.0) * rsqrt(lensq) : float3(1.0, 0.0, 0.0);
+    float3 T2 = cross(Vh, T1);
+    float r = sqrt(u1);
+    float phi = 2.0 * 3.14159265 * u2;
+    float t1 = r * cos(phi);
+    float t2 = r * sin(phi);
+    float s2 = 0.5 * (1.0 + Vh.z);
+    t2 = (1.0 - s2) * sqrt(max(0.0, 1.0 - t1 * t1)) + s2 * t2;
+    float3 Nh = t1 * T1 + t2 * T2 + sqrt(max(0.0, 1.0 - t1 * t1 - t2 * t2)) * Vh;
+    return normalize(float3(alpha * Nh.x, alpha * Nh.y, max(0.0, Nh.z)));
+}
+
+// The density that routine draws a *reflected direction* with, for a surface facing `n`
+// seen from `V`: the visible-normal density divided by the reflection operator's
+// Jacobian, which leaves G1(V)·D(H) / (4·N·V). The resolve needs it for a neighbor's ray,
+// and the same expression serves the neighbor's own weight, so the two cannot drift.
+static inline float ollin_rt_lobe_pdf(float3 n, float3 V, float3 L, float rough) {
+    float3 H = normalize(V + L);
+    float NoH = max(dot(n, H), 0.0);
+    float NoV = max(dot(n, V), 1e-4);
+    return ollin_pbr_G1_SmithGGX(NoV, rough) * ollin_pbr_D_GGX(NoH, rough) / (4.0 * NoV);
+}
+
+// The trace's two attachments: the radiance it found, and the ray it sent. The second is
+// read only by the glossy resolve, which reuses a neighbor's ray as one more sample of
+// this pixel's own lobe, and needs to know both where that ray pointed and how far it
+// reached (a hit close by is seen from a different angle one pixel over; a miss carries
+// no distance, so its direction is the whole story).
+struct RTReflectTraceOut {
+    float4 color [[color(0)]];
+    float4 ray   [[color(1)]];   // xyz = world direction, w = hit distance (0 = miss)
+};
+
 // params[0] = (texel.xy, sample count, jitter seed). Textures/buffers mirror the lit
 // mesh fragment's reflection bindings (IBL cubes at 4/5, accel at 3, mesh at 6/7, the
 // LTC amp table at 9, feeding the hit shade's exact area-light diffuse).
-fragment float4 ollin_rt_reflect_trace(PresentOut in [[stage_in]],
+fragment RTReflectTraceOut ollin_rt_reflect_trace(PresentOut in [[stage_in]],
                                        texture2d<float> normalTex [[texture(0)]],
-                                       // Bound with the rest of the G-buffer and read by
-                                       // nothing here: whether a texel is worth a ray at
-                                       // all rides the normal's alpha flag.
+                                       // Whether a texel is worth a ray at all rides the
+                                       // normal's alpha flag, so this is read only by the
+                                       // glossy lobe, which needs the roughness to know how
+                                       // wide to spread.
                                        texture2d<float> materialTex [[texture(1)]],
                                        depth2d<float> depthTex [[texture(2)]],
                                        texturecube<float> irradianceTex [[texture(4)]],
@@ -943,9 +1007,12 @@ fragment float4 ollin_rt_reflect_trace(PresentOut in [[stage_in]],
     // it is smooth enough to be worth a ray (past ~0.55 roughness the mesh fragment's
     // glossy blend lands wholly on the prefiltered environment, so the traced value
     // would go unused). The same flag guides the half-size layer's upsample.
-    if (nrm.a < 0.5) return float4(0.0);
+    RTReflectTraceOut out;
+    out.color = float4(0.0);
+    out.ray = float4(0.0);
+    if (nrm.a < 0.5) return out;
     float d = depthTex.sample(dsamp, in.uv);
-    if (d >= 1.0) return float4(0.0);
+    if (d >= 1.0) return out;
     float3 n = normalize(nrm.xyz);
     constexpr sampler cubeSamp(filter::linear, mip_filter::linear, address::clamp_to_edge);
     float cs = cos(light.iblRotation), sn = sin(light.iblRotation);
@@ -981,16 +1048,150 @@ fragment float4 ollin_rt_reflect_trace(PresentOut in [[stage_in]],
         float slope = dot(dir, n);                     // edge-on: keep the pixel's own point
         float3 P = abs(slope) > 1e-4 ? eye + dir * (dot(P0 - eye, n) / slope) : P0;
         float3 R = reflect(dir, n);
-        // No roughness-cone spread: glossiness stays with the mesh fragment's env blend
-        // (the inline path's rule: one ray can't blur). A wide stochastic cone at these
-        // sample counts reads as sparkle on brushed metals; integrating it properly
-        // needs a spatial resolve/denoise stage first (a follow-up).
+        // The roughness spread, when the sketch asked for it (`glossyReflections()`). A
+        // mirror sends every ray one way, so one ray describes it; a rougher surface
+        // sends each ray a slightly different way, and what it shows is the average. So
+        // the ray leaves along a microfacet drawn from the surface's own distribution
+        // instead of along the mirror direction, and the resolve beside this pass gathers
+        // the neighbors' rays back into that average. At roughness near zero the drawn
+        // microfacet *is* the normal, so a polished surface keeps its mirror ray.
+        //
+        // Off (the default), glossiness stays with the mesh fragment's blend toward the
+        // prefiltered environment: one ray cannot blur, and a spread one with nothing to
+        // gather it reads as sparkle.
+        float lobeRough = 0.0;
+        if (light.rtReflectionGloss > 0.0) {
+            float rough = clamp(materialTex.sample(dsamp, in.uv).g, 0.02, 1.0);
+            // The cone this one ray stands for. Every surface it meets is widened to at
+            // least this rough, which is what keeps the speckle out (see
+            // `ollin_rt_reflection_trace`); a *fraction* of the width was measured and
+            // leaves it in.
+            lobeRough = rough;
+            float3 V = -dir;
+            float3 t0 = abs(n.z) < 0.999 ? normalize(cross(float3(0.0, 0.0, 1.0), n))
+                                         : float3(1.0, 0.0, 0.0);
+            float3 t1 = cross(n, t0);
+            float3 Vt = float3(dot(V, t0), dot(V, t1), dot(V, n));
+            float2 uv2 = ollin_rt_lobe_random(in.position.xy, seed + float(s));
+            float3 Ht = ollin_rt_sample_vndf(Vt, rough * rough, uv2.x, uv2.y);
+            float3 H = Ht.x * t0 + Ht.y * t1 + Ht.z * n;
+            float3 Lw = reflect(dir, H);
+            // A microfacet can turn the ray under its own surface. That direction carries
+            // no reflection, so keep the mirror ray rather than tracing into the floor.
+            if (dot(Lw, n) > 1e-3) { R = Lw; }
+        }
+        float hitT = 0.0;
         acc += ollin_rt_reflection_trace(P, n, R, accel, verts, geoOffsets, light,
                                          irradianceTex, prefilterTex, cubeSamp, rot, ltcAmp,
                                          iesProfiles, cookies, sheenLUT,
-                                         giIrradianceTex, giDepthTex, giOffsetsTex);
+                                         giIrradianceTex, giDepthTex, giOffsetsTex, &hitT,
+                                         lobeRough);
+        out.ray = float4(R, hitT);
     }
-    return acc / float(samples);
+    out.color = acc / float(samples);
+    return out;
+}
+
+// MARK: - The glossy reflection's neighborhood resolve
+//
+// One ray per pixel samples a wide lobe badly: the picture is right on average and wrong
+// everywhere, which reads as glitter. The fix is not more rays but the neighbors' rays.
+// Every pixel around this one sent a ray of its own into a lobe that overlaps this
+// pixel's, so each of those is a sample of this pixel's integral too, once it is
+// re-weighted for the surface *here*: how likely this surface was to send a ray that way,
+// over how likely the neighbor's surface was to send the one it did. Summing the weighted
+// radiance and dividing by the summed weights (rather than by the count) is what keeps
+// the result unbiased when the neighbors differ in roughness or face a different way, and
+// it is what lets the weights carry any constant at all, since a constant cancels.
+//
+// Two properties fall out of the weight rather than out of a rule: a polished pixel gives
+// a neighbor's off-lobe ray a weight near zero, so a mirror resolves to its own ray and
+// stays sharp; and a rough pixel spreads its weights over the whole neighborhood, which
+// is exactly where the averaging is wanted. Written from the published technique (the
+// stochastic screen-space reflection resolve); see ATTRIBUTION.md Techniques.
+//
+// params[0] = (texel.xy, tap radius in texels, the share of the running average this pass
+// carries; 0 = write the resolve as it stands, the live path's single pass). params[1] =
+// (the eye, 1 while a running average stands in texture 5). params[4..7] = the inverse
+// view-projection's columns.
+fragment float4 ollin_rt_reflect_resolve(PresentOut in [[stage_in]],
+                                         texture2d<float> traced [[texture(0)]],
+                                         texture2d<float> rays [[texture(1)]],
+                                         texture2d<float> normalTex [[texture(2)]],
+                                         texture2d<float> materialTex [[texture(3)]],
+                                         depth2d<float> depthTex [[texture(4)]],
+                                         texture2d<float> accum [[texture(5)]],
+                                         sampler samp [[sampler(0)]],
+                                         constant float4 *params [[buffer(0)]]) {
+    constexpr sampler dsamp(filter::nearest, address::clamp_to_edge);
+    float2 texel = params[0].xy;
+    float radius = params[0].z;
+    float share = params[0].w;
+    float3 eye = params[1].xyz;
+    float4x4 invVP = float4x4(params[4], params[5], params[6], params[7]);
+    float4 prior = params[1].w > 0.5 ? accum.sample(dsamp, in.uv) : float4(0.0);
+
+    float4 nrm = normalTex.sample(dsamp, in.uv);
+    float d = depthTex.sample(dsamp, in.uv);
+    // No traced reflection stands behind this texel (no surface, or one too rough to be
+    // worth a ray): the layer is zero here and the lit fragment falls back to the
+    // environment, exactly as it does for the mirror path.
+    if (nrm.a < 0.5 || d >= 1.0) { return prior; }
+
+    float3 n = normalize(nrm.xyz);
+    float rough = clamp(materialTex.sample(dsamp, in.uv).g, 0.02, 1.0);
+    float2 ndc = float2(in.uv.x * 2.0 - 1.0, 1.0 - in.uv.y * 2.0);
+    float4 wp = invVP * float4(ndc, d, 1.0);
+    float3 P = wp.xyz / wp.w;
+    float3 V = normalize(eye - P);
+
+    // The taps: this pixel's own ray, which can never be rejected, and the rest on a circle
+    // turned by a per-pixel angle so the pattern never lines up into a grain.
+    float ang = hash12(in.position.xy) * 6.2831853;
+    float step = 6.2831853 / float(OLLIN_RT_RESOLVE_TAPS - 1);
+    float4 sum = float4(0.0);
+    float wsum = 0.0;
+    for (int k = 0; k < OLLIN_RT_RESOLVE_TAPS; k++) {
+        float2 off = float2(0.0);
+        if (k > 0) {
+            float a = ang + float(k) * step;
+            off = float2(cos(a), sin(a)) * radius;
+        }
+        float2 uvk = in.uv + off * texel;
+        float4 gk = normalTex.sample(dsamp, uvk);
+        float dk = depthTex.sample(dsamp, uvk);
+        if (gk.a < 0.5 || dk >= 1.0) { continue; }   // that neighbor sent no ray
+        float4 rk = rays.sample(dsamp, uvk);
+        float3 Lk = rk.xyz;
+        if (dot(Lk, Lk) < 1e-6) { continue; }
+        Lk = normalize(Lk);
+        // Where the neighbor's ray went, seen from *here*. A ray that hit something near
+        // by leaves at a different angle from one pixel over, so reuse the point it found
+        // rather than the direction it took; a ray that met nothing has only a direction.
+        float3 L = Lk;
+        float3 nk = normalize(gk.xyz);
+        float roughK = clamp(materialTex.sample(dsamp, uvk).g, 0.02, 1.0);
+        float2 ndck = float2(uvk.x * 2.0 - 1.0, 1.0 - uvk.y * 2.0);
+        float4 wpk = invVP * float4(ndck, dk, 1.0);
+        float3 Pk = wpk.xyz / wpk.w;
+        if (rk.w > 0.0) {
+            float3 toHit = Pk + Lk * rk.w - P;
+            if (dot(toHit, toHit) > 1e-8) { L = normalize(toHit); }
+        }
+        float NoL = dot(n, L);
+        if (NoL <= 1e-4) { continue; }               // below this surface's horizon
+        float3 H = normalize(V + L);
+        float pdf = ollin_rt_lobe_pdf(nk, normalize(eye - Pk), Lk, roughK);
+        // The weight the split-sum's prefiltered radiance is an average under (the
+        // distribution times the cosine), over the density the neighbor drew its ray with.
+        float w = ollin_pbr_D_GGX(max(dot(n, H), 0.0), rough) * NoL / max(pdf, 1e-8);
+        sum += traced.sample(dsamp, uvk) * w;
+        wsum += w;
+    }
+    // The own tap can only fail its own tests where nothing was traced at all, which the
+    // early-out above already answered; the guard is for the arithmetic, not for a case.
+    float4 resolved = wsum > 1e-12 ? sum / wsum : traced.sample(dsamp, in.uv);
+    return share > 0.0 ? prior + resolved * share : resolved;
 }
 #endif
 

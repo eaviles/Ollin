@@ -2026,6 +2026,11 @@ extension MetalRenderer {
                                     height: Double(height), znear: 0, zfar: 1))
         enc.setRenderPipelineState(gbufPipe)
         enc.setDepthStencilState(depthTestState)
+        // The roughness a traced reflection is still worth a ray at: the mirror path's
+        // 0.55 (past it the fragment's glossy blend lands wholly on the environment), or
+        // the sketch's own ceiling where the glossy lobe carries the spread itself.
+        var reflectCeiling = lighting.rtReflectionGloss > 0 ? lighting.rtReflectionGloss : Float(0.55)
+        enc.setFragmentBytes(&reflectCeiling, length: MemoryLayout<Float>.stride, index: 0)
         // Under temporal AA the G-buffer carries the frame's jitter, so the traced
         // reflection lands exactly where the jittered geometry pass composites it
         // (and the reflection temporal's own reprojection unjitters like the frame's).
@@ -2050,49 +2055,111 @@ extension MetalRenderer {
         enc.endEncoding()
 
         // 2. The trace: one fullscreen pass, N jittered rays per pixel (1 on the live path).
-        let samples = supersample ? resolveRTReflectionSamples() : 1
-        let seed = supersample ? 0 : Float(frameComputeUniforms.frameCount % 4096)
-        guard let traceState = try? pipeline(.effect("ollin_rt_reflect_trace")) else { return nil }
-        let tracePass = MTLRenderPassDescriptor()
-        tracePass.colorAttachments[0].texture = traced
-        tracePass.colorAttachments[0].loadAction = .dontCare
-        tracePass.colorAttachments[0].storeAction = .store
-        guard let trace = countedEncoder(cb, tracePass) else { return nil }
-        trace.setRenderPipelineState(traceState)
-        trace.setFragmentTexture(gbuf.normal, index: 0)
-        trace.setFragmentTexture(gbuf.material, index: 1)
-        trace.setFragmentTexture(gbuf.depth, index: 2)
-        trace.setFragmentTexture(irradiance, index: 4)
-        trace.setFragmentTexture(prefilter, index: 5)
-        // The LTC amp table feeds the hit shade's exact area-light diffuse; the
-        // G-buffer normal is the never-sampled stand-in when the tables aren't
-        // loaded (`ltcEnabled` gates every read, matching the mesh fragments).
-        trace.setFragmentTexture(ltcAmpTexture ?? gbuf.normal, index: 9)
-        // The light-shaping arrays (tex 10/11), so the hit shade keeps a shaped
-        // light's pattern; the array stand-in otherwise (the gates guard the reads).
-        trace.setFragmentTexture(iesArrayTexture ?? shapingStandIn(), index: 10)
-        trace.setFragmentTexture(cookieArrayTexture ?? shapingStandIn(), index: 11)
-        // The sheen table (tex 12), at the slot every mesh carrier binds it: a hit whose
-        // surface wears sheen reads its directional albedo from it, and a frame with no
-        // sheen anywhere never samples the stand-in.
-        trace.setFragmentTexture(sheenLUT ?? gbuf.normal, index: 12)
-        // The GI probe atlases (tex 13/14/15), so a hit's diffuse carries the bounce
-        // field; never-sampled stand-ins while the field is inactive.
-        let giStand = gradientStripTexture(for: drawer.gradientRows)
-        trace.setFragmentTexture(gi?.irradiance ?? giStand, index: 13)
-        trace.setFragmentTexture(gi?.depth ?? giStand, index: 14)
-        trace.setFragmentTexture(gi?.offsets ?? giStand, index: 15)
-        trace.setFragmentSamplerState(imageSampler, index: 0)
-        var traceParams = SIMD4<Float>(1 / Float(width), 1 / Float(height), Float(samples), seed)
-        trace.setFragmentBytes(&traceParams, length: MemoryLayout<SIMD4<Float>>.stride, index: 0)
-        trace.setFragmentBytes(&lighting, length: MemoryLayout<OllinLighting>.stride, index: 1)
-        trace.setFragmentBytes(&u3, length: MemoryLayout<Uniforms3D>.stride, index: 2)
-        useTracedScene(trace, accel)
-        trace.setFragmentAccelerationStructure(accel, bufferIndex: 3)
-        trace.setFragmentBuffer(meshBuffer, offset: 0, index: 6)
-        trace.setFragmentBuffer(geoOffsets, offset: 0, index: 7)
-        trace.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
-        trace.endEncoding()
+        // The glossy lobe sends exactly *one* ray per pass instead, because the resolve
+        // beside it reads back the ray each pixel sent and there is one slot to say it in;
+        // an export's several rays are then several passes rather than one inner loop.
+        let gloss = lighting.rtReflectionGloss > 0
+        let samples = gloss ? 1 : (supersample ? resolveRTReflectionSamples() : 1)
+        let passes = (gloss && supersample) ? resolveRTReflectionSamples() * Self.glossyExportRayFactor : 1
+        // The ray each pixel sent (direction + how far it reached): the trace's second
+        // attachment, read only by the glossy resolve but written either way, so one
+        // fragment serves both paths.
+        guard let rayLayer = acquireFilterTexture(width: width, height: height, pooled: pooled),
+              let traceState = try? pipeline(.rtReflectTrace) else { return nil }
+        func encodeTrace(seed: Float) -> Bool {
+            let tracePass = MTLRenderPassDescriptor()
+            tracePass.colorAttachments[0].texture = traced
+            tracePass.colorAttachments[0].loadAction = .dontCare
+            tracePass.colorAttachments[0].storeAction = .store
+            tracePass.colorAttachments[1].texture = rayLayer
+            tracePass.colorAttachments[1].loadAction = .dontCare
+            tracePass.colorAttachments[1].storeAction = .store
+            guard let trace = countedEncoder(cb, tracePass) else { return false }
+            trace.setRenderPipelineState(traceState)
+            trace.setFragmentTexture(gbuf.normal, index: 0)
+            trace.setFragmentTexture(gbuf.material, index: 1)
+            trace.setFragmentTexture(gbuf.depth, index: 2)
+            trace.setFragmentTexture(irradiance, index: 4)
+            trace.setFragmentTexture(prefilter, index: 5)
+            // The LTC amp table feeds the hit shade's exact area-light diffuse; the
+            // G-buffer normal is the never-sampled stand-in when the tables aren't
+            // loaded (`ltcEnabled` gates every read, matching the mesh fragments).
+            trace.setFragmentTexture(ltcAmpTexture ?? gbuf.normal, index: 9)
+            // The light-shaping arrays (tex 10/11), so the hit shade keeps a shaped
+            // light's pattern; the array stand-in otherwise (the gates guard the reads).
+            trace.setFragmentTexture(iesArrayTexture ?? shapingStandIn(), index: 10)
+            trace.setFragmentTexture(cookieArrayTexture ?? shapingStandIn(), index: 11)
+            // The sheen table (tex 12), at the slot every mesh carrier binds it: a hit whose
+            // surface wears sheen reads its directional albedo from it, and a frame with no
+            // sheen anywhere never samples the stand-in.
+            trace.setFragmentTexture(sheenLUT ?? gbuf.normal, index: 12)
+            // The GI probe atlases (tex 13/14/15), so a hit's diffuse carries the bounce
+            // field; never-sampled stand-ins while the field is inactive.
+            let giStand = gradientStripTexture(for: drawer.gradientRows)
+            trace.setFragmentTexture(gi?.irradiance ?? giStand, index: 13)
+            trace.setFragmentTexture(gi?.depth ?? giStand, index: 14)
+            trace.setFragmentTexture(gi?.offsets ?? giStand, index: 15)
+            trace.setFragmentSamplerState(imageSampler, index: 0)
+            var traceParams = SIMD4<Float>(1 / Float(width), 1 / Float(height), Float(samples), seed)
+            trace.setFragmentBytes(&traceParams, length: MemoryLayout<SIMD4<Float>>.stride, index: 0)
+            trace.setFragmentBytes(&lighting, length: MemoryLayout<OllinLighting>.stride, index: 1)
+            trace.setFragmentBytes(&u3, length: MemoryLayout<Uniforms3D>.stride, index: 2)
+            useTracedScene(trace, accel)
+            trace.setFragmentAccelerationStructure(accel, bufferIndex: 3)
+            trace.setFragmentBuffer(meshBuffer, offset: 0, index: 6)
+            trace.setFragmentBuffer(geoOffsets, offset: 0, index: 7)
+            trace.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+            trace.endEncoding()
+            return true
+        }
+
+        // The glossy resolve: gather the neighbors' rays back into one integral (see
+        // `ollin_rt_reflect_resolve`). An export runs the whole pair once per ray and adds
+        // each resolve into a running average, so a single exported frame carries the same
+        // integration the live path collects over time, with no history to carry.
+        var resolveParams = [SIMD4<Float>](repeating: .zero, count: 8)
+        resolveParams[0] = SIMD4(1 / Float(width), 1 / Float(height), Self.glossyResolveRadius, 0)
+        resolveParams[1] = SIMD4(lighting.cameraPosition.x, lighting.cameraPosition.y,
+                                 lighting.cameraPosition.z, 0)
+        let invVP3 = u3.inverseViewProjection
+        resolveParams[4] = invVP3.columns.0; resolveParams[5] = invVP3.columns.1
+        resolveParams[6] = invVP3.columns.2; resolveParams[7] = invVP3.columns.3
+        func encodeResolve(into output: MTLTexture, prior: MTLTexture?, share: Float) {
+            resolveParams[0].w = share
+            resolveParams[1].w = prior != nil ? 1 : 0
+            encodeEffectFragment("ollin_rt_reflect_resolve",
+                                 inputs: [traced, rayLayer, gbuf.normal, gbuf.material,
+                                          gbuf.depth, prior ?? gbuf.normal],
+                                 output: output, params: resolveParams, into: cb)
+        }
+
+        // The live path's resolved layer, which the temporal accumulates instead of the raw
+        // trace; nil while the mirror path runs and the trace is already the answer.
+        var glossResolved: MTLTexture?
+        if gloss {
+            guard let resolvedA = acquireFilterTexture(width: width, height: height, pooled: pooled)
+            else { return nil }
+            if passes > 1 {
+                // Two targets ping-ponged: a pass reads the average so far and writes the
+                // one with its own share folded in (a pass cannot read the texture it
+                // writes). The last one written is the finished average.
+                guard let resolvedB = acquireFilterTexture(width: width, height: height, pooled: pooled)
+                else { return nil }
+                var src = resolvedA, dst = resolvedB
+                for p in 0..<passes {
+                    guard encodeTrace(seed: Float(p)) else { return nil }
+                    encodeResolve(into: dst, prior: p == 0 ? nil : src, share: 1 / Float(passes))
+                    swap(&src, &dst)
+                }
+                return (src, gbuf.normal)
+            }
+            guard encodeTrace(seed: Float(frameComputeUniforms.frameCount % 4096)) else { return nil }
+            encodeResolve(into: resolvedA, prior: nil, share: 0)
+            glossResolved = resolvedA
+        } else {
+            let seed = supersample ? 0 : Float(frameComputeUniforms.frameCount % 4096)
+            guard encodeTrace(seed: seed) else { return nil }
+        }
 
         // Headless/export: the in-frame average IS the anti-aliased reflection.
         if supersample { return (traced, gbuf.normal) }
@@ -2103,7 +2170,8 @@ extension MetalRenderer {
             slot = existing
         } else {
             guard let a = makeFloatResolve(width: width, height: height),
-                  let b = makeFloatResolve(width: width, height: height) else { return (traced, gbuf.normal) }
+                  let b = makeFloatResolve(width: width, height: height)
+            else { return (glossResolved ?? traced, gbuf.normal) }
             let clear = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
             clearFloatTexture(a, color: clear, into: cb)
             clearFloatTexture(b, color: clear, into: cb)
@@ -2127,7 +2195,8 @@ extension MetalRenderer {
         let pv = slot.previousViewProjection
         params[8] = pv.columns.0; params[9] = pv.columns.1
         params[10] = pv.columns.2; params[11] = pv.columns.3
-        encodeEffectFragment("ollin_rt_reflect_temporal", inputs: [traced, gbuf.depth, front],
+        encodeEffectFragment("ollin_rt_reflect_temporal",
+                             inputs: [glossResolved ?? traced, gbuf.depth, front],
                              output: back, params: params, into: cb)
         slot.previousViewProjection = viewProjection
         slot.valid = true
@@ -2144,6 +2213,27 @@ extension MetalRenderer {
         case .performance: return 0.80
         }
     }
+
+    /// How many more rays a *lobe* needs than a mirror on the export path. A mirror ray
+    /// only has to anti-alias the reflected image, which is what the tiers below count; a
+    /// lobe has to integrate a whole solid angle, and a bright sun caught in a shiny
+    /// surface a rough one is looking at arrives in one ray out of many. Measured on the
+    /// glossy example's satin floor, the unkind case and the one that made this follow-up:
+    /// the grain left in the finished layer runs 1.62 at the plain tier, 1.18 at twice it,
+    /// 0.82 at four times, and 0.62 at eight, where the mirror path's own grain on the same
+    /// frame is 0.39. Four is where it stops reading as speckle at native size, and it
+    /// costs about half a second on a 1080-square frame, which an export can spend.
+    static let glossyExportRayFactor = 4
+
+    /// How far the glossy resolve reaches for a neighbor's ray, in texels of the reflection
+    /// layer. The taps sit on this circle and the pixel's own ray is the one in the middle,
+    /// so the radius is the whole reach. Wider is not better, and the measurement says so
+    /// plainly: against a 256-ray reference the finished layer's error runs 2.78% at one
+    /// and a quarter texels, 2.86% at two, 3.06% at three, and 3.26% at four and a half. A
+    /// far neighbor faces a different way, so the weight rejects most of its ray and the
+    /// reach buys fewer usable rays and more of the weight's own swing; a near neighbor is
+    /// nearly this surface, and its ray is nearly this pixel's own sample.
+    static let glossyResolveRadius: Float = 1.25
 
     /// Rays per pixel for the historyless (headless/export) reflection supersample: the
     /// within-one-frame equivalent of the temporal accumulation, deterministic (fixed

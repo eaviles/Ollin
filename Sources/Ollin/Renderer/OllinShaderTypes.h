@@ -869,6 +869,14 @@ typedef struct {
                                   // images instead of ending in the environment. The walk past the
                                   // pair is a separate loop, so 2 executes the prior instructions
                                   // and stays byte-identical.
+    float rtReflectionGloss;      // `glossyReflections()`: the roughness ceiling under which a
+                                  // surface's reflection is traced as a *lobe* (many jittered rays
+                                  // spread by the surface's own microfacet distribution, resolved
+                                  // by the neighborhood estimator) instead of one mirror ray faded
+                                  // into the prefiltered environment. 0 = off, the shipped mirror
+                                  // path, byte-identical: the trace stays a single reflect() and
+                                  // the lit fragment keeps the 0.12…0.55 fade to the environment.
+                                  // Deferred only (the inline path has no resolve beside it).
     float sceneScale;             // the camera's eye-to-target distance (the scene-scale proxy the
                                   // shadow framing and rtReflectionBias also derive from): sizes the
                                   // sparkle finish's flake cells so they read the same at any scene

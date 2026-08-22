@@ -220,6 +220,7 @@ let package = Package(
         example("3D/Effects/Upscaling"),
         example("3D/Effects/RayTracedReflections"),
         example("3D/Effects/MirrorTunnel"),
+        example("3D/Effects/GlossyReflections"),
         example("3D/Effects/PathTraced"),
         example("3D/Geometry/TexturedMesh"),
         example("3D/Geometry/Wireframe"),

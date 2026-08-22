@@ -317,6 +317,13 @@ final class MetalRenderer {
             PipelineKey(vertex: "ollin_mesh_gbuffer_vertex", fragment: "ollin_mesh_gbuffer_fragment",
                         depthFormat: depth, isGBuffer: true)
         }
+        // the deferred reflection trace: a full-screen pass writing two attachments, the
+        // radiance the ray found and the ray that found it. The second is read only by the
+        // glossy resolve (which reuses a neighbor's ray as a sample of its own lobe), but
+        // it is written either way, so one fragment serves both paths and cannot drift.
+        static let rtReflectTrace = PipelineKey(vertex: "ollin_present_vertex",
+                                                fragment: "ollin_rt_reflect_trace",
+                                                isGBuffer: true, gBufferAttachments: 2)
         // caustics G-buffer: the reflection G-buffer's recipe plus a third attachment
         // for the baked vertex color, which the photon-splat pass shades against.
         // Only encoded when caustics are active on a ray-tracing device.

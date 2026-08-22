@@ -1520,7 +1520,11 @@ static inline float3 ollin_rt_specular_tail(OllinRTSurface s, float3 inDir, int 
                                             texture2d_array<float> cookies,
                                             texture2d<float> giIrradiance,
                                             texture2d<float> giDepth,
-                                            texture2d<float> giOffsets) {
+                                            texture2d<float> giOffsets,
+                                            // The arriving cone's width, as a roughness
+                                            // (see `ollin_rt_reflection_trace`). It widens
+                                            // every surface the walk meets from here on.
+                                            float minRough = 0.0) {
     int steps = min(extra, OLLIN_MAX_REFLECTION_BOUNCES);
     float3 acc = float3(0.0);
     float3 tp = float3(1.0);
@@ -1546,6 +1550,7 @@ static inline float3 ollin_rt_specular_tail(OllinRTSurface s, float3 inDir, int 
             break;
         }
         OllinRTSurface sn = ollin_rt_fetch_surface(q, verts, geoOffsets, r.origin, dir);
+        sn.rough = max(sn.rough, minRough);   // no sharper than the cone that arrived
         // A rough surface cannot hold a sharp image of what it faces, so part of this
         // step reads the environment lobe and only the rest carries on down the chain.
         float blend = smoothstep(0.12, 0.55, s.rough);
@@ -1617,7 +1622,15 @@ static inline float3 ollin_rt_hit_radiance(OllinRTSurface s1, float3 rayOrigin, 
                                            // as its direct view. Never sampled otherwise.
                                            texture2d<float> giIrradiance,
                                            texture2d<float> giDepth,
-                                           texture2d<float> giOffsets) {
+                                           texture2d<float> giOffsets,
+                                           // The arriving cone's width, as a roughness (see
+                                           // `ollin_rt_reflection_trace`). The caller has
+                                           // already widened the surface this shades; this
+                                           // carries the same rule on to the surface *it*
+                                           // reflects, which is where the speckle actually
+                                           // comes from: a satin floor looking at a mirror
+                                           // ball, whose own reflection is a pinpoint light.
+                                           float minRough = 0.0) {
     float3 F0 = mix(float3(0.04), s1.albedo, s1.metal);
     if (s1.fin.coat.x > 0.0) F0 = mix(F0, ollin_pbr_coat_f0(F0), s1.fin.coat.x);
     float NoV = max(dot(s1.N, -rayDir), 0.0);
@@ -1635,6 +1648,7 @@ static inline float3 ollin_rt_hit_radiance(OllinRTSurface s1, float3 rayOrigin, 
     float3 envAtHit;
     if (ollin_rt_query(q2, r2, accel)) {
         OllinRTSurface s2 = ollin_rt_fetch_surface(q2, verts, geoOffsets, r2.origin, secDir);
+        s2.rough = max(s2.rough, minRough);   // no sharper than the cone that arrived
         float3 F0b = mix(float3(0.04), s2.albedo, s2.metal);
         if (s2.fin.coat.x > 0.0) F0b = mix(F0b, ollin_pbr_coat_f0(F0b), s2.fin.coat.x);
         float NoVb = max(dot(s2.N, -secDir), 0.0);
@@ -1648,7 +1662,7 @@ static inline float3 ollin_rt_hit_radiance(OllinRTSurface s1, float3 rayOrigin, 
             env2 = ollin_rt_specular_tail(s2, secDir, light.rtReflectionBounces - 2, eps,
                                           accel, verts, geoOffsets, light, irradianceTex,
                                           prefilterTex, cubeSamp, rot, ltcAmp, iesProfiles,
-                                          cookies, giIrradiance, giDepth, giOffsets);
+                                          cookies, giIrradiance, giDepth, giOffsets, minRough);
         } else {
             env2 = ollin_rt_env_lobe(prefilterTex, cubeSamp, rot, reflect(secDir, s2.N),
                                      s2.rough, NoVb, light.iblMaxMip);
@@ -1736,8 +1750,37 @@ static inline float4 ollin_rt_reflection_trace(float3 worldPos, float3 n, float3
                                                texture2d<float> sheenLUT,
                                                texture2d<float> giIrradiance,
                                                texture2d<float> giDepth,
-                                               texture2d<float> giOffsets) {
+                                               // How far the ray went before it hit, for a caller
+                                               // that reuses the hit *point* rather than the ray
+                                               // (the glossy resolve). 0 on a miss: nothing was
+                                               // met, so the direction is all there is. Null for
+                                               // every caller that does not ask, which folds the
+                                               // writes away.
+                                               texture2d<float> giOffsets,
+                                               thread float *hitT = nullptr,
+                                               // The width of the lobe this ray was drawn
+                                               // from, as a roughness. A ray that left a
+                                               // rough surface stands for a whole cone of
+                                               // rays, so no surface it reaches can hold an
+                                               // image sharper than that cone. Without the
+                                               // rule a satin floor looking at a mirror ball
+                                               // reads one pinpoint light through it and
+                                               // comes back many times brighter than the ray
+                                               // beside it, which is the white speckle a
+                                               // stochastic reflection is known for: on the
+                                               // glossy example's floor it is the difference
+                                               // between 1.53 grain and 0.82, and it is
+                                               // plain to the eye at native size where no
+                                               // whole-frame number says so. The cone
+                                               // travels the whole chain (this surface, the
+                                               // one it reflects, and the tail past them),
+                                               // and it travels at its full width: a
+                                               // fraction of it was measured and leaves the
+                                               // speckle in. 0 = a mirror ray, which carries
+                                               // no width and clamps nothing.
+                                               float minRough = 0.0) {
     float eps = max(light.rtReflectionBias, 1e-4);
+    if (hitT) { *hitT = 0.0; }
     ray r;
     r.origin = worldPos + n * eps;        // lift off the surface (self-hit guard)
     r.direction = R;
@@ -1754,10 +1797,12 @@ static inline float4 ollin_rt_reflection_trace(float3 worldPos, float3 n, float3
         return float4(0.0);               // the ray left the scene -> the environment (caller's fallback)
 
     OllinRTSurface s1 = ollin_rt_fetch_surface(q, verts, geoOffsets, r.origin, R);
+    if (hitT) { *hitT = length(s1.P - r.origin); }
+    s1.rough = max(s1.rough, minRough);   // no sharper than the cone that arrived
     float3 col = ollin_rt_hit_radiance(s1, r.origin, R, eps, accel, verts, geoOffsets,
                                        light, irradianceTex, prefilterTex, cubeSamp, rot,
                                        ltcAmp, iesProfiles, cookies, sheenLUT,
-                                       giIrradiance, giDepth, giOffsets);
+                                       giIrradiance, giDepth, giOffsets, minRough);
     return float4(col, 1.0);
 }
 
@@ -2037,6 +2082,18 @@ static inline float ollin_pbr_V_SmithGGX(float NoV, float NoL, float roughness) 
     float GGXV = NoL * sqrt(NoV * NoV * (1.0 - a2) + a2);
     float GGXL = NoV * sqrt(NoL * NoL * (1.0 - a2) + a2);
     return 0.5 / max(GGXV + GGXL, 1e-5);         // includes /(4·NoL·NoV)
+}
+
+// The Smith masking term for one direction (GGX), the half the height-correlated
+// visibility above does not expose. The glossy reflection lobe's sampling density needs
+// it on its own: a direction drawn from the distribution of *visible* normals has
+// probability G1(V)·max(0, V·H)·D(H) / (N·V), and dividing that by the reflection
+// operator's Jacobian 4(V·H) leaves G1(V)·D(H) / (4·N·V). Perceptual roughness in, like
+// its siblings.
+static inline float ollin_pbr_G1_SmithGGX(float NoV, float roughness) {
+    float a = roughness * roughness;             // α
+    float a2 = a * a;
+    return 2.0 * NoV / max(NoV + sqrt(a2 + (1.0 - a2) * NoV * NoV), 1e-5);
 }
 
 static inline float3 ollin_pbr_F_Schlick(float VoH, float3 F0) {
@@ -4239,7 +4296,16 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
     if (light.rtReflections != 0) {
         if (light.rtReflectionDeferred != 0) {
             float3 hit = deferredReflection.rgb + prefiltered * (1.0 - deferredReflection.a);
-            prefiltered = mix(hit, prefiltered, smoothstep(0.12, 0.55, rough));
+            // A lobe-traced layer already carries the spread this surface's roughness
+            // calls for, so it stands on its own up to the ceiling the sketch asked for
+            // and hands over to the environment across the last fifth of the way there.
+            // Without one, a single ray cannot blur, so the mirror has to fade out early.
+            if (light.rtReflectionGloss > 0.0) {
+                float g = light.rtReflectionGloss;
+                prefiltered = mix(hit, prefiltered, smoothstep(g * 0.8, g, rough));
+            } else {
+                prefiltered = mix(hit, prefiltered, smoothstep(0.12, 0.55, rough));
+            }
         } else {
             prefiltered = ollin_rt_reflection(worldPos, n, R, rough, reflAccel, meshVerts,
                                               meshGeoOffsets, light, irradianceTex, prefilterTex,
@@ -4422,7 +4488,16 @@ static inline float3 ollin_pbr_ibl_ambient_mapped(float3 base, float3 n, float3 
     if (light.rtReflections != 0) {
         if (light.rtReflectionDeferred != 0) {
             float3 hit = deferredReflection.rgb + prefiltered * (1.0 - deferredReflection.a);
-            prefiltered = mix(hit, prefiltered, smoothstep(0.12, 0.55, rough));
+            // A lobe-traced layer already carries the spread this surface's roughness
+            // calls for, so it stands on its own up to the ceiling the sketch asked for
+            // and hands over to the environment across the last fifth of the way there.
+            // Without one, a single ray cannot blur, so the mirror has to fade out early.
+            if (light.rtReflectionGloss > 0.0) {
+                float g = light.rtReflectionGloss;
+                prefiltered = mix(hit, prefiltered, smoothstep(g * 0.8, g, rough));
+            } else {
+                prefiltered = mix(hit, prefiltered, smoothstep(0.12, 0.55, rough));
+            }
         } else {
             prefiltered = ollin_rt_reflection(worldPos, n, R, rough, reflAccel, meshVerts,
                                               meshGeoOffsets, light, irradianceTex, prefilterTex,
@@ -5809,7 +5884,8 @@ vertex MeshGBufferOut ollin_mesh_gbuffer_vertex(uint vid [[vertex_id]],
     return out;
 }
 
-fragment MeshGBufferFragOut ollin_mesh_gbuffer_fragment(MeshGBufferOut in [[stage_in]]) {
+fragment MeshGBufferFragOut ollin_mesh_gbuffer_fragment(MeshGBufferOut in [[stage_in]],
+                                                       constant float &ceiling [[buffer(0)]]) {
     MeshGBufferFragOut out;
     // The normal's alpha says "a traced reflection stands behind this texel", which is
     // both halves of the trace's own question: a surface is here, and it is smooth
@@ -5817,7 +5893,11 @@ fragment MeshGBufferFragOut ollin_mesh_gbuffer_fragment(MeshGBufferOut in [[stag
     // the environment, so the trace skips it). One flag then answers the trace and the
     // half-size layer's upsample guide alike, and a mirror beside a rough neighbor
     // never reads that neighbor's empty texel as a reflection of nothing.
-    float smoothEnough = clamp(in.roughness, 0.0, 1.0) < 0.55 ? 1.0 : 0.0;
+    // The ceiling is 0.55 for the mirror path and the sketch's glossy ceiling where
+    // `glossyReflections()` widened it: a lobe-traced ray keeps earning its place further
+    // up the roughness range, because it carries the spread the fragment would otherwise
+    // have to borrow from the environment.
+    float smoothEnough = clamp(in.roughness, 0.0, 1.0) < ceiling ? 1.0 : 0.0;
     out.normal = float4(normalize(in.worldNormal), smoothEnough);
     out.material = float4(clamp(in.metalness, 0.0, 1.0), clamp(in.roughness, 0.0, 1.0), 0.0, 1.0);
     return out;

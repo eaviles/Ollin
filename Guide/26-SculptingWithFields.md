@@ -214,6 +214,26 @@ There is a second dial, and it is about distance rather than detail. A traced re
 
 `reflectionBounces(4)` opens two more doors, and each step you add costs one more traced ray for every reflected pixel. The images dim quickly, because each mirror passes on only the fraction it reflects. Three or four is usually the end of what you can see. The count is clamped to the range 2 to 8, and it is persistent, so set it once.
 
+### The floor that shows the room
+
+There is a third dial, and it is the one that changes the most pictures. Every reflection so far has been a mirror's. A mirror sends every ray one way, so a single traced ray describes it exactly. Brushed steel does not. A satin floor, a waxed table, a bead-blasted panel: each sends every ray a slightly different way. What you see in one is the average of all of them.
+
+One ray cannot be an average. So on its own, Ollin answers roughness by fading that ray into the blurred environment. The rougher the surface, the more of the environment you get. Stand a satin floor in a red room and it reflects a gray sky. **A rough surface should show you a blurred room, not a blurred sky.** `glossyReflections()` is the call that gets you one:
+
+```swift
+rayTracedReflections()
+glossyReflections()                    // needs a ray-tracing GPU; a no-op elsewhere
+material(.metal(roughness: 0.3))
+```
+
+<img src="Images/26-SculptingWithFields/SatinFloor.gif" alt="A satin metal floor between a red wall and a blue wall, with four balls from mirror to nearly matte, from a camera that never moves, switching between one mirror ray and the spread lobe every two seconds. With one ray the floor holds a sharp image of the balls and fades to gray; with the lobe the reflections are soft, the walls' colors spread across the floor, and the two rougher balls take the room's colors" width="560">
+
+Watch the floor rather than the balls. With one ray it holds a hard little copy of each ball, which no satin floor has ever done. The walls arrive as a wedge with a crisp edge. With the lobe the reflections soften into the floor and the two colors spread out across it. The mirror ball on the left does not change at all, because a mirror was never the problem.
+
+Two things are happening for you here. Each ray now leaves along a slightly different direction, picked from how rough the surface is. Each pixel also borrows the rays its neighbors just sent. That borrowing is the part that matters. A handful of scattered rays on their own would look like glitter, and the sharing is what turns them into a picture. A polished surface ignores its neighbors' rays automatically, which is why the mirror ball stays sharp with nothing said about it.
+
+It reaches up to about three-quarters rough and hands back to the environment past that. By then the blur is wide enough that the sky really is the honest answer. It costs one more pass over the picture, so keep it for the sketches whose surfaces are actually satin. Like the others, it is persistent and does nothing at all on a GPU that cannot trace, so the call can stay in.
+
 Meshes and fields differ in a few places over which finish applies to which. The [combining reference](../Docs/3D/Combining.md) is the table for that.
 
 ## Light that bounces: global illumination

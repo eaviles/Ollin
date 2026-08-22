@@ -3321,11 +3321,11 @@ trace into a small deferred chain (`encodeReflectionPass`, main canvas only):
    drift. Output is premultiplied by hit (miss = 0), so the average's alpha
    carries fractional scene-vs-environment coverage. The jitter is an R2
    sequence phase-rotated per pixel (`hash12`), a pure function of
-   (pixel, index), so exports reproduce bit-exactly. **No roughness-cone spread**:
-   glossiness stays with the mesh fragment's roughness blend toward the
-   prefiltered environment (the inline path's rule). A stochastic cone at 1–16
-   rays reads as sparkle on brushed metals; integrating one properly needs a
-   spatial resolve/denoise stage first (a follow-up).
+   (pixel, index), so exports reproduce bit-exactly. With `glossyReflections()` the
+   ray also leaves along a microfacet drawn from the surface's own distribution
+   (see *The glossy lobe* below); without it, glossiness stays with the mesh
+   fragment's roughness blend toward the prefiltered environment (the inline
+   path's rule), because one ray cannot blur.
 3. **Temporal resolve, live** (`ollin_rt_reflect_temporal`): the SSR temporal's
    scheme (reproject through the previous frame's view·projection, clamp the
    history to the current 3×3 neighborhood, blend as an EMA on
@@ -3385,6 +3385,73 @@ mesh's supersampled layer averages (noted in `Docs/3D/Combining.md`). Measured a
 a 2× supersampled ground truth, the deferred export lands ~32% closer (contact-
 region RMSE) than the single-ray form, with the remaining delta shared with
 everything else 2× supersampling touches.
+
+### The glossy lobe
+
+`glossyReflections()` trades the mirror ray for a *lobe*, which is the difference
+between a satin floor showing a blurred sky and one showing a blurred room. Four
+pieces, each of them load-bearing:
+
+1. **The ray is drawn from the visible-normal distribution.** The trace builds a
+   tangent frame at the surface, samples a microfacet through Heitz's routine
+   (`ollin_rt_sample_vndf`, `alpha = rough²`, written from the paper) and
+   reflects the view ray off it. At roughness near zero the drawn microfacet *is*
+   the normal, so a polished surface keeps its mirror ray and every near-mirror
+   frame keeps its look; a microfacet that would send the ray under its own
+   surface is discarded rather than traced into the floor.
+2. **The trace writes the ray beside the radiance.** A second attachment carries
+   the world direction and the hit distance (0 = a miss, which has only a
+   direction), because the resolve reuses a neighbor's hit *point*: a ray that
+   found something close by leaves at a different angle one pixel over. The pass
+   is MRT either way, so one fragment serves both paths and they cannot drift.
+   The distance rides an out-parameter on `ollin_rt_reflection_trace` defaulted
+   to null, which folds away for every caller that does not ask.
+3. **The resolve is a ratio estimator over the neighborhood**
+   (`ollin_rt_reflect_resolve`, written from the published stochastic
+   screen-space-reflection resolve). Every pixel around this one sent a ray into
+   a lobe that overlaps this pixel's, so each is a sample of this pixel's
+   integral once re-weighted for the surface *here*: `D_local(H)·NoL` over the
+   density the neighbor drew its own ray with (`G1(V)·D(H) / (4·N·V)`, the
+   visible-normal density over the reflection operator's Jacobian). Dividing by
+   the **summed weights rather than the count** is what keeps it unbiased where
+   neighbors differ in roughness or face another way, and it is why the weights
+   may carry any constant at all. Two behaviors fall out of the weight rather
+   than a rule: a polished pixel gives an off-lobe neighbor a weight near zero
+   and resolves to its own ray, and a rough pixel spreads over the whole
+   neighborhood. Eight taps on a 1.25-texel ring, the pixel's own in the middle:
+   both numbers are measured, and *wider is worse*, because a far neighbor's ray
+   is mostly rejected and the reach buys more of the weight's swing than usable
+   rays.
+4. **Every surface along the chain is widened to the cone that reached it**
+   (`minRough`, threaded through the trace, the hit shade, and the tail walk,
+   defaulted 0 so the mirror path folds it away). This is the piece without
+   which the feature does not ship: a satin floor's rays land on a mirror ball,
+   read the one pinpoint light in it, and come back many times brighter than the
+   ray beside them, which is white speckle over the whole floor. The cone travels
+   at its **full width**; a fraction of it was measured and leaves the speckle in
+   (grain 1.53 against 0.82 on the example's floor).
+
+Two decisions worth not re-deriving. **Truncating the lobe toward its center was
+tried and rejected**, though it is the published answer to the noise in a
+microfacet distribution's tail: measured against a 256-ray reference it makes the
+picture quieter and *less* right (2.4% error unbiased, 4.5% at bias 0.4, 6.2% at
+0.7, where not having the feature at all is 7.0%). That trade was made for a
+budget of one ray at half resolution; this path spends four times as many and
+regularizes the path instead. And **the export runs the whole trace-and-resolve
+pair once per ray** rather than looping rays inside the trace, because the ray
+layer has one slot per pixel and cannot describe an inner loop's average; the
+resolves accumulate into ping-ponged targets, each adding its own share. That
+costs four times the mirror tier's rays (16 / 32 / 64 by quality), which is where
+the grain stops reading as speckle at native size, and about half a second on a
+1080-square frame.
+
+The mesh fragment's composite changes with it: the traced layer now carries the
+spread the surface's roughness calls for, so it stands on its own up to the
+sketch's ceiling (0.75) and fades to the environment across the last fifth of the
+way there, rather than the mirror path's `[0.12, 0.55]`. The reflection
+G-buffer's "worth a ray" flag widens to the same ceiling through a `constant
+float` on its fragment. Both gates protect the hand-back past the ceiling, which
+is why a probe of it only reads red with both removed.
 
 The hit shade itself is **two-bounce by default** (`reflectionBounces` below
 lengthens it): the first hit's specular traces a second
