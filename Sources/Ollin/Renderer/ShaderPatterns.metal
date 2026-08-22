@@ -1937,3 +1937,88 @@ fragment float4 ollin_gen_domain(PresentOut in [[stage_in]],
     }
     return ollin_pat_out(color);
 }
+
+// MARK: - diffuse (diffusion curves)
+//
+// Hold every drawn pixel as a color source and let the color out into the empty
+// space between them until it settles. That is a Laplace solve: away from the
+// sources every texel ends up the average of its four neighbors, which is the
+// rule a soap film obeys, so nothing overshoots and no color appears that was
+// not put there.
+//
+// Run coarse to fine. One Jacobi pass moves information one texel, so a solve
+// at layer size alone would need thousands of passes to carry a color across
+// the picture; starting at 32 across and doubling, a few dozen passes do it.
+// The constraints ride down that ladder as a *premultiplied* pyramid (color x
+// weight, weight) rather than being resampled from the layer at each level,
+// which is what keeps a hairline mark alive at the coarse sizes: box-averaging
+// that form keeps the color exactly and lets only the weight fall off.
+
+// The layer's marks as color sources, kept in the premultiplied form the
+// pyramid averages: the layer's own color and alpha where it is opaque enough,
+// nothing where it is not. Alpha travels as the source's *weight*, so a
+// half-covered texel pulls half as hard, which is what a partly covered coarse
+// texel is. params[0].x is the alpha a pixel needs to count as a source at all.
+fragment float4 ollin_fx_diffuse_sources(PresentOut in [[stage_in]],
+                                         texture2d<float> src [[texture(0)]],
+                                         sampler samp [[sampler(0)]],
+                                         constant float4 *params [[buffer(0)]]) {
+    float threshold = params[0].x;
+    float4 c = src.sample(samp, in.uv);
+    if (c.a < threshold) { return float4(0.0); }
+    return c;
+}
+
+// One step down the constraint pyramid: the 2x2 block of the finer level,
+// averaged in the premultiplied form. params[0].xy is the *finer* level's texel
+// size, so the four taps land on its texel centers.
+fragment float4 ollin_fx_diffuse_reduce(PresentOut in [[stage_in]],
+                                        texture2d<float> src [[texture(0)]],
+                                        sampler samp [[sampler(0)]],
+                                        constant float4 *params [[buffer(0)]]) {
+    float2 texel = params[0].xy;
+    float4 sum = src.sample(samp, in.uv + float2(-0.5, -0.5) * texel, level(0.0))
+               + src.sample(samp, in.uv + float2( 0.5, -0.5) * texel, level(0.0))
+               + src.sample(samp, in.uv + float2(-0.5,  0.5) * texel, level(0.0))
+               + src.sample(samp, in.uv + float2( 0.5,  0.5) * texel, level(0.0));
+    return sum * 0.25;
+}
+
+// One Jacobi step: every texel becomes the average of its four neighbors, pulled
+// toward its own source color by that source's weight.
+//
+// The weight, and the gain on it, are the whole balance of the coarse levels,
+// and both settings were measured rather than chosen. A texel that only partly
+// covers a curve holds a color the true field never has (the two sides
+// averaged). Holding it *hard* leaves a smooth error the fine levels cannot undo
+// in a few passes, which shows as soft bands and notches along the curve.
+// Pulling it in proportion to its coverage removes those, but then a thin curve
+// stops acting as a wall at the coarse sizes, and the two sides of it leak into
+// each other: measured at a horizontal curve dividing red from blue, the warm
+// side came back a third blue.
+//
+// The gain of 4 is where both go away: a texel covering a quarter of its area is
+// held fully, so a curve still divides its two sides at every size that can see
+// it, while a texel a curve merely grazes says only as much as it covers.
+// Sweeping 2, 4, and 8 against that same probe, 2 still leaked and 4 was clean.
+//
+// The previous field is read by uv, so seeding a finer level from the coarser
+// solution is a free bilinear upsample. params[0].xy is this level's texel size.
+fragment float4 ollin_fx_diffuse_jacobi(PresentOut in [[stage_in]],
+                                        texture2d<float> sources [[texture(0)]],
+                                        texture2d<float> prev [[texture(1)]],
+                                        sampler samp [[sampler(0)]],
+                                        constant float4 *params [[buffer(0)]]) {
+    float2 texel = params[0].xy;
+    float4 s = sources.sample(samp, in.uv, level(0.0));
+    // Named level throughout: a fragment may sample past a branch its neighbors
+    // in the quad did not take, and a derived level would be undefined there.
+    float3 sum = prev.sample(samp, in.uv - float2(texel.x, 0.0), level(0.0)).rgb
+               + prev.sample(samp, in.uv + float2(texel.x, 0.0), level(0.0)).rgb
+               + prev.sample(samp, in.uv - float2(0.0, texel.y), level(0.0)).rgb
+               + prev.sample(samp, in.uv + float2(0.0, texel.y), level(0.0)).rgb;
+    float3 relaxed = sum * 0.25;
+    float weight = min(s.a * 4.0, 1.0);
+    float3 source = weight > 1e-4 ? s.rgb / s.a : relaxed;
+    return float4(mix(relaxed, source, weight), 1.0);
+}

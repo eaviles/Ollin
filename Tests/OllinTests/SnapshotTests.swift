@@ -473,6 +473,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("knotwork",
                  note: "Two knots side by side: a plain 6 by 6 plait, and the same field with two pairs of walls in the middle. Pins the over-under rule (the up-right pass over wherever the crossing's lattice x is even), the alternation along each cord, the gap taken out at each dive, and the one-band-at-a-time outline-then-cord draw. No time, no random.",
                  make: { KnotworkScene() }),
+    SnapshotCase("diffusion-curves",
+                 note: "Two panels of the diffusion solver at fixed marks (no time, no random): a two-sided curve with a bright dot above it, and the same with a second curve added low down. Pins the whole solve: the premultiplied constraint pyramid, the ladder down to a few texels, the coverage-weighted source at gain 4, and the neighbor average everywhere else.",
+                 make: { DiffusionCurveScene() }),
     SnapshotCase("penrose",
                  note: "Penrose tilings, kites and darts left, rhombs right, each with the matching-rule arcs stroked on top. Pins both deflations (the derived P2 rules and the P3 rules), the half-tile merge, the rhombs' intrinsic orientation, and the arc fractions that make the decoration continuous across every edge. No rng and no time, so it is deterministic.",
                  make: { PenroseScene() }),
@@ -6332,6 +6335,40 @@ private final class KnotworkScene: Sketch {
                     drawPolyline(line.points, closed: line.isClosed)
                 }
             }
+        }
+    }
+}
+
+/// The diffusion solver at fixed marks (no time, no random): one two-sided
+/// curve with a light above it, and the same with a second curve under it.
+private final class DiffusionCurveScene: Sketch {
+    override var canvasSize: CanvasSize { .size(256, 128) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        for index in 0 ... 1 {
+            let side = 104.0
+            let frame = Rectangle(x: Double(index) * 128 + 12, y: 12, width: side, height: side)
+            let marks = renderTarget(width: Int(side), height: Int(side))
+            withTarget(marks) {
+                background(Color(white: 0, alpha: 0))
+                let horizon = stride(from: -8.0, through: side + 8, by: 6).map { t in
+                    Vector2(t, side * 0.42 + sin(t / side * 5) * side * 0.06)
+                }
+                drawDiffusionCurve(horizon, left: Color(hex: 0xE86F4A),
+                                   right: Color(hex: 0x101A2E), width: 3)
+                noStroke()
+                fill(Color(hex: 0xFFE9B0))
+                drawCircle(side * 0.68, side * 0.18, 8)
+                if index == 1 {
+                    let ridge = stride(from: -8.0, through: side + 8, by: 6).map { t in
+                        Vector2(t, side * 0.78 - sin(t / side * 3) * side * 0.06)
+                    }
+                    drawDiffusionCurve(ridge, left: Color(hex: 0xE8C98A),
+                                       right: Color(hex: 0x2A3D66), width: 3)
+                }
+            }
+            drawImage(marks.filtered(.diffuse(sharpness: 1)).image, in: frame)
         }
     }
 }

@@ -145,6 +145,7 @@ let package = Package(
         example("Effects/Fractals"),
         example("Effects/OrbitTraps"),
         example("Effects/DomainColoring"),
+        example("Effects/DiffusionCurves"),
         example("Effects/Patterns"),
         example("Effects/Cellular"),
         example("Shaders/HelloShader"),

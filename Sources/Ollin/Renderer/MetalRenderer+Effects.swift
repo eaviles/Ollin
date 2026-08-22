@@ -617,7 +617,85 @@ extension MetalRenderer {
             return pass("ollin_fx_melt", [input],
                         [SIMD4(Float(scale), Float(liquify), Float(blend), aspect),
                          SIMD4(Float(warp), Float(phase), 0, 0)] + colors)
+        case let .diffuse(threshold, sharpness):
+            return diffusedColorField(of: input, width: width, height: height,
+                                      threshold: threshold, sharpness: sharpness,
+                                      into: cb, pooled: pooled)
         }
+    }
+
+    /// Let the color of every drawn pixel out into the empty space around it
+    /// until it settles: a Laplace solve whose sources are the layer's own
+    /// marks, run coarse to fine so a color reaches across the whole layer in a
+    /// few passes instead of one texel a pass.
+    ///
+    /// The constraints are carried down the ladder as a **premultiplied** pyramid
+    /// rather than being resampled from the layer at each level, and that is what
+    /// makes a hairline mark survive the coarse levels: box-averaging (color × w,
+    /// w) keeps a texel's color exactly and lets its weight fall off, so a mark
+    /// one texel wide still speaks at 32 across, where a plain downsample would
+    /// have dropped it entirely.
+    private func diffusedColorField(of input: MTLTexture, width: Int, height: Int,
+                                    threshold: Double, sharpness: Double,
+                                    into cb: MTLCommandBuffer, pooled: Bool) -> MTLTexture? {
+        guard let sources = acquireFilterTexture(width: width, height: height, pooled: pooled)
+        else { return nil }
+        encodeEffectFragment("ollin_fx_diffuse_sources", inputs: [input], output: sources,
+                             params: [SIMD4(Float(threshold), 0, 0, 0)], into: cb)
+
+        // The ladder of sizes, coarsest first, each half the next. The finest
+        // level is the layer itself; `sharpness` decides how many passes it gets.
+        //
+        // It runs all the way down to a few texels across, and that is the whole
+        // trick. One Jacobi pass averages a texel with its neighbors, so the
+        // error falls like the square of the size: a few dozen passes settle a
+        // 4-across picture completely and barely dent a 32-across one. Starting
+        // at 32 left the inside of a closed shape three quarters of the way to
+        // its color and no further.
+        var sizes: [(Int, Int)] = [(width, height)]
+        while min(sizes[0].0, sizes[0].1) > 4 {
+            sizes.insert((max(1, sizes[0].0 / 2), max(1, sizes[0].1 / 2)), at: 0)
+        }
+
+        // The constraint pyramid, built downward so every level sees every mark.
+        var pyramid: [MTLTexture] = [sources]
+        for level in stride(from: sizes.count - 2, through: 0, by: -1) {
+            let (lw, lh) = sizes[level]
+            guard let smaller = acquireFilterTexture(width: lw, height: lh, pooled: pooled)
+            else { return nil }
+            encodeEffectFragment("ollin_fx_diffuse_reduce", inputs: [pyramid[0]], output: smaller,
+                                 params: [SIMD4(1 / Float(sizes[level + 1].0),
+                                                1 / Float(sizes[level + 1].1), 0, 0)], into: cb)
+            pyramid.insert(smaller, at: 0)
+        }
+
+        var solved: MTLTexture? = nil
+        for (level, (lw, lh)) in sizes.enumerated() {
+            let isFinest = level == sizes.count - 1
+            // The bottom of the ladder is where the picture is actually solved,
+            // and it is nearly free, so it takes the passes. Every level above
+            // it inherits a settled answer and only has to smooth the detail its
+            // own size adds, which is a fixed handful.
+            let iterations = isFinest ? Int((6 + sharpness * 18).rounded())
+                                      : (level < 3 ? 40 : 14)
+            guard let texA = acquireFilterTexture(width: lw, height: lh, pooled: pooled),
+                  let texB = acquireFilterTexture(width: lw, height: lh, pooled: pooled)
+            else { return nil }
+            // With no coarser solution yet, the constraints stand in as the
+            // first guess: their empty texels read black, which is as good a
+            // start as any and washes out in the first few passes.
+            var read = solved ?? pyramid[level]
+            for i in 0..<iterations {
+                let out = i % 2 == 0 ? texA : texB
+                encodeEffectFragment("ollin_fx_diffuse_jacobi", inputs: [pyramid[level], read],
+                                     output: out,
+                                     params: [SIMD4(1 / Float(lw), 1 / Float(lh), 0, 0)],
+                                     into: cb)
+                read = out
+            }
+            solved = read
+        }
+        return solved
     }
 
     /// Solve the interior-inflation field of `input`'s alpha shape (a constant-

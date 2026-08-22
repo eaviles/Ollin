@@ -219,6 +219,9 @@ public struct Filter: Sendable {
         /// field back.
         case melt(colors: [SIMD4<Float>], scale: Double, warp: Double,
                   liquify: Double, blend: Double, phase: Double)
+        /// Every drawn pixel held as a color source, and the color let out into
+        /// the empty space between them until it settles.
+        case diffuse(threshold: Double, sharpness: Double)
     }
 
     let kind: Kind
@@ -865,6 +868,45 @@ public struct Filter: Sendable {
                                   liquify: min(max(liquify, 0), 2),
                                   blend: min(max(blend, 0), 1),
                                   phase: phase))
+    }
+
+    // MARK: Diffusion
+
+    /// **Diffusion curves**: hold every pixel you drew as a color source, and let
+    /// the color out into the empty space between them until it settles. What
+    /// comes back is a smooth field that no gradient can make, because its shape
+    /// is decided by where the marks are rather than by a direction and two ends.
+    ///
+    /// The rule the solve obeys is the one a soap film obeys: away from the
+    /// marks, every pixel ends up the average of its four neighbors. That single
+    /// sentence is why the result looks the way it does. Nothing overshoots, no
+    /// color appears that was not put there, and a mark's influence falls away
+    /// smoothly in every direction at once.
+    ///
+    /// A pixel counts as a source when its alpha is at least `threshold`, so
+    /// draw the marks into a layer of their own and filter that:
+    ///
+    /// ```swift
+    /// let marks = renderTarget()
+    /// withTarget(marks) {
+    ///     strokeWeight(6); stroke(Color(hex: 0xE2544C))
+    ///     drawLine(120, 200, 900, 340)
+    ///     fill(Color(hex: 0x2B6C8C)); noStroke()
+    ///     drawCircle(540, 800, 40)
+    /// }
+    /// drawImage(marks.filtered(.diffuse()).image, 0, 0)
+    /// ```
+    ///
+    /// `drawDiffusionCurve(_:left:right:)` lays a curve with a different color on
+    /// each side, which is the form the technique is named for: the field jumps
+    /// across the curve and is smooth everywhere else.
+    ///
+    /// `sharpness` (0…1) decides how much of the work is done at full size. Low
+    /// is faster and softer, and 1 keeps a thin mark's color crisp right up
+    /// against it.
+    public static func diffuse(threshold: Double = 0.35, sharpness: Double = 0.7) -> Filter {
+        Filter(kind: .diffuse(threshold: min(max(threshold, 0.01), 1),
+                              sharpness: min(max(sharpness, 0), 1)))
     }
 }
 

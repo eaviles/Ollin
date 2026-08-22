@@ -439,6 +439,43 @@ See `Examples/Effects/PatternFields` for the first five (plus a field chained in
   filaments. `angle` turns the trap about its own center; feed it your `time` and
   the stalks sweep.
 
+**Diffusion**: not a look laid over a picture but a picture made out of a few marks.
+`.diffuse` holds every drawn pixel as a color source and lets the color out into the
+empty space between them until it settles. Away from the marks every pixel ends up the
+average of its four neighbors, which is the rule a soap film obeys, so the field is
+smooth everywhere, nothing overshoots, and no color appears that was not put there.
+
+- **`.diffuse(threshold:sharpness:)`** a pixel counts as a source when its alpha is at
+  least `threshold`, and a half-opaque mark pulls half as hard as a solid one, so draw
+  the marks into a layer of their own and filter that. `sharpness` (0…1) decides how much
+  of the solving happens at full size: low is faster and softer, 1 keeps a thin mark's
+  color crisp right up against it.
+- **`drawDiffusionCurve(_:left:right:width:)`** lays the form the technique is named for:
+  the same path twice, a hair apart, carrying a different color on each side, so the field
+  jumps across the curve and is smooth everywhere else. Left and right are named from
+  walking the path in the order its points come, so reversing them swaps the colors. It
+  takes a `Contour` or bare points, and `width` is how thick each side's mark is (two or
+  three points is plenty).
+
+```swift
+let marks = renderTarget()
+withTarget(marks) {
+    drawDiffusionCurve(horizon, left: Color(hex: 0xE86F4A), right: Color(hex: 0x101A2E))
+    noStroke(); fill(Color(hex: 0xFFE9B0))
+    drawCircle(width * 0.7, height * 0.2, 26)     // a light the whole field bends around
+}
+drawImage(marks.filtered(.diffuse()).image, 0, 0)
+```
+
+A gradient needs a direction and two ends. This needs neither, which is why the field can
+be shaped by where the marks are rather than by a line between two stops. See
+`Examples/Effects/DiffusionCurves`.
+
+The solve is the frame's cost: about 24 ms of GPU at 1080 square on an M2, running every
+frame while the marks move. When they do not move, do it once. Hold the filtered layer in
+a property, fill it in `setup()`, and draw it each frame like any other image.
+
+
 **Domain coloring**: the same plane, asked a different question. Instead of iterating,
 evaluate a complex function once at every pixel and paint the *direction* its answer
 points, off a palette wheel that wraps (the last stop blends back into the first, so a
