@@ -23,8 +23,8 @@ import Ollin
 /// instanced *copies*, one call for all of them, and a retained `MeshField` scatters a drift
 /// of pebbles past them. All three ways of placing a mesh mirror alike. A cel-shaded torus
 /// and a Gooch-shaded cone stand among them to show the other half of that: a traced hit is
-/// shaded in the finish its surface wears, so the torus keeps its hard bands in the floor
-/// and the cone its warm-to-cool ramp. The camera orbits on its own, and
+/// shaded in the finish its surface wears, so the torus keeps its hard bands in the floor,
+/// the cone its warm-to-cool ramp, and the lacquered sphere in the ring its clear coat. The camera orbits on its own, and
 /// the mouse takes it over (drag to orbit, scroll to dolly). **Hold the space bar** to drop
 /// ray-traced reflections and compare: the metals fall back to reflecting only the studio
 /// *environment*, so the scene's mirror images vanish. Needs an Apple-silicon (ray-tracing)
@@ -80,15 +80,17 @@ final class RayTracedReflections: Sketch {
             drawBox(width: 0.9, height: 2.6, depth: 0.9)
         }
 
-        // A ring of metal spheres, each a different finish; they reflect the monolith, the
-        // floor, and each other.
+        // A ring of spheres, each a different finish; they reflect the monolith, the
+        // floor, and each other. Five are metals. The last wears a clear coat instead, a
+        // dielectric under a polished film, and the film travels: the lacquered sphere
+        // carries its coat into the floor's image of it and into its neighbors' too.
         let spheres: [(color: Color, finish: Material)] = [
             (Color(hex: 0xf3f4f8), .polishedMetal),           // chrome
             (Color(hex: 0xffc94a), .metal(roughness: 0.12)),  // gold
             (Color(hex: 0x6f9be8), .brushedMetal),            // steel-blue
             (Color(hex: 0xe07a3a), .metal(roughness: 0.1)),   // copper
             (Color(hex: 0x49cf86), .polishedMetal),           // emerald
-            (Color(hex: 0xd158b4), .metal(roughness: 0.2)),   // magenta
+            (Color(hex: 0xd158b4), .lacquer),                 // magenta, under a clear coat
         ]
         for (i, s) in spheres.enumerated() {
             let a = Double(i) / Double(spheres.count) * .tau

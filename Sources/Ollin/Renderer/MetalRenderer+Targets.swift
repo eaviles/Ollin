@@ -2072,6 +2072,10 @@ extension MetalRenderer {
         // light's pattern; the array stand-in otherwise (the gates guard the reads).
         trace.setFragmentTexture(iesArrayTexture ?? shapingStandIn(), index: 10)
         trace.setFragmentTexture(cookieArrayTexture ?? shapingStandIn(), index: 11)
+        // The sheen table (tex 12), at the slot every mesh carrier binds it: a hit whose
+        // surface wears sheen reads its directional albedo from it, and a frame with no
+        // sheen anywhere never samples the stand-in.
+        trace.setFragmentTexture(sheenLUT ?? gbuf.normal, index: 12)
         // The GI probe atlases (tex 13/14/15), so a hit's diffuse carries the bounce
         // field; never-sampled stand-ins while the field is inactive.
         let giStand = gradientStripTexture(for: drawer.gradientRows)
@@ -2964,11 +2968,22 @@ extension MetalRenderer {
                 r.warm.w = f.rimPower
             }
             if f.subsurfaceColor.w > 0 { r.sss = f.subsurfaceColor }
+            // The two layered lobes are physically-based only, the gate the primary shade
+            // reads, and their tint arrives premultiplied by its strength.
+            if f.shadingModel == 3 {
+                if f.sheenColor.x + f.sheenColor.y + f.sheenColor.z > 0 {
+                    r.sheen = SIMD4(f.sheenColor.x, f.sheenColor.y, f.sheenColor.z,
+                                    min(max(f.sheenColor.w, 0.045), 1))
+                }
+                if f.clearcoat > 0 {
+                    r.coat = SIMD4(f.clearcoat, min(max(f.clearcoatRoughness, 0.045), 1), 0, 0)
+                }
+            }
             return r
         }
         func sameStylized(_ a: OllinRTFinish, _ b: OllinRTFinish) -> Bool {
             a.model == b.model && a.warm == b.warm && a.cool == b.cool
-                && a.rim == b.rim && a.sss == b.sss
+                && a.rim == b.rim && a.sss == b.sss && a.sheen == b.sheen && a.coat == b.coat
         }
         let plainFinish = OllinRTFinish()
         let wantStylized = batches.contains { b in

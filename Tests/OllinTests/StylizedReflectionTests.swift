@@ -137,6 +137,34 @@ struct StylizedReflectionTests {
                 \(glow.redMinusBlue) red over blue, the same body without it \(control.redMinusBlue)
                 """)
     }
+
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func aClearCoatReachesTheMirror() throws {
+        // The coat is a polished film over the body, so what it adds to a black lacquer
+        // is a reflection of the room. Its pair stands over a dark body, where a coat
+        // reads, and the control is the same dielectric with no film on it.
+        let coated = try mirrored(.coat)
+        let control = try mirrored(.coatControl)
+        #expect(coated.luminance - control.luminance > 2.5,
+                """
+                expected the coat's own reflection in the mirrored image: coated read \
+                \(coated.luminance), the same body bare \(control.luminance)
+                """)
+    }
+
+    @Test(.enabled(if: Snapshot.hasMetal && Snapshot.hasRaytracing))
+    func aSheenLobeReachesTheMirror() throws {
+        // Sheen is fabric fuzz catching the room at the silhouette. A green tint over a
+        // dark body makes it a channel reading rather than a brightness one.
+        let sheened = try mirrored(.sheen)
+        let control = try mirrored(.sheenControl)
+        #expect(sheened.greenMinusRed - control.greenMinusRed > 4,
+                """
+                expected the green sheen in the mirrored image: sheened read \
+                \(sheened.greenMinusRed) green over red, the same body bare \
+                \(control.greenMinusRed)
+                """)
+    }
 }
 
 /// A sphere over a near-mirror floor, wearing one finish at a time. The camera looks
@@ -152,6 +180,8 @@ private final class StylizedReflectionProbe: Sketch {
         case gooch, goochControl
         case rim, rimControl
         case glow, glowControl
+        case coat, coatControl
+        case sheen, sheenControl
     }
     var finish: Finish = .standard
 
@@ -182,7 +212,14 @@ private final class StylizedReflectionProbe: Sketch {
         guard finish != .nothing else { return }
         withState {
             translate(0, 1.6, 0)
-            fill(Color(white: 0.85))
+            // The layered lobes read against a *dark* body, the way a lacquered or a
+            // felted surface does in life: the coat's polished film and the sheen's fuzz
+            // are what a black base shows, where a pale one hides both under its own
+            // diffuse. Every other case keeps the pale body its own probe wants.
+            switch finish {
+            case .coat, .coatControl, .sheen, .sheenControl: fill(Color(white: 0.05))
+            default: fill(Color(white: 0.85))
+            }
             switch finish {
             case .standard: material(.matte)
             case .toon: material(.toon)
@@ -196,6 +233,17 @@ private final class StylizedReflectionProbe: Sketch {
             case .glow: material(Material(specular: 0.2, shininess: 24, subsurface: 1.0,
                                           subsurfaceColor: Color(red: 0.1, green: 0.3, blue: 1.0)))
             case .glowControl: material(Material(specular: 0.2, shininess: 24))
+            case .coat: material(Material(shading: .physicallyBased, metallic: 0,
+                                          roughness: 0.55, clearcoat: 1,
+                                          clearcoatRoughness: 0.03))
+            case .coatControl: material(Material(shading: .physicallyBased, metallic: 0,
+                                                 roughness: 0.55))
+            case .sheen: material(Material(shading: .physicallyBased, metallic: 0,
+                                           roughness: 0.8, sheen: 1,
+                                           sheenColor: Color(red: 0.1, green: 1.0, blue: 0.1),
+                                           sheenRoughness: 0.25))
+            case .sheenControl: material(Material(shading: .physicallyBased, metallic: 0,
+                                                  roughness: 0.8))
             case .nothing: break
             }
             drawSphere(radius: 1.4)

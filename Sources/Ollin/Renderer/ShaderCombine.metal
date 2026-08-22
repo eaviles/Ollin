@@ -914,6 +914,10 @@ fragment float4 ollin_rt_reflect_trace(PresentOut in [[stage_in]],
                                        texture2d<float> ltcAmp [[texture(9)]],
                                        texture2d_array<float> iesProfiles [[texture(10)]],
                                        texture2d_array<float> cookies [[texture(11)]],
+                                       // The sheen table, at the same slot every mesh
+                                       // carrier binds it: a hit whose surface wears sheen
+                                       // reads its directional albedo here.
+                                       texture2d<float> sheenLUT [[texture(12)]],
                                        // The GI probe atlases (the lit carriers' 13/14/15
                                        // binding), so a surface seen in a deferred-traced
                                        // mirror carries the same bounce light as its
@@ -983,7 +987,7 @@ fragment float4 ollin_rt_reflect_trace(PresentOut in [[stage_in]],
         // needs a spatial resolve/denoise stage first (a follow-up).
         acc += ollin_rt_reflection_trace(P, n, R, accel, verts, geoOffsets, light,
                                          irradianceTex, prefilterTex, cubeSamp, rot, ltcAmp,
-                                         iesProfiles, cookies,
+                                         iesProfiles, cookies, sheenLUT,
                                          giIrradianceTex, giDepthTex, giOffsetsTex);
     }
     return acc / float(samples);

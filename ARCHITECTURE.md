@@ -2562,7 +2562,7 @@ one its warm-cool ramp, a velvet one its rim. Metalness and roughness ride the
 spare `OllinMeshVertex` w slots, but a shading model and its tones do not fit
 there, and they are per batch rather than per vertex anyway.
 
-- The finish travels as **`OllinRTFinish`** (five `float4` rows, stride 80): the
+- The finish travels as **`OllinRTFinish`** (seven `float4` rows, stride 112): the
   shading model with its cel-band count and Blinn-Phong pair, the Gooch warm and
   cool tones, the rim color/strength/exponent, and the fake-subsurface tint and
   strength. One record per acceleration-structure geometry, then one per copy
@@ -2588,11 +2588,25 @@ there, and they are per batch rather than per vertex anyway.
   that model), the wrap term accumulated in the light loop, and the rim applied
   after it. The light-driven terms ride the same exposure divide as the direct
   lights.
-- **Still outside the trace:** the standard model's Blinn-Phong highlight (adding it
-  would move every existing reflective frame), iridescence and sparkle (both need
-  their own fields), and, under an area panel, the stylized highlight and the
-  subsurface wrap (the wrap needs a second, back-facing LTC integral). Coat, sheen,
-  and decals keep their own documented envelopes.
+- **The two layered physically-based lobes ride the same record** (`sheen` = the tint
+  premultiplied by its strength plus the lobe roughness, `coat` = intensity plus its own
+  roughness; stride 112), applied by `ollin_rt_layer_lobes` at the first hit and at the
+  pair's second surface in the order the primary shade layers them. The sheen keeps the
+  *environment* sample even here, its lobe being wide enough that the prefiltered
+  environment is the honest integral, and the coat reuses the radiance the trace already
+  found along that surface's mirror direction, which is the same single-trace tradeoff
+  `ollin_pbr_ibl_ambient` takes. The sheen's directional albedo comes from the same LUT
+  the primary shade reads, so the trace carriers bind it at **texture 12**, the slot every
+  `meshLitColor` carrier already uses. Both are physically-based only, the gate the
+  primary shade applies, and inert at zero.
+- **Still outside the trace:** every *light highlight*, since a traced hit computes none
+  at all (the standard model's Blinn-Phong, the coat's own hotspot and the sheen's, and
+  an area panel's stylized highlight and subsurface wrap, the last needing a second
+  back-facing LTC integral); iridescence and sparkle, which need their own fields; and
+  the deeper surfaces of a `reflectionBounces` chain, which keep the plain shade the tail
+  walk gives them. Decals keep their own documented envelope. Adding the standard model's
+  highlight is the one deliberately withheld: it would move every existing reflective
+  frame.
 
 ### Glass: transmission and refraction
 

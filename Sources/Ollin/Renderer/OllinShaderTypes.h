@@ -1002,7 +1002,7 @@ typedef struct {
 // Every field is zero for a standard or physically-based finish with no rim and no
 // subsurface, which is what a frame of ordinary materials writes: the whole table is then
 // left out (the hit table's header says so with a zero base) and the traced shade is the
-// plain physically-based one. Stride 80.
+// plain physically-based one. Stride 112.
 typedef struct {
     simd_float4 model;   // x = shading model: 0 standard/physically-based, 1 toon, 2 Gooch
                          // y = cel bands (toon), z = Blinn-Phong specular strength,
@@ -1013,6 +1013,11 @@ typedef struct {
     simd_float4 cool;    // rgb = Gooch cool tone (shadow side); w unused
     simd_float4 rim;     // rgb = linear rim color; w = rim strength (0 = no rim)
     simd_float4 sss;     // rgb = fake-subsurface tint; w = its strength (0 = none)
+    simd_float4 sheen;   // rgb = linear sheen tint premultiplied by its strength (0,0,0 = none);
+                         // w = the sheen lobe's perceptual roughness. Physically-based only,
+                         // the gate the primary shade uses.
+    simd_float4 coat;    // x = clearcoat intensity (0 = no coat), y = the coat's own perceptual
+                         // roughness, z and w pad the row. Physically-based only.
 } OllinRTFinish;
 
 // Per-dispatch constants for the offline path-traced export (`--path-traced`): the
