@@ -477,6 +477,36 @@ frame while the marks move. When they do not move, do it once. Hold the filtered
 a property, fill it in `setup()`, and draw it each frame like any other image.
 
 
+**Measured distance fields**: a question asked of a layer rather than a look laid over it.
+`.distanceField` measures how far every pixel is from the nearest edge of whatever was
+drawn, and which way that edge lies, and `.fieldMap` reads the answer back as a picture.
+Growing and shrinking a shape, outlining it at an offset, drawing its contour lines, and
+building a Voronoi keyed to the marks themselves are all one small step from there.
+
+- **`.distanceField(from:threshold:maxDistance:)`** measure the field. Red is the distance
+  in pixels, negative inside the shape; green and blue are the unit direction to that
+  nearest edge, so `pixel + direction * abs(distance)` is the edge point itself. `from`
+  chooses what the threshold cuts (`.alpha` by default, or brightness or one channel for a
+  layer with no transparency in it), and `maxDistance` both bounds the answer and shortens
+  the work.
+- **`.fieldMap(_:from:to:repeating:)`** read a measured field back through a `Ramp` or
+  `Colormap` over a window given in pixels, wrapped rather than clamped when `repeating`,
+  which draws the field as contour bands.
+
+```swift
+let field = marks.filtered(.distanceField())
+drawImage(field.filtered(.fieldMap(.viridis, from: 0, to: 40, repeating: true)).image, 0, 0)
+```
+
+A user shader reads the field with `sampleRaw`, which returns the layer's stored values
+with no color conversion, and that is how the direction gets used. The whole surface,
+including the nearest-edge shader, is in [Measured distance fields](DistanceFields.md); see
+`Examples/Effects/DistanceField`.
+
+The measurement costs about 4.9 ms of GPU at 1080 square on an M2 over the whole canvas,
+and about 2.9 ms capped at 64 pixels.
+
+
 **Domain coloring**: the same plane, asked a different question. Instead of iterating,
 evaluate a complex function once at every pixel and paint the *direction* its answer
 points, off a palette wheel that wraps (the last stop blends back into the first, so a

@@ -63,6 +63,7 @@ extension MetalRenderer {
         frameComputeUniforms = drawer.computeUniforms   // for user-shader ShaderInfo
         targetTexNext = 0
         filterTexNext = 0
+        fieldTexNext = 0
         targetDepthNext = 0
         ssrOccurrenceThisFrame.removeAll(keepingCapacity: true)
         // A second encode of the same sketch frame (the frame-grab / Syphon off-screen
@@ -621,7 +622,60 @@ extension MetalRenderer {
             return diffusedColorField(of: input, width: width, height: height,
                                       threshold: threshold, sharpness: sharpness,
                                       into: cb, pooled: pooled)
+
+        case let .distanceField(source, threshold, maxDistance):
+            return measuredDistanceField(of: input, width: width, height: height,
+                                         source: source, threshold: threshold,
+                                         maxDistance: maxDistance, into: cb, pooled: pooled)
+        case let .fieldMap(lut, from, to, repeating):
+            guard let lutTex = makeLUTTexture(lut) else { return nil }
+            return pass("ollin_fx_field_map", [input, lutTex],
+                        [f(from, to, repeating ? 1 : 0, 0)])
         }
+    }
+
+    /// Measure how far every pixel is from the nearest edge in `input`, and which way
+    /// that edge lies: the jump-flooding algorithm (Rong & Tan 2006) over the effects
+    /// substrate, with the extra leading step-1 pass of the 1+JFA variant (Rong & Tan
+    /// 2007), which costs one pass and removes most of the algorithm's errors.
+    ///
+    /// The ladder ping-pongs through two `rg32Float` textures carrying the position of
+    /// the nearest seed found so far, because the seed pass places those positions
+    /// *between* pixels and a half float cannot hold a fraction of a pixel past 1024.
+    ///
+    /// The first rung is the smallest power of two whose ladder reaches `far` (a rung of
+    /// `k` followed by every halving of it carries a seed `2k - 1` texels), so asking for
+    /// a short `maxDistance` genuinely shortens the work: 64 pixels is 8 passes where the
+    /// whole of a 1080 square canvas is 12.
+    private func measuredDistanceField(of input: MTLTexture, width: Int, height: Int,
+                                       source: Filter.FieldSource, threshold: Double,
+                                       maxDistance: Double?, into cb: MTLCommandBuffer,
+                                       pooled: Bool) -> MTLTexture? {
+        let diagonal = (Double(width) * Double(width) + Double(height) * Double(height)).squareRoot()
+        let far = maxDistance.map { min($0, diagonal) } ?? diagonal
+        guard let front = acquireFieldTexture(width: width, height: height, pooled: pooled),
+              let back = acquireFieldTexture(width: width, height: height, pooled: pooled),
+              let output = acquireFilterTexture(width: width, height: height, pooled: pooled)
+        else { return nil }
+
+        var rung = 1
+        while Double(2 * rung - 1) < far { rung *= 2 }
+        var steps = [1]                                   // the 1+ of 1+JFA
+        while rung >= 1 { steps.append(rung); rung /= 2 }
+
+        let cut = SIMD4<Float>(Float(threshold), source.rawIndex, Float(far), 0)
+        encodeEffectFragment("ollin_field_seed", inputs: [input], output: front,
+                             params: [cut], into: cb, format: .rg32Float)
+        var read = front, write = back
+        for step in steps {
+            encodeEffectFragment("ollin_field_flood", inputs: [read], output: write,
+                                 params: [SIMD4<Float>(Float(step), 0, 0, 0)],
+                                 into: cb, format: .rg32Float)
+            swap(&read, &write)
+        }
+        encodeEffectFragment("ollin_field_resolve", inputs: [read, input], output: output,
+                             params: [cut], into: cb)
+        return output
     }
 
     /// Let the color of every drawn pixel out into the empty space around it
@@ -2034,6 +2088,31 @@ extension MetalRenderer {
         if slot < pool.count { pool[slot] = entry } else { pool.append(entry) }
         filterTexPool[frameIndex] = pool
         return tex
+    }
+
+    /// One of the `rg32Float` scratch textures a measured distance field floods through.
+    /// Pooled by ring slot exactly like `acquireFilterTexture`, so a sketch that measures
+    /// a field every frame allocates the pair once and never writes one an in-flight
+    /// frame is still reading.
+    func acquireFieldTexture(width: Int, height: Int, pooled: Bool) -> MTLTexture? {
+        guard pooled else { return makeFieldTexture(width: width, height: height) }
+        let slot = fieldTexNext; fieldTexNext += 1
+        var pool = fieldTexPool[frameIndex]
+        if slot < pool.count, pool[slot].w == width, pool[slot].h == height { return pool[slot].tex }
+        guard let tex = makeFieldTexture(width: width, height: height) else { return nil }
+        let entry = (tex, width, height)
+        if slot < pool.count { pool[slot] = entry } else { pool.append(entry) }
+        fieldTexPool[frameIndex] = pool
+        return tex
+    }
+
+    /// A two-channel 32-bit float texture: the seed position a jump flood carries.
+    func makeFieldTexture(width: Int, height: Int) -> MTLTexture? {
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .rg32Float, width: width, height: height, mipmapped: false)
+        desc.usage = [.shaderRead, .renderTarget]
+        desc.storageMode = .private
+        return device.makeTexture(descriptor: desc)
     }
 
     /// A single-sample linear-float texture for an intermediate filter result:

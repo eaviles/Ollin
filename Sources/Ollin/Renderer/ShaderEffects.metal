@@ -1345,6 +1345,147 @@ fragment float4 ollin_fx_perturb(PresentOut in [[stage_in]],
     return src.sample(samp, clamp(in.uv + off, 0.0, 1.0));
 }
 
+// MARK: - Measured distance fields (jump flooding)
+//
+// The counterpart of the field a sketch *writes* with `SDF`: this one is *measured*
+// back out of a layer somebody drew. Three fragment kinds run in sequence, ping-ponging
+// through an `rg32Float` pair that holds, per pixel, the position of the nearest place
+// the layer crosses its threshold (or (-1, -1) for "none found yet"):
+//
+//   seed     mark the crossings themselves, at sub-pixel precision
+//   flood    pass those positions outward over a ladder of halving step sizes
+//   resolve  turn the nearest position into a signed distance and a direction
+//
+// The flood is the jump-flooding algorithm (Rong & Tan 2006), and the ladder carries one
+// extra step-1 pass at its head (the 1+JFA variant, Rong & Tan 2007); both are credited in
+// ATTRIBUTION.md. Positions are kept in 32-bit float because the whole point of the seed
+// pass is sub-pixel accuracy, and a half float spaces integers a whole unit apart past
+// 1024, which would quantize the measurement back onto the pixel grid. Every tap is a
+// `read`, never a `sample`: these are exact texel lookups, and a filtered fetch would
+// average two unrelated positions into a third place that has no seed at all.
+
+// The value the threshold cuts. Modes match `Filter.FieldSource.rawIndex`.
+static inline float ollin_field_value(float4 c, float mode) {
+    if (mode < 0.5) { return c.a; }
+    float3 u = ollin_unpremul(c);
+    if (mode < 1.5) { return ollin_luma(u); }
+    if (mode < 2.5) { return u.r; }
+    if (mode < 3.5) { return u.g; }
+    return u.b;
+}
+
+// Seed: find where the layer crosses `threshold` and store the crossing point itself,
+// not the pixel that holds it. Each pixel looks at its four axial neighbours; where the
+// two sides fall on opposite sides of the threshold the crossing lies a fraction of a
+// texel away, and that fraction is what a linear interpolation between the two values
+// reads off. For a hard mask it lands half a texel out, which is the true edge of a
+// hard-edged shape; for an antialiased one it follows the coverage. Snapping to the pixel
+// centre instead biases every measurement by up to half a pixel and steps the whole field
+// along the pixel grid, which is visible the moment the field drives an outline.
+// params[0] = (threshold, source mode, -, -)
+fragment float2 ollin_field_seed(PresentOut in [[stage_in]],
+                                 texture2d<float> src [[texture(0)]],
+                                 constant float4 *params [[buffer(0)]]) {
+    constexpr sampler nearest(coord::pixel, address::clamp_to_edge, filter::nearest);
+    float threshold = params[0].x;
+    float mode = params[0].y;
+    int2 p = int2(in.position.xy);
+    float2 here = float2(p) + 0.5;
+    float v = ollin_field_value(src.read(uint2(p)), mode);
+    bool inside = v >= threshold;
+    const int2 axes[4] = { int2(1, 0), int2(-1, 0), int2(0, 1), int2(0, -1) };
+    float2 best = float2(-1.0);
+    float bestT = 2.0;
+    for (int i = 0; i < 4; ++i) {
+        // Clamping at the border reads this pixel again, which cannot cross its own
+        // threshold, so the layer's outer edge is not an edge the field measures to.
+        float n = ollin_field_value(src.sample(nearest, here + float2(axes[i])), mode);
+        if ((n >= threshold) == inside) { continue; }        // no crossing this way
+        float drop = v - n;
+        float t = (abs(drop) > 1e-6) ? (v - threshold) / drop : 0.5;
+        t = clamp(t, 0.0, 1.0);
+        if (t < bestT) { bestT = t; best = here + float2(axes[i]) * t; }
+    }
+    return best;
+}
+
+// Flood: one rung of the ladder. The pixel keeps the nearest seed position among its own
+// and the eight neighbours `step` texels away, so a seed reaches the whole layer in a
+// number of passes that grows with the logarithm of its size rather than its width.
+// params[0] = (step in texels, -, -, -)
+fragment float2 ollin_field_flood(PresentOut in [[stage_in]],
+                                  texture2d<float> src [[texture(0)]],
+                                  constant float4 *params [[buffer(0)]]) {
+    // Reading through a clamped nearest sampler rather than bounds-checking each of the
+    // nine taps: it is the same answer (a clamped tap hands back a seed position that is
+    // real, and the pass keeps the nearest of them) and about 15% less GPU time, since a
+    // ladder this long is bound by how fast it can read.
+    constexpr sampler nearest(coord::pixel, address::clamp_to_edge, filter::nearest);
+    int step = int(params[0].x);
+    int2 p = int2(in.position.xy);
+    float2 here = float2(p) + 0.5;
+    float2 best = src.read(uint2(p)).xy;
+    float bestD = (best.x < 0.0) ? FLT_MAX : distance_squared(here, best);
+    for (int j = -1; j <= 1; ++j) {
+        for (int i = -1; i <= 1; ++i) {
+            if (i == 0 && j == 0) { continue; }
+            float2 s = src.sample(nearest, here + float2(i * step, j * step)).xy;
+            if (s.x < 0.0) { continue; }
+            float d = distance_squared(here, s);
+            if (d < bestD) { bestD = d; best = s; }
+        }
+    }
+    return best;
+}
+
+// Resolve: the flooded positions read out as the field a sketch uses. Red is the distance
+// in pixels, signed negative inside the shape; green and blue are the unit direction from
+// this pixel toward the nearest edge, so `pixel + direction * abs(distance)` lands on the
+// edge point itself and a sketch can look up whatever was drawn there. A pixel the ladder
+// never reached (an empty layer, or a seed farther away than the caller asked for) reads
+// the far value with a zero direction, which says "nothing within reach" rather than
+// pointing somewhere untrue.
+// params[0] = (threshold, source mode, far distance, -)
+fragment float4 ollin_field_resolve(PresentOut in [[stage_in]],
+                                    texture2d<float> seeds [[texture(0)]],
+                                    texture2d<float> src [[texture(1)]],
+                                    constant float4 *params [[buffer(0)]]) {
+    float threshold = params[0].x;
+    float mode = params[0].y;
+    float far = params[0].z;
+    int2 p = int2(in.position.xy);
+    bool inside = ollin_field_value(src.read(uint2(p)), mode) >= threshold;
+    float2 seed = seeds.read(uint2(p)).xy;
+    if (seed.x < 0.0) { return float4(inside ? -far : far, 0.0, 0.0, 1.0); }
+    float2 toEdge = seed - (float2(p) + 0.5);
+    float d = length(toEdge);
+    float2 dir = (d > 1e-6) ? toEdge / d : float2(0.0);
+    d = min(d, far);
+    return float4(inside ? -d : d, dir.x, dir.y, 1.0);
+}
+
+// Read a measured field back as a picture: the signed distance mapped through a 256-step
+// ramp over `from`…`to` pixels. Repeating wraps the ramp instead of clamping it, which
+// draws the field as contour bands. The field is `read`, not sampled: its red channel is a
+// distance in pixels, and averaging two of those is only meaningful by accident.
+// params[0] = (from, to, repeating, -)
+fragment float4 ollin_fx_field_map(PresentOut in [[stage_in]],
+                                   texture2d<float> field [[texture(0)]],
+                                   texture2d<float> lut [[texture(1)]],
+                                   sampler samp [[sampler(0)]],
+                                   constant float4 *params [[buffer(0)]]) {
+    float from = params[0].x;
+    float to = params[0].y;
+    bool repeats = params[0].z > 0.5;
+    float d = field.read(uint2(in.position.xy)).r;
+    float span = to - from;
+    if (abs(span) < 1e-6) { span = 1e-6; }
+    float t = (d - from) / span;
+    t = repeats ? fract(t) : clamp(t, 0.0, 1.0);
+    float4 c = lut.sample(samp, float2(t, 0.5));
+    return ollin_premul(c.rgb, c.a);
+}
+
 // MARK: - Procedural generators (no input texture)
 //
 // Each fills a layer from its parameters alone (params[0] geometry + aspect,

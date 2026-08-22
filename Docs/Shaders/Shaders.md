@@ -72,6 +72,8 @@ How many input layers your shader reads decides what kind of pass it is. Each is
 
 A generator paints from math alone (the plasma above). A filter transforms a layer you drew. A combine reads two layers at once (a shader-defined blend or warp). All three return a [`RenderTarget`](../Drawing/Effects.md) you draw with `.image`, filter again, or feed into another effect.
 
+`sample` and `sampleAux` read a layer as a straight sRGB color, the space your shader works in. When a layer holds *data* rather than a picture, read it with **`sampleRaw(info, uv)`** (and **`sampleAuxRaw`** for a combine's second input), which hands back its stored values with no color conversion at all. A [measured distance field](../Drawing/DistanceFields.md) is the one to reach for it: its red channel is a distance in pixels and runs negative, and its green and blue are the two halves of a direction, none of which survives being read as a color.
+
 ---
 
 ## `ShaderInfo` and params

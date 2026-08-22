@@ -154,6 +154,65 @@ Two things follow, and both are worth meeting here rather than by surprise. The 
 
 `amount` runs from 0 to 1. One is the full clone. Zero leaves the seam in, which is the picture you want beside it when you are deciding whether it worked.
 
+## A field you measure: how far is the nearest edge
+
+The two sections above both did the same trick from different sides. They treated the layer as something to be *solved* rather than something to be looked at. This one goes further and treats it as something to be *measured*.
+
+Draw your marks into a layer. Then ask every pixel in it a question: how far away is the nearest edge of anything drawn, and which way is it?
+
+```swift
+let field = marks.filtered(.distanceField())
+```
+
+<img src="Images/16-LayersAndEffects/MeasuredField.jpg" alt="Three dark panels. A circle, a square and a stroked zigzag on black; the same shapes as pale contour bands, each ring following its shape and merging with its neighbors where they meet; and the same shapes as flat color regions, each pixel wearing the color of the mark nearest to it" width="680">
+
+That layer is no longer a picture. Its red channel holds the distance in pixels, running negative inside a shape and positive outside it, and its green and blue hold the direction to that nearest edge. **A picture of a thing, turned into the measurement of where that thing is.**
+
+The two answers fit together into one line worth remembering:
+
+```
+    nearest edge  =  pixel + direction * abs(distance)
+```
+
+`.fieldMap` reads the field back as something you can see, by running the distance through a color ramp over a window you give in pixels. The middle panel above is one call:
+
+```swift
+field.filtered(.fieldMap(bands, from: 0, to: 34, repeating: true))
+```
+
+`repeating` wraps the ramp instead of stretching it, so the same colors come around every 34 pixels and the marks wear contour lines like a map. Look at where two shapes meet in that panel: their rings run into each other and stop along a crease. That crease is every place equally far from both, and you did not have to work it out.
+
+Change the window and the same call does other jobs. A ramp that turns over at one distance grows the shape by exactly that much, and shrinks it at a negative one:
+
+```swift
+field.filtered(.fieldMap(Ramp([ink, .clear]), from: 26, to: 27.5))
+```
+
+That is a dilate. Blobs that were separate merge as they grow into each other, which is how you get a soft mass out of scattered marks. A ramp that is dark in a narrow band draws an outline at any offset you like, inside or outside.
+
+The third panel is the direction channel doing its work. Each pixel walks to its nearest edge, steps a little past it, and brings back the color it finds:
+
+```metal
+float4 shade(float2 uv, ShaderInfo info) {
+    float4 field = sampleRaw(info, uv);
+    float2 here = uv * info.resolution;
+    float2 inside = here + field.gb * (abs(field.r) + 4.0 * sign(field.r));
+    return sampleAux(info, inside / info.resolution);
+}
+```
+
+Every pixel ends up wearing the color of whichever mark is nearest to it. That is a Voronoi diagram, built out of the shapes themselves rather than out of a list of points, and it costs one lookup per pixel. Run it with `field.combined(with: marks, .shader(...))`.
+
+Note `sampleRaw` rather than the `sample` you met in the filters above. The ordinary read hands a layer over as a color, and a distance in pixels is not one. `sampleRaw` gives you the stored numbers untouched.
+
+One practical note. Measuring the whole canvas costs a few milliseconds, because the measurement works outward in steps and needs one step per doubling of the distance it carries. When you only care about a band near the marks, say so and it gets shorter:
+
+```swift
+marks.filtered(.distanceField(maxDistance: 64))
+```
+
+Past that distance the field reads flat, with a zero direction, which is its way of saying nothing is within reach.
+
 ## The design family
 
 Two lines of that listing came from a set worth knowing as a set. Alongside the plain generators (checkers, noise, gradients) there's a **design** family. It is built to look like the finished graphics you'd meet on a product page rather than like test patterns. It comes in two halves, generators that invent a picture and filters that transform one, and they behave differently enough to meet separately.
@@ -461,9 +520,10 @@ Off-screen layers are as old as computer graphics has had memory to spare. The s
 - [Layered effects](../Docs/Drawing/Effects.md): every filter, generator, combine op, and the full `compose` grammar.
 - [Accumulation](../Docs/Drawing/Accumulation.md) and [HDR & tone-mapping](../Docs/Drawing/HDR.md): the persistent canvas and the float pipeline underneath it.
 - [Wide gamut & HDR output](../Docs/Drawing/ColorOutput.md): `colorOutput`, colors outside sRGB, and what each export format carries.
+- [Measured distance fields](../Docs/Drawing/DistanceFields.md): what the field holds, reading it back, and the jump flood underneath it.
 - [Blend modes](../Docs/Drawing/Drawing.md#blendMode): the arithmetic of each mode.
 - Appendix B draws this chapter's math, one picture per idea: [Shaping a value](B-JustEnoughMath.md#shaping-a-value), [Color and light as numbers](B-JustEnoughMath.md#color-and-light-as-numbers).
-- Worked examples: [`Examples/Effects/Bloom`](../Examples/Effects/Bloom/Sketch.swift), [`Examples/Effects/Compose`](../Examples/Effects/Compose/Sketch.swift), [`Examples/Effects/Feedback`](../Examples/Effects/Feedback/Sketch.swift), [`Examples/Effects/Relight`](../Examples/Effects/Relight/Sketch.swift), [`Examples/Effects/DiffusionCurves`](../Examples/Effects/DiffusionCurves/Sketch.swift), [`Examples/Rendering/Accumulation`](../Examples/Rendering/Accumulation/Sketch.swift), and [`Examples/Rendering/ToneMapping`](../Examples/Rendering/ToneMapping/Sketch.swift).
+- Worked examples: [`Examples/Effects/Bloom`](../Examples/Effects/Bloom/Sketch.swift), [`Examples/Effects/Compose`](../Examples/Effects/Compose/Sketch.swift), [`Examples/Effects/Feedback`](../Examples/Effects/Feedback/Sketch.swift), [`Examples/Effects/Relight`](../Examples/Effects/Relight/Sketch.swift), [`Examples/Effects/DiffusionCurves`](../Examples/Effects/DiffusionCurves/Sketch.swift), [`Examples/Effects/DistanceField`](../Examples/Effects/DistanceField/Sketch.swift), [`Examples/Rendering/Accumulation`](../Examples/Rendering/Accumulation/Sketch.swift), and [`Examples/Rendering/ToneMapping`](../Examples/Rendering/ToneMapping/Sketch.swift).
 
 ---
 

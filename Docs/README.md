@@ -45,6 +45,7 @@ New to Swift? Start with the [Swift quick reference](./Swift.md), which covers j
 - [`Hyperbolic tiling`](./Drawing/HyperbolicTiling.md) - regular tilings of the hyperbolic plane in the Poincaré disk: `hyperbolicTiling` (any {p,q} with (p-2)(q-2) > 4, typed tiles with depth and a two-coloring parity, and a `viewpoint` that pans across the endless tiling)
 - [`Strange attractors`](./Drawing/Attractors.md) - chaotic systems as points: continuous 3D orbits (Lorenz, Rössler, Aizawa, …) integrated with Runge-Kutta and orbited through the camera, 2D iterated maps (Clifford, de Jong, Hénon, Gumowski-Mira, Ikeda, hopalong) accumulated into density fields, and `AttractorFlow`, a million GPU particles riding one field at once
 - [`SDF combinators`](./Drawing/Combinators.md) - compose signed-distance fields so shapes *merge* instead of stack: smooth union/subtract/intersect and morph, round/onion, and domain mirror/tile, via the `SDF` value type + `drawSDF` and a scoped `smoothUnion { }` block, in 2D and a raymarched 3D form (`SDF3D` + `drawSDF3D`)
+- [`Measured distance fields`](./Drawing/DistanceFields.md) - measure a distance field back out of a drawn layer with `Filter.distanceField`: how far every pixel is from the nearest edge and which way it lies, read back through `Filter.fieldMap` as contours, grown and shrunk shapes, and outlines, or in a shader as a Voronoi keyed to the picture
 
 ### Shaders
 

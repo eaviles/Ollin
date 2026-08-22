@@ -741,7 +741,8 @@ extension MetalRenderer {
     /// The wrapper preamble: the fullscreen vertex, the user-facing `ShaderInfo`
     /// struct, and the `param`/`sample` accessors. The struct carries the input
     /// layer(s) for the filter (one) and combine (two) variants, so the user reads
-    /// them with `sample(info, uv)` / `sampleAux(info, uv)`.
+    /// them with `sample(info, uv)` / `sampleAux(info, uv)`, or with the `…Raw` pair
+    /// when the layer holds data rather than a picture.
     private static func userShaderWrapperHead(_ variant: UserShaderVariant) -> String {
         let layerFields: String
         let sampleMacros: String
@@ -751,12 +752,18 @@ extension MetalRenderer {
             sampleMacros = ""
         case .filter:
             layerFields = "    texture2d<float> in0; sampler in0samp;\n"
-            sampleMacros = "#define sample(info, p) ollin_layer_sample((info).in0, (info).in0samp, (p))\n"
+            sampleMacros = """
+            #define sample(info, p) ollin_layer_sample((info).in0, (info).in0samp, (p))
+            #define sampleRaw(info, p) ollin_layer_read((info).in0, (info).in0samp, (p))
+
+            """
         case .combine:
             layerFields = "    texture2d<float> in0; sampler in0samp;\n    texture2d<float> in1; sampler in1samp;\n"
             sampleMacros = """
             #define sample(info, p) ollin_layer_sample((info).in0, (info).in0samp, (p))
             #define sampleAux(info, p) ollin_layer_sample((info).in1, (info).in1samp, (p))
+            #define sampleRaw(info, p) ollin_layer_read((info).in0, (info).in0samp, (p))
+            #define sampleAuxRaw(info, p) ollin_layer_read((info).in1, (info).in1samp, (p))
 
             """
         }
@@ -774,6 +781,14 @@ extension MetalRenderer {
         inline float4 ollin_layer_sample(texture2d<float> t, sampler s, float2 uv) {
             float4 c = t.sample(s, clamp(uv, 0.0, 1.0));
             return float4(linearToSrgb(ollin_unpremul(c)), c.a);
+        }
+        // Read an input layer exactly as it is stored, with no color conversion at all:
+        // what a layer holding *data* rather than a picture wants. A measured distance
+        // field is the one to reach for it: its red is a distance in pixels and can be
+        // negative, and its green and blue are the two halves of a direction, none of
+        // which survives being treated as a color.
+        inline float4 ollin_layer_read(texture2d<float> t, sampler s, float2 uv) {
+            return t.sample(s, clamp(uv, 0.0, 1.0));
         }
         struct ShaderInfo {
             float2 resolution;

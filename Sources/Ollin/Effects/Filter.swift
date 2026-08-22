@@ -41,6 +41,23 @@ public struct Filter: Sendable {
         }
     }
 
+    /// Which value in a layer a measured distance field cuts at its threshold: the
+    /// coverage a shape was drawn with, its brightness, or one color channel.
+    public enum FieldSource: Sendable {
+        case alpha, luminance, red, green, blue
+
+        /// The shader's mode index (kept in step with `ollin_field_value`).
+        var rawIndex: Float {
+            switch self {
+            case .alpha:     return 0
+            case .luminance: return 1
+            case .red:       return 2
+            case .green:     return 3
+            case .blue:      return 4
+            }
+        }
+    }
+
     /// The concrete operations the renderer knows how to run. Internal: a sketch
     /// builds a `Filter` through the static factories below, never this directly.
     enum Kind: Sendable {
@@ -222,6 +239,16 @@ public struct Filter: Sendable {
         /// Every drawn pixel held as a color source, and the color let out into
         /// the empty space between them until it settles.
         case diffuse(threshold: Double, sharpness: Double)
+
+        // Measured fields -----------------------------------------------------
+        /// Measure how far every pixel is from the nearest place the layer crosses
+        /// `threshold`, and which way that place lies. Beyond `maxDistance` the
+        /// measurement stops (and the ladder gets shorter); nil measures the whole layer.
+        case distanceField(source: FieldSource, threshold: Double, maxDistance: Double?)
+        /// Read a measured field back as a picture: signed distance mapped through a
+        /// 256-step ramp over `from`…`to` pixels, wrapped rather than clamped when
+        /// `repeating` (which draws the field as contour bands).
+        case fieldMap(lut: [SIMD4<Float>], from: Double, to: Double, repeating: Bool)
     }
 
     let kind: Kind
@@ -907,6 +934,67 @@ public struct Filter: Sendable {
     public static func diffuse(threshold: Double = 0.35, sharpness: Double = 0.7) -> Filter {
         Filter(kind: .diffuse(threshold: min(max(threshold, 0.01), 1),
                               sharpness: min(max(sharpness, 0), 1)))
+    }
+
+    // MARK: Measured fields
+
+    /// Measure a distance field back out of what the layer already holds: for every
+    /// pixel, how far it lies from the nearest edge of the drawn shape, and which way
+    /// that edge is. The counterpart of `SDF`, which is the field a sketch *writes*;
+    /// this is the one it *reads*.
+    ///
+    /// The result is a layer like any other, and it chains like one, but its channels
+    /// carry measurements rather than a picture:
+    ///
+    /// - **red**: the distance in pixels, negative *inside* the shape, positive outside
+    /// - **green, blue**: the unit direction from this pixel toward that nearest edge
+    /// - **alpha**: 1
+    ///
+    /// so `pixel + direction * abs(distance)` is the edge point itself. That is what a
+    /// user `Shader` reads to look up whatever was drawn there (a Voronoi keyed to a
+    /// picture), or to push things apart along the direction they are crowded from.
+    ///
+    /// ```swift
+    /// let marks = renderTarget()
+    /// withTarget(marks) { fill(.white); drawCircle(540, 540, 200) }
+    /// let field = marks.filtered(.distanceField())
+    /// drawImage(field.filtered(.fieldMap(.viridis, from: -200, to: 200)).image, 0, 0)
+    /// ```
+    ///
+    /// `from` picks the value the threshold cuts: `.alpha`, the coverage a shape was
+    /// drawn with, is the usual one; brightness or a single channel suit a layer with no
+    /// transparency in it. The edge is found *between* pixels rather than at their
+    /// centers, so an antialiased shape measures to a fraction of a pixel.
+    ///
+    /// `maxDistance` stops the measurement early. It is both an answer ("I only care
+    /// about the first 64 pixels") and the speed knob, since the flood costs one pass per
+    /// doubling of the distance it has to carry. Past it the field reads flat, with a
+    /// zero direction, which says "nothing within reach" rather than pointing nowhere.
+    public static func distanceField(from source: FieldSource = .alpha,
+                                     threshold: Double = 0.5,
+                                     maxDistance: Double? = nil) -> Filter {
+        Filter(kind: .distanceField(source: source,
+                                    threshold: max(0, threshold),
+                                    maxDistance: maxDistance.map { max(1, $0) }))
+    }
+
+    /// Read a measured `distanceField` back as a picture: its signed distance mapped
+    /// through `ramp` across the `from`…`to` window in pixels, where 0 is the edge and
+    /// negative is inside. This is what makes a field visible, and it is also how a
+    /// field does its work: a ramp that turns over at one distance dilates or erodes the
+    /// shape, a narrow dark band draws an outline at a chosen offset, and `repeating`
+    /// wraps the ramp instead of clamping it, which draws the field as contour bands.
+    public static func fieldMap(_ ramp: Ramp, from: Double = -32, to: Double = 32,
+                                repeating: Bool = false) -> Filter {
+        Filter(kind: .fieldMap(lut: bakeLUT { ramp.color(at: $0) },
+                               from: from, to: to, repeating: repeating))
+    }
+
+    /// `fieldMap` through a `Colormap` (viridis, magma, turbo, …).
+    public static func fieldMap(_ colormap: Colormap, from: Double = -32, to: Double = 32,
+                                repeating: Bool = false) -> Filter {
+        Filter(kind: .fieldMap(lut: bakeLUT { colormap.color(at: $0) },
+                               from: from, to: to, repeating: repeating))
     }
 }
 

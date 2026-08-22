@@ -431,6 +431,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("halftone",
                  note: "A painted tonal study (gradient, solid-ink disk, bare-paper disk) screened as vector halftone dots twice: the dark-ink reading on the left and the inverted light-ink reading on the right, both on a rotated screen. Pins the rotated-cell binning, the area-exact dot sizing through the edge-clipped branch, the printable-dot cutoff, and the inverted mapping. No rng and no time, so it is deterministic.",
                  make: { HalftoneScene() }),
+    SnapshotCase("measured-field",
+                 note: "A disc, a stroked polyline and a small square drawn into one layer, then the distance field measured back off it and read three ways in one picture: contour bands repeating out from every edge, the shapes grown by a fixed distance, and each pixel taking the color found at its own nearest edge. Pins the sub-pixel seed placement (the bands sit where they sit), the flood ladder, the signed resolve, and the direction channel through a user shader. No rng and no time, so it is deterministic.",
+                 make: { MeasuredFieldScene() }),
     SnapshotCase("luminance-melt",
                  note: "A painted tonal study (gradient plus a bright disk) poured through the luminance melt at a fixed phase. Pins the two-level domain warp, the shared displacement (field warp and image liquify from one vector), the luminance steer into the field, the four-stop sRGB ramp, and the highlight bloom. No rng and no time, so it is deterministic.",
                  make: { LuminanceMeltScene() }),
@@ -3270,6 +3273,47 @@ private final class LuminanceMeltScene: Sketch {
         withTarget(layer) { drawImage(image, in: canvasRectangle) }
         drawImage(layer.filtered(.melt(phase: 3)).image, in: canvasRectangle)
     }
+}
+
+/// Three marks in a layer, the distance field measured off them, and three readings of
+/// that one field laid over each other: cells from the direction, bands from the
+/// distance, and the shapes grown by a fixed amount. No `time` and no rng.
+private final class MeasuredFieldScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x101820))
+        let marks = renderTarget()
+        withTarget(marks) {
+            noStroke()
+            fill(Color(hex: 0xE8734A)); drawCircle(70, 78, 26)
+            fill(Color(hex: 0xE0C25C)); drawRect(corner: Vector2(168, 40), width: 44, height: 44)
+            noFill()
+            stroke(Color(hex: 0x49B0A5))
+            strokeWeight(7)
+            drawPolyline([Vector2(24, 210), Vector2(96, 176), Vector2(164, 214), Vector2(232, 168)])
+        }
+        let field = marks.filtered(.distanceField())
+        drawImage(field.combined(with: marks, .shader(Shader(MeasuredFieldScene.nearest))).image, 0, 0)
+        blendMode(.multiply)
+        drawImage(field.filtered(.fieldMap(Ramp(stops: [(0, Color(white: 1)), (0.1, Color(white: 0.5)),
+                                                        (0.24, Color(white: 1)), (1, Color(white: 0.85))]),
+                                           from: 0, to: 34, repeating: true)).image, 0, 0)
+        blendMode(.normal)
+        drawImage(field.filtered(.fieldMap(Ramp([Color(hex: 0xF3EDE2), Color(white: 0, alpha: 0)]),
+                                           from: 18, to: 19.5)).image, 0, 0)
+        drawImage(marks.image, 0, 0)
+    }
+
+    /// Step to the nearest edge, a little past it, and bring that color back.
+    static let nearest = """
+    float4 shade(float2 uv, ShaderInfo info) {
+        float4 field = sampleRaw(info, uv);
+        float2 here = uv * info.resolution;
+        float2 inside = here + field.gb * (abs(field.r) + 4.0 * sign(field.r));
+        return float4(sampleAux(info, inside / info.resolution).rgb * 0.55, 1.0);
+    }
+    """
 }
 
 /// A painted noisy gradient with dark and bright guard bands, pixel-sorted on

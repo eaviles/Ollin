@@ -22,6 +22,11 @@ import COllinShaders
 /// (`layer.filtered(.shader(s))`, read with `sample(info, uv)`), two make it a
 /// *combine* (`a.combined(with: b, .shader(s))`, read with `sample` + `sampleAux`).
 ///
+/// Those two return straight sRGB, the space the shader works in. `sampleRaw(info, uv)`
+/// and `sampleAuxRaw(info, uv)` return the layer's stored values untouched, which is
+/// what a layer holding *data* needs: a measured `.distanceField` keeps a distance in
+/// pixels and a direction in its channels, and neither survives being read as a color.
+///
 /// The body can be an inline Swift string (it hot-reloads with the sketch in
 /// OllinLive) or a `.metal` resource file. Ollin's shader library (palettes,
 /// noise, hashes, OKLab, `smin`, domain operators) is available inside it; a

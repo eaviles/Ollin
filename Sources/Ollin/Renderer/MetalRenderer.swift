@@ -936,6 +936,11 @@ final class MetalRenderer {
         Array(repeating: [], count: MetalRenderer.maxFramesInFlight)
     var filterTexPool: [[(tex: MTLTexture, w: Int, h: Int)]] =
         Array(repeating: [], count: MetalRenderer.maxFramesInFlight)
+    /// The `rg32Float` pair a measured distance field ping-pongs through, pooled on the
+    /// same ring discipline (a flood writes them every pass, so sharing one across frames
+    /// in flight would tear the field).
+    var fieldTexPool: [[(tex: MTLTexture, w: Int, h: Int)]] =
+        Array(repeating: [], count: MetalRenderer.maxFramesInFlight)
     /// Depth attachments for a render target that holds a 3D scene: an MSAA depth
     /// buffer (memoryless, tile-only) that resolves into a single-sample sampleable
     /// `depth32Float`, the `depth` layer reads from. Pooled like the color targets,
@@ -944,6 +949,7 @@ final class MetalRenderer {
         Array(repeating: [], count: MetalRenderer.maxFramesInFlight)
     var targetTexNext = 0
     var filterTexNext = 0
+    var fieldTexNext = 0
     var targetDepthNext = 0
 
     /// One `Feedback` layer's persistent ping-pong pair: two single-sample
