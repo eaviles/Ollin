@@ -423,6 +423,7 @@ let package = Package(
         example("Patterns/Kaleidoscope"),
         example("Patterns/Truchet"),
         example("Patterns/Hitomezashi"),
+        example("Patterns/Kolam"),
         example("Patterns/Penrose"),
         example("Patterns/WangTiles"),
         example("Patterns/Girih"),

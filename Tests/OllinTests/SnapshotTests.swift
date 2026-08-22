@@ -467,6 +467,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("hitomezashi",
                  note: "A hitomezashi stitch design: the two-tone parity fill underneath, the dash line-work over it. Pins the per-line dash alternation, the phase each line's bit picks, and that the fill's tone boundaries land exactly on the stitches (the two-coloring). Seeded, no time, so the design is deterministic.",
                  make: { HitomezashiScene() }),
+    SnapshotCase("kolam",
+                 note: "Three kolam fields side by side: 7 by 5 closing into one line, 6 by 4 into two, and 7 by 5 again cut by two walls. Pins the mirror-curve walk (the finer lattice, the outgoing-direction state that keeps each loop from being traced twice, the wall reflections), the corner-cut rounding, and the loop-per-tone draw. No time, no random.",
+                 make: { KolamScene() }),
     SnapshotCase("penrose",
                  note: "Penrose tilings, kites and darts left, rhombs right, each with the matching-rule arcs stroked on top. Pins both deflations (the derived P2 rules and the P3 rules), the half-tile merge, the rhombs' intrinsic orientation, and the arc fractions that make the decoration continuous across every edge. No rng and no time, so it is deterministic.",
                  make: { PenroseScene() }),
@@ -6267,6 +6270,36 @@ private final class DomainColoringScene: Sketch {
                            width: w, height: h).image, in: tile(0, 1))
         drawImage(generate(.domainColoring(.logarithm, zoom: 0.7), width: w, height: h).image,
                   in: tile(1, 1))
+    }
+}
+
+/// Three kolam fields at fixed sizes (no time, no random): one unbroken line
+/// over 7 by 5 dots, two loops over 6 by 4, and the 7 by 5 field cut by two
+/// walls. Pins the walk, the wall reflections, and the rounded draw.
+private final class KolamScene: Sketch {
+    override var canvasSize: CanvasSize { .size(384, 128) }
+
+    override func draw() {
+        background(Color(hex: 0x1A1410))
+        let chalk = Color(hex: 0xF3E7D3), warm = Color(hex: 0xE0724A)
+        let walls: [Kolam.Mirror] = [.rightOf(column: 2, row: 1), .below(column: 4, row: 2)]
+        let panels: [(Int, Int, [Kolam.Mirror])] = [(7, 5, []), (6, 4, []), (7, 5, walls)]
+
+        for (index, panel) in panels.enumerated() {
+            let frame = Rectangle(x: Double(index) * 128 + 12, y: 12, width: 104, height: 104)
+            let design = kolam(in: frame, columns: panel.0, rows: panel.1, mirrors: panel.2)
+            noStroke()
+            fill(chalk.withAlpha(0.4))
+            for dot in design.dots { drawCircle(center: dot, radius: 1.5) }
+            noFill()
+            strokeJoin(.round)
+            strokeWeight(2)
+            for (loop, contour) in design.loops.enumerated() {
+                let spread = Double(design.loops.count - 1)
+                stroke(spread == 0 ? chalk : Color.mix(chalk, warm, t: Double(loop) / spread))
+                drawPolyline(contour.smoothed(iterations: 3).points, closed: true)
+            }
+        }
     }
 }
 
