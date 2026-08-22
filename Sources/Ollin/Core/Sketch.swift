@@ -1313,6 +1313,18 @@ open class Sketch {
         drawer.reflectionQuality(quality)
     }
 
+    /// How many surfaces a [ray-traced reflection](../../Docs/3D/3D.md#rt-reflections)
+    /// may shade along one chain. The default of 2 is a mirror and what that mirror sees:
+    /// the reflected surface, and *its* own reflection, which ends at the environment.
+    /// That is enough for a single mirror, and it is what keeps a polished corner honest.
+    /// Two mirrors facing each other need more: at 2 the tunnel of images stops at the
+    /// third door and shows the environment instead, and every step you add opens one more
+    /// door. Raise it for a hall of mirrors, a mirrored box, or a metal room. Each step
+    /// costs another traced ray per reflected pixel, and the images dim quickly, so 3 or 4
+    /// is usually all you can see. Clamped to 2…8. A persistent setting; set it once in
+    /// `setup()` or `draw()`. Read only where `rayTracedReflections()` is on.
+    public func reflectionBounces(_ count: Int = 2) { drawer.reflectionBounces(count) }
+
     /// Set the soft-shadow ray count to an **exact** value (1…64), the hardware-independent
     /// alternative to `shadowQuality` — for fine control, pushing past the presets on a fast
     /// GPU, or a render that should look identical across machines. Persistent.

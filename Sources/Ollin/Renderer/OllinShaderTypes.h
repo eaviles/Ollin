@@ -798,6 +798,13 @@ typedef struct {
                                // packed as phase.x + 32·(phase.y + 32·phase.z) (each 0…31).
 } OllinGICascade;
 
+// The ceiling on `OllinLighting.rtReflectionBounces`. It bounds the tail walk's loop, so
+// the compiler sees a fixed trip count, and it bounds what one reflected pixel can cost:
+// each surface past the shipped pair is another closest-hit trace per pixel of the
+// reflection layer. Deep chains converge anyway (each surface's Fresnel dims the one
+// behind it), so a larger ceiling would buy picture nobody can see.
+#define OLLIN_MAX_REFLECTION_BOUNCES 8
+
 typedef struct {
     simd_float4 ambient;          // rgb linear ambient (lights every surface flatly); a unused
     simd_float4 cameraPosition;   // world-space eye xyz (for the specular view direction); w unused
@@ -854,6 +861,14 @@ typedef struct {
                                   // deferred: the fragment's uv is (position.xy · scale) / the
                                   // texture size (the `fieldShadowScale` rule), so a future
                                   // half-res reflection tier needs no shader change.
+    int   rtReflectionBounces;    // how many surfaces one reflected ray may shade along its chain
+                                  // (`reflectionBounces`, 2…OLLIN_MAX_REFLECTION_BOUNCES). 2 is the
+                                  // shipped pair: the hit, then its own mirror image, which
+                                  // terminates at the environment. A higher count walks the tail
+                                  // past that pair, so a mirror facing a mirror keeps its tunnel of
+                                  // images instead of ending in the environment. The walk past the
+                                  // pair is a separate loop, so 2 executes the prior instructions
+                                  // and stays byte-identical.
     float sceneScale;             // the camera's eye-to-target distance (the scene-scale proxy the
                                   // shadow framing and rtReflectionBias also derive from): sizes the
                                   // sparkle finish's flake cells so they read the same at any scene

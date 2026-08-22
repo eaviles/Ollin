@@ -3330,7 +3330,8 @@ a 2× supersampled ground truth, the deferred export lands ~32% closer (contact-
 region RMSE) than the single-ray form, with the remaining delta shared with
 everything else 2× supersampling touches.
 
-The hit shade itself is **two-bounce**: the first hit's specular traces a second
+The hit shade itself is **two-bounce by default** (`reflectionBounces` below
+lengthens it): the first hit's specular traces a second
 closest-hit ray and shades that surface (env-terminated at the third order,
 `ollin_rt_fetch_surface` + `ollin_rt_direct` shared by both bounces) rather than
 sampling the environment blindly. The second trace is load-bearing where two
@@ -3361,6 +3362,34 @@ sighting was the glass example's `roughness: 0.8` floor mirroring the striped
 wall behind it). The miss branch already *is* that lobe, so it needs no blend,
 and a hit below the ramp is untouched: the near-mirror snapshots
 (`rt-reflections-3d`, `area-reflections`) did not move.
+
+`reflectionBounces(_:)` lengthens that chain past the pair (clamped 2…8 on the
+CPU, `OllinLighting.rtReflectionBounces`, a second bound on the loop in the
+shader). **The pair keeps its nested form and the tail is a separate walk**, and
+the reason is arithmetic rather than taste. Metal has no recursion, so a chain
+of arbitrary length has to run forward, carrying a throughput. Forward
+accumulation can express everything the nested pair does except one step: the
+roughness fade writes `mix(deeper, lobe, blend)` *after* the deeper term is
+known, and the forward form has to distribute it into `blend · lobe` added now
+plus `1 - blend` folded into the throughput. That is the same number in exact
+arithmetic and a different order of operations in floating point, so rewriting
+the pair as a two-step loop would move every reflective frame by a bit or two.
+The branch is `> 2`, which leaves a default frame executing the prior
+instructions: the 52 Guide figure probes and the three ray-traced figures
+re-render byte-identical.
+
+The tail (`ollin_rt_specular_tail`) shades each further surface with the
+expressions the pair uses (its own diffuse and direct light, its Fresnel handed
+to the surface behind it), takes the receiving surface's roughness for each
+environment lobe, and ends at that lobe when the budget runs out, so a truncated
+chain reads as a dimmer image rather than a hole. Cost is one closest-hit ray per
+reflected pixel per step, and each surface dims the one behind it by its own
+Fresnel, so a two-mirror corridor converges: measured on the probe corridor, the
+deep panel reads 176.7 at the pair, 98.8 at three surfaces, 131.0 at four, and
+125.2 from five to the ceiling, the alternation of a tunnel whose far end
+switches between sky and corridor. The refraction walk shares the hit shade, so
+traced glass gets the same depth for free. The offline path tracer is unaffected:
+it carries its own `PathTracing(maxDepth:)` chain.
 
 ---
 

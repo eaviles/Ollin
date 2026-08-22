@@ -206,6 +206,12 @@ There's one behavior worth expecting rather than being puzzled by. Reflections a
 
 Tracing a mirror is the most expensive thing in a reflective frame, so there is a dial for it, the same kind shadows have. If a mirrored scene stutters while you sketch, `reflectionQuality(.performance)` traces the reflection at half size and stretches it back. On an M2 that takes the example scene from 45 frames a second to 71. You pay for it where you would expect. A curved mirror gets blockier, and fine detail inside a mirror image softens. What you do not pay is the mirror itself: each surface keeps its own reflection right up to its edge. Exports take the fine end on their own.
 
+There is a second dial, and it is about distance rather than detail. A traced reflection walks two surfaces by default: the one the ray finds, and whatever *that* surface reflects, which is the sky. A single mirror never needs more than that. Stand two mirrors face to face, though, and you have asked for something endless. **A tunnel of images is only as deep as the chain you paid for.** At two surfaces the tunnel stops at the third door and puts the environment in it:
+
+<img src="Images/26-SculptingWithFields/MirrorCorridor.gif" alt="A corridor of two facing mirrors with an orange block in it, from a camera that never moves, stepping through reflection chains of two, three, four, and five surfaces. At two the far panel of the mirror is filled with sky. Each step after that opens one more receding frame, with another small image of the block in it" width="560">
+
+`reflectionBounces(4)` opens two more doors, and each step you add costs one more traced ray for every reflected pixel. The images dim quickly, because each mirror passes on only the fraction it reflects. Three or four is usually the end of what you can see. The count is clamped to the range 2 to 8, and it is persistent, so set it once.
+
 Meshes and fields differ in a few places over which finish applies to which. The [combining reference](../Docs/3D/Combining.md) is the table for that.
 
 ## Light that bounces: global illumination

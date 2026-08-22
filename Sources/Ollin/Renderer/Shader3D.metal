@@ -1353,6 +1353,88 @@ static inline float3 ollin_gi_sample_cascaded(float3 worldPos, float3 n, float3 
                                               texture2d<float> giDepth,
                                               texture2d<float> giProbeOffsets);
 
+// The reflection chain past the shipped pair (`reflectionBounces` above 2). It answers
+// the same question the pair's second surface answers with one environment sample: what
+// arrives at surface `s` along its own mirror direction, seen from `inDir`. `extra` is how
+// many *more* surfaces the walk may shade; the shade of each is the same expression the
+// pair uses (a Fresnel-weighted specular carried by the throughput, plus that surface's
+// own diffuse and direct light), so a chain of any length reads as one material model.
+//
+// It walks forward with a throughput rather than nesting the way the pair does, since
+// Metal has no recursion. The one thing forward accumulation has to distribute is the
+// roughness fade: the pair writes `mix(deeper, lobe, blend)` at the end, and the same
+// value here is `blend` of the lobe added now plus `1 - blend` carried into the deeper
+// term. That distribution is why the pair keeps its own nested form: it is the same
+// number in exact arithmetic but not the same order of operations, and a default frame
+// must stay byte-identical.
+//
+// Every surface dims what stands behind it by its own Fresnel, so the tunnel converges;
+// the walk still ends at the environment when the budget runs out, exactly as the pair
+// does, which is what keeps a truncated chain reading as a dimmer image rather than a
+// hole. Fog stays where the pair leaves it: the receiving fragment fogs the eye-to-surface
+// leg and nothing fogs the reflected legs, so a longer chain adds no haze of its own.
+static inline float3 ollin_rt_specular_tail(OllinRTSurface s, float3 inDir, int extra,
+                                            float eps,
+                                            instance_acceleration_structure accel,
+                                            const device OllinMeshVertex *verts,
+                                            const device uint *geoOffsets,
+                                            constant OllinLighting &light,
+                                            texturecube<float> irradianceTex,
+                                            texturecube<float> prefilterTex,
+                                            sampler cubeSamp, float3x3 rot,
+                                            texture2d<float> ltcAmp,
+                                            texture2d_array<float> iesProfiles,
+                                            texture2d_array<float> cookies,
+                                            texture2d<float> giIrradiance,
+                                            texture2d<float> giDepth,
+                                            texture2d<float> giOffsets) {
+    int steps = min(extra, OLLIN_MAX_REFLECTION_BOUNCES);
+    float3 acc = float3(0.0);
+    float3 tp = float3(1.0);
+    for (int b = 0; b <= steps; b++) {
+        float3 dir = reflect(inDir, s.N);
+        float NoV = max(dot(s.N, -inDir), 0.0);
+        // The lobe belongs to the surface *receiving* the reflection, so its width comes
+        // from this surface's roughness, not from whatever the ray finds.
+        float3 lobe = ollin_rt_env_lobe(prefilterTex, cubeSamp, rot, dir,
+                                        s.rough, NoV, light.iblMaxMip);
+        if (b == steps) {                 // budget spent: end at the environment
+            acc += tp * lobe;
+            break;
+        }
+        ray r;
+        r.origin = s.P + s.N * eps;
+        r.direction = dir;
+        r.min_distance = eps * 0.05;      // the corner rule of the first two traces
+        r.max_distance = 1e9;
+        intersection_query<triangle_data, instancing> q;
+        if (!ollin_rt_query(q, r, accel)) {
+            acc += tp * lobe;             // the ray left the scene
+            break;
+        }
+        OllinRTSurface sn = ollin_rt_fetch_surface(q, verts, geoOffsets, r.origin, dir);
+        // A rough surface cannot hold a sharp image of what it faces, so part of this
+        // step reads the environment lobe and only the rest carries on down the chain.
+        float blend = smoothstep(0.12, 0.55, s.rough);
+        acc += tp * blend * lobe;
+        tp *= (1.0 - blend);
+        float3 F0n = mix(float3(0.04), sn.albedo, sn.metal);
+        float NoVn = max(dot(sn.N, -dir), 0.0);
+        float3 Fn = F0n + (max(float3(1.0 - sn.rough), F0n) - F0n) * pow(1.0 - NoVn, 5.0);
+        float3 irrn = (light.giOrigin.w > 0.0)
+            ? ollin_gi_sample_cascaded(sn.P, sn.N, -dir, light, giIrradiance, giDepth, giOffsets)
+              / max(light.iblIntensity, 1e-3)
+            : irradianceTex.sample(cubeSamp, rot * sn.N).rgb;
+        acc += tp * (sn.albedo * irrn
+                     + ollin_rt_direct(sn, light, -dir, ltcAmp, iesProfiles, cookies))
+               * (1.0 - sn.metal);
+        tp *= Fn;                         // what this surface hands to the one behind it
+        s = sn;
+        inDir = dir;
+    }
+    return acc;
+}
+
 // The hit-or-miss half of the reflection: trace one closest-hit ray and shade the hit,
 // returning (radiance, 1) on a hit or (0, 0, 0, 0) on a miss — premultiplied by the hit
 // flag, so an average over jittered rays carries the fractional hit coverage in alpha
@@ -1369,9 +1451,11 @@ static inline float3 ollin_gi_sample_cascaded(float3 worldPos, float3 n, float3 
 // concentrates into a razor-thin bright streak along the base that no anti-aliasing can
 // remove (it is consistently-shaded content, not an edge). Shading the actual second
 // surface instead dims the corner by the product of the two surfaces' own reflectances,
-// exactly as a real mirror corner does. The second bounce terminates at the environment
-// (no third trace); both env samples use the grazing-aware lobe width above, and a rough
-// first hit fades its traced bounce back into that lobe so it still reads as matte.
+// exactly as a real mirror corner does. The second bounce terminates at the environment,
+// which is enough for one mirror; `reflectionBounces` walks past it (the tail above) where
+// two mirrors face each other. Both env samples use the grazing-aware lobe width above,
+// and a rough first hit fades its traced bounce back into that lobe so it still reads as
+// matte.
 // Shade one committed hit surface `s1` seen along `rayDir` from `rayOrigin`: the
 // two-bounce, metalness-aware hit shade shared by the reflection trace and the
 // refraction walk (one shade, so a surface reads the same in a mirror and through
@@ -1416,8 +1500,20 @@ static inline float3 ollin_rt_hit_radiance(OllinRTSurface s1, float3 rayOrigin, 
         float3 F0b = mix(float3(0.04), s2.albedo, s2.metal);
         float NoVb = max(dot(s2.N, -secDir), 0.0);
         float3 Fb = F0b + (max(float3(1.0 - s2.rough), F0b) - F0b) * pow(1.0 - NoVb, 5.0);
-        float3 env2 = ollin_rt_env_lobe(prefilterTex, cubeSamp, rot, reflect(secDir, s2.N),
-                                        s2.rough, NoVb, light.iblMaxMip);
+        // The pair ends here, at the environment. A longer chain (`reflectionBounces`)
+        // walks on from this surface instead, so a mirror facing a mirror keeps opening
+        // doors rather than showing the sky at the third one. The branch is what holds the
+        // default byte-identical: at 2 the walk is never entered.
+        float3 env2;
+        if (light.rtReflectionBounces > 2) {
+            env2 = ollin_rt_specular_tail(s2, secDir, light.rtReflectionBounces - 2, eps,
+                                          accel, verts, geoOffsets, light, irradianceTex,
+                                          prefilterTex, cubeSamp, rot, ltcAmp, iesProfiles,
+                                          cookies, giIrradiance, giDepth, giOffsets);
+        } else {
+            env2 = ollin_rt_env_lobe(prefilterTex, cubeSamp, rot, reflect(secDir, s2.N),
+                                     s2.rough, NoVb, light.iblMaxMip);
+        }
         // The hit's ambient: the probe field where it's active (pre-divided by the IBL
         // exposure, since this whole radiance is scaled by it on composite and the
         // probes store display-linear, the `ollin_pbr_ibl_ambient` rule), else the cube.

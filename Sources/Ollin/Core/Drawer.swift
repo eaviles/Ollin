@@ -585,6 +585,13 @@ final class Drawer {
     /// downscaled unless a sketch asks for `.performance` outright.
     private(set) var reflectionQualitySetting: RenderQuality = .default
 
+    /// How many surfaces one reflected ray may shade along its chain (`reflectionBounces`):
+    /// a persistent setting like `reflectionQualitySetting`, clamped to 2…8. 2 is the
+    /// shipped pair (the hit, then its own mirror image, which ends at the environment);
+    /// more keeps the tunnel going where a mirror faces a mirror, at one more traced ray
+    /// per reflected pixel per step.
+    private(set) var reflectionBouncesSetting: Int = 2
+
     /// The soft-shadow quality knob (`shadowQuality`/`shadowSamples`) — a persistent setting
     /// (not reset each frame, like `toneMap`): more rays give a smoother ray-traced penumbra
     /// at proportional GPU cost. A `Quality` tier scales with the GPU (the renderer resolves
@@ -2175,6 +2182,11 @@ final class Drawer {
 
     func reflectionQuality(_ quality: RenderQuality) { reflectionQualitySetting = quality }
 
+    /// Set how many surfaces a reflected ray may shade, clamped to 2…8. Persistent.
+    func reflectionBounces(_ count: Int) {
+        reflectionBouncesSetting = max(2, min(count, Int(OLLIN_MAX_REFLECTION_BOUNCES)))
+    }
+
     /// Set the soft-shadow ray count to an exact value, clamped to 1…64 (hardware-independent).
     /// Persistent.
     func shadowSamples(_ count: Int) { shadowQualitySetting = .absolute(max(1, min(count, 64))) }
@@ -2361,6 +2373,9 @@ final class Drawer {
         }
         let activeLights = self.activeLights
         u.enabled = 1
+        // The reflection chain's length. Packed always (the shader reads it only past the
+        // shipped pair, and only with `rtReflections` on), so it needs no renderer gate.
+        u.rtReflectionBounces = Int32(reflectionBouncesSetting)
         // Ray-traced reflections' self-hit ray-origin offset, sized to the scene (the
         // eye→target distance, the scene-scale proxy the shadow framing also uses). The
         // renderer sets `rtReflections` itself (it owns the hardware check); this is inert
