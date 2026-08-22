@@ -117,7 +117,7 @@ public struct Matcap {
     /// Load a bundled matcap PNG by name from the framework bundle, falling back to a
     /// generated neutral sphere if it can't be found (so a built-in is never absent).
     @MainActor private static func bundled(_ name: String) -> Image {
-        if let url = Bundle.module.url(forResource: name, withExtension: "png", subdirectory: "Matcaps"),
+        if let url = OllinResources.bundle.url(forResource: name, withExtension: "png", subdirectory: "Matcaps"),
            let image = Image(contentsOf: url) {
             return image
         }

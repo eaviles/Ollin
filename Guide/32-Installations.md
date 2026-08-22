@@ -298,6 +298,59 @@ Ollin installation [2026-08-16 03:12:08]: the screens woke
 ```
 
 
+## Living in the system
+
+A wall is one place a piece can wait. Your own machine is another, and it is a much shorter walk. Every Mac already has a screen that goes idle several times a day. It also has a list of things it could show while it does. Putting your sketch in that list takes two commands.
+
+```sh
+ollin new Ripple --kind screen-saver
+cd Ripple && ./build.sh --install
+```
+
+Open System Settings, go to Screen Saver, and there it is. Nothing about the sketch changed to get there. It is the same class you would run in a window, and you can still open it in a window while you work on it.
+
+<img src="Images/32-Installations/LivingInTheSystem.jpg" alt="A diagram in two columns: on the left, three stacked cards for the files inside Ripple.saver, with an arrow joining the NSPrincipalClass line in the property list to the matching @objc name in the code; on the right, two wide black screens showing a drawing filling one edge to edge and sitting square in the middle of the other" width="680">
+
+A screen saver is not a program. It is a plug-in: a folder called `Ripple.saver` holding one binary, which the system loads when it needs something to show. So there is no `@main` anywhere, and one small class stands in for it:
+
+```swift
+@objc(RippleSaverView)
+final class RippleSaverView: SketchSaverView {
+    override func makeSketch() -> Sketch { Ripple() }
+}
+```
+
+That is the whole of the wiring. `SketchSaverView` builds the canvas when the system starts the saver. It runs the frames off the display's own clock, and puts everything away when the saver is over. `@objc` pins the name so the property list can point at it.
+
+### Two things are different, and neither is the framework's idea
+
+**Your sketch gets no input.** A key or a click ends a screen saver. That is what a screen saver is for. A canvas that answered the click would be a canvas that swallowed it, leaving somebody hammering at a machine that will not come back. So the canvas stays out of the way entirely, and `mouseX`, `mouseY`, and `key` hold whatever they started at. Write the piece to run on `time` alone, which is how most of this guide's sketches already run.
+
+**Your sketch cannot write files.** The system loads a screen saver into a sandbox that reads anything and writes almost nothing. Pictures, fonts, meshes, and clips all load as they always did. Exporting a frame does not, and neither does a checkpoint. None of that belongs in a screen saver anyway.
+
+### Filling the screen, or sitting in the middle of it
+
+A display is almost never the shape of a canvas. Which of the two you get is the sketch's own `windowMode`, the same property that decides it in a window:
+
+```swift
+override var windowMode: WindowMode { .resizable }
+```
+
+With that line, the canvas *is* the display: `width` and `height` are the screen's, and the drawing goes edge to edge. `ollin new` writes it for you, because filling the screen is what people mean by a screen saver. Take it out and a square sketch stays square, as large as fits, centered on black. Neither one stretches the drawing, which is the answer you want either way: a circle stays a circle on a wide screen.
+
+### Building it again
+
+Every edit needs a rebuild, so do the work in a window and install when it looks right:
+
+```sh
+ollin Sources/Ripple/Sketch.swift     # the same file, reloading as you save
+./build.sh --install                  # when you are happy with it
+```
+
+The script signs the saver for this machine. Another Mac will refuse it. Handing a screen saver to somebody else needs a Developer ID and a trip through notarization, the same as an app. [The reference page](../Docs/Output/ScreenSaver.md) has those commands.
+
+One more thing worth knowing before you build something ambitious for it. The system makes a separate saver for each display, so two screens run two copies of your sketch, each from its own first frame. They are not in step and they do not share anything. A piece that has to line up across two screens is the installation earlier in this chapter, not a screen saver.
+
 ## Putting it together: the wall piece
 
 The finished piece is one you could hang. Everything a room needs is in its declaration, and the drawing itself is deliberately calm, because a piece that stays up for a week is a different kind of thing from one that has to hold a scroll. Make `MySketches/WallPiece.swift`.
@@ -407,6 +460,7 @@ A piece that has to run unattended is a reliability problem rather than a graphi
 ## Go deeper
 
 - [Installation](../Docs/Output/Installation.md): leaving a piece running, what each part of the declaration turns on, the checkpoint file's shape, the schedule's parts, projection and blending, and several displays.
+- [Screen saver](../Docs/Output/ScreenSaver.md): the project the generator writes, the sandbox a saver runs in, filling against fitting, and signing one for somebody else's machine.
 - [DMX](../Docs/Integration/DMX.md): universes and fixtures, Art-Net and sACN, the send cadence, the console-drives-the-sketch direction, and the LED map's sampling.
 - [Profiling](../Docs/Tools/Profiling.md): reading the cost row, what to do about each answer, and capturing a frame for a closer look.
 - Worked examples, in [`Examples/Installation/`](../Examples/Installation/): `Unattended` (the one-line declaration), `Resuming`, `Watched`, `Hours`, `Fitted`, `ManyDisplays`, and `ManyWindows`, plus [`Examples/Integration/DMXLoopback`](../Examples/Integration/DMXLoopback/Sketch.swift) and [`Examples/Integration/LEDMapping`](../Examples/Integration/LEDMapping/Sketch.swift).

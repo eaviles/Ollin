@@ -163,6 +163,9 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// calibration's corners in it. Nil at a desk, and in every host that owns
     /// its own window rather than giving it to the piece.
     private var projectionSettings: Installation.Projection?
+    /// Whether this run is being fitted to what it is thrown onto at all, which
+    /// is what tells the renderer to stop taking its shape from the drawable.
+    var isFitted: Bool { projectionSettings != nil }
     /// The display size the placement was last worked out against, so a monitor
     /// changing rebuilds it and an ordinary frame does not.
     private var projectionSize: SIMD2<Int> = .zero
@@ -1165,6 +1168,19 @@ final class OllinMTKView: MTKView {
     /// click-to-focus keyboard hint while the canvas doesn't hold the keys.
     var onKeyboardFocusChange: ((Bool) -> Void)?
 
+    /// Whether this canvas stays out of the event path entirely: no hit, no
+    /// first responder, so every key and click goes to whatever is behind it.
+    ///
+    /// A screen saver is the one host that turns this on, and it has to. The
+    /// contract there is that any input ends the saver, and the program that
+    /// ends it is the host, not this view. A canvas that answered a click would
+    /// eat the click that was supposed to give the machine back.
+    var ignoresInput = false
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        ignoresInput ? nil : super.hitTest(point)
+    }
+
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
         trackingAreas.forEach(removeTrackingArea)
@@ -1269,7 +1285,7 @@ final class OllinMTKView: MTKView {
     // MARK: Keyboard
 
     /// Required for the view to receive `keyDown`/`keyUp`.
-    override var acceptsFirstResponder: Bool { true }
+    override var acceptsFirstResponder: Bool { !ignoresInput }
 
     /// Whether the current drag has a live pressure-event stream. Set by the
     /// first pressure event after a mouse down; while true, drag events stop

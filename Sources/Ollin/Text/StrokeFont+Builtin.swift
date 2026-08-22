@@ -6,7 +6,7 @@ public extension StrokeFont {
     /// from the bundled `.jhf`; if the resource is somehow unavailable, this is an
     /// empty font (text draws nothing rather than crashing).
     static let builtin: StrokeFont = {
-        if let url = Bundle.module.url(forResource: "futural", withExtension: "jhf"),
+        if let url = OllinResources.bundle.url(forResource: "futural", withExtension: "jhf"),
            let font = StrokeFont(jhfContentsOf: url) {
             return font
         }

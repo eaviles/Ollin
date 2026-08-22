@@ -637,7 +637,7 @@ extension MetalRenderer {
         // `#if OLLIN_RT_SHADOWS` blocks in Shader3D.metal read). A device without
         // render-stage ray tracing compiles it out entirely, so the cube path stays.
         let prefix = "#define OLLIN_RT_SHADOWS \(rayTracing ? 1 : 0)\n"
-        guard let url = Bundle.module.url(forResource: "OllinShaderTypes", withExtension: "h"),
+        guard let url = OllinResources.bundle.url(forResource: "OllinShaderTypes", withExtension: "h"),
               let header = try? String(contentsOf: url, encoding: .utf8) else {
             return prefix + source
         }
@@ -655,11 +655,11 @@ extension MetalRenderer {
     /// `composeShaderSource` splices).
     static func composeComputeSource(_ userSource: String) -> String {
         var lib = "#include <metal_stdlib>\nusing namespace metal;\n#include \"OllinShaderTypes.h\"\n"
-        if let url = Bundle.module.url(forResource: "OllinShaderLib", withExtension: "metal"),
+        if let url = OllinResources.bundle.url(forResource: "OllinShaderLib", withExtension: "metal"),
            let text = try? String(contentsOf: url, encoding: .utf8) {
             lib = text
         }
-        if let url = Bundle.module.url(forResource: "OllinShaderTypes", withExtension: "h"),
+        if let url = OllinResources.bundle.url(forResource: "OllinShaderTypes", withExtension: "h"),
            let header = try? String(contentsOf: url, encoding: .utf8) {
             lib = lib.replacingOccurrences(of: "#include \"OllinShaderTypes.h\"", with: header)
         }
@@ -691,11 +691,11 @@ extension MetalRenderer {
                                         sourceName: String = "Shader",
                                         sourceStartLine: Int = 1) -> (source: String, userLineOffset: Int) {
         var lib = ""
-        if let url = Bundle.module.url(forResource: "OllinShaderLib", withExtension: "metal"),
+        if let url = OllinResources.bundle.url(forResource: "OllinShaderLib", withExtension: "metal"),
            let text = try? String(contentsOf: url, encoding: .utf8) {
             lib = filterLibModules(text, modules)
         }
-        if let url = Bundle.module.url(forResource: "OllinShaderTypes", withExtension: "h"),
+        if let url = OllinResources.bundle.url(forResource: "OllinShaderTypes", withExtension: "h"),
            let header = try? String(contentsOf: url, encoding: .utf8) {
             lib = lib.replacingOccurrences(of: "#include \"OllinShaderTypes.h\"", with: header)
         }
@@ -889,7 +889,7 @@ extension MetalRenderer {
 
     /// Read and concatenate the shader segments from a filesystem `directory`, in
     /// `shaderSourceNames` order. This is the source live shader reload feeds back
-    /// in (the `Bundle.module` copy is built, not the file being edited). `nil` if
+    /// in (the bundled copy is built, not the file being edited). `nil` if
     /// any segment is unreadable.
     static func concatenatedShaderSource(fromDirectory directory: String) -> String? {
         var parts: [String] = []
@@ -903,8 +903,8 @@ extension MetalRenderer {
 
     /// Load the built-in shader library.
     ///
-    /// SwiftPM's resource rule copies the `Shader*.metal` segments into
-    /// `Bundle.module` as *source*; it does not produce a precompiled
+    /// SwiftPM's resource rule copies the `Shader*.metal` segments into the
+    /// resource bundle as *source*; it does not produce a precompiled
     /// `default.metallib`. So the reliable path is to read those segments, splice
     /// the shared header, and compile at runtime. We still try a precompiled
     /// `default.metallib` first in case a future build step produces one.
@@ -915,7 +915,7 @@ extension MetalRenderer {
         // mesh-shadow path). Use it only on a device without render-stage ray tracing;
         // an RT device compiles from source with the define set, which is Ollin's
         // standard runtime-compile path (and what live shader reload already uses).
-        if !rt, let library = try? device.makeDefaultLibrary(bundle: Bundle.module) {
+        if !rt, let library = try? device.makeDefaultLibrary(bundle: OllinResources.bundle) {
             return library
         }
         // Read every segment from the bundle and concatenate in order; the combined
@@ -923,7 +923,7 @@ extension MetalRenderer {
         // composeShaderSource). Require all of them, so a missing segment fails
         // loudly rather than compiling an incomplete library.
         let parts = shaderSourceNames.map { name in
-            Bundle.module.url(forResource: name, withExtension: "metal")
+            OllinResources.bundle.url(forResource: name, withExtension: "metal")
                 .flatMap { try? String(contentsOf: $0, encoding: .utf8) }
         }
         if parts.allSatisfy({ $0 != nil }) {

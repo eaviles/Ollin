@@ -135,7 +135,7 @@ A few load-bearing rules recur across the satellites, so they're stated once her
 - **The world as input** — *Image as input* · *Data as input* · *Live data* · *Computer vision* · *Screen and window capture* · *Video playback* · *RGBD recordings + live USB (Record3D)* · *iPhone capture app* · *Game controllers*.
 - **Sound** — *Audio* · *Synthesis* · *Algorithmic composition* · *Physical models* (plucked string, struck shape, bowed string and blown tube) · *Sampled instruments* · *The patchable graph* · *Effects as a chain* · *Sonification* · *Composition polish* · *Listening: speech and sound events* · *Spatial audio and sound in an export*.
 - **Integration** — *OSC* · *MIDI* · *DMX lighting* (+ LED mapping) · *Syphon* · *Virtual camera*.
-- **Output & tooling** — *Canvas, capture & tooling* (the export flag surface, `@Param`, the gallery, snapshot tests) · *Path-traced export* · *Per-frame profiler* · *Installation mode* · *Fabrication export* · *Spatial export* · *Spatial video* · *Accessibility: color vision and motion* · *Describable output*.
+- **Output & tooling** — *Canvas, capture & tooling* (the export flag surface, `@Param`, the gallery, snapshot tests) · *Path-traced export* · *Per-frame profiler* · *Installation mode* · *Screen saver* · *Fabrication export* · *Spatial export* · *Spatial video* · *Accessibility: color vision and motion* · *Describable output*.
 
 - **Next.** Everything shipped is inventoried in [`CAPABILITIES.md`](CAPABILITIES.md); the forward plan is the Quick map under *Roadmap & design notes* below, plus [`ROADMAP.md`](ROADMAP.md) / [`DESIGN-NOTES.md`](DESIGN-NOTES.md).
 

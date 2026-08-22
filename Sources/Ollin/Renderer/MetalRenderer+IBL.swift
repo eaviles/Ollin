@@ -411,7 +411,7 @@ extension MetalRenderer {
         if ltcLoadFailed { return false }
         let side = 64
         let tableBytes = side * side * 4 * MemoryLayout<Float>.size
-        guard let url = Bundle.module.url(forResource: "ltc_tables", withExtension: "bin",
+        guard let url = OllinResources.bundle.url(forResource: "ltc_tables", withExtension: "bin",
                                           subdirectory: "LTC"),
               let data = try? Data(contentsOf: url),
               data.count == 2 * tableBytes else {

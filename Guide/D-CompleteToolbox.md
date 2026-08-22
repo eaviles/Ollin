@@ -313,6 +313,7 @@ Use it two ways. It is an index for the moment you remember the guide showing bl
 | Capability | What it is | Guide | Reference |
 |---|---|---|---|
 | DMX lighting | Real lights driven from `draw()` over Art-Net or sACN: a 512-channel universe filled through named fixtures and sent every frame, and a lighting console driving the sketch back | [Ch 32](32-Installations.md) | [DMX](../Docs/Integration/DMX.md) |
+| A sketch as the screen saver | `ollin new --kind screen-saver` wraps a sketch as a `.saver` the system loads when the machine goes idle, with one script to build, sign, and install it | [Ch 32](32-Installations.md) | [Screen saver](../Docs/Output/ScreenSaver.md) |
 | Running unattended | `installation` puts a piece on a wall: full screen, no pointer, the display kept awake, and a clock that survives a gap in the frames and a week of running | [Ch 32](32-Installations.md) | [Installation](../Docs/Output/Installation.md) |
 | Resuming after a stop | `@Saved` properties and a checkpoint cadence write the run down, so a relaunch picks the piece up where it was rather than starting it over | [Ch 32](32-Installations.md) | [Installation](../Docs/Output/Installation.md) |
 | Profiling | The inspector's cost row: CPU against GPU on one frame's scale, the draw, pass and batch counts, and a frame handed to Xcode | [Ch 32](32-Installations.md) | [Profiling](../Docs/Tools/Profiling.md) |

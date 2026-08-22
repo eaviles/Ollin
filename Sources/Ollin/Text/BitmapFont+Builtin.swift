@@ -11,7 +11,7 @@ public extension BitmapFont {
     /// resource is somehow unavailable, this is an empty font (text draws nothing
     /// rather than crashing).
     static let builtin: BitmapFont = {
-        if let url = Bundle.module.url(forResource: "cozette", withExtension: "bdf"),
+        if let url = OllinResources.bundle.url(forResource: "cozette", withExtension: "bdf"),
            let font = BitmapFont(bdfContentsOf: url) {
             return font
         }

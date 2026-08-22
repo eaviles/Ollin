@@ -23,8 +23,10 @@ A **kind** is what the thing you get *is*.
 | `single-file` | One `.swift` file, executable, run with `ollin`. The smallest thing that is a whole sketch. |
 | `mac-sketch` | A folder with its own manifest, sources, and assets, built with `swift run`. |
 | `in-package` | A sketch folder plus one target in the `Package.swift` already above it. |
+| `screen-saver` | A sketch wrapped as the machine's [screen saver](../Output/ScreenSaver.md), with the script that builds and installs it. |
+| `extension` | A library other people's sketches import, named and laid out by the [shared convention](Extensions.md). |
 
-`ollin new --list` shows more kinds than these two, and each carries the reason it is not ready. There is an iPhone app, a Vision app, a screen saver, and an AR effect. They are named rather than hidden, because that is the map of where this goes. Each waits on a platform leg rather than on the generator.
+`ollin new --list` shows more kinds than these, and each of the rest carries the reason it is not ready. There is an iPhone app, a Vision app, and an AR effect. They are named rather than hidden, because that is the map of where this goes. Each waits on a platform leg rather than on the generator.
 
 A name ending in `.swift` asks for one loose file; any other name makes a folder. That is the only difference in how you ask.
 

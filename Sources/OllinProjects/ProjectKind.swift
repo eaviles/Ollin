@@ -16,6 +16,22 @@ public struct ProjectKind: Sendable, Hashable, Identifiable {
     public let summary: String
     /// Whether the generator can emit it today, and if not, what it waits on.
     public let availability: Availability
+    /// Whether a sketch of this kind runs itself.
+    ///
+    /// A program does; a plug-in does not, because the program that loads it has
+    /// an entry point already and a second one is at best dead weight. It is the
+    /// one thing that changes the sketch file rather than the files around it,
+    /// which is why it rides the kind instead of being asked about later.
+    public let carriesEntryPoint: Bool
+    /// Whether a sketch of this kind is drawn onto whatever it is put on, rather
+    /// than into a window sized to the canvas.
+    ///
+    /// A screen saver takes the whole display, and so will the platform kinds
+    /// still waiting. The sketch is written to suit: it declares its window mode
+    /// as `.resizable`, so `width` and `height` are the display's. Data rather
+    /// than a code path, because it is the same fact for every kind that has no
+    /// window of its own.
+    public let fillsTheDisplay: Bool
 
     public enum Availability: Sendable, Hashable {
         case available
@@ -32,11 +48,14 @@ public struct ProjectKind: Sendable, Hashable, Identifiable {
         return nil
     }
 
-    public init(id: String, title: String, summary: String, availability: Availability) {
+    public init(id: String, title: String, summary: String, availability: Availability,
+                carriesEntryPoint: Bool = true, fillsTheDisplay: Bool = false) {
         self.id = id
         self.title = title
         self.summary = summary
         self.availability = availability
+        self.carriesEntryPoint = carriesEntryPoint
+        self.fillsTheDisplay = fillsTheDisplay
     }
 }
 
@@ -103,7 +122,9 @@ extension ProjectKind {
         id: "screen-saver",
         title: "Screen saver",
         summary: "A sketch that runs as the machine's screen saver, so the piece lives in the system rather than a window.",
-        availability: .waiting(on: "the screen-saver output surface: a .saver is a plug-in bundle with its own view class and lifecycle, which the framework does not host yet")
+        availability: .available,
+        carriesEntryPoint: false,
+        fillsTheDisplay: true
     )
 
     public static let arEffect = ProjectKind(

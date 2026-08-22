@@ -311,6 +311,56 @@ struct GeneratedProjectBuildTests {
         #expect(result.succeeded, "a generated project did not build:\n\(result.output)")
     }
 
+    /// A screen saver is the one kind whose output is not a program, so nothing
+    /// about it is proved by a build that merely succeeds. This one runs the
+    /// script the generator wrote, then asks the system to load what came out
+    /// and hand back the class the property list names: the exact question the
+    /// system asks, and the exact way a saver fails quietly.
+    ///
+    /// Loading it here is safe because this test target links the generator
+    /// alone, never the framework, so the copy inside the saver arrives in a
+    /// process that has none.
+    @Test("A generated screen saver builds into a bundle the system can load")
+    func aGeneratedScreenSaverBuildsAndLoads() throws {
+        let repository = try #require(Self.repositoryRoot(), "could not find the Ollin folder from the test file")
+        let destination = try Self.temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: destination) }
+
+        let request = ProjectRequest(
+            name: "Ripple",
+            kind: .screenSaver,
+            template: .motion,
+            destination: destination,
+            framework: .localPath(repository)
+        )
+        let project = try ProjectGenerator.plan(request)
+        try ProjectGenerator.write(project)
+
+        let built = try Self.run([project.root.appendingPathComponent("build.sh").path])
+        #expect(built.succeeded, "the screen saver's own build script failed:\n\(built.output)")
+
+        let saver = project.root.appendingPathComponent("Ripple.saver")
+        #expect(FileManager.default.fileExists(atPath: saver.path), "no .saver came out of the script")
+
+        // The framework's own files have to travel inside the saver: they are
+        // looked for beside the running program, and that program belongs to
+        // the system.
+        let resources = saver.appendingPathComponent("Contents/Resources/Ollin_Ollin.bundle")
+        #expect(FileManager.default.fileExists(atPath: resources.path),
+                "the framework's resources did not travel with the saver")
+
+        let bundle = try #require(Bundle(url: saver), "the .saver is not a bundle")
+        #expect(bundle.load(), "the system could not load the saver's binary")
+        // The name is the check, not the nil. Asked for a class it cannot find,
+        // the loader hands back some other class out of the bundle rather than
+        // nothing, so a saver with a misspelled name loads, appears in the list,
+        // and shows whatever it happened to pick.
+        let principal: AnyClass = try #require(bundle.principalClass,
+                                               "the saver's binary carries no classes at all")
+        #expect(NSStringFromClass(principal) == "RippleSaverView",
+                "Info.plist and the @objc name have come apart")
+    }
+
     // MARK: - Support
 
     /// Walk up from this file to the folder holding the framework's manifest.
@@ -436,7 +486,7 @@ struct GeneratedProjectBuildTests {
         try run(["swift", "test", "--package-path", directory.path])
     }
 
-    private static func run(_ arguments: [String]) throws -> (succeeded: Bool, output: String) {
+    static func run(_ arguments: [String]) throws -> (succeeded: Bool, output: String) {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         process.arguments = arguments

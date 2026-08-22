@@ -27,9 +27,10 @@ public enum ProjectGenerator {
         }
 
         switch request.kind.id {
-        case ProjectKind.singleFile.id: return planSingleFile(request)
-        case ProjectKind.macSketch.id:  return planMacSketch(request)
-        case ProjectKind.inPackage.id:  return try planInPackage(request)
+        case ProjectKind.singleFile.id:  return planSingleFile(request)
+        case ProjectKind.macSketch.id:   return planMacSketch(request)
+        case ProjectKind.inPackage.id:   return try planInPackage(request)
+        case ProjectKind.screenSaver.id: return planScreenSaver(request)
         default:
             throw ProjectGeneratorError.kindUnavailable(request.kind)
         }
@@ -82,6 +83,84 @@ public enum ProjectGenerator {
         let root = request.destination.appendingPathComponent(request.folderName)
         let target = request.typeName
         let sourceDir = "Sources/\(target)"
+        var (files, resources) = sketchFiles(request, sourceDir: sourceDir)
+
+        files.append(GeneratedFile(path: "Package.swift",
+                                   contents: manifest(request, target: target, resources: resources),
+                                   isExecutable: false))
+        files.append(GeneratedFile(path: "README.md", contents: readme(request, target: target),
+                                   isExecutable: false))
+        files.append(GeneratedFile(path: ".gitignore", contents: gitignore, isExecutable: false))
+
+        return GeneratedProject(
+            root: root,
+            files: files.sorted { $0.path < $1.path },
+            runCommand: "swift run --package-path \(root.path) \(target)",
+            nextSteps: [
+                "Run it:  cd \(root.path) && swift run \(target)",
+                "Edit while it runs:  ollin \(root.path)/\(sourceDir)/Sketch.swift",
+                "Export a frame:  swift run \(target) --export frame.png",
+                "The sketch and everything it loads live in \(sourceDir)/.",
+            ]
+        )
+    }
+
+    /// A sketch wrapped as the machine's screen saver.
+    ///
+    /// The package builds a plug-in rather than a program, which is one line in
+    /// the manifest: a dynamic library product with `-bundle` handed to the
+    /// linker. What comes out is the Mach-O kind the system loads, and the
+    /// script here puts the `.saver` folder around it.
+    ///
+    /// The two things the script does that are easy to miss are both about
+    /// finding files at run time. The framework's own resources (the shader
+    /// segments above all) are looked for beside the running program, and the
+    /// running program belongs to whoever loaded the plug-in, so every resource
+    /// bundle the build produced is copied into the saver's own `Resources`.
+    /// And the binary's directory is asked for rather than assumed, because the
+    /// two build systems the toolchain ships put it in different places.
+    private static func planScreenSaver(_ request: ProjectRequest) -> GeneratedProject {
+        let root = request.destination.appendingPathComponent(request.folderName)
+        let target = request.typeName
+        let sourceDir = "Sources/\(target)"
+        let saverClass = "\(target)SaverView"
+        var (files, resources) = sketchFiles(request, sourceDir: sourceDir)
+
+        files.append(GeneratedFile(path: "\(sourceDir)/SaverView.swift",
+                                   contents: saverViewSource(target: target, saverClass: saverClass)))
+        files.append(GeneratedFile(path: "Package.swift",
+                                   contents: saverManifest(request, target: target, resources: resources),
+                                   isExecutable: false))
+        files.append(GeneratedFile(path: "Info.plist",
+                                   contents: saverInfoPlist(request, target: target, saverClass: saverClass),
+                                   isExecutable: false))
+        files.append(GeneratedFile(path: "build.sh",
+                                   contents: saverBuildScript(request, target: target),
+                                   isExecutable: true))
+        files.append(GeneratedFile(path: "README.md",
+                                   contents: saverReadme(request, target: target),
+                                   isExecutable: false))
+        files.append(GeneratedFile(path: ".gitignore", contents: saverGitignore, isExecutable: false))
+
+        return GeneratedProject(
+            root: root,
+            files: files.sorted { $0.path < $1.path },
+            runCommand: "\(root.path)/build.sh --install",
+            nextSteps: [
+                "Put it on this machine:  cd \(root.path) && ./build.sh --install",
+                "Then pick it in System Settings, under Screen Saver.",
+                "See it in a window first:  ollin \(root.path)/\(sourceDir)/Sketch.swift",
+                "The sketch and everything it loads live in \(sourceDir)/.",
+            ]
+        )
+    }
+
+    /// The sketch and everything it loads, plus the resource lines a manifest
+    /// needs to declare them. Shared by every kind that puts a sketch in a
+    /// target of its own, since what a sketch carries does not depend on what
+    /// the target is finally built into.
+    private static func sketchFiles(_ request: ProjectRequest,
+                                    sourceDir: String) -> ([GeneratedFile], [String]) {
         var files: [GeneratedFile] = []
         var resources: [String] = []
 
@@ -144,24 +223,7 @@ public enum ProjectGenerator {
             }
         }
 
-        files.append(GeneratedFile(path: "Package.swift",
-                                   contents: manifest(request, target: target, resources: resources),
-                                   isExecutable: false))
-        files.append(GeneratedFile(path: "README.md", contents: readme(request, target: target),
-                                   isExecutable: false))
-        files.append(GeneratedFile(path: ".gitignore", contents: gitignore, isExecutable: false))
-
-        return GeneratedProject(
-            root: root,
-            files: files.sorted { $0.path < $1.path },
-            runCommand: "swift run --package-path \(root.path) \(target)",
-            nextSteps: [
-                "Run it:  cd \(root.path) && swift run \(target)",
-                "Edit while it runs:  ollin \(root.path)/\(sourceDir)/Sketch.swift",
-                "Export a frame:  swift run \(target) --export frame.png",
-                "The sketch and everything it loads live in \(sourceDir)/.",
-            ]
-        )
+        return (files, resources)
     }
 
     /// A sketch folder inside a package that already exists, plus one target in
@@ -422,10 +484,52 @@ public enum ProjectGenerator {
     /// Public because the generator window previews a template by compiling and
     /// running exactly this, rather than showing a picture of it.
     public static func sketchSource(_ request: ProjectRequest) -> String {
-        if let shader = request.importedShader { return importedShaderSource(request, shader) }
-        if let scene = request.importedScene { return importedSceneSource(request, scene) }
-        if let example = request.example { return exampleSource(request, example) }
-        return templateSource(request)
+        let source: String
+        if let shader = request.importedShader { source = importedShaderSource(request, shader) }
+        else if let scene = request.importedScene { source = importedSceneSource(request, scene) }
+        else if let example = request.example { source = exampleSource(request, example) }
+        else { source = templateSource(request) }
+
+        var text = request.kind.carriesEntryPoint ? source : withoutEntryPoint(source)
+        // Asked for a shape, and the shape wins: the canvas keeps its own
+        // proportions and is centered on what it is put on. Asked for nothing,
+        // and a sketch with no window of its own takes the whole display.
+        if request.kind.fillsTheDisplay, request.canvas.expression == nil {
+            text = fillingTheDisplay(text, typeName: request.typeName)
+        }
+        return text
+    }
+
+    /// Declare `.resizable` on the line under the class opening, so `width` and
+    /// `height` are the display's rather than the canvas's. Left alone if the
+    /// sketch already says something about its window, since that is a sketch
+    /// that has thought about it.
+    private static func fillingTheDisplay(_ source: String, typeName: String) -> String {
+        guard !source.contains("override var windowMode") else { return source }
+        var lines = source.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        guard let opening = lines.firstIndex(where: {
+            $0.contains("class \(typeName)") && $0.contains(": Sketch") && $0.hasSuffix("{")
+        }) else { return source }
+        lines.insert("""
+                // Drawn onto the whole display, so `width` and `height` are the
+                // screen's. Take this out to keep the canvas's own proportions,
+                // centered on black instead.
+                override var windowMode: WindowMode { .resizable }
+            """, at: opening + 1)
+        return lines.joined(separator: "\n")
+    }
+
+    /// Drop the `@main` line from a sketch bound for a plug-in.
+    ///
+    /// Every path into a sketch writes one, and a maintained example carries its
+    /// own, so this is done once here rather than guarded at each of the four
+    /// places. Only a line that is nothing but the attribute counts, which is
+    /// what keeps a sketch that mentions it in a comment intact.
+    static func withoutEntryPoint(_ source: String) -> String {
+        source
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .filter { $0.trimmingCharacters(in: .whitespaces) != "@main" }
+            .joined(separator: "\n")
     }
 
     /// The sketch that draws a scene brought over from a file.
@@ -555,18 +659,31 @@ public enum ProjectGenerator {
 
     // MARK: - Supporting files
 
-    private static func manifest(_ request: ProjectRequest, target: String, resources: [String]) -> String {
-        // The union, so a library an example imports is linked even when the
-        // capability catalog has never heard of it.
+    /// The framework products a target has to link: Ollin, whatever the ticked
+    /// capabilities bring, and whatever an example's own imports name.
+    ///
+    /// The union, so a library an example imports is linked even when the
+    /// capability catalog has never heard of it.
+    private static func productLines(_ request: ProjectRequest) -> String {
         let known = request.resolvedCapabilities.compactMap(\.module)
         let fromExample = (request.example?.modules ?? []).filter { !known.contains($0) }
-        let modules = ["Ollin"] + (known + fromExample).sorted()
-        let products = modules
+        return (["Ollin"] + (known + fromExample).sorted())
             .map { "                .product(name: \"\($0)\", package: \"Ollin\")," }
             .joined(separator: "\n")
-        let resourceLine = resources.isEmpty
-            ? ""
-            : ",\n            resources: [\n" + resources.map { "                \($0)," }.joined(separator: "\n") + "\n            ]"
+    }
+
+    /// The `resources:` argument a target needs, or nothing at all when it
+    /// carries no files.
+    private static func resourceLine(_ resources: [String]) -> String {
+        guard !resources.isEmpty else { return "" }
+        return ",\n            resources: [\n"
+            + resources.map { "                \($0)," }.joined(separator: "\n")
+            + "\n            ]"
+    }
+
+    private static func manifest(_ request: ProjectRequest, target: String, resources: [String]) -> String {
+        let products = productLines(request)
+        let resourceLine = resourceLine(resources)
 
         return """
         // swift-tools-version: 6.0
@@ -601,6 +718,219 @@ public enum ProjectGenerator {
         )
         """
     }
+
+    // MARK: - The screen saver's own files
+
+    /// The class the system asks for by name.
+    ///
+    /// `@objc` pins the name, because a plug-in is read through the Objective-C
+    /// runtime and Swift would otherwise decorate it into something the property
+    /// list cannot spell. `Foundation` is imported for that attribute alone.
+    private static func saverViewSource(target: String, saverClass: String) -> String {
+        """
+        import Foundation
+        import Ollin
+
+        // The system loads this plug-in, asks for the class named in Info.plist,
+        // and puts it on the screen. Everything else is the sketch next door.
+        //
+        // Keep the `@objc` name and the `NSPrincipalClass` line in Info.plist the
+        // same, or the saver loads and shows nothing.
+        @objc(\(saverClass))
+        final class \(saverClass): SketchSaverView {
+            override func makeSketch() -> Sketch { \(target)() }
+        }
+        """
+    }
+
+    /// The manifest for a plug-in: a dynamic library, linked as a bundle.
+    ///
+    /// `-bundle` is what makes the binary the kind the system can load. The flag
+    /// is unsafe in the package manager's sense, which only bars a package from
+    /// being somebody else's dependency, and a screen saver is nobody's
+    /// dependency.
+    private static func saverManifest(_ request: ProjectRequest, target: String,
+                                      resources: [String]) -> String {
+        let products = productLines(request)
+        let resourceLine = resourceLine(resources)
+
+        return """
+        // swift-tools-version: 6.0
+        import PackageDescription
+
+        // \(request.folderName): an Ollin sketch, wrapped as a screen saver.
+        //
+        // Build and install it:  ./build.sh --install
+        //
+        // The product is a *dynamic* library handed `-bundle`, which is the Mach-O
+        // kind the system loads a screen saver from. `build.sh` puts the .saver
+        // folder around what this builds.
+        let package = Package(
+            name: "\(target)",
+            platforms: [
+                .macOS("26.0")
+            ],
+            products: [
+                .library(name: "\(target)", type: .dynamic, targets: ["\(target)"]),
+            ],
+            dependencies: [
+                \(request.framework.manifestEntry),
+            ],
+            targets: [
+                .target(
+                    name: "\(target)",
+                    dependencies: [
+        \(products)
+                    ],
+                    path: "Sources/\(target)"\(resourceLine),
+                    linkerSettings: [
+                        .unsafeFlags(["-Xlinker", "-bundle"]),
+                    ]
+                ),
+            ],
+            swiftLanguageModes: [.v6]
+        )
+        """
+    }
+
+    private static func saverInfoPlist(_ request: ProjectRequest, target: String,
+                                       saverClass: String) -> String {
+        let identifier = "com.example.\(target.lowercased())"
+        return """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>CFBundleDevelopmentRegion</key>
+            <string>en</string>
+            <key>CFBundleExecutable</key>
+            <string>\(target)</string>
+            <!-- Yours to change before you hand this to anybody. Two savers with
+                 one identifier are one saver as far as the system is concerned. -->
+            <key>CFBundleIdentifier</key>
+            <string>\(identifier)</string>
+            <key>CFBundleInfoDictionaryVersion</key>
+            <string>6.0</string>
+            <!-- The name in the System Settings list. -->
+            <key>CFBundleName</key>
+            <string>\(request.folderName)</string>
+            <key>CFBundlePackageType</key>
+            <string>BNDL</string>
+            <key>CFBundleShortVersionString</key>
+            <string>1.0</string>
+            <key>CFBundleVersion</key>
+            <string>1</string>
+            <key>LSMinimumSystemVersion</key>
+            <string>26.0</string>
+            <!-- The class the system asks for. Same name as the `@objc` one in
+                 Sources/\(target)/SaverView.swift. -->
+            <key>NSPrincipalClass</key>
+            <string>\(saverClass)</string>
+        </dict>
+        </plist>
+        """
+    }
+
+    private static func saverBuildScript(_ request: ProjectRequest, target: String) -> String {
+        """
+        #!/bin/sh
+        # Build the sketch and put the .saver folder around it.
+        #
+        #   ./build.sh              build it here
+        #   ./build.sh --install    build it and put it on this machine
+        #
+        set -e
+        cd "$(dirname "$0")"
+
+        NAME="\(request.folderName)"
+        TARGET="\(target)"
+        SAVER="$NAME.saver"
+
+        swift build -c release
+        # Asked for, not assumed: the two build systems the toolchain ships put
+        # the binary in different places.
+        BIN="$(swift build -c release --show-bin-path)"
+
+        rm -rf "$SAVER"
+        mkdir -p "$SAVER/Contents/MacOS" "$SAVER/Contents/Resources"
+        cp "$BIN/lib$TARGET.dylib" "$SAVER/Contents/MacOS/$TARGET"
+        cp Info.plist "$SAVER/Contents/Info.plist"
+
+        # The framework's own files: shader segments, fonts, tables. They are
+        # looked for beside the running program, and the running program here
+        # belongs to the system, so they travel inside the saver instead.
+        for bundle in "$BIN"/*.bundle; do
+            [ -e "$bundle" ] || continue
+            cp -R "$bundle" "$SAVER/Contents/Resources/"
+        done
+
+        # Unsigned, the system refuses to load it. This signature is good on this
+        # machine; handing it to somebody else needs a Developer ID and a trip
+        # through notarization.
+        codesign --force --sign - --timestamp=none "$SAVER"
+        echo "Built $SAVER"
+
+        if [ "$1" = "--install" ]; then
+            DEST="$HOME/Library/Screen Savers"
+            mkdir -p "$DEST"
+            rm -rf "$DEST/$SAVER"
+            cp -R "$SAVER" "$DEST/"
+            # The host process keeps the old copy loaded until it is told to go.
+            killall legacyScreenSaver 2>/dev/null || true
+            killall ScreenSaverEngine 2>/dev/null || true
+            echo "Installed to $DEST/$SAVER"
+            echo "Pick it in System Settings, under Screen Saver."
+        fi
+        """
+    }
+
+    private static func saverReadme(_ request: ProjectRequest, target: String) -> String {
+        """
+        # \(request.folderName)
+
+        \(request.template.summary)
+
+        An Ollin sketch wrapped as a screen saver, so it runs when the machine is left alone.
+
+        ## Putting it on this machine
+
+        ```sh
+        ./build.sh --install
+        ```
+
+        Then open System Settings, go to Screen Saver, and pick **\(request.folderName)** from the list. Run `./build.sh --install` again after every edit; the script tells the host process to let go of the old copy for you.
+
+        ## Working on it
+
+        A screen saver is a slow way to see a change. Open the same sketch in a window instead, where it reloads as you save:
+
+        ```sh
+        ollin Sources/\(target)/Sketch.swift
+        ```
+
+        The sketch is an ordinary sketch. Everything you would write in a window works here, with two differences the setting makes necessary:
+
+        - **It gets no input.** A key or a click ends a screen saver, so the sketch never sees either. `mouseX`, `mouseY`, and `key` stay where they started.
+        - **It fills the display.** The sketch declares `windowMode` as `.resizable`, so `width` and `height` are the screen's. Take that line out and the canvas keeps its own proportions instead, centered on black.
+
+        ## Giving it to somebody else
+
+        `build.sh` signs the saver so this machine will load it. Another machine will not: for that it needs a Developer ID signature and a trip through notarization. Until then, `\(request.folderName).saver` is yours alone.
+
+        ## Where things go
+
+        The sketch and everything it loads live in `Sources/\(target)/`. `SaverView.swift` is the small class the system asks for by name, and `Info.plist` is where that name is written down. The two have to agree.
+        """
+    }
+
+    /// The saver folder is built, so it is not kept.
+    private static let saverGitignore = """
+    .build/
+    .swiftpm/
+    .DS_Store
+    *.xcodeproj
+    *.saver
+    """
 
     private static func readme(_ request: ProjectRequest, target: String) -> String {
         let wired = request.resolvedCapabilities

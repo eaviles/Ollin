@@ -88,7 +88,7 @@ Several overlap the [iPhone sensor array](#iphone-as-a-sensor-array); these are 
 Ways a sketch leaves the window:
 
 - **Haptics.** A `draw()` that also emits a felt pattern synced to the visuals, on Force Touch trackpads and on the phone.
-- **The OS as a canvas.** Wrap a sketch as a macOS screen saver, a dynamic wallpaper, a desktop widget, or a menu-bar piece, so the output lives in the system rather than a window.
+- **The OS as a canvas.** Wrap a sketch as a dynamic wallpaper, a desktop widget, or a menu-bar piece, so the output lives in the system rather than a window.
 
 See the [design notes](DESIGN-NOTES.md#new-output-surfaces).
 
