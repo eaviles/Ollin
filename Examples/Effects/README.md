@@ -26,5 +26,13 @@ Layered effects: draw into off-screen layers, filter them on the GPU, and compos
 | [Compose](Compose/Sketch.swift) | the `compose { }` DSL: a blurred backdrop, a bloomed ring, a screened lattice |
 | [Aside](Aside/Sketch.swift) | multi-input effects: a displacement map and a spotlight mask fed into layers (`aside { }`) |
 | [Defocus](Defocus/Sketch.swift) | depth of field via the two-input combine: a layer defocused by a hand-drawn depth map (`combined(with:.defocus)`) |
+| [Dispersion](Dispersion/Sketch.swift) | chromatic aberration as a family: the five ways to pull the channels apart, the spectral tap budget, and the layer-driven split (`.chromaticAberration(mode:)` / `.disperse`) |
+| [DesignFilters](DesignFilters/Sketch.swift) | the design filters: liquid chrome, thermal heatmap, and gem smoke read a layer's alpha shape; fluted glass, water, and paper texture transform the picture |
+| [DesignPatterns](DesignPatterns/Sketch.swift) | nine animated design-pattern generators, each one `generate` call: filaments, a smoke ring, revolving panes, a spiral, wavy stripes, … |
+| [MeshGradient](MeshGradient/Sketch.swift) | the mesh-gradient generator: color blobs drifting on their own orbits over a domain-warped field |
+| [DiffusionCurves](DiffusionCurves/Sketch.swift) | a few marks held as color sources and the color let out between them until it settles (`.diffuse`) |
+| [DistanceField](DistanceField/Sketch.swift) | a layer asked how far the nearest edge is, and which way, at every pixel |
+| [DomainColoring](DomainColoring/Sketch.swift) | a complex function painted over the plane it acts on, its zeros and poles read off the color wheels |
+| [SeamlessClone](SeamlessClone/Sketch.swift) | one layer dropped into another so the join disappears: the patch keeps its marks and takes the surroundings' color |
 
 Run one with `swift run Example-Effects-<Name>`, e.g. `swift run Example-Effects-Bloom`.

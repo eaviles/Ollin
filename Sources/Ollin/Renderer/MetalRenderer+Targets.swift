@@ -997,6 +997,19 @@ extension MetalRenderer {
         }
     }
 
+    /// Resolve a spectral-dispersion quality tier to a wavelength tap count. The counts
+    /// are odd so one tap lands exactly on green, which keeps the middle of the spectrum
+    /// where the unsplit picture is. Three taps (the `spectral: false` default) are the
+    /// three hard ghosts; past about 15 the smear is already continuous, so `.detail`
+    /// buys smoothness in the widest splits rather than a different look.
+    func resolveDispersionTaps(_ quality: RenderQuality) -> Int {
+        switch effectiveQuality(quality) {
+        case .performance: return 7
+        case .default:     return 15
+        case .detail:      return 31
+        }
+    }
+
     /// Resolve a raymarch quality setting to the camera-march and self-shadow step budgets.
     /// The `.default` tier returns the pre-dial constants (128 / 48) **exactly**, so a sketch
     /// that sets no quality renders byte-identically to before. The step budget is a fidelity

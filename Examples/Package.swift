@@ -120,6 +120,7 @@ let package = Package(
         example("Effects/DesignFilters"),
         example("Effects/Distortion"),
         example("Effects/DistanceField"),
+        example("Effects/Dispersion"),
         example("Simulation/GrayScott"),
         example("Simulation/GameOfLife"),
         example("Simulation/BriansBrain"),

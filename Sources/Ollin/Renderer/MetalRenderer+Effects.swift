@@ -437,8 +437,14 @@ extension MetalRenderer {
             return pass("ollin_fx_sharpen", [input], [SIMD4(texel.x, texel.y, Float(amount), 0)])
         case let .vignette(amount, radius, softness):
             return pass("ollin_fx_vignette", [input], [SIMD4(Float(amount), Float(radius), Float(softness), aspect)])
-        case .chromaticAberration(let amount):
-            return pass("ollin_fx_chromatic", [input], [f(amount, 0, 0, 0)])
+        case let .chromaticAberration(amount, mode, spectral, quality):
+            // Texture 1 is the per-pixel drive, unused here (the driven flag is 0), so the
+            // input stands in for it and the binding stays valid, the same stand-in the
+            // SSAO pass makes for its optional normal buffer.
+            let taps = spectral ? Float(resolveDispersionTaps(quality)) : 3
+            return pass("ollin_fx_chromatic", [input, input],
+                        [SIMD4(Float(amount), mode.rawIndex, mode.shapeA, mode.shapeB),
+                         SIMD4(aspect, taps, 0, 0), texel])
         case let .halftone(scale, angle):
             return pass("ollin_fx_halftone", [input], [SIMD4(Float(scale), Float(angle), aspect, 0)])
         case let .dither(levels, pixelSize):
@@ -996,6 +1002,13 @@ extension MetalRenderer {
             return pass("ollin_fx_mask", [SIMD4(channel.rawIndex, invert ? 1 : 0, 0, 0)])
         case let .displace(amount):
             return pass("ollin_fx_displace", [SIMD4(Float(amount), 0, 0, 0)])
+        case let .disperse(amount, mode, spectral, quality):
+            let taps = spectral ? Float(resolveDispersionTaps(quality)) : 3
+            let aspect = Float(width) / Float(max(1, height))
+            return pass("ollin_fx_chromatic",
+                        [SIMD4(Float(amount), mode.rawIndex, mode.shapeA, mode.shapeB),
+                         SIMD4(aspect, taps, 1, 0),
+                         SIMD4(1 / Float(width), 1 / Float(height), 0, 0)])
         case let .mix(amount):
             return pass("ollin_fx_mix", [SIMD4(Float(amount), 0, 0, 0)])
         case let .seamlessClone(amount, threshold):

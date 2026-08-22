@@ -48,6 +48,10 @@ public struct Combine: Sendable {
         /// Push the base's pixels around: offset each sample by the aux's red/green
         /// recentred to `±amount` (a fraction of the layer), the classic displacement map.
         case displace(amount: Double)
+        /// Chromatic aberration whose split is scaled per pixel by the aux layer's
+        /// luminance, so dispersion sits only where something is.
+        case disperse(amount: Double, mode: Filter.Dispersion, spectral: Bool,
+                      quality: RenderQuality)
         /// Cross-dissolve the base toward the aux by `amount` (0 = base, 1 = aux).
         case mix(amount: Double)
         /// Depth-of-field: blur the base by the aux read as a depth map. The band
@@ -106,6 +110,28 @@ public struct Combine: Sendable {
     /// a noise or gradient layer for ripples, smearing, and refraction looks.
     public static func displace(amount: Double = 0.05) -> Combine {
         Combine(kind: .displace(amount: amount))
+    }
+
+    /// Disperse: chromatic aberration over the base layer, its `amount` scaled per
+    /// pixel by the aux layer's luminance. A white aux splits by the full `amount`, a
+    /// black one leaves the base alone, so the aux decides *where* the color comes
+    /// apart rather than how much. The natural sibling of `displace`, and the way to
+    /// put a fringe on one thing in a scene instead of on the whole frame.
+    ///
+    /// ```swift
+    /// let heat = renderTarget()
+    /// withTarget(heat) { fill(.white); drawCircle(mouseX, mouseY, 220) }
+    /// drawImage(scene.combined(with: heat, .disperse(amount: 0.02)).image, 0, 0)
+    /// ```
+    ///
+    /// `mode`, `spectral`, and `quality` mean exactly what they mean on
+    /// `Filter.chromaticAberration(amount:mode:spectral:quality:)`.
+    public static func disperse(amount: Double = 0.02,
+                                mode: Filter.Dispersion = .magnify,
+                                spectral: Bool = false,
+                                quality: RenderQuality = .default) -> Combine {
+        Combine(kind: .disperse(amount: amount, mode: mode,
+                                spectral: spectral, quality: quality))
     }
 
     /// Mix (cross-dissolve): blend the base toward the aux layer by `amount`, a

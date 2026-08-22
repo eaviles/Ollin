@@ -440,17 +440,123 @@ fragment float4 ollin_fx_vignette(PresentOut in [[stage_in]],
     return float4(s.rgb * v, s.a);
 }
 
-// chromaticAberration: sample R and B offset radially out from center (params.x = amount).
+// MARK: - Chromatic aberration (dispersion)
+//
+// One fragment serves the whole family. The mode decides *where* each spectral
+// tap reads from, the tap count decides whether the split reads as three hard
+// ghosts or as a continuous smear, and texture 1 (when the driven flag is set)
+// scales the amount per pixel so the split can sit only where something is.
+//
+//   params[0] = (amount, mode, shapeA, shapeB)
+//   params[1] = (aspect, taps, driven, 0)
+//   params[2] = (texelX, texelY, 0, 0)
+//
+// Modes: 0 lens (a radial slide shaped by shapeA = radius, shapeB = falloff),
+// 1 offset (a flat shift at shapeA radians), 2 magnify (a per-channel scale
+// about the center), 3 edges (along the local luminance gradient, scaled by its
+// strength), 4 axial (the channels differ in focus rather than in position).
+//
+// Two rules run through all of it. The split is worked out in a space where one
+// unit is one unit in both directions and written back into uv at the end, so a
+// wide frame splits by as much vertically as it does horizontally and the
+// "radial" direction really is radial. And every tap is unpremultiplied before
+// its channel is taken and the result repremultiplied by the coverage the pixel
+// already had: taking red from one tap, green from another and alpha from a
+// third leaves texels whose color does not match their coverage, which shows as
+// a darkened fringe along a layer's own soft edges.
+
+// A tap's spectral response over s in [0,1]: three overlapping cosine lobes with
+// red at 0, green at 0.5 and blue at 1. At three taps this is exactly the R/G/B
+// basis, so the cheap three-ghost split and the continuous smear are one loop.
+// The caller normalizes the accumulated weight per channel, which is what keeps
+// a zero amount an identity instead of a tint.
+static inline float3 ollin_dispersion_weight(float s) {
+    return max(cos((s - float3(0.0, 0.5, 1.0)) * M_PI_F), 0.0);
+}
+
+// One tap of the axial mode: a golden-angle disc of `radius` (in the corrected
+// space), which is what puts a wavelength out of focus rather than off position.
+static inline float3 ollin_dispersion_defocus(texture2d<float> src, sampler samp,
+                                              float2 uv, float radius, float aspect) {
+    if (radius <= 1e-6) return ollin_unpremul(src.sample(samp, uv));
+    const int n = 12;
+    float3 sum = float3(0.0);
+    for (int j = 0; j < n; ++j) {
+        float a = float(j) * 2.39996323;                            // golden angle
+        float rr = radius * sqrt((float(j) + 0.5) / float(n));      // uniform over the disc
+        float2 o = float2(cos(a), sin(a)) * rr / float2(aspect, 1.0);
+        sum += ollin_unpremul(src.sample(samp, uv + o));
+    }
+    return sum / float(n);
+}
+
 fragment float4 ollin_fx_chromatic(PresentOut in [[stage_in]],
                                    texture2d<float> src [[texture(0)]],
+                                   texture2d<float> drive [[texture(1)]],
                                    sampler samp [[sampler(0)]],
                                    constant float4 *params [[buffer(0)]]) {
     float amount = params[0].x;
-    float2 dir = (in.uv - 0.5) * amount;
-    float4 r = src.sample(samp, in.uv + dir);
-    float4 g = src.sample(samp, in.uv);
-    float4 b = src.sample(samp, in.uv - dir);
-    return float4(r.r, g.g, b.b, g.a);
+    int mode = int(params[0].y + 0.5);
+    float shapeA = params[0].z, shapeB = params[0].w;
+    float aspect = params[1].x;
+    int taps = max(3, int(params[1].y + 0.5));
+    bool driven = params[1].z > 0.5;
+    float2 texel = params[2].xy;
+
+    float4 center = src.sample(samp, in.uv);
+    if (driven) {
+        amount *= clamp(ollin_luma(ollin_unpremul(drive.sample(samp, in.uv))), 0.0, 1.0);
+    }
+    if (amount == 0.0) return center;
+
+    // What one unit of spectral position moves a sample by, in uv.
+    float2 corrected = (in.uv - 0.5) * float2(aspect, 1.0);
+    float2 step = float2(0.0);
+    float blurSpan = 0.0;
+    if (mode == 0) {                        // lens: a radial slide, shaped
+        float corner = length(float2(aspect, 1.0)) * 0.5;
+        float rn = length(corrected) / max(corner, 1e-5);           // 0 center … 1 corner
+        float t = clamp((rn - shapeA) / max(1e-4, 1.0 - shapeA), 0.0, 1.0);
+        float2 dir = length(corrected) > 1e-6 ? normalize(corrected) : float2(0.0);
+        step = dir * (corner * pow(t, shapeB) * amount) / float2(aspect, 1.0);
+    } else if (mode == 1) {                 // offset: a flat shift
+        step = float2(cos(shapeA), sin(shapeA)) * amount / float2(aspect, 1.0);
+    } else if (mode == 2) {                 // magnify: a per-channel scale
+        step = (in.uv - 0.5) * amount;
+    } else if (mode == 3) {                 // edges: along the luminance gradient
+        float l[9];
+        for (int j = 0; j < 9; ++j) {
+            float2 o = float2(float(j % 3) - 1.0, float(j / 3) - 1.0) * texel;
+            l[j] = ollin_luma(ollin_unpremul(src.sample(samp, in.uv + o)));
+        }
+        float gx = (l[2] + 2.0 * l[5] + l[8]) - (l[0] + 2.0 * l[3] + l[6]);
+        float gy = (l[6] + 2.0 * l[7] + l[8]) - (l[0] + 2.0 * l[1] + l[2]);
+        float2 g = float2(gx, gy);
+        float m = length(g);
+        // The direction is across the edge; the strength is how much of an edge it
+        // is, so a flat region keeps its color and only the edge fringes. The
+        // gradient is taken over one texel each way, so it already lives in the
+        // corrected space and comes back into uv the same way the others do.
+        step = (m > 1e-5 ? g / m : float2(0.0)) * (amount * clamp(m, 0.0, 1.0))
+             / float2(aspect, 1.0);
+    } else {                                // axial: a difference in focus
+        blurSpan = abs(amount);
+    }
+    // Which end of the spectrum stays sharp: red on one side of focus, blue on
+    // the other, which is what turns a highlight green one way and magenta the other.
+    float sharpEnd = amount > 0.0 ? 0.0 : 1.0;
+
+    float3 acc = float3(0.0), wsum = float3(0.0);
+    for (int i = 0; i < taps; ++i) {
+        float s = float(i) / float(taps - 1);
+        float3 w = ollin_dispersion_weight(s);
+        float3 c = (mode == 4)
+            ? ollin_dispersion_defocus(src, samp, in.uv, blurSpan * abs(s - sharpEnd), aspect)
+            : ollin_unpremul(src.sample(samp, in.uv + step * (1.0 - 2.0 * s)));
+        acc += c * w;
+        wsum += w;
+    }
+    return ollin_premul(acc / max(wsum, float3(1e-5)), center.a);
 }
 
 // halftone: a rotated dot screen, dot size tracking luminance (params: scale, angle, aspect).

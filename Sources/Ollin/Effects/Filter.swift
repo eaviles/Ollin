@@ -41,6 +41,69 @@ public struct Filter: Sendable {
         }
     }
 
+    /// How a chromatic-aberration filter pulls the channels apart. The members are
+    /// different pictures rather than one look at different strengths: a lens, a
+    /// misregistered plate, a fringe that only appears at edges, and a difference in
+    /// focus rather than in position. Every one of them hands back the layer unchanged
+    /// at `amount: 0`, so the knob is honest and an A/B costs nothing.
+    public enum Dispersion: Sendable, Equatable {
+        /// A per-channel scale of the frame about its center: the split grows straight
+        /// with the distance from the middle, so straight lines stay straight and the
+        /// fringe is exactly radial everywhere. The physically honest form of lateral
+        /// color, and the default.
+        case magnify
+        /// A radial slide whose length you shape: `radius` (0…1, in fractions of the
+        /// half-diagonal) is where the fringe starts to show at all, and `falloff` is the
+        /// exponent it grows by past there (about 2 reads like glass). Unlike `.magnify`
+        /// the slide is no longer proportional to the radius, so a straight line bends a
+        /// little, which is what real edge softening looks like. `.lens(radius: 0,
+        /// falloff: 1)` is `.magnify` again.
+        case lens(radius: Double = 0.25, falloff: Double = 2)
+        /// One flat shift for every pixel, at `angle` radians: the middle splits as much
+        /// as the corner. This is misregistration rather than optics, the look of a plate
+        /// printed a hair off, an anaglyph, or a badly aligned scan.
+        case offset(angle: Double = 0)
+        /// A fringe only where there is an edge: the split runs along the local
+        /// luminance gradient and is scaled by how strong that gradient is, so a flat
+        /// region keeps its color. Real color fringing is only visible at high-contrast
+        /// edges, so putting it exactly there reads as a lens where a global split reads
+        /// as a filter.
+        case edges
+        /// Longitudinal (axial) color: the channels differ in *focus* rather than in
+        /// position, so one end of the spectrum is sharp while the other is soft. A
+        /// positive `amount` keeps red sharp, a negative one keeps blue sharp, which is
+        /// what turns an out-of-focus highlight green on one side of focus and magenta
+        /// on the other. Most of the fast-lens-wide-open look, and it pairs with
+        /// `Combine.defocus` rather than replacing it.
+        case axial
+
+        /// The shader's mode index (kept in step with `ollin_fx_chromatic`).
+        var rawIndex: Float {
+            switch self {
+            case .lens:    return 0
+            case .offset:  return 1
+            case .magnify: return 2
+            case .edges:   return 3
+            case .axial:   return 4
+            }
+        }
+
+        /// The first shape scalar: a lens's `radius`, an offset's `angle`, else unused.
+        var shapeA: Float {
+            switch self {
+            case .lens(let radius, _): return Float(min(max(radius, 0), 0.999))
+            case .offset(let angle):   return Float(angle)
+            default:                   return 0
+            }
+        }
+
+        /// The second shape scalar: a lens's `falloff`, else unused.
+        var shapeB: Float {
+            if case .lens(_, let falloff) = self { return Float(max(0, falloff)) }
+            return 0
+        }
+    }
+
     /// Which value in a layer a measured distance field cuts at its threshold: the
     /// coverage a shape was drawn with, its brightness, or one color channel.
     public enum FieldSource: Sendable {
@@ -120,8 +183,12 @@ public struct Filter: Sendable {
         case sharpen(amount: Double)
         /// Darken toward the corners; `radius` sets where it starts, `softness` the falloff.
         case vignette(amount: Double, radius: Double, softness: Double)
-        /// Split the channels radially out from the center by `amount` (lens fringing).
-        case chromaticAberration(amount: Double)
+        /// Pull the channels apart by `amount`, the way `mode` describes (lens fringing,
+        /// misregistration, an edge-only fringe, a difference in focus). `spectral` trades
+        /// the three hard ghosts for a continuous smear taken over a `quality`-sized set of
+        /// wavelength taps.
+        case chromaticAberration(amount: Double, mode: Dispersion, spectral: Bool,
+                                 quality: RenderQuality)
         /// Dot screen: cells `scale` across, rotated by `angle` (radians).
         case halftone(scale: Double, angle: Double)
         /// Ordered (Bayer) dithering down to `levels` steps per channel, the cells
@@ -371,10 +438,35 @@ public struct Filter: Sendable {
                                radius: max(0, radius), softness: max(0.001, softness)))
     }
 
-    /// Chromatic aberration: split the red and blue channels radially out from the
-    /// center, like cheap-lens fringing. `amount` is the split in fractions of the canvas.
-    public static func chromaticAberration(amount: Double = 0.005) -> Filter {
-        Filter(kind: .chromaticAberration(amount: amount))
+    /// Chromatic aberration: pull the color channels apart, the way cheap glass, a
+    /// misprinted plate, or a lens wide open does. `amount` is the split in fractions
+    /// of the canvas, and `mode` chooses which of those pictures you get (see
+    /// `Dispersion`; the default scales each channel about the center).
+    ///
+    /// ```swift
+    /// layer.filtered(.chromaticAberration(amount: 0.012))                     // a lens
+    /// layer.filtered(.chromaticAberration(amount: 0.01, mode: .offset(angle: .pi / 4)))
+    /// layer.filtered(.chromaticAberration(amount: 0.02, mode: .edges))        // edges only
+    /// ```
+    ///
+    /// `spectral: true` takes a whole set of wavelength taps along the split instead of
+    /// three, which turns three hard ghosts into a continuous rainbow smear; it is the
+    /// single largest jump in quality here, and it costs a tap count the `quality` tier
+    /// sets. `amount: 0` always hands the layer back unchanged.
+    ///
+    /// Every tap is unpremultiplied before its channel is read, so a layer with soft
+    /// edges of its own keeps them instead of growing a dark rim. Past the frame edge
+    /// the sampler clamps, so a flat `.offset` smears its border strip inward, the way
+    /// a misregistered plate does.
+    ///
+    /// See `Combine.disperse(amount:mode:spectral:quality:)` to drive the amount from a
+    /// second layer.
+    public static func chromaticAberration(amount: Double = 0.005,
+                                           mode: Dispersion = .magnify,
+                                           spectral: Bool = false,
+                                           quality: RenderQuality = .default) -> Filter {
+        Filter(kind: .chromaticAberration(amount: amount, mode: mode,
+                                          spectral: spectral, quality: quality))
     }
 
     /// Halftone dot screen: render the image as a grid of dots whose size tracks

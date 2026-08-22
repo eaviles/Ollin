@@ -411,7 +411,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | `Drawing/Curves.md` (classic curves: phyllotaxis, lissajous, rose, superellipse, supershape, hypotrochoid/epitrochoid, `guilloche`+`Rosette`, `Harmonograph`, Chaikin `smoothed`) | Ch 15 | taught ("Curves you can write down" with a nine-panel figure; the superellipse/supershape pair and the guilloche added with their own paragraphs, snippet lines, and the integer-m closure rule: the golden angle and why it can't line up, the frequency ratio, petal parity, whole-number gears, damped pendulums, corner cutting, and the fit-by-points rule) |
 | `Drawing/Morphing.md` (shape morphing: `ShapeMorph`, `Tweenable` geometry) | Ch 15 | taught ("One shape becoming another" with a five-step figure: build-once-read-cheap, exact originals at the ends, unmatched contours growing from their own center, and timing living outside the read) |
 | `Drawing/SVG.md` (SVG import: `loadSVG`, `drawSVG`) | Ch 15 | taught |
-| `Drawing/Effects.md` (targets, filters, compose, combine) | Ch 16 | taught (targets/filters/generators/compose/feedback taught; combine + aside pointed) |
+| `Drawing/Effects.md` (targets, filters, compose, combine) | Ch 16 | taught (targets/filters/generators/compose/feedback taught; chromatic aberration's five modes plus the spectral tap budget and the layer-driven `.dispersed(by:)` taught in "One filter, five pictures: chromatic aberration" with the Dispersion figure; combine + aside pointed) |
 | Blend modes (`Drawing/Drawing.md`) | Ch 16 | taught |
 | Feedback (`Drawing/Effects.md`) | Ch 16 | taught |
 | `Drawing/Accumulation.md` (noClear) | Ch 16; used in Ch 19 | taught |

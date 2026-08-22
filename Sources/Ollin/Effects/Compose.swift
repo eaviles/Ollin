@@ -113,6 +113,29 @@ public struct ComposeLayer {
         return copy
     }
 
+    /// Pull this layer's colors apart where an `aside` layer is bright: chromatic
+    /// aberration whose amount is scaled per pixel by the aside's luminance, so the
+    /// fringe sits on one thing rather than on the whole frame. The aside is drawn
+    /// only to steer the split, not composited.
+    ///
+    /// ```swift
+    /// layer { drawScene() }
+    ///     .dispersed(by: aside { fill(.white); drawCircle(mouseX, mouseY, 220) }, amount: 0.02)
+    /// ```
+    ///
+    /// `mode`, `spectral`, and `quality` mean what they mean on
+    /// `Filter.chromaticAberration(amount:mode:spectral:quality:)`.
+    public func dispersed(by aside: ComposeLayer, amount: Double = 0.02,
+                          mode: Filter.Dispersion = .magnify,
+                          spectral: Bool = false,
+                          quality: RenderQuality = .default) -> ComposeLayer {
+        var copy = self
+        copy.steps.append(.combine(aside: aside,
+                                   op: .disperse(amount: amount, mode: mode,
+                                                 spectral: spectral, quality: quality)))
+        return copy
+    }
+
     /// Cross-dissolve this layer toward an `aside` layer by `amount` (0 = this layer,
     /// 1 = the aside). The aside is drawn only to feed the mix, not composited.
     public func mixed(with aside: ComposeLayer, amount: Double = 0.5) -> ComposeLayer {

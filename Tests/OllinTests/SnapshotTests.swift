@@ -158,6 +158,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("effects-filters",
                  note: "A sample of the extended catalog (vibrance, oilPaint (Kuwahara), emboss, cmykHalftone, kaleidoscope, scanlines), one per family. Pins the added dispatch and the new fragments: a straight-color tone op, a multi-tap variance gather, a neighborhood relief, a print screen, a uv warp, and a retro line pass.",
                  make: { EffectsFilters() }),
+    SnapshotCase("effects-dispersion",
+                 note: "The chromatic-aberration family over one fixed scene: the default per-channel scale, the same split taken over a spectral tap budget, a flat offset, the edge-only fringe, longitudinal (axial) color, and the layer-driven disperse combine. Pins each arm of the one dispersion fragment, the normalized spectral weights (a flat field must not tint), the unpremultiply/repremultiply around the split, and the aux-driven amount.",
+                 make: { EffectsDispersion() }),
     SnapshotCase("effects-relight",
                  note: "The relight height-map material pass (metal), the two-tone ordered dither, and the off-center swirl and ripple warps at fixed parameters. Pins the new fragments and dispatches, and the center plumbing on the radial warps.",
                  make: { EffectsRelight() }),
@@ -6195,6 +6198,45 @@ private final class EffectsFilters: Sketch {
         for (i, filter) in filters.enumerated() {
             let x = Double(i % 3) * 85, y = Double(i / 3) * 128
             drawImage(scene.filtered(filter).image, in: Rectangle(x: x, y: y, width: 85, height: 128))
+        }
+    }
+}
+
+/// The chromatic-aberration family over one fixed scene: the default per-channel
+/// scale, the same split taken over a spectral tap budget, a flat offset, the
+/// edge-only fringe, longitudinal (axial) color, and the layer-driven combine.
+/// Deterministic (no time/random), so it pins each arm of the dispersion fragment.
+private final class EffectsDispersion: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        let scene = renderTarget()
+        withTarget(scene) {
+            background(Color(hex: 0x0B1020))
+            noStroke()
+            fill(Color(hex: 0xF2F0E6)); drawCircle(width * 0.32, height * 0.3, 42)
+            fill(Color(hex: 0xE8483C)); drawRect(width * 0.56, height * 0.14, 92, 58)
+            stroke(Color(hex: 0xF2F0E6)); strokeWeight(2); noFill()
+            for i in 0 ..< 8 { drawLine(24, 150 + Double(i) * 13, 232, 150 + Double(i) * 13) }
+        }
+        // Half black, half white: the driven tile may only split on the right.
+        let drive = renderTarget()
+        withTarget(drive) {
+            background(.black)
+            noStroke(); fill(.white); drawRect(128, 0, 128, 256)
+        }
+        let tiles: [RenderTarget] = [
+            scene.filtered(.chromaticAberration(amount: 0.02)),
+            scene.filtered(.chromaticAberration(amount: 0.02, spectral: true, quality: .detail)),
+            scene.filtered(.chromaticAberration(amount: 0.012, mode: .offset(angle: .pi / 5))),
+            scene.filtered(.chromaticAberration(amount: 0.03, mode: .edges)),
+            scene.filtered(.chromaticAberration(amount: 0.02, mode: .axial)),
+            scene.combined(with: drive, .disperse(amount: 0.03)),
+        ]
+        for (i, tile) in tiles.enumerated() {
+            let x = Double(i % 3) * 85, y = Double(i / 3) * 128
+            drawImage(tile.image, in: Rectangle(x: x, y: y, width: 85, height: 128))
         }
     }
 }
