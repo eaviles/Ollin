@@ -81,6 +81,10 @@ final class MetalRenderer {
         /// Like `isPresent`, an exception to the geometry-pipeline shape kept in the
         /// same cache so live shader reload rebuilds it too.
         var isEffect = false
+        /// The attachment format an effect pass writes. `nil` is the shared linear-float
+        /// intermediate every filter uses; a wider one is for a pass whose *intermediate*
+        /// magnitudes leave half float's range, which the convolution pyramid's do.
+        var effectFormat: MTLPixelFormat? = nil
         /// Force `rasterSampleCount = 1` instead of the view's MSAA count. The half-res
         /// raymarch pass (and its upsample composite) run single-sample, since the raymarch's
         /// silhouette AA is analytic, so it needs no MSAA, and the half-res target is a
@@ -389,8 +393,9 @@ final class MetalRenderer {
                                                   isPresent: true, isProjected: true)
         // an effects filter pass: a fullscreen-triangle `fragment` (sharing the
         // present vertex) writing the linear-float intermediate, single-sample, replace.
-        static func effect(_ fragment: String) -> PipelineKey {
-            PipelineKey(vertex: "ollin_present_vertex", fragment: fragment, isEffect: true)
+        static func effect(_ fragment: String, format: MTLPixelFormat? = nil) -> PipelineKey {
+            PipelineKey(vertex: "ollin_present_vertex", fragment: fragment,
+                        isEffect: true, effectFormat: format)
         }
         // depth-only shadow pass (mesh geometry from the light's point of view)
         static let meshShadow = PipelineKey(vertex: "ollin_mesh_shadow_vertex",

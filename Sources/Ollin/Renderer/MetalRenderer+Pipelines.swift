@@ -295,7 +295,7 @@ extension MetalRenderer {
         descriptor.vertexFunction = vertexFunction
         descriptor.fragmentFunction = fragmentFunction
         descriptor.rasterSampleCount = 1
-        descriptor.colorAttachments[0].pixelFormat = linearFormat
+        descriptor.colorAttachments[0].pixelFormat = key.effectFormat ?? linearFormat
         return try device.makeRenderPipelineState(descriptor: descriptor)
     }
 

@@ -61,7 +61,13 @@ public struct Combine: Sendable {
         /// across; `intensity` scales the darkening, `bias` rejects self-occlusion, and
         /// `quality` sets the sample-count tier.
         case ambientOcclusion(radius: Double, intensity: Double, bias: Double, quality: RenderQuality)
-        /// Screen-space reflections: reflect the rendered scene onto its own surfaces,
+        /// Seamless clone: paste the aux layer into the base so the join disappears,
+        /// the patch keeping its own detail and taking the base's color and brightness.
+        /// The aux's opaque region is where it lands; `amount` dials the correction
+        /// (0 = a plain paste, seam and all). `threshold` is the alpha a texel needs
+        /// to count as covered.
+        case seamlessClone(amount: Double, threshold: Double)
+                /// Screen-space reflections: reflect the rendered scene onto its own surfaces,
         /// reading the aux as a depth map and the base's mesh normals. Each pixel's
         /// reflection ray is marched through screen space; where it meets the scene the
         /// base color there is sampled and composited back, weighted by Fresnel, an edge
@@ -188,6 +194,43 @@ public struct Combine: Sendable {
                                         bias: Double = 0.05, quality: RenderQuality = .default) -> Combine {
         Combine(kind: .ambientOcclusion(radius: max(0.0001, radius), intensity: max(0, intensity),
                                         bias: max(0, bias), quality: quality))
+    }
+
+    /// Seamless clone: drop the aux layer into the base so the join disappears. The
+    /// patch keeps its own detail and texture but takes on the color and brightness of
+    /// whatever surrounds it, which is what stops a cut-out reading as a cut-out.
+    ///
+    /// Draw the patch into a layer of its own, transparent everywhere else: **its
+    /// opaque region is where it lands**, so the shape you draw is the shape that gets
+    /// cloned. Position it by drawing it where you want it.
+    ///
+    /// ```swift
+    /// let backdrop = renderTarget()
+    /// withTarget(backdrop) { drawImage(wall, 0, 0) }
+    /// let patch = renderTarget()
+    /// withTarget(patch) { drawImage(leaf, mouseX - 120, mouseY - 120) }   // transparent elsewhere
+    /// drawImage(backdrop.combined(with: patch, .seamlessClone()).image, 0, 0)
+    /// ```
+    ///
+    /// What it does is worth knowing, because it explains what it will and won't fix.
+    /// Around the rim of the patch it measures how far the patch's color sits from the
+    /// base's, then spreads that difference across the inside of the patch as smoothly
+    /// as it can (the same settling the [`.diffuse`](Filter.swift) filter runs). Adding
+    /// that back means the rim matches the base exactly, and the inside is nudged by
+    /// the gentlest correction that reaches it. So a patch cut from a differently lit
+    /// photo blends; a patch whose *rim* crosses a hard edge in the base smears that
+    /// edge inward, which is the technique's own limit, not a bug. Keep the rim on
+    /// quiet ground.
+    ///
+    /// - Parameters:
+    ///   - amount: how much of the correction to apply. 1 is fully seamless; 0 is a
+    ///     plain paste with the seam left in, which is the useful before picture.
+    ///   - threshold: the alpha a texel needs to count as part of the patch. The rim
+    ///     is found at this level, so raise it if a soft-edged patch reads as larger
+    ///     than it looks.
+    public static func seamlessClone(amount: Double = 1, threshold: Double = 0.5) -> Combine {
+        Combine(kind: .seamlessClone(amount: min(max(amount, 0), 1),
+                                     threshold: min(max(threshold, 0.01), 1)))
     }
 
     /// Screen-space reflections: make the scene reflect off its own surfaces (a glossy

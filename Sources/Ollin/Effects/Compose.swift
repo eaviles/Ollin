@@ -121,6 +121,27 @@ public struct ComposeLayer {
         return copy
     }
 
+    /// Clone an `aside` layer into this one so the join disappears: the aside keeps
+    /// its own detail and takes on this layer's color and brightness. Where the aside
+    /// is opaque is where it lands, so draw it transparent everywhere else. It is
+    /// drawn only to feed the clone, not composited on its own.
+    ///
+    /// ```swift
+    /// layer { drawImage(wall, 0, 0) }
+    ///     .cloned(from: aside { drawImage(leaf, 300, 200) })
+    /// ```
+    ///
+    /// `amount` dials the correction, with 0 leaving the seam in; `threshold` is the
+    /// alpha a texel needs to count as part of the patch. See
+    /// `Combine.seamlessClone(amount:threshold:)`.
+    public func cloned(from aside: ComposeLayer, amount: Double = 1,
+                       threshold: Double = 0.5) -> ComposeLayer {
+        var copy = self
+        copy.steps.append(.combine(aside: aside,
+                                   op: .seamlessClone(amount: amount, threshold: threshold)))
+        return copy
+    }
+
     /// Defocus this layer by an `aside` layer read as a *depth map* (its luminance is
     /// the depth, 0 near … 1 far): the band `focus ± range` stays sharp, and the blur
     /// grows with distance from it up to `maxBlur` pixels. The aside — a depth gradient,

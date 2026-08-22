@@ -476,6 +476,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("diffusion-curves",
                  note: "Two panels of the diffusion solver at fixed marks (no time, no random): a two-sided curve with a bright dot above it, and the same with a second curve added low down. Pins the whole solve: the premultiplied constraint pyramid, the ladder down to a few texels, the coverage-weighted source at gain 4, and the neighbor average everywhere else.",
                  make: { DiffusionCurveScene() }),
+    SnapshotCase("seamless-clone",
+                 note: "One textured patch dropped on a two-tone backdrop three ways: pasted with the seam left in, cloned at half, and cloned in full. Pins the whole path (the rim read as boundary values, the convolution pyramid that settles between them, the composite that adds it back under the patch's own coverage) and the amount knob between them. No time, no random.",
+                 make: { SeamlessCloneScene() }),
     SnapshotCase("penrose",
                  note: "Penrose tilings, kites and darts left, rhombs right, each with the matching-rule arcs stroked on top. Pins both deflations (the derived P2 rules and the P3 rules), the half-tile merge, the rhombs' intrinsic orientation, and the arc fractions that make the decoration continuous across every edge. No rng and no time, so it is deterministic.",
                  make: { PenroseScene() }),
@@ -6369,6 +6372,50 @@ private final class DiffusionCurveScene: Sketch {
                 }
             }
             drawImage(marks.filtered(.diffuse(sharpness: 1)).image, in: frame)
+        }
+    }
+}
+
+/// A patch cloned onto a backdrop that changes color under it, at three amounts.
+/// The patch's own flat ground is deliberately wrong for where it lands, so the
+/// difference between a paste and a clone is the whole picture.
+private final class SeamlessCloneScene: Sketch {
+    override var canvasSize: CanvasSize { .size(288, 112) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        for (index, amount) in [0.0, 0.5, 1.0].enumerated() {
+            let side = 88.0
+            let frame = Rectangle(x: Double(index) * 96 + 4, y: 12, width: side, height: side)
+            // A smooth backdrop on purpose. The rim is where the whole answer comes
+            // from, so a rim laid across a hard edge in the backdrop smears that
+            // edge inward, and a snapshot of that is a picture of the technique's
+            // documented limit rather than of the technique.
+            let backdrop = renderTarget(width: Int(side), height: Int(side))
+            withTarget(backdrop) {
+                noStroke()
+                for row in 0 ..< Int(side) {
+                    let t = Double(row) / (side - 1)
+                    fill(Color(red: 0.16 + t * 0.62, green: 0.26 + t * 0.20,
+                               blue: 0.44 - t * 0.20))
+                    drawRect(0, Double(row), side, 2)
+                }
+            }
+            let patch = renderTarget(width: Int(side), height: Int(side))
+            withTarget(patch) {
+                background(Color(white: 0, alpha: 0))
+                noStroke()
+                fill(Color(hex: 0x6F8A76))
+                drawCircle(side * 0.5, side * 0.5, side * 0.34)
+                fill(Color(hex: 0x577A63))
+                for i in 0 ..< 26 {
+                    let a = Double(i) * 2.39996
+                    let r = side * 0.31 * (Double(i) / 26).squareRoot()
+                    drawCircle(side * 0.5 + cos(a) * r, side * 0.5 + sin(a) * r, 4)
+                }
+            }
+            let result = backdrop.combined(with: patch, .seamlessClone(amount: amount))
+            drawImage(result.image, in: frame)
         }
     }
 }

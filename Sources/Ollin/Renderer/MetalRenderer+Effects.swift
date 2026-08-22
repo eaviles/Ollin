@@ -642,9 +642,142 @@ extension MetalRenderer {
         else { return nil }
         encodeEffectFragment("ollin_fx_diffuse_sources", inputs: [input], output: sources,
                              params: [SIMD4(Float(threshold), 0, 0, 0)], into: cb)
+        // Not the convolution pyramid the seamless clone uses, and that is a real
+        // difference rather than an oversight. A pyramid interpolates scattered
+        // values: a source *votes*, weighted by how much of its texel it covers.
+        // A relaxation's source *blocks*: it is held outright, so it walls off
+        // what is on either side of it. Diffusion curves are named for that wall,
+        // and under a pyramid a curve one texel wide stops dividing its two sides
+        // (a red/blue probe came back with blue at 172 on the warm side, where it
+        // has to stay under 110; `aCurveCarriesADifferentColorOnEachSide` pins it).
+        // No weighting fixes it: at the coarse levels both sides land in the same
+        // texel and get averaged, which is what a pyramid does and what a wall
+        // must not do.
+        //
+        // The clone has no such wall to keep (its constraints are one closed rim
+        // with nothing to separate), so it takes the faster solver and this keeps
+        // the slower one.
+        return relaxedLaplaceField(sources: sources, width: width, height: height,
+                                   finestIterations: Int((6 + sharpness * 18).rounded()),
+                                   into: cb, pooled: pooled)
+    }
 
+    /// The fitted kernels a convolution pyramid runs, one set per field it stands in
+    /// for. Both h1 and g are symmetric, so only half of each is carried: h1's outer,
+    /// inner and center taps, the h2 weight on what comes up from below, and g's outer
+    /// and center taps. The numbers are the published fits, not tuning knobs: they
+    /// are what makes the pyramid approximate its field rather than blur.
+    enum ConvolutionKernel {
+        /// The membrane: the field that is the average of its neighbors away from
+        /// wherever it is held. What a soap film does, and what smooth interpolation
+        /// from a rim of known values needs.
+        case membrane
+
+        var weights: (SIMD4<Float>, SIMD4<Float>) {
+            switch self {
+            case .membrane:
+                return (SIMD4(0.1507146, 0.6835785, 1.0334191, 0.0269546),
+                        SIMD4(0.0311849, 0.7752854, 0, 0))
+            }
+        }
+    }
+
+    /// Spread a texture of constraints into a field defined everywhere, as one pass
+    /// down the sizes and one back up (a convolution pyramid).
+    ///
+    /// Constraints arrive premultiplied (value x weight, weight) and both parts ride
+    /// through together, so the normalize at the end turns values held here and there
+    /// into a value everywhere. That is what lets a rim one texel thick decide a
+    /// picture a thousand texels wide: the pyramid carries the rim's *weight* down
+    /// beside its value, and dividing at the top restores the scale.
+    ///
+    /// Cost is one pass per level each way, a couple of dozen for a 1080 layer and
+    /// nearly all of them tiny, against the hundreds a relaxation needs, and it does
+    /// not have a relaxation's problem of a thin constraint failing to insulate the
+    /// coarse levels.
+    func convolutionPyramidField(constraints: MTLTexture, kernel: ConvolutionKernel,
+                                 width: Int, height: Int,
+                                 into cb: MTLCommandBuffer, pooled: Bool) -> MTLTexture? {
+        let (h, g) = kernel.weights
+        let params = [h, g]
+
+        // The pyramid's intermediates run in float32, and that is not tidiness.
+        // The kernels are not normalized (h1 sums to about 2.7), so magnitudes
+        // climb steeply on the way down and fall just as steeply on the way up,
+        // and a layer's worth of levels walks straight out of half float at both
+        // ends. Underflow is what shows: the weight channel reaches zero in the
+        // deepest interior, the normalize has nothing to divide by, and the patch's
+        // own color comes back raw as a ragged blob ringed by concentric ripples,
+        // right where the answer should be smoothest. Rescaling h1 to sum to one is
+        // exactly equivalent on paper (scale it by s, take h2 to h2 / s^4, and level
+        // zero is unchanged) and no help at all in practice: it trades the overflow
+        // end for the underflow end. Width is the fix, and it is only ever a
+        // transient ladder of textures.
+        //
+        // Measured on a flat backdrop, where the answer is exactly the backdrop:
+        // a disc of radius 240 on a 512 layer went from 179/255 worst error to 1.
+        func pyramidTexture(_ w: Int, _ h: Int) -> MTLTexture? {
+            let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba32Float,
+                                                             width: w, height: h, mipmapped: false)
+            d.usage = [.shaderRead, .renderTarget]
+            d.storageMode = .private
+            return device.makeTexture(descriptor: d)
+        }
+        let wide: MTLPixelFormat = .rgba32Float
+
+        var sizes: [(Int, Int)] = [(width, height)]
+        while max(sizes[sizes.count - 1].0, sizes[sizes.count - 1].1) > 1 {
+            let (w, hgt) = sizes[sizes.count - 1]
+            sizes.append((max(1, w / 2), max(1, hgt / 2)))
+        }
+
+        // Down: each level is the one above it filtered and halved. Level 0 is the
+        // constraints themselves, unfiltered, because the filter belongs to the step and not
+        // to the input.
+        var analysis: [MTLTexture] = [constraints]
+        for level in 1 ..< sizes.count {
+            let (lw, lh) = sizes[level]
+            guard let out = pyramidTexture(lw, lh) else { return nil }
+            encodeEffectFragment("ollin_cp_analyze", inputs: [analysis[level - 1]], output: out,
+                                 params: params, into: cb, format: wide)
+            analysis.append(out)
+        }
+
+        // Up: the top has nothing coarser to add, then each level adds its own
+        // filtered detail to the level below it upsampled.
+        let (tw, th) = sizes[sizes.count - 1]
+        guard var carried = pyramidTexture(tw, th) else { return nil }
+        encodeEffectFragment("ollin_cp_top", inputs: [analysis[sizes.count - 1]], output: carried,
+                             params: params, into: cb, format: wide)
+        for level in stride(from: sizes.count - 2, through: 0, by: -1) {
+            let (lw, lh) = sizes[level]
+            guard let out = pyramidTexture(lw, lh) else { return nil }
+            encodeEffectFragment("ollin_cp_synthesize", inputs: [analysis[level], carried],
+                                 output: out, params: params, into: cb, format: wide)
+            carried = out
+        }
+
+        guard let field = acquireFilterTexture(width: width, height: height, pooled: pooled)
+        else { return nil }
+        encodeEffectFragment("ollin_cp_normalize", inputs: [carried], output: field,
+                             params: params, into: cb)
+        return field
+    }
+
+    /// Settle a Laplace field from a texture of constraints: every texel ends up the
+    /// average of its four neighbors except where a constraint holds it, run coarse to
+    /// fine so a value reaches across the layer in a few passes instead of one texel a
+    /// pass. The constraints arrive premultiplied (value x weight, weight) and ride
+    /// down the ladder in that form.
+    ///
+    /// Shared by the diffusion filter, whose constraints are the layer's own marks, and
+    /// the seamless clone, whose constraints are the rim of a patch. Both want the same
+    /// settling; only what is held differs.
+    private func relaxedLaplaceField(sources: MTLTexture, width: Int, height: Int,
+                                     finestIterations: Int,
+                                     into cb: MTLCommandBuffer, pooled: Bool) -> MTLTexture? {
         // The ladder of sizes, coarsest first, each half the next. The finest
-        // level is the layer itself; `sharpness` decides how many passes it gets.
+        // level is the layer itself.
         //
         // It runs all the way down to a few texels across, and that is the whole
         // trick. One Jacobi pass averages a texel with its neighbors, so the
@@ -676,8 +809,7 @@ extension MetalRenderer {
             // and it is nearly free, so it takes the passes. Every level above
             // it inherits a settled answer and only has to smooth the detail its
             // own size adds, which is a fixed handful.
-            let iterations = isFinest ? Int((6 + sharpness * 18).rounded())
-                                      : (level < 3 ? 40 : 14)
+            let iterations = isFinest ? finestIterations : (level < 3 ? 40 : 14)
             guard let texA = acquireFilterTexture(width: lw, height: lh, pooled: pooled),
                   let texB = acquireFilterTexture(width: lw, height: lh, pooled: pooled)
             else { return nil }
@@ -812,6 +944,27 @@ extension MetalRenderer {
             return pass("ollin_fx_displace", [SIMD4(Float(amount), 0, 0, 0)])
         case let .mix(amount):
             return pass("ollin_fx_mix", [SIMD4(Float(amount), 0, 0, 0)])
+        case let .seamlessClone(amount, threshold):
+            // Three passes and no new solver: read the patch's rim as boundary values,
+            // settle them on the shared Laplace ladder, add the answer back under the
+            // patch. The rim carries a *signed* difference (base minus patch), which the
+            // linear-float intermediates hold and the ladder's premultiplied averaging
+            // preserves down the pyramid, so a one-texel ring still speaks at the
+            // coarse sizes where the field is actually settled.
+            guard let boundary = acquireFilterTexture(width: width, height: height, pooled: pooled)
+            else { return nil }
+            encodeEffectFragment("ollin_fx_clone_boundary", inputs: [base, aux], output: boundary,
+                                 params: [SIMD4(1 / Float(width), 1 / Float(height),
+                                                Float(threshold), 0)], into: cb)
+            guard let membrane = convolutionPyramidField(constraints: boundary, kernel: .membrane,
+                                                         width: width, height: height,
+                                                         into: cb, pooled: pooled),
+                  let out = acquireFilterTexture(width: width, height: height, pooled: pooled)
+            else { return nil }
+            encodeEffectFragment("ollin_fx_seamless_clone", inputs: [base, aux, membrane],
+                                 output: out,
+                                 params: [SIMD4(Float(amount), Float(threshold), 0, 0)], into: cb)
+            return out
         case let .defocus(focus, range, maxBlur, quality, blades, irisAngle, catsEye):
             // maxBlur is in layer pixels; the gather works in texels, so at this
             // layer's resolution one is the other (the texel-size row keeps the disk
@@ -1588,8 +1741,9 @@ extension MetalRenderer {
     /// `output` (single-sample, replace). Shaders read `constant float4 *params`.
     func encodeEffectFragment(_ fragment: String, inputs: [MTLTexture],
                                       output: MTLTexture, params: [SIMD4<Float>],
-                                      into cb: MTLCommandBuffer) {
-        guard let state = try? pipeline(.effect(fragment)) else { return }
+                                      into cb: MTLCommandBuffer,
+                                      format: MTLPixelFormat? = nil) {
+        guard let state = try? pipeline(.effect(fragment, format: format)) else { return }
         let pass = MTLRenderPassDescriptor()
         pass.colorAttachments[0].texture = output
         pass.colorAttachments[0].loadAction = .dontCare

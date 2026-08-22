@@ -124,6 +124,36 @@ Now compare it to a gradient, which is the tool you would otherwise reach for. A
 
 Two practical notes. A pixel counts as a source when its alpha reaches `threshold`. A half-opaque mark pulls half as hard as a solid one, so a soft brush mark is a suggestion rather than a rule. And `sharpness` decides how much of the work happens at full size. Turn it down for speed while composing, up when a thin mark's color must stay crisp against it.
 
+## Putting a piece of one picture into another
+
+The same settling does a second job, and it is worth meeting here because the trick behind it is the same one.
+
+You have a patch you want to drop into a picture: a slab of texture, a cut-out, something from elsewhere. Paste it and it reads as pasted. The rim gives it away, and so does the color, because the patch was lit differently wherever it came from.
+
+`.seamlessClone` fixes both without touching the patch's detail:
+
+```swift
+let backdrop = renderTarget()
+withTarget(backdrop) { drawImage(wall, 0, 0) }
+
+let patch = renderTarget()
+withTarget(patch) { drawImage(stones, 240, 180) }   // transparent everywhere else
+
+drawImage(backdrop.combined(with: patch, .seamlessClone()).image, 0, 0)
+```
+
+<img src="Images/16-LayersAndEffects/SeamlessClone.jpg" alt="Three panels. A green slab of stones on black; the same slab pasted onto a blue-to-orange gradient with an obvious circular rim; and the same slab cloned, where the rim has vanished entirely and the stones themselves have gone blue at the top and orange at the bottom" width="680">
+
+Where the patch layer is opaque is where it lands, so the shape you draw is the shape that gets cloned. Draw it where you want it and that is the whole positioning story.
+
+Here is what it does, in one sentence, because everything else follows from it. **Around the rim it measures how far the patch's color sits from the backdrop's. It spreads that difference across the inside as smoothly as it can, and adds it back.** On the rim that lands exactly on the backdrop, so there is no join left to see. Inside, the patch is nudged by the gentlest correction that reaches it. The stones survive because only the slow, low part of the color is replaced.
+
+Spreading a difference as smoothly as possible is the diffusion above, wearing a different hat. The marks are the rim, and the field between them is the correction.
+
+Two things follow, and both are worth meeting here rather than by surprise. The patch keeps its own **range of tone** and only moves where that range sits. Drop a contrasty patch somewhere much darker than itself and its shadows go below black. And the rim is where the entire answer comes from, so a rim laid across a **hard edge** drags that edge inward. Keep the rim on quiet ground and neither one comes up.
+
+`amount` runs from 0 to 1. One is the full clone. Zero leaves the seam in, which is the picture you want beside it when you are deciding whether it worked.
+
 ## The design family
 
 Two lines of that listing came from a set worth knowing as a set. Alongside the plain generators (checkers, noise, gradients) there's a **design** family. It is built to look like the finished graphics you'd meet on a product page rather than like test patterns. It comes in two halves, generators that invent a picture and filters that transform one, and they behave differently enough to meet separately.

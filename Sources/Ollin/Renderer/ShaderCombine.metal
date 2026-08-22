@@ -54,6 +54,230 @@ fragment float4 ollin_fx_mix(PresentOut in [[stage_in]],
     return mix(base.sample(samp, in.uv), other.sample(samp, in.uv), params[0].x);
 }
 
+// MARK: - Convolution pyramid
+//
+// Spread a handful of known values smoothly across a whole layer, in one pass
+// down the sizes and one back up.
+//
+// The field wanted here is the one a soap film makes: away from the values it is
+// held to, every point is the average of its neighbors. Settling that by
+// repeated averaging is honest but slow, because one pass moves a value one
+// texel and the picture is a thousand texels wide. It is also the wrong shape of
+// answer to chase iteratively: the field is a *convolution* of the constraints
+// with one very wide kernel, and a pyramid of tiny kernels can stand in for a
+// wide one at a fraction of the cost.
+//
+// So: filter and halve the size until the layer is a texel, then walk back up,
+// each level adding its own filtered detail to the level below it upsampled.
+// Three small kernels do the work: h1 across the halving steps, g at each
+// level, and h2 weighting what comes up from below. Their weights are what
+// make the result approximate the field wanted rather than a blur. They arrive
+// as parameters, so one set of passes serves any field this scheme can fit.
+//
+// Constraints arrive premultiplied (value x weight, weight) and both parts ride
+// through together, so dividing at the end turns a sparse set of held values
+// into a field defined everywhere. That division is the whole reason a rim one
+// texel thick can decide a picture a thousand texels wide.
+//
+// h1 and g are symmetric, so params carry half of each:
+// params[0] = (h1 outer, h1 inner, h1 center, h2), params[1].xy = (g outer, g center).
+
+static inline float ollin_cp_h1(int i, constant float4 *params) {
+    int k = abs(i);
+    return k == 2 ? params[0].x : (k == 1 ? params[0].y : params[0].z);
+}
+static inline float ollin_cp_g(int i, constant float4 *params) {
+    return i == 0 ? params[1].y : params[1].x;
+}
+static inline bool ollin_cp_inside(int2 p, int2 size) {
+    return p.x >= 0 && p.y >= 0 && p.x < size.x && p.y < size.y;
+}
+
+// Down one level: filter with h1 and keep every other sample. A tap that falls
+// off the level is dropped rather than clamped, so the edge of the layer reads as
+// an edge instead of smearing its border inward.
+fragment float4 ollin_cp_analyze(PresentOut in [[stage_in]],
+                                 texture2d<float> src [[texture(0)]],
+                                 sampler samp [[sampler(0)]],
+                                 constant float4 *params [[buffer(0)]]) {
+    int2 dst = int2(in.position.xy);
+    int2 size = int2(src.get_width(), src.get_height());
+    float4 acc = float4(0.0);
+    for (int dy = -2; dy <= 2; ++dy) {
+        for (int dx = -2; dx <= 2; ++dx) {
+            int2 p = dst * 2 + int2(dx, dy);
+            if (!ollin_cp_inside(p, size)) { continue; }
+            acc += ollin_cp_h1(dx, params) * ollin_cp_h1(dy, params) * src.read(uint2(p));
+        }
+    }
+    return acc;
+}
+
+// The top of the pyramid, where there is nothing coarser to add: g alone.
+fragment float4 ollin_cp_top(PresentOut in [[stage_in]],
+                             texture2d<float> src [[texture(0)]],
+                             sampler samp [[sampler(0)]],
+                             constant float4 *params [[buffer(0)]]) {
+    int2 dst = int2(in.position.xy);
+    int2 size = int2(src.get_width(), src.get_height());
+    float4 acc = float4(0.0);
+    for (int dy = -1; dy <= 1; ++dy) {
+        for (int dx = -1; dx <= 1; ++dx) {
+            int2 p = dst + int2(dx, dy);
+            if (!ollin_cp_inside(p, size)) { continue; }
+            acc += ollin_cp_g(dx, params) * ollin_cp_g(dy, params) * src.read(uint2(p));
+        }
+    }
+    return acc;
+}
+
+// Up one level: this level's own analysis filtered with g, plus what the level
+// below carries, upsampled and filtered with h1 at a weight of h2. Upsampling is
+// the textbook insert-zeros form, so a tap on an odd coordinate contributes
+// nothing and is skipped rather than sampled.
+fragment float4 ollin_cp_synthesize(PresentOut in [[stage_in]],
+                                    texture2d<float> fine [[texture(0)]],
+                                    texture2d<float> coarse [[texture(1)]],
+                                    sampler samp [[sampler(0)]],
+                                    constant float4 *params [[buffer(0)]]) {
+    int2 dst = int2(in.position.xy);
+    int2 fineSize = int2(fine.get_width(), fine.get_height());
+    int2 coarseSize = int2(coarse.get_width(), coarse.get_height());
+    float4 acc = float4(0.0);
+    for (int dy = -1; dy <= 1; ++dy) {
+        for (int dx = -1; dx <= 1; ++dx) {
+            int2 p = dst + int2(dx, dy);
+            if (!ollin_cp_inside(p, fineSize)) { continue; }
+            acc += ollin_cp_g(dx, params) * ollin_cp_g(dy, params) * fine.read(uint2(p));
+        }
+    }
+    float h2 = params[0].w;
+    for (int dy = -2; dy <= 2; ++dy) {
+        for (int dx = -2; dx <= 2; ++dx) {
+            int2 p = dst + int2(dx, dy);
+            if ((p.x & 1) != 0 || (p.y & 1) != 0) { continue; }
+            // An arithmetic shift floors, which a divide would not do for the
+            // negative coordinates just off the top-left corner.
+            int2 q = p >> 1;
+            if (!ollin_cp_inside(q, coarseSize)) { continue; }
+            acc += h2 * ollin_cp_h1(dx, params) * ollin_cp_h1(dy, params) * coarse.read(uint2(q));
+        }
+    }
+    return acc;
+}
+
+// Divide the spread values by the spread weight: the step that turns constraints
+// held here and there into a field with a value everywhere. Where no constraint
+// reached at all, there is nothing to say, so it stays empty.
+//
+// The floor has to sit at the bottom of what a float can hold, not at some
+// comfortable small number. The kernels are unnormalized, so the weight climbs by
+// about seven per level going down and falls by about twenty going up, and deep
+// inside a large region it lands somewhere around a millionth while carrying a
+// perfectly good answer. A floor of 1e-6 cuts exactly there: the middle of a wide
+// patch comes back with no correction at all, which reads as a speckled blob of
+// the raw patch color sitting in the one place the result should be smoothest.
+// Written as a rejected comparison so a NaN falls out here too, rather than
+// downstream.
+fragment float4 ollin_cp_normalize(PresentOut in [[stage_in]],
+                                   texture2d<float> src [[texture(0)]],
+                                   sampler samp [[sampler(0)]],
+                                   constant float4 *params [[buffer(0)]]) {
+    float4 c = src.sample(samp, in.uv, level(0.0));
+    if (!(c.a > 1e-30)) { return float4(0.0); }
+    return float4(c.rgb / c.a, 1.0);
+}
+
+// MARK: - Seamless clone (gradient-domain compositing)
+//
+// Paste one layer into another so the join disappears. The patch keeps its own
+// detail and takes the surrounding layer's color and brightness, which is what
+// makes a cut-out stop reading as a cut-out.
+//
+// The rule is the same one the diffusion filter obeys, applied to a difference
+// rather than to color. Let T be the layer underneath, S the patch, and W the
+// region the patch covers. Ask for a field u that is the average of its four
+// neighbors everywhere inside W and equals T - S around the rim of W, then hand
+// back S + u. On the rim that is S + (T - S) = T, so the result meets the layer
+// underneath exactly, and inside it is the patch plus the smoothest correction
+// that reaches that rim. Nothing sharpens, nothing shifts: only the low, slow
+// part of the patch's color is replaced.
+//
+// The rim is where the boundary values are read, and the solve between them is
+// the shared Laplace ladder the diffusion filter already runs, so these two
+// passes are all this effect adds: one to read the rim, one to put the answer
+// back.
+
+// The rim of the patch as boundary values for the solve, in the premultiplied
+// (value x weight, weight) form the ladder averages. A texel counts as boundary
+// when the patch covers it and at least one of its four neighbors is uncovered
+// or off the layer, which is a closed one-texel ring around every covered
+// region. Everywhere else writes nothing and is left to relax.
+//
+// Off the layer counts as uncovered on purpose: a patch running off the edge
+// then still meets the layer underneath along the cut, instead of being left
+// with no condition there and drifting.
+//
+// params[0].xy = texel size, .z = the alpha a texel needs to count as covered.
+fragment float4 ollin_fx_clone_boundary(PresentOut in [[stage_in]],
+                                        texture2d<float> base [[texture(0)]],
+                                        texture2d<float> patch [[texture(1)]],
+                                        sampler samp [[sampler(0)]],
+                                        constant float4 *params [[buffer(0)]]) {
+    float2 texel = params[0].xy;
+    float threshold = params[0].z;
+
+    float4 p = patch.sample(samp, in.uv, level(0.0));
+    if (p.a < threshold) { return float4(0.0); }
+
+    // Named level throughout: a fragment may sample past a branch its neighbors
+    // in the quad did not take, and a derived level would be undefined there.
+    float2 neighbors[4] = { float2(-texel.x, 0.0), float2(texel.x, 0.0),
+                           float2(0.0, -texel.y), float2(0.0, texel.y) };
+    bool rim = false;
+    for (int i = 0; i < 4; ++i) {
+        float2 uv = in.uv + neighbors[i];
+        bool off = uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0;
+        rim = rim || off || patch.sample(samp, uv, level(0.0)).a < threshold;
+    }
+    if (!rim) { return float4(0.0); }
+
+    float3 target = ollin_unpremul(base.sample(samp, in.uv, level(0.0)));
+    float3 source = ollin_unpremul(p);
+    // Weight 1: a boundary value is held outright, however faint the patch's own
+    // coverage. The value itself is a signed difference, which the linear-float
+    // intermediates carry and the ladder's premultiplied averaging preserves.
+    return float4(target - source, 1.0);
+}
+
+// Put the solved field back: the patch plus the correction, over the layer
+// underneath, weighted by the patch's own coverage so an anti-aliased rim reads
+// as the soft edge it is. At `amount` 0 the correction is dropped entirely and
+// the patch lands as a plain paste, which is the honest before picture.
+//
+// params[0].x = amount, .y = the covered-alpha threshold.
+fragment float4 ollin_fx_seamless_clone(PresentOut in [[stage_in]],
+                                        texture2d<float> base [[texture(0)]],
+                                        texture2d<float> patch [[texture(1)]],
+                                        texture2d<float> membrane [[texture(2)]],
+                                        sampler samp [[sampler(0)]],
+                                        constant float4 *params [[buffer(0)]]) {
+    float amount = params[0].x;
+    float4 b = base.sample(samp, in.uv);
+    float4 p = patch.sample(samp, in.uv);
+    float coverage = clamp(p.a, 0.0, 1.0);
+    if (coverage <= 0.0) { return b; }
+
+    float3 target = ollin_unpremul(b);
+    float3 source = ollin_unpremul(p);
+    float3 correction = membrane.sample(samp, in.uv, level(0.0)).rgb;
+    float3 blended = source + correction * amount;
+
+    float3 straight = mix(target, blended, coverage);
+    float alpha = max(b.a, coverage);
+    return float4(straight * alpha, alpha);
+}
+
 // depth of field: blur the base by the aux read as a depth map (luminance = depth,
 // 0 near … 1 far). A single-pass scatter-as-gather circle-of-confusion bokeh blur
 // (a running-average form; details and rationale on the gather below).

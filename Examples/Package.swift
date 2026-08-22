@@ -146,6 +146,7 @@ let package = Package(
         example("Effects/OrbitTraps"),
         example("Effects/DomainColoring"),
         example("Effects/DiffusionCurves"),
+        example("Effects/SeamlessClone"),
         example("Effects/Patterns"),
         example("Effects/Cellular"),
         example("Shaders/HelloShader"),

@@ -29,7 +29,17 @@ A tier of classic generative-art building blocks that emit vector geometry (poin
 
 ## Technique and algorithm helpers
 
-**Near-term.** A standing, growing catalog of classic creative-coding techniques and algorithms as first-class helpers, the way the SDF shapes, the effect `Filter`s, and the [generative-geometry](#generative-geometry) builders are catalogs that keep growing. Each one lands wherever it fits the existing core (a geometry emitter beside the shape builders, a GPU `Generator` or shader for an escape-time or field technique, a simulation beside the compute and `SimField` paths), ships with an example, runs off the seedable `random`/`noise` so a result reproduces, and is implemented from the published technique (credited in `ATTRIBUTION.md`'s Techniques list). Many map onto the *Nature of Code* canon (vectors, forces, particles, autonomous agents, cellular automata, fractals, evolution), so the catalog doubles as a familiar on-ramp from that world, and the geometry-emitting recipes are flagged plotter-friendly for the pen-plotter path. See the [design notes](DESIGN-NOTES.md#technique-and-algorithm-helpers).
+**Near-term.** A standing, growing catalog of classic creative-coding techniques and algorithms as first-class helpers, the way the SDF shapes, the effect `Filter`s, and the [generative-geometry](#generative-geometry) builders are catalogs that keep growing. Each one lands wherever it fits the existing core (a geometry emitter beside the shape builders, a GPU `Generator` or shader for an escape-time or field technique, a simulation beside the compute and `SimField` paths), ships with an example, runs off the seedable `random`/`noise` so a result reproduces, and is implemented from the published technique (credited in `ATTRIBUTION.md`'s Techniques list). Many map onto the *Nature of Code* canon (vectors, forces, particles, autonomous agents, cellular automata, fractals, evolution), so the catalog doubles as a familiar on-ramp from that world, and the geometry-emitting recipes are flagged plotter-friendly for the pen-plotter path. Some of the catalog is *substrate* rather than picture, useful mainly because other recipes stand on it:
+
+- **A distance and direction field from any drawn layer**, by jump flooding on the GPU. Ollin can author a signed-distance field but cannot read one back out of a rendered layer, and that one primitive is what outlines, dilate and erode, a Voronoi keyed to a picture, and soft shadows all want underneath them.
+- **Spatial indexes a sketch can call**: a hash grid, a k-d tree, and a quadtree for nearest-neighbor and range queries. The packing and flocking paths keep their own private versions; a public one belongs beside them.
+- **Summed-area tables**, for a box blur whose cost does not grow with its window, and the adaptive thresholding that rides on them.
+- **Scattered-data interpolation** by radial basis functions, and a small gradient-descent minimizer for fitting a handful of parameters to a target.
+- **Uniform sampling over a mesh surface**, which is what scatters props, hair roots, and point clouds evenly over geometry rather than over its vertices.
+
+And one that is picture, not substrate: **the Hopf fibration**, the map that fills a three-sphere with circles, every pair of them linked exactly once. Projected down into space it draws as nested tori of interlocking rings, and it wants the 3D camera, the instanced-mesh path, and a color taken from where each circle came from. A set piece for the 3D tier the way the strange attractors are for the 2D one.
+
+See the [design notes](DESIGN-NOTES.md#technique-and-algorithm-helpers).
 
 ## Expressive brushes and strokes
 
@@ -89,6 +99,7 @@ Ways a sketch leaves the window:
 
 - **Haptics.** A `draw()` that also emits a felt pattern synced to the visuals, on Force Touch trackpads and on the phone.
 - **The OS as a canvas.** Wrap a sketch as a dynamic wallpaper, a desktop widget, or a menu-bar piece, so the output lives in the system rather than a window.
+- **G-code**, so the fabrication path reaches the machines that read it directly: CNC routers, laser cutters, and the pen plotters driven that way rather than through SVG.
 
 See the [design notes](DESIGN-NOTES.md#new-output-surfaces).
 
@@ -106,6 +117,10 @@ See the [design notes](DESIGN-NOTES.md#rendering-and-color-frontier). (The most 
 
 - **A visual node editor** over the effect, SDF-combinator, and shader graphs, living in the live host and round-tripping to Swift source.
 - **Deeper live-coding evaluation.** Per-block evaluation and sub-second turnaround on small edits for the OllinLiveCoding performance host, refining its evaluate-on-command loop, plus MIDI/OSC mapping of the host's own performance surface.
+- **Keyframed parameters.** A timeline over the typed `@Param` surface: values placed at times, interpolated by editable curves, played back at any speed and in either direction. The piece that makes a sketch a thing you can *direct* rather than only tune, and the natural companion to the frame exports.
+- **Math expressions at runtime.** A small evaluator for expression strings, so a knob can be driven by a formula typed into it rather than only by a number. It is what makes keyframes composable and what a live-coding surface wants for its own controls.
+- **A remote control surface.** The inspector served to a phone or a second machine over the network, for tuning an installation from in front of it rather than from behind the Mac running it.
+- **Captures that know their source.** A frame export stamped with, and named by, the commit it came from, with the working tree committed as part of the capture, so an image found later leads back to the code that made it.
 - **Direct manipulation.** Drag a shape in the running window and have the edit written back into the source, the way a SwiftUI preview manipulates a layout.
 - **AI at the controls.** Drive the knobs, wire and parameterize generators, and tune toward a described look, all as operations on the typed `@Param` and effect graph, with the artist composing the sketch.
 - **On-device ML as a material.** Apple-silicon models a sketch invokes deliberately, like a noise function: semantic parameter control, neural style as a `Filter`, segmentation-driven generators. Image generation from a text prompt is the one to weigh most carefully against the stance above; if it ships, it is an optional material the artist composes with, never the framework making the piece.
