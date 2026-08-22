@@ -470,6 +470,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("kolam",
                  note: "Three kolam fields side by side: 7 by 5 closing into one line, 6 by 4 into two, and 7 by 5 again cut by two walls. Pins the mirror-curve walk (the finer lattice, the outgoing-direction state that keeps each loop from being traced twice, the wall reflections), the corner-cut rounding, and the loop-per-tone draw. No time, no random.",
                  make: { KolamScene() }),
+    SnapshotCase("knotwork",
+                 note: "Two knots side by side: a plain 6 by 6 plait, and the same field with two pairs of walls in the middle. Pins the over-under rule (the up-right pass over wherever the crossing's lattice x is even), the alternation along each cord, the gap taken out at each dive, and the one-band-at-a-time outline-then-cord draw. No time, no random.",
+                 make: { KnotworkScene() }),
     SnapshotCase("penrose",
                  note: "Penrose tilings, kites and darts left, rhombs right, each with the matching-rule arcs stroked on top. Pins both deflations (the derived P2 rules and the P3 rules), the half-tile merge, the rhombs' intrinsic orientation, and the arc fractions that make the decoration continuous across every edge. No rng and no time, so it is deterministic.",
                  make: { PenroseScene() }),
@@ -6298,6 +6301,36 @@ private final class KolamScene: Sketch {
                 let spread = Double(design.loops.count - 1)
                 stroke(spread == 0 ? chalk : Color.mix(chalk, warm, t: Double(loop) / spread))
                 drawPolyline(contour.smoothed(iterations: 3).points, closed: true)
+            }
+        }
+    }
+}
+
+/// Two knots at a fixed size (no time, no random): a plain plait and the same
+/// field with walls in the middle. Pins the weave, the breaks, and the draw.
+private final class KnotworkScene: Sketch {
+    override var canvasSize: CanvasSize { .size(256, 128) }
+
+    override func draw() {
+        background(Color(hex: 0x1D2B24))
+        let ink = Color(hex: 0x0B1310), gold = Color(hex: 0xE7C46B)
+        let walls: [Kolam.Mirror] = [.rightOf(column: 2, row: 2), .below(column: 2, row: 2),
+                                     .rightOf(column: 2, row: 3), .below(column: 3, row: 2)]
+        for (index, mirrors) in [[], walls].enumerated() {
+            let field = Rectangle(x: Double(index) * 128 + 12, y: 12, width: 104, height: 104)
+            let knot = knotwork(in: field, columns: 6, rows: 6, mirrors: mirrors)
+            for band in knot.bands(gap: 9) {
+                let line = band.smoothed(iterations: 3)
+                withState {
+                    strokeCap(.round)
+                    strokeJoin(.round)
+                    stroke(ink)
+                    strokeWeight(7)
+                    drawPolyline(line.points, closed: line.isClosed)
+                    stroke(gold)
+                    strokeWeight(4)
+                    drawPolyline(line.points, closed: line.isClosed)
+                }
             }
         }
     }

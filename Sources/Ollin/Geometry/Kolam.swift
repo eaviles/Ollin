@@ -75,45 +75,77 @@ public struct Kolam: Equatable, Sendable {
     /// walls are placed the loops always hold `4 × rows × columns` segments
     /// between them: four in every cell, one against each of its four sides.
     public var loops: [Contour] {
-        let columns = grid.columns, rows = grid.rows
-        guard columns > 0, rows > 0 else { return [] }
+        let curve = MirrorCurve(columns: grid.columns, rows: grid.rows, mirrors: mirrors)
+        return curve.loops.map { walk in
+            Contour(walk.map { curve.place($0, in: grid.bounds) }, closed: true)
+        }
+    }
 
-        // The line lives on a lattice twice as fine as the dots: a dot sits at
-        // an odd-odd point, and the line only ever touches points where exactly
-        // one coordinate is even (the middle of a cell's edge). A step is one
-        // diagonal move, so each step crosses one cell.
-        let width = 2 * columns, height = 2 * rows
-        let stride = width + 1
-        var blocked = [Bool](repeating: false, count: stride * (height + 1))
+    /// How many closed loops the line makes. With no mirrors this is
+    /// `gcd(rows, columns)`, and one is the drawing a single unbroken line makes.
+    public var loopCount: Int { loops.count }
+}
+
+// MARK: - The walk under both
+
+/// The mirror-curve walk the kolam line and the knotwork cords are both made
+/// of. A line launched between a field of dots at 45 degrees, turning at the
+/// edge of the field and at any wall, until it closes on itself.
+///
+/// The line lives on a lattice twice as fine as the dots: a dot sits at an
+/// odd-odd point, and the line only ever touches points where exactly one
+/// coordinate is even, which are the gaps between neighboring dots. One step is
+/// one diagonal move, so each step crosses one cell.
+struct MirrorCurve {
+    let columns: Int
+    let rows: Int
+    /// A wall at a lattice point, indexed `y * stride + x`. The outside edges
+    /// are not in here: they turn the line by their own rule.
+    private let blocked: [Bool]
+
+    var width: Int { 2 * columns }
+    var height: Int { 2 * rows }
+    private var stride: Int { width + 1 }
+
+    init(columns: Int, rows: Int, mirrors: [Kolam.Mirror]) {
+        self.columns = Swift.max(0, columns)
+        self.rows = Swift.max(0, rows)
+        let w = 2 * self.columns, h = 2 * self.rows
+        var walls = [Bool](repeating: false, count: (w + 1) * (h + 1))
         for mirror in mirrors {
             let x = mirror.isUpright ? 2 * mirror.column + 2 : 2 * mirror.column + 1
             let y = mirror.isUpright ? 2 * mirror.row + 1 : 2 * mirror.row + 2
             // A wall on the outside edge would say nothing the edge does not
             // already say, so it is dropped rather than counted twice.
-            guard x > 0, x < width, y > 0, y < height else { continue }
-            blocked[y * stride + x] = true
+            guard x > 0, x < w, y > 0, y < h else { continue }
+            walls[y * (w + 1) + x] = true
         }
+        self.blocked = walls
+    }
 
-        /// The direction the line leaves `x`, `y` with, having arrived along
-        /// `dx`, `dy`. Exactly one coordinate is even, which is the axis any
-        /// wall there stands on, so at most one of the two flips.
-        func leaving(_ x: Int, _ y: Int, _ dx: Int, _ dy: Int) -> (Int, Int) {
-            if y % 2 == 0 {
-                let turn = (y == 0 && dy < 0) || (y == height && dy > 0) || blocked[y * stride + x]
-                return (dx, turn ? -dy : dy)
-            }
-            let turn = (x == 0 && dx < 0) || (x == width && dx > 0) || blocked[y * stride + x]
-            return (turn ? -dx : dx, dy)
+    /// The direction the line leaves `x`, `y` with, having arrived along `dx`,
+    /// `dy`. Exactly one coordinate is even, which is the axis any wall there
+    /// stands on, so at most one of the two flips.
+    func leaving(_ x: Int, _ y: Int, _ dx: Int, _ dy: Int) -> (Int, Int) {
+        guard columns > 0, rows > 0 else { return (dx, dy) }
+        if y % 2 == 0 {
+            let turn = (y == 0 && dy < 0) || (y == height && dy > 0) || blocked[y * stride + x]
+            return (dx, turn ? -dy : dy)
         }
+        let turn = (x == 0 && dx < 0) || (x == width && dx > 0) || blocked[y * stride + x]
+        return (turn ? -dx : dx, dy)
+    }
 
+    /// Every closed loop, as the lattice points it passes through in order.
+    var loops: [[SIMD2<Int>]] {
+        guard columns > 0, rows > 0 else { return [] }
         let steps = [(1, 1), (1, -1), (-1, 1), (-1, -1)]
         func slot(_ x: Int, _ y: Int, _ dx: Int, _ dy: Int) -> Int {
-            let direction = (dx > 0 ? 0 : 2) + (dy > 0 ? 0 : 1)
-            return (y * stride + x) * 4 + direction
+            ((y * stride + x) * 4) + (dx > 0 ? 0 : 2) + (dy > 0 ? 0 : 1)
         }
 
         var walked = [Bool](repeating: false, count: stride * (height + 1) * 4)
-        var out: [Contour] = []
+        var out: [[SIMD2<Int>]] = []
         for startY in 0...height {
             for startX in 0...width where (startX + startY) % 2 == 1 {
                 for step in steps {
@@ -123,10 +155,10 @@ public struct Kolam: Equatable, Sendable {
                     guard leaving(startX, startY, step.0, step.1) == step,
                           !walked[slot(startX, startY, step.0, step.1)] else { continue }
 
-                    var points: [Vector2] = []
+                    var points: [SIMD2<Int>] = []
                     var x = startX, y = startY, (dx, dy) = step
                     repeat {
-                        points.append(position(x, y, width: width, height: height))
+                        points.append(SIMD2(x, y))
                         let nextX = x + dx, nextY = y + dy
                         let arrived = (dx, dy)
                         (dx, dy) = leaving(nextX, nextY, dx, dy)
@@ -136,23 +168,19 @@ public struct Kolam: Equatable, Sendable {
                         walked[slot(nextX, nextY, -arrived.0, -arrived.1)] = true
                         x = nextX; y = nextY
                     } while !(x == startX && y == startY && (dx, dy) == step)
-                    out.append(Contour(points, closed: true))
+                    out.append(points)
                 }
             }
         }
         return out
     }
 
-    /// How many closed loops the line makes. With no mirrors this is
-    /// `gcd(rows, columns)`, and one is the drawing a single unbroken line makes.
-    public var loopCount: Int { loops.count }
-
-    /// A lattice point placed in the grid's bounds. The lattice spans the field
-    /// edge to edge, and the dots land on its odd-odd points, which is exactly
-    /// where the grid puts them.
-    private func position(_ x: Int, _ y: Int, width: Int, height: Int) -> Vector2 {
-        Vector2(grid.bounds.x + Double(x) / Double(width) * grid.bounds.width,
-                grid.bounds.y + Double(y) / Double(height) * grid.bounds.height)
+    /// A lattice point placed in `bounds`. The lattice spans the field edge to
+    /// edge, and the dots land on its odd-odd points, which is exactly where the
+    /// grid puts them.
+    func place(_ point: SIMD2<Int>, in bounds: Rectangle) -> Vector2 {
+        Vector2(bounds.x + Double(point.x) / Double(width) * bounds.width,
+                bounds.y + Double(point.y) / Double(height) * bounds.height)
     }
 }
 
