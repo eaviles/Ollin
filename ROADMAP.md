@@ -21,6 +21,7 @@ If you're coming from p5.js or Processing, [the Guide's Appendix C](Guide/C-Comi
 Near-term, fairly self-contained pieces, each small and well-scoped.
 
 - **More SDF shapes, when a good fit appears.** Any canonical form parameterized by a size and a ratio or two drops into the instanced-SDF path as four small touch-points (a shape tag, a builder, a distance function, and a fragment case).
+- **Chromatic aberration as a set of modes.** The filter splits the channels one way, radially out from the center. It is one of the effects people most want to play with, and the interesting part is that the ways a lens (or a misprint, or a prism) splits color are visibly different from each other rather than the same look at different strengths. A mode axis, plus a spectral tap budget that turns three hard ghosts into a continuous rainbow and a longitudinal mode that fringes by focus rather than by position. See the [design notes](DESIGN-NOTES.md#layered-effects-and-compositing).
 - **More model examples over `ModelTracker`.** The custom-model tracker runs anything converted to Core ML; a well-known model can make a strong example, with the weights always fetched by `Scripts/fetch-models.sh` rather than committed. Candidates, licenses, and the surfaces involved are in the [design notes](DESIGN-NOTES.md#model-examples-and-modeltracker-surfaces).
 
 ## Generative geometry

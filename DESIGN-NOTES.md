@@ -25,6 +25,34 @@ Rationale that still gates future color work:
 
 OPENRNDR-style effects that compose in layers: draw into off-screen layers, run filters over them, composite with blend modes. The substrate (`renderTarget` / `withTarget` / `filtered` / `combined` / `postProcess` / `generate` / `feedback` and the `compose { }` DSL) is inventoried in `CAPABILITIES.md`; what belongs here is growing the catalog on top of it. The reference menus guide what else to add and how to shape it: AsyncGraphics (its `Graphic` is an `MTLTexture`, effects are functions returning new graphics, plus a blend/stack model; borrow the compositing architecture, not its async call shape), SwiftUIShaders (MIT, a menu of forty-odd post-process effects such as holographic, kaleidoscope, datamosh, and thermal, to mine and reimplement), and ofxFX (MIT, Patricio Gonzalez Vivo: composers, the bokeh/ripple/flow passes still worth taking). More two-input ops (layer-blend variants, chroma keying, wipes and other transitions) slot in as further `Combine` cases. Same stance throughout: study and reimplement, credited in `ATTRIBUTION.md`.
 
+### Chromatic aberration, as modes rather than one look
+
+`.chromaticAberration(amount:)` does one thing: it offsets red one way along the ray from the center and blue the other, by an amount that grows straight from the middle of the frame. That is one member of a family whose members look genuinely unlike each other, which is what makes a mode axis worth having rather than a second knob.
+
+The two the ask named come first, and they sit at opposite ends:
+
+- **A flat offset.** Every pixel moves by the same vector, at an `angle`. The middle splits as much as the corner. This is misregistration rather than optics: a plate printed a hair off, an anaglyph, a badly aligned scan. Nothing in the catalog does it today, because the shipped mode is pinned to zero at the center.
+- **A lens.** The offset grows with distance from the center, which the shipped mode already does, but linearly and with no way to shape it. Real lateral color grows faster than that toward the edge, so the useful additions are a `radius` (where it starts to show at all) and a `falloff` exponent (about 2 reads like glass; 1 is what ships).
+
+Three more are worth having because each answers something the first two cannot:
+
+- **Magnification.** The physically honest form of lateral color: instead of sliding each channel along the radius, sample each from a slightly scaled copy of the frame about the center. It is a different picture from the radial slide, not a tuning of it. Straight lines stay straight, the fringe is exactly radial everywhere, and the smear that the slide produces where the offset direction disagrees with the local structure does not happen. If only one new mode ships, this is the one that reads as a lens.
+- **Edges only.** Offset along the local luminance gradient, scaled by how strong that gradient is. Real color fringing is only *visible* at high-contrast edges, so putting it exactly there and nowhere else reads as convincing where a global split reads as a filter. Cheap, and the Sobel it needs is already written for `.edges`, `.emboss`, and `normalMap`.
+- **Driven by a layer.** The amount modulated per pixel by a second layer. That makes it a `Combine` rather than a `Filter` mode, the natural sibling of `.displace`, and it is how a sketch puts dispersion only where something is.
+
+Two knobs cut across whichever mode is chosen, and both change the look more than the mode does:
+
+- **A spectral tap budget.** Three taps give three hard ghosts, which is the cheap-glitch signature. Taking N taps along the offset and weighting each by a spectral response gives a continuous rainbow smear, which is what dispersion actually looks like. This is the single largest quality jump available here. It wants the `RenderQuality` tier the way `.defocus`, SSAO, and SSR already use it. The weights have to be normalized to unity, or a zero offset tints the whole frame.
+- **Longitudinal (axial) color.** A different physical axis: the channels differ in *focus* rather than in position, so red is sharp while blue is soft. It is what makes an out-of-focus highlight go green on one side of focus and magenta on the other, and it is most of the fast-lens-wide-open look. It pairs with `.defocus` rather than replacing anything.
+
+Implementation notes, in the order they will bite:
+
+- **The shipped mode is not aspect-corrected, and should be fixed while the file is open.** It offsets in uv, and `.vignette` and `.halftone` take an `aspect` param where this one takes none. On a non-square canvas that makes the split larger horizontally in pixels than vertically, and makes the "radial" direction not actually radial: at the corner of a 16:9 frame the uv direction is 45 degrees where the geometric one is about 29. The 1080 square default hides it.
+- **Splitting a premultiplied layer breaks its invariant.** Layers are premultiplied linear, and taking red from one tap, green from another, and alpha from a third leaves texels whose color does not match their coverage. It shows as a darkened fringe at a layer's own soft edges. Unpremultiply, split, repremultiply.
+- **Decide what happens past the frame edge.** The clamped sampler smears the border inward, which a flat offset does across the whole frame rather than just at the rim.
+- **Zero has to be identity.** Every mode at `amount: 0` should hand back the input unchanged, so the knob is honest and an A/B costs nothing.
+- **Consider whether it belongs to the lens rather than to the call.** `.defocus` takes its blade count from the camera that drew the depth layer, so one setting shapes the live blur, the flare ghosts, and the path-traced export together. Dispersion is the same kind of property, and a sketch that has already described its lens should not have to describe it twice.
+
 ## 3D mode
 
 2D stays the default and most sketches stay 2D, but 3D is a mode in its own right: a sketch opts in by setting a camera and, on the same Metal core, draws depth-tested point clouds and lit solid primitives, with richer shadows and materials as the mode grows. The iPhone point cloud renders through it, and visionOS and AR build on it. openFrameworks and OPENRNDR set the capability bar here, so the target is known. (The foundation, from the camera, depth buffer, and transform stack through point clouds, meshes, lights, materials, and cast shadows, is inventoried in `CAPABILITIES.md`; the notes below build on it.)
