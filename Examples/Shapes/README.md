@@ -21,6 +21,7 @@ The shape-drawing vocabulary: every primitive, the stroke and hollow modes, and 
 | [InkRibbon](InkRibbon/Sketch.swift) | stroke as shape: a drifting brush line stroked into a real region (`stroked`), then inset again and again so contour bands ring inside the ribbon (`offset`) |
 | [Markers](Markers/Sketch.swift) | the five `drawPoint` markers, one per row, swept across sizes (`pointMarker`, SDF) |
 | [MedialAxis](MedialAxis/Sketch.swift) | letterforms reduced to their bones: each glyph's skeleton stroked, inscribed circles riding the carried radii, and a bead rolling along each bone at the letter's local thickness (`medialAxis`) |
+| [Neighbors](Neighbors/Sketch.swift) | four thousand points asked three questions a frame: which one is nearest, which are within reach, and which are inside a sliding box, plus every point joined to its nearest neighbor (`SpatialIndex`) |
 | [NamedPolygons](NamedPolygons/Sketch.swift) | the named regular polygons turning in a labeled row (`drawPentagon`/`drawHexagon`/`drawHeptagon`/`drawOctagon`, SDF) |
 | [Primitives](Primitives/Sketch.swift) | every `draw*` primitive, one per cell, turning slowly: a reference sheet for the whole drawing vocabulary |
 | [RubberBand](RubberBand/Sketch.swift) | convex hull: the rubber band around a drifting herd of points, recomputed each frame, corners lit, the band itself a stroked region (`convexHull`, `stroked`) |

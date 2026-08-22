@@ -42,7 +42,7 @@ capability index regardless.
 | SDF combinators (2D VM + raymarched 3D) | **This doc** |
 | Layered-effects substrate (render targets, filters, generators, compose, combine, feedback, sim fields / fluid) | **This doc**, *Layered-effects substrate* (the combine wiring under *Screen-space combine effects*) |
 | 3D lighting (PBR / Cook-Torrance, IBL split-sum bake, procedural sky, PCSS + RT shadows, RT reflections) | **This doc**, *3D lighting and environments* (the reflection anti-aliasing chain under *Deferred ray-traced reflection AA*) |
-| Geometry & generator catalog (Grid, booleans/offsets, SVG import, epicycles, curves, morphing, sampling/stippling, walks, tiling, packing, growth, WFC, CA/turmites, fields/boids/steering, attractors, IK/pendulum/N-body) | **This doc**, *The geometry and generator catalog* |
+| Geometry & generator catalog (Grid, the spatial index, booleans/offsets, SVG import, epicycles, curves, morphing, sampling/stippling, walks, tiling, packing, growth, WFC, CA/turmites, fields/boids/steering, attractors, IK/pendulum/N-body) | **This doc**, *The geometry and generator catalog* |
 | Color pipelines (palette import/extraction, image dithering, print separations) | **This doc**, *Color: palettes, dithering, and print separations* |
 | Text & glyphs (libtess2 fill, winding / overlap-clean gotchas, fringe stroke, SDF atlas) | Pending here; CLAUDE.md + `Docs/Drawing/Text.md` |
 | Compute & GPU particles | Pending here; CLAUDE.md + `Docs/Shaders/Compute.md` |
@@ -6473,6 +6473,57 @@ Second, fit-by-points: a figure whose stroke should stay constant-width is
 fitted by scaling its *points*, never `scale()`, because the CTM scales the
 stroke width too (found as the trochoid fat-blob snapshot bug; applies to
 Lévy flights and anything else fitted to the canvas).
+
+### The spatial index
+
+`SpatialIndex` (`Geometry/SpatialIndex.swift`, with the tree in
+`SpatialKDTree.swift`) is the neighbor-search substrate the catalog's own
+recipes stand on, and the answer to a private uniform grid appearing in every
+new file that needs one.
+
+The grid backing keeps one index list per cell (`cells: [[Int32]]`) rather than
+the counting-sorted flat pair `PointGrid3` uses. That is the whole reason
+`insert` can be O(1): a counting sort is built once over a finished set, and
+half of what a sketch does with a point set is grow it one point at a time
+(dart throwing, aggregation, a mark dropped where the mouse goes). A point that
+lands outside the box rebuilds it, padded by a quarter of its span, so a set
+that spreads outward as it grows pays for the rebuild a shrinking share of the
+time. Coordinates are held apart from the `Vector2` array in flat `xs`/`ys`,
+for the same reason `PointGrid3` does it: this walk runs per point per frame in
+sketches built in debug, where every non-transparent operation is a real call.
+
+Two decisions are worth keeping. **The cell lattice is anchored to the origin,
+not to the point set's own corner.** Anchoring it to the set means a rebuild
+after the points moved cuts the plane in a slightly different place, sorts the
+points into differently placed cells, and reports the same neighbors in a
+different order; a force summed over them then differs in its last digits, and
+a simulation walks away from itself over enough steps. Snapping the lower
+corner down onto the lattice through the origin costs one extra cell each way
+and makes a given cell size cut the plane the same way forever. **A radius
+query measures its block from the query point's true cell**, clamping only the
+block's ends into the grid, rather than clamping the point first. A clamped
+home cell reads cells that are not within reach, in an order that has nothing
+to do with where the query really is.
+
+The conversions were verified rather than assumed. Four recipes moved onto the
+index (`DifferentialGrowth`, `Boids`, `DiffusionLimitedAggregation`, and
+`FlowField.streamlines`), and each was checked against its committed snapshot
+reference at an **exact zero difference**, not the suite's mean-diff tolerance,
+which is loose enough to hide a real change (the stroke-join work moved 79
+Guide figures under it). That held because the shared walk visits cells in the
+same order those private grids did (column outer, row inner, ascending index
+within a cell), and because the arithmetic is identical: the recipes measured
+`p - other` where the index measures `other - p`, and a negation is exact. The
+move also fixed a latent `Boids` defect: cells were keyed from the origin but
+queried from `bounds.origin`, so a flock in a box whose origin was not a
+multiple of the cell size silently lost neighbors on one side. Every snapshot
+uses a zero origin, which is why nothing moved.
+
+`Packing` and `DielectricBreakdown` keep their private grids on purpose. Their
+query is a block of cells rather than a radius, and a radius filter would drop
+candidates they still need (a far center with a large radius can constrain a
+point that a distance test would reject).
+
 
 ### Grid
 

@@ -92,11 +92,7 @@ public final class Boids {
         guard n > 1 else { return }
 
         let cell = Swift.max(perceptionRadius, separationRadius, 1e-6)
-        var grid: [BoidCell: [Int]] = [:]
-        grid.reserveCapacity(n)
-        for i in 0 ..< n {
-            grid[BoidCell(positions[i], cell), default: []].append(i)
-        }
+        let index = SpatialIndex(positions, cellSize: cell)
 
         let perc2 = perceptionRadius * perceptionRadius
         let sep2 = separationRadius * separationRadius
@@ -109,23 +105,16 @@ public final class Boids {
             var centerSum = Vector2.zero
             var separationCount = 0, neighborCount = 0
 
-            let col = Int(floor((p.x - bounds.x) / cell)), row = Int(floor((p.y - bounds.y) / cell))
-            for cc in (col - 1) ... (col + 1) {
-                for rr in (row - 1) ... (row + 1) {
-                    guard let bucket = grid[BoidCell(column: cc, row: rr)] else { continue }
-                    for j in bucket where j != i {
-                        let offset = p - positions[j]
-                        let d2 = offset.lengthSquared
-                        if d2 < perc2 {
-                            headingSum = headingSum + velocities[j]
-                            centerSum = centerSum + positions[j]
-                            neighborCount += 1
-                        }
-                        if d2 < sep2, d2 > 1e-9 {
-                            separationForce = separationForce + offset * (1 / d2)   // stronger when closer
-                            separationCount += 1
-                        }
-                    }
+            index.forNeighbors(of: i, within: cell) { j, d2 in
+                if d2 < perc2 {
+                    headingSum = headingSum + velocities[j]
+                    centerSum = centerSum + positions[j]
+                    neighborCount += 1
+                }
+                if d2 < sep2, d2 > 1e-9 {
+                    let offset = p - positions[j]
+                    separationForce = separationForce + offset * (1 / d2)   // stronger when closer
+                    separationCount += 1
                 }
             }
 
@@ -174,17 +163,6 @@ public final class Boids {
         if p.y < bounds.y + margin { dy += push }
         if p.y > bounds.y + bounds.height - margin { dy -= push }
         return Vector2(dx, dy)
-    }
-}
-
-/// A uniform-grid cell key for the flock's neighbor search.
-private struct BoidCell: Hashable {
-    let column: Int, row: Int
-    init(_ column: Int, _ row: Int) { self.column = column; self.row = row }
-    init(column: Int, row: Int) { self.column = column; self.row = row }
-    init(_ p: Vector2, _ cell: Double) {
-        self.column = Int(floor(p.x / cell))
-        self.row = Int(floor(p.y / cell))
     }
 }
 

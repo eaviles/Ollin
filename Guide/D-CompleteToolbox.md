@@ -91,6 +91,7 @@ Use it two ways. It is an index for the moment you remember the guide showing bl
 | Watercolor | Pigment from one polygon deformed and stacked at low opacity: dense cores, uneven blooming edges | [Ch 15](15-ShapesAsMaterial.md) | [Watercolor](../Docs/Generators/Watercolor.md) |
 | Convex hull | The rubber band around a point set | [Ch 15](15-ShapesAsMaterial.md) | [Geometry](../Docs/Drawing/Geometry.md) |
 | Voronoi and Delaunay | Territories and neighbor networks from points, with Lloyd relaxation | [Ch 15](15-ShapesAsMaterial.md) | [Voronoi](../Docs/Drawing/Voronoi.md) |
+| Spatial index | What is nearest, what is within reach, and what is inside a box, over a point set, without reading every point | [Ch 12](12-FlocksAndSwarms.md) | [Spatial index](../Docs/Drawing/SpatialIndex.md) |
 
 ## Motion, math, and randomness
 

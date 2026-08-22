@@ -44,8 +44,10 @@ public final class DiffusionLimitedAggregation {
     public var maxParticles: Int
 
     private var rng: SplitMix64
-    private var grid: [ClusterCell: [Int]] = [:]
-    private let cell: Double
+    /// The frozen particles, kept in step with `particles`: a point's index in
+    /// the index is its index in that array.
+    private var index = SpatialIndex(bounds: Rectangle(x: 0, y: 0, width: 0, height: 0),
+                                     cellSize: 1)
     private var center: Vector2
     private var clusterRadius: Double = 0
 
@@ -58,7 +60,8 @@ public final class DiffusionLimitedAggregation {
         self.bounds = bounds
         self.maxParticles = maxParticles
         self.rng = SplitMix64(seed: seed)
-        self.cell = radius * 4
+        self.index = SpatialIndex(bounds: bounds ?? Rectangle(x: 0, y: 0, width: 0, height: 0),
+                                  cellSize: radius * 4)
         self.particles = []
         self.center = .zero
         guard !seeds.isEmpty else { return }
@@ -130,7 +133,7 @@ public final class DiffusionLimitedAggregation {
 
     private func freeze(_ particle: Particle) {
         particles.append(particle)
-        grid[ClusterCell(particle.position, cell), default: []].append(particles.count - 1)
+        index.insert(particle.position)
         clusterRadius = Swift.max(clusterRadius, particle.position.distance(to: center))
     }
 
@@ -148,27 +151,6 @@ public final class DiffusionLimitedAggregation {
 
     /// The index of a frozen particle within `distance` of `p`, if any.
     private func touching(_ p: Vector2, within distance: Double) -> Int? {
-        let d2 = distance * distance
-        let col = Int(floor(p.x / cell)), row = Int(floor(p.y / cell))
-        for cc in (col - 1) ... (col + 1) {
-            for rr in (row - 1) ... (row + 1) {
-                guard let bucket = grid[ClusterCell(column: cc, row: rr)] else { continue }
-                for i in bucket where p.distanceSquared(to: particles[i].position) < d2 {
-                    return i
-                }
-            }
-        }
-        return nil
-    }
-}
-
-/// A uniform-grid cell key for the cluster's touch tests.
-private struct ClusterCell: Hashable {
-    let column: Int, row: Int
-    init(_ column: Int, _ row: Int) { self.column = column; self.row = row }
-    init(column: Int, row: Int) { self.column = column; self.row = row }
-    init(_ p: Vector2, _ cell: Double) {
-        self.column = Int(floor(p.x / cell))
-        self.row = Int(floor(p.y / cell))
+        index.anyNeighbor(of: p, within: distance)
     }
 }

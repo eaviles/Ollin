@@ -121,11 +121,7 @@ public final class DifferentialGrowth {
         guard n >= 2 else { return }
 
         let cell = Swift.max(repulsionRadius, 1e-6)
-        var grid: [Bucket: [Int]] = [:]
-        grid.reserveCapacity(n)
-        for i in 0 ..< n {
-            grid[Bucket(nodes[i], cell), default: []].append(i)
-        }
+        let index = SpatialIndex(nodes, cellSize: cell)
 
         var delta = [Vector2](repeating: .zero, count: n)
         for i in 0 ..< n {
@@ -147,21 +143,13 @@ public final class DifferentialGrowth {
                 force = force + (nodes[(i + 1) % n] - p) * attraction
             }
 
-            // Repulsion from nearby nodes, scanning the 3x3 block of cells.
-            let col = Int(floor(p.x / cell)), row = Int(floor(p.y / cell))
-            for cc in (col - 1) ... (col + 1) {
-                for rr in (row - 1) ... (row + 1) {
-                    guard let bucket = grid[Bucket(column: cc, row: rr)] else { continue }
-                    for j in bucket where j != i {
-                        let diff = p - nodes[j]
-                        let dist2 = diff.lengthSquared
-                        if dist2 < repulsionRadius * repulsionRadius, dist2 > 1e-12 {
-                            let dist = dist2.squareRoot()
-                            let falloff = (repulsionRadius - dist) / repulsionRadius
-                            force = force + diff * (1 / dist) * (falloff * repulsion)
-                        }
-                    }
-                }
+            // Repulsion from the nearby nodes the index hands back.
+            index.forNeighbors(of: i, within: cell) { j, dist2 in
+                guard dist2 < repulsionRadius * repulsionRadius, dist2 > 1e-12 else { return }
+                let diff = p - nodes[j]
+                let dist = dist2.squareRoot()
+                let falloff = (repulsionRadius - dist) / repulsionRadius
+                force = force + diff * (1 / dist) * (falloff * repulsion)
             }
 
             if jitter > 0 {
@@ -281,18 +269,5 @@ public extension DifferentialGrowth {
                                         jitter: jitter, growthRate: growthRate, maxNodes: maxNodes, bounds: bounds)
         growth.fixedEnds = true
         return growth
-    }
-}
-
-// MARK: - Spatial-hash bucket (file-private)
-
-/// A uniform-grid cell key for the repulsion broad-phase.
-private struct Bucket: Hashable {
-    let column: Int
-    let row: Int
-    init(column: Int, row: Int) { self.column = column; self.row = row }
-    init(_ p: Vector2, _ cell: Double) {
-        self.column = Int(floor(p.x / cell))
-        self.row = Int(floor(p.y / cell))
     }
 }

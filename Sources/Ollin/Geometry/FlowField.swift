@@ -56,25 +56,15 @@ public struct FlowField {
             return seeds.map { streamline(from: $0, stepLength: stepLength, steps: steps, bounds: bounds) }
         }
 
-        let cell = separation
-        var grid: [FlowCell: [Vector2]] = [:]
-        let sep2 = separation * separation
+        var drawn = SpatialIndex(bounds: bounds ?? Rectangle(x: 0, y: 0, width: 0, height: 0),
+                                    cellSize: separation)
 
         func tooClose(_ p: Vector2) -> Bool {
-            let col = Int(floor(p.x / cell)), row = Int(floor(p.y / cell))
-            for cc in (col - 1) ... (col + 1) {
-                for rr in (row - 1) ... (row + 1) {
-                    guard let bucket = grid[FlowCell(cc, rr)] else { continue }
-                    for q in bucket where p.distanceSquared(to: q) < sep2 { return true }
-                }
-            }
-            return false
+            drawn.hasNeighbor(of: p, within: separation)
         }
 
         func commit(_ points: [Vector2]) {
-            for p in points {
-                grid[FlowCell(Int(floor(p.x / cell)), Int(floor(p.y / cell))), default: []].append(p)
-            }
+            for p in points { drawn.insert(p) }
         }
 
         var lines: [[Vector2]] = []
@@ -115,12 +105,6 @@ public struct FlowField {
         }
         return points
     }
-}
-
-/// A uniform-grid cell key for the evenly-spaced streamline separation test.
-private struct FlowCell: Hashable {
-    let column: Int, row: Int
-    init(_ column: Int, _ row: Int) { self.column = column; self.row = row }
 }
 
 // MARK: - Sketch sugar
