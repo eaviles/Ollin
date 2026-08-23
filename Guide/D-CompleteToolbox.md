@@ -301,6 +301,7 @@ Use it two ways. It is an index for the moment you remember the guide showing bl
 | Video and GIF | `--export-video` (H.264, HEVC, ProRes) and `--export-gif`, deterministic | [Ch 3](03-MotionAndTime.md), [Ch 31](31-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
 | Live recording | `startRecording()` or ⌘⇧R keeps a run as it happens, sound included, through evaluations | [Ch 31](31-SharingAndPerforming.md) | [Recording](../Docs/Output/Recording.md) |
 | Record & replay | `--record-take` writes a run's seed, clock, inputs, and knobs down; `--replay` plays it back exactly, scrubs it, and re-renders it through any export | [Ch 31](31-SharingAndPerforming.md) | [Replay](../Docs/Core/Replay.md) |
+| Keyframed parameters | `automate($knob) { }` writes a knob's values down over time, carried by named or Bezier curves, looped or run at any speed, and rendered exactly by any export | [Ch 31](31-SharingAndPerforming.md) | [Automation](../Docs/Core/Automation.md) |
 | Perfect loops | Declare `loopDuration` and `--export-loop` renders exactly one seamless lap | [Ch 3](03-MotionAndTime.md) | [Export](../Docs/Output/Export.md) |
 | SVG for plotters | `--export-svg` true vectors, with `--hatch` turning fills into line work | [Ch 15](15-ShapesAsMaterial.md), [Ch 31](31-SharingAndPerforming.md) | [Export](../Docs/Output/Export.md) |
 | Print separations | `--export-separations`: one grayscale master per spot ink, screened, with an overprint preview | [Ch 31](31-SharingAndPerforming.md) | [PrintSeparations](../Docs/Output/PrintSeparations.md) |

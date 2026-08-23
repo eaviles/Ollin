@@ -1918,6 +1918,11 @@ open class Sketch {
     var takeRecorder: TakeRecorder?
     var takePlayer: TakePlayer?
 
+    /// The automation driving this sketch's knobs, when one is attached (see
+    /// `Automation`). It sets the automated knobs at the top of each frame; a
+    /// sketch reaches it through the `automation` property.
+    var automationPlayer: AutomationPlayer?
+
     /// Keys currently held down, so `isKeyDown(_:)` can answer and `keyIsPressed`
     /// tracks whether any key is down. The view inserts on press and removes on
     /// release (see `handleKey`).
@@ -3103,6 +3108,10 @@ open class Sketch {
                 self, frame: frameCount,
                 fallback: (time: time, deltaTime: deltaTime, frameRate: frameRate))
         }
+        // A knob written down over time is set here, before the recorder
+        // samples the knobs, so a run recorded while an automation played
+        // writes down the values the curves actually held.
+        automationPlayer?.apply(to: self, at: time)
         takeRecorder?.recordFrame(of: self, time: time, deltaTime: deltaTime,
                                   frameRate: frameRate)
         frameCount += 1

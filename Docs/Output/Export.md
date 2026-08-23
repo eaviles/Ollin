@@ -36,6 +36,7 @@ swift run OllinLive MySketches/Loop.swift --export poster.png --frame 90
 - [Hatching: solid fills for a pen plotter](#hatching-solid-fills-for-a-pen-plotter) - `--hatch`, `Hatching`
 - [Reproducibility metadata](#reproducibility-metadata) - the regeneration recipe every export carries
 - [Rendering a chosen variation](#rendering-a-chosen-variation) - `--seed`, on every export path
+- [Driving the knobs from a file](#driving-the-knobs-from-a-file) - `--automation`, keyframed parameters on every export path
 - [Contact sheets](#contact-sheets-proofing-a-variation-space) - `--export-grid` (seeds) and `--export-sweep` (a `@Param`), `OllinApp.contactSheet` / `exportContactSheet`
 - [Print separations](PrintSeparations.md) - `--export-separations`, per-ink masters for risograph and screen printing (its own page)
 - [Recording](Recording.md) - keep a *live* run instead of re-rendering one: real-time capture with sound (its own page)
@@ -325,6 +326,18 @@ swift run --package-path Examples Example-Randomness-Variations --export-video k
 ```
 
 The same seed always renders the same pixels. A sketch that pins its own seed in `setup()` ignores the flag, as it ignores every other way of setting a seed.
+
+---
+
+### Driving the knobs from a file
+
+`--automation <file>` attaches [keyframed parameters](../Core/Automation.md) to the run, on **every** export path above and on a standalone window as well:
+
+```sh
+swift run --package-path Examples Example-Motion-Automation --automation slow.json --export-video out.mp4 --seconds 12
+```
+
+Every export drives the clock at a fixed step, so the curves land on the same frames every time. The file arrives before `setup()`, so a sketch that writes a track for the same knob itself wins.
 
 ---
 

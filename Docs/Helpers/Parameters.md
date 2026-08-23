@@ -170,4 +170,6 @@ The full flag list is on the [Export](../Output/Export.md#contact-sheets-proofin
 
 For building your own control surface, `parameters()` returns the sketch's knobs as `[ParamHandle]`. Each handle carries a stable `name` key, a display `label`, the `icon` and `group` metadata, and the type-erased `param`. Its `control` describes the matching UI (kind, ranges, options, and live get/set closures). `stored` and `restore(_:)` round-trip the value through the small `ParamStored` payload the hosts persist. The live host builds its inspector from exactly this, and most sketches never call it.
 
+A knob can also be put on a curve rather than turned. An [`Automation`](../Core/Automation.md) writes a parameter's values down over time, and the sketch sets the knob each frame from that track of keys. It is the same knob, directed rather than tuned, and it renders exactly through any export.
+
 The [Parameters example](../../Examples/Live/Parameters/Sketch.swift) is the worked demo, a spread of the typed family in three groups driving a ring pattern, made for `swift run OllinLive Examples/Live/Parameters/Sketch.swift`.

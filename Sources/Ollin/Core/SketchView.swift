@@ -1862,6 +1862,24 @@ public enum OllinApp {
             }
             pendingTakeRecording = URL(fileURLWithPath: args[i + 1])
         }
+        installAutomation(args, on: sketch)
+    }
+
+    /// Read `--automation <file>` and hand the knob curves in it to the sketch
+    /// about to run. Called before `setup()`, so a sketch that also writes
+    /// tracks in code replaces the file's track for any knob it names itself.
+    /// The standalone window and every export path go through here; under the
+    /// live-reload host a sketch carries its tracks in `setup()` instead, which
+    /// is what survives each swap.
+    static func installAutomation(_ args: [String], on sketch: Sketch) {
+        guard let i = args.firstIndex(of: "--automation"), i + 1 < args.count else { return }
+        let url = URL(fileURLWithPath: args[i + 1])
+        do {
+            sketch.automation = try Automation.load(from: url)
+        } catch {
+            FileHandle.standardError.write(Data("Ollin: could not read the automation: \(error)\n".utf8))
+            exit(1)
+        }
     }
 
     /// True while a headless driver (the frame grab, the sequence/video/GIF/SVG
@@ -2433,6 +2451,10 @@ public extension OllinApp {
             let sketch = makeSketch()
             if let replayTake { replayTake.install(on: sketch) }
             if let seedOverride { sketch.seed(seedOverride) }
+            // `--automation <file>` drives the declared knobs from written-down
+            // curves; the exports read the clock at a fixed step, so the render
+            // is the automation exactly.
+            installAutomation(args, on: sketch)
             return sketch
         }
         // `--export-sequence <dir> (--frames N | --seconds S) [--fps F] [--start N]`

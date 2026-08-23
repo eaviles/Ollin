@@ -7848,6 +7848,18 @@ Recording starts at the run's own frame 0 (the runner attaches the recorder in i
 
 Scrubbing backward is re-simulation: rewind to frame 0 (reseed, restore the starting knobs, `setup()` again) and step forward to the target. The intermediate frames go through `stepReplayFrame`, which mirrors the headless drive in `renderImage(of:)`: an accumulating or feedback frame must actually render off-screen for its persistent surface to evolve, anything else only needs its compute stepped. Generic state snapshots are not possible (only the sketch knows its state), so the honest cost of a deep backward scrub is the frames in between; determinism is what makes the landing exact.
 
+## Keyframed parameters (the automation track)
+
+`Automation` (`Sources/Ollin/Core/Automation.swift`) is the other half of the take transport's idea, pointed the other way. A take writes down what a run *did*; an automation writes down what a run *should do*: one track per `@Param`, each a sorted list of keys carrying a `ParamStored` value and the curve that leaves it. Both are versioned Codable JSON keyed by the property name, which is what lets a future timeline view read and write either.
+
+The tracks are applied inside `Sketch.advance`, and the position in that function is the whole design. It runs *after* the take player has resolved the frame's clock, because a track is a function of that clock and a replay overrides it; and *before* `takeRecorder.recordFrame`, because the recorder diffs the knob values to find its changes. Put the apply after the recorder and a run recorded under an automation writes down the previous frame's values, so replaying that take without the automation shears the knobs by a frame. `AutomationTests` measures the take's own changes against the ramp for exactly this reason, and the sabotage (moving the apply below the recorder) turns it red.
+
+Two smaller decisions carry their own reasons. A track *sets* the knob rather than assigning it, so a `@Param` carrying `smoothing:` does not glide toward the curve on top of the curve's own glide; the curve is the glide, and a knob that snapped to each frame's target twice would lag behind its own automation. And the player caches the parameter handles on first use, the same way `TakeRecorder` does, because the `@Param` set of an instance is fixed and walking the mirror every frame costs real time; that cache is why the `automation` property mutates the player in place instead of building a new one for each `automate` call.
+
+Blending is by kind, which is where the semantics live rather than the math. Numbers, colors, points, rects, insets, and ranges interpolate; a switch, a menu choice, and a piece of text have nothing between two settings, so they hold what they left until the next key, and so does any pair of different kinds (which is what a knob that changed type leaves behind). Both ends short-circuit, so a key always reads back as exactly itself, whatever curve leaves it.
+
+The curve set is the shipped `Easing` catalog plus one editable curve, a unit cubic Bezier through two handle points, solved by Newton with a bisection fallback. The non-obvious part is that its handles bend the *clock* as well as the value: reading it means finding the parameter whose x is the progress and only then taking that parameter's y. A test that only checked symmetry could not see the difference, and passed while the solver was skipped entirely; the test that catches it measures against an independent bisection written in the test itself.
+
 ## Spatial video (the stereo pair and its file)
 
 `--export-spatial` writes stereo MV-HEVC, the format Apple's platforms play with

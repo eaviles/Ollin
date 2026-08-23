@@ -439,6 +439,41 @@ A replayed video needs no `--seconds`; it renders the whole take. So the set you
 
 What replays is what drives the sketch: time, input, knobs, randomness. A camera feed or a microphone keeps playing live during a replay. A piece leaning on the room follows your recorded hands, not the recorded room. The whole contract, and the `Take` type under the flags, lives in [Replay](../Docs/Core/Replay.md).
 
+## Directing the knobs: keyframes
+
+A take remembers what you did. Keyframes say what should happen. You already have knobs: the `@Param` properties from [Chapter 1](01-HelloOllin.md). An *automation* turns them for you. A value is placed at one moment, another later, and a curve carries the first into the second.
+
+```swift
+override func setup() {
+    automate($radius) { track in
+        track.key(at: 0, 40)
+        track.key(at: 2, 320, curve: .easeInOut)
+        track.key(at: 4, 40)
+    }
+    automation?.loops = true
+}
+```
+
+That is the whole idea. Every frame, before your `draw()` runs, the knob is set to whatever its curve holds at the sketch clock. You stop turning the knob and start writing down what it does.
+
+Each key carries the curve that *leaves* it, so the last key's curve is never read. Five of them are named, and one is drawn:
+
+<img src="Images/31-SharingAndPerforming/KnobOnACurve.jpg" alt="Four panels, each with the same two keys read by a different curve: a straight line, an S, a flat line that jumps at the end, and a hard snap. A red line marks one moment on each, and the circle above shows the size the knob holds there" width="680">
+
+`.linear` is the straight line. `.easeIn`, `.easeOut`, and `.easeInOut` are the eases from [Chapter 3](03-MotionAndTime.md). `.hold` sits still and then jumps. `.bezier(x1:y1:x2:y2:)` is the one you shape by hand. Its two handles bend the clock as well as the value, the way a curve dragged in an editor does.
+
+Not every knob can travel. A number, a color, a point, or a range has values in between two settings, so it moves along the curve. A switch, a menu choice, and a piece of text have nothing in between. They step instead, holding what they were given until the next key takes over. That is the honest behavior, and it is why a fill toggle on a track blinks rather than fades.
+
+How a pass plays is three properties. `loops` wraps at the end. `speed` scales the clock, so `2` runs twice as fast, and a negative speed runs the piece backwards from a `start` at the end. `length` holds past the last key before the wrap comes around, which is how you leave a beat of stillness in a loop.
+
+Here is why keyframes sit in this chapter. The tracks read the sketch clock, and every exporter drives that clock at a fixed step. So the piece you directed renders exactly as it played:
+
+```sh
+swift run --package-path Examples Example-Motion-Automation --export-video directed.mp4 --seconds 12
+```
+
+An automation is plain data as well, which means a sketch can read its own tracks back and draw them. The [Automation example](../Examples/Motion/Automation/Sketch.swift) plots each of its four tracks under the stage, playhead and all. And `--automation file.json` drives the same knobs from a file instead of from code. The full surface is in [Automation](../Docs/Core/Automation.md).
+
 ## Putting it together: a set in five evaluations
 
 What you'll build here is a short performed set. Open the host with a fresh buffer. Build the chapter's finale the way an audience would watch it grow, one evaluation at a time. [Chapter 17](17-YourFirstShader.md)'s `Visual` chains are the natural material for this kind of set, since every step is one added line:
