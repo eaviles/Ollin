@@ -14,7 +14,7 @@ for (i, p) in phyllotaxis(count: 600, spacing: 9).enumerated() {
 }
 ```
 
-(The space-filling curves, Hilbert, Peano, Gosper, and the dragon, live with the [L-systems](../Generators/LSystem.md) as built-in presets. The related drawing machine for arbitrary outlines is [Fourier epicycles](./Epicycles.md).)
+(The space-filling curves, Hilbert, Peano, Gosper, and the dragon, live with the [L-systems](../Generators/LSystem.md) as built-in presets. The related drawing machine for arbitrary outlines is [Fourier epicycles](./Epicycles.md). The curve written as a bend rather than a position, which is what rounds a corner so that the *turning* is smooth and not just the outline, is the [clothoid](./Clothoid.md).)
 
 ### Contents
 

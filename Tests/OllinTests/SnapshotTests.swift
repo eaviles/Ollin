@@ -497,6 +497,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("pursuit",
                  note: "Three finished pursuit chases: a triangle, a hexagon, and eight runners each chasing the third one along. Pins the simultaneous step (a ring that stays regular is the only way the spirals stay even), the equal-angle spiral each runner leaves, the kept chase lines, and the arrival that stops a runner on its target. No rng and no time, so it is deterministic.",
                  make: { PursuitScene() }),
+    SnapshotCase("clothoid",
+                 note: "Four panels of the clothoid: the Cornu double spiral both arms, a fan of G1 fits leaving one point at one heading and arriving at another with seven different headings, and the same three-point corner rounded with an easement and then with none, each with its bend combed off the route. Pins the Fresnel quadrature, the single-unknown fit (including the straight and arc members of the fan), the easement/arc/easement corner and its tangent setback, and the counterfactual the whole curve exists for: the comb ramps on the eased corner and steps on the plain arc. No rng and no time, so it is deterministic.",
+                 make: { ClothoidScene() }),
     SnapshotCase("penrose",
                  note: "Penrose tilings, kites and darts left, rhombs right, each with the matching-rule arcs stroked on top. Pins both deflations (the derived P2 rules and the P3 rules), the half-tile merge, the rhombs' intrinsic orientation, and the arc fractions that make the decoration continuous across every edge. No rng and no time, so it is deterministic.",
                  make: { PenroseScene() }),
@@ -6692,6 +6695,79 @@ private final class PursuitScene: Sketch {
                 stroke(Color.mix(chalk, warm, t: Double(runner) / spread))
                 drawPolyline(trail.points)
             }
+        }
+    }
+}
+
+/// Four panels of the clothoid: the Cornu spiral, a fan of G1 fits, and one
+/// corner rounded with an easement beside the same corner with none, each with
+/// its bend drawn as a comb off the route.
+private final class ClothoidScene: Sketch {
+    override var canvasSize: CanvasSize { .size(512, 160) }
+
+    private let chalk = Color(hex: 0xF2ECDD)
+    private let warm = Color(hex: 0xE0724A)
+
+    override func draw() {
+        background(Color(hex: 0x11131A))
+
+        // The whole double spiral, read out from the point where it is straight.
+        withState {
+            translate(64, 80)
+            noFill()
+            stroke(chalk)
+            strokeWeight(0.9)
+            drawPolyline(eulerSpiral(size: 110, turns: 2.6, count: 1200))
+        }
+
+        // Seven curves leaving one point the same way and arriving at another
+        // seven different ways. The middle one is a straight line and two of
+        // them are all but circular arcs, and none of those is a special case.
+        withState {
+            translate(128, 0)
+            noFill()
+            strokeWeight(0.9)
+            let from = Vector2(18, 80), to = Vector2(110, 80)
+            for i in 0...6 {
+                let angle = (Double(i) / 6 * 2 - 1) * 2.2
+                guard let fit = Clothoid(from: from, heading: 0, to: to, heading: angle) else { continue }
+                stroke(Color.mix(chalk, warm, t: Double(i) / 6))
+                drawPolyline(fit.points(spacing: 0.6))
+            }
+        }
+
+        corner(at: 256, easement: 38)
+        corner(at: 384, easement: 0.01)
+    }
+
+    /// One three-point corner, rounded, with the bend combed off it.
+    private func corner(at x: Double, easement: Double) {
+        withState {
+            translate(x, 0)
+            let plan = [Vector2(14, 34), Vector2(94, 34), Vector2(94, 140)]
+            let route = clothoidCorners(plan, radius: 30, easement: easement)
+            let total = route.length
+
+            noFill()
+            stroke(chalk.withAlpha(0.20))
+            strokeWeight(0.6)
+            drawPolyline(plan)
+
+            stroke(warm.withAlpha(0.85))
+            strokeWeight(0.6)
+            var ribbon = [Vector2]()
+            for i in 0...240 {
+                let s = total * Double(i) / 240
+                guard let here = route.point(at: s),
+                      let heading = route.heading(at: s),
+                      let bend = route.curvature(at: s) else { continue }
+                ribbon.append(here + Vector2(angle: heading).perpendicular * (bend * 420))
+            }
+            drawPolyline(ribbon)
+
+            stroke(chalk)
+            strokeWeight(1.6)
+            drawPolyline(route.contour(spacing: 0.5).points)
         }
     }
 }

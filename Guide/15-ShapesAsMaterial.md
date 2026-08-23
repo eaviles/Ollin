@@ -83,6 +83,38 @@ The last panel isn't a curve at all. `smoothed(iterations:)` is Chaikin's corner
 
 One habit applies to all of them. These come back in their own coordinates, and the way to fit one to your canvas is `fitted(points, in: rect)`, which scales the *points*. Reaching for `scale()` instead would scale your stroke width along with the geometry, which is rarely what you want on a drawing made of lines.
 
+### A corner a car could take
+
+Chaikin rounds a corner, and for most drawings that is the end of it. But a rounded corner can be asked a second question, and it is the one a road engineer asks. Not "is the outline smooth" but "is the *turning* smooth".
+
+They are not the same question. An arc is a perfectly smooth outline, and it is also a corner where the bend arrives out of nowhere. Along the straight you are not turning at all. One step later you are turning at `1 / radius`, and there was no room in between for anything else to happen.
+
+<img src="Images/15-ShapesAsMaterial/ClothoidCorner.jpg" alt="The same right-angle corner rounded two ways. On the left one arc, and under it a graph of the bend that is a flat-topped rectangle with vertical sides. On the right the corner eased at both ends, and under it the same graph as a trapezoid that ramps up, holds, and ramps back down" width="680">
+
+Ollin has the curve that answers it. A **clothoid** is written as a turn rate rather than as a position. Face a direction, and turn a little more sharply with every step you take. Its bend is then a straight line in the distance traveled, which is exactly the ramp the left-hand graph is missing.
+
+```swift
+let route = clothoidCorners(waypoints, radius: 90, easement: 70)
+drawPolyline(route.contour().points)
+```
+
+Every corner becomes three pieces: a clothoid bending in, an arc, and a clothoid bending back out. `easement` is how much travel the bend is given to arrive over. Set it to zero and you have the plain arc back, which is what the left panel is.
+
+This is how roads, railways, and roller coasters are laid out. It is part of why a motorway curve feels different from a curve drawn with a compass. It matters again to anything that physically follows your drawing. A pen plotter, a laser, or a cutting head has to slow down for a direction that changes all at once. An eased corner gives it nothing to slow down for.
+
+Two more things fall out of the same curve. `clothoidSpline(through:)` fits one clothoid to each gap in a list of points, so the path goes through every point and never kinks at one. And a whole chain of them reads as a single path measured by length, which is what makes it drivable:
+
+```swift
+let along = (time * 260).truncatingRemainder(dividingBy: route.length)
+let here = route.point(at: along)         // where you are
+let facing = route.heading(at: along)     // which way you face
+let bend = route.curvature(at: along)     // where the wheel is
+```
+
+Steady time in, steady ground covered. Read `curvature(at:)` while you drive and you are holding the steering wheel. That is the whole idea again, from the driver's seat rather than the graph's.
+
+Drawn whole, the curve is the Cornu spiral: two arms winding into two eyes they never reach, because the bend keeps on growing. `eulerSpiral(size: 700, turns: 2.5)` returns it as points.
+
 ### Circles all the way down
 
 Here is a fact that sounds false. Any closed outline at all, however irregular, is exactly a sum of circles. Each spins at a whole-number rate, riding on the tip of the one before it. That's Fourier's idea, and Ollin will do the decomposition for you.
@@ -615,7 +647,7 @@ Then make it yours:
 
 The territories are named for Georgy Voronoy and the triangulation for Boris Delaunay, mathematicians a century apart from the generative artists who adopted them. The settling pass is Stuart Lloyd's algorithm from 1957 signal processing. The dart-throwing scatter is Robert Bridson's 2007 fast Poisson-disk sampling. Grow-until-touching circle packing entered the generative canon through Jared Tarbell's work in the early 2000s. The shape booleans and offsets are powered by Angus Johnson's Clipper2 library. It is one of the few pieces of bundled code in Ollin, credited in full in the project notices.
 
-The named curves each carry a person with them. Lissajous figures are Jules Antoine Lissajous's, from 1857, though Nathaniel Bowditch drew them first. Roses are Guido Grandi's rhodonea, named in the 1720s for their resemblance to flowers. The trochoids are the mathematics behind the Spirograph toy. The harmonograph was a real Victorian instrument, a pen hung from swinging pendulums. And the sunflower packing is Helmut Vogel's 1979 model. Corner cutting is George Chaikin's, from 1974. Drawing with epicycles goes back through Fourier to the Greek astronomers, who used circles riding on circles to explain the wandering of the planets. The two even-sampling sequences are John Halton's and Ilya Sobol's, both from the early 1960s. Both were invented for numerical integration rather than for drawing. The convex hull uses A. M. Andrew's monotone-chain construction from 1979. The concave hull is the characteristic-shape construction of Matt Duckham, Lars Kulik, Mike Worboys, and Antony Galton, from 2008. The alpha shape is Herbert Edelsbrunner, David Kirkpatrick, and Raimund Seidel's, from 1983.
+The named curves each carry a person with them. Lissajous figures are Jules Antoine Lissajous's, from 1857, though Nathaniel Bowditch drew them first. Roses are Guido Grandi's rhodonea, named in the 1720s for their resemblance to flowers. The trochoids are the mathematics behind the Spirograph toy. The harmonograph was a real Victorian instrument, a pen hung from swinging pendulums. And the sunflower packing is Helmut Vogel's 1979 model. Corner cutting is George Chaikin's, from 1974. The clothoid was described by Leonhard Euler in 1744, and rediscovered by Augustin-Jean Fresnel, whose integrals give its shape. Arthur Talbot brought it into railway practice in 1890. The fit that joins two points and two headings follows Enrico Bertolazzi and Marco Frego's 2015 reduction. Drawing with epicycles goes back through Fourier to the Greek astronomers, who used circles riding on circles to explain the wandering of the planets. The two even-sampling sequences are John Halton's and Ilya Sobol's, both from the early 1960s. Both were invented for numerical integration rather than for drawing. The convex hull uses A. M. Andrew's monotone-chain construction from 1979. The concave hull is the characteristic-shape construction of Matt Duckham, Lars Kulik, Mike Worboys, and Antony Galton, from 2008. The alpha shape is Herbert Edelsbrunner, David Kirkpatrick, and Raimund Seidel's, from 1983.
 
 The skeleton is Harry Blum's medial axis, proposed in 1967 as a way to describe biological shape. It is approximated here by the Voronoi method of J. W. Brandt and V. R. Algazi. The straight skeleton is Oswin Aichholzer, Franz Aurenhammer, David Alberts, and Bernd Gärtner's, from 1995. It is computed by the shrinking-wavefront method that Petr Felkel and Štěpán Obdržálek formulated, and Tom Kelly hardened against simultaneous events. Roofers and origami folders knew the construction long before it had a name. The marbling equations are Aubrey Jaffer's closed-form model of a craft that predates all of it. The watercolor recipe is Tyler Hobbs', from a generous written guide to simulating paint with generative art. And hatching itself is far older than any of this, since it's how engravers and etchers made tone from lines for centuries. The plotter just holds the pen steadier. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
@@ -626,6 +658,7 @@ The skeleton is Harry Blum's medial axis, proposed in 1967 as a way to describe 
 - [Fourier epicycles](../Docs/Drawing/Epicycles.md): the `Term` list, the joint and path readers, and resampling requirements. The [`Examples/Motion/Epicycles`](../Examples/Motion/Epicycles/Sketch.swift) example traces a whale with them.
 - [Shape morphing](../Docs/Drawing/Morphing.md): the correspondence rules, `spacing`, and `Tweenable` geometry inside a `Timeline`. The [`Examples/Motion/Morphing`](../Examples/Motion/Morphing/Sketch.swift) example loops a star through a blob and a donut.
 - [Classic curves](../Docs/Drawing/Curves.md): every parameter of all nine, including what closes each curve exactly once.
+- [Clothoid](../Docs/Drawing/Clothoid.md): the four numbers, the easement, the single curve that fits two points and two headings, corner rounding, and driving a chain by distance.
 - [Low-discrepancy sampling](../Docs/Generators/LowDiscrepancy.md): Halton bases, Sobol, `startIndex`, and the scalar `halton`.
 - [Stroke profiles](../Docs/Drawing/Drawing.md#strokeProfile): `.taper`, `.ramp`, `.nib` and `.values` with every argument, the by-hand closure form, which primitives honor a profile, and what vector export writes.
 - [Marks](../Docs/Drawing/Marks.md): `StrokeMark`, the response and dynamics types, what the smoothing and spacing knobs do, building a mark without a pointer, and what survives vector export.
