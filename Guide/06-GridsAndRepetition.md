@@ -205,6 +205,30 @@ Labels belong outside the block, in canvas coordinates, or they get scaled down 
 
 This is the fastest way to see a piece think. Change one number, run six of it, and the ones that are dead give themselves away immediately. You learn more from six of a piece than from one.
 
+## Looking closer
+
+A view box makes the canvas smaller. The other move is the opposite one: leave the canvas as it is and look at part of it, up close.
+
+```swift
+override func draw() {
+    background(.white)
+    viewControl()
+    drawTheWholePiece()
+}
+```
+
+Drag to pan, scroll to zoom. That is the whole of it, and it is the 2D counterpart of the camera you can take hold of in [Chapter 21](21-3DGently.md). Like that one, it is opt-in: a sketch that never calls it never pays for it.
+
+<img src="Images/06-GridsAndRepetition/ViewCloser.jpg" alt="The same generated chart twice: on the left the whole island, where the place names are an illegible smudge, and on the right the view four notches in, where the same names are crisp and readable" width="680">
+
+The best reason to zoom is in that figure, and it is not the magnification. Nothing was re-rendered to get the right-hand panel. The place names are set at four units in both, and the outlines are simply drawn through a larger transform, so they arrive crisp. Vector drawing has no resolution to run out of.
+
+Two details are what make the gestures feel like gestures rather than sliders. A drag moves the content exactly as far as the pointer went, so the piece sticks to your finger. And a zoom is anchored on the pointer, so whatever you are pointing at stays under it while the view grows around it. Neither is smoothed, on purpose. A 3D orbit is nicer with a little inertia; a flat plane under a finger is not.
+
+What `viewControl()` leaves behind is an ordinary transform, which tells you where to put things. Anything drawn *before* the call stays put, so a fixed backdrop goes there. For a caption that has to be drawn last, wrap the call and the piece in a `withState { }` block and draw the caption after it, outside.
+
+And the mouse arrives in the coordinates now on screen, the same courtesy a view box does, so `drawCircle(mouseX, mouseY, 20)` lands under the pointer at any zoom and hit-testing goes on working.
+
 ## Grids that aren't square
 
 The `Grid` this chapter opened with divides a rectangle into rectangles, which covers a great deal but not everything. Four more shapes of division come with Ollin, and all of them read the same way. Ask for the cells, then loop over them once.

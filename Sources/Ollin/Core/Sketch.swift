@@ -1888,6 +1888,9 @@ open class Sketch {
     /// reflection (the stored set is fixed at compile time) and advanced each frame.
     private var advancingValues: [FrameAdvancing]?
 
+    /// The 2D pan-and-zoom view `viewControl()` drives (see View2D.swift).
+    var view2D = View2D()
+
     /// Backing generator for `random()` / `randomSeed(_:)` (see Random.swift).
     /// Seeded from `variation` at init, so unseeded sketches vary per run but
     /// every run is recoverable by its number.
@@ -3011,6 +3014,67 @@ open class Sketch {
         }
     }
 
+    /// Hand the view of the canvas to whoever is watching: drag to pan, scroll
+    /// to zoom. Call it once each `draw()`, before the drawing it should move.
+    ///
+    /// ```swift
+    /// override func draw() {
+    ///     background(.white)
+    ///     viewControl()
+    ///     drawTheWholePiece()      // now pannable and zoomable
+    /// }
+    /// ```
+    ///
+    /// The 2D counterpart of ``Sketch/cameraControl(target:radius:azimuth:elevation:fieldOfView:near:far:)``,
+    /// and opt-in the same way: a sketch that never calls it never pays. What it
+    /// leaves in force is a plain transform, so everything drawn after it moves
+    /// together, and anything drawn *before* it stays put, which is where a
+    /// fixed backdrop or a title belongs.
+    ///
+    /// `center` and `zoom` frame the opening view and are applied on the first
+    /// call only, so passing them every frame does not fight the dragging. The
+    /// default opens on the whole canvas at its own size. `zoom` is how many
+    /// screen pixels one canvas unit covers, and `range` bounds where the scroll
+    /// wheel can take it.
+    ///
+    /// Neither gesture is damped, unlike the 3D camera: an orbit gains from a
+    /// little inertia, and a flat plane under a finger does not. A drag moves
+    /// the content exactly as far as the pointer went, and a zoom is anchored on
+    /// the pointer, so the thing you are pointing at stays under it.
+    ///
+    /// The mouse is remapped into the coordinates now on screen for the rest of
+    /// the frame, so `drawCircle(mouseX, mouseY, 20)` lands under the pointer at
+    /// any zoom and hit-testing keeps working. The pointer itself is put back
+    /// before the next frame. Read ``Sketch/viewCenter`` and ``Sketch/viewZoom``
+    /// to see where the view is, and ``Sketch/resetView()`` to put it back.
+    public func viewControl(center: Vector2? = nil, zoom: Double = 1,
+                            in range: ClosedRange<Double> = 0.05...50) {
+        let middle = Vector2(width / 2, height / 2)
+        view2D.seed(center: center ?? middle, zoom: zoom)
+        let pointer = Vector2(mouseX, mouseY)
+        view2D.update(pointer: pointer, dragging: mouseIsPressed, scroll: scrollDeltaY,
+                      canvasCenter: middle, range: range)
+        translate(middle)
+        scale(view2D.zoom, view2D.zoom)
+        translate(-view2D.center)
+        // The rest of the frame reads the pointer where it is pointing, not where
+        // it is on the glass. `performDraw` puts the real one back afterwards.
+        let content = view2D.contentPoint(pointer, canvasCenter: middle)
+        mouseX = content.x
+        mouseY = content.y
+    }
+
+    /// The content point the middle of the canvas is looking at (see
+    /// ``Sketch/viewControl(center:zoom:in:)``).
+    public var viewCenter: Vector2 { view2D.center }
+
+    /// How many screen pixels one canvas unit covers under the current view.
+    public var viewZoom: Double { view2D.zoom }
+
+    /// Forget where the viewer took the view, so the next `viewControl()` frames
+    /// its opening view again. The escape hatch behind a reset key.
+    public func resetView() { view2D = View2D() }
+
     /// Run `body` with drawing confined to `circle`. The circle is flattened to a
     /// fine polygon for the clip (like the vector exporters), dense enough that
     /// the edge reads round at canvas resolution.
@@ -3246,6 +3310,16 @@ open class Sketch {
                                mouse: SIMD2(Float(mouseX), Float(mouseY)),
                                time: Float(shaderClock), dt: Float(deltaTime),
                                frameCount: UInt32(truncatingIfNeeded: max(0, frameCount)))
+        // A frame may put the mouse into coordinates of its own: `withViewBox`
+        // does it for a block, `viewControl()` for the rest of the frame. The
+        // pointer is put back here rather than by each of them, because the
+        // runner only writes the mouse when it moves, so a remap left standing
+        // would be applied again to itself on every still frame after it.
+        let pointer = Vector2(mouseX, mouseY)
+        defer {
+            mouseX = pointer.x
+            mouseY = pointer.y
+        }
         for e in extensions { e.beforeDraw(self) }
         draw()
         for e in extensions { e.afterDraw(self) }   // before the render — can draw

@@ -36,6 +36,8 @@ override func draw() {
 }
 ```
 
+Two calls put the mouse into coordinates of their own for a while: [`withViewBox`](../Drawing/Drawing.md#viewbox) for the length of its block, and [`viewControl`](../Drawing/Drawing.md#viewcontrol) for the rest of the frame. That is what keeps a piece written for the whole canvas working when it is not looking at the whole canvas. In both, `mouseX` and `mouseY` read the content the pointer is over rather than the glass it is on. The pointer itself is restored before the next frame.
+
 <a name="mouseIsPressed"></a>
 
 ### mouseIsPressed

@@ -16,7 +16,7 @@ The point and rectangle types these calls take (`Vector2`, `Rectangle`) are docu
 - **Novelty shapes:** [drawHorseshoe](#horseshoe), [drawParabola](#parabola), [drawRoundedX](#roundedx), [drawBlobbyCross](#blobbycross), [drawTunnel](#tunnel), [drawStairs](#stairs), [drawCoolS](#cools)
 - **Paths & custom shapes:** [drawPolyline](#polyline), [drawPolygon](#polygon), [drawShape](#shape), [drawCurve](#curve)
 - **Batches:** [drawCircles](#batches), [drawPoints](#batches), [drawRects](#batches)
-- **Transforms and state:** [translate](#translate), [rotate](#rotate), [scale](#scale), [symmetry / noSymmetry](#symmetry), [withClip](#clip), [withViewBox](#viewbox), [withState](#isolated), [pushState / popState](#push)
+- **Transforms and state:** [translate](#translate), [rotate](#rotate), [scale](#scale), [symmetry / noSymmetry](#symmetry), [withClip](#clip), [withViewBox](#viewbox), [viewControl](#viewcontrol), [withState](#isolated), [pushState / popState](#push)
 
 ### Background and style
 
@@ -1162,6 +1162,39 @@ Both are restored on exit, and boxes nest: a box inside a box composes both mapp
 `fit` says what happens when the box is not the canvas's shape, and means exactly what it means for a picture (see [`ImageFit`](Images.md#fit)): `.contain` puts the whole virtual canvas inside and leaves the box showing along two edges, `.cover` fills the box and crops what runs past, `.stretch` squashes to fit. A box of the canvas's own shape gets the same answer from all three.
 
 What does **not** change is `width` and `height`, on purpose: the code inside believes it has the whole canvas, which is what lets you hand an unmodified piece to a box. One thing follows from that, and it is worth knowing before you lay out a sheet. The virtual canvas has the *sketch's* shape, not the box's. Boxes shaped like the canvas are therefore the case where nothing is letterboxed. Labels and frames are best drawn outside the block, in canvas coordinates, so they keep one size while the pieces are scaled down. See the [`Rendering/ViewBoxes`](../../Examples/Rendering/ViewBoxes/Sketch.swift) example.
+
+<a name="viewcontrol"></a>
+
+#### viewControl
+
+```swift
+viewControl(center: Vector2? = nil, zoom: Double = 1, in range: ClosedRange<Double> = 0.05...50)
+```
+
+Hand the view of the canvas to whoever is watching: drag to pan, scroll to zoom. Call it once each `draw()`, before the drawing it should move. It is the 2D counterpart of [`cameraControl()`](../3D/Camera.md#control), and opt-in the same way: a sketch that never calls it never pays.
+
+```swift
+override func draw() {
+    background(.white)
+    viewControl()
+    drawTheWholePiece()          // now pannable and zoomable
+}
+```
+
+What it leaves in force is a plain transform, so everything drawn after it moves together and anything drawn *before* it stays put. That is where a fixed backdrop belongs. For a HUD that has to be drawn last, wrap the call and the piece in a `withState { }` block and draw the HUD after it.
+
+`center` and `zoom` frame the *opening* view and are applied on the first call only, so passing them every frame does not fight the dragging. `zoom` is how many screen pixels one canvas unit covers, and `range` bounds where the wheel can take it. `viewCenter` and `viewZoom` report where the view is, and `resetView()` puts it back to its opening framing, which is what a reset key would call.
+
+| Gesture | Action |
+| --- | --- |
+| Drag | Pan (the content follows the pointer exactly) |
+| Scroll | Zoom about the pointer (what you point at stays under it) |
+
+Neither gesture is damped, unlike the 3D camera. An orbit gains from a little inertia; a flat plane under a finger does not.
+
+The mouse is remapped into the coordinates now on screen for the rest of the frame, so `drawCircle(mouseX, mouseY, 20)` lands under the pointer at any zoom and hit-testing keeps working. The pointer itself is restored before the next frame, so the remap never compounds. (It lasts the frame rather than the block, so a `withState { }` around the call does not put it back.)
+
+Zooming costs nothing in fidelity, because the drawing is vector. Text set at four units is a smudge at the opening view and crisp four notches in, with nothing re-rendered to get there. See the [`Input/PanAndZoom`](../../Examples/Input/PanAndZoom/Sketch.swift) example.
 
 <a name="isolated"></a>
 

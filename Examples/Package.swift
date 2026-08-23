@@ -400,6 +400,7 @@ let package = Package(
         example("Patterns/Phyllotaxis"),
         example("Input/RepelGrid"),
         example("Input/Keys"),
+        example("Input/PanAndZoom"),
         example("Patterns/WarpGrid"),
         example("Patterns/EnergyGrid"),
         example("Randomness/NoiseField"),

@@ -18,7 +18,7 @@ New to Swift? Start with the [Swift quick reference](./Swift.md), which covers j
 
 ### Drawing
 
-- [`Drawing`](./Drawing/Drawing.md) - `background`, `fill`/`stroke`, the shapes, and the transform stack
+- [`Drawing`](./Drawing/Drawing.md) - `background`, `fill`/`stroke`, the shapes, the transform stack, and the views over it (`withClip`, `withViewBox`, `viewControl`)
 - [`Accumulation`](./Drawing/Accumulation.md) - `noClear` to keep the canvas across frames so drawing piles up (long exposures, paint-on-canvas, light accumulation)
 - [`HDR & tone-mapping`](./Drawing/HDR.md) - `toneMap` to roll bright, out-of-range light off the screen instead of clipping it (the linear-float pipeline behind every frame; the glow/bloom and sandpainting looks)
 - [`Wide gamut & HDR output`](./Drawing/ColorOutput.md) - `colorOutput` to present through Display P3 and keep highlights brighter than white, `Color(displayP3:)` for colors outside sRGB, and HDR10 video export
