@@ -604,3 +604,267 @@ struct FormulaTrackTests {
         #expect(sketch.radius == 42)
     }
 }
+
+// MARK: - A knob of more than one number, one rule per part
+
+/// A point, a color, a rectangle, a set of insets, and a pair of ends each hold
+/// several numbers, so each takes several rules. The claims worth pinning are
+/// the ones a picture cannot show: that a part with no rule is left alone, that
+/// one part of a knob is a name another rule can read on the same frame, that
+/// the knob's own range still holds, and that the whole thing survives a trip
+/// through a file.
+@Suite
+@MainActor
+struct FormulaPartTests {
+
+    private final class Parted: Sketch {
+        @Param(x: 0...1000, y: 0...1000) var spot = Vector2(10, 20)
+        @Param(x: -10...10, y: -10...10, z: -10...10) var eye = Vector3(0, 0, 0)
+        @Param var tint = Color(red: 0.1, green: 0.2, blue: 0.3, alpha: 1)
+        @Param(x: 0...500, y: 0...500, width: 0...500, height: 0...500)
+        var box = Rectangle(x: 0, y: 0, width: 10, height: 10)
+        @Param(0...100) var pad = Insets(top: 1, right: 2, bottom: 3, left: 4)
+        @Param(in: 0...100) var span = 10.0...20.0
+    }
+
+    private static func made() -> Parted {
+        let sketch = Parted()
+        sketch.setCanvasSize(width: 64, height: 64)
+        return sketch
+    }
+
+    /// Every knob that holds more than one number takes a rule for each part,
+    /// and each number lands where its part is named.
+    @Test func everyKindOfKnobTakesARuleForEachPart() {
+        let sketch = Self.made()
+        sketch.drive(sketch.$spot, x: "time * 10", y: "time * 20")
+        sketch.drive(sketch.$eye, x: "1", y: "2", z: "3")
+        sketch.drive(sketch.$tint, red: "0.5", green: "0.25", blue: "0.125", alpha: "0.75")
+        sketch.drive(sketch.$box, x: "4", y: "5", width: "6", height: "7")
+        sketch.drive(sketch.$pad, top: "8", right: "9", bottom: "10", left: "11")
+        sketch.drive(sketch.$span, lower: "20", upper: "80")
+        sketch.advance(time: 2, deltaTime: 0.5, frameRate: 2)
+
+        #expect(sketch.spot == Vector2(20, 40))
+        #expect(sketch.eye == Vector3(1, 2, 3))
+        #expect(sketch.tint == Color(red: 0.5, green: 0.25, blue: 0.125, alpha: 0.75))
+        #expect(sketch.box == Rectangle(x: 4, y: 5, width: 6, height: 7))
+        #expect(sketch.pad == Insets(top: 8, right: 9, bottom: 10, left: 11))
+        #expect(sketch.span == 20...80)
+    }
+
+    /// A part with no rule keeps whatever the knob holds, and the hand still
+    /// reaches it while the part beside it plays. That is the whole point of a
+    /// rule per part: one part directed, the rest still yours.
+    @Test func aPartWithNoRuleIsLeftAlone() {
+        let sketch = Self.made()
+        sketch.spot = Vector2(3, 77)
+        sketch.drive(sketch.$spot, x: "time * 10")
+        sketch.advance(time: 1, deltaTime: 0.5, frameRate: 2)
+        #expect(sketch.spot == Vector2(10, 77))
+
+        sketch.spot = Vector2(0, 500)             // the hand moves the free part
+        sketch.advance(time: 2, deltaTime: 0.5, frameRate: 2)
+        #expect(sketch.spot == Vector2(20, 500))
+    }
+
+    /// One part of a knob is a name a rule can read, and it lands on the same
+    /// frame whichever order the tracks sit in. Reading in track order instead
+    /// would give the frame before's number, which would make the picture
+    /// depend on the frame rate.
+    @Test func aRuleReadsOnePartOnTheSameFrame() {
+        final class Pair: Sketch {
+            @Param(x: 0...1000, y: 0...1000) var spot = Vector2(0, 0)
+            @Param(0...1000) var radius = 0.0
+        }
+
+        func run(reversed: Bool) -> (Vector2, Double) {
+            let sketch = Pair()
+            sketch.setCanvasSize(width: 64, height: 64)
+            var automation = Automation(tracks: [
+                .init(name: "radius", formula: try! Formula("spot.x / 2")),
+                .init(name: "spot", parts: ["x": try! Formula("time * 100"),
+                                              "y": try! Formula("time * 10")]),
+            ])
+            if reversed { automation.tracks.reverse() }
+            sketch.automation = automation
+            sketch.advance(time: 0.5, deltaTime: 0.5, frameRate: 2)
+            return (sketch.spot, sketch.radius)
+        }
+
+        #expect(run(reversed: false) == (Vector2(50, 5), 25))
+        #expect(run(reversed: true) == (Vector2(50, 5), 25))
+    }
+
+    /// The part a *keyed* track moves is a name as well, so a rule can follow a
+    /// point that is being carried between two placed values.
+    @Test func aRuleReadsOnePartOfAKeyedKnob() {
+        final class Keyed: Sketch {
+            @Param(x: 0...1000, y: 0...1000) var spot = Vector2(0, 0)
+            @Param(0...1000) var radius = 0.0
+
+            override func setup() {
+                automate($spot) { track in
+                    track.key(at: 0, Vector2(0, 0), curve: .linear)
+                    track.key(at: 1, Vector2(100, 40))
+                }
+                drive($radius, "spot.x / 2")
+            }
+        }
+        let sketch = Keyed()
+        sketch.setCanvasSize(width: 64, height: 64)
+        sketch.setup()
+        sketch.advance(time: 0.5, deltaTime: 0.5, frameRate: 2)
+        #expect(sketch.spot == Vector2(50, 20))
+        #expect(sketch.radius == 25)
+    }
+
+    /// A part worked out from another part of the same knob cannot settle on
+    /// one frame, so the whole knob is left alone rather than played at a value
+    /// that would depend on the frame rate. A knob outside the ring still plays.
+    @Test func aPartThatNamesItsOwnKnobIsLeftAlone() {
+        final class Ring: Sketch {
+            @Param(x: 0...1000, y: 0...1000) var spot = Vector2(3, 5)
+            @Param(0...100) var fine = 0.0
+        }
+        let sketch = Ring()
+        sketch.setCanvasSize(width: 64, height: 64)
+        sketch.automation = Automation(tracks: [
+            .init(name: "spot", parts: ["x": try! Formula("spot.y + 1"),
+                                          "y": try! Formula("time")]),
+            .init(name: "fine", formula: try! Formula("time * 2")),
+        ])
+        sketch.advance(time: 1, deltaTime: 0.5, frameRate: 2)
+        #expect(sketch.spot == Vector2(3, 5))
+        #expect(sketch.fine == 2)
+        sketch.advance(time: 2, deltaTime: 0.5, frameRate: 2)
+        #expect(sketch.spot == Vector2(3, 5))     // and it never creeps
+    }
+
+    /// The knob's own range still holds, exactly as it does when a hand drags
+    /// the field. A rule is a way to set a knob, never a way past it.
+    @Test func theKnobsOwnRangeStillHolds() {
+        let sketch = Self.made()
+        sketch.drive(sketch.$spot, x: "0 - 500", y: "9999")
+        sketch.advance(time: 1, deltaTime: 0.5, frameRate: 2)
+        #expect(sketch.spot == Vector2(0, 1000))
+    }
+
+    /// A pair of ends stays ordered, because a crossed pair is not a value the
+    /// knob can hold. The lower end wins and the upper end is lifted to meet
+    /// it, the way the two-thumb slider behaves under a hand.
+    @Test func thePairOfEndsStaysOrdered() {
+        let climbing = Self.made()
+        climbing.drive(climbing.$span, lower: "time * 30")
+        climbing.advance(time: 2, deltaTime: 0.5, frameRate: 2)
+        #expect(climbing.span == 60...60)
+
+        let falling = Self.made()
+        falling.drive(falling.$span, upper: "5")
+        falling.advance(time: 1, deltaTime: 0.5, frameRate: 2)
+        #expect(falling.span == 10...10)
+    }
+
+    /// Every part a value reports is a part it takes back: writing a value's
+    /// own numbers into it changes nothing, and a number written to one part
+    /// reads back from that same part. A mismatch between the two would drive
+    /// the wrong part, or none at all, and no picture would say which.
+    @Test func everyPartReadsBackWhatWasWrittenToIt() {
+        let values: [ParamStored] = [
+            .vector(x: 1, y: 2),
+            .vector3(x: 1, y: 2, z: 3),
+            .color(red: 0.1, green: 0.2, blue: 0.3, alpha: 0.4),
+            .rect(x: 1, y: 2, width: 3, height: 4),
+            .insets(top: 1, right: 2, bottom: 3, left: 4),
+            .range(lower: 1, upper: 2),
+        ]
+        for stored in values {
+            let parts = Automation.parts(of: stored)
+            #expect(!parts.isEmpty, "\(stored) has parts")
+            #expect(Automation.applying(parts, to: stored) == stored, "\(stored) round trips")
+            for name in parts.keys {
+                let moved = Automation.applying([name: 42], to: stored)
+                #expect(Automation.parts(of: moved)[name] == 42, "\(stored) part \(name)")
+            }
+        }
+    }
+
+    /// A knob that is one number, a switch, a menu choice, or a piece of text
+    /// has no parts at all, so nothing there can be driven part by part.
+    @Test func aKnobOfOneNumberHasNoParts() {
+        for stored: ParamStored in [.number(3), .boolean(true), .option("a"), .text("b")] {
+            #expect(Automation.parts(of: stored).isEmpty, "\(stored)")
+            #expect(Automation.applying(["x": 9], to: stored) == stored, "\(stored)")
+        }
+    }
+
+    /// A track of parts travels as the text it was written as, so a person can
+    /// read and edit the rules in the file, and they come back working.
+    @Test func aTrackOfPartsRoundTripsThroughItsFile() throws {
+        let automation = Automation(tracks: [
+            .init(name: "spot", parts: ["x": try Formula("width / 2 + sin(time) * 100"),
+                                          "y": try Formula("height / 2")]),
+            .init(name: "radius", formula: try Formula("time * 4")),
+        ], loops: true, length: 4)
+
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ollin-parts-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try automation.write(to: url)
+
+        let text = try String(contentsOf: url, encoding: .utf8)
+        // JSON writes a slash as `\/`, so the check reads a fragment without one.
+        #expect(text.contains("sin(time) * 100"), "the text itself is in the file")
+
+        let read = try Automation.load(from: url)
+        #expect(read == automation)
+        #expect(read.track(named: "spot")?.parts.count == 2)
+        #expect(read.track(named: "spot")?
+            .partValues(at: 0, reading: ["width": 200, "height": 80]) == ["x": 100, "y": 40])
+    }
+
+    /// A file whose part rule cannot be read is refused when it is read, rather
+    /// than loading as a part that quietly holds zero.
+    @Test func aFileWithAnUnreadablePartIsRefused() throws {
+        let json = """
+        {"version": 3, "loops": false, "speed": 1, "start": 0,
+         "tracks": [{"name": "spot", "parts": {"x": "sin((", "y": "1"}}]}
+        """
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ollin-parts-bad-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try Data(json.utf8).write(to: url)
+        #expect(throws: (any Error).self) { try Automation.load(from: url) }
+    }
+
+    /// Text that cannot be read costs that one part, never the knob beside it.
+    @Test func aTypoCostsOnePartOnly() {
+        let sketch = Self.made()
+        sketch.spot = Vector2(7, 0)
+        sketch.drive(sketch.$spot, x: "time * (", y: "time * 10")
+        sketch.advance(time: 1, deltaTime: 0.5, frameRate: 2)
+        #expect(sketch.spot == Vector2(7, 10))
+    }
+
+    /// A call that names no part at all leaves the knob alone rather than
+    /// writing an empty track that would look like a rule and do nothing.
+    @Test func noRuleAtAllLeavesTheKnobAlone() {
+        let sketch = Self.made()
+        sketch.drive(sketch.$spot)
+        #expect(sketch.automation == nil)
+        sketch.advance(time: 1, deltaTime: 0.5, frameRate: 2)
+        #expect(sketch.spot == Vector2(10, 20))
+    }
+
+    /// One call carries the whole knob, so a second call replaces the first
+    /// rather than adding to it. Give every part in one call.
+    @Test func aSecondCallReplacesTheFirst() {
+        let sketch = Self.made()
+        sketch.spot = Vector2(7, 0)
+        sketch.drive(sketch.$spot, x: "500")
+        sketch.drive(sketch.$spot, y: "time * 10")
+        #expect(sketch.automation?.tracks.count == 1)
+        sketch.advance(time: 1, deltaTime: 0.5, frameRate: 2)
+        #expect(sketch.spot == Vector2(7, 10))
+    }
+}

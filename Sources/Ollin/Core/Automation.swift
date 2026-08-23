@@ -44,7 +44,9 @@ public struct Automation: Codable, Equatable, Sendable {
     /// than guessed at, since this Ollin cannot know what it left out.
     ///
     /// Version 2 added a track that carries a ``Formula`` in place of keys.
-    public static let currentVersion = 2
+    /// Version 3 added a track that carries one formula for each part of a
+    /// knob that holds more than one number.
+    public static let currentVersion = 3
 
     // MARK: Curves
 
@@ -147,6 +149,11 @@ public struct Automation: Codable, Equatable, Sendable {
         /// `time` (the position in the automation), the canvas and the pointer,
         /// and the sketch's other knobs by name.
         public var formula: Formula?
+        /// One formula for each part of a knob that holds more than one number
+        /// (`x` and `y` for a point, `red` for a color), keyed by the part
+        /// name. A part with no rule keeps whatever the knob holds, so a track
+        /// can drive one part and leave the rest to the hand.
+        public private(set) var parts: [String: Formula]
 
         public init(name: String, keys: [Key]) {
             self.name = name
@@ -154,6 +161,7 @@ public struct Automation: Codable, Equatable, Sendable {
                 .sorted { ($0.element.time, $0.offset) < ($1.element.time, $1.offset) }
                 .map(\.element)
             self.formula = nil
+            self.parts = [:]
         }
 
         /// A track that works its knob out from a formula rather than from
@@ -162,6 +170,17 @@ public struct Automation: Codable, Equatable, Sendable {
             self.name = name
             self.keys = []
             self.formula = formula
+            self.parts = [:]
+        }
+
+        /// A track that works some parts of its knob out from formulas. Each
+        /// part is named the way ``Automation/parts(of:)`` names it, and a part
+        /// with no formula is left alone.
+        public init(name: String, parts: [String: Formula]) {
+            self.name = name
+            self.keys = []
+            self.formula = nil
+            self.parts = parts
         }
 
         /// When the last key falls. A formula has no length of its own, so a
@@ -169,7 +188,10 @@ public struct Automation: Codable, Equatable, Sendable {
         public var duration: Double { keys.last?.time ?? 0 }
 
         /// The value this track holds at `position`, or `nil` when it carries
-        /// neither keys nor a formula.
+        /// neither keys nor a formula. A track of parts has no whole value of
+        /// its own, so it answers `nil`; ask ``partValues(at:reading:noise:)``
+        /// for its numbers and put them into the knob's own value with
+        /// ``Automation/applying(_:to:)``.
         ///
         /// A formula reads `time` as `position`, whatever else the caller
         /// passes under that name, so a track always agrees with the clock that
@@ -195,7 +217,38 @@ public struct Automation: Codable, Equatable, Sendable {
                                     from.curve.shape((position - from.time) / span))
         }
 
-        private enum CodingKeys: String, CodingKey { case name, keys, formula }
+        /// The numbers this track's parts hold at `position`, keyed by the
+        /// part name, and empty when the track carries no part formulas. Every
+        /// part reads `time` as `position`, exactly as a whole-knob formula
+        /// does, so a track always agrees with the clock that drives it.
+        public func partValues(at position: Double,
+                               reading values: [String: Double] = [:],
+                               noise: Formula.NoiseField? = nil) -> [String: Double] {
+            guard !parts.isEmpty else { return [:] }
+            var values = values
+            values["time"] = position
+            return parts.mapValues { $0.value(values, noise: noise) }
+        }
+
+        /// Whether anything here is worked out rather than looked up.
+        var isWorkedOut: Bool { formula != nil || !parts.isEmpty }
+
+        /// Whether any formula here reads a noise field.
+        var usesNoise: Bool {
+            formula?.usesNoise == true || parts.values.contains(where: \.usesNoise)
+        }
+
+        /// Every name the formulas here read, the whole-knob one and the parts
+        /// together, in a fixed order. The order is fixed on purpose: a plan
+        /// built from these names must be a function of the tracks, and never
+        /// of the way a dictionary happened to be walked.
+        var readNames: [String] {
+            var names = formula?.variables ?? []
+            for part in parts.keys.sorted() { names += parts[part]?.variables ?? [] }
+            return names
+        }
+
+        private enum CodingKeys: String, CodingKey { case name, keys, formula, parts }
 
         /// A formula travels as the text it was written as, so the file stays
         /// readable and a person can edit it there.
@@ -212,6 +265,21 @@ public struct Automation: Codable, Equatable, Sendable {
                 }
                 return
             }
+            if let sources = try container.decodeIfPresent([String: String].self, forKey: .parts) {
+                var parts: [String: Formula] = [:]
+                for (part, source) in sources {
+                    do {
+                        parts[part] = try Formula(source)
+                    } catch let error as FormulaError {
+                        throw DecodingError.dataCorruptedError(
+                            forKey: .parts, in: container,
+                            debugDescription:
+                                "the rule driving '\(name).\(part)' cannot be read: \(error)")
+                    }
+                }
+                self.init(name: name, parts: parts)
+                return
+            }
             self.init(name: name,
                       keys: try container.decodeIfPresent([Key].self, forKey: .keys) ?? [])
         }
@@ -221,6 +289,8 @@ public struct Automation: Codable, Equatable, Sendable {
             try container.encode(name, forKey: .name)
             if let formula {
                 try container.encode(formula.source, forKey: .formula)
+            } else if !parts.isEmpty {
+                try container.encode(parts.mapValues(\.source), forKey: .parts)
             } else {
                 try container.encode(keys, forKey: .keys)
             }
@@ -317,6 +387,73 @@ public struct Automation: Codable, Equatable, Sendable {
         default:
             return from
         }
+    }
+
+    // MARK: The parts of a knob
+
+    /// The numbers a stored value is made of, keyed by the part name: `x` and
+    /// `y` for a point, `x`, `y`, `z` for a point in space, `red`, `green`,
+    /// `blue`, `alpha` for a color, `x`, `y`, `width`, `height` for a
+    /// rectangle, `top`, `right`, `bottom`, `left` for insets, and `lower`,
+    /// `upper` for a pair of ends. A plain number, a switch, a menu choice, and
+    /// a piece of text have no parts.
+    public static func parts(of stored: ParamStored) -> [String: Double] {
+        switch stored {
+        case .color(let red, let green, let blue, let alpha):
+            return ["red": red, "green": green, "blue": blue, "alpha": alpha]
+        case .vector(let x, let y):
+            return ["x": x, "y": y]
+        case .vector3(let x, let y, let z):
+            return ["x": x, "y": y, "z": z]
+        case .rect(let x, let y, let width, let height):
+            return ["x": x, "y": y, "width": width, "height": height]
+        case .insets(let top, let right, let bottom, let left):
+            return ["top": top, "right": right, "bottom": bottom, "left": left]
+        case .range(let lower, let upper):
+            return ["lower": lower, "upper": upper]
+        case .number, .boolean, .option, .text:
+            return [:]
+        }
+    }
+
+    /// Put worked-out numbers back into a stored value. A part with no number
+    /// keeps what it had, so a rule for `x` alone leaves `y` where the hand
+    /// left it.
+    ///
+    /// A pair of ends stays ordered, because a crossed pair is not a value the
+    /// knob can hold at all. The lower end wins and the upper end is lifted to
+    /// meet it, which is what the knob's own two-thumb slider does when a
+    /// minimum is pushed past its maximum.
+    public static func applying(_ parts: [String: Double],
+                                to stored: ParamStored) -> ParamStored {
+        guard !parts.isEmpty else { return stored }
+        func number(_ part: String, _ current: Double) -> Double { parts[part] ?? current }
+        switch stored {
+        case .color(let red, let green, let blue, let alpha):
+            return .color(red: number("red", red), green: number("green", green),
+                          blue: number("blue", blue), alpha: number("alpha", alpha))
+        case .vector(let x, let y):
+            return .vector(x: number("x", x), y: number("y", y))
+        case .vector3(let x, let y, let z):
+            return .vector3(x: number("x", x), y: number("y", y), z: number("z", z))
+        case .rect(let x, let y, let width, let height):
+            return .rect(x: number("x", x), y: number("y", y),
+                         width: number("width", width), height: number("height", height))
+        case .insets(let top, let right, let bottom, let left):
+            return .insets(top: number("top", top), right: number("right", right),
+                           bottom: number("bottom", bottom), left: number("left", left))
+        case .range(let lower, let upper):
+            let low = number("lower", lower)
+            return .range(lower: low, upper: Swift.max(low, number("upper", upper)))
+        case .number, .boolean, .option, .text:
+            return stored
+        }
+    }
+
+    /// The knob a name reaches, which is the whole name for a plain knob and
+    /// the part before the dot for one of a knob's parts.
+    static func baseName(of name: String) -> String {
+        String(name.prefix { $0 != "." })
     }
 
     // MARK: Reading and writing
@@ -436,8 +573,20 @@ final class AutomationPlayer {
         let noise = plan.readsNoise ? sketch.noiseField() : nil
         for index in plan.order {
             let track = automation.tracks[index]
-            guard var value = track.value(at: position, reading: values, noise: noise),
-                  let param = handles[track.name] else { continue }
+            guard let param = handles[track.name] else { continue }
+            var value: ParamStored
+            if !track.parts.isEmpty {
+                // A knob of more than one number takes a rule for each part,
+                // and the parts no rule names keep what the knob holds, so a
+                // rule for `x` alone leaves `y` to the hand.
+                value = Automation.applying(
+                    track.partValues(at: position, reading: values, noise: noise),
+                    to: param.stored)
+            } else if let whole = track.value(at: position, reading: values, noise: noise) {
+                value = whole
+            } else {
+                continue
+            }
             // A formula answers a number. A switch reads that number as on when
             // it is anything but zero, which is the only way a formula can
             // drive one.
@@ -452,7 +601,10 @@ final class AutomationPlayer {
             switch param.stored {
             case .number(let v): values[track.name] = v
             case .boolean(let v): values[track.name] = v ? 1 : 0
-            default: break
+            default:
+                for (part, number) in Automation.parts(of: param.stored) {
+                    values["\(track.name).\(part)"] = number
+                }
             }
         }
     }
@@ -484,9 +636,12 @@ final class AutomationPlayer {
             }
             state[i] = 1
             path.append(i)
-            for name in tracks[i].formula?.variables ?? [] {
+            for name in tracks[i].readNames {
                 // A built-in name is never a knob, so it never orders anything.
-                guard !Automation.readableNames.contains(name), let j = indexOf[name] else { continue }
+                guard !Automation.readableNames.contains(name) else { continue }
+                // A part names the knob it belongs to, so `center.x` orders the
+                // track driving `center`.
+                guard let j = indexOf[Automation.baseName(of: name)] else { continue }
                 visit(j, path: &path)
             }
             path.removeLast()
@@ -501,12 +656,13 @@ final class AutomationPlayer {
         let playable = order.filter { !rings.contains(tracks[$0].name) }
         return Plan(order: playable,
                     rings: rings.sorted(),
-                    readsFormulas: tracks.contains { $0.formula != nil },
-                    readsNoise: tracks.contains { $0.formula?.usesNoise == true })
+                    readsFormulas: tracks.contains(where: \.isWorkedOut),
+                    readsNoise: tracks.contains(where: \.usesNoise))
     }
 
     /// The numbers a formula may name: the sketch's own clock and canvas, the
-    /// pointer, and every knob that is a plain number or a switch.
+    /// pointer, every knob that is a plain number or a switch, and every part
+    /// of a knob that holds more than one (`center.x`).
     ///
     /// The built-in names win over a knob of the same spelling, so a formula can
     /// always depend on what `time` and `width` mean. `frame` is the number the
@@ -519,7 +675,10 @@ final class AutomationPlayer {
             switch param.stored {
             case .number(let v): values[name] = v
             case .boolean(let v): values[name] = v ? 1 : 0
-            default: break
+            default:
+                for (part, number) in Automation.parts(of: param.stored) {
+                    values["\(name).\(part)"] = number
+                }
             }
         }
         values["frame"] = Double(sketch.frameCount + 1)
@@ -631,6 +790,113 @@ public extension Sketch {
     func drive(_ param: Param<Int>, _ formula: Formula) { driveNumber(param, formula) }
     func drive(_ param: Param<Bool>, _ formula: Formula) { driveNumber(param, formula) }
 
+    /// Drive the parts of a knob that holds more than one number, one rule
+    /// for each part:
+    ///
+    /// ```swift
+    /// override func setup() {
+    ///     drive($center, x: "width / 2 + sin(time) * 200", y: "height / 2")
+    /// }
+    /// ```
+    ///
+    /// A part with no rule is left alone, so a rule for `x` alone leaves `y`
+    /// to the hand or to a keyed track. The rules read the same names a
+    /// whole-knob rule reads, and one part of any knob is one of those names:
+    /// `"center.x"` gives this frame's x.
+    ///
+    /// One call carries the whole knob, so a second call replaces what the
+    /// first one set. Give every part in one call.
+    ///
+    /// A rule that cannot be read is reported and that part is left alone; the
+    /// parts beside it still play.
+    func drive(_ param: Param<Vector2>, x: String? = nil, y: String? = nil) {
+        driveParts(param, [("x", x), ("y", y)])
+    }
+
+    /// Drive the parts of a point in space.
+    func drive(_ param: Param<Vector3>, x: String? = nil, y: String? = nil,
+               z: String? = nil) {
+        driveParts(param, [("x", x), ("y", y), ("z", z)])
+    }
+
+    /// Drive the parts of a color. They are the sRGB numbers in `0...1`, and
+    /// nothing holds them there, because a color knob carries no range of its
+    /// own. Use `saturate(...)` in the rule where you want one.
+    func drive(_ param: Param<Color>, red: String? = nil, green: String? = nil,
+               blue: String? = nil, alpha: String? = nil) {
+        driveParts(param, [("red", red), ("green", green),
+                           ("blue", blue), ("alpha", alpha)])
+    }
+
+    /// Drive the parts of a rectangle.
+    func drive(_ param: Param<Rectangle>, x: String? = nil, y: String? = nil,
+               width: String? = nil, height: String? = nil) {
+        driveParts(param, [("x", x), ("y", y), ("width", width), ("height", height)])
+    }
+
+    /// Drive the parts of a set of insets.
+    func drive(_ param: Param<Insets>, top: String? = nil, right: String? = nil,
+               bottom: String? = nil, left: String? = nil) {
+        driveParts(param, [("top", top), ("right", right),
+                           ("bottom", bottom), ("left", left)])
+    }
+
+    /// Drive the two ends of a range. The pair stays ordered: a lower end that
+    /// climbs past the upper one lifts it along, the way the knob's own
+    /// two-thumb slider does.
+    func drive(_ param: Param<ClosedRange<Double>>, lower: String? = nil,
+               upper: String? = nil) {
+        driveParts(param, [("lower", lower), ("upper", upper)])
+    }
+
+    private func driveParts<Value: ParamValue>(_ param: Param<Value>,
+                                               _ sources: [(part: String, source: String?)]) {
+        guard let name = parameterName(of: param) else {
+            report("drive() was handed a parameter this sketch does not declare")
+            return
+        }
+        let given = sources.compactMap { pair in pair.source.map { (pair.part, $0) } }
+        guard !given.isEmpty else {
+            report("drive() was given no rule for any part of '\(name)'")
+            return
+        }
+        let known = readableNames()
+        var parts: [String: Formula] = [:]
+        for (part, source) in given {
+            let formula: Formula
+            do {
+                formula = try Formula(source)
+            } catch {
+                // A rule that cannot be read costs that one part, the way a
+                // whole-knob one costs that one knob.
+                report("drive() could not read \"\(source)\" for '\(name).\(part)': \(error)")
+                continue
+            }
+            let unknown = formula.variables.filter { !known.contains($0) }
+            if !unknown.isEmpty {
+                report("the rule driving '\(name).\(part)' names "
+                       + "\(unknown.joined(separator: ", ")), which nothing here supplies; "
+                       + "it will read as 0")
+            }
+            parts[part] = formula
+        }
+        guard !parts.isEmpty else { return }
+        automate(Automation.Track(name: name, parts: parts))
+    }
+
+    /// Every name a rule written on this sketch can read: the built-in ones,
+    /// each knob, and each part of a knob that holds more than one number.
+    private func readableNames() -> Set<String> {
+        var known = Set(Automation.readableNames)
+        for handle in parameters() {
+            known.insert(handle.name)
+            for part in Automation.parts(of: handle.param.stored).keys {
+                known.insert("\(handle.name).\(part)")
+            }
+        }
+        return known
+    }
+
     private func driveNumber<Value: ParamValue>(_ param: Param<Value>, _ source: String) {
         do {
             driveNumber(param, try Formula(source))
@@ -647,7 +913,7 @@ public extension Sketch {
         // A name nothing will ever supply reads as zero every frame, which
         // draws something rather than nothing and is the hardest kind of
         // mistake to see. Say it once, here, rather than never.
-        let known = Set(parameters().map(\.name)).union(Automation.readableNames)
+        let known = readableNames()
         let unknown = formula.variables.filter { !known.contains($0) }
         if !unknown.isEmpty {
             report("the formula driving '\(name)' names \(unknown.joined(separator: ", ")), "

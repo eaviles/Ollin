@@ -241,4 +241,21 @@ struct FormulaTests {
             #expect(try value(spelling) == 7, "\(spelling)")
         }
     }
+
+    /// A dot joins a knob to one of its parts, so `center.x` is one name. The
+    /// dot in a number is untouched by that, which is the pair a tokenizer gets
+    /// wrong: reading `1.5` as a name, or `center.x` as three tokens.
+    @Test func aDotJoinsAKnobToOneOfItsParts() throws {
+        let formula = try Formula("center.x + center.y * 2")
+        #expect(formula.variables == ["center.x", "center.y"])
+        #expect(formula.value(["center.x": 3, "center.y": 4]) == 11)
+
+        #expect(try value("1.5 + .5") == 2)
+        #expect(try value("2e3") == 2000)
+        #expect(try Formula("a.b.c").variables == ["a.b.c"])
+
+        // A dot with no name after it belongs to nothing, and says so.
+        #expect(throws: FormulaError.self) { try Formula("center. + 1") }
+        #expect(throws: FormulaError.self) { try Formula("1 . 5") }
+    }
 }

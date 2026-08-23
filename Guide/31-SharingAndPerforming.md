@@ -505,6 +505,25 @@ A formula is a track like any keyed one. It loops, it plays at any speed, and it
 
 Two spellings will catch you once. `-2^2` is `-4`, because a power binds tighter than a minus sign, the way a calculator reads it. And `-1 % 3` is `2`, not `-1`, because the remainder wraps rather than reflects, which is what makes a phase continuous as it crosses zero.
 
+### A knob that holds more than one number
+
+A point holds two numbers. A color holds four. A rectangle holds four of its own. Each part takes its own rule, named where you write it:
+
+```swift
+drive($frame, width: "620 + sin(time * tau / 7) * 220")
+drive($eye, x: "frame.x + frame.width / 2", y: "height / 2")
+```
+
+<img src="Images/31-SharingAndPerforming/KnobParts.jpg" alt="A rectangle drawn at three moments from one fixed top-left corner, its size different each time, beside a list of the knob's four parts: x and y marked no rule, width and height carrying a formula each" width="680">
+
+The part you leave out is the part you keep. That rectangle changes size while its `x` and `y` stay wherever you dragged them, and you can go on dragging them while the size plays. That is the reason to write a rule for one part rather than for a whole knob.
+
+One part of a knob is a name too, spelled `knob.part`. That is how `eye` above follows the rectangle it sits in. The name works whether keys carry that part or another rule works it out.
+
+Three things to know before you write one. One call carries the whole knob, so give every part at once, because a second call replaces the first. A pair of ends stays ordered, so a `lower` that climbs past `upper` lifts it along. And a color's parts are the plain 0-to-1 numbers with nothing holding them there, so write `saturate(...)` where you want a limit.
+
+The [FormulaParts example](../Examples/Motion/FormulaParts/Sketch.swift) drives four such knobs and prints the rule driving each part under the picture.
+
 ## Putting it together: a set in five evaluations
 
 What you'll build here is a short performed set. Open the host with a fresh buffer. Build the chapter's finale the way an audience would watch it grow, one evaluation at a time. [Chapter 17](17-YourFirstShader.md)'s `Visual` chains are the natural material for this kind of set, since every step is one added line:

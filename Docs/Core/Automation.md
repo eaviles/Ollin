@@ -126,6 +126,18 @@ It is the same track, so `loops`, `speed`, `start`, and `length` shape it the sa
 
 A formula reads `time` as the position in the automation, plus `frame`, the canvas, the pointer, and the sketch's other number and switch knobs by name. The whole vocabulary, and the two rules worth knowing before you type one, are on the [`Formula`](../Helpers/Formula.md) page.
 
+A knob that holds more than one number takes one rule for each part, and a part with no rule is left alone:
+
+```swift
+drive($eye, x: "frame.x + frame.width / 2", y: "height / 2")
+```
+
+```json
+{ "name": "eye", "parts": { "x": "frame.x + frame.width / 2", "y": "height / 2" } }
+```
+
+`Automation.parts(of:)` names the parts a stored value carries. `Automation.applying(_:to:)` puts worked-out numbers back into one, which is how a track of parts becomes a whole value again. See [a knob of more than one number](../Helpers/Formula.md#a-knob-of-more-than-one-number).
+
 ### The file
 
 An `Automation` is codable, so it reads and writes as JSON:

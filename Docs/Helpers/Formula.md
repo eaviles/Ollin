@@ -16,6 +16,7 @@ That matters because a string arrives at runtime and Swift source does not. A kn
 ### Contents
 
 - [Driving a knob](#driving-a-knob)
+- [A knob of more than one number](#a-knob-of-more-than-one-number)
 - [What a formula can read](#what-a-formula-can-read)
 - [The vocabulary](#the-vocabulary)
 - [Two rules that surprise people](#two-rules-that-surprise-people)
@@ -51,6 +52,48 @@ A knob under a formula is a [track](../Core/Automation.md) like any keyed one. `
 
 The [Formula example](../../Examples/Motion/Formula/Sketch.swift) drives six knobs this way and prints the text driving each one under the ring.
 
+### A knob of more than one number
+
+A point holds two numbers, a color holds four, a pair of ends holds two more. Each part takes its own rule, named where you write it:
+
+```swift
+final class Card: Sketch {
+    @Param(x: 0...1080, y: 0...1080, width: 40...900, height: 40...900)
+    var frame = Rectangle(x: 190, y: 120, width: 700, height: 420)
+    @Param(x: 0...1080, y: 0...1080) var eye = Vector2(540, 330)
+    @Param var ink = Color(red: 0.2, green: 0.4, blue: 0.9, alpha: 1)
+
+    override func setup() {
+        drive($frame, width: "620 + sin(time * tau / 7) * 220")
+        drive($eye, x: "frame.x + frame.width / 2", y: "height / 2")
+        drive($ink, red: "0.35 + sin(time) * 0.3")
+    }
+}
+```
+
+**A part with no rule is left alone.** The frame above changes size while its `x` and `y` stay where the hand put them, and the hand can still move them while the size plays. That is the reason to write a rule for one part rather than for the whole knob.
+
+**One part of a knob is a name too**, spelled `knob.part`, so `"frame.x + frame.width / 2"` reads this frame's rectangle. The name works whether keys carry that part or another rule works it out.
+
+| Knob | Parts |
+| --- | --- |
+| `Vector2` | `x`, `y` |
+| `Vector3` | `x`, `y`, `z` |
+| `Color` | `red`, `green`, `blue`, `alpha` |
+| `Rectangle` | `x`, `y`, `width`, `height` |
+| `Insets` | `top`, `right`, `bottom`, `left` |
+| `ClosedRange<Double>` | `lower`, `upper` |
+
+Three things are worth knowing before you write one:
+
+- **One call carries the whole knob**, so a second call replaces the first. Give every part in one call.
+- **A pair of ends stays ordered.** A `lower` that climbs past `upper` lifts it along, which is what the two-thumb slider does under a hand.
+- **A color's parts are the sRGB numbers in `0...1`, and nothing holds them there**, because a color knob carries no range of its own. Write `saturate(...)` in the rule where you want one. Every other knob keeps its own range, exactly as it does when a hand drags the field.
+
+A part cannot name its own knob. An `x` worked out from the same point's `y` never settles on one frame, so that knob is reported and left alone, the way a ring of knobs is.
+
+The [FormulaParts example](../../Examples/Motion/FormulaParts/Sketch.swift) drives four such knobs and prints the rule driving each part.
+
 ### What a formula can read
 
 | Name | What it holds |
@@ -60,6 +103,7 @@ The [Formula example](../../Examples/Motion/Formula/Sketch.swift) drives six kno
 | `width`, `height` | The canvas, in pixels. |
 | `mouseX`, `mouseY` | The pointer. |
 | any knob's name | Any `@Param` on the sketch that is a number or a switch. A switch reads as `1` or `0`. |
+| `knob.part` | One part of a knob that holds more than one number: `center.x`, `tint.alpha`, `span.lower`. |
 
 The names in the table win over a knob spelled the same way, so `time` always means the clock.
 

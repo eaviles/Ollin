@@ -384,6 +384,7 @@ let package = Package(
         example("Motion/ArcModes"),
         example("Motion/Automation"),
         example("Motion/Formula"),
+        example("Motion/FormulaParts"),
         example("Randomness/Gaussian"),
         example("Randomness/Ring"),
         example("Randomness/Walk"),

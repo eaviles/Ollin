@@ -123,9 +123,10 @@ struct FormulaToken: Equatable {
     let offset: Int
 }
 
-/// Split the text into tokens. Two spellings need care: a number may carry an
+/// Split the text into tokens. Two spellings need care. A number may carry an
 /// exponent (`1e3`), and `e` is also the name of a constant, so the exponent is
-/// only taken when a digit follows it.
+/// only taken when a digit follows it. A dot inside a name (`center.x`) belongs
+/// to the name, because a knob's part is named that way.
 func formulaTokens(_ source: String) throws -> [FormulaToken] {
     var tokens: [FormulaToken] = []
     let characters = Array(source)
@@ -169,9 +170,21 @@ func formulaTokens(_ source: String) throws -> [FormulaToken] {
 
         if c.isLetter || c == "_" {
             var text = ""
-            while let d = peek(0), d.isLetter || d.isNumber || d == "_" {
-                text.append(d)
-                i += 1
+            while let d = peek(0) {
+                if d.isLetter || d.isNumber || d == "_" {
+                    text.append(d)
+                    i += 1
+                    continue
+                }
+                // A dot joins a knob to one of its parts, so `center.x` is one
+                // name and not three tokens. A dot with no name after it is
+                // left where it is, and reads as an error there.
+                if d == ".", let next = peek(1), next.isLetter || next == "_" {
+                    text.append(d)
+                    i += 1
+                    continue
+                }
+                break
             }
             tokens.append(FormulaToken(kind: .name(text), offset: start))
             continue
