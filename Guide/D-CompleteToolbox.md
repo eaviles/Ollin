@@ -112,6 +112,7 @@ Use it two ways. It is an index for the moment you remember the guide showing bl
 |---|---|---|---|
 | Blue noise | Poisson-disk scatter: random but even | [Ch 15](15-ShapesAsMaterial.md) | [BlueNoise](../Docs/Generators/BlueNoise.md) |
 | Low-discrepancy sampling | Halton and Sobol point streams: even at every count, growing the count never moves a point | [Ch 15](15-ShapesAsMaterial.md) | [LowDiscrepancy](../Docs/Generators/LowDiscrepancy.md) |
+| Points on a surface | Scatter a mesh's skin by area, not its vertex list, each spot carrying its normal | [Ch 23](23-Landscapes.md) | [SurfaceSampling](../Docs/Generators/SurfaceSampling.md) |
 | Stippling | Dots packed to reproduce an image's tone (weighted-Voronoi) | [Ch 9](09-Pictures.md) | [Stippling](../Docs/Generators/Stippling.md) |
 | Single-line drawing | One unbroken tour through a stipple: the picture as a single closed line (TSP art) | [Ch 9](09-Pictures.md) | [SingleLine](../Docs/Generators/SingleLine.md) |
 | Spanning-tree drawing | The same stipple joined by the minimum spanning tree: the picture as branching veins | [Ch 9](09-Pictures.md) | [SpanningTree](../Docs/Generators/SpanningTree.md) |

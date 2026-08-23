@@ -33,7 +33,6 @@ A tier of classic generative-art building blocks that emit vector geometry (poin
 
 - **Summed-area tables**, for a box blur whose cost does not grow with its window, and the adaptive thresholding that rides on them.
 - **Scattered-data interpolation** by radial basis functions, and a small gradient-descent minimizer for fitting a handful of parameters to a target.
-- **Uniform sampling over a mesh surface**, which is what scatters props, hair roots, and point clouds evenly over geometry rather than over its vertices.
 
 And one that is picture, not substrate: **the Hopf fibration**, the map that fills a three-sphere with circles, every pair of them linked exactly once. Projected down into space it draws as nested tori of interlocking rings, and it wants the 3D camera, the instanced-mesh path, and a color taken from where each circle came from. A set piece for the 3D tier the way the strange attractors are for the 2D one.
 

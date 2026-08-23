@@ -29,6 +29,7 @@ Meshes, point clouds, and the 3D transform stack.
 | [LoadedMesh](Geometry/LoadedMesh/) | A mesh loaded from a file (`.obj`/`.usdz`/`.gltf`/…); drop one in with `OLLIN_MESH=<path>` (or use the bundled crystal), recentered, scaled to fit, and lit. |
 | [TexturedMesh](Geometry/TexturedMesh/) | A UV-gridded globe textured with an image over a base-color-tinted floor, both lit. |
 | [Wireframe](Geometry/Wireframe/) | Orbiting solids drawn as their triangle edges (`wireframe()`), faces see-through. |
+| [SurfaceScatter](Geometry/SurfaceScatter/) | Trees standing on a globe: `surfacePoints` scatters over the skin by area, `alignment` stands each one up, and the `spread` knob compares an even covering, a plain draw, and the vertex-list shortcut. |
 
 ### Physics
 
