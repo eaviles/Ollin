@@ -97,6 +97,52 @@ Both creatures launch with the same speed and the same turning cap, and only the
 
 Both trails here are just arrays of positions, appended each frame and drawn with `drawPolyline`, the same trick as every trail in this chapter.
 
+## Everyone chasing somebody
+
+`seek` and `arrive` both point at something that stands still. Give every creature a target that is also running, and the picture changes completely.
+
+The oldest version of the question is from 1877. Four dogs stand at the corners of a square. Each one runs at the next, always at full speed, always straight at where that dog is *now*. What do they draw, and how far does each dog run?
+
+You can answer it by running it. `Pursuit` is a stepper you hold, like `World` in the last chapter and the flock later in this one. Build it, step it, and read the geometry out:
+
+```swift
+let chase = Pursuit.ring(sides: 4, center: Vector2(540, 540), radius: 380)
+chase.recordEvery = 20   // keep the chase lines along the way
+chase.run()              // and run the whole chase now, rather than per frame
+
+// then, in draw():
+noFill()
+stroke(Color.white.withAlpha(0.15))
+strokeWeight(1)
+for line in chase.web { drawPolyline(line.points) }
+stroke(Color(hex: 0xE4572E))
+strokeWeight(3)
+for trail in chase.trails { drawPolyline(trail.points) }
+```
+
+<img src="Images/12-FlocksAndSwarms/PursuitDogs.jpg" alt="Two-panel diagram. Left: four dogs at the corners of a square, faint chase lines filling it, and four identical spirals curling into the middle, one of them orange. Right: a quarry running straight up a faint line while an orange curve sweeps in from the right and meets it" width="680">
+
+Both answers are exact. They draw four identical spirals that meet in the middle, and each dog runs exactly one side of the square. Not one and a bit. One.
+
+The spiral is there because a dog is always turning, since the dog it wants never stops moving. The angle between a dog's path and the line to the middle never changes. A curve with that property is a logarithmic spiral, the shape a nautilus shell grows in.
+
+One rule holds the whole figure up, and it is an easy one to get wrong. **Everybody moves at the same moment.** `step()` works out every runner's move from the positions they all held *before* the step. Move them one at a time instead, and each dog runs at a dog that has already left. The square goes lopsided within a few steps and the figure falls apart.
+
+A runner is not a `Vehicle`. It carries no momentum and no turning cap: it faces its target and goes. Setting `maxTurn` puts the cap back, and gives you a runner that swings wide and overshoots, which is the other kind of chase.
+
+A runner that follows nobody holds its heading and runs straight. That is how you write the case on the right of the figure, where a fast pursuer chases a quarry crossing in front of it:
+
+```swift
+let chase = Pursuit(runners: [.holding(Vector2(0, -1), from: Vector2(400, 800), speed: 0.55),
+                              .chasing(0, from: Vector2(700, 800))],
+                    stepSize: 2)
+chase.run()
+```
+
+That one can be worked out in advance too. A pursuer of speed 1, starting a distance `a` square-on from a quarry of speed `k`, covers `a / (1 - k * k)` before it catches up. Set the quarry's speed to 1 and it is never caught at all. The gap closes to half what it started as, and stays there.
+
+Nobody in either panel ever runs in a straight line, because nobody is ever chasing something that stands still.
+
 ## Roaming
 
 The most lifelike behavior needs no target at all. `wander` gives a creature aimless, believable roaming, and the recipe is smarter than "add random turns", which produces nervous jitter, not a stroll. Instead, picture a circle floating a fixed distance ahead of the creature. The creature seeks a point on that circle's rim, and each step the point slides a little way around the rim, at random:
@@ -289,12 +335,13 @@ Then make it yours:
 
 ## Where this comes from
 
-Boids are Craig Reynolds' invention: the 1987 SIGGRAPH paper "Flocks, Herds, and Schools: A Distributed Behavioral Model" introduced the three rules, and his 1999 paper "Steering Behaviors for Autonomous Characters" laid out the seek, flee, arrive, wander, and path-following vocabulary this chapter is built on (his term for the creature, *vehicle*, honors Valentino Braitenberg's 1984 book of thought experiments about simple machines with wants). Daniel Shiffman's *The Nature of Code* made this material a rite of passage for creative coders, and its chapters on agents remain the warmest long-form treatment. Differential growth as a generative technique owes its popularity to Anders Hoff's explorations at inconvergent.net and Jason Webb's tutorials. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Boids are Craig Reynolds' invention: the 1987 SIGGRAPH paper "Flocks, Herds, and Schools: A Distributed Behavioral Model" introduced the three rules, and his 1999 paper "Steering Behaviors for Autonomous Characters" laid out the seek, flee, arrive, wander, and path-following vocabulary this chapter is built on (his term for the creature, *vehicle*, honors Valentino Braitenberg's 1984 book of thought experiments about simple machines with wants). Daniel Shiffman's *The Nature of Code* made this material a rite of passage for creative coders, and its chapters on agents remain the warmest long-form treatment. The chase curves are older than all of it. Pierre Bouguer studied one ship pursuing another in 1732. Edouard Lucas posed the four-dogs question in 1877, and Henri Brocard answered it: the paths are logarithmic spirals, meeting in one point. Differential growth as a generative technique owes its popularity to Anders Hoff's explorations at inconvergent.net and Jason Webb's tutorials. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
 - [Steering](../Docs/Generators/Steering.md): every `Vehicle` behavior and knob, including pursuit, evasion, and path following.
 - [Flocking](../Docs/Generators/Boids.md): the full `Boids` reference, including flow-field following.
+- [Pursuit](../Docs/Generators/Pursuit.md): the chase as geometry, the ring's exact laws, and the knobs (`maxTurn`, `catchDistance`, the kept chase lines).
 - Appendix B draws this chapter's math, one picture per idea: [Vectors, motion, and forces](B-JustEnoughMath.md#vectors-motion-and-forces), [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure).
 - Worked examples: [`Examples/Motion/Steering`](../Examples/Motion/Steering/Sketch.swift) (the behavior shelf in one scene), [`Examples/Patterns/Flocking`](../Examples/Patterns/Flocking/Sketch.swift) (a flock without trails), and [`Examples/Patterns/DifferentialGrowth`](../Examples/Patterns/DifferentialGrowth/Sketch.swift) (growth tinted by depth).
 - [Spatial index](../Docs/Drawing/SpatialIndex.md): the neighbor search behind the flock, on its own, with the k-d tree for clumped sets and the growing form for sets you build point by point ([`Examples/Shapes/Neighbors`](../Examples/Shapes/Neighbors/Sketch.swift)).

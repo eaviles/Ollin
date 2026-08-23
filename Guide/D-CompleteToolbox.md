@@ -146,6 +146,7 @@ Use it two ways. It is an index for the moment you remember the guide showing bl
 | Flow fields | Direction fields, streamlines (free and evenly spaced), advection | [Ch 14](14-FieldsAndFlow.md) | [FlowField](../Docs/Generators/FlowField.md) |
 | Flocking | Boids from separation, alignment, and cohesion, with field joins | [Ch 12](12-FlocksAndSwarms.md) | [Boids](../Docs/Generators/Boids.md) |
 | Steering vehicles | Seek, flee, arrive, pursue, wander, follow, contain: composable forces | [Ch 12](12-FlocksAndSwarms.md) | [Steering](../Docs/Generators/Steering.md) |
+| Pursuit | Runners that head straight at each other, leaving logarithmic spirals: the ring of dogs, and a quarry that runs straight | [Ch 12](12-FlocksAndSwarms.md) | [Pursuit](../Docs/Generators/Pursuit.md) |
 | Differential growth | A line that folds into coral as it grows | [Ch 13](13-GrowingThings.md) | [DifferentialGrowth](../Docs/Generators/DifferentialGrowth.md) |
 | Space colonization | Branching growth toward attraction points: veins and venation | [Ch 13](13-GrowingThings.md) | [SpaceColonization](../Docs/Generators/SpaceColonization.md) |
 | Diffusion-limited aggregation | Walkers that freeze on contact into dendrites and frost | [Ch 13](13-GrowingThings.md) | [DiffusionLimitedAggregation](../Docs/Generators/DiffusionLimitedAggregation.md) |

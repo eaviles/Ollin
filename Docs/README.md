@@ -115,6 +115,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 - [`Shape packing`](./Generators/ShapePacking.md) - `packShapes` and `ContinuousPacking`, filling a region with non-overlapping shapes grown against each other's outlines
 - [`Flow fields`](./Generators/FlowField.md) - `FlowField`, tracing streamlines through a direction field (the flow-field look) and advecting particles along it
 - [`Flocking`](./Generators/Boids.md) - `Boids`, a flock steering by separation/alignment/cohesion into emergent flocking motion
+- [`Pursuit`](./Generators/Pursuit.md) - `Pursuit`, runners that head straight at each other and leave logarithmic spirals: the ring of mice, and a quarry that runs straight (a stateful stepper)
 - [`Steering`](./Generators/Steering.md) - `Vehicle`, a creature moved by composable steering forces (seek, flee, arrive, pursue, wander, follow a path or flow field)
 - [`Space colonization`](./Generators/SpaceColonization.md) - `SpaceColonization`, branching growth (veins, roots, trees) toward scattered attraction points (a stateful stepper)
 - [`Diffusion-limited aggregation`](./Generators/DiffusionLimitedAggregation.md) - `DiffusionLimitedAggregation`, dendritic clusters frozen out of random walkers (frost and coral, a stateful stepper)

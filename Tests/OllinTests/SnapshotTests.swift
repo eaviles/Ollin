@@ -494,6 +494,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("seamless-clone",
                  note: "One textured patch dropped on a two-tone backdrop three ways: pasted with the seam left in, cloned at half, and cloned in full. Pins the whole path (the rim read as boundary values, the convolution pyramid that settles between them, the composite that adds it back under the patch's own coverage) and the amount knob between them. No time, no random.",
                  make: { SeamlessCloneScene() }),
+    SnapshotCase("pursuit",
+                 note: "Three finished pursuit chases: a triangle, a hexagon, and eight runners each chasing the third one along. Pins the simultaneous step (a ring that stays regular is the only way the spirals stay even), the equal-angle spiral each runner leaves, the kept chase lines, and the arrival that stops a runner on its target. No rng and no time, so it is deterministic.",
+                 make: { PursuitScene() }),
     SnapshotCase("penrose",
                  note: "Penrose tilings, kites and darts left, rhombs right, each with the matching-rule arcs stroked on top. Pins both deflations (the derived P2 rules and the P3 rules), the half-tile merge, the rhombs' intrinsic orientation, and the arc fractions that make the decoration continuous across every edge. No rng and no time, so it is deterministic.",
                  make: { PenroseScene() }),
@@ -6656,6 +6659,39 @@ private final class SeamlessCloneScene: Sketch {
             }
             let result = backdrop.combined(with: patch, .seamlessClone(amount: amount))
             drawImage(result.image, in: frame)
+        }
+    }
+}
+
+/// Three finished chases at fixed sizes (no time, no random): a triangle, a
+/// hexagon, and eight runners each chasing the third one along. Pins the
+/// simultaneous step, the spirals it leaves, and the kept chase lines.
+private final class PursuitScene: Sketch {
+    override var canvasSize: CanvasSize { .size(384, 128) }
+
+    override func draw() {
+        background(Color(hex: 0x11131A))
+        let chalk = Color(hex: 0xF2ECDD), warm = Color(hex: 0xE0724A)
+        let panels: [(sides: Int, chasing: Int)] = [(3, 1), (6, 1), (8, 3)]
+
+        for (index, panel) in panels.enumerated() {
+            let middle = Vector2(Double(index) * 128 + 64, 64)
+            let chase = Pursuit.ring(sides: panel.sides, center: middle, radius: 46,
+                                     chasing: panel.chasing, turn: -.pi / 2,
+                                     stepSize: 46.0 / 400)
+            chase.recordEvery = 30
+            chase.run()
+
+            noFill()
+            strokeWeight(0.4)
+            stroke(chalk.withAlpha(0.22))
+            for line in chase.web { drawPolyline(line.points) }
+            strokeWeight(1.1)
+            for (runner, trail) in chase.trails.enumerated() {
+                let spread = Double(chase.runners.count - 1)
+                stroke(Color.mix(chalk, warm, t: Double(runner) / spread))
+                drawPolyline(trail.points)
+            }
         }
     }
 }
