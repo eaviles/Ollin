@@ -2525,6 +2525,28 @@ open class Sketch {
     public func drawImage(_ image: Image, _ x: Double, _ y: Double, _ width: Double, _ height: Double) {
         drawer.drawImage(image, in: Rectangle(x: x, y: y, width: width, height: height))
     }
+    /// Draw `image` into `rect`, choosing what happens when the two do not have
+    /// the same shape: `.stretch` squashes it, `.contain` puts the whole picture
+    /// inside and leaves the box showing, `.cover` fills the box and crops the
+    /// overflow. Both of the last two keep the picture's proportions and center
+    /// it. Cropping costs nothing extra: the quad reads a smaller part of the
+    /// picture rather than being clipped.
+    ///
+    /// ```swift
+    /// drawImage(photo, in: panel, fit: .cover)      // fills the panel, edges lost
+    /// drawImage(photo, in: panel, fit: .contain)    // all of it, bars top and bottom
+    /// ```
+    public func drawImage(_ image: Image, in rect: Rectangle, fit: ImageFit) {
+        drawer.drawImage(image, in: rect, fit: fit)
+    }
+
+    /// Draw `image` into a `width`×`height` box with its top-left at `(x, y)`,
+    /// with the same choice of `fit` as ``Sketch/drawImage(_:in:fit:)``.
+    public func drawImage(_ image: Image, _ x: Double, _ y: Double,
+                          _ width: Double, _ height: Double, fit: ImageFit) {
+        drawer.drawImage(image, in: Rectangle(x: x, y: y, width: width, height: height), fit: fit)
+    }
+
     /// Draw `image` stretched into `rect` — the `Rectangle` form of `drawImage`.
     public func drawImage(_ image: Image, in rect: Rectangle) {
         drawer.drawImage(image, in: rect)

@@ -29,6 +29,7 @@ final class Photo: Sketch {
 
 - [loadImage](#loadimage) - load from a path or URL
 - [drawImage](#drawimage) - draw at native size, scaled, or into a rectangle
+- [Fitting a picture to a box](#fit) - `.stretch`, `.contain`, `.cover`
 - [tint](#tint) - recolor and fade images as you draw them
 - [Image](#image) - the value type, and loading from data or a bundle
 - [Pixels](#pixels) - author or sample an image pixel by pixel
@@ -81,6 +82,38 @@ withState {
 Because it's recorded in call order with everything else, a shape drawn after `drawImage` paints over it, and one drawn before sits behind it.
 
 **Drawn smaller than it is**, a loaded image reads through its own smaller copies (a mip chain). A photograph at a quarter size is then a quarter-size photograph, not a quarter of its pixels picked out. The copies are averaged in linear light, so the tone holds. Drawn at its own size or larger nothing changes. Pixels the sketch wrote itself through [`image[x, y]`](#pixels) keep the single level they uploaded with. The full story is under [textures](../3D/3D.md#texture-filtering).
+
+<a name="fit"></a>
+
+### Fitting a picture to a box
+
+```swift
+drawImage(_ image: Image, in rect: Rectangle, fit: ImageFit)
+drawImage(_ image: Image, _ x: Double, _ y: Double, _ width: Double, _ height: Double, fit: ImageFit)
+```
+
+A picture and the box you have for it are rarely the same shape, and `fit` says what to do about it:
+
+| `ImageFit` | What it does | What it costs |
+|---|---|---|
+| `.stretch` | squashes the picture to the box | the picture's proportions |
+| `.contain` | puts the whole picture inside, centered | part of the box, showing along two edges |
+| `.cover` | fills the box completely, centered | the picture's own edges, cropped away |
+
+```swift
+drawImage(photo, in: panel, fit: .cover)      // fills the panel, edges lost
+drawImage(photo, in: panel, fit: .contain)    // all of it, the panel showing above and below
+```
+
+`.stretch` is what the plain `drawImage(_:in:)` has always done, so it is the default and nothing changes for code that does not ask.
+
+A round shape in the picture is the fastest way to see which one you have. `.stretch` turns it into an ellipse, and the other two leave it round.
+
+`.cover` costs nothing extra to draw. The quad reads a smaller part of the picture rather than being clipped, so a covered picture is still one quad and one texture read.
+
+The same arithmetic is on `Rectangle` when you want the box rather than the drawing: [`Rectangle(fitting:in:)`](Geometry.md#rectangle) is `.contain`'s box and `Rectangle(covering:in:)` is `.cover`'s. Both keep the shape and both stay centered; the first sits inside the container and the second runs past it.
+
+Worked example: [`Images/Fit`](../../Examples/Images/Fit/Sketch.swift).
 
 <a name="tint"></a>
 

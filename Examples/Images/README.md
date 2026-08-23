@@ -8,6 +8,7 @@ Loading, drawing, tinting, and authoring raster images (the `Image` value type, 
 
 | Example | What it shows |
 |---|---|
+| [Fit](Fit/Sketch.swift) | one painted 3:2 landscape into three 2:3 boxes, one per `ImageFit`: `.stretch` squashes the round sun to an ellipse, `.contain` leaves the box showing, `.cover` fills it and crops the lone tree away (`drawImage(_:in:fit:)`) |
 | [GlyphMosaic](GlyphMosaic/Sketch.swift) | a drifting field of light rebuilt as a grid of geometric marks, each cell's character chosen by its measured ink in the bundled bitmap font (`drawGlyphMosaic`, `GlyphSet`, a custom character set) |
 | [Halftone](Halftone/Sketch.swift) | a shaded still life as a print dot screen that swings through a quarter turn while the tone holds, the inverted reading on mouse hold, plotter-ready via `--export-svg` (`drawHalftone`, `pitch`, `angle`, `inverted`) |
 | [LuminanceMelt](LuminanceMelt/Sketch.swift) | a painted dusk seascape liquified by a warped noise field and poured through a four-stop palette, the source on mouse hold (`.melt`, `renderTarget`, `filtered`) |

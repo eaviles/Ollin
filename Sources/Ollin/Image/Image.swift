@@ -559,3 +559,21 @@ extension Sketch {
         Image(contentsOf: url)
     }
 }
+
+/// How a picture meets a box it does not have the shape of.
+///
+/// The three answers to one question: the box has an aspect ratio, the picture
+/// has another, and something has to give. Pass one to
+/// ``Sketch/drawImage(_:in:fit:)``.
+public enum ImageFit: Sendable, CaseIterable {
+    /// Squash the picture to the box. Every pixel of both is used, and the
+    /// picture's proportions are not kept. The default, and what
+    /// `drawImage(_:in:)` does on its own.
+    case stretch
+    /// Keep the proportions and put the whole picture inside the box. The
+    /// picture is centered, and the box is left showing along two of its edges.
+    case contain
+    /// Keep the proportions and cover the box completely. The picture is
+    /// centered, and what runs past two of the edges is cropped away.
+    case cover
+}

@@ -13,7 +13,14 @@ extension Drawer {
     /// move and warp it. Recorded as one textured quad with its own batch, so it
     /// composites in draw order with the shapes around it. A zero-area rect or a
     /// non-uploadable image draws nothing.
-    func drawImage(_ image: Image, in rect: Rectangle) {
+    ///
+    /// `source` names the part of the image to read, in `0...1` of its own width
+    /// and height, measured from the top-left however the image is stored: the
+    /// vertical flip a texture may carry is applied after the crop, so a caller
+    /// works in picture coordinates and never in texture ones. The default reads
+    /// all of it. A crop is how `.cover` shows a rectangle's worth of a picture
+    /// without a clip pass, and it costs nothing: the quad is the same quad.
+    func drawImage(_ image: Image, in rect: Rectangle, source: Rectangle = Rectangle(x: 0, y: 0, width: 1, height: 1)) {
         guard rect.width > 0, rect.height > 0, image.width > 0, image.height > 0 else { return }
         if let recorder = svgRecorder {
             recorder.skippedImages += 1   // raster has no place in a vector file
@@ -25,12 +32,15 @@ extension Drawer {
         // A CPU-decoded texture's origin is top-left and sketch space is y-down, so
         // uv.y and screen y run the same way — no flip. A vertically-flipped image
         // (a GL/Syphon-origin texture) swaps the top and bottom V so it lands upright.
-        let (vTop, vBot): (Float, Float) = image.flipsVertically ? (1, 0) : (0, 1)
+        let uLeft = Float(source.x), uRight = Float(source.x + source.width)
+        let top = Float(source.y), bottom = Float(source.y + source.height)
+        let (vTop, vBot): (Float, Float) = image.flipsVertically ? (1 - top, 1 - bottom)
+                                                                : (top, bottom)
         let tint = tintColor?.simd4 ?? SIMD4<Float>(1, 1, 1, 1)   // nil tint = the image unchanged
-        let tl = imageVertex(x0, y0, 0, vTop, tint)
-        let tr = imageVertex(x1, y0, 1, vTop, tint)
-        let br = imageVertex(x1, y1, 1, vBot, tint)
-        let bl = imageVertex(x0, y1, 0, vBot, tint)
+        let tl = imageVertex(x0, y0, uLeft, vTop, tint)
+        let tr = imageVertex(x1, y0, uRight, vTop, tint)
+        let br = imageVertex(x1, y1, uRight, vBot, tint)
+        let bl = imageVertex(x0, y1, uLeft, vBot, tint)
         beginImageBatch(image)
         // Symmetry replicas extend this same batch (one texture, many quads).
         replicated { imageVertices.append(contentsOf: [tl, tr, br, tl, br, bl]) }
@@ -146,5 +156,41 @@ extension Drawer {
             position = SIMD2<Float>(p.x, p.y)
         }
         return OllinImageVertex(position: position, uv: SIMD2<Float>(u, v), tint: tint)
+    }
+}
+
+extension Drawer {
+    /// Draw `image` into `rect` under an ``ImageFit``. `.contain` shrinks the
+    /// destination to the picture's own aspect ratio and reads all of it;
+    /// `.cover` keeps the destination and reads a centered crop instead, which
+    /// is why a covered picture needs no clip pass and stays one quad.
+    func drawImage(_ image: Image, in rect: Rectangle, fit: ImageFit) {
+        guard image.width > 0, image.height > 0 else { return }
+        let size = Vector2(Double(image.width), Double(image.height))
+        switch fit {
+        case .stretch:
+            drawImage(image, in: rect)
+        case .contain:
+            drawImage(image, in: Rectangle(fitting: size, in: rect))
+        case .cover:
+            drawImage(image, in: rect, source: Drawer.coveringCrop(of: size, in: rect))
+        }
+    }
+
+    /// The centered part of a picture of `size` that has `container`'s aspect
+    /// ratio, in `0...1` of the picture. The wider of the two loses width and
+    /// the taller loses height, so the survivor always spans its whole axis.
+    static func coveringCrop(of size: Vector2, in container: Rectangle) -> Rectangle {
+        let full = Rectangle(x: 0, y: 0, width: 1, height: 1)
+        guard size.x > 0, size.y > 0, container.width > 0, container.height > 0 else { return full }
+        let picture = size.x / size.y, box = container.width / container.height
+        if picture > box {                       // wider than the box: trim the sides
+            let width = box / picture
+            return Rectangle(x: (1 - width) / 2, y: 0, width: width, height: 1)
+        } else if picture < box {                // taller than the box: trim top and bottom
+            let height = picture / box
+            return Rectangle(x: 0, y: (1 - height) / 2, width: 1, height: height)
+        }
+        return full
     }
 }

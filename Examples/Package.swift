@@ -508,6 +508,7 @@ let package = Package(
         example("Text/MongolianColumns"),
         example("Text/HangingStops"),
         example("Images/GlyphMosaic"),
+        example("Images/Fit"),
         example("Images/Halftone"),
         example("Images/LuminanceMelt"),
         example("Images/PixelField"),

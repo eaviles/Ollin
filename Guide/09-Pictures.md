@@ -45,6 +45,26 @@ noTint()                                        // back to as-is
 
 Tint never edits the image itself, only how it's drawn, and `withState { }` scopes it like any other state.
 
+## The box is never the right shape
+
+That first `drawImage(photo, 0, 0, width, height)` did something quietly: it stretched. A photo is 3:2 or 4:3, your canvas is square or portrait, and squashing is only one of three answers. `fit:` names all three, and every one of them gives something up.
+
+<img src="Images/09-Pictures/PictureFit.jpg" alt="The same 3:2 landscape drawn into three 2:3 boxes: stretched, where the round sun goes oval; contained, where the whole picture sits in a band with the box showing above and below; and covered, where the box is full and the tree on the right has been cropped away" width="680">
+
+- `.stretch` fills the box and gives up the picture's proportions. It is the default, because it is what `drawImage` has always done.
+- `.contain` keeps the proportions and puts the whole picture inside, centered. It gives up part of the box, which shows along two edges.
+- `.cover` keeps the proportions and fills the box, centered. It gives up the picture's own edges, cropped away.
+
+```swift
+drawImage(photo, in: panel, fit: .cover)
+```
+
+So the question is never which one is correct. It is what you would rather lose. A wallpaper covers, because a strip of empty screen would be worse than a missing corner. A photograph in a contact sheet contains, because you are there to see all of it. A texture on a panel stretches, because nobody is checking its proportions.
+
+A round shape in the picture is the fastest way to tell which one you are looking at. Stretched, it is an ellipse. The sun in the figure gives the game away in all three panels at once.
+
+Cropping is free here, which is worth knowing before you avoid it. `.cover` does not clip the drawing. It reads a smaller part of the picture instead, so a covered photograph costs the same one quad and one texture read as a stretched one.
+
 ## An image you can ask
 
 The real gift of `Image` for generative work isn't drawing it, it's *reading* it. The subscript `image[x, y]` returns the color stored at a pixel, and suddenly a picture is a field of answers, like [Chapter 5](05-Noise.md)'s noise but authored by a camera or by you:

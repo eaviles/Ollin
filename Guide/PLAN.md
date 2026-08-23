@@ -336,6 +336,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | Retained batches (`Batch`, `makeBatch`/`drawBatch`; `Drawing/Batches.md`) | Ch 15 | taught (after the plate's setup/draw split: what is still costing you per frame, `makeBatch`/`drawBatch`, the measured 150k-circle numbers, transforms at replay, and the refuse-at-the-funnel list) |
 | `Helpers/Math.md` (map, lerp, dist; the shaping scalars clamp/fract/step/smoothstep) | Ch 3, Appendix B | taught |
 | `Helpers/Animation.md` (easing, @Eased, @Smoothed, Timeline; loopProgress/pingPong) | Ch 3 | taught |
+| Picture fit: `ImageFit`, `drawImage(_:in:fit:)`, `Rectangle(covering:in:)` (`Drawing/Images.md`) | Ch 9 | taught ("The box is never the right shape" with the PictureFit figure: the three modes and what each gives up, the what-would-you-rather-lose framing, a round shape as the tell for a stretch, and cropping costing nothing) |
 | `Helpers/Input.md` (mouse, keyboard) | Ch 1 | taught |
 | `Helpers/Parameters.md` (@Param) | Ch 1; bindings in Ch 28 | taught (typed family: sliders/stepper/color well taught in Ch 1's finished piece, the rest named + pointed; groups/icons pointed) |
 | `Generators/Random.md` | Ch 4 | taught |

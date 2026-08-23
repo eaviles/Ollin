@@ -42,6 +42,20 @@ public struct Rectangle: Equatable, Hashable, Sendable, Codable {
         self.init(center: container.center, width: size.x * scale, height: size.y * scale)
     }
 
+    /// Build the smallest rectangle of `size`'s aspect ratio, centered on
+    /// `container`, that covers it completely. The counterpart of
+    /// `init(fitting:in:)`: that one leaves bars, this one runs past the edges,
+    /// and what falls outside is meant to be cropped. A degenerate `size` or
+    /// `container` yields `container` unchanged.
+    public init(covering size: Vector2, in container: Rectangle) {
+        guard size.x > 0, size.y > 0, container.width > 0, container.height > 0 else {
+            self = container
+            return
+        }
+        let scale = Swift.max(container.width / size.x, container.height / size.y)
+        self.init(center: container.center, width: size.x * scale, height: size.y * scale)
+    }
+
     public var x: Double { corner.x }
     public var y: Double { corner.y }
 
