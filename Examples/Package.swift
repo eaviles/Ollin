@@ -443,6 +443,7 @@ let package = Package(
         example("Patterns/Knotwork"),
         example("Patterns/Pursuit"),
         example("Patterns/CreasePattern"),
+        example("Patterns/ShapeGrammar"),
         example("Patterns/Penrose"),
         example("Patterns/WangTiles"),
         example("Patterns/Girih"),

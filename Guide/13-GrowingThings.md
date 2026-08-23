@@ -132,6 +132,43 @@ Widths arrive as multiples of `strokeWeight`, scaled so the widest is exactly 1.
 
 A plain grammar counts. A parametric one measures. The [reference](../Docs/Generators/LSystem.md#parametric) has the rest. It covers the arithmetic it accepts, weighted rules for stochastic growth, and a shelf of presets from the botany literature.
 
+## Rules over shapes, not symbols
+
+An L-system rewrites a sentence, and a turtle turns the finished sentence into a picture. The picture is downstream of the words. In 1971 George Stiny and James Gips asked the obvious next question: what if the rules worked on the shapes themselves?
+
+That is a **shape grammar**. Every piece of the design is a shape with a label, and a rule says what one label turns into. Here is a whole grammar, and it is one sentence long. *A cell becomes two cells, parted by a straight line drawn between two of its edges, with the two parts about equal in area.*
+
+Notice what the sentence leaves out. It does not say which edges, or where along them. So the rule stands for every design it could make, rather than for one drawing:
+
+```swift
+let frame = Rectangle(center: center, width: 880, height: 880)
+let lattice = ShapeGrammar.iceRay(in: frame, minimumArea: 7_000)
+
+noFill(); stroke(.white); strokeWeight(2)
+for cell in lattice.run(generations: 9, seed: 7) {
+    drawPolyline(cell.corners, closed: true)
+}
+```
+
+<img src="Images/13-GrowingThings/CutAndCutAgain.jpg" alt="Four panels of the same frame cut by one rule after one, three, six, and nine sweeps: two cells, then eight, then fifty-one, then fifty-five and finished, with cells still large enough to cut drawn in warm orange and the rest in black" width="680">
+
+A sweep offers every cell to the rule at once, the way a rewrite replaces every symbol at once. But watch the warm color drain away. `minimumArea` says how small a cell must get before the rule leaves it alone, so the run finishes on its own. That is the real difference between the two kinds of rewriting. Symbols can always be rewritten again, so an L-system grows forever. Shapes are rewritten in place, so a shape grammar runs out of room.
+
+One arithmetic fact sits behind this whole family. It is worth knowing, because it saves you from writing rules down. The cut meets two edges away from their ends. So it hands one new corner to each part at each end, and every corner the cell had lands in exactly one part. Whatever the cell was, **the two parts carry four more corners between them than the cell had**. Now say that the parts may only have three, four, or five corners. A triangle can then only become a triangle and a quadrilateral. A quadrilateral can only become a triangle and a pentagon, or two quadrilaterals. A pentagon can only become a quadrilateral and another pentagon. A hexagon has exactly one legal cut. A shape with seven corners has none at all, so it is finished however large it is. Nobody writes those rules. They are what is left once you name the corner range.
+
+That is the grammar behind ice-ray lattices, the Chinese window frames whose bars look like cracks in river ice. Stiny worked them out in 1977, from a catalogue of real lattices. The artisan's own method is the run you just watched: divide the area into large and equal spots, then keep dividing until the pieces are the size you wanted.
+
+A finished design is just an array of pieces, so it feeds straight back in as the start of another grammar. That is how a lattice gets its wood. One rule cuts the frame into cells. A second takes the middle out of every cell, leaving a bar of even width all the way round:
+
+```swift
+let cells = lattice.run(generations: 9, seed: 7)
+let panes = ShapeGrammar(start: cells,
+                         rules: [.inset("cell", by: 7, into: "pane")])
+    .run(generations: 1, seed: 0)
+```
+
+Cutting is not the only move. `split` slices a piece at fractions of its width or height, which is all a building front is: a wall becomes floors, a floor becomes windows, a window becomes a pane. `nested` puts a smaller turned copy of a piece inside itself, the oldest figure in the family. The [reference](../Docs/Generators/ShapeGrammar.md) has the rest, including how weight picks between two rules that name the same label.
+
 ## Growth by crowding: differential growth
 
 The neighborly rules that steer a flock in [Chapter 12](12-FlocksAndSwarms.md) work just as well on geometry that is not going anywhere. Take a closed ring of points. Every step, pull each point toward its neighbors along the line (the line doesn't want to tear), push it away from *every* point that comes near (the line doesn't want to touch itself), and whenever a segment stretches too long, split it in the middle so the line gains a point. That's the whole algorithm. It's called differential growth, and it turns a circle into coral:
@@ -414,7 +451,7 @@ Then make it yours:
 
 ## Where this comes from
 
-L-systems are Aristid Lindenmayer's 1968 invention. Their visual language comes from *The Algorithmic Beauty of Plants* (1990), written with Przemyslaw Prusinkiewicz. It is still free to read online and still beautiful. The parametric form is that book's section 1.10. James Hanan's 1992 dissertation, from the same group, works it out more fully. The tapered trees and the leaves are their published figures. Space colonization is by Adam Runions, Brendan Lane, and Prusinkiewicz at the University of Calgary's Algorithmic Botany group. The paper is "Modeling Trees with a Space Colonization Algorithm" (2007), after their 2005 leaf-venation work. Diffusion-limited aggregation was described by the physicists Thomas Witten and Leonard Sander in 1981. Generative artists have been growing frost with it ever since. The crack growth is Jared Tarbell's *Substrate*, from 2003. It ran as a Processing applet on his site complexification.net. Its city-block subdivisions are among the best-known images of early generative art. The wandering river is Alan Howard and Thomas Knutson's 1984 simulation. They showed that curvature felt from upstream is enough to make a channel meander. Zoltán Sylvester's meanderpy carries the model in working code. Robert Hodgin's 2020 *Meander* turned it into procedural maps of rivers that never existed, in the manner of Harold Fisk's 1944 Mississippi maps. Wave Function Collapse is Maxim Gumin's 2016 algorithm, named with a physicist's wink. The tile-and-socket form here is its simple-tiled model.
+L-systems are Aristid Lindenmayer's 1968 invention. Their visual language comes from *The Algorithmic Beauty of Plants* (1990), written with Przemyslaw Prusinkiewicz. It is still free to read online and still beautiful. The parametric form is that book's section 1.10. James Hanan's 1992 dissertation, from the same group, works it out more fully. The tapered trees and the leaves are their published figures. Space colonization is by Adam Runions, Brendan Lane, and Prusinkiewicz at the University of Calgary's Algorithmic Botany group. The paper is "Modeling Trees with a Space Colonization Algorithm" (2007), after their 2005 leaf-venation work. Diffusion-limited aggregation was described by the physicists Thomas Witten and Leonard Sander in 1981. Generative artists have been growing frost with it ever since. The crack growth is Jared Tarbell's *Substrate*, from 2003. It ran as a Processing applet on his site complexification.net. Its city-block subdivisions are among the best-known images of early generative art. The wandering river is Alan Howard and Thomas Knutson's 1984 simulation. They showed that curvature felt from upstream is enough to make a channel meander. Zoltán Sylvester's meanderpy carries the model in working code. Robert Hodgin's 2020 *Meander* turned it into procedural maps of rivers that never existed, in the manner of Harold Fisk's 1944 Mississippi maps. Shape grammars are George Stiny and James Gips's, from their 1971 paper on specifying painting and sculpture by rule. The lattice grammar follows Stiny's 1977 study of Chinese ice-ray window designs, which he wrote from Daniel Sheets Dye's 1949 catalogue of the lattices themselves. Wave Function Collapse is Maxim Gumin's 2016 algorithm, named with a physicist's wink. The tile-and-socket form here is its simple-tiled model.
 
 
 ## Go deeper
@@ -427,9 +464,10 @@ L-systems are Aristid Lindenmayer's 1968 invention. Their visual language comes 
 - [Crack growth](../Docs/Generators/CrackGrowth.md): the stepper, the marks and the wash, and the plotter path through `segments`.
 - [Meander](../Docs/Generators/Meander.md): the migration mechanism step by step, every knob, and drawing the oxbows and scars.
 - [Wave Function Collapse](../Docs/Generators/WaveFunctionCollapse.md): sockets, weights, rotations, learning from a picture instead, and what to do when a solve fails.
+- [Shape grammars](../Docs/Generators/ShapeGrammar.md): all six rules, how a run picks between them, the fallback a weight of zero writes, and the two facts that hold exactly.
 - [Blue noise](../Docs/Generators/BlueNoise.md): the even scatter the tree's crown was carved from, properly explained in [Chapter 15](15-ShapesAsMaterial.md).
 - Appendix B draws this chapter's math, one picture per idea: [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure).
-- Worked examples: [`Examples/Patterns/LSystem`](../Examples/Patterns/LSystem/Sketch.swift) (the preset contact sheet), [`Examples/Patterns/ParametricLSystem`](../Examples/Patterns/ParametricLSystem/Sketch.swift) (the parametric one, including a tapered tree), [`Examples/Patterns/Venation`](../Examples/Patterns/Venation/Sketch.swift), [`Examples/Patterns/Dendrite`](../Examples/Patterns/Dendrite/Sketch.swift), [`Examples/Patterns/Cracks`](../Examples/Patterns/Cracks/Sketch.swift), [`Examples/Patterns/Meander`](../Examples/Patterns/Meander/Sketch.swift) (the river and its map of scars), [`Examples/Patterns/WaveFunctionCollapse`](../Examples/Patterns/WaveFunctionCollapse/Sketch.swift), [`Examples/Patterns/TextureSynthesis`](../Examples/Patterns/TextureSynthesis/Sketch.swift), [`Examples/Patterns/IteratedFunctions`](../Examples/Patterns/IteratedFunctions/Sketch.swift), [`Examples/Patterns/FractalFlame`](../Examples/Patterns/FractalFlame/Sketch.swift), [`Examples/Patterns/InversionFractal`](../Examples/Patterns/InversionFractal/Sketch.swift), and [`Examples/Patterns/Kleinian`](../Examples/Patterns/Kleinian/Sketch.swift).
+- Worked examples: [`Examples/Patterns/LSystem`](../Examples/Patterns/LSystem/Sketch.swift) (the preset contact sheet), [`Examples/Patterns/ParametricLSystem`](../Examples/Patterns/ParametricLSystem/Sketch.swift) (the parametric one, including a tapered tree), [`Examples/Patterns/Venation`](../Examples/Patterns/Venation/Sketch.swift), [`Examples/Patterns/Dendrite`](../Examples/Patterns/Dendrite/Sketch.swift), [`Examples/Patterns/Cracks`](../Examples/Patterns/Cracks/Sketch.swift), [`Examples/Patterns/Meander`](../Examples/Patterns/Meander/Sketch.swift) (the river and its map of scars), [`Examples/Patterns/ShapeGrammar`](../Examples/Patterns/ShapeGrammar/Sketch.swift) (an ice-ray window frame built a sweep at a time), [`Examples/Patterns/WaveFunctionCollapse`](../Examples/Patterns/WaveFunctionCollapse/Sketch.swift), [`Examples/Patterns/TextureSynthesis`](../Examples/Patterns/TextureSynthesis/Sketch.swift), [`Examples/Patterns/IteratedFunctions`](../Examples/Patterns/IteratedFunctions/Sketch.swift), [`Examples/Patterns/FractalFlame`](../Examples/Patterns/FractalFlame/Sketch.swift), [`Examples/Patterns/InversionFractal`](../Examples/Patterns/InversionFractal/Sketch.swift), and [`Examples/Patterns/Kleinian`](../Examples/Patterns/Kleinian/Sketch.swift).
 
 ---
 

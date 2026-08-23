@@ -145,6 +145,7 @@ Use it two ways. It is an index for the moment you remember the guide showing bl
 | Fractals | IFS chaos games, fractal flames, the Buddhabrot density plate, circle-inversion lace, and Kleinian limit-set curves | [Ch 18](18-IteratedForms.md) | [Fractals](../Docs/Generators/Fractals.md) |
 | L-systems | Grammar rewriting walked by a turtle: ferns, trees, lichens | [Ch 13](13-GrowingThings.md) | [LSystem](../Docs/Generators/LSystem.md) |
 | Wave Function Collapse | Socketed tiles solved by constraint propagation | [Ch 13](13-GrowingThings.md) | [WaveFunctionCollapse](../Docs/Generators/WaveFunctionCollapse.md) |
+| Shape grammars | Rules over labeled shapes in place: ice-ray lattices, building fronts, nested figures | [Ch 13](13-GrowingThings.md) | [ShapeGrammar](../Docs/Generators/ShapeGrammar.md) |
 | Flow fields | Direction fields, streamlines (free and evenly spaced), advection | [Ch 14](14-FieldsAndFlow.md) | [FlowField](../Docs/Generators/FlowField.md) |
 | Flocking | Boids from separation, alignment, and cohesion, with field joins | [Ch 12](12-FlocksAndSwarms.md) | [Boids](../Docs/Generators/Boids.md) |
 | Steering vehicles | Seek, flee, arrive, pursue, wander, follow, contain: composable forces | [Ch 12](12-FlocksAndSwarms.md) | [Steering](../Docs/Generators/Steering.md) |

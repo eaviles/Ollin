@@ -500,6 +500,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("clothoid",
                  note: "Four panels of the clothoid: the Cornu double spiral both arms, a fan of G1 fits leaving one point at one heading and arriving at another with seven different headings, and the same three-point corner rounded with an easement and then with none, each with its bend combed off the route. Pins the Fresnel quadrature, the single-unknown fit (including the straight and arc members of the fan), the easement/arc/easement corner and its tangent setback, and the counterfactual the whole curve exists for: the comb ramps on the eased corner and steps on the plain arc. No rng and no time, so it is deterministic.",
                  make: { ClothoidScene() }),
+    SnapshotCase("shape-grammar",
+                 note: "Three grammars side by side: an ice-ray lattice cut by one rule and given bars by a second, a building front split into floors then windows then panes, and a square nesting turned copies of itself. Pins all four built-in rules (the balanced cut solved for its target area and kept shortest of four tries, the split's fractions and cycled labels, the inset pushing every edge along its own normal with a border ring, the nested scale and turn), the label matching, and the zero-weight fallback that catches a cell with no room for a full bar. Seeded, no time, so it is deterministic.",
+                 make: { ShapeGrammarScene() }),
     SnapshotCase("crease-pattern",
                  note: "Three panels: a Miura crease pattern flat with its mountains and valleys marked, the same sheet folded 62 percent and seen from a corner, and a rotating-squares cut sheet pulled half open. Pins the mountain and valley rule (zigzags uniform down a column and alternating across, straight folds changing kind along their length), the joining of creases into pen strokes, the rigid folding (panels stay flat parallelograms and creases keep their length), and the kirigami mechanism (neighbors stay joined at one corner). No rng and no time, so it is deterministic.",
                  make: { CreasePatternScene() }),
@@ -8375,6 +8378,62 @@ private final class MeshGrowthScene: Sketch {
 /// Three panels of crease patterns: a Miura sheet flat with its mountains and
 /// valleys marked, the same sheet folded most of the way, and a
 /// rotating-squares cut sheet pulled half open.
+private final class ShapeGrammarScene: Sketch {
+    override var canvasSize: CanvasSize { .size(512, 200) }
+
+    private let chalk = Color(hex: 0xF2ECDD)
+    private let warm = Color(hex: 0xE0724A)
+    private let cool = Color(hex: 0x5A8FC7)
+
+    override func draw() {
+        background(Color(hex: 0x11131A))
+        noStroke()
+
+        // One rule cuts the frame into cells; a second takes the middle out of
+        // each cell, and what is left is the wood.
+        let frame = Rectangle(x: 10, y: 20, width: 148, height: 160)
+        let cells = ShapeGrammar.iceRay(in: frame, minimumArea: 620, balance: 0.3)
+            .run(generations: 9, seed: 3)
+        let panes = ShapeGrammar(start: cells,
+                                 rules: [.inset("cell", by: 2.4, into: "pane"),
+                                         .inset("cell", by: 0.7, into: "pane", weight: 0)])
+            .run(generations: 1, seed: 0)
+        fill(warm)
+        drawRect(corner: frame.topLeft, width: frame.width, height: frame.height)
+        fill(chalk)
+        for pane in panes where pane.label == "pane" { drawPolygon(pane.corners) }
+
+        // Floors, then windows across each floor, then a pane inside each
+        // window. Three sentences, and the design is a building front.
+        let facade = ShapeGrammar(
+            start: ShapeGrammar.Piece("wall", Rectangle(x: 176, y: 20, width: 148, height: 160)),
+            rules: [.split("wall", along: .y, at: [0.24, 0.48, 0.72], into: ["floor"]),
+                    .split("floor", along: .x, at: [0.16, 0.32, 0.5, 0.68, 0.84],
+                           into: ["pier", "window"]),
+                    .inset("window", by: 2.6, into: "glass", border: "frame")])
+            .run(generations: 3, seed: 1)
+        for piece in facade {
+            switch piece.label {
+            case "glass": fill(cool)
+            case "frame": fill(chalk.withAlpha(0.8))
+            default: fill(Color(hex: 0x2B3550))
+            }
+            drawPolygon(piece.corners)
+        }
+
+        // A square holding a turned copy of itself, all the way down.
+        let nest = ShapeGrammar.nestedSquares(in: Rectangle(x: 344, y: 22, width: 156, height: 156),
+                                              minimumArea: 24)
+            .run(generations: 14, seed: 1)
+        noFill()
+        strokeWeight(0.9)
+        for piece in nest {
+            stroke(Color.mix(chalk, warm, t: min(Double(piece.depth) / 12, 1)))
+            drawPolyline(piece.corners, closed: true)
+        }
+    }
+}
+
 private final class CreasePatternScene: Sketch {
     override var canvasSize: CanvasSize { .size(512, 200) }
 

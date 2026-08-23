@@ -109,6 +109,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 - [`Terrain`](./Generators/Terrain.md) - `Heightfield`, landscapes from noise or `diamondSquare`, weathered by droplet hydraulic and thermal erosion, emitted as terrain meshes, heightmaps, and contours
 - [`Random walks`](./Generators/Walks.md) - `randomWalk` / `levyFlight` / `selfAvoidingWalk`, paths built one random step at a time: the local tangle, the cluster-and-leap, and the never-crossing single stroke
 - [`Circle packing`](./Generators/Packing.md) - `packCircles` and `relaxCircles`, filling a region with non-overlapping circles that grow until they touch
+- [`Shape grammars`](./Generators/ShapeGrammar.md) - `ShapeGrammar`, a design written as rules over labeled shapes: the balanced cut behind the ice-ray lattices, splits for a building front, insets that become bars, and nested turned copies
 - [`L-systems`](./Generators/LSystem.md) - `drawLSystem` and a preset catalog: a rewriting grammar walked by a turtle into fractal curves and branching plants, symbolic or parametric (symbols carrying numbers, for fractional lengths, delays, and tapering width)
 - [`Differential growth`](./Generators/DifferentialGrowth.md) - `DifferentialGrowth`, a line of nodes that grows and folds into organic, brain-coral structure (a stateful stepper)
 - [`Meander`](./Generators/Meander.md) - `Meander`, a river centerline that migrates by curvature, cutting off oxbow lakes and recording scars (a stateful stepper)
