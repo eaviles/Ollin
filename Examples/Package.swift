@@ -414,6 +414,7 @@ let package = Package(
         example("Shapes/Hulls"),
         example("Shapes/MedialAxis"),
         example("Shapes/Neighbors"),
+        example("Shapes/Scattered"),
         example("Shapes/StraightSkeleton"),
         example("Shapes/CornerCutting"),
         example("Shapes/Watercolor"),

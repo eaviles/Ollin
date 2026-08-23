@@ -92,6 +92,7 @@ Use it two ways. It is an index for the moment you remember the guide showing bl
 | Convex hull | The rubber band around a point set | [Ch 15](15-ShapesAsMaterial.md) | [Geometry](../Docs/Drawing/Geometry.md) |
 | Voronoi and Delaunay | Territories and neighbor networks from points, with Lloyd relaxation | [Ch 15](15-ShapesAsMaterial.md) | [Voronoi](../Docs/Drawing/Voronoi.md) |
 | Spatial index | What is nearest, what is within reach, and what is inside a box, over a point set, without reading every point | [Ch 12](12-FlocksAndSwarms.md) | [Spatial index](../Docs/Drawing/SpatialIndex.md) |
+| Fitting | A smooth field of numbers, vectors, or colors put through values you know at a few scattered places (and the warp a field of vectors makes), plus a downhill walk that finds a handful of numbers against a cost you write | [Ch 14](14-FieldsAndFlow.md) | [Fitting](../Docs/Drawing/Fitting.md) |
 
 ## Motion, math, and randomness
 

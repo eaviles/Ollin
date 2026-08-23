@@ -485,6 +485,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("summed-area",
                  note: "One lit page read four ways at fixed marks (no time, no random): as drawn, box-blurred, cut against one global number, and cut against each pixel's own neighborhood. Pins the summed-area table end to end (the biased seed, both recursive-doubling ladders, the four-tap box read with its clamped area) and both consumers, with the global panel there as the control: the light falls across the page, so a single cut has to lose one end of it and the local cut has to keep both.",
                  make: { SummedAreaScene() }),
+    SnapshotCase("scattered-fit",
+                 note: "Three fixed panels (no time, no random): six colored points read back as a smooth field over the whole panel, the same six carrying displacements so a straight grid bends through them, and a circle recovered by a downhill walk from marks scattered around it. Pins the RadialBasis fit end to end (the bordered system with its polynomial tail, the pivoting solve, the internal normalization, and the read) and Fit.minimize arriving at a known answer.",
+                 make: { ScatteredFitScene() }),
     SnapshotCase("seamless-clone",
                  note: "One textured patch dropped on a two-tone backdrop three ways: pasted with the seam left in, cloned at half, and cloned in full. Pins the whole path (the rim read as boundary values, the convolution pyramid that settles between them, the composite that adds it back under the patch's own coverage) and the amount knob between them. No time, no random.",
                  make: { SeamlessCloneScene() }),
@@ -6507,6 +6510,85 @@ private final class SummedAreaScene: Sketch {
                              Ramp([Color(white: 1), Color(white: 0.28)])))
         drawRect(0, 0, side, side)
         blendMode(.normal)
+    }
+}
+
+/// Six fixed points read three ways: as a color field, as a warp, and as the circle a
+/// downhill walk recovers from marks around it. No time, no random.
+private final class ScatteredFitScene: Sketch {
+    override var canvasSize: CanvasSize { .size(328, 112) }
+
+    static let anchors = [Vector2(18, 22), Vector2(74, 68), Vector2(40, 92),
+                          Vector2(88, 30), Vector2(20, 60), Vector2(66, 100)]
+    static let inks = [Color(hex: 0xE8734A), Color(hex: 0x49B0A5), Color(hex: 0xE0C25C),
+                       Color(hex: 0xC85A7C), Color(hex: 0x6E8FD4), Color(hex: 0x8FC46B)]
+
+    override func draw() {
+        background(Color(white: 0.05))
+        let side = 104.0
+        for panel in 0 ..< 3 {
+            withState {
+                translate(8 + Double(panel) * (side + 4), 4)
+                withClip(Rectangle(x: 0, y: 0, width: side, height: side)) {
+                    switch panel {
+                    case 0: field(side)
+                    case 1: warp(side)
+                    default: fitted(side)
+                    }
+                }
+            }
+        }
+    }
+
+    private func field(_ side: Double) {
+        guard let f = RadialBasis(points: Self.anchors, values: Self.inks) else { return }
+        noStroke()
+        for y in stride(from: 0.0, to: side, by: 4) {
+            for x in stride(from: 0.0, to: side, by: 4) {
+                fill(f.value(at: Vector2(x + 2, y + 2)))
+                drawRect(x, y, 5, 5)
+            }
+        }
+    }
+
+    private func warp(_ side: Double) {
+        let pulls = Self.anchors.enumerated().map { i, a in
+            a + Vector2(cos(Double(i) * 1.7), sin(Double(i) * 2.3)) * 16
+        }
+        guard let w = RadialBasis(points: Self.anchors, values: pulls) else { return }
+        noFill()
+        stroke(Color(hex: 0x9FB3C8))
+        strokeWeight(1)
+        for x in stride(from: 0.0, through: side, by: 13) {
+            drawPolyline(stride(from: 0.0, through: side, by: 4).map { w.value(at: Vector2(x, $0)) })
+        }
+        for y in stride(from: 0.0, through: side, by: 13) {
+            drawPolyline(stride(from: 0.0, through: side, by: 4).map { w.value(at: Vector2($0, y)) })
+        }
+        noStroke()
+    }
+
+    private func fitted(_ side: Double) {
+        let truth = Vector2(side * 0.5, side * 0.5)
+        let marks = (0 ..< 64).map { i -> Vector2 in
+            let a = Double(i) / 64 * .tau
+            return truth + Vector2(cos(a), sin(a)) * (38 + sin(a * 5) * 5)
+        }
+        noStroke()
+        fill(Color(hex: 0x9FB3C8))
+        for mark in marks { drawCircle(center: mark, radius: 1.6) }
+        let found = Fit.minimize(from: [side * 0.3, side * 0.3, 10], steps: 300, rate: 2) { p in
+            let center = Vector2(p[0], p[1])
+            return marks.reduce(0.0) { total, mark in
+                let off = center.distance(to: mark) - p[2]
+                return total + off * off
+            }
+        }
+        noFill()
+        stroke(Color(hex: 0xE0C25C))
+        strokeWeight(1.5)
+        drawCircle(found.values[0], found.values[1], found.values[2])
+        noStroke()
     }
 }
 

@@ -23,6 +23,7 @@
 - [`Shape morphing`](./Morphing.md) - `ShapeMorph`: tween one `Shape` into another with every in-between a real vector shape (contour pairing, corner-keeping correspondence, holes that grow in and out); `Shape` is `Tweenable`, so a `Timeline` sequences geometry
 - [`Voronoi & Delaunay`](./Voronoi.md) - tessellate points into vector geometry: Voronoi cells (the "crystallization" look) and the dual Delaunay triangle mesh, with Lloyd relaxation
 - [`Spatial index`](./SpatialIndex.md) - `SpatialIndex`, the structure that answers what is near a point without reading every point: nearest, k nearest, everything within a radius, everything inside a box, over a uniform grid or a k-d tree
+- [`Fitting`](./Fitting.md) - `RadialBasis`, a smooth field of numbers, vectors, or colors fitted through values you know at a handful of scattered places (and the warp a field of vectors makes), plus `Fit.minimize`, which walks a handful of knobs downhill against a cost you write
 - [`Truchet tiling`](./Truchet.md) - one tile per grid cell spun to a random orientation, so identical parts line up into flowing loops (`.arcs`) or a maze (`.diagonals`)
 - [`Hitomezashi stitching`](./Hitomezashi.md) - one bit per grid line phases its dashes, and the shifted lines weave into staircases, loops, and a two-tone cloth
 - [`Kolam and sona`](./Kolam.md) - one line launched between a field of dots and bounced off the edges until it closes, in gcd(rows, columns) loops, with walls to steer it

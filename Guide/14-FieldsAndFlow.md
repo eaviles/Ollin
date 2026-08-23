@@ -117,6 +117,51 @@ particles = field.advected(particles, stepLength: 7)
 
 The figure gives each particle a short stored trail ([Chapter 12](12-FlocksAndSwarms.md)'s array trick) and respawns any swimmer that leaves the canvas. It rides `curlField`, a second field builder worth knowing. Curl noise is built so the flow only ever swirls, never piling up or draining away. That keeps a drifting population evenly spread forever. It's the field of choice for smoke, ink, and anything that should feel fluid without simulating fluid.
 
+## A field you pin down yourself
+
+Every field so far came out of noise. You turned knobs on it, but you never told it what to be at any particular place. Sometimes that is exactly backwards. You know what you want at a few spots, and you want something sensible everywhere else.
+
+If those spots sat on a grid you could interpolate between the neighbors. Scattered points have no neighbors to speak of, so the answer has to come from all of them at once. `RadialBasis` does that. Each known point gets a bump centered on it, and the bumps are weighted so their sum lands exactly on every value you gave.
+
+```swift
+let field = RadialBasis(points: anchors, values: inks)!
+fill(field.value(at: Vector2(x, y)))
+```
+
+<img src="Images/14-FieldsAndFlow/Fitting.jpg" alt="Three panels. A soft field of orange, pink, blue, green and yellow filling a square with six small dark rings marking the points it was fitted through; a white grid on black bent into curves by six orange arrows pulling on it; and a ring of pale dots wobbling around a circle, with a gold circle drawn through the middle of them and a gold dot at its center" width="680">
+
+The left panel is six colors at six places, read back at every pixel. It looks like a gradient and it is not one. Nothing was blended between two stops; every pixel is a weighted sum of all six. Look at the rings marking the points: what shows inside each one is the field's own color there, and it matches the color that point was given. **A field that passes through its data is interpolating. One that merely heads in the right direction is blurring.**
+
+The values do not have to be colors. Give the same call `Vector2`s and each known point says "this place should move to *there*", which makes the field a warp. That is the middle panel: a straight grid, with each of its points read through the warp, bending around six pulls. Read a shape's outline through it instead and the shape bends.
+
+You can ask it not to be so obedient. `smoothing:` lets the field miss its values in exchange for fewer wobbles between them, which is what noisy data usually wants:
+
+```swift
+RadialBasis(points: samples, values: readings, smoothing: 0.05)
+```
+
+One habit. Fitting solves a system that grows with the cube of how many points you give it, and reading the field costs one term per point every single time. Fit in `setup()`, read in `draw()`. Six points read over a whole canvas is nothing; six thousand is a different program.
+
+### Going the other way
+
+The third panel is the reverse trick, and it is worth knowing about even though it is not a field at all.
+
+Those pale dots are scattered around a circle. Nothing in the sketch knows where that circle is. `Fit.minimize` takes three numbers, a middle and a radius, and a way of saying how wrong they are, and walks them downhill until they stop being wrong:
+
+```swift
+let best = Fit.minimize(from: [width / 2, height / 2, 100]) { p in
+    marks.reduce(0.0) { total, mark in
+        let off = Vector2(p[0], p[1]).distance(to: mark) - p[2]
+        return total + off * off
+    }
+}
+drawCircle(best.values[0], best.values[1], best.values[2])
+```
+
+The closure is the whole of it. You never say how to search, only how to score. Squared distance is the usual scoring: it punishes one badly placed mark much harder than several slightly off ones, which is what makes the answer settle in the middle of the crowd.
+
+It walks *downhill from where you start*. A problem with several separate answers hands back whichever one your starting guess was nearest, so when that matters, run it from a few different starts and keep the best. It also measures the slope by trying each knob a little either side of where it stands, so your closure gets called a couple of thousand times over a walk of any length. Keep it cheap.
+
 ## Putting it together: the print
 
 Everything above compresses into a surprisingly short piece with a long pedigree. It uses evenly spaced streamlines, three ribbon weights, a warm palette, and cream paper. Make `MySketches/FlowPrint.swift`:
@@ -170,8 +215,9 @@ Vector fields are old mathematics, since fluid dynamics and electromagnetism bot
 - [Noise](../Docs/Generators/Noise.md): the field the flow is made of.
 - [Isolines](../Docs/Generators/Isolines.md): the single-level and stacked-level forms, the image form, resolution, and what open versus closed contours mean.
 - [Steering](../Docs/Generators/Steering.md): creatures that *follow* a field instead of riding it ([Chapter 12](12-FlocksAndSwarms.md)'s `follow(_:)`).
+- [Fitting](../Docs/Drawing/Fitting.md): the kernels `RadialBasis` can use, fields of vectors and colors, smoothing, and everything `Fit.minimize` takes.
 - Appendix B draws this chapter's math, one picture per idea: [Fields and following them](B-JustEnoughMath.md#fields-and-following-them).
-- Worked examples: [`Examples/Patterns/Streamlines`](../Examples/Patterns/Streamlines/Sketch.swift) (evenly spaced, hue drifting along the flow), built up live), aging from ember to violet), zoomable by knob), and [`Examples/Motion/FlowField`](../Examples/Motion/FlowField/Sketch.swift) (a curl field of drifting needles).
+- Worked examples: [`Examples/Patterns/Streamlines`](../Examples/Patterns/Streamlines/Sketch.swift) (evenly spaced, hue drifting along the flow), built up live), aging from ember to violet), zoomable by knob), [`Examples/Shapes/Scattered`](../Examples/Shapes/Scattered/Sketch.swift) (a field, a warp, and a circle recovered from marks), and [`Examples/Motion/FlowField`](../Examples/Motion/FlowField/Sketch.swift) (a curl field of drifting needles).
 
 ---
 
