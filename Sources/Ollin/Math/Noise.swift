@@ -450,3 +450,14 @@ public extension Sketch {
     /// `curlNoise` sampled at the point `p`.
     func curlNoise(_ p: Vector2) -> Vector2 { curlNoise(p.x, p.y) }
 }
+
+public extension Sketch {
+    /// This sketch's noise field, as a plain function of three coordinates,
+    /// answering `-1...1`. It is how something that reads noise outside
+    /// `draw()` (a ``Formula`` driving a knob, for one) sees the same field the
+    /// sketch does, so `noiseSeed()` reaches it as well.
+    func noiseField() -> Formula.NoiseField {
+        let field = perlin
+        return { x, y, z in field.signedValue(x, y, z) }
+    }
+}

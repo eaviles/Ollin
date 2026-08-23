@@ -15,6 +15,7 @@ Because the tracks read the sketch clock, and the exports drive that clock at a 
 - [What blends, and what steps](#what-blends-and-what-steps)
 - [How a pass plays](#how-a-pass-plays)
 - [Reading a track back](#reading-a-track-back)
+- [A track that is a rule](#a-track-that-is-a-rule)
 - [The file](#the-file)
 - [How it sits beside the rest](#how-it-sits-beside-the-rest)
 
@@ -109,6 +110,22 @@ if case .number(let value)? = automation?.track(named: "radius")?.value(at: 1.5)
 
 `value(of:at:)` does the same from a sketch time rather than a position, applying `speed`, `start`, and the loop. The [Automation example](../../Examples/Motion/Automation/Sketch.swift) plots each of its own tracks under the stage this way.
 
+### A track that is a rule
+
+Keys say where a knob *is* at a few moments. A [`Formula`](../Helpers/Formula.md) says what it *is* at every moment, read from text rather than from Swift source:
+
+```swift
+drive($radius, "190 + sin(time * tau / 6) * 80")
+```
+
+It is the same track, so `loops`, `speed`, `start`, and `length` shape it the same way, and it travels in the same file, written down as the text itself:
+
+```json
+{ "name": "radius", "formula": "190 + sin(time * tau / 6) * 80" }
+```
+
+A formula reads `time` as the position in the automation, plus `frame`, the canvas, the pointer, and the sketch's other number and switch knobs by name. The whole vocabulary, and the two rules worth knowing before you type one, are on the [`Formula`](../Helpers/Formula.md) page.
+
 ### The file
 
 An `Automation` is codable, so it reads and writes as JSON:
@@ -124,7 +141,7 @@ sketch.automation = try Automation.load(from: url)
 swift run Example-Motion-Automation --automation slow.json --export-video out.mp4 --seconds 12
 ```
 
-A file arrives before `setup()`, so a sketch that also writes a track for the same knob wins. A file written for a format this Ollin does not read is refused rather than guessed at.
+A file arrives before `setup()`, so a sketch that also writes a track for the same knob wins. A file written for a *newer* format than this Ollin reads is refused rather than guessed at; an older one still reads, because each layout so far has only added to the one before it.
 
 The flag is read by standalone runs and by every export path. In the live-reload host, write the tracks in `setup()` instead: they survive each swap because the sketch carries them.
 
@@ -142,4 +159,5 @@ The flag is read by standalone runs and by every export path. In the live-reload
 - [`Parameters`](../Helpers/Parameters.md) - the `@Param` knobs themselves, and the controls that edit them by hand
 - [`Replay`](Replay.md) - a run written down as it happened, the sibling format keyed the same way
 - [`Export`](../Output/Export.md) - the flags an automated run renders through, `--automation` among them
+- [`Formula`](../Helpers/Formula.md) - the other way to fill a track: a rule worked out every frame, read from text
 - [`Animation`](../Helpers/Animation.md) - `Timeline`, the in-code sibling that sequences one value rather than a sketch's knobs

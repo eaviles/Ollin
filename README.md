@@ -205,6 +205,8 @@ A recording keeps the pixels; a *take* keeps the performance itself. `--record-t
 
 A take keeps what you did; an *automation* writes down what should happen. `automate($radius) { ... }` puts a knob on a curve, one value placed at each moment, and every frame the knob is where the curve says. Numbers, colors, and points travel; a switch steps. The tracks read the sketch clock, so `--export-video` renders the piece exactly as it plays, and `--automation file.json` drives the same knobs from a file. See [`Docs/Core/Automation.md`](Docs/Core/Automation.md).
 
+A curve says where a knob is at a few moments; a *formula* says what it is at every moment. `drive($radius, "190 + sin(time * tau / 6) * 80")` reads the rule from text rather than from Swift source, so it can arrive from a file, from a typed field, or from a knob worked out from another one. It is the same track, so it loops, plays at any speed, and renders frame for frame. See [`Docs/Helpers/Formula.md`](Docs/Helpers/Formula.md).
+
 A seeded sketch is a generator, so Ollin names the seed each run grew from ([`variation`](Docs/Core/Variations.md)) and gives you the tools to explore the space it indexes: step, roll, or jump through seeds from the inspector's Variation card, proof a whole range as a labeled contact sheet, then re-render the keeper at full size.
 
 ```sh

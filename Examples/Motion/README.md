@@ -19,6 +19,7 @@ Animation driven by `time`, with the draw loop running continuously by default.
 | [EllipseField](EllipseField/Sketch.swift) | rows of `drawEllipse` outlines in two columns, drifting and squashing via `signedNoise` |
 | [Epicycles](Epicycles/Sketch.swift) | Fourier epicycles: a chain of spinning circles re-draws an SVG whale, term count on a knob, one lap per `loopDuration` |
 | [FlowField](FlowField/Sketch.swift) | a `curlNoise` flow field: short lines follow the divergence-free curl, drifting with `time` |
+| [Formula](Formula/Sketch.swift) | six knobs driven by rules typed as text rather than written as Swift, with the sketch printing the rule driving each one under the ring (`drive`, `Formula`) |
 | [Harmonograph](Harmonograph/Sketch.swift) | a harmonograph performing: damped pendulums (rolled from the seeded `random`, one figure per `variation`) weave a nested trace that replays pen-first, exactly as the machine would draw it (`Harmonograph`) |
 | [InverseKinematics](InverseKinematics/Sketch.swift) | five `IKChain` tentacles strain toward a swimming lure; a stiffness knob (`maxBend`) runs rope to whip, and a toggle swaps the even solver for the tip-curling one |
 | [Lissajous](Lissajous/Sketch.swift) | the Lissajous table: a grid of `lissajous(a:b:)` figures, column against row frequency, a shared phase rolling every figure through its family while tracers ride at true parametric speed |

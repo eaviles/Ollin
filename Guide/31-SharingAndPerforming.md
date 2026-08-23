@@ -474,6 +474,37 @@ swift run --package-path Examples Example-Motion-Automation --export-video direc
 
 An automation is plain data as well, which means a sketch can read its own tracks back and draw them. The [Automation example](../Examples/Motion/Automation/Sketch.swift) plots each of its four tracks under the stage, playhead and all. And `--automation file.json` drives the same knobs from a file instead of from code. The full surface is in [Automation](../Docs/Core/Automation.md).
 
+## Writing the knob as a rule
+
+Keys say where a knob is at a few moments. Sometimes you do not want moments. You want to say what the knob *is*, and have it be that at every moment:
+
+```swift
+override func setup() {
+    drive($radius, "190 + sin(time * tau / 6) * 80")
+}
+```
+
+<img src="Images/31-SharingAndPerforming/KnobAsARule.jpg" alt="Two panels showing the same wave. The left one is built from five keyed moments, each marked with a dot, with eased curves between them. The right one is one continuous line with the formula that made it printed underneath" width="680">
+
+That is a *formula*, and the thing to notice is the quotation marks. The rule is text, not Swift source. Text can arrive at runtime. It can be typed into a field, read out of a file, or changed while the piece is playing. None of that needs a recompile. That is the whole reason this exists beside the curves.
+
+The arithmetic is the arithmetic you already write. `sin`, `clamp`, `lerp`, `smoothstep`, `noise`, `pi` and `tau`, spelled and ordered exactly as they are in `draw()` and in a shader. A formula reads `time`, which is where the pass stands, plus `frame`, `width`, `height`, `mouseX`, `mouseY`, and any of your other knobs by name:
+
+```swift
+drive($radius, "190 + sin(time * tau / 6) * 80")
+drive($count, "8 + round(sin(time * tau / 12) * 5)")   // a whole number rounds
+drive($edge, "radius / 22")                            // worked out from another knob
+drive($filled, "time % 6 < 3")                         // a switch, on when it is not zero
+```
+
+`edge` is the interesting line. It reads *this* frame's radius, not last frame's, because the knob a formula names is always set first. That ordering is not a nicety. It is what keeps a formula a plain function of the clock. The same second gives the same picture whether the window runs at 60 a second or an export steps at 30.
+
+The price of that promise is that two knobs cannot name each other, and a knob cannot name itself. `"n + 1"` never settles on one frame. Ollin says so and leaves that knob alone, rather than play a value that would drift with the frame rate. For a number that builds on itself, keep a plain property and step it in `draw()`, the way [Chapter 3](03-MotionAndTime.md) does.
+
+A formula is a track like any keyed one. It loops, it plays at any speed, and it renders frame for frame through every export. It travels in the same `--automation` file too, written down as the text you typed. The [Formula example](../Examples/Motion/Formula/Sketch.swift) drives six knobs this way and prints the rule driving each one under the picture. The whole vocabulary is in [Formula](../Docs/Helpers/Formula.md).
+
+Two spellings will catch you once. `-2^2` is `-4`, because a power binds tighter than a minus sign, the way a calculator reads it. And `-1 % 3` is `2`, not `-1`, because the remainder wraps rather than reflects, which is what makes a phase continuous as it crosses zero.
+
 ## Putting it together: a set in five evaluations
 
 What you'll build here is a short performed set. Open the host with a fresh buffer. Build the chapter's finale the way an audience would watch it grow, one evaluation at a time. [Chapter 17](17-YourFirstShader.md)'s `Visual` chains are the natural material for this kind of set, since every step is one added line:
@@ -530,6 +561,7 @@ Live coding as a performance practice was organized by TOPLAP (founded 2004), wh
 - [Virtual camera](../Docs/Integration/VirtualCamera.md): the one-time install, publishing, the test card.
 - [Live coding](../Docs/Tools/LiveCoding.md): the evaluate loop, errors, recovery, and the keyboard reference.
 - [Writing an extension](../Docs/Tools/Extensions.md): the four seams, the naming convention, the publishing checklist, and what is deliberately closed.
+- [Formula](../Docs/Helpers/Formula.md): the whole arithmetic vocabulary a knob's rule speaks, what it can name, and what it reports rather than throws.
 - Worked examples: [`Examples/Export/`](../Examples/Export/), [`Examples/Live/`](../Examples/Live/), and [`Examples/Integration/SyphonLoopback`](../Examples/Integration/SyphonLoopback/Sketch.swift).
 
 ---

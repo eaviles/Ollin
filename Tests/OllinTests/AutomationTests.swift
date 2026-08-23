@@ -376,3 +376,231 @@ struct AutomationTests {
         #expect(sketch.untouched == 4)
     }
 }
+
+// MARK: - A knob driven by a formula
+
+/// The other half of a track: instead of values placed at moments, a rule
+/// worked out every frame. The claims worth pinning are the ones that decide
+/// whether a picture is reproducible: which clock the formula reads, whether
+/// two formulas can see each other's new values, and whether the answer
+/// survives a trip through a file.
+@Suite
+@MainActor
+struct FormulaTrackTests {
+
+    private final class Driven: Sketch {
+        @Param(0...400) var radius = 10.0
+        @Param(0...100) var half = 0.0
+        @Param(1...100) var count = 1
+        @Param var lit = false
+
+        override func setup() {
+            drive($radius, "120 + sin(time * tau) * 40")
+            drive($half, "radius / 4")
+            drive($count, "time * 10")
+            drive($lit, "time % 2 < 1")
+        }
+    }
+
+    /// The knob a sketch reads is the formula worked out at that frame's clock,
+    /// and each kind of knob takes the number the way its own type can: a whole
+    /// number rounds, and a switch is on for anything but zero.
+    @Test func theSketchReadsTheFormula() {
+        let sketch = Driven()
+        sketch.setCanvasSize(width: 64, height: 64)
+        sketch.setup()
+        #expect(sketch.automation?.tracks.count == 4)
+        for frame in 1...8 {
+            let t = Double(frame) / 4
+            sketch.advance(time: t, deltaTime: 0.25, frameRate: 4)
+            let expected = 120 + sin(t * .pi * 2) * 40
+            #expect(abs(sketch.radius - expected) < 1e-9, "radius at \(t)")
+            #expect(abs(sketch.half - expected / 4) < 1e-9, "a knob worked out from another at \(t)")
+            #expect(sketch.count == Int((t * 10).rounded()), "a whole number at \(t)")
+            #expect(sketch.lit == (t.truncatingRemainder(dividingBy: 2) < 1), "a switch at \(t)")
+        }
+    }
+
+    /// A knob worked out from another lands on the same frame's numbers, and it
+    /// does so whichever order the tracks sit in: the one named is set first.
+    /// Reading in track order instead would give a knob its neighbor's value
+    /// from the frame before, which would make the picture depend on the frame
+    /// rate, and a 30-a-second export would not match the 60-a-second window.
+    @Test func aKnobWorkedOutFromAnotherLandsOnTheSameFrame() {
+        final class Chain: Sketch {
+            @Param(0...100) var a = 0.0
+            @Param(0...100) var b = 0.0
+            @Param(0...100) var c = 0.0
+        }
+
+        func run(reversed: Bool) -> (Double, Double, Double) {
+            let sketch = Chain()
+            sketch.setCanvasSize(width: 64, height: 64)
+            var automation = Automation(tracks: [
+                .init(name: "c", formula: try! Formula("b + 1")),
+                .init(name: "b", formula: try! Formula("a + 1")),
+                .init(name: "a", formula: try! Formula("time * 10")),
+            ])
+            if reversed { automation.tracks.reverse() }
+            sketch.automation = automation
+            sketch.advance(time: 0.5, deltaTime: 0.5, frameRate: 2)
+            return (sketch.a, sketch.b, sketch.c)
+        }
+
+        #expect(run(reversed: false) == (5, 6, 7))
+        #expect(run(reversed: true) == (5, 6, 7))
+    }
+
+    /// A knob worked out from one that is worked out from it cannot settle on a
+    /// single frame. The whole ring is left alone rather than played at a value
+    /// that would depend on the frame rate, and a knob outside the ring still
+    /// plays.
+    @Test func knobsThatNameEachOtherAreLeftAlone() {
+        final class Ring: Sketch {
+            @Param(0...100) var a = 3.0
+            @Param(0...100) var b = 5.0
+            @Param(0...100) var n = 7.0
+            @Param(0...100) var fine = 0.0
+        }
+        let sketch = Ring()
+        sketch.setCanvasSize(width: 64, height: 64)
+        sketch.automation = Automation(tracks: [
+            .init(name: "a", formula: try! Formula("b + 1")),
+            .init(name: "b", formula: try! Formula("a + 1")),
+            .init(name: "n", formula: try! Formula("n + 1")),      // itself, the shortest ring
+            .init(name: "fine", formula: try! Formula("time * 2")),
+        ])
+        sketch.advance(time: 1, deltaTime: 0.5, frameRate: 2)
+        #expect(sketch.a == 3)
+        #expect(sketch.b == 5)
+        #expect(sketch.n == 7)
+        #expect(sketch.fine == 2)
+        // And it stays left alone rather than creeping frame by frame.
+        sketch.advance(time: 2, deltaTime: 0.5, frameRate: 2)
+        #expect(sketch.n == 7)
+    }
+
+    /// `frame` is the number the frame about to be drawn will carry, because a
+    /// track is applied before the sketch steps its counter. A formula reading
+    /// `frame` and the sketch reading `frameCount` must agree, or a stepped
+    /// look lands one frame off what it says.
+    @Test func frameIsTheNumberTheFrameWillCarry() {
+        final class Counting: Sketch {
+            @Param(0...1000) var n = 0
+            var pairs: [(Int, Int)] = []
+            override func setup() { drive($n, "frame") }
+            override func draw() { pairs.append((frameCount, n)) }
+        }
+        let sketch = Counting()
+        sketch.setCanvasSize(width: 64, height: 64)
+        sketch.setup()
+        for frame in 1...5 {
+            sketch.advance(time: Double(frame) / 10, deltaTime: 0.1, frameRate: 10)
+            sketch.draw()
+        }
+        #expect(sketch.pairs.count == 5)
+        for (counted, read) in sketch.pairs { #expect(counted == read) }
+    }
+
+    /// A formula reads `time` as where the *automation* stands, not as the raw
+    /// sketch clock, so `speed`, `start`, and `loops` shape it exactly as they
+    /// shape a curve. Anything else handed in under that name is overruled.
+    @Test func theFormulaReadsWhereTheAutomationStands() {
+        let track = Automation.Track(name: "n", formula: try! Formula("time * 10"))
+        #expect(track.value(at: 3) == .number(30))
+        #expect(track.value(at: 3, reading: ["time": 99]) == .number(30))
+
+        var automation = Automation(tracks: [track], loops: true, speed: 2, start: 1, length: 4)
+        #expect(automation.value(of: "n", at: 0) == .number(10))     // start
+        #expect(automation.value(of: "n", at: 1) == .number(30))     // start + 1 * speed
+        #expect(automation.value(of: "n", at: 2) == .number(10))     // wrapped at length 4
+        automation.loops = false
+        #expect(automation.value(of: "n", at: 2) == .number(50))
+    }
+
+    /// A formula reaches the sketch's own noise field, so `noiseSeed()`
+    /// reproduces a wandering knob the same way it reproduces a drawn one.
+    @Test func aWanderingKnobFollowsTheSketchSeed() {
+        final class Wandering: Sketch {
+            @Param(0...1) var drift = 0.0
+            override func setup() { drive($drift, "noise(time)") }
+        }
+        func run(seed: Int) -> Double {
+            let sketch = Wandering()
+            sketch.setCanvasSize(width: 64, height: 64)
+            sketch.noiseSeed(seed)
+            sketch.setup()
+            sketch.advance(time: 0.7, deltaTime: 0.1, frameRate: 10)
+            return sketch.drift
+        }
+        #expect(run(seed: 7) == run(seed: 7))
+        #expect(run(seed: 7) != run(seed: 8))
+    }
+
+    /// A formula track travels as the text it was written as, so a person can
+    /// read and edit it in the file, and it comes back working.
+    @Test func aFormulaTrackRoundTripsThroughItsFile() throws {
+        let automation = Automation(tracks: [
+            .init(name: "radius", formula: try Formula("120 + sin(time * tau) * 40")),
+            .init(name: "tint", keys: [.init(at: 0, .number(1))]),
+        ], loops: true, length: 4)
+
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ollin-formula-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try automation.write(to: url)
+
+        let text = try String(contentsOf: url, encoding: .utf8)
+        #expect(text.contains("120 + sin(time * tau) * 40"), "the text itself is in the file")
+
+        let read = try Automation.load(from: url)
+        #expect(read == automation)
+        #expect(read.value(of: "radius", at: 1) == automation.value(of: "radius", at: 1))
+    }
+
+    /// A file whose formula cannot be read is refused when it is read, rather
+    /// than loading as a knob that quietly holds zero.
+    @Test func aFileWithUnreadableTextIsRefused() throws {
+        let json = """
+        {"version": 2, "loops": false, "speed": 1, "start": 0,
+         "tracks": [{"name": "radius", "formula": "sin(("}]}
+        """
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ollin-formula-bad-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try Data(json.utf8).write(to: url)
+        #expect(throws: (any Error).self) { try Automation.load(from: url) }
+    }
+
+    /// An automation written before formulas existed still reads, because every
+    /// layout so far only added to the one before it. A newer one is still
+    /// refused.
+    @Test func anOlderFileStillReads() throws {
+        let json = """
+        {"version": 1, "loops": false, "speed": 1, "start": 0,
+         "tracks": [{"name": "radius", "keys": [{"time": 0, "value": {"number": {"_0": 5}},
+                                                 "curve": {"linear": {}}}]}]}
+        """
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ollin-formula-old-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try Data(json.utf8).write(to: url)
+        let read = try Automation.load(from: url)
+        #expect(read.value(of: "radius", at: 0) == .number(5))
+    }
+
+    /// Text that cannot be read costs that one knob, never the sketch: the
+    /// knob keeps the value it was given.
+    @Test func aTypoLeavesTheKnobAlone() {
+        final class Mistyped: Sketch {
+            @Param(0...400) var radius = 42.0
+            override func setup() { drive($radius, "120 + sin(") }
+        }
+        let sketch = Mistyped()
+        sketch.setCanvasSize(width: 64, height: 64)
+        sketch.setup()
+        #expect(sketch.automation == nil)
+        sketch.advance(time: 1, deltaTime: 0.1, frameRate: 10)
+        #expect(sketch.radius == 42)
+    }
+}

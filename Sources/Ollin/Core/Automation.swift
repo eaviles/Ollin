@@ -38,9 +38,13 @@ import Foundation
 /// export). See `Docs/Core/Automation.md`.
 public struct Automation: Codable, Equatable, Sendable {
 
-    /// The shape of the file. An automation written by an older Ollin is
-    /// refused rather than guessed at, so this only moves when the layout does.
-    public static let currentVersion = 1
+    /// The shape of the file. It moves when the layout does. A file written by
+    /// an *older* Ollin still reads, because every layout so far only added to
+    /// the one before it; a file written by a *newer* one is refused rather
+    /// than guessed at, since this Ollin cannot know what it left out.
+    ///
+    /// Version 2 added a track that carries a ``Formula`` in place of keys.
+    public static let currentVersion = 2
 
     // MARK: Curves
 
@@ -131,28 +135,54 @@ public struct Automation: Codable, Equatable, Sendable {
         }
     }
 
-    /// One knob's keys, in time order.
+    /// One knob's keys, in time order. A track may instead carry a
+    /// ``Formula``, and then the knob is worked out rather than looked up.
     public struct Track: Codable, Equatable, Sendable {
         /// The `@Param` property name this track drives.
         public var name: String
         /// The keys, always sorted by time. Two keys at the same moment keep
         /// the order they were given in, so the later one wins from there on.
         public private(set) var keys: [Key]
+        /// A formula worked out every frame, in place of the keys. It reads
+        /// `time` (the position in the automation), the canvas and the pointer,
+        /// and the sketch's other knobs by name.
+        public var formula: Formula?
 
         public init(name: String, keys: [Key]) {
             self.name = name
             self.keys = keys.enumerated()
                 .sorted { ($0.element.time, $0.offset) < ($1.element.time, $1.offset) }
                 .map(\.element)
+            self.formula = nil
         }
 
-        /// When the last key falls.
+        /// A track that works its knob out from a formula rather than from
+        /// placed keys.
+        public init(name: String, formula: Formula) {
+            self.name = name
+            self.keys = []
+            self.formula = formula
+        }
+
+        /// When the last key falls. A formula has no length of its own, so a
+        /// formula track answers zero and leans on the automation's `length`.
         public var duration: Double { keys.last?.time ?? 0 }
 
-        /// The value this track holds at `position`, or `nil` when it has no
-        /// keys. Before the first key and after the last one the track holds
-        /// that key's value, so a short track is a constant outside its span.
-        public func value(at position: Double) -> ParamStored? {
+        /// The value this track holds at `position`, or `nil` when it carries
+        /// neither keys nor a formula.
+        ///
+        /// A formula reads `time` as `position`, whatever else the caller
+        /// passes under that name, so a track always agrees with the clock that
+        /// drives it. It answers a plain number; the player turns that into a
+        /// switch when the knob it drives is one.
+        public func value(at position: Double,
+                          reading values: [String: Double] = [:],
+                          noise: Formula.NoiseField? = nil) -> ParamStored? {
+            if let formula {
+                var values = values
+                values["time"] = position
+                return .number(formula.value(values, noise: noise))
+            }
             guard let first = keys.first, let last = keys.last else { return nil }
             if position <= first.time { return first.value }
             if position >= last.time { return last.value }
@@ -165,12 +195,35 @@ public struct Automation: Codable, Equatable, Sendable {
                                     from.curve.shape((position - from.time) / span))
         }
 
-        private enum CodingKeys: String, CodingKey { case name, keys }
+        private enum CodingKeys: String, CodingKey { case name, keys, formula }
 
+        /// A formula travels as the text it was written as, so the file stays
+        /// readable and a person can edit it there.
         public init(from decoder: any Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
-            self.init(name: try container.decode(String.self, forKey: .name),
-                      keys: try container.decode([Key].self, forKey: .keys))
+            let name = try container.decode(String.self, forKey: .name)
+            if let source = try container.decodeIfPresent(String.self, forKey: .formula) {
+                do {
+                    self.init(name: name, formula: try Formula(source))
+                } catch let error as FormulaError {
+                    throw DecodingError.dataCorruptedError(
+                        forKey: .formula, in: container,
+                        debugDescription: "the formula driving '\(name)' cannot be read: \(error)")
+                }
+                return
+            }
+            self.init(name: name,
+                      keys: try container.decodeIfPresent([Key].self, forKey: .keys) ?? [])
+        }
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(name, forKey: .name)
+            if let formula {
+                try container.encode(formula.source, forKey: .formula)
+            } else {
+                try container.encode(keys, forKey: .keys)
+            }
         }
     }
 
@@ -272,7 +325,7 @@ public struct Automation: Codable, Equatable, Sendable {
     /// not an automation, or was written in a different format version.
     public static func load(from url: URL) throws -> Automation {
         let automation = try JSONDecoder().decode(Automation.self, from: Data(contentsOf: url))
-        guard automation.version == currentVersion else {
+        guard automation.version <= currentVersion else {
             throw AutomationError.incompatibleVersion(automation.version)
         }
         return automation
@@ -312,7 +365,7 @@ public enum AutomationError: Error, CustomStringConvertible {
         switch self {
         case .incompatibleVersion(let version):
             return "this automation was written in format version \(version); "
-                + "this Ollin reads version \(Automation.currentVersion)"
+                + "this Ollin reads version \(Automation.currentVersion) and earlier"
         }
     }
 }
@@ -327,13 +380,29 @@ public enum AutomationError: Error, CustomStringConvertible {
 @MainActor
 final class AutomationPlayer {
 
-    var automation: Automation
+    var automation: Automation {
+        didSet {
+            plan = nil
+            toldAboutRings = false      // a new set of tracks is worth a new word
+        }
+    }
     /// The parameter handles, walked once: the `@Param` set of a sketch is
     /// fixed, and reflecting over the instance every frame would cost real time.
     private var handles: [String: any AnyParam]?
+    /// The order to apply the tracks in, worked out once per set of tracks.
+    private var plan: Plan?
+    private var toldAboutRings = false
 
     init(_ automation: Automation) {
         self.automation = automation
+    }
+
+    /// The order the tracks apply in, and the ones that cannot play.
+    private struct Plan {
+        var order: [Int]
+        var rings: [String]
+        var readsFormulas: Bool
+        var readsNoise: Bool
     }
 
     /// Set every automated knob to the value its track holds at `time`.
@@ -346,10 +415,119 @@ final class AutomationPlayer {
             return found
         }()
         let position = automation.position(at: time)
-        for track in automation.tracks {
-            guard let value = track.value(at: position), let param = handles[track.name] else { continue }
-            param.restore(value)
+        let plan = self.plan ?? {
+            let made = AutomationPlayer.plan(for: automation)
+            self.plan = made
+            return made
+        }()
+        if !plan.rings.isEmpty, !toldAboutRings {
+            toldAboutRings = true
+            FileHandle.standardError.write(Data(
+                ("Ollin: \(plan.rings.joined(separator: ", ")) are worked out from each other, "
+                 + "which cannot settle on one frame; they are left alone\n").utf8))
         }
+        // The numbers a formula reads are this frame's, and they are read as
+        // each track sets them, in an order where a knob worked out from
+        // another lands after the one it names. That is what keeps a formula a
+        // plain function of the clock: the same time gives the same value at
+        // any frame rate, which is the promise the exports rest on.
+        var values = plan.readsFormulas
+            ? AutomationPlayer.reading(sketch, handles: handles) : [:]
+        let noise = plan.readsNoise ? sketch.noiseField() : nil
+        for index in plan.order {
+            let track = automation.tracks[index]
+            guard var value = track.value(at: position, reading: values, noise: noise),
+                  let param = handles[track.name] else { continue }
+            // A formula answers a number. A switch reads that number as on when
+            // it is anything but zero, which is the only way a formula can
+            // drive one.
+            if case .number(let v) = value, case .boolean = param.stored {
+                value = .boolean(FormulaNode.isTrue(v))
+            }
+            param.restore(value)
+            // Read the knob back rather than trusting the number: a knob holds
+            // its own range, so what the next formula names is what the sketch
+            // will actually see.
+            guard plan.readsFormulas else { continue }
+            switch param.stored {
+            case .number(let v): values[track.name] = v
+            case .boolean(let v): values[track.name] = v ? 1 : 0
+            default: break
+            }
+        }
+    }
+
+    /// Work out the order to apply the tracks in. A track whose formula names
+    /// another track's knob goes after it, so both land on the same frame's
+    /// numbers. Names that lead back to themselves cannot all be settled on one
+    /// frame, so the whole ring is dropped and reported rather than played at a
+    /// value that would depend on the frame rate.
+    ///
+    /// Depth-first over the tracks in the order they were given, so the plan is
+    /// a function of the tracks and never of the order they happened to arrive.
+    private static func plan(for automation: Automation) -> Plan {
+        let tracks = automation.tracks
+        var indexOf: [String: Int] = [:]
+        for (i, track) in tracks.enumerated() where indexOf[track.name] == nil { indexOf[track.name] = i }
+
+        var order: [Int] = []
+        var rings: Set<String> = []
+        var state = [Int](repeating: 0, count: tracks.count)   // 0 unvisited, 1 on the path, 2 done
+
+        func visit(_ i: Int, path: inout [Int]) {
+            if state[i] == 2 { return }
+            if state[i] == 1 {                                  // the path came back here
+                if let start = path.firstIndex(of: i) {
+                    for j in path[start...] { rings.insert(tracks[j].name) }
+                }
+                return
+            }
+            state[i] = 1
+            path.append(i)
+            for name in tracks[i].formula?.variables ?? [] {
+                // A built-in name is never a knob, so it never orders anything.
+                guard !Automation.readableNames.contains(name), let j = indexOf[name] else { continue }
+                visit(j, path: &path)
+            }
+            path.removeLast()
+            state[i] = 2
+            order.append(i)
+        }
+
+        for i in tracks.indices {
+            var path: [Int] = []
+            visit(i, path: &path)
+        }
+        let playable = order.filter { !rings.contains(tracks[$0].name) }
+        return Plan(order: playable,
+                    rings: rings.sorted(),
+                    readsFormulas: tracks.contains { $0.formula != nil },
+                    readsNoise: tracks.contains { $0.formula?.usesNoise == true })
+    }
+
+    /// The numbers a formula may name: the sketch's own clock and canvas, the
+    /// pointer, and every knob that is a plain number or a switch.
+    ///
+    /// The built-in names win over a knob of the same spelling, so a formula can
+    /// always depend on what `time` and `width` mean. `frame` is the number the
+    /// frame about to be drawn will carry, because this runs before the sketch
+    /// steps its counter.
+    private static func reading(_ sketch: Sketch,
+                                handles: [String: any AnyParam]) -> [String: Double] {
+        var values: [String: Double] = [:]
+        for (name, param) in handles {
+            switch param.stored {
+            case .number(let v): values[name] = v
+            case .boolean(let v): values[name] = v ? 1 : 0
+            default: break
+            }
+        }
+        values["frame"] = Double(sketch.frameCount + 1)
+        values["width"] = sketch.width
+        values["height"] = sketch.height
+        values["mouseX"] = sketch.mouseX
+        values["mouseY"] = sketch.mouseY
+        return values
     }
 }
 
@@ -419,4 +597,73 @@ public extension Sketch {
         }
         return nil
     }
+
+    // MARK: Driving a knob from a formula
+
+    /// Drive a knob from a formula worked out every frame, in place of placed
+    /// keys:
+    ///
+    /// ```swift
+    /// override func setup() {
+    ///     drive($radius, "120 + sin(time * 2) * 40")
+    /// }
+    /// ```
+    ///
+    /// The formula reads `time` (where the automation stands, in seconds),
+    /// `frame`, `width`, `height`, `mouseX`, `mouseY`, and this sketch's other
+    /// knobs by name, so one knob can be worked out from another. It is the
+    /// same track a keyed knob uses, so `loops`, `speed`, and `start` shape it
+    /// the same way and it travels in the same file.
+    ///
+    /// Text that cannot be read is reported and the knob is left alone, so a
+    /// typo costs that one knob rather than the sketch. To handle the error
+    /// yourself, build the ``Formula`` with `try` and pass it instead.
+    func drive(_ param: Param<Double>, _ formula: String) { driveNumber(param, formula) }
+    /// Drive a whole-number knob from a formula. The number is rounded.
+    func drive(_ param: Param<Int>, _ formula: String) { driveNumber(param, formula) }
+    /// Drive a switch from a formula. It is on whenever the number is anything
+    /// but zero, so `"time % 2 < 1"` blinks once a second.
+    func drive(_ param: Param<Bool>, _ formula: String) { driveNumber(param, formula) }
+
+    /// Drive a knob from a formula you read yourself, which is how to see a
+    /// parse error rather than have it reported.
+    func drive(_ param: Param<Double>, _ formula: Formula) { driveNumber(param, formula) }
+    func drive(_ param: Param<Int>, _ formula: Formula) { driveNumber(param, formula) }
+    func drive(_ param: Param<Bool>, _ formula: Formula) { driveNumber(param, formula) }
+
+    private func driveNumber<Value: ParamValue>(_ param: Param<Value>, _ source: String) {
+        do {
+            driveNumber(param, try Formula(source))
+        } catch {
+            report("drive() could not read \"\(source)\": \(error)")
+        }
+    }
+
+    private func driveNumber<Value: ParamValue>(_ param: Param<Value>, _ formula: Formula) {
+        guard let name = parameterName(of: param) else {
+            report("drive() was handed a parameter this sketch does not declare")
+            return
+        }
+        // A name nothing will ever supply reads as zero every frame, which
+        // draws something rather than nothing and is the hardest kind of
+        // mistake to see. Say it once, here, rather than never.
+        let known = Set(parameters().map(\.name)).union(Automation.readableNames)
+        let unknown = formula.variables.filter { !known.contains($0) }
+        if !unknown.isEmpty {
+            report("the formula driving '\(name)' names \(unknown.joined(separator: ", ")), "
+                   + "which nothing here supplies; it will read as 0")
+        }
+        automate(Automation.Track(name: name, formula: formula))
+    }
+
+    private func report(_ message: String) {
+        FileHandle.standardError.write(Data("Ollin: \(message)\n".utf8))
+    }
+}
+
+public extension Automation {
+    /// The names a track's formula can read besides the sketch's own knobs.
+    /// A knob spelled the same as one of these cannot be reached, because the
+    /// built-in name wins.
+    static let readableNames = ["time", "frame", "width", "height", "mouseX", "mouseY"]
 }
