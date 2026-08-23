@@ -31,8 +31,6 @@ A tier of classic generative-art building blocks that emit vector geometry (poin
 
 **Near-term.** A standing, growing catalog of classic creative-coding techniques and algorithms as first-class helpers, the way the SDF shapes, the effect `Filter`s, and the [generative-geometry](#generative-geometry) builders are catalogs that keep growing. Each one lands wherever it fits the existing core (a geometry emitter beside the shape builders, a GPU `Generator` or shader for an escape-time or field technique, a simulation beside the compute and `SimField` paths), ships with an example, runs off the seedable `random`/`noise` so a result reproduces, and is implemented from the published technique (credited in `ATTRIBUTION.md`'s Techniques list). Many map onto the *Nature of Code* canon (vectors, forces, particles, autonomous agents, cellular automata, fractals, evolution), so the catalog doubles as a familiar on-ramp from that world, and the geometry-emitting recipes are flagged plotter-friendly for the pen-plotter path.
 
-**The Hopf fibration**, the map that fills a three-sphere with circles, every pair of them linked exactly once. Projected down into space it draws as nested tori of interlocking rings, and it wants the 3D camera, the instanced-mesh path, and a color taken from where each circle came from. A set piece for the 3D tier the way the strange attractors are for the 2D one.
-
 See the [design notes](DESIGN-NOTES.md#technique-and-algorithm-helpers).
 
 ## Expressive brushes and strokes

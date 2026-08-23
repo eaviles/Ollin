@@ -176,6 +176,7 @@ let package = Package(
         example("3D/Geometry/StrangeAttractor"),
         example("3D/Geometry/Transforms"),
         example("3D/Geometry/Solids"),
+        example("3D/Geometry/HopfFibration"),
         // 3D rigid bodies (Jolt-backed World3D): a crate pyramid under cannon
         // fire, a mixed-solid pile you can drag, a wrecking-ball chain, and a
         // motor-driven windmill with spring-shut gates.

@@ -112,6 +112,37 @@ So this is the lossy direction, and it says what it lost. Animation stays behind
 
 Both directions are worth having. `loadScene` is for a set that is still being built. This one is for the moment the file stops being the piece and becomes the material. [Bringing a scene over](../Docs/Tools/SceneImport.md) has the details.
 
+## A shape that only exists in four dimensions
+
+Here is a mesh you could not model, because the thing it draws does not fit in the room.
+
+Take an ordinary sphere. Every single point on it stands for a whole *circle* living in a sphere-in-four-dimensions. Those circles fill that space completely, and not one of them ever touches another. Squash the whole arrangement down into three dimensions and this is what you get:
+
+```swift
+for fiber in hopfFibers(over: hopfBases(latitudes: 4, perCircle: 16)) {
+    fill(color(for: fiber.base))
+    drawTube(fiber.points, radius: 0.02, closed: !fiber.isStraight)
+}
+```
+
+<img src="Images/22-Meshes/HopfFibration.jpg" alt="Nested rings of colored tubing seen at an angle, running from pink and violet at the tight center out through green and blue to orange at the widest, every ring passing through every other, with a thin red line standing vertically through the middle of them all" width="680">
+
+It is called the Hopf fibration, and the reason to draw it is not that it is pretty. **Pick any two rings in that picture, however far apart, and you could not pull them free of each other without cutting one.** That is true of every pair, all the way through. Nothing there is threaded by hand; it falls out of the arrangement.
+
+Each `hopfFibers` result is one `HopfFiber`, holding the `points` of its circle and the `base` point on the sphere it came from. It is ordinary geometry from there, so `drawTube` sweeps it like any other path.
+
+Three details separate a picture of this from a ball of wool.
+
+**The base points have to be arranged.** The linking only reads when neighboring circles are neighbors, so `hopfBases(latitudes:perCircle:)` puts them on rings of latitude. Each ring lifts to one torus of circles, and the tori nest, which is the shape your eye can follow. Scatter the base points at random and you get exactly the same fibration and nothing you can see in it.
+
+**The color has to come from the base point.** Hue running around the sphere, lightness running up it. That is what makes the tangle legible as a picture *of a sphere*. A rainbow handed out in draw order looks similar and says nothing.
+
+**The straight one has to be drawn.** That red line through the middle is a fiber like all the others. Its base point sits at the bottom of the sphere. That is the one place the squashing-down sends to infinity, so its circle comes back as a line instead. It is the axis every other ring is threaded onto, and a picture without it has a hole where its middle should be:
+
+```swift
+let bases = hopfBases(latitudes: 4, perCircle: 16) + [Vector3(0, -1, 0)]
+```
+
 ## Pictures that change the surface
 
 The next three sections all hang a picture on a mesh, and none of them is about color. Each hands the renderer something it would otherwise need geometry for, and the geometry stays exactly as coarse as it was.
@@ -747,6 +778,7 @@ The measured finishes are the Cook-Torrance microfacet model, in the metallic-ro
 ## Go deeper
 
 - [3D](../Docs/3D/3D.md): the full reference for every map (`normalMapped`, `surfaceMapped`, `parallaxMapped`, `displaced`, `triplanarTextured`, `detailMapped`, decals) and every material knob, with the exact envelope of each.
+- [The Hopf fibration](../Docs/3D/HopfFibration.md): the base sets, taking the color from the base point, the straight one, and what it costs to draw.
 - [Scenes](../Docs/3D/Scenes.md): the whole `loadScene` reference, what carries over from a glTF file (nodes, cameras, punctual lights, animations, skins, and morph targets) and from a USD file (nodes, cameras, its UsdLux lights, its transform animation, and its UsdSkel skins and blend shapes), how intensities are normalized, and building a `Scene` in code.
 - [Bringing a scene over](../Docs/Tools/SceneImport.md): `ollin new --from-scene` writes the sketch instead of loading the file, so the camera, the lights and every placement become source you own. What it leaves behind, and why, is listed there.
 - [Subdivision surfaces](../Docs/Generators/SubdivisionSurfaces.md): both schemes, what happens at an open boundary, and when to pick which.

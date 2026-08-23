@@ -488,6 +488,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("scattered-fit",
                  note: "Three fixed panels (no time, no random): six colored points read back as a smooth field over the whole panel, the same six carrying displacements so a straight grid bends through them, and a circle recovered by a downhill walk from marks scattered around it. Pins the RadialBasis fit end to end (the bordered system with its polynomial tail, the pivoting solve, the internal normalization, and the read) and Fit.minimize arriving at a known answer.",
                  make: { ScatteredFitScene() }),
+    SnapshotCase("hopf-fibration",
+                 note: "The Hopf fibration at a fixed camera (no time, no random): four rings of latitude lifted to nested tori of interlocking circles, colored by where on the sphere each came from, with the bottom pole's fiber standing through the middle as the straight axis. Pins the lift, the stereographic projection, the quarter-turn into the world's y-up convention (a coordinate swap instead would mirror it and reverse the linking), the interleaving twist between rings, and the straight fiber being drawn rather than dropped.",
+                 make: { HopfFibrationScene() }),
     SnapshotCase("seamless-clone",
                  note: "One textured patch dropped on a two-tone backdrop three ways: pasted with the seam left in, cloned at half, and cloned in full. Pins the whole path (the rim read as boundary values, the convolution pyramid that settles between them, the composite that adds it back under the patch's own coverage) and the amount knob between them. No time, no random.",
                  make: { SeamlessCloneScene() }),
@@ -6589,6 +6592,27 @@ private final class ScatteredFitScene: Sketch {
         strokeWeight(1.5)
         drawCircle(found.values[0], found.values[1], found.values[2])
         noStroke()
+    }
+}
+
+/// The Hopf fibration at a fixed camera: nested tori of interlocking circles colored by
+/// their base point, with the straight fiber standing through the middle. No time, no random.
+private final class HopfFibrationScene: Sketch {
+    override var canvasSize: CanvasSize { .size(320, 200) }
+
+    override func draw() {
+        background(Color(hex: 0x05070C))
+        camera(.perspective(eye: Vector3(3.5, 2.6, 4.7), target: .zero, fieldOfView: .pi / 3.6))
+        let bases = hopfBases(latitudes: 3, perCircle: 10, spanning: -0.3 ... 0.92)
+            + [Vector3(0, -1, 0)]
+        for fiber in hopfFibers(over: bases, segments: 120, reach: 3.1) {
+            let around = (atan2(fiber.base.z, fiber.base.x) / .tau + 1)
+                .truncatingRemainder(dividingBy: 1)
+            let up = (fiber.base.y + 1) / 2
+            fill(Color(hue: around, saturation: 0.42 + (1 - up) * 0.46,
+                       brightness: 0.58 + up * 0.42))
+            drawTube(fiber.points, radius: 0.024, sides: 6, closed: !fiber.isStraight)
+        }
     }
 }
 
