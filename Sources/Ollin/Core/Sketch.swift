@@ -2953,6 +2953,64 @@ open class Sketch {
         ]), body)
     }
 
+    /// Run `body` inside `rect` as if it were the whole canvas: drawing is
+    /// clipped to it, and the coordinate system is remapped so `0...width` and
+    /// `0...height` land on the box. That is how one window shows several
+    /// parameterizations of the same piece at once.
+    ///
+    /// ```swift
+    /// for (i, cell) in grid(columns: 3, rows: 2, padding: 40, gutter: 24).cells.enumerated() {
+    ///     withViewBox(cell.frame) {
+    ///         randomSeed(i)
+    ///         drawThePiece()          // written as though it owned the window
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// `fit` says what happens when the box is not the canvas's shape, and means
+    /// what it means for a picture (see ``ImageFit``): `.contain` puts the whole
+    /// virtual canvas inside the box and leaves the box showing along two edges,
+    /// `.cover` fills the box and crops what runs past it, `.stretch` squashes to
+    /// fit exactly. A box of the canvas's own shape gets the same answer from all
+    /// three.
+    ///
+    /// Two things are remapped for the block so the code inside needs no changes.
+    /// `background(_:)` fills this box's virtual canvas rather than setting the
+    /// frame's clear color, which belongs to every box at once. And the mouse
+    /// arrives in the box's coordinates, so an interactive piece works in each
+    /// box independently. Both are restored on the way out, and boxes nest.
+    ///
+    /// The canvas reported by `width` and `height` does not change, on purpose:
+    /// the point is that the code inside believes it has the whole canvas.
+    public func withViewBox(_ rect: Rectangle, fit: ImageFit = .contain,
+                            _ body: () -> Void) {
+        guard rect.width > 0, rect.height > 0, width > 0, height > 0 else { return }
+        let canvas = Vector2(width, height)
+        let placed: Rectangle
+        switch fit {
+        case .stretch: placed = rect
+        case .contain: placed = Rectangle(fitting: canvas, in: rect)
+        case .cover:   placed = Rectangle(covering: canvas, in: rect)
+        }
+        // Written straight into the properties, never through `setMouse`: that is
+        // the runner's input path, so it logs a pointer event into a running take
+        // and does nothing at all during a replay.
+        let savedMouse = Vector2(mouseX, mouseY)
+        mouseX = (savedMouse.x - placed.x) * width / placed.width
+        mouseY = (savedMouse.y - placed.y) * height / placed.height
+        drawer.viewBoxCanvases.append(canvas)
+        defer {
+            drawer.viewBoxCanvases.removeLast()
+            mouseX = savedMouse.x
+            mouseY = savedMouse.y
+        }
+        withClip(rect) {
+            translate(placed.x, placed.y)
+            scale(placed.width / width, placed.height / height)
+            body()
+        }
+    }
+
     /// Run `body` with drawing confined to `circle`. The circle is flattened to a
     /// fine polygon for the clip (like the vector exporters), dense enough that
     /// the edge reads round at canvas resolution.

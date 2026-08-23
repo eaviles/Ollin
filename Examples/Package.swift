@@ -162,6 +162,7 @@ let package = Package(
         example("Rendering/ColorOutput"),
         example("Rendering/DepthOfField"),
         example("Rendering/RetainedBatch"),
+        example("Rendering/ViewBoxes"),
         example("Rendering/InstancedMesh"),
         example("Rendering/MeshField"),
         example("Rendering/Grassland"),

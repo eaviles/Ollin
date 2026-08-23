@@ -17,5 +17,6 @@ How the frame composites. Every frame is built in a linear floating-point canvas
 | [InstancedMesh](InstancedMesh/Sketch.swift) | 12,000 wave-riding pillars from one mesh and one draw call (`drawMesh(_:instances:)`; flip the knob to feel the per-copy cost) |
 | [MeshField](MeshField/Sketch.swift) | 240,000 solids across a foggy plain, GPU-culled per copy (`MeshField`/`drawMeshField`; flip the knob to feel what culling saves) |
 | [Grassland](Grassland/Sketch.swift) | 500,000 blades of grass grown inside the draw call, swaying, shadow-receiving (`StrandField`/`drawStrands`; flip the knob to feel distance grading) |
+| [ViewBoxes](ViewBoxes/Sketch.swift) | one piece under six seeds on one canvas: each `withViewBox` clips and remaps a cell so the block inside is written as though it owned the window, with its own `background` and its own mouse |
 
 Run one with `swift run Example-Rendering-<Name>`, e.g. `swift run Example-Rendering-Blending`.

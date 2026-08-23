@@ -735,6 +735,12 @@ final class Drawer {
     /// frame records the buffer/batch counts at push, so `background(_:)` inside a
     /// block can clear *just that target*.
     private var targetStack: [TargetFrame] = []
+
+    /// The virtual canvas sizes of the open `withViewBox` blocks, innermost last.
+    /// While one is open, `background(_:)` fills that canvas rather than setting
+    /// the frame's clear color, so the same drawing code that starts by wiping a
+    /// canvas wipes only the box it was given.
+    var viewBoxCanvases: [Vector2] = []
     /// The target drawing currently lands in, if any (the innermost active block).
     var currentTarget: RenderTarget? { targetStack.last?.target }
     /// Geometry targets drawn into this frame, in first-use order; the renderer
@@ -1681,6 +1687,19 @@ final class Drawer {
             // Clip pushes recorded inside this target were truncated too; re-record
             // the still-open ones so drawing after the wipe stays clipped.
             reemitClipPushes(target: frame.target)
+            return
+        }
+        // Inside a view box the frame's clear color belongs to the whole canvas and
+        // to every other box on it, so a wipe here is a filled rectangle over this
+        // box's own virtual canvas instead. The clip in force keeps it inside the
+        // box, and drawing it in call order covers whatever the box drew first.
+        if let canvas = viewBoxCanvases.last {
+            let saved = fillPaint, savedStroke = strokePaint
+            fillPaint = .color(color)
+            strokePaint = nil
+            drawRect(Rectangle(x: 0, y: 0, width: canvas.x, height: canvas.y))
+            fillPaint = saved
+            strokePaint = savedStroke
             return
         }
         backgroundColor = color

@@ -182,6 +182,29 @@ withClip(star) {
 
 Nesting is the other half. A clip inside a clip keeps only what falls in both. That is how the third panel gets the lens-shaped overlap, with no geometry on your part. Letters make good clips too, since [Chapter 8](08-Words.md)'s `textToShapes` hands back shapes, so you can pour a whole pattern into a word.
 
+## A cell that is a whole canvas
+
+A clip keeps drawing inside a region. A view box goes one step further and moves the coordinates too, so the block inside believes the region *is* the canvas:
+
+```swift
+withViewBox(cell.frame) {
+    randomSeed(i)
+    drawThePiece()
+}
+```
+
+<img src="Images/06-GridsAndRepetition/ViewBoxSheet.jpg" alt="Six boxes on one canvas in two rows of three, each holding the same ring-of-petals piece under a different seed, each with its own colored wash" width="680">
+
+Inside that block `width` and `height` still report the whole canvas, `center` is still the middle of it, and a circle at `(width / 2, height / 2)` lands in the middle of the cell. That is the point. You hand a piece written for the whole window to a box, and it runs there unchanged.
+
+Two more things are quietly remapped so that stays true. `background` fills the box rather than the frame, because the frame belongs to every box at once and one of them wiping it would take the others with it. And the mouse arrives in the box's own coordinates, so an interactive piece works in each box separately.
+
+The virtual canvas has the *sketch's* shape, not the box's, so a box shaped like the canvas is the case where everything lands exactly. When it does not, `fit:` decides, using the same words a picture uses in [Chapter 9](09-Pictures.md): `.contain` leaves the box showing along two edges, `.cover` fills it and crops, `.stretch` squashes.
+
+Labels belong outside the block, in canvas coordinates, or they get scaled down with everything else. That is what keeps the six captions in the figure one size.
+
+This is the fastest way to see a piece think. Change one number, run six of it, and the ones that are dead give themselves away immediately. You learn more from six of a piece than from one.
+
 ## Grids that aren't square
 
 The `Grid` this chapter opened with divides a rectangle into rectangles, which covers a great deal but not everything. Four more shapes of division come with Ollin, and all of them read the same way. Ask for the cells, then loop over them once.

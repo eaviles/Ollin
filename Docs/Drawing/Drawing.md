@@ -16,7 +16,7 @@ The point and rectangle types these calls take (`Vector2`, `Rectangle`) are docu
 - **Novelty shapes:** [drawHorseshoe](#horseshoe), [drawParabola](#parabola), [drawRoundedX](#roundedx), [drawBlobbyCross](#blobbycross), [drawTunnel](#tunnel), [drawStairs](#stairs), [drawCoolS](#cools)
 - **Paths & custom shapes:** [drawPolyline](#polyline), [drawPolygon](#polygon), [drawShape](#shape), [drawCurve](#curve)
 - **Batches:** [drawCircles](#batches), [drawPoints](#batches), [drawRects](#batches)
-- **Transforms and state:** [translate](#translate), [rotate](#rotate), [scale](#scale), [symmetry / noSymmetry](#symmetry), [withClip](#clip), [withState](#isolated), [pushState / popState](#push)
+- **Transforms and state:** [translate](#translate), [rotate](#rotate), [scale](#scale), [symmetry / noSymmetry](#symmetry), [withClip](#clip), [withViewBox](#viewbox), [withState](#isolated), [pushState / popState](#push)
 
 ### Background and style
 
@@ -1132,6 +1132,36 @@ drawCircle(0, 0, 12)                        // after the block: unclipped
 ```
 
 Clipping is scoped to the current drawing surface, so a `layer { }` opened inside a clip block starts unclipped (clip inside the layer's own block instead). For masking a whole layer with soft edges or an image matte, reach for [`masked(by:)`](Effects.md) in the effects tier. `withClip` is the cheaper, geometric tool for "keep this drawing inside that region" mid-frame. See the [`Shapes/Clipping`](../../Examples/Shapes/Clipping/Sketch.swift) example.
+
+<a name="viewbox"></a>
+
+#### withViewBox
+
+```swift
+withViewBox(_ rect: Rectangle, fit: ImageFit = .contain, _ body: () -> Void)
+```
+
+Run `body` inside `rect` as if that rectangle were the whole canvas. Drawing is clipped to it and the coordinates are remapped, so `0...width` and `0...height` land on the box. That is how one window shows several versions of a piece at once.
+
+```swift
+for (i, cell) in grid(columns: 3, rows: 2, padding: 40, gutter: 24).cells.enumerated() {
+    withViewBox(cell.frame) {
+        randomSeed(i)
+        drawThePiece()              // written as though it owned the window
+    }
+}
+```
+
+The block needs no changes to run in a box, and two things are remapped to keep that true:
+
+- **`background(_:)` fills this box's own canvas** rather than setting the frame's clear color. The clear color belongs to the whole frame and to every other box on it, so a box wiping it would take the others with it.
+- **The mouse arrives in the box's coordinates**, so an interactive piece works in each box independently. A pointer outside the box reads proportionally outside `0...width`, the way [`Rectangle.point(u:v:)`](Geometry.md#rectangle) does.
+
+Both are restored on exit, and boxes nest: a box inside a box composes both mappings, and the clips intersect.
+
+`fit` says what happens when the box is not the canvas's shape, and means exactly what it means for a picture (see [`ImageFit`](Images.md#fit)): `.contain` puts the whole virtual canvas inside and leaves the box showing along two edges, `.cover` fills the box and crops what runs past, `.stretch` squashes to fit. A box of the canvas's own shape gets the same answer from all three.
+
+What does **not** change is `width` and `height`, on purpose: the code inside believes it has the whole canvas, which is what lets you hand an unmodified piece to a box. One thing follows from that, and it is worth knowing before you lay out a sheet. The virtual canvas has the *sketch's* shape, not the box's. Boxes shaped like the canvas are therefore the case where nothing is letterboxed. Labels and frames are best drawn outside the block, in canvas coordinates, so they keep one size while the pieces are scaled down. See the [`Rendering/ViewBoxes`](../../Examples/Rendering/ViewBoxes/Sketch.swift) example.
 
 <a name="isolated"></a>
 
