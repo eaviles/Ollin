@@ -386,6 +386,7 @@ let package = Package(
         example("Motion/Formula"),
         example("Motion/FormulaParts"),
         example("Motion/Beats"),
+        example("Motion/Sway"),
         example("Randomness/Gaussian"),
         example("Randomness/Ring"),
         example("Randomness/Walk"),

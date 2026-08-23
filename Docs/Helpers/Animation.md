@@ -9,6 +9,7 @@ Motion is the default in Ollin, so most movement falls out of a `time`-driven te
 ### Contents
 
 - [Looping progress](#loop): `loopProgress`, `pingPong`
+- [Sway](#sway): a value that travels between two ends and back
 - [Timers](#timers): `every`, `after`, `everyFrames`
 - [Easing curves](#easing)
 - [The curve catalog](#catalog)
@@ -48,6 +49,41 @@ for (i, cell) in grid(columns: 12, rows: 1).cells.enumerated() {
 Progress from these helpers feeds everything below: reshape it with an easing curve, or hand it straight to `lerp`, a [`Ramp`](../Drawing/Color.md), or a rotation.
 
 A sketch built this way repeats exactly, and it can say so: declare the period as [`loopDuration`](../Core/Sketch.md#loopDuration) and `--export-loop` renders exactly one lap as a seamless GIF or video (see [perfect loops](../Output/Export.md#perfect-loops)).
+
+<a name="sway"></a>
+
+### Sway
+
+```swift
+sway(over duration: Double, in range: ClosedRange<Double> = 0...1,
+     shape: SwayShape = .sine, phase: Double = 0) -> Double
+```
+
+The slow back-and-forth most sketches write by hand: a value that leaves the low end of `range`, reaches the high end halfway through the lap, and is back at the low end as the lap closes.
+
+```swift
+drawCircle(width / 2, height / 2, sway(over: 4, in: 100...300))
+```
+
+That is `loopProgress`, a cosine, and a `lerp` in one call. With no `range` it hands back a plain `0...1` to drive something else with, and `phase` shifts the lap by a fraction of its length, exactly as it does above, so a row of neighbors sways in a traveling wave.
+
+`shape` is the path it takes between the two ends. Five of them:
+
+| `SwayShape` | The path | 
+|---|---|
+| `.sine` | out and back on a cosine: no corners, slowest at the ends |
+| `.triangle` | out and back at one speed, turning sharply at each end |
+| `.saw` | a ramp to the high end and a jump back |
+| `.square` | one end for half the lap, the other for the rest |
+| `.wander` | a smooth drift through the sketch's own noise field |
+
+The four worked-out shapes start at the low end, so changing your mind about the path never moves where the value begins. `.wander` starts wherever its field does, which is near the middle. `.triangle` and `.saw` are `pingPong` and `loopProgress` mapped onto the range, so reach for those two when you want the bare `0...1`.
+
+**Every shape closes its lap exactly, `.wander` included.** That is worth knowing because it is not free: a drift taken straight off the clock (`signedNoise(time)`) can never come home, so `.wander` tours a closed circle through the field instead (the [looping noise](../Generators/Noise.md)). A swaying sketch can therefore still declare a [`loopDuration`](../Output/Export.md#perfect-loops) and export a seamless loop.
+
+A sway reads the clock and nothing else, so two calls with the same arguments are the same value. Give them different phases or different durations to tell them apart. For `.wander` a phase is a delay along one tour rather than a different tour, so several independent drifts are better driven by `signedNoise(_:loop:)` with a coordinate each. A `duration` of zero or less holds at the low end.
+
+Worked example: [`Motion/Sway`](../../Examples/Motion/Sway/Sketch.swift).
 
 <a name="timers"></a>
 

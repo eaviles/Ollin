@@ -101,6 +101,28 @@ let back = pingPong(over: 3)           // 0 to 1 to 0, every 3 seconds
 let x = lerp(140, width - 140, back)
 ```
 
+## The sway you write over and over
+
+Look at what those last few lines did. Wrap the clock into a lap, fold the lap so it comes back, and carry the result into a range you care about. That trio is the most-written motion in any sketch, so it is also one call:
+
+```swift
+drawCircle(width / 2, height / 2, sway(over: 4, in: 100...300))
+```
+
+The circle breathes between a radius of 100 and 300, once every four seconds. `sway` leaves the low end, reaches the high end halfway through the lap, and is back at the low end as the lap closes. With no range it hands you a plain `0...1`, and `phase` staggers a row of them into a traveling wave, the same argument doing the same job it did above.
+
+What changes between one sway and another is the path it takes between the two ends, and `shape:` names five of them:
+
+<img src="Images/03-MotionAndTime/SwayShapes.jpg" alt="Five plots side by side, each one whole lap: a smooth sine hump, a triangle with sharp turns, a saw ramping up and jumping back, a square at one level then the other, and an irregular wander" width="680">
+
+```swift
+sway(over: 4, in: 100...300, shape: .triangle)
+```
+
+The four worked-out shapes all start at the low end, so changing your mind about the path never moves where the value begins. `.triangle` and `.saw` are the `pingPong` and `loopProgress` you just met, carried into a range. `.square` does not travel at all: it sits at one end for half the lap and the other end for the rest, which is how you switch something rather than move it.
+
+`.wander` is the one worth pausing on. It drifts through the noise field of [Chapter 5](05-Noise.md) rather than following a curve, so it never repeats inside a lap, and it still arrives home at the end of one. That is not free. A drift taken straight off the clock, `signedNoise(time)`, can never come home, because the clock only ever grows. A wander walks a closed circle through the field instead, so the end of the lap is the same place as its start. Every shape here keeps that promise, which is what lets a swaying sketch declare a `loopDuration` and export a loop nobody can see the seam in.
+
 ## Shaping time
 
 This is the heart of the chapter. Everything so far moves at a constant rate. Constant-rate motion has no character, because real things lean into a start and brake into an arrival. What fixes it is a small family of functions with a single job. Each one **takes a plain `0...1` progress and hands back a reshaped `0...1` progress**. Feeding the reshaped value to `lerp` runs the same trip with a different personality.

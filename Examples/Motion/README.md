@@ -41,6 +41,7 @@ Animation driven by `time`, with the draw loop running continuously by default.
 | [Springs](Springs/Sketch.swift) | the spring family portrait: five dots race the same hop on different `bounce` settings, and a `@Sprung` chaser follows the mouse with momentum (click to kick) |
 | [Star](Star/Sketch.swift) | a concave star with a hole, filled via `drawShape` and the vector `Shape` type (a triangulated fill `drawPolygon` can't do) |
 | [Steering](Steering/Sketch.swift) | steering creatures (`Vehicle`): a troop follows a wavy loop with personal space, wanderers roam leaving trails, and a pursuer intercepts the lead follower |
+| [Sway](Sway/Sketch.swift) | the five `SwayShape`s plotted over one lap with a dot riding each, and a circle sized live by the same call: `.sine`, `.triangle`, `.saw`, `.square`, and a `.wander` that still closes its lap (`sway(over:in:shape:phase:)`) |
 | [Timeline](Timeline/Sketch.swift) | a `Timeline<Vector2>` walks a dot around a square, one easing per side with a hold at each corner, while a second timeline breathes its size; `progress` tracked below, a tick per keyframe |
 | [Trail](Trail/Sketch.swift) | a Lissajous point traced by a 600-segment polyline |
 | [Triangles](Triangles/Sketch.swift) | the two `drawTriangle` forms side by side — equilateral pivoting on its center, isosceles wedge pivoting on its apex (SDF) |
