@@ -12,6 +12,7 @@ Animation driven by `time`, with the draw loop running continuously by default.
 | [ArcModes](ArcModes/Sketch.swift) | the three `drawArc` closing modes — open, chord, pie — side by side under an animated sweep |
 | [Attractor](Attractor/Sketch.swift) | a rotating de Jong–style chaotic attractor sampled into ~98k fine dots a frame, smearing into a soft radial bloom — the headline for `drawPoint` at volume (SDF) |
 | [Automation](Automation/Sketch.swift) | keyframed parameters: four knobs on their own tracks (size, place, color travel; the fill switch steps), with the sketch reading its own tracks back to plot them under the stage (`automate`, `Automation`) |
+| [Beats](Beats/Sketch.swift) | the clock's beats charted: `every(1)`, an off-beat `every(1, phase: 0.5)`, a fast `every(0.25)` and a frame-counted `everyFrames(60)` each stamp a lane over a twelve-second lap, with `after(4)` firing once |
 | [Breathing](Breathing/Sketch.swift) | the same circle, animated via `time` |
 | [DoublePendulum](DoublePendulum/Sketch.swift) | the butterfly effect drawn: 24 `DoublePendulum`s released a ten-thousandth of a radian apart swing as one line, then tear into 24 unrelated dances |
 | [Easing](Easing/Sketch.swift) | four dots race one target flip on different `@Eased` curves — linear, ease-in, ease-out, ease-in-out — pulling apart in flight |

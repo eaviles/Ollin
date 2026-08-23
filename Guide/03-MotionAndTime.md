@@ -213,6 +213,28 @@ final class Rise: Sketch {
 
 The plot above *is* this timeline, sampled and drawn by an Ollin sketch like every figure in this guide. Notice `setup()` doing its [Chapter 1](01-HelloOllin.md) job here: `move.loops = true` is a decision the sketch makes once and then keeps. Timelines advance themselves once per frame, as long as they're stored properties on the sketch, the way `move` is. One you create on the fly inside `draw()` has to be stepped by hand with `move.advance(by: deltaTime)`. They loop, report `progress` and `isFinished`, can be restarted and scrubbed, and sequence 2D and 3D positions as happily as they do numbers. The details live in [Animation](../Docs/Helpers/Animation.md#timeline).
 
+## Doing something now and then
+
+Everything so far has been about *how far* a motion has got. Sometimes you want the other thing: an event. Add a dot every two seconds. Reveal a caption three seconds in. Step a simulation every tenth frame. There is no progress to read here, only a yes or a no.
+
+The hand-rolled version is a counter plus a variable you keep updating, and it goes wrong quietly. Ollin gives you three questions instead:
+
+```swift
+if every(2) { dots.append(Vector2(random(width), random(height))) }
+if after(3) { revealed = true }
+if everyFrames(10) { grid.step() }
+```
+
+`every(2)` is true on the one frame that crosses each two-second mark, and false on all the rest. The clock starts at zero, and zero is a crossing, so your first dot arrives at once rather than two seconds late. `phase` shifts the beat by a fraction of its own length, the same argument `loopProgress` takes, so two rhythms of one period can take turns:
+
+<img src="Images/03-MotionAndTime/Beats.jpg" alt="Three lanes charted against a ruler of seconds: every(1) stamps a dot on each tick, every(1, phase: 0.5) stamps a ring between them, and after(4) stamps a single orange dot at the four-second mark" width="680">
+
+`after(3)` fires once, ever. That is not the same as `if time > 3`, which is true on every frame from then on. For setting a flag, either works. For anything that appends, spends, or plays a sound, the difference is one dot or six hundred.
+
+`everyFrames(10)` counts frames instead of seconds. Reach for it when the beat belongs to the work rather than to the wall clock. A simulation stepping every tenth frame keeps its rate whether the window runs fast or slow, where a beat in seconds does not.
+
+None of the three remembers anything. Each one asks the clock a question; none of them keeps a diary. That is what makes them safe to build on. A video export lands the beats on the same seconds the window did, and a saved take replays them exactly. The one thing they cannot do is count. A frame long enough to cover two crossings still answers yes once, because a yes is a yes.
+
 ## When somebody would rather it stopped
 
 Motion is the default here, and for some people that is a problem rather than a pleasure. Movement can bring on nausea or a headache, which is why macOS carries a Reduce Motion setting. A sketch can ask for it:

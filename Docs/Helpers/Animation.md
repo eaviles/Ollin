@@ -9,6 +9,7 @@ Motion is the default in Ollin, so most movement falls out of a `time`-driven te
 ### Contents
 
 - [Looping progress](#loop): `loopProgress`, `pingPong`
+- [Timers](#timers): `every`, `after`, `everyFrames`
 - [Easing curves](#easing)
 - [The curve catalog](#catalog)
 - [`@Eased`](#eased)
@@ -47,6 +48,40 @@ for (i, cell) in grid(columns: 12, rows: 1).cells.enumerated() {
 Progress from these helpers feeds everything below: reshape it with an easing curve, or hand it straight to `lerp`, a [`Ramp`](../Drawing/Color.md), or a rotation.
 
 A sketch built this way repeats exactly, and it can say so: declare the period as [`loopDuration`](../Core/Sketch.md#loopDuration) and `--export-loop` renders exactly one lap as a seamless GIF or video (see [perfect loops](../Output/Export.md#perfect-loops)).
+
+<a name="timers"></a>
+
+### Timers
+
+```swift
+every(_ seconds: Double, phase: Double = 0) -> Bool
+after(_ seconds: Double) -> Bool
+everyFrames(_ n: Int) -> Bool
+```
+
+Where `loopProgress` answers *how far through*, these three answer *now*. Each is true on a single frame and false on all the others, so a periodic event needs no counter of its own:
+
+```swift
+if every(2) { dots.append(Vector2(random(width), random(height))) }   // a dot every 2s
+if after(3) { revealed = true }                                       // once, 3s in
+if everyFrames(10) { grid.step() }                                    // every 10th frame
+```
+
+`every(seconds)` is true on the frame that crosses each multiple of `seconds`. The clock starts at `0`, and that counts as a crossing. So the first frame is a beat: your first dot arrives at once, not two seconds later. `phase` shifts the beat by a fraction of its own length, exactly as it shifts a lap above. That is how two rhythms of one period interleave:
+
+```swift
+if every(2) { … }                 // 0s, 2s, 4s …
+if every(2, phase: 0.5) { … }     // 1s, 3s, 5s …
+```
+
+`after(seconds)` is the one-shot: true on the single frame that crosses that moment. Use it to *start* something rather than to test whether the moment has passed. `if after(3) { revealed = true }` runs the assignment once. `if time > 3 { revealed = true }` runs it on every frame from then on. That is fine for a flag, and wrong for anything that appends, spends, or plays.
+
+`everyFrames(n)` counts frames instead, with the first frame as the first beat, so the beats fall on frames 1, `n + 1`, `2n + 1`. Reach for it when the beat belongs to the work rather than to the wall clock. A simulation stepping every tenth frame keeps its rate whether the window runs fast or slow. A beat in seconds does not.
+
+Two properties are worth knowing, because they are what make a beat trustworthy:
+
+- **A beat reads the clock and nothing else.** No state is carried between frames, so an export lands the beats on the same seconds as the window did at any frame rate, a [recorded take](../Output/Recording.md) replays them, and a [live reload](../Tools/LiveCoding.md) does not lose or repeat one.
+- **A `Bool` can only say "now" once.** A frame long enough to cover two crossings reports one beat, not two. If you need to *count* events over a slow frame, work from `time` rather than from a beat.
 
 <a name="easing"></a>
 

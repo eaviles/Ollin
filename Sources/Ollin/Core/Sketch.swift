@@ -87,6 +87,13 @@ open class Sketch {
     public internal(set) var time: Double = 0
     /// Seconds elapsed since the previous frame.
     public internal(set) var deltaTime: Double = 0
+    /// The clock reading of the frame before this one, held exactly rather than
+    /// worked out as `time - deltaTime`: those two differ by a rounding error,
+    /// and that error is enough to let `every(_:phase:)` count one crossing
+    /// twice when a frame lands on it. The first frame has no frame before it,
+    /// so it borrows `time - deltaTime` there, which is what puts the start of
+    /// the clock on the far side of the crossing at zero.
+    var previousTime: Double = 0
     /// Smoothed frames-per-second estimate.
     public internal(set) var frameRate: Double = 0
 
@@ -3115,6 +3122,7 @@ open class Sketch {
         takeRecorder?.recordFrame(of: self, time: time, deltaTime: deltaTime,
                                   frameRate: frameRate)
         frameCount += 1
+        self.previousTime = frameCount > 1 ? self.time : time - deltaTime
         self.time = time
         self.deltaTime = deltaTime
         self.frameRate = frameRate

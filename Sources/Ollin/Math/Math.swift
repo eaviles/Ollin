@@ -145,3 +145,64 @@ public extension Sketch {
         return t > 1 ? 2 - t : t
     }
 }
+
+// MARK: Timers
+
+public extension Sketch {
+    /// True on the one frame that crosses each multiple of `seconds`, so a
+    /// periodic event needs no counter of its own.
+    ///
+    /// ```swift
+    /// if every(2) { dots.append(Vector2(random(width), random(height))) }
+    /// ```
+    ///
+    /// The clock starts at `0` and that counts as a crossing, so the first
+    /// frame answers `true` and every `seconds` after it does too. `phase`
+    /// shifts the beat by a fraction of its own length, the way it shifts a lap
+    /// in ``Sketch/loopProgress(over:phase:)``, so two rhythms of one period
+    /// can interleave:
+    ///
+    /// ```swift
+    /// if every(2) { … }                 // 0s, 2s, 4s …
+    /// if every(2, phase: 0.5) { … }     // 1s, 3s, 5s …
+    /// ```
+    ///
+    /// The answer reads the clock and nothing else, so a recorded run replays
+    /// the same beats and an export lands them on the same seconds at any
+    /// frame rate. Two limits come with that. A frame long enough to cover more
+    /// than one crossing answers `true` once, because one `Bool` can only say
+    /// "now" once. And a clock that goes backwards, as a replay does when it
+    /// starts over, enters a new period and beats there.
+    func every(_ seconds: Double, phase: Double = 0) -> Bool {
+        guard seconds > 0 else { return false }
+        return floor(time / seconds + phase) != floor(previousTime / seconds + phase)
+    }
+
+    /// True on the one frame that crosses `seconds`, and false on every other
+    /// frame: a one-shot, for something that starts once, a little way in.
+    ///
+    /// ```swift
+    /// if after(3) { revealed = true }
+    /// ```
+    ///
+    /// Like ``Sketch/every(_:phase:)`` it reads the clock alone, so it fires at
+    /// the same second whatever the frame rate.
+    func after(_ seconds: Double) -> Bool {
+        time >= seconds && previousTime < seconds
+    }
+
+    /// True every `n`th frame, counting the first frame as the first beat.
+    ///
+    /// ```swift
+    /// if everyFrames(30) { grid.step() }     // frames 1, 31, 61 …
+    /// ```
+    ///
+    /// The frame-counting sibling of ``Sketch/every(_:phase:)``. Use this one
+    /// when the beat belongs to the work rather than to the wall clock: a
+    /// simulation that takes a step every few frames keeps its rate whether the
+    /// window runs fast or slow, where a beat in seconds does not.
+    func everyFrames(_ n: Int) -> Bool {
+        guard n > 0 else { return false }
+        return (frameCount - 1) % n == 0
+    }
+}

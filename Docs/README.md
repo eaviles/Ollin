@@ -127,7 +127,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 ### Helpers
 
 - [`Math`](./Helpers/Math.md) - `map`, `dist`, `lerp`, the shaping scalars (`clamp`/`fract`/`step`/`smoothstep`), and `Double.tau`
-- [`Animation`](./Helpers/Animation.md) - looping progress (`loopProgress`/`pingPong`), the `Easing` curves, `@Eased` (ease toward a target), `@Smoothed` (smooth a noisy signal), `@Sprung` (spring toward a target with momentum), and the `Timeline` keyframe sequencer
+- [`Animation`](./Helpers/Animation.md) - looping progress (`loopProgress`/`pingPong`), the timers (`every`/`after`/`everyFrames`), the `Easing` curves, `@Eased` (ease toward a target), `@Smoothed` (smooth a noisy signal), `@Sprung` (spring toward a target with momentum), and the `Timeline` keyframe sequencer
 - [`Formula`](./Helpers/Formula.md) - a number written as a rule and read from text: `drive($radius, "190 + sin(time) * 80")`, the arithmetic vocabulary it speaks, the clock, canvas, pointer, and other knobs it can name, and the errors it reports rather than throws
 - [`Parameters`](./Helpers/Parameters.md) - `@Param` tunable knobs: typed inspector controls (from sliders and toggles to menus, color wells, text, and geometry fields) in grouped cards, value scrubbing, optional smoothing, and binding from OSC or MIDI
 - [`Input`](./Helpers/Input.md) - mouse and keyboard
