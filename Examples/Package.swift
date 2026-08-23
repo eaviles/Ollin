@@ -436,6 +436,7 @@ let package = Package(
         example("Patterns/Kolam"),
         example("Patterns/Knotwork"),
         example("Patterns/Pursuit"),
+        example("Patterns/CreasePattern"),
         example("Patterns/Penrose"),
         example("Patterns/WangTiles"),
         example("Patterns/Girih"),

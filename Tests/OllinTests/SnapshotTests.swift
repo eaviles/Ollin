@@ -500,6 +500,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("clothoid",
                  note: "Four panels of the clothoid: the Cornu double spiral both arms, a fan of G1 fits leaving one point at one heading and arriving at another with seven different headings, and the same three-point corner rounded with an easement and then with none, each with its bend combed off the route. Pins the Fresnel quadrature, the single-unknown fit (including the straight and arc members of the fan), the easement/arc/easement corner and its tangent setback, and the counterfactual the whole curve exists for: the comb ramps on the eased corner and steps on the plain arc. No rng and no time, so it is deterministic.",
                  make: { ClothoidScene() }),
+    SnapshotCase("crease-pattern",
+                 note: "Three panels: a Miura crease pattern flat with its mountains and valleys marked, the same sheet folded 62 percent and seen from a corner, and a rotating-squares cut sheet pulled half open. Pins the mountain and valley rule (zigzags uniform down a column and alternating across, straight folds changing kind along their length), the joining of creases into pen strokes, the rigid folding (panels stay flat parallelograms and creases keep their length), and the kirigami mechanism (neighbors stay joined at one corner). No rng and no time, so it is deterministic.",
+                 make: { CreasePatternScene() }),
     SnapshotCase("penrose",
                  note: "Penrose tilings, kites and darts left, rhombs right, each with the matching-rule arcs stroked on top. Pins both deflations (the derived P2 rules and the P3 rules), the half-tile merge, the rhombs' intrinsic orientation, and the arc fractions that make the decoration continuous across every edge. No rng and no time, so it is deterministic.",
                  make: { PenroseScene() }),
@@ -8365,6 +8368,72 @@ private final class MeshGrowthScene: Sketch {
         withState {
             translate(2.3, 0, 0)
             drawMesh(banded.mesh)
+        }
+    }
+}
+
+/// Three panels of crease patterns: a Miura sheet flat with its mountains and
+/// valleys marked, the same sheet folded most of the way, and a
+/// rotating-squares cut sheet pulled half open.
+private final class CreasePatternScene: Sketch {
+    override var canvasSize: CanvasSize { .size(512, 200) }
+
+    private let chalk = Color(hex: 0xF2ECDD)
+    private let warm = Color(hex: 0xE0724A)
+    private let cool = Color(hex: 0x5A8FC7)
+
+    override func draw() {
+        background(Color(hex: 0x11131A))
+
+        // The pattern on the page: zigzags uniform down, straight folds
+        // changing kind along their length.
+        let sheet = MiuraFold(columns: 6, rows: 4, major: 1, minor: 0.8,
+                              angle: .pi / 3, fold: 0.62)
+        let pattern = sheet.pattern.fitted(in: Rectangle(x: 8, y: 16, width: 150, height: 80))
+        strokeWeight(1.1)
+        strokeCap(.round)
+        stroke(chalk.withAlpha(0.25))
+        drawCreases(pattern, .boundary)
+        stroke(warm)
+        drawCreases(pattern, .mountain)
+        stroke(cool)
+        drawCreases(pattern, .valley)
+
+        // The same sheet folded, seen from a corner, far panels first.
+        let panels = sheet.facets
+        let lean = cos(Double.pi / 6), rise = sin(Double.pi / 6)
+        let flat = panels.flatMap { panel in
+            panel.map { Vector2(($0.x - $0.y) * lean, ($0.x + $0.y) * rise - $0.z) }
+        }
+        let placed = fitted(flat, in: Rectangle(x: 170, y: 20, width: 160, height: 160))
+        let light = Vector3(-0.35, -0.55, 0.76).normalized
+        strokeWeight(0.6)
+        for index in panels.indices.sorted(by: {
+            panels[$0].reduce(0) { $0 + $1.x + $1.y } < panels[$1].reduce(0) { $0 + $1.x + $1.y }
+        }) {
+            let corners = Array(placed[(index * 4) ..< (index * 4 + 4)])
+            let normal = (panels[index][1] - panels[index][0])
+                .cross(panels[index][3] - panels[index][0]).normalized
+            fill(Color.mix(Color(hex: 0x2B3550), chalk, t: 0.18 + abs(normal.dot(light)) * 0.72))
+            stroke(Color(hex: 0x11131A).withAlpha(0.55))
+            drawPolygon(corners)
+        }
+
+        // The cut sheet, pulled half open: every square joined to the next at a
+        // corner, and turned the opposite way.
+        let lattice = RotatingSquares(columns: 5, rows: 5, side: 1, ligament: 0.1, opening: 0.5)
+        var widest = lattice
+        widest.opening = 1
+        let box = widest.bounds
+        let stage = Rectangle(x: 344, y: 30, width: 150, height: 150)
+        let scale = min(stage.width / box.width, stage.height / box.height)
+        noStroke()
+        for (index, square) in lattice.squares.enumerated() {
+            fill(Color.mix(chalk, warm, t: Double(index) / Double(lattice.squares.count - 1) * 0.8))
+            drawPolygon(square.points.map {
+                Vector2(stage.center.x + ($0.x - box.center.x) * scale,
+                        stage.center.y + ($0.y - box.center.y) * scale)
+            })
         }
     }
 }

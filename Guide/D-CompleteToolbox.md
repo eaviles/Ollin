@@ -135,6 +135,7 @@ Use it two ways. It is an index for the moment you remember the guide showing bl
 | Hitomezashi stitching | One bit per grid line phases its dashes; stitches and a two-tone cloth emerge | [Ch 7](07-Tiles.md) | [Hitomezashi](../Docs/Drawing/Hitomezashi.md) |
 | Kolam and sona | One line bounced around a field of dots until it closes, in gcd(rows, columns) loops, with walls to steer the count | [Ch 7](07-Tiles.md) | [Kolam](../Docs/Drawing/Kolam.md) |
 | Celtic knotwork | The same line given width and an alternating over-under rule, the bands handed back already broken where each cord dives | [Ch 7](07-Tiles.md) | [Knotwork](../Docs/Drawing/Knotwork.md) |
+| Crease patterns | The flat sheet a folded or cut thing comes from: the Miura fold with its rigid folding in three dimensions, rotating-squares kirigami, and the two laws that say whether a sheet can fold flat | [Ch 7](07-Tiles.md) | [CreasePattern](../Docs/Drawing/CreasePattern.md) |
 | Hex and triangle grids | The other regular tilings, with hex distance, neighbors, and exact picking | [Ch 6](06-GridsAndRepetition.md) | [Tiling](../Docs/Drawing/Tiling.md) |
 | Recursive subdivision | Uneven panels by aspect-aware splitting, binary or quadtree | [Ch 6](06-GridsAndRepetition.md) | [Tiling](../Docs/Drawing/Tiling.md) |
 | Mazes | Perfect labyrinths (three carving textures), walls as clean line-work | [Ch 6](06-GridsAndRepetition.md) | [Tiling](../Docs/Drawing/Tiling.md) |
