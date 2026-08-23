@@ -482,6 +482,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("diffusion-curves",
                  note: "Two panels of the diffusion solver at fixed marks (no time, no random): a two-sided curve with a bright dot above it, and the same with a second curve added low down. Pins the whole solve: the premultiplied constraint pyramid, the ladder down to a few texels, the coverage-weighted source at gain 4, and the neighbor average everywhere else.",
                  make: { DiffusionCurveScene() }),
+    SnapshotCase("summed-area",
+                 note: "One lit page read four ways at fixed marks (no time, no random): as drawn, box-blurred, cut against one global number, and cut against each pixel's own neighborhood. Pins the summed-area table end to end (the biased seed, both recursive-doubling ladders, the four-tap box read with its clamped area) and both consumers, with the global panel there as the control: the light falls across the page, so a single cut has to lose one end of it and the local cut has to keep both.",
+                 make: { SummedAreaScene() }),
     SnapshotCase("seamless-clone",
                  note: "One textured patch dropped on a two-tone backdrop three ways: pasted with the seam left in, cloned at half, and cloned in full. Pins the whole path (the rim read as boundary values, the convolution pyramid that settles between them, the composite that adds it back under the patch's own coverage) and the amount knob between them. No time, no random.",
                  make: { SeamlessCloneScene() }),
@@ -6459,6 +6462,51 @@ private final class DiffusionCurveScene: Sketch {
             }
             drawImage(marks.filtered(.diffuse(sharpness: 1)).image, in: frame)
         }
+    }
+}
+
+/// One page under a light that falls across it, read four ways: as drawn, box-blurred,
+/// cut globally, and cut locally. Fixed marks, no time, no random.
+private final class SummedAreaScene: Sketch {
+    override var canvasSize: CanvasSize { .size(424, 112) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        let side = 96.0
+        let readings: [Filter?] = [nil, .boxBlur(radius: 10), .threshold(0.34),
+                                   .adaptiveThreshold(window: 34, bias: 0.15)]
+        for (index, filter) in readings.enumerated() {
+            let page = renderTarget(width: Int(side), height: Int(side))
+            withTarget(page) { paint(side) }
+            let layer = filter.map { page.filtered($0) } ?? page
+            drawImage(layer.image,
+                      in: Rectangle(x: 8 + Double(index) * (side + 8), y: 8,
+                                    width: side, height: side))
+        }
+    }
+
+    /// Marks at a few sizes, then a light multiplied over them that leaves one corner
+    /// bright and the far one deep in shadow.
+    private func paint(_ side: Double) {
+        background(Color(white: 0.88))
+        noStroke()
+        fill(Color(white: 0.08))
+        for row in 0 ..< 4 {
+            drawRect(side * 0.12, side * (0.14 + Double(row) * 0.13), side * 0.62, 6)
+        }
+        for i in 0 ..< 4 {
+            drawCircle(side * (0.18 + Double(i) * 0.21), side * 0.78, Double(5 + i * 2))
+        }
+        stroke(Color(white: 0.08))
+        strokeWeight(3)
+        drawLine(side * 0.1, side * 0.64, side * 0.9, side * 0.64)
+        noStroke()
+
+        blendMode(.multiply)
+        fill(Gradient.linear(from: Vector2(0, 0), to: Vector2(side, side),
+                             Ramp([Color(white: 1), Color(white: 0.28)])))
+        drawRect(0, 0, side, side)
+        blendMode(.normal)
     }
 }
 

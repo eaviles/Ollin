@@ -64,6 +64,7 @@ extension MetalRenderer {
         targetTexNext = 0
         filterTexNext = 0
         fieldTexNext = 0
+        satTexNext = 0
         targetDepthNext = 0
         ssrOccurrenceThisFrame.removeAll(keepingCapacity: true)
         // A second encode of the same sketch frame (the frame-grab / Syphon off-screen
@@ -637,7 +638,58 @@ extension MetalRenderer {
             guard let lutTex = makeLUTTexture(lut) else { return nil }
             return pass("ollin_fx_field_map", [input, lutTex],
                         [f(from, to, repeating ? 1 : 0, 0)])
+        case let .boxBlur(radius):
+            guard let sat = summedAreaTable(of: input, width: width, height: height,
+                                            into: cb, pooled: pooled) else { return nil }
+            return pass("ollin_fx_box_blur", [sat, input], [f(radius.rounded(), 0, 0, 0)])
+        case let .adaptiveThreshold(window, bias, invert):
+            // The published default window is an eighth of the image width; the radius is
+            // half of it, since the window is measured across and the shader reaches out.
+            let side = window ?? (Double(width) / 8)
+            guard let sat = summedAreaTable(of: input, width: width, height: height,
+                                            into: cb, pooled: pooled) else { return nil }
+            return pass("ollin_fx_adaptive_threshold", [sat, input],
+                        [f(max(1, (side / 2).rounded()), bias, invert ? 1 : 0, 0)])
         }
+    }
+
+    /// Build a summed-area table of `input`: every texel holding the sum of everything
+    /// above and to the left of it, itself included (Crow 1984), so that afterwards the
+    /// average over any rectangle is four reads whatever its size.
+    ///
+    /// The build is recursive doubling (Hensley et al. 2005). One pass adds what sits
+    /// `step` texels back, and doubling `step` carries a row's whole prefix in a number of
+    /// passes that grows with the logarithm of its width: eleven passes across a 1080
+    /// canvas rather than 1080. The same ladder then runs down the columns, and the two
+    /// ladders together are what make the table two-dimensional.
+    ///
+    /// The table is `rgba32Float` because it holds sums rather than colors, and each
+    /// element goes in biased by -0.5, which halves the largest magnitude it has to carry.
+    /// Both are precision, and precision is this structure's one real weakness: a table
+    /// spends about `log2(width * height)` bits of its mantissa on the running total, so
+    /// a small window at the far corner of a large canvas is where error shows first. A
+    /// float32 table over a 1080 square leaves about 4 bits more than an 8-bit picture
+    /// needs, which is why the width is not optional.
+    func summedAreaTable(of input: MTLTexture, width: Int, height: Int,
+                         into cb: MTLCommandBuffer, pooled: Bool) -> MTLTexture? {
+        guard let front = acquireSATTexture(width: width, height: height, pooled: pooled),
+              let back = acquireSATTexture(width: width, height: height, pooled: pooled)
+        else { return nil }
+        let wide: MTLPixelFormat = .rgba32Float
+        encodeEffectFragment("ollin_sat_seed", inputs: [input], output: front,
+                             params: [], into: cb, format: wide)
+        var read = front, write = back
+        for (axis, extent) in [(0.0, width), (1.0, height)] {
+            var step = 1
+            while step < extent {
+                encodeEffectFragment("ollin_sat_scan", inputs: [read], output: write,
+                                     params: [SIMD4<Float>(Float(step), Float(axis), 0, 0)],
+                                     into: cb, format: wide)
+                swap(&read, &write)
+                step *= 2
+            }
+        }
+        return read
     }
 
     /// Measure how far every pixel is from the nearest edge in `input`, and which way
@@ -2117,6 +2169,29 @@ extension MetalRenderer {
         if slot < pool.count { pool[slot] = entry } else { pool.append(entry) }
         fieldTexPool[frameIndex] = pool
         return tex
+    }
+
+    /// One of the `rgba32Float` scratch textures a summed-area table scans through,
+    /// pooled by ring slot exactly like `acquireFilterTexture`.
+    func acquireSATTexture(width: Int, height: Int, pooled: Bool) -> MTLTexture? {
+        guard pooled else { return makeSATTexture(width: width, height: height) }
+        let slot = satTexNext; satTexNext += 1
+        var pool = satTexPool[frameIndex]
+        if slot < pool.count, pool[slot].w == width, pool[slot].h == height { return pool[slot].tex }
+        guard let tex = makeSATTexture(width: width, height: height) else { return nil }
+        let entry = (tex, width, height)
+        if slot < pool.count { pool[slot] = entry } else { pool.append(entry) }
+        satTexPool[frameIndex] = pool
+        return tex
+    }
+
+    /// A four-channel 32-bit float texture: one side of a summed-area table's scan.
+    func makeSATTexture(width: Int, height: Int) -> MTLTexture? {
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: .rgba32Float, width: width, height: height, mipmapped: false)
+        desc.usage = [.shaderRead, .renderTarget]
+        desc.storageMode = .private
+        return device.makeTexture(descriptor: desc)
     }
 
     /// A two-channel 32-bit float texture: the seed position a jump flood carries.

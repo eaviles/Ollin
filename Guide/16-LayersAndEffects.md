@@ -244,6 +244,54 @@ marks.filtered(.distanceField(maxDistance: 64))
 
 Past that distance the field reads flat, with a zero direction, which is its way of saying nothing is within reach.
 
+## Averages of a neighborhood, at a flat price
+
+The section above asked every pixel how far away something was. Here is a different question, and a cheaper answer than you would expect. **What does the neighborhood around this pixel look like?**
+
+The obvious way to answer costs more the wider you look. A 5-pixel square is 25 reads, a 500-pixel square is 250,000, and a blur that reaches across the canvas is out of the question. There is another way, and it turns the cost into a flat fee.
+
+Build one table first. Every texel in it holds the sum of everything above and to the left of it. Then the sum over *any* rectangle is a bit of arithmetic on four corners of that table:
+
+```
+      A ─────────── B          the shaded box
+      │             │            =  D − B − C + A
+      │      ┌──────┤
+      │      │//////│          four lookups, wherever the box is
+      C ─────┼──────D          and however big it is
+             │//////│
+```
+
+That table is a **summed-area table**, and once you have one, two useful filters cost almost nothing.
+
+The first is a blur:
+
+```swift
+layer.filtered(.boxBlur(radius: 4))     // these two
+layer.filtered(.boxBlur(radius: 400))   // cost the same
+```
+
+It is the plainest blur there is, just the average of the square around each pixel, and it is not as good-looking as `gaussianBlur`. Reach for it when the reach is large. Reach for it too when the radius changes while the sketch runs, and you do not want the frame rate changing with it. Three of them in a row look near enough Gaussian that you will stop being able to tell, and that is still three fixed-price passes.
+
+The second one is the interesting one.
+
+<img src="Images/16-LayersAndEffects/LocalAverages.jpg" alt="Three panels. A page of dark bars and dots on pale paper with a light falling across it, bright at the top left and deep in shadow at the bottom right; the same page cut to black and white by one threshold, which swallows the whole shadowed half into solid black; and the same page cut against each pixel's own neighborhood, where every bar and dot survives on clean white paper" width="680">
+
+The left panel is a page with a light falling across it. Try to cut it to black and white with `threshold` and you have to pick one number, and there is no number that works. Pick one that keeps the shadowed corner and you flood the lit one. Pick one that keeps the lit corner and the shadow goes solid black, which is the middle panel.
+
+`adaptiveThreshold` compares each pixel with the average of its own surroundings instead:
+
+```swift
+page.filtered(.adaptiveThreshold())
+```
+
+That is the right panel. Every mark survives, in shadow and in light alike. **Hard contrast is local, and uneven light is not, so comparing locally keeps the first and throws away the second.**
+
+The knob that matters is `window`, how wide that neighborhood is in pixels. It wants to be big enough to hold both ink and paper. Set it smaller than your marks and the middle of a thick stroke sees nothing but more stroke. It decides that must be what paper looks like here, and comes out hollow. Since widening it is free, err wide. Left alone it is an eighth of the layer.
+
+There is one more knob, `bias`, which is how far below the local average a pixel has to fall before it goes dark. It is a *fraction* rather than a fixed amount, and that is not fussiness. Light falling on a page multiplies what comes back off it. Only a test that scales along with the average is unmoved when somebody turns the lamp down.
+
+Two costs, and neither one grows with the window. Building the table is about twenty passes over the layer, a few milliseconds for a full canvas. One of these in a frame is comfortable. A dozen are not. And the running totals get large, which eats into a float's precision and leaves a small error behind. That error is a fixed amount divided by the size of your window, so it fades away as the window grows. It only shows up at tiny radii, which is where you would reach for a Gaussian anyway.
+
 ## The design family
 
 Two lines of that listing came from a set worth knowing as a set. Alongside the plain generators (checkers, noise, gradients) there's a **design** family. It is built to look like the finished graphics you'd meet on a product page rather than like test patterns. It comes in two halves, generators that invent a picture and filters that transform one, and they behave differently enough to meet separately.
@@ -552,9 +600,10 @@ Off-screen layers are as old as computer graphics has had memory to spare. The s
 - [Accumulation](../Docs/Drawing/Accumulation.md) and [HDR & tone-mapping](../Docs/Drawing/HDR.md): the persistent canvas and the float pipeline underneath it.
 - [Wide gamut & HDR output](../Docs/Drawing/ColorOutput.md): `colorOutput`, colors outside sRGB, and what each export format carries.
 - [Measured distance fields](../Docs/Drawing/DistanceFields.md): what the field holds, reading it back, and the jump flood underneath it.
+- [Local averages](../Docs/Drawing/LocalAverages.md): the box blur, the adaptive threshold, choosing the window, and what the summed-area table costs.
 - [Blend modes](../Docs/Drawing/Drawing.md#blendMode): the arithmetic of each mode.
 - Appendix B draws this chapter's math, one picture per idea: [Shaping a value](B-JustEnoughMath.md#shaping-a-value), [Color and light as numbers](B-JustEnoughMath.md#color-and-light-as-numbers).
-- Worked examples: [`Examples/Effects/Bloom`](../Examples/Effects/Bloom/Sketch.swift), [`Examples/Effects/Compose`](../Examples/Effects/Compose/Sketch.swift), [`Examples/Effects/Feedback`](../Examples/Effects/Feedback/Sketch.swift), [`Examples/Effects/Relight`](../Examples/Effects/Relight/Sketch.swift), [`Examples/Effects/DiffusionCurves`](../Examples/Effects/DiffusionCurves/Sketch.swift), [`Examples/Effects/DistanceField`](../Examples/Effects/DistanceField/Sketch.swift), [`Examples/Rendering/Accumulation`](../Examples/Rendering/Accumulation/Sketch.swift), and [`Examples/Rendering/ToneMapping`](../Examples/Rendering/ToneMapping/Sketch.swift).
+- Worked examples: [`Examples/Effects/Bloom`](../Examples/Effects/Bloom/Sketch.swift), [`Examples/Effects/Compose`](../Examples/Effects/Compose/Sketch.swift), [`Examples/Effects/Feedback`](../Examples/Effects/Feedback/Sketch.swift), [`Examples/Effects/Relight`](../Examples/Effects/Relight/Sketch.swift), [`Examples/Effects/DiffusionCurves`](../Examples/Effects/DiffusionCurves/Sketch.swift), [`Examples/Effects/DistanceField`](../Examples/Effects/DistanceField/Sketch.swift), [`Examples/Effects/SummedArea`](../Examples/Effects/SummedArea/Sketch.swift), [`Examples/Rendering/Accumulation`](../Examples/Rendering/Accumulation/Sketch.swift), and [`Examples/Rendering/ToneMapping`](../Examples/Rendering/ToneMapping/Sketch.swift).
 
 ---
 

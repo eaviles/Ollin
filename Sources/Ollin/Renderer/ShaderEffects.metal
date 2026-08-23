@@ -1592,6 +1592,122 @@ fragment float4 ollin_fx_field_map(PresentOut in [[stage_in]],
     return ollin_premul(c.rgb, c.a);
 }
 
+// MARK: - Summed-area tables
+//
+// A table in which every texel holds the sum of everything above and to the left of
+// it, itself included (Crow 1984). Once it is built, the sum over any axis-aligned
+// rectangle is four reads and three additions, so a box average over a thousand-pixel
+// window costs exactly what a three-pixel one costs. That flat cost is the point, and
+// it is what the box blur and the adaptive threshold below both stand on.
+//
+// The table is built by recursive doubling (Hensley et al. 2005): one pass adds what
+// sits `step` texels back, and doubling `step` each pass carries a row's whole prefix
+// in a number of passes that grows with the logarithm of its width. The same ladder
+// then runs down the columns.
+//
+// Two facts decide the storage, and both are load-bearing. The table holds sums rather
+// than colors, so it runs in `rgba32Float`: a canvas of ones adds up past a million,
+// and a half float spaces integers a whole unit apart long before that. And every
+// element is biased by -0.5 before it goes in (Hensley's own recommendation), which
+// halves the largest magnitude the table must hold and hands one bit of mantissa back
+// to the data. The consumers add the bias back after they divide by the area, because
+// the mean of (v - 0.5) over a window is the mean of v less 0.5, whatever the window.
+
+// Seed: the layer's own texels, biased, ready to accumulate.
+fragment float4 ollin_sat_seed(PresentOut in [[stage_in]],
+                               texture2d<float> src [[texture(0)]]) {
+    return src.read(uint2(in.position.xy)) - 0.5;
+}
+
+// One rung of the ladder: add what sits `step` texels back along the axis. Nothing sits
+// back of the first `step` texels, so those keep what they already carry.
+// params[0] = (step in texels, 1 for the vertical axis, -, -)
+fragment float4 ollin_sat_scan(PresentOut in [[stage_in]],
+                               texture2d<float> src [[texture(0)]],
+                               constant float4 *params [[buffer(0)]]) {
+    int step = int(params[0].x);
+    bool vertical = params[0].y > 0.5;
+    int2 p = int2(in.position.xy);
+    float4 sum = src.read(uint2(p));
+    int2 back = vertical ? int2(p.x, p.y - step) : int2(p.x - step, p.y);
+    if (back.x >= 0 && back.y >= 0) { sum += src.read(uint2(back)); }
+    return sum;
+}
+
+// The sum over the inclusive rectangle `lo`…`hi`, and the area it really covered. The
+// rectangle is clamped to the table, and `area` reports the clamped size rather than the
+// asked-for one, so a window that hangs over the border averages what is actually there
+// instead of darkening toward the edges.
+static inline float4 ollin_sat_box(texture2d<float> sat, int2 lo, int2 hi,
+                                   thread float &area) {
+    int2 last = int2(int(sat.get_width()) - 1, int(sat.get_height()) - 1);
+    lo = clamp(lo, int2(0), last);
+    hi = clamp(hi, lo, last);
+    area = float(hi.x - lo.x + 1) * float(hi.y - lo.y + 1);
+    float4 s = sat.read(uint2(hi));
+    if (lo.x > 0) { s -= sat.read(uint2(lo.x - 1, hi.y)); }
+    if (lo.y > 0) { s -= sat.read(uint2(hi.x, lo.y - 1)); }
+    if (lo.x > 0 && lo.y > 0) { s += sat.read(uint2(lo.x - 1, lo.y - 1)); }
+    return s;
+}
+
+// The mean over a square window of the given radius, with the bias added back.
+static inline float4 ollin_sat_mean(texture2d<float> sat, int2 p, int radius) {
+    float area;
+    float4 s = ollin_sat_box(sat, p - radius, p + radius, area);
+    return s / max(area, 1.0) + 0.5;
+}
+
+// Box blur: every pixel becomes the average of the square around it. Four reads whatever
+// the radius, so a blur that reaches across the canvas costs what a three-pixel one does.
+// params[0] = (radius in texels, -, -, -)
+fragment float4 ollin_fx_box_blur(PresentOut in [[stage_in]],
+                                  texture2d<float> sat [[texture(0)]],
+                                  texture2d<float> src [[texture(1)]],
+                                  constant float4 *params [[buffer(0)]]) {
+    int radius = int(params[0].x);
+    // A radius of zero is the pixel itself, and it comes out of the layer rather than out
+    // of the table on purpose. A one-texel window is a difference between four running
+    // totals that are each about as large as the table gets, which is the worst case there
+    // is for its precision, and it would be spent disturbing a picture meant to come
+    // through untouched.
+    if (radius < 1) { return src.read(uint2(in.position.xy)); }
+    return ollin_sat_mean(sat, int2(in.position.xy), radius);
+}
+
+// Adaptive threshold (Bradley & Roth 2007): cut each pixel against the average of its own
+// neighborhood rather than against one number for the whole picture. A pixel goes dark
+// where it falls a fraction `bias` below that local average, which keeps hard contrast
+// and ignores a slow change in illumination, so lettering comes out of a photograph that
+// is lit from one side.
+//
+// The test is a *fraction* of the local mean rather than a distance below it, and that is
+// the property the whole technique rests on: light falling unevenly on a page multiplies
+// what comes back, so only a test that scales with the mean survives it unchanged. It is
+// also why the comparison is made here in linear light, where that multiplication is a
+// plain scale. (The published form works on gamma-encoded bytes, where it is not.)
+//
+// The value read is luminance as the layer composites, which is why the mean can come
+// straight out of the table: luminance is a linear function of the channels, so the
+// luminance of the mean is the mean of the luminance. Unpremultiplying first would not
+// have that property, and the mean would then be of a different quantity than the sample.
+// The two tones carry the layer's own alpha, so a mark on an empty layer binarizes
+// without the empty part turning into a black rectangle.
+// params[0] = (radius in texels, bias, 1 to invert, -)
+fragment float4 ollin_fx_adaptive_threshold(PresentOut in [[stage_in]],
+                                            texture2d<float> sat [[texture(0)]],
+                                            texture2d<float> src [[texture(1)]],
+                                            constant float4 *params [[buffer(0)]]) {
+    int2 p = int2(in.position.xy);
+    float bias = params[0].y;
+    bool invert = params[0].z > 0.5;
+    float4 here = src.read(uint2(p));
+    float mean = ollin_luma(ollin_sat_mean(sat, p, int(params[0].x)).rgb);
+    bool lit = ollin_luma(here.rgb) >= mean * (1.0 - bias);
+    if (invert) { lit = !lit; }
+    return ollin_premul(float3(lit ? 1.0 : 0.0), here.a);
+}
+
 // MARK: - Procedural generators (no input texture)
 //
 // Each fills a layer from its parameters alone (params[0] geometry + aspect,

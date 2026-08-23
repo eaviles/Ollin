@@ -941,6 +941,11 @@ final class MetalRenderer {
     /// in flight would tear the field).
     var fieldTexPool: [[(tex: MTLTexture, w: Int, h: Int)]] =
         Array(repeating: [], count: MetalRenderer.maxFramesInFlight)
+    /// The `rgba32Float` pair a summed-area table scans through, pooled on the same ring
+    /// discipline. Wide because the table holds sums rather than colors: a canvas of ones
+    /// adds up past a million, and a half float cannot count that far in whole numbers.
+    var satTexPool: [[(tex: MTLTexture, w: Int, h: Int)]] =
+        Array(repeating: [], count: MetalRenderer.maxFramesInFlight)
     /// Depth attachments for a render target that holds a 3D scene: an MSAA depth
     /// buffer (memoryless, tile-only) that resolves into a single-sample sampleable
     /// `depth32Float`, the `depth` layer reads from. Pooled like the color targets,
@@ -950,6 +955,7 @@ final class MetalRenderer {
     var targetTexNext = 0
     var filterTexNext = 0
     var fieldTexNext = 0
+    var satTexNext = 0
     var targetDepthNext = 0
 
     /// One `Feedback` layer's persistent ping-pong pair: two single-sample

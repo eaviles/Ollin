@@ -316,6 +316,14 @@ public struct Filter: Sendable {
         /// 256-step ramp over `from`…`to` pixels, wrapped rather than clamped when
         /// `repeating` (which draws the field as contour bands).
         case fieldMap(lut: [SIMD4<Float>], from: Double, to: Double, repeating: Bool)
+        /// Average every pixel with the square of the given radius around it, over a
+        /// summed-area table, so the cost does not grow with the radius.
+        case boxBlur(radius: Double)
+        /// Cut each pixel against the average of the `window`-wide square around it
+        /// rather than against one number for the whole layer (nil sizes the window at
+        /// an eighth of the layer). A pixel goes dark where it sits `bias` below that
+        /// local average.
+        case adaptiveThreshold(window: Double?, bias: Double, invert: Bool)
     }
 
     let kind: Kind
@@ -1087,6 +1095,67 @@ public struct Filter: Sendable {
                                 repeating: Bool = false) -> Filter {
         Filter(kind: .fieldMap(lut: bakeLUT { colormap.color(at: $0) },
                                from: from, to: to, repeating: repeating))
+    }
+
+    /// Average every pixel with the square of `radius` pixels around it.
+    ///
+    /// The blur itself is the plainest one there is, and the reason to reach for it is
+    /// the price rather than the look: it runs over a summed-area table, where the
+    /// average of any rectangle is four lookups, so **a radius of 400 costs what a radius
+    /// of 4 costs**. A Gaussian is the better-looking blur and the cheaper one while the
+    /// radius stays small, so prefer `gaussianBlur` there and come here when the reach is
+    /// large or when the radius has to change while a sketch runs.
+    ///
+    /// ```swift
+    /// let layer = renderTarget()
+    /// withTarget(layer) { background(.black); fill(.orange); drawCircle(540, 540, 120) }
+    /// drawImage(layer.filtered(.boxBlur(radius: 300)).image, 0, 0)
+    /// ```
+    ///
+    /// Three of them in a row approximate a Gaussian closely enough that the eye stops
+    /// telling them apart, and that is still three passes rather than a kernel that grows.
+    /// A window that hangs over the border averages what is really there, so the edges
+    /// keep their brightness instead of fading.
+    ///
+    /// Two costs are worth knowing, and neither depends on the radius. Building the table
+    /// is about twenty passes over the layer, measured at 6 ms of GPU time for a 1080
+    /// square, so one of these in a frame is comfortable and a dozen are not. And a
+    /// running total spends most of a float's mantissa on itself, which leaves an error
+    /// that is *absolute*: divided by the window, it falls away as the window grows. On a
+    /// 1080 square that is about 7/255 in the worst corner of a 3-pixel window and under
+    /// 1.5/255 from 37 pixels up. Both point the same way: this is the blur for a wide
+    /// reach, and `gaussianBlur` is the one for a narrow one.
+    public static func boxBlur(radius: Double = 16) -> Filter {
+        Filter(kind: .boxBlur(radius: max(0, radius)))
+    }
+
+    /// Cut the layer to two tones, pixel by pixel, against the average of the
+    /// neighborhood around each one rather than against a single number for the whole
+    /// picture (Bradley & Roth 2007).
+    ///
+    /// This is what reads lettering off a photograph lit from one side. A global
+    /// `threshold` has to pick one value, so it loses the shadowed corner or floods the
+    /// lit one; comparing each pixel against its own surroundings keeps hard contrast and
+    /// ignores a slow change in illumination, so both corners come out.
+    ///
+    /// ```swift
+    /// let page = renderTarget()
+    /// withTarget(page) { drawImage(photo, 0, 0) }
+    /// drawImage(page.filtered(.adaptiveThreshold()).image, 0, 0)
+    /// ```
+    ///
+    /// `window` is how wide that neighborhood is, in pixels, and it wants to be large
+    /// enough to hold both ink and paper: too small and the middle of a thick stroke
+    /// reads as its own background and hollows out. Left `nil` it is an eighth of the
+    /// layer, the published default. `bias` is the *fraction* below the local average a
+    /// pixel must fall before it goes dark, which keeps flat paper from breaking up into
+    /// noise. A fraction rather than a distance is what makes the cut survive uneven
+    /// light, since light falling on a page multiplies what comes back off it. The window
+    /// costs nothing to widen, so it is a knob to turn freely.
+    public static func adaptiveThreshold(window: Double? = nil, bias: Double = 0.15,
+                                         invert: Bool = false) -> Filter {
+        Filter(kind: .adaptiveThreshold(window: window.map { max(1, $0) },
+                                        bias: bias, invert: invert))
     }
 }
 

@@ -105,7 +105,6 @@ For any animated per-pixel `Generator`, three implementation notes hold (their m
 
 Several entries are *substrate*, and each routes to a seam that already exists:
 
-- **Summed-area tables** need a scan on the GPU and float32 storage to stay exact at a canvas's worth of accumulation, the same range problem the convolution pyramid ran into.
 - **Radial basis functions** and a small minimizer are plain Swift over `Vector2`/`Vector3`, useful mostly as the fitting step other recipes need.
 - **The Hopf fibration** is a geometry emitter, not a shader. Each point of a two-sphere lifts to a great circle of the three-sphere, and stereographic projection carries that circle into space as an ordinary (if large) circle, so the whole recipe is: choose points on the sphere, lift, project, and hand back a `[Vector3]` per fiber for the existing polyline and instanced-mesh paths to draw. Three things decide whether it reads: the **base points** should come from a structured set (a ring of latitudes, a spherical Fibonacci spiral) rather than uniform noise, since the linking is only legible when neighboring fibers are neighbors; the **color must be taken from the base point**, which is what shows that the tangle is an image of a sphere; and one fiber passes through the projection pole and comes back as a **straight line**, which needs handling rather than clipping. Worth pairing with a recreation, since it is a figure with a long history in art as well as topology.
 

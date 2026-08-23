@@ -149,6 +149,7 @@ let package = Package(
         example("Effects/DomainColoring"),
         example("Effects/DiffusionCurves"),
         example("Effects/SeamlessClone"),
+        example("Effects/SummedArea"),
         example("Effects/Patterns"),
         example("Effects/Cellular"),
         example("Shaders/HelloShader"),
