@@ -90,6 +90,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 - [`Low-discrepancy sampling`](./Generators/LowDiscrepancy.md) - `haltonPoints` / `sobolPoints`, even coverage as an ordered stream: growing the count only adds points, never moves them
 - [`Points on a surface`](./Generators/SurfaceSampling.md) - `surfacePoints`, points scattered over a mesh's skin rather than its vertex list, evenly spaced by default, each carrying the normal, texture coordinate, and triangle it landed on
 - [`Stippling`](./Generators/Stippling.md) - `stipple`, dots packed to reproduce an image's tone (weighted-Voronoi stippling), or any density function
+- [`De Bruijn sequences`](./Generators/DeBruijn.md) - `deBruijnSequence` + `DeBruijnCode`, a cyclic run holding every window of a given length exactly once, so a glimpse of a few symbols says where it came from
 - [`Ford circles`](./Generators/FordCircles.md) - `fordCircles`, a circle for every fraction that touches its neighbors and overlaps nothing, over `fareySequence` and the exact `Fraction` type
 - [`Polyominoes`](./Generators/Polyominoes.md) - `Polyomino` + `tilePolyominoes`, the twelve pentominoes and an exact-cover search that fits a bag of pieces into a region, or says no fit exists
 - [`Ulam spiral`](./Generators/UlamSpiral.md) - `ulamSpiral`, the whole numbers written in a square spiral so a test on them becomes a picture, with the primes falling on diagonals

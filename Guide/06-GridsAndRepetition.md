@@ -302,6 +302,26 @@ The fractions come from `fareySequence(order:)`, which is worth knowing on its o
 
 Growing `order` over a loop is the animation, and it is arrival rather than motion: no circle ever moves, and each new denominator drops its circles into gaps that were waiting for them. The `Patterns/FordCircles` example does that, and draws a line between every touching pair on a mouse hold.
 
+## A run that never repeats itself
+
+This chapter has been about repetition. Here is its opposite, and it is just as exact.
+
+Take four colors and lay out sixty-four beads so that **every** run of three colors appears somewhere around the ring, and no run appears twice. That is a de Bruijn sequence, and it is as short as such a ring can be: there are sixty-four possible triples and each takes one place.
+
+<img src="Images/06-GridsAndRepetition/EveryWindowOnce.jpg" alt="On the left an eight-bead strip of two colors with the eight windows of three it holds listed underneath, all different. On the right a ring of sixty-four beads in four tones with one window of three picked out and labeled bead 11" width="680">
+
+```swift
+let code = DeBruijnCode(symbols: 4, window: 3)
+code.sequence            // 64 symbols, every triple exactly once
+code.position(of: seen)  // where those three beads sit
+```
+
+The reason to care is in that last line. Look at any three beads and you know where on the ring you are, because no other three look the same. That is how a rotary encoder finds its angle and how a camera finds its place on a printed ruler. Nothing has to be counted or remembered, only glimpsed.
+
+The run always starts with a row of zeros, because the one Ollin builds is the smallest in dictionary order. The same arguments always give the same run, so a sketch built on it reproduces.
+
+Two things are easy to get wrong. **The run is a ring**, so reading it means wrapping around the end, and drawing it as a straight strip leaves the last windows looking broken. And **the length grows fast**: five symbols with a window of five is already 3,125 beads. Choose the window from how much a reader can see at once, not from how long a run you want.
+
 ## Putting it together: a wall of rosettes
 
 Now you can build the image at the top. The plan uses every tool in the chapter, and in the order you met them. A grid hands you the blocks, and inside each one the transforms place, turn, and shrink the work. Then symmetry folds a single arm into a medallion, and a clip cuts the result to a disc. Make a new file, `MySketches/RoseWall.swift`:
@@ -389,13 +409,14 @@ Before moving on, make it yours:
 
 ## Where this comes from
 
-The paper-moving transform model goes back to the earliest days of computer graphics, and reached creative coding through Processing's `pushMatrix`/`popMatrix`. The pinwheel quilt is older than all of it, pieced by quilters long before anyone had a coordinate system to rotate. The kaleidoscope is younger than it looks: David Brewster patented one in 1817, and it became a craze inside a year. Mazes come from graph theory rather than from paper. A perfect maze is a spanning tree of its grid, so every algorithm that carves one is a spanning-tree algorithm in costume. That is why `.backtracker`, a depth-first walk, and `.kruskal`, after Joseph Kruskal's 1956 method, give such different textures from the same guarantee. The circle foam is the oldest idea in the chapter by a long way. Apollonius of Perga asked which circle touches three given circles, around 200 BC. René Descartes worked out the arithmetic relating their sizes, in a 1643 letter to Princess Elisabeth of Bohemia, and that is why the relation carries his name. The spiral of numbers is Stanisław Ulam's, drawn on a notepad during a talk in 1963 and published the year after with Myron Stein and Mark Wells. Martin Gardner's column carried it to everybody else, and it has been redrawn ever since. The circles on the number line are Lester Ford's, from a 1938 paper about approximating numbers with fractions. The sequence under them is named for John Farey, who noticed the mediant rule in 1816, although Charles Haros had published the same thing in 1802 and Augustin-Louis Cauchy supplied the proof Farey did not. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The paper-moving transform model goes back to the earliest days of computer graphics, and reached creative coding through Processing's `pushMatrix`/`popMatrix`. The pinwheel quilt is older than all of it, pieced by quilters long before anyone had a coordinate system to rotate. The kaleidoscope is younger than it looks: David Brewster patented one in 1817, and it became a craze inside a year. Mazes come from graph theory rather than from paper. A perfect maze is a spanning tree of its grid, so every algorithm that carves one is a spanning-tree algorithm in costume. That is why `.backtracker`, a depth-first walk, and `.kruskal`, after Joseph Kruskal's 1956 method, give such different textures from the same guarantee. The circle foam is the oldest idea in the chapter by a long way. Apollonius of Perga asked which circle touches three given circles, around 200 BC. René Descartes worked out the arithmetic relating their sizes, in a 1643 letter to Princess Elisabeth of Bohemia, and that is why the relation carries his name. The spiral of numbers is Stanisław Ulam's, drawn on a notepad during a talk in 1963 and published the year after with Myron Stein and Mark Wells. Martin Gardner's column carried it to everybody else, and it has been redrawn ever since. The ring where every window is different is named for Nicolaas Govert de Bruijn, who counted the binary case in 1946, although Camille Flye Sainte-Marie had done it in 1894 and Sanskrit prosodists had the eight-bead version as a memory word centuries before either. The circles on the number line are Lester Ford's, from a 1938 paper about approximating numbers with fractions. The sequence under them is named for John Farey, who noticed the mediant rule in 1816, although Charles Haros had published the same thing in 1802 and Augustin-Louis Cauchy supplied the proof Farey did not. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
 - [Geometry](../Docs/Drawing/Geometry.md): the full `Grid` reference (spanning points, nesting, singular access), `Insets`, and `Rectangle`.
 - [Ulam spiral](../Docs/Generators/UlamSpiral.md): the walk, reading any test off it, and the prime helpers behind the marks.
 - [Ford circles](../Docs/Generators/FordCircles.md): the circles, the Farey sequence and its mediant rule, and the `Fraction` type both rest on.
+- [De Bruijn sequences](../Docs/Generators/DeBruijn.md): the run, the reader that turns a window into a position, and the Lyndon words it is built from.
 - [Drawing](../Docs/Drawing/Drawing.md): the transform stack in detail, `pushState`/`popState` (the unscoped siblings of `withState`), and every shape that benefits.
 - [Kaleidoscope symmetry](../Docs/Drawing/Drawing.md#symmetry): the full reference for `symmetry`/`noSymmetry`, including which drawing paths fold and which don't. The [`Patterns/Kaleidoscope`](../Examples/Patterns/Kaleidoscope/Sketch.swift) example draws a single arm and lets the folds do the rest.
 - [Clipping](../Docs/Drawing/Drawing.md#clip): the reference, including how clips interact with layers and what vector export does with them. The [`Shapes/Clipping`](../Examples/Shapes/Clipping/Sketch.swift) example sweeps a lens across a striped star.

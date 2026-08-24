@@ -86,6 +86,7 @@ Use it two ways. It is an index for the moment you remember the guide showing bl
 | Stroke as shape | Turn any stroked line into a filled region for booleans and plotting | [Ch 15](15-ShapesAsMaterial.md) | [Geometry](../Docs/Drawing/Geometry.md) |
 | SVG import | Vector artwork read into shapes: draw it as authored, or mine it as geometry | [Ch 15](15-ShapesAsMaterial.md) | [SVG](../Docs/Drawing/SVG.md) |
 | Fourier epicycles | Rebuild any closed outline as a chain of spinning circles, term count as the detail dial | [Ch 15](15-ShapesAsMaterial.md) | [Epicycles](../Docs/Drawing/Epicycles.md) |
+| De Bruijn sequences | A cyclic run holding every window of a given length exactly once, with the reader that turns a window back into a position | [Ch 6](06-GridsAndRepetition.md) | [De Bruijn sequences](../Docs/Generators/DeBruijn.md) |
 | Polyominoes | Pieces of joined squares, the twelve pentominoes, and a search that fits a bag of them into a region exactly or says it cannot | [Ch 7](07-Tiles.md) | [Polyominoes](../Docs/Generators/Polyominoes.md) |
 | Power diagrams | Voronoi cells for sites that carry a weight, so circles of different sizes get territories that never cut through them | [Ch 15](15-ShapesAsMaterial.md) | [Voronoi and Delaunay](../Docs/Drawing/Voronoi.md) |
 | Ford circles | A circle for every fraction that touches its neighbors and overlaps nothing, over the Farey sequence and an exact `Fraction` type | [Ch 6](06-GridsAndRepetition.md) | [Ford circles](../Docs/Generators/FordCircles.md) |

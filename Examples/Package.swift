@@ -444,6 +444,7 @@ let package = Package(
         example("Patterns/FordCircles"),
         example("Patterns/PowerDiagram"),
         example("Patterns/Pentominoes"),
+        example("Patterns/DeBruijn"),
         example("Patterns/Truchet"),
         example("Patterns/Hitomezashi"),
         example("Patterns/Kolam"),
