@@ -14,6 +14,7 @@ Each sketch is a **recreation and homage** made after the artist. It isn't a rep
 
 ### Artists
 
+- [**Georg Nees**](GeorgNees/). The first exhibited computer art, and the plate where a ruled grid falls into gravel.
 - [**Vera Molnár**](VeraMolnar/). Order and disorder in algorithmic geometry.
 - [**Bridget Riley**](BridgetRiley/). Black-and-white Op art, with optical movement from precise geometry.
 - [**Osamu Sato**](OsamuSato/). Surreal totems and glyphs built from basic shapes, in bold black and white with red.
