@@ -47,15 +47,6 @@ float4 shade(float2 uv, ShaderInfo info) { ... }
 - **`info`** carries the per-frame values: `info.time`, `info.deltaTime`, `info.frame`, `info.resolution` (the layer size in pixels), `info.mouse` (in points), and your `params` (see below).
 - **Return** a straight (non-premultiplied) **sRGB** color, `0…1`. Ollin handles the conversion to the premultiplied linear color a layer composites in, so `float4(0.5, 0.5, 0.5, 1.0)` reads as mid-gray on screen.
 
-```
-uv = (0,0) ┌───────────────┐
-           │               │
-           │   uv = (.5,.5) │   info.resolution = layer size in px
-           │       •        │   info.time       = seconds, animates on its own
-           │               │
-           └───────────────┘ uv = (1,1)
-```
-
 <img src="../../Guide/Images/17-YourFirstShader/UVSpace.jpg" alt="The uv gradient annotated: (0,0) at the top left, (1,0) top right, (0,1) bottom left, (1,1) bottom right, with the center marked (0.5, 0.5)" width="680">
 
 Ollin generates the surrounding Metal fragment (and a fullscreen vertex) for you and calls `shade` once per pixel.

@@ -12,21 +12,7 @@ Nothing is undone in software. The plate on the page is a real drawing, and the 
 
 <img src="../../Guide/Images/15-ShapesAsMaterial/MirrorReads.jpg" alt="Two panels. On the left, a ring of stretched, reversed letters curling around an empty circle, unreadable. On the right, a panel showing the word MIRROR standing upright and slightly curved, which is what the eye receives from that same ring" width="680">
 
-```
-        the page, seen from above
-
-              .-''''-.              the picture is wrapped
-            .'        '.            around the near face of
-           |   mirror   |           the glass, at true size
-            '.        .'
-      .------''-....-''------.
-     /       the plate        \     the marks land between
-    /   (unreadable on its     \    the glass and the eye,
-   '     own, and always        '   and spread as they go
-   |      outside the circle)   |
-                  o
-                 eye
-```
+<img src="../../Guide/Images/Docs/AnamorphosisSetup.jpg" alt="The page seen from above: a circle labeled mirror with an orange band wrapped along its near face, faint sight lines fanning from an eye below it, and orange marks landing on those lines between the glass and the eye, wider toward the edges" width="680">
 
 ### Contents
 

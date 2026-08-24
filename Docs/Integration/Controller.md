@@ -90,11 +90,8 @@ prints A, B, X and Y, and the system reports them by position, so `.a` is always
 the bottom face button and a sketch written for one controller works on the
 other.
 
-```
-       (y)                triangle
-    (x)   (b)        square      circle
-       (a)                 cross
-```
+In the diamond, `.y` (triangle) is the top face button, `.x` (square) the
+left, `.b` (circle) the right, and `.a` (cross) the bottom.
 
 The rest: `.leftShoulder`, `.rightShoulder`, `.leftTrigger`, `.rightTrigger`,
 `.leftStick` and `.rightStick` (clicking a stick in), `.up`, `.down`, `.left`,

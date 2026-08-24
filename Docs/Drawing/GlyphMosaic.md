@@ -6,18 +6,6 @@
 
 **`drawGlyphMosaic`** rebuilds an image as a grid of text glyphs. Each cell measures the brightness underneath and shows the character whose ink matches. It's the classic text-mode rendering, generalized. The character set is any string you type, and the ramp is not hand-ordered. Every glyph's actual ink coverage is measured in the active font. So quadrant blocks, checkered squares, braille dots, and plain letters all sort themselves correctly, and characters the font doesn't cover simply drop out.
 
-```
-  the picture              drawGlyphMosaic(picture)
-
-  ░░▒▒▓▓██                   · ∙ ▚ ▩ ⣿ ■
-  ░░░▒▒▓▓▓          →          · x ⊞ ▦ ▩
-  ░░░░▒▒▒▓                       · + ▤ ▧
-  ░░░░░▒▒▒                          · = ⊞
-
-  bright cells earn dense marks, faint cells a lone dot,
-  and cells below the sparsest glyph stay truly empty
-```
-
 By default bright cells get dense glyphs, which reads as light marks on a dark canvas, the terminal look. Pass `inverted: true` for the paper reading, where dark cells carry the ink. Deterministic given the image, columns, characters, and font, so a mosaic is snapshot- and recipe-safe.
 
 <img src="../../Guide/Images/09-Pictures/PictureAsGlyphs.jpg" alt="Two dark panels showing the same sunset: on the left a mosaic of ASCII characters that get denser toward the sun, on the right a halftone screen of dots that grow toward the sun" width="680">

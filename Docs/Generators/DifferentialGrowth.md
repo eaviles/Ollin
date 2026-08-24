@@ -8,19 +8,6 @@ A line of connected nodes that grows and folds into organic, brain-coral structu
 
 Unlike the one-shot generators ([circle packing](./Packing.md), [L-systems](./LSystem.md)), this is a **stateful stepper**: you build a `DifferentialGrowth` once, hold it, and advance it each frame. It's seeded, so the same seed grows the same form, and the evolving line is ordinary geometry (`nodes` / `contour`), which feeds stroking, filling, the [shape booleans](../Drawing/Geometry.md), hatching, and SVG export.
 
-```
-  the three per-node forces                    edge splitting
-
-     prev                                   a - - - - - - b       edge too long
-       \      · · · · ·  repel from             \       /
-        \    ·  nearby  ·   nearby nodes    →     \  m  /    →   insert a node
-     ----o----·  nodes  ·                          \ | /         at the midpoint
-        /    ·  · · · · ·                            \|/          so the line can
-       /    ↑                                         m           lengthen + fold
-     next   attract to neighbors +
-            align toward their midpoint
-```
-
 ### Contents
 
 - [Building and stepping](#step)

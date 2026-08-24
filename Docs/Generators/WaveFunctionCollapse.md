@@ -8,15 +8,6 @@ Fill a grid from a small set of tiles so that **every pair of neighbors is legal
 
 The result is a grid of tile indices, which you draw however you like. Each tile is a `Shape` or a small draw block, so it feeds the existing geometry path. A solve is a pure function of the [`seed`](./Random.md#seed), so the same seed always produces the same layout.
 
-```
-  each cell holds all tiles        collapse the most            propagate: neighbors
-       ┌───┬───┬───┐               constrained cell              lose options that no
-       │▤▤▤│▤▤▤│▤▤▤│                   ┌───┬───┐                 longer fit, spreading
-       ├───┼───┼───┤        →          │ ═ │▤▤▤│      →          outward until stable,
-       │▤▤▤│▤▤▤│▤▤▤│                   └───┴───┘                 then collapse the next
-       └───┴───┴───┘
-```
-
 There are two models, and they differ in where the rules come from. The **tiled** model, below, takes tiles you designed and edge sockets you declared. The [**overlapping**](#overlapping) model takes a small picture and works the vocabulary out for itself.
 
 ### Contents

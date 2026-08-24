@@ -15,15 +15,6 @@ They are all geometry, not draw calls. Each hands back typed tiles or contours t
 
 <img src="../../Guide/Images/07-Tiles/AperiodicTiles.jpg" alt="Four panels: Penrose kites and darts with colored arcs, Penrose rhombs, a teal star pattern woven over a honeycomb, and curved spectre tiles with a few orange ones" width="680">
 
-```
-  penroseTiling          wangTiling          girihPattern         spectreTiling
-
-   ◇ ◆ ◇◆◇                ◤◩◣▦◧               ✶─✦─✶                ⟡⟡⟡⟡
-  ◆ ◇ ◆ ◇ ◆               ▦◪◥◫◤               │ ✧ │               ⟡⟡⟡⟡⟡
-   ◇◆ ✶ ◆◇                ◧◫◭▦◩               ✦─✶─✦                ⟡⟡⟡⟡
-  never repeats        edges must match     rays meet as stars   one tile, no repeats
-```
-
 Penrose and spectre generation is rng-free, so the same call always lays the same patch. Girih is a pure function of its polygons. Wang rides the seeded `random`, so a [`seed`](../Generators/Random.md#seed) reproduces the quilt. The periodic siblings live on the [tiling & layout](./Tiling.md) page, and every polygon here composes with [`girihPattern`](#girihPattern), which decorates *any* edge-to-edge tiling.
 
 ### Contents

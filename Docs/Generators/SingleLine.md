@@ -6,15 +6,6 @@
 
 **`singleLine`** connects a set of points into one continuous tour. That is the TSP-art rendering of an image: [stipple](./Stippling.md) a picture, tour the dots, and the one unbroken line reads as the picture. Dark regions pull the line into tight meanders, and light regions let it stride. The technique is Bosch and Kaplan's TSP art. The tour here is a nearest-neighbor construction polished by 2-opt, which also removes the crossings that would muddy the tone.
 
-```
-  the stipple                 singleLine(through: dots)
-
-   ·  · ·  ·                    ┌──┐ ┌───┐
-  · ····· ·          →          │ ┌┘─┘┐ ─┘│
-   ·· · ··                      └─┘└──┘───┘
-                                one closed loop, no crossings
-```
-
 The output is a plain `Contour`, so it feeds `drawPolyline`, `drawCurve` for the smoothed reading, [hatching and SVG export](../Output/Export.md), and shape sampling. A single closed line is the friendliest thing a pen plotter can be handed.
 
 <img src="../../Guide/Images/09-Pictures/PictureAsLines.jpg" alt="Three panels: a stipple of the sunset with a clear void where the sun is, the same dots joined into one maze-like unbroken tour, and the same dots joined into branching tree chains" width="680">

@@ -47,19 +47,9 @@ randomGaussian() -> Double
 randomGaussian(mean: Double, deviation: Double) -> Double
 ```
 
-A normally distributed random `Double` (Marsaglia polar method): standard normal, or with the given mean and standard deviation. Reads as more natural scatter than the flat spread of `random`. See the `Gaussian` example.
+A normally distributed random `Double` (Marsaglia polar method): standard normal, or with the given mean and standard deviation. Reads as more natural scatter than the flat spread of `random`. About 68 percent of samples land within one deviation of the mean, and about 95 percent within two. See the `Gaussian` example.
 
 <img src="../../Guide/Images/04-Randomness/UniformVsGaussian.jpg" alt="Two scatter panels with histograms beneath: uniform random spreads dots evenly with a flat histogram, Gaussian random piles dots around the center with a bell-shaped histogram" width="680">
-
-```
-  Bell-curve scatter: samples cluster near the mean, thin out farther away.
-
-            ▁▄█▄▁
-          ▁▄█████▄▁          ~68% land within 1 deviation (d) of the mean
-        ▁▄█████████▄▁        ~95% within 2 deviations
-      ────┼────┼────┼────
-         m−d   m   m+d
-```
 
 ```swift
 let x = randomGaussian(mean: width / 2, deviation: 80)  // clustered near the middle
@@ -91,27 +81,7 @@ ring(innerRadius: Double, outerRadius: Double) -> Vector2
 
 A random point in the ring between the two radii, centered on the origin. Add a center to place it. See the `Ring` example.
 
-```
-  ring(innerRadius: r, outerRadius: R) gives a uniform random point whose
-  distance from the origin O lands between r and R (a ring).
-
-  By distance from O (a ray pointing outward):
-
-     O ●────── r ──────○════════════○
-                  inner edge     outer edge (R)
-
-     a point lands on the ═══ band: farther than r, out to R.
-
-  As a ring centered on O:
-        ___________
-      ╱   _______   ╲
-     │   ╱       ╲   │      hole = closer than r        (no points)
-     │  │    O    │  │      band = between the circles   (points here)
-      ╲   ╲_____╱   ╱
-        ‾‾‾‾‾‾‾‾‾‾‾
-
-   add a center to place it:  center + ring(innerRadius: r, outerRadius: R)
-```
+<img src="../../Guide/Images/Docs/RandomRing.jpg" alt="Two panels around the same pair of circles. Left, the band between the inner and outer radius washed in orange, the two radii drawn as rays from the center dot, and the hole labeled no points. Right, fifteen hundred orange samples filling the band evenly and leaving the hole and the outside empty" width="680">
 
 ```swift
 let center = Vector2(width / 2, height / 2)

@@ -6,16 +6,6 @@
 
 **`Percolation`** fills a grid with open cells at a probability you choose, then reads the **clusters**: groups of open cells joined edge to edge. It is the standard model of a phase transition. Below the critical probability the open cells form scattered islands. Just past it, one giant cluster suddenly reaches across the whole grid. That threshold sits near 0.5927 on the square lattice, and sweeping `probability` through it is the show.
 
-```
-  p = 0.45                  p = 0.59                  p = 0.75
-
-  ·#··#···                  ##··##·#                  ####·###
-  ··##····                  ·####··#                  #·#####·
-  #··#··#·                  ··##/##·                  ########
-  ····#···                  #·####··                  ##·####/
-  islands                   almost touching           one cluster spans
-```
-
 The fill draws from the seeded generator, so the same seed always builds the same grid. Everything comes back as geometry: cell rectangles to fill, and traced boundary loops that stroke, hatch, and export to SVG for a pen plotter.
 
 <img src="../../Guide/Images/04-Randomness/ChanceInCrowds.jpg" alt="Three dark grid panels. At probability 0.50, scattered blue islands; at 0.56, one pale cluster strains most of the way across; at 0.63, a single gold cluster spans the grid, traced with a pale outline" width="680">

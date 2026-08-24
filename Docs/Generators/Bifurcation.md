@@ -10,20 +10,6 @@ The simplest systems that turn chaotic: a one-dimensional map `x' = f(x, r)` ite
 - Where orbits settle across every dial position, through `bifurcation`, the fig-tree diagram.
 - Whether a position is truly chaotic, through `lyapunovExponent`.
 
-```
-  x                                          .::
-  1 ─                              _....--─":::'
-      ─._                      _.-"   ..:::::::   the bifurcation diagram:
-         "──._            _.-"      .:::::' :::   one dial position per
-              "──.__  _.-"  __..--─"::.     .::   column, the settled
-                    "|_..--"     ':::::.. .:::'   orbit's values stacked
-                      "─.__        ':::::::::     vertically
-                           "──._     '::::::::.
-  0 ─                           "──----─':::::'
-      |            |               |          |
-     2.4          3.0            3.57         4    r
-```
-
 Everything is a pure function of the map and its arguments, with no randomness anywhere, so every diagram reproduces exactly.
 
 ### Contents

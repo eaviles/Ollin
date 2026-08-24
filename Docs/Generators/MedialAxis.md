@@ -6,17 +6,6 @@
 
 **`medialAxis`** reduces a shape to its skeleton. That skeleton is traced by the centers of every disk that fits inside the region and touches its boundary twice or more. Blum called it the medial axis. A blob collapses to its centerline veins, a letterform to the stroke of the pen that could have written it. Every skeleton point carries the radius of its inscribed disk, so the skeleton knows how fat the shape is everywhere along it. Stroke the branches for pure line work, size marks by the radii, or draw the disks themselves for a packed, cellular fill.
 
-```
-  the shape                its medial axis
-
-   ________                 ________
-  /        \___            /        \___
- |   ___       \    →     |  ---·---    \       every · carries r,
- |  /   \      |          |  ring    ·--|       the inscribed-disk
-  \ \___/     /            \  ---   /           radius there
-   \_________/              \______/
-```
-
 <img src="../../Guide/Images/15-ShapesAsMaterial/Skeleton.jpg" alt="Two panels of the same lobed blob: on the left its medial axis as branching lines down the middle of each lobe, on the right the inscribed disks those branches carry, each disk touching the outline" width="680">
 
 The skeleton comes back as polyline branches. Open runs join branch points, and a closed ring goes around each hole. That feeds `drawPolyline` and [hatching and SVG export](../Output/Export.md) directly, with each branch one pen-down stroke on a plotter.

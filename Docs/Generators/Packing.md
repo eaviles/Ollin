@@ -11,20 +11,6 @@ Fill a region with circles that grow until they touch but never overlap, the cla
 
 The output is `[Circle]`, so it feeds straight into [`drawCircles`](../Drawing/Drawing.md), the [shape booleans](../Drawing/Geometry.md), hatching, and SVG export.
 
-```
-  packCircles(count:)              packCircles(around: sites)       relaxCircles(overlapping)
-
-    ___     __   ___                 __   __   __   __              (  (○)  )   overlap →
-   (   )   (  ) (   )               (  ) (  ) (  ) (  )              ( ○  ○ )   push apart
-   (   ) o (  )O(   )               (__) (__) (__) (__)                 ↓          ↓
-   (___)   (__) (___)               __   __   __   __              ( ○ )( ○ )  no overlap,
-    o  ___   o   __                 (  ) (  ) (  ) (  )             ( ○ )( ○ )  radii fixed
-     O(   ) O   (  )                (__) (__) (__) (__)
-
-  big first, small fill gaps       one circle per point,           separation only, no
-  (varied radii)                   grown to just touch (a foam)     growth
-```
-
 <img src="../../Guide/Images/15-ShapesAsMaterial/PackingLapse.jpg" alt="Four panels of the same seeded circle packing at step 2, 8, 30, and 220: a few large circles claim the space early and ever smaller circles fill the leftover gaps" width="680">
 
 ### Contents

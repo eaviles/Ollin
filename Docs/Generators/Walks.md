@@ -4,19 +4,7 @@
 
 ## Random walks
 
-Paths built one random step at a time. The family has three members, and they make very different marks.
-
-```
-  randomWalk                levyFlight                 selfAvoidingWalk
-
-     ┌┐▪▫┐                     ▓▒                        ┌──┐ ┌───┐
-    ┌┘└┼┼┘┐                      \____                   │ ┌┘ └┐ ┌┘
-    └┐┌┼┘▪┘                           \      ▓▒          └─┘ ┌─┘ │
-     └┘└┘                              ▒▓___/            ┌───┘ ┌─┘
-
-  a dense local tangle       tight clusters strung      one unbroken line
-  that drifts slowly         together by rare jumps     that never crosses
-```
+Paths built one random step at a time. The family has three members, and they make very different marks: `randomWalk` a dense local tangle that drifts slowly, `levyFlight` tight clusters strung together by rare jumps, `selfAvoidingWalk` one unbroken line that never crosses itself.
 
 All three draw from the seeded `random`, so [`seed`](./Random.md#seed) reproduces the path. All three return plain `[Vector2]`, ready for `drawPolyline`, `Contour`, hatching, or [SVG export](../Output/Export.md).
 

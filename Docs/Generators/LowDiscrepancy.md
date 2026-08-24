@@ -6,17 +6,6 @@
 
 Plain [`random`](./Random.md) scatter clumps and leaves holes. [Blue noise](./BlueNoise.md) fixes the spacing, but it's one fixed layout for one radius. A **low-discrepancy sequence** is the third option, an ordered, deterministic *stream* of points that covers a region evenly at **every** count, where growing the count only adds points and never moves the ones already placed.
 
-```
-  haltonPoints(count: 4)          haltonPoints(count: 8)
-
-    ·         ·                     · ·       · ·
-                          →
-         ·         ·                  ·  ·      ·  ·
-
-  the first 4 points of the longer run are the same 4 points,
-  in the same places; the new ones land in the largest gaps
-```
-
 That *prefix property* is the whole trick. Draft a piece with 100 points and render it with 10,000, and the draft is a subset of the final. There's no seed and no rng anywhere, just index in, point out.
 
 <img src="../../Guide/Images/15-ShapesAsMaterial/HaltonGrowth.jpg" alt="Three panels showing the first 40, 160, and 640 points of one Halton sequence; the earlier points appear in identical positions in every panel, drawn dark, while the new points fill the remaining gaps in orange" width="680">

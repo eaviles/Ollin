@@ -8,16 +8,6 @@ Watercolor pigment from nothing but polygon deformation and translucency. A **`W
 
 The one-liner is **`drawWatercolor`**. The typed base is for interleaving pigments and reusing a blob's character. This is the *geometric* take, which is cheap and plotter-friendly. For actual wet paint that flows, dries with darkened edges, and glazes optically, see the [watercolor simulation](../Simulation/Watercolor.md).
 
-```
-  base polygon        one layer           forty layers
-
-     _____            /\_/\__             .:*#####*:.
-    /     \          /       \_          :*##########*:
-    \     /          \_    __ /          '*###########*'
-     \___/             \/\/  \_            ':*#####*:'
-   ten sides          wobbled           soft-edged pigment
-```
-
 <img src="../../Guide/Images/15-ShapesAsMaterial/WatercolorLayers.jpg" alt="Three panels: a plain ten-sided irregular polygon, one deformed layer of it painted at four percent opacity showing only a faint wandering outline, and forty layers stacked into a solid blue pool with a ragged fringe" width="560">
 
 ### Contents

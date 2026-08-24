@@ -8,16 +8,6 @@
 
 <img src="../../Guide/Images/30-Seeing/SlitScanDelay.jpg" alt="Two panels: a synthetic clip's newest frame showing horizontal stripes with one bright horizontal band, and the slit-scanned version where that band has become a clean diagonal and the stripes have sheared" width="680">
 
-```
-  frames, newest → oldest        image(delay: { uv in uv.x })
-
-  t0   t1   t2   t3              ┌────────────────┐
-  ●    ●     ●     ●             │ t0 │ t1 │ t2 │ t3 │
-  │    │     │     │      →      │  each column reads │
-  └────┴─────┴─────┘             │  further back      │
-                                 └────────────────┘
-```
-
 ### Contents
 
 - [Building the history](#history)

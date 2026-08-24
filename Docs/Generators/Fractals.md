@@ -15,15 +15,6 @@ Six ways a handful of numbers unfolds into infinite detail:
 
 All six are deterministic. The point emitters run off a seedable generator, and the Kleinian walk uses no randomness at all. The escape-time siblings (`.mandelbrot`, `.julia`, `.orbitTrap`) live on the GPU as [generators](../Drawing/Effects.md#generate).
 
-```
-  IFS                    flame                  inversion            Kleinian
-
-  a few affine maps      affine + nonlinear     mirrors turn the     two complex traces
-  played at random       warps, density         plane inside out     pick a Mobius group
-  condense onto one      counted per pixel,     around each circle   whose boundary is
-  shape                  shown through log      and lace remains     one fractal curve
-```
-
 ### Contents
 
 - [IFS (the chaos game)](#ifs)

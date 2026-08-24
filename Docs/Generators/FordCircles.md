@@ -6,18 +6,6 @@
 
 **`fordCircles`** gives every fraction a circle, and the circles fit together on their own. The fraction `p/q` in lowest terms gets a circle of radius `1/(2q²)` sitting on the number line at `p/q`, touching the line and nothing below it. Nothing in that rule asks the circles to fit, and yet no two of them ever overlap. Two of them touch exactly when `ps - qr` is `1` or `-1`, which is what it means for two fractions to be neighbors. Lester Ford described them in 1938.
 
-```
-        ___________                         ___________
-       /           \                       /           \
-      |     0/1     |                     |     1/1     |
-       \___________/       _______         \___________/
-                          /  1/2  \
-              __         |         |         __
-             /1/3\        \_______/        /2/3\
-    ________(_____)__________________(____)_______________
-      0            1/3       1/2       2/3            1
-```
-
 <img src="../../Guide/Images/06-GridsAndRepetition/CircleForEveryFraction.jpg" alt="Two panels of circles resting on a number line. On the left the fractions with denominators up to four, labeled, each circle touching its neighbors. On the right the same line once every denominator up to twelve has arrived, the new smaller circles dropping into the gaps between the old ones" width="680">
 
 A small denominator means a big circle, and a big circle means a fraction that stays a good approximation to everything near it. That is why the picture was drawn in the first place. It shows how well a number can be approximated by fractions: the circles that reach highest belong to the fractions worth approximating with.

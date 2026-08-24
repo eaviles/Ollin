@@ -6,14 +6,7 @@
 
 **`isolines`** traces the level curves of a scalar field by marching squares. Give it any `(Vector2) -> Double` field and a level, and back come the contours where the field crosses that level. The field can be noise, image brightness, or your own math. It reads a surface as a topographic map, outlines a metaball blob, and renders a photograph in tone lines, all from one call.
 
-```
-  the field, sampled              isolines(at: 0.5) { field }
-
-  .2 .4 .6 .7                        ╭────╮
-  .3 .6 .8 .8            →          ╱  ·  │      closed where it fits,
-  .2 .4 .6 .7                       ╰────╮│      open where it runs
-  .1 .2 .3 .4                            ╰┤      off the edge
-```
+<img src="../../Guide/Images/Docs/IsolineMarch.jpg" alt="A rectangle of gray dots sampled on a grid, darker where a hidden field runs higher, with an orange contour threading between them: a closed ring around the bump that fits inside, and an open arc ending where it runs off the right edge" width="680">
 
 A contour that closes inside the bounds comes back as a closed `Contour`. One that runs off the edge comes back open, ending on the boundary, so check `isClosed` when drawing. The output feeds `drawPolyline`, `drawCurve` for the rounded reading, `smoothed(iterations:)`, and [hatching and SVG export](../Output/Export.md).
 

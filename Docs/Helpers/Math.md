@@ -23,20 +23,9 @@ A small, growing set of the familiar creative-coding math functions, callable ba
 map(_ value: Double, _ start1: Double, _ stop1: Double, _ start2: Double, _ stop2: Double, clamp: Bool = false) -> Double
 ```
 
-Linearly re-map `value` from one range onto another. By default it extrapolates past the range; pass `clamp: true` to hold the result inside `start2...stop2`.
+Linearly re-map `value` from one range onto another: the result sits at the same fraction along `start2...stop2` that `value` sat along `start1...stop1`. By default it extrapolates past the range; pass `clamp: true` to hold the result inside `start2...stop2`.
 
-```
-  map keeps value at the same FRACTION along, in the new range:
-
-   start1 ├──────────●────────────────┤ stop1     value sits 30% along
-                    30%
-                     │ same fraction
-                     ▼
-   start2 ├──────────●────────────────┤ stop2     result is 30% along
-
-   map(sin(time), -1, 1, 60, 200):   -1 → 60,   0 → 130,   1 → 200
-   with clamp: true, results past the ends hold at start2 / stop2
-```
+<img src="../../Guide/Images/03-MotionAndTime/MapAndLerp.jpg" alt="Top: a value carried between two number lines by its fraction along, map. Bottom: dots walking a segment from a to b as t runs 0 to 1, lerp" width="680">
 
 ```swift
 let r = map(sin(time), -1, 1, 60, 200)   // -1...1 → 60...200
@@ -72,8 +61,6 @@ The point `t` of the way from `a` to `b`. `t` is not clamped, so values outside 
 ```swift
 let x = lerp(120, width - 120, Easing.easeInOut(progress))
 ```
-
-<img src="../../Guide/Images/03-MotionAndTime/MapAndLerp.jpg" alt="Top: a value carried between two number lines by its fraction along, map. Bottom: dots walking a segment from a to b as t runs 0 to 1, lerp" width="680">
 
 A looping `t` driven by the sketch clock comes from [`loopProgress(over:)` and `pingPong(over:)`](../Helpers/Animation.md#loop).
 

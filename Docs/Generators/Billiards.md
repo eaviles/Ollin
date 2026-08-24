@@ -60,14 +60,6 @@ Where a ball is let go matters as much as the room. In a circle it decides how b
 
 **A stadium keeps nothing.** Cut the circle in half and pull the halves apart, and the hole goes. The path fills the room, and two balls let go a hair apart end up nowhere near each other within a few dozen bounces. That is the whole reason the shape is famous.
 
-```
-   circle                ellipse               stadium
-   ___                   _______               ______
-  / o \   a hole        (  |||  )  two kinds  ( ~~~~ )  no hole,
-  \___/   in the         \_____/   of path     \____/   and no
-          middle                                        pattern
-```
-
 <a name="obstacles"></a>
 
 #### Things standing in the room

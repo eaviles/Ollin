@@ -6,19 +6,6 @@
 
 Every runner heads straight at whoever it was told to run at, and the paths they leave behind are the drawing. Put a runner on each corner of a polygon, tell each one to chase the next, and start them together. Nobody travels in a straight line, because every target is moving too. The ring shrinks and turns at the same time, and the runners meet in the middle.
 
-```
-   each runner heads at the next          and this is what they leave
-
-   A - - - - - ->- - - - - B          A                         B
-   ^                       |            \._                 _./
-   |                       |               '-._         _.-'
-   |                       v                   '-._ _.-'
-   |                                               X
-   |                       |                   _.-' '-._
-   |                       |               _.-'         '-.
-   D - - - - - -<- - - - - C          D _.-'                 '-._ C
-```
-
 <img src="../../Guide/Images/12-FlocksAndSwarms/PursuitDogs.jpg" alt="Two-panel diagram. Left: four dogs at the corners of a square, faint chase lines filling it, and four identical spirals curling into the middle, one of them orange. Right: a quarry running straight up a faint line while an orange curve sweeps in from the right and meets it" width="680">
 
 Nothing here is random, so the same start always runs the same chase. What comes out is ordinary geometry, ready for stroking, filling, the [shape booleans](../Drawing/Geometry.md), hatching, and SVG export.

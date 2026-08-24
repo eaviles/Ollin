@@ -110,13 +110,7 @@ The window wants to be large enough to hold both ink and paper. If it is smaller
 marks, the middle of a thick stroke can see nothing but more stroke, decides that is what
 paper looks like there, and comes out hollow:
 
-```
-window too small          window large enough
-┌──────────────┐          ┌──────────────┐
-│  ███    ███  │          │  ██████████  │   the same stroke, cut
-│  ██      ██  │          │  ██████████  │   at two window sizes
-└──────────────┘          └──────────────┘
-```
+<img src="../../Guide/Images/Docs/HollowStroke.jpg" alt="The same page of a solid disc, a fat ring, and a heavy bar cut by the adaptive threshold twice: with a 20 pixel window every mark comes out as a hollow outline, and with a 160 pixel window all three stay solid ink" width="680">
 
 Since the window costs nothing to widen, err on the wide side. The published default of an
 eighth of the image is a good starting point for a page of text.

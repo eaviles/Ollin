@@ -135,23 +135,7 @@ let x = lerp(120, width - 120, Easing.easeInOutCubic(t))     // eased across the
 drawCircle(x, height / 2, 40 * scale)
 ```
 
-The input `t` is clamped to `0...1` first, so values past the ends hold flat. The output is *not* clamped: the back, elastic, and bounce curves overshoot the range on purpose and settle exactly on the endpoints.
-
-```
-  Each curve reshapes a 0→1 progress (x) into a 0→1 output (y):
-
-   linear          easeIn          easeOut         easeInOut
-    │     ╱          │     ╱         │   ╭───        │     ╭─
-    │   ╱            │    ╱          │  ╱            │    ╱
-    │ ╱              │  ╱            │ ╱             │  ╱
-    ●────            ●─╯──           ●────           ●╯───
-   constant rate    slow → fast     fast → slow     slow-fast-slow
-
-  back, elastic, and bounce overshoot past 0 and 1 before settling:
-    back     dips below 0, then overshoots past 1
-    elastic  springs around the target before resting
-    bounce   settles onto the end in shrinking hops
-```
+The input `t` is clamped to `0...1` first, so values past the ends hold flat. The output is *not* clamped: the back, elastic, and bounce curves overshoot the range on purpose and settle exactly on the endpoints. Back dips below zero before overshooting past one, elastic springs around the target before resting, and bounce settles onto the end in shrinking hops.
 
 <img src="../../Guide/Images/03-MotionAndTime/ShapingCurves.jpg" alt="Three panels showing linear, step, and smoothstep as curves over a faint identity diagonal, each with a strip of thirteen dots spaced by the curve" width="680">
 

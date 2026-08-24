@@ -8,16 +8,6 @@ An **L-system** (Lindenmayer system) grows a string by rewriting its symbols, th
 
 Three pieces define one: an **axiom** (the starting string), **production rules** (how each symbol rewrites, applied to *every* symbol at once each pass), and the number of **iterations** (rewrite passes). The turtle then reads the final string left to right.
 
-```
-  axiom:  F              rule:  F -> F+F-F-F+F           angle 90
-
-  iter 0:  F
-  iter 1:  F+F-F-F+F          every F becomes the rule,
-  iter 2:  F+F-F-F+F +        the +/- carried along, so
-           F+F-F-F+F -        the string grows ~5x a pass
-           F+F-F-F+F - ...
-```
-
 <img src="../../Guide/Images/13-GrowingThings/LSystemExpansion.jpg" alt="Four panels of the same plant grammar drawn after one to four rounds of rewriting, growing from a bare stalk to a full fern, with the letter count under each panel rising from 18 to 1551" width="680">
 
 The output is a set of open `[Contour]`s (the line-work), so it feeds straight into stroking, the [shape booleans](../Drawing/Geometry.md), hatching, and SVG export for the pen plotter. A run is a pure function of the grammar (and, for a stochastic one, the [`seed`](./Random.md#seed)), so the same seed always grows the same form.

@@ -8,21 +8,7 @@ Put the **same little tile** on every cell of a grid, but **spin each one to a r
 
 <img src="../../Guide/Images/07-Tiles/TruchetTiles.jpg" alt="Two panels of white line work on dark squares: quarter-circle arcs joining into meandering loops, and corner-to-corner diagonals forming a maze" width="680">
 
-Two tiles are built in, each with two orientations:
-
-```
-  .arcs  (two quarter-circles              .diagonals  (one corner-to-corner
-          joining edge midpoints)                       line)
-
-   ╭─  ─╮        ╮  ╭                          ╲              ╱
-   │    │   or   │  │                           ╲     or     ╱
-   ╰─  ─╯        ╯  ╰                            ╲          ╱
-
-  arcs meet across borders into           diagonals read as a maze of
-  smooth loops and rings                  corridors (the one-line-program look)
-```
-
-The output is a set of open `Contour`s, the line-work. It strokes, hatches, feeds the [shape booleans](./Geometry.md), or exports to SVG for a pen plotter.
+Two tiles are built in, `.arcs` and `.diagonals`, each with two orientations (see [Tile styles](#tiles)). The output is a set of open `Contour`s, the line-work. It strokes, hatches, feeds the [shape booleans](./Geometry.md), or exports to SVG for a pen plotter.
 
 ### Contents
 

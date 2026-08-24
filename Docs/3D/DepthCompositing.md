@@ -119,20 +119,7 @@ Two practical notes. The metric overload **needs a camera**, since it reads the 
 <a id="how"></a>
 ### How occlusion reads
 
-Occlusion follows the depth buffer *and* draw order. A 2D mark at depth `d` is hidden wherever nearer geometry has already written a smaller depth. It writes `d` itself, so it hides farther geometry drawn after it. The classic arrangement is to draw the 3D scene first, then the depth-placed 2D over it:
-
-```
-        camera looks  ──►
-        ┌─────────────────────────────┐
-        │   ● near orb (small depth)   │   drawn first, writes depth
-        │        ┌───────────┐         │
-        │        │  2D card  │  depth d │   tests ≤ d: passes over the far orb,
-        │        └───────────┘         │   fails behind the near orb
-        │              ● far orb (big depth)   hidden by the card
-        └─────────────────────────────┘
-```
-
-The near orb was drawn before the card, so it shows *over* it. The card's depth test fails where the orb wrote a nearer value. The far orb is *hidden* by the card. See the [`3D/DepthCompositing`](../../Examples/3D/Depth/DepthCompositing/) example.
+Occlusion follows the depth buffer *and* draw order. A 2D mark at depth `d` is hidden wherever nearer geometry has already written a smaller depth. It writes `d` itself, so it hides farther geometry drawn after it. The classic arrangement is to draw the 3D scene first, then the depth-placed 2D over it. Picture a near orb, a far orb, and a card at a depth between them. The near orb was drawn before the card, so it shows *over* it: the card's depth test fails where the orb wrote a nearer value. The far orb is *hidden* by the card. The opening figure runs the same test, one ring per pillar. See the [`3D/DepthCompositing`](../../Examples/3D/Depth/DepthCompositing/) example.
 
 <a id="notes"></a>
 ### Notes

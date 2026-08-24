@@ -4,15 +4,7 @@
 
 ## Ulam spiral
 
-**`ulamSpiral`** writes the whole numbers in a square spiral from the middle outward, one per cell, so a test on the numbers becomes a picture. Mark the primes and the marks do not scatter. They gather along diagonal lines, which is what Stanisław Ulam noticed on a notepad during a dull talk in 1963.
-
-```
-   17 16 15 14 13          the walk starts in the middle and
-   18  5  4  3 12          turns as soon as the side it is on
-   19  6  1  2 11          runs out: right one, up one, left
-   20  7  8  9 10          two, down two, right three, and so
-   21 22 23 24 25          on, forever, filling the square
-```
+**`ulamSpiral`** writes the whole numbers in a square spiral from the middle outward, one per cell, so a test on the numbers becomes a picture. The walk turns as soon as the side it is on runs out: right one, up one, left two, down two, right three, and so on, forever, filling the square. Mark the primes and the marks do not scatter. They gather along diagonal lines, which is what Stanisław Ulam noticed on a notepad during a dull talk in 1963.
 
 <img src="../../Guide/Images/06-GridsAndRepetition/NumbersInASpiral.jpg" alt="Two panels: a seven by seven grid with the numbers 1 to 49 written in a spiral and the walk drawn under them, and a sixty-one cell square with only the primes marked as dots, falling along visible diagonals" width="680">
 

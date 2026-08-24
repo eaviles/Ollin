@@ -10,14 +10,6 @@
 deBruijnSequence(symbols: 2, window: 3)   // 0,0,0,1,0,1,1,1
 ```
 
-```
-   0 0 0 1 0 1 1 1        read three at a time, around the ring:
-   ^^^^^                  000  001  010  101  011  111  110  100
-     ^^^^^                eight windows, and there are eight
-       ^^^^^              three-bit patterns. none repeated,
-         ...              none missing
-```
-
 <img src="../../Guide/Images/06-GridsAndRepetition/EveryWindowOnce.jpg" alt="On the left an eight-bead strip of two colors with the eight windows of three it holds listed underneath, all different. On the right a ring of sixty-four beads in four tones with one window of three picked out and labeled bead 11" width="680">
 
 That is as short as such a run can be. There are `symbols` to the power of `window` windows to fit, and each one takes a place, so the run is exactly that long.

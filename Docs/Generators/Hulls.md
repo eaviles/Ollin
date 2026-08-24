@@ -8,15 +8,6 @@ Three answers to "what shape are these points?", in rising fidelity. [`convexHul
 
 The concave hull is the characteristic-shape construction of Duckham, Kulik, Worboys, and Galton, also called the chi-shape. The alpha shape is Edelsbrunner's alpha complex. Both are carved out of the same [Delaunay triangulation](../Drawing/Voronoi.md#delaunay) that powers Voronoi diagrams and the spanning tree.
 
-```
-  the scatter          convexHull          concaveHull          alphaShape
-
-   ···   ··            _________           __    ___            ___    __
-  ·····  ···          /         \         /  \__/   \          (···)  (··)
-   ···   ··           \_________/         \____   __/           (·)    --
-                     one taut band       dips the gulfs      islands and holes
-```
-
 <img src="../../Guide/Images/15-ShapesAsMaterial/HullTrio.jpg" alt="Three panels over one scatter of a dotted ring plus a small offshore cluster: the convex hull as one taut band around everything, the concave hull dipping a channel toward the cluster, and the alpha shape resolving the ring's hole and the island separately" width="680">
 
 The results are ordinary geometry. The hull comes back as points to wrap in a `Contour` or `Shape`, and the alpha shape as ready `Shape`s. Both feed `drawPolygon` and `drawShape`, the [booleans](../Drawing/Geometry.md#shape-booleans), and [hatching and SVG export](../Output/Export.md) directly.

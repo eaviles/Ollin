@@ -8,22 +8,6 @@ Scattering points over a mesh: trees on an island, moss on a rock, roots for hai
 
 The difference is the whole feature. A mesh puts vertices where its *shape* needs them, so a flat wall carries four and a rounded corner carries hundreds. Points picked from that list crowd the corner and leave the wall bare. Shuffling does not help, because the list itself is the wrong thing to draw from.
 
-```
-  Over the vertex list                  Over the surface
-
-     ····•····                             ·    ·   ·
-   ··•·······•··                         ·   ·    ·    ·
-  ·             ·                       ·    ·   ·   ·  ·
-  ·             ·                        ·     ·    ·   ·
-  ·             ·                       ·   ·    ·    ·
-   ··•·······•··                          ·    ·   ·   ·
-     ····•····                             ·   ·    ·
-
-  a globe's rings crowd at the poles,   a spot is as likely anywhere the
-  so the poles fill and the middle      surface holds the same area, which
-  goes bare                             is what the eye reads as even
-```
-
 <img src="../../Guide/Images/23-Landscapes/ScatteredSpots.jpg" alt="Three dark blue globes side by side, each wearing the same number of small green cone trees: the first crowded at the poles with a bare middle and trees standing in pairs, the second clumped with visible clearings, the third spread evenly all over" width="640">
 
 Every point comes back as a `SurfaceSample`. It knows more than the spot: the direction the surface faces there, the texture coordinate, and the triangle it landed on.

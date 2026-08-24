@@ -4,18 +4,7 @@
 
 ## Hitomezashi stitching
 
-The one-stitch sashiko pattern. Every line of a grid carries a row of **unit dashes**. **One bit per line** decides whether its dashes start on the edge or one cell in. Neighboring lines shift against each other, so the dashes join at the grid's crossings into steps, staircases, and closed loops. A handful of coin flips reads as a woven cloth. The whole design *is* those bits: one per horizontal line, one per vertical line, all reproducible from a [`seed`](../Generators/Random.md#seed).
-
-```
-  bit 0:  ──  ──  ──  ──      each line is dashes over alternating cells;
-  bit 1:    ──  ──  ──        its bit picks which alternation (the phase)
-
-  stack shifted lines both ways and the dashes meet at the crossings:
-
-      │ ──│  ──  │── │            steps, staircases, and loops
-      ──  │──  ──│  ──            emerge from nothing but the bits
-      │  ──  ││──  ── │
-```
+The one-stitch sashiko pattern. Every line of a grid carries a row of **unit dashes** over alternating cells. **One bit per line** decides whether its dashes start on the edge or one cell in (the phase of that alternation). Neighboring lines shift against each other, so the dashes join at the grid's crossings into steps, staircases, and closed loops. A handful of coin flips reads as a woven cloth. The whole design *is* those bits: one per horizontal line, one per vertical line, all reproducible from a [`seed`](../Generators/Random.md#seed).
 
 One design has **two faces**. The `stitches` are the line-work, one open two-point `Contour` per dash. They stroke, hatch, feed the [shape booleans](./Geometry.md), or export to SVG for a pen plotter. The `parities` two-color the cells. Every hitomezashi design splits the cloth into regions that exactly two tones can fill, and `parities` is that coloring.
 

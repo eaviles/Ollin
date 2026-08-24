@@ -6,18 +6,6 @@
 
 Grids of cells that evolve by a local rule. The one-dimensional family, `elementaryCA` and `totalisticCA`, computes a row of cells generation by generation. Stacking the generations as rows is the classic picture. One number picks the rule, and the rule picks order, fractals, or chaos. The **turmite** family, `Turmite`, is the other shape of the idea. It is a tiny machine that *walks* a 2D grid and paints as it goes, Langton's ant being the famous one. Both are pure CPU geometry sources, deterministic, and cheap enough to rebuild live under a knob.
 
-```
-  elementary: each cell reads             turmite: an ant reads the cell
-  (left, self, right), looks up           under it, writes, turns, moves
-  its next value in the rule byte
-                                                     ▲
-       ░ ░ █ ░ ░    generation 0                ┌────┼────┐
-       ░ █ █ █ ░    generation 1                │ ░ ░│░ █ │
-       █ █ ░ ░ █    generation 2                │ █ ░◄──┐ │
-       time runs down the canvas                │ ░ █ █ │ │
-                                                └───────┴─┘
-```
-
 <img src="../../Guide/Images/19-GridSimulations/WolframAndTurmite.jpg" alt="Two panels of black cells on cream. Left, rule 30 grown from a single cell into a triangle whose left half is regular stripes and whose right half is irregular, dotted with white triangles. Right, Langton's ant, a chaotic blot crossed by straight diagonal highways running off the edges" width="680">
 
 The GPU sibling is **Lenia**, the continuous Game of Life, which runs as a `Sim` on a persistent field. It lives with the other simulations in [Layered effects → simField](../Drawing/Effects.md#simfield), next to `.gameOfLife()`.

@@ -104,15 +104,7 @@ strokeAlign(_ align: StrokeAlign)   // .center (default), .inside, .outside
 
 Where the stroke sits relative to a shape's outline. The default `.center` straddles the edge, half the weight inside and half outside, which is what p5 and Processing do. `.inside` keeps the whole stroke within the shape, so its footprint doesn't change as the weight grows, which is handy for tiled grids where an outward border would overlap its neighbors. `.outside` puts the stroke entirely beyond the edge. This is state, like `strokeWeight`, so it holds until changed.
 
-```
-  strokeAlign, where the stroke weight sits across the shape's edge:
-
-            inside │ outside
-   .center    ▓▓▓▓▓│▓▓▓▓▓     straddles the edge (default, like p5)
-   .inside    ▓▓▓▓▓│          all weight inward; footprint unchanged
-   .outside        │▓▓▓▓▓     all weight outward
-                shape edge
-```
+<img src="../../Guide/Images/Docs/StrokeAnatomy.jpg" alt="Three labeled rows. strokeAlign: the same heavy circle outline straddling the marked shape edge, held entirely inside it, and pushed entirely outside it. strokeJoin: the same bend turned with a sharp miter, a cut-off bevel, and a rounded arc. strokeCap: the same segment ended flat at its marked endpoints, rounded past them, and squared past them" width="680">
 
 ```swift
 fill(.gray); stroke(.black); strokeWeight(20)
@@ -132,19 +124,6 @@ strokeJoin(_ join: StrokeJoin)   // .miter (default), .bevel, .round
 
 How a stroked path turns its corners. `.miter` extends the two outer edges until they meet at a sharp point, which is what keeps a chevron or a star's tips crisp, and it falls back to a flat bevel when a corner is acute enough that the point would shoot out into a long spike. `.bevel` always cuts the corner off with a straight edge, and `.round` fills it with an arc for a smooth bend. This is state, like `strokeWeight`, so it holds until changed.
 
-```
-  strokeJoin, how a stroked path turns a corner:
-
-     .miter            .bevel            .round
-       ╱╲               ╱──╲              ╱‾‾╲
-      ╱  ╲             ╱    ╲            ╱    ╲
-   sharp point      corner cut off    corner filled
-   where edges meet  with a flat edge  with an arc
-
-   .miter falls back to a bevel on very sharp corners, so the point
-   can't shoot out into a long spike.
-```
-
 ```swift
 stroke(.black); strokeWeight(20); strokeJoin(.round)
 drawPolyline([Vector2(120, 360), Vector2(540, 120), Vector2(960, 360)])   // a rounded peak
@@ -161,15 +140,6 @@ strokeCap(_ cap: StrokeCap)   // .butt (default), .round, .square
 ```
 
 How the open ends of a stroked path are finished. `.butt` ends the stroke flat at the endpoint, so its footprint stops exactly where the path does. `.round` adds a half-disk over each end (a rounded tip), and `.square` adds a flat extension half the stroke weight past the endpoint, so both `.round` and `.square` reach beyond the path's end by half the weight. This is state, like `strokeWeight`, so it holds until changed.
-
-```
-  strokeCap, how the open ENDS of a stroked path finish:
-
-   path  ●━━━━━━━━━┫ endpoint
-   .butt           ┃     flat at the endpoint (no overshoot)
-   .round          ┃)    rounded, reaches ½ the weight past the end
-   .square         ┃]    squared off, ½ the weight past the end
-```
 
 ```swift
 stroke(.black); strokeWeight(24); strokeCap(.round)
@@ -200,15 +170,7 @@ The named profiles cover the common marks:
 | `.nib(angle:thinness:)` | A flat calligraphy pen held at `angle`: the mark is fattest where the path runs across the nib and a hairline where it runs along it. `thinness` is how much width the thinnest direction keeps. |
 | `.values([...])` | Evenly spaced multipliers along the path, interpolated between: a width curve by hand, or one recorded from an input. |
 
-```
-  strokeProfile, at one strokeWeight:
-
-  .uniform          ▬▬▬▬▬▬▬▬▬▬▬▬▬▬
-  .taper()          ▁▂▄▆████▆▄▂▁
-  .taper(start: 1)  ██████▆▄▂▁
-  .ramp(from:to:)   ▁▁▂▂▄▄▆▆████
-  .nib(angle:)      width follows the path's direction, not its length
-```
+<img src="../../Guide/Images/15-ShapesAsMaterial/MarkWidth.jpg" alt="The same S-curve drawn three ways at one stroke weight: an even line, a taper that swells in the middle and vanishes at both ends, and a calligraphic nib that thickens and thins as the curve turns" width="680">
 
 ```swift
 strokeWeight(12)
@@ -992,25 +954,7 @@ To vary the style per shape, giving each a different color or radius, drop back 
 
 ### Transforms and state
 
-Transforms move, turn, and stretch the **coordinate system**, not the shapes you've already drawn, so every draw call *after* one is measured in the new frame. They stack (each builds on the previous), and they reset every frame, so `draw()` always starts from the top-left origin. Wrap them in [`withState { }`](#isolated) to keep a transform local.
-
-```
-  A transform moves the coordinate FRAME; later drawing rides along.
-
-  translate(tx, ty): origin shifts        rotate(θ): axes turn (CW, y-down)
-     (0,0)──►x                              (0,0)──►x
-        ╲                                      │╲ θ
-         ↘ +──►x'   drawCircle(0,0)            ▼ ╲
-           │        now lands at (tx,ty)       y  ►x'
-
-  scale(s): one unit becomes s units
-     ●──►            ●──────►
-
-  Order matters, and the LAST transform is the one nearest the shape:
-     translate(p); rotate(θ)  →  move to p, then spin in place   (a top)
-     rotate(θ); translate(p)  →  spin the frame, then move along
-                                 its now-tilted axes              (an orbit)
-```
+Transforms move, turn, and stretch the **coordinate system**, not the shapes you've already drawn, so every draw call *after* one is measured in the new frame. They stack (each builds on the previous), and they reset every frame, so `draw()` always starts from the top-left origin. Wrap them in [`withState { }`](#isolated) to keep a transform local. Order matters: `translate` then `rotate` moves out and spins in place (a top), while `rotate` then `translate` moves along the already-tilted axes (an orbit).
 
 <img src="../../Guide/Images/06-GridsAndRepetition/TransformSteps.jpg" alt="Four panels drawing the same flag with the same call: untransformed at the origin, then translated, then rotated a twelfth of a turn, then scaled up" width="680">
 
@@ -1074,18 +1018,6 @@ noSymmetry()
 
 Replicate everything drawn next into `folds` copies rotated evenly around the current origin, which is the kaleidoscope, or mandala, mode. Draw one wedge and the folds complete the picture. `mirrored: true` adds a reflected copy per fold (mirrored across the local x-axis), the classic kaleidoscope's doubled symmetry.
 
-```
-  symmetry(8, mirrored: true): draw ONE arm, get SIXTEEN.
-
-          ✳ ✳                 One drawCircle call lands 8 rotated
-       ✳   │   ✳              copies; each also mirrors across the
-         ╲ │ ╱                fold line, closing the petal.
-    ✳ ────( )──── ✳
-         ╱ │ ╲                Everything after the call replicates:
-       ✳   │   ✳              shapes, strokes, images, text, fields.
-          ✳ ✳
-```
-
 <img src="../../Guide/Images/06-GridsAndRepetition/Kaleidoscope.jpg" alt="Three panels: a single small crooked wedge with a red dot at its tip, the same wedge under eightfold symmetry forming a snowflake, and under mirrored eightfold symmetry forming a denser one with paired reflections" width="680">
 
 The fold pivot and the mirror axis are the origin and x-axis *at the call*, so `translate` first to place the center, and `rotate` to aim the seam. Transforms applied after `symmetry` compose inside every fold, so an orbiting shape orbits in all of them at once. It's drawing state like `fill`, so it stays on until `noSymmetry()`, and `withState { }` restores it.
@@ -1110,19 +1042,7 @@ withClip(_ rect: Rectangle, _ body: () -> Void)
 withClip(_ circle: Circle, _ body: () -> Void)
 ```
 
-Run `body` with drawing confined to the region. It's a stencil mask, so everything drawn inside the block (fills, strokes, images, text, even 3D geometry) lands only where the region covers, and the previous clip is restored when the block ends. Any vector `Shape` works, holes and concavity included, and its `winding` rule is honored. Open contours don't fill, so a shape with no fillable region clips everything out.
-
-```
-  withClip(shape) { … }: the block's drawing exists only INSIDE the region.
-
-     ┌─────────────┐        stripes drawn full-canvas
-     │   ▛▀▀▀▀▀▜   │        inside withClip(star) appear
-     │  ▐ ▒▒▒▒▒ ▌  │        only where the star is;
-     │   ▙▄▄▄▄▄▟   │        the canvas outside stays
-     └─────────────┘        untouched.
-
-  Nesting intersects:  withClip(a) { withClip(b) { … } }  →  a ∩ b
-```
+Run `body` with drawing confined to the region. It's a stencil mask, so everything drawn inside the block (fills, strokes, images, text, even 3D geometry) lands only where the region covers, and the previous clip is restored when the block ends. Any vector `Shape` works, holes and concavity included, and its `winding` rule is honored. Open contours don't fill, so a shape with no fillable region clips everything out. Nested clips intersect: a `withClip` block inside another draws only where both regions overlap.
 
 <img src="../../Guide/Images/06-GridsAndRepetition/ClipRegions.jpg" alt="Three panels of the same diagonal orange stripes: confined to a star, confined to a circle, and confined to both at once so only the overlap of star and circle is striped" width="680">
 
@@ -1212,16 +1132,7 @@ Zooming costs nothing in fidelity, because the drawing is vector. Text set at fo
 withState(_ body: () -> Void)
 ```
 
-Run `body` with the current transform and style saved, then restored. This is the scoped form of `pushState`/`popState`, and the one to reach for.
-
-```
-  withState { } saves the whole transform + style, runs the body, restores:
-
-   save A ─►  work on a copy: translate / rotate / fill …  ─►  restore A
-              the changes stay inside the braces
-
-  Like scribbling on a sheet laid over your drawing, then lifting it off.
-```
+Run `body` with the current transform and style saved, then restored. This is the scoped form of `pushState`/`popState`, and the one to reach for: the changes stay inside the braces, like scribbling on a sheet laid over your drawing and then lifting it off.
 
 ```swift
 withState {

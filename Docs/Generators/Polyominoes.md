@@ -4,15 +4,7 @@
 
 ## Polyominoes
 
-**`Polyomino`** is a set of squares joined edge to edge, and **`tilePolyominoes`** fits a bag of them into a region so that every cell is covered exactly once. That is the pentomino puzzle, the domino board, and the floor laid from a few shapes, all the same question.
-
-```
-   .XX          the twelve pentominoes, in the usual letter order
-   XX.          F  I  L  N  P  T  U  V  W  X  Y  Z
-   .X.
-                sixty squares in total, which is why the boards
-   the F        they are set against are 6x10, 5x12, 4x15, 3x20
-```
+**`Polyomino`** is a set of squares joined edge to edge, and **`tilePolyominoes`** fits a bag of them into a region so that every cell is covered exactly once. That is the pentomino puzzle, the domino board, and the floor laid from a few shapes, all the same question. The twelve pentominoes hold sixty squares between them, which is why the classic boards they are set against are 6x10, 5x12, 4x15, and 3x20.
 
 <img src="../../Guide/Images/07-Tiles/FittingPieces.jpg" alt="Three parts: the twelve pentominoes drawn as outlines along the top, all twelve fitted into a six by ten board on the left, and on the right a six by six checkerboard with two opposite corners cut out and marked, the board that cannot be covered by dominoes" width="680">
 

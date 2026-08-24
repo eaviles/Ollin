@@ -46,14 +46,7 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
 
 **A note on orientation.** Ollin's y-axis points down (top-left origin), the opposite of the math-class convention where y points up. The formulas are the same, but the direction of rotation looks flipped on screen. A positive angle, and anything the usual math convention calls "counter-clockwise", turns clockwise as you watch it. The diagrams below are drawn in screen space (y down) to match what you see.
 
-```
-  (0,0)
-    +──────────────►  +x      x grows to the RIGHT
-    │                         y grows DOWNWARD
-    │                         (top-left origin)
-    ▼
-   +y
-```
+<img src="../../Guide/Images/01-HelloOllin/CoordinateSystem.jpg" alt="The canvas coordinate system: origin at the top left, x right, y down, with the point (380, 240) marked" width="680">
 
 <a name="v2-length"></a>
 
@@ -77,14 +70,7 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
 
 **In a sketch:** turn a distance or a speed into something you can see, a dot that grows as the mouse nears, or a trail that reacts to how fast it moves (`velocity.length`).
 
-**`normalized`** is the same direction rescaled to length exactly 1 (a "unit vector"). Handy when you want a pure heading and will set the length yourself. Returns `.zero` if `v` has no length to scale.
-
-```
-  v = (3, 4), length 5        v.normalized = (0.6, 0.8), length 1
-
-    ●═══════════►               ●══►
-        same heading, divided by its own length
-```
+**`normalized`** is the same direction rescaled to length exactly 1 (a "unit vector"), each component divided by the length, so `(3, 4)` becomes `(0.6, 0.8)`. Handy when you want a pure heading and will set the length yourself. Returns `.zero` if `v` has no length to scale.
 
 **In a sketch:** this is the move-toward-a-target trick, where `pos += (target - pos).normalized * speed` steps a fixed amount the right way, however far the target is.
 
@@ -120,26 +106,11 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
 
 <img src="../../Guide/Images/10-Vectors/VectorArithmetic.jpg" alt="Four labeled panels: adding two arrows head to tail, the arrow from a pos point to a target point, an arrow scaled longer and flipped, and a long arrow with its unit-length version ending on a circle of radius one" width="680">
 
-**`+`, `-`, unary `-`** add two vectors *head to tail*, and subtract to get the step between two points. (Plus the in-place `+=` / `-=`, the `pos += vel` idiom.)
-
-```
-  a + b : walk a, then walk b from where a ended (head-to-tail)
-
-           a            b
-    start ●─────►●─────►● a + b
-
-  a − b : the step that goes FROM b TO a   (so (a − b) + b = a)
-  −v    : same length, opposite direction
-```
+**`+`, `-`, unary `-`** add two vectors *head to tail*, and subtract to get the step between two points: `a - b` is the step from `b` to `a`. Unary `-` keeps the length and flips the direction. (Plus the in-place `+=` / `-=`, the `pos += vel` idiom.)
 
 **In a sketch:** `target - pos` is the arrow pointing from one point to another, the seed of every chase, spring, and look-at. `pos += velocity` is how anything moves.
 
 **`*` / `/` by a scalar** stretch or shrink the arrow, keeping its heading (negative flips it). For `*` the scalar can sit on either side. (Plus the in-place `*=` / `/=`.)
-
-```
-  ●──►v        ●──────►v * 2        ◄──● v * -1
-              (twice as long)      (flipped)
-```
 
 **In a sketch:** set how big a step is. Use `direction * speed` to go faster, or `* deltaTime` so motion runs the same on any machine.
 
@@ -148,15 +119,6 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
 #### Measuring between two vectors
 
 **`distance(to:)` / `distanceSquared(to:)`** measure the straight-line distance between two points. (Same Pythagoras as `length`, applied to `a − b`, and the squared form skips the `√` for comparisons.)
-
-```
-  a.distance(to: b)
-
-    a ●╲
-       ╲        = (a − b).length
-        ╲       = √((ax − bx)² + (ay − by)²)
-         ● b
-```
 
 **In a sketch:** proximity effects, so you can connect dots closer than N, fade things by how near they are, or push neighbors apart when they crowd. (Use the squared form inside big loops to skip the slow `√`.)
 
@@ -372,17 +334,7 @@ for cell in grid.cells {                          // cells, with indices
 - `.center` (default): one dot at the center of each cell, inset half a cell from the edges. The "a thing in every cell" layout.
 - `.spanning`: the dots form a lattice spanning the bounds edge to edge, the outer ones sitting on the boundary (the four corners at the rectangle's corners). The "grid of dots" layout, when you want the dots to reach the edges rather than float inside. (`gutter` doesn't apply, since spanning dots span the full bounds.)
 
-```
-   .center (5×5)                 .spanning (5×5)
-   ┌─────────────┐               ●───●───●───●───●
-   │ ·  ·  ·  ·  ·│               │             │
-   │ ·  ·  ·  ·  ·│               ●   ●   ●   ●   ●
-   │ ·  ·  ·  ·  ·│               │             │
-   │ ·  ·  ·  ·  ·│               ●   ●   ●   ●   ●
-   │ ·  ·  ·  ·  ·│               │             │
-   └─────────────┘               ●───●───●───●───●
-   dots inset half a cell        outer dots on the edges
-```
+<img src="../../Guide/Images/06-GridsAndRepetition/GridAnatomy.jpg" alt="Grid anatomy: cells with padding and gutter labeled and one cell's frame and center called out; beside them, points as a dot per cell and as a lattice spanning the edges" width="680">
 
 ```swift
 for dot in grid(columns: 24, rows: 24, padding: 60, distribution: .spanning).points {
@@ -513,19 +465,6 @@ func union(_ other: Shape) -> Shape                // covered by either
 func intersection(_ other: Shape) -> Shape         // covered by both
 func subtracting(_ other: Shape) -> Shape          // this one, with `other` cut away
 func symmetricDifference(_ other: Shape) -> Shape  // covered by exactly one
-```
-
-Take `a`, the square from `(0, 0)` to `(100, 100)`, and `b`, the square from `(50, 50)` to `(150, 150)`. They share the 50×50 patch in the middle:
-
-```
-(0,0)
-  ┌─────────┐               a.union(b)                the whole figure, one contour
-  │ a       │               a.intersection(b)         just the 50×50 overlap
-  │    ┌────┼────┐          a.subtracting(b)          a with a square bite at its corner
-  │    │////│    │          a.symmetricDifference(b)  both squares minus the overlap
-  └────┼────┘    │
-       │       b │
-       └─────────┘ (150,150)
 ```
 
 The operations work on the **filled region**, so each side first resolves under its own `winding` rule (self-overlaps and holes mean exactly what they mean when the shape draws), closed contours take part, and open contours sit out. The result is an ordinary `Shape` you can fill, stroke, hatch, offset, or export, whose outer boundaries and holes come back oppositely wound, marked `.nonZero`. Where regions don't touch, the result simply holds more than one contour. Where nothing remains (say, intersecting shapes that don't overlap), `contours` comes back empty and drawing it is a no-op.

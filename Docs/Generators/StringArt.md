@@ -6,17 +6,6 @@
 
 **`StringArt`** winds one continuous thread between pins on a circular rim until the crossings reproduce a picture. Dark regions collect many crossings, light regions few, and a shaded image emerges from nothing but straight chords. The craft is the one Petros Vrellis's knitted portraits made famous (2016). Each chord here is the standard greedy step. From the pin the thread is on, score every allowed next pin by the darkness its chord still covers. Take the best, and pay that ink down so later chords look elsewhere. Implemented independently from the published descriptions.
 
-```
-  pins ring the rim         one chord covers          crossings add up
-                            remaining darkness        to the picture
-
-      . · .                     . · .                     . · .
-    ·       ·                 ·   ___ ·                 · \/\/\ ·
-    ·       ·       ──→       ·  /    ·       ──→       · /\/\/ ·
-    ·       ·                 · /     ·                 · \/\/\ ·
-      · . ·                     · . ·                     · . ·
-```
-
 The winding is fully deterministic: the same picture and settings always wind the same thread, no seed involved. The helper emits geometry only; you draw the chords, so the thread can be ink on paper, glowing light, or anything else a line can be.
 
 <img src="../../Guide/Images/09-Pictures/WoundFromThread.jpg" alt="Three panels: a bold crescent picture, the first 350 chords of its winding crowding into the crescent, and the finished winding where the crescent is dense thread and the rest a light veil" width="680">

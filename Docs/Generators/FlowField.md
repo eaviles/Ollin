@@ -6,15 +6,6 @@
 
 A **flow field** gives a direction at every point of the plane. Trace *streamlines* through it (curves that follow the flow) or *advect* particles and strokes along it. The direction comes from an `angle` function, so a field can be built from noise, a formula, or anything you like, and streamlines are ordinary point lists, so they feed stroking, the [shape booleans](../Drawing/Geometry.md), hatching, and SVG export.
 
-```
-  the field: a direction per point        streamlines follow the flow
-
-    →  →  ↗  ↑  ↖                            ___----‾‾‾‾
-    →  ↗  ↑  ↖  ←              →            /    ___---
-    ↗  ↑  ↖  ←  ↙                          |  __-
-    ↑  ↖  ←  ↙  ↓                           ‾‾
-```
-
 <img src="../../Guide/Images/14-FieldsAndFlow/Compass.jpg" alt="A grid of small pale needles on a dark canvas, each tipped with a gold dot, their directions changing smoothly across the canvas so currents and swirls show in the pattern" width="560">
 
 ### Contents

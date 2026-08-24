@@ -8,15 +8,6 @@ Beyond the square grid there are several more ways to divide a canvas: **hexagon
 
 <img src="../../Guide/Images/06-GridsAndRepetition/OtherGrids.jpg" alt="Four panels: a honeycomb tinted by ring distance from one cell, a field of alternating up and down triangles, a rectangle split recursively into unequal panels, and a carved maze" width="680">
 
-```
-  hexGrid            triangleGrid       subdivide           maze              apollonianGasket
-
-   ⬡ ⬡ ⬡              ▲▽▲▽▲▽▲           ┌──┬────┐        ┏━╸━┳━━╸┓                ◯◯
-  ⬡ ⬡ ⬡ ⬡             ▽▲▽▲▽▲▽           │  │ ┌──┤        ┃ ╻ ╹ ╺┓┃              ◯╭──╮◯
-   ⬡ ⬡ ⬡              ▲▽▲▽▲▽▲           ├──┴─┤  │        ┃ ┗━┳━ ┃┃              ◯╰──╯◯
-                                        └────┴──┘        ┗━━╸┻━━┛┛                ◯◯
-```
-
 ### Contents
 
 - [hexGrid / HexGrid](#hexGrid)

@@ -8,20 +8,6 @@ Regular tilings of the hyperbolic plane, seen through the Poincaré disk: identi
 
 On flat paper only three regular tilings exist (triangles, squares, hexagons), because the corners meeting at a vertex must sum to a full turn. Hyperbolic space has room for every pair beyond them: whenever `(sides - 2) * (meeting - 2) > 4` the tiling exists, and the disk shows all of it at once. Every tile is the same true size; the disk only *draws* them smaller as they approach the rim.
 
-```
-        {7,3}  heptagons, three to a corner
-
-              . - ~ ~ ~ - .
-          .·  ○ ○ ○ ○ ○ ○ ○  ·.
-        ·  ○ ╱▔▔╲ ╱▔▔╲ ╱▔▔╲ ○  ·
-       · ○ ╱      ╳      ╲ ○ ·
-       · ○ ▏   central   ▕ ○ ·          tiles shrink toward
-       · ○ ╲    heptagon ╱ ○ ·          the horizon, forever
-        ·  ○ ╲__╱ ╲__╱ ╲_╱ ○  ·
-          ·.  ○ ○ ○ ○ ○ ○  .·
-              ' - ~ ~ ~ - '
-```
-
 It is geometry, not draw calls: the call hands back typed tiles whose outlines feed the same drawing, boolean, hatching, and SVG paths as everything else, so the lace is plotter-ready line work too. Generation is deterministic, with no randomness and no time.
 
 <img src="../../Guide/Images/07-Tiles/HyperbolicDisks.jpg" alt="Two Poincaré disks side by side. Left: pentagons meeting four to a corner in a crisp ivory-and-indigo curved checkerboard. Right: heptagons meeting three to a corner, ivory at the center deepening to indigo as the tiles shrink toward the circular horizon" width="680">

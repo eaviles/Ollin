@@ -413,19 +413,7 @@ textBounds(_ string: String, _ x: Double, _ y: Double) -> Rectangle
 textBounds(_ string: String, at position: Vector2) -> Rectangle
 ```
 
-```
-  Type metrics, measured from the baseline (the y you pass to drawText):
-
-        ┌─────────────────────────  ascender line
-        │   A b k l d            (tops of the tall glyphs)
-   ─────┼─────────────────────────  baseline  ← drawText's y sits here
-        │   g p y q             (bottoms of the descenders)
-        └─────────────────────────  descender line
-
-   textAscent()   baseline → ascender line    (height above)
-   textDescent()  baseline → descender line   (depth below)
-   textLeading()  baseline → next baseline    (line spacing; one '\n')
-```
+<img src="../../Guide/Images/Docs/TypeMetrics.jpg" alt="A large sample line with the ascender line, baseline, and descender line ruled through it, textAscent and textDescent bracketed from the baseline at the right, a ghosted next line one textLeading below, and the baseline labeled as drawText's y" width="680">
 
 All in points at the current `textFont` / `textSize`, for every font kind. `textBounds` returns the box `string` would occupy if drawn at `(x, y)` with the current alignment, handy for backings, layout, and hit-testing.
 

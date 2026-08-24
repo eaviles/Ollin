@@ -6,15 +6,6 @@
 
 **`CrackGrowth`** subdivides the plane the way glaze crackles: straight cracks race across the canvas, and every collision births a new perpendicular crack. The rules fit in a sentence. A crack advances until it reaches another crack's line or the edge. There it stops, restarts perpendicular to a random point on the existing pattern, and recruits one more crack. Out of that comes a street map that keeps densifying for as long as you let it run. The technique is the crack-subdivision algorithm of Jared Tarbell's *Substrate* (2003), implemented independently from the published descriptions.
 
-```
-  three cracks             collisions spawn           a city grows
-                           perpendicular kids
-
-   \                          \  |                     ┼─┼──┬──┼
-     \        ──→               \─┼───      ──→        │ ┼──┤  │
-       ──────                 ───┼\                    ┼─┴─┬┴──┼
-```
-
 Each crack also drags a translucent **wash** across the open space on one side of its line. That sand-painter shading is what gives the classic watercolor reading. The helper emits geometry only. You draw the marks, so the wash can be inks on paper, glowing additive dust, or nothing at all.
 
 <img src="../../Guide/Images/13-GrowingThings/CrackedCity.jpg" alt="Two panels: left, a vertical crack stopped on a horizontal line at an orange dot marked stops here, with an orange arrow setting out perpendicular from the vertical line; right, a plane subdivided into rectangular city blocks by fine dark cracks with faint colored washes beside them" width="680">

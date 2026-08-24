@@ -6,16 +6,6 @@
 
 **`ForceLayout`** lays out a graph with no coordinates ever given. Every node pushes every other node apart, every edge pulls its two ends together, and the graph untangles itself into an even, readable web. It is the standard spring-embedder layout. In a sketch it doubles as motion. Step it each frame and the untangling *is* the animation. The web reflows live as nodes join or a hand drags one.
 
-```
-  random start                 settling                    settled
-
-   o  o    o                  o   o                      o---o
-    \ |  / |                  |\ /                      /     \
-   o--o-o  o        →       o-o-o---o         →        o--o    o
-    huddle of                edges even out,           every edge near
-    tangled edges            crossings resolve         one length, no pile-ups
-```
-
 <img src="../../Guide/Images/11-ForcesAndPhysics/GraphSettles.jpg" alt="Three panels of the same 26-node graph: a huddle of tangled edges at the seeded random start, the web opening up mid-cooling, and the settled even web, with the highest-degree hub accented in orange" width="680">
 
 All you provide is a node count and index pairs for the edges. Positions start at seeded random spots and improve step by step. Each step every node moves a little along its summed force, capped by a temperature that cools linearly to zero. The layout therefore swings boldly at first, refines gently, and then freezes. It is deterministic throughout, so the same seed replays the same run.

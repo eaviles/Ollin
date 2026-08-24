@@ -8,15 +8,6 @@ One line, launched between a field of dots at 45 degrees. It runs straight until
 
 The tradition belongs to more than one place. In south India a **kolam** is chalked on the doorstep at dawn around a grid of pulli (dots). In Angola a **sona** is drawn in the sand with one finger while the story that goes with it is told. The mathematics under both is the same object, and it is exact: over a plain field the line closes into **gcd(rows, columns)** loops. A 7 by 5 field is one unbroken line. A 6 by 4 field is two.
 
-```
-  dots:      ·   ·   ·        the line never touches a dot; it passes
-                              between them and turns at the edge
-      \  /\  /\  /\  /
-       \/  \/  \/  \/         7 by 5 dots  ->  1 loop   (gcd 7,5 = 1)
-       /\  /\  /\  /\         6 by 4 dots  ->  2 loops  (gcd 6,4 = 2)
-      /  \/  \/  \/  \        5 by 5 dots  ->  5 loops
-```
-
 A **wall** placed between two neighboring dots turns the line there as well. Each wall inside the field either cuts one loop in two or joins two into one, never more, so walls are how a drawing is steered toward a single line. That is how the figures of a sona are built.
 
 <img src="../../Guide/Images/07-Tiles/KolamLoops.jpg" alt="Three dark panels of chalk-colored looping line work around small dots. One continuous line over a field of seven by five dots; two interleaved loops in cream and orange over six by four; and the same seven by five field cut into three loops by two short walls" width="680">

@@ -10,16 +10,6 @@ The kink is the point of it. Put a straight road against a circular curve and th
 
 <img src="../../Guide/Images/15-ShapesAsMaterial/ClothoidCorner.jpg" alt="The same right-angle corner rounded two ways. On the left one arc, and under it a graph of the bend that is a flat-topped rectangle with vertical sides. On the right the corner eased at both ends, and under it the same graph as a trapezoid that ramps up, holds, and ramps back down" width="680">
 
-```
-   the bend along a plain arc corner       the bend along an eased corner
-
-   1/R  |      .-----------.               1/R  |        _.-----._
-        |      |           |                    |     _.'         '._
-        |      |           |                    |   .'               '.
-      0 +------'           '------            0 +--'                   '--
-        |  straight  arc  straight              | straight  ease arc ease
-```
-
 The curve is also called the **Euler spiral**, and the **Cornu spiral** when it is drawn whole. Nothing here is random, so the same numbers always produce the same curve. What comes out is ordinary geometry, ready for stroking, filling, the [shape booleans](./Geometry.md#shape-booleans), hatching, and [SVG export](../Output/Export.md) for the pen plotter.
 
 ### Contents
