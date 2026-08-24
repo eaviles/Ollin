@@ -79,7 +79,7 @@ When a chapter does split, split it at a seam the prose already has, and give ea
 
 ## Figures
 
-Figure sketches live in `Figures/<NN-ChapterName>/<FigureName>.swift`, rendered to `Images/<NN-ChapterName>/<FigureName>.jpg` (or `.png`/`.gif`) by the runner. Conventions:
+Figure sketches live in `Figures/<NN-ChapterName>/<FigureName>.swift`, rendered to `Images/<NN-ChapterName>/<FigureName>.jpg` (or `.png`/`.gif`) by the runner. The reference pages reuse these images by relative path, and figures serving *only* a `Docs/` page live in `Figures/Docs/` (rendered to `Images/Docs/`), under the same conventions; `Scripts/guide-links.sh` checks the `Docs/` references alongside the chapters'. Conventions:
 
 - A figure file is an ordinary Ollin sketch (a `class ... : Sketch`), self-contained, with no dependencies beyond the framework.
 - **Pin the seed in any figure that touches `random` or `noise`.** A sketch's `variation` is rolled fresh at launch, so an unseeded figure re-renders differently every run and shows up as churn in `git status` after each full gate. Call `seed(_:)` (or `noiseSeed(_:)`) in the figure. The check is to render twice and `cmp` the output. The exceptions are the `// figure: unstable` set below, which are genuinely not reproducible; restore those rather than committing them.
