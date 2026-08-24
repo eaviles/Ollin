@@ -22,7 +22,6 @@ Near-term, fairly self-contained pieces, each small and well-scoped.
 
 - **More SDF shapes, when a good fit appears.** Any canonical form parameterized by a size and a ratio or two drops into the instanced-SDF path as four small touch-points (a shape tag, a builder, a distance function, and a fragment case).
 - **More model examples over `ModelTracker`.** The custom-model tracker runs anything converted to Core ML; a well-known model can make a strong example, with the weights always fetched by `Scripts/fetch-models.sh` rather than committed. Candidates, licenses, and the surfaces involved are in the [design notes](DESIGN-NOTES.md#model-examples-and-modeltracker-surfaces).
-- **A material written back as source.** A "copy as Swift" action for the material explorer: the knob state printed as a `Material(...)` expression to paste into a sketch, an emitter in the `OllinProjects` mold. Deliberately an emitter rather than a material file format; the reasoning is in the [design notes](DESIGN-NOTES.md#material-and-scene-explorers).
 
 ## Generative geometry
 

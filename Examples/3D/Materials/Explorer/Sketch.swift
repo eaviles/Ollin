@@ -1,3 +1,4 @@
+import AppKit
 import Ollin
 
 /// The material explorer: every finish in the hand.
@@ -8,7 +9,8 @@ import Ollin
 /// preset snaps the knobs to its values; drag any knob to tweak from there, and the
 /// caption notes when the finish has left its preset. Press a key to step through
 /// the presets; the mouse stays free for the camera (drag to orbit, scroll to
-/// dolly).
+/// dolly). Press C to copy the knobs as the `Material(...)` expression that
+/// rebuilds them (`swiftSource`), ready to paste into a sketch.
 ///
 /// Things worth trying: `polishedMetal` under the `city` backdrop (a mirror needs
 /// something to reflect), `frostedGlass` over `sunset` (transmission needs an
@@ -106,11 +108,26 @@ final class MaterialExplorer: Sketch {
     @Param(group: "Glow") var subsurfaceColor: Color = .white
 
     private var lastPreset: Material?
+    private var copiedUntil = -1.0
 
     override func keyPressed() {
+        if key == "c" || key == "C" {
+            copyFinish()
+            return
+        }
         let roster = Material.paramChoices
         let index = roster.firstIndex { $0.value == preset } ?? 0
         preset = roster[(index + 1) % roster.count].value
+    }
+
+    /// Put the knobs on the clipboard as the expression that rebuilds them,
+    /// and print it, so a terminal run shows what was copied.
+    private func copyFinish() {
+        let source = knobMaterial.swiftSource
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(source, forType: .string)
+        print(source)
+        copiedUntil = time + 2.5
     }
 
     /// Copy a preset's values onto the knobs, so tweaking starts from it.
@@ -215,8 +232,12 @@ final class MaterialExplorer: Sketch {
             }
         }
 
-        let name = Material.paramChoices.first { $0.value == preset }?.name ?? "custom"
-        let tweaked = m != preset ? " (tweaked)" : ""
-        drawCaption("Material: \(name)\(tweaked)   ·   press a key for the next preset")
+        if time < copiedUntil {
+            drawCaption("Copied as Swift to the clipboard")
+        } else {
+            let name = Material.paramChoices.first { $0.value == preset }?.name ?? "custom"
+            let tweaked = m != preset ? " (tweaked)" : ""
+            drawCaption("Material: \(name)\(tweaked)   ·   press a key for the next preset, C to copy as Swift")
+        }
     }
 }
