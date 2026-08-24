@@ -520,6 +520,7 @@ let package = Package(
         example("Images/LuminanceMelt"),
         example("Images/PixelField"),
         example("Images/PixelSort"),
+        example("Images/SeamCarve"),
         example("Images/SingleLine"),
         example("Images/SlitScan"),
         example("Images/SpanningTree"),

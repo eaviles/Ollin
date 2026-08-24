@@ -122,7 +122,7 @@ Teaches: loading an image and sampling it; a picture as glyph marks, as stipple 
 Assumes: Ch 8 (type, for the finished piece), Ch 6 (the grid).
 Payoff: a picture painted with type. One image sampled over a grid, every sample answered by a letter sized and colored by the pixel under it.
 Figures: pixel sampling; the glyph mosaic; the single line and the spanning tree; thread from pins; sorted pixels; data as material; the finished mosaic.
-Draws from: `Docs/Drawing/Images.md`, `GlyphMosaic.md`, `Halftone.md`, `PixelSorting.md`, `Docs/Generators/Stippling.md`, `SingleLine.md`, `SpanningTree.md`, `StringArt.md`, `Docs/Helpers/Data.md`; `Examples/Images/`, `Examples/Data/`.
+Draws from: `Docs/Drawing/Images.md`, `GlyphMosaic.md`, `Halftone.md`, `PixelSorting.md`, `SeamCarving.md`, `Docs/Generators/Stippling.md`, `SingleLine.md`, `SpanningTree.md`, `StringArt.md`, `Docs/Helpers/Data.md`; `Examples/Images/`, `Examples/Data/`.
 
 ### Part II: Systems that come alive
 
@@ -406,6 +406,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | `Simulation/Watercolor.md` (`Sim.watercolor`, `WatercolorField`, `WatercolorPigment`, the wet-paint wash) | Ch 19 | taught ("Paint that behaves: watercolor" with the scripted-painting figure: the pigment-channels-plus-water-alpha mapping and the noStroke rule, edge darkening as physics, dry() glazing vs blot() and the held-water backrun, dry-brush/grain/paperSeed, and inventing pigments from two swatches) |
 | `Drawing/GlyphMosaic.md` (`drawGlyphMosaic`, measured glyph ramps) | Ch 9 | taught ("A picture as marks" with a two-panel figure: measured ink per font, the curated sets, `glyphScale` gutters, the data form, and the inverted-polarity trap it shares with halftone) |
 | `Drawing/PixelSorting.md` (`Image.pixelSorted`) | Ch 9 | taught ("Sorting the pixels" with a before/after figure: the threshold as the whole technique, the keys, and the needs-texture and reversed-on-a-gradient caveats) |
+| `Drawing/SeamCarving.md` (`Image.seamCarved`, `SeamMap`) | Ch 9 | taught ("Making it narrower without squashing it" with a squeeze-beside-carve figure: the seam, the texture-survives-and-flat-gives-way rule, both masks, growing, and the map that hands back any width) |
 | `Drawing/Halftone.md` (`drawHalftone`, area-exact dot screens) | Ch 9 | taught (same section and figure: `pitch`/`angle`, area-exact coverage, real circles for the plotter, and continuous tone versus the mosaic's steps) |
 | `.melt` design filter (`Drawing/Effects.md`, the luminance melt) | Ch 16 | taught (a before/after figure beside the design filters, the shared displacement vector that makes it read as dyed rather than smeared, the brightness mix-back, the dial-back knobs, and the never-perfectly-loops caveat) |
 | Diffusion curves (`Drawing/Effects.md`: `.diffuse`, `drawDiffusionCurve`) | Ch 16 | taught ("A picture made of a few marks: diffusion" after the generated-layer section, with the Diffusion figure walking marks to field to one-more-curve: the neighbor-average rule and what follows from it, the two-sided curve and how left and right are named, the comparison against a gradient that needs a direction and two ends, and the threshold and sharpness knobs) |

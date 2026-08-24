@@ -440,6 +440,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("luminance-melt",
                  note: "A painted tonal study (gradient plus a bright disk) poured through the luminance melt at a fixed phase. Pins the two-level domain warp, the shared displacement (field warp and image liquify from one vector), the luminance steer into the field, the four-stop sRGB ramp, and the highlight bloom. No rng and no time, so it is deterministic.",
                  make: { LuminanceMeltScene() }),
+    SnapshotCase("seam-carve",
+                 note: "A painted rippled field with a grained block on the right, shown three ways in one frame: the source under the thirty seams it gives up first, the picture carved by those thirty, and the same picture squeezed to the same width. Pins the cost, the seam backtrack, the order map, and that the carve takes the field rather than the block. Seeded paint, no time, so it is deterministic.",
+                 make: { SeamCarveScene() }),
     SnapshotCase("pixel-sort",
                  note: "A painted noisy gradient with guard bands, pixel-sorted vertically then horizontally inside a midtone window, drawn at 1:1 pixels. Pins the interval detection (runs bounded where brightness leaves the window), the brightness key, and the deterministic tie-break. Seeded paint, no time, so it is deterministic.",
                  make: { PixelSortScene() }),
@@ -3347,6 +3350,57 @@ private final class MeasuredFieldScene: Sketch {
         return float4(sampleAux(info, inside / info.resolution).rgb * 0.55, 1.0);
     }
     """
+}
+
+/// A painted picture carved thirty seams narrower, beside the same picture
+/// squeezed to that width, with the seams themselves drawn over the source. The
+/// smooth field costs nothing to cross and the grained block does, so the carve
+/// takes the field. Seeded paint and no `time`, so it's deterministic.
+private final class SeamCarveScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    private var source = Image(width: 120, height: 60, color: .black)
+    private var carved: Image?
+    private var lines: [Contour] = []
+
+    override func setup() {
+        seed(5)
+        for y in 0 ..< 60 {
+            for x in 0 ..< 120 {
+                let v = Double(y) / 59
+                // A smooth field across the whole picture, and a grained block
+                // on the right that no seam can cross cheaply.
+                // A slow ripple across the field, so the cheap ways down are
+                // spread over the picture rather than all at one edge.
+                var tone = 0.28 + v * 0.4 + sin(Double(x) / 119 * .tau * 3) * 0.07
+                if x > 62, x < 104, y > 8, y < 52 {
+                    tone = 0.15 + Double((x + y) % 3) * 0.3
+                }
+                source[x, y] = Color(hue: 0.08 + tone * 0.1, saturation: 0.45,
+                                     brightness: clamp(tone, 0, 1))
+            }
+        }
+        carved = source.seamCarved(toWidth: 90)
+        lines = source.seams(30)
+    }
+
+    override func draw() {
+        background(.black)
+        let box = Rectangle(corner: Vector2(8, 8), width: 240, height: 120)
+        drawImage(source, in: box)
+        withState {
+            translate(box.corner)
+            scale(2)
+            noFill()
+            stroke(Color(hex: 0xFF3B30, alpha: 0.8))
+            strokeWeight(0.5)
+            for line in lines { drawPolyline(line.points) }
+        }
+        if let carved {
+            drawImage(carved, in: Rectangle(corner: Vector2(8, 136),
+                                            width: 216, height: 56))
+        }
+        drawImage(source, in: Rectangle(corner: Vector2(8, 196), width: 216, height: 56))
+    }
 }
 
 /// A painted noisy gradient with dark and bright guard bands, pixel-sorted on

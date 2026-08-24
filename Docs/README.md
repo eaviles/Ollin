@@ -30,6 +30,7 @@ New to Swift? Start with the [Swift quick reference](./Swift.md), which covers j
 - [`Glyph mosaic`](./Drawing/GlyphMosaic.md) - `drawGlyphMosaic`, an image rebuilt as a grid of text glyphs, each cell's character chosen by its measured ink in the active font
 - [`Halftone`](./Drawing/Halftone.md) - `drawHalftone`, an image rebuilt as the classic print dot screen: area-exact dots on a rotated grid, real circles for the plotter path
 - [`Pixel sorting`](./Drawing/PixelSorting.md) - `Image.pixelSorted`, brightness-bounded runs of an image's own pixels reordered along rows or columns (the classic glitch melt)
+- [`Seam carving`](./Drawing/SeamCarving.md) - `Image.seamCarved` and `SeamMap`, resizing a picture by taking away the paths that carry the least, so what matters keeps its shape (plus the masks that hold something still or take it out)
 - [`Color`](./Drawing/Color.md) - the `Color` type, the OKLab family and mixing, `Ramp`s and `Palette`s (loaded from a file or extracted from an image), dithering an image down to a palette, and perceptual `Colormap`s
 - [`Geometry`](./Drawing/Geometry.md) - the `Vector2`, `Rectangle`, `Grid`, `Shape`/`Contour`, and `Path` value types (including the `Grid` layout helper, curved outlines, shape booleans, and offsetting)
 - [`SVG import`](./Drawing/SVG.md) - `loadSVG`/`drawSVG` to read vector artwork into `Shape`s and `Contour`s (paths with curves and arcs, the basic shapes, groups and transforms, fills and strokes), ready for booleans, offsets, hatching, and re-export

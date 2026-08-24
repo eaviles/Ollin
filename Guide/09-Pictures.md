@@ -8,7 +8,7 @@
 
 Two kinds of material arrive from outside your sketch, and both come in the same way. A picture is a grid of colors you can ask questions of, and a spreadsheet is a grid of numbers you can ask questions of. Neither is something to display. Both are something to *read*, one sample at a time, and turn into marks of your own choosing.
 
-The sunset above has no photograph in it. It is one image, sampled a few thousand times, with every sample answered by a letter, sized and colored by the pixel underneath it. By the end of the chapter you'll have built it, and you'll have a handful of other ways to answer a pixel: with a dot, with one unbroken line, with a thread wound between pins, or by sorting the pixels the picture already has.
+The sunset above has no photograph in it. It is one image, sampled a few thousand times, with every sample answered by a letter, sized and colored by the pixel underneath it. By the end of the chapter you'll have built it, and you'll have a handful of other ways to answer a pixel: with a dot, with one unbroken line, with a thread wound between pins, by sorting the pixels the picture already has, or by taking pixels away until the picture fits the space you have.
 
 ## Pictures
 
@@ -183,6 +183,48 @@ The threshold is the whole technique. It decides which pixels are in play, and e
 Two honest notes. The look needs some texture in the source, because run boundaries have to vary from line to line, and a perfectly clean gradient sorts almost invisibly. And on a picture that already runs dark to bright down the column, sorting ascending changes nearly nothing, so `reversed: true` is the direction with the drama there.
 
 Everything in these three sections reads real pixels on the CPU, which means two practical things. A texture-backed image needs `snapshot()` first, and all of it is setup work: run it once, hold the result, and let `draw()` replay it.
+
+## Making it narrower without squashing it
+
+Every treatment so far changed how a picture looks. This one changes its shape, and tries hard to leave the looking alone.
+
+Say a picture is 1200 wide and the space it has to fit is 800. You can squash it, and everything inside gets a third thinner. You can crop it, and lose whatever was at the edge. **Seam carving** is the third answer. Find the path down the picture that carries the least, take it out, and the picture is one pixel narrower. Do that four hundred times.
+
+<img src="Images/09-Pictures/CarvedNarrower.jpg" alt="The sunset at its own width, squeezed to 70% where the sun becomes a visible oval, and carved to 70% where the sun stays round because it was marked to hold" width="680">
+
+```swift
+let narrow = picture.seamCarved(toWidth: 800)
+```
+
+A *seam* is a run of pixels, one per row, that never steps more than one pixel sideways from the row above. The cheapest one is the one whose removal changes the picture least, and finding it is the whole of the technique.
+
+Here is the rule that decides everything: **texture survives, and flat gives way.** A path down an empty sky costs nothing, because closing that gap puts two pixels beside each other that already matched. A path through a face costs a great deal, because closing that gap makes an edge that was not there before. So the sky goes and the face keeps its width.
+
+That also means a flat thing is not safe. The sun above is nearly one color inside, so the carve was happy to narrow it too, until it was told not to:
+
+```swift
+let held = picture.seamCarved(toWidth: 800, protecting: sunMask)
+let gone = picture.seamCarved(toWidth: 800, discarding: signMask)
+```
+
+A mask is just a picture the same size, marked in white. `protecting:` prices those pixels out of reach, so no seam crosses them. `discarding:` does the opposite. It makes them the cheapest thing in the picture, so seam after seam is drawn straight through them. Carve away as many seams as the marked thing is wide and the thing has left. Carve the width back up afterwards and it is gone, at the size you started with. That is the trick the technique is famous for.
+
+Growing works the same way in reverse. Ask for a bigger size and the same cheap seams are duplicated instead of removed. The added pixels spread over the whole picture rather than stretching one part of it.
+
+Two practical notes. One seam is one pass over the picture, so a hundred seams is a hundred passes, and like everything else in this chapter that is `setup()` work. If the width has to keep changing while the sketch runs, work the seams out once and read any width back out of the result:
+
+```swift
+override func setup() {
+    map = picture.seamMap()
+}
+
+override func draw() {
+    let wanted = Int(300 + sin(time) * 120)
+    if let framed = map?.image(wanted) { drawImage(framed, in: canvasRectangle) }
+}
+```
+
+And carve gently. Taking away a quarter of the width is usually invisible. Taking away three quarters is a different picture, whatever the arithmetic says. At some point the only thing left to take is the thing you wanted.
 
 ## Numbers you didn't type: CSV and JSON
 
@@ -392,7 +434,7 @@ Then make it yours:
 
 Turning a photograph into marks is older than the computer that does it now. Newspapers were printing halftones by the 1880s, rebuilding a photograph out of dots that vary in size. Every technique in this chapter descends from that one idea. Pick a mark, vary it by the brightness underneath, and let the eye put the picture back together.
 
-Stippling with dots of even weight was a hand discipline in scientific illustration for a very long time. Adrian Secord gave it an algorithm in 2002, using weighted Voronoi relaxation, and that is the method behind the even scatters here. The single unbroken line is the modern descendant of the engraver's spiral. The one-tour version, where a closed loop visits every dot, was popularized by Robert Bosch and Craig Kaplan in the mid-2000s. String art wound between pins around a hoop was made famous as a computational technique by Petros Vrellis in 2016. Pixel sorting is much younger, and it comes from glitch art rather than illustration. It spread from a 2010 sketch by Kim Asendorf. The two data readers here are deliberately small, because a document with a shape worth naming is `Codable`'s job rather than this framework's. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+Stippling with dots of even weight was a hand discipline in scientific illustration for a very long time. Adrian Secord gave it an algorithm in 2002, using weighted Voronoi relaxation, and that is the method behind the even scatters here. The single unbroken line is the modern descendant of the engraver's spiral. The one-tour version, where a closed loop visits every dot, was popularized by Robert Bosch and Craig Kaplan in the mid-2000s. String art wound between pins around a hoop was made famous as a computational technique by Petros Vrellis in 2016. Pixel sorting is much younger, and it comes from glitch art rather than illustration. It spread from a 2010 sketch by Kim Asendorf. Seam carving is younger still, and it comes from neither. Shai Avidan and Ariel Shamir published it in 2007 as an answer to a plain engineering problem, which was that a photograph on a web page has to fit whatever window it lands in. The demonstration video went around the world, mostly because of the part where a mask makes something disappear. The two data readers here are deliberately small, because a document with a shape worth naming is `Codable`'s job rather than this framework's. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
@@ -401,10 +443,11 @@ Stippling with dots of even weight was a hand discipline in scientific illustrat
 - [Stippling](../Docs/Generators/Stippling.md), [single line](../Docs/Generators/SingleLine.md), and [spanning tree](../Docs/Generators/SpanningTree.md): every knob on the even scatter, the closed tour through it, and the branching tree over the same dots.
 - [String art](../Docs/Generators/StringArt.md): the pins and the ink dial, and `inverted` for a pale thread on a dark ground.
 - [Pixel sorting](../Docs/Drawing/PixelSorting.md): every key and direction, and how to get each of the classic looks.
+- [Seam carving](../Docs/Drawing/SeamCarving.md): both energies, the two masks, growing rather than shrinking, and the `SeamMap` that hands back any width at once.
 - [Data](../Docs/Helpers/Data.md): `loadTable` and `loadJSON` in full, including the separator and header guesses, the two ways a column reads back, and what a missing key does.
 - [Live data](../Docs/Helpers/LiveData.md): every knob on `DataFeed`, what decides how the bytes are read, the conditional request and the backoff, and the entitlement a sandboxed app needs.
 - Appendix B draws this chapter's math, one picture per idea: [Fractions, mapping, and wrapping](B-JustEnoughMath.md#fractions-mapping-and-wrapping), [Shaping a value](B-JustEnoughMath.md#shaping-a-value), [Color and light as numbers](B-JustEnoughMath.md#color-and-light-as-numbers).
-- Worked examples: [`Examples/Images/GlyphMosaic`](../Examples/Images/GlyphMosaic/Sketch.swift), [`Halftone`](../Examples/Images/Halftone/Sketch.swift), [`PixelSort`](../Examples/Images/PixelSort/Sketch.swift), [`SingleLine`](../Examples/Images/SingleLine/Sketch.swift), [`SpanningTree`](../Examples/Images/SpanningTree/Sketch.swift), [`StringArt`](../Examples/Images/StringArt/Sketch.swift), and [`PixelField`](../Examples/Images/PixelField/Sketch.swift) (authoring an image pixel by pixel and reading it back).
+- Worked examples: [`Examples/Images/GlyphMosaic`](../Examples/Images/GlyphMosaic/Sketch.swift), [`Halftone`](../Examples/Images/Halftone/Sketch.swift), [`PixelSort`](../Examples/Images/PixelSort/Sketch.swift), [`SingleLine`](../Examples/Images/SingleLine/Sketch.swift), [`SpanningTree`](../Examples/Images/SpanningTree/Sketch.swift), [`StringArt`](../Examples/Images/StringArt/Sketch.swift), [`SeamCarve`](../Examples/Images/SeamCarve/Sketch.swift), and [`PixelField`](../Examples/Images/PixelField/Sketch.swift) (authoring an image pixel by pixel and reading it back).
 - Worked examples for data: [`Examples/Data/Readings`](../Examples/Data/Readings/Sketch.swift) (a CSV as a range chart), [`Examples/Data/Places`](../Examples/Data/Places/Sketch.swift) (a JSON survey), and [`Examples/Data/Quakes`](../Examples/Data/Quakes/Sketch.swift) (an hour of earthquakes, redrawn as the list changes).
 - Ahead of you: the sensors, meaning weather, location, and a paired Watch's heart rate, are not in the framework yet. Each needs its own permission prompt, and a feed you point at an address needs none. When they land they get a chapter of their own in Part V, beside the other things a sketch listens to.
 

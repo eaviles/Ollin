@@ -68,6 +68,7 @@ Use it two ways. It is an index for the moment you remember the guide showing bl
 | Pixels | Read and write any pixel with `image[x, y]`; build images from scratch | [Ch 9](09-Pictures.md) | [Images](../Docs/Drawing/Images.md) |
 | Glyph mosaic | A picture rebuilt as a grid of characters, each chosen by its measured ink in the active font | [Ch 9](09-Pictures.md) | [GlyphMosaic](../Docs/Drawing/GlyphMosaic.md) |
 | Pixel sorting | Brightness-bounded runs of a picture's own pixels reordered into streaks, the classic glitch melt | [Ch 9](09-Pictures.md) | [PixelSorting](../Docs/Drawing/PixelSorting.md) |
+| Seam carving | A picture made narrower or wider by taking away or duplicating the paths that carry the least, so what carries texture keeps its shape | [Ch 9](09-Pictures.md) | [SeamCarving](../Docs/Drawing/SeamCarving.md) |
 | Halftone | A picture as the classic print dot screen: area-exact dots on a rotated grid, real circles for the plotter | [Ch 9](09-Pictures.md) | [Halftone](../Docs/Drawing/Halftone.md) |
 | Tables and JSON | `loadTable` reads a CSV or TSV with typed reads by column name; `loadJSON` reads a document by name and index | [Ch 9](09-Pictures.md) | [Data](../Docs/Helpers/Data.md) |
 | Live data | `DataFeed` reads one address over and over in the background, counting only the answers that changed | [Ch 9](09-Pictures.md) | [LiveData](../Docs/Helpers/LiveData.md) |
