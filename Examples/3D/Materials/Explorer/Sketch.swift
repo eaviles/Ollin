@@ -1,26 +1,5 @@
 import Ollin
 
-// The curated library as a pop-up menu. `ParamChoices` is an open surface, so the
-// sketch itself puts the built-in materials on the Preset knob; picking one snaps
-// every finish knob to its values. (The parameterized helpers, `.glass(...)`,
-// `.metal(...)`, `.skin(radius:)`, take arguments, so they can't be fixed menu
-// entries: pick the nearest built-in and turn the knobs instead.)
-extension Material: @retroactive ParamChoices {
-    public static var paramChoices: [(name: String, value: Material)] {
-        [("matte", .matte), ("clay", .clay), ("rubber", .rubber),
-         ("plastic", .plastic), ("ceramic", .ceramic), ("glossy", .glossy),
-         ("polished", .polished), ("toon", .toon), ("gooch", .gooch),
-         ("iridescent", .iridescent), ("soapBubble", .soapBubble),
-         ("oilSlick", .oilSlick), ("beetle", .beetle), ("glitter", .glitter),
-         ("sequin", .sequin), ("velvet", .velvet), ("jade", .jade), ("wax", .wax),
-         ("brushedMetal", .brushedMetal), ("polishedMetal", .polishedMetal),
-         ("smoothPlastic", .smoothPlastic), ("roughPlastic", .roughPlastic),
-         ("frostedGlass", .frostedGlass), ("clearGlass", .clearGlass),
-         ("gummy", .gummy), ("lacquer", .lacquer),
-         ("satin", .satin), ("felt", .felt)]
-    }
-}
-
 /// The material explorer: every finish in the hand.
 ///
 /// The whole curated `Material` library on one Preset menu, every finish scalar on

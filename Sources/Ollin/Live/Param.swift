@@ -657,7 +657,26 @@ extension Turmite.Preset: ParamOption {}
 extension RenderQuality: ParamOption {}
 extension WFCSymmetry: ParamOption {}
 
-// The curated-preset structs join through the named-choices tier.
+// The curated-preset structs join through the named-choices tier. The
+// parameterized Material helpers (`.glass(...)`, `.metal(...)`, `.skin(radius:)`)
+// stay off the menu: a menu needs fixed values, so pick the nearest built-in
+// and turn the knobs from there.
+extension Material: ParamChoices {
+    public static var paramChoices: [(name: String, value: Material)] {
+        [("matte", .matte), ("clay", .clay), ("rubber", .rubber),
+         ("plastic", .plastic), ("ceramic", .ceramic), ("glossy", .glossy),
+         ("polished", .polished), ("toon", .toon), ("gooch", .gooch),
+         ("iridescent", .iridescent), ("soapBubble", .soapBubble),
+         ("oilSlick", .oilSlick), ("beetle", .beetle), ("glitter", .glitter),
+         ("sequin", .sequin), ("velvet", .velvet), ("jade", .jade), ("wax", .wax),
+         ("brushedMetal", .brushedMetal), ("polishedMetal", .polishedMetal),
+         ("smoothPlastic", .smoothPlastic), ("roughPlastic", .roughPlastic),
+         ("frostedGlass", .frostedGlass), ("clearGlass", .clearGlass),
+         ("gummy", .gummy), ("lacquer", .lacquer),
+         ("satin", .satin), ("felt", .felt)]
+    }
+}
+
 extension LightingPreset: ParamChoices {
     public static var paramChoices: [(name: String, value: LightingPreset)] {
         [("standard", .standard), ("threePoint", .threePoint), ("goldenHour", .goldenHour),

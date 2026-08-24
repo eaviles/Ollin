@@ -281,6 +281,20 @@ struct ParamTests {
         #expect(p.wrappedValue == .moonlight)
     }
 
+    @Test func theMaterialLibraryPresentsAMenu() {
+        let p = Param(wrappedValue: Material.glossy)
+        guard case .menu(let control) = p.control else {
+            Issue.record("Material should present a menu")
+            return
+        }
+        #expect(control.options.contains("Frosted Glass"))  // humanized choice name
+        control.set(control.options.firstIndex(of: "Gummy") ?? 0)
+        #expect(p.wrappedValue == .gummy)
+        #expect(p.stored == .option("gummy"))
+        p.restore(.option("polishedMetal"))
+        #expect(p.wrappedValue == .polishedMetal)
+    }
+
     @Test func mismatchedRestoreIsIgnored() {
         let p = Param(wrappedValue: 50.0, 0...100)
         p.restore(.boolean(true))
