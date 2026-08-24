@@ -503,6 +503,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("shape-grammar",
                  note: "Three grammars side by side: an ice-ray lattice cut by one rule and given bars by a second, a building front split into floors then windows then panes, and a square nesting turned copies of itself. Pins all four built-in rules (the balanced cut solved for its target area and kept shortest of four tries, the split's fractions and cycled labels, the inset pushing every edge along its own normal with a border ring, the nested scale and turn), the label matching, and the zero-weight fallback that catches a cell with no room for a full bar. Seeded, no time, so it is deterministic.",
                  make: { ShapeGrammarScene() }),
+    SnapshotCase("drainage",
+                 note: "A drainage network over a seeded landscape, three ways on one sheet: the contour map with the network stroked by Strahler order, the same field's basins as flat tone so the divides read, and the flow itself as a field. Pins the whole chain (hollow filling by flood, steepest-descent routing with a diagonal measured over its own distance, a filled hollow following the flood link rather than a slope that is not there, the counting, the basin labeling, the reach tracing and the ordering). Seeded, no time, so it is deterministic.",
+                 make: { DrainageScene() }),
     SnapshotCase("anamorphosis",
                  note: "The mirror map both ways round: on the left a plate for a cylinder standing on the marked circle, drawn from an asymmetric emblem so a reversed wrap would show; on the right what the eye receives, worked out by sending every point of that finished plate back up its own light path to the glass and drawing the glass as the viewer sees it. Pins the forward map (the wrap at true size, the bounce, the fall to the page), the search that undoes it, and the handedness. No rng and no time, so it is deterministic.",
                  make: { AnamorphosisScene() }),
@@ -6703,6 +6706,71 @@ private final class PursuitScene: Sketch {
                 let spread = Double(chase.runners.count - 1)
                 stroke(Color.mix(chalk, warm, t: Double(runner) / spread))
                 drawPolyline(trail.points)
+            }
+        }
+    }
+}
+
+/// A drainage network three ways: the contour map it came out of with the
+/// rivers stroked by order, the basins as flat tone, and the flow as a field.
+private final class DrainageScene: Sketch {
+    override var canvasSize: CanvasSize { .size(516, 180) }
+
+    private let chalk = Color(hex: 0xF2ECDD)
+    private let warm = Color(hex: 0xE0724A)
+    private let cool = Color(hex: 0x5A8FC7)
+
+    override func draw() {
+        background(Color(hex: 0x11131A))
+
+        let land = Heightfield.diamondSquare(size: 129, roughness: 0.55, seed: 3)
+            .eroded(.hydraulic(drops: 20_000), seed: 3)
+        let water = land.drainage()
+
+        // Left: the ground as contours, with the network over it.
+        let map = Rectangle(x: 8, y: 8, width: 164, height: 164)
+        noFill()
+        stroke(chalk.withAlpha(0.18))
+        strokeWeight(1)
+        for level in 1 ... 9 {
+            for line in isolines(at: Double(level) / 10, in: map, resolution: 120,
+                                 field: { land.value(atU: map.uv(of: $0).x, v: map.uv(of: $0).y) }) {
+                drawPolyline(line.points, closed: line.isClosed)
+            }
+        }
+        strokeCap(.round)
+        strokeJoin(.round)
+        for river in water.rivers(minimumFlow: 60, in: map) where river.points.count >= 2 {
+            stroke(Color.mix(cool, chalk, t: min(1, Double(river.order - 1) / 4)))
+            strokeWeight(0.5 + Double(river.order) * 0.7)
+            drawPolyline(river.points)
+        }
+
+        // Middle: whose ground is whose.
+        let basins = Rectangle(x: 176, y: 8, width: 164, height: 164)
+        let cell = basins.width / Double(water.columns)
+        noStroke()
+        for y in 0 ..< water.rows {
+            for x in 0 ..< water.columns {
+                let which = water.basin(x, y)
+                guard which >= 0 else { continue }
+                // Hue runs 0 to 1 here, and stepping it by the golden ratio
+                // puts neighboring basins far apart in color.
+                fill(Color(hue: Double(which) * 0.61803, saturation: 0.5,
+                           brightness: 0.55, alpha: 1))
+                drawRect(corner: water.point(x, y, in: basins), width: cell + 0.6, height: cell + 0.6)
+            }
+        }
+
+        // Right: the flow itself, which is what the network is a threshold of.
+        let field = Rectangle(x: 344, y: 8, width: 164, height: 164)
+        let flow = water.flowField
+        let loudest = flow.values.max() ?? 1
+        for y in 0 ..< flow.rows {
+            for x in 0 ..< flow.columns {
+                let carried = log(1 + flow[x, y]) / log(1 + loudest)
+                fill(Color.mix(Color(hex: 0x11131A), warm, t: carried))
+                drawRect(corner: water.point(x, y, in: field), width: cell + 0.6, height: cell + 0.6)
             }
         }
     }

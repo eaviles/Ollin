@@ -444,6 +444,7 @@ let package = Package(
         example("Patterns/Pursuit"),
         example("Patterns/CreasePattern"),
         example("Patterns/Anamorphosis"),
+        example("Patterns/Rivers"),
         example("Patterns/ShapeGrammar"),
         example("Patterns/Penrose"),
         example("Patterns/WangTiles"),
