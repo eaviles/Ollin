@@ -13,6 +13,7 @@ Everything here is driven by the seedable [`random`](../Generators/Random.md)/[`
 - [Quick start](#quick-start)
 - [Voronoi](#voronoi)
 - [Lloyd relaxation](#lloyd)
+- [Power diagrams: cells with weights](#power)
 - [Delaunay](#delaunay)
 - [Triangle](#triangle)
 
@@ -90,6 +91,47 @@ let even = voronoi(scattered).relaxed(iterations: 6)   // equivalent
 ```
 
 `lloyd(_:in:iterations:)` returns the relaxed sites, so feed them into `voronoi(...)`, keep iterating, or animate them. A few iterations is usually enough, and more keeps smoothing toward a honeycomb.
+
+<a name="power"></a>
+
+### Power diagrams: cells with weights
+
+```swift
+powerDiagram(sites: [WeightedSite], in bounds: Rectangle? = nil) -> PowerDiagram
+powerDiagram(of circles: [Circle], in bounds: Rectangle? = nil) -> PowerDiagram
+drawPowerDiagram(of circles: [Circle], in bounds: Rectangle? = nil)
+
+struct WeightedSite {
+    init(_ point: Vector2, weight: Double = 0)
+    init(_ circle: Circle)                    // weight = radius squared
+    func power(to point: Vector2) -> Double   // squared distance, less the weight
+}
+
+struct PowerDiagram {
+    let sites: [WeightedSite]
+    let cells: [Shape]                        // one per site, empty when it lost
+    func site(owning point: Vector2) -> Int?
+}
+```
+
+A Voronoi cell holds every place closer to its site than to any other. A **power** cell holds every place whose *power* is least, where power is the squared distance less a weight the site carries. That single change gives every site a dial, and it is the diagram to reach for when the things being divided have sizes.
+
+Two properties survive the change and one is new. The boundary between two cells is still a straight line, so the cells are still convex polygons and they still tile the region exactly. What is new is that **a site can lose everything**: a small circle sitting inside a large one gets no cell at all, which a plain Voronoi diagram can never do. Its `cells` entry is an empty `Shape`, and drawing it draws nothing.
+
+The weight is not a radius and not an importance, and only the *differences* between weights matter. Adding the same amount to every weight leaves the diagram exactly where it was.
+
+**Weighting a circle by the square of its radius is the case worth knowing.** The power of a point on the circle is then zero, so a circle that touches no other lies entirely inside its own cell. That is what makes the diagram the right partition for a set of circles of different sizes: cell boundaries fall where two circles would meet if they grew, rather than halfway between their centers.
+
+```swift
+let circles = packCircles(count: 80, minRadius: 8, maxRadius: 60)
+let diagram = powerDiagram(of: circles)
+for (index, cell) in diagram.cells.enumerated() {
+    fill(palette[index % palette.count])
+    drawShape(cell)
+}
+```
+
+Every cell is cut out with one half-plane per other site, so the cost grows with the square of the site count. A few hundred sites is comfortable, a few thousand is not. `site(owning:)` answers from the sites themselves rather than from the polygons, so it is exact and works outside `bounds` too.
 
 <a name="delaunay"></a>
 

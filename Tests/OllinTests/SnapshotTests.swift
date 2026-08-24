@@ -443,6 +443,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("ulam-spiral",
                  note: "The primes from 1 up, written in a 51-cell square spiral and marked as dots. Pins the spiral walk (which cell each number lands in, and therefore where every diagonal falls) and the sieve behind the marks. No rng and no time, so it is deterministic.",
                  make: { UlamSpiralScene() }),
+    SnapshotCase("power-diagram",
+                 note: "A seeded pack of circles of very different sizes, divided into power cells weighted by the square of each radius, with the circles drawn over their cells. Pins the half-plane cut, the weighting, and the property the weighting buys: every circle lies inside its own cell rather than being sliced by a neighbor's boundary. Seeded, no time, so it is deterministic.",
+                 make: { PowerDiagramScene() }),
     SnapshotCase("ford-circles",
                  note: "The Ford circles of every fraction with a denominator of nine or less, filled by denominator, over the line they all rest on. Pins the Farey walk that names them, the 1/(2q squared) radius, and the single width scale that makes tangency come out right (scaling x and y differently would leave gaps or overlaps). No rng and no time, so it is deterministic.",
                  make: { FordCirclesScene() }),
@@ -3379,6 +3382,30 @@ private final class UlamSpiralScene: Sketch {
         fill(Color(hex: 0xFFD166))
         let radius = spiral.grid.cellWidth * 0.36
         for point in spiral.primePoints { drawCircle(center: point, radius: radius) }
+    }
+}
+
+/// A seeded pack of circles divided into power cells, the circles drawn over
+/// them. Seeded and no `time`, so it's deterministic.
+private final class PowerDiagramScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0B0E14))
+        seed(5)
+        let circles = packCircles(in: bounds.inset(by: 8), count: 26,
+                                  minRadius: 8, maxRadius: 44, padding: 3)
+        strokeWeight(1)
+        for (index, cell) in powerDiagram(of: circles).cells.enumerated() {
+            let paint = CosinePalette.rainbow.color(at: Double(index) * 0.6180339887)
+            fill(paint.withAlpha(0.25))
+            stroke(paint)
+            drawShape(cell)
+        }
+        noFill()
+        stroke(Color(white: 0.9))
+        strokeWeight(1.5)
+        for circle in circles { drawCircle(circle) }
     }
 }
 

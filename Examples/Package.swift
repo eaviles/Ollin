@@ -442,6 +442,7 @@ let package = Package(
         example("Patterns/UlamSpiral"),
         example("Patterns/Spirolateral"),
         example("Patterns/FordCircles"),
+        example("Patterns/PowerDiagram"),
         example("Patterns/Truchet"),
         example("Patterns/Hitomezashi"),
         example("Patterns/Kolam"),
