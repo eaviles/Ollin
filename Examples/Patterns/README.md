@@ -60,6 +60,8 @@ shape *composition* (booleans and SDF combinators) live in [Shapes](../Shapes/).
 | [Streamlines](Streamlines/Sketch.swift) | evenly-spaced streamlines through a noise flow field, each line stopping when it nears one already drawn, fanning into smooth non-crossing currents (`FlowField.streamlines`) |
 | [Topography](Topography/Sketch.swift) | a breathing blob inset inward over and over until the region pinches out, each surviving ring stroked: contour lines that crowd where the form narrows; pure line work that plots straight to SVG (`Shape.offset(by:join:)`) |
 | [TriangleGrid](TriangleGrid/Sketch.swift) | a shimmer over alternating up and down triangles, the two orientations reading one noise field through two palettes (`triangleGrid`) |
+| [TenPrint](TenPrint/Sketch.swift) | a maze of diagonals from one coin per cell, drawn as joined runs with a color each, the plain per-cell reading on mouse hold (`tenPrint`, `runs`, `lines`) |
+| [UlamSpiral](UlamSpiral/Sketch.swift) | the primes written in a square spiral, the diagonals they fall on drifting as the count starts from somewhere else, the walk itself on mouse hold (`ulamSpiral`, `primePoints`, `path`) |
 | [Truchet](Truchet/Sketch.swift) | one tile per grid cell at a seed-chosen spin: quarter-arcs meet across borders into meandering loops while a flow field sweeps hue along them (`truchet`) |
 | [Turmites](Turmites/Sketch.swift) | tiny Turing machines painting a wrapped grid: Langton's ant and its highway, spiral builders, chaotic weavers, all on a preset knob (`Turmite`) |
 | [Venation](Venation/Sketch.swift) | space colonization: veins grow live from a bottom root toward a blue-noise attractor scatter, branch weight from the pipe model (`SpaceColonization`, `poissonDisk`) |

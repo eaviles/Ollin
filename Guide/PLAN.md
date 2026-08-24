@@ -101,14 +101,14 @@ Teaches: the `grid` helper looped once (cells and points, the `frame`/`center`/`
 Assumes: Ch 2 (`Ramp`), Ch 4 (seeds and `random`).
 Payoff: a wall of rosettes. One grid, one crooked arm, a fold count per block, and a clip that cuts every medallion to a disc.
 Figures: grid anatomy; the four transform steps; the pinwheel quilt; the rosette; the kaleidoscope triptych; clip regions; the four other divisions; the finished wall.
-Draws from: `Docs/Drawing/Geometry.md`, `Docs/Drawing/Drawing.md`, `Docs/Drawing/Tiling.md`; `Examples/Patterns/Grid`, `Kaleidoscope`, `Shapes/Clipping`.
+Draws from: `Docs/Drawing/Geometry.md`, `Docs/Drawing/Drawing.md`, `Docs/Drawing/Tiling.md`, `Docs/Generators/UlamSpiral.md`; `Examples/Patterns/Grid`, `Kaleidoscope`, `Shapes/Clipping`.
 
 **7. Tiles that cover the plane.**
 Teaches: the edge-agreement idea itself (a tile promises only to meet its own doorways, and the order across the page is what emerges); Truchet's two tiles and the strand output; hitomezashi's one bit per grid line and its two faces; the never-repeating sets (`penroseTiling` with its arcs, `wangTiling`, `girihPattern` and the contact angle, `spectreTiling` and the single-shape result of 2023); `hyperbolicTiling` on the Poincare disk, with parity and depth coloring and the panning viewpoint.
 Assumes: Ch 6 (the grid and the transforms), Ch 4 (seeds), Ch 5 (noise, for the finished piece's color).
 Payoff: a meandering tangle. Truchet strands stroked twice, a rim pass under a color pass, with noise painting slow weather across it.
 Figures: the two Truchet tiles; the doorway diagram; both hitomezashi faces; the crease pattern beside the sheet it folds into; the four aperiodic panels; two Poincare disks; the finished tangle.
-Draws from: `Docs/Drawing/Truchet.md`, `Hitomezashi.md`, `CreasePattern.md`, `AperiodicTilings.md`, `HyperbolicTiling.md`; `Examples/Patterns/`.
+Draws from: `Docs/Drawing/Truchet.md`, `Hitomezashi.md`, `TenPrint.md`, `CreasePattern.md`, `AperiodicTilings.md`, `HyperbolicTiling.md`; `Examples/Patterns/`.
 
 **8. Words.**
 Teaches: `drawText` and its box form; the three kinds of font (outline, stroke, bitmap) and why the pen font takes a stroke; per-glyph motion; `textToShapes` as the chapter's hinge, with warping and `resampled` respacing; scripts that do not work like English; vertical text and Mongolian; justification; hanging punctuation.
@@ -347,6 +347,8 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | Tiling noise (`tilingNoise`, `signedTilingNoise`, `tilingFbm`, `signedTilingFbm`; `Generators/Noise.md#tiling`) | Ch 22 (taught where triplanar needs it) | taught (a section in the triplanar part of Ch 22 with the swap rule, and the chapter's Bench payoff wears it) |
 | `Drawing/Geometry.md`: `Grid`, `Insets` | Ch 6 | taught |
 | `Drawing/Truchet.md` | Ch 7 | taught |
+| `Drawing/TenPrint.md` (`tenPrint`) | Ch 7 | taught ("One coin per cell: a maze of diagonals" with the DiagonalMaze figure: one coin per cell against hitomezashi's one per line, the diagonals meeting at corners as the whole reason it reads as paths, `runs` as that reading made real, the round cap, and biasing the coin) |
+| `Generators/UlamSpiral.md` (`ulamSpiral`, `primes`, `isPrime`) | Ch 6 | taught ("Walking a grid: numbers in a spiral" with the NumbersInASpiral figure: reading order as a choice, the spiral walk, why a diagonal is a quadratic and therefore why the lines are there, `points(where:)` for any test, and `start` as the knob to animate) |
 | `Drawing/Hitomezashi.md` | Ch 7 | taught ("One coin per line: hitomezashi" with the HitomezashiFaces figure: the one-bit-per-line rule, both faces with the fill-then-stitch snippet, biased flips, explicit bits and the word-encoding trick; lineage in "Where this comes from") |
 | `Drawing/Kolam.md` | Ch 7 | taught ("No coins at all: kolam and sona" after the hitomezashi section, with the KolamLoops figure: the 45-degree line bounced off the field edge, the loop count as gcd of the two side counts and why that lets you pick the outcome, the two traditions and why one unbroken line is the point, walls moving the count by exactly one, and the line-work as contours for a plotter) |
 | `Drawing/Knotwork.md` | Ch 7 | taught ("The same line, woven: Celtic knotwork" after the kolam section, with the KnotworkWeave figure walking line to band to knot: alternation as the rule that makes a weave hold, the bands arriving already broken so there is nothing to mask, the one-band-at-a-time draw and why the `withState` is needed, and walls both steering a cord and removing a crossing) |

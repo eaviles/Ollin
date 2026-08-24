@@ -438,6 +438,8 @@ let package = Package(
         example("Patterns/LevyFlight"),
         example("Patterns/SelfAvoidingWalk"),
         example("Patterns/Kaleidoscope"),
+        example("Patterns/TenPrint"),
+        example("Patterns/UlamSpiral"),
         example("Patterns/Truchet"),
         example("Patterns/Hitomezashi"),
         example("Patterns/Kolam"),

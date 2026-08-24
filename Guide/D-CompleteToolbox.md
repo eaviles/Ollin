@@ -135,6 +135,8 @@ Use it two ways. It is an index for the moment you remember the guide showing bl
 | Shape packing | Packing measured against real outlines, so small shapes settle into a star's notches; one-shot or filled in over time | [Ch 15](15-ShapesAsMaterial.md) | [ShapePacking](../Docs/Generators/ShapePacking.md) |
 | Truchet tiles | One tile per cell at random spins; loops and mazes emerge | [Ch 7](07-Tiles.md) | [Truchet](../Docs/Drawing/Truchet.md) |
 | Hitomezashi stitching | One bit per grid line phases its dashes; stitches and a two-tone cloth emerge | [Ch 7](07-Tiles.md) | [Hitomezashi](../Docs/Drawing/Hitomezashi.md) |
+| Ten print | A maze of diagonals, one of two per cell by a coin flip, joined into the long connected paths it already is | [Ch 7](07-Tiles.md) | [TenPrint](../Docs/Drawing/TenPrint.md) |
+| Ulam spiral | The whole numbers written in a square spiral, so a test on them becomes a picture and the primes fall on diagonals | [Ch 6](06-GridsAndRepetition.md) | [UlamSpiral](../Docs/Generators/UlamSpiral.md) |
 | Kolam and sona | One line bounced around a field of dots until it closes, in gcd(rows, columns) loops, with walls to steer the count | [Ch 7](07-Tiles.md) | [Kolam](../Docs/Drawing/Kolam.md) |
 | Celtic knotwork | The same line given width and an alternating over-under rule, the bands handed back already broken where each cord dives | [Ch 7](07-Tiles.md) | [Knotwork](../Docs/Drawing/Knotwork.md) |
 | Crease patterns | The flat sheet a folded or cut thing comes from: the Miura fold with its rigid folding in three dimensions, rotating-squares kirigami, and the two laws that say whether a sheet can fold flat | [Ch 7](07-Tiles.md) | [CreasePattern](../Docs/Drawing/CreasePattern.md) |

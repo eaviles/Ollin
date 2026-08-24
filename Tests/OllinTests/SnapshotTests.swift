@@ -440,6 +440,12 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("luminance-melt",
                  note: "A painted tonal study (gradient plus a bright disk) poured through the luminance melt at a fixed phase. Pins the two-level domain warp, the shared displacement (field warp and image liquify from one vector), the luminance steer into the field, the four-stop sRGB ramp, and the highlight bloom. No rng and no time, so it is deterministic.",
                  make: { LuminanceMeltScene() }),
+    SnapshotCase("ulam-spiral",
+                 note: "The primes from 1 up, written in a 51-cell square spiral and marked as dots. Pins the spiral walk (which cell each number lands in, and therefore where every diagonal falls) and the sieve behind the marks. No rng and no time, so it is deterministic.",
+                 make: { UlamSpiralScene() }),
+    SnapshotCase("ten-print",
+                 note: "A seeded maze of diagonals, drawn as joined runs with the color stepped per run, over the plain per-cell reading in gray. Pins the coin-per-cell layout, the corner lattice the diagonals meet on, and the run walk's own ordering. Seeded, no time, so it is deterministic.",
+                 make: { TenPrintScene() }),
     SnapshotCase("droste",
                  note: "A ring of colored marks on flat ground, put through the droste filter twice in one frame: plain concentric copies on the left, and the same ring wound into one spiral on the right. Pins the complex log, the log-plane rotation the twist applies, the repeat along the strip, and the map back. No rng and no time, so it is deterministic.",
                  make: { DrosteScene() }),
@@ -3353,6 +3359,46 @@ private final class MeasuredFieldScene: Sketch {
         return float4(sampleAux(info, inside / info.resolution).rgb * 0.55, 1.0);
     }
     """
+}
+
+/// The primes written in a square spiral and marked. No rng and no `time`, so
+/// it's deterministic.
+private final class UlamSpiralScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0C0F16))
+        let spiral = ulamSpiral(in: bounds.inset(by: 8), size: 51)
+        noStroke()
+        fill(Color(hex: 0xFFD166))
+        let radius = spiral.grid.cellWidth * 0.36
+        for point in spiral.primePoints { drawCircle(center: point, radius: radius) }
+    }
+}
+
+/// A seeded maze of diagonals: the plain per-cell reading under the joined runs,
+/// each run its own color. Seeded and no `time`, so it's deterministic.
+private final class TenPrintScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0B0E14))
+        seed(3)
+        let maze = tenPrint(in: bounds.inset(by: 10), columns: 16, rows: 16)
+        noFill()
+        strokeCap(.round)
+
+        strokeWeight(9)
+        stroke(Color(white: 0.22))
+        for line in maze.lines { drawPolyline(line.points) }
+
+        strokeWeight(4)
+        for (index, run) in maze.runs.enumerated() {
+            stroke(CosinePalette.rainbow.color(at: (Double(index) * 0.6180339887)
+                .truncatingRemainder(dividingBy: 1)))
+            drawPolyline(run.points)
+        }
+    }
 }
 
 /// A ring of marks put through the droste filter two ways: plain concentric copies

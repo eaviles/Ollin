@@ -44,6 +44,7 @@ New to Swift? Start with the [Swift quick reference](./Swift.md), which covers j
 - [`Fitting`](./Drawing/Fitting.md) - `RadialBasis`, a smooth field of numbers, vectors, or colors fitted through values you know at a handful of scattered places (and the warp a field of vectors makes), plus `Fit.minimize`, which walks a handful of knobs downhill against a cost you write
 - [`Truchet tiling`](./Drawing/Truchet.md) - one tile per grid cell spun to a random orientation, so identical parts line up into flowing loops (`.arcs`) or a maze (`.diagonals`)
 - [`Hitomezashi stitching`](./Drawing/Hitomezashi.md) - one bit per grid line phases its dashes, and the shifted lines weave into staircases, loops, and a two-tone cloth
+- [`Ten print`](./Drawing/TenPrint.md) - `tenPrint`, one of two diagonals per cell by a coin flip, joined into the long connected paths that made the picture famous
 - [`Kolam and sona`](./Drawing/Kolam.md) - one line launched between a field of dots and bounced off the edges until it closes, in gcd(rows, columns) loops, with walls to steer it
 - [`Celtic knotwork`](./Drawing/Knotwork.md) - the same line given width and an over-under rule that alternates, handed back already broken where each cord dives
 - [`Crease patterns`](./Drawing/CreasePattern.md) - the flat sheet a folded or cut thing comes from: the Miura fold with its rigid folding in three dimensions, rotating-squares kirigami, and Kawasaki's and Maekawa's laws that say whether a sheet can fold flat
@@ -89,6 +90,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 - [`Low-discrepancy sampling`](./Generators/LowDiscrepancy.md) - `haltonPoints` / `sobolPoints`, even coverage as an ordered stream: growing the count only adds points, never moves them
 - [`Points on a surface`](./Generators/SurfaceSampling.md) - `surfacePoints`, points scattered over a mesh's skin rather than its vertex list, evenly spaced by default, each carrying the normal, texture coordinate, and triangle it landed on
 - [`Stippling`](./Generators/Stippling.md) - `stipple`, dots packed to reproduce an image's tone (weighted-Voronoi stippling), or any density function
+- [`Ulam spiral`](./Generators/UlamSpiral.md) - `ulamSpiral`, the whole numbers written in a square spiral so a test on them becomes a picture, with the primes falling on diagonals
 - [`Fractals`](./Generators/Fractals.md) - `IFS` chaos games, `FractalFlame` renders, circle-inversion limit sets, and Kleinian limit-set curves, plus the `fitted` placement helper
 - [`Chaotic maps & bifurcation`](./Generators/Bifurcation.md) - `IteratedMap`, the one-dimensional route to chaos: logistic, sine, tent, and Gauss families, orbits and cobweb staircases, the bifurcation diagram as dots or a density image, and Lyapunov exponents
 - [`Single line`](./Generators/SingleLine.md) - `singleLine`, one continuous tour through an image's stipple (TSP art), a plotter-friendly `Contour`

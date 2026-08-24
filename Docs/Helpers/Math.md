@@ -12,6 +12,7 @@ A small, growing set of the familiar creative-coding math functions, callable ba
 - [dist](#dist)
 - [lerp](#lerp)
 - [Shaping scalars](#shaping): `clamp`, `fract`, `step`, `smoothstep`
+- [Primes](#primes)
 - [Constants](#constants)
 
 <a name="map"></a>
@@ -111,9 +112,24 @@ fill(Color.mix(.navy, .white, t: lit))
 
 <a name="constants"></a>
 
+### Primes
+
+```swift
+primes(upTo limit: Int) -> [Int]
+isPrime(_ number: Int) -> Bool
+```
+
+Whole numbers as material. `primes(upTo:)` is the sieve of Eratosthenes and answers the whole run at once, which is what makes a field of thousands of numbers cheap. `isPrime` is the shorter way round for a single number. Negative numbers, zero, and one are not prime.
+
+```swift
+for p in primes(upTo: 500) { drawCircle(Double(p), height / 2, 3) }
+```
+
+The picture these are best known for is the [Ulam spiral](../Generators/UlamSpiral.md), which writes the numbers in a square spiral and marks the primes.
+
 ### Constants
 
-`Double.tau` is the full turn (2π), handy for angles.
+`Double.tau` is the full turn (2π), which is what most angle work wants.
 
 ```swift
 rotate(Double.tau / 6)   // a sixth of a turn

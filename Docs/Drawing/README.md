@@ -29,6 +29,7 @@
 - [`Fitting`](./Fitting.md) - `RadialBasis`, a smooth field of numbers, vectors, or colors fitted through values you know at a handful of scattered places (and the warp a field of vectors makes), plus `Fit.minimize`, which walks a handful of knobs downhill against a cost you write
 - [`Truchet tiling`](./Truchet.md) - one tile per grid cell spun to a random orientation, so identical parts line up into flowing loops (`.arcs`) or a maze (`.diagonals`)
 - [`Hitomezashi stitching`](./Hitomezashi.md) - one bit per grid line phases its dashes, and the shifted lines weave into staircases, loops, and a two-tone cloth
+- [`Ten print`](./TenPrint.md) - `tenPrint`, one of two diagonals per cell by a coin flip, joined into the long connected paths that made the picture famous
 - [`Kolam and sona`](./Kolam.md) - one line launched between a field of dots and bounced off the edges until it closes, in gcd(rows, columns) loops, with walls to steer it
 - [`Celtic knotwork`](./Knotwork.md) - the same line given width and an over-under rule that alternates, handed back already broken where each cord dives
 - [`Crease patterns`](./CreasePattern.md) - the flat sheet a folded or cut thing comes from: the Miura fold with its rigid folding in three dimensions, rotating-squares kirigami, and Kawasaki's and Maekawa's laws that say whether a sheet can fold flat
