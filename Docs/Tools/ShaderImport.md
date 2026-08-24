@@ -19,6 +19,8 @@ Plasma/
 
 The shader is **source you now own**. Edit it and keep what works. Under [OllinLive](../../README.md#live-reload) a saved `.metal` file reloads on its own, with no Swift build in between.
 
+<img src="../../Guide/Images/17-YourFirstShader/ImportedShader.jpg" alt="Left, a nine-line GLSL shader as pasted, with mod, iResolution and iTime picked out in dark ink. Right, the ring pattern it draws once translated, tiling evenly across the whole frame" width="680">
+
 ## Where the shader comes from
 
 Three ways, all doing the same thing once the code is in hand.

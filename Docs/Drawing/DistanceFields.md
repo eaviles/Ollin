@@ -18,6 +18,8 @@ have it. Growing and shrinking a shape, outlining it at any offset, drawing its 
 finding which shape is nearest, softening a shadow by distance: each of those is a question
 about distance, and none of them is easy without one.
 
+<img src="../../Guide/Images/16-LayersAndEffects/MeasuredField.jpg" alt="Three dark panels. A circle, a square and a stroked zigzag on black; the same shapes as pale contour bands, each ring following its shape and merging with its neighbors where they meet; and the same shapes as flat color regions, each pixel wearing the color of the mark nearest to it" width="680">
+
 ### Contents
 
 - [Quick start](#quick-start)

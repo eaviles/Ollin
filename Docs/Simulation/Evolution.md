@@ -54,6 +54,8 @@ override func draw() {
 
 That is the whole sketch. You place a start, a target, and whatever walls are in the way. Selection finds its own way around them. The first generation sprays in every direction. The population piles into the walls for a few generations. Then one lucky genome slips through the gap, and the crowd pours after it.
 
+<img src="../../Guide/Images/20-ParticleSimulations/Evolution.jpg" alt="Three dark panels, each with a wall across the middle broken by a narrow gap and a gold ring near the top. Left, generation 1: a violet blob of dots at the bottom and a thin scatter above the wall. Middle, generation 8: a broad blue and green plume rising through the gap and spreading toward the ring. Right, generation 23: one clean arc, violet at the bottom through blue and green to gold, threading the gap and ending in the ring" width="880">
+
 A run names a population, a genome length, and two points, and nothing else. The reason is that **everything about the pace is derived from the distance the trial has to cover**. The top speed crosses that distance in about two seconds. The trial runs long enough to go the long way round. One gene pushes hard enough to reach the top speed in a quarter of a trial. Those figures are re-derived every frame. So dragging the target re-paces the whole run, rather than leaving it tuned for where the target used to be.
 
 <a id="mechanism"></a>
@@ -112,6 +114,8 @@ It is off by default, because measuring means reading the whole population back 
 ### Breeding by hand
 
 This is the older idea, and the stranger one. Sixteen candidates sit on screen. The only thing deciding which of them have children is that somebody liked looking at them.
+
+<img src="../../Guide/Images/20-ParticleSimulations/PickAndBreed.jpg" alt="Two four-by-four grids of small radial ornaments. In the left grid every ornament is different and two are outlined in orange. In the right grid, one breeding later, all sixteen are recognizable variations on the outlined pair" width="680">
 
 ```swift
 var pool: Population!

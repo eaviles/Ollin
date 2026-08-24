@@ -6,6 +6,8 @@
 
 Perlin `noise` is coherent: nearby inputs give nearby outputs, which reads as smooth, organic variation. It's the smooth counterpart to the uncorrelated [Random](../Generators/Random.md). It lives on the sketch and is seedable, and the output is contrast-calibrated to fill its range.
 
+<img src="../../Guide/Images/05-Noise/RandomVsNoise.jpg" alt="Two framed strips: the top a jagged hash of random heights, the bottom a smooth rolling curve from noise" width="680">
+
 ### Contents
 
 - [noise](#noise)
@@ -93,6 +95,8 @@ signedFbm(/* the same forms */) -> Double
 
 Fractal (layered) noise in `0...1`: `octaves` samples of the field summed, each octave `lacunarity`× smaller in feature size and `gain`× lighter in weight, normalized so the result still fills the range. One call for the shape-plus-detail layering you'd otherwise write by hand (`noise(x * s) * 0.7 + noise(x * s * 8) * 0.3`); `octaves: 1` is exactly `noise`. The name and defaults match the [shader library's `fbm`](../Shaders/ShaderLibrary.md), so the vocabulary carries into per-pixel code.
 
+<img src="../../Guide/Images/05-Noise/NoiseLayers.jpg" alt="Three framed strips: a slow big-scale noise curve labeled shape, a busy small-scale curve labeled detail, and their weighted sum showing gentle terrain with fine texture riding it" width="680">
+
 ```swift
 let ridge = fbm(x * 0.004)                            // big moves plus fine grain
 let ground = fbm(x * 0.003, y * 0.003, octaves: 5)    // a busier field
@@ -164,6 +168,8 @@ let sway = signedSimplexNoise(time * 0.4, 7) * 30
 
 Same seed (`noiseSeed`), separate field: `noise` and `simplexNoise` at the same point do not correlate.
 
+<img src="../../Guide/Images/05-Noise/NoiseFlavors.jpg" alt="Six gray field panels from one seed: classic noise, simplex noise, warped fbm, cellular worley, ridged fbm, and turbulence" width="680">
+
 <a name="worley"></a>
 
 #### worley
@@ -180,6 +186,8 @@ Cellular noise: space is divided into unit cells, each holding one seeded featur
 - `.nearest` (the default): the classic cell field.
 - `.second`: the distance to the *second*-nearest point, a blunter plateau.
 - `.border`: their gap, which is zero exactly on the walls between cells. Threshold it small for crack and vein line work.
+
+<img src="../../Guide/Images/05-Noise/CellsFromPoints.jpg" alt="Two panels of cellular noise: distances shaded so each hidden point sits in a dark core, and the border reading drawing dark walls between the cells" width="680">
 
 `jitter` runs the cells from a regular grid (0) to fully organic (1). The 3D form bubbles in place if you drift `z` over time:
 
@@ -240,6 +248,8 @@ The GPU spellings of the same look: `generate(.noise(scale: 3, warp: 1))` fills 
 ### Choosing a scale
 
 The multiplier on noise's input is a zoom knob: it decides how far apart your samples land on the field, and it's the number you'll tune most.
+
+<img src="../../Guide/Images/05-Noise/NoiseZoom.jpg" alt="Three framed panels sampling the same noise field with multipliers 0.004, 0.015, and 0.06, the curve going from one gentle valley to rolling hills to busy wiggles" width="680">
 
 - When feeding **pixel coordinates**, multiply by something small, usually `0.001...0.02`. A 1080-pixel canvas times `0.006` spans about six of the field's features: big enough to read as shapes, small enough to stay interesting.
 - If the output **looks like static**, the multiplier is too big: successive samples are landing on unrelated parts of the field. Shrink it until the result glides.

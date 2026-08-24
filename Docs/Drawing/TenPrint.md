@@ -8,6 +8,8 @@
 
 It is the picture a famous one-line program printed forever on an early home computer, and about the smallest amount of code anyone has needed to make something worth looking at.
 
+<img src="../../Guide/Images/07-Tiles/DiagonalMaze.jpg" alt="Two panels of the same design: a black maze of diagonals over a 16 by 16 grid, and the same lines redrawn with each joined run in its own color" width="680">
+
 ```
   one cell, two choices        a field of them
 

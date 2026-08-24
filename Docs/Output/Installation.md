@@ -54,6 +54,8 @@ swift run --package-path Examples Example-Motion-Orbits --rehearse 3          # 
 
 Two things go wrong with time in a long run, and both are held off for you.
 
+<img src="../../Guide/Images/32-Installations/LongRunClock.jpg" alt="A diagram in two parts: a timeline of frame ticks with an eight-hour gap where the display slept, the first frame back read two ways as either an eight-hour deltaTime or a quarter-second one; and two cards of three consecutive shader-clock readings, one stuck at 604800.00 and one counting normally after a restart" width="680">
+
 **A gap in the frames is a pause, not a jump.** The sketch clock is the sum of its own frame steps, and each step is capped at a quarter of a second. So a display asleep overnight, a window held during a drag, or a stall of any kind resumes where the piece left off. Without the cap, the first frame back reports the whole gap as `deltaTime`. One eight-hour step throws every integrator a sketch has into the far distance.
 
 A quarter of a second is past any frame rate worth animating at, so a running sketch never meets the cap. A sketch slower than four frames a second runs in slow motion, which beats the alternative.
@@ -81,6 +83,8 @@ Pick a whole number of the periods your shaders animate on, or expect a visible 
 ### Picking up where it left off
 
 A piece that has been growing for three days cannot be rebuilt from its seed in any useful sense. Getting back there means running the three days again. So the state itself is written down, and the next launch reads it.
+
+<img src="../../Guide/Images/32-Installations/Resuming.jpg" alt="Two dark eight-by-eight boards side by side with an arrow labeled relaunch between them: the left holding fourteen colored tiles, the right holding the same fourteen in the same cells plus three more, ringed in orange" width="680">
 
 Two things to say. How often to write, and what is worth writing.
 
@@ -144,6 +148,8 @@ The save happens on the frame it falls on, so keep the saved state to what the p
 
 A crash at three in the morning leaves the wall dark until somebody notices, which is usually the next day.
 
+<img src="../../Guide/Images/32-Installations/BackUp.jpg" alt="A timeline of one night from 22:00 to 08:00: three run bars for the piece, the first ending at a marker labeled crash, the second turning gray before a marker labeled stopped answering, the third still going; underneath, a row of heartbeat ticks that stops where the gray stretch begins" width="680">
+
 ```swift
 override var installation: Installation {
     Installation(checkpoint: .every(seconds: 60), restarts: .onFailure)
@@ -189,6 +195,8 @@ Installation(schedule: .open(from: 10, to: 18))
 
 Outside them the screen goes dark, the frames stop, and the display is allowed to sleep. In the morning the piece comes back where it stopped. The clock is the sum of the frames it drew, so a night off costs it nothing. The state goes down on the way into the dark, so a piece that checkpoints keeps the night as well.
 
+<img src="../../Guide/Images/32-Installations/GalleryHours.jpg" alt="A day drawn as a colored bar over a 24-hour axis: a dark stretch until six, then parts named dawn, day, dusk and night, and dark again from eleven at night; below it the sketch clock as a line that lies flat through the dark hours and climbs through the rest" width="680">
+
 The other half is behaving differently at different times of day. Name the parts of the day, and the sketch reads which one it is in.
 
 ```swift
@@ -217,6 +225,8 @@ Installation(schedule: [.from(9, "morning"), .from(13, "afternoon"), .dark(from:
 ### Fitting the wall
 
 A projector is almost never square to what it is aimed at. It hangs off a beam, or sits on a shelf to one side. The picture lands as a trapezoid a few degrees out of true.
+
+<img src="../../Guide/Images/32-Installations/FittingTheWall.jpg" alt="Left, a rectangle of grid lines landing on a wall as a tilted trapezoid, labeled as it lands. Right, the same grid sitting square inside the wall with a handle on each corner, labeled corner-pinned. Below, two colored blocks meeting in a shared band where each fades out, with a flat line across the top labeled added up, one coat" width="680">
 
 So the picture is placed by the framework rather than by the window. Press **Command-K** on a running piece, drag the four corners onto the wall, and press it again.
 
@@ -276,6 +286,8 @@ override var installation: Installation {
 ```
 
 That spreads one canvas over every display the machine has, in the arrangement they are actually in. Two monitors side by side carry a half each. One above the other carries a band each. A display twice as wide as the one beside it carries twice as much. You declare no numbers, because the desk already says all of it.
+
+<img src="../../Guide/Images/32-Installations/ManyDisplays.jpg" alt="A long canvas at the top holding a night sky, a sun and one wave, divided by two lines into three parts labeled shows 0 to 0.33, 0.33 to 0.66, and 0.66 to 1. Three arrows lead down to three display panes, each holding its own third of the same picture, so the wave carries on from one to the next" width="680">
 
 The gap between two monitors carries part of the canvas that nobody sees. That is what the arrangement looks like from in front of it. The alternative is a picture with a piece cut out of the middle.
 
@@ -364,6 +376,8 @@ Exports open no window, so none of the window parts apply to them. The clock res
 A piece is not always one window. Run the same sketch more than once. Each run opens its own window on the same desk.
 
 `canvasOnScreen` says where this canvas sits there, in screen points. It is measured from the top-left corner of the main screen, downward. Every window describes the same desk in the same numbers. So each one can draw its own part of a single world:
+
+<img src="../../Guide/Images/32-Installations/OneWorldManyWindows.jpg" alt="A pale rectangle labeled the desk, holding faint rings and colored dots. Three dark window panes sit on it, each showing the part of the rings and dots that falls inside it, so the rings carry on across the gaps between the panes. A bracket under the middle pane is labeled canvasOnScreen: where this one sits on the desk" width="680">
 
 ```swift
 guard let mine = canvasOnScreen else { return }

@@ -11,6 +11,8 @@ A compute shader is a small program that runs on the GPU over a grid of data, on
 
 Both write the per-element update as a short snippet of Metal, and Ollin generates the kernel, owns the double-buffering, and renders the result. Underneath sits one typed core ([`ComputeKernel`](#computekernel), [`ComputeBuffer`](#computebuffer), [`ComputeTexture`](#computetexture), [`compute`](#compute)) you can drop to for full control.
 
+<img src="../../Guide/Images/20-ParticleSimulations/MillionGrains.jpg" alt="Three strips of the same particle system at ten thousand, a hundred thousand, and a million grains: sparse embers, a grainy dune, and a smooth field of light" width="560">
+
 > Compute kernels are written in **Metal Shading Language (MSL)**, a C++-like GPU language. You can write them inline as a Swift string, or keep them in their own [**`.metal` file**](#metalfile) for editor highlighting and checking. Ollin compiles them at runtime, so editing a kernel hot-reloads with the sketch. The snippets below are MSL, not Swift.
 
 ### Contents

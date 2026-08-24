@@ -118,6 +118,8 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
 
 #### Arithmetic
 
+<img src="../../Guide/Images/10-Vectors/VectorArithmetic.jpg" alt="Four labeled panels: adding two arrows head to tail, the arrow from a pos point to a target point, an arrow scaled longer and flipped, and a long arrow with its unit-length version ending on a circle of radius one" width="680">
+
 **`+`, `-`, unary `-`** add two vectors *head to tail*, and subtract to get the step between two points. (Plus the in-place `+=` / `-=`, the `pos += vel` idiom.)
 
 ```
@@ -528,6 +530,8 @@ Take `a`, the square from `(0, 0)` to `(100, 100)`, and `b`, the square from `(5
 
 The operations work on the **filled region**, so each side first resolves under its own `winding` rule (self-overlaps and holes mean exactly what they mean when the shape draws), closed contours take part, and open contours sit out. The result is an ordinary `Shape` you can fill, stroke, hatch, offset, or export, whose outer boundaries and holes come back oppositely wound, marked `.nonZero`. Where regions don't touch, the result simply holds more than one contour. Where nothing remains (say, intersecting shapes that don't overlap), `contours` comes back empty and drawing it is a no-op.
 
+<img src="../../Guide/Images/15-ShapesAsMaterial/BooleanOps.jpg" alt="Four panels showing a circle and a star combined by union, intersection, subtracting, and symmetricDifference, the surviving region filled in ink with the original outlines faint behind" width="680">
+
 ```swift
 let bite = star.subtracting(disc)     // a star with a bite taken out
 fill(.black)
@@ -553,6 +557,8 @@ while !ring.contours.isEmpty {        // inset until the region pinches out
     ring = ring.offset(by: -12, join: .round)
 }
 ```
+
+<img src="../../Guide/Images/B-JustEnoughMath/Offsets.jpg" alt="A peanut-shaped region with grown outlines around it and shrunken outlines inside, the deepest inset split into two islands" width="680">
 
 `join` decides the corners with the same vocabulary as [`strokeJoin(_:)`](../Drawing/Drawing.md#strokeJoin): `.miter` keeps them sharp (falling back to a flat bevel past the same spike limit the stroked path uses), `.bevel` always cuts them flat, `.round` arcs around them. Open contours sit out here too, because `offset` moves a region's edge, not a stroked line.
 

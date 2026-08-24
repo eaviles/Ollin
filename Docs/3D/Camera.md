@@ -8,6 +8,8 @@ A [3D](./3D.md) sketch sets a [`camera`](./3D.md#the-camera) each frame. Often w
 
 Both are here, both opt-in, and both reuse the orbit pose ([`Camera3D.orbiting`](./3D.md#the-camera)). That suits the kind of scene Ollin draws: an object on a turntable, looked at from around it. It is not a camera flown through a space. The object might be a transforming solid, a particle system, or a point cloud.
 
+<img src="../../Guide/Images/21-3DGently/Orbit.jpg" alt="A diagram of the orbiting camera: a small camera body on a gray ring around a dark knot, with a dashed sight line labeled radius, a ground arc labeled azimuth, and a climbing arc labeled elevation" width="680">
+
 The one most sketches reach for is [`cameraShowcase(_:)`](#showcase), which **fuses the two**. It orbits on its own *and* lets the viewer grab and explore, easing back to the opening shot when left alone.
 
 Each is a single call you make in `draw()`, like `camera(...)`. A sketch that calls neither keeps its own camera untouched. Both write the same pose, so handing off between hand-framing and a move continues smoothly from wherever you left it.

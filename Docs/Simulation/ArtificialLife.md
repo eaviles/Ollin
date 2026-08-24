@@ -8,6 +8,8 @@ Five classic emergent-behavior systems, each running on the GPU: **Particle Life
 
 One caveat is shared by all five. These systems are chaotic, and the neighbor search's within-cell order is set by a GPU atomic race. So a run is **not** reproducible frame-for-frame across machines or exports. Seed them for a repeatable *starting* layout, but do not expect a pixel-identical video every time.
 
+<img src="../../Guide/Images/20-ParticleSimulations/ArtificialLife.jpg" alt="Three dark panels. Left, Particle Life in dense magenta, yellow, green, and red clusters forming membranes and cells. Middle, the Primordial Particle System, yellow rings of crowded particles scattered among lone blue wanderers. Right, Physarum, a pale branching network of transport loops on a violet trail field" width="680">
+
 ### Contents
 
 - [Particle Life](#particle-life)
@@ -108,6 +110,8 @@ Example: `Examples/Simulation/Physarum`.
 
 No force law at all: an energy field, and particles walking downhill on it. Each particle adds up a ring-shaped kernel over its neighbors to get a field value `U`. A growth function scores that crowding, and a repulsion term keeps anyone from standing on anyone. The particle then moves whichever way the total `E = R − G(U)` improves. Out of those three lines come membranes, cells that hold their shape, rotors, and things that split in two.
 
+<img src="../../Guide/Images/20-ParticleSimulations/ParticleLenia.jpg" alt="Three dark panels of colored dots. Left, a cell with a fringed pale-green membrane, a warm red interior, and small vesicles inside it. Middle, a looser coral-like labyrinth of green channels with a blue halo of scattered particles. Right, a solid red body inside one clean smooth green membrane" width="680">
+
 ```swift
 var lenia: ParticleLenia!
 
@@ -178,6 +182,8 @@ override func draw() {
 **Mutation is per contact, not per generation**, and a particle in a crowd makes contact several times a second. That is why the default rate is far below what a generational algorithm like [`Evolution`](Evolution.md) uses. At a generational rate a recipe takes dozens of nudges within a single takeover, and arrives as noise. You see that as the whole population dissolving into an even gas.
 
 Color is the recipe itself. Cohesion, alignment and separation are drawn as red, green and blue, which is the published visualization. A takeover therefore reads as one color eating the others, and a mutation as a shift in shade rather than a new color.
+
+<img src="../../Guide/Images/20-ParticleSimulations/SwarmChemistry.jpg" alt="Three dark panels showing one contest at three ages, with a colored share bar under each. At 71 steps, several small clusters of olive and white particles among scattered green and blue ones, and a bar split six ways. At 401 steps, two larger bodies and a bar split two ways. At 1501 steps, one large body with a green fringe and a bar almost entirely one color" width="680">
 
 Read the state back with `lineageCounts()`, `snapshotRecipes()`, and `snapshotLineages()`. `lineageCounts()` says how many particles each opening line still holds. That is the scoreboard the model never keeps for itself. All three stall until the GPU has caught up, so call them a few times a second rather than every frame.
 

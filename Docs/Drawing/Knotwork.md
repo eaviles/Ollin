@@ -17,6 +17,8 @@ A plait is one line, or a few, launched between a field of dots at 45 degrees an
 
 The bands come back **already broken where they dive under**, so stroking them is the weave. There is no masking to do and no draw order to get right.
 
+<img src="../../Guide/Images/07-Tiles/KnotworkWeave.jpg" alt="Three dark panels. A thin gold lattice of crossing diagonal lines; the same lattice as thick gold bands outlined in near-black, woven over and under; and the same weave with the middle reorganized into a knot by two pairs of walls" width="680">
+
 ### Contents
 
 - [knotwork](#knotwork)

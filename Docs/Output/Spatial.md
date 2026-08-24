@@ -12,6 +12,8 @@ swift run Example-3D-Geometry-Solids --export-usdz piece.usdz
 
 That is the whole thing. No window, no GPU. The sketch runs headlessly to the frame you name, and its 3D draw calls are collected into a model.
 
+<img src="../../Guide/Images/31-SharingAndPerforming/SpatialExport.jpg" alt="Two identical arrangements of a yellow sphere, blue rounded box and green torus; the left is surrounded by scattered gray dust motes, the right has none" width="680">
+
 ### The two ways in
 
 A frame and a scene are both exportable, and both go through one writer.
@@ -127,6 +129,8 @@ The frame is drawn **once** and rendered twice, from two cameras a little way ap
 A stereo pair needs exactly two numbers, and both are decisions about the piece rather than settings to get right.
 
 **Convergence** is the distance at which the two eyes agree. Whatever sits there lands on the screen. Nearer things come out of it, and farther things sit behind it. Choosing it is choosing what the viewer is looking *into* rather than *out at*. Unset, it is the camera's own target, on the reasoning that you are already pointing at the thing the piece is about.
+
+<img src="../../Guide/Images/31-SharingAndPerforming/StereoPair.jpg" alt="A plan-view diagram: two eyes at the bottom looking parallel, a horizontal line labeled the screen, and three objects whose sight lines land on the screen as paired marks, crossed for the near object, coincident at the screen, spread apart for the far one" width="680">
 
 **Interocular** is how far apart the eyes stand, in world units, and it is the depth dial. Half reads flatter, and twice reads deeper and starts to strain. Unset, the eyes sit **1% of the frame width apart, measured at the convergence plane**. For a camera with a vanishing point, that one sentence is also the classic comfort rule. Eyes 1% of the frame width apart at the convergence plane end up 1% of the frame width apart at infinity. The far background then separates by less than a viewer's own eyes do, so nothing ever asks them to point outward.
 

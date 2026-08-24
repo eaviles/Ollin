@@ -8,6 +8,8 @@ Two GPU particle-dynamics systems ship with `import Ollin`. The first is **`Part
 
 The shared caveat applies here too: neighbor sums are GPU-race-ordered and the systems are chaotic, so runs are **not** reproducible frame-for-frame. Seed for a repeatable starting layout, not a pixel-identical video.
 
+<img src="../../Guide/Images/20-ParticleSimulations/FluidAndBlobs.jpg" alt="Two dark panels. Left, a blue particle fluid mid-slosh, a wave climbing the left wall over a churning cavity. Right, nine soft bodies in orange, green, blue, red, purple, and cyan piled at the bottom of a box, squashing flat where they press against each other" width="680">
+
 ### Contents
 
 - [Particle fluid](#particle-fluid)

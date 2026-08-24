@@ -21,6 +21,8 @@ for run in caustic(off: circlePoints, from: .parallel(0), closed: true) {
 
 The construction is that simple: **the envelope is where consecutive lines cross**. As two members of the family come together, their crossing settles onto the point where the family touches the curve. That means the answer arrives rather than lands: it is off by an amount that falls with the *square* of the step between lines, so doubling the samples quarters the error.
 
+<img src="../../Guide/Images/15-ShapesAsMaterial/RaysLeanOnACurve.jpg" alt="Two panels. On the left forty tangent lines of a circle, with the circle they lean on picked out in orange. On the right a circular cup lit from outside, its bounced rays crowding along an orange caustic curve with a cusp" width="680">
+
 ### Contents
 
 - [envelope](#envelope)

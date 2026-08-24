@@ -115,6 +115,8 @@ for (a, b) in body.bones() {            // or: solid bones
 }
 ```
 
+<img src="../../Guide/Images/27-DepthAndThePhone/BodyAsFigure.jpg" alt="The same staged mid-stride pose twice: on the left as ivory dots and dotted bones, on the right as a solid mannequin with capsule limbs, a leaning torso box, and a turned head, its left forearm tinted blue" width="680">
+
 ### Where the person stands
 
 Model space keeps the root at the origin, so a figure drawn from `position(_:)` stays put while the person walks. The body also carries its anchor's **world transform**: model space → ARKit world space, y up, meters, the origin where the phone's session started. That is the same world the depth sweep, the room mesh, and the flat surfaces live in, so a body and a scanned room combine directly:
@@ -201,6 +203,8 @@ face.worldLookAtPoint                // Vector3, the same point in the room
 
 The look-at point is the one to reach for first: one point in space that both eyes agree on, good for aiming a bead, steering a creature, or letting a viewer's glance push things around. The per-eye readers are for drawing the eyes themselves: an eyeball at `worldEyePosition`, a pupil a few millimeters along `gazeDirection`, a beam from each eye to `worldLookAtPoint`. The blink blendshapes (`.eyeBlinkLeft` / `.eyeBlinkRight`) pair naturally with them.
 
+<img src="../../Guide/Images/27-DepthAndThePhone/GazeAsBeams.jpg" alt="A staged wireframe face shell on a dark ground, a small nose marker under its two white eyeballs, each pupil turned toward a warm bead floating off to the side, with a thin beam running from each eye to the bead where the two converge" width="680">
+
 The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneGaze`: eyeballs standing at the streamed eye poses, beams converging on the look-at bead.
 
 ## The hands
@@ -226,6 +230,8 @@ device.latestHand                    // PhoneHand?, the most confident one
 `latestHands` is the complete current set each frame, so a hand leaving simply drops out and the list shrinks. A joint the model could not place is absent, and `has(_:)` says so. A joint whose depth pixel was a hole keeps its 2D point but returns `nil` from `position(_:)`. `hasWorldPositions` says whether a hand lifted at all, which is how a sketch picks between its 3D and 2D drawing.
 
 `pinchDistance` is the gesture staple: thumb tip to index tip in meters, `nil` unless both lifted. Under about 2 cm reads as a closed pinch. `PhoneHand.skeleton` names the 20 bones, `PhoneHand.tips` the five fingertips, and `PhoneHand.fingerChains` each finger's chain wrist-first, ready to run a tube or a ribbon along.
+
+<img src="../../Guide/Images/27-DepthAndThePhone/HandsAsSkeletons.jpg" alt="Two staged hands drawn as small solid skeletons on a dark ground: an open orange right hand with its thumb spread wide, and a blue left hand whose index finger curls to meet its thumb, a bright white bead sitting where the two fingertips pinch" width="680">
 
 The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneHands`.
 
@@ -277,6 +283,8 @@ The bundled example is `swift run --package-path Examples Example-3D-Phone-Phone
 
 A single depth frame is only the slice of the world in front of the lens. The camera's 6DoF pose, `latestPose`, is what turns slices into a whole. ARKit's world is fixed and gravity-aligned. Transforming each frame's camera-space cloud by its pose places it where it really is in the room. Sweep the phone and the slices stack up.
 
+<img src="../../Guide/Images/27-DepthAndThePhone/SweepFuse.jpg" alt="Three tinted captures of the staged room fused into one cloud, coral from the left, green from the middle, blue from the right, each camera position marked with a small sphere and a sight line" width="680">
+
 `WorldCloud`, in the core, does the fusing. It keeps one point per small cube of space, so re-seeing a wall refreshes it in place rather than piling up duplicates. The cloud's size is bounded by the scene's surface area, not the number of frames. A sweep can run as long as you like:
 
 ```swift
@@ -303,6 +311,8 @@ The bundled example is `swift run --package-path Examples Example-3D-Phone-Phone
 ### Keeping a long sweep registered
 
 ARKit reports its pose with a small error, and the error never goes away, so it piles up. Over a minute of sweeping it grows into tens of centimeters: a wall seen at the start of the scan and again at the end lands in two places, and the fused cloud thickens into a smear. That is drift, and it is the reason a long scan looks worse than a short one.
+
+<img src="../../Guide/Images/27-DepthAndThePhone/DriftFixed.jpg" alt="The same staged room fused twice side by side: on the left a blurred, doubled ball and a ghosted crate over a smeared checkered floor, on the right the same ball and crate crisp and single, the checker squares clean" width="680">
 
 `add(_:correcting:)` takes it out. Before each frame is merged, the frame is slid and turned until it sits on the surfaces already fused, and the fix that did it is kept and used as the starting guess for the next frame:
 
@@ -332,6 +342,8 @@ To see the difference without a phone, `swift run --package-path Examples Exampl
 ### Recognizing a place already scanned
 
 Correcting each frame removes the newest error. It does not revise the poses behind it. Each frame agrees with the frame before it, and the chain of them can still lean. Walk a full circle around a room and the far wall lands well away from where it is.
+
+<img src="../../Guide/Images/27-DepthAndThePhone/LoopClosed.jpg" alt="Two overhead views of the same staged room scanned by a camera walking a full circle inside it. On the left the walls are drawn twice, thick and offset, and the ring of camera positions ends short of where it began. On the right the walls are single and clean and the ring closes on itself" width="680">
 
 `ScanGraph` fixes that. It fuses and corrects exactly as `WorldCloud` does. It also keeps a **keyframe** every so often: the pose it went in at, and a thinned copy of what that frame saw. A new keyframe that lands where an old one stood is matched against it directly. The match ties a late pose to an early one, so the chain becomes a loop that does not quite close. That difference is shared out over every pose between the two, and the fused cloud is laid out again from the keyframes' new poses.
 
@@ -430,6 +442,8 @@ Scene reconstruction needs a LiDAR sensor, so the surface is Pro-tier iPhones on
 Room mode reports one more thing: the flat surfaces in the room. ARKit finds a floor, a wall, a table top, or a seat as a single flat patch, and grows it as you look around. Each one carries a label, the same one it puts on a triangle of the surface.
 
 The mesh is the whole shape of the room, down to the clutter. This is the handful of places worth putting something on or hanging something from. It also needs **no LiDAR**: plane detection runs on any phone the capture app installs on. That is what makes Room mode worth opening on a phone that cannot reconstruct anything.
+
+<img src="../../Guide/Images/27-DepthAndThePhone/RoomAsPlanes.jpg" alt="Left, three flat surfaces of a staged room corner drawn as outlined polygons: a green floor, a blue-gray wall, a tan table top. Right, the same three in plain gray with a metal ball resting on the table. Below, three color swatches labeled lamp 480 lm 2700 K, room 1000 lm 5000 K, window 900 lm 9000 K, running from warm brown through cream to pale blue" width="680">
 
 ```swift
 device.planes                        // PhonePlanes, every flat surface found so far

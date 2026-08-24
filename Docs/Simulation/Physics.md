@@ -10,6 +10,8 @@ The model is lightweight and creative rather than a game engine. A [`World`](#wo
 
 The same `World` also holds a second kind of body. [`Particle`](#particle)/[`Spring`](#spring) is the **soft** side, a Verlet solver good at cloth, chains, and squishy blobs. [`Body`](#rigid-bodies) is the **rigid** side, real rigid bodies that have an orientation, rotate, rest in stable stacks, and link with joints, for the cases the soft model can't reach (a toppling tower, a swinging pendulum). The rigid side is backed by [Box2D](https://box2d.org), and both share the world's gravity, walls, and per-frame `step`, so you can use either or both. Skip ahead to [Rigid bodies](#rigid-bodies) if that's what you're after. (This page is the 2D world; rigid bodies inside the 3D scene are their own [`World3D`](Physics3D.md).)
 
+<img src="../../Guide/Images/11-ForcesAndPhysics/SoftVsRigid.jpg" alt="Two panel diagram: left, an orange blob outlined with small dots resting squashed on the floor; right, four rectangular boxes resting in an angular jumble, corners intact" width="680">
+
 The usual shape is to build the world once in `setup()`, then `step` it and draw from its particles in `draw()`.
 
 ```swift
@@ -95,6 +97,8 @@ var maxTimestep: Double = 1.0 / 30       // clamp on dt, for stability
 - **`collisions`** turns on disk-vs-disk separation, broad-phased through a spatial hash so it scales to thousands of bodies. It's off by default, because a cloth doesn't want its own points colliding and it costs a per-frame pass, so you opt in for packings and piles. Points with `radius == 0` never collide.
 - **`iterations`** is how hard the solver works to hold springs and collisions together. More makes stiff stacks and tight packings firmer, at a linear cost.
 
+<img src="../../Guide/Images/11-ForcesAndPhysics/ForceAccumulation.jpg" alt="Two panel diagram: left, three labeled arrows for gravity, wind, and drag pushing on one dot; right, the same arrows chained tip to tail with an orange arrow marked as the total" width="680">
+
 **Stepping**
 
 ```swift
@@ -147,6 +151,8 @@ s.stiffness = 0.4                  // springy instead of rigid
 ```
 
 A link that tries to hold two particles a fixed distance apart, whether a cloth thread, a chain segment, or a soft-body strut.
+
+<img src="../../Guide/Images/11-ForcesAndPhysics/SpringRestLength.jpg" alt="Three panel diagram of a coil spring between two discs: at rest length with a ruler beneath, stretched with orange arrows pulling the ends back in, and squeezed with orange arrows pushing the ends apart" width="680">
 
 ```swift
 let a: Particle

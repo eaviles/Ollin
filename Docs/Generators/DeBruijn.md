@@ -18,6 +18,8 @@ deBruijnSequence(symbols: 2, window: 3)   // 0,0,0,1,0,1,1,1
          ...              none missing
 ```
 
+<img src="../../Guide/Images/06-GridsAndRepetition/EveryWindowOnce.jpg" alt="On the left an eight-bead strip of two colors with the eight windows of three it holds listed underneath, all different. On the right a ring of sixty-four beads in four tones with one window of three picked out and labeled bead 11" width="680">
+
 That is as short as such a run can be. There are `symbols` to the power of `window` windows to fit, and each one takes a place, so the run is exactly that long.
 
 **The point is local uniqueness.** Any few symbols in a row identify their own position. That is what a rotary encoder reads to find its angle, what a camera reads off a printed ruler, and what keeps a strip of tiles from repeating itself close up. [`DeBruijnCode`](#code) is that reading, made cheap.

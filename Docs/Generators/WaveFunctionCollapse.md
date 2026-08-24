@@ -33,6 +33,8 @@ There are two models, and they differ in where the rules come from. The **tiled*
 
 A `WFCTile` is four edge **sockets** and a `weight`. Two tiles may sit next to each other when the sockets on their shared edge are *equal*. A socket is therefore just an `Int` label for what an edge connects to. Examples are a pipe versus no pipe, or a grass edge versus a water edge. Sockets are listed clockwise from the top.
 
+<img src="../../Guide/Images/13-GrowingThings/TilesAgree.jpg" alt="Left, three enlarged pipe tiles with orange dots marking their pipe sockets and hollow dots their blank edges; right, an eleven-by-eleven solved grid where every pipe meets a pipe and the network connects" width="680">
+
 ```swift
 WFCTile(_ sockets: [Int], weight: Double = 1)   // [top, right, bottom, left]
 ```
@@ -100,6 +102,8 @@ let tiles = [WFCTile([0, 0, 0, 0], weight: 1.1)]     // blank
 Declaring tiles and sockets is work, and some textures don't decompose into tiles at all. The overlapping model skips that step. Hand it a **small example picture** and it cuts the sample into every `patternSize × patternSize` patch the sample contains. It counts how often each one occurs, and works out which patches may overlap. Solving then fills a much larger grid so that every overlap agrees.
 
 What comes out is new, but locally it's made of nothing that wasn't in the sample. That's the guarantee, and it's worth stating precisely: **every square of the output is a square the sample already contained.**
+
+<img src="../../Guide/Images/13-GrowingThings/LearnedFromAPicture.jpg" alt="Left, a sixteen by sixteen hand-drawn plan of thick black walls; right, a forty-eight by thirty picture in the same style, with the same wall thickness and the same corners, arranged completely differently" width="680">
 
 ```swift
 func wfc(from sample: Image, width: Int, height: Int,

@@ -28,6 +28,8 @@ describe("the boat", as: "a small dark hull, halfway across", in: hull)
 
 A part is a shape, or a group of shapes that mean one thing together. Each one becomes something a screen reader can move to, read as `name: description`, in the order the parts were first named.
 
+<img src="../../Guide/Images/31-SharingAndPerforming/SayingWhatItShows.jpg" alt="Two columns: on the left a small seascape with a yellow sun high on the left, a blue band of water and a dark sailboat; on the right the four lines the sketch says about itself, a summary followed by the sun, the water and the boat" width="680">
+
 The `in:` region is optional and worth giving. A part that carries one can be found by position rather than only in order. The accessibility inspector draws a box around it too.
 
 ### Describing something that moves
@@ -75,6 +77,8 @@ There is no call that reads your shapes and produces a description. A list of wh
 ## Seeing your colors as somebody else does
 
 About one man in twelve and one woman in two hundred sees color differently from the palette most work is designed against. `ColorVision` names one such way of seeing.
+
+<img src="../../Guide/Images/02-Color/ColorVision.jpg" alt="Two palettes drawn in four columns: as most people see them, then under protanopia, deuteranopia and tritanopia. In the top set the orange, green and red arrive as one olive. The bottom set stays separable" width="680">
 
 ```swift
 let seen = Color.red.simulated(.deuteranopia)

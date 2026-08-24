@@ -6,6 +6,8 @@
 
 Some geometry cannot be a mesh you place. A meadow needs half a million blades, each with its own height, lean, curve, and sway, and the curve is the problem: an instanced draw can move rigid copies of one shape, but it cannot bend each copy differently along its length. A **`StrandField`** grows every blade inside the draw call itself. There is no vertex buffer, no instance list, and nothing to build: a GPU stage decides per tile what the camera can see and how much detail it deserves, and a second stage synthesizes the visible ribbons from hashes of each blade's index.
 
+<img src="../../Guide/Images/23-Landscapes/GrassMeadow.jpg" alt="A dense meadow of individually curved grass blades in deep greens, each catching the warm key light differently, with pale boulders half-buried among them and the field dimming into darkness at the horizon" width="640">
+
 ```swift
 var meadow = StrandField(width: 90, depth: 90, count: 500_000)
 

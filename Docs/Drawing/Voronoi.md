@@ -8,6 +8,8 @@ Tessellation turns a set of points into vector geometry. A **Delaunay triangulat
 
 Everything here is driven by the seedable [`random`](../Generators/Random.md)/[`noise`](../Generators/Noise.md) helpers, so the same seed always yields the same tessellation.
 
+<img src="../../Guide/Images/15-ShapesAsMaterial/Duals.jpg" alt="Two panels over the same orange points: on the left Voronoi cells partitioning the panel into convex territories, on the right the Delaunay triangulation joining each point to its natural neighbors" width="680">
+
 ### Contents
 
 - [Quick start](#quick-start)
@@ -121,6 +123,8 @@ Two properties survive the change and one is new. The boundary between two cells
 The weight is not a radius and not an importance, and only the *differences* between weights matter. Adding the same amount to every weight leaves the diagram exactly where it was.
 
 **Weighting a circle by the square of its radius is the case worth knowing.** The power of a point on the circle is then zero, so a circle that touches no other lies entirely inside its own cell. That is what makes the diagram the right partition for a set of circles of different sizes: cell boundaries fall where two circles would meet if they grew, rather than halfway between their centers.
+
+<img src="../../Guide/Images/15-ShapesAsMaterial/WeightedTerritories.jpg" alt="Two panels over the same five circles, one large and four small. On the left the cell boundaries fall halfway between the centers and slice through the large circle. On the right each site carries its size as a weight, and every circle sits whole inside its own cell" width="680">
 
 ```swift
 let circles = packCircles(count: 80, minRadius: 8, maxRadius: 60)

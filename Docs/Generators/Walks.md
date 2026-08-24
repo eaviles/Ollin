@@ -20,6 +20,8 @@ Paths built one random step at a time. The family has three members, and they ma
 
 All three draw from the seeded `random`, so [`seed`](./Random.md#seed) reproduces the path. All three return plain `[Vector2]`, ready for `drawPolyline`, `Contour`, hatching, or [SVG export](../Output/Export.md).
 
+<img src="../../Guide/Images/04-Randomness/WalkFamily.jpg" alt="Three panels from the same seed: a dense tangle pooling in one area, a set of tight clusters joined by long straight leaps, and an orange path on a grid that fills the square without ever crossing itself" width="680">
+
 ### Contents
 
 - [randomWalk](#randomWalk)
@@ -38,6 +40,8 @@ randomWalk(from start: Vector2? = nil,     // canvas center by default
 ```
 
 The plain isotropic walk, where every step is the same length in a uniformly random direction. It's *diffusive*, so after N steps it has typically drifted only √N step lengths from home. That is exactly its charm, giving a dense, tangled scribble that stays local.
+
+<img src="../../Guide/Images/04-Randomness/WalkVsJumps.jpg" alt="Two strips: fresh rolls per step produce a jagged hash of a line, while accumulated nudges produce a wandering path" width="680">
 
 ```swift
 seed(3)

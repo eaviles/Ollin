@@ -17,6 +17,8 @@
 
 The output is a plain `Contour`, so it feeds `drawPolyline`, `drawCurve` for the smoothed reading, [hatching and SVG export](../Output/Export.md), and shape sampling. A single closed line is the friendliest thing a pen plotter can be handed.
 
+<img src="../../Guide/Images/09-Pictures/PictureAsLines.jpg" alt="Three panels: a stipple of the sunset with a clear void where the sun is, the same dots joined into one maze-like unbroken tour, and the same dots joined into branching tree chains" width="680">
+
 ### Contents
 
 - [singleLine (an image)](#image)

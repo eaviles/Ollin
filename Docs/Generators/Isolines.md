@@ -17,6 +17,8 @@
 
 A contour that closes inside the bounds comes back as a closed `Contour`. One that runs off the edge comes back open, ending on the boundary, so check `isClosed` when drawing. The output feeds `drawPolyline`, `drawCurve` for the rounded reading, `smoothed(iterations:)`, and [hatching and SVG export](../Output/Export.md).
 
+<img src="../../Guide/Images/14-FieldsAndFlow/Isolines.jpg" alt="Three panels of the same noise field: as a grayscale picture, then a single orange contour tracing one level through it, then a full stack of black contours reading as a topographic map" width="680">
+
 ### Contents
 
 - [isolines (a field)](#field)

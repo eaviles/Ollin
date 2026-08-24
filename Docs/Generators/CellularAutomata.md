@@ -18,6 +18,8 @@ Grids of cells that evolve by a local rule. The one-dimensional family, `element
                                                 └───────┴─┘
 ```
 
+<img src="../../Guide/Images/19-GridSimulations/WolframAndTurmite.jpg" alt="Two panels of black cells on cream. Left, rule 30 grown from a single cell into a triangle whose left half is regular stripes and whose right half is irregular, dotted with white triangles. Right, Langton's ant, a chaotic blot crossed by straight diagonal highways running off the edges" width="680">
+
 The GPU sibling is **Lenia**, the continuous Game of Life, which runs as a `Sim` on a persistent field. It lives with the other simulations in [Layered effects → simField](../Drawing/Effects.md#simfield), next to `.gameOfLife()`.
 
 ### Contents

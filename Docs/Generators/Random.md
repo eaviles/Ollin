@@ -49,6 +49,8 @@ randomGaussian(mean: Double, deviation: Double) -> Double
 
 A normally distributed random `Double` (Marsaglia polar method): standard normal, or with the given mean and standard deviation. Reads as more natural scatter than the flat spread of `random`. See the `Gaussian` example.
 
+<img src="../../Guide/Images/04-Randomness/UniformVsGaussian.jpg" alt="Two scatter panels with histograms beneath: uniform random spreads dots evenly with a flat histogram, Gaussian random piles dots around the center with a bell-shaped histogram" width="680">
+
 ```
   Bell-curve scatter: samples cluster near the mean, thin out farther away.
 
@@ -129,6 +131,8 @@ randomChoice<T>(_ choices: [T], weights: [Double]) -> T
 ```
 
 A random element of `choices`: each equally likely, or biased by `weights`. The everyday palette pick, without indexing arithmetic. Weights are one per choice, non-negative, in any scale (they need not sum to 1); a choice weighted 0 is never picked. `choices` must not be empty. Seeded like everything `random`, so `randomSeed` makes the picks reproducible.
+
+<img src="../../Guide/Images/04-Randomness/Choices.jpg" alt="Four strips: two rows of dots showing probability gates at 0.25 and 0.75 where filled dots mark passes, a strip of squares uniformly picking four palette colors, and a strip dominated by indigo from a weighted pick" width="680">
 
 ```swift
 fill(randomChoice(palette))                            // any of them

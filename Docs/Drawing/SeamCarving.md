@@ -18,6 +18,8 @@
   sideways from the row above: that is the whole rule
 ```
 
+<img src="../../Guide/Images/09-Pictures/CarvedNarrower.jpg" alt="The sunset at its own width, squeezed to 70% where the sun becomes a visible oval, and carved to 70% where the sun stays round because it was marked to hold" width="680">
+
 ### Contents
 
 - [seamCarved](#carved)

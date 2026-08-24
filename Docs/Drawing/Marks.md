@@ -4,6 +4,8 @@ Stroke dynamics: width and opacity driven by how a mark is being made, rather th
 
 [`strokeProfile`](Drawing.md#strokeProfile) shapes a stroke by its *shape*: it reads the fraction along a finished path and answers with a width. That is the right tool for a designed mark, a taper you decided on in advance. It is the wrong tool for a mark someone is drawing right now, because the path has no length yet and there is no fraction to read.
 
+<img src="../../Guide/Images/15-ShapesAsMaterial/MarkWidth.jpg" alt="The same S-curve drawn three ways at one stroke weight: an even line, a taper that swells in the middle and vanishes at both ends, and a calligraphic nib that thickens and thins as the curve turns" width="680">
+
 A **`StrokeMark`** is the other half. It records a path as it happens, measuring how fast the pointer is traveling and how hard it is pressed, and keeps the width and opacity the hand asked for at every point.
 
 ```swift
@@ -19,6 +21,8 @@ override func draw() {
 ```
 
 Drag, and the mark comes out full where you moved slowly and thin where you hurried.
+
+<img src="../../Guide/Images/15-ShapesAsMaterial/MarkDynamics.jpg" alt="One S-curve drawn three times at one stroke weight by a hand that is slow at the ends and fast through the middle: ignoring the pace it is an even line, letting the pace drive width it swells at the ends and narrows to a hairline in the middle, letting the pace drive opacity it stays the same width but fades" width="680">
 
 **Contents:** [The pieces](#pieces) · [StrokeInput](#input) · [StrokeResponse](#response) · [StrokeDynamics](#dynamics) · [StrokeMark](#mark) · [drawMark](#drawMark) · [Pressure](#pressure) · [Building a mark by hand](#byhand) · [Brushes](#brushes) · [What exports](#export)
 
@@ -216,6 +220,8 @@ This is also how a mark differs from `StrokeProfile.values([...])`, and why it i
 ## Brushes
 
 A width profile and a recorded mark both shape one continuous ribbon. A **`Brush`** replaces the ribbon: it repeats a shape along the path instead.
+
+<img src="../../Guide/Images/15-ShapesAsMaterial/BrushStamps.jpg" alt="The same S-curve stamped three ways at one stroke weight: close-packed circles reading as a solid mark, squares turning with the path like a chisel nib, and a loose spray of translucent circles thrown either side of the line" width="680">
 
 ```swift
 strokeWeight(20)

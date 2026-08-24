@@ -13,6 +13,8 @@ Four families of tilings that refuse to repeat, or that turn a handful of local 
 
 They are all geometry, not draw calls. Each hands back typed tiles or contours that feed the same drawing, boolean, hatching, and SVG paths as everything else. So all four are plotter-ready line work too.
 
+<img src="../../Guide/Images/07-Tiles/AperiodicTiles.jpg" alt="Four panels: Penrose kites and darts with colored arcs, Penrose rhombs, a teal star pattern woven over a honeycomb, and curved spectre tiles with a few orange ones" width="680">
+
 ```
   penroseTiling          wangTiling          girihPattern         spectreTiling
 

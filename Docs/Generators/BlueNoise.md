@@ -22,6 +22,8 @@ Plain [`random`](./Random.md) scatter clumps, so some points land almost on top 
   so neighbors bunch and voids form     `radius`, so coverage stays even
 ```
 
+<img src="../../Guide/Images/15-ShapesAsMaterial/ScatterCompare.jpg" alt="Two panels with the same number of dots: on the left plain random placement with clumps and bare gaps, on the right a blue-noise scatter, even but organic" width="680">
+
 ### Contents
 
 - [poissonDisk](#poissonDisk)

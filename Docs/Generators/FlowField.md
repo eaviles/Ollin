@@ -15,6 +15,8 @@ A **flow field** gives a direction at every point of the plane. Trace *streamlin
     ↑  ↖  ←  ↙  ↓                           ‾‾
 ```
 
+<img src="../../Guide/Images/14-FieldsAndFlow/Compass.jpg" alt="A grid of small pale needles on a dark canvas, each tipped with a gold dot, their directions changing smoothly across the canvas so currents and swirls show in the pattern" width="560">
+
 ### Contents
 
 - [Building a field](#build)
@@ -56,7 +58,11 @@ field.streamlines(from seeds: [Vector2], stepLength: Double = 4, steps: Int = 20
 
 `streamline` steps through a seed point both forward and backward (so the seed sits in the middle of the curve), stopping after `steps` each way or when it leaves `bounds`. `streamlines` traces one from each seed.
 
+<img src="../../Guide/Images/14-FieldsAndFlow/TraceSteps.jpg" alt="A paper diagram of faint field needles with one walk drawn through them: an orange start dot, then black dots connected by arrows stepping along the flow, following a faint fine line traced through the same field" width="680">
+
 Pass a `separation` and the lines are traced **evenly spaced**: a line stops when it comes within `separation` of one already traced, and seeds too close to an existing line are skipped, so the curves fan out without crossing (the flow-field look). Seed it densely (a [blue-noise](./BlueNoise.md) set works well) and let the separation thin it out.
+
+<img src="../../Guide/Images/14-FieldsAndFlow/EvenSpacing.jpg" alt="Two panels of streamlines through the same field: on the left free lines cross and bunch into dense ropes; on the right evenly spaced lines stop before touching and read as combed fibers" width="680">
 
 ```swift
 seed(3)

@@ -6,6 +6,8 @@
 
 Drawing one mesh is cheap. Drawing the *same* mesh a thousand times with a loop of `drawMesh` calls is not. Every call re-expands the mesh's triangles on the CPU, every frame, once per copy. Instancing removes that loop. `drawMesh(_:instances:)` uploads the mesh once and hands the GPU a list of placements. The GPU puts every copy where it goes. A field of thousands costs one draw call and one small array.
 
+<img src="../../Guide/Images/23-Landscapes/InstancedField.jpg" alt="A dense circular field of thousands of slender box pillars riding a traveling wave, colored deep blue in the troughs and warm amber at the crests, lit from the upper left with each pillar dropping a shadow on the pale floor" width="640">
+
 ```swift
 override func draw() {
     background(.black)
@@ -74,6 +76,8 @@ override func draw() {
 ### A field that culls itself
 
 `drawMesh(_:instances:)` re-records its placement list every frame, which is what makes a field wave. For a *world*, most of which never changes and most of which the camera can't see, a **`MeshField`** goes further. Place copies of any number of meshes into it once; draw it with one call forever. Each frame a compute pass tests every copy against the camera and writes the surviving draws itself, so copies behind the camera or beyond the far plane cost (almost) nothing, and the CPU never touches a copy again.
+
+<img src="../../Guide/Images/23-Landscapes/FieldWorld.jpg" alt="A low flying view over a dark foggy plain crowded with low-poly pines, shrubs, boulders, and pale standing stones, the nearest solids crisp and shadowed and the horizon dissolving into darkness" width="640">
 
 ```swift
 let field = MeshField()

@@ -8,6 +8,8 @@
 
 The pretty part is the web itself. `trails` is the colony's live belief about every edge, and drawing it each iteration shows a haze of possibilities condensing into an answer.
 
+<img src="../../Guide/Images/20-ParticleSimulations/AntColonySearch.jpg" alt="Three dark panels of the same scatter of white city dots. Left, after one iteration, a pale web of trails over nearly every pair. Middle, after eight, fewer and stronger edges. Right, after sixty, a settled web with the best tour traced through the cities in orange" width="680">
+
 `AntColony` is a stateful stepper you hold. `step()` runs one full iteration, `step(_:)` a batch. It's seeded, so the same seed searches the same way.
 
 ```swift

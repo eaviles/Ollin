@@ -23,6 +23,8 @@ Like [differential growth](./DifferentialGrowth.md), this is a **stateful steppe
                                              reconnects       river shortens
 ```
 
+<img src="../../Guide/Images/13-GrowingThings/WanderingRiver.jpg" alt="Two panels: left, an S-shaped channel with an orange arrow pointing away from the outside of a bend, labeled the outside is eaten away, and a second arrow along the flow labeled and the bend slides downstream; right, a wandering dark blue river over faded terracotta and sage ribbons of its old positions, with a pale crescent lake beside it" width="680">
+
 ### Contents
 
 - [Building and stepping](#step)

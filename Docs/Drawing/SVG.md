@@ -6,6 +6,8 @@
 
 Read vector artwork into the same `Shape`s and `Contour`s the rest of the framework speaks. A logo traced in a design tool comes in as geometry. So does a scanned drawing auto-traced to paths, or a file exported from another sketch. You can draw it as authored, respace it into dots, offset it, or hatch it. You can also run it through the [shape booleans](./Geometry.md), or send it back out through the [SVG export](../Output/Export.md).
 
+<img src="../../Guide/Images/15-ShapesAsMaterial/ImportMined.jpg" alt="Three panels of the same imported sailboat SVG: drawn as authored with its own fills, respaced into even dots along every outline, and hatched into pen line work at a different angle per part" width="680">
+
 ```swift
 @main
 final class Badge: Sketch {

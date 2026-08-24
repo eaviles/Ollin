@@ -6,6 +6,8 @@
 
 Rebuild any closed outline as a **chain of spinning circles**. The discrete Fourier transform reads evenly spaced samples of a contour as points in the plane and rewrites them as a sum of circular motions, where each term is a circle of fixed radius spinning a whole number of turns per lap. Chain the circles tip to tail, biggest first, and the last tip re-draws the outline. Keep only the first few and it draws a smooth phantom of it. That is the whole trick, and it works on *any* closed contour: an [imported SVG](./SVG.md), a glyph from [`textToShapes`](./Text.md), points you computed.
 
+<img src="../../Guide/Images/15-ShapesAsMaterial/EpicycleTerms.jpg" alt="Three panels rebuilding the letter g from spinning circles: with three circles it is a wobbly loop, with twelve it is recognizably the letter, and with sixty-four it is exact, with the faint construction circles visible in each" width="680">
+
 ```swift
 var epicycles = Epicycles(points: [])
 

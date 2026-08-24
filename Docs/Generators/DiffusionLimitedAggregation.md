@@ -6,6 +6,8 @@
 
 **Diffusion-limited aggregation** (DLA) grows the branching, dendritic clusters of frost, coral, and mineral deposits. Random walkers drift in from far away and freeze the moment they touch the cluster. Tips catch walkers before hollows ever see one, so arms grow wispy and gaps stay open. The shape is really the physics of the arrival order.
 
+<img src="../../Guide/Images/13-GrowingThings/FrozenWalkers.jpg" alt="Two panels: left, a gray wandering path drifts in from the corner and ends at an orange dot marked frozen on the edge of a small ink cluster; right, a dendritic cluster of eight hundred dots with wispy arms and open hollows" width="680">
+
 `DiffusionLimitedAggregation` is a stateful stepper you hold. `step()` walks one particle until it sticks, and `step(_:)` grows a batch per frame. It's seeded, so the same seed freezes the same cluster.
 
 ```swift

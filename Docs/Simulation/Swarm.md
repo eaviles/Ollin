@@ -8,6 +8,8 @@ A crowd of steering creatures on the GPU. `Swarm` speaks the same behavior vocab
 
 Every behavior is a **weight**, and a weight of zero is a behavior that is off. One swarm is a flock, a crowd chasing the cursor, or a field of aimless wanderers depending on which numbers you set.
 
+<img src="../../Guide/Images/20-ParticleSimulations/Swarm.jpg" alt="Three dark panels of pale blue trails. Left, flocking: dense clusters of curving paths with gaps between them. Middle, a current: broad ribbons of trails winding through the panel and coiling into two vortices. Right, roaming: an even scribble of short independent paths crossing everywhere" width="680">
+
 ### Contents
 
 - [Making one](#making-one)

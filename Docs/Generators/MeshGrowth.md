@@ -64,6 +64,8 @@ MeshGrowth(mesh: .icosphere(subdivisions: 3),
            })
 ```
 
+<img src="../../Guide/Images/22-Meshes/GrowingSurface.jpg" alt="Three forms in a row against black: a smooth yellow sphere labeled the seed, an orange ball completely covered in even brain-like folds labeled everywhere, and a flattened orange form with a smooth top and a ruffled rim labeled at the equator" width="680">
+
 `.uniform` is the baseline worth starting from: it shows what growth alone produces before any pattern steers it.
 
 <a name="chemistry"></a>

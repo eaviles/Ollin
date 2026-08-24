@@ -60,6 +60,8 @@ SpatialIndex(points, kind: .tree)  // a k-d tree
 
 `.grid` sorts the points into square cells and reads the block of cells a query can reach. It suits points spread over the area at a similar density, which covers nearly every sketch, and it is the kind that takes new points cheaply.
 
+<img src="../../Guide/Images/12-FlocksAndSwarms/NeighborCells.jpg" alt="Diagram of a scatter of gray dots over a grid of square cells, with the nine cells around a dark central dot tinted, the dots inside its radius circle marked orange, and the dots outside the block labeled never measured" width="880">
+
 `.tree` cuts the set in half along its widest axis, then cuts each half again. A search reads the other side of a cut only when the answer could lie there. It holds its speed for points gathered into tight clumps with wide empty space between them, where a grid walks many empty cells to reach them.
 
 The kind is a speed choice, never a correctness one. Every query that answers with an array answers identically, down to the order.

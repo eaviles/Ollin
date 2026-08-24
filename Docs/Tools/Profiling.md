@@ -8,6 +8,8 @@ Ollin sits on a GPU core, so a sketch can draw a great deal before it slows down
 
 Open the inspector with **⌘/** (standalone), or read it in the sidebar of OllinLive, the gallery, and the live-coding host. Every host shows the same card.
 
+<img src="../../Guide/Images/32-Installations/CostRow.jpg" alt="A diagram of the inspector's cost row: a CPU bar filled a little over half, a GPU bar filled less, and a line of three counts reading 1 draw, 2 passes, 1 batch, with callouts naming what each part means" width="680">
+
 ### Contents
 
 - [The two bars](#the-two-bars) - CPU against GPU, on one scale

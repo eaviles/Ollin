@@ -15,6 +15,8 @@ drawMesh(blobs.mesh())
 
 This is the volumetric sibling of [isolines](Isolines.md). There, a field over the plane traced out closed curves. Here, a field over space encloses a solid.
 
+<img src="../../Guide/Images/26-SculptingWithFields/FieldToMesh.jpg" alt="Two panels: a chain of three pale blobs fused by smooth necks, and the same form again as a light blue wireframe showing the triangles it is made of" width="680">
+
 ### Contents
 
 - [Metaballs](#metaballs)

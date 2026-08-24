@@ -18,6 +18,8 @@ The one-liner is **`drawWatercolor`**. The typed base is for interleaving pigmen
    ten sides          wobbled           soft-edged pigment
 ```
 
+<img src="../../Guide/Images/15-ShapesAsMaterial/WatercolorLayers.jpg" alt="Three panels: a plain ten-sided irregular polygon, one deformed layer of it painted at four percent opacity showing only a faint wandering outline, and forty layers stacked into a solid blue pool with a ragged fringe" width="560">
+
 ### Contents
 
 - [drawWatercolor](#sugar)

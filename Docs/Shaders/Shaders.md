@@ -56,7 +56,11 @@ uv = (0,0) ┌───────────────┐
            └───────────────┘ uv = (1,1)
 ```
 
+<img src="../../Guide/Images/17-YourFirstShader/UVSpace.jpg" alt="The uv gradient annotated: (0,0) at the top left, (1,0) top right, (0,1) bottom left, (1,1) bottom right, with the center marked (0.5, 0.5)" width="680">
+
 Ollin generates the surrounding Metal fragment (and a fullscreen vertex) for you and calls `shade` once per pixel.
+
+<img src="../../Guide/Images/17-YourFirstShader/PixelGrid.jpg" alt="Two panels evaluating the same glow function: coarsely on the left, where each grid cell shows one answer, and at full pixel resolution on the right where the answers fuse into a smooth image" width="680">
 
 ---
 

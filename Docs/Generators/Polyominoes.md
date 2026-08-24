@@ -14,6 +14,8 @@
    the F        they are set against are 6x10, 5x12, 4x15, 3x20
 ```
 
+<img src="../../Guide/Images/07-Tiles/FittingPieces.jpg" alt="Three parts: the twelve pentominoes drawn as outlines along the top, all twelve fitted into a six by ten board on the left, and on the right a six by six checkerboard with two opposite corners cut out and marked, the board that cannot be covered by dominoes" width="680">
+
 A piece is a *shape*, not a place: it normalizes itself back to the origin whenever it is made, so two ways of writing the same piece are the same value, and a piece can be compared with its own turns to count how many ways it can sit. Where a piece ends up is carried by the placement instead.
 
 ### Contents

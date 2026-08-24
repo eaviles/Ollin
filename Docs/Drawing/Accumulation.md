@@ -6,6 +6,8 @@
 
 By default Ollin clears the canvas at the start of every frame, so `draw()` paints a fresh picture each time and motion is the default. `noClear()` turns that off, and the canvas becomes a **persistent surface** that survives across frames, so drawing *piles up* over time instead of starting blank. It's the basis for progressive refinement, long-exposure stills, paint-on-canvas sketches, and, paired with [`blendMode(.add)`](../Drawing/Drawing.md#blendmode), light-accumulation ("sandpainting") rendering.
 
+<img src="../../Guide/Images/16-LayersAndEffects/Sandpainting.jpg" alt="Golden streamlines built from hundreds of thousands of faint accumulated dots, swirling around eddies like polished wood grain made of light" width="560">
+
 ### Contents
 
 - [noClear](#noclear) - stop clearing the canvas each frame

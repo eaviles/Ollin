@@ -127,6 +127,8 @@ let room = reconstructSurface(of: world.cloud, spacing: world.voxelSize * 2,
                               keepingLargestComponent: true)
 ```
 
+<img src="../../Guide/Images/27-DepthAndThePhone/RoomRebuilt.jpg" alt="The staged room corner rebuilt as one solid plaster-like surface, the floor meeting two walls in a crisp crease, the sweep's camera positions floating as small blue spheres, the surface ending in a torn rim where the sweep stopped" width="680">
+
 The camera path is the orientation, and because the fused cloud carries the capture's colors, the room comes back colored. Doorways, windows, and everything the sweep missed stay open, which is the truthful shape of a scan.
 
 A recorded clip works the same way without the live tether. `Record3DRecording` exposes `poses`, camera-to-world, one per frame. A sweep saved on the phone therefore fuses frame by frame with `pose(at:)`, and reconstructs with the pose translations as the camera path.

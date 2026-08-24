@@ -14,6 +14,8 @@ Wet paint on rough paper, simulated. A `Sim.watercolor` field is a sheet of text
 
 The model is the classic three-layer wash simulation from Curtis, Anderson, Seims, Fleischer & Salesin, *Computer-Generated Watercolor* (SIGGRAPH 1997). Water and pigment flow in a shallow-water layer. Paint settles onto the sheet in a pigment-deposition layer. Moisture travels through the paper itself in a capillary layer.
 
+<img src="../../Guide/Images/19-GridSimulations/WetPaint.jpg" alt="A simulated watercolor painting: a horizontal ultramarine wash with a darkened edge and rose charged into its middle, a pale backrun bloom with branching ridges where water was dropped, and a vertical yellow band glazed across everything, turning green where it crosses the blue" width="560">
+
 ```swift
 var paint: WatercolorField!
 

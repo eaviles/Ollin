@@ -47,6 +47,8 @@ ifsPoints(_ system: IFS, count: Int) -> [Vector2]      // the sketch form, seede
 
 An iterated function system is a small set of affine contractions, each with a pick `weight`. The chaos game applies a randomly chosen map over and over, and every orbit condenses onto the maps' common attractor. Three classics come bundled: `.barnsleyFern` (four maps, the famous coefficient table), `.sierpinskiTriangle`, and `.sierpinskiCarpet`.
 
+<img src="../../Guide/Images/18-IteratedForms/ChaosGame.jpg" alt="Three panels of the Barnsley fern from the chaos game, at 400 jumps a loose dust that vaguely suggests a leaf, at 6,000 a recognizable fern, and at 80,000 a dense one with every frond resolved" width="680">
+
 ```swift
 let cloud = ifsPoints(.barnsleyFern, count: 60_000)
     .map { Vector2($0.x, -$0.y) }                     // the fern grows upward
@@ -101,6 +103,8 @@ Buddhabrot.Renderer(plate, width: Int, height: Int, seed: Int)   // the progress
 The Mandelbrot set, displayed by its escaping orbits. Random plane points are tested with the same z = z² + c loop the escape-time generators run. Each one that escapes is run again, and every point its orbit visited brightens the pixel under it. The accumulated density, developed like a photographic plate, is the seated figure Melinda Green discovered in 1993.
 
 `iterations` is one cap or three. One cap develops a grayscale plate. Three caps expose red, green, and blue at different orbit lengths, so short orbits haze the background blue and the longest draw the figure's red spine. An orbit that outlives every cap is taken to be inside the set and plots nothing. `window` frames the plane in the classic upright reading: `x` spans the imaginary axis, `y` the real one, the antenna at the top. Orbits deposit mirrored about the real axis, which is the set's own symmetry, so each sample exposes both halves.
+
+<img src="../../Guide/Images/18-IteratedForms/BuddhaPlate.jpg" alt="Two dark panels of the Buddhabrot. On the left a grayscale density plate of the seated figure; on the right the same figure in false color, a blue haze around a gold and red core" width="680">
 
 ```swift
 let renderer = Buddhabrot.Renderer(Buddhabrot(), width: 560, height: 560, seed: 7)
@@ -199,6 +203,8 @@ Discs should be disjoint, and tangency is allowed. Overlapping circles make the 
 **Viewing and containing.** Two refinements produce the classic framings. A `viewpoint` re-seats the whole picture by sending that point to the horizon. Put it inside one of the pairing discs, and that disc turns inside out to become the picture's outer boundary. The fundamental domain then shows as the large empty pockets. A pairing's disc may also be declared its circle's *exterior*, through `fromExterior:` and `toExterior:` on `SchottkyPairing`. That lets one circle contain the whole arrangement, the way the gasket figures are drawn.
 
 **From traces.** `schottkyCircles(ta:tb:in:)` renders the circle orbit of the same trace-recipe group whose boundary [`kleinianLimitSet`](#kleinian) traces as a curve. It takes each generator's isometric circles as its pairing discs. The `KleinianPreset` overload accepts the same named landmarks, so `schottkyCircles(.gasket, in:)` and `kleinianLimitSet(.gasket)` are one group drawn two ways. At the gasket traces `(2, 2)` the orbit is the classic tangent-circle packing of the Apollonian gasket. Nearby traces bend and twist it, which is what the `Patterns/Schottky` example animates. The deep-cusp presets sit at the region's edge where the orbit shrinks slowly, so they reward a larger `minRadius`.
+
+<img src="../../Guide/Images/18-IteratedForms/GasketFamily.jpg" alt="Four dark panels of golden circle lace: the Apollonian gasket packing, two wobbled variations of it, and a looser open version, each labeled with its pair of traces" width="560">
 
 <a name="fitted"></a>
 

@@ -136,6 +136,8 @@ The softening lives on the parameter, so every source gets it. A MIDI fader, an 
 
 ### Driving a knob from outside
 
+<img src="../../Guide/Images/28-SoundAndControl/BindingFlow.jpg" alt="A diagram of three boxes, a MIDI knob, an OSC message, and the inspector slider, with arrows converging on one @Param box, and one arrow onward to a dial labeled: the sketch reads radius" width="680">
+
 The projected value (`$radius`) is the parameter object itself, and it's what the integration libraries bind to:
 
 ```swift

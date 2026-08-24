@@ -37,6 +37,8 @@ let back = pingPong(over: 3)                        // 0 -> 1 -> 0, every 3 seco
 let y = lerp(200, height - 200, back)               // sweep out and back forever
 ```
 
+<img src="../../Guide/Images/B-JustEnoughMath/Wrap.jpg" alt="Three strips over one time axis: raw time rising forever, loopProgress wrapping 0 to 1 every lap, and pingPong folding each lap out and back" width="680">
+
 Under the hood a lap is just the clock wrapped by its period, `fract(time / duration)`; the helper spells it so a sketch doesn't have to. `phase` shifts the loop forward by a fraction of its length (`0.5` starts halfway through), which is the staggered-neighbors trick in one argument:
 
 ```swift
@@ -76,6 +78,8 @@ That is `loopProgress`, a cosine, and a `lerp` in one call. With no `range` it h
 | `.saw` | a ramp to the high end and a jump back |
 | `.square` | one end for half the lap, the other for the rest |
 | `.wander` | a smooth drift through the sketch's own noise field |
+
+<img src="../../Guide/Images/03-MotionAndTime/SwayShapes.jpg" alt="Five plots side by side, each one whole lap: a smooth sine hump, a triangle with sharp turns, a saw ramping up and jumping back, a square at one level then the other, and an irregular wander" width="680">
 
 The four worked-out shapes start at the low end, so changing your mind about the path never moves where the value begins. `.wander` starts wherever its field does, which is near the middle. `.triangle` and `.saw` are `pingPong` and `loopProgress` mapped onto the range, so reach for those two when you want the bare `0...1`.
 
@@ -149,6 +153,8 @@ The input `t` is clamped to `0...1` first, so values past the ends hold flat. Th
     bounce   settles onto the end in shrinking hops
 ```
 
+<img src="../../Guide/Images/03-MotionAndTime/ShapingCurves.jpg" alt="Three panels showing linear, step, and smoothstep as curves over a faint identity diagonal, each with a strip of thirteen dots spaced by the curve" width="680">
+
 Build a custom curve from any closure:
 
 ```swift
@@ -175,6 +181,8 @@ let gentle = Easing { t in t * t * (3 - 2 * t) }   // a hand-rolled smoothstep
 | Bounce | `easeInBounce` | `easeOutBounce` | `easeInOutBounce` |
 
 The back, elastic, and bounce families overshoot: back dips past the start and overshoots the target, elastic springs around it, and bounce settles in steps. The other seven stay within `0...1`.
+
+<img src="../../Guide/Images/03-MotionAndTime/EasingFamilies.jpg" alt="Six easing curves with spacing strips: easeInQuad, easeOutQuad, easeInOutCubic, then easeOutBack, easeOutElastic, and easeOutBounce which overshoot and settle" width="680">
 
 Three friendly aliases cover the common case: `.easeIn`, `.easeOut`, and `.easeInOut` map to the cubic forms. `.smoothstep` is a Hermite smoothstep, a gentler S than `easeInOut` and the same curve as the bare [`smoothstep(0, 1, t)`](../Helpers/Math.md#shaping).
 
@@ -217,6 +225,8 @@ The [Easing example](../../Examples/Motion/Easing/Sketch.swift) races four dots 
 ### `@Smoothed`
 
 `@Eased` glides toward a target you *know*. When instead you have a noisy live signal whose true value you *don't* know (a jittery `mouseX`/`mouseY`, or live input from OSC, MIDI, computer vision, or the phone sensors), reach for `@Smoothed`. It cleans the stream with the [1€ filter](https://gery.casiez.net/1euro/), an adaptive low-pass that stays responsive when the signal moves fast and steady when it's slow, something a fixed low-pass can't manage at both ends.
+
+<img src="../../Guide/Images/03-MotionAndTime/SmoothedSignal.jpg" alt="A jittery gray signal path with the smoothed version drawn through it in orange" width="680">
 
 Assign the raw value each frame and read back a clean one. Like `@Eased`, the sketch advances it for you, so there's no update step to call:
 

@@ -20,6 +20,8 @@
 
 By default bright cells get dense glyphs, which reads as light marks on a dark canvas, the terminal look. Pass `inverted: true` for the paper reading, where dark cells carry the ink. Deterministic given the image, columns, characters, and font, so a mosaic is snapshot- and recipe-safe.
 
+<img src="../../Guide/Images/09-Pictures/PictureAsGlyphs.jpg" alt="Two dark panels showing the same sunset: on the left a mosaic of ASCII characters that get denser toward the sun, on the right a halftone screen of dots that grow toward the sun" width="680">
+
 ### Contents
 
 - [drawGlyphMosaic](#draw)
@@ -64,6 +66,8 @@ glyphMosaic(of image: Image,
 ```
 
 The same mapping as data. Each cell that earned a glyph gets one `GlyphMosaicCell`, carrying `column` / `row`, `center`, `size`, and the chosen `character`. It also carries the sampled `brightness` and the average `color` underneath. Use it to draw your own way. Jitter positions, animate per-cell, or color by your own rule. Turning each glyph into vector geometry with [`textToShapes`](./Text.md#texttoshapes) feeds the plotter and [SVG](../Output/Export.md) paths.
+
+<img src="../../Guide/Images/09-Pictures/TypeMosaic.jpg" alt="A sunset over water built entirely from the word OLLIN repeated in a grid, the letters large and cream-colored in the sun, amber along the horizon, and small and dark in the sky and sea" width="560">
 
 ```swift
 for cell in glyphMosaic(of: picture, columns: 60) {

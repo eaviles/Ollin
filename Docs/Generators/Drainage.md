@@ -19,6 +19,8 @@ for river in water.rivers(minimumFlow: 140, in: mapFrame) {
 
 What comes back is ordinary geometry: points in the frame you asked for, ready to stroke, to hatch, or to send to a pen through [SVG export](../Output/Export.md).
 
+<img src="../../Guide/Images/23-Landscapes/WhereWaterGoes.jpg" alt="Three panels of one landscape. On the left a faint contour map with a branching blue river network over it, thickening downstream. In the middle the same ground split into colored basins that meet along ridges. On the right the flow as a red field, every crease of the terrain lit up" width="680">
+
 ### Contents
 
 - [Filling the hollows first](#filling)

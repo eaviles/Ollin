@@ -14,6 +14,8 @@
    21 22 23 24 25          on, forever, filling the square
 ```
 
+<img src="../../Guide/Images/06-GridsAndRepetition/NumbersInASpiral.jpg" alt="Two panels: a seven by seven grid with the numbers 1 to 49 written in a spiral and the walk drawn under them, and a sixty-one cell square with only the primes marked as dots, falling along visible diagonals" width="680">
+
 The lines are not a coincidence and not a proof of anything. A diagonal of the spiral is the run of values of a quadratic, so a diagonal that stays crowded is a quadratic that keeps returning primes, and mathematics has known such polynomials since Euler. What the picture does is make them visible.
 
 ### Contents

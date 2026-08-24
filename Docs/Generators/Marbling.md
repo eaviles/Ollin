@@ -17,6 +17,8 @@ Each operation is an exact point transform out of the classic marbling equations
         bull's-eye            nonpareil           French curl
 ```
 
+<img src="../../Guide/Images/15-ShapesAsMaterial/MarblingSteps.jpg" alt="Four panels from one bull's-eye of alternating drops: the drops alone as concentric rings, a single stylus pulled down through them into a heart, a comb of teeth feathering them into a nonpareil, and an off-center vortex curling them" width="680">
+
 ### Contents
 
 - [The bath](#bath)

@@ -6,6 +6,8 @@
 
 **Space colonization** grows branching structure toward a scattered set of attraction points. On every step, each remaining attractor pulls on the single closest branch node within reach. Pulled nodes grow one step toward the average of their pulls, and attractors a branch reaches are consumed. That is the classic venation-and-branching growth model. Veins, roots, lightning, and trees all come from the same loop. What changes is where you scatter the attractors and where you plant the roots.
 
+<img src="../../Guide/Images/13-GrowingThings/ClaimingSpace.jpg" alt="Four panels of the same growth at step 6, 18, 40, and finished: ink veins spread from a bottom root into a field of orange dots, and the dots vanish as branches reach them" width="680">
+
 `SpaceColonization` is a stateful stepper you hold and `step()` each frame, or run to completion with `grow()`. The algorithm draws no random numbers, so the same attractors and roots always grow the same structure. Scatter the attractors with a seeded generator and the whole piece is reproducible.
 
 ```swift

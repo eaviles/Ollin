@@ -67,6 +67,10 @@ It applies under every mode, including `.clamp` (where it just brightens before 
 | `.reinhard` | `x / (1 + x)` | Squeezes every value under 1.0 so highlights never fully clip. Cheap and gentle, though it tends to desaturate bright areas. |
 | `.aces` | ACES filmic S-curve | Rolls highlights off while holding contrast and saturation in the midtones. The richer choice for glow and light-accumulation looks. |
 
+<img src="../../Guide/Images/16-LayersAndEffects/ToneClamp.jpg" alt="Three overlapping tinted lamps under the default clamp tone map: the entire overlapping middle blows out to a flat white slab with hard seams" width="680">
+
+<img src="../../Guide/Images/16-LayersAndEffects/ToneAces.jpg" alt="The same three lamps through the ACES film curve: the middle stays bright but keeps its warm, mint, and blue tints, rolling off softly like film" width="680">
+
 See the `Rendering/ToneMapping` example. Colored lamps orbit and overlap additively, and a key cycles the three mappings. Watch the bright cores clip, compress, or roll off.
 
 <a id="notes"></a>

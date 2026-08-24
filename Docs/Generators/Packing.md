@@ -25,6 +25,8 @@ The output is `[Circle]`, so it feeds straight into [`drawCircles`](../Drawing/D
   (varied radii)                   grown to just touch (a foam)     growth
 ```
 
+<img src="../../Guide/Images/15-ShapesAsMaterial/PackingLapse.jpg" alt="Four panels of the same seeded circle packing at step 2, 8, 30, and 220: a few large circles claim the space early and ever smaller circles fill the leftover gaps" width="680">
+
 ### Contents
 
 - [packCircles (self-seeding)](#pack)

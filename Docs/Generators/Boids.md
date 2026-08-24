@@ -10,6 +10,12 @@ A **flock of boids** is many simple agents whose local rules produce lifelike fl
 - **Alignment** steers toward the average heading of nearby boids.
 - **Cohesion** steers toward the average position of nearby boids.
 
+<img src="../../Guide/Images/12-FlocksAndSwarms/RuleSeparation.jpg" alt="Diagram of one dark boid inside a faint circle labeled personal space, three gray neighbors pressing in, and an orange arrow labeled away from the crowd pointing out of the crush" width="680">
+
+<img src="../../Guide/Images/12-FlocksAndSwarms/RuleAlignment.jpg" alt="Diagram of one dark boid among gray neighbors inside a faint circle labeled what it can see, each neighbor with its own small heading arrow, and an orange arrow showing the average heading the boid turns toward" width="680">
+
+<img src="../../Guide/Images/12-FlocksAndSwarms/RuleCohesion.jpg" alt="Diagram of one dark boid inside a faint circle, gray neighbors clustered to one side, an orange ringed dot at their center of the group, and an orange arrow from the boid toward it" width="680">
+
 `Boids` is a stateful simulation you hold and `step()` each frame. `positions`, `velocities`, and `heading(_:)` are the live state you draw however you like. Seed it for a reproducible flock.
 
 ### Contents
@@ -58,6 +64,8 @@ The look is set by the weights and radii, all `var`s on the instance:
 | `maxSpeed` | the top speed a boid travels |
 | `maxForce` | the sharpest turn a boid can make (lower is smoother, more sluggish) |
 | `margin` | how far from an edge a boid starts turning back |
+
+<img src="../../Guide/Images/12-FlocksAndSwarms/RuleMix.jpg" alt="Three panels of small dark triangles. Separation only: an even scatter pointing every way. Plus alignment: one loose school all pointing the same way. Plus cohesion: three tight flocks gathered apart from each other" width="680">
 
 Neighbor lookups are broad-phased through a uniform spatial hash, so the cost stays close to linear in the flock size.
 

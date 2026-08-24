@@ -125,6 +125,8 @@ let points = ChaoticMap.clifford(a: -1.4, b: 1.6, c: 1, d: 0.7).orbit(count: 200
 
 The constants reshape these maps completely, so nudge them to explore. They look their best accumulated additively (`blendMode(.add)` over [`noClear()`](Accumulation.md)) so repeated visits brighten into filaments. Each has its own character. Gumowski-Mira wanders a near-conservative sea of islands into many-petaled filigree: `mu` picks the blossom, and the *starting point* picks which structure the orbit wanders. The long transient is the picture, so plot it with no `settle`. The richest plates layer several orbits from different seeded starts. Ikeda folds everything into one swirl, within roughly `[-0.4, 1.7] × [-2.2, 0.9]` at the default `u = 0.9`. Hopalong hops around nested rings that keep widening as the orbit runs. Its reach grows slowly with `count`: roughly ±4 after a million steps at the defaults.
 
+<img src="../../Guide/Images/18-IteratedForms/Plates.jpg" alt="Four glowing pale-blue density plates on near-black: two Clifford attractors above and two de Jong attractors below, each a folded translucent form like an X-ray of smoke" width="560">
+
 <a name="sugar"></a>
 
 ### Drawing sugar
@@ -162,6 +164,8 @@ let mine = ChaoticMap(start: .zero) { p in
 ### A million at once: `AttractorFlow`
 
 `StrangeAttractor` integrates **one** orbit and hands you the points. `AttractorFlow` runs the same field on the GPU under a million particles at once, each on its own trajectory, stepped every frame. Instead of a curve you get the attractor as material: dense where the orbit dwells, thin where it hurries, and visibly flowing along itself.
+
+<img src="../../Guide/Images/23-Landscapes/AttractorFlow.jpg" alt="Two Lorenz attractors side by side on black: on the left a sparse white curve tracing the butterfly, on the right the same shape filled with hundreds of thousands of particles colored violet through blue and green to amber at the rim" width="640">
 
 ```swift
 var flow: AttractorFlow!

@@ -73,6 +73,8 @@ The point `t` of the way from `a` to `b`. `t` is not clamped, so values outside 
 let x = lerp(120, width - 120, Easing.easeInOut(progress))
 ```
 
+<img src="../../Guide/Images/03-MotionAndTime/MapAndLerp.jpg" alt="Top: a value carried between two number lines by its fraction along, map. Bottom: dots walking a segment from a to b as t runs 0 to 1, lerp" width="680">
+
 A looping `t` driven by the sketch clock comes from [`loopProgress(over:)` and `pingPong(over:)`](../Helpers/Animation.md#loop).
 
 <a name="shaping"></a>
@@ -136,3 +138,5 @@ The other exact whole-number type is `Fraction`, a fraction in lowest terms with
 ```swift
 rotate(Double.tau / 6)   // a sixth of a turn
 ```
+
+<img src="../../Guide/Images/B-JustEnoughMath/TauClock.jpg" alt="A dial with 0, tau over 4, tau over 2, and 3 tau over 4 marked around it, an accent wedge of tau over 8, and three mini dials showing tau over 12, 6, and 3" width="680">

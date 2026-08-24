@@ -315,6 +315,8 @@ Because the canvas blends in linear light (the gamma-correct pipeline), `.add` s
 
 ### Basic shapes
 
+<img src="../../Guide/Images/01-HelloOllin/FirstShapes.jpg" alt="Six panels: a filled circle, rectangle, and line on top, with markers showing that a circle's x, y is its center while a rectangle's is its top-left corner; an outlined circle, a filled-and-stroked rectangle, and a thick line below" width="680">
+
 <a name="point"></a>
 
 #### drawPoint
@@ -1010,6 +1012,8 @@ Transforms move, turn, and stretch the **coordinate system**, not the shapes you
                                  its now-tilted axes              (an orbit)
 ```
 
+<img src="../../Guide/Images/06-GridsAndRepetition/TransformSteps.jpg" alt="Four panels drawing the same flag with the same call: untransformed at the origin, then translated, then rotated a twelfth of a turn, then scaled up" width="680">
+
 <a name="translate"></a>
 
 #### translate
@@ -1082,6 +1086,8 @@ Replicate everything drawn next into `folds` copies rotated evenly around the cu
           ✳ ✳
 ```
 
+<img src="../../Guide/Images/06-GridsAndRepetition/Kaleidoscope.jpg" alt="Three panels: a single small crooked wedge with a red dot at its tip, the same wedge under eightfold symmetry forming a snowflake, and under mirrored eightfold symmetry forming a denser one with paired reflections" width="680">
+
 The fold pivot and the mirror axis are the origin and x-axis *at the call*, so `translate` first to place the center, and `rotate` to aim the seam. Transforms applied after `symmetry` compose inside every fold, so an orbiting shape orbits in all of them at once. It's drawing state like `fill`, so it stays on until `noSymmetry()`, and `withState { }` restores it.
 
 ```swift
@@ -1117,6 +1123,8 @@ Run `body` with drawing confined to the region. It's a stencil mask, so everythi
 
   Nesting intersects:  withClip(a) { withClip(b) { … } }  →  a ∩ b
 ```
+
+<img src="../../Guide/Images/06-GridsAndRepetition/ClipRegions.jpg" alt="Three panels of the same diagonal orange stripes: confined to a star, confined to a circle, and confined to both at once so only the overlap of star and circle is striped" width="680">
 
 The region is fixed where the current transform places it at the call, like a drawn fill, so transforms inside the block move the *drawing*, not the clip. Like `withState` (and `layer { }`), any drawing state the block changes is restored on exit. The clip edge anti-aliases at MSAA resolution, and the region rides into [SVG export](../Output/Export.md) as a native `<clipPath>`.
 

@@ -17,6 +17,8 @@ The output is `[Shape]`, so it feeds fills, strokes, the [shape booleans](../Dra
       △       ★                            △·· ·★·· ·· ◦·
 ```
 
+<img src="../../Guide/Images/15-ShapesAsMaterial/ShapePacking.jpg" alt="Two panels of the same dense packing of dark triangles, squares, hexagons, and four- and five-pointed stars on cream. The left panel also draws each shape's bounding circle in faint gray, and those circles visibly overlap and cross each other. The right panel shows the shapes alone, with small stars tucked into the notches of larger shapes" width="680">
+
 ### Contents
 
 - [packShapes](#pack)

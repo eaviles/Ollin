@@ -17,6 +17,8 @@
    \_________/              \______/
 ```
 
+<img src="../../Guide/Images/15-ShapesAsMaterial/Skeleton.jpg" alt="Two panels of the same lobed blob: on the left its medial axis as branching lines down the middle of each lobe, on the right the inscribed disks those branches carry, each disk touching the outline" width="680">
+
 The skeleton comes back as polyline branches. Open runs join branch points, and a closed ring goes around each hole. That feeds `drawPolyline` and [hatching and SVG export](../Output/Export.md) directly, with each branch one pen-down stroke on a plotter.
 
 ### Contents

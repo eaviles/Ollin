@@ -22,6 +22,8 @@ The reasoning is one line. A lit point casts its shadow along the light's direct
 
 What is left is the **visual hull**: the largest solid that could cast them.
 
+<img src="../../Guide/Images/26-SculptingWithFields/TwoShadowsOneSolid.jpg" alt="Five panels: a ring and a cross asked for as shadows, the lumpy solid they carve shown lit in the middle, and the two shadows it really throws, matching the ones asked for" width="680">
+
 ### Contents
 
 - [shadowArt](#carve)

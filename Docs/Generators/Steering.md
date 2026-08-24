@@ -42,6 +42,8 @@ Vehicle(at: Vector2, velocity: Vector2 = .zero,
 creature.steer(toward: direction)   // aim at maxSpeed along direction, minus velocity, capped
 ```
 
+<img src="../../Guide/Images/12-FlocksAndSwarms/SteeringMove.jpg" alt="Two-panel diagram. Left: a dot with a velocity arrow and a desired arrow pointing at a ring labeled the target. Right: the same arrows from one point, with an orange arrow labeled steer connecting the velocity's tip to the desired's tip" width="680">
+
 `position`, `velocity`, and `heading` are the live state you draw however you like; `drawVehicle(_:size:)` draws a triangle pointing along the heading with the current `fill`.
 
 <a name="behaviors"></a>
@@ -63,7 +65,11 @@ Each returns a force to pass to `applyForce(_:)`, scaled if you want it stronger
 | `separate(from:radius:)` | keep personal space from other vehicles |
 | `contain(in:margin:)` | stay inside a rectangle (pushed back near the edges) |
 
+<img src="../../Guide/Images/12-FlocksAndSwarms/ChaseDot.jpg" alt="Two curved trails sweep toward a white ring on a dark canvas. The teal trail bends in and stops at the ring; the coral trail swings past it and back through it in a line, its creature caught mid-swing" width="560">
+
 `wander` is the one seeded behavior: small `jitter` drifts in long arcs, large is twitchy. Give each creature its own seed or they wander in lockstep.
+
+<img src="../../Guide/Images/12-FlocksAndSwarms/WanderCircle.jpg" alt="Two-panel diagram. Left: a dot with a heading arrow, a faint circle ahead of it, an orange point on the circle's rim labeled the wandering target, and ghost points showing the jitter. Right: a long looping meander labeled what that produces" width="680">
 
 <a name="path"></a>
 

@@ -17,7 +17,8 @@
 #
 #   1. Every relative link target exists, from the file that names it.
 #   2. Every `#anchor` resolves to a heading in the file it points at.
-#   3. Every <img src> file exists.
+#   3. Every <img src> file exists, in Guide pages and in Docs/ pages, which
+#      reuse Guide figures by relative path.
 #   4. Every image under Guide/Images/ is referenced by some page. Both halves
 #      of that rule are in Guide/AUTHORING.md and neither was enforced.
 #   5. The footer chain is contiguous, and each Previous/Next title matches the
@@ -168,8 +169,13 @@ for p in pages + authoring:
 IMG = re.compile(r"<img\s+[^>]*src=\"([^\"]+)\"")
 
 referenced = set()
-for p in pages:
-    for n, line in enumerate(lines[p], 1):
+# Docs pages reuse Guide figures by relative path, so their <img> tags rot the
+# same way a chapter's do when a figure moves; they get the existence check.
+# They stay out of the orphan rule: a figure lives or dies by its chapter.
+docs_pages = sorted(pathlib.Path("Docs").rglob("*.md"))
+for p in pages + docs_pages:
+    page_lines = lines[p] if p in lines else p.read_text().splitlines()
+    for n, line in enumerate(page_lines, 1):
         for src in IMG.findall(line):
             if src.startswith(("http://", "https://")):
                 continue

@@ -106,6 +106,8 @@ A converging orbit spirals into the crossing. A 2-cycle traces a square, and cha
 
 ### The bifurcation diagram
 
+<img src="../../Guide/Images/18-IteratedForms/Bifurcation.jpg" alt="The logistic map's bifurcation diagram in dark ink on white: a single settled line forks into two branches, then four, compressing into a gray band of chaos threaded with pale periodic windows, with the forks at 3.0 and 3.45 and the period-3 window at 3.83 labeled" width="680">
+
 Two renderings of the same sweep, both deterministic:
 
 ```swift

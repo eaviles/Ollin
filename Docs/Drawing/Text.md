@@ -12,6 +12,8 @@ Ollin draws text in three kinds of font, all behind the same `drawText` / `textF
 
 All three ride the [transform stack](../Drawing/Drawing.md#translate), composite in draw order with everything else, and stay crisp at any size.
 
+<img src="../../Guide/Images/08-Words/TypeSpecimen.jpg" alt="Three rows showing the same word: an outline font filled and stroked, a bitmap font built from visible squares, and a stroke font drawn as a single thin pen line" width="680">
+
 The default font is `OutlineFont.systemMedium`, the system UI face (San Francisco on macOS) at medium weight, a touch sturdier than the regular weight so text holds up over busy canvases, which is why `drawText` works with zero setup. For a pixel look, the bundled `BitmapFont.builtin` is **[Cozette](https://github.com/the-moonwitch/Cozette)**, a 13px pixel font covering a wide range: Latin (including the Spanish accents `á é í ó ú`, `ñ`, `ü`, `¿`, `¡`), Cyrillic, Greek, and Japanese kana. Call these bare inside `draw()`, and they forward to the `Drawer`.
 
 ### Contents
@@ -441,6 +443,8 @@ drawText("日本語のテキスト", 80, 500)     // Japanese
 drawText("hi 👋", 80, 100)              // and a picture the font carries
 ```
 
+<img src="../../Guide/Images/08-Words/EveryScript.jpg" alt="Four panels. A Devanagari syllable inside one box, labeled one call of the closure. An Arabic word with its pieces numbered zero to four from the left, noting that zero is the last letter read. The letter O and a waving-hand emoji drawn twice: once filled, once as outlines where only the O has any. A Japanese paragraph wrapped inside a thin box" width="680">
+
 What is worth knowing is where the English assumptions stop, because four of them do:
 
 **One glyph is not one letter.** A Devanagari syllable is several glyphs, one of which the shaper moves to the *left* of the letter it follows. An Arabic letter carrying a vowel mark is two glyphs at almost the same place. A ligature is the opposite: one glyph standing for two characters. So [per-glyph `drawText`](#perglyph) hands you a **piece a reader would point at**, not a glyph, and `TextGlyph.text` is a `String` for exactly that reason. `character` is still there for the one-character case.
@@ -502,6 +506,8 @@ textAlign(.right, .top)
 drawText("春はあけぼの。やうやう白くなりゆく山ぎは、", 980, 120)
 ```
 
+<img src="../../Guide/Images/08-Words/WritingInColumns.jpg" alt="Top: one Japanese sentence set across a line, then its opening set down a column. Middle right: an opening bracket, a comma and an opening parenthesis shown upright above their turned forms. Bottom: the same passage set in two identical boxes, justified on the left where every column reaches a red rule, ragged on the right where each stops short of it" width="680">
+
 Turned characters come from the font. A font carries a second shape for the characters that turn, and vertical setting picks them. Brackets lie down. A comma moves to the top right of its square.
 
 The face therefore decides what happens to Latin in a column. A Japanese face carries turned Latin forms, so an English word reads sideways among the kana. A Latin face has none, so its letters stack upright.
@@ -540,6 +546,8 @@ drawText("ᠮᠣᠩᠭᠣᠯ ᠪᠢᠴᠢᠭ", 200, 120)
 These letters join into one connected stroke. Each letter is as wide as its own shape, so an em square cannot hold it.
 
 Ollin shapes the line horizontally, which keeps the joins and the widths. It then turns that line a quarter turn clockwise.
+
+<img src="../../Guide/Images/08-Words/ColumnsTheOtherWay.jpg" alt="Top: one Mongolian phrase set across a line, an arrow curving a quarter turn clockwise, and the same phrase standing as a column. Bottom: three identical Mongolian columns with an arrow running left to right and the first column marked at the left, beside three Japanese columns with an arrow running right to left and the first marked at the right" width="680">
 
 A column otherwise behaves as it does under `.topToBottom`, `textAlign` axes included.
 
@@ -590,6 +598,8 @@ drawText(passage, in: box)
 ```
 
 A stop may not open a line. So a stop that will not fit normally takes the character it follows to the next line. That leaves a hole at the edge where both used to be. Hanging leaves the pair where it is and lets the stop cross the edge. Japanese calls it ぶら下げ, and it is the same move a Latin typesetter makes to keep a right margin looking straight.
+
+<img src="../../Guide/Images/08-Words/HangingStops.jpg" alt="The same Japanese passage in two identical boxes, each with a red rule down its right edge. On the left every character stays inside the rule and the passage runs to six lines. On the right three full stops sit across the rule and the passage fits in five" width="680">
 
 Only stops and commas hang: `。` and `、`, their full-width and half-width forms, and the Latin `.` and `,`. A closing bracket may not open a line either, but hanging one would leave the bracket outside the thing it closes.
 

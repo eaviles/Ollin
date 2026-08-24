@@ -8,6 +8,8 @@ Three CPU motion systems you hold on the sketch and drive each frame: an inverse
 
 They pair naturally with the rest of the family. The [strange attractors](../Drawing/Attractors.md) are the *baked-orbit* side of chaos (build once, draw the path), while `DoublePendulum` and `NBody` are the *live* side you step and watch. The [`@Sprung` damped spring](../Helpers/Animation.md#sprung) is the third member of the motion-helper family beside them.
 
+<img src="../../Guide/Images/11-ForcesAndPhysics/Articulated.jpg" alt="Three panels: a segmented chain curving so its tip touches a small ringed target while its base stays planted, a double pendulum's two arms with the looping tangle its far bob has traced, and a disk of hundreds of short streaks circling a heavy orange center" width="680">
+
 ### Contents
 
 - [Quick start](#quick-start)

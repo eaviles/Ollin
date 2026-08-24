@@ -133,6 +133,8 @@ let r = 120 + sin(time) * 40            // animate against the clock
 drawCircle(width / 2, height / 2, r)
 ```
 
+<img src="../../Guide/Images/03-MotionAndTime/DeltaTime.jpg" alt="Three dotted strips comparing one second of motion: a fixed per-frame step at 60 fps, the same step at 120 fps reaching twice as far, and a deltaTime-scaled step landing back in line" width="680">
+
 For repeating motion on a fixed period, [`loopProgress(over:)` and `pingPong(over:)`](../Helpers/Animation.md#loop) wrap the clock into looping `0...1` progress.
 
 Alongside the clock, `variation` (an `Int`) names the seed this run's randomness grew from. It's rolled fresh unless the sketch calls `seed(_:)`, and it's what the inspector's Variation card walks and every export's recipe records. See [Variations](./Variations.md).
@@ -140,6 +142,8 @@ Alongside the clock, `variation` (an `Int`) names the seed this run's randomness
 <a name="canvas"></a>
 
 ### Canvas
+
+<img src="../../Guide/Images/01-HelloOllin/CoordinateSystem.jpg" alt="The canvas coordinate system: origin at the top left, x right, y down, with the point (380, 240) marked" width="680">
 
 | Property | Type | Meaning |
 |---|---|---|

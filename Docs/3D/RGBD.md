@@ -8,6 +8,8 @@ An **RGBD frame** is a color image, a depth map, and the intrinsics that tie the
 
 Two things come out the other end. One is a **point cloud**, every depth pixel unprojected (see [3D](../3D/3D.md#clouds)). The other is a **single lifted point**, a tracked joint or a tapped pixel back-projected to its true metric position. That second one is what makes **depth-lifted pose**, a flat 2D skeleton placed at its real distance in space.
 
+<img src="../../Guide/Images/27-DepthAndThePhone/CloudLift.jpg" alt="The flat frame stood up into a point cloud, viewed from a different angle: the room as scan-line points, with black voids stretching behind the ball and crate, and the original flat frame inset at the top left" width="560">
+
 ```swift
 import Ollin
 import OllinVision     // BodyTracker (the 2D pose)
@@ -44,6 +46,8 @@ final class Pose: Sketch {
 
 `RGBDFrame` carries a color [`Image`](../Drawing/Images.md), a metric depth map (meters, row-major from the top-left), an optional per-pixel confidence map, and the depth-grid [`CameraIntrinsics`](#space).
 
+<img src="../../Guide/Images/27-DepthAndThePhone/Anatomy.jpg" alt="Two panels from the stand-in depth camera: a color image of a small staged room with a coral ball and teal crate, and its depth map, near surfaces bright and far ones dark, with the intrinsics listed below" width="680">
+
 ```swift
 struct RGBDFrame {
     let color: Image              // usually higher-res than the depth map
@@ -64,6 +68,8 @@ You rarely build one by hand, since a depth source hands it to you. That is what
 ## Lifting one point
 
 `unproject(normalized:)` takes a **Vision-normalized** image point and returns its metric 3D position, or `nil` if there's no valid depth there. Vision-normalized means `0…1` across the frame with the origin at the **lower-left** and y up, the convention [`Body`](../Vision/Vision.md) and the other trackers report points in.
+
+<img src="../../Guide/Images/27-DepthAndThePhone/Unproject.jpg" alt="A diagram of unprojection: a lens at the left, an image plane with a marked pixel, and a dashed ray extending out to a 3D point, with the recovered-coordinates formula below" width="680">
 
 ```swift
 if let p = frame.unproject(normalized: Vector2(0.5, 0.5)) {

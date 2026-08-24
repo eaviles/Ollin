@@ -8,6 +8,8 @@ Everything else the renderer draws is the light and the surface. A flare is neit
 
 A lens is supposed to bend light toward the sensor. Some of it bounces off the surfaces instead of passing through them. Light that bounces twice ends up going the right way again, and lands on the sensor where it does not belong. That misplaced light is a **ghost**. A chain of ghosts, on the line from a bright source through the middle of the frame, is what a lens flare is.
 
+<img src="../../Guide/Images/26-SculptingWithFields/GhostChain.jpg" alt="A dark room with a small bright lamp. A dark red hexagon sits on the lamp and a teal hexagon sits up and to the left of it, lying on top of a near black slab" width="640">
+
 `lensFlare()` renders that chain. It asks for a lens rather than for a look. Which ghosts appear, where each one sits, how big it is, and what color it comes out all follow from the lens's own glass.
 
 ```swift
@@ -60,6 +62,8 @@ Needs a **perspective** 3D camera and at least one light. An orthographic camera
 The ghosts are one half of a flare. The star is the other, and it sits on the source itself, where the ghosts deliberately do not.
 
 Its arms are light **bending at the edges of the iris**. Far from an opening, what its edges do to a wave is the opening's own Fourier transform, so what lands on the sensor is a picture of the opening turned inside out. Six blades put six arms on the star for the same reason they put six sides on a ghost.
+
+<img src="../../Guide/Images/26-SculptingWithFields/StarPoints.jpg" alt="A dark room with a small bright lamp above a row of blocks. Six golden arms reach out from the lamp, fanning into color at their tips, around a blown-out core" width="640">
 
 ```swift
 lensFlare(LensFlare(strength: 1, star: 1.4, starSize: 0.5))   // a bigger, stronger star

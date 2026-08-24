@@ -56,6 +56,8 @@ noAerialPerspective()
 
 Fog paints every distance the same color; real outdoor air does two different things at once. The light *from* a far surface loses its short wavelengths first, by the 1/λ⁴ law, so a distant ridge warms and darkens. Meanwhile sunlight scatters *into* the view path along the way. It veils the same ridge in blue from the side, and in a bright whiter glow toward the sun.
 
+<img src="../../Guide/Images/21-3DGently/DistantAir.jpg" alt="A file of dark ridgelines stepping away under a pale sky, each silhouette a step paler and bluer than the one in front, the farthest melting into the horizon, the air brightening toward the sun on the right" width="680">
+
 `aerialPerspective()` computes both in closed form, the same exact integral as fog, split by wavelength. That is the depth cue that makes a landscape read as kilometers instead of meters. It replaces `fog` for the frame, since the last call wins, and `volumetricLight` beams ride it exactly as they ride fog.
 
 - **`density`** is the optical depth per world unit, like fog's, except it decides *where the scale illusion sits*. At `0.008` a surface 60 units away is about 40% veiled, so a 200-unit scene reads like a mountain range. Leave it `nil` and a default derives from the camera framing, as a fraction of the eye-to-target distance, so a bare call reads alike at any scene scale.
@@ -82,6 +84,8 @@ noVolumetricLight()
 ```
 
 `volumetricLight()` marches the air along each view ray and accumulates the light scattered toward the eye. So **directional and spot lights become visible as beams and shafts**. Everything a light carries shapes its beam: the spot's cone and penumbra, a projected [cookie](./3D.md#lights), an [IES profile](./3D.md#lights)'s measured throw. The panes of a window gobo read as tilted bars of bright air. And with [`castShadows()`](./3D.md#shadows), occluders carve dark shafts out of the beam.
+
+<img src="../../Guide/Images/21-3DGently/VisibleAir.jpg" alt="A dark set under a warm window-gobo beam slanting down from the upper left: the panes read as bars of bright air, land as a window of light on the floor, and a cylinder, sphere, and box carve dark shafts out of the beam. A faint cool beam crosses low behind the props" width="680">
 
 `amount` scales the glow. `anisotropy` (−1…1) is how strongly the medium scatters forward. Near 1, beams flare when the view swings toward the light, the headlights-in-fog effect. At 0 the air glows evenly from every angle, and the 0.5 default leans gently forward.
 

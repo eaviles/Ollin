@@ -13,6 +13,8 @@ land = land.eroded(.hydraulic())          // rain carves ravines and fans
 drawMesh(land.mesh(width: 10, depth: 10, height: 2.2))
 ```
 
+<img src="../../Guide/Images/23-Landscapes/Erosion.jpg" alt="Three grayscale heightmaps: raw diamond-square noise with soft blobby light and dark regions, the same field after rain with branching valleys carved through it, and after gravity with those valley walls slightly settled" width="680">
+
 ### Contents
 
 - [Building a field](#build)
@@ -91,6 +93,8 @@ let mesh = land.mesh(width: 10, depth: 10, height: 2.2)   // centered, y-up
 drawMesh(mesh.textured(colorTexture))                     // e.g. a height ramp
 let map = land.image()                                    // grayscale heightmap
 ```
+
+<img src="../../Guide/Images/23-Landscapes/TerrainMesh.jpg" alt="The eroded terrain standing up as a lit 3D mesh in warm low sunlight, green in the valleys and pale on the ridges, with the carved drainage lines visible across it" width="560">
 
 `mesh(...)` emits a solid terrain. It is a `width × depth` grid centered on the origin in the ground plane, with heights lifted to `height · value` on +y, smooth normals, and `0…1` UVs. Because UVs map the sheet in plan view, a texture built by walking each sample's height through a [`Ramp`](../Drawing/Color.md) paints altitude bands. The `3D/Geometry/Terrain` example does exactly this. `image()` is the heightmap as pixels, ready to inspect, [dither](../Drawing/Color.md#dithering), or feed the image form of [`isolines`](Isolines.md). The field form draws a contour map directly:
 

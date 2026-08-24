@@ -6,6 +6,8 @@
 
 Beyond the square grid there are several more ways to divide a canvas: **hexagon** and **triangle** grids (the other two regular tilings, as `Grid` siblings), **recursive subdivision** (uneven panels, the grid-painting look), **mazes** (perfect labyrinths as clean line-work), and the **Apollonian gasket** (a circle filled with an endless foam of kissing circles). They're all geometry rather than draw calls, since each hands back typed cells, contours, or circles that feed the same drawing, boolean, hatching, and SVG paths as everything else, and everything random rides the seeded `random`, so a [`seed`](../Generators/Random.md#seed) reproduces the layout. The tilings that never repeat (Penrose, Wang, girih star patterns, the spectre) have [their own page](./AperiodicTilings.md).
 
+<img src="../../Guide/Images/06-GridsAndRepetition/OtherGrids.jpg" alt="Four panels: a honeycomb tinted by ring distance from one cell, a field of alternating up and down triangles, a rectangle split recursively into unequal panels, and a carved maze" width="680">
+
 ```
   hexGrid            triangleGrid       subdivide           maze              apollonianGasket
 

@@ -32,6 +32,8 @@ drawing core stays free of one more framework.
 a live object, the way `mouseX` is a number rather than something that keeps
 changing under you, so read it inside `draw()`.
 
+<img src="../../Guide/Images/28-SoundAndControl/ReadingAPad.jpg" alt="A schematic game controller with the left stick held up and to the right, the right trigger half pulled, and the bottom face button lit, beside a list of five reads and the value each returns for that pose" width="820">
+
 | Read | What it is |
 | --- | --- |
 | `leftStick`, `rightStick` | `Vector2`, centered at zero, reaching 1 |

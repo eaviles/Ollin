@@ -15,6 +15,8 @@ tori of interlocking rings.
 `hopfFibers` hands you those circles as plain `[Vector3]` paths, ready for `drawTube` or any
 other 3D path.
 
+<img src="../../Guide/Images/22-Meshes/HopfFibration.jpg" alt="Nested rings of colored tubing seen at an angle, running from pink and violet at the tight center out through green and blue to orange at the widest, every ring passing through every other, with a thin red line standing vertically through the middle of them all" width="680">
+
 ### Contents
 
 - [Quick start](#quick-start)

@@ -10,6 +10,8 @@ There are two pieces. A [`Camera`](#camera) captures frames and hands them over 
 
 The second piece is a **tracker**. It attaches to a [frame source](#frame-sources), meaning that camera or a playing [`VideoPlayer`](../Video/Video.md). It runs Apple's on-device perception on each frame and publishes typed results you read in `draw()`. Every tracker follows the same shape, from [`FaceTracker`](#facetracker) for faces through hands, bodies, segmentation, contours, and text. At the end of the catalog is [`ModelTracker`](#modeltracker), which runs **your own Core ML model** the same way.
 
+<img src="../../Guide/Images/30-Seeing/TrackerFlow.jpg" alt="A diagram of three boxes: Camera producing frames, FaceTracker analyzing in the background, and typed results read in draw. Below, two panels show a normalized lower-left-origin point mapping into the drawn frame's rectangle" width="680">
+
 The usual flow starts in `setup()`. Make a camera, `start()` it, and attach the trackers you want. Then in `draw()`, draw the feed with `drawFrame(camera)` and read each tracker's results. `drawFrame` letterboxes the latest frame, shows a standard waiting notice until the first one arrives, and returns the rectangle to map results into.
 
 ```swift
@@ -144,6 +146,8 @@ A type of your own can join the seam too. Conform to `FrameSource` (hold the clo
 
 ### FaceTracker
 
+<img src="../../Guide/Images/30-Seeing/Landmarks.jpg" alt="Three panels: a hand skeleton of 21 dots wired finger by finger, a face of 76 dots grouped into contour, brows, eyes, nose and lips regions, and a body skeleton of 19 dots" width="680">
+
 ```swift
 FaceTracker(_ source: any FrameSource)
 var faces: [Face] { get }
@@ -190,6 +194,8 @@ for face in faces.faces {
 <a name="contourdetector"></a>
 
 ### ContourDetector
+
+<img src="../../Guide/Images/30-Seeing/Contours.jpg" alt="Two panels: a black ink study of merged blobs beside a ring, and the same forms traced as orange vector outlines with the ring's hole preserved" width="680">
 
 ```swift
 ContourDetector(_ source: any FrameSource, detectsDarkOnLight: Bool = true, contrastAdjustment: Float = 1)
@@ -475,6 +481,8 @@ What the still-image `detect(in:)` calls return, the same two images the live tr
 
 ### RectangleDetector
 
+<img src="../../Guide/Images/30-Seeing/ReadingACard.jpg" alt="Two panels: a printed card lying at an angle on a speckled desk, and the same picture with an orange quad on the card's four corners and dark boxes around the two lines of type" width="680">
+
 ```swift
 RectangleDetector(_ source: any FrameSource, minimumAspectRatio: Float = 0.2,
                   maximumAspectRatio: Float = 1.0, minimumSize: Float = 0.1,
@@ -606,6 +614,8 @@ Where the tracked patch is now and how sure the tracker is. `confidence` stays h
 
 ### TrajectoryTracker
 
+<img src="../../Guide/Images/30-Seeing/Trajectory.jpg" alt="Two panels: six frames of a made-up clip overlaid, showing a bright ball rising in six steps, and the same clip's newest frame with orange dots on the sightings, a fitted arc, and a dashed continuation passing through pale rings" width="680">
+
 ```swift
 TrajectoryTracker(_ source: any FrameSource, trajectoryLength: Int = 10,
                   minimumObjectRadius: Double? = nil, maximumObjectRadius: Double? = nil)
@@ -653,6 +663,8 @@ An arc keeps its `id` as more of it comes into view. Accumulate results by `id` 
 <a name="flowtracker"></a>
 
 ### FlowTracker
+
+<img src="../../Guide/Images/30-Seeing/FlowArrows.jpg" alt="Two panels: a dark frame holding two pale speckled hands, and the same frame with orange arrows on one hand showing its measured motion. The other hand, mid-turnaround, gets no arrows" width="680">
 
 ```swift
 FlowTracker(_ source: any FrameSource, accuracy: Accuracy = .medium)
@@ -756,6 +768,8 @@ One label the classifier saw. `label` is the underscored identifier the vocabula
 <a name="saliencytracker"></a>
 
 ### SaliencyTracker
+
+<img src="../../Guide/Images/30-Seeing/AttentionAndLabels.jpg" alt="Two panels: a dimmed picture of the card with an orange saliency glow concentrated on the word SEEING, and a bar chart with document and printed page at 21 percent reaching past a dashed line, and six fainter labels below it starting with sticky note at 8 percent" width="680">
 
 ```swift
 SaliencyTracker(_ source: any FrameSource, mode: Mode = .attention)

@@ -17,6 +17,8 @@
   window, so textured images streak jagged, not smooth
 ```
 
+<img src="../../Guide/Images/09-Pictures/SortedPixels.jpg" alt="The sunset beside a version with its columns sorted: the sky bands reorganize into a dome around the sun, the water smears into vertical streaks, and the sun and horizon stay intact" width="680">
+
 ### Contents
 
 - [pixelSorted](#sorted)

@@ -8,6 +8,8 @@ Draw into **off-screen layers**, run GPU **filters** over them (blur, bloom), an
 
 Everything stays on the GPU. A layer is a Metal texture you draw into and then sample, a filter reads one texture and writes another, and compositing is an ordinary [`drawImage`](../Drawing/Images.md) with a [`blendMode`](../Drawing/Drawing.md#blendMode). Nothing is ever read back to the CPU between steps, so the slow path other tools fall into (copying a layer back to combine it) never happens here.
 
+<img src="../../Guide/Images/16-LayersAndEffects/Layers.jpg" alt="A diagram of the layer graph: two source drawings, arrows into a blurred version and a bloomed version, then arrows into one composited panel" width="680">
+
 ```swift
 override func draw() {
     background(.black)
@@ -110,6 +112,8 @@ Filters are value descriptors built with static factories. They composite in
 has a contact-sheet example: `Effects/ColorFilters`, `Effects/BlurFilters`,
 `Effects/StylizeFilters`, `Effects/RetroFilters`, and `Effects/Distortion`
 (`Effects/Glitter` shows the iridescence + glitter pair on shapes). The catalog:
+
+<img src="../../Guide/Images/16-LayersAndEffects/FilterSheet.jpg" alt="A twelve-tile contact sheet: one sunset landscape shown plain and through gaussianBlur, bloom, posterize, duotone, halftone, pixelate, edges, oilPaint, glitch, swirl, and crosshatch filters" width="560">
 
 #### Blur & glow
 
@@ -236,6 +240,8 @@ blend in sRGB so designer colors read true. Three of them read the layer's
 **alpha shape** (draw a shape or logo into a transparent layer, then filter it),
 and the others transform the whole layer. `Effects/DesignFilters` shows six of
 them; `Images/LuminanceMelt` shows the melt.
+
+<img src="../../Guide/Images/16-LayersAndEffects/DesignFilters.jpg" alt="Six tiles in two labeled rows. The top row, 'these read the shape', shows the same heart silhouette as flowing chrome, as a red-and-blue thermal map with contour bands, and as pale swirling gem smoke. The bottom row, 'these read the picture', shows the same orange and teal mesh gradient behind angled glass flutes, refracted through rippling water, and embossed onto a crumpled paper sheet" width="680">
 
 - **`.liquidMetal(repetition:softness:dispersion:distortion:contour:angle:tint:phase:)`**
   render the alpha shape as flowing chrome: reflectance bands that compress and wrap
@@ -451,6 +457,8 @@ See `Examples/Effects/PatternFields` for the first five (plus a field chained in
   filaments. `angle` turns the trap about its own center; feed it your `time` and
   the stalks sweep.
 
+<img src="../../Guide/Images/18-IteratedForms/FractalPair.jpg" alt="Three panels in blue, gold, and cream. The whole Mandelbrot set with a small red circle marking a point on the edge of its left bulb; a Julia set of dense spiral filigree; and a deep zoom into the Mandelbrot boundary showing the same shapes recurring at a smaller scale" width="680">
+
 **Diffusion**: not a look laid over a picture but a picture made out of a few marks.
 `.diffuse` holds every drawn pixel as a color source and lets the color out into the
 empty space between them until it settles. Away from the marks every pixel ends up the
@@ -576,6 +584,8 @@ It's distinct from the [accumulation surface](../Drawing/Accumulation.md) (`noCl
 
 Unlike `renderTarget()` (a per-frame handle), a `Feedback` is **persistent**, so make it once in `setup()` and hold it. Its identity is what ties this frame's write to last frame's read, so make a fresh one each `draw()` and it never builds up.
 
+<img src="../../Guide/Images/16-LayersAndEffects/FeedbackSteps.jpg" alt="Four panels of the same orbiting dot drawn into feedback layers with different transforms: fade only leaves a short tail, zoom smears it into a streak, rotate wraps it into a swirl, zoom plus rotate coils it into a spiral" width="680">
+
 ```swift
 var trail: Feedback!
 
@@ -610,6 +620,8 @@ override func draw() {
 Where a [`Filter`](#filter) transforms an image once, a `Sim` runs a **stateful simulation** on a persistent layer that evolves every frame by reading its own neighborhood: reaction-diffusion patterns spreading, cellular-automaton cells living and dying, a fluid carrying color. You don't write the kernel. Pick a `Sim` from the catalog, make a `SimField` with it, and **draw into the field to seed or force it**.
 
 A `SimField` is **persistent** like `Feedback` (make it once in `setup()` and hold it). Each frame the marks you draw in `withField` land on the field's current state, the renderer steps the simulation, and the result is the field's `image`. The raw state is *data*, so recolor it through the same `Filter` catalog as everything else.
+
+<img src="../../Guide/Images/19-GridSimulations/FeedKillMap.jpg" alt="A six-by-four grid of reaction-diffusion dishes at different feed and kill settings: most sit quiet, while a diagonal band grows spots, rings, mazes, and mitosing dots" width="680">
 
 ```swift
 var rd: SimField!
@@ -710,6 +722,8 @@ override func draw() {
 ```
 
 It's pure sugar over the substrate: `compose` makes a [`renderTarget`](#rendertarget) for each layer, draws into it with [`withTarget`](#withtarget), chains its [`filtered`](#filtered) calls, and composites the result with [`drawImage`](#image) under its [`blendMode`](../Drawing/Drawing.md#blendMode). Anything you can do in a block, you can do by hand with those calls, and `compose` just gathers them.
+
+<img src="../../Guide/Images/16-LayersAndEffects/BlendModes.jpg" alt="Seven tiles of the same orange and blue discs overlapping on a gray ground, each composited with a different blend mode: normal, add, subtract, multiply, screen, lightest, darkest" width="680">
 
 The layer modifiers chain in any order:
 

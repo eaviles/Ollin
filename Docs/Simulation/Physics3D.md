@@ -44,6 +44,8 @@ A leaning tower of crates settles into a stable stack. `withBody(_:)` moves the 
 
 Distances are the 3D scene's world units, y-up, matching the camera. The solver thinks in meters. It is happiest with bodies roughly 0.1…10 units across, which is the scale the 3D examples already draw at. `unitsPerMeter` rescales the bridge if your scene is built larger.
 
+<img src="../../Guide/Images/24-WorldsWithWeight/CrateFall.jpg" alt="A pyramid of colored crates caught mid-collapse on a dark floor, crates tumbling and skidding away to the right, the topmost purple crate still in the air" width="560">
+
 ### Contents
 
 - [World3D](#world3d) - the simulation, its ground, and the per-frame `step`
@@ -391,6 +393,8 @@ world.connect(small, big, .gear(teeth: 20, and: 36))
 
 Turning either hinge now turns the other, in the opposite sense and at the ratio asked for. `.gear(ratio:)` says the same thing as a number, how many turns the first makes per turn of the second. It counts teeth and has no sign, so to make a pair turn the same way, flip one hinge's axis.
 
+<img src="../../Guide/Images/24-WorldsWithWeight/Machines.jpg" alt="A small toothed wheel meshed with a wheel twice its size on a timber back plate. Each wheel has one pale spoke, and the two are at clearly different angles. Below them a steel bar has slid to the right and pushed four teal blocks into a bunch at the end of their shelf" width="620">
+
 A rack and pinion ties a hinge to a slider, so turning drives sliding:
 
 ```swift
@@ -491,6 +495,8 @@ Sensors detect *moving* bodies, dynamic and kinematic, and not static scenery or
 
 Everything in a world collides with everything else. A **collision group** is a name you put things in. The world can then be told that two of those names pass straight through each other.
 
+<img src="../../Guide/Images/24-WorldsWithWeight/Sorted.jpg" alt="Two glass tubes side by side, each with a horizontal grating across the middle. In the left tube a pile of amber beads rests on top of the grating; in the right tube the same number of teal beads has fallen straight through it and lies on the floor below" width="560">
+
 ```swift
 let bead = world.addBody(.sphere(radius: 0.2), at: p, group: "beads")
 world.ignoreCollisions(between: "beads", and: "glass")
@@ -550,6 +556,8 @@ Worked example: `Examples/3D/Physics/Sieve` sorts three colors of bead down one 
 
 `contacts` reports what the solver noticed while it stepped. A **query** asks it something it was never asked, between steps. It asks what is along this line, what a shape would run into, or what is inside this region right now. All of them answer immediately, none of them changes anything, and none needs a body built to ask with.
 
+<img src="../../Guide/Images/24-WorldsWithWeight/Sightlines.jpg" alt="A dark yard of orange crates and four tall pillars, a pale lamp at the upper left with thin beams reaching the crates it can see, two crates behind the pillars left dark blue, and a small teal drone hovering inside a wide teal ring with a probe line down to a disc on the floor" width="560">
+
 Every answer is a `Hit3D`.
 
 - `body` is what it ran into. It is typed `any Colliding3D`, since it may be a [soft body](#softbodies).
@@ -607,6 +615,8 @@ Queries cost nothing but the search. Asking does not step the world, so a per-bo
 ### Characters
 
 A `Character3D` is a walking figure. It is a capsule that goes where you steer it, climbs steps, and jumps. Walls stop it, and so do slopes too steep to hold it. It is not a rigid body. Nothing tumbles it and nothing knocks it over, which is exactly what you want for something a person drives. That is also why walking is a `draw()` poll rather than a pile of forces.
+
+<img src="../../Guide/Images/25-CharactersAndCloth/Walker.jpg" alt="A small orange figure with a pink cap brim mid-stride on the second of four pale steps, legs apart in a walking pose, two crates it has shouldered aside sitting on the green floor beside the stair" width="560">
 
 ```swift
 let world = World3D()
@@ -688,6 +698,8 @@ The worked example is [`3D/Physics/Stroll`](../../Examples/3D/Physics/Stroll/), 
 ### Vehicles
 
 A `Vehicle3D` is a machine you operate rather than a body you push. It is a chassis carried on sprung wheels, with an engine and a gearbox behind the throttle. You set four numbers each frame and the wheels do the rest, finding their own grip on whatever they are rolling over.
+
+<img src="../../Guide/Images/25-CharactersAndCloth/Joyride.jpg" alt="A red car sliding sideways through a corner marked by a curve of colored cubes, its front wheels turned into the turn and a rear tire glowing yellow where it is spinning" width="560">
 
 ```swift
 let world = World3D()
@@ -865,6 +877,8 @@ The worked example is [`3D/Physics/Crawler`](../../Examples/3D/Physics/Crawler/)
 
 A `Ragdoll3D` gives a skinned figure weight. Hand `addRagdoll(from:)` a loaded `Scene` that has a skin. It reads the skeleton, builds one rigid body per joint, and sizes each one from the part of the mesh that joint actually moves. Stepping the world then answers a question the animation cannot. Where do the limbs end up when the world has a say?
 
+<img src="../../Guide/Images/25-CharactersAndCloth/Ragdolls.jpg" alt="Two identical figures dropped onto a dark floor: the left one lies sprawled on its back, the right one stands upright with its arms out" width="560">
+
 ```swift
 var figure: Scene!
 var ragdoll: Ragdoll3D!
@@ -938,6 +952,8 @@ The worked example is [`3D/Physics/Ragdoll`](../../Examples/3D/Physics/Ragdoll/)
 ### Soft bodies
 
 Everything above moves as one rigid piece. A **`SoftBody3D`** does not. Its state lives in its vertices, which are simulated particles held together by springs. So it drapes, folds, and squashes instead of turning up somewhere else with the same shape. Cloth and a beach ball are the two ends of the same idea.
+
+<img src="../../Guide/Images/25-CharactersAndCloth/Cloth.jpg" alt="A cream sheet draped over a sphere on a dark floor, beside two teal balls: the left one slumped flat, the right one round" width="560">
 
 Build one from any `Mesh`:
 
@@ -1050,6 +1066,8 @@ The points are the particles one for one, so `pin(_:)`, `move(_:to:)`, `position
 - **`stiffness`** is how much it resists being *stretched*. `1` is a steel cable, measured on a rope hung under its own weight at about 1% longer than its rest length. `0.5` lets it stretch by nearly a third, and by `0.2` it has doubled, which is a bungee.
 - **`bend`** is how much it resists being *bent and twisted*, and it is the one that decides what the rope is. `0` is limp rope. Around `0.5` a cantilevered length droops about a third of its own length, which reads as heavy cable. Near `1` it holds itself out like a stem or a branch.
 
+<img src="../../Guide/Images/25-CharactersAndCloth/Rope.jpg" alt="Four lines on four posts: the first has folded straight down, the second droops in an arc, the third holds itself straight out, and the fourth hangs as a chain of interlocking links" width="560">
+
 A long, finely divided rope is the case where `iterations` matters. Stiffness propagates one rod per solver pass, so forty particles over six units needs about twenty passes before `bend: 1` is really rigid. Twenty particles is stiff at the default five.
 
 `maxStretch:` works here exactly as it does on cloth, and is worth having on anything hung. It caps how far the rope may get from what holds it, measured along its own length, so a heavy rope stops creeping longer under load.
@@ -1159,6 +1177,8 @@ world.addBody(.box(width: 1, height: 1, depth: 1), at: Vector3(2, 4, 0),
 
 The waterline is not something you tune. A body of density `d` settles with fraction `d` of itself submerged, because that is the volume it has to displace to hold its own weight up. A barrel at `0.5` floats half under, and one at `0.8` rides low with a fifth of it dry. `Water.density` is the same relative scale bodies use, where `1` is water. Raising it to `1.3` for brine floats every one of them higher without touching the bodies.
 
+<img src="../../Guide/Images/25-CharactersAndCloth/Floating.jpg" alt="Four cube crates floating in a row on still blue water, each sitting lower than the one before it, from a pale crate mostly above the surface to a dark one almost entirely under" width="560">
+
 **The knobs.**
 
 | | |
@@ -1212,6 +1232,8 @@ let settled = world.snapshot()      // after the pile has come to rest
 // …knock it over, rummage through it…
 world.restore(settled)              // exactly the pile you had
 ```
+
+<img src="../../Guide/Images/24-WorldsWithWeight/Kept.jpg" alt="Three heaps of flat stones side by side on a dark floor. The first two, labeled saved and restored, are identical stone for stone. The third, labeled simulated again, is a visibly different heap" width="720">
 
 A `PhysicsSnapshot` is a value you can hold, hand around, and write to a file:
 

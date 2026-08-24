@@ -24,6 +24,8 @@ The trick is one rule:
 
 A depth map becomes a picture by shortening the repeat wherever the shape is closer. The surface you end up seeing is not in the picture at all: it is the depth the eyes work out from the pairing.
 
+<img src="../../Guide/Images/09-Pictures/DepthInARepeat.jpg" alt="Two strips of scattered marks. The top one repeats at a fixed spacing, marked with a bracket underneath. The bottom one repeats at that spacing at its ends and at a shorter spacing through the middle, with both brackets marked and the shorter one in orange" width="680">
+
 ### Contents
 
 - [autostereogram](#make)

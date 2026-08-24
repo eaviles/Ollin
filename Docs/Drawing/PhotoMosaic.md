@@ -6,6 +6,8 @@
 
 **`Image.mosaic(of:columns:rows:)`** rebuilds a picture out of many smaller pictures, one per cell of a grid. Each cell of the target is averaged, and the picture whose own average is nearest goes there. Stand back and the cells add up to the target; step forward and every cell is a picture of its own.
 
+<img src="../../Guide/Images/09-Pictures/PicturesFromPictures.jpg" alt="Three panels: a soft target picture of two lit blobs, the same picture rebuilt as a grid of small colored tiles, and seven of those cells enlarged so each is visibly its own little picture of dots, bars and triangles" width="680">
+
 ```swift
 let mosaic = portrait.mosaic(of: library, columns: 48, rows: 48)
 drawMosaic(mosaic, of: library, in: bounds)

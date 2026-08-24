@@ -28,6 +28,8 @@ final class Mirror: Sketch {
 
 Frames arrive as GPU textures, the same way a [video](../Video/Video.md) file's do. Drawing one costs no trip through the CPU, and every [filter](../Drawing/Effects.md) applies. A capture is also a [`FrameSource`](../Vision/Vision.md). Every tracker in the vision catalog attaches to it the way it attaches to a camera, and reads whatever is on screen instead.
 
+<img src="../../Guide/Images/30-Seeing/ScreenAsMaterial.jpg" alt="Two panels of a stand-in desktop. Left, a clean capture of a wallpaper with two windows. Right, the same capture with an Ollin sketch window on it showing the same picture, nested four levels deep" width="680">
+
 ### Contents
 
 - [Permission](#permission) - what the prompt actually does for a sketch, which is not what you would expect

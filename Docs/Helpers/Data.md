@@ -8,6 +8,8 @@ Read a CSV, a TSV, or a JSON file and draw from it. Both loaders are load-once m
 
 Neither one throws. A file that can't be read, or that holds nothing usable, comes back `nil`, so a missing asset or a bad download shows up as an empty sketch you can report rather than a crash.
 
+<img src="../../Guide/Images/09-Pictures/DataAsMaterial.jpg" alt="Left, five lines of a CSV file in a pixel font, the header and one quoted row picked out in dark ink. Right, the four data rows as colored horizontal bars labeled Oslo, Bath Maine, Kyoto, and Lima, each sized by its number" width="680">
+
 ### Contents
 
 - [loadTable](#loadTable)

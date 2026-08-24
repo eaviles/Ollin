@@ -15,6 +15,8 @@ The patterns sand draws on a ringing plate. Bow or drive a square plate at one o
      __/    \__             (  )  (  )          + - + - +
 ```
 
+<img src="../../Guide/Images/17-YourFirstShader/ChladniModes.jpg" alt="Six panels of Chladni figures at different mode numbers, each showing dark sand collected along curved and diagonal nodal lines on a pale plate, the patterns growing more intricate as the numbers rise" width="680">
+
 ### Contents
 
 - [The field](#field)

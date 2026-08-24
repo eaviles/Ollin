@@ -10,6 +10,8 @@ It's opt-in twice over. A frame is only 3D once you set a [`camera`](../3D/3D.md
 
 There are two scenes to composite against. One is a **3D-camera** scene, such as a point cloud you drew. The other is a **depth-map** scene, a depth feed like a webcam depth model or an `RGBDFrame`. They share the same depth buffer and the same occlusion rule. They differ only in how you set a 2D mark's depth, by a world point or by a normalized value.
 
+<img src="../../Guide/Images/27-DepthAndThePhone/DepthCompositing.jpg" alt="Three colored pillars at increasing distances against a near-black background, each encircled by a white ring of the same size. Every ring passes behind its own pillar and is cut where the pillar covers it, and each pillar top carries a small numbered white tag" width="680">
+
 ### Contents
 
 - [Placing 2D at a world depth](#depth) - `depth(at:)`, `noDepth()` (a 3D-camera scene)

@@ -18,6 +18,8 @@ Three pieces define one: an **axiom** (the starting string), **production rules*
            F+F-F-F+F - ...
 ```
 
+<img src="../../Guide/Images/13-GrowingThings/LSystemExpansion.jpg" alt="Four panels of the same plant grammar drawn after one to four rounds of rewriting, growing from a bare stalk to a full fern, with the letter count under each panel rising from 18 to 1551" width="680">
+
 The output is a set of open `[Contour]`s (the line-work), so it feeds straight into stroking, the [shape booleans](../Drawing/Geometry.md), hatching, and SVG export for the pen plotter. A run is a pure function of the grammar (and, for a stochastic one, the [`seed`](./Random.md#seed)), so the same seed always grows the same form.
 
 ### The turtle alphabet
@@ -156,6 +158,8 @@ Three things follow that a symbolic grammar cannot state:
 - a segment exactly three tenths as long as its parent,
 - a bud that counts down a few passes before it opens,
 - a trunk given its own width as well as its own length, so it tapers.
+
+<img src="../../Guide/Images/13-GrowingThings/CarryingNumbers.jpg" alt="Three panels. A plain grammar tree of uniform segments, a parametric branch whose segments shrink by a ratio each fork, and a parametric tree drawn with a thick trunk tapering to fine twigs" width="680">
 
 ```swift
 // A branch that halves at every fork and stops once it gets too short:

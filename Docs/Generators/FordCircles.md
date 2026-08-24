@@ -18,6 +18,8 @@
       0            1/3       1/2       2/3            1
 ```
 
+<img src="../../Guide/Images/06-GridsAndRepetition/CircleForEveryFraction.jpg" alt="Two panels of circles resting on a number line. On the left the fractions with denominators up to four, labeled, each circle touching its neighbors. On the right the same line once every denominator up to twelve has arrived, the new smaller circles dropping into the gaps between the old ones" width="680">
+
 A small denominator means a big circle, and a big circle means a fraction that stays a good approximation to everything near it. That is why the picture was drawn in the first place. It shows how well a number can be approximated by fractions: the circles that reach highest belong to the fractions worth approximating with.
 
 The fractions themselves come from [`fareySequence`](#farey), which is worth having on its own.

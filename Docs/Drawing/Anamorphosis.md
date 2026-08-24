@@ -10,6 +10,8 @@ Nothing is undone in software. The plate on the page is a real drawing, and the 
 
 `Anamorphosis` is that construction. It takes ordinary geometry, `Vector2`, `Contour`, and `Shape`, and hands back the geometry to draw, ready for filling, stroking, the [shape booleans](./Geometry.md#shape-booleans), hatching, and [SVG export](../Output/Export.md) if you want to plot the plate and stand a real mirror on it.
 
+<img src="../../Guide/Images/15-ShapesAsMaterial/MirrorReads.jpg" alt="Two panels. On the left, a ring of stretched, reversed letters curling around an empty circle, unreadable. On the right, a panel showing the word MIRROR standing upright and slightly curved, which is what the eye receives from that same ring" width="680">
+
 ```
         the page, seen from above
 
