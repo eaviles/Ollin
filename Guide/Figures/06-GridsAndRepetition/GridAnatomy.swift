@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram (Chapter 6): the anatomy of a Grid. Left, the cells: padding
 // insets the whole grid from its rectangle, gutter is the gap between tiles,
@@ -9,13 +9,16 @@ import Ollin
 final class GridAnatomy: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.28)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.08)
-    let accent = Color(hex: 0xE4572E)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.28) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.08) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         textSize(19)
 
         drawCellsPanel(Rectangle(x: 80, y: 100, width: 330, height: 330))

@@ -1,4 +1,4 @@
-// figure: frame=0 probe
+// figure: frame=0 probe themed
 //
 // Guide diagram (Chapter 12): the steering move. Left, a creature with a
 // velocity and a target it wants. Right, the same two arrows drawn from one
@@ -9,16 +9,19 @@ import Ollin
 final class SteeringMove: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.4)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.12)
-    let accent = Color(hex: 0xE4572E)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.4) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
 
     let velocity = Vector2(150, -55)
     let desired = Vector2(96, -168)     // toward the target, at full speed
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         textSize(17)
 
         wantsPanel(Rectangle(x: 50, y: 60, width: 370, height: 380))

@@ -1,4 +1,4 @@
-// figure: frame=150
+// figure: frame=150 themed
 //
 // Guide diagram (Chapter 11): the two kinds of body, dropped and settled.
 // Left, a soft blob of particles and springs squashes where it lands. Right,
@@ -9,19 +9,25 @@ import OllinPhysics
 final class SoftVsRigid: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.4)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.12)
-    let accent = Color(hex: 0xE4572E)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.4) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
 
     let leftPanel = Rectangle(x: 50, y: 60, width: 370, height: 380)
     let rightPanel = Rectangle(x: 470, y: 60, width: 370, height: 380)
 
-    let softWorld = World()
-    let rigidWorld = World()
+    var softWorld = World()
+    var rigidWorld = World()
     var rim: [Particle] = []
 
     override func setup() {
+        softWorld = World()
+        rigidWorld = World()
+        rim = []
         // The soft side: a blob, a hub with spokes out to a springy rim.
         softWorld.gravity = Vector2(0, 2200)
         softWorld.bounds = leftPanel
@@ -55,7 +61,7 @@ final class SoftVsRigid: Sketch {
     }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         textSize(17)
         softWorld.step(dt: deltaTime)
         rigidWorld.step(dt: deltaTime)
@@ -74,7 +80,7 @@ final class SoftVsRigid: Sketch {
             withState {
                 translate(body.position)
                 rotate(body.angle)
-                fill(Color(hex: 0x2B2B2B, alpha: 0.14))
+                fill(Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.14))
                 stroke(ink)
                 strokeWeight(2.5)
                 drawRect(center: .zero, width: 110, height: 54, cornerRadius: 3)

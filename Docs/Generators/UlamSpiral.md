@@ -6,7 +6,10 @@
 
 **`ulamSpiral`** writes the whole numbers in a square spiral from the middle outward, one per cell, so a test on the numbers becomes a picture. The walk turns as soon as the side it is on runs out: right one, up one, left two, down two, right three, and so on, forever, filling the square. Mark the primes and the marks do not scatter. They gather along diagonal lines, which is what Stanisław Ulam noticed on a notepad during a dull talk in 1963.
 
-<img src="../../Guide/Images/06-GridsAndRepetition/NumbersInASpiral.jpg" alt="Two panels: a seven by seven grid with the numbers 1 to 49 written in a spiral and the walk drawn under them, and a sixty-one cell square with only the primes marked as dots, falling along visible diagonals" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/06-GridsAndRepetition/NumbersInASpiral-dark.jpg">
+  <img src="../../Guide/Images/06-GridsAndRepetition/NumbersInASpiral.jpg" alt="Two panels: a seven by seven grid with the numbers 1 to 49 written in a spiral and the walk drawn under them, and a sixty-one cell square with only the primes marked as dots, falling along visible diagonals" width="680">
+</picture>
 
 The lines are not a coincidence and not a proof of anything. A diagonal of the spiral is the run of values of a quadratic, so a diagonal that stays crowded is a quadratic that keeps returning primes, and mathematics has known such polynomials since Euler. What the picture does is make them visible.
 

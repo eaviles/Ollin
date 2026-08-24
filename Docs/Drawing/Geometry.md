@@ -46,7 +46,10 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
 
 **A note on orientation.** Ollin's y-axis points down (top-left origin), the opposite of the math-class convention where y points up. The formulas are the same, but the direction of rotation looks flipped on screen. A positive angle, and anything the usual math convention calls "counter-clockwise", turns clockwise as you watch it. The diagrams below are drawn in screen space (y down) to match what you see.
 
-<img src="../../Guide/Images/01-HelloOllin/CoordinateSystem.jpg" alt="The canvas coordinate system: origin at the top left, x right, y down, with the point (380, 240) marked" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/01-HelloOllin/CoordinateSystem-dark.jpg">
+  <img src="../../Guide/Images/01-HelloOllin/CoordinateSystem.jpg" alt="The canvas coordinate system: origin at the top left, x right, y down, with the point (380, 240) marked" width="680">
+</picture>
 
 <a name="v2-length"></a>
 
@@ -77,7 +80,10 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
 
 #### Arithmetic
 
-<img src="../../Guide/Images/10-Vectors/VectorArithmetic.jpg" alt="Four labeled panels: adding two arrows head to tail, the arrow from a pos point to a target point, an arrow scaled longer and flipped, and a long arrow with its unit-length version ending on a circle of radius one" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/10-Vectors/VectorArithmetic-dark.jpg">
+  <img src="../../Guide/Images/10-Vectors/VectorArithmetic.jpg" alt="Four labeled panels: adding two arrows head to tail, the arrow from a pos point to a target point, an arrow scaled longer and flipped, and a long arrow with its unit-length version ending on a circle of radius one" width="680">
+</picture>
 
 **`+`, `-`, unary `-`** add two vectors *head to tail*, and subtract to get the step between two points: `a - b` is the step from `b` to `a`. Unary `-` keeps the length and flips the direction. (Plus the in-place `+=` / `-=`, the `pos += vel` idiom.)
 
@@ -246,7 +252,10 @@ for cell in grid.cells {                          // cells, with indices
 - `.center` (default): one dot at the center of each cell, inset half a cell from the edges. The "a thing in every cell" layout.
 - `.spanning`: the dots form a lattice spanning the bounds edge to edge, the outer ones sitting on the boundary (the four corners at the rectangle's corners). The "grid of dots" layout, when you want the dots to reach the edges rather than float inside. (`gutter` doesn't apply, since spanning dots span the full bounds.)
 
-<img src="../../Guide/Images/06-GridsAndRepetition/GridAnatomy.jpg" alt="Grid anatomy: cells with padding and gutter labeled and one cell's frame and center called out; beside them, points as a dot per cell and as a lattice spanning the edges" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/06-GridsAndRepetition/GridAnatomy-dark.jpg">
+  <img src="../../Guide/Images/06-GridsAndRepetition/GridAnatomy.jpg" alt="Grid anatomy: cells with padding and gutter labeled and one cell's frame and center called out; beside them, points as a dot per cell and as a lattice spanning the edges" width="680">
+</picture>
 
 ```swift
 for dot in grid(columns: 24, rows: 24, padding: 60, distribution: .spanning).points {
@@ -381,7 +390,10 @@ func symmetricDifference(_ other: Shape) -> Shape  // covered by exactly one
 
 The operations work on the **filled region**, so each side first resolves under its own `winding` rule (self-overlaps and holes mean exactly what they mean when the shape draws), closed contours take part, and open contours sit out. The result is an ordinary `Shape` you can fill, stroke, hatch, offset, or export, whose outer boundaries and holes come back oppositely wound, marked `.nonZero`. Where regions don't touch, the result simply holds more than one contour. Where nothing remains (say, intersecting shapes that don't overlap), `contours` comes back empty and drawing it is a no-op.
 
-<img src="../../Guide/Images/15-ShapesAsMaterial/BooleanOps.jpg" alt="Four panels showing a circle and a star combined by union, intersection, subtracting, and symmetricDifference, the surviving region filled in ink with the original outlines faint behind" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/15-ShapesAsMaterial/BooleanOps-dark.jpg">
+  <img src="../../Guide/Images/15-ShapesAsMaterial/BooleanOps.jpg" alt="Four panels showing a circle and a star combined by union, intersection, subtracting, and symmetricDifference, the surviving region filled in ink with the original outlines faint behind" width="680">
+</picture>
 
 ```swift
 let bite = star.subtracting(disc)     // a star with a bite taken out

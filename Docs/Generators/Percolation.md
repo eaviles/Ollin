@@ -8,7 +8,10 @@
 
 The fill draws from the seeded generator, so the same seed always builds the same grid. Everything comes back as geometry: cell rectangles to fill, and traced boundary loops that stroke, hatch, and export to SVG for a pen plotter.
 
-<img src="../../Guide/Images/04-Randomness/ChanceInCrowds.jpg" alt="Three dark grid panels. At probability 0.50, scattered blue islands; at 0.56, one pale cluster strains most of the way across; at 0.63, a single gold cluster spans the grid, traced with a pale outline" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/04-Randomness/ChanceInCrowds-dark.jpg">
+  <img src="../../Guide/Images/04-Randomness/ChanceInCrowds.jpg" alt="Three dark grid panels. At probability 0.50, scattered blue islands; at 0.56, one pale cluster strains most of the way across; at 0.63, a single gold cluster spans the grid, traced with a pale outline" width="680">
+</picture>
 
 ### Contents
 

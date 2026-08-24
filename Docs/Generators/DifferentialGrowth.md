@@ -37,7 +37,10 @@ final class Coral: Sketch {
 
 `step()` advances one step; `step(n)` runs `n` at once (more per frame grows it faster). Because the form evolves through `draw()`, it animates by nature: a small ring at the start becomes a dense coral as it runs. For a still at a chosen moment, export a specific `--frame`.
 
-<img src="../../Guide/Images/13-GrowingThings/GrowthStrip.jpg" alt="Five small panels showing the same ring at step 0, 80, 180, 320, and 500: a circle wobbles, then folds into a dense meandering coral-like blob" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/13-GrowingThings/GrowthStrip-dark.jpg">
+  <img src="../../Guide/Images/13-GrowingThings/GrowthStrip.jpg" alt="Five small panels showing the same ring at step 0, 80, 180, 320, and 500: a circle wobbles, then folds into a dense meandering coral-like blob" width="680">
+</picture>
 
 <a name="factories"></a>
 

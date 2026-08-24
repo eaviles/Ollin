@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide figure (Chapter 7): crease patterns. The flat Miura sheet with its
 // mountains and valleys marked, the same sheet folded most of the way, and a
@@ -8,13 +8,16 @@ import Ollin
 final class CreaseAndFold: Sketch {
     override var canvasSize: CanvasSize { .size(880, 386) }
 
+    @Param var darkTheme = false
+
+    var canvasPaper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
     let paper = Color(hex: 0x1A1410)
     let chalk = Color(hex: 0xF3E7D3)
     let warm = Color(hex: 0xE0724A)
     let cool = Color(hex: 0x5A8FC7)
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(canvasPaper)
 
         let tile = 268.0, gap = 12.0
         let left = (width - tile * 3 - gap * 2) / 2
@@ -35,7 +38,7 @@ final class CreaseAndFold: Sketch {
             }
 
             noStroke()
-            fill(Color(hex: 0x2B2B2B, alpha: 0.62))
+            fill(Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.62))
             textFont(.system)
             textSize(16)
             textAlign(.center, .top)

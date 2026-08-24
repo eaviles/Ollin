@@ -1,4 +1,4 @@
-// figure: frame=0 probe
+// figure: frame=0 probe themed
 //
 // Guide diagram: smoothing a jittery signal. The gray path is a clean sweep
 // with seeded jitter added; the accent path is the same samples run through
@@ -8,13 +8,16 @@ import Ollin
 final class SmoothedSignal: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.35)
-    let accent = Color(hex: 0xE4572E)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.35) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
 
     override func draw() {
         randomSeed(11)
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         textSize(21)
 
         let left = 80.0, right = 800.0
@@ -46,7 +49,7 @@ final class SmoothedSignal: Sketch {
         drawPolyline(smooth)
 
         noStroke()
-        fill(Color(hex: 0x2B2B2B, alpha: 0.6))
+        fill(Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.6))
         textAlign(.left, .middle)
         drawText("the raw signal", left + 10, 480)
         fill(accent)

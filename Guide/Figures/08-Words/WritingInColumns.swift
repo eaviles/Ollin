@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram (Chapter 8): the same sentence set across a line and down a
 // column, the three characters that change shape called out, and one box filled
@@ -8,16 +8,19 @@ import Ollin
 final class WritingInColumns: Sketch {
     override var canvasSize: CanvasSize { .size(880, 620) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.4)
-    let accent = Color(hex: 0xE4572E)
-    let paperTint = Color(hex: 0xE9E4D8)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.4) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
+    var paperTint: Color { Color(hex: darkTheme ? 0x2A2724 : 0xE9E4D8) }
 
     /// Chosen for its brackets and its comma: those are the characters that turn.
     let sentence = "「春」は、あけぼの（をかし）"
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         textFont(.system)
         noStroke()
 

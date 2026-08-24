@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide figure (Chapter 7): one hitomezashi design, both faces. Left, the
 // stitches alone: dashes phased by one bit per line, joining into steps and
@@ -9,12 +9,15 @@ import Ollin
 final class HitomezashiFaces: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
-    let ink = Color(hex: 0x2B2B2B)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
     let cloth = Color(hex: 0x101A33)
     let thread = Color(hex: 0xF2E9DC)
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         textSize(21)
 
         drawPanel(Rectangle(x: 80, y: 90, width: 330, height: 330),

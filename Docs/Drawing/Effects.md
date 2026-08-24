@@ -8,7 +8,10 @@ Draw into **off-screen layers**, run GPU **filters** over them (blur, bloom), an
 
 Everything stays on the GPU. A layer is a Metal texture you draw into and then sample, a filter reads one texture and writes another, and compositing is an ordinary [`drawImage`](../Drawing/Images.md) with a [`blendMode`](../Drawing/Drawing.md#blendMode). Nothing is ever read back to the CPU between steps, so the slow path other tools fall into (copying a layer back to combine it) never happens here.
 
-<img src="../../Guide/Images/16-LayersAndEffects/Layers.jpg" alt="A diagram of the layer graph: two source drawings, arrows into a blurred version and a bloomed version, then arrows into one composited panel" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/16-LayersAndEffects/Layers-dark.jpg">
+  <img src="../../Guide/Images/16-LayersAndEffects/Layers.jpg" alt="A diagram of the layer graph: two source drawings, arrows into a blurred version and a bloomed version, then arrows into one composited panel" width="680">
+</picture>
 
 ```swift
 override func draw() {
@@ -584,7 +587,10 @@ It's distinct from the [accumulation surface](../Drawing/Accumulation.md) (`noCl
 
 Unlike `renderTarget()` (a per-frame handle), a `Feedback` is **persistent**, so make it once in `setup()` and hold it. Its identity is what ties this frame's write to last frame's read, so make a fresh one each `draw()` and it never builds up.
 
-<img src="../../Guide/Images/16-LayersAndEffects/FeedbackSteps.jpg" alt="Four panels of the same orbiting dot drawn into feedback layers with different transforms: fade only leaves a short tail, zoom smears it into a streak, rotate wraps it into a swirl, zoom plus rotate coils it into a spiral" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/16-LayersAndEffects/FeedbackSteps-dark.jpg">
+  <img src="../../Guide/Images/16-LayersAndEffects/FeedbackSteps.jpg" alt="Four panels of the same orbiting dot drawn into feedback layers with different transforms: fade only leaves a short tail, zoom smears it into a streak, rotate wraps it into a swirl, zoom plus rotate coils it into a spiral" width="680">
+</picture>
 
 ```swift
 var trail: Feedback!
@@ -723,7 +729,10 @@ override func draw() {
 
 It's pure sugar over the substrate: `compose` makes a [`renderTarget`](#rendertarget) for each layer, draws into it with [`withTarget`](#withtarget), chains its [`filtered`](#filtered) calls, and composites the result with [`drawImage`](#image) under its [`blendMode`](../Drawing/Drawing.md#blendMode). Anything you can do in a block, you can do by hand with those calls, and `compose` just gathers them.
 
-<img src="../../Guide/Images/16-LayersAndEffects/BlendModes.jpg" alt="Seven tiles of the same orange and blue discs overlapping on a gray ground, each composited with a different blend mode: normal, add, subtract, multiply, screen, lightest, darkest" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/16-LayersAndEffects/BlendModes-dark.jpg">
+  <img src="../../Guide/Images/16-LayersAndEffects/BlendModes.jpg" alt="Seven tiles of the same orange and blue discs overlapping on a gray ground, each composited with a different blend mode: normal, add, subtract, multiply, screen, lightest, darkest" width="680">
+</picture>
 
 The layer modifiers chain in any order:
 

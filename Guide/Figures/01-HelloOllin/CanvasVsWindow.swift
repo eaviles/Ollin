@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram (Chapter 1): the canvas is not the window. The canvas is a
 // fixed grid of pixels your drawing is measured in; the window is a scaled
@@ -8,11 +8,13 @@ import Ollin
 final class CanvasVsWindow: Sketch {
     override var canvasSize: CanvasSize { .size(880, 480) }
 
-    let paper = Color(hex: 0xF7F5F1)
-    let ink = Color(hex: 0x232020)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.45)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.14)
-    let accent = Color(hex: 0xE4572E)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x232020) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.45) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.14) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
 
     override func draw() {
         background(paper)
@@ -80,7 +82,7 @@ final class CanvasVsWindow: Sketch {
         noStroke()
         fill(Color(hex: 0x1B2A4A))
         drawRect(r)
-        fill(accent)
+        fill(Color(hex: 0xE4572E))
         drawCircle(center: r.point(u: 0.5, v: 0.42), radius: r.width * 0.2)
         fill(Color(hex: 0xF2CC8F))
         drawCircle(center: r.point(u: 0.68, v: 0.66), radius: r.width * 0.1)

@@ -54,7 +54,10 @@ A cubic curve bends from one point to the next, steered by two control points it
 
 The leaf was drawn by hand, one control point at a time. Some outlines don't need that, because somebody already found the formula, and the formula is shorter than the drawing. Nine of them come with Ollin, all deterministic and none of them touching randomness.
 
-<img src="Images/15-ShapesAsMaterial/ClassicCurves.jpg" alt="Nine panels: a sunflower seed spiral, a woven Lissajous figure, a five-petal rose, a squircle holding a pinched four-point star, a looping spirograph curve, a decaying harmonograph tangle, a seven-lobed supershape star, a braided guilloche rosette of wavy rings, and a rough polygon shown beside its smoothed version" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/ClassicCurves-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/ClassicCurves.jpg" alt="Nine panels: a sunflower seed spiral, a woven Lissajous figure, a five-petal rose, a squircle holding a pinched four-point star, a looping spirograph curve, a decaying harmonograph tangle, a seven-lobed supershape star, a braided guilloche rosette of wavy rings, and a rough polygon shown beside its smoothed version" width="680">
+</picture>
 
 ```swift
 phyllotaxis(count: 520, spacing: 7)                   // [Vector2]
@@ -92,7 +95,10 @@ let figure = spirolateral(order: 7, step: 26)
 drawPolyline(fitted(figure.points, in: bounds.inset(by: 60)), closed: figure.closes)
 ```
 
-<img src="Images/15-ShapesAsMaterial/Spirolaterals.jpg" alt="Three panels on paper. On the left an orange spiral of seven growing steps. In the middle the same orange run inside a black square knot made of four of them. On the right a walk of eight steps repeated three times, marching off toward the bottom right instead of closing" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/Spirolaterals-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/Spirolaterals.jpg" alt="Three panels on paper. On the left an orange spiral of seven growing steps. In the middle the same orange run inside a black square knot made of four of them. On the right a walk of eight steps repeated three times, marching off toward the bottom right instead of closing" width="680">
+</picture>
 
 That is a spirolateral, named by Frank Odds in 1973. The interesting part is that it sometimes comes home and sometimes doesn't, and you can tell which before you draw a single line.
 
@@ -106,7 +112,10 @@ One warning worth having before you animate it: the turn has to be an exact frac
 
 Some curves are not drawn at all. They are what a moving line leans on.
 
-<img src="Images/15-ShapesAsMaterial/RaysLeanOnACurve.jpg" alt="Two panels. On the left forty tangent lines of a circle, with the circle they lean on picked out in orange. On the right a circular cup lit from outside, its bounced rays crowding along an orange caustic curve with a cusp" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/RaysLeanOnACurve-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/RaysLeanOnACurve.jpg" alt="Two panels. On the left forty tangent lines of a circle, with the circle they lean on picked out in orange. On the right a circular cup lit from outside, its bounced rays crowding along an orange caustic curve with a cusp" width="680">
+</picture>
 
 ```swift
 for run in envelope(of: rays) { drawPolyline(run.points) }
@@ -143,7 +152,10 @@ Chaikin rounds a corner, and for most drawings that is the end of it. But a roun
 
 They are not the same question. An arc is a perfectly smooth outline, and it is also a corner where the bend arrives out of nowhere. Along the straight you are not turning at all. One step later you are turning at `1 / radius`, and there was no room in between for anything else to happen.
 
-<img src="Images/15-ShapesAsMaterial/ClothoidCorner.jpg" alt="The same right-angle corner rounded two ways. On the left one arc, and under it a graph of the bend that is a flat-topped rectangle with vertical sides. On the right the corner eased at both ends, and under it the same graph as a trapezoid that ramps up, holds, and ramps back down" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/ClothoidCorner-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/ClothoidCorner.jpg" alt="The same right-angle corner rounded two ways. On the left one arc, and under it a graph of the bend that is a flat-topped rectangle with vertical sides. On the right the corner eased at both ends, and under it the same graph as a trapezoid that ramps up, holds, and ramps back down" width="680">
+</picture>
 
 Ollin has the curve that answers it. A **clothoid** is written as a turn rate rather than as a position. Face a direction, and turn a little more sharply with every step you take. Its bend is then a straight line in the distance traveled, which is exactly the ramp the left-hand graph is missing.
 
@@ -173,7 +185,10 @@ Drawn whole, the curve is the Cornu spiral: two arms winding into two eyes they 
 
 Here is a fact that sounds false. Any closed outline at all, however irregular, is exactly a sum of circles. Each spins at a whole-number rate, riding on the tip of the one before it. That's Fourier's idea, and Ollin will do the decomposition for you.
 
-<img src="Images/15-ShapesAsMaterial/EpicycleTerms.jpg" alt="Three panels rebuilding the letter g from spinning circles: with three circles it is a wobbly loop, with twelve it is recognizably the letter, and with sixty-four it is exact, with the faint construction circles visible in each" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/EpicycleTerms-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/EpicycleTerms.jpg" alt="Three panels rebuilding the letter g from spinning circles: with three circles it is a wobbly loop, with twelve it is recognizably the letter, and with sixty-four it is exact, with the faint construction circles visible in each" width="680">
+</picture>
 
 ```swift
 let chain = Epicycles(outline, samples: 512)
@@ -189,7 +204,10 @@ Two ways to use it. `path(samples:terms:)` hands you the whole traced outline as
 
 Two shapes and a number between them gives you every shape in between.
 
-<img src="Images/15-ShapesAsMaterial/MorphSteps.jpg" alt="Five panels of a solid orange star turning into a ring with a hole, the star's points retracting and the hole opening from nothing in the middle" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/MorphSteps-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/MorphSteps.jpg" alt="Five panels of a solid orange star turning into a ring with a hole, the star's points retracting and the hole opening from nothing in the middle" width="680">
+</picture>
 
 ```swift
 var morph: ShapeMorph?
@@ -213,7 +231,10 @@ Every transform so far has kept the drawing readable. This one throws that away 
 
 Wrap a picture around a mirrored cylinder standing on your page. Then work out where each point of it must be *drawn* for the reflection to put it back where you wrapped it. What lands on the page says nothing. Stand the cylinder on the circle and put your eye in the one place the map was told about. The smear gathers itself into the picture, upright on the glass.
 
-<img src="Images/15-ShapesAsMaterial/MirrorReads.jpg" alt="Two panels. On the left, a ring of stretched, reversed letters curling around an empty circle, unreadable. On the right, a panel showing the word MIRROR standing upright and slightly curved, which is what the eye receives from that same ring" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/MirrorReads-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/MirrorReads.jpg" alt="Two panels. On the left, a ring of stretched, reversed letters curling around an empty circle, unreadable. On the right, a panel showing the word MIRROR standing upright and slightly curved, which is what the eye receives from that same ring" width="680">
+</picture>
 
 Painters were doing this in the 1600s, ruling the construction out by hand. Nothing is undone in software here either. The plate is a real drawing, and the reflection does the reading.
 
@@ -241,7 +262,10 @@ There is a limit worth knowing before you compose rather than after. Two tangent
 
 Held shapes can be combined like quantities. Four operations do it all:
 
-<img src="Images/15-ShapesAsMaterial/BooleanOps.jpg" alt="Four panels showing a circle and a star combined by union, intersection, subtracting, and symmetricDifference, the surviving region filled in ink with the original outlines faint behind" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/BooleanOps-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/BooleanOps.jpg" alt="Four panels showing a circle and a star combined by union, intersection, subtracting, and symmetricDifference, the surviving region filled in ink with the original outlines faint behind" width="680">
+</picture>
 
 ```swift
 let badge = circle.union(star)            // either
@@ -280,7 +304,10 @@ drawPolyline(curve)
 
 `.taper()` is a brush pressed down and lifted: nothing at either end, full width in the middle. Its two arguments are the widths *at* the ends, so `.taper(start: 1)` starts blunt and lifts off at the finish. A straight wedge is `.ramp(from:to:)`, and `.values([...])` takes a width curve you write out yourself. `.nib(angle:)` is the odd one, because it ignores where you are along the path entirely. It holds a flat calligraphy pen at a fixed angle. The mark is fattest where the path runs across the nib, and a hairline where it runs along it. That is why the third panel below is an S-curve: a straight line would only ever show one nib width.
 
-<img src="Images/15-ShapesAsMaterial/MarkWidth.jpg" alt="The same S-curve drawn three ways at one stroke weight: an even line, a taper that swells in the middle and vanishes at both ends, and a calligraphic nib that thickens and thins as the curve turns" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/MarkWidth-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/MarkWidth.jpg" alt="The same S-curve drawn three ways at one stroke weight: an even line, a taper that swells in the middle and vanishes at both ends, and a calligraphic nib that thickens and thins as the curve turns" width="680">
+</picture>
 
 Two practical notes. The width is read at every point of the path, measured along the path's length. A shape with four points changes width in four steps. Sample your curves densely enough to give the profile somewhere to go. And the analytic shapes (`drawCircle`, `drawRect`, and the rest of that family) carry a single width by construction, so a profile does nothing to them. Profiles are for paths.
 
@@ -306,7 +333,10 @@ override func draw() {
 
 Ten lines, and you can paint. `record(into:)` hands the mark where the pointer is and how long this frame took. The mark works out the speed, smooths it, and stores a width for that point. `drawMark` strokes what has been recorded so far, which is why the line appears under the cursor instead of when you let go.
 
-<img src="Images/15-ShapesAsMaterial/MarkDynamics.jpg" alt="One S-curve drawn three times at one stroke weight by a hand that is slow at the ends and fast through the middle: ignoring the pace it is an even line, letting the pace drive width it swells at the ends and narrows to a hairline in the middle, letting the pace drive opacity it stays the same width but fades" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/MarkDynamics-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/MarkDynamics.jpg" alt="One S-curve drawn three times at one stroke weight by a hand that is slow at the ends and fast through the middle: ignoring the pace it is an even line, letting the pace drive width it swells at the ends and narrows to a hairline in the middle, letting the pace drive opacity it stays the same width but fades" width="680">
+</picture>
 
 The figure is one curve walked three times by the same pretend hand, nearly still at the ends and flicking through the middle. Only what the pace is allowed to *drive* changes.
 
@@ -343,7 +373,10 @@ drawPolyline(points)
 
 It is drawing state, like `strokeCap` or a profile, and `noStrokeBrush()` puts the ribbon back. It applies to everything that strokes a path, `drawMark` included.
 
-<img src="Images/15-ShapesAsMaterial/BrushStamps.jpg" alt="The same S-curve stamped three ways at one stroke weight: close-packed circles reading as a solid mark, squares turning with the path like a chisel nib, and a loose spray of translucent circles thrown either side of the line" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/BrushStamps-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/BrushStamps.jpg" alt="The same S-curve stamped three ways at one stroke weight: close-packed circles reading as a solid mark, squares turning with the path like a chisel nib, and a loose spray of translucent circles thrown either side of the line" width="680">
+</picture>
 
 The first panel is the thing worth noticing. Those are separate circles, spaced a fifth of their own width apart, and they read as one solid stroke. Spacing is the knob that decides whether a brush is a mark or a scatter. It is measured in *stamp sizes* rather than pixels, so a brush keeps its texture when you change `strokeWeight`. Twice the weight is the same mark, twice as big.
 
@@ -368,7 +401,10 @@ Here the material turns from single outlines to populations. Points that spread 
 
 [Chapter 13](13-GrowingThings.md) and [Chapter 14](14-FieldsAndFlow.md) borrowed `poissonDisk` with a promise to explain it here. Here is the problem it solves. Plain `random` placement clumps and leaves bare patches, because independent rolls have no manners about each other ([Chapter 4](04-Randomness.md) warned you). Blue noise is the fix, and the recipe, Robert Bridson's, is charmingly physical. Throw a dart, then keep throwing darts *near existing ones*, keeping only throws that land at least `radius` from everybody placed so far. When a dart can't find room after thirty tries, its neighborhood is full. The result is even but never gridded:
 
-<img src="Images/15-ShapesAsMaterial/ScatterCompare.jpg" alt="Two panels with the same number of dots: on the left plain random placement with clumps and bare gaps, on the right a blue-noise scatter, even but organic" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/ScatterCompare-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/ScatterCompare.jpg" alt="Two panels with the same number of dots: on the left plain random placement with clumps and bare gaps, on the right a blue-noise scatter, even but organic" width="680">
+</picture>
 
 ```swift
 let scatter = poissonDisk(radius: 26)             // over the whole canvas
@@ -384,7 +420,10 @@ let points = haltonPoints(count: 500)
 let finer = sobolPoints(count: 5000, in: frame)
 ```
 
-<img src="Images/15-ShapesAsMaterial/HaltonGrowth.jpg" alt="Three panels showing the first 40, 160, and 640 points of one Halton sequence; the earlier points appear in identical positions in every panel, drawn dark, while the new points fill the remaining gaps in orange" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/HaltonGrowth-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/HaltonGrowth.jpg" alt="Three panels showing the first 40, 160, and 640 points of one Halton sequence; the earlier points appear in identical positions in every panel, drawn dark, while the new points fill the remaining gaps in orange" width="680">
+</picture>
 
 These are **low-discrepancy sequences**, and they are not random at all. Each one is a fixed list of positions, computed from an index, so point number 57 is always in the same place. That sounds like a limitation until you see what it buys, which the figure shows. Asking for more points never moves the ones you already had. Every new point simply lands in the largest gap left so far.
 
@@ -396,7 +435,10 @@ Blue noise can't do that. Adding a dart to a Poisson-disk scatter means running 
 
 A scatter of points hides two structures, and they're each other turned inside out:
 
-<img src="Images/15-ShapesAsMaterial/Duals.jpg" alt="Two panels over the same orange points: on the left Voronoi cells partitioning the panel into convex territories, on the right the Delaunay triangulation joining each point to its natural neighbors" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/Duals-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/Duals.jpg" alt="Two panels over the same orange points: on the left Voronoi cells partitioning the panel into convex territories, on the right the Delaunay triangulation joining each point to its natural neighbors" width="680">
+</picture>
 
 The **Voronoi diagram** gives each point its territory, the region of the canvas closer to it than to any other point. The **Delaunay triangulation** joins each point to its natural neighbors. Ollin builds both from any point list:
 
@@ -409,7 +451,10 @@ Every Voronoi cell is a `Shape`, so the whole chapter applies per cell. You can 
 
 There is one question a Voronoi diagram answers badly, and it comes up as soon as the things being divided have sizes. A boundary halfway between two centers is fair between two points. Between a large circle and a small one it is not: it falls inside the large one.
 
-<img src="Images/15-ShapesAsMaterial/WeightedTerritories.jpg" alt="Two panels over the same five circles, one large and four small. On the left the cell boundaries fall halfway between the centers and slice through the large circle. On the right each site carries its size as a weight, and every circle sits whole inside its own cell" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/WeightedTerritories-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/WeightedTerritories.jpg" alt="Two panels over the same five circles, one large and four small. On the left the cell boundaries fall halfway between the centers and slice through the large circle. On the right each site carries its size as a weight, and every circle sits whole inside its own cell" width="680">
+</picture>
 
 ```swift
 let cells = powerDiagram(of: circles).cells   // one per circle, some possibly empty
@@ -423,7 +468,10 @@ The cells are still convex and they still tile the region exactly, so everything
 
 Packing goes the other way around. Instead of carving space between points, you grow shapes until they claim it. The classic form scatters candidate seeds and grows each circle until it touches whatever arrived first:
 
-<img src="Images/15-ShapesAsMaterial/PackingLapse.jpg" alt="Four panels of the same seeded circle packing at step 2, 8, 30, and 220: a few large circles claim the space early and ever smaller circles fill the leftover gaps" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/PackingLapse-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/PackingLapse.jpg" alt="Four panels of the same seeded circle packing at step 2, 8, 30, and 220: a few large circles claim the space early and ever smaller circles fill the leftover gaps" width="680">
+</picture>
 
 ```swift
 let circles = packCircles(count: 300, minRadius: 4, maxRadius: 120)
@@ -440,7 +488,10 @@ let bag = [triangle, square, hexagon, star]
 let packed = packShapes(bag, count: 160, minRadius: 7, maxRadius: 62, padding: 2)
 ```
 
-<img src="Images/15-ShapesAsMaterial/ShapePacking.jpg" alt="Two panels of the same dense packing of dark triangles, squares, hexagons, and four- and five-pointed stars on cream. The left panel also draws each shape's bounding circle in faint gray, and those circles visibly overlap and cross each other. The right panel shows the shapes alone, with small stars tucked into the notches of larger shapes" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/ShapePacking-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/ShapePacking.jpg" alt="Two panels of the same dense packing of dark triangles, squares, hexagons, and four- and five-pointed stars on cream. The left panel also draws each shape's bounding circle in faint gray, and those circles visibly overlap and cross each other. The right panel shows the shapes alone, with small stars tucked into the notches of larger shapes" width="680">
+</picture>
 
 Both panels are the same packing. The left one also draws each shape's bounding circle, and the giveaway is that **those circles overlap**, which a circle packing could never allow. That overlap is the whole feature. The fit was measured to the outlines. A small star can settle into a big star's notch, or lie along a triangle's edge. It uses space a circle would have reserved and wasted.
 
@@ -464,7 +515,10 @@ A scatter usually has an outline you need for something. It may be the footprint
 
 `alphaShape(of:alpha:)` asks a different question, and it's the one that can say "these are two things". Picture rolling a disk of radius `alpha` over the points and keeping only the parts the disk can't get into. Nothing requires the answer to be a single piece. A clustered scatter can come back as several islands, and a ring comes back as a ring.
 
-<img src="Images/15-ShapesAsMaterial/HullTrio.jpg" alt="Three panels over one scatter of a dotted ring plus a small offshore cluster: the convex hull as one taut band around everything, the concave hull dipping a channel toward the cluster, and the alpha shape resolving the ring's hole and the island separately" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/HullTrio-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/HullTrio.jpg" alt="Three panels over one scatter of a dotted ring plus a small offshore cluster: the convex hull as one taut band around everything, the concave hull dipping a channel toward the cluster, and the alpha shape resolving the ring's hole and the island separately" width="680">
+</picture>
 
 ```swift
 let band = convexHull(of: scatter)                        // [Vector2]
@@ -482,7 +536,10 @@ The one number that needs care is `alpha`, which is a radius in the same units a
 
 Hulls describe a region from the outside. The **medial axis** describes it from the inside by finding its middle. Take every disk that fits within the shape while touching the boundary in two or more places. The centers of those disks trace a skeleton. A blob collapses to the veins running down its lobes, and a letterform collapses to the stroke a pen would have made to write it.
 
-<img src="Images/15-ShapesAsMaterial/Skeleton.jpg" alt="Two panels of the same lobed blob: on the left its medial axis as branching lines down the middle of each lobe, on the right the inscribed disks those branches carry, each disk touching the outline" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/Skeleton-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/Skeleton.jpg" alt="Two panels of the same lobed blob: on the left its medial axis as branching lines down the middle of each lobe, on the right the inscribed disks those branches carry, each disk touching the outline" width="680">
+</picture>
 
 ```swift
 let skeleton = medialAxis(of: blob, spacing: 3, prune: 8)
@@ -502,7 +559,10 @@ Skeletons are setup work rather than per-frame work, so extract once and hold th
 
 There is a second skeleton, built from a different thought experiment. Shrink the boundary inward at a steady pace, every edge sliding parallel to itself, and watch the corners. Each one travels in a straight line, edges shorten and vanish, and narrow places pinch shut. The paths the corners trace are the **straight skeleton**. Where the medial axis curves around a reflex corner, this one is made entirely of straight segments. Where the medial axis is approximated from a boundary sampling, this one is exact.
 
-<img src="Images/15-ShapesAsMaterial/InsetLadder.jpg" alt="Two panels of the same pinched two-lobed blob: on the left the straight skeleton, faint lines rising from every corner into an accented ridge running lobe to lobe, and on the right a ladder of concentric mitered insets that separates into two nests of rings where the waist pinches" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/InsetLadder-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/InsetLadder.jpg" alt="Two panels of the same pinched two-lobed blob: on the left the straight skeleton, faint lines rising from every corner into an accented ridge running lobe to lobe, and on the right a ladder of concentric mitered insets that separates into two nests of rings where the waist pinches" width="680">
+</picture>
 
 ```swift
 let skeleton = straightSkeleton(of: island)
@@ -536,7 +596,10 @@ Paper marbling has a few hundred years of craft behind it and a simple physical 
 
 `Marbling` reproduces that in closed form, which means every move is an exact transform applied to outlines rather than a simulation of fluid. Ink regions are ordinary vector shapes, and each operation bends them. Because the outlines only ever deform, ink never tears and never mixes, exactly as on a real bath.
 
-<img src="Images/15-ShapesAsMaterial/MarblingSteps.jpg" alt="Four panels from one bull's-eye of alternating drops: the drops alone as concentric rings, a single stylus pulled down through them into a heart, a comb of teeth feathering them into a nonpareil, and an off-center vortex curling them" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/MarblingSteps-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/MarblingSteps.jpg" alt="Four panels from one bull's-eye of alternating drops: the drops alone as concentric rings, a single stylus pulled down through them into a heart, a comb of teeth feathering them into a nonpareil, and an off-center vortex curling them" width="680">
+</picture>
 
 Nearly every classic pattern starts from the bull's-eye in the first panel. A bull's-eye is just concentric drops of alternating color.
 
@@ -578,7 +641,10 @@ Watercolor is the least geometric-looking thing in this chapter, and that is exa
 
 Start with one irregular polygon. Split every edge at its midpoint, jump that midpoint a small random distance, and repeat. Each edge carries its own variance and passes a decayed share of it to the two edges it splits into. Some stretches of outline bloom, while others stay nearly straight. That inheritance is what keeps the result from looking like a uniformly fuzzy circle. Paint one such outline at about four percent opacity and almost nothing shows. Stack forty independently deformed copies and the middle saturates while the fringe stays uneven, which is what the eye reads as pigment.
 
-<img src="Images/15-ShapesAsMaterial/WatercolorLayers.jpg" alt="Three panels: a plain ten-sided irregular polygon, one deformed layer of it painted at four percent opacity showing only a faint wandering outline, and forty layers stacked into a solid blue pool with a ragged fringe" width="560">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/WatercolorLayers-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/WatercolorLayers.jpg" alt="Three panels: a plain ten-sided irregular polygon, one deformed layer of it painted at four percent opacity showing only a faint wandering outline, and forty layers stacked into a solid blue pool with a ragged fringe" width="560">
+</picture>
 
 One call does the whole thing:
 
@@ -609,7 +675,10 @@ for line in hatch.lines(filling: shape) {
 }
 ```
 
-<img src="Images/15-ShapesAsMaterial/HatchTones.jpg" alt="The same blob with a hole hatched three ways: wide-spaced lines for a light tone, tight lines for a dark one, and crosshatch for the darkest, each keeping a crisp outline" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/HatchTones-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/HatchTones.jpg" alt="The same blob with a hole hatched three ways: wide-spaced lines for a light tone, tight lines for a dark one, and crosshatch for the darkest, each keeping a crisp outline" width="680">
+</picture>
 
 Spacing is the pen's whole idea of tone. Holes and concavities are respected, because the lines are clipped by the shape's own inside rule. For getting work *out*, every sketch already knows how. Run it with `--export-svg plate.svg` and the recorded geometry writes as true vector paths. Add `--hatch` and the exporter converts every fill to hatch line work by itself, spacing scaled by each fill's tone. Either way the file opens in any vector tool and feeds any plotter.
 
@@ -625,7 +694,10 @@ if let art = loadSVG("boat.svg") {
 
 `drawSVG` draws the file the way its author saw it, fills, strokes, and stacking order intact. But the reason it lives in this chapter is what happens when you ignore the authored look. `art.shapes` and `art.contours` hand over the bare geometry, and everything above applies to it. Subtract the artwork from a mosaic, or shrink it into nested outlines. Respace its contours into even dots, the [Chapter 8](08-Words.md) trick, or hatch it for the pen.
 
-<img src="Images/15-ShapesAsMaterial/ImportMined.jpg" alt="Three panels of the same imported sailboat SVG: drawn as authored with its own fills, respaced into even dots along every outline, and hatched into pen line work at a different angle per part" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/ImportMined-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/ImportMined.jpg" alt="Three panels of the same imported sailboat SVG: drawn as authored with its own fills, respaced into even dots along every outline, and hatched into pen line work at a different angle per part" width="680">
+</picture>
 
 ```swift
 let fitted = art.fitted(in: frame)      // a scaled copy, in canvas coordinates

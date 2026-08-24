@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram (Chapter 11): the same graph at three temperatures. Left, the
 // seeded random start: a huddle of tangled edges. Middle, mid-cooling: edges
@@ -8,10 +8,13 @@ import Ollin
 final class GraphSettles: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.12)
-    let edgeInk = Color(hex: 0x2B2B2B, alpha: 0.55)
-    let accent = Color(hex: 0xE4572E)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
+    var edgeInk: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.55) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
 
     let left = Rectangle(x: 30, y: 70, width: 253, height: 340)
     let middle = Rectangle(x: 303, y: 70, width: 253, height: 340)
@@ -21,6 +24,7 @@ final class GraphSettles: Sketch {
     var hub = 0
 
     override func setup() {
+        layouts = []
         // A small scale-free web: each newcomer joins a node picked in
         // proportion to its degree, so a few hubs grow rich.
         var rng = SplitMix64(seed: 20)
@@ -62,7 +66,7 @@ final class GraphSettles: Sketch {
     }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         textSize(17)
 
         let titles = ["a seeded random start", "cooling: bold, then gentle",

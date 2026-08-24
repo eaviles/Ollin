@@ -8,7 +8,10 @@
 
 Where the [medial axis](MedialAxis.md) bends into curves around reflex corners, the straight skeleton stays piecewise straight. That is what makes it the geometry of *mitered insets*. The shrinking boundary at distance `d` is the shape inset by `d` with sharp corners, so one skeleton yields a whole ladder of concentric contours.
 
-<img src="../../Guide/Images/15-ShapesAsMaterial/InsetLadder.jpg" alt="Two panels of the same pinched two-lobed blob: on the left the straight skeleton, faint lines rising from every corner into an accented ridge running lobe to lobe, and on the right a ladder of concentric mitered insets that separates into two nests of rings where the waist pinches" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/15-ShapesAsMaterial/InsetLadder-dark.jpg">
+  <img src="../../Guide/Images/15-ShapesAsMaterial/InsetLadder.jpg" alt="Two panels of the same pinched two-lobed blob: on the left the straight skeleton, faint lines rising from every corner into an accented ridge running lobe to lobe, and on the right a ladder of concentric mitered insets that separates into two nests of rings where the waist pinches" width="680">
+</picture>
 
 The skeleton also partitions the shape into one face per boundary edge. Raise every point to its inset distance and each face becomes a flat plane. That is the classic roof model, and a ready-made paneling of any polygon.
 

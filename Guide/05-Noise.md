@@ -12,7 +12,10 @@
 
 Here is the difference in one picture. Both strips march across the canvas asking for a height at every step. The top one asks `random`, and every answer stands alone. The bottom one asks `noise`, and something new happens: **nearby questions get nearby answers**.
 
-<img src="Images/05-Noise/RandomVsNoise.jpg" alt="Two framed strips: the top a jagged hash of random heights, the bottom a smooth rolling curve from noise" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/05-Noise/RandomVsNoise-dark.jpg">
+  <img src="Images/05-Noise/RandomVsNoise.jpg" alt="Two framed strips: the top a jagged hash of random heights, the bottom a smooth rolling curve from noise" width="680">
+</picture>
 
 That's the whole idea. `noise` takes a number in and hands back a value between 0 and 1, just like `random()`. But it isn't a roll, it's a *lookup*. Somewhere at launch a smooth invisible landscape got laid out, and `noise(x)` simply reports its height at position `x`. Ask at `2.00` and then at `2.01` and you get almost the same answer, because you asked almost the same place. Ask far apart and the answers are unrelated. Random forgets; noise remembers where it is.
 
@@ -40,7 +43,10 @@ One habit carries over from [Chapter 4](04-Randomness.md). The landscape itself 
 
 That `* 0.4` deserves its own section, because it's the knob you will turn most. The input to `noise` is a position, so the multiplier decides **how far apart your questions land** on the landscape:
 
-<img src="Images/05-Noise/NoiseZoom.jpg" alt="Three framed panels sampling the same noise field with multipliers 0.004, 0.015, and 0.06, the curve going from one gentle valley to rolling hills to busy wiggles" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/05-Noise/NoiseZoom-dark.jpg">
+  <img src="Images/05-Noise/NoiseZoom.jpg" alt="Three framed panels sampling the same noise field with multipliers 0.004, 0.015, and 0.06, the curve going from one gentle valley to rolling hills to busy wiggles" width="680">
+</picture>
 
 Tiny steps stay on one hillside, so the result glides. Bigger steps cross whole hills between asks, so the result gets busy. Steps that are too big land on unrelated terrain every time, and noise stops looking smooth at all. If your noise ever looks like static, your multiplier is too big.
 
@@ -50,7 +56,10 @@ There's a rule of thumb hiding in the panels. When you feed noise *pixel* coordi
 
 Here's where noise pulls ahead of anything [Chapter 4](04-Randomness.md) could do. Give it *two* numbers, `noise(x, y)`, and the landscape becomes a smooth surface: an answer at every point of a plane. Ask at every cell of a grid and you can *see* it:
 
-<img src="Images/05-Noise/NoiseTerrain.jpg" alt="Two panels of the same noise field: on the left cells shaded from black to white forming soft clouds, on the right the same values drawn as dot sizes forming a halftone version of the same clouds" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/05-Noise/NoiseTerrain-dark.jpg">
+  <img src="Images/05-Noise/NoiseTerrain.jpg" alt="Two panels of the same noise field: on the left cells shaded from black to white forming soft clouds, on the right the same values drawn as dot sizes forming a halftone version of the same clouds" width="680">
+</picture>
 
 Make `MySketches/Clouds.swift`:
 
@@ -119,7 +128,10 @@ You get a dot wandering *around the center*, drifting up to 300 pixels in any di
 
 Look at a mountain ridge and there are really two ridges: the huge slow silhouette, and the small jagged texture riding on it. One noise call gives you one or the other, never both, because one zoom level only has features of one size. The fix is to ask twice and add:
 
-<img src="Images/05-Noise/NoiseLayers.jpg" alt="Three framed strips: a slow big-scale noise curve labeled shape, a busy small-scale curve labeled detail, and their weighted sum showing gentle terrain with fine texture riding it" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/05-Noise/NoiseLayers-dark.jpg">
+  <img src="Images/05-Noise/NoiseLayers.jpg" alt="Three framed strips: a slow big-scale noise curve labeled shape, a busy small-scale curve labeled detail, and their weighted sum showing gentle terrain with fine texture riding it" width="680">
+</picture>
 
 ```swift
 let n = noise(x * 0.004) * 0.7 + noise(x * 0.03) * 0.3
@@ -133,13 +145,19 @@ Because you'll reach for it constantly, Ollin also packages the stack as one cal
 
 Once you think of noise as a landscape you can ask, a door opens. There are other landscapes, laid out by other rules. Ollin ships a small family of them. They all answer in roughly `0...1`, take the same zoom knob, and are pinned by the same `noiseSeed`, so everything this chapter taught carries over unchanged.
 
-<img src="Images/05-Noise/NoiseFlavors.jpg" alt="Six gray field panels from one seed: classic noise, simplex noise, warped fbm, cellular worley, ridged fbm, and turbulence" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/05-Noise/NoiseFlavors-dark.jpg">
+  <img src="Images/05-Noise/NoiseFlavors.jpg" alt="Six gray field panels from one seed: classic noise, simplex noise, warped fbm, cellular worley, ridged fbm, and turbulence" width="680">
+</picture>
 
 **`simplexNoise` is a second opinion.** Same idea as `noise`, smooth and coherent, but its landscape is laid out on triangles where the classic one is laid out on squares. The practical difference is grain. Simplex is even in every direction, while the classic field carries a faint left-right and up-down bias you can sometimes spot in big soft washes. The two take identical inputs, so trying both is a one-word edit. `signedSimplexNoise` swings `-1...1`, as you'd guess.
 
 **`worley` remembers places, not heights.** It scatters one hidden point into each cell of an invisible grid, and its answer at any position is the distance to the nearest of them, near zero beside a point and peaking on the walls between two. Shade the answers and the canvas divides itself into cells. The pattern is everywhere in nature: stone, foam, cracked earth.
 
-<img src="Images/05-Noise/CellsFromPoints.jpg" alt="Two panels of cellular noise: distances shaded so each hidden point sits in a dark core, and the border reading drawing dark walls between the cells" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/05-Noise/CellsFromPoints-dark.jpg">
+  <img src="Images/05-Noise/CellsFromPoints.jpg" alt="Two panels of cellular noise: distances shaded so each hidden point sits in a dark core, and the border reading drawing dark walls between the cells" width="680">
+</picture>
 
 ```swift
 let cell = worley(x * 0.02, y * 0.02)                       // stone-wall shading

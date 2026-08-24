@@ -27,7 +27,10 @@ Guides like this tend to fail in known ways: a concept appears out of nowhere an
 
 Both kinds of image are already at work on this page: the piece above is [`Figures/01-HelloOllin/HelloMotion.swift`](Figures/01-HelloOllin/HelloMotion.swift) rendered at a fixed frame, and this [Chapter 1](01-HelloOllin.md) diagram is a sketch too ([`CoordinateSystem.swift`](Figures/01-HelloOllin/CoordinateSystem.swift)):
 
-<img src="Images/01-HelloOllin/CoordinateSystem.jpg" alt="The canvas coordinate system, drawn by Ollin" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/01-HelloOllin/CoordinateSystem-dark.jpg">
+  <img src="Images/01-HelloOllin/CoordinateSystem.jpg" alt="The canvas coordinate system, drawn by Ollin" width="680">
+</picture>
 
 ## How to read it
 

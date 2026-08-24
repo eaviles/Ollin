@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram (Chapter 12): how a spatial index finds neighbors. The plane is
 // cut into cells one perception radius across, so every true neighbor of the
@@ -9,13 +9,16 @@ import Ollin
 final class NeighborCells: Sketch {
     override var canvasSize: CanvasSize { .size(880, 440) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.4)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.12)
-    let accent = Color(hex: 0xE4572E)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.4) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         textSize(17)
         seed(4)
 
@@ -34,7 +37,7 @@ final class NeighborCells: Sketch {
         // The block of nine cells the search reads.
         let column = Int((focal.x - origin.x) / cell), row = Int((focal.y - origin.y) / cell)
         noStroke()
-        fill(Color(hex: 0xE4572E, alpha: 0.07))
+        fill(Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E, alpha: 0.07))
         drawRect(corner: origin + Vector2(Double(column - 1) * cell, Double(row - 1) * cell),
                  width: cell * 3, height: cell * 3)
 

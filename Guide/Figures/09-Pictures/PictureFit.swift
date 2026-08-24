@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram: one 3:2 landscape into three 2:3 boxes, one per ImageFit.
 // Stretched, the round sun goes oval. Contained, the whole picture is there and
@@ -9,9 +9,12 @@ import Ollin
 final class PictureFit: Sketch {
     override var canvasSize: CanvasSize { .size(880, 520) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.45)
-    let box = Color(hex: 0xE3DDD2)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.45) }
+    var box: Color { Color(hex: darkTheme ? 0x2A2724 : 0xE3DDD2) }
 
     private var picture = Image(width: 300, height: 200, color: .white)
 
@@ -25,7 +28,7 @@ final class PictureFit: Sketch {
     }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         for (i, mode) in PictureFit.modes.enumerated() {
             let frame = Rectangle(x: 104 + Double(i) * 236, y: 70, width: 200, height: 300)
             noStroke()

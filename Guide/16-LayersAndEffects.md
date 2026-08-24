@@ -45,7 +45,10 @@ Two habits worth forming now. A `renderTarget()` is per-frame scaffolding, so ma
 
 Here's the same idea as a picture, one thumbnail per stage:
 
-<img src="Images/16-LayersAndEffects/Layers.jpg" alt="A diagram of the layer graph: two source drawings, arrows into a blurred version and a bloomed version, then arrows into one composited panel" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/16-LayersAndEffects/Layers-dark.jpg">
+  <img src="Images/16-LayersAndEffects/Layers.jpg" alt="A diagram of the layer graph: two source drawings, arrows into a blurred version and a bloomed version, then arrows into one composited panel" width="680">
+</picture>
 
 ## Filters
 
@@ -67,7 +70,10 @@ A few notes for the road. Filters are values you pass around, so a `[Filter]` ar
 
 Most filters treat your layer as a picture and adjust it. A few instead treat the same pixels as *information about something else*. Those are worth meeting individually, because what you feed them matters more than the knobs.
 
-<img src="Images/16-LayersAndEffects/SpecialFilters.jpg" alt="Three panels from one noise layer: hammered gold metal lit from the upper left, the same noise screened into a two-color newsprint pattern in navy and sand, and the noise swirled around a marked off-center point" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/16-LayersAndEffects/SpecialFilters-dark.jpg">
+  <img src="Images/16-LayersAndEffects/SpecialFilters.jpg" alt="Three panels from one noise layer: hammered gold metal lit from the upper left, the same noise screened into a two-color newsprint pattern in navy and sand, and the noise swirled around a marked off-center point" width="680">
+</picture>
 
 ```swift
 layer.filtered(.relight(.metal, angle: -.pi * 0.7, elevation: 0.55))
@@ -87,7 +93,10 @@ The [effects reference](../Docs/Drawing/Effects.md#filter) has the full catalog 
 
 One warp deserves a section of its own, because it does something none of the others do. It makes the picture contain itself.
 
-<img src="Images/16-LayersAndEffects/PictureInsideItself.jpg" alt="Three panels: a ring of colored lit windows on dark ground, the same ring as concentric copies growing smaller toward the middle, and the same copies wound into a single spiral" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/16-LayersAndEffects/PictureInsideItself-dark.jpg">
+  <img src="Images/16-LayersAndEffects/PictureInsideItself.jpg" alt="Three panels: a ring of colored lit windows on dark ground, the same ring as concentric copies growing smaller toward the middle, and the same copies wound into a single spiral" width="680">
+</picture>
 
 ```swift
 layer.filtered(.droste(inner: 0.42, twist: 1, zoom: time * 0.2))
@@ -107,7 +116,10 @@ Most filters have a strength knob. Chromatic aberration has a strength knob and 
 
 The idea underneath is always the same. Pull the color channels apart a little, so a white edge grows a colored rim. What the mode decides is *where* they get pulled.
 
-<img src="Images/16-LayersAndEffects/Dispersion.jpg" alt="Six panels of one dark scene, a pale disc and an orange block above a stack of thin white lines, each panel split a different way: fringes growing outward from the middle, fringes only near the edges of the frame, everything shifted by one diagonal vector, a warm rim on the shapes with the thin lines gone green, soft blue halos, and a smooth rainbow smear" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/16-LayersAndEffects/Dispersion-dark.jpg">
+  <img src="Images/16-LayersAndEffects/Dispersion.jpg" alt="Six panels of one dark scene, a pale disc and an orange block above a stack of thin white lines, each panel split a different way: fringes growing outward from the middle, fringes only near the edges of the frame, everything shifted by one diagonal vector, a warm rim on the shapes with the thin lines gone green, soft blue halos, and a smooth rainbow smear" width="680">
+</picture>
 
 ```swift
 layer.filtered(.chromaticAberration(amount: 0.018))                        // the default
@@ -163,7 +175,10 @@ withTarget(marks) {
 drawImage(marks.filtered(.diffuse()).image, 0, 0)
 ```
 
-<img src="Images/16-LayersAndEffects/Diffusion.jpg" alt="Three dark panels. A black field with a thin two-color curve and two dots; the same marks after diffusing into a smooth dusk sky over deep water with a glowing sun; and the same again with a second curve added low down, which reorganizes the whole lower half into a lit shore" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/16-LayersAndEffects/Diffusion-dark.jpg">
+  <img src="Images/16-LayersAndEffects/Diffusion.jpg" alt="Three dark panels. A black field with a thin two-color curve and two dots; the same marks after diffusing into a smooth dusk sky over deep water with a glowing sun; and the same again with a second curve added low down, which reorganizes the whole lower half into a lit shore" width="680">
+</picture>
 
 The rule the solve follows is worth knowing, because everything the picture does follows from it. **Away from the marks, every pixel ends up the average of its four neighbors.** That is the rule a soap film obeys when you dip a bent wire in it. Nothing overshoots, no color appears that was not put there, and a mark's influence falls away smoothly in every direction at once.
 
@@ -213,7 +228,10 @@ Draw your marks into a layer. Then ask every pixel in it a question: how far awa
 let field = marks.filtered(.distanceField())
 ```
 
-<img src="Images/16-LayersAndEffects/MeasuredField.jpg" alt="Three dark panels. A circle, a square and a stroked zigzag on black; the same shapes as pale contour bands, each ring following its shape and merging with its neighbors where they meet; and the same shapes as flat color regions, each pixel wearing the color of the mark nearest to it" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/16-LayersAndEffects/MeasuredField-dark.jpg">
+  <img src="Images/16-LayersAndEffects/MeasuredField.jpg" alt="Three dark panels. A circle, a square and a stroked zigzag on black; the same shapes as pale contour bands, each ring following its shape and merging with its neighbors where they meet; and the same shapes as flat color regions, each pixel wearing the color of the mark nearest to it" width="680">
+</picture>
 
 That layer is no longer a picture. Its red channel holds the distance in pixels, running negative inside a shape and positive outside it, and its green and blue hold the direction to that nearest edge. **A picture of a thing, turned into the measurement of where that thing is.**
 
@@ -356,7 +374,10 @@ The `Effects/DesignPatterns` and `Effects/DesignFilters` examples tour both sets
 
 One of the design filters deserves singling out, because it does something the others don't. `.melt` liquifies a layer by its own brightness.
 
-<img src="Images/16-LayersAndEffects/Melt.jpg" alt="Two panels: a simple painted dusk scene with a graded sky, a low sun, and a dark headland, and the same layer after the melt filter, poured into swirling violet and white marbling in which the sun survives as a bright knot" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/16-LayersAndEffects/Melt-dark.jpg">
+  <img src="Images/16-LayersAndEffects/Melt.jpg" alt="Two panels: a simple painted dusk scene with a graded sky, a low sun, and a dark headland, and the same layer after the melt filter, poured into swirling violet and white marbling in which the sun survives as a bright knot" width="680">
+</picture>
 
 ```swift
 drawImage(scene.filtered(.melt(phase: time)).image, 0, 0)
@@ -370,7 +391,10 @@ It is a strong effect at its defaults, and `liquify`, `warp`, and `blend` dial b
 
 So far every mark has simply covered what was under it. `blendMode(_:)` changes the arithmetic of that meeting, and it's ordinary drawing state like `fill`, saved by `withState { }`, applying to shapes and composited layers alike:
 
-<img src="Images/16-LayersAndEffects/BlendModes.jpg" alt="Seven tiles of the same orange and blue discs overlapping on a gray ground, each composited with a different blend mode: normal, add, subtract, multiply, screen, lightest, darkest" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/16-LayersAndEffects/BlendModes-dark.jpg">
+  <img src="Images/16-LayersAndEffects/BlendModes.jpg" alt="Seven tiles of the same orange and blue discs overlapping on a gray ground, each composited with a different blend mode: normal, add, subtract, multiply, screen, lightest, darkest" width="680">
+</picture>
 
 The one that changes how you think is `.add`. It sums colors the way light sums, so two faint marks make a brighter one and a thousand make a glow. Because Ollin blends color as physical amounts of light, the sum behaves like real lamps overlapping. Against a dark background, additive drawing stops reading as paint and starts reading as luminance. `.multiply` is the opposite temperament, stacking color like layered ink or gels, at home on light backgrounds. The rest are variations on lighter and darker, and the figure is the honest catalog.
 
@@ -511,7 +535,10 @@ You cannot see either one in this page's figures, which is the point. Run [`Exam
 
 Accumulation piles new marks onto a canvas that otherwise sits still. **Feedback** is stranger and livelier. Each frame you get last frame's *finished picture* back as an image. Transform it however you like, draw it into the new frame, and add this frame's marks on top. The transformed past becomes the new present, over and over. Point a camera at its own monitor and you've built one out of hardware. The fade-zoom-rotate you choose is the whole personality of the effect:
 
-<img src="Images/16-LayersAndEffects/FeedbackSteps.jpg" alt="Four panels of the same orbiting dot drawn into feedback layers with different transforms: fade only leaves a short tail, zoom smears it into a streak, rotate wraps it into a swirl, zoom plus rotate coils it into a spiral" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/16-LayersAndEffects/FeedbackSteps-dark.jpg">
+  <img src="Images/16-LayersAndEffects/FeedbackSteps.jpg" alt="Four panels of the same orbiting dot drawn into feedback layers with different transforms: fade only leaves a short tail, zoom smears it into a streak, rotate wraps it into a swirl, zoom plus rotate coils it into a spiral" width="680">
+</picture>
 
 A `Feedback` layer is made once in `setup()` and kept, because its identity is what carries the picture from frame to frame:
 

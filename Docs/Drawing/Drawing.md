@@ -173,7 +173,10 @@ The named profiles cover the common marks:
 | `.nib(angle:thinness:)` | A flat calligraphy pen held at `angle`: the mark is fattest where the path runs across the nib and a hairline where it runs along it. `thinness` is how much width the thinnest direction keeps. |
 | `.values([...])` | Evenly spaced multipliers along the path, interpolated between: a width curve by hand, or one recorded from an input. |
 
-<img src="../../Guide/Images/15-ShapesAsMaterial/MarkWidth.jpg" alt="The same S-curve drawn three ways at one stroke weight: an even line, a taper that swells in the middle and vanishes at both ends, and a calligraphic nib that thickens and thins as the curve turns" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/15-ShapesAsMaterial/MarkWidth-dark.jpg">
+  <img src="../../Guide/Images/15-ShapesAsMaterial/MarkWidth.jpg" alt="The same S-curve drawn three ways at one stroke weight: an even line, a taper that swells in the middle and vanishes at both ends, and a calligraphic nib that thickens and thins as the curve turns" width="680">
+</picture>
 
 ```swift
 strokeWeight(12)
@@ -275,7 +278,10 @@ Because the canvas blends in linear light (the gamma-correct pipeline), `.add` s
 
 ### Basic shapes
 
-<img src="../../Guide/Images/01-HelloOllin/FirstShapes.jpg" alt="Six panels: a filled circle, rectangle, and line on top, with markers showing that a circle's x, y is its center while a rectangle's is its top-left corner; an outlined circle, a filled-and-stroked rectangle, and a thick line below" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/01-HelloOllin/FirstShapes-dark.jpg">
+  <img src="../../Guide/Images/01-HelloOllin/FirstShapes.jpg" alt="Six panels: a filled circle, rectangle, and line on top, with markers showing that a circle's x, y is its center while a rectangle's is its top-left corner; an outlined circle, a filled-and-stroked rectangle, and a thick line below" width="680">
+</picture>
 
 <a name="point"></a>
 
@@ -1084,7 +1090,10 @@ To vary the style per shape, giving each a different color or radius, drop back 
 
 Transforms move, turn, and stretch the **coordinate system**, not the shapes you've already drawn, so every draw call *after* one is measured in the new frame. They stack (each builds on the previous), and they reset every frame, so `draw()` always starts from the top-left origin. Wrap them in [`withState { }`](#isolated) to keep a transform local. Order matters: `translate` then `rotate` moves out and spins in place (a top), while `rotate` then `translate` moves along the already-tilted axes (an orbit).
 
-<img src="../../Guide/Images/06-GridsAndRepetition/TransformSteps.jpg" alt="Four panels drawing the same flag with the same call: untransformed at the origin, then translated, then rotated a twelfth of a turn, then scaled up" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/06-GridsAndRepetition/TransformSteps-dark.jpg">
+  <img src="../../Guide/Images/06-GridsAndRepetition/TransformSteps.jpg" alt="Four panels drawing the same flag with the same call: untransformed at the origin, then translated, then rotated a twelfth of a turn, then scaled up" width="680">
+</picture>
 
 <a name="translate"></a>
 
@@ -1146,7 +1155,10 @@ noSymmetry()
 
 Replicate everything drawn next into `folds` copies rotated evenly around the current origin, which is the kaleidoscope, or mandala, mode. Draw one wedge and the folds complete the picture. `mirrored: true` adds a reflected copy per fold (mirrored across the local x-axis), the classic kaleidoscope's doubled symmetry.
 
-<img src="../../Guide/Images/06-GridsAndRepetition/Kaleidoscope.jpg" alt="Three panels: a single small crooked wedge with a red dot at its tip, the same wedge under eightfold symmetry forming a snowflake, and under mirrored eightfold symmetry forming a denser one with paired reflections" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/06-GridsAndRepetition/Kaleidoscope-dark.jpg">
+  <img src="../../Guide/Images/06-GridsAndRepetition/Kaleidoscope.jpg" alt="Three panels: a single small crooked wedge with a red dot at its tip, the same wedge under eightfold symmetry forming a snowflake, and under mirrored eightfold symmetry forming a denser one with paired reflections" width="680">
+</picture>
 
 The fold pivot and the mirror axis are the origin and x-axis *at the call*, so `translate` first to place the center, and `rotate` to aim the seam. Transforms applied after `symmetry` compose inside every fold, so an orbiting shape orbits in all of them at once. It's drawing state like `fill`, so it stays on until `noSymmetry()`, and `withState { }` restores it.
 
@@ -1172,7 +1184,10 @@ withClip(_ circle: Circle, _ body: () -> Void)
 
 Run `body` with drawing confined to the region. It's a stencil mask, so everything drawn inside the block (fills, strokes, images, text, even 3D geometry) lands only where the region covers, and the previous clip is restored when the block ends. Any vector `Shape` works, holes and concavity included, and its `winding` rule is honored. Open contours don't fill, so a shape with no fillable region clips everything out. Nested clips intersect: a `withClip` block inside another draws only where both regions overlap.
 
-<img src="../../Guide/Images/06-GridsAndRepetition/ClipRegions.jpg" alt="Three panels of the same diagonal orange stripes: confined to a star, confined to a circle, and confined to both at once so only the overlap of star and circle is striped" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/06-GridsAndRepetition/ClipRegions-dark.jpg">
+  <img src="../../Guide/Images/06-GridsAndRepetition/ClipRegions.jpg" alt="Three panels of the same diagonal orange stripes: confined to a star, confined to a circle, and confined to both at once so only the overlap of star and circle is striped" width="680">
+</picture>
 
 The region is fixed where the current transform places it at the call, like a drawn fill, so transforms inside the block move the *drawing*, not the clip. Like `withState` (and `layer { }`), any drawing state the block changes is restored on exit. The clip edge anti-aliases at MSAA resolution, and the region rides into [SVG export](../Output/Export.md) as a native `<clipPath>`.
 

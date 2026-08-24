@@ -6,7 +6,10 @@
 
 **Dielectric breakdown** grows lightning. The discharge is held at one voltage and the surroundings at another, and the electric field between them is solved over a lattice. Every empty cell touching the discharge is a candidate, and one grows per step with probability proportional to the local field raised to `eta`. That one exponent picks the regime. Low `eta` grows a furry, even bush; near `2` it grows the sparse, jagged branches of lightning and the Lichtenberg figures burned into wood and acrylic.
 
-<img src="../../Guide/Images/13-GrowingThings/VoltageChooses.jpg" alt="Two panels: left, a young lattice discharge inside a violet wash of its solved field, its frontier dotted in orange with the dots large at the tips and missing in the crevices; right, a sparse jagged discharge with its main channels drawn thick" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/13-GrowingThings/VoltageChooses-dark.jpg">
+  <img src="../../Guide/Images/13-GrowingThings/VoltageChooses.jpg" alt="Two panels: left, a young lattice discharge inside a violet wash of its solved field, its frontier dotted in orange with the dots large at the tips and missing in the crevices; right, a sparse jagged discharge with its main channels drawn thick" width="680">
+</picture>
 
 `DielectricBreakdown` is a stateful stepper you hold, like the other growth models. `step()` adds one site, `step(_:)` a batch per frame, `grow()` runs until the arc connects. It's seeded, so the same seed grows the same figure.
 

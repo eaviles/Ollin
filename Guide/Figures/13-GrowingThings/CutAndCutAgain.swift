@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide figure (Chapter 13): a shape grammar cutting up a frame. One rule, a
 // cell becomes two cells parted by a straight line, applied to every cell at
@@ -11,9 +11,11 @@ import Ollin
 final class CutAndCutAgain: Sketch {
     override var canvasSize: CanvasSize { .size(880, 280) }
 
-    let paper = Color(hex: 0xF7F5F1)
-    let ink = Color(hex: 0x2B2B2B)
-    let accent = Color(hex: 0xE4572E)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
 
     override func draw() {
         background(paper)

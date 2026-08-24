@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram (Chapter 15): the spirolateral, and what decides whether it
 // closes. One run on the left, the four runs it takes to come home in the
@@ -8,10 +8,12 @@ import Ollin
 final class Spirolaterals: Sketch {
     override var canvasSize: CanvasSize { .size(880, 460) }
 
-    let paper = Color(hex: 0xF7F5F1)
-    let ink = Color(hex: 0x2B2B2B)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
     let accent = Color(hex: 0xE07A5F)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.12)
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
 
     override func draw() {
         background(paper)
@@ -59,7 +61,7 @@ final class Spirolaterals: Sketch {
         drawText("the figure closes when a whole number of runs makes a whole turn",
                  width / 2, 352)
         textSize(17)
-        fill(Color(hex: 0x6E6A63))
+        fill(darkTheme ? Color(hex: 0xE8E5E1, alpha: 0.62) : Color(hex: 0x6E6A63))
         drawText("at a quarter turn, that leaves out the multiples of four and nothing else",
                  width / 2, 386)
     }

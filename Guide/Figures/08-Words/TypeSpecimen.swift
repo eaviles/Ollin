@@ -1,4 +1,4 @@
-// figure: frame=0 probe
+// figure: frame=0 probe themed
 //
 // Guide diagram (Chapter 8): the three kinds of font, one word each. An
 // outline font fills vector contours (and can stroke them), a bitmap font
@@ -8,12 +8,15 @@ import Ollin
 final class TypeSpecimen: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.45)
-    let accent = Color(hex: 0xE4572E)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.45) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
 
         // Row 1: the outline font (the default), filled and stroked.
         row(name: "outline", note: "vector contours: crisp at any size, takes fill and stroke", y: 106)

@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram (Chapter 13): dielectric breakdown. Left, the rule: the
 // solved field around a young discharge, washed light where the potential is
@@ -10,9 +10,12 @@ import Ollin
 final class VoltageChooses: Sketch {
     override var canvasSize: CanvasSize { .size(880, 480) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.12)
-    let accent = Color(hex: 0xE4572E)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
     let wash = Color(hex: 0x6B5AE0)
 
     var young: DielectricBreakdown!
@@ -35,7 +38,7 @@ final class VoltageChooses: Sketch {
     }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         let left = panel(0), right = panel(1)
 
         // Left: the field as a wash (light where the potential is high),

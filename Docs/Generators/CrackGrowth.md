@@ -8,7 +8,10 @@
 
 Each crack also drags a translucent **wash** across the open space on one side of its line. That sand-painter shading is what gives the classic watercolor reading. The helper emits geometry only. You draw the marks, so the wash can be inks on paper, glowing additive dust, or nothing at all.
 
-<img src="../../Guide/Images/13-GrowingThings/CrackedCity.jpg" alt="Two panels: left, a vertical crack stopped on a horizontal line at an orange dot marked stops here, with an orange arrow setting out perpendicular from the vertical line; right, a plane subdivided into rectangular city blocks by fine dark cracks with faint colored washes beside them" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/13-GrowingThings/CrackedCity-dark.jpg">
+  <img src="../../Guide/Images/13-GrowingThings/CrackedCity.jpg" alt="Two panels: left, a vertical crack stopped on a horizontal line at an orange dot marked stops here, with an orange arrow setting out perpendicular from the vertical line; right, a plane subdivided into rectangular city blocks by fine dark cracks with faint colored washes beside them" width="680">
+</picture>
 
 ### Contents
 

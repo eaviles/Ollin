@@ -8,7 +8,10 @@
 
 The winding is fully deterministic: the same picture and settings always wind the same thread, no seed involved. The helper emits geometry only; you draw the chords, so the thread can be ink on paper, glowing light, or anything else a line can be.
 
-<img src="../../Guide/Images/09-Pictures/WoundFromThread.jpg" alt="Three panels: a bold crescent picture, the first 350 chords of its winding crowding into the crescent, and the finished winding where the crescent is dense thread and the rest a light veil" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/09-Pictures/WoundFromThread-dark.jpg">
+  <img src="../../Guide/Images/09-Pictures/WoundFromThread.jpg" alt="Three panels: a bold crescent picture, the first 350 chords of its winding crowding into the crescent, and the finished winding where the crescent is dense thread and the rest a light veil" width="680">
+</picture>
 
 ### Contents
 

@@ -37,7 +37,10 @@ A string can hold more than one line (`\n` starts the next one), and everything 
 
 Everything above used the default font, which is one of three kinds Ollin draws. They all answer to the same calls, and what differs is what a glyph *is*:
 
-<img src="Images/08-Words/TypeSpecimen.jpg" alt="Three rows showing the same word: an outline font filled and stroked, a bitmap font built from visible squares, and a stroke font drawn as a single thin pen line" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/08-Words/TypeSpecimen-dark.jpg">
+  <img src="Images/08-Words/TypeSpecimen.jpg" alt="Three rows showing the same word: an outline font filled and stroked, a bitmap font built from visible squares, and a stroke font drawn as a single thin pen line" width="680">
+</picture>
 
 - An **outline font** is a real `.ttf`/`.otf` face, each glyph stored as vector contours. It's the default (the system font, at medium weight), it stays crisp at any size, and because a glyph renders as a shape it takes `fill` *and* `stroke`. This is the kind you'll use most.
 - A **bitmap font** is a small grid of pixels per glyph, scaled up square by square. The bundled one is Cozette, a 13-pixel face with wide coverage (the Spanish accents are all there). It brings instant pixel-art flavor and never pretends to be smooth.
@@ -92,7 +95,10 @@ Two relatives to file away: `drawText(_:along:)` lays a string along any `Path`,
 
 This is the chapter's biggest idea. `textToShapes` gives you the glyphs *as vector shapes*, positioned exactly where `drawText` would have put them, and from that moment they're geometry like everything else in this guide: you can warp the points, stroke the contours, or scatter marks along them.
 
-<img src="Images/08-Words/TextWarp.jpg" alt="The word warp three times: crisp, gently bent by a small noise field, and strongly bent until the letters read as liquid" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/08-Words/TextWarp-dark.jpg">
+  <img src="Images/08-Words/TextWarp.jpg" alt="The word warp three times: crisp, gently bent by a small noise field, and strongly bent until the letters read as liquid" width="680">
+</picture>
 
 ```swift
 textSize(150)
@@ -122,7 +128,10 @@ One glyph per letter is an English idea.
 
 Every call above works for any script without configuration. Paste in Arabic, Japanese, Devanagari or Thai and it draws. The system's layout engine shapes it. It finds a font that has the right letters. The figure shows four assumptions that stop being true.
 
-<img src="Images/08-Words/EveryScript.jpg" alt="Four panels. A Devanagari syllable inside one box, labeled one call of the closure. An Arabic word with its pieces numbered zero to four from the left, noting that zero is the last letter read. The letter O and a waving-hand emoji drawn twice: once filled, once as outlines where only the O has any. A Japanese paragraph wrapped inside a thin box" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/08-Words/EveryScript-dark.jpg">
+  <img src="Images/08-Words/EveryScript.jpg" alt="Four panels. A Devanagari syllable inside one box, labeled one call of the closure. An Arabic word with its pieces numbered zero to four from the left, noting that zero is the last letter read. The letter O and a waving-hand emoji drawn twice: once filled, once as outlines where only the O has any. A Japanese paragraph wrapped inside a thin box" width="680">
+</picture>
 
 **A glyph is smaller than a letter, and sometimes larger.** The top-left panel is one Devanagari syllable. It is written with four characters and drawn with three glyphs. One glyph sits to the *left* of the letter it follows. So the closure hands you a **piece**: one thing a reader would point at. `g.text` is therefore a `String`, holding all four characters here. `g.character` still returns a single `Character` for the common case.
 
@@ -147,7 +156,10 @@ textDirection(.topToBottom)
 drawText("「春」は、あけぼの（をかし）", 820, 80)
 ```
 
-<img src="Images/08-Words/WritingInColumns.jpg" alt="Top: one Japanese sentence set across a line, then its opening set down a column. Middle right: an opening bracket, a comma and an opening parenthesis shown upright above their turned forms. Bottom: the same passage set in two identical boxes, justified on the left where every column reaches a red rule, ragged on the right where each stops short of it" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/08-Words/WritingInColumns-dark.jpg">
+  <img src="Images/08-Words/WritingInColumns.jpg" alt="Top: one Japanese sentence set across a line, then its opening set down a column. Middle right: an opening bracket, a comma and an opening parenthesis shown upright above their turned forms. Bottom: the same passage set in two identical boxes, justified on the left where every column reaches a red rule, ragged on the right where each stops short of it" width="680">
+</picture>
 
 Every turned character comes from the font. The middle of the figure shows three of them. The bracket lies down. The comma leaves the bottom left of its square and takes the top right. Those shapes are the writing system's own answer, kept in the face, and asking for vertical setting is what picks them.
 
@@ -165,7 +177,10 @@ textDirection(.topToBottomLeftToRight)
 drawText("ᠮᠣᠩᠭᠣᠯ ᠪᠢᠴᠢᠭ", 200, 120)
 ```
 
-<img src="Images/08-Words/ColumnsTheOtherWay.jpg" alt="Top: one Mongolian phrase set across a line, an arrow curving a quarter turn clockwise, and the same phrase standing as a column. Bottom: three identical Mongolian columns with an arrow running left to right and the first column marked at the left, beside three Japanese columns with an arrow running right to left and the first marked at the right" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/08-Words/ColumnsTheOtherWay-dark.jpg">
+  <img src="Images/08-Words/ColumnsTheOtherWay.jpg" alt="Top: one Mongolian phrase set across a line, an arrow curving a quarter turn clockwise, and the same phrase standing as a column. Bottom: three identical Mongolian columns with an arrow running left to right and the first column marked at the left, beside three Japanese columns with an arrow running right to left and the first marked at the right" width="680">
+</picture>
 
 The column order is the easy half. The half that matters is that these letters join. A word is one connected stroke. Each letter is as wide as its own shape, so no square can hold it.
 
@@ -202,7 +217,10 @@ textHangingPunctuation()
 drawText(passage, in: box)
 ```
 
-<img src="Images/08-Words/HangingStops.jpg" alt="The same Japanese passage in two identical boxes, each with a red rule down its right edge. On the left every character stays inside the rule and the passage runs to six lines. On the right three full stops sit across the rule and the passage fits in five" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/08-Words/HangingStops-dark.jpg">
+  <img src="Images/08-Words/HangingStops.jpg" alt="The same Japanese passage in two identical boxes, each with a red rule down its right edge. On the left every character stays inside the rule and the passage runs to six lines. On the right three full stops sit across the rule and the passage fits in five" width="680">
+</picture>
 
 **The stop is allowed outside the box, so the writing can stay inside it.** Both boxes here are the same width and hold the same passage. On the right the stops that would not fit cross the rule instead of pushing their neighbor down. The whole passage comes out a line shorter.
 

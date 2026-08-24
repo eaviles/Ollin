@@ -23,7 +23,10 @@ Everything in this chapter comes from letting those two readings work together: 
 
 Vectors add, subtract, and scale, and each operation has a picture worth keeping:
 
-<img src="Images/10-Vectors/VectorArithmetic.jpg" alt="Four labeled panels: adding two arrows head to tail, the arrow from a pos point to a target point, an arrow scaled longer and flipped, and a long arrow with its unit-length version ending on a circle of radius one" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/10-Vectors/VectorArithmetic-dark.jpg">
+  <img src="Images/10-Vectors/VectorArithmetic.jpg" alt="Four labeled panels: adding two arrows head to tail, the arrow from a pos point to a target point, an arrow scaled longer and flipped, and a long arrow with its unit-length version ending on a circle of radius one" width="680">
+</picture>
 
 - **Adding** is walking: `a + b` means walk `a`, then walk `b` from where you ended up. Order doesn't matter, since you arrive at the same place.
 - **Subtracting** answers the most useful question in this half of the guide: `target - pos` is *the arrow that goes from here to there*. Every chase, spring, and look-at in the chapters ahead starts with this line.
@@ -101,7 +104,10 @@ One more is useful for drawing. `v.angle` is the arrow's direction as a single n
 
 Now put arrows on a body, three of them, each answering a different question:
 
-<img src="Images/10-Vectors/MotionTrio.jpg" alt="A dotted flight arc of a thrown body with three arrows at one moment: a dashed position arrow from the origin, an orange velocity arrow along the path, and a black acceleration arrow pointing straight down" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/10-Vectors/MotionTrio-dark.jpg">
+  <img src="Images/10-Vectors/MotionTrio.jpg" alt="A dotted flight arc of a thrown body with three arrows at one moment: a dashed position arrow from the origin, an orange velocity arrow along the path, and a black acceleration arrow pointing straight down" width="680">
+</picture>
 
 - **Position** is where it is, a point, or the arrow from `(0, 0)` if you like.
 - **Velocity** is where it's going, the arrow added to position every second.

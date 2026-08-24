@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram: 2D noise as a field over the canvas, one ask per cell,
 // drawn twice from the same answers: as brightness on the left, as dot
@@ -8,7 +8,10 @@ import Ollin
 final class NoiseTerrain: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
-    let ink = Color(hex: 0x2B2B2B)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
 
     override func setup() {
         noiseSeed(6)
@@ -16,7 +19,7 @@ final class NoiseTerrain: Sketch {
     }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         textSize(21)
 
         let size = 340.0, top = 120.0

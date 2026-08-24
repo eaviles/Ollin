@@ -6,7 +6,10 @@
 
 Put the **same little tile** on every cell of a grid, but **spin each one to a random orientation**. The tile's marks always meet the cell edges at the same points. So the random spins line up across borders, and a wall of identical parts reads as one flowing, connected pattern. It's the cheapest way to make a rich, non-repeating design. One tile, a coin flip per cell, all reproducible from a [`seed`](../Generators/Random.md#seed).
 
-<img src="../../Guide/Images/07-Tiles/TruchetTiles.jpg" alt="Two panels of white line work on dark squares: quarter-circle arcs joining into meandering loops, and corner-to-corner diagonals forming a maze" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/07-Tiles/TruchetTiles-dark.jpg">
+  <img src="../../Guide/Images/07-Tiles/TruchetTiles.jpg" alt="Two panels of white line work on dark squares: quarter-circle arcs joining into meandering loops, and corner-to-corner diagonals forming a maze" width="680">
+</picture>
 
 Two tiles are built in, `.arcs` and `.diagonals`, each with two orientations (see [Tile styles](#tiles)). The output is a set of open `Contour`s, the line-work. It strokes, hatches, feeds the [shape booleans](./Geometry.md), or exports to SVG for a pen plotter.
 
@@ -70,7 +73,10 @@ drawTruchet(columns: 20, rows: 20, tile: .diagonals)   // a maze
 - **`.arcs`** joins each cell's edge midpoints with two quarter-circles, so the arcs meet across borders into smooth meandering loops and rings (the classic Truchet look, after Cyril Stanley Smith).
 - **`.diagonals`** draws one corner-to-corner diagonal per cell (`╲` or `╱`), so the cells read as a maze of connected corridors.
 
-<img src="../../Guide/Images/07-Tiles/TruchetJoins.jpg" alt="The arc tile's two spins, with dots marking where arcs end at edge midpoints; beside them, six randomly spun tiles whose arcs meet exactly at every shared edge midpoint" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/07-Tiles/TruchetJoins-dark.jpg">
+  <img src="../../Guide/Images/07-Tiles/TruchetJoins.jpg" alt="The arc tile's two spins, with dots marking where arcs end at edge midpoints; beside them, six randomly spun tiles whose arcs meet exactly at every shared edge midpoint" width="680">
+</picture>
 
 <a name="single-tiles"></a>
 

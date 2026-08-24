@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide figure (Chapter 13): differential growth, five moments of the same
 // seeded ring. It starts as a small circle and folds because splitting edges
@@ -8,14 +8,18 @@ import Ollin
 final class GrowthStrip: Sketch {
     override var canvasSize: CanvasSize { .size(880, 300) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.4)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.12)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.4) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
 
     let steps = [0, 80, 180, 320, 500]
     var rings: [[Vector2]] = []
 
     override func setup() {
+        rings = []
         for (i, count) in steps.enumerated() {
             let r = panelRect(i)
             let growth = DifferentialGrowth.ring(
@@ -33,7 +37,7 @@ final class GrowthStrip: Sketch {
     }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         textSize(17)
 
         for (i, nodes) in rings.enumerated() {

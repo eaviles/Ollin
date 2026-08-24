@@ -32,7 +32,10 @@ Colors can also arrive as *strings*, `Color(hex: "#ff0066")`, which matters once
 
 RGB is how the machine stores color, as three amounts of light. That's good for storing but hard to choose with, because nobody thinks "a little less green" when what they want is a warmer orange. The painter's version is HSB, where you pick the hue on a wheel and then decide how vivid it is (saturation) and how bright (brightness):
 
-<img src="Images/02-Color/HueWheels.jpg" alt="Left: RGB as three component bars adding up to an orange. Right: the HSB hue wheel with saturation and brightness sweeps" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/02-Color/HueWheels-dark.jpg">
+  <img src="Images/02-Color/HueWheels.jpg" alt="Left: RGB as three component bars adding up to an orange. Right: the HSB hue wheel with saturation and brightness sweeps" width="680">
+</picture>
 
 ```swift
 fill(Color(hue: 0.07, saturation: 0.85, brightness: 0.95))   // a warm orange
@@ -50,7 +53,10 @@ The circle now cycles through the whole rainbow every ten seconds while it swing
 
 Here's the trap every beginner falls into. Take a blue and a yellow, average their RGB numbers to get the halfway color, and you get… mud. Averaging the machine's storage format tells you nothing about what the *eye* considers halfway:
 
-<img src="Images/02-Color/MixingSpaces.jpg" alt="Three rows mixing the same blue and yellow: the RGB row passes through muddy olive, the HSB row detours through bright green, the OKLab row stays even" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/02-Color/MixingSpaces-dark.jpg">
+  <img src="Images/02-Color/MixingSpaces.jpg" alt="Three rows mixing the same blue and yellow: the RGB row passes through muddy olive, the HSB row detours through bright green, the OKLab row stays even" width="680">
+</picture>
 
 Ollin gives you mixing as one call, with the space as a choice:
 
@@ -85,7 +91,10 @@ Twelve different hues, and none of them shouts over the others, because they gen
 
 Individual colors get you started, but finished pieces usually run on a kit of colors chosen once and used throughout. Ollin has two kinds, plus two ready-made variants of the second:
 
-<img src="Images/02-Color/PaletteShelf.jpg" alt="Five rows: the set2 palette swatches, a triadic harmony, a smooth five-color ramp, the viridis colormap, and the sunset cosine palette" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/02-Color/PaletteShelf-dark.jpg">
+  <img src="Images/02-Color/PaletteShelf.jpg" alt="Five rows: the set2 palette swatches, a triadic harmony, a smooth five-color ramp, the viridis colormap, and the sunset cosine palette" width="680">
+</picture>
 
 A **`Palette`** is a fixed set of separate colors. Indexing wraps in both directions, so any counter cycles through it forever, and `color(at:)` slices `0...1` into equal bands:
 
@@ -161,7 +170,10 @@ Every pixel of the result is one of your five colors. (`bounds` there is the who
 
 The interesting word in that listing is `dithered`, and it's worth understanding rather than just calling, because it is the answer to a problem you will meet constantly: you have fewer colors than the picture needs.
 
-<img src="Images/02-Color/Dithering.jpg" alt="Three panels of the same smooth color gradient reduced to five colors: the first showing wide flat bands, the second a regular crosshatch grain, the third an organic scattered grain, both of the latter reading as a smooth gradient from a distance" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/02-Color/Dithering-dark.jpg">
+  <img src="Images/02-Color/Dithering.jpg" alt="Three panels of the same smooth color gradient reduced to five colors: the first showing wide flat bands, the second a regular crosshatch grain, the third an organic scattered grain, both of the latter reading as a smooth gradient from a distance" width="680">
+</picture>
 
 Snapping each pixel to the nearest available color is the obvious approach, and the first panel shows what it costs. Smooth regions turn into flat bands with hard edges, because a whole stretch of subtly different tones all round to the same color. Dithering trades those bands for texture. Where a tone falls between two of your colors, it scatters both of them in the right proportion, and your eye, blurring them together at any normal distance, reads the tone that was actually there. The picture keeps its gradients using colors it doesn't have.
 
@@ -177,7 +189,10 @@ A few practical notes. `.none` skips the scattering entirely, which is what the 
 
 A `Ramp` can also *be* the paint. Anywhere `fill` or `stroke` accepts a color it will also accept a gradient, laid over the canvas in one of three ways:
 
-<img src="Images/02-Color/GradientPaint.jpg" alt="Three panels: a rectangle with a vertical dusk gradient, a soft radial glow, and a ring stroked with a rainbow that sweeps around it" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/02-Color/GradientPaint-dark.jpg">
+  <img src="Images/02-Color/GradientPaint.jpg" alt="Three panels: a rectangle with a vertical dusk gradient, a soft radial glow, and a ring stroked with a rainbow that sweeps around it" width="680">
+</picture>
 
 ```swift
 fill(.linear(from: Vector2(0, 0), to: Vector2(0, height), dusk))   // along a line
@@ -197,7 +212,10 @@ You can look at your own colors through that difference:
 let seen = Color.red.simulated(.deuteranopia)
 ```
 
-<img src="Images/02-Color/ColorVision.jpg" alt="Two palettes drawn in four columns: as most people see them, then under protanopia, deuteranopia and tritanopia. In the top set the orange, green and red arrive as one olive. The bottom set stays separable" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/02-Color/ColorVision-dark.jpg">
+  <img src="Images/02-Color/ColorVision.jpg" alt="Two palettes drawn in four columns: as most people see them, then under protanopia, deuteranopia and tritanopia. In the top set the orange, green and red arrive as one olive. The bottom set stays separable" width="680">
+</picture>
 
 The top block is a palette you have met in a hundred charts. Under the two commonest kinds its orange, green and red land on one olive. The bottom block is `Palette.colorblindSafe`, eight colors published for exactly this, and it holds together.
 

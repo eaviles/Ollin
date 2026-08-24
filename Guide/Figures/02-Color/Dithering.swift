@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram (Chapter 2): what dithering is for. One smooth color field
 // reduced to the same five colors three ways. Snapping each pixel to its
@@ -9,9 +9,15 @@ import Ollin
 final class Dithering: Sketch {
     override var canvasSize: CanvasSize { .size(880, 400) }
 
-    let paper = Color(hex: 0xF7F5F1)
-    let ink = Color(hex: 0x232020)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.12)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x232020) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
+
+    // The panels depict one source field quantized three ways; the field is
+    // content, so it keeps the light ground in both themes.
+    let fieldPaper = Color(hex: 0xF7F5F1)
 
     var panelsOut: [Image] = []
 
@@ -54,7 +60,7 @@ final class Dithering: Sketch {
                 let u = Double(x) / Double(size - 1)
                 let v = Double(y) / Double(size - 1)
                 let t = min(1, max(0, v * 0.75 + u * 0.25))
-                image[x, y] = Color.mix(ramp.color(at: t), paper,
+                image[x, y] = Color.mix(ramp.color(at: t), fieldPaper,
                                         t: smoothstep(0.35, 1, u) * 0.55)
             }
         }

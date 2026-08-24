@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide figure (Chapter 4): percolation across the threshold. One fixed field
 // of per-cell random values read at three probabilities: islands below the
@@ -9,8 +9,12 @@ import Ollin
 final class ChanceInCrowds: Sketch {
     override var canvasSize: CanvasSize { .size(880, 340) }
 
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         seed(11)
         let columns = 46, rows = 46
         let values = (0 ..< columns * rows).map { _ in random() }
@@ -51,7 +55,7 @@ final class ChanceInCrowds: Sketch {
             }
 
             noStroke()
-            fill(Color(hex: 0x2B2B2B, alpha: 0.62))
+            fill(Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.62))
             textSize(16)
             textAlign(.center, .top)
             drawText(panel.0, rect.x + rect.width / 2, rect.y + rect.height + 10)

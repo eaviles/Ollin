@@ -133,7 +133,10 @@ let r = 120 + sin(time) * 40            // animate against the clock
 drawCircle(width / 2, height / 2, r)
 ```
 
-<img src="../../Guide/Images/03-MotionAndTime/DeltaTime.jpg" alt="Three dotted strips comparing one second of motion: a fixed per-frame step at 60 fps, the same step at 120 fps reaching twice as far, and a deltaTime-scaled step landing back in line" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/03-MotionAndTime/DeltaTime-dark.jpg">
+  <img src="../../Guide/Images/03-MotionAndTime/DeltaTime.jpg" alt="Three dotted strips comparing one second of motion: a fixed per-frame step at 60 fps, the same step at 120 fps reaching twice as far, and a deltaTime-scaled step landing back in line" width="680">
+</picture>
 
 For repeating motion on a fixed period, [`loopProgress(over:)` and `pingPong(over:)`](../Helpers/Animation.md#loop) wrap the clock into looping `0...1` progress.
 
@@ -143,7 +146,10 @@ Alongside the clock, `variation` (an `Int`) names the seed this run's randomness
 
 ### Canvas
 
-<img src="../../Guide/Images/01-HelloOllin/CoordinateSystem.jpg" alt="The canvas coordinate system: origin at the top left, x right, y down, with the point (380, 240) marked" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/01-HelloOllin/CoordinateSystem-dark.jpg">
+  <img src="../../Guide/Images/01-HelloOllin/CoordinateSystem.jpg" alt="The canvas coordinate system: origin at the top left, x right, y down, with the point (380, 240) marked" width="680">
+</picture>
 
 | Property | Type | Meaning |
 |---|---|---|

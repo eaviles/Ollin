@@ -1,4 +1,4 @@
-// figure: frame=140
+// figure: frame=140 themed
 //
 // Guide diagram (Chapter 16): what the feedback transform does. The same
 // orbiting dot draws into four feedback layers; each panel transforms its
@@ -8,6 +8,10 @@ import Ollin
 final class FeedbackSteps: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+
     var panels: [Feedback] = []
 
     override func setup() {
@@ -15,7 +19,7 @@ final class FeedbackSteps: Sketch {
     }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
 
         // Per-panel transform of the past: fade only, zoom, rotate, both.
         let setups: [(String, (Sketch) -> Void)] = [

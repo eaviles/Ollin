@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram (Chapter 9): a picture wound from one thread. A bold
 // crescent, the same picture mid-winding, and the finished winding, so the
@@ -8,9 +8,16 @@ import Ollin
 final class WoundFromThread: Sketch {
     override var canvasSize: CanvasSize { .size(880, 480) }
 
-    let paper = Color(hex: 0xF7F5F1)
-    let ink = Color(hex: 0x2B2B2B)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.12)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
+
+    // The winding is depicted content: dark thread on a light ground in both
+    // themes.
+    let threadInk = Color(hex: 0x2B2B2B)
+    let ground = Color(hex: 0xF7F5F1)
     var picture = Image(width: 1, height: 1)
     var early: [StringArt.Chord] = []
     var finished: [StringArt.Chord] = []
@@ -38,16 +45,24 @@ final class WoundFromThread: Sketch {
         background(paper)
         let panels = Self.panels
 
+        // On light paper the windings sit on the canvas itself; the dark pass
+        // paints that same ground explicitly.
+        if darkTheme {
+            noStroke()
+            fill(ground)
+            for panel in panels { drawRect(panel) }
+        }
+
         drawImage(picture, in: panels[0].inset(by: 26))
 
         noFill()
-        stroke(ink.withAlpha(0.38))
+        stroke(threadInk.withAlpha(0.38))
         strokeWeight(0.7)
         for chord in early { drawLine(chord.from, chord.to) }
         for chord in finished { drawLine(chord.from, chord.to) }
 
         noStroke()
-        fill(ink)
+        fill(threadInk)
         drawCircles(pins, radius: 1.1)
         drawCircles(finishedPins, radius: 1.1)
 

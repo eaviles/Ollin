@@ -49,7 +49,10 @@ randomSeed(5)   // the same rolls, in the same order, every time
 
 Add that line at the top of `Scatter`'s `draw()` and the boiling stops. Every frame now reseeds, rolls the *same* eighty positions and sizes, and draws the same constellation. Change the 5 to a 6 and you get a different constellation, equally frozen. Each seed is a complete, repeatable world:
 
-<img src="Images/04-Randomness/SeedSheet.jpg" alt="Nine tiles, each a small constellation of orange dots joined by faint lines, labeled seed 1 through seed 9, every tile a distinctly different arrangement" width="560">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/04-Randomness/SeedSheet-dark.jpg">
+  <img src="Images/04-Randomness/SeedSheet.jpg" alt="Nine tiles, each a small constellation of orange dots joined by faint lines, labeled seed 1 through seed 9, every tile a distinctly different arrangement" width="560">
+</picture>
 
 This is the working rhythm of generative art, so it's worth spelling out. The code decides everything the piece *could* be, and a seed picks one of them. You write the rules, then flip through seeds the way a photographer reads a contact sheet (the image above is exactly that), and keep the ones you like. Reproducibility is what turns the whole thing into art direction instead of a slot machine: a keeper is never lost, because code plus seed *is* the piece. Render it twice and the files match pixel for pixel.
 
@@ -80,7 +83,10 @@ One rule makes this worth doing. A seed is worth flipping through only when it d
 
 So far chance has answered "where" and "how big", which are both questions of amount. It can also answer yes-or-no and which-one, and those two turn randomness from decoration into composition:
 
-<img src="Images/04-Randomness/Choices.jpg" alt="Four strips: two rows of dots showing probability gates at 0.25 and 0.75 where filled dots mark passes, a strip of squares uniformly picking four palette colors, and a strip dominated by indigo from a weighted pick" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/04-Randomness/Choices-dark.jpg">
+  <img src="Images/04-Randomness/Choices.jpg" alt="Four strips: two rows of dots showing probability gates at 0.25 and 0.75 where filled dots mark passes, a strip of squares uniformly picking four palette colors, and a strip dominated by indigo from a weighted pick" width="680">
+</picture>
 
 The **gate** is an `if` with a threshold. `random()` lands uniformly in 0 to 1, so the fraction below your threshold is the probability of passing:
 
@@ -112,7 +118,10 @@ With weights of six, three, and one, the first color wins six times as often as 
 
 Everything so far spreads its rolls *uniformly*, meaning every value in the range is equally likely, like rain on a flat field. Nature rarely distributes things that way. Heights, errors, leaf sizes, and the places darts actually land all pile up near a middle and thin out symmetrically. That's the **Gaussian** (or normal) distribution, the bell curve, and Ollin rolls it directly:
 
-<img src="Images/04-Randomness/UniformVsGaussian.jpg" alt="Two scatter panels with histograms beneath: uniform random spreads dots evenly with a flat histogram, Gaussian random piles dots around the center with a bell-shaped histogram" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/04-Randomness/UniformVsGaussian-dark.jpg">
+  <img src="Images/04-Randomness/UniformVsGaussian.jpg" alt="Two scatter panels with histograms beneath: uniform random spreads dots evenly with a flat histogram, Gaussian random piles dots around the center with a bell-shaped histogram" width="680">
+</picture>
 
 ```swift
 let x = randomGaussian(mean: width / 2, deviation: 120)
@@ -124,7 +133,10 @@ let x = randomGaussian(mean: width / 2, deviation: 120)
 
 One more idea completes the starter kit, and it's the one that points at the rest of this guide. So far every roll has stood alone, because no roll remembers the one before. Watch what happens when you give chance a memory, by letting each roll *nudge* a value instead of replacing it:
 
-<img src="Images/04-Randomness/WalkVsJumps.jpg" alt="Two strips: fresh rolls per step produce a jagged hash of a line, while accumulated nudges produce a wandering path" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/04-Randomness/WalkVsJumps-dark.jpg">
+  <img src="Images/04-Randomness/WalkVsJumps.jpg" alt="Two strips: fresh rolls per step produce a jagged hash of a line, while accumulated nudges produce a wandering path" width="680">
+</picture>
 
 The top strip re-rolls `y` from scratch at every step, so it stays a jagged hash. The bottom strip keeps `y` and adds a small `random(-9, 9)` to it each step, and suddenly there's a *path* that wanders, drifts, and doubles back. This is the **random walk**, the humble ancestor of most organic motion in generative art. Give the same treatment to a point in two dimensions and it traces a journey.
 
@@ -170,7 +182,10 @@ The walk's core move is a value carried forward and nudged (`x = nx`), and it's 
 
 Writing that walk by hand is worth doing, and after that Ollin has it ready, along with two relatives that each change exactly one rule about what the next step is allowed to be.
 
-<img src="Images/04-Randomness/WalkFamily.jpg" alt="Three panels from the same seed: a dense tangle pooling in one area, a set of tight clusters joined by long straight leaps, and an orange path on a grid that fills the square without ever crossing itself" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/04-Randomness/WalkFamily-dark.jpg">
+  <img src="Images/04-Randomness/WalkFamily.jpg" alt="Three panels from the same seed: a dense tangle pooling in one area, a set of tight clusters joined by long straight leaps, and an orange path on a grid that fills the square without ever crossing itself" width="680">
+</picture>
 
 ```swift
 randomWalk(steps: 5000, stepLength: 3)
@@ -190,7 +205,10 @@ All three are seeded like everything else in this chapter, so the same seed give
 
 Everything so far rolled for one thing at a time: a nudge, a choice, a step. Chance can also act as a crowd, and a crowd of coin flips can do something no single flip can. Fill a grid with cells, each one open with the same probability, and ask a question about the whole grid at once. Do the open cells connect from the top edge to the bottom?
 
-<img src="Images/04-Randomness/ChanceInCrowds.jpg" alt="Three dark grid panels. At probability 0.50, scattered blue islands; at 0.56, one pale cluster strains most of the way across; at 0.63, a single gold cluster spans the grid, traced with a pale outline" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/04-Randomness/ChanceInCrowds-dark.jpg">
+  <img src="Images/04-Randomness/ChanceInCrowds.jpg" alt="Three dark grid panels. At probability 0.50, scattered blue islands; at 0.56, one pale cluster strains most of the way across; at 0.63, a single gold cluster spans the grid, traced with a pale outline" width="680">
+</picture>
 
 This game is called **percolation**, and the answer has a shape nobody would guess from the rules. Each cell flips its coin alone, and no rule ever mentions a threshold. Yet the grid's answer flips almost all at once, near a probability of 0.5927. Below it the open cells stay separate islands, however long you wait. A little above it, one giant cluster reaches across the whole grid. Physics calls a sudden collective change like this a phase transition, and this humble grid is its standard model.
 

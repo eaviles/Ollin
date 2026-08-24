@@ -1,4 +1,4 @@
-// figure: frame=0 probe
+// figure: frame=0 probe themed
 //
 // Guide diagram (Chapter 9): pixel sorting. The chapter's sunset, and the
 // same picture with each column's mid-tone runs reordered by brightness.
@@ -9,9 +9,11 @@ import Ollin
 final class SortedPixels: Sketch {
     override var canvasSize: CanvasSize { .size(880, 480) }
 
-    let paper = Color(hex: 0xF7F5F1)
-    let ink = Color(hex: 0x2B2B2B)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.12)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
     var source: Image?
     var sorted: Image?
 

@@ -8,7 +8,10 @@ A seeded sketch is a *generator*: one number decides which of its many possible 
 
 Nothing here changes what a sketch draws. It changes how you find the one you want to keep.
 
-<img src="../../Guide/Images/04-Randomness/SeedSheet.jpg" alt="Nine tiles, each a small constellation of orange dots joined by faint lines, labeled seed 1 through seed 9, every tile a distinctly different arrangement" width="560">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/04-Randomness/SeedSheet-dark.jpg">
+  <img src="../../Guide/Images/04-Randomness/SeedSheet.jpg" alt="Nine tiles, each a small constellation of orange dots joined by faint lines, labeled seed 1 through seed 9, every tile a distinctly different arrangement" width="560">
+</picture>
 
 ### Contents
 
@@ -89,7 +92,10 @@ swift run --package-path Examples Example-Randomness-Variations --export-grid sh
 --fps F                    the clock rate that frame is timed against
 ```
 
-<img src="../../Guide/Images/06-GridsAndRepetition/ViewBoxSheet.jpg" alt="Six boxes on one canvas in two rows of three, each holding the same ring-of-petals piece under a different seed, each with its own colored wash" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/06-GridsAndRepetition/ViewBoxSheet-dark.jpg">
+  <img src="../../Guide/Images/06-GridsAndRepetition/ViewBoxSheet.jpg" alt="Six boxes on one canvas in two rows of three, each holding the same ring-of-petals piece under a different seed, each with its own colored wash" width="680">
+</picture>
 
 Each tile is a fresh instance of the sketch, seeded before `setup()` runs, so a stateful sketch can't leak from one tile into the next. The sheet's own PNG carries the seed list in its recipe.
 

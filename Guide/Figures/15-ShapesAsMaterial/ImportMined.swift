@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram (Chapter 15): the same imported file three ways. A small
 // sailboat authored as SVG arrives as ordinary shapes and contours: drawn
@@ -9,9 +9,12 @@ import Ollin
 final class ImportMined: Sketch {
     override var canvasSize: CanvasSize { .size(880, 340) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.4)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.12)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.4) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
 
     let boat = """
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 170">
@@ -26,7 +29,7 @@ final class ImportMined: Sketch {
     """
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         textSize(17)
         guard let art = SVG(data: Data(boat.utf8)) else { return }
 

@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide figure (Chapter 12): the rules combine. The same boids, same seed,
 // seven hundred steps later, run under one rule, then two, then all three.
@@ -10,9 +10,12 @@ import Ollin
 final class RuleMix: Sketch {
     override var canvasSize: CanvasSize { .size(880, 400) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.3)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.12)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.3) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
 
     var flocks: [Boids] = []
     var trails: [[[Vector2]]] = []      // per panel, per boid, recent positions
@@ -22,6 +25,8 @@ final class RuleMix: Sketch {
     let world = Rectangle(x: 0, y: 0, width: 560, height: 560)
 
     override func setup() {
+        flocks = []
+        trails = []
         for panel in 0 ..< 3 {
             let flock = Boids(count: 120, in: world, seed: 5,
                               maxSpeed: 2.6, maxForce: 0.08,
@@ -52,7 +57,7 @@ final class RuleMix: Sketch {
     }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         textSize(17)
 
         let titles = ["separation only", "+ alignment", "+ cohesion"]

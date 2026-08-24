@@ -1,4 +1,4 @@
-// figure: frame=540
+// figure: frame=540 themed
 //
 // Guide diagram: the three timers, charted against a ruler of seconds. Each
 // lane stamps a mark on the frame its own question answers yes. every(1) lands
@@ -10,10 +10,13 @@ import Ollin
 final class Beats: Sketch {
     override var canvasSize: CanvasSize { .size(880, 460) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.28)
-    let pale = Color(hex: 0x2B2B2B, alpha: 0.12)
-    let accent = Color(hex: 0xE4572E)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.28) }
+    var pale: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
 
     /// Seconds the chart has room for.
     let window = 8.0
@@ -25,6 +28,9 @@ final class Beats: Sketch {
 
     override func setup() {
         textFont(OutlineFont.system)
+        onTheSecond = []
+        offTheBeat = []
+        once = []
     }
 
     override func draw() {
@@ -32,7 +38,7 @@ final class Beats: Sketch {
         if every(1, phase: 0.5), time <= window { offTheBeat.append(time) }
         if after(4) { once.append(time) }
 
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         drawRuler()
         lane("every(1)", at: 150, marks: onTheSecond, filled: true)
         lane("every(1, phase: 0.5)", at: 260, marks: offTheBeat, filled: false)

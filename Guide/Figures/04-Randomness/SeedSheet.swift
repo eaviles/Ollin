@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram: the same constellation sketch drawn nine times, each tile
 // seeded with a different number. A seed replays its exact sequence of rolls,
@@ -8,12 +8,15 @@ import Ollin
 final class SeedSheet: Sketch {
     override var canvasSize: CanvasSize { .size(900, 930) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.28)
-    let accent = Color(hex: 0xE4572E)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.28) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         textSize(21)
 
         let margin = 44.0, gap = 40.0
@@ -44,7 +47,7 @@ final class SeedSheet: Sketch {
             xs.append(random(x + inset, x + size - inset))
             ys.append(random(y + inset, y + size - inset))
         }
-        stroke(Color(hex: 0x2B2B2B, alpha: 0.45))
+        stroke(Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.45))
         strokeWeight(1.5)
         for i in 1..<10 {
             drawLine(xs[i - 1], ys[i - 1], xs[i], ys[i])

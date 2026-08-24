@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram: six view boxes on one canvas, each running the same piece
 // under a different seed. Each box has its own background, its own coordinates,
@@ -10,8 +10,11 @@ import Ollin
 final class ViewBoxSheet: Sketch {
     override var canvasSize: CanvasSize { .size(880, 560) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.45)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.45) }
 
     static let palettes: [(Color, Color)] = [
         (Color(hex: 0xF6E7D8), Color(hex: 0xC1553C)),
@@ -27,7 +30,7 @@ final class ViewBoxSheet: Sketch {
     }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         // The boxes take the canvas's own shape, so nothing is letterboxed.
         let boxWidth = 250.0, boxHeight = boxWidth * height / width
         for seed in 0..<6 {

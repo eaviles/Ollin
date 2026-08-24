@@ -8,7 +8,10 @@ A [`@Param`](../Helpers/Parameters.md) gives a sketch a knob to turn. An `Automa
 
 Because the tracks read the sketch clock, and the exports drive that clock at a fixed step, a directed run renders exactly as it plays.
 
-<img src="../../Guide/Images/03-MotionAndTime/TimelineCurve.jpg" alt="A timeline's value plotted over 2.8 seconds: an eased rise to 1, a flat hold, then an easeOutBounce drop to 0.25, keyframes marked as dots" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/03-MotionAndTime/TimelineCurve-dark.jpg">
+  <img src="../../Guide/Images/03-MotionAndTime/TimelineCurve.jpg" alt="A timeline's value plotted over 2.8 seconds: an eased rise to 1, a flat hold, then an easeOutBounce drop to 0.25, keyframes marked as dots" width="680">
+</picture>
 
 ### Contents
 

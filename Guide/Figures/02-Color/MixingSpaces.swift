@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram: the same two colors, mixed step by step in three spaces.
 // RGB averages the machine's numbers and lands in mud; HSB detours around the
@@ -10,10 +10,13 @@ final class MixingSpaces: Sketch {
 
     let blue = Color(hex: 0x2050C8)
     let yellow = Color(hex: 0xFFC800)
-    let label = Color(hex: 0x2B2B2B, alpha: 0.55)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var label: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.55) }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         noStroke()
         textSize(21)
 

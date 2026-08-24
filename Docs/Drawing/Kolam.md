@@ -10,7 +10,10 @@ The tradition belongs to more than one place. In south India a **kolam** is chal
 
 A **wall** placed between two neighboring dots turns the line there as well. Each wall inside the field either cuts one loop in two or joins two into one, never more, so walls are how a drawing is steered toward a single line. That is how the figures of a sona are built.
 
-<img src="../../Guide/Images/07-Tiles/KolamLoops.jpg" alt="Three dark panels of chalk-colored looping line work around small dots. One continuous line over a field of seven by five dots; two interleaved loops in cream and orange over six by four; and the same seven by five field cut into three loops by two short walls" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/07-Tiles/KolamLoops-dark.jpg">
+  <img src="../../Guide/Images/07-Tiles/KolamLoops.jpg" alt="Three dark panels of chalk-colored looping line work around small dots. One continuous line over a field of seven by five dots; two interleaved loops in cream and orange over six by four; and the same seven by five field cut into three loops by two short walls" width="680">
+</picture>
 
 The line-work is geometry, not a picture: `loops` hands back closed `Contour`s, so it strokes, feeds the [shape booleans](./Geometry.md), hatches, and exports to SVG for a pen plotter. A kolam is drawn with square corners by this walk; [`Contour.smoothed(_:)`](./Curves.md) rounds them into the drawn form.
 

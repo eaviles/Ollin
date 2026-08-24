@@ -1,4 +1,4 @@
-// figure: frame=0 probe
+// figure: frame=0 probe themed
 //
 // Guide diagram (Chapter 7): the tilings that never repeat. Penrose kites
 // and darts with their matching-rule arcs, Penrose rhombs, a girih star
@@ -9,17 +9,31 @@ import Ollin
 final class AperiodicTiles: Sketch {
     override var canvasSize: CanvasSize { .size(880, 348) }
 
-    let paper = Color(hex: 0xF7F5F1)
-    let ink = Color(hex: 0x232020)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.12)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x232020) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
     let accent = Color(hex: 0xE4572E)
     let cool = Color(hex: 0x17A398)
+
+    // The tilings themselves are depicted content, identical in both themes.
+    let tileInk = Color(hex: 0x232020)
+    let tilePaper = Color(hex: 0xF7F5F1)
 
     override func draw() {
         background(paper)
 
         let panels = (0 ..< 4).map {
             Rectangle(x: 25 + Double($0) * 212, y: 62, width: 194, height: 194)
+        }
+
+        // The tilings do not quite cover their rects; on light paper the gaps
+        // read as ground, so the dark pass paints that same ground explicitly.
+        if darkTheme {
+            noStroke()
+            fill(tilePaper)
+            for panel in panels { drawRect(panel) }
         }
 
         // Kites and darts, arcs on top: the decoration joins across tiles.
@@ -45,11 +59,11 @@ final class AperiodicTiles: Sketch {
             let tiles = Penrose.tiles(.rhombs, in: panels[1], tileEdge: 26)
             noStroke()
             for tile in tiles {
-                fill(tile.kind == .thick ? Color(hex: 0xE8DDC9) : paper)
+                fill(tile.kind == .thick ? Color(hex: 0xE8DDC9) : tilePaper)
                 drawShape(tile.shape)
             }
             noFill()
-            stroke(ink.withAlpha(0.55))
+            stroke(tileInk.withAlpha(0.55))
             strokeWeight(1)
             for tile in tiles {
                 drawShape(tile.shape)
@@ -61,7 +75,7 @@ final class AperiodicTiles: Sketch {
             let expanded = Rectangle(center: panels[2].center, width: 260, height: 260)
             let cells = HexGrid(in: expanded, columns: 5, rows: 4).cells.map(\.corners)
             noFill()
-            stroke(ink.withAlpha(0.14))
+            stroke(tileInk.withAlpha(0.14))
             strokeWeight(1)
             for cell in cells { drawPolygon(cell) }
             stroke(cool)
@@ -72,7 +86,7 @@ final class AperiodicTiles: Sketch {
         // The spectre, curved so it is one-handed forever.
         withClip(panels[3]) {
             strokeWeight(1)
-            stroke(ink.withAlpha(0.6))
+            stroke(tileInk.withAlpha(0.6))
             for tile in Spectre.tiles(in: panels[3], tileEdge: 17, curve: 0.5) {
                 fill(tile.isOdd ? accent : Color(hex: 0xEFE9DE))
                 drawShape(tile.shape)

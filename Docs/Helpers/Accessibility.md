@@ -78,7 +78,10 @@ There is no call that reads your shapes and produces a description. A list of wh
 
 About one man in twelve and one woman in two hundred sees color differently from the palette most work is designed against. `ColorVision` names one such way of seeing.
 
-<img src="../../Guide/Images/02-Color/ColorVision.jpg" alt="Two palettes drawn in four columns: as most people see them, then under protanopia, deuteranopia and tritanopia. In the top set the orange, green and red arrive as one olive. The bottom set stays separable" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/02-Color/ColorVision-dark.jpg">
+  <img src="../../Guide/Images/02-Color/ColorVision.jpg" alt="Two palettes drawn in four columns: as most people see them, then under protanopia, deuteranopia and tritanopia. In the top set the orange, green and red arrive as one olive. The bottom set stays separable" width="680">
+</picture>
 
 ```swift
 let seen = Color.red.simulated(.deuteranopia)

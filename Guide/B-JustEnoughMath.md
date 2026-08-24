@@ -14,7 +14,10 @@ The entries are grouped by theme rather than by chapter, so related ideas sit to
 
 ### The canvas: x right, y down
 
-<img src="Images/01-HelloOllin/CoordinateSystem.jpg" alt="The canvas coordinate system: origin at the top left, x growing right, y growing down, with one point marked" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/01-HelloOllin/CoordinateSystem-dark.jpg">
+  <img src="Images/01-HelloOllin/CoordinateSystem.jpg" alt="The canvas coordinate system: origin at the top left, x growing right, y growing down, with one point marked" width="680">
+</picture>
 
 Every position on the canvas is two numbers, counted in pixels from the top-left corner. Here x grows to the right, and y grows *downward*. That last part is the one to internalize, because it's upside down from school graphs. To move something toward the bottom of the screen you *add* to y. The convention comes from how screens have been addressed since text terminals, and [Chapter 1](01-HelloOllin.md) starts here.
 
@@ -46,19 +49,28 @@ Angles here are radians, and the friendly way in is `.tau`, the angle of one ful
 
 ### An angle and a radius make a point
 
-<img src="Images/01-HelloOllin/AroundACircle.jpg" alt="A circle with an angle marked at its center, and cos and sin placing a point on its rim" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/01-HelloOllin/AroundACircle-dark.jpg">
+  <img src="Images/01-HelloOllin/AroundACircle.jpg" alt="A circle with an angle marked at its center, and cos and sin placing a point on its rim" width="680">
+</picture>
 
 To stand on a circle's rim, you need how far around (an angle) and how far out (a radius). `cos(angle) * radius` gives the across part, `sin(angle) * radius` the down part, and adding them to the center lands the point. This one pattern places petals, clock hands, orbiting moons, and everything else arranged in a ring. It first appears in [Chapter 1](01-HelloOllin.md) and never really leaves.
 
 ### Sine: a smooth swing
 
-<img src="Images/03-MotionAndTime/CircleToSine.jpg" alt="A point on a circle, with a dashed line carrying its height onto a sine wave traced over time, the period and swing labeled" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/03-MotionAndTime/CircleToSine-dark.jpg">
+  <img src="Images/03-MotionAndTime/CircleToSine.jpg" alt="A point on a circle, with a dashed line carrying its height onto a sine wave traced over time, the period and swing labeled" width="680">
+</picture>
 
 `sin` is the height of a point walking around a circle, which is why it swings smoothly between -1 and 1 forever. Its **period** is how long one lap takes, so writing `sin(time * .tau / period)` completes one cycle every `period` seconds. Its **amplitude** is the swing's size, just the circle's radius, set by whatever you multiply the result by. [Chapter 3](03-MotionAndTime.md) builds most of its motion from these two dials, with `cos` as the same walk read as "across" instead of "up".
 
 ### Phase: a head start
 
-<img src="Images/03-MotionAndTime/Phase.jpg" alt="Two identical sine waves, one shifted right by a bracketed phase; below, a row of dots each with a growing head start forming a wave in space" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/03-MotionAndTime/Phase-dark.jpg">
+  <img src="Images/03-MotionAndTime/Phase.jpg" alt="Two identical sine waves, one shifted right by a bracketed phase; below, a row of dots each with a growing head start forming a wave in space" width="680">
+</picture>
 
 Adding a constant inside `sin(...)` starts the swing partway through its cycle, a head start, called phase. Give each element a *different* head start, usually derived from its position (`sin(time + x * 0.02)`), and identical motions turn into a traveling wave across space. It's the cheapest large effect in [Chapter 3](03-MotionAndTime.md).
 
@@ -72,7 +84,10 @@ Rotational symmetry is repetition around a point: draw one arm, rotate by `.tau 
 
 ### t, the fraction along: lerp and map
 
-<img src="Images/03-MotionAndTime/MapAndLerp.jpg" alt="Top: a value carried between two number lines by its fraction along. Bottom: dots walking a segment from a to b as t runs 0 to 1" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/03-MotionAndTime/MapAndLerp-dark.jpg">
+  <img src="Images/03-MotionAndTime/MapAndLerp.jpg" alt="Top: a value carried between two number lines by its fraction along. Bottom: dots walking a segment from a to b as t runs 0 to 1" width="680">
+</picture>
 
 A value between 0 and 1 can mean "how far along". It reads 0 at the start, 1 at the end, and 0.25 a quarter of the way. `lerp(a, b, t)` walks from `a` to `b` by that fraction. `map(v, inLo, inHi, outLo, outHi)` carries a value from one range to another by *keeping* its fraction along. So 75% into the input range comes out 75% into the output range. The same idea squeezes sine's -1…1 into 0…1 (`sin(x) * 0.5 + 0.5`). [Chapter 2](02-Color.md) mixes colors by `t`, and [Chapter 3](03-MotionAndTime.md) makes both calls everyday tools.
 
@@ -98,7 +113,10 @@ To read an image at any grid's resolution, use fractions as the go-between. A ce
 
 ### Reading a shaping curve
 
-<img src="Images/03-MotionAndTime/ShapingCurves.jpg" alt="Three panels showing linear, step, and smoothstep as curves over a faint identity diagonal, each with a strip of dots spaced by the curve" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/03-MotionAndTime/ShapingCurves-dark.jpg">
+  <img src="Images/03-MotionAndTime/ShapingCurves.jpg" alt="Three panels showing linear, step, and smoothstep as curves over a faint identity diagonal, each with a strip of dots spaced by the curve" width="680">
+</picture>
 
 A shaping function takes a 0…1 value and hands back a reshaped 0…1 value. Its graph shows input along the bottom and output up the side, and the straight diagonal means "unchanged". Where the curve is steep, the value moves fast. Where it's flat, the value lingers, which is why the dot strips under each curve bunch and spread. `step` is an if in curve form, 0 then 1 at an edge. `smoothstep` is the gentle S between two edges, with `t * t * (3 - 2 * t)` inside. Squaring a 0…1 value is a shaping curve too, since it pushes the middle down and keeps the ends. That's [Chapter 8](08-Words.md)'s one-line contrast boost. The whole toolkit lives in [Chapter 3](03-MotionAndTime.md).
 
@@ -112,31 +130,46 @@ Multiply a value by a little less than 1 every frame, keeping 93% say, and it me
 
 ### Pseudo-random: a scramble you can replay
 
-<img src="Images/04-Randomness/SeedSheet.jpg" alt="Nine tiles of dot constellations labeled seed 1 through seed 9, every tile a distinctly different arrangement" width="560">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/04-Randomness/SeedSheet-dark.jpg">
+  <img src="Images/04-Randomness/SeedSheet.jpg" alt="Nine tiles of dot constellations labeled seed 1 through seed 9, every tile a distinctly different arrangement" width="560">
+</picture>
 
 `random()` isn't dice. It's a deterministic scramble that plays out the same sequence from a chosen starting point, the **seed**. Same seed, same "random" piece, every run, which is what makes generative work reproducible: a seed is a piece's serial number. Change the seed and you get a sibling, not a variation. [Chapter 4](04-Randomness.md) builds the whole workflow on this.
 
 ### Probability as a threshold
 
-<img src="Images/04-Randomness/Choices.jpg" alt="Strips of dots showing probability gates at 0.25 and 0.75, a uniform four-color pick, and a pick dominated by one weighted color" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/04-Randomness/Choices-dark.jpg">
+  <img src="Images/04-Randomness/Choices.jpg" alt="Strips of dots showing probability gates at 0.25 and 0.75, a uniform four-color pick, and a pick dominated by one weighted color" width="680">
+</picture>
 
 `random() < 0.25` is true a quarter of the time, because a uniform 0…1 roll passes a threshold exactly as often as the threshold is high. Stack several thresholds and you've built a weighted choice, common outcomes owning wide slices of the 0…1 line and rare ones thin slivers. [Chapter 4](04-Randomness.md) turns this into scattered accents and weighted palettes.
 
 ### Uniform vs Gaussian
 
-<img src="Images/04-Randomness/UniformVsGaussian.jpg" alt="Two scatter panels with histograms beneath: uniform spreads dots evenly with a flat histogram, Gaussian piles them around the center in a bell" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/04-Randomness/UniformVsGaussian-dark.jpg">
+  <img src="Images/04-Randomness/UniformVsGaussian.jpg" alt="Two scatter panels with histograms beneath: uniform spreads dots evenly with a flat histogram, Gaussian piles them around the center in a bell" width="680">
+</picture>
 
 `random(a, b)` spreads values evenly, every part of the range equally likely, which makes a flat histogram. `randomGaussian()` piles them around a center in a bell. The **mean** is where the pile sits, and the **deviation** is how wide it spreads. About two thirds of values land within one deviation of the mean. Uniform reads as "scattered", Gaussian as "clustered, with strays", and [Chapter 4](04-Randomness.md) shows when each texture is the right one.
 
 ### Chance is lumpy
 
-<img src="Images/15-ShapesAsMaterial/ScatterCompare.jpg" alt="Two panels with the same number of dots: plain random placement with clumps and bare gaps, and a blue-noise scatter, even but organic" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/ScatterCompare-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/ScatterCompare.jpg" alt="Two panels with the same number of dots: plain random placement with clumps and bare gaps, and a blue-noise scatter, even but organic" width="680">
+</picture>
 
 Independent random placements clump and leave holes, and they do not space themselves out, because each roll ignores every other. The clumps aren't a bug in the generator, they're what independence looks like. When you want "random but even", you need an algorithm that pushes points apart, like the blue-noise scatter on the right. [Chapter 4](04-Randomness.md) names the lump problem, and [Chapter 15](15-ShapesAsMaterial.md) fixes it.
 
 ### The random walk
 
-<img src="Images/04-Randomness/WalkVsJumps.jpg" alt="Two strips: fresh rolls per step produce a jagged hash, accumulated nudges produce a wandering path" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/04-Randomness/WalkVsJumps-dark.jpg">
+  <img src="Images/04-Randomness/WalkVsJumps.jpg" alt="Two strips: fresh rolls per step produce a jagged hash, accumulated nudges produce a wandering path" width="680">
+</picture>
 
 Re-roll a position every frame and you get noise with no memory, a jagged hash. *Accumulate* small random nudges instead (`x += random(-2, 2)`) and a path appears, because each position remembers all the nudges before it. That one change, re-rolling versus accumulating, separates static from wandering, and it's the first living thing [Chapter 4](04-Randomness.md) makes.
 
@@ -144,31 +177,46 @@ Re-roll a position every frame and you get noise with no memory, a jagged hash. 
 
 ### Coherence: a fixed, smooth landscape
 
-<img src="Images/05-Noise/RandomVsNoise.jpg" alt="Two framed strips: a jagged hash of random heights, and a smooth rolling curve from noise" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/05-Noise/RandomVsNoise-dark.jpg">
+  <img src="Images/05-Noise/RandomVsNoise.jpg" alt="Two framed strips: a jagged hash of random heights, and a smooth rolling curve from noise" width="680">
+</picture>
 
 `noise(x)` is not a roll. It's a *lookup* into a fixed, smooth landscape of values. Nearby inputs land on nearby outputs, so a sequence of close questions traces a rolling curve instead of a hash. That property, coherence, is the entire difference between noise and random, and everything [Chapter 5](05-Noise.md) builds rests on it.
 
 ### The input multiplier is a zoom knob
 
-<img src="Images/05-Noise/NoiseZoom.jpg" alt="Three panels sampling the same noise field with multipliers 0.004, 0.015, and 0.06: one gentle valley, rolling hills, busy wiggles" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/05-Noise/NoiseZoom-dark.jpg">
+  <img src="Images/05-Noise/NoiseZoom.jpg" alt="Three panels sampling the same noise field with multipliers 0.004, 0.015, and 0.06: one gentle valley, rolling hills, busy wiggles" width="680">
+</picture>
 
 `noise(x * scale)` doesn't change the landscape, it changes how far apart your questions land on it. A small multiplier asks about points close together and sees one broad feature, while a large one strides across many hills and sees busy detail. When noise output looks wrong, the first dial to reach for is almost always this one. [Chapter 5](05-Noise.md) calls it the zoom knob.
 
 ### A field of answers, drifting in time
 
-<img src="Images/05-Noise/NoiseTerrain.jpg" alt="The same noise field shaded as soft clouds and drawn as dot sizes, a halftone of the same values" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/05-Noise/NoiseTerrain-dark.jpg">
+  <img src="Images/05-Noise/NoiseTerrain.jpg" alt="The same noise field shaded as soft clouds and drawn as dot sizes, a halftone of the same values" width="680">
+</picture>
 
 Give noise two inputs and it answers everywhere on a plane. That's a **field**, one value per position, which you can render as brightness, dot size, or anything else. A third input works as time, sliding the whole landscape smoothly so the field churns without jumping. And because far-apart regions of the landscape don't resemble each other, offsetting your questions (`noise(t + 1000)` vs `noise(t)`) yields independent signals from one field. All of [Chapter 5](05-Noise.md) is variations on this.
 
 ### Layering scales
 
-<img src="Images/05-Noise/NoiseLayers.jpg" alt="Three strips: a slow big-scale curve labeled shape, a busy small-scale curve labeled detail, and their weighted sum" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/05-Noise/NoiseLayers-dark.jpg">
+  <img src="Images/05-Noise/NoiseLayers.jpg" alt="Three strips: a slow big-scale curve labeled shape, a busy small-scale curve labeled detail, and their weighted sum" width="680">
+</picture>
 
 Natural forms have big shapes *and* fine texture. So take noise at both scales and add them, weighted mostly toward the broad curve and a little toward the busy one. Keep the weights summing to 1 and the result stays in range. Stack a few layers like that (each smaller and fainter) and you get the fractal texture `fbm` packages up. [Chapter 5](05-Noise.md) builds it by hand first, so the packaged call has no mystery in it.
 
 ### Distance to the nearest point makes cells
 
-<img src="Images/05-Noise/CellsFromPoints.jpg" alt="Two panels of cellular noise: distances shaded so each hidden point sits in a dark core, and the border reading drawing dark walls between the cells" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/05-Noise/CellsFromPoints-dark.jpg">
+  <img src="Images/05-Noise/CellsFromPoints.jpg" alt="Two panels of cellular noise: distances shaded so each hidden point sits in a dark core, and the border reading drawing dark walls between the cells" width="680">
+</picture>
 
 Scatter points across a plane, then ask everywhere how far the nearest one is. The answers are small beside each point and peak on the walls between two, so shading them divides the plane into cells, one per point. Asking for the *second*-nearest distance instead gives a value that hits zero exactly on those walls, so the borders draw themselves. [Chapter 5](05-Noise.md) meets this as `worley`, the cellular member of the noise family.
 
@@ -176,7 +224,10 @@ Scatter points across a plane, then ask everywhere how far the nearest one is. T
 
 ### Transforms move the paper, not the shape
 
-<img src="Images/06-GridsAndRepetition/TransformSteps.jpg" alt="Four panels drawing the same flag with the same call: untransformed, then translated, then rotated, then scaled" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/06-GridsAndRepetition/TransformSteps-dark.jpg">
+  <img src="Images/06-GridsAndRepetition/TransformSteps.jpg" alt="Four panels drawing the same flag with the same call: untransformed, then translated, then rotated, then scaled" width="680">
+</picture>
 
 `translate`, `rotate`, and `scale` don't touch your shapes. They move the paper under the pen. Every draw call afterward lands in the moved frame, and later transforms ride on earlier ones (translate then rotate is not rotate then translate). The habit that makes this easy is to draw your motif *around the origin*, with coordinates straddling (0, 0). Then translate to where it goes and rotate. It pivots about its own center instead of swinging around a distant corner. [Chapter 6](06-GridsAndRepetition.md) turns this into the draw-one-thing-many-ways engine, with `withState { }` to undo the moves after each copy.
 
@@ -190,31 +241,46 @@ Repeat "move a little, turn a little, draw" without resetting, and the little mo
 
 ### A vector is a point and an arrow
 
-<img src="Images/10-Vectors/VectorArithmetic.jpg" alt="Four panels: adding arrows head to tail, the arrow from a point to a target, an arrow scaled and flipped, and a long arrow with its unit-length version" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/10-Vectors/VectorArithmetic-dark.jpg">
+  <img src="Images/10-Vectors/VectorArithmetic.jpg" alt="Four panels: adding arrows head to tail, the arrow from a point to a target, an arrow scaled and flipped, and a long arrow with its unit-length version" width="680">
+</picture>
 
 A `Vector2` is two numbers with two readings. It's a *place*, meaning a position, or a *way to move*, meaning a direction with a length. The arithmetic is drawing. Adding chains arrows head to tail, and `target - position` is the arrow *from* here *to* there. Multiplying by a number stretches or shrinks the arrow, and a negative number flips it. An arrow's `length` comes from Pythagoras. `normalized` keeps its heading at length exactly 1, ready to be scaled to any speed you want. [Chapter 10](10-Vectors.md) is a gentle bootcamp in exactly this.
 
 ### The motion trio
 
-<img src="Images/10-Vectors/MotionTrio.jpg" alt="A dotted flight arc with three arrows at one moment: position from the origin, velocity along the path, acceleration pointing down" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/10-Vectors/MotionTrio-dark.jpg">
+  <img src="Images/10-Vectors/MotionTrio.jpg" alt="A dotted flight arc with three arrows at one moment: position from the origin, velocity along the path, acceleration pointing down" width="680">
+</picture>
 
 Motion is three vectors in a strict chain. **Acceleration** changes velocity, **velocity** changes position, and never the other way around. Each frame runs `velocity += acceleration` and then `position += velocity`. Steer a thing by pushing on its acceleration and letting the chain carry the push downstream. The lag between push and path is where the lifelike feel comes from. At the canvas's edges you choose a policy. *Wrap* sends a thing out one side and back in the other. *Bounce* flips the velocity component that hit, usually keeping less than all of it. The trio arrives in [Chapter 10](10-Vectors.md) and drives everything in Part II.
 
 ### Steering is a correction
 
-<img src="Images/12-FlocksAndSwarms/SteeringMove.jpg" alt="A dot with a velocity arrow and a desired arrow toward a target; beside it, the steer arrow connecting the velocity's tip to the desired's tip" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/12-FlocksAndSwarms/SteeringMove-dark.jpg">
+  <img src="Images/12-FlocksAndSwarms/SteeringMove.jpg" alt="A dot with a velocity arrow and a desired arrow toward a target; beside it, the steer arrow connecting the velocity's tip to the desired's tip" width="680">
+</picture>
 
 A creature that can't teleport steers by comparing wish and state. Compute the velocity it *wants*, toward the target at full speed, then subtract the velocity it *has*. The difference is the correcting force, capped so the turn takes time. `desired - velocity`, nothing more. That one subtraction, re-aimed, becomes seek, flee, arrive, and wander in [Chapter 10](10-Vectors.md) and [Chapter 12](12-FlocksAndSwarms.md).
 
 ### Forces add; mass divides
 
-<img src="Images/11-ForcesAndPhysics/ForceAccumulation.jpg" alt="Three labeled arrows for gravity, wind, and drag pushing on one dot; beside it, the same arrows chained tip to tail with the total marked" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/11-ForcesAndPhysics/ForceAccumulation-dark.jpg">
+  <img src="Images/11-ForcesAndPhysics/ForceAccumulation.jpg" alt="Three labeled arrows for gravity, wind, and drag pushing on one dot; beside it, the same arrows chained tip to tail with the total marked" width="680">
+</picture>
 
 A force is a push with a direction, and simultaneous pushes on one body simply add, tip to tail, into one total. What the body *does* with the total depends on its mass: `acceleration = force / mass`, so the same wind barely moves a boulder and flings a leaf. Real gravity is the special case that scales *with* mass, so after the division everything falls alike. Drag doesn't scale that way, which is why the feather drifts. [Chapter 11](11-ForcesAndPhysics.md) builds its confetti on exactly this asymmetry.
 
 ### The spring's rule
 
-<img src="Images/11-ForcesAndPhysics/SpringRestLength.jpg" alt="A coil spring between two discs: at rest length, stretched with arrows pulling inward, and squeezed with arrows pushing outward" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/11-ForcesAndPhysics/SpringRestLength-dark.jpg">
+  <img src="Images/11-ForcesAndPhysics/SpringRestLength.jpg" alt="A coil spring between two discs: at rest length, stretched with arrows pulling inward, and squeezed with arrows pushing outward" width="680">
+</picture>
 
 A spring has one opinion, its **rest length**. Longer than that and it pulls its ends together, shorter and it pushes them apart, and at rest length it says nothing at all. The correction grows with the error (twice as stretched, twice the pull), and **stiffness** scales how sharply it acts. Everything soft in [Chapter 11](11-ForcesAndPhysics.md), from blobs to bridges, is dots connected by this one rule.
 
@@ -226,7 +292,10 @@ Verlet integration stores no velocity at all. It remembers where the particle *w
 
 ### One second is one second
 
-<img src="Images/03-MotionAndTime/DeltaTime.jpg" alt="Three dotted strips comparing one second of motion: a fixed step at 60 fps, the same step at 120 fps reaching twice as far, and a deltaTime-scaled step landing in line" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/03-MotionAndTime/DeltaTime-dark.jpg">
+  <img src="Images/03-MotionAndTime/DeltaTime.jpg" alt="Three dotted strips comparing one second of motion: a fixed step at 60 fps, the same step at 120 fps reaching twice as far, and a deltaTime-scaled step landing in line" width="680">
+</picture>
 
 `draw()` runs once per screen refresh, and screens disagree. So a fixed "move 2 pixels per frame" travels twice as far per second at 120 Hz as at 60. There are two honest fixes. Derive positions from `time` directly, or scale each step by `deltaTime`, the seconds since the last frame, so per-frame steps become per-second speeds. Simulations sometimes choose the third road on purpose, a *fixed* step per tick. That trades frame-rate independence for exact repeatability, run for run. [Chapter 3](03-MotionAndTime.md) sets the rule, and [Chapter 12](12-FlocksAndSwarms.md) explains the trade.
 
@@ -240,7 +309,10 @@ A field is a rule that answers a question at *every* point of the plane. "How br
 
 ### Following a field: ask, step, ask again
 
-<img src="Images/14-FieldsAndFlow/TraceSteps.jpg" alt="Faint field needles with one walk traced through them: a start dot, then dots connected by arrows stepping along the flow" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/14-FieldsAndFlow/TraceSteps-dark.jpg">
+  <img src="Images/14-FieldsAndFlow/TraceSteps.jpg" alt="Faint field needles with one walk traced through them: a start dot, then dots connected by arrows stepping along the flow" width="680">
+</picture>
 
 To trace a line through a direction field, ask the field which way at your position, take a small step that way, and repeat. That loop is Euler integration, and its one parameter is the step size. Big steps cut corners where the field bends, while small steps follow faithfully and cost more asks. Every streamline in [Chapter 14](14-FieldsAndFlow.md) is this loop running until it's told to stop.
 
@@ -260,7 +332,10 @@ Every field so far was invented, while optical flow is *measured*. Comparing one
 
 ### Neighborhoods: who counts as nearby
 
-<img src="Images/12-FlocksAndSwarms/RuleAlignment.jpg" alt="One dark boid among gray neighbors inside a faint circle labeled what it can see, with an arrow showing the average heading it turns toward" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/12-FlocksAndSwarms/RuleAlignment-dark.jpg">
+  <img src="Images/12-FlocksAndSwarms/RuleAlignment.jpg" alt="One dark boid among gray neighbors inside a faint circle labeled what it can see, with an arrow showing the average heading it turns toward" width="680">
+</picture>
 
 Distributed systems need a definition of "nearby". That's a perception radius around each creature, inside which others count and outside which they don't exist. Every flocking rule in [Chapter 12](12-FlocksAndSwarms.md) is an average over that circle. The radius is a character dial, since small circles make jittery individualists and large ones make committees.
 
@@ -278,13 +353,19 @@ A branch is a stick with two smaller branches on top, and each of *those* is a s
 
 ### Rewriting growth
 
-<img src="Images/13-GrowingThings/LSystemExpansion.jpg" alt="The same plant grammar drawn after one to four rounds of rewriting, growing from a bare stalk to a full fern, letter counts rising to 1551" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/13-GrowingThings/LSystemExpansion-dark.jpg">
+  <img src="Images/13-GrowingThings/LSystemExpansion.jpg" alt="The same plant grammar drawn after one to four rounds of rewriting, growing from a bare stalk to a full fern, letter counts rising to 1551" width="680">
+</picture>
 
 An L-system grows a *sentence*, not a picture. Start from an axiom, replace every symbol by its rule, and repeat. The string lengthens exponentially. A turtle then walks the final string, reading symbols as "forward", "turn", "branch". The drawing gets richer only because the sentence got longer, and all the botany lives in the rewriting. [Chapter 13](13-GrowingThings.md) writes ferns and lichens this way.
 
 ### Constraint propagation
 
-<img src="Images/13-GrowingThings/TilesAgree.jpg" alt="Enlarged pipe tiles with dots marking their edge sockets, beside a solved grid where every pipe meets a pipe" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/13-GrowingThings/TilesAgree-dark.jpg">
+  <img src="Images/13-GrowingThings/TilesAgree.jpg" alt="Enlarged pipe tiles with dots marking their edge sockets, beside a solved grid where every pipe meets a pipe" width="680">
+</picture>
 
 Wave Function Collapse solves a grid the way you solve sudoku. Every cell starts as "could be anything", and each placement rules options out of its neighbors, which rule options out of theirs. The solver always settles the most-constrained cell next (the one with fewest options left), because that's where a contradiction would surface soonest. One local law, "edges must match", propagated relentlessly, forces global coherence. [Chapter 13](13-GrowingThings.md) closes with it.
 
@@ -310,7 +391,10 @@ Draw one faint dot and you see a dot. Draw a million and you see a *material*, b
 
 ### Set operations on regions
 
-<img src="Images/15-ShapesAsMaterial/BooleanOps.jpg" alt="A circle and a star combined by union, intersection, subtracting, and symmetricDifference" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/BooleanOps-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/BooleanOps.jpg" alt="A circle and a star combined by union, intersection, subtracting, and symmetricDifference" width="680">
+</picture>
 
 Treat shapes as *regions of space* and logic applies to them. Union is "in either", the or. Intersection is "in both", the and. Subtraction is "in one but not the other", the and-not. Symmetric difference is "in exactly one", the xor. Four sentences about membership, drawn. [Chapter 15](15-ShapesAsMaterial.md) uses them to build forms no single primitive could draw.
 
@@ -328,7 +412,10 @@ A region is convex if the straight line between any two of its points stays insi
 
 ### Duality: two readings of one point set
 
-<img src="Images/15-ShapesAsMaterial/Duals.jpg" alt="The same points shown twice: Voronoi cells partitioning the plane into territories, and the Delaunay triangulation joining natural neighbors" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/15-ShapesAsMaterial/Duals-dark.jpg">
+  <img src="Images/15-ShapesAsMaterial/Duals.jpg" alt="The same points shown twice: Voronoi cells partitioning the plane into territories, and the Delaunay triangulation joining natural neighbors" width="680">
+</picture>
 
 One set of points supports two structures. Each point's Voronoi cell is the territory closer to it than to anyone else. The Delaunay triangulation connects each point to its natural neighbors. They're duals, two answers to "who's near whom", since cells share an edge exactly when their points share a triangle edge. Mosaics want the territories, while networks and meshes want the neighbors. [Chapter 15](15-ShapesAsMaterial.md) builds with both.
 
@@ -336,19 +423,28 @@ One set of points supports two structures. Each point's Voronoi cell is the terr
 
 ### Numeric vs perceptual mixing
 
-<img src="Images/02-Color/MixingSpaces.jpg" alt="Three rows mixing the same blue and yellow: the RGB row passes through muddy olive, the HSB row detours through green, the OKLab row stays even" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/02-Color/MixingSpaces-dark.jpg">
+  <img src="Images/02-Color/MixingSpaces.jpg" alt="Three rows mixing the same blue and yellow: the RGB row passes through muddy olive, the HSB row detours through green, the OKLab row stays even" width="680">
+</picture>
 
 Averaging two colors channel by channel gives the numeric midpoint, and your eye often disagrees with it. RGB's halfway between blue and yellow is a muddy olive. Perceptual spaces like OKLab are laid out so that numeric distance matches *seen* distance, and midpoints in them look like what you'd mix. The lesson generalizes. Whenever math on colors looks wrong, ask which space the math ran in. [Chapter 2](02-Color.md) shows the three rows side by side.
 
 ### Perceived brightness
 
-<img src="Images/09-Pictures/PixelSampling.jpg" alt="A small sunset image redrawn as a grid of dots, each dot taking its pixel's color and sized by its brightness" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/PixelSampling-dark.jpg">
+  <img src="Images/09-Pictures/PixelSampling.jpg" alt="A small sunset image redrawn as a grid of dots, each dot taking its pixel's color and sized by its brightness" width="680">
+</picture>
 
 The eye doesn't weigh channels equally. Green counts most, red less, blue least, and the standard weights are 0.2126, 0.7152, 0.0722. Averaging r, g, and b calls a saturated blue as bright as a green, and it visibly isn't. The weighted sum, luminance, matches what you see. Any effect driven by "how bright is this pixel", like the dot sizes here, needs the weighted version. [Chapter 8](08-Words.md) meets this the first time it reads pixels.
 
 ### Blend modes are arithmetic
 
-<img src="Images/16-LayersAndEffects/BlendModes.jpg" alt="The same two discs composited with normal, add, subtract, multiply, screen, lightest, and darkest blend modes" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/16-LayersAndEffects/BlendModes-dark.jpg">
+  <img src="Images/16-LayersAndEffects/BlendModes.jpg" alt="The same two discs composited with normal, add, subtract, multiply, screen, lightest, and darkest blend modes" width="680">
+</picture>
 
 Every blend mode is a small per-channel formula for combining the color being drawn with the color already there. Normal covers. Add sums, so light on light gets brighter. Multiply darkens like stacked filter gels, and screen brightens like layered projections. Lightest and darkest keep the winner. Once you read them as arithmetic, choosing one stops being trial and error. [Chapter 16](16-LayersAndEffects.md) puts the whole row to work.
 
@@ -362,7 +458,10 @@ Add enough light and channel values sail past 1, brighter than the screen can sh
 
 ### Feeding a picture back to itself
 
-<img src="Images/16-LayersAndEffects/FeedbackSteps.jpg" alt="The same orbiting dot drawn into feedback with different transforms: fade leaves a tail, zoom smears a streak, rotate wraps a swirl, both coil a spiral" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/16-LayersAndEffects/FeedbackSteps-dark.jpg">
+  <img src="Images/16-LayersAndEffects/FeedbackSteps.jpg" alt="The same orbiting dot drawn into feedback with different transforms: fade leaves a tail, zoom smears a streak, rotate wraps a swirl, both coil a spiral" width="680">
+</picture>
 
 Draw this frame on top of a transformed copy of the *last* frame, and the transform applies again every frame, which is iteration. A gentle zoom becomes an ever-deepening tunnel, a small rotation a tightening swirl, because each frame inherits all the transforms before it. Tiny per-frame moves compound into large structure, the same way the staircase compounded, but in pixels. [Chapter 16](16-LayersAndEffects.md) builds video feedback from it.
 

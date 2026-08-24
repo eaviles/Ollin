@@ -1,4 +1,4 @@
-// figure: frame=0 probe
+// figure: frame=0 probe themed
 //
 // Guide diagram (Chapter 1): why fractions beat pixels for layout. The same
 // three marks placed by fixed pixel coordinates and then by 0…1 fractions,
@@ -9,9 +9,13 @@ import Ollin
 final class NormalizedPlacement: Sketch {
     override var canvasSize: CanvasSize { .size(880, 600) }
 
-    let paper = Color(hex: 0xF7F5F1)
-    let ink = Color(hex: 0x232020)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.45)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x232020) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.45) }
+
+    // The panels depict a sketch's own artwork, identical in both themes.
     let night = Color(hex: 0x1B2A4A)
     let accent = Color(hex: 0xE4572E)
     let sand = Color(hex: 0xF2CC8F)

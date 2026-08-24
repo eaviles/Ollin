@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram (Chapter 6): Ford circles. On the left the fractions with
 // denominators up to four, labeled, on the right the same picture once every
@@ -9,10 +9,13 @@ import Ollin
 final class CircleForEveryFraction: Sketch {
     override var canvasSize: CanvasSize { .size(880, 460) }
 
-    let paper = Color(hex: 0xF7F5F1)
-    let ink = Color(hex: 0x2B2B2B)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
     let accent = Color(hex: 0xE07A5F)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.12)
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
+    var note: Color { darkTheme ? Color(hex: 0xE8E5E1, alpha: 0.62) : Color(hex: 0x6E6A63) }
 
     override func draw() {
         background(paper)
@@ -32,7 +35,7 @@ final class CircleForEveryFraction: Sketch {
         textAlign(.center, .top)
         drawText("every fraction gets a circle, and they never overlap", width / 2, 320)
         textSize(17)
-        fill(Color(hex: 0x6E6A63))
+        fill(note)
         drawText("two of them touch when their fractions are neighbors: ps - qr is 1 or -1",
                  width / 2, 354)
         drawText("a small denominator is a big circle, and a fraction worth approximating with",
@@ -46,7 +49,8 @@ final class CircleForEveryFraction: Sketch {
             strokeWeight(1.5)
             for ford in fordCircles(order: order, in: box) {
                 let small = ford.fraction.denominator > 4
-                fill(Color(hex: small ? 0xE07A5F : 0x2B2B2B, alpha: small ? 0.16 : 0.07))
+                fill(small ? Color(hex: 0xE07A5F, alpha: 0.16)
+                           : Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.07))
                 stroke(small ? accent : ink)
                 drawCircle(ford.circle)
             }

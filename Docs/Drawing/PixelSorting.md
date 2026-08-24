@@ -6,7 +6,10 @@
 
 **`Image.pixelSorted`** rearranges runs of an image's own pixels along rows or columns, sorted by brightness, hue, or saturation. Nothing is invented or recolored. The pixels just change places, which is what gives the technique its molten, streaked reading. The technique was invented by Kim Asendorf, and the interval model here is his. A brightness window decides which stretches of pixels form a sortable run, so shadows and highlights hold their ground while the midtones pour.
 
-<img src="../../Guide/Images/09-Pictures/SortedPixels.jpg" alt="The sunset beside a version with its columns sorted: the sky bands reorganize into a dome around the sun, the water smears into vertical streaks, and the sun and horizon stay intact" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/09-Pictures/SortedPixels-dark.jpg">
+  <img src="../../Guide/Images/09-Pictures/SortedPixels.jpg" alt="The sunset beside a version with its columns sorted: the sky bands reorganize into a dome around the sun, the water smears into vertical streaks, and the sun and horizon stay intact" width="680">
+</picture>
 
 ### Contents
 

@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram (Chapter 9): how an autostereogram carries depth. A flat repeat
 // on top, the same pattern with a shortened repeat under it, and the reading the
@@ -8,10 +8,13 @@ import Ollin
 final class DepthInARepeat: Sketch {
     override var canvasSize: CanvasSize { .size(880, 460) }
 
-    let paper = Color(hex: 0xF7F5F1)
-    let ink = Color(hex: 0x2B2B2B)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
     let accent = Color(hex: 0xE07A5F)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.12)
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
+    var note: Color { darkTheme ? Color(hex: 0xE8E5E1, alpha: 0.62) : Color(hex: 0x6E6A63) }
 
     override func draw() {
         background(paper)
@@ -32,7 +35,7 @@ final class DepthInARepeat: Sketch {
         textAlign(.center, .top)
         drawText("shorten the repeat and the pair reads as closer", width / 2, 366)
         textSize(17)
-        fill(Color(hex: 0x6E6A63))
+        fill(note)
         drawText("so a depth map becomes a picture, and the surface is never drawn at all",
                  width / 2, 400)
     }

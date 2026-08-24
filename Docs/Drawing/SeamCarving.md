@@ -6,7 +6,10 @@
 
 **`Image.seamCarved`** changes a picture's proportions by taking away the paths that carry the least, instead of squeezing every pixel by the same amount. A *seam* is a connected run of pixels, one per row and never more than one step sideways from the row above, that walks from the top edge to the bottom. Remove the cheapest one and the picture is a pixel narrower while whatever mattered in it keeps its shape. Do it three hundred times and a wide picture becomes a tall one with its subjects still the right shape. The technique is Shai Avidan and Ariel Shamir's; the default cost is the forward energy of Michael Rubinstein, Ariel Shamir, and Shai Avidan.
 
-<img src="../../Guide/Images/09-Pictures/CarvedNarrower.jpg" alt="The sunset at its own width, squeezed to 70% where the sun becomes a visible oval, and carved to 70% where the sun stays round because it was marked to hold" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/09-Pictures/CarvedNarrower-dark.jpg">
+  <img src="../../Guide/Images/09-Pictures/CarvedNarrower.jpg" alt="The sunset at its own width, squeezed to 70% where the sun becomes a visible oval, and carved to 70% where the sun stays round because it was marked to hold" width="680">
+</picture>
 
 ### Contents
 

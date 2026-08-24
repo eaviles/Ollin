@@ -1,4 +1,4 @@
-// figure: frame=0 probe
+// figure: frame=0 probe themed
 //
 // Guide figure (Chapter 13): space colonization, four moments of the same
 // growth. Dots are attraction points; the structure branches toward them,
@@ -9,15 +9,19 @@ import Ollin
 final class ClaimingSpace: Sketch {
     override var canvasSize: CanvasSize { .size(880, 340) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.4)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.12)
-    let accent = Color(hex: 0xE4572E)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.4) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
 
     let steps = [6, 18, 40, 200]
     var growths: [SpaceColonization] = []
 
     override func setup() {
+        growths = []
         seed(9)
         for (i, count) in steps.enumerated() {
             let r = panelRect(i)
@@ -35,7 +39,7 @@ final class ClaimingSpace: Sketch {
     }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         textSize(17)
 
         for (i, growth) in growths.enumerated() {

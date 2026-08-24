@@ -66,7 +66,10 @@ if let c = Color(hex: userString) { fill(c) }
 fill(Color(hue: time * 0.1, saturation: 0.8, brightness: 1))   // cycle the rainbow
 ```
 
-<img src="../../Guide/Images/02-Color/HueWheels.jpg" alt="Left: RGB as three component bars adding up to an orange. Right: the HSB hue wheel with saturation and brightness sweeps" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/02-Color/HueWheels-dark.jpg">
+  <img src="../../Guide/Images/02-Color/HueWheels.jpg" alt="Left: RGB as three component bars adding up to an orange. Right: the HSB hue wheel with saturation and brightness sweeps" width="680">
+</picture>
 
 **Color temperature** names light the way a photographer does. `Color(kelvin:)` takes a blackbody temperature. It is warm and orange at the low end, cool and blue at the high end, and neutral white around 6600. It's an ordinary sRGB `Color`, so it drops into `fill`, `background`, or a `Light`'s color. The 3D [lighting presets](../3D/3D.md#lights) use it, so a rig reads as the temperatures it really is. `kelvin` clamps to `1000...40000`.
 
@@ -122,7 +125,10 @@ Color.mix(_ a: Color, _ b: Color, t: Double, in: ColorSpace = .oklab) -> Color
 
 Interpolates between two colors in a chosen space. The spaces are `.rgb`, `.hsb`, `.oklab`, `.oklch`, and `.okhsl`. `.oklab` is the default and is perceptually even, and `.oklch` holds hue identity while arcing through chroma. `t` clamps to `0...1` and alpha interpolates linearly. In the polar spaces hue takes the shortest way around the wheel. An achromatic endpoint, meaning gray, black, or white, adopts the other color's hue. A fade to white therefore doesn't detour through unrelated hues.
 
-<img src="../../Guide/Images/02-Color/MixingSpaces.jpg" alt="Three rows mixing the same blue and yellow: the RGB row passes through muddy olive, the HSB row detours through bright green, the OKLab row stays even" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/02-Color/MixingSpaces-dark.jpg">
+  <img src="../../Guide/Images/02-Color/MixingSpaces.jpg" alt="Three rows mixing the same blue and yellow: the RGB row passes through muddy olive, the HSB row detours through bright green, the OKLab row stays even" width="680">
+</picture>
 
 ```swift
 let warm = Color(hex: 0xFF5500)
@@ -159,7 +165,10 @@ fill(.radial(center: sun, radius: 260, [.white, .clear]))         // center → 
 stroke(.alongPath(heat))                                          // along the stroke
 ```
 
-<img src="../../Guide/Images/02-Color/GradientPaint.jpg" alt="Three panels: a rectangle with a vertical dusk gradient, a soft radial glow, and a ring stroked with a rainbow that sweeps around it" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/02-Color/GradientPaint-dark.jpg">
+  <img src="../../Guide/Images/02-Color/GradientPaint.jpg" alt="Three panels: a rectangle with a vertical dusk gradient, a soft radial glow, and a ring stroked with a rainbow that sweeps around it" width="680">
+</picture>
 
 Each factory takes a `Ramp` or a plain `[Color]` list, spread evenly and mixed in OKLab by default. Pass `in:` for another space. Coordinates are in drawing space, so a gradient rides the transform stack with the shapes it paints. One gradient laid across many shapes shades them coherently. `t` clamps at the ends, and alpha rides the ramp, so fading a radial gradient to `.clear` makes a soft-edged glow.
 
@@ -180,7 +189,10 @@ The analytic SDF shapes (circles, rects, stars, lines, …) evaluate gradients p
 
 A discrete set of colors carried as a unit. `palette[i]` wraps in both directions, so any counter cycles it. `color(at:)` quantizes `0...1` into equal bands, so a noise value picks a swatch. `ramp(in:)` turns the set into a smooth interpolating `Ramp`.
 
-<img src="../../Guide/Images/02-Color/PaletteShelf.jpg" alt="Five rows: the set2 palette swatches, a triadic harmony, a smooth five-color ramp, the viridis colormap, and the sunset cosine palette" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/02-Color/PaletteShelf-dark.jpg">
+  <img src="../../Guide/Images/02-Color/PaletteShelf.jpg" alt="Five rows: the set2 palette swatches, a triadic harmony, a smooth five-color ramp, the viridis colormap, and the sunset cosine palette" width="680">
+</picture>
 
 ```swift
 let p = Palette(.red, Color(hex: 0x1B9E77), .white)
@@ -289,7 +301,10 @@ drawImage(poster, in: bounds)
 
 Snapping each pixel to its nearest palette color on its own gives flat bands where the picture was smooth. Dithering trades those bands for texture. It scatters the two colors that bracket each tone. The eye blurs them together at normal viewing distance, and reads the tone that was there before. Fewer colors, same picture.
 
-<img src="../../Guide/Images/02-Color/Dithering.jpg" alt="Three panels of the same smooth color gradient reduced to five colors: the first showing wide flat bands, the second a regular crosshatch grain, the third an organic scattered grain, both of the latter reading as a smooth gradient from a distance" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/02-Color/Dithering-dark.jpg">
+  <img src="../../Guide/Images/02-Color/Dithering.jpg" alt="Three panels of the same smooth color gradient reduced to five colors: the first showing wide flat bands, the second a regular crosshatch grain, the third an organic scattered grain, both of the latter reading as a smooth gradient from a distance" width="680">
+</picture>
 
 The methods come in two families.
 

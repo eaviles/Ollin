@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide figure (Chapter 15): why shape packing is not circle packing wearing
 // costumes. Both panels are the *same* packing. On the left each shape's
@@ -10,9 +10,12 @@ import Ollin
 final class ShapePacking: Sketch {
     override var canvasSize: CanvasSize { .size(880, 460) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.34)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.13)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.34) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.13) }
 
     var shapes: [Shape] = []
     var circles: [Circle] = []
@@ -44,7 +47,7 @@ final class ShapePacking: Sketch {
     }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         textSize(18)
 
         for panel in 0 ... 1 {

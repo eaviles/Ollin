@@ -21,7 +21,10 @@ That `gravity` was an acceleration, a fixed change to the velocity every second.
 
 When several forces act on a body in the same frame, combining them takes no new math. You add the arrows, the same tip-to-tail walk you learned last chapter:
 
-<img src="Images/11-ForcesAndPhysics/ForceAccumulation.jpg" alt="Two panel diagram: left, three labeled arrows for gravity, wind, and drag pushing on one dot; right, the same arrows chained tip to tail with an orange arrow marked as the total" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/11-ForcesAndPhysics/ForceAccumulation-dark.jpg">
+  <img src="Images/11-ForcesAndPhysics/ForceAccumulation.jpg" alt="Two panel diagram: left, three labeled arrows for gravity, wind, and drag pushing on one dot; right, the same arrows chained tip to tail with an orange arrow marked as the total" width="680">
+</picture>
 
 **Acceleration is force divided by mass.** So the sum above is not an acceleration yet, because mass sits in between. The same shove that sends a ping-pong ball flying barely moves a bowling ball. In code, the pattern is to gather the frame's forces into one vector, divide once, and then carry on exactly as before:
 
@@ -166,7 +169,10 @@ let s = world.connect(a, b)
 
 A `Spring` tries to hold its two particles at one fixed distance, its **rest length**. Leave the length out, as above, and it adopts whatever distance the pair had when you connected them. From then on the rule is the one in the picture:
 
-<img src="Images/11-ForcesAndPhysics/SpringRestLength.jpg" alt="Three panel diagram of a coil spring between two discs: at rest length with a ruler beneath, stretched with orange arrows pulling the ends back in, and squeezed with orange arrows pushing the ends apart" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/11-ForcesAndPhysics/SpringRestLength-dark.jpg">
+  <img src="Images/11-ForcesAndPhysics/SpringRestLength.jpg" alt="Three panel diagram of a coil spring between two discs: at rest length with a ruler beneath, stretched with orange arrows pulling the ends back in, and squeezed with orange arrows pushing the ends apart" width="680">
+</picture>
 
 Stretched, it pulls its ends back in. Squeezed, it pushes them apart. At rest length it does nothing at all. A `stiffness` between 0 and 1 sets how sharply it corrects. At `1` the link behaves like a rigid stick, and lower values stretch and recoil like elastic.
 
@@ -225,7 +231,10 @@ Springs plus pins go a long way. A grid of particles with springs to their neigh
 
 Everything so far, particles and the springs between them, is **soft**. A particle is a point. It has no corners, no orientation, nothing to tip over. Structures made from particles bend and squash, which is exactly what you want for ropes and jellies and exactly wrong for a brick. Drop a soft body and a rigid one and the difference is plain:
 
-<img src="Images/11-ForcesAndPhysics/SoftVsRigid.jpg" alt="Two panel diagram: left, an orange blob outlined with small dots resting squashed on the floor; right, four rectangular boxes resting in an angular jumble, corners intact" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/11-ForcesAndPhysics/SoftVsRigid-dark.jpg">
+  <img src="Images/11-ForcesAndPhysics/SoftVsRigid.jpg" alt="Two panel diagram: left, an orange blob outlined with small dots resting squashed on the floor; right, four rectangular boxes resting in an angular jumble, corners intact" width="680">
+</picture>
 
 For bricks, the same `World` holds a second kind of body. A `Body` is rigid, meaning it has a shape with real corners and an angle, so it rotates, tips, and rests in stable stacks. You add one with a shape called a collider:
 
@@ -279,7 +288,10 @@ held?.remove()                          // let go
 
 The two approaches so far cover most of what you'll build, but there's a third shelf worth knowing about. Ollin ships four systems that come assembled, each a plain object you keep on the sketch and step once a frame. Three of them move things and the fourth arranges them. None needs a `World`, and all four live in the core framework, so there's no extra import.
 
-<img src="Images/11-ForcesAndPhysics/Articulated.jpg" alt="Three panels: a segmented chain curving so its tip touches a small ringed target while its base stays planted, a double pendulum's two arms with the looping tangle its far bob has traced, and a disk of hundreds of short streaks circling a heavy orange center" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/11-ForcesAndPhysics/Articulated-dark.jpg">
+  <img src="Images/11-ForcesAndPhysics/Articulated.jpg" alt="Three panels: a segmented chain curving so its tip touches a small ringed target while its base stays planted, a double pendulum's two arms with the looping tangle its far bob has traced, and a disk of hundreds of short streaks circling a heavy orange center" width="680">
+</picture>
 
 ### A limb that reaches: IKChain
 
@@ -336,7 +348,10 @@ drawGraph(layout)
 
 The one new idea is *temperature*. Each step caps how far a node may move, and that cap cools from generous to zero over a few seconds. Big bold swings come early, when the tangle needs them. Gentle nudges come late, when the layout is nearly right. Then comes a freeze. Watching it run is watching annealing happen, and it's the middle of the figure below. Once settled, `step()` costs nothing, so it can stay in `draw()`.
 
-<img src="Images/11-ForcesAndPhysics/GraphSettles.jpg" alt="Three panels of the same 26-node graph: a huddle of tangled edges at the seeded random start, the web opening up mid-cooling, and the settled even web, with the highest-degree hub accented in orange" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/11-ForcesAndPhysics/GraphSettles-dark.jpg">
+  <img src="Images/11-ForcesAndPhysics/GraphSettles.jpg" alt="Three panels of the same 26-node graph: a huddle of tangled edges at the seeded random start, the web opening up mid-cooling, and the settled even web, with the highest-degree hub accented in orange" width="680">
+</picture>
 
 Because the freeze is real, change is a deliberate act: `reheat(0.3)` warms the temperature back up so the layout can absorb whatever you did. That's the whole interaction vocabulary. Growing a network is `addNode`, `connect`, reheat, and the web makes room. Dragging is `nearestNode(to:)` to pick one up, then `pinned[i] = true` so the solver leaves it in your hand. Write its position each frame, with a little heat kept on so the neighbors follow, and unpin on release. `idealDistance` is the size dial, so raise it and the web opens up. The seed picks which of the many equally good untanglings you get, so a graph piece has variations like any other seeded sketch.
 

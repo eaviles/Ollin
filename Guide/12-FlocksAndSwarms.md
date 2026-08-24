@@ -21,7 +21,10 @@ let steer = (desired - velocity).limited(to: maxForce)
 
 Work out the velocity you *wish* you had. Subtract the velocity you *have*. Cap the correction, because nothing real turns instantly. Drawn as arrows, it looks like this:
 
-<img src="Images/12-FlocksAndSwarms/SteeringMove.jpg" alt="Two-panel diagram. Left: a dot with a velocity arrow and a desired arrow pointing at a ring labeled the target. Right: the same arrows from one point, with an orange arrow labeled steer connecting the velocity's tip to the desired's tip" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/12-FlocksAndSwarms/SteeringMove-dark.jpg">
+  <img src="Images/12-FlocksAndSwarms/SteeringMove.jpg" alt="Two-panel diagram. Left: a dot with a velocity arrow and a desired arrow pointing at a ring labeled the target. Right: the same arrows from one point, with an orange arrow labeled steer connecting the velocity's tip to the desired's tip" width="680">
+</picture>
 
 Steering is wanting, written as arithmetic. Everything a creature does in this chapter is this same move with a different idea of *desired*, and that's exactly how Ollin packages it. A `Vehicle` is a position and a velocity plus those two caps, and every behavior on it returns one of these correction forces:
 
@@ -120,7 +123,10 @@ strokeWeight(3)
 for trail in chase.trails { drawPolyline(trail.points) }
 ```
 
-<img src="Images/12-FlocksAndSwarms/PursuitDogs.jpg" alt="Two-panel diagram. Left: four dogs at the corners of a square, faint chase lines filling it, and four identical spirals curling into the middle, one of them orange. Right: a quarry running straight up a faint line while an orange curve sweeps in from the right and meets it" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/12-FlocksAndSwarms/PursuitDogs-dark.jpg">
+  <img src="Images/12-FlocksAndSwarms/PursuitDogs.jpg" alt="Two-panel diagram. Left: four dogs at the corners of a square, faint chase lines filling it, and four identical spirals curling into the middle, one of them orange. Right: a quarry running straight up a faint line while an orange curve sweeps in from the right and meets it" width="680">
+</picture>
 
 Both answers are exact. They draw four identical spirals that meet in the middle, and each dog runs exactly one side of the square. Not one and a bit. One.
 
@@ -147,7 +153,10 @@ Nobody in either panel ever runs in a straight line, because nobody is ever chas
 
 The most lifelike behavior needs no target at all. `wander` gives a creature aimless, believable roaming, and the recipe is smarter than "add random turns", which produces nervous jitter, not a stroll. Instead, picture a circle floating a fixed distance ahead of the creature. The creature seeks a point on that circle's rim, and each step the point slides a little way around the rim, at random:
 
-<img src="Images/12-FlocksAndSwarms/WanderCircle.jpg" alt="Two-panel diagram. Left: a dot with a heading arrow, a faint circle ahead of it, an orange point on the circle's rim labeled the wandering target, and ghost points showing the jitter. Right: a long looping meander labeled what that produces" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/12-FlocksAndSwarms/WanderCircle-dark.jpg">
+  <img src="Images/12-FlocksAndSwarms/WanderCircle.jpg" alt="Two-panel diagram. Left: a dot with a heading arrow, a faint circle ahead of it, an orange point on the circle's rim labeled the wandering target, and ghost points showing the jitter. Right: a long looping meander labeled what that produces" width="680">
+</picture>
 
 Because the target can only slide gradually, the creature's curve bends gradually too, so it remembers roughly where it was going. The jitter amount is the personality knob. Small values drift in long, calm arcs; large values get twitchy. Three of them, with trails, make `MySketches/Wanderer.swift`:
 
@@ -205,21 +214,33 @@ Now the leap that made this famous. In 1986 Reynolds set out to animate a flock 
 
 **Separation.** Steer away from anyone inside your personal space, and let the closest neighbors push hardest:
 
-<img src="Images/12-FlocksAndSwarms/RuleSeparation.jpg" alt="Diagram of one dark boid inside a faint circle labeled personal space, three gray neighbors pressing in, and an orange arrow labeled away from the crowd pointing out of the crush" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/12-FlocksAndSwarms/RuleSeparation-dark.jpg">
+  <img src="Images/12-FlocksAndSwarms/RuleSeparation.jpg" alt="Diagram of one dark boid inside a faint circle labeled personal space, three gray neighbors pressing in, and an orange arrow labeled away from the crowd pointing out of the crush" width="680">
+</picture>
 
 **Alignment.** Look at the neighbors you can see, average their headings, and steer to match:
 
-<img src="Images/12-FlocksAndSwarms/RuleAlignment.jpg" alt="Diagram of one dark boid among gray neighbors inside a faint circle labeled what it can see, each neighbor with its own small heading arrow, and an orange arrow showing the average heading the boid turns toward" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/12-FlocksAndSwarms/RuleAlignment-dark.jpg">
+  <img src="Images/12-FlocksAndSwarms/RuleAlignment.jpg" alt="Diagram of one dark boid among gray neighbors inside a faint circle labeled what it can see, each neighbor with its own small heading arrow, and an orange arrow showing the average heading the boid turns toward" width="680">
+</picture>
 
 **Cohesion.** Find the center of those same neighbors and drift toward it:
 
-<img src="Images/12-FlocksAndSwarms/RuleCohesion.jpg" alt="Diagram of one dark boid inside a faint circle, gray neighbors clustered to one side, an orange ringed dot at their center of the group, and an orange arrow from the boid toward it" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/12-FlocksAndSwarms/RuleCohesion-dark.jpg">
+  <img src="Images/12-FlocksAndSwarms/RuleCohesion.jpg" alt="Diagram of one dark boid inside a faint circle, gray neighbors clustered to one side, an orange ringed dot at their center of the group, and an orange arrow from the boid toward it" width="680">
+</picture>
 
 Every arrow above is the same steering move from the start of the chapter, and only *desired* changes. And notice what none of the rules mention: the flock. A boid sees a handful of neighbors inside its perception radius and nothing else. No boid knows the flock exists, and the flock happens anyway. That's the pattern this chapter is really about, local rules producing global behavior, and it's why these three small rules have been studied by biologists and roboticists ever since.
 
 Here are the rules switched on one at a time, same creatures, same seed:
 
-<img src="Images/12-FlocksAndSwarms/RuleMix.jpg" alt="Three panels of small dark triangles. Separation only: an even scatter pointing every way. Plus alignment: one loose school all pointing the same way. Plus cohesion: three tight flocks gathered apart from each other" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/12-FlocksAndSwarms/RuleMix-dark.jpg">
+  <img src="Images/12-FlocksAndSwarms/RuleMix.jpg" alt="Three panels of small dark triangles. Separation only: an even scatter pointing every way. Plus alignment: one loose school all pointing the same way. Plus cohesion: three tight flocks gathered apart from each other" width="680">
+</picture>
 
 Separation alone spaces them evenly, but every heading is private. Add alignment and the headings agree: a school. Add cohesion and the school gathers itself into flocks. Reading the panels left to right is watching order emerge one rule at a time.
 
@@ -248,7 +269,10 @@ Ask 300 boids to look at every other boid and you have made 90,000 comparisons t
 
 So stop asking. Cut the plane into square cells, one perception radius across. Anything closer to you than one radius has to be sitting in your own cell or in one of the eight touching it. Nine cells hold every answer, and the rest of the flock is never measured at all.
 
-<img src="Images/12-FlocksAndSwarms/NeighborCells.jpg" alt="Diagram of a scatter of gray dots over a grid of square cells, with the nine cells around a dark central dot tinted, the dots inside its radius circle marked orange, and the dots outside the block labeled never measured" width="880">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/12-FlocksAndSwarms/NeighborCells-dark.jpg">
+  <img src="Images/12-FlocksAndSwarms/NeighborCells.jpg" alt="Diagram of a scatter of gray dots over a grid of square cells, with the nine cells around a dark central dot tinted, the dots inside its radius circle marked orange, and the dots outside the block labeled never measured" width="880">
+</picture>
 
 Ollin ships that as `SpatialIndex`, and `Boids` is only one of its customers. Hand it points, ask it questions:
 

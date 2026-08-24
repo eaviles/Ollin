@@ -39,7 +39,10 @@ final class ColorTiles: Sketch {
 
 One loop. `grid(columns:rows:padding:gutter:)` lays a grid over the canvas, where `padding` is the outer margin and `gutter` the gap between tiles. Its `cells` is a list you loop, and every cell arrives knowing everything about itself. It carries its `frame`, the rectangle to draw, plus its `center`, its `column` and its `row`. Those indices are the point. The old nested loops existed mostly so you'd have a column number and a row number in hand. Here every cell carries its own, so the indexed tricks stay one-loop simple. A checkerboard from `(cell.column + cell.row) % 2` is one, and this diagonal fade is another.
 
-<img src="Images/06-GridsAndRepetition/GridAnatomy.jpg" alt="Grid anatomy: cells with padding and gutter labeled and one cell's frame and center called out; beside them, points as a dot per cell and as a lattice spanning the edges" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/06-GridsAndRepetition/GridAnatomy-dark.jpg">
+  <img src="Images/06-GridsAndRepetition/GridAnatomy.jpg" alt="Grid anatomy: cells with padding and gutter labeled and one cell's frame and center called out; beside them, points as a dot per cell and as a lattice spanning the edges" width="680">
+</picture>
 
 The grid offers two things to loop, and you pick by what you're drawing. `cells` are the tiles. `points` are the dots, one per cell center by default. Pass `distribution: .spanning` for a lattice that reaches the edges, the layout you want when the piece *is* a grid of dots. A dot field is two lines:
 
@@ -57,7 +60,10 @@ Two more things are worth knowing before we move on. `grid(...)` covers the whol
 
 The grid raises a question immediately. How do you draw something *rotated* inside a cell? `drawRect` and friends don't take an angle. The answer is one of the oldest ideas in computer graphics, and it feels backwards for about ten minutes. You don't rotate the shape, you rotate the *paper*.
 
-<img src="Images/06-GridsAndRepetition/TransformSteps.jpg" alt="Four panels drawing the same flag with the same call: untransformed at the origin, then translated, then rotated a twelfth of a turn, then scaled up" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/06-GridsAndRepetition/TransformSteps-dark.jpg">
+  <img src="Images/06-GridsAndRepetition/TransformSteps.jpg" alt="Four panels drawing the same flag with the same call: untransformed at the origin, then translated, then rotated a twelfth of a turn, then scaled up" width="680">
+</picture>
 
 Three calls move the paper. `translate(x, y)` slides the origin, the point that counts as (0, 0), somewhere else. `rotate(angle)` turns the paper around that origin (angles work like [Chapter 3](03-MotionAndTime.md): `.tau / 4` is a quarter turn). `scale(factor)` stretches it. After any of them, every drawing call is measured on the moved paper, which is what the diagram shows. All four flags are the very same `drawRect` at the very same numbers, drawn on paper that had been slid, turned, and stretched first.
 
@@ -160,7 +166,10 @@ noSymmetry()                 // back to normal
 
 `symmetry` is drawing state, like `fill` or a transform, so it applies to everything you draw until you turn it off, and `withState { }` scopes it. Once it's on you stop thinking about repetition entirely. You draw one wedge, and every circle, line, and shape in it lands in all the folds at once.
 
-<img src="Images/06-GridsAndRepetition/Kaleidoscope.jpg" alt="Three panels: a single small crooked wedge with a red dot at its tip, the same wedge under eightfold symmetry forming a snowflake, and under mirrored eightfold symmetry forming a denser one with paired reflections" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/06-GridsAndRepetition/Kaleidoscope-dark.jpg">
+  <img src="Images/06-GridsAndRepetition/Kaleidoscope.jpg" alt="Three panels: a single small crooked wedge with a red dot at its tip, the same wedge under eightfold symmetry forming a snowflake, and under mirrored eightfold symmetry forming a denser one with paired reflections" width="680">
+</picture>
 
 The mirrored form is the part worth having. A plain rotation copies your wedge around like a pinwheel, and every copy still leans the same way. Mirroring flips alternate copies, so neighbors face each other and the seams between them close. That's the difference between a pinwheel and an actual kaleidoscope. Doing it by hand means negative scales and reversed winding, a mess you now don't have to write.
 
@@ -176,7 +185,10 @@ withClip(star) {
 }
 ```
 
-<img src="Images/06-GridsAndRepetition/ClipRegions.jpg" alt="Three panels of the same diagonal orange stripes: confined to a star, confined to a circle, and confined to both at once so only the overlap of star and circle is striped" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/06-GridsAndRepetition/ClipRegions-dark.jpg">
+  <img src="Images/06-GridsAndRepetition/ClipRegions.jpg" alt="Three panels of the same diagonal orange stripes: confined to a star, confined to a circle, and confined to both at once so only the overlap of star and circle is striped" width="680">
+</picture>
 
 `withClip` takes a `Shape`, a `Rectangle`, or a `Circle`, and confines everything drawn inside the block to that region. What makes it useful rather than merely convenient is that you don't have to work out the intersection yourself. The stripes in the figure are the same handful of long diagonal lines in all three panels. They are drawn straight past the edges, and the region decides what survives.
 
@@ -193,7 +205,10 @@ withViewBox(cell.frame) {
 }
 ```
 
-<img src="Images/06-GridsAndRepetition/ViewBoxSheet.jpg" alt="Six boxes on one canvas in two rows of three, each holding the same ring-of-petals piece under a different seed, each with its own colored wash" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/06-GridsAndRepetition/ViewBoxSheet-dark.jpg">
+  <img src="Images/06-GridsAndRepetition/ViewBoxSheet.jpg" alt="Six boxes on one canvas in two rows of three, each holding the same ring-of-petals piece under a different seed, each with its own colored wash" width="680">
+</picture>
 
 Inside that block `width` and `height` still report the whole canvas, `center` is still the middle of it, and a circle at `(width / 2, height / 2)` lands in the middle of the cell. That is the point. You hand a piece written for the whole window to a box, and it runs there unchanged.
 
@@ -219,7 +234,10 @@ override func draw() {
 
 Drag to pan, scroll to zoom. That is the whole of it, and it is the 2D counterpart of the camera you can take hold of in [Chapter 21](21-3DGently.md). Like that one, it is opt-in: a sketch that never calls it never pays for it.
 
-<img src="Images/06-GridsAndRepetition/ViewCloser.jpg" alt="The same generated chart twice: on the left the whole island, where the place names are an illegible smudge, and on the right the view four notches in, where the same names are crisp and readable" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/06-GridsAndRepetition/ViewCloser-dark.jpg">
+  <img src="Images/06-GridsAndRepetition/ViewCloser.jpg" alt="The same generated chart twice: on the left the whole island, where the place names are an illegible smudge, and on the right the view four notches in, where the same names are crisp and readable" width="680">
+</picture>
 
 The best reason to zoom is in that figure, and it is not the magnification. Nothing was re-rendered to get the right-hand panel. The place names are set at four units in both, and the outlines are simply drawn through a larger transform, so they arrive crisp. Vector drawing has no resolution to run out of.
 
@@ -233,7 +251,10 @@ And the mouse arrives in the coordinates now on screen, the same courtesy a view
 
 The `Grid` this chapter opened with divides a rectangle into rectangles, which covers a great deal but not everything. Four more shapes of division come with Ollin, and all of them read the same way. Ask for the cells, then loop over them once.
 
-<img src="Images/06-GridsAndRepetition/OtherGrids.jpg" alt="Four panels: a honeycomb tinted by ring distance from one cell, a field of alternating up and down triangles, a rectangle split recursively into unequal panels, and a carved maze" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/06-GridsAndRepetition/OtherGrids-dark.jpg">
+  <img src="Images/06-GridsAndRepetition/OtherGrids.jpg" alt="Four panels: a honeycomb tinted by ring distance from one cell, a field of alternating up and down triangles, a rectangle split recursively into unequal panels, and a carved maze" width="680">
+</picture>
 
 ```swift
 for cell in hexGrid(columns: 12, rows: 10, gutter: 6).cells {
@@ -263,7 +284,10 @@ Every loop so far has read the grid the way a page is read: left to right, top t
 
 Walk it as a square spiral instead, from the middle outward, writing the whole numbers one per cell. Then mark the cells whose number passes some test. Mark the primes and something happens that has no business happening: the marks fall on diagonal lines.
 
-<img src="Images/06-GridsAndRepetition/NumbersInASpiral.jpg" alt="Two panels: a seven by seven grid with the numbers 1 to 49 written in a spiral and the walk drawn under them, and a sixty-one cell square with only the primes marked as dots, falling along visible diagonals" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/06-GridsAndRepetition/NumbersInASpiral-dark.jpg">
+  <img src="Images/06-GridsAndRepetition/NumbersInASpiral.jpg" alt="Two panels: a seven by seven grid with the numbers 1 to 49 written in a spiral and the walk drawn under them, and a sixty-one cell square with only the primes marked as dots, falling along visible diagonals" width="680">
+</picture>
 
 ```swift
 let spiral = ulamSpiral(size: 101)
@@ -287,7 +311,10 @@ The spiral put whole numbers on a grid. Here is the same move made with fraction
 
 Take any fraction `p/q` in lowest terms. Give it a circle of radius `1/(2q²)`, sitting on the number line at `p/q`. Do that for every fraction at once.
 
-<img src="Images/06-GridsAndRepetition/CircleForEveryFraction.jpg" alt="Two panels of circles resting on a number line. On the left the fractions with denominators up to four, labeled, each circle touching its neighbors. On the right the same line once every denominator up to twelve has arrived, the new smaller circles dropping into the gaps between the old ones" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/06-GridsAndRepetition/CircleForEveryFraction-dark.jpg">
+  <img src="Images/06-GridsAndRepetition/CircleForEveryFraction.jpg" alt="Two panels of circles resting on a number line. On the left the fractions with denominators up to four, labeled, each circle touching its neighbors. On the right the same line once every denominator up to twelve has arrived, the new smaller circles dropping into the gaps between the old ones" width="680">
+</picture>
 
 ```swift
 noFill(); stroke(.white)
@@ -308,7 +335,10 @@ This chapter has been about repetition. Here is its opposite, and it is just as 
 
 Take four colors and lay out sixty-four beads so that **every** run of three colors appears somewhere around the ring, and no run appears twice. That is a de Bruijn sequence, and it is as short as such a ring can be: there are sixty-four possible triples and each takes one place.
 
-<img src="Images/06-GridsAndRepetition/EveryWindowOnce.jpg" alt="On the left an eight-bead strip of two colors with the eight windows of three it holds listed underneath, all different. On the right a ring of sixty-four beads in four tones with one window of three picked out and labeled bead 11" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/06-GridsAndRepetition/EveryWindowOnce-dark.jpg">
+  <img src="Images/06-GridsAndRepetition/EveryWindowOnce.jpg" alt="On the left an eight-bead strip of two colors with the eight windows of three it holds listed underneath, all different. On the right a ring of sixty-four beads in four tones with one window of three picked out and labeled bead 11" width="680">
+</picture>
 
 ```swift
 let code = DeBruijnCode(symbols: 4, window: 3)

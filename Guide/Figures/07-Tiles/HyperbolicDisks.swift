@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram (Chapter 7): two regular hyperbolic tilings in the Poincaré
 // disk. Pentagons meeting four to a corner close into a curved checkerboard;
@@ -9,11 +9,16 @@ import Ollin
 final class HyperbolicDisks: Sketch {
     override var canvasSize: CanvasSize { .size(880, 460) }
 
-    let paper = Color(hex: 0xF7F5F1)
-    let ink = Color(hex: 0x232020)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.12)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x232020) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
+
+    // The disks are depicted content, identical in both themes.
     let ivory = Color(hex: 0xF2E9DC)
     let indigo = Color(hex: 0x24476B)
+    let grout = Color(hex: 0xF7F5F1)
 
     override func draw() {
         background(paper)
@@ -60,7 +65,7 @@ final class HyperbolicDisks: Sketch {
             drawShape(tile.shape)
         }
         noFill()
-        stroke(paper.withAlpha(0.85))
+        stroke(grout.withAlpha(0.85))
         strokeWeight(1.2)
         for tile in tiles {
             drawPolyline(tile.points, closed: true)

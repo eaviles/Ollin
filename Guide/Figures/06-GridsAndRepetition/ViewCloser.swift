@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram: the same chart at two views. On the left the whole of it, where
 // the place names are a smudge. On the right the view four notches in, where the
@@ -9,8 +9,13 @@ import Ollin
 final class ViewCloser: Sketch {
     override var canvasSize: CanvasSize { .size(880, 400) }
 
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.45) }
+
+    // The chart is depicted content, identical in both themes.
     let ink = Color(hex: 0x2B2B2B)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.45)
     let land = Color(hex: 0xF0EBE0)
     let mark = Color(hex: 0xC1553C)
 
@@ -34,6 +39,7 @@ final class ViewCloser: Sketch {
             let r = 190 + signedNoise(loop: lap, radius: 1.6) * 74
             return Vector2(300, 280) + Vector2(cos(angle) * r, sin(angle) * r * 0.82)
         }
+        places = []
         while places.count < 60 {
             let p = Vector2(random(40, 560), random(60, 500))
             guard onLand(p) else { continue }
@@ -45,7 +51,7 @@ final class ViewCloser: Sketch {
     }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         panel(Rectangle(x: 24, y: 24, width: 400, height: 310), zoom: 1, caption: "the whole of it")
         panel(Rectangle(x: 456, y: 24, width: 400, height: 310), zoom: 4, caption: "four notches in")
     }

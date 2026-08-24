@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide figure (Chapter 13): Wave Function Collapse's overlapping model.
 // Left, the sample: a small picture drawn by hand. Right, a much larger
@@ -10,8 +10,12 @@ import Ollin
 final class LearnedFromAPicture: Sketch {
     override var canvasSize: CanvasSize { .size(880, 420) }
 
-    let paper = Color(hex: 0xF7F5F0)
-    let ink = Color(hex: 0x2B2B2B)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F0) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+
+    // The sample and its output are depicted content, identical in both themes.
     let wall = Color(hex: 0x2B2B2B)
     let room = Color(hex: 0xF7F5F0)
 
@@ -57,7 +61,7 @@ final class LearnedFromAPicture: Sketch {
         textSize(15)
         drawText("the sample, 16 by 16", at: Vector2(40, 60))
         drawText("48 by 30, built from its squares", at: Vector2(336, 60))
-        fill(Color(hex: 0x2B2B2B, alpha: 0.55))
+        fill(Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.55))
         textSize(13)
         drawText("every 3 by 3 square here is one the sample already contained",
                  at: Vector2(336, 348))

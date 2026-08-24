@@ -8,7 +8,10 @@ An **L-system** (Lindenmayer system) grows a string by rewriting its symbols, th
 
 Three pieces define one: an **axiom** (the starting string), **production rules** (how each symbol rewrites, applied to *every* symbol at once each pass), and the number of **iterations** (rewrite passes). The turtle then reads the final string left to right.
 
-<img src="../../Guide/Images/13-GrowingThings/LSystemExpansion.jpg" alt="Four panels of the same plant grammar drawn after one to four rounds of rewriting, growing from a bare stalk to a full fern, with the letter count under each panel rising from 18 to 1551" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/13-GrowingThings/LSystemExpansion-dark.jpg">
+  <img src="../../Guide/Images/13-GrowingThings/LSystemExpansion.jpg" alt="Four panels of the same plant grammar drawn after one to four rounds of rewriting, growing from a bare stalk to a full fern, with the letter count under each panel rising from 18 to 1551" width="680">
+</picture>
 
 The output is a set of open `[Contour]`s (the line-work), so it feeds straight into stroking, the [shape booleans](../Drawing/Geometry.md), hatching, and SVG export for the pen plotter. A run is a pure function of the grammar (and, for a stochastic one, the [`seed`](./Random.md#seed)), so the same seed always grows the same form.
 
@@ -149,7 +152,10 @@ Three things follow that a symbolic grammar cannot state:
 - a bud that counts down a few passes before it opens,
 - a trunk given its own width as well as its own length, so it tapers.
 
-<img src="../../Guide/Images/13-GrowingThings/CarryingNumbers.jpg" alt="Three panels. A plain grammar tree of uniform segments, a parametric branch whose segments shrink by a ratio each fork, and a parametric tree drawn with a thick trunk tapering to fine twigs" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/13-GrowingThings/CarryingNumbers-dark.jpg">
+  <img src="../../Guide/Images/13-GrowingThings/CarryingNumbers.jpg" alt="Three panels. A plain grammar tree of uniform segments, a parametric branch whose segments shrink by a ratio each fork, and a parametric tree drawn with a thick trunk tapering to fine twigs" width="680">
+</picture>
 
 ```swift
 // A branch that halves at every fork and stops once it gets too short:

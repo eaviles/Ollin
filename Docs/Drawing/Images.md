@@ -100,7 +100,10 @@ A picture and the box you have for it are rarely the same shape, and `fit` says 
 | `.contain` | puts the whole picture inside, centered | part of the box, showing along two edges |
 | `.cover` | fills the box completely, centered | the picture's own edges, cropped away |
 
-<img src="../../Guide/Images/09-Pictures/PictureFit.jpg" alt="The same 3:2 landscape drawn into three 2:3 boxes: stretched, where the round sun goes oval; contained, where the whole picture sits in a band with the box showing above and below; and covered, where the box is full and the tree on the right has been cropped away" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/09-Pictures/PictureFit-dark.jpg">
+  <img src="../../Guide/Images/09-Pictures/PictureFit.jpg" alt="The same 3:2 landscape drawn into three 2:3 boxes: stretched, where the round sun goes oval; contained, where the whole picture sits in a band with the box showing above and below; and covered, where the box is full and the tree on the right has been cropped away" width="680">
+</picture>
 
 ```swift
 drawImage(photo, in: panel, fit: .cover)      // fills the panel, edges lost
@@ -189,7 +192,10 @@ image[x, y] = .red           // write one (a set)
 
 Out-of-range access is forgiving, so a stray index never crashes a loop. Reading off the edge returns `.clear`, and writing off the edge does nothing.
 
-<img src="../../Guide/Images/09-Pictures/PixelSampling.jpg" alt="Left, a small sunset image; right, the same image redrawn as a grid of dots, each dot taking its pixel's color and sized by its brightness" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/09-Pictures/PixelSampling-dark.jpg">
+  <img src="../../Guide/Images/09-Pictures/PixelSampling.jpg" alt="Left, a small sunset image; right, the same image redrawn as a grid of dots, each dot taking its pixel's color and sized by its brightness" width="680">
+</picture>
 
 Pair a write with the blank initializer to author an image from scratch. Make a transparent canvas, paint it, then draw it:
 

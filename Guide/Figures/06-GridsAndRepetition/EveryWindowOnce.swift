@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram (Chapter 6): a de Bruijn sequence. On the left the eight-bead
 // ring for two symbols and a window of three, with the eight windows it holds
@@ -9,9 +9,12 @@ import Ollin
 final class EveryWindowOnce: Sketch {
     override var canvasSize: CanvasSize { .size(880, 460) }
 
-    let paper = Color(hex: 0xF7F5F1)
-    let ink = Color(hex: 0x2B2B2B)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
     let accent = Color(hex: 0xE07A5F)
+    var note: Color { darkTheme ? Color(hex: 0xE8E5E1, alpha: 0.62) : Color(hex: 0x6E6A63) }
 
     override func draw() {
         background(paper)
@@ -36,7 +39,7 @@ final class EveryWindowOnce: Sketch {
         for start in run.indices {
             let y = left.y + 62 + Double(start) * (small + 7)
             noStroke()
-            fill(Color(hex: 0x6E6A63))
+            fill(note)
             textSize(13)
             textAlign(.right, .middle)
             drawText("\(start)", left.x - 10, y + small / 2)
@@ -51,7 +54,7 @@ final class EveryWindowOnce: Sketch {
         textSize(17)
         textAlign(.left, .middle)
         drawText("eight beads, and the eight windows they hold", left.x - 26, left.y + 268)
-        fill(Color(hex: 0x6E6A63))
+        fill(note)
         textSize(15)
         drawText("no two alike, and none missing", left.x - 26, left.y + 292)
 
@@ -95,7 +98,7 @@ final class EveryWindowOnce: Sketch {
         textSize(17)
         textAlign(.center, .middle)
         drawText("bead \(code.position(of: code.window(at: at)) ?? -1)", at: center)
-        fill(Color(hex: 0x6E6A63))
+        fill(note)
         textSize(14)
         drawText("of \(beads), four colors", at: center + Vector2(0, 24))
     }

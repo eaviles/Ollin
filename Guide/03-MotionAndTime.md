@@ -18,7 +18,10 @@ Every sketch carries a clock, and you've already used it: `time` is the seconds 
 
 `deltaTime` is worth understanding early, because your sketch's frame rate is not a constant of the universe. `draw()` runs at whatever your display refreshes at, which is 60 times a second on many screens and 120 on recent MacBooks. A step like `x += 3` happens once per *frame*. That means the same sketch covers twice the distance on the faster display:
 
-<img src="Images/03-MotionAndTime/DeltaTime.jpg" alt="Three dotted strips comparing one second of motion: a fixed per-frame step at 60 fps, the same step at 120 fps reaching twice as far, and a deltaTime-scaled step landing back in line" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/03-MotionAndTime/DeltaTime-dark.jpg">
+  <img src="Images/03-MotionAndTime/DeltaTime.jpg" alt="Three dotted strips comparing one second of motion: a fixed per-frame step at 60 fps, the same step at 120 fps reaching twice as far, and a deltaTime-scaled step landing back in line" width="680">
+</picture>
 
 There are two reliable ways to move, and this guide uses both:
 
@@ -31,7 +34,10 @@ What you want to avoid is the third way, a bare per-frame step, which silently b
 
 Here is where the wave comes from, and it's the promise [Chapter 1](01-HelloOllin.md) made:
 
-<img src="Images/03-MotionAndTime/CircleToSine.jpg" alt="A point on a circle at some angle, with a dashed line carrying its height onto a sine wave traced over time, the period and swing labeled" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/03-MotionAndTime/CircleToSine-dark.jpg">
+  <img src="Images/03-MotionAndTime/CircleToSine.jpg" alt="A point on a circle at some angle, with a dashed line carrying its height onto a sine wave traced over time, the period and swing labeled" width="680">
+</picture>
 
 Picture a point walking around a circle at a steady speed. Ask at every moment "how high is it?" and write the answers down from left to right. The trace you get is the sine wave, and that's all `sin` is: **the height of a point going around a circle**. Its partner `cos` gives you the same point's distance across. Now you can see why the pair places things around a circle the way [Chapter 1](01-HelloOllin.md)'s ring of dots did. They were never two separate tools, just the two coordinates of one walking point.
 
@@ -55,7 +61,10 @@ That's an orbit, built from nothing but the clock and the pair. Slow it down, sp
 
 One more idea falls out of the circle picture. Suppose a second point starts its walk a little further along the rim. It travels the same circle at the same speed and traces the same wave, just shifted in time. That shift is called **phase**, and you make one by adding a constant inside `sin`:
 
-<img src="Images/03-MotionAndTime/Phase.jpg" alt="Two identical sine waves, one shifted right by a bracketed phase; below, a row of dots each with a growing head start forming a wave in space" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/03-MotionAndTime/Phase-dark.jpg">
+  <img src="Images/03-MotionAndTime/Phase.jpg" alt="Two identical sine waves, one shifted right by a bracketed phase; below, a row of dots each with a growing head start forming a wave in space" width="680">
+</picture>
 
 Things get interesting when *neighbors get different head starts*. Give each dot in a row a phase proportional to its position, then look at any single instant. A wave appears across space, even though no dot is doing anything but its own private swing:
 
@@ -73,7 +82,10 @@ Run that and you've built the bottom half of the diagram, live. You've also seen
 
 That was the chapter's first act, a clock and the wave it drives. The second act shapes what they produce, and it starts with the ranges themselves. `sin` hands you `-1...1`, but that's rarely the range you actually want. You want 40 to 220 pixels of radius, or `0...1` to feed a color ramp. [Chapter 2](02-Color.md) patched this with the squeeze, `sin(...) * 0.5 + 0.5`. The proper tool is `map`, which carries a value from one range into another by keeping its *fraction along*:
 
-<img src="Images/03-MotionAndTime/MapAndLerp.jpg" alt="Top: a value carried between two number lines by its fraction along, map. Bottom: dots walking a segment from a to b as t runs 0 to 1, lerp" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/03-MotionAndTime/MapAndLerp-dark.jpg">
+  <img src="Images/03-MotionAndTime/MapAndLerp.jpg" alt="Top: a value carried between two number lines by its fraction along, map. Bottom: dots walking a segment from a to b as t runs 0 to 1, lerp" width="680">
+</picture>
 
 ```swift
 let radius = map(sin(time * .tau / 4), -1, 1, 40, 220)
@@ -129,7 +141,10 @@ This is the heart of the chapter. Everything so far moves at a constant rate. Co
 
 Because they're functions you can draw them, and drawing them is really the only way they make sense. Every plot below reads the same way. The input progress runs along the bottom, the reshaped output is the height, and the thin diagonal shows what "unchanged" would look like for reference. Under each plot is the same experiment, thirteen evenly spaced *moments* placed where the curve sends them. Where the dots bunch up the motion is slow, and where they spread out it's fast.
 
-<img src="Images/03-MotionAndTime/ShapingCurves.jpg" alt="Three panels showing linear, step, and smoothstep as curves over a faint identity diagonal, each with a strip of thirteen dots spaced by the curve" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/03-MotionAndTime/ShapingCurves-dark.jpg">
+  <img src="Images/03-MotionAndTime/ShapingCurves.jpg" alt="Three panels showing linear, step, and smoothstep as curves over a faint identity diagonal, each with a strip of thirteen dots spaced by the curve" width="680">
+</picture>
 
 - **linear** is the diagonal itself, where the output equals the input and the pace never changes. It's what you've been using so far.
 - **step** is an `if` written as a function. It stays at 0 until the halfway point and then jumps to 1, with no in-between at all. That is exactly what you want for a blink, a flip, or a light switching on.
@@ -151,7 +166,10 @@ Because the edges are yours to place, smoothstep does more than reshape a progre
 
 Once you can read a curve and its dot strip together, you can read any easing function at a glance. Ollin ships a whole catalog of them. They're Robert Penner's classic easing equations, thirty curves across ten families. Each comes in an ease-in form for a slow start, and an ease-out form for a slow arrival. There is an ease-in-out form for both.
 
-<img src="Images/03-MotionAndTime/EasingFamilies.jpg" alt="Six easing curves with spacing strips: easeInQuad, easeOutQuad, easeInOutCubic, then easeOutBack, easeOutElastic, and easeOutBounce which overshoot and settle" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/03-MotionAndTime/EasingFamilies-dark.jpg">
+  <img src="Images/03-MotionAndTime/EasingFamilies.jpg" alt="Six easing curves with spacing strips: easeInQuad, easeOutQuad, easeInOutCubic, then easeOutBack, easeOutElastic, and easeOutBounce which overshoot and settle" width="680">
+</picture>
 
 The top row stays inside `0...1`, quadratics and cubics that differ mainly in how hard they lean. The bottom row overshoots on purpose. `easeOutBack` goes past the target and comes back, the way your hand does when you reach past a shelf. `easeOutElastic` arrives like a plucked rubber band. `easeOutBounce` drops the value onto its target in shrinking hops. Watch four of them run the same trip:
 
@@ -197,7 +215,10 @@ The two knobs are chosen to be describable rather than physical. `duration` is r
 
 **`@Smoothed`** is for the opposite situation, where the value arrives *from outside*, continuously, and shakes. A jittery mouse is the obvious case, and later in this guide it'll be MIDI knobs, camera trackers, and phone sensors. There's no target to ease toward here, only a noisy stream to clean up as it comes:
 
-<img src="Images/03-MotionAndTime/SmoothedSignal.jpg" alt="A jittery gray signal path with the smoothed version drawn through it in orange" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/03-MotionAndTime/SmoothedSignal-dark.jpg">
+  <img src="Images/03-MotionAndTime/SmoothedSignal.jpg" alt="A jittery gray signal path with the smoothed version drawn through it in orange" width="680">
+</picture>
 
 ```swift
 @Smoothed var x = 0.0
@@ -211,7 +232,10 @@ Behind it is an adaptive filter that stays steady while the signal is slow and s
 
 `@Eased` and `@Sprung` each chase one target at a time. When a value should follow a *script* instead, rising over 1.2 seconds, holding, then tumbling back down, build a `Timeline`. It's a sequence of timed keyframes, each segment with its own easing, that you read like a plain value:
 
-<img src="Images/03-MotionAndTime/TimelineCurve.jpg" alt="A timeline's value plotted over 2.8 seconds: an eased rise to 1, a flat hold, then an easeOutBounce drop to 0.25, keyframes marked as dots" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/03-MotionAndTime/TimelineCurve-dark.jpg">
+  <img src="Images/03-MotionAndTime/TimelineCurve.jpg" alt="A timeline's value plotted over 2.8 seconds: an eased rise to 1, a flat hold, then an easeOutBounce drop to 0.25, keyframes marked as dots" width="680">
+</picture>
 
 ```swift
 final class Rise: Sketch {
@@ -249,7 +273,10 @@ if everyFrames(10) { grid.step() }
 
 `every(2)` is true on the one frame that crosses each two-second mark, and false on all the rest. The clock starts at zero, and zero is a crossing, so your first dot arrives at once rather than two seconds late. `phase` shifts the beat by a fraction of its own length, the same argument `loopProgress` takes, so two rhythms of one period can take turns:
 
-<img src="Images/03-MotionAndTime/Beats.jpg" alt="Three lanes charted against a ruler of seconds: every(1) stamps a dot on each tick, every(1, phase: 0.5) stamps a ring between them, and after(4) stamps a single orange dot at the four-second mark" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/03-MotionAndTime/Beats-dark.jpg">
+  <img src="Images/03-MotionAndTime/Beats.jpg" alt="Three lanes charted against a ruler of seconds: every(1) stamps a dot on each tick, every(1, phase: 0.5) stamps a ring between them, and after(4) stamps a single orange dot at the four-second mark" width="680">
+</picture>
 
 `after(3)` fires once, ever. That is not the same as `if time > 3`, which is true on every frame from then on. For setting a flag, either works. For anything that appends, spends, or plays a sound, the difference is one dot or six hundred.
 

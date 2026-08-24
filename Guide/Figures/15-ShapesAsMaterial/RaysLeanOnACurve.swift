@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram (Chapter 15): the envelope of a family of lines. On the left the
 // tangents of a circle, which lean on that circle and give it back. On the right
@@ -8,10 +8,12 @@ import Ollin
 final class RaysLeanOnACurve: Sketch {
     override var canvasSize: CanvasSize { .size(880, 460) }
 
-    let paper = Color(hex: 0xF7F5F1)
-    let ink = Color(hex: 0x2B2B2B)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
     let accent = Color(hex: 0xE07A5F)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.12)
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
 
     override func draw() {
         background(paper)
@@ -31,7 +33,7 @@ final class RaysLeanOnACurve: Sketch {
         textAlign(.center, .top)
         drawText("a family of lines leans on a curve none of them is", width / 2, 352)
         textSize(17)
-        fill(Color(hex: 0x6E6A63))
+        fill(darkTheme ? Color(hex: 0xE8E5E1, alpha: 0.62) : Color(hex: 0x6E6A63))
         drawText("the curve runs through the crossings of neighbors, which is how it is found",
                  width / 2, 386)
     }

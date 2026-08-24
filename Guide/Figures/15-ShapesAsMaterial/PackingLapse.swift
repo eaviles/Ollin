@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide figure (Chapter 15): circle packing as a time lapse. The same seeded
 // packer at four moments: big circles claim the open space first, and every
@@ -8,14 +8,18 @@ import Ollin
 final class PackingLapse: Sketch {
     override var canvasSize: CanvasSize { .size(880, 340) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.4)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.12)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.4) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
 
     let steps = [2, 8, 30, 220]
     var stages: [[Circle]] = []
 
     override func setup() {
+        stages = []
         for (i, count) in steps.enumerated() {
             let r = panelRect(i)
             let packer = ContinuousPacking(in: r.inset(by: .all(8)), seed: 3,
@@ -31,7 +35,7 @@ final class PackingLapse: Sketch {
     }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         textSize(17)
 
         for (i, circles) in stages.enumerated() {

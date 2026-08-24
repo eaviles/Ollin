@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram: the multiplier on noise's input is a zoom knob. Three panels
 // sample the same field with steps of three different sizes: tiny steps read
@@ -9,16 +9,19 @@ import Ollin
 final class NoiseZoom: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.28)
-    let accent = Color(hex: 0xE4572E)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.28) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
 
     override func setup() {
         noiseSeed(6)
     }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         textSize(21)
 
         drawPanel(x: 70, multiplier: 0.004, note: "gentle")
@@ -53,7 +56,7 @@ final class NoiseZoom: Sketch {
         fill(ink)
         textAlign(.center, .bottom)
         drawText("noise(x * \(multiplier))", x + size / 2, top - 40)
-        fill(Color(hex: 0x2B2B2B, alpha: 0.6))
+        fill(Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.6))
         drawText(note, x + size / 2, top - 14)
     }
 }

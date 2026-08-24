@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram (Chapter 9): reading an image pixel by pixel. Left, a small
 // image authored in code (a sunset over water). Right, the same image read
@@ -9,8 +9,11 @@ import Ollin
 final class PixelSampling: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.45)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.45) }
     var source: Image?
 
     override func setup() {
@@ -19,7 +22,7 @@ final class PixelSampling: Sketch {
     }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         guard let source else { return }
 
         let left = Rectangle(x: 85, y: 90, width: 320, height: 320)

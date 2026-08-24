@@ -8,7 +8,10 @@
 
 By default bright cells get dense glyphs, which reads as light marks on a dark canvas, the terminal look. Pass `inverted: true` for the paper reading, where dark cells carry the ink. Deterministic given the image, columns, characters, and font, so a mosaic is snapshot- and recipe-safe.
 
-<img src="../../Guide/Images/09-Pictures/PictureAsGlyphs.jpg" alt="Two dark panels showing the same sunset: on the left a mosaic of ASCII characters that get denser toward the sun, on the right a halftone screen of dots that grow toward the sun" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/09-Pictures/PictureAsGlyphs-dark.jpg">
+  <img src="../../Guide/Images/09-Pictures/PictureAsGlyphs.jpg" alt="Two dark panels showing the same sunset: on the left a mosaic of ASCII characters that get denser toward the sun, on the right a halftone screen of dots that grow toward the sun" width="680">
+</picture>
 
 ### Contents
 

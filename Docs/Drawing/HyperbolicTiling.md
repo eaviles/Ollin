@@ -10,7 +10,10 @@ On flat paper only three regular tilings exist (triangles, squares, hexagons), b
 
 It is geometry, not draw calls: the call hands back typed tiles whose outlines feed the same drawing, boolean, hatching, and SVG paths as everything else, so the lace is plotter-ready line work too. Generation is deterministic, with no randomness and no time.
 
-<img src="../../Guide/Images/07-Tiles/HyperbolicDisks.jpg" alt="Two Poincaré disks side by side. Left: pentagons meeting four to a corner in a crisp ivory-and-indigo curved checkerboard. Right: heptagons meeting three to a corner, ivory at the center deepening to indigo as the tiles shrink toward the circular horizon" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/07-Tiles/HyperbolicDisks-dark.jpg">
+  <img src="../../Guide/Images/07-Tiles/HyperbolicDisks.jpg" alt="Two Poincaré disks side by side. Left: pentagons meeting four to a corner in a crisp ivory-and-indigo curved checkerboard. Right: heptagons meeting three to a corner, ivory at the center deepening to indigo as the tiles shrink toward the circular horizon" width="680">
+</picture>
 
 ### Contents
 

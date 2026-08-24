@@ -49,7 +49,10 @@ Tint never edits the image itself, only how it's drawn, and `withState { }` scop
 
 That first `drawImage(photo, 0, 0, width, height)` did something quietly: it stretched. A photo is 3:2 or 4:3, your canvas is square or portrait, and squashing is only one of three answers. `fit:` names all three, and every one of them gives something up.
 
-<img src="Images/09-Pictures/PictureFit.jpg" alt="The same 3:2 landscape drawn into three 2:3 boxes: stretched, where the round sun goes oval; contained, where the whole picture sits in a band with the box showing above and below; and covered, where the box is full and the tree on the right has been cropped away" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/PictureFit-dark.jpg">
+  <img src="Images/09-Pictures/PictureFit.jpg" alt="The same 3:2 landscape drawn into three 2:3 boxes: stretched, where the round sun goes oval; contained, where the whole picture sits in a band with the box showing above and below; and covered, where the box is full and the tree on the right has been cropped away" width="680">
+</picture>
 
 - `.stretch` fills the box and gives up the picture's proportions. It is the default, because it is what `drawImage` has always done.
 - `.contain` keeps the proportions and puts the whole picture inside, centered. It gives up part of the box, which shows along two edges.
@@ -69,7 +72,10 @@ Cropping is free here, which is worth knowing before you avoid it. `.cover` does
 
 The real gift of `Image` for generative work isn't drawing it, it's *reading* it. The subscript `image[x, y]` returns the color stored at a pixel, and suddenly a picture is a field of answers, like [Chapter 5](05-Noise.md)'s noise but authored by a camera or by you:
 
-<img src="Images/09-Pictures/PixelSampling.jpg" alt="Left, a small sunset image; right, the same image redrawn as a grid of dots, each dot taking its pixel's color and sized by its brightness" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/PixelSampling-dark.jpg">
+  <img src="Images/09-Pictures/PixelSampling.jpg" alt="Left, a small sunset image; right, the same image redrawn as a grid of dots, each dot taking its pixel's color and sized by its brightness" width="680">
+</picture>
 
 The right panel asks the image one question per grid cell and draws the answer as a dot. The recipe has two small pieces. First, a cell's position maps to a pixel index by fractions. A cell at fraction `u` across the grid reads column `Int(u * Double(image.width - 1))`, and rows work the same way, so any grid samples any image size. Second, "how bright is this pixel" takes one more line than you might guess, because your eye does not weigh the three channels equally, with green counting most and blue least. The standard weights are
 
@@ -85,7 +91,10 @@ You can also write pixels. `Image(width:height:)` makes a blank image, `image[x,
 
 Reading a pixel and drawing a mark is such a common move that Ollin ships two finished versions of it, and both are worth knowing before you hand-roll your own.
 
-<img src="Images/09-Pictures/PictureAsGlyphs.jpg" alt="Two dark panels showing the same sunset: on the left a mosaic of ASCII characters that get denser toward the sun, on the right a halftone screen of dots that grow toward the sun" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/PictureAsGlyphs-dark.jpg">
+  <img src="Images/09-Pictures/PictureAsGlyphs.jpg" alt="Two dark panels showing the same sunset: on the left a mosaic of ASCII characters that get denser toward the sun, on the right a halftone screen of dots that grow toward the sun" width="680">
+</picture>
 
 `drawGlyphMosaic` divides the picture into a grid and puts one character in each cell:
 
@@ -117,7 +126,10 @@ Both also come in a data form, `glyphMosaic(of:)` and `halftone(of:)`, which han
 
 The marks so far have been characters and dots. They can be pictures.
 
-<img src="Images/09-Pictures/PicturesFromPictures.jpg" alt="Three panels: a soft target picture of two lit blobs, the same picture rebuilt as a grid of small colored tiles, and seven of those cells enlarged so each is visibly its own little picture of dots, bars and triangles" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/PicturesFromPictures-dark.jpg">
+  <img src="Images/09-Pictures/PicturesFromPictures.jpg" alt="Three panels: a soft target picture of two lit blobs, the same picture rebuilt as a grid of small colored tiles, and seven of those cells enlarged so each is visibly its own little picture of dots, bars and triangles" width="680">
+</picture>
 
 ```swift
 let mosaic = target.mosaic(of: library, columns: 32, rows: 32)
@@ -136,7 +148,10 @@ The thing that decides whether a mosaic works is not the code. **The target need
 
 One more, and this one hides its picture instead of drawing it.
 
-<img src="Images/09-Pictures/DepthInARepeat.jpg" alt="Two strips of scattered marks. The top one repeats at a fixed spacing, marked with a bracket underneath. The bottom one repeats at that spacing at its ends and at a shorter spacing through the middle, with both brackets marked and the shorter one in orange" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/DepthInARepeat-dark.jpg">
+  <img src="Images/09-Pictures/DepthInARepeat.jpg" alt="Two strips of scattered marks. The top one repeats at a fixed spacing, marked with a bracket underneath. The bottom one repeats at that spacing at its ends and at a shorter spacing through the middle, with both brackets marked and the shorter one in orange" width="680">
+</picture>
 
 A pattern that repeats at a fixed spacing gives both eyes the same marks to pair, and they read those marks at whatever depth that spacing stands for. **Shorten the repeat and the pair reads as nearer.** That is the entire trick, and it means a depth map can be turned into a picture: shorten the repeat wherever the shape is closer.
 
@@ -159,7 +174,10 @@ The other family turns a picture into line work, and all of it starts with **sti
 let dots = stipple(picture, count: 4000, in: frame)
 ```
 
-<img src="Images/09-Pictures/PictureAsLines.jpg" alt="Three panels: a stipple of the sunset with a clear void where the sun is, the same dots joined into one maze-like unbroken tour, and the same dots joined into branching tree chains" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/PictureAsLines-dark.jpg">
+  <img src="Images/09-Pictures/PictureAsLines.jpg" alt="Three panels: a stipple of the sunset with a clear void where the sun is, the same dots joined into one maze-like unbroken tour, and the same dots joined into branching tree chains" width="680">
+</picture>
 
 Once you have the dots, two ways of joining them give two very different drawings:
 
@@ -183,7 +201,10 @@ In those forms `cutoff` is the knob to know. It rounds bright grays up to paper,
 
 String art takes the same idea to its most physical extreme. Ring the canvas with pins, tie one thread to a pin, and wind it straight across, again and again. Nothing curves and nothing lifts. The picture has to come out of where the crossings pile up.
 
-<img src="Images/09-Pictures/WoundFromThread.jpg" alt="Three panels: a bold crescent picture, the first 350 chords of its winding crowding into the crescent, and the finished winding where the crescent is dense thread and the rest a light veil" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/WoundFromThread-dark.jpg">
+  <img src="Images/09-Pictures/WoundFromThread.jpg" alt="Three panels: a bold crescent picture, the first 350 chords of its winding crowding into the crescent, and the finished winding where the crescent is dense thread and the rest a light veil" width="680">
+</picture>
 
 ```swift
 let art = StringArt(of: picture, center: Vector2(540, 540), radius: 470)
@@ -209,7 +230,10 @@ One honest note, and it is why the figure gets a crescent instead of the sunset.
 
 The last treatment doesn't add marks, it rearranges the ones already there. **Pixel sorting** walks each row or column, finds runs of pixels whose brightness falls inside a band you choose, and sorts each run.
 
-<img src="Images/09-Pictures/SortedPixels.jpg" alt="The sunset beside a version with its columns sorted: the sky bands reorganize into a dome around the sun, the water smears into vertical streaks, and the sun and horizon stay intact" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/SortedPixels-dark.jpg">
+  <img src="Images/09-Pictures/SortedPixels.jpg" alt="The sunset beside a version with its columns sorted: the sky bands reorganize into a dome around the sun, the water smears into vertical streaks, and the sun and horizon stay intact" width="680">
+</picture>
 
 ```swift
 let melted = picture.pixelSorted(.vertical, threshold: 0.2 ... 0.75)
@@ -228,7 +252,10 @@ Every treatment so far changed how a picture looks. This one changes its shape, 
 
 Say a picture is 1200 wide and the space it has to fit is 800. You can squash it, and everything inside gets a third thinner. You can crop it, and lose whatever was at the edge. **Seam carving** is the third answer. Find the path down the picture that carries the least, take it out, and the picture is one pixel narrower. Do that four hundred times.
 
-<img src="Images/09-Pictures/CarvedNarrower.jpg" alt="The sunset at its own width, squeezed to 70% where the sun becomes a visible oval, and carved to 70% where the sun stays round because it was marked to hold" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/CarvedNarrower-dark.jpg">
+  <img src="Images/09-Pictures/CarvedNarrower.jpg" alt="The sunset at its own width, squeezed to 70% where the sun becomes a visible oval, and carved to 70% where the sun stays round because it was marked to hold" width="680">
+</picture>
 
 ```swift
 let narrow = picture.seamCarved(toWidth: 800)
@@ -270,7 +297,10 @@ Words and pictures are material you bring in. So are numbers.
 
 A comma-separated file is the format everything exports: a spreadsheet, a sensor log, a download from a public archive. `loadTable` reads one, and each row hands you its cells by column name.
 
-<img src="Images/09-Pictures/DataAsMaterial.jpg" alt="Left, five lines of a CSV file in a pixel font, the header and one quoted row picked out in dark ink. Right, the four data rows as colored horizontal bars labeled Oslo, Bath Maine, Kyoto, and Lima, each sized by its number" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/DataAsMaterial-dark.jpg">
+  <img src="Images/09-Pictures/DataAsMaterial.jpg" alt="Left, five lines of a CSV file in a pixel font, the header and one quoted row picked out in dark ink. Right, the four data rows as colored horizontal bars labeled Oslo, Bath Maine, Kyoto, and Lima, each sized by its number" width="680">
+</picture>
 
 ```swift
 var table: Table?
@@ -324,7 +354,10 @@ Both loaders belong in `setup()`. Reading a file is slow next to drawing one fra
 
 Reading once is right for a file. It is wrong for a number that changes while your sketch is up. A `DataFeed` reads one address over and over, in the background, so the sketch draws what is true now rather than what was true at launch.
 
-<img src="Images/09-Pictures/NumbersThatKeepArriving.jpg" alt="A diagram on cream paper. A row of request marks along a time line, labeled 200, 304, 304, then three red crosses labeled 500 with widening gaps between them marked wait, twice, four times, then 200 and 304. Below, a green staircase labeled updates steps from 1 to 2 only at the second 200, and under that a red band labeled problem covers the failing stretch" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/NumbersThatKeepArriving-dark.jpg">
+  <img src="Images/09-Pictures/NumbersThatKeepArriving.jpg" alt="A diagram on cream paper. A row of request marks along a time line, labeled 200, 304, 304, then three red crosses labeled 500 with widening gaps between them marked wait, twice, four times, then 200 and 304. Below, a green staircase labeled updates steps from 1 to 2 only at the second 200, and under that a red band labeled problem covers the failing stretch" width="680">
+</picture>
 
 ```swift
 final class Tide: Sketch {

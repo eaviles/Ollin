@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram: two ways to describe one color. RGB stores three amounts of
 // light; HSB picks a hue on the wheel, then how vivid and how bright.
@@ -7,11 +7,14 @@ import Ollin
 final class HueWheels: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let label = Color(hex: 0x2B2B2B, alpha: 0.55)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var label: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.55) }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         noStroke()
         textSize(21)
 
@@ -23,7 +26,7 @@ final class HueWheels: Sketch {
         ]
         for (i, bar) in amounts.enumerated() {
             let y = 120.0 + Double(i) * 64
-            fill(Color(hex: 0x2B2B2B, alpha: 0.08))
+            fill(Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.08))
             drawRect(70, y, 240, 36)
             fill(bar.0)
             drawRect(70, y, 240 * bar.1, 36)
@@ -51,7 +54,7 @@ final class HueWheels: Sketch {
             fill(Color(hue: Double(i) / Double(wedges), saturation: 0.85, brightness: 0.95))
             drawArc(center: center, rx: 130, ry: 130, start: a0, stop: a1, mode: .pie)
         }
-        fill(Color(hex: 0xF7F5F1))
+        fill(paper)
         drawCircle(center: center, radius: 58)
         fill(label)
         textAlign(.center, .middle)

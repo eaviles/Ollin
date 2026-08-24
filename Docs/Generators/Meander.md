@@ -8,7 +8,10 @@ A river centerline that migrates sideways over time: bends deepen and slide down
 
 Like [differential growth](./DifferentialGrowth.md), this is a **stateful stepper**: you build a `Meander` once, hold it, and advance it each frame. It's seeded, so the same seed runs the same river. Everything it produces is ordinary geometry (`centerline`, `oxbows`, `scars`), ready for stroking, filling, the [shape booleans](../Drawing/Geometry.md), hatching, and SVG export.
 
-<img src="../../Guide/Images/13-GrowingThings/WanderingRiver.jpg" alt="Two panels: left, an S-shaped channel with an orange arrow pointing away from the outside of a bend, labeled the outside is eaten away, and a second arrow along the flow labeled and the bend slides downstream; right, a wandering dark blue river over faded terracotta and sage ribbons of its old positions, with a pale crescent lake beside it" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/13-GrowingThings/WanderingRiver-dark.jpg">
+  <img src="../../Guide/Images/13-GrowingThings/WanderingRiver.jpg" alt="Two panels: left, an S-shaped channel with an orange arrow pointing away from the outside of a bend, labeled the outside is eaten away, and a second arrow along the flow labeled and the bend slides downstream; right, a wandering dark blue river over faded terracotta and sage ribbons of its old positions, with a pale crescent lake beside it" width="680">
+</picture>
 
 ### Contents
 

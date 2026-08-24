@@ -23,11 +23,17 @@ noFill()
 drawTruchet(columns: 8, rows: 8, tile: .arcs)
 ```
 
-<img src="Images/07-Tiles/TruchetTiles.jpg" alt="Two panels of white line work on dark squares: quarter-circle arcs joining into meandering loops, and corner-to-corner diagonals forming a maze" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/07-Tiles/TruchetTiles-dark.jpg">
+  <img src="Images/07-Tiles/TruchetTiles.jpg" alt="Two panels of white line work on dark squares: quarter-circle arcs joining into meandering loops, and corner-to-corner diagonals forming a maze" width="680">
+</picture>
 
 `.arcs` is two quarter circles per cell, while `.diagonals` is a single corner-to-corner stroke. If you've ever seen the famous one-line maze program from 1982 home computers, that's exactly this tile. Both look far more planned than a coin flip per cell should allow, and the diagram below is the reason:
 
-<img src="Images/07-Tiles/TruchetJoins.jpg" alt="The arc tile's two spins, with dots marking where arcs end at edge midpoints; beside them, six randomly spun tiles whose arcs meet exactly at every shared edge midpoint" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/07-Tiles/TruchetJoins-dark.jpg">
+  <img src="Images/07-Tiles/TruchetJoins.jpg" alt="The arc tile's two spins, with dots marking where arcs end at edge midpoints; beside them, six randomly spun tiles whose arcs meet exactly at every shared edge midpoint" width="680">
+</picture>
 
 The arc tile touches its cell's boundary in only four places, the edge midpoints, no matter which way it's spun. Think of the midpoints as doorways. Every tile has a doorway in the middle of each wall. So whatever your neighbor did, your marks and theirs meet at the doorway and flow through. Local rule, global order. Each tile only promises to hit its own doorways. The loops, corridors, and long wandering strands emerge across the whole canvas, with no tile knowing about them.
 
@@ -55,7 +61,10 @@ stroke(Color(hex: 0xF2E9DC)); strokeWeight(4); strokeCap(.round)
 for dash in design.stitches { drawPolyline(dash.points, closed: false) }
 ```
 
-<img src="Images/07-Tiles/HitomezashiFaces.jpg" alt="Two dark panels: cream dashes joining into stepped loops on indigo cloth, and the same design with its regions filled in two blues, every tone boundary sitting under a stitch" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/07-Tiles/HitomezashiFaces-dark.jpg">
+  <img src="Images/07-Tiles/HitomezashiFaces.jpg" alt="Two dark panels: cream dashes joining into stepped loops on indigo cloth, and the same design with its regions filled in two blues, every tone boundary sitting under a stitch" width="680">
+</picture>
 
 Bias the flips with `probability:` and the weave drifts into long diagonal staircases. Or skip the coin entirely. `Hitomezashi(grid:rowBits:columnBits:)` takes explicit bits, and shorter arrays repeat along their lines. A favorite trick encodes a word as bits, a vowel as a 1, so a name becomes a design.
 
@@ -63,7 +72,10 @@ Bias the flips with `probability:` and the weave drifts into long diagonal stair
 
 Hitomezashi spends one coin per grid *line*. Spend one per grid *cell* instead, and let the coin choose between two diagonals, and you get the other famous one-rule pattern.
 
-<img src="Images/07-Tiles/DiagonalMaze.jpg" alt="Two panels of the same design: a black maze of diagonals over a 16 by 16 grid, and the same lines redrawn with each joined run in its own color" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/07-Tiles/DiagonalMaze-dark.jpg">
+  <img src="Images/07-Tiles/DiagonalMaze.jpg" alt="Two panels of the same design: a black maze of diagonals over a 16 by 16 grid, and the same lines redrawn with each joined run in its own color" width="680">
+</picture>
 
 ```swift
 seed(6)
@@ -91,7 +103,10 @@ drawKolam(columns: 7, rows: 5)
 
 Here is the part worth keeping. **How many separate loops you get is decided before you draw anything.** It is the greatest common divisor of the two side counts. Seven by five share no factor, so that field is one unbroken line. Six by four share two, so that field is two loops that never touch. Five by five is five. You can pick the outcome by picking the numbers, which is not something most generative rules will let you do.
 
-<img src="Images/07-Tiles/KolamLoops.jpg" alt="Three dark panels of chalk-colored looping line work around small dots. One continuous line over a field of seven by five dots; two interleaved loops in cream and orange over six by four; and the same seven by five field cut into three loops by two short walls" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/07-Tiles/KolamLoops-dark.jpg">
+  <img src="Images/07-Tiles/KolamLoops.jpg" alt="Three dark panels of chalk-colored looping line work around small dots. One continuous line over a field of seven by five dots; two interleaved loops in cream and orange over six by four; and the same seven by five field cut into three loops by two short walls" width="680">
+</picture>
 
 This is an old idea in more than one place. In south India a **kolam** is chalked on the doorstep at dawn, around a grid of pulli, the dots. In Angola a **sona** is drawn in sand with one finger while the story that goes with it is told. Drawing it in a single unbroken line is the point in both, which is why the count matters to the people who draw them.
 
@@ -112,7 +127,10 @@ Give that line width, and one more rule, and it becomes something else entirely.
 
 Wherever two passes meet, one has to go over and the other under. The rule that makes it work is that the choice **alternates**: follow any cord and it goes over, under, over, under, the whole way around. Knots drawn that way are called alternating, and that is what the eye reads as woven. Get it wrong in one place and the whole thing collapses into a heap of lines.
 
-<img src="Images/07-Tiles/KnotworkWeave.jpg" alt="Three dark panels. A thin gold lattice of crossing diagonal lines; the same lattice as thick gold bands outlined in near-black, woven over and under; and the same weave with the middle reorganized into a knot by two pairs of walls" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/07-Tiles/KnotworkWeave-dark.jpg">
+  <img src="Images/07-Tiles/KnotworkWeave.jpg" alt="Three dark panels. A thin gold lattice of crossing diagonal lines; the same lattice as thick gold bands outlined in near-black, woven over and under; and the same weave with the middle reorganized into a knot by two pairs of walls" width="680">
+</picture>
 
 `knotwork` hands the cords back **already broken where they dive under**, so stroking the pieces is the weave. There is nothing to mask and no draw order to get right:
 
@@ -143,7 +161,10 @@ What is new here is that the pattern can be wrong. A tiling is a tiling whatever
 
 Two laws decide it, and both look at a single vertex. **Kawasaki's law**: walk around the vertex and list the angles between one fold and the next. Add the first, take away the second, add the third, and keep going all the way around. The answer has to come to zero. **Maekawa's law**: count the mountains and the valleys meeting there. One count is always exactly two more than the other. `isFlatFoldable` asks both, at every vertex inside the sheet.
 
-<img src="Images/07-Tiles/CreaseAndFold.jpg" alt="Three dark panels. A flat crease pattern of leaning parallelograms, its folds marked in orange and blue; the same sheet folded into a corrugated field of panels seen from a corner; and a grid of pale squares turned one way and the next, with diamond holes open between them" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/07-Tiles/CreaseAndFold-dark.jpg">
+  <img src="Images/07-Tiles/CreaseAndFold.jpg" alt="Three dark panels. A flat crease pattern of leaning parallelograms, its folds marked in orange and blue; the same sheet folded into a corrugated field of panels seen from a corner; and a grid of pale squares turned one way and the next, with diamond holes open between them" width="680">
+</picture>
 
 The pattern on the left is the **Miura fold**, and it is the one worth knowing:
 
@@ -205,7 +226,10 @@ A fit of twelve pentominoes takes about a second, so solve it in `setup()` or on
 
 Everything so far repeats. Slide a hex grid one cell over and it lands on itself. That regularity is most of its charm. But there are tile sets that *cannot* do this. However you lay them, the pattern never repeats, anywhere, ever. Order without repetition is a real, buildable thing.
 
-<img src="Images/07-Tiles/AperiodicTiles.jpg" alt="Four panels: Penrose kites and darts with colored arcs, Penrose rhombs, a teal star pattern woven over a honeycomb, and curved spectre tiles with a few orange ones" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/07-Tiles/AperiodicTiles-dark.jpg">
+  <img src="Images/07-Tiles/AperiodicTiles.jpg" alt="Four panels: Penrose kites and darts with colored arcs, Penrose rhombs, a teal star pattern woven over a honeycomb, and curved spectre tiles with a few orange ones" width="680">
+</picture>
 
 The famous pair is the **Penrose tiling**, two shapes whose edge rules force endless variety with perfect five-fold poise. They are kites and darts, or a thick and a thin rhombus. `penroseTiling` grows one to cover the canvas. Each tile tells you its `kind` and carries two `arcs`, the classic decoration whose ends meet across every edge. So the whole tiling becomes one weave of curves:
 
@@ -239,7 +263,10 @@ for tile in hyperbolicTiling(sides: 5, meeting: 4) {
 }
 ```
 
-<img src="Images/07-Tiles/HyperbolicDisks.jpg" alt="Two Poincaré disks side by side. Left: pentagons meeting four to a corner in a crisp ivory-and-indigo curved checkerboard. Right: heptagons meeting three to a corner, ivory at the center deepening to indigo as the tiles shrink toward the circular horizon" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/07-Tiles/HyperbolicDisks-dark.jpg">
+  <img src="Images/07-Tiles/HyperbolicDisks.jpg" alt="Two Poincaré disks side by side. Left: pentagons meeting four to a corner in a crisp ivory-and-indigo curved checkerboard. Right: heptagons meeting three to a corner, ivory at the center deepening to indigo as the tiles shrink toward the circular horizon" width="680">
+</picture>
 
 Each tile carries `parity`, which flips across every shared edge. When `meeting` is even, the two colors close cleanly around every vertex and the disk becomes a perfect curved checkerboard. When it's odd, fade by `depth` instead, the count of edge crossings out from the middle. And the disk has one more trick: pass a moving `viewpoint` and the camera pans across the tiling forever, tiles swelling as they reach the middle and shrinking away behind. The horizon never gets closer. The full reference is the [hyperbolic tiling](../Docs/Drawing/HyperbolicTiling.md) page; `Examples/Patterns/HyperbolicTiling` is the panning tour.
 

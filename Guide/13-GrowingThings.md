@@ -64,7 +64,10 @@ In 1968 the biologist Aristid Lindenmayer wanted to describe how plants grow, an
 
 Here's the guide's plant grammar, rewritten one, two, three, and four times:
 
-<img src="Images/13-GrowingThings/LSystemExpansion.jpg" alt="Four panels of the same plant grammar drawn after one to four rounds of rewriting, growing from a bare stalk to a full fern, with the letter count under each panel rising from 18 to 1551" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/13-GrowingThings/LSystemExpansion-dark.jpg">
+  <img src="Images/13-GrowingThings/LSystemExpansion.jpg" alt="Four panels of the same plant grammar drawn after one to four rounds of rewriting, growing from a bare stalk to a full fern, with the letter count under each panel rising from 18 to 1551" width="680">
+</picture>
 
 Nothing about the drawing code changes between panels. The drawing gets richer because the *sentence* gets longer. Every `X` in the string sprouts the whole shoot pattern each round, so eighteen letters become fifteen hundred in four rewrites. Growth by rewriting is exponential, which is exactly how a twig's worth of rule makes a tree's worth of structure.
 
@@ -104,7 +107,10 @@ A(s)  :  s > 0.02  ->  F(s)[+A(s*0.5)][-A(s*0.5)]
 
 Read that left to right. When a bud `A` is longer than a hundredth, draw a segment its own length, then fork into two buds, each half as long. When it is *not* longer, no rule matches it. A symbol no rule matches is left alone, so that bud simply stops. Growth ends because the arithmetic ran out, not because you counted the rounds.
 
-<img src="Images/13-GrowingThings/CarryingNumbers.jpg" alt="Three panels. A plain grammar tree of uniform segments, a parametric branch whose segments shrink by a ratio each fork, and a parametric tree drawn with a thick trunk tapering to fine twigs" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/13-GrowingThings/CarryingNumbers-dark.jpg">
+  <img src="Images/13-GrowingThings/CarryingNumbers.jpg" alt="Three panels. A plain grammar tree of uniform segments, a parametric branch whose segments shrink by a ratio each fork, and a parametric tree drawn with a thick trunk tapering to fine twigs" width="680">
+</picture>
 
 In Ollin that rule is one string, and the whole system is one value:
 
@@ -150,7 +156,10 @@ for cell in lattice.run(generations: 9, seed: 7) {
 }
 ```
 
-<img src="Images/13-GrowingThings/CutAndCutAgain.jpg" alt="Four panels of the same frame cut by one rule after one, three, six, and nine sweeps: two cells, then eight, then fifty-one, then fifty-five and finished, with cells still large enough to cut drawn in warm orange and the rest in black" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/13-GrowingThings/CutAndCutAgain-dark.jpg">
+  <img src="Images/13-GrowingThings/CutAndCutAgain.jpg" alt="Four panels of the same frame cut by one rule after one, three, six, and nine sweeps: two cells, then eight, then fifty-one, then fifty-five and finished, with cells still large enough to cut drawn in warm orange and the rest in black" width="680">
+</picture>
 
 A sweep offers every cell to the rule at once, the way a rewrite replaces every symbol at once. But watch the warm color drain away. `minimumArea` says how small a cell must get before the rule leaves it alone, so the run finishes on its own. That is the real difference between the two kinds of rewriting. Symbols can always be rewritten again, so an L-system grows forever. Shapes are rewritten in place, so a shape grammar runs out of room.
 
@@ -173,7 +182,10 @@ Cutting is not the only move. `split` slices a piece at fractions of its width o
 
 The neighborly rules that steer a flock in [Chapter 12](12-FlocksAndSwarms.md) work just as well on geometry that is not going anywhere. Take a closed ring of points. Every step, pull each point toward its neighbors along the line (the line doesn't want to tear), push it away from *every* point that comes near (the line doesn't want to touch itself), and whenever a segment stretches too long, split it in the middle so the line gains a point. That's the whole algorithm. It's called differential growth, and it turns a circle into coral:
 
-<img src="Images/13-GrowingThings/GrowthStrip.jpg" alt="Five small panels showing the same ring at step 0, 80, 180, 320, and 500: a circle wobbles, then folds into a dense meandering coral-like blob" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/13-GrowingThings/GrowthStrip-dark.jpg">
+  <img src="Images/13-GrowingThings/GrowthStrip.jpg" alt="Five small panels showing the same ring at step 0, 80, 180, 320, and 500: a circle wobbles, then folds into a dense meandering coral-like blob" width="680">
+</picture>
 
 The folding isn't decoration; it's the only shape a growing line can take when it refuses to crowd itself. The same tension between attraction and repulsion that spaced the boids now sculpts geometry. Make `MySketches/Coral.swift`:
 
@@ -207,7 +219,10 @@ Run it live and you can watch the folds negotiate for room in real time. `growth
 
 Grammars grow blind, and the fern doesn't know where the canvas ends or where its own leaves already are. The next grower looks before it grows. Scatter *attraction points* over the region you want filled, plant a root, then repeat three moves. Every attractor pulls on the closest branch tip within its reach. Every pulled tip grows one small step toward the average of its pulls. Every attractor a branch reaches is consumed, so its pull disappears and the growth moves on:
 
-<img src="Images/13-GrowingThings/ClaimingSpace.jpg" alt="Four panels of the same growth at step 6, 18, 40, and finished: ink veins spread from a bottom root into a field of orange dots, and the dots vanish as branches reach them" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/13-GrowingThings/ClaimingSpace-dark.jpg">
+  <img src="Images/13-GrowingThings/ClaimingSpace.jpg" alt="Four panels of the same growth at step 6, 18, 40, and finished: ink veins spread from a bottom root into a field of orange dots, and the dots vanish as branches reach them" width="680">
+</picture>
 
 This is **space colonization**, and it grows the most convincing veins, roots, and trees in generative art. It grows the way real veins do, reaching toward unclaimed space and never doubling back into crowded territory. In Ollin it's `SpaceColonization`, another stepper you hold (the [Chapter 12](12-FlocksAndSwarms.md) shape):
 
@@ -226,7 +241,10 @@ The last touch is weight. `thicknesses(leafWidth:exponent:)` gives every node a 
 
 The third grower has no goals at all. Freeze one particle in the middle. Release a random walker from somewhere far away and let it wander. The moment it touches the frozen cluster it freezes too, and the next walker sets out:
 
-<img src="Images/13-GrowingThings/FrozenWalkers.jpg" alt="Two panels: left, a gray wandering path drifts in from the corner and ends at an orange dot marked frozen on the edge of a small ink cluster; right, a dendritic cluster of eight hundred dots with wispy arms and open hollows" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/13-GrowingThings/FrozenWalkers-dark.jpg">
+  <img src="Images/13-GrowingThings/FrozenWalkers.jpg" alt="Two panels: left, a gray wandering path drifts in from the corner and ends at an orange dot marked frozen on the edge of a small ink cluster; right, a dendritic cluster of eight hundred dots with wispy arms and open hollows" width="680">
+</picture>
 
 That's the entire algorithm, and it's called **diffusion-limited aggregation** (DLA). The shape it grows is not an accident. A wandering particle almost always bumps into a *tip* before it can thread its way into a hollow, so tips grow and hollows starve. Frost on a window, minerals crystallizing in stone, and coral all play this game, which is why the clusters look instantly familiar.
 
@@ -248,7 +266,10 @@ Because particles freeze in arrival order, `cluster.particles[i]` froze `i`-th, 
 
 DLA's walkers are secretly measuring something. Where walkers arrive often, an electric field would be strong too. The **dielectric breakdown model** drops the walkers and measures the field directly. Hold the discharge at one voltage and the surroundings at another, solve the field between them, and grow where it's strongest. This is how a spark decides, and it's the physics burned into wood and acrylic as Lichtenberg figures.
 
-<img src="Images/13-GrowingThings/VoltageChooses.jpg" alt="Two panels: left, a young lattice discharge inside a violet wash of its solved field, its frontier dotted in orange with the dots large at the tips and missing in the crevices; right, a sparse jagged discharge with its main channels drawn thick" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/13-GrowingThings/VoltageChooses-dark.jpg">
+  <img src="Images/13-GrowingThings/VoltageChooses.jpg" alt="Two panels: left, a young lattice discharge inside a violet wash of its solved field, its frontier dotted in orange with the dots large at the tips and missing in the crevices; right, a sparse jagged discharge with its main channels drawn thick" width="680">
+</picture>
 
 One number runs the show. Every frontier cell's chance to grow is the local field raised to `eta`, and that exponent is a character dial DLA never had. At `1` you're back to DLA's furry bushes. Near `2` the favorites win so hard the figure turns sparse and jagged, which is the lightning regime. Higher still approaches a single channel.
 
@@ -269,7 +290,10 @@ It's the same stepper shape as the others, with three gifts on top. `thicknesses
 
 The fourth grower makes cities. Start three straight cracks moving across the canvas, each remembering its angle in a grid as it goes. A crack that reaches a cell holding some *other* angle has met an older line. It stops there. Then it restarts perpendicular to a random point on the existing pattern, and one more crack joins the population:
 
-<img src="Images/13-GrowingThings/CrackedCity.jpg" alt="Two panels: left, a vertical crack stopped on a horizontal line at an orange dot marked stops here, with an orange arrow setting out perpendicular from the vertical line; right, a plane subdivided into rectangular city blocks by fine dark cracks with faint colored washes beside them" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/13-GrowingThings/CrackedCity-dark.jpg">
+  <img src="Images/13-GrowingThings/CrackedCity.jpg" alt="Two panels: left, a vertical crack stopped on a horizontal line at an orange dot marked stops here, with an orange arrow setting out perpendicular from the vertical line; right, a plane subdivided into rectangular city blocks by fine dark cracks with faint colored washes beside them" width="680">
+</picture>
 
 Every stop is a birth, so the map only gets busier. The cracks stay perpendicular to their parents, which is why the picture reads as streets and blocks instead of a tangle. `CrackGrowth` is the stepper, and it hands you geometry rather than pixels:
 
@@ -293,7 +317,10 @@ override func draw() {
 
 The fifth grower is a river. Water on the outside of a bend runs faster, so it eats that bank away. Water on the inside runs slower, so it drops the sand it carries. The bend deepens. And because each bend is pushed by the water that entered it upstream, the whole train of bends slides downstream as it grows. The river turns hardest where the water arrived already turning.
 
-<img src="Images/13-GrowingThings/WanderingRiver.jpg" alt="Two panels: left, an S-shaped channel with an orange arrow pointing away from the outside of a bend, labeled the outside is eaten away, and a second arrow along the flow labeled and the bend slides downstream; right, a wandering dark blue river over faded terracotta and sage ribbons of its old positions, with a pale crescent lake beside it" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/13-GrowingThings/WanderingRiver-dark.jpg">
+  <img src="Images/13-GrowingThings/WanderingRiver.jpg" alt="Two panels: left, an S-shaped channel with an orange arrow pointing away from the outside of a bend, labeled the outside is eaten away, and a second arrow along the flow labeled and the bend slides downstream; right, a wandering dark blue river over faded terracotta and sage ribbons of its old positions, with a pale crescent lake beside it" width="680">
+</picture>
 
 Let it run and a loop eventually pinches shut. The river takes the shortcut, and the abandoned loop is left beside it as a crescent lake. `Meander` is the stepper, and like the others it hands you geometry:
 
@@ -316,7 +343,10 @@ override func draw() {
 
 The last technique in this chapter grows nothing, strictly speaking, but it belongs with the growers because its results read as one organism. Wave Function Collapse fills a grid from a small set of tiles under one law. Neighboring tiles must agree along their shared edge. Each tile declares a *socket* per edge, pipe or blank in the classic set. The solver keeps every cell's options open, repeatedly settling the most-constrained cell and propagating what that choice forbids:
 
-<img src="Images/13-GrowingThings/TilesAgree.jpg" alt="Left, three enlarged pipe tiles with orange dots marking their pipe sockets and hollow dots their blank edges; right, an eleven-by-eleven solved grid where every pipe meets a pipe and the network connects" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/13-GrowingThings/TilesAgree-dark.jpg">
+  <img src="Images/13-GrowingThings/TilesAgree.jpg" alt="Left, three enlarged pipe tiles with orange dots marking their pipe sockets and hollow dots their blank edges; right, an eleven-by-eleven solved grid where every pipe meets a pipe and the network connects" width="680">
+</picture>
 
 Building the tileset is most of the work, and it's pleasantly declarative. A tile is its four edge sockets, in the order top, right, bottom, left. `rotations()` mints the turned variants, and a `weight` makes a tile more or less common:
 
@@ -338,7 +368,10 @@ Declaring tiles and sockets is most of the work, and some textures don't come ap
 
 It cuts the sample into every little square the sample contains, counts how often each one turns up, and notes which squares can overlap which. Then it fills a much larger grid so that every overlap agrees. The guarantee is this: **every square of the result is a square the sample already contained.**
 
-<img src="Images/13-GrowingThings/LearnedFromAPicture.jpg" alt="Left, a sixteen by sixteen hand-drawn plan of thick black walls; right, a forty-eight by thirty picture in the same style, with the same wall thickness and the same corners, arranged completely differently" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/13-GrowingThings/LearnedFromAPicture-dark.jpg">
+  <img src="Images/13-GrowingThings/LearnedFromAPicture.jpg" alt="Left, a sixteen by sixteen hand-drawn plan of thick black walls; right, a forty-eight by thirty picture in the same style, with the same wall thickness and the same corners, arranged completely differently" width="680">
+</picture>
 
 The sample is sixteen pixels square. You pass it in and ask for a size:
 

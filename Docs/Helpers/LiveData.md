@@ -130,7 +130,10 @@ Polling is unhurried on purpose, because a sketch on a wall runs for weeks.
 - An unchanged answer is asked for conditionally: the feed sends back the `ETag` or `Last-Modified` the server gave it, so a server that supports it can reply with a header and no body. That reply is not an update.
 - A run of failures backs off, doubling the wait each time up to eight times the interval. The next answer puts it back to the plain interval.
 
-<img src="../../Guide/Images/09-Pictures/NumbersThatKeepArriving.jpg" alt="A diagram on cream paper. A row of request marks along a time line, labeled 200, 304, 304, then three red crosses labeled 500 with widening gaps between them marked wait, twice, four times, then 200 and 304. Below, a green staircase labeled updates steps from 1 to 2 only at the second 200, and under that a red band labeled problem covers the failing stretch" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/09-Pictures/NumbersThatKeepArriving-dark.jpg">
+  <img src="../../Guide/Images/09-Pictures/NumbersThatKeepArriving.jpg" alt="A diagram on cream paper. A row of request marks along a time line, labeled 200, 304, 304, then three red crosses labeled 500 with widening gaps between them marked wait, twice, four times, then 200 and 304. Below, a green staircase labeled updates steps from 1 to 2 only at the second 200, and under that a red band labeled problem covers the failing stretch" width="680">
+</picture>
 
 Keep a feed small. The parse happens off the frame, but a document of many megabytes is still a document of many megabytes. A big one belongs in a file read once in `setup()`.
 

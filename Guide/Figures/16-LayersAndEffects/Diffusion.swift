@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide figure (Chapter 16): diffusion curves. The marks on their own, the field
 // they settle into, and what one more curve does to it.
@@ -7,13 +7,17 @@ import Ollin
 final class Diffusion: Sketch {
     override var canvasSize: CanvasSize { .size(880, 386) }
 
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+
     let dusk = Color(hex: 0xE86F4A)
     let deep = Color(hex: 0x101A2E)
     let sand = Color(hex: 0xE8C98A)
     let sky = Color(hex: 0x2A3D66)
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
 
         let tile = 268.0, gap = 12.0
         let left = (width - tile * 3 - gap * 2) / 2
@@ -54,7 +58,7 @@ final class Diffusion: Sketch {
                 drawImage(marks.filtered(.diffuse(sharpness: 1)).image, in: frame)
             }
 
-            fill(Color(hex: 0x2B2B2B, alpha: 0.62))
+            fill(Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.62))
             textSize(16)
             textAlign(.center, .top)
             drawText(labels[index], frame.x + frame.width / 2, frame.y + frame.height + 8)

@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram (Chapter 15): one curve, walked three times by a synthetic hand
 // that is nearly still at the ends and flicks through the middle. The first
@@ -9,11 +9,14 @@ import Ollin
 final class MarkDynamics: Sketch {
     override var canvasSize: CanvasSize { .size(880, 340) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.12)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         textSize(17)
 
         let titles = ["ignoring the pace", "pace drives width", "pace drives opacity"]

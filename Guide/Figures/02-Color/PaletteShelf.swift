@@ -1,4 +1,4 @@
-// figure: frame=0 probe
+// figure: frame=0 probe themed
 //
 // Guide diagram: the color kits on one shelf. A discrete palette, a harmony
 // built from one base color, a smooth ramp, and two ready-made ramps.
@@ -7,10 +7,13 @@ import Ollin
 final class PaletteShelf: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
-    let label = Color(hex: 0x2B2B2B, alpha: 0.55)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var label: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.55) }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         noStroke()
         textSize(20)
         textAlign(.left, .middle)

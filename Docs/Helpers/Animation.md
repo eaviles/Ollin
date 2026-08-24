@@ -137,7 +137,10 @@ drawCircle(x, height / 2, 40 * scale)
 
 The input `t` is clamped to `0...1` first, so values past the ends hold flat. The output is *not* clamped: the back, elastic, and bounce curves overshoot the range on purpose and settle exactly on the endpoints. Back dips below zero before overshooting past one, elastic springs around the target before resting, and bounce settles onto the end in shrinking hops.
 
-<img src="../../Guide/Images/03-MotionAndTime/ShapingCurves.jpg" alt="Three panels showing linear, step, and smoothstep as curves over a faint identity diagonal, each with a strip of thirteen dots spaced by the curve" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/03-MotionAndTime/ShapingCurves-dark.jpg">
+  <img src="../../Guide/Images/03-MotionAndTime/ShapingCurves.jpg" alt="Three panels showing linear, step, and smoothstep as curves over a faint identity diagonal, each with a strip of thirteen dots spaced by the curve" width="680">
+</picture>
 
 Build a custom curve from any closure:
 
@@ -166,7 +169,10 @@ let gentle = Easing { t in t * t * (3 - 2 * t) }   // a hand-rolled smoothstep
 
 The back, elastic, and bounce families overshoot: back dips past the start and overshoots the target, elastic springs around it, and bounce settles in steps. The other seven stay within `0...1`.
 
-<img src="../../Guide/Images/03-MotionAndTime/EasingFamilies.jpg" alt="Six easing curves with spacing strips: easeInQuad, easeOutQuad, easeInOutCubic, then easeOutBack, easeOutElastic, and easeOutBounce which overshoot and settle" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/03-MotionAndTime/EasingFamilies-dark.jpg">
+  <img src="../../Guide/Images/03-MotionAndTime/EasingFamilies.jpg" alt="Six easing curves with spacing strips: easeInQuad, easeOutQuad, easeInOutCubic, then easeOutBack, easeOutElastic, and easeOutBounce which overshoot and settle" width="680">
+</picture>
 
 Three friendly aliases cover the common case: `.easeIn`, `.easeOut`, and `.easeInOut` map to the cubic forms. `.smoothstep` is a Hermite smoothstep, a gentler S than `easeInOut` and the same curve as the bare [`smoothstep(0, 1, t)`](../Helpers/Math.md#shaping).
 
@@ -210,7 +216,10 @@ The [Easing example](../../Examples/Motion/Easing/Sketch.swift) races four dots 
 
 `@Eased` glides toward a target you *know*. When instead you have a noisy live signal whose true value you *don't* know (a jittery `mouseX`/`mouseY`, or live input from OSC, MIDI, computer vision, or the phone sensors), reach for `@Smoothed`. It cleans the stream with the [1€ filter](https://gery.casiez.net/1euro/), an adaptive low-pass that stays responsive when the signal moves fast and steady when it's slow, something a fixed low-pass can't manage at both ends.
 
-<img src="../../Guide/Images/03-MotionAndTime/SmoothedSignal.jpg" alt="A jittery gray signal path with the smoothed version drawn through it in orange" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/03-MotionAndTime/SmoothedSignal-dark.jpg">
+  <img src="../../Guide/Images/03-MotionAndTime/SmoothedSignal.jpg" alt="A jittery gray signal path with the smoothed version drawn through it in orange" width="680">
+</picture>
 
 Assign the raw value each frame and read back a clean one. Like `@Eased`, the sketch advances it for you, so there's no update step to call:
 

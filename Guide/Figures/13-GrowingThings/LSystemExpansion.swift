@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram (Chapter 13): an L-system grows by rewriting. The same plant
 // grammar drawn after one, two, three, and four rounds of rewriting, with the
@@ -9,14 +9,19 @@ import Ollin
 final class LSystemExpansion: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.4)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.12)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.4) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
 
     var drawings: [[Contour]] = []
     var lengths: [Int] = []
 
     override func setup() {
+        drawings = []
+        lengths = []
         seed(1)
         for iterations in 1 ... 4 {
             let r = panelRect(iterations - 1)
@@ -31,7 +36,7 @@ final class LSystemExpansion: Sketch {
     }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         textSize(17)
 
         noStroke()

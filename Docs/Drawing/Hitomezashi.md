@@ -8,7 +8,10 @@ The one-stitch sashiko pattern. Every line of a grid carries a row of **unit das
 
 One design has **two faces**. The `stitches` are the line-work, one open two-point `Contour` per dash. They stroke, hatch, feed the [shape booleans](./Geometry.md), or export to SVG for a pen plotter. The `parities` two-color the cells. Every hitomezashi design splits the cloth into regions that exactly two tones can fill, and `parities` is that coloring.
 
-<img src="../../Guide/Images/07-Tiles/HitomezashiFaces.jpg" alt="Two dark panels: cream dashes joining into stepped loops on indigo cloth, and the same design with its regions filled in two blues, every tone boundary sitting under a stitch" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/07-Tiles/HitomezashiFaces-dark.jpg">
+  <img src="../../Guide/Images/07-Tiles/HitomezashiFaces.jpg" alt="Two dark panels: cream dashes joining into stepped loops on indigo cloth, and the same design with its regions filled in two blues, every tone boundary sitting under a stitch" width="680">
+</picture>
 
 ### Contents
 
