@@ -30,11 +30,29 @@ struct DetachedInspectorView: View {
     }
 
     var body: some View {
-        // Below the native "Parameters"-less title bar (just the sketch title +
-        // its hairline, the window's own `titlebarSeparatorStyle`), the OllinLive
-        // sidebar's content verbatim: the same monitor card and parameter list,
-        // same spacing and padding. The top inset clears the title bar; the
-        // Material (+ scrim) fills behind it.
+        // A heavily knobbed sketch's parameter list can outgrow the screen, so
+        // the content scrolls: `sizeToFit` caps the panel at the screen's
+        // visible height and the scroll view carries what's past the cap.
+        ScrollView {
+            DetachedInspectorContent(identity: identity, stats: stats, params: params)
+        }
+        .background(panelScrim)
+        .background(.regularMaterial)
+    }
+}
+
+/// The panel's scrollable content: below the native title bar (just the sketch
+/// title + its hairline, the window's own `titlebarSeparatorStyle`), the
+/// OllinLive sidebar's content verbatim, the same monitor card and parameter
+/// list with the same spacing and padding. Kept apart from the scroll view so
+/// `sizeToFit` can measure the content's true height (a scroll view's own
+/// fitting size collapses).
+struct DetachedInspectorContent: View {
+    let identity: MonitorIdentity
+    let stats: FrameStats
+    let params: [ParamHandle]
+
+    var body: some View {
         VStack(spacing: 16) {
             MonitorCardView(identity: identity, stats: stats)
             VariationCardView(stats: stats)
@@ -44,8 +62,6 @@ struct DetachedInspectorView: View {
         .padding(.top, 8)      // tight under the title bar (safe area already insets the rest)
         .padding(.bottom, 14)
         .frame(width: OllinInspector.sidebarWidth)
-        .background(panelScrim)
-        .background(.regularMaterial)
     }
 }
 
@@ -139,9 +155,21 @@ final class StatsPanelController: NSObject, NSWindowDelegate {
     /// the update-constraints pass into an exception loop.
     private func sizeToFit() {
         guard let panel, let host else { return }
-        host.view.layoutSubtreeIfNeeded()
-        let fit = host.view.fittingSize
+        // The hosted root is a scroll view, whose fitting size collapses, so
+        // measure the inner content with a throwaway host instead. The height
+        // gains the title-bar safe-area inset (the content starts below it),
+        // then caps at the screen's visible height: past the cap the scroll
+        // view takes over, so every knob stays reachable.
+        let root = host.rootView
+        let probe = NSHostingController(rootView: DetachedInspectorContent(
+            identity: root.identity, stats: root.stats, params: root.params))
+        probe.view.layoutSubtreeIfNeeded()
+        var fit = probe.view.fittingSize
         guard fit.width > 0, fit.height > 0 else { return }
+        fit.height += panel.contentView?.safeAreaInsets.top ?? 0
+        if let area = (panel.screen ?? NSScreen.main)?.visibleFrame {
+            fit.height = min(fit.height, area.height - 24)
+        }
         panel.setContentSize(fit)
     }
 
