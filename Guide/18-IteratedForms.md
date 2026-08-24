@@ -146,6 +146,34 @@ The picture is the **bifurcation diagram**, and it reads left to right like a st
 
 Two companions complete the toolkit. `cobweb(at:steps:)` traces one orbit as the classic staircase between the map's curve and the diagonal. It is the way to *watch* a single dial position think. `lyapunovExponent(at:)` scores one, where negative means settling and positive means chaos. The [`Examples/Patterns/Bifurcation`](../Examples/Patterns/Bifurcation/Sketch.swift) example prints the diagram with the exponent traced beneath it, dipping below zero at every window.
 
+## A ball in a room
+
+Here is the same idea with no numbers in it at all. Let a ball loose in a room. It goes straight until it meets the wall, then leaves at the angle it arrived at, forever. That is the entire rule, and it is iteration in the plainest form there is.
+
+```swift
+let room = Billiard(.circle(Circle(center: middle, radius: 380)))
+drawPolyline(room.path(from: start, heading: 0.7, bounces: 400))
+```
+
+<img src="Images/18-IteratedForms/BallInARoom.jpg" alt="Four rooms with a bouncing path drawn in each. A circle holds a star-like rosette with a clean round hole in the middle. An ellipse holds a woven band that never reaches either end. A stadium and a square with a round post in it are both filled edge to edge with scribble" width="680">
+
+Nothing changes across those four panels except the wall, and the pictures are not related.
+
+A **circle** keeps a hole. A bounce turns the path about the radius, which leaves untouched how far the chord passes from the middle, so every chord of the path misses the middle by the same distance. The path wraps a smaller circle it can never enter, and that circle is the hole. Every chord is the same length as every other, too, and each bounce moves the ball the same way around the rim, so a turn that is a whole fraction of a circle closes exactly into a star.
+
+An **ellipse** sorts paths into two kinds. The product of the distances from the two foci to a chord is the same for every chord of a path, so a path that passes between the foci keeps passing between them, and one that misses keeps missing. The two dots in the second panel are the foci, and the band is a path that never gets past them.
+
+A **stadium** keeps nothing. Cut the circle through the middle and pull the halves apart, and the hole goes. The path fills the room, and two balls let go a hair apart are strangers within a few dozen bounces. A **post** in the middle of a square does the same thing for the same reason: a round wall that curves the wrong way pulls neighboring paths apart instead of holding them together.
+
+That last pair is the point. The rule never changed. The ball does the same thing in all four rooms, and the difference between a pattern and a scribble is entirely the shape of what it bounces off. It is the same lesson as the dial above, reached from the other side.
+
+```swift
+Billiard(.stadium(center: middle, straight: 380, radius: 240))
+Billiard(.polygon(outline), obstacles: [Circle(center: middle, radius: 150)])
+```
+
+Where a ball is let go matters as much as the room. In a circle it decides how big the hole is, and a ball let go at the exact middle leaves no hole at all. `room.contains(start)` is worth asking first, since the middle of a room with a post in it is inside the post.
+
 ## Iteration without memory: escape-time fractals
 
 Every orbit so far has been plotted where it went. The most famous iteration in mathematics is asked a different question, one pixel at a time. The **escape-time fractals** run their whole life inside a single frame:
@@ -321,6 +349,7 @@ The formula-driven maps come from elsewhere again. The Clifford attractor is nam
 ## Go deeper
 
 - [Fractals](../Docs/Generators/Fractals.md): the `IFS` type and its presets, the whole `FractalFlame` surface including the progressive renderer, inversion limit sets, the Kleinian trace presets, the Schottky circle orbit with both family builders and why a tangent pair keeps the picture full, and the escape-time family with its orbit traps.
+- [Billiards](../Docs/Generators/Billiards.md): the four rooms, letting a ball go, what each room draws and why, posts standing in a room, and drawing the room itself. The [`Examples/Patterns/Billiards`](../Examples/Patterns/Billiards/Sketch.swift) example puts all four side by side with a fan of balls.
 - [Attractors](../Docs/Drawing/Attractors.md): every `ChaoticMap`, the `IteratedMap` family, `bifurcationImage`, and the GPU tier that carries a million orbits at once, which [Chapter 23](23-Landscapes.md) puts to work as a field of drifting points.
 - [Chaotic maps and bifurcation](../Docs/Generators/Bifurcation.md): the one-dimensional families, the diagram's dot and density forms, cobwebs, and Lyapunov exponents.
 - [Escape time as a generator](../Docs/Drawing/Effects.md#generate): `.mandelbrot`, `.julia`, and `.orbitTrap` as layers a chain can filter, with the center, zoom, iteration, and banding knobs.

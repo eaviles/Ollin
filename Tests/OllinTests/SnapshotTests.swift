@@ -503,6 +503,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("shape-grammar",
                  note: "Three grammars side by side: an ice-ray lattice cut by one rule and given bars by a second, a building front split into floors then windows then panes, and a square nesting turned copies of itself. Pins all four built-in rules (the balanced cut solved for its target area and kept shortest of four tries, the split's fractions and cycled labels, the inset pushing every edge along its own normal with a border ring, the nested scale and turn), the label matching, and the zero-weight fallback that catches a cell with no room for a full bar. Seeded, no time, so it is deterministic.",
                  make: { ShapeGrammarScene() }),
+    SnapshotCase("billiards",
+                 note: "One bouncing rule in four rooms: a circle (a rosette wrapping the caustic it can never enter), an ellipse (a path sorted by whether it passes between the foci, with the foci marked), a stadium, and a square with a post. Pins every intersection (circle, squashed ellipse with its normal taken on the ellipse, polygon edges, stadium flats and caps by half, obstacle circles) and the reflection at each. No rng and no time, so it is deterministic.",
+                 make: { BilliardsScene() }),
     SnapshotCase("drainage",
                  note: "A drainage network over a seeded landscape, three ways on one sheet: the contour map with the network stroked by Strahler order, the same field's basins as flat tone so the divides read, and the flow itself as a field. Pins the whole chain (hollow filling by flood, steepest-descent routing with a diagonal measured over its own distance, a filled hollow following the flood link rather than a slope that is not there, the counting, the basin labeling, the reach tracing and the ordering). Seeded, no time, so it is deterministic.",
                  make: { DrainageScene() }),
@@ -6707,6 +6710,59 @@ private final class PursuitScene: Sketch {
                 stroke(Color.mix(chalk, warm, t: Double(runner) / spread))
                 drawPolyline(trail.points)
             }
+        }
+    }
+}
+
+/// One bouncing rule in four rooms, orderly on the left and disorderly on the
+/// right.
+private final class BilliardsScene: Sketch {
+    override var canvasSize: CanvasSize { .size(516, 148) }
+
+    private let chalk = Color(hex: 0xF2ECDD)
+    private let warm = Color(hex: 0xE0724A)
+    private let cool = Color(hex: 0x5A8FC7)
+
+    override func draw() {
+        background(Color(hex: 0x11131A))
+
+        let radius = 56.0
+        let circle = Vector2(66, 74), ellipse = Vector2(196, 74)
+        let stadium = Vector2(330, 74), square = Vector2(452, 74)
+        let half = radius * 0.86
+
+        room(Billiard(.circle(Circle(center: circle, radius: radius))),
+             from: circle + Vector2(0, -radius * 0.62), ink: cool)
+        room(Billiard(.ellipse(center: ellipse, radii: Vector2(radius * 1.1, radius * 0.66))),
+             from: ellipse + Vector2(0, -radius * 0.34), ink: cool)
+        room(Billiard(.stadium(center: stadium, straight: radius * 0.9, radius: radius * 0.8)),
+             from: stadium + Vector2(0, -radius * 0.4), ink: warm)
+        room(Billiard(.polygon(Contour([square + Vector2(-half, -half), square + Vector2(half, -half),
+                                        square + Vector2(half, half), square + Vector2(-half, half)],
+                                       closed: true)),
+                      obstacles: [Circle(center: square, radius: radius * 0.3)]),
+             from: square + Vector2(-half * 0.62, -half * 0.44), ink: warm)
+    }
+
+    private func room(_ room: Billiard, from start: Vector2, ink: Color) {
+        noFill()
+        stroke(chalk.withAlpha(0.3))
+        strokeWeight(1)
+        let outline = room.outline()
+        drawPolyline(outline.points, closed: outline.isClosed)
+        for post in room.obstacles { drawCircle(post) }
+        noStroke()
+        fill(chalk.withAlpha(0.4))
+        for focus in room.foci { drawCircle(focus.x, focus.y, 1.6) }
+
+        noFill()
+        strokeWeight(0.55)
+        for ball in 0 ..< 3 {
+            let heading = 0.31 * .tau + (Double(ball) / 2 - 0.5) * 0.06
+            let path = room.path(from: start, heading: heading, bounces: 190)
+            guard path.count > 2 else { continue }
+            stroke(Color.mix(ink, chalk, t: Double(ball) / 2).withAlpha(0.4))
+            drawPolyline(path)
         }
     }
 }
