@@ -1,0 +1,45 @@
+// figure: frame=0
+//
+// Docs catalog figure (Drawing/Drawing.md, drawStar): the inner radius sets
+// the temper. The same five points spiky then gentle, and an eight-point
+// burst, each with its center dotted.
+import Ollin
+
+final class DrawStar: Sketch {
+    override var canvasSize: CanvasSize { .size(880, 320) }
+
+    let paper = Color(hex: 0xF7F5F1)
+    let ink = Color(hex: 0x2B2B2B)
+    let wash = Color(hex: 0x2B2B2B, alpha: 0.10)
+    let accent = Color(hex: 0xE4572E)
+
+    override func draw() {
+        background(paper)
+        textFont(OutlineFont.system)
+
+        let cy = 148.0
+        panel(cx: 176, cy: cy, outer: 96, inner: 34, points: 5,
+              name: "5 points, inner 34")
+        panel(cx: 452, cy: cy, outer: 96, inner: 72, points: 5,
+              name: "5 points, inner 72")
+        panel(cx: 722, cy: cy, outer: 96, inner: 68, points: 8,
+              name: "8 points")
+    }
+
+    func panel(cx: Double, cy: Double, outer: Double, inner: Double,
+               points: Int, name: String) {
+        fill(wash)
+        stroke(ink)
+        strokeWeight(3)
+        drawStar(cx, cy, outer, inner, points: points)
+
+        noStroke()
+        fill(accent)
+        drawCircle(cx, cy, 3.5)
+
+        fill(ink)
+        textSize(18)
+        textAlign(.center, .top)
+        drawText(name, cx, cy + outer + 24)
+    }
+}
