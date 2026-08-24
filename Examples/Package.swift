@@ -264,6 +264,7 @@ let package = Package(
         example("3D/Lighting/VolumetricLight"),
         example("3D/Lighting/LightingPresets"),
         example("3D/Materials/Materials"),
+        example("3D/Materials/Explorer"),
         example("3D/Materials/NormalMaps"),
         example("3D/Materials/Parallax"),
         example("3D/Materials/SurfaceMaps"),
