@@ -526,6 +526,7 @@ let package = Package(
         example("Text/HangingStops"),
         example("Images/GlyphMosaic"),
         example("Images/PhotoMosaic"),
+        example("Images/Autostereogram"),
         example("Images/Fit"),
         example("Images/Halftone"),
         example("Images/LuminanceMelt"),

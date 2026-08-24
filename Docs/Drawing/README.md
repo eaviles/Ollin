@@ -14,6 +14,7 @@
 - [`Images`](./Images.md) - `loadImage`, `drawImage`, `tint`, and pixel access: load or author a raster image, draw it scaled or transformed, recolor it
 - [`Glyph mosaic`](./GlyphMosaic.md) - `drawGlyphMosaic`, an image rebuilt as a grid of text glyphs, each cell's character chosen by its measured ink in the active font
 - [`Halftone`](./Halftone.md) - `drawHalftone`, an image rebuilt as the classic print dot screen: area-exact dots on a rotated grid, real circles for the plotter path
+- [`Autostereogram`](./Autostereogram.md) - `Image.autostereogram`, a depth map hidden in a repeating pattern, so a surface nobody drew stands out of the page when the repeats are paired
 - [`Photo mosaic`](./PhotoMosaic.md) - `Image.mosaic` + `averageColor` + `drawMosaic`, a picture rebuilt out of many smaller pictures, each cell taking the nearest by average color in linear light
 - [`Pixel sorting`](./PixelSorting.md) - `Image.pixelSorted`, brightness-bounded runs of an image's own pixels reordered along rows or columns (the classic glitch melt)
 - [`Seam carving`](./SeamCarving.md) - `Image.seamCarved` and `SeamMap`, resizing a picture by taking away the paths that carry the least, so what matters keeps its shape (plus the masks that hold something still or take it out)

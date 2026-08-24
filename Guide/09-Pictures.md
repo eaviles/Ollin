@@ -132,6 +132,25 @@ Two knobs matter. `tint` mixes each cell toward the color it stands for, which i
 
 The thing that decides whether a mosaic works is not the code. **The target needs range and the library needs range in the same places.** A target that is mostly one flat dark takes the one nearest picture and repeats it over the whole frame, which is a picture of nothing. `mosaic.uses(of:)` counts how many of the library actually got used, and it is the number to watch when a mosaic looks flat.
 
+## A picture that hides a shape
+
+One more, and this one hides its picture instead of drawing it.
+
+<img src="Images/09-Pictures/DepthInARepeat.jpg" alt="Two strips of scattered marks. The top one repeats at a fixed spacing, marked with a bracket underneath. The bottom one repeats at that spacing at its ends and at a shorter spacing through the middle, with both brackets marked and the shorter one in orange" width="680">
+
+A pattern that repeats at a fixed spacing gives both eyes the same marks to pair, and they read those marks at whatever depth that spacing stands for. **Shorten the repeat and the pair reads as nearer.** That is the entire trick, and it means a depth map can be turned into a picture: shorten the repeat wherever the shape is closer.
+
+```swift
+let hidden = depthMap.autostereogram(Autostereogram(repeatWidth: 120, relief: 0.22))
+drawImage(hidden, in: rect)
+```
+
+Hand it a picture where bright means near, and get back a field of noise with a shape buried in it. Look *through* the picture, at something behind the screen, until the repeats double up. It takes a moment the first time, and crossing your eyes instead reads the same picture inside out, so the shape sinks rather than stands.
+
+Four things decide whether one works, and only the first is code.
+
+**Draw it at its own pixel size.** Scaling resamples the very repeats the eyes have to pair, and a stereogram at half size is impossible to fuse. **Keep the relief under about a third** of the repeat, which is where the eyes give up. **Use hard edges**, because a soft gradient gives them nothing to lock onto. And expect a shimmer along every edge of the shape: within one repeat of a depth step neither depth is the answer, which is in the technique rather than in the picture.
+
 ## A picture as one line
 
 The other family turns a picture into line work, and all of it starts with **stippling**, which is placing loose dots so that their density reproduces the picture's tone. Getting that right is harder than scattering dots at random, because random placement clumps. The method Ollin uses is a settling process. Give every dot the patch of canvas that lies closer to it than to any other dot, move the dot to the center of that patch weighted by how dark the picture is there, and repeat. Dots drift toward darkness and away from each other at the same time, and after a few dozen rounds they sit in an even spread that is dense in the shadows and sparse in the light. ([Chapter 15](15-ShapesAsMaterial.md) names the structure underneath this, since it turns out to be useful for a lot more than dots.)
@@ -460,6 +479,7 @@ Stippling with dots of even weight was a hand discipline in scientific illustrat
 - [Images](../Docs/Drawing/Images.md): the complete `Image` surface, including `Image(resource:in:)` for a picture bundled with a sketch, the sampling helpers, and authoring an image in code.
 - [Glyph mosaic](../Docs/Drawing/GlyphMosaic.md) and [halftone](../Docs/Drawing/Halftone.md): the measured coverage behind the glyph ramp, the dot shapes and screen angles, and the duotone options.
 - [Photo mosaic](../Docs/Drawing/PhotoMosaic.md): `averageColor` and its linear-light rule, the match, the tint and repeat knobs, and drawing the placements yourself.
+- [Autostereogram](../Docs/Drawing/Autostereogram.md): the repeat and relief settings, the pattern, and why a scaled one stops working.
 - [Stippling](../Docs/Generators/Stippling.md), [single line](../Docs/Generators/SingleLine.md), and [spanning tree](../Docs/Generators/SpanningTree.md): every knob on the even scatter, the closed tour through it, and the branching tree over the same dots.
 - [String art](../Docs/Generators/StringArt.md): the pins and the ink dial, and `inverted` for a pale thread on a dark ground.
 - [Pixel sorting](../Docs/Drawing/PixelSorting.md): every key and direction, and how to get each of the classic looks.
