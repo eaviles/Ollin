@@ -100,6 +100,10 @@ struct SceneImportTests {
         let plain = SceneNode(name: "plain", mesh: nil, children: [],
                               localTransform: Self.asFloat(matrix_identity_double4x4))
         #expect(plain.placement.isExact)
+
+        // The public read a viewer leans on says the same thing.
+        #expect(!node.placementIsExact)
+        #expect(plain.placementIsExact)
     }
 
     // MARK: - Parts

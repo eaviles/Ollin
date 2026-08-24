@@ -68,7 +68,14 @@ extension SceneNode {
     /// Whether the file gives this node's mesh more than one material. Drawn
     /// whole with `drawMesh`, such a mesh wears the first, so a caller placing
     /// parts by hand has to say so.
-    package var wearsSeveralMaterials: Bool { meshParts.count > 1 }
+    public var wearsSeveralMaterials: Bool { meshParts.count > 1 }
+
+    /// Whether this node's authored transform splits cleanly into translate,
+    /// rotate, and scale. A transform carrying a shear does not; `drawScene`
+    /// still draws it exactly (the matrix is kept verbatim), but anything
+    /// re-expressing the node as separate moves works from an approximation,
+    /// and a viewer inspecting the file should say so.
+    public var placementIsExact: Bool { placement.isExact }
 
     /// This node's local transform as translate, rotate and scale.
     ///

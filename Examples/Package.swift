@@ -235,6 +235,7 @@ let package = Package(
         example("3D/Geometry/Wireframe"),
         example("3D/Geometry/LoadedMesh", resources: [.copy("model.gltf"), .copy("model.obj")]),
         example("3D/Geometry/LoadedScene", resources: [.copy("scene.gltf")]),
+        example("3D/Geometry/SceneExplorer", resources: [.copy("scene.gltf"), .copy("stage.usda")]),
         example("3D/Geometry/AnimatedScene", resources: [.copy("scene.gltf")]),
         example("3D/Geometry/SkinnedScene", resources: [.copy("scene.gltf")]),
         example("3D/Geometry/USDScene", resources: [.copy("stage.usda")]),
