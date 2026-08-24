@@ -153,6 +153,36 @@ Build it once and keep it. Working out which part of the first shape corresponds
 
 The holes are the part worth watching. When the two shapes don't have the same number of contours, the unmatched ones grow out of their own center, or shrink into it. That is why the ring's hole opens from nothing in the middle, instead of flying in from off-screen. Timing lives outside the morph, so pass it an eased phase, a `pingPong` for there-and-back, or a `Timeline`'s progress. For a one-off blend with no state to keep, `star.morphed(toward: ring, 0.5)` gives you the single shape.
 
+### A drawing only a mirror can read
+
+Every transform so far has kept the drawing readable. This one throws that away on purpose.
+
+Wrap a picture around a mirrored cylinder standing on your page. Then work out where each point of it must be *drawn* for the reflection to put it back where you wrapped it. What lands on the page says nothing. Stand the cylinder on the circle and put your eye in the one place the map was told about. The smear gathers itself into the picture, upright on the glass.
+
+<img src="Images/15-ShapesAsMaterial/MirrorReads.jpg" alt="Two panels. On the left, a ring of stretched, reversed letters curling around an empty circle, unreadable. On the right, a panel showing the word MIRROR standing upright and slightly curved, which is what the eye receives from that same ring" width="680">
+
+Painters were doing this in the 1600s, ruling the construction out by hand. Nothing is undone in software here either. The plate is a real drawing, and the reflection does the reading.
+
+```swift
+let mirror = Anamorphosis(
+    center: Vector2(540, 480), radius: 130,      // where the cylinder stands
+    eye: Vector3(540, 910, 250),                 // and where you will be
+    picture: Rectangle(center: Vector2(540, 480), width: 280, height: 70),
+    lift: 40
+)
+let plate = mirror.plate(of: emblem)             // an ordinary Shape in, an ordinary Shape out
+drawShape(plate)
+drawCircle(mirror.footprint)                     // the circle to stand it on
+```
+
+`eye` is a `Vector3` because the height matters as much as the distance. The rule behind every mark is one ray run backwards: from the eye to the glass, bounce, and follow the bounce down to the page.
+
+Two things follow from that, and you can read both off the picture. The marks land on the near side, between the glass and you, so you read the plate by looking *over* it at the mirror. And they spread as they go out. A point higher up the picture is reached by a shallower bounce, and a shallower bounce travels farther before it meets the page.
+
+There is a limit worth knowing before you compose rather than after. Two tangent lines run from your eye to the cylinder, and everything past them is turned away. So the picture has an arc it must live inside. `mirror.widestPicture` is that arc in your own units and `mirror.fits` is the yes or no. Standing closer takes some of it away. That is the trade the whole piece is made of: the nearer the viewer, the less of the mirror they can use.
+
+`plate(of:)` takes a point, a `Contour`, or a `Shape`. The map bends straight lines, so a contour is walked at an even spacing first and the bend is carried by the extra points. What comes back is ordinary geometry, so a plate prints. A real mirrored tube standing on a real printed circle is the whole apparatus.
+
 ### Shape arithmetic
 
 Held shapes can be combined like quantities. Four operations do it all:
@@ -647,7 +677,7 @@ Then make it yours:
 
 The territories are named for Georgy Voronoy and the triangulation for Boris Delaunay, mathematicians a century apart from the generative artists who adopted them. The settling pass is Stuart Lloyd's algorithm from 1957 signal processing. The dart-throwing scatter is Robert Bridson's 2007 fast Poisson-disk sampling. Grow-until-touching circle packing entered the generative canon through Jared Tarbell's work in the early 2000s. The shape booleans and offsets are powered by Angus Johnson's Clipper2 library. It is one of the few pieces of bundled code in Ollin, credited in full in the project notices.
 
-The named curves each carry a person with them. Lissajous figures are Jules Antoine Lissajous's, from 1857, though Nathaniel Bowditch drew them first. Roses are Guido Grandi's rhodonea, named in the 1720s for their resemblance to flowers. The trochoids are the mathematics behind the Spirograph toy. The harmonograph was a real Victorian instrument, a pen hung from swinging pendulums. And the sunflower packing is Helmut Vogel's 1979 model. Corner cutting is George Chaikin's, from 1974. The clothoid was described by Leonhard Euler in 1744, and rediscovered by Augustin-Jean Fresnel, whose integrals give its shape. Arthur Talbot brought it into railway practice in 1890. The fit that joins two points and two headings follows Enrico Bertolazzi and Marco Frego's 2015 reduction. Drawing with epicycles goes back through Fourier to the Greek astronomers, who used circles riding on circles to explain the wandering of the planets. The two even-sampling sequences are John Halton's and Ilya Sobol's, both from the early 1960s. Both were invented for numerical integration rather than for drawing. The convex hull uses A. M. Andrew's monotone-chain construction from 1979. The concave hull is the characteristic-shape construction of Matt Duckham, Lars Kulik, Mike Worboys, and Antony Galton, from 2008. The alpha shape is Herbert Edelsbrunner, David Kirkpatrick, and Raimund Seidel's, from 1983.
+The named curves each carry a person with them. Lissajous figures are Jules Antoine Lissajous's, from 1857, though Nathaniel Bowditch drew them first. Roses are Guido Grandi's rhodonea, named in the 1720s for their resemblance to flowers. The trochoids are the mathematics behind the Spirograph toy. The harmonograph was a real Victorian instrument, a pen hung from swinging pendulums. And the sunflower packing is Helmut Vogel's 1979 model. Corner cutting is George Chaikin's, from 1974. The clothoid was described by Leonhard Euler in 1744, and rediscovered by Augustin-Jean Fresnel, whose integrals give its shape. Arthur Talbot brought it into railway practice in 1890. The fit that joins two points and two headings follows Enrico Bertolazzi and Marco Frego's 2015 reduction. Mirror anamorphosis is older than the mathematics that describes it: Renaissance workshops ruled the construction out by hand, and Jean-Francois Niceron wrote it down in 1638. Drawing with epicycles goes back through Fourier to the Greek astronomers, who used circles riding on circles to explain the wandering of the planets. The two even-sampling sequences are John Halton's and Ilya Sobol's, both from the early 1960s. Both were invented for numerical integration rather than for drawing. The convex hull uses A. M. Andrew's monotone-chain construction from 1979. The concave hull is the characteristic-shape construction of Matt Duckham, Lars Kulik, Mike Worboys, and Antony Galton, from 2008. The alpha shape is Herbert Edelsbrunner, David Kirkpatrick, and Raimund Seidel's, from 1983.
 
 The skeleton is Harry Blum's medial axis, proposed in 1967 as a way to describe biological shape. It is approximated here by the Voronoi method of J. W. Brandt and V. R. Algazi. The straight skeleton is Oswin Aichholzer, Franz Aurenhammer, David Alberts, and Bernd Gärtner's, from 1995. It is computed by the shrinking-wavefront method that Petr Felkel and Štěpán Obdržálek formulated, and Tom Kelly hardened against simultaneous events. Roofers and origami folders knew the construction long before it had a name. The marbling equations are Aubrey Jaffer's closed-form model of a craft that predates all of it. The watercolor recipe is Tyler Hobbs', from a generous written guide to simulating paint with generative art. And hatching itself is far older than any of this, since it's how engravers and etchers made tone from lines for centuries. The plotter just holds the pen steadier. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
@@ -658,6 +688,7 @@ The skeleton is Harry Blum's medial axis, proposed in 1967 as a way to describe 
 - [Fourier epicycles](../Docs/Drawing/Epicycles.md): the `Term` list, the joint and path readers, and resampling requirements. The [`Examples/Motion/Epicycles`](../Examples/Motion/Epicycles/Sketch.swift) example traces a whale with them.
 - [Shape morphing](../Docs/Drawing/Morphing.md): the correspondence rules, `spacing`, and `Tweenable` geometry inside a `Timeline`. The [`Examples/Motion/Morphing`](../Examples/Motion/Morphing/Sketch.swift) example loops a star through a blob and a donut.
 - [Classic curves](../Docs/Drawing/Curves.md): every parameter of all nine, including what closes each curve exactly once.
+- [Anamorphosis](../Docs/Drawing/Anamorphosis.md): the setup, the map for points, contours and shapes, what an eye can see of a cylinder, reading a plate back, and standing a real mirror on a printed one. The [`Examples/Patterns/Anamorphosis`](../Examples/Patterns/Anamorphosis/Sketch.swift) example spells a word around one and shows what the eye receives.
 - [Clothoid](../Docs/Drawing/Clothoid.md): the four numbers, the easement, the single curve that fits two points and two headings, corner rounding, and driving a chain by distance.
 - [Low-discrepancy sampling](../Docs/Generators/LowDiscrepancy.md): Halton bases, Sobol, `startIndex`, and the scalar `halton`.
 - [Stroke profiles](../Docs/Drawing/Drawing.md#strokeProfile): `.taper`, `.ramp`, `.nib` and `.values` with every argument, the by-hand closure form, which primitives honor a profile, and what vector export writes.

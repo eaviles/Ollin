@@ -9,6 +9,7 @@ shape *composition* (booleans and SDF combinators) live in [Shapes](../Shapes/).
 
 | Example | What it shows |
 |---|---|
+| [Anamorphosis](Anamorphosis/Sketch.swift) | a plate that says nothing until a mirrored cylinder reads it: a word wrapped around the glass, each point of it followed from the eye through the bounce down to the page, with a panel showing what that eye receives, read back off the finished plate (`Anamorphosis`) |
 | [Apollonian](Apollonian/Sketch.swift) | an Apollonian gasket: every three-way gap between kissing circles filled by the one circle that touches all three, color sweeping through the generations so the filling order shows (`apollonianGasket`) |
 | [Bifurcation](Bifurcation/Sketch.swift) | the logistic map's bifurcation diagram as an ink print, with the Lyapunov exponent traced beneath: the settled orbit forks, doubles into chaos, and opens its periodic windows as the growth rate sweeps; knobs zoom the window (`IteratedMap`, `drawBifurcation`, `makeBatch`) |
 | [BlueNoise](BlueNoise/Sketch.swift) | blue-noise stippling: `poissonDisk` scatters points no two closer than a radius (Bridson's dart-throwing), the even-but-organic coverage that reads as natural texture |

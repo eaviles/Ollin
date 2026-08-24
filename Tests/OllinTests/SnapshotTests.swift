@@ -503,6 +503,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("shape-grammar",
                  note: "Three grammars side by side: an ice-ray lattice cut by one rule and given bars by a second, a building front split into floors then windows then panes, and a square nesting turned copies of itself. Pins all four built-in rules (the balanced cut solved for its target area and kept shortest of four tries, the split's fractions and cycled labels, the inset pushing every edge along its own normal with a border ring, the nested scale and turn), the label matching, and the zero-weight fallback that catches a cell with no room for a full bar. Seeded, no time, so it is deterministic.",
                  make: { ShapeGrammarScene() }),
+    SnapshotCase("anamorphosis",
+                 note: "The mirror map both ways round: on the left a plate for a cylinder standing on the marked circle, drawn from an asymmetric emblem so a reversed wrap would show; on the right what the eye receives, worked out by sending every point of that finished plate back up its own light path to the glass and drawing the glass as the viewer sees it. Pins the forward map (the wrap at true size, the bounce, the fall to the page), the search that undoes it, and the handedness. No rng and no time, so it is deterministic.",
+                 make: { AnamorphosisScene() }),
     SnapshotCase("crease-pattern",
                  note: "Three panels: a Miura crease pattern flat with its mountains and valleys marked, the same sheet folded 62 percent and seen from a corner, and a rotating-squares cut sheet pulled half open. Pins the mountain and valley rule (zigzags uniform down a column and alternating across, straight folds changing kind along their length), the joining of creases into pen strokes, the rigid folding (panels stay flat parallelograms and creases keep their length), and the kirigami mechanism (neighbors stay joined at one corner). No rng and no time, so it is deterministic.",
                  make: { CreasePatternScene() }),
@@ -6702,6 +6705,104 @@ private final class PursuitScene: Sketch {
                 drawPolyline(trail.points)
             }
         }
+    }
+}
+
+/// The mirror map both ways: a plate on the left, and on the right the picture
+/// the plate hands back, read off the plate itself rather than off the emblem
+/// that made it.
+private final class AnamorphosisScene: Sketch {
+    override var canvasSize: CanvasSize { .size(512, 220) }
+
+    private let chalk = Color(hex: 0xF2ECDD)
+    private let warm = Color(hex: 0xE0724A)
+    private let cool = Color(hex: 0x5A8FC7)
+
+    /// An emblem with no symmetry at all: a flag on a staff, with a notch. A
+    /// wrap that ran the other way would hand back its mirror image, and this
+    /// is the shape that says so.
+    private var emblem: Shape {
+        Shape(contours: [
+            Contour([Vector2(0, 0), Vector2(0, 100), Vector2(18, 100), Vector2(18, 58),
+                     Vector2(74, 58), Vector2(74, 30), Vector2(44, 30), Vector2(44, 16),
+                     Vector2(80, 16), Vector2(80, 0)], closed: true),
+            Contour([Vector2(26, 66), Vector2(26, 88), Vector2(48, 88), Vector2(48, 66)], closed: true),
+        ])
+    }
+
+    private func mirror(at center: Vector2) -> Anamorphosis {
+        let eye = Vector3(center.x, center.y + 150, 250)
+        let probe = Anamorphosis(center: center, radius: 34, eye: eye,
+                                 picture: Rectangle(x: 0, y: 0, width: 1, height: 1))
+        let boxWidth = probe.widestPicture * 0.76
+        return Anamorphosis(center: center, radius: 34, eye: eye,
+                            picture: Rectangle(center: center, width: boxWidth,
+                                               height: boxWidth * 100 / 80),
+                            lift: 6)
+    }
+
+    override func draw() {
+        background(Color(hex: 0x11131A))
+        let setup = mirror(at: Vector2(124, 92))
+        let picture = fit(emblem, in: setup.picture)
+        let plate = setup.plate(of: picture, spacing: 1)
+
+        // Left: the plate, and the circle the cylinder stands on.
+        noFill()
+        stroke(cool.withAlpha(0.65))
+        strokeWeight(1)
+        drawCircle(setup.footprint)
+        noStroke()
+        fill(chalk)
+        drawShape(plate)
+
+        // Right: the same plate, followed back up to the glass and drawn from
+        // the one place it reads.
+        noStroke()
+        fill(warm)
+        drawShape(seen(plate, of: setup, in: Rectangle(x: 280, y: 30, width: 196, height: 160)))
+        noFill()
+        stroke(cool.withAlpha(0.35))
+        strokeWeight(1)
+        drawRect(corner: Vector2(272, 22), width: 212, height: 176)
+    }
+
+    private func bounds(of shape: Shape) -> Rectangle {
+        var low = Vector2(.infinity, .infinity), high = Vector2(-.infinity, -.infinity)
+        for contour in shape.contours {
+            for point in contour.points {
+                low = Vector2(min(low.x, point.x), min(low.y, point.y))
+                high = Vector2(max(high.x, point.x), max(high.y, point.y))
+            }
+        }
+        return Rectangle(corner: low, width: high.x - low.x, height: high.y - low.y)
+    }
+
+    private func fit(_ shape: Shape, in box: Rectangle) -> Shape {
+        let size = bounds(of: shape)
+        let scale = min(box.width / size.width, box.height / size.height)
+        let offset = box.center - size.center * scale
+        return shape.mapPoints { $0 * scale + offset }
+    }
+
+    private func seen(_ plate: Shape, of setup: Anamorphosis, in box: Rectangle) -> Shape {
+        guard let aim = setup.mirrorPoint(of: setup.picture.center) else { return Shape(contours: []) }
+        let forward = (aim - setup.eye).normalized
+        let right = Vector3(0, 0, 1).cross(forward).normalized
+        let up = forward.cross(right).normalized
+
+        let view = Shape(contours: plate.contours.compactMap { contour in
+            let points = contour.resampled(spacing: 2).points.compactMap { mark -> Vector2? in
+                guard let glass = setup.mirrorPoint(of: mark, asSeenBy: setup.eye) else { return nil }
+                let offset = glass - setup.eye
+                let depth = offset.dot(forward)
+                guard depth > 1e-6 else { return nil }
+                return Vector2(offset.dot(right) / depth, -offset.dot(up) / depth)
+            }
+            return points.count >= 3 ? Contour(points, closed: true) : nil
+        })
+        guard !view.contours.isEmpty else { return view }
+        return fit(view, in: box)
     }
 }
 
