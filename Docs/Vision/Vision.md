@@ -987,6 +987,11 @@ override func draw() {
 
 The recognizers report geometry in **normalized** coordinates. That is `0…1` across the frame, with the origin at the **lower-left** and y pointing up. It is the convention Apple's Vision framework uses. Ollin's canvas is the opposite: **pixels**, origin at the **top-left**, y pointing down. So a result has to be flipped in y and scaled to wherever the frame was drawn.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/VisionMapping-dark.jpg">
+  <img src="../../Guide/Images/Docs/VisionMapping.jpg" alt="A normalized panel with its origin at the lower left and y up beside a canvas panel with its origin at the top left and y down, the same reported point flipped in y and scaled into the rectangle the frame was drawn in" width="680">
+</picture>
+
 The `Face` helpers (`bounds(in:)`, `landmarks(_:in:)`) do this for you. Pass the rectangle you drew the frame into, usually `camera.fittedRect(in: bounds)`, so the overlay sits on the picture. Set `mirrored: true` when you draw the frame flipped left-to-right, so the overlay flips with it. That is the natural "selfie" orientation for a front camera.
 
 For mapping points from a source the built-in trackers don't cover (say, a custom Core ML model), `VisionSpace` exposes the same math directly:

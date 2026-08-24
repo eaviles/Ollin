@@ -110,7 +110,10 @@ The window wants to be large enough to hold both ink and paper. If it is smaller
 marks, the middle of a thick stroke can see nothing but more stroke, decides that is what
 paper looks like there, and comes out hollow:
 
-<img src="../../Guide/Images/Docs/HollowStroke.jpg" alt="The same page of a solid disc, a fat ring, and a heavy bar cut by the adaptive threshold twice: with a 20 pixel window every mark comes out as a hollow outline, and with a 160 pixel window all three stay solid ink" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/HollowStroke-dark.jpg">
+  <img src="../../Guide/Images/Docs/HollowStroke.jpg" alt="The same page of a solid disc, a fat ring, and a heavy bar cut by the adaptive threshold twice: with a 20 pixel window every mark comes out as a hollow outline, and with a 160 pixel window all three stay solid ink" width="680">
+</picture>
 
 Since the window costs nothing to widen, err on the wide side. The published default of an
 eighth of the image is a good starting point for a page of text.
@@ -122,14 +125,10 @@ A summed-area table (Crow, 1984) holds, at every texel, the sum of everything ab
 the left of it, itself included. Once you have it, the sum over any rectangle is two
 subtractions and an addition:
 
-```
-      A ─────────── B          sum of the shaded box
-      │             │            =  D − B − C + A
-      │      ┌──────┤
-      │      │//////│          A, B, C, D are single lookups
-      C ─────┼──────D          in the table, wherever the box is
-             │//////│          and however big it is
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/SummedAreaLookup-dark.jpg">
+  <img src="../../Guide/Images/Docs/SummedAreaLookup.jpg" alt="A table grid with a shaded rectangle whose corners are marked A, B, C, and D, beside four miniature tables each shading everything above and to the left of one corner, combined as D minus B minus C plus A to leave exactly the box" width="680">
+</picture>
 
 Divide by the area and you have the average. Four lookups, always.
 

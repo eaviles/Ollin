@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Docs catalog figure (Drawing/Drawing.md, drawPolyline): the same run of
 // points stroked open, and joined back to its start with closed: true. The
@@ -8,10 +8,12 @@ import Ollin
 final class DrawPolyline: Sketch {
     override var canvasSize: CanvasSize { .size(880, 320) }
 
-    let paper = Color(hex: 0xF7F5F1)
-    let ink = Color(hex: 0x2B2B2B)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.35)
-    let accent = Color(hex: 0xE4572E)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.35) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
 
     let run = [Vector2(-118, 62), Vector2(-70, -58), Vector2(-14, 12),
                Vector2(38, -66), Vector2(96, -24), Vector2(118, 46),

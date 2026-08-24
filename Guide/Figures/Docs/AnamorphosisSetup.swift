@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Docs diagram (Drawing/Anamorphosis.md): the setup seen from above. The
 // mirrored cylinder stands on the page, the picture wraps its near face at
@@ -9,11 +9,13 @@ import Ollin
 final class AnamorphosisSetup: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
-    let paper = Color(hex: 0xF7F5F1)
-    let ink = Color(hex: 0x2B2B2B)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.28)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.10)
-    let accent = Color(hex: 0xE07A2F)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.28) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.10) }
+    var accent: Color { Color(hex: darkTheme ? 0xEE8C42 : 0xE07A2F) }
 
     let mirrorX = 430.0, mirrorY = 205.0, mirrorR = 85.0
     let eyeX = 430.0, eyeY = 492.0

@@ -52,21 +52,12 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
 
 #### Length & direction
 
-**`length` / `lengthSquared`** measure how far the point is from the origin, that is, how long the arrow is. It's the Pythagorean theorem, the hypotenuse of the right triangle with sides `x` and `y`.
+**`length` / `lengthSquared`** measure how far the point is from the origin, that is, how long the arrow is. It's the Pythagorean theorem, the hypotenuse of the right triangle with sides `x` and `y`: `(3, 4)` has length `√(3² + 4²) = 5`. `lengthSquared` is that without the square root (`25` here), for when you only compare.
 
-```
-  v = (3, 4)
-
-  (0,0)
-    ●───────►  +x
-    │ ╲
-    │  ╲        length = √(3² + 4²) = √25 = 5
-    │   ╲
-    ▼    ● (3, 4)
-   +y
-
-  lengthSquared = 3² + 4² = 25     (skip the √ when you only compare)
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/VectorHeading-dark.jpg">
+  <img src="../../Guide/Images/Docs/VectorHeading.jpg" alt="Three panels in screen space with y down: the vector (3, 4) as the hypotenuse of its 3-4-5 right triangle, the angle measured from the positive x-axis and growing clockwise, and perpendicular turning (3, 0) a quarter turn into (0, 3)" width="680">
+</picture>
 
 **In a sketch:** turn a distance or a speed into something you can see, a dot that grows as the mouse nears, or a trail that reacts to how fast it moves (`velocity.length`).
 
@@ -74,29 +65,11 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
 
 **In a sketch:** this is the move-toward-a-target trick, where `pos += (target - pos).normalized * speed` steps a fixed amount the right way, however far the target is.
 
-**`angle`** gives the direction as one number, the angle of the arrow from the `+x` axis, in radians (`atan2(y, x)`). `Vector2(angle:length:)` is the inverse, building an arrow from an angle and a length.
-
-```
-  v.angle = atan2(y, x)
-
-    ●───────────►  +x      angle 0 points along +x
-    │ ╲ )                  the angle grows CLOCKWISE on screen
-    ▼   ● v                (because +y points down)
-   +y
-```
+**`angle`** gives the direction as one number, the angle of the arrow from the `+x` axis, in radians (`atan2(y, x)`), growing clockwise on screen because `+y` points down. `Vector2(angle:length:)` is the inverse, building an arrow from an angle and a length.
 
 **In a sketch:** point a shape the way it's heading. Call `rotate(velocity.angle)` before you draw, so an arrow or a fish faces where it's going.
 
-**`perpendicular`** is a quarter turn, swapping and negating the components so `(x, y)` becomes `(−y, x)`. Useful for offsetting to the side of a line (for example giving a stroke its width).
-
-```
-  v.perpendicular = (−y, x)
-
-    ●──────────►  v = (3, 0)
-    │  ⌐ 90°               a quarter turn from v
-    ▼                      (clockwise on screen, y-down)
-    ● v.perpendicular = (0, 3)
-```
+**`perpendicular`** is a quarter turn, swapping and negating the components so `(x, y)` becomes `(−y, x)`, which turns `(3, 0)` into `(0, 3)`: clockwise on screen, y-down. Useful for offsetting to the side of a line (for example giving a stroke its width).
 
 **In a sketch:** this is the sideways direction, so you can give a freehand line real thickness by stepping out both ways, or make a thing strafe or orbit.
 
@@ -122,48 +95,20 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
 
 **In a sketch:** proximity effects, so you can connect dots closer than N, fade things by how near they are, or push neighbors apart when they crowd. (Use the squared form inside big loops to skip the slow `√`.)
 
-**`dot(_:)`** is one number measuring how much two vectors point the *same way*, `ax·bx + ay·by`, which equals `|a|·|b|·cos θ`. Its sign alone tells you the rough relationship.
+**`dot(_:)`** is one number measuring how much two vectors point the *same way*, `ax·bx + ay·by`, which equals `|a|·|b|·cos θ`. Its sign alone tells you the rough relationship: positive under 90° (aiming similar ways), zero at exactly 90°, negative past it (aiming opposite ways).
 
-```
-  a.dot(b)
-
-        a
-    ●─────►        θ < 90°  → dot > 0   (aim similar ways)
-     ╲θ            θ = 90°  → dot = 0   (perpendicular)
-      ◄ b          θ > 90°  → dot < 0   (aim opposite ways)
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/VectorMeasures-dark.jpg">
+  <img src="../../Guide/Images/Docs/VectorMeasures.jpg" alt="Three panels in screen space with y down: the dot product's sign for headings aiming with, square to, and against a reference vector, the cross product as the area of the parallelogram two vectors span with b clockwise from a giving a positive sign, and angle(to:) as a signed turn from a to b where positive turns clockwise" width="680">
+</picture>
 
 **In a sketch:** this answers "same way or opposite?" and "in front of me or behind?", the basis of simple lighting (how squarely a surface faces the light) and field-of-view checks.
 
-**`cross(_:)`** is the 2D "perp-dot", `ax·by − ay·bx`, also one number. Its *magnitude* is the area of the parallelogram the two vectors span, and its *sign* tells you the turn direction from `a` to `b`.
-
-```
-  a.cross(b) = ax·by − ay·bx     (a single number)
-
-         b ●───────────● a+b
-          ╱           ╱
-         ╱           ╱          a and b are two vectors from O;
-        ╱           ╱           |a.cross(b)| = the AREA of the
-   O ●───────────►  a           parallelogram they span
-
-  The SIGN tells which side b lies on (the turn from a to b):
-     cross > 0   b is clockwise from a          (on screen, y-down)
-     cross < 0   b is counter-clockwise from a
-     cross = 0   a and b are parallel  →  area 0
-```
+**`cross(_:)`** is the 2D "perp-dot", `ax·by − ay·bx`, also one number. Its *magnitude* is the area of the parallelogram the two vectors span, and its *sign* tells you the turn direction from `a` to `b`: positive when `b` is clockwise from `a` (on screen, y-down), negative when counter-clockwise, and zero when they're parallel and the area collapses.
 
 **In a sketch (2D):** the sign answers "is the target on my left or my right?", so a creature can turn the short way toward it. Summed around a shape's points it gives the area and which way the shape winds.
 
-**`angle(to:)`** is the *signed* angle from `a` to `b`, in `−π…π` (it's `atan2(cross, dot)`). Unlike `b.angle − a.angle`, it never wraps and tells you which way to turn.
-
-```
-  a.angle(to: b)
-
-        a
-    ●─────►          > 0 turns one way on screen,
-     ╲θ              < 0 the other
-      ◄ b
-```
+**`angle(to:)`** is the *signed* angle from `a` to `b`, in `−π…π` (it's `atan2(cross, dot)`). Unlike `b.angle − a.angle`, it never wraps and tells you which way to turn: positive turns clockwise on screen, negative the other way.
 
 **In a sketch:** swivel to face something smoothly. Rotate by a fraction of `heading.angle(to: toTarget)` each frame and a creature tracks the mouse.
 
@@ -173,55 +118,22 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
 
 **`lerp(to:_:)`** slides from `a` toward `b` by a fraction `t` (`0` = `a`, `1` = `b`). `t = 0.5` is the midpoint, and `t` past `0…1` extrapolates.
 
-```
-  a.lerp(to: b, t)
-
-    a ●────●────●────●────● b
-      0   .25  .5   .75   1
-               ↑
-            midpoint at t = 0.5
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/VectorMoves-dark.jpg">
+  <img src="../../Guide/Images/Docs/VectorMoves.jpg" alt="Four panels in screen space with y down: lerp dots stepping from a to b with the midpoint at t equals 0.5, a vector rotated by an angle about a pivot point, limited clamping a long vector to the circle of the maximum length m, and projected dropping a's shadow perpendicularly onto b's line" width="680">
+</picture>
 
 **In a sketch:** this is the easiest smooth-follow there is, since `pos = pos.lerp(to: target, 0.1)` makes anything glide after the mouse with a soft lag. Also midpoints and in-betweens.
 
-**`rotated(by:)` / `rotated(by:around:)`** spin the arrow by an angle, about the origin or about a given pivot point.
-
-```
-  v.rotated(by: θ)             spins v about the origin (0, 0)
-  v.rotated(by: θ, around: p)  spins v about the point p
-
-    p ●─────────► v
-      │ ╲θ
-      ▼   ╲
-            ► result        (positive θ turns clockwise, y-down)
-```
+**`rotated(by:)` / `rotated(by:around:)`** spin the arrow by an angle (positive turns clockwise, y-down), about the origin or about a given pivot point.
 
 **In a sketch:** lay things out in a ring, orbit a moon around a planet, or swing a clock hand with `rotated(by:around:)` about its pivot.
 
 **`limited(to:)`** clamps the length to a maximum, keeping the direction. Shorter vectors pass through untouched (for example a velocity cap).
 
-```
-  v.limited(to: m)
-
-    len ≤ m :  ●─────►v           returned unchanged
-    len > m :  ●──────────►v  →   ●─────► length m
-```
-
 **In a sketch:** keep speeds from blowing up, since `vel = vel.limited(to: maxSpeed)` is the staple that keeps flocking and steering stable.
 
-**`projected(onto:)`** is the part of `a` that lies along `b`, its shadow cast straight down onto `b`'s line.
-
-```
-  a.projected(onto: b)
-
-         a
-        ╱┆
-       ╱ ┆  drop a perpendicular onto b's line
-      ╱  ▼
-    ●─────●──────────► b
-    └──┬──┘
-   projected(onto: b)
-```
+**`projected(onto:)`** is the part of `a` that lies along `b`, its shadow cast straight down onto `b`'s line (drop a perpendicular from `a`'s tip; the foot marks the projection).
 
 **In a sketch:** snap a point onto a guide line, find the nearest spot on a path, or split a bounce into "along the wall" and "into the wall".
 

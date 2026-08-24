@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Docs diagram (Generators/Isolines.md): what marching squares actually
 // reads. The field is sampled at grid points, drawn as dots shaded by
@@ -10,11 +10,13 @@ import Ollin
 final class IsolineMarch: Sketch {
     override var canvasSize: CanvasSize { .size(880, 480) }
 
-    let paper = Color(hex: 0xF7F5F1)
-    let ink = Color(hex: 0x2B2B2B)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.4)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.12)
-    let accent = Color(hex: 0xE4572E)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.4) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
 
     let panel = Rectangle(x: 120, y: 64, width: 640, height: 320)
 
@@ -38,7 +40,7 @@ final class IsolineMarch: Sketch {
         for point in Grid(in: panel, columns: 13, rows: 7,
                           padding: .all(26)).points {
             let v = min(1, field(point.position))
-            fill(Color(hex: 0x2B2B2B, alpha: 0.08 + 0.72 * v))
+            fill(Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.08 + 0.72 * v))
             drawCircle(center: point.position, radius: 6)
         }
 

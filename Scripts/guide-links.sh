@@ -167,6 +167,10 @@ for p in pages + authoring:
 
 # ------------------------------------------------- 3 and 4: the two image rules
 IMG = re.compile(r"<img\s+[^>]*src=\"([^\"]+)\"")
+# A themed figure's dark sibling rides in a <picture> tag's <source srcset>;
+# it rots the same way the <img> beside it does, and it counts as a reference
+# for the orphan rule, or every -dark image would be flagged.
+SRCSET = re.compile(r"<source\s+[^>]*srcset=\"([^\"]+)\"")
 
 referenced = set()
 # Docs pages reuse Guide figures by relative path, so their <img> tags rot the
@@ -176,7 +180,7 @@ docs_pages = sorted(pathlib.Path("Docs").rglob("*.md"))
 for p in pages + docs_pages:
     page_lines = lines[p] if p in lines else p.read_text().splitlines()
     for n, line in enumerate(page_lines, 1):
-        for src in IMG.findall(line):
+        for src in IMG.findall(line) + SRCSET.findall(line):
             if src.startswith(("http://", "https://")):
                 continue
             dest = (p.parent / src).resolve()

@@ -67,6 +67,14 @@ enum GuideFigures {
         /// drawing path, and never an `unstable` one, whose render cannot be
         /// compared to anything.
         var probe = false
+        /// `themed` renders the figure twice: once as committed (`<Name>.jpg`)
+        /// and once with its `darkTheme` knob flipped on (`<Name>-dark.jpg`),
+        /// so a page can serve the dark variant through a `<picture>` tag.
+        /// The figure declares `@Param var darkTheme = false` and keys its
+        /// palette on it; the runner sets the knob between the two renders of
+        /// the same instance, so a themed figure must draw the same under a
+        /// second `setup()` pass (assign state, never append). Stills only.
+        var themed = false
 
         init(source: String) {
             let head = source.split(separator: "\n", omittingEmptySubsequences: false).prefix(8)
@@ -82,6 +90,7 @@ enum GuideFigures {
                 case ("gif", _): gif = true
                 case ("unstable", _): unstable = true
                 case ("probe", _): probe = true
+                case ("themed", _): themed = true
                 case ("format", "png"): png = true
                 case ("format", "jpg"), ("format", "jpeg"): png = false
                 case ("frame", let v?): frame = Int(v) ?? frame
@@ -115,6 +124,10 @@ enum GuideFigures {
             var outputPath: String
             var seconds: Double
             var unstable = false
+            /// A `themed` figure's dark sibling (`<Name>-dark.jpg`): its file
+            /// name and hash, checked for staleness beside the light image.
+            var darkOutput: String?
+            var darkPath: String?
         }
     }
 
@@ -128,6 +141,8 @@ enum GuideFigures {
         var outputPath: String
         var log: String
         var unstable = false
+        var darkOutput: String?
+        var darkPath: String?
     }
 
     /// One figure to render, plus what may happen to its committed image.
@@ -346,7 +361,8 @@ enum GuideFigures {
             cache.figures[result.figure] = Cache.Entry(
                 source: result.source, output: result.output,
                 outputPath: result.outputPath, seconds: result.seconds,
-                unstable: result.unstable)
+                unstable: result.unstable, darkOutput: result.darkOutput,
+                darkPath: result.darkPath)
         }
         for result in results where !result.ok {
             cache.figures.removeValue(forKey: result.figure)
@@ -404,10 +420,13 @@ enum GuideFigures {
             : renderSharded(work, workers: workers, verbose: verbose)
         return results.filter { result in
             guard result.ok, !result.output.isEmpty else { return true }
-            let committed = imagesDir + "/"
+            let directory = imagesDir + "/"
                 + ((result.figure as NSString).deletingLastPathComponent)
-                + "/" + result.outputPath
-            return fileHash(committed) != result.output
+            if fileHash(directory + "/" + result.outputPath) != result.output { return true }
+            if let darkPath = result.darkPath, let darkOutput = result.darkOutput {
+                return fileHash(directory + "/" + darkPath) != darkOutput
+            }
+            return false
         }.map(\.figure).sorted()
     }
 
@@ -430,6 +449,8 @@ enum GuideFigures {
             var ok = false
             var unstable = false
             var probeHash = ""
+            var darkOutPath: String?
+            var darkProbeHash = ""
 
             if let data = FileManager.default.contents(atPath: sourcePath),
                let source = String(data: data, encoding: .utf8) {
@@ -472,6 +493,40 @@ enum GuideFigures {
                     } else {
                         log = "no output written"
                     }
+                    // The dark pass: flip the figure's own knob and render the
+                    // same instance again, beside the light image.
+                    if ok, directive.themed {
+                        if directive.gif {
+                            warn("\(relative): themed is still-only; ignoring it for a GIF")
+                        } else if let knob = sketch.parameters()
+                            .first(where: { $0.name == "darkTheme" }) {
+                            let darkName = ((stem as NSString).lastPathComponent)
+                                + "-dark" + directive.stillExtension
+                            let darkWrite = verifying || probing
+                                ? directory + "/." + (probing ? "probe-" : "verify-") + darkName
+                                : directory + "/" + darkName
+                            knob.param.restore(.boolean(true))
+                            if directive.png {
+                                OllinApp.export(sketch, to: darkWrite, frame: directive.frame)
+                            } else {
+                                exportJPEG(sketch, to: darkWrite, frame: directive.frame)
+                            }
+                            if FileManager.default.fileExists(atPath: darkWrite) {
+                                darkOutPath = directory + "/" + darkName
+                                if probing { darkProbeHash = fileHash(darkWrite) }
+                            } else {
+                                ok = false
+                                log = "no dark output written"
+                            }
+                            if verifying || probing {
+                                try? FileManager.default.removeItem(atPath: darkWrite)
+                            }
+                        } else {
+                            ok = false
+                            log = "themed, but the figure declares no"
+                                + " `@Param var darkTheme = false` knob to flip"
+                        }
+                    }
                     if probing { probeHash = fileHash(writePath) }
                     if verifying || probing {
                         try? FileManager.default.removeItem(atPath: writePath)
@@ -487,11 +542,17 @@ enum GuideFigures {
             // reports the hash of the image now on disk.
             let outputHash = work.probeOnly ? probeHash
                 : (ok && !unstable ? fileHash(outPath) : "")
+            var darkHash: String?
+            if let darkOutPath {
+                darkHash = work.probeOnly ? darkProbeHash
+                    : (ok && !unstable ? fileHash(darkOutPath) : nil)
+            }
             results.append(Rendered(
                 figure: relative, ok: ok, seconds: Date().timeIntervalSince(started),
                 source: sourceHash, output: outputHash,
                 outputPath: (outPath as NSString).lastPathComponent, log: log,
-                unstable: unstable))
+                unstable: unstable, darkOutput: darkHash,
+                darkPath: darkOutPath.map { ($0 as NSString).lastPathComponent }))
             if !ok { warn("FAILED \(relative)\(log.isEmpty ? "" : "\n" + log)") }
             note(progressPath, ok ? "." : "x")
         }
@@ -663,6 +724,14 @@ enum GuideFigures {
         let image = imagesDir + "/" + (stem as NSString).deletingLastPathComponent
             + "/" + entry.outputPath
         guard FileManager.default.fileExists(atPath: image) else { return true }
+        // A themed figure's dark sibling is part of its output: missing or
+        // hand-edited means the figure needs redoing, same as the light one.
+        if let darkPath = entry.darkPath {
+            let dark = imagesDir + "/" + (stem as NSString).deletingLastPathComponent
+                + "/" + darkPath
+            guard FileManager.default.fileExists(atPath: dark) else { return true }
+            if !entry.unstable, fileHash(dark) != (entry.darkOutput ?? "") { return true }
+        }
         // A figure marked `unstable` renders differently every time, so its
         // committed image says nothing about whether it needs redoing.
         if entry.unstable { return false }
@@ -799,6 +868,10 @@ enum GuideFigures {
         A figure whose first line carries `// figure: unstable` is cached on its
         source alone: its render is genuinely not reproducible, so its committed
         image cannot say whether it needs redoing.
+
+        A figure carrying `// figure: themed` renders twice, flipping its own
+        `@Param var darkTheme = false` knob for a `<Name>-dark` sibling image,
+        which pages serve to dark-mode readers through a <picture> tag.
 
         Most framework edits move no pixels: a new function, a comment, a type
         nothing draws through. So a framework change first renders the figures

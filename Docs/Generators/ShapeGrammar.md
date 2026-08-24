@@ -8,7 +8,10 @@ A start shape, and a handful of rules that each say what one labeled shape turns
 
 A rule reads as one sentence. *A cell becomes two cells, cut apart by one straight line drawn between two of its edges.* Nothing in that sentence says which edges, or where on them, so the rule stands for every design it could make rather than for one drawing. That is the whole idea. You write the rules, and the run writes the picture.
 
-<img src="../../Guide/Images/Docs/ShapeGrammarLattice.jpg" alt="Three panels: a single square cell, the same square cut into two cells by one straight line after a sweep, and the square after nine sweeps, an ice-ray lattice of three-, four-, and five-sided pieces" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/ShapeGrammarLattice-dark.jpg">
+  <img src="../../Guide/Images/Docs/ShapeGrammarLattice.jpg" alt="Three panels: a single square cell, the same square cut into two cells by one straight line after a sweep, and the square after nine sweeps, an ice-ray lattice of three-, four-, and five-sided pieces" width="680">
+</picture>
 
 Every piece is a closed polygon with a label. The label decides which rule may rewrite it, and a label that no rule names is finished. What comes out is ordinary geometry, ready for stroking, filling, the [shape booleans](../Drawing/Geometry.md), hatching, and SVG export. A run is driven by a seeded generator, so the same seed always draws the same design.
 

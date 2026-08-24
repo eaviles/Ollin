@@ -39,16 +39,10 @@ Four types, each doing one thing:
 | `StrokeDynamics` | A response for width and a response for opacity: the brush. |
 | `StrokeMark` | The recorded path plus the width and opacity at every point of it. |
 
-```
-  the hand              the brush                  the mark
-
-  pointer moved   ->   StrokeInput          ->   width  0.62
-  25 pt in 1/60 s      speed 1500 pt/s           opacity 0.40
-  at pressure 0.4      pressure 0.4               at (410, 230)
-                       StrokeDynamics
-                         width:   .pressure(light: 0.1)
-                         opacity: .speed(fast: 0.4)
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/MarkDataflow-dark.jpg">
+  <img src="../../Guide/Images/Docs/MarkDataflow.jpg" alt="Four boxes joined by arrows: the hand moving 25 points in a sixtieth of a second while pressing at 0.4, measured into a StrokeInput of speed 1500 points per second and pressure 0.4, answered by StrokeDynamics with width from pressure and opacity from speed, landing in the mark as width 0.62 and opacity 0.40 at that point" width="680">
+</picture>
 
 <a name="input"></a>
 

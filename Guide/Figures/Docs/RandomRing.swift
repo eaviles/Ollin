@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Docs diagram (Generators/Random.md): what ring(innerRadius:outerRadius:)
 // hands back. Left, the geometry: a band between two circles around the
@@ -9,10 +9,12 @@ import Ollin
 final class RandomRing: Sketch {
     override var canvasSize: CanvasSize { .size(880, 480) }
 
-    let paper = Color(hex: 0xF7F5F1)
-    let ink = Color(hex: 0x2B2B2B)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.12)
-    let accent = Color(hex: 0xD96C2C)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
+    var accent: Color { Color(hex: darkTheme ? 0xE8813C : 0xD96C2C) }
 
     override func draw() {
         seed(7)
@@ -25,7 +27,7 @@ final class RandomRing: Sketch {
 
         // Left: the geometry. The band is washed, the hole stays paper.
         noStroke()
-        fill(Color(hex: 0xD96C2C, alpha: 0.14))
+        fill(Color(hex: darkTheme ? 0xE8813C : 0xD96C2C, alpha: 0.14))
         drawRing(center: leftCenter, innerRadius: inner, outerRadius: outer)
         noFill()
         stroke(ink)
