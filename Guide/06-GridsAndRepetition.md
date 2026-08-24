@@ -281,6 +281,27 @@ for point in spiral.points(where: { $0 % 7 == 0 }) { drawCircle(center: point, r
 
 `start` is the other knob, and it is the one to animate. Counting from somewhere other than 1 moves every number, so the diagonals break up and re-form, which is the same fact seen from a different place.
 
+## A circle for every fraction
+
+The spiral put whole numbers on a grid. Here is the same move made with fractions, and this time the arrangement does the surprising part.
+
+Take any fraction `p/q` in lowest terms. Give it a circle of radius `1/(2q²)`, sitting on the number line at `p/q`. Do that for every fraction at once.
+
+<img src="Images/06-GridsAndRepetition/CircleForEveryFraction.jpg" alt="Two panels of circles resting on a number line. On the left the fractions with denominators up to four, labeled, each circle touching its neighbors. On the right the same line once every denominator up to twelve has arrived, the new smaller circles dropping into the gaps between the old ones" width="680">
+
+```swift
+noFill(); stroke(.white)
+for ford in fordCircles(order: 12) { drawCircle(ford.circle) }
+```
+
+Nothing in that rule asks the circles to fit together. They fit anyway. **No two of them ever overlap**, and two of them touch exactly when their fractions are neighbors, which means `ps - qr` is `1` or `-1`. Lester Ford wrote this down in 1938.
+
+Read the sizes and the picture tells you something. A small denominator gets a big circle, and a big circle is a fraction that stays close to everything near it. That is what "a good approximation" means, drawn.
+
+The fractions come from `fareySequence(order:)`, which is worth knowing on its own. It hands you every fraction from 0 to 1 with a denominator inside the order, in order, and any two terms next to each other are neighbors. The first fraction ever to appear between two of them is their mediant, `(p+r)/(q+s)`, which is the wrong way to add fractions and the right way to grow this sequence.
+
+Growing `order` over a loop is the animation, and it is arrival rather than motion: no circle ever moves, and each new denominator drops its circles into gaps that were waiting for them. The `Patterns/FordCircles` example does that, and draws a line between every touching pair on a mouse hold.
+
 ## Putting it together: a wall of rosettes
 
 Now you can build the image at the top. The plan uses every tool in the chapter, and in the order you met them. A grid hands you the blocks, and inside each one the transforms place, turn, and shrink the work. Then symmetry folds a single arm into a medallion, and a clip cuts the result to a disc. Make a new file, `MySketches/RoseWall.swift`:
@@ -368,12 +389,13 @@ Before moving on, make it yours:
 
 ## Where this comes from
 
-The paper-moving transform model goes back to the earliest days of computer graphics, and reached creative coding through Processing's `pushMatrix`/`popMatrix`. The pinwheel quilt is older than all of it, pieced by quilters long before anyone had a coordinate system to rotate. The kaleidoscope is younger than it looks: David Brewster patented one in 1817, and it became a craze inside a year. Mazes come from graph theory rather than from paper. A perfect maze is a spanning tree of its grid, so every algorithm that carves one is a spanning-tree algorithm in costume. That is why `.backtracker`, a depth-first walk, and `.kruskal`, after Joseph Kruskal's 1956 method, give such different textures from the same guarantee. The circle foam is the oldest idea in the chapter by a long way. Apollonius of Perga asked which circle touches three given circles, around 200 BC. René Descartes worked out the arithmetic relating their sizes, in a 1643 letter to Princess Elisabeth of Bohemia, and that is why the relation carries his name. The spiral of numbers is Stanisław Ulam's, drawn on a notepad during a talk in 1963 and published the year after with Myron Stein and Mark Wells. Martin Gardner's column carried it to everybody else, and it has been redrawn ever since. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The paper-moving transform model goes back to the earliest days of computer graphics, and reached creative coding through Processing's `pushMatrix`/`popMatrix`. The pinwheel quilt is older than all of it, pieced by quilters long before anyone had a coordinate system to rotate. The kaleidoscope is younger than it looks: David Brewster patented one in 1817, and it became a craze inside a year. Mazes come from graph theory rather than from paper. A perfect maze is a spanning tree of its grid, so every algorithm that carves one is a spanning-tree algorithm in costume. That is why `.backtracker`, a depth-first walk, and `.kruskal`, after Joseph Kruskal's 1956 method, give such different textures from the same guarantee. The circle foam is the oldest idea in the chapter by a long way. Apollonius of Perga asked which circle touches three given circles, around 200 BC. René Descartes worked out the arithmetic relating their sizes, in a 1643 letter to Princess Elisabeth of Bohemia, and that is why the relation carries his name. The spiral of numbers is Stanisław Ulam's, drawn on a notepad during a talk in 1963 and published the year after with Myron Stein and Mark Wells. Martin Gardner's column carried it to everybody else, and it has been redrawn ever since. The circles on the number line are Lester Ford's, from a 1938 paper about approximating numbers with fractions. The sequence under them is named for John Farey, who noticed the mediant rule in 1816, although Charles Haros had published the same thing in 1802 and Augustin-Louis Cauchy supplied the proof Farey did not. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
 - [Geometry](../Docs/Drawing/Geometry.md): the full `Grid` reference (spanning points, nesting, singular access), `Insets`, and `Rectangle`.
 - [Ulam spiral](../Docs/Generators/UlamSpiral.md): the walk, reading any test off it, and the prime helpers behind the marks.
+- [Ford circles](../Docs/Generators/FordCircles.md): the circles, the Farey sequence and its mediant rule, and the `Fraction` type both rest on.
 - [Drawing](../Docs/Drawing/Drawing.md): the transform stack in detail, `pushState`/`popState` (the unscoped siblings of `withState`), and every shape that benefits.
 - [Kaleidoscope symmetry](../Docs/Drawing/Drawing.md#symmetry): the full reference for `symmetry`/`noSymmetry`, including which drawing paths fold and which don't. The [`Patterns/Kaleidoscope`](../Examples/Patterns/Kaleidoscope/Sketch.swift) example draws a single arm and lets the folds do the rest.
 - [Clipping](../Docs/Drawing/Drawing.md#clip): the reference, including how clips interact with layers and what vector export does with them. The [`Shapes/Clipping`](../Examples/Shapes/Clipping/Sketch.swift) example sweeps a lens across a striped star.

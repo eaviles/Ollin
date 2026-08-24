@@ -4,7 +4,7 @@
 
 ## Classic curves
 
-These are the curve builders of the generative-art canon, and each one is a **pure closed form**. You give them numbers and get geometry back. They return ordinary values (`[Vector2]` points or a `Contour`), so everything downstream already works: `drawPolyline` and `drawShape`, the [shape booleans](./Geometry.md#shape-booleans), [Chaikin smoothing](#smoothing), hatching, and [SVG export](../Output/Export.md) for the pen plotter. None of them touch `random` or `noise`, so the same arguments always produce the same curve, a fixed frame reproduces, and exports are recipe-safe.
+These are the curve builders of the generative-art canon, and each one is a **pure function of its numbers** (all but the [spirolateral](#spirolateral) a closed form, and that one a walk). You give them numbers and get geometry back. They return ordinary values (`[Vector2]` points or a `Contour`), so everything downstream already works: `drawPolyline` and `drawShape`, the [shape booleans](./Geometry.md#shape-booleans), [Chaikin smoothing](#smoothing), hatching, and [SVG export](../Output/Export.md) for the pen plotter. None of them touch `random` or `noise`, so the same arguments always produce the same curve, a fixed frame reproduces, and exports are recipe-safe.
 
 ```swift
 drawPolyline(rose(n: 5, radius: 300).points, closed: true)
@@ -26,6 +26,7 @@ for (i, p) in phyllotaxis(count: 600, spacing: 9).enumerated() {
 - [Spirograph: hypotrochoids and epitrochoids](#spirograph)
 - [Guilloche: the rose engine](#guilloche)
 - [The harmonograph](#harmonograph)
+- [Spirolaterals: a walk that comes home](#spirolateral)
 - [Chaikin smoothing](#smoothing)
 
 <a name="phyllotaxis"></a>
@@ -161,6 +162,42 @@ A harmonograph is the Victorian drawing machine whose pen hangs from swinging pe
 
 The signature look comes from **near-unison detune**. Frequencies like `2` against `2.01` make the trace precess slowly while the damping reels each lap inside the last, weaving the nested web. You can read the machine two ways. `point(at:)` with a growing `t` performs the drawing live, pen and all, and `contour()` bakes the whole trace at once, by default through `settleTime`, when the slowest-decaying pendulum has shrunk to 1% of its starting swing. There is no randomness inside, so the same pendulums always draw the same figure. Roll the *parameters* from the sketch's seeded `random` and every [variation](../Core/Variations.md) commissions a new one. Example: `Motion/Harmonograph`.
 
+<a name="spirolateral"></a>
+
+#### Spirolaterals: a walk that comes home
+
+```swift
+spirolateral(order: Int, turn: Double = .pi / 2, step: Double = 1,
+             reversed: Set<Int> = [], repeats: Int? = nil,
+             maxRepeats: Int = 360) -> Spirolateral
+
+struct Spirolateral {
+    var points: [Vector2]       // every corner, in the order it was walked
+    var contour: Contour        // the same walk, closed when it comes home
+    var run: Contour            // one run on its own
+    var repeats: Int            // how many runs were walked
+    var closingRepeats: Int?    // how many it takes to come home, nil if never
+    var closes: Bool
+    var netTurn: Double         // how far one run turns the walker
+    var center: Vector2?        // the point the figure turns about
+    var length: Double
+}
+```
+
+Step one length, turn, step two lengths, turn again, and keep going to `order`. Then run the whole sequence over. That is the entire rule, and the figures it makes are not obvious from it: pinwheels, square knots, and walks that leave and never return. Frank Odds named and studied them in 1973, and the same walk is a standing turtle-geometry exercise.
+
+**Whether it closes is arithmetic, not luck.** One run turns the walker through `netTurn`, so run `m` is run 1 turned by `m` of those. The runs close into a ring as soon as a whole number of them makes a whole number of turns. At the classic quarter turn that means `4 / gcd(order, 4)` runs, and it leaves out exactly the multiples of four. Those runs come back facing the way they set off, so every repeat lands further away in the same direction. They walk off the page, `closes` reads false, `center` is nil, and the walk is drawn open.
+
+`turn` has to be an exact fraction of a full turn for any of this to happen. A swept angle between two of them never closes, which is worth knowing before animating one. Animate the *order* instead, or the set of `reversed` steps, whose turns go the other way and change both the figure and the count.
+
+```swift
+let figure = spirolateral(order: 7, step: 26)
+noFill(); stroke(.white); strokeWeight(2)
+drawPolyline(fitted(figure.points, in: bounds.inset(by: 60)), closed: figure.closes)
+```
+
+Fit the *points*, as above, rather than reaching for `scale()`: the transform would scale the stroke width with the figure. The whole figure is `run` turned about `center`, once per repeat. Draw the run in one color over the figure in another and the repeats show themselves. Example: `Patterns/Spirolateral`.
+
 <a name="smoothing"></a>
 
 #### Chaikin smoothing
@@ -178,7 +215,7 @@ It pairs with everything that emits raw line-work: a random walk, [streamlines](
 
 #### Where this comes from
 
-These curves come from Vogel's phyllotaxis model, the classical Lissajous, rose, and trochoid parametric forms, Lamé's superellipse, Gielis's superformula, the rose engine's guilloche, the damped-pendulum harmonograph, and Chaikin's corner-cutting algorithm. See [`ATTRIBUTION.md`](../../ATTRIBUTION.md) for the sources.
+These curves come from Vogel's phyllotaxis model, the classical Lissajous, rose, and trochoid parametric forms, Lamé's superellipse, Gielis's superformula, the rose engine's guilloche, the damped-pendulum harmonograph, Odds's spirolaterals, and Chaikin's corner-cutting algorithm. See [`ATTRIBUTION.md`](../../ATTRIBUTION.md) for the sources.
 
 #### Go deeper
 

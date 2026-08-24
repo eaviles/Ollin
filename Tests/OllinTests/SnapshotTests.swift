@@ -443,6 +443,12 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("ulam-spiral",
                  note: "The primes from 1 up, written in a 51-cell square spiral and marked as dots. Pins the spiral walk (which cell each number lands in, and therefore where every diagonal falls) and the sieve behind the marks. No rng and no time, so it is deterministic.",
                  make: { UlamSpiralScene() }),
+    SnapshotCase("ford-circles",
+                 note: "The Ford circles of every fraction with a denominator of nine or less, filled by denominator, over the line they all rest on. Pins the Farey walk that names them, the 1/(2q squared) radius, and the single width scale that makes tangency come out right (scaling x and y differently would leave gaps or overlaps). No rng and no time, so it is deterministic.",
+                 make: { FordCirclesScene() }),
+    SnapshotCase("spirolateral",
+                 note: "Two walks of growing steps under a quarter turn: order 7, which comes home after four runs and is drawn closed in color, over order 8, which never comes home and is drawn open in gray for three runs. Pins the turtle walk itself, the closing count the net turn dictates, and that a drifting order is drawn open. No rng and no time, so it is deterministic.",
+                 make: { SpirolateralScene() }),
     SnapshotCase("ten-print",
                  note: "A seeded maze of diagonals, drawn as joined runs with the color stepped per run, over the plain per-cell reading in gray. Pins the coin-per-cell layout, the corner lattice the diagonals meet on, and the run walk's own ordering. Seeded, no time, so it is deterministic.",
                  make: { TenPrintScene() }),
@@ -3373,6 +3379,47 @@ private final class UlamSpiralScene: Sketch {
         fill(Color(hex: 0xFFD166))
         let radius = spiral.grid.cellWidth * 0.36
         for point in spiral.primePoints { drawCircle(center: point, radius: radius) }
+    }
+}
+
+/// The Ford circles up to a denominator of nine, over the line they rest on. No
+/// rng and no `time`, so it's deterministic.
+private final class FordCirclesScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0A0D14))
+        strokeWeight(1.5)
+        for ford in fordCircles(order: 9) {
+            let t = 1 - 1 / Double(ford.fraction.denominator)
+            let paint = CosinePalette.rainbow.color(at: 0.55 + t * 0.4)
+            fill(paint.withAlpha(0.18))
+            stroke(paint)
+            drawCircle(ford.circle)
+        }
+    }
+}
+
+/// Two spirolaterals at a quarter turn: an order that comes home, drawn closed,
+/// over one that never does, drawn open. No rng and no `time`, so it's
+/// deterministic.
+private final class SpirolateralScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0B0E14))
+        noFill()
+        strokeJoin(.round)
+
+        let drifting = spirolateral(order: 8, step: 10, repeats: 3)
+        stroke(Color(white: 0.34))
+        strokeWeight(3)
+        drawPolyline(fitted(drifting.points, in: bounds.inset(by: 18)), closed: drifting.closes)
+
+        let closed = spirolateral(order: 7, step: 10)
+        stroke(Color(hex: 0xFFD166))
+        strokeWeight(4)
+        drawPolyline(fitted(closed.points, in: bounds.inset(by: 40)), closed: closed.closes)
     }
 }
 

@@ -127,6 +127,8 @@ for p in primes(upTo: 500) { drawCircle(Double(p), height / 2, 3) }
 
 The picture these are best known for is the [Ulam spiral](../Generators/UlamSpiral.md), which writes the numbers in a square spiral and marks the primes.
 
+The other exact whole-number type is `Fraction`, a fraction in lowest terms with `mediant`, `isNeighbor`, and comparison by cross-multiplication. It lives with [Ford circles](../Generators/FordCircles.md) and `fareySequence`, the picture it was made for.
+
 ### Constants
 
 `Double.tau` is the full turn (2π), which is what most angle work wants.
