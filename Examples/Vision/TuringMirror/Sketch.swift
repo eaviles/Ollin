@@ -38,7 +38,7 @@ final class TuringMirror: Sketch {
         // are living regimes, so the background stays patterned while your
         // silhouette wears a different texture.
         rd = simField(.reactionDiffusion(feed: 0.046, kill: 0.065,
-                                         toFeed: 0.055, toKill: 0.062), scale: 0.5)
+                                         toFeed: 0.055, toKill: 0.062))
         mask = renderTarget()
         rd.modulation = mask
     }
@@ -50,8 +50,8 @@ final class TuringMirror: Sketch {
         // are per-frame, so an undrawn map would fall back to the uniform field.
         withTarget(mask) {
             background(.black)
-            if let matte = people.matte, let rect = camera.fittedRect(in: bounds) {
-                drawImage(matte, in: rect)
+            if let matte = people.matte, let size = camera.frameSize {
+                drawImage(matte, in: Rectangle(covering: size, in: bounds))
             }
         }
 
