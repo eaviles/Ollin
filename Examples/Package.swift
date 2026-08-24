@@ -443,6 +443,7 @@ let package = Package(
         example("Patterns/Spirolateral"),
         example("Patterns/FordCircles"),
         example("Patterns/PowerDiagram"),
+        example("Patterns/Pentominoes"),
         example("Patterns/Truchet"),
         example("Patterns/Hitomezashi"),
         example("Patterns/Kolam"),

@@ -108,7 +108,7 @@ Teaches: the edge-agreement idea itself (a tile promises only to meet its own do
 Assumes: Ch 6 (the grid and the transforms), Ch 4 (seeds), Ch 5 (noise, for the finished piece's color).
 Payoff: a meandering tangle. Truchet strands stroked twice, a rim pass under a color pass, with noise painting slow weather across it.
 Figures: the two Truchet tiles; the doorway diagram; both hitomezashi faces; the crease pattern beside the sheet it folds into; the four aperiodic panels; two Poincare disks; the finished tangle.
-Draws from: `Docs/Drawing/Truchet.md`, `Hitomezashi.md`, `TenPrint.md`, `CreasePattern.md`, `AperiodicTilings.md`, `HyperbolicTiling.md`; `Examples/Patterns/`.
+Draws from: `Docs/Drawing/Truchet.md`, `Hitomezashi.md`, `TenPrint.md`, `CreasePattern.md`, `AperiodicTilings.md`, `HyperbolicTiling.md`, `Docs/Generators/Polyominoes.md`; `Examples/Patterns/`.
 
 **8. Words.**
 Teaches: `drawText` and its box form; the three kinds of font (outline, stroke, bitmap) and why the pen font takes a stroke; per-glyph motion; `textToShapes` as the chapter's hinge, with warping and `resampled` respacing; scripts that do not work like English; vertical text and Mongolian; justification; hanging punctuation.
@@ -348,6 +348,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | `Drawing/Geometry.md`: `Grid`, `Insets` | Ch 6 | taught |
 | `Drawing/Truchet.md` | Ch 7 | taught |
 | `Drawing/TenPrint.md` (`tenPrint`) | Ch 7 | taught ("One coin per cell: a maze of diagonals" with the DiagonalMaze figure: one coin per cell against hitomezashi's one per line, the diagonals meeting at corners as the whole reason it reads as paths, `runs` as that reading made real, the round cap, and biasing the coin) |
+| `Generators/Polyominoes.md` (`Polyomino`, `tilePolyominoes`, `outlines`) | Ch 7 | taught ("Pieces that have to fit: polyominoes" with the FittingPieces figure: writing a piece by drawing it, counting orientations, the twelve pentominoes and the boards that hold them, outlines as the way a fit reads, the reuse and reflections switches, and nil as a real answer with the mutilated board as the reason) |
 | `Generators/FordCircles.md` (`fordCircles`, `fareySequence`, `Fraction`) | Ch 6 | taught ("A circle for every fraction" with the CircleForEveryFraction figure: the radius rule, that the circles never overlap, tangency as the neighbor test ps - qr = ±1, big circle as good approximation, the mediant as how the sequence grows, and growing the order as arrival rather than motion) |
 | `Generators/UlamSpiral.md` (`ulamSpiral`, `primes`, `isPrime`) | Ch 6 | taught ("Walking a grid: numbers in a spiral" with the NumbersInASpiral figure: reading order as a choice, the spiral walk, why a diagonal is a quadratic and therefore why the lines are there, `points(where:)` for any test, and `start` as the knob to animate) |
 | `Drawing/Hitomezashi.md` | Ch 7 | taught ("One coin per line: hitomezashi" with the HitomezashiFaces figure: the one-bit-per-line rule, both faces with the fill-then-stitch snippet, biased flips, explicit bits and the word-encoding trick; lineage in "Where this comes from") |

@@ -91,6 +91,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 - [`Points on a surface`](./Generators/SurfaceSampling.md) - `surfacePoints`, points scattered over a mesh's skin rather than its vertex list, evenly spaced by default, each carrying the normal, texture coordinate, and triangle it landed on
 - [`Stippling`](./Generators/Stippling.md) - `stipple`, dots packed to reproduce an image's tone (weighted-Voronoi stippling), or any density function
 - [`Ford circles`](./Generators/FordCircles.md) - `fordCircles`, a circle for every fraction that touches its neighbors and overlaps nothing, over `fareySequence` and the exact `Fraction` type
+- [`Polyominoes`](./Generators/Polyominoes.md) - `Polyomino` + `tilePolyominoes`, the twelve pentominoes and an exact-cover search that fits a bag of pieces into a region, or says no fit exists
 - [`Ulam spiral`](./Generators/UlamSpiral.md) - `ulamSpiral`, the whole numbers written in a square spiral so a test on them becomes a picture, with the primes falling on diagonals
 - [`Fractals`](./Generators/Fractals.md) - `IFS` chaos games, `FractalFlame` renders, circle-inversion limit sets, and Kleinian limit-set curves, plus the `fitted` placement helper
 - [`Chaotic maps & bifurcation`](./Generators/Bifurcation.md) - `IteratedMap`, the one-dimensional route to chaos: logistic, sine, tent, and Gauss families, orbits and cobweb staircases, the bifurcation diagram as dots or a density image, and Lyapunov exponents
