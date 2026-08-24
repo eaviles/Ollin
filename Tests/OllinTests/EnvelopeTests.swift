@@ -171,3 +171,110 @@ struct EnvelopeTests {
         #expect(caustic(off: [], from: .parallel(0)).isEmpty)
     }
 }
+
+/// Laws for the Huygens construction: a front is where the wavelets lean, so
+/// every point of the answer is exactly a wavelet's radius from the old front and
+/// no nearer to any part of it.
+@Suite
+struct HuygensTests {
+    /// A straight front stays straight and moves by exactly what it was asked to.
+    @Test func aStraightFrontMovesStraight() {
+        let front = (0 ... 50).map { Vector2(Double($0) * 8, 40) }
+        let runs = huygensFront(from: front, advancing: 30)
+        #expect(runs.count == 1)
+        for point in runs[0].points {
+            #expect(abs(abs(point.y - 40) - 30) < 1e-9, "\(point) did not move 30")
+        }
+        // And the other way is the other way.
+        let back = huygensFront(from: front, advancing: -30)
+        #expect(back.count == 1)
+        let forward = runs[0].points[0].y, backward = back[0].points[0].y
+        #expect((forward - 40) * (backward - 40) < 0, "both fronts went the same way")
+    }
+
+    /// A ring grows and shrinks by the radius it was given, which is the closed
+    /// case and the easiest one to be sure of.
+    @Test func aRingGrowsAndShrinksByTheDistance() {
+        let radius = 100.0
+        let ring = (0 ..< 400).map { Vector2(angle: Double($0) / 400 * .tau, length: radius) }
+        for step in [-40.0, -12, 15, 60] {
+            let runs = huygensFront(from: ring, advancing: step, closed: true)
+            let points = runs.flatMap(\.points)
+            #expect(!points.isEmpty, "nothing came back for \(step)")
+            for point in points {
+                #expect(abs(point.length - abs(radius + step)) < 0.2,
+                        "\(point.length) is not \(abs(radius + step))")
+            }
+        }
+    }
+
+    /// The rule the construction is made of, measured directly: every point of the
+    /// new front is exactly a wavelet away from the old one, and no nearer to any
+    /// part of it.
+    @Test func everyPointIsOneWaveletFromTheOldFront() {
+        // A front with a real hollow in it, so there is something to fold.
+        let front = (0 ... 120).map { i -> Vector2 in
+            let x = Double(i) * 4 - 240
+            return Vector2(x, 60 * cos(x / 80))
+        }
+        let reach = 45.0
+        let points = huygensFront(from: front, advancing: reach).flatMap(\.points)
+        #expect(points.count > 40)
+
+        // A sampled front is a run of chords sitting a little inside the curve it
+        // stands for, so the answer is right to about that much: the sagitta of one
+        // segment, which is a twentieth of a unit here.
+        let slack = 0.05
+        for point in points {
+            var nearest = Double.infinity
+            for i in 0 ..< (front.count - 1) {
+                nearest = Swift.min(nearest, toSegment(point, front[i], front[i + 1]))
+            }
+            #expect(nearest > reach - slack, "\(point) is only \(nearest) from the old front")
+            #expect(nearest < reach + slack, "\(point) is \(nearest) from the old front")
+        }
+    }
+
+    /// A front travelling into its own hollow loses the pieces that fold over. The
+    /// fold begins exactly when the front has travelled the radius the curve bends
+    /// at, so a shorter trip keeps everything and a longer one does not.
+    @Test func aFrontTravellingIntoAHollowLosesTheFoldedPieces() {
+        // y = 70 cos(x / 70) bends at a radius of 70 where it turns over, so that
+        // is where the fold starts.
+        let front = (0 ... 200).map { i -> Vector2 in
+            let x = Double(i) * 2 - 200
+            return Vector2(x, 70 * cos(x / 70))
+        }
+        let near = huygensFront(from: front, advancing: 30).flatMap(\.points).count
+        let far = huygensFront(from: front, advancing: 120).flatMap(\.points).count
+        #expect(near > far, "the far front kept \(far) points against \(near) near")
+        #expect(far > 0)
+        #expect(huygensFront(from: front, advancing: 120).count > 1, "the far front did not break up")
+        // Going the other way, into the outside of the same bends, nothing folds.
+        let outward = huygensFront(from: front, advancing: -120)
+        #expect(outward.count == 1, "the outward front broke into \(outward.count) runs")
+    }
+
+    /// A ring collapsing inward past its own middle has nowhere left to be.
+    @Test func aRingCollapsingPastItsMiddleVanishes() {
+        let ring = (0 ..< 200).map { Vector2(angle: Double($0) / 200 * .tau, length: 50) }
+        #expect(huygensFront(from: ring, advancing: -70, closed: true).isEmpty)
+        #expect(!huygensFront(from: ring, advancing: -30, closed: true).isEmpty)
+    }
+
+    /// Nothing to advance, or nowhere to advance to.
+    @Test func theSmallCasesAreAnsweredPlainly() {
+        let front = (0 ... 10).map { Vector2(Double($0) * 5, 0) }
+        #expect(huygensFront(from: front, advancing: 0).isEmpty)
+        #expect(huygensFront(from: [], advancing: 10).isEmpty)
+        #expect(huygensFront(from: [Vector2(0, 0), Vector2(1, 0)], advancing: 10).isEmpty)
+    }
+
+    private func toSegment(_ point: Vector2, _ a: Vector2, _ b: Vector2) -> Double {
+        let along = b - a
+        let lengthSquared = along.lengthSquared
+        guard lengthSquared > 1e-24 else { return point.distance(to: a) }
+        let t = Swift.max(0, Swift.min(1, (point - a).dot(along) / lengthSquared))
+        return point.distance(to: a + along * t)
+    }
+}

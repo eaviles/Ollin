@@ -446,6 +446,7 @@ let package = Package(
         example("Patterns/Pentominoes"),
         example("Patterns/DeBruijn"),
         example("Patterns/Caustic"),
+        example("Patterns/Wavefront"),
         example("Patterns/Truchet"),
         example("Patterns/Hitomezashi"),
         example("Patterns/Kolam"),

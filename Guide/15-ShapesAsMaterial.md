@@ -127,6 +127,16 @@ One trap is worth naming, because it makes a picture look broken rather than wro
 
 `refractedRays` does the same job for light bending into glass instead of bouncing off it, and a ray that meets the surface too steeply is left out rather than faked, which is total internal reflection doing what it does.
 
+The same idea with circles instead of lines is how a wave gets where it is going. Every point of a wavefront sends out a little wave of its own, and a moment later the front is the curve those wavelets lean on. That is Huygens' construction, from 1690, and `huygensFront(from:advancing:)` is it.
+
+```swift
+for step in stride(from: 30.0, through: 400, by: 30) {
+    for run in huygensFront(from: shore, advancing: -step) { drawPolyline(run.points) }
+}
+```
+
+It is not the same as moving every point sideways, and the difference is the whole point. Where the front curves back on itself the sideways move folds over, and the folded piece is *inside* its neighbors' wavelets rather than on the front. Those pieces are dropped, so the front tears and comes to a sharp point. That point is a focus, and it appears exactly when the front has travelled the radius the curve bends at. The `Patterns/Wavefront` example sends a wave off a headland and lets it happen.
+
 ### A corner a car could take
 
 Chaikin rounds a corner, and for most drawings that is the end of it. But a rounded corner can be asked a second question, and it is the one a road engineer asks. Not "is the outline smooth" but "is the *turning* smooth".

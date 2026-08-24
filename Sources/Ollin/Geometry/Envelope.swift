@@ -167,7 +167,7 @@ private func normals(along curve: [Vector2], closed: Bool) -> [(Vector2, Vector2
         }
         let along = after - before
         guard along.lengthSquared > 1e-24 else { continue }
-        out.append((curve[i], Vector2(-along.y, along.x).normalized))
+        out.append((curve[i], Vector2(along.y, -along.x).normalized))
     }
     return out
 }
@@ -182,4 +182,97 @@ public extension Sketch {
     func drawCaustic(off curve: [Vector2], from source: LightSource, closed: Bool = false) {
         for run in caustic(off: curve, from: source, closed: closed) { drawPolyline(run.points) }
     }
+}
+
+/// The wavefront a front becomes after travelling `distance`, by Huygens'
+/// construction: every point of the front sends out a wavelet, and the new front
+/// is the curve those wavelets lean on.
+///
+/// ```swift
+/// for step in stride(from: 20.0, through: 200, by: 20) {
+///     for run in huygensFront(from: shore, advancing: step) { drawPolyline(run.points) }
+/// }
+/// ```
+///
+/// The envelope of a family of circles is not the same as moving every point
+/// sideways. Where the front curves back on itself, the sideways move folds over
+/// and crosses itself, and those folded pieces are inside their neighbors'
+/// wavelets rather than on the front. They are dropped here, by the rule the
+/// construction is made of: **a point of the new front is exactly `distance` from
+/// the old one and no nearer to any part of it.** That is what turns a folded
+/// offset into a real wavefront, and it is why a front travelling into a hollow
+/// eventually loses pieces and comes to a point.
+///
+/// A positive distance travels along the front's own normal (its left, following
+/// the run of points), a negative one back the other way. The answer is a list of
+/// runs, since a front can break into pieces as it goes.
+///
+/// The check is against every segment of the old front, so the cost grows with the
+/// square of the point count: a few hundred points is comfortable.
+public func huygensFront(from front: [Vector2], advancing distance: Double,
+                         closed: Bool = false) -> [Contour] {
+    guard front.count >= 3, distance != 0 else { return [] }
+    let count = front.count
+    let last = count - 1
+    let segments = closed ? count : count - 1
+
+    /// How far `point` is from segment `j`, which runs from `j` to `j + 1`.
+    func gap(_ point: Vector2, _ j: Int) -> Double {
+        distanceToSegment(point, front[j], front[(j + 1) % count])
+    }
+
+    var runs: [Contour] = []
+    var current: [Vector2] = []
+    for i in 0 ..< count {
+        let before: Int, after: Int
+        if closed {
+            before = (i + last) % count
+            after = (i + 1) % count
+        } else {
+            if i == 0 || i == last {
+                if current.count >= 2 { runs.append(Contour(current, closed: false)) }
+                current = []
+                continue
+            }
+            before = i - 1
+            after = i + 1
+        }
+        let along = front[after] - front[before]
+        guard along.lengthSquared > 1e-24 else { continue }
+        let moved = front[i] + Vector2(along.y, -along.x).normalized * distance
+
+        // The reference is the distance to the point's *own* two segments, not the
+        // distance asked for. A sampled curve is a run of chords that sit a little
+        // inside it, so a front moving into the bend measures a hair under the
+        // radius against every one of them, and comparing against the radius itself
+        // would throw the whole front away.
+        var own = Double.infinity
+        for j in [before, i] where j < segments || closed {
+            own = Swift.min(own, gap(moved, (j + count) % count))
+        }
+        var nearest = Double.infinity
+        for j in 0 ..< segments where j != i && j != before {
+            nearest = Swift.min(nearest, gap(moved, j))
+            if nearest < own { break }
+        }
+
+        if nearest >= own - abs(distance) * 1e-9 {
+            current.append(moved)
+        } else if !current.isEmpty {
+            if current.count >= 2 { runs.append(Contour(current, closed: false)) }
+            current = []
+        }
+    }
+    if current.count >= 2 { runs.append(Contour(current, closed: false)) }
+    return runs
+}
+
+/// How far `point` is from the segment `a`-`b`, measuring to the segment itself
+/// rather than to its ends.
+private func distanceToSegment(_ point: Vector2, _ a: Vector2, _ b: Vector2) -> Double {
+    let along = b - a
+    let lengthSquared = along.lengthSquared
+    guard lengthSquared > 1e-24 else { return point.distance(to: a) }
+    let t = Swift.max(0, Swift.min(1, (point - a).dot(along) / lengthSquared))
+    return point.distance(to: a + along * t)
 }
