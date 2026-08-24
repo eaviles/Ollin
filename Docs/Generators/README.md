@@ -12,6 +12,7 @@
 - [`Stippling`](./Stippling.md) - `stipple`, dots packed to reproduce an image's tone (weighted-Voronoi stippling), or any density function
 - [`De Bruijn sequences`](./DeBruijn.md) - `deBruijnSequence` + `DeBruijnCode`, a cyclic run holding every window of a given length exactly once, so a glimpse of a few symbols says where it came from
 - [`Ford circles`](./FordCircles.md) - `fordCircles`, a circle for every fraction that touches its neighbors and overlaps nothing, over `fareySequence` and the exact `Fraction` type
+- [`Shadow art`](./ShadowArt.md) - `shadowArt`, the solid carved so that it throws the silhouettes you ask for, with the shadows it really casts to compare against
 - [`Polyominoes`](./Polyominoes.md) - `Polyomino` + `tilePolyominoes`, the twelve pentominoes and an exact-cover search that fits a bag of pieces into a region, or says no fit exists
 - [`Ulam spiral`](./UlamSpiral.md) - `ulamSpiral`, the whole numbers written in a square spiral so a test on them becomes a picture, with the primes falling on diagonals
 - [`Fractals`](./Fractals.md) - `IFS` chaos games, `FractalFlame` renders, circle-inversion limit sets, and Kleinian limit-set curves, plus the `fitted` placement helper

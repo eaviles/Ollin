@@ -25,6 +25,7 @@ Meshes, point clouds, and the 3D transform stack.
 | [StrangeAttractor](Geometry/StrangeAttractor/) | A Lorenz attractor integrated with Runge-Kutta, splatted as a 150k-point cloud colored by orbit speed and lit additively; grab and orbit it (`StrangeAttractor.lorenz`). |
 | [Transforms](Geometry/Transforms/) | The 3D transform stack: a sun, planets orbiting it, and a moon orbiting each planet; orbits within orbits via nested `withState`, one point-cloud blob placed many ways by `translate`/`rotateY`/`scale`. |
 | [Solids](Geometry/Solids/) | The closed-solid catalog (box, sphere, cylinder, torus, the Platonics, and more) as colorful clay shaded by the auto-lit default. |
+| [ShadowArt](Geometry/ShadowArt/) | A solid carved so that it throws a ring from the front and a cross from the side, with what it really throws drawn beside what was asked for (`shadowArt`, `shadow(from:)`). |
 | [ShapeFactory](Geometry/ShapeFactory/) | The parametric/profile mesh set (Möbius, Klein, superellipsoid, supershape, extrude, lathe) morphing on `time`. |
 | [LoadedMesh](Geometry/LoadedMesh/) | A mesh loaded from a file (`.obj`/`.usdz`/`.gltf`/…); drop one in with `OLLIN_MESH=<path>` (or use the bundled crystal), recentered, scaled to fit, and lit. |
 | [TexturedMesh](Geometry/TexturedMesh/) | A UV-gridded globe textured with an image over a base-color-tinted floor, both lit. |
