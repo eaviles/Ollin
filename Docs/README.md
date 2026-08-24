@@ -29,6 +29,7 @@ New to Swift? Start with the [Swift quick reference](./Swift.md), which covers j
 - [`Images`](./Drawing/Images.md) - `loadImage`, `drawImage`, `tint`, and pixel access: load or author a raster image, draw it scaled or transformed, recolor it
 - [`Glyph mosaic`](./Drawing/GlyphMosaic.md) - `drawGlyphMosaic`, an image rebuilt as a grid of text glyphs, each cell's character chosen by its measured ink in the active font
 - [`Halftone`](./Drawing/Halftone.md) - `drawHalftone`, an image rebuilt as the classic print dot screen: area-exact dots on a rotated grid, real circles for the plotter path
+- [`Photo mosaic`](./Drawing/PhotoMosaic.md) - `Image.mosaic` + `averageColor` + `drawMosaic`, a picture rebuilt out of many smaller pictures, each cell taking the nearest by average color in linear light
 - [`Pixel sorting`](./Drawing/PixelSorting.md) - `Image.pixelSorted`, brightness-bounded runs of an image's own pixels reordered along rows or columns (the classic glitch melt)
 - [`Seam carving`](./Drawing/SeamCarving.md) - `Image.seamCarved` and `SeamMap`, resizing a picture by taking away the paths that carry the least, so what matters keeps its shape (plus the masks that hold something still or take it out)
 - [`Color`](./Drawing/Color.md) - the `Color` type, the OKLab family and mixing, `Ramp`s and `Palette`s (loaded from a file or extracted from an image), dithering an image down to a palette, and perceptual `Colormap`s

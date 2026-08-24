@@ -122,7 +122,7 @@ Teaches: loading an image and sampling it; a picture as glyph marks, as stipple 
 Assumes: Ch 8 (type, for the finished piece), Ch 6 (the grid).
 Payoff: a picture painted with type. One image sampled over a grid, every sample answered by a letter sized and colored by the pixel under it.
 Figures: pixel sampling; the glyph mosaic; the single line and the spanning tree; thread from pins; sorted pixels; data as material; the finished mosaic.
-Draws from: `Docs/Drawing/Images.md`, `GlyphMosaic.md`, `Halftone.md`, `PixelSorting.md`, `SeamCarving.md`, `Docs/Generators/Stippling.md`, `SingleLine.md`, `SpanningTree.md`, `StringArt.md`, `Docs/Helpers/Data.md`; `Examples/Images/`, `Examples/Data/`.
+Draws from: `Docs/Drawing/Images.md`, `GlyphMosaic.md`, `Halftone.md`, `PhotoMosaic.md`, `PixelSorting.md`, `SeamCarving.md`, `Docs/Generators/Stippling.md`, `SingleLine.md`, `SpanningTree.md`, `StringArt.md`, `Docs/Helpers/Data.md`; `Examples/Images/`, `Examples/Data/`.
 
 ### Part II: Systems that come alive
 
@@ -410,6 +410,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | Modulated reaction-diffusion regimes (`Drawing/Effects.md`: `.reactionDiffusion(feed:kill:toFeed:toKill:)` + `SimField.modulation`) | Ch 19 | shown (a paragraph in "Two chemicals: reaction-diffusion" after the feed/kill map: the layer's brightness picking the map spot per texel, one simulation so the patterns grow into each other rather than meeting at a mask edge, and the `Vision/TuringMirror` camera-matte example as the worked case) |
 | `Simulation/Watercolor.md` (`Sim.watercolor`, `WatercolorField`, `WatercolorPigment`, the wet-paint wash) | Ch 19 | taught ("Paint that behaves: watercolor" with the scripted-painting figure: the pigment-channels-plus-water-alpha mapping and the noStroke rule, edge darkening as physics, dry() glazing vs blot() and the held-water backrun, dry-brush/grain/paperSeed, and inventing pigments from two swatches) |
 | `Drawing/GlyphMosaic.md` (`drawGlyphMosaic`, measured glyph ramps) | Ch 9 | taught ("A picture as marks" with a two-panel figure: measured ink per font, the curated sets, `glyphScale` gutters, the data form, and the inverted-polarity trap it shares with halftone) |
+| `Drawing/PhotoMosaic.md` (`Image.mosaic`, `averageColor`, `drawMosaic`) | Ch 9 | taught ("A picture made of pictures" with the PicturesFromPictures figure: the nearest-average match, why the averaging has to be in linear light and what going wrong looks like, the tint and repeat knobs, and that both target and library need range in the same places) |
 | `Drawing/PixelSorting.md` (`Image.pixelSorted`) | Ch 9 | taught ("Sorting the pixels" with a before/after figure: the threshold as the whole technique, the keys, and the needs-texture and reversed-on-a-gradient caveats) |
 | `Drawing/SeamCarving.md` (`Image.seamCarved`, `SeamMap`) | Ch 9 | taught ("Making it narrower without squashing it" with a squeeze-beside-carve figure: the seam, the texture-survives-and-flat-gives-way rule, both masks, growing, and the map that hands back any width) |
 | `Drawing/Halftone.md` (`drawHalftone`, area-exact dot screens) | Ch 9 | taught (same section and figure: `pitch`/`angle`, area-exact coverage, real circles for the plotter, and continuous tone versus the mosaic's steps) |

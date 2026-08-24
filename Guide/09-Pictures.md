@@ -113,6 +113,25 @@ One polarity trap sits between them. `drawGlyphMosaic` grows its mark with *brig
 
 Both also come in a data form, `glyphMosaic(of:)` and `halftone(of:)`, which hand back the cells or dots instead of drawing them. That's the door to your own marks: same measurement, but you draw hexagons, or letters from a message, or nothing at all where the tone is light.
 
+## A picture made of pictures
+
+The marks so far have been characters and dots. They can be pictures.
+
+<img src="Images/09-Pictures/PicturesFromPictures.jpg" alt="Three panels: a soft target picture of two lit blobs, the same picture rebuilt as a grid of small colored tiles, and seven of those cells enlarged so each is visibly its own little picture of dots, bars and triangles" width="680">
+
+```swift
+let mosaic = target.mosaic(of: library, columns: 32, rows: 32)
+drawMosaic(mosaic, of: library, in: bounds, tint: 0.25)
+```
+
+Every cell of the target is averaged, every picture in the library is averaged once, and each cell takes the nearest one. Stand back and the cells add up to the target; step forward and each is a picture of its own.
+
+**The averaging happens in linear light, and that is not a detail.** A cell that is half black and half white is middle gray, which is 0.5 in linear light and about 0.74 written back out in sRGB. Average the sRGB numbers instead and you get 0.5, a quarter too dark, and the mosaic loses its lights. Ollin does this the right way for you; the reason to know it is that hand-rolling the same loop is where the mistake usually lives.
+
+Two knobs matter. `tint` mixes each cell toward the color it stands for, which is how a mosaic is made to read from further off: a quarter of the way is a good place to start, and 1 gives up and paints flat color. `maxUses` limits how often one picture may repeat, filling cells in reading order and falling back to the nearest picture when the library runs dry.
+
+The thing that decides whether a mosaic works is not the code. **The target needs range and the library needs range in the same places.** A target that is mostly one flat dark takes the one nearest picture and repeats it over the whole frame, which is a picture of nothing. `mosaic.uses(of:)` counts how many of the library actually got used, and it is the number to watch when a mosaic looks flat.
+
 ## A picture as one line
 
 The other family turns a picture into line work, and all of it starts with **stippling**, which is placing loose dots so that their density reproduces the picture's tone. Getting that right is harder than scattering dots at random, because random placement clumps. The method Ollin uses is a settling process. Give every dot the patch of canvas that lies closer to it than to any other dot, move the dot to the center of that patch weighted by how dark the picture is there, and repeat. Dots drift toward darkness and away from each other at the same time, and after a few dozen rounds they sit in an even spread that is dense in the shadows and sparse in the light. ([Chapter 15](15-ShapesAsMaterial.md) names the structure underneath this, since it turns out to be useful for a lot more than dots.)
@@ -440,6 +459,7 @@ Stippling with dots of even weight was a hand discipline in scientific illustrat
 
 - [Images](../Docs/Drawing/Images.md): the complete `Image` surface, including `Image(resource:in:)` for a picture bundled with a sketch, the sampling helpers, and authoring an image in code.
 - [Glyph mosaic](../Docs/Drawing/GlyphMosaic.md) and [halftone](../Docs/Drawing/Halftone.md): the measured coverage behind the glyph ramp, the dot shapes and screen angles, and the duotone options.
+- [Photo mosaic](../Docs/Drawing/PhotoMosaic.md): `averageColor` and its linear-light rule, the match, the tint and repeat knobs, and drawing the placements yourself.
 - [Stippling](../Docs/Generators/Stippling.md), [single line](../Docs/Generators/SingleLine.md), and [spanning tree](../Docs/Generators/SpanningTree.md): every knob on the even scatter, the closed tour through it, and the branching tree over the same dots.
 - [String art](../Docs/Generators/StringArt.md): the pins and the ink dial, and `inverted` for a pale thread on a dark ground.
 - [Pixel sorting](../Docs/Drawing/PixelSorting.md): every key and direction, and how to get each of the classic looks.
