@@ -2647,6 +2647,21 @@ static inline void ollin_aniso_frame(float3 n, float4 vertexTangent,
     b = b * cr - t0 * sr;
 }
 
+// One light's contribution to the fake-subsurface bleed. Two terms: light coming
+// through from behind (the view-against-light lobe, bent toward the normal so the
+// glow spreads across the form instead of pinching to a point), plus a small
+// always-on floor so a lit translucent body still reads translucent when every
+// light is in front; jade and wax read by that floor under an ordinary rig.
+// Both are weighted thinner-at-the-silhouette, standing in for a thickness map
+// on the closed forms the mesh path draws.
+static inline float ollin_sss_translucency(float3 viewDir, float3 toLight, float3 n) {
+    float3 bent = normalize(toLight + n * 0.35);
+    float through = pow(max(dot(viewDir, -bent), 0.0), 3.0);
+    float thin = 1.0 - max(dot(n, viewDir), 0.0);
+    float thickness = 0.35 + 0.65 * thin;
+    return (through + 0.22) * thickness;
+}
+
 // The lit color for a mesh fragment given its linear diffuse `base`, opacity `alpha`,
 // surface `normal`, `worldPos`, and the per-batch `mat` finish. It composes a base
 // shading model (standard Lambert / toon cel / Gooch warm–cool / physically-based) with
@@ -3069,10 +3084,9 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
         }
         incoming += atten * L.color.rgb * ndl;
 
-        // Subsurface: light seen coming through thin geometry from behind (a wrap term).
+        // Subsurface: the translucent bleed (through-light plus its ambient floor).
         if (wantsSSS) {
-            float back = pow(max(dot(viewDir, -toLight), 0.0), 3.0);
-            sssAccum += atten * L.color.rgb * back;
+            sssAccum += atten * L.color.rgb * ollin_sss_translucency(viewDir, toLight, n);
         }
     }
 
@@ -3602,10 +3616,9 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
         }
         incoming += atten * L.color.rgb * ndl;
 
-        // Subsurface: light seen coming through thin geometry from behind (a wrap term).
+        // Subsurface: the translucent bleed (through-light plus its ambient floor).
         if (wantsSSS) {
-            float back = pow(max(dot(viewDir, -toLight), 0.0), 3.0);
-            sssAccum += atten * L.color.rgb * back;
+            sssAccum += atten * L.color.rgb * ollin_sss_translucency(viewDir, toLight, n);
         }
     }
 

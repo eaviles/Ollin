@@ -389,11 +389,13 @@ public extension Material {
     /// diffuse shading. The plainest finish.
     static let matte = Material(specular: 0, shininess: 8)
 
-    /// Unfired-clay earthenware: a barely-there broad sheen over a matte surface.
-    static let clay = Material(specular: 0.05, shininess: 6)
+    /// Unfired-clay earthenware: a faint, very broad sheen over a matte surface,
+    /// the soft light-catch of a smoothed slip.
+    static let clay = Material(specular: 0.14, shininess: 4)
 
-    /// Soft rubber or matte vinyl: a wide, dim highlight — more present than clay.
-    static let rubber = Material(specular: 0.12, shininess: 16)
+    /// Soft rubber or matte vinyl: a wide, soft highlight, clearly present but
+    /// never sharp, the sheen of an eraser or a tire sidewall.
+    static let rubber = Material(specular: 0.38, shininess: 20)
 
     /// Molded plastic: a clear, medium highlight. The everyday "shiny but not a
     /// mirror" finish.
@@ -427,10 +429,10 @@ public extension Material {
     static let oilSlick = Material(specular: 0.45, shininess: 60,
                                    iridescence: 0.95, iridescenceScale: 2.6)
 
-    /// Beetle shell / butterfly wing: a few broad iridescent bands over a satin
-    /// surface — a deep structural shimmer rather than a busy rainbow.
-    static let beetle = Material(specular: 0.7, shininess: 100,
-                                 iridescence: 0.75, iridescenceScale: 0.7)
+    /// Beetle shell / butterfly wing: a few broad iridescent bands over a hard
+    /// glossy shell, a deep structural shimmer rather than a busy rainbow.
+    static let beetle = Material(specular: 0.85, shininess: 140,
+                                 iridescence: 1.0, iridescenceScale: 0.8)
 
     // Sparkle (metallic-flake) family: mirror flakes that flash as the view moves.
 
@@ -556,9 +558,21 @@ public extension Material {
     }
 
     /// Frosted glass: fully transmissive, but rough enough that what shows through
-    /// blurs to a soft glow. A thin wall; give it a `thickness` for a solid body.
+    /// softens to a blur. A thin wall; give it a `thickness` for a solid body.
     static let frostedGlass = Material(shading: .physicallyBased, metallic: 0,
-                                       roughness: 0.35, transmission: 1)
+                                       roughness: 0.2, transmission: 1)
+
+    /// Clear glass, ready-made: the `glass()` default as a fixed value, a smooth
+    /// thin-walled dielectric the view passes straight through, tinted by the
+    /// `fill`. Reach for `glass(roughness:ior:thickness:...)` when the body needs
+    /// its own shape.
+    static let clearGlass = Material(shading: .physicallyBased, metallic: 0,
+                                     roughness: 0, transmission: 1)
+
+    /// Gummy candy / jelly: a glossy translucent body with a little depth, the
+    /// light glowing into it rather than through. The flavor is the `fill`.
+    static let gummy = Material(shading: .physicallyBased, metallic: 0, roughness: 0.25,
+                                transmission: 0.6, ior: 1.4, thickness: 0.8)
 
     // Layered physically-based finishes: a clear lacquer coat over the base
     // (`clearcoat`), and fabric sheen at the silhouette (`sheen`).

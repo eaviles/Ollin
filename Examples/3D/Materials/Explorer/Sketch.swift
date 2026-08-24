@@ -15,7 +15,8 @@ extension Material: @retroactive ParamChoices {
          ("sequin", .sequin), ("velvet", .velvet), ("jade", .jade), ("wax", .wax),
          ("brushedMetal", .brushedMetal), ("polishedMetal", .polishedMetal),
          ("smoothPlastic", .smoothPlastic), ("roughPlastic", .roughPlastic),
-         ("frostedGlass", .frostedGlass), ("lacquer", .lacquer),
+         ("frostedGlass", .frostedGlass), ("clearGlass", .clearGlass),
+         ("gummy", .gummy), ("lacquer", .lacquer),
          ("satin", .satin), ("felt", .felt)]
     }
 }
