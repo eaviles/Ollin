@@ -2,6 +2,18 @@ import CoreGraphics
 import Foundation
 import Ollin
 import os
+#if canImport(AppKit)
+import AppKit
+#elseif canImport(UIKit)
+import UIKit
+#endif
+
+/// Set once when the app begins terminating; read from the capture thread. A
+/// frame that arrives past this point must be dropped before it reaches the
+/// concurrency runtime: the runtime tears down with the process, and starting
+/// a task from the capture thread inside that window crashes (SIGBUS in the
+/// runtime's task-creation tracing).
+private let processIsTerminating = OSAllocatedUnfairLock(initialState: false)
 
 /// One captured frame, carried across threads. The `CGImage` is immutable once
 /// made, so handing it from the capture queue to an analysis task (and to the
@@ -160,6 +172,7 @@ enum SourceAnalyzers {
     /// The analyzer running over `source`, creating it (and installing the
     /// source's tap) on first use.
     static func analyzer(for source: any FrameSource) -> VisionAnalyzer {
+        observeTerminationOnce()
         table = table.filter { $0.value.analyzer != nil }
         let key = ObjectIdentifier(source)
         if let existing = table[key]?.analyzer { return existing }
@@ -167,6 +180,23 @@ enum SourceAnalyzers {
         table[key] = WeakRef(analyzer: analyzer)
         source.frameTap = makeFrameTap(analyzer)
         return analyzer
+    }
+
+    private static var terminationObserved = false
+
+    /// Arm the terminating flag the first time any analyzer exists. The flag is
+    /// what lets `submit` refuse frames that arrive while the process exits.
+    private static func observeTerminationOnce() {
+        guard !terminationObserved else { return }
+        terminationObserved = true
+        #if canImport(AppKit)
+        let name = NSApplication.willTerminateNotification
+        #elseif canImport(UIKit)
+        let name = UIApplication.willTerminateNotification
+        #endif
+        NotificationCenter.default.addObserver(forName: name, object: nil, queue: nil) { _ in
+            processIsTerminating.withLock { $0 = true }
+        }
     }
 }
 
@@ -213,6 +243,7 @@ final class VisionAnalyzer: @unchecked Sendable {
     /// task and the frame is processed in the background. Otherwise the frame is
     /// dropped.
     func submit(_ box: FrameBox) {
+        guard !processIsTerminating.withLock({ $0 }) else { return }
         let trackers: [any VisionTracking] = lock.withLock { state in
             state.trackers.removeAll { $0.tracker == nil }
             guard !state.processing, !state.trackers.isEmpty else { return [] }
