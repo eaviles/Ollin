@@ -534,6 +534,10 @@ extension MetalRenderer {
             return pass("ollin_fx_swirl", [input],
                         [SIMD4(Float(angle), Float(radius), aspect, 0),
                          SIMD4(Float(center.x), Float(center.y), 0, 0)])
+        case let .droste(inner, twist, zoom, center, rotation):
+            return pass("ollin_fx_droste", [input],
+                        [SIMD4(Float(inner), Float(twist), aspect, Float(zoom)),
+                         SIMD4(Float(center.x), Float(center.y), Float(rotation), 0)])
         case let .bulge(amount, radius, center):
             return pass("ollin_fx_bulge", [input],
                         [SIMD4(Float(amount), Float(radius), aspect, 0),

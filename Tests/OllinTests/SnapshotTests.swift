@@ -440,6 +440,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("luminance-melt",
                  note: "A painted tonal study (gradient plus a bright disk) poured through the luminance melt at a fixed phase. Pins the two-level domain warp, the shared displacement (field warp and image liquify from one vector), the luminance steer into the field, the four-stop sRGB ramp, and the highlight bloom. No rng and no time, so it is deterministic.",
                  make: { LuminanceMeltScene() }),
+    SnapshotCase("droste",
+                 note: "A ring of colored marks on flat ground, put through the droste filter twice in one frame: plain concentric copies on the left, and the same ring wound into one spiral on the right. Pins the complex log, the log-plane rotation the twist applies, the repeat along the strip, and the map back. No rng and no time, so it is deterministic.",
+                 make: { DrosteScene() }),
     SnapshotCase("seam-carve",
                  note: "A painted rippled field with a grained block on the right, shown three ways in one frame: the source under the thirty seams it gives up first, the picture carved by those thirty, and the same picture squeezed to the same width. Pins the cost, the seam backtrack, the order map, and that the carve takes the field rather than the block. Seeded paint, no time, so it is deterministic.",
                  make: { SeamCarveScene() }),
@@ -3350,6 +3353,39 @@ private final class MeasuredFieldScene: Sketch {
         return float4(sampleAux(info, inside / info.resolution).rgb * 0.55, 1.0);
     }
     """
+}
+
+/// A ring of marks put through the droste filter two ways: plain concentric copies
+/// and the wound spiral. No rng and no `time`, so it's deterministic.
+private final class DrosteScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(.black)
+        let scene = renderTarget()
+        withTarget(scene) {
+            background(Color(hex: 0x0A0E1A))
+            noStroke()
+            let middle = Vector2(width / 2, height / 2)
+            let unit = height / 2
+            for i in 0 ..< 10 {
+                let angle = Double(i) / 10 * .tau
+                withState {
+                    translate(middle + Vector2(cos(angle), sin(angle)) * unit * 0.68)
+                    rotate(angle)
+                    fill(CosinePalette.rainbow.color(at: Double(i) / 10))
+                    drawRect(center: .zero, width: unit * 0.22, height: unit * 0.13)
+                }
+                fill(Color(hex: 0xFFE08A))
+                drawCircle(center: middle + Vector2(cos(angle + 0.31), sin(angle + 0.31)) * unit * 0.53,
+                           radius: unit * 0.018)
+            }
+        }
+        drawImage(scene.filtered(.droste(inner: 0.42, twist: 0)).image,
+                  in: Rectangle(corner: Vector2(0, 64), width: 128, height: 128))
+        drawImage(scene.filtered(.droste(inner: 0.42, twist: 1)).image,
+                  in: Rectangle(corner: Vector2(128, 64), width: 128, height: 128))
+    }
 }
 
 /// A painted picture carved thirty seams narrower, beside the same picture

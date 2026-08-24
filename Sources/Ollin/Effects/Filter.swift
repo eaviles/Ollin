@@ -259,6 +259,9 @@ public struct Filter: Sendable {
         case wave(amplitude: Double, frequency: Double, phase: Double, vertical: Bool)
         /// Concentric ripples from `center`: `amplitude`, `frequency` rings, `phase`.
         case ripple(amplitude: Double, frequency: Double, phase: Double, center: Vector2)
+        /// The picture inside itself without end: the ring between `inner` and the layer's
+        /// edge repeated at every scale, `twist` copies stepped per turn, slid by `zoom`.
+        case droste(inner: Double, twist: Double, zoom: Double, center: Vector2, rotation: Double)
         /// Reflect one half of the image onto the other; `vertical` axis, `flip` chooses the source half.
         case mirror(vertical: Bool, flip: Bool)
         /// Cartesian↔polar warp, blended by `amount` (a tunnel / fold of the image around the center).
@@ -751,6 +754,29 @@ public struct Filter: Sendable {
     public static func swirl(angle: Double = 3, radius: Double = 0.5,
                              center: Vector2 = Vector2(0.5, 0.5)) -> Filter {
         Filter(kind: .swirl(angle: angle, radius: max(0.001, radius), center: center))
+    }
+
+    /// Droste: the picture inside itself, without end. The ring between `inner` and the layer's
+    /// edge is repeated at every scale, so a copy of the picture sits in the middle of the
+    /// picture, with a copy in the middle of that one, and so on.
+    ///
+    /// - Parameters:
+    ///   - inner: The radius of the hole in the middle, as a fraction of the layer's shorter
+    ///     side. It is also how much smaller each copy is than the one around it.
+    ///   - twist: How many copies one turn around the middle steps down. `0` leaves the copies
+    ///     as plain concentric rings; `1` winds them into the single spiral of the Escher
+    ///     construction, and a negative value winds it the other way. Whole numbers close on
+    ///     themselves; anything between leaves a visible seam.
+    ///   - zoom: How far the picture has fallen into itself, in copies. Add `1` and the picture
+    ///     is exactly back where it started, so `zoom: time * 0.2` is an endless fall that
+    ///     loops every five seconds.
+    ///   - center: Where the middle sits, in fractions of the layer (top-left origin).
+    ///   - rotation: Turn the whole thing, in radians.
+    public static func droste(inner: Double = 0.35, twist: Double = 1, zoom: Double = 0,
+                              center: Vector2 = Vector2(0.5, 0.5),
+                              rotation: Double = 0) -> Filter {
+        Filter(kind: .droste(inner: min(max(inner, 0.001), 0.99), twist: twist,
+                             zoom: zoom, center: center, rotation: rotation))
     }
 
     /// Bulge / pinch: a radial lens within `radius` of `center`. `amount` > 0 bulges (fisheye

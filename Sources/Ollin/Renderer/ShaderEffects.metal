@@ -1451,6 +1451,45 @@ fragment float4 ollin_fx_perturb(PresentOut in [[stage_in]],
     return src.sample(samp, clamp(in.uv + off, 0.0, 1.0));
 }
 
+// droste: the picture inside itself, without end. The ring between `inner` and the
+// layer's edge becomes a straight strip under a complex logarithm, and the strip is
+// repeated along its length, which is what puts a smaller copy inside every copy.
+// `twist` shears the strip first, so one turn around the middle also steps that many
+// copies down in size and the rings wind into one spiral (the Escher construction).
+// `zoom` slides the strip along itself: at 1 the picture is back where it started.
+// (params[0]: inner, twist, aspect, zoom; params[1]: center.xy, rotation)
+fragment float4 ollin_fx_droste(PresentOut in [[stage_in]],
+                                texture2d<float> src [[texture(0)]],
+                                sampler samp [[sampler(0)]],
+                                constant float4 *params [[buffer(0)]]) {
+    float inner = clamp(params[0].x, 1e-3, 0.99);
+    float twist = params[0].y, aspect = params[0].z, zoom = params[0].w;
+    float2 ctr = params[1].xy;
+    float spin = params[1].z;
+
+    // Center-relative and aspect-corrected, scaled so the layer's half-height is 1.
+    float2 p = (in.uv - ctr) * float2(aspect, 1.0) * 2.0;
+    float radius = max(length(p), 1e-6);
+    float angle = atan2(p.y, p.x) - spin;
+
+    float period = -log(inner);                 // one step down in size, along the strip
+    float k = twist * period / 6.28318530718;
+
+    // The complex log, then the rotation that shears one turn into `twist` steps:
+    // (1 - i k) * (x + i y). Going around once moves the strip along by twist * period
+    // and turns the source once, so the picture still closes on itself.
+    float2 w = float2(log(radius), angle);
+    float2 v = float2(w.x + k * w.y, w.y - k * w.x);
+
+    // Repeat along the strip, which is the endless zoom, and land back in the ring.
+    float x = v.x - zoom * period;
+    x -= period * ceil(x / period);             // into [-period, 0), so exp is in [inner, 1)
+    float2 z = float2(cos(v.y), sin(v.y)) * exp(x);
+
+    float2 uv = ctr + float2(z.x / aspect, z.y) * 0.5;
+    return src.sample(samp, clamp(uv, 0.0, 1.0));
+}
+
 // MARK: - Measured distance fields (jump flooding)
 //
 // The counterpart of the field a sketch *writes* with `SDF`: this one is *measured*
