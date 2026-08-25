@@ -5,17 +5,19 @@
 // column. Bottom, two blocks side by side, one filling left to right and the
 // other right to left, so the column order is a comparison rather than a claim.
 import Ollin
+import OllinDiagram
 
 final class ColumnsTheOtherWay: Sketch {
     override var canvasSize: CanvasSize { .size(880, 620) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.4) }
-    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
-    var paperTint: Color { Color(hex: darkTheme ? 0x2A2724 : 0xE9E4D8) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var faint: Color { theme.ink(0.4) }
+    var accent: Color { theme.accent }
+    var paperTint: Color { theme.card }
 
     /// The script's own name for itself, "Mongol bichig". Two words, so the
     /// joined strokes and the gap between them both show.

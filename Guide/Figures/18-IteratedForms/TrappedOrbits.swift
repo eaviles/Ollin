@@ -4,14 +4,16 @@
 // by escape time, by the orbit's closest pass to a cross held in the plane, and
 // by the same cross turned. Only the question asked of the orbit changes.
 import Ollin
+import OllinDiagram
 
 final class TrappedOrbits: Sketch {
     override var canvasSize: CanvasSize { .size(880, 386) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
 
     /// The c all three panels share.
     let pick = Vector2(-0.79, 0.15)

@@ -4,17 +4,19 @@
 // seeded random start: a huddle of tangled edges. Middle, mid-cooling: edges
 // evening out, crossings resolving. Right, settled: an even web, frozen.
 import Ollin
+import OllinDiagram
 
 final class GraphSettles: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
-    var edgeInk: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.55) }
-    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var soft: Color { theme.ink(0.12) }
+    var edgeInk: Color { theme.ink(0.55) }
+    var accent: Color { theme.accent }
 
     let left = Rectangle(x: 30, y: 70, width: 253, height: 340)
     let middle = Rectangle(x: 303, y: 70, width: 253, height: 340)

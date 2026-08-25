@@ -4,6 +4,7 @@
 // pairing circles on their own, the first generation of images nesting inside
 // them, and the whole orbit. No randomness anywhere.
 import Ollin
+import OllinDiagram
 
 final class CirclesPairOff: Sketch {
     override var canvasSize: CanvasSize { .size(880, 480) }
@@ -11,10 +12,11 @@ final class CirclesPairOff: Sketch {
     let night = Color(hex: 0x0C0F16)
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var soft: Color { theme.ink(0.12) }
     let gold = Color(hex: 0xE8C97D)
     let blue = Color(hex: 0x9BD1E5)
 

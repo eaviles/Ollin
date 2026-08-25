@@ -3,17 +3,19 @@
 // Docs catalog figure (Drawing/Drawing.md, drawPolygon): a list of points in
 // order, and the filled convex polygon one call draws through them.
 import Ollin
+import OllinDiagram
 
 final class DrawPolygon: Sketch {
     override var canvasSize: CanvasSize { .size(880, 320) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var wash: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.10) }
-    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.25) }
-    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var wash: Color { theme.ink(0.10) }
+    var faint: Color { theme.ink(0.25) }
+    var accent: Color { theme.accent }
 
     func pentagon(cx: Double, cy: Double) -> [Vector2] {
         [Vector2(cx, cy - 92), Vector2(cx + 96, cy - 22),

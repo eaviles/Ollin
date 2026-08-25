@@ -4,16 +4,18 @@
 // seeded ring. It starts as a small circle and folds because splitting edges
 // keep adding length that repulsion won't let overlap.
 import Ollin
+import OllinDiagram
 
 final class GrowthStrip: Sketch {
     override var canvasSize: CanvasSize { .size(880, 300) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.4) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var faint: Color { theme.ink(0.4) }
+    var soft: Color { theme.ink(0.12) }
 
     let steps = [0, 80, 180, 320, 500]
     var rings: [[Vector2]] = []

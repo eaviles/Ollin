@@ -5,15 +5,17 @@
 // nearest color bands; a threshold map and error diffusion both trade those
 // bands for texture the eye reads back as the original tone.
 import Ollin
+import OllinDiagram
 
 final class Dithering: Sketch {
     override var canvasSize: CanvasSize { .size(880, 400) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x232020) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var soft: Color { theme.ink(0.12) }
 
     // The panels depict one source field quantized three ways; the field is
     // content, so it keeps the light ground in both themes.

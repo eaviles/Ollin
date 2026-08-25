@@ -6,6 +6,7 @@
 // Bottom: bands(24), the spectrum reshaped for drawing. The sound comes from
 // StageMic, the chapter's synthesized stand-in for a microphone.
 import Ollin
+import OllinDiagram
 import OllinAudio
 
 final class Anatomy: Sketch {
@@ -14,12 +15,13 @@ final class Anatomy: Sketch {
     var mic = StageMic()
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.28) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.6) }
-    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var faint: Color { theme.ink(0.28) }
+    var soft: Color { theme.ink(0.6) }
+    var accent: Color { theme.accent }
 
     override func setup() {
         mic = StageMic()

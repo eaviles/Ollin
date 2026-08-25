@@ -7,17 +7,19 @@
 // round. Bottom row, strokeCap: the same segment ended flat, rounded, and
 // squared, with the true endpoints marked so the overshoot shows.
 import Ollin
+import OllinDiagram
 
 final class StrokeAnatomy: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.28) }
-    var wash: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.10) }
-    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var faint: Color { theme.ink(0.28) }
+    var wash: Color { theme.ink(0.10) }
+    var accent: Color { theme.accent }
 
     let columns = [230.0, 480.0, 730.0]
 

@@ -4,13 +4,15 @@
 // orbiting dot draws into four feedback layers; each panel transforms its
 // past differently before drawing it back.
 import Ollin
+import OllinDiagram
 
 final class FeedbackSteps: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var paper: Color { theme.paper }
 
     var panels: [Feedback] = []
 

@@ -9,14 +9,16 @@
 // than typed, so they cannot drift from what the writer actually wrote.
 import Foundation
 import Ollin
+import OllinDiagram
 
 final class SpatialExport: Sketch {
     override var canvasSize: CanvasSize { .size(880, 560) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
 
     /// Where each copy stands, in world units either side of the middle.
     private let offset = 1.9

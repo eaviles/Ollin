@@ -10,6 +10,7 @@
 // depth, so this shows the geometry that makes depth instead.
 import Foundation
 import Ollin
+import OllinDiagram
 
 final class StereoPair: Sketch {
     override var canvasSize: CanvasSize { .size(880, 560) }
@@ -21,9 +22,10 @@ final class StereoPair: Sketch {
     private let interocular = 64.0
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    private var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var paper: Color { theme.paper }
+    private var ink: Color { theme.ink }
     private var quiet: Color { Color(hex: darkTheme ? 0x9A958D : 0x6B6459) }
     private let near = Color(hex: 0xC24A4A)
     private let far = Color(hex: 0x3E7CB1)

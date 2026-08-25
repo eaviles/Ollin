@@ -4,17 +4,19 @@
 // column, the three characters that change shape called out, and one box filled
 // both ways so a justified column can be seen against a ragged one.
 import Ollin
+import OllinDiagram
 
 final class WritingInColumns: Sketch {
     override var canvasSize: CanvasSize { .size(880, 620) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.4) }
-    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
-    var paperTint: Color { Color(hex: darkTheme ? 0x2A2724 : 0xE9E4D8) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var faint: Color { theme.ink(0.4) }
+    var accent: Color { theme.accent }
+    var paperTint: Color { theme.card }
 
     /// Chosen for its brackets and its comma: those are the characters that turn.
     let sentence = "「春」は、あけぼの（をかし）"

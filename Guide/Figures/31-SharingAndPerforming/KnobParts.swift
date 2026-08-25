@@ -6,17 +6,19 @@
 // shapes come from the shipped track, so the picture is the real answer rather
 // than a drawing of it.
 import Ollin
+import OllinDiagram
 
 final class KnobParts: Sketch {
     override var canvasSize: CanvasSize { .size(880, 430) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.6) }
-    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.22) }
-    var mark: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE2603F) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var soft: Color { theme.ink(0.6) }
+    var faint: Color { theme.ink(0.22) }
+    var mark: Color { theme.accent }
 
     let wide = "300 + sin(time) * 120"
     let tall = "150 + cos(time) * 60"

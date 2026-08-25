@@ -4,14 +4,16 @@
 // reaction-diffusion fields, each seeded with the same ring at a different
 // moment, so one capture shows the growth at four ages.
 import Ollin
+import OllinDiagram
 
 final class Seeding: Sketch {
     override var canvasSize: CanvasSize { .size(880, 330) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
 
     var dishes: [SimField] = []
     var tick = 0

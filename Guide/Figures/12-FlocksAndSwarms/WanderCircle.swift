@@ -5,17 +5,19 @@
 // the point jitters a little around the rim while the creature seeks it.
 // Right, what that produces: seven hundred steps of one wanderer.
 import Ollin
+import OllinDiagram
 
 final class WanderCircle: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.4) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
-    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var faint: Color { theme.ink(0.4) }
+    var soft: Color { theme.ink(0.12) }
+    var accent: Color { theme.accent }
 
     override func draw() {
         background(paper)

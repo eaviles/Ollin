@@ -4,13 +4,15 @@
 // line, the line given width and an over-under rule, and the knot the walls
 // make of it.
 import Ollin
+import OllinDiagram
 
 final class KnotworkWeave: Sketch {
     override var canvasSize: CanvasSize { .size(880, 386) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var canvasPaper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var canvasPaper: Color { theme.paper }
     let paper = Color(hex: 0x1D2B24)
     let ink = Color(hex: 0x0B1310)
     let gold = Color(hex: 0xE7C46B)
@@ -61,7 +63,7 @@ final class KnotworkWeave: Sketch {
             }
 
             noStroke()
-            fill(Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.62))
+            fill(theme.ink(0.62))
             textSize(16)
             textAlign(.center, .top)
             drawText(labels[index], frame.x + frame.width / 2, frame.y + frame.height + 8)

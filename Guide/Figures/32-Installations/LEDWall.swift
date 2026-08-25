@@ -7,16 +7,18 @@
 // beside it, each labeled with the universe it lands on. The point of the
 // figure: the wall is just the canvas, somewhere else.
 import Ollin
+import OllinDiagram
 import OllinDMX
 
 final class LEDWall: Sketch {
     override var canvasSize: CanvasSize { .size(880, 600) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.6) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var soft: Color { theme.ink(0.6) }
     let picture = Rectangle(x: 60, y: 56, width: 760, height: 236)
 
     /// The picture as a function of position, so the lit lamps below can read

@@ -6,17 +6,19 @@
 // two thousand steps: a wandering channel over the ribbons of everywhere it
 // used to run, with a cut-off loop left beside it as a crescent lake.
 import Ollin
+import OllinDiagram
 
 final class WanderingRiver: Sketch {
     override var canvasSize: CanvasSize { .size(880, 480) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.4) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
-    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var faint: Color { theme.ink(0.4) }
+    var soft: Color { theme.ink(0.12) }
+    var accent: Color { theme.accent }
     let water = Color(hex: 0x2C4A6E)
     let waterPale = Color(hex: 0x7FA8C9)
     let scarInks = [Color(hex: 0xC26D3F), Color(hex: 0x8A9B68),

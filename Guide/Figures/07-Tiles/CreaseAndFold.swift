@@ -4,13 +4,15 @@
 // mountains and valleys marked, the same sheet folded most of the way, and a
 // rotating-squares cut sheet pulled half open.
 import Ollin
+import OllinDiagram
 
 final class CreaseAndFold: Sketch {
     override var canvasSize: CanvasSize { .size(880, 386) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var canvasPaper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var canvasPaper: Color { theme.paper }
     let paper = Color(hex: 0x1A1410)
     let chalk = Color(hex: 0xF3E7D3)
     let warm = Color(hex: 0xE0724A)
@@ -38,7 +40,7 @@ final class CreaseAndFold: Sketch {
             }
 
             noStroke()
-            fill(Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.62))
+            fill(theme.ink(0.62))
             textFont(.system)
             textSize(16)
             textAlign(.center, .top)

@@ -6,14 +6,16 @@
 // every overlap agrees. Nothing in the result is new up close; everything
 // about it is new at a distance.
 import Ollin
+import OllinDiagram
 
 final class LearnedFromAPicture: Sketch {
     override var canvasSize: CanvasSize { .size(880, 420) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F0) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
 
     // The sample and its output are depicted content, identical in both themes.
     let wall = Color(hex: 0x2B2B2B)
@@ -61,7 +63,7 @@ final class LearnedFromAPicture: Sketch {
         textSize(15)
         drawText("the sample, 16 by 16", at: Vector2(40, 60))
         drawText("48 by 30, built from its squares", at: Vector2(336, 60))
-        fill(Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.55))
+        fill(theme.ink(0.55))
         textSize(13)
         drawText("every 3 by 3 square here is one the sample already contained",
                  at: Vector2(336, 348))

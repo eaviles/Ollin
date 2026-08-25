@@ -4,14 +4,16 @@
 // drawn twice from the same answers: as brightness on the left, as dot
 // size on the right.
 import Ollin
+import OllinDiagram
 
 final class NoiseTerrain: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
 
     override func setup() {
         noiseSeed(6)

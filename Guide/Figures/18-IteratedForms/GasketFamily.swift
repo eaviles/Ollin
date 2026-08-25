@@ -5,6 +5,7 @@
 // deformations that wobble it, and a loosened real-trace member. One recipe,
 // four pictures. No randomness anywhere.
 import Ollin
+import OllinDiagram
 
 final class GasketFamily: Sketch {
     override var canvasSize: CanvasSize { .size(880, 960) }
@@ -13,10 +14,11 @@ final class GasketFamily: Sketch {
     let lace = Color(hex: 0xE8C97D)
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var soft: Color { theme.ink(0.12) }
 
     override func draw() {
         background(paper)

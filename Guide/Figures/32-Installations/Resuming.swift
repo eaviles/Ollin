@@ -4,16 +4,18 @@
 // of a quit: every tile it had is still where it was, and the piece carries on
 // adding to it rather than starting the wall again.
 import Ollin
+import OllinDiagram
 
 final class Resuming: Sketch {
     override var canvasSize: CanvasSize { .size(880, 452) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.55) }
-    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var soft: Color { theme.ink(0.55) }
+    var accent: Color { theme.accent }
     let board = Color(hex: 0x1A1A1E)
 
     let tint = Ramp([Color(hex: 0x354056), Color(hex: 0x6B9EC7), Color(hex: 0xF0CC85),

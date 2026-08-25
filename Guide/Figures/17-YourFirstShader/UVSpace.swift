@@ -4,14 +4,16 @@
 // grows with u, green with v), annotated with the corners and center so the
 // coordinate system is readable at a glance.
 import Ollin
+import OllinDiagram
 
 final class UVSpace: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
 
     let gradient = Shader("""
     float4 shade(float2 uv, ShaderInfo info) {

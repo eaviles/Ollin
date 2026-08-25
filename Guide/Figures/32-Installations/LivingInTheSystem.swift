@@ -6,19 +6,21 @@
 // sketch's own window mode decides once it is on a display that is not the shape
 // of its canvas.
 import Ollin
+import OllinDiagram
 
 final class LivingInTheSystem: Sketch {
     override var canvasSize: CanvasSize { .size(880, 470) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.55) }
-    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var soft: Color { theme.ink(0.55) }
+    var accent: Color { theme.accent }
     var good: Color { Color(hex: darkTheme ? 0x4EA57D : 0x2E7D5B) }
-    var rule: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.18) }
-    var shade: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.06) }
+    var rule: Color { theme.ink(0.18) }
+    var shade: Color { theme.ink(0.06) }
 
     override func draw() {
         background(paper)

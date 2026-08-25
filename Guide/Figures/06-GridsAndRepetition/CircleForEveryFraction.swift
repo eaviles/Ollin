@@ -5,16 +5,18 @@
 // denominator up to twelve has arrived, with the new circles dropping into the
 // gaps the old ones left.
 import Ollin
+import OllinDiagram
 
 final class CircleForEveryFraction: Sketch {
     override var canvasSize: CanvasSize { .size(880, 460) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
     let accent = Color(hex: 0xE07A5F)
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
+    var soft: Color { theme.ink(0.12) }
     var note: Color { darkTheme ? Color(hex: 0xE8E5E1, alpha: 0.62) : Color(hex: 0x6E6A63) }
 
     override func draw() {
@@ -50,7 +52,7 @@ final class CircleForEveryFraction: Sketch {
             for ford in fordCircles(order: order, in: box) {
                 let small = ford.fraction.denominator > 4
                 fill(small ? Color(hex: 0xE07A5F, alpha: 0.16)
-                           : Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.07))
+                           : theme.ink(0.07))
                 stroke(small ? accent : ink)
                 drawCircle(ford.circle)
             }

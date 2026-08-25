@@ -5,14 +5,16 @@
 // listed under it. On the right the sixty-four bead ring for four symbols, with
 // one window picked out.
 import Ollin
+import OllinDiagram
 
 final class EveryWindowOnce: Sketch {
     override var canvasSize: CanvasSize { .size(880, 460) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
     let accent = Color(hex: 0xE07A5F)
     var note: Color { darkTheme ? Color(hex: 0xE8E5E1, alpha: 0.62) : Color(hex: 0x6E6A63) }
 

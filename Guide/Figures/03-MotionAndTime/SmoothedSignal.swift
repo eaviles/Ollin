@@ -4,16 +4,18 @@
 // with seeded jitter added; the accent path is the same samples run through
 // the adaptive filter behind @Smoothed.
 import Ollin
+import OllinDiagram
 
 final class SmoothedSignal: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.35) }
-    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var faint: Color { theme.ink(0.35) }
+    var accent: Color { theme.accent }
 
     override func draw() {
         randomSeed(11)
@@ -49,7 +51,7 @@ final class SmoothedSignal: Sketch {
         drawPolyline(smooth)
 
         noStroke()
-        fill(Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.6))
+        fill(theme.ink(0.6))
         textAlign(.left, .middle)
         drawText("the raw signal", left + 10, 480)
         fill(accent)

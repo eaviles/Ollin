@@ -5,13 +5,15 @@
 // critical value, straining near it, and one spanning cluster just past it,
 // lit warm with its traced outline.
 import Ollin
+import OllinDiagram
 
 final class ChanceInCrowds: Sketch {
     override var canvasSize: CanvasSize { .size(880, 340) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var paper: Color { theme.paper }
 
     override func draw() {
         background(paper)
@@ -55,7 +57,7 @@ final class ChanceInCrowds: Sketch {
             }
 
             noStroke()
-            fill(Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.62))
+            fill(theme.ink(0.62))
             textSize(16)
             textAlign(.center, .top)
             drawText(panel.0, rect.x + rect.width / 2, rect.y + rect.height + 10)

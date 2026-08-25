@@ -4,6 +4,7 @@
 // RGB averages the machine's numbers and lands in mud; HSB detours around the
 // hue wheel; OKLab moves the way your eye expects.
 import Ollin
+import OllinDiagram
 
 final class MixingSpaces: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
@@ -11,9 +12,10 @@ final class MixingSpaces: Sketch {
     let blue = Color(hex: 0x2050C8)
     let yellow = Color(hex: 0xFFC800)
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var label: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.55) }
+    var paper: Color { theme.paper }
+    var label: Color { theme.ink(0.55) }
 
     override func draw() {
         background(paper)

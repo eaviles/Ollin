@@ -5,16 +5,18 @@
 // the box shows above and below it. Covered, the box is full and the tree on the
 // right has gone over the edge.
 import Ollin
+import OllinDiagram
 
 final class PictureFit: Sketch {
     override var canvasSize: CanvasSize { .size(880, 520) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.45) }
-    var box: Color { Color(hex: darkTheme ? 0x2A2724 : 0xE3DDD2) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var faint: Color { theme.ink(0.45) }
+    var box: Color { theme.card }
 
     private var picture = Image(width: 300, height: 200, color: .white)
 

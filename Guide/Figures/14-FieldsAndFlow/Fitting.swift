@@ -3,14 +3,16 @@
 // Guide figure (Chapter 14): a field fitted through a few known values, the warp the same
 // fit makes when it carries vectors, and the circle a downhill walk finds in scattered marks.
 import Ollin
+import OllinDiagram
 
 final class Fitting: Sketch {
     override var canvasSize: CanvasSize { .size(880, 386) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var labelInk: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.62) }
+    var paper: Color { theme.paper }
+    var labelInk: Color { theme.ink(0.62) }
 
     let anchors = [Vector2(56, 70), Vector2(214, 60), Vector2(140, 148),
                    Vector2(46, 200), Vector2(228, 206), Vector2(120, 246)]

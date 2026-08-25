@@ -5,13 +5,15 @@
 // bands are lines of equal distance, and the bold line is distance zero: the
 // shape itself. Rendered by a per-pixel shader over the shared sd helpers.
 import Ollin
+import OllinDiagram
 
 final class FieldMap: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paperInk: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var paperInk: Color { theme.ink }
 
     var field: Shader { Shader("""
     float4 shade(float2 uv, ShaderInfo info) {

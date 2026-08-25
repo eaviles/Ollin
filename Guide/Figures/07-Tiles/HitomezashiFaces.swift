@@ -5,14 +5,16 @@
 // loops. Right, the same design with its two-tone parity fill underneath,
 // every tone boundary landing exactly on a stitch.
 import Ollin
+import OllinDiagram
 
 final class HitomezashiFaces: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
     let cloth = Color(hex: 0x101A33)
     let thread = Color(hex: 0xF2E9DC)
 

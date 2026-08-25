@@ -6,18 +6,20 @@
 // The top one is labeled with its parts; the rest are presets, drawn to the
 // same scale so the differences between them are the point.
 import Ollin
+import OllinDiagram
 import OllinAudio
 
 final class Voices: Sketch {
     override var canvasSize: CanvasSize { .size(880, 630) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x232020) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.45) }
-    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.14) }
-    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var soft: Color { theme.ink(0.45) }
+    var faint: Color { theme.ink(0.14) }
+    var accent: Color { theme.accent }
 
     let left = 70.0, plotWidth = 740.0
     /// Every curve is drawn over the same three seconds, so they compare.

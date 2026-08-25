@@ -6,17 +6,19 @@
 // hull sinks into the gulf while staying one simple polygon, and the alpha
 // shape resolves what neither hull can say, two islands and the ring's hole.
 import Ollin
+import OllinDiagram
 
 final class HullTrio: Sketch {
     override var canvasSize: CanvasSize { .size(880, 480) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
-    var region: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.11) }
-    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var soft: Color { theme.ink(0.12) }
+    var region: Color { theme.ink(0.11) }
+    var accent: Color { theme.accent }
 
     var scatter: [Vector2] = []
 

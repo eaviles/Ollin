@@ -5,15 +5,17 @@
 // darkening its crevices, then with depth of field blurring what the camera
 // is not focused on. Both effects read the depth layer, not the color.
 import Ollin
+import OllinDiagram
 
 final class DepthEffects: Sketch {
     override var canvasSize: CanvasSize { .size(880, 380) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x232020) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var soft: Color { theme.ink(0.12) }
 
     override func draw() {
         background(paper)

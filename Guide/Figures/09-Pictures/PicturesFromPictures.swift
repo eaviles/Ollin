@@ -4,15 +4,17 @@
 // built from a hundred small pictures in the middle, and a piece of it enlarged
 // on the right so the cells read as pictures again.
 import Ollin
+import OllinDiagram
 
 final class PicturesFromPictures: Sketch {
     override var canvasSize: CanvasSize { .size(880, 460) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var soft: Color { theme.ink(0.12) }
     var note: Color { darkTheme ? Color(hex: 0xE8E5E1, alpha: 0.62) : Color(hex: 0x6E6A63) }
 
     override func draw() {

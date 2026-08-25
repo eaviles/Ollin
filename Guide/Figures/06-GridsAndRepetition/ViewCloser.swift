@@ -5,14 +5,16 @@
 // same names are crisp, because nothing was re-rendered: the outlines are drawn
 // through a larger transform.
 import Ollin
+import OllinDiagram
 
 final class ViewCloser: Sketch {
     override var canvasSize: CanvasSize { .size(880, 400) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.45) }
+    var paper: Color { theme.paper }
+    var faint: Color { theme.ink(0.45) }
 
     // The chart is depicted content, identical in both themes.
     let ink = Color(hex: 0x2B2B2B)

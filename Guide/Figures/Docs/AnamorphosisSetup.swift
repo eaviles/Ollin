@@ -5,16 +5,18 @@
 // true size, and the plate's marks land between the glass and the eye,
 // spreading as they go; on its own the plate reads as nothing.
 import Ollin
+import OllinDiagram
 
 final class AnamorphosisSetup: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.28) }
-    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.10) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var soft: Color { theme.ink(0.28) }
+    var faint: Color { theme.ink(0.10) }
     var accent: Color { Color(hex: darkTheme ? 0xEE8C42 : 0xE07A2F) }
 
     let mirrorX = 430.0, mirrorY = 205.0, mirrorR = 85.0

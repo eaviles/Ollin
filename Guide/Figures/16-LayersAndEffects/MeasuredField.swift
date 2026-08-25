@@ -3,13 +3,15 @@
 // Guide figure (Chapter 16): a measured distance field. The marks on their own, how far
 // every pixel is from the nearest one, and which way that nearest one lies.
 import Ollin
+import OllinDiagram
 
 final class MeasuredField: Sketch {
     override var canvasSize: CanvasSize { .size(880, 386) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var paper: Color { theme.paper }
 
     let ink = Color(hex: 0xE8734A)
     let sea = Color(hex: 0x49B0A5)
@@ -60,7 +62,7 @@ final class MeasuredField: Sketch {
                 drawImage(marks.image, in: frame)
             }
 
-            fill(Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.62))
+            fill(theme.ink(0.62))
             textSize(16)
             textAlign(.center, .top)
             drawText(labels[index], frame.x + frame.width / 2, frame.y + frame.height + 8)

@@ -3,13 +3,15 @@
 // Guide diagram (Chapter 16): the blend modes. The same two shaded discs in
 // every tile; only the mode the second disc composites with changes.
 import Ollin
+import OllinDiagram
 
 final class BlendModes: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var paper: Color { theme.paper }
 
     override func draw() {
         background(paper)
@@ -31,7 +33,7 @@ final class BlendModes: Sketch {
         }
 
         noStroke()
-        fill(Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B))
+        fill(theme.ink)
         textSize(21)
         textAlign(.center, .top)
         drawText("the same two discs, seven ways for new paint to meet old", width / 2, 505)
@@ -54,7 +56,7 @@ final class BlendModes: Sketch {
         drawPolygon(disc(b, r))
         blendMode(.normal)
 
-        fill(Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.6))
+        fill(theme.ink(0.6))
         textSize(16)
         textAlign(.center, .top)
         drawText(label, x + w / 2, y + h + 10)

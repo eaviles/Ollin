@@ -4,18 +4,20 @@
 // Left, a soft blob of particles and springs squashes where it lands. Right,
 // rigid boxes fall, tip, and rest without losing a corner.
 import Ollin
+import OllinDiagram
 import OllinPhysics
 
 final class SoftVsRigid: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.4) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
-    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var faint: Color { theme.ink(0.4) }
+    var soft: Color { theme.ink(0.12) }
+    var accent: Color { theme.accent }
 
     let leftPanel = Rectangle(x: 50, y: 60, width: 370, height: 380)
     let rightPanel = Rectangle(x: 470, y: 60, width: 370, height: 380)
@@ -80,7 +82,7 @@ final class SoftVsRigid: Sketch {
             withState {
                 translate(body.position)
                 rotate(body.angle)
-                fill(Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.14))
+                fill(theme.ink(0.14))
                 stroke(ink)
                 strokeWeight(2.5)
                 drawRect(center: .zero, width: 110, height: 54, cornerRadius: 3)

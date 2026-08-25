@@ -4,16 +4,18 @@
 // card drawn with Ollin itself: the frame-rate strip, the two bars scaled to one
 // frame, and the counts underneath. Callouts name what each part answers.
 import Ollin
+import OllinDiagram
 
 final class CostRow: Sketch {
     override var canvasSize: CanvasSize { .size(880, 456) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.6) }
-    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var soft: Color { theme.ink(0.6) }
+    var accent: Color { theme.accent }
 
     // The card's own palette, the dark inspector the host shows.
     let cardFill = Color(hex: 0x232326)

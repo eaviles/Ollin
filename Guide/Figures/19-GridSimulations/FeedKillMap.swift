@@ -4,14 +4,16 @@
 // simulation, seeded the same way, at 24 different feed/kill settings; the
 // two knobs pick the regime, from dissolving to spots to mazes to coral.
 import Ollin
+import OllinDiagram
 
 final class FeedKillMap: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
 
     var dishes: [SimField] = []
     let feeds = [0.022, 0.03, 0.038, 0.046, 0.055, 0.066]

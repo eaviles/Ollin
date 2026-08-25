@@ -5,16 +5,18 @@
 // runs the other way; an emoji is a picture with no outline to fill; and
 // Japanese has no spaces to break a line at.
 import Ollin
+import OllinDiagram
 
 final class EveryScript: Sketch {
     override var canvasSize: CanvasSize { .size(880, 560) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.4) }
-    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var faint: Color { theme.ink(0.4) }
+    var accent: Color { theme.accent }
     let green = Color(hex: 0x0CA678)
 
     override func draw() {

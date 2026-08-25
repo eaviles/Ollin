@@ -5,11 +5,13 @@
 // commonest kinds. The bottom block is the published safe set, which holds
 // apart. A bar under a swatch marks a pair the check found.
 import Ollin
+import OllinDiagram
 
 final class ColorVision2: Sketch {
     override var canvasSize: CanvasSize { .size(1200, 620) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
     let chart = Palette([
         Color(hex: 0x1F77B4), Color(hex: 0xFF7F0E), Color(hex: 0x2CA02C),
@@ -24,13 +26,13 @@ final class ColorVision2: Sketch {
     ]
 
     override func draw() {
-        background(darkTheme ? Color(hex: 0x1E1B18) : Color(white: 0.97))
+        background(theme.paper)
         noStroke()
         textFont(.systemMedium)
 
         for (column, view) in views.enumerated() {
             let x = 60.0 + Double(column) * 285
-            fill(darkTheme ? Color(hex: 0xE8E5E1) : Color(white: 0.25))
+            fill(theme.ink)
             textSize(21)
             drawText(view.0, at: Vector2(x, 52))
 
@@ -38,7 +40,7 @@ final class ColorVision2: Sketch {
             strip(.colorblindSafe, vision: view.1, x: x, y: 372, height: 210)
         }
 
-        fill(darkTheme ? Color(hex: 0xE8E5E1, alpha: 0.6) : Color(white: 0.45))
+        fill(theme.muted)
         textSize(18)
         drawText("a familiar chart set", at: Vector2(60, 82))
         drawText("Palette.colorblindSafe", at: Vector2(60, 362))
@@ -55,7 +57,7 @@ final class ColorVision2: Sketch {
             drawRect(x, top, 225, size)
 
             if confused.contains(i) {
-                fill(darkTheme ? Color(hex: 0xE8E5E1) : Color(white: 0.15))
+                fill(theme.ink)
                 drawRect(x, top + size + 1, 225, 3)
             }
         }

@@ -6,17 +6,19 @@
 // text that made it underneath. Both read the shipped types, so the shapes are
 // the real ones rather than a drawing of them.
 import Ollin
+import OllinDiagram
 
 final class KnobAsARule: Sketch {
     override var canvasSize: CanvasSize { .size(880, 430) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.6) }
-    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.22) }
-    var mark: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE2603F) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var soft: Color { theme.ink(0.6) }
+    var faint: Color { theme.ink(0.22) }
+    var mark: Color { theme.accent }
 
     /// One pass, in seconds, and the range the knob covers.
     let span = 6.0

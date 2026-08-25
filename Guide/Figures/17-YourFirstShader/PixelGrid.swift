@@ -5,16 +5,18 @@
 // Coarse on the left so each answer is visible, at full resolution on the
 // right where the answers fuse into an image.
 import Ollin
+import OllinDiagram
 
 final class PixelGrid: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.45) }
-    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var faint: Color { theme.ink(0.45) }
+    var accent: Color { theme.accent }
 
     // The field both panels evaluate: a soft two-blob glow.
     func field(_ u: Double, _ v: Double) -> Color {

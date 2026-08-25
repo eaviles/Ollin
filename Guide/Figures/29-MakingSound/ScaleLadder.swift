@@ -6,17 +6,19 @@
 // on rungs. Right: triads built from C major by taking every other rung, the
 // quality (major, minor, diminished) following from the degree you start on.
 import Ollin
+import OllinDiagram
 import OllinAudio
 
 final class ScaleLadder: Sketch {
     override var canvasSize: CanvasSize { .size(880, 460) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x232020) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
-    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var soft: Color { theme.ink(0.12) }
+    var accent: Color { theme.accent }
     let cool = Color(hex: 0x17A398)
 
     override func draw() {

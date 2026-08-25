@@ -4,16 +4,18 @@
 // dots scattered twice: uniform spreads them evenly, Gaussian piles them
 // around the mean. Histograms below count where the dots landed.
 import Ollin
+import OllinDiagram
 
 final class UniformVsGaussian: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.28) }
-    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var faint: Color { theme.ink(0.28) }
+    var accent: Color { theme.accent }
 
     override func draw() {
         background(paper)
@@ -35,7 +37,7 @@ final class UniformVsGaussian: Sketch {
         fill(ink)
         textAlign(.center, .bottom)
         drawText(title, x + w / 2, top - 44)
-        fill(Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.6))
+        fill(theme.ink(0.6))
         drawText(note, x + w / 2, top - 16)
 
         noFill()
@@ -47,7 +49,7 @@ final class UniformVsGaussian: Sketch {
         let bins = 20
         var counts = [Int](repeating: 0, count: bins)
         noStroke()
-        fill(Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E, alpha: 0.55))
+        fill(theme.accent(0.55))
         var placed = 0
         while placed < 500 {
             var sampleX = random(w)
@@ -66,7 +68,7 @@ final class UniformVsGaussian: Sketch {
         strokeWeight(2)
         drawLine(x, histTop + histHeight, x + w, histTop + histHeight)
         noStroke()
-        fill(Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.55))
+        fill(theme.ink(0.55))
         for b in 0..<bins {
             let h = Double(counts[b]) / 62.0 * histHeight
             drawRect(x + Double(b) * barWidth + 2, histTop + histHeight - h,

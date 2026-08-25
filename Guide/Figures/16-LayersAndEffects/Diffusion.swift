@@ -3,13 +3,15 @@
 // Guide figure (Chapter 16): diffusion curves. The marks on their own, the field
 // they settle into, and what one more curve does to it.
 import Ollin
+import OllinDiagram
 
 final class Diffusion: Sketch {
     override var canvasSize: CanvasSize { .size(880, 386) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var paper: Color { theme.paper }
 
     let dusk = Color(hex: 0xE86F4A)
     let deep = Color(hex: 0x101A2E)
@@ -58,7 +60,7 @@ final class Diffusion: Sketch {
                 drawImage(marks.filtered(.diffuse(sharpness: 1)).image, in: frame)
             }
 
-            fill(Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.62))
+            fill(theme.ink(0.62))
             textSize(16)
             textAlign(.center, .top)
             drawText(labels[index], frame.x + frame.width / 2, frame.y + frame.height + 8)

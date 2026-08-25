@@ -3,15 +3,17 @@
 // Guide diagram: two ways to describe one color. RGB stores three amounts of
 // light; HSB picks a hue on the wheel, then how vivid and how bright.
 import Ollin
+import OllinDiagram
 
 final class HueWheels: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var label: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.55) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var label: Color { theme.ink(0.55) }
 
     override func draw() {
         background(paper)
@@ -26,7 +28,7 @@ final class HueWheels: Sketch {
         ]
         for (i, bar) in amounts.enumerated() {
             let y = 120.0 + Double(i) * 64
-            fill(Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.08))
+            fill(theme.ink(0.08))
             drawRect(70, y, 240, 36)
             fill(bar.0)
             drawRect(70, y, 240 * bar.1, 36)

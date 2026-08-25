@@ -6,16 +6,18 @@
 // spacing but every heading is private, alignment lines the headings up, and
 // cohesion gathers the lanes into groups.
 import Ollin
+import OllinDiagram
 
 final class RuleMix: Sketch {
     override var canvasSize: CanvasSize { .size(880, 400) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.3) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var faint: Color { theme.ink(0.3) }
+    var soft: Color { theme.ink(0.12) }
 
     var flocks: [Boids] = []
     var trails: [[[Vector2]]] = []      // per panel, per boid, recent positions

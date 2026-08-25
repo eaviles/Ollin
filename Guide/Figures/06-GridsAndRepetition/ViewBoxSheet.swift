@@ -6,15 +6,17 @@
 // are given the canvas's own shape, since that is what the code inside believes
 // it has.
 import Ollin
+import OllinDiagram
 
 final class ViewBoxSheet: Sketch {
     override var canvasSize: CanvasSize { .size(880, 560) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.45) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var faint: Color { theme.ink(0.45) }
 
     static let palettes: [(Color, Color)] = [
         (Color(hex: 0xF6E7D8), Color(hex: 0xC1553C)),

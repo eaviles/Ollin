@@ -5,14 +5,16 @@
 // sliced at a moving plane, and this is the evidence behind the chapter's claim
 // that these fields are readable rather than magic.
 import Ollin
+import OllinDiagram
 
 final class HandRolledField: Sketch {
     override var canvasSize: CanvasSize { .size(880, 500) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
 
     // The gyroid: a surface defined by one implicit equation. Reading it at a
     // fixed z is a flat slice through it, and the bands are where the equation

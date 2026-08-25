@@ -5,14 +5,16 @@
 // Mandelbrot boundary with the iteration cap raised to match. The same loop runs
 // in all three; only what is held fixed changes.
 import Ollin
+import OllinDiagram
 
 final class FractalPair: Sketch {
     override var canvasSize: CanvasSize { .size(880, 386) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
 
     /// The c whose Julia set the middle panel shows, marked in the first panel.
     let pick = Vector2(-0.79, 0.15)

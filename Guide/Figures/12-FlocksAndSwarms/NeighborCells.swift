@@ -5,17 +5,19 @@
 // dark boid has to be in the block of nine cells around it. Everything outside
 // that block is never measured at all.
 import Ollin
+import OllinDiagram
 
 final class NeighborCells: Sketch {
     override var canvasSize: CanvasSize { .size(880, 440) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.4) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
-    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var faint: Color { theme.ink(0.4) }
+    var soft: Color { theme.ink(0.12) }
+    var accent: Color { theme.accent }
 
     override func draw() {
         background(paper)
@@ -37,7 +39,7 @@ final class NeighborCells: Sketch {
         // The block of nine cells the search reads.
         let column = Int((focal.x - origin.x) / cell), row = Int((focal.y - origin.y) / cell)
         noStroke()
-        fill(Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E, alpha: 0.07))
+        fill(theme.accent(0.07))
         drawRect(corner: origin + Vector2(Double(column - 1) * cell, Double(row - 1) * cell),
                  width: cell * 3, height: cell * 3)
 

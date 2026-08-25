@@ -7,17 +7,19 @@
 // the same bytes, and the problem, which lights while the requests are failing
 // and never takes the last good answer away.
 import Ollin
+import OllinDiagram
 
 final class NumbersThatKeepArriving: Sketch {
     override var canvasSize: CanvasSize { .size(880, 570) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
-    var quiet: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.45) }
-    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xC1553B) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var faint: Color { theme.ink(0.12) }
+    var quiet: Color { theme.ink(0.45) }
+    var accent: Color { theme.accent }
     var good: Color { Color(hex: darkTheme ? 0x5BAD9C : 0x3E7C74) }
 
     /// What each request came back with, at the minute it landed. The gaps are

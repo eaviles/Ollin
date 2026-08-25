@@ -5,15 +5,17 @@
 // Right, Langton's ant after a hundred thousand steps, the chaotic blot it
 // paints first and the diagonal highway it eventually escapes along.
 import Ollin
+import OllinDiagram
 
 final class WolframAndTurmite: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.18) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var soft: Color { theme.ink(0.18) }
 
     let left = Rectangle(x: 84, y: 70, width: 320, height: 320)
     let right = Rectangle(x: 476, y: 70, width: 320, height: 320)

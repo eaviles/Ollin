@@ -5,17 +5,19 @@
 // shipped curves rather than a drawing of them; the dot marks one moment, and
 // the circle above each panel is the value the knob holds there.
 import Ollin
+import OllinDiagram
 
 final class KnobOnACurve: Sketch {
     override var canvasSize: CanvasSize { .size(880, 470) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.35) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.6) }
-    var mark: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE2603F) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var faint: Color { theme.ink(0.35) }
+    var soft: Color { theme.ink(0.6) }
+    var mark: Color { theme.accent }
 
     /// The moment every panel is read at, in seconds.
     let moment = 1.15

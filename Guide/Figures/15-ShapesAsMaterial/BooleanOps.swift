@@ -4,16 +4,18 @@
 // star in every panel; only the operation changes. Faint outlines show the
 // two originals, ink shows what survives.
 import Ollin
+import OllinDiagram
 
 final class BooleanOps: Sketch {
     override var canvasSize: CanvasSize { .size(880, 340) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.35) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var faint: Color { theme.ink(0.35) }
+    var soft: Color { theme.ink(0.12) }
 
     override func draw() {
         background(paper)

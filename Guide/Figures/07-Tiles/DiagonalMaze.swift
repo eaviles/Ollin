@@ -4,15 +4,17 @@
 // left, and on the right the same diagonals joined end to end, each joined run
 // in its own color, so what looks like loose marks reads as long paths.
 import Ollin
+import OllinDiagram
 
 final class DiagonalMaze: Sketch {
     override var canvasSize: CanvasSize { .size(880, 460) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var soft: Color { theme.ink(0.12) }
 
     override func draw() {
         background(paper)

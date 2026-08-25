@@ -7,6 +7,7 @@
 // panel is a hand-made stand-in for the other.
 import Foundation
 import Ollin
+import OllinDiagram
 import OllinProjects
 import OllinSceneImport
 
@@ -14,10 +15,11 @@ final class SceneAsSource: Sketch {
     override var canvasSize: CanvasSize { .size(920, 460) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.45) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var faint: Color { theme.ink(0.45) }
 
     /// The scene file the chapter has been using all along.
     ///

@@ -136,6 +136,16 @@ let package = Package(
             name: "OllinRuntime",
             dependencies: ["Ollin"]
         ),
+        // The Guide's diagram-support library: the shared figure theme (the
+        // GitHub-matching palette both variants render against) and the panel,
+        // caption, and catalog helpers the diagram figures share. A library the
+        // figure sketches import, deliberately outside the shipping `Ollin`
+        // framework: it is book chrome, not a sketch capability. Listings and
+        // payoff figures never import it (see Guide/AUTHORING.md).
+        .target(
+            name: "OllinDiagram",
+            dependencies: ["Ollin"]
+        ),
         // The live-reload host. `swift run OllinLive <path/to/Sketch.swift>`
         // opens a window, then recompiles + hot-swaps that sketch on save —
         // edit, save, see it update in place, without the window closing.
@@ -209,7 +219,7 @@ let package = Package(
             // The generator's own targets ride along so a figure can show what it
             // produces: the shader and scene import figures both run the real
             // thing and draw its output, rather than a result pasted in by hand.
-            dependencies: ["Ollin", "OllinRuntime", "OllinProjects", "OllinSceneImport"]
+            dependencies: ["Ollin", "OllinRuntime", "OllinDiagram", "OllinProjects", "OllinSceneImport"]
                 + Satellite.allCases.map(\.dependency),
             path: "Sources/OllinGuideFigures",
             linkerSettings: [

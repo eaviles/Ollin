@@ -7,6 +7,7 @@
 // a very low floor, so the tail below the default cut is visible. Both
 // detections are the real Vision requests, run once on the still image.
 import Ollin
+import OllinDiagram
 import OllinVision
 
 final class AttentionAndLabels: Sketch {
@@ -28,12 +29,13 @@ final class AttentionAndLabels: Sketch {
     var labels: [(name: String, confidence: Double)] = []
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.28) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.6) }
-    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var faint: Color { theme.ink(0.28) }
+    var soft: Color { theme.ink(0.6) }
+    var accent: Color { theme.accent }
 
     let leftPanel = Rectangle(x: 60, y: 100, width: 360, height: 360)
     let rightPanel = Rectangle(x: 460, y: 100, width: 360, height: 360)

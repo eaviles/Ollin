@@ -6,18 +6,20 @@
 // until neighbors meet, and relaxCircles pushes your own sized, overlapping
 // circles apart while holding every radius fixed.
 import Ollin
+import OllinDiagram
 
 final class PackingMechanisms: Sketch {
     override var canvasSize: CanvasSize { .size(880, 320) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.55) }
-    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.22) }
-    var wash: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.10) }
-    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var soft: Color { theme.ink(0.55) }
+    var faint: Color { theme.ink(0.22) }
+    var wash: Color { theme.ink(0.10) }
+    var accent: Color { theme.accent }
 
     override func draw() {
         background(paper)

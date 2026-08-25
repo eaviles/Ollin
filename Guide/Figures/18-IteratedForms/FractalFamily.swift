@@ -5,6 +5,7 @@
 // histogram, the limit set of a ring of tangent mirrors, and the limit curve
 // of a two-generator Möbius group.
 import Ollin
+import OllinDiagram
 
 final class FractalFamily: Sketch {
     override var canvasSize: CanvasSize { .size(880, 480) }
@@ -12,10 +13,11 @@ final class FractalFamily: Sketch {
     let night = Color(hex: 0x0C0F16)
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var soft: Color { theme.ink(0.12) }
 
     var flame: Image?
 

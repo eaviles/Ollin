@@ -5,15 +5,17 @@
 // around a small hole, and a fine ring. The ring is a filled region, so the
 // figure paints it with fill alone.
 import Ollin
+import OllinDiagram
 
 final class DrawRing: Sketch {
     override var canvasSize: CanvasSize { .size(880, 320) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var accent: Color { theme.accent }
 
     override func draw() {
         background(paper)

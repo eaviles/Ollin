@@ -4,16 +4,18 @@
 // points stroked open, and joined back to its start with closed: true. The
 // vertices are dotted, and the open path's two ends are marked.
 import Ollin
+import OllinDiagram
 
 final class DrawPolyline: Sketch {
     override var canvasSize: CanvasSize { .size(880, 320) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.35) }
-    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var faint: Color { theme.ink(0.35) }
+    var accent: Color { theme.accent }
 
     let run = [Vector2(-118, 62), Vector2(-70, -58), Vector2(-14, 12),
                Vector2(38, -66), Vector2(96, -24), Vector2(118, 46),

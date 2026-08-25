@@ -5,18 +5,20 @@
 // the value each read returns beside it. The values are the figure's own, so
 // this draws the same whether or not a controller is plugged in.
 import Ollin
+import OllinDiagram
 
 final class ReadingAPad: Sketch {
     override var canvasSize: CanvasSize { .size(880, 560) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.4) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.62) }
-    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
-    var idle: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.14) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var faint: Color { theme.ink(0.4) }
+    var soft: Color { theme.ink(0.62) }
+    var accent: Color { theme.accent }
+    var idle: Color { theme.ink(0.14) }
 
     // The pose. Held up and to the right, so both axes are worth reading, and
     // the y is where the sign rule shows.

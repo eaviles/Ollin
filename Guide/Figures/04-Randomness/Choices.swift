@@ -4,16 +4,18 @@
 // different thresholds, a uniform pick from a four-color palette, and a
 // weighted pick that leans hard on one color.
 import Ollin
+import OllinDiagram
 
 final class Choices: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.28) }
-    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var faint: Color { theme.ink(0.28) }
+    var accent: Color { theme.accent }
     let palette: [Color] = [
         Color(hex: 0x5E60CE), Color(hex: 0x64DFDF),
         Color(hex: 0xFFB703), Color(hex: 0xE56B6F),

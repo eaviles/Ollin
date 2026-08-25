@@ -5,15 +5,17 @@
 // ink matches the cell's darkness. Right, a halftone screen, where each cell
 // keeps one dot and grows it until it covers the same fraction.
 import Ollin
+import OllinDiagram
 
 final class PictureAsGlyphs: Sketch {
     override var canvasSize: CanvasSize { .size(880, 480) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var soft: Color { theme.ink(0.12) }
     let night = Color(hex: 0x101319)
     let glow = Color(hex: 0xF4EDE0)
     var source: Image?

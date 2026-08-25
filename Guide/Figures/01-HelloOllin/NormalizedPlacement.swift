@@ -5,15 +5,17 @@
 // each drawn into a square, a wide, and a tall canvas. Only the fractions
 // survive the change of shape.
 import Ollin
+import OllinDiagram
 
 final class NormalizedPlacement: Sketch {
     override var canvasSize: CanvasSize { .size(880, 600) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x232020) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.45) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var soft: Color { theme.ink(0.45) }
 
     // The panels depict a sketch's own artwork, identical in both themes.
     let night = Color(hex: 0x1B2A4A)

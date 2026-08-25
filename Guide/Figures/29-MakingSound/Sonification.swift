@@ -6,18 +6,20 @@
 // drift from what the type does; the hertz row is the counterfactual, computed
 // alongside it, which is the whole point of showing it.
 import Ollin
+import OllinDiagram
 import OllinAudio
 
 final class SonificationFigure: Sketch {
     override var canvasSize: CanvasSize { .size(880, 720) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x232020) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.55) }
-    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.14) }
-    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var soft: Color { theme.ink(0.55) }
+    var faint: Color { theme.ink(0.14) }
+    var accent: Color { theme.accent }
     let cool = Color(hex: 0x3A6EA5)
 
     // A short profile with a clear shape: up, down, up again.

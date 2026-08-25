@@ -5,15 +5,17 @@
 // both warps the noise the filter draws with and shifts where it samples the
 // picture, which is why the result reads as dyed rather than only smeared.
 import Ollin
+import OllinDiagram
 
 final class Melt: Sketch {
     override var canvasSize: CanvasSize { .size(880, 480) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var soft: Color { theme.ink(0.12) }
 
     override func draw() {
         background(paper)

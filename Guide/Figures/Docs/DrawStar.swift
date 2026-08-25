@@ -4,16 +4,18 @@
 // the temper. The same five points spiky then gentle, and an eight-point
 // burst, each with its center dotted.
 import Ollin
+import OllinDiagram
 
 final class DrawStar: Sketch {
     override var canvasSize: CanvasSize { .size(880, 320) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
-    var wash: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.10) }
-    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var wash: Color { theme.ink(0.10) }
+    var accent: Color { theme.accent }
 
     override func draw() {
         background(paper)

@@ -4,15 +4,17 @@
 // each mode of the chromatic-aberration filter, plus the tap budget that turns
 // three hard ghosts into a continuous smear.
 import Ollin
+import OllinDiagram
 
 final class Dispersion: Sketch {
     override var canvasSize: CanvasSize { .size(880, 730) }
 
     @Param var darkTheme = false
+    var theme: DiagramTheme { DiagramTheme(dark: darkTheme) }
 
-    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
-    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x232020) }
-    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
+    var paper: Color { theme.paper }
+    var ink: Color { theme.ink }
+    var soft: Color { theme.ink(0.12) }
 
     override func draw() {
         background(paper)
