@@ -34,6 +34,7 @@ enum Satellite: String, CaseIterable {
     case osc = "OllinOSC"
     case dmx = "OllinDMX"
     case midi = "OllinMIDI"
+    case serial = "OllinSerial"
     case physics = "OllinPhysics"
     case vision = "OllinVision"
     case video = "OllinVideo"
@@ -583,6 +584,15 @@ let package = Package(
         // TempoClock locks the visuals to it; point real gear at the Mac and the
         // same sketch follows that instead.
         example("Integration/TempoSync", [.midi]),
+        // Self-contained: a fake device on the manager side of a pty pair prints
+        // a sensor value and a SerialPort reads the other side, so the classic
+        // physical-computing loop runs with no hardware (like OSCLoopback);
+        // clicking writes a line back and the wave flips.
+        example("Integration/SerialLoopback", [.serial]),
+        // Lists every serial device live and scrolls whatever the open one
+        // prints: plug a microcontroller in and its lines (and a numeric
+        // value bar) appear; keys pick a device and send a line back.
+        example("Integration/SerialMonitor", [.serial]),
         // Self-contained: publishes its own frames as a Syphon source and
         // subscribes to them, so the feedback inset is the round-trip (like
         // OSCLoopback). Open Syphon's Simple Client to see it cross-app.

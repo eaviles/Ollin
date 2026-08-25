@@ -260,11 +260,11 @@ Figures: RGBD anatomy diagram; unprojection diagram; a fusion sweep sequence; th
 Draws from: `Docs/3D/RGBD.md`, `Docs/3D/Record3D.md`, `Docs/3D/Phone.md`, `Docs/3D/DepthCompositing.md`; `Examples/3D/` (Depth/Phone groups).
 
 **28. Sound and control.**
-Teaches: getting sound in (`AudioInput`, a file, a video, the sketch's own playing); what an analyzer hears (amplitude, `bands`, centroid, onsets); beats and `BeatFollower`; speech and sound events; then the hands: `@Param` binding, MIDI, OSC, and game controllers, all reaching the same knobs.
+Teaches: getting sound in (`AudioInput`, a file, a video, the sketch's own playing); what an analyzer hears (amplitude, `bands`, centroid, onsets); beats and `BeatFollower`; speech and sound events; then the hands: `@Param` binding, MIDI, OSC, serial sensors, and game controllers, all reaching the same knobs.
 Assumes: Part I, Ch 16 (layers, for the reactive piece).
 Payoff: the Resonator. A crown of spectrum spokes, a core that throbs on the beat, sparks flung on each arrival, and two knobs for whatever hands are there.
 Figures: the analyzer anatomy; what it hears; the beat timeline; the speech and sound-event reads; the binding flow; a pad being read; the Resonator.
-Draws from: `Docs/Helpers/Audio.md`, `Docs/Helpers/Listening.md`, `Docs/Integration/MIDI.md`, `Docs/Integration/OSC.md`, `Docs/Helpers/Parameters.md`; `Examples/Audio/`, `Examples/Integration/`.
+Draws from: `Docs/Helpers/Audio.md`, `Docs/Helpers/Listening.md`, `Docs/Integration/MIDI.md`, `Docs/Integration/OSC.md`, `Docs/Integration/Serial.md`, `Docs/Helpers/Parameters.md`; `Examples/Audio/`, `Examples/Integration/`.
 
 **29. Making sound.**
 Teaches: `Synth` and what a note is made of (voices, envelopes, filters); building an instrument by patching operators rather than picking a preset, and the effects chain after it; an instrument that is a set of recordings; the four physical models (plucked string, struck shape, bowed string, blown tube); then composition (`StepCounter`, `Rhythm`, `Scale`, `Chord`, `Arpeggio`, `MarkovChain`, `Progression`, `Tuning`), following a beat, sonification, and placing a sound in a room.
@@ -516,6 +516,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | `Integration/MIDI.md` | Ch 28 | taught |
 | Tempo sync (`TempoClock` over MIDI clock; `Integration/MIDI.md`) | Ch 28 | taught (a musical-time diagram: 24 ticks per beat is the whole protocol, why counting means the grid can't drift, every reader with a worked position, `progress(over:)`, and the arm-on-next-tick and free-running-master behaviors) |
 | `Integration/OSC.md` | Ch 28 | taught |
+| `Integration/Serial.md` (`SerialPort`, `SerialDevice`) | Ch 28 | taught ("A wire to the physical world: serial" with the SerialLoop figure: the print-a-number loop as the level/moment split made a third time; `matching:` re-resolving so the board is found under any device number; the patient `open()` that waits through unplugs and re-flashes; `bind(to:)` from the classic 0...1023 analog read; writing lines back; the loopback and monitor examples) |
 | `Integration/Controller.md` (`Controller`, `ControllerButton`, `controllerMotion`, `controllerDeadzone`, several players) | Ch 28 | taught ("Something to hold: game controllers" with the ReadingAPad figure: one pose read five ways, so the level/moment/both split lands beside the same split the chapter already made for MIDI; why there is no drain, since a hand cannot press and release between two frames; the null read with nothing plugged in; the two rules the figure exists for, up being negative y and buttons named by position rather than by print; motion opt-in with Xbox having no sensors at all; and the live-only export note) |
 | `Vision/Vision.md` (18 trackers, ModelTracker, ConceptTracker) | Ch 30 | taught (all eighteen: hands/face/2D body/contours/optical flow, the segmenters (with "A click cuts it loose: PointSegmenter" teaching the point-prompted one's pick/include/exclude loop, worked example included, kept figure-free like every downloaded-weights model here), the 3D body read in its three spaces, then four sections for the rest with three figures built from synthetic scenes, so no figure needs a camera, a person, or downloaded weights: the card read by the rectangle detector and the OCR, the fitted trajectory carried past its last sighting onto where the ball really went, and the saliency map beside the classifier's confidence floor; `ModelTracker`'s four output surfaces are taught, with its weights left to the reader since Ollin ships none; `ConceptTracker`'s phrase scoring has its own "Words as knobs" section, worked example included, kept figure-free for the same no-downloaded-weights reason) |
 | `Video/Video.md` (playback as texture) | Ch 30 | taught |
@@ -583,7 +584,7 @@ Homes are given as the chapter numbers this Guide has today. The splits above re
 | Photorealistic 3D tier | Ch 21/18, likely a new chapter when substantial |
 | Sound, synthesis, and spatial audio | Ch 28, the making-sound chapter |
 | Tempo sync: Ableton Link | Ch 28, the listening and control chapter |
-| Live rigs (serial/BLE, laser projection, NDI) | Ch 31, the installations chapter |
+| Live rigs (BLE, laser projection, NDI) | Ch 31, the installations chapter |
 | Live data from the world (WeatherKit, Core Location, HealthKit) | a new Part V chapter beside Seeing. The file-loading half and the fetched half are both taught in Ch 9's data sections, which point forward to the sensors |
 | New input sources | Ch 28/21 |
 | New output surfaces (haptics, screensaver) | Ch 31 |

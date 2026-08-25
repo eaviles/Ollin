@@ -286,6 +286,7 @@ Use it two ways. It is an index for the moment you remember the guide showing bl
 | Listening | Speech as a caption that corrects itself and phrases you can trigger from, plus 300-odd everyday sounds named as they happen | [Ch 28](28-SoundAndControl.md) | [Listening](../Docs/Helpers/Listening.md) |
 | MIDI | Knobs, notes, and messages from hardware controllers, in and out | [Ch 28](28-SoundAndControl.md) | [MIDI](../Docs/Integration/MIDI.md) |
 | OSC | Network control messages from tablets, DAWs, and other machines | [Ch 28](28-SoundAndControl.md) | [OSC](../Docs/Integration/OSC.md) |
+| Serial | A USB microcontroller's sensor lines read in `draw()` or bound to a knob, lines written back to drive the hardware, and a port that waits through unplugs and reopens itself | [Ch 28](28-SoundAndControl.md) | [Serial](../Docs/Integration/Serial.md) |
 | Game controllers | Sticks, triggers, and buttons read in `draw()`, plus motion and a touchpad on hardware that has them, with several players at once and a null read when nothing is plugged in | [Ch 28](28-SoundAndControl.md) | [Controller](../Docs/Integration/Controller.md) |
 | Parameter binding | One `@Param` driven by MIDI, OSC, and the inspector alike, with smoothing | [Ch 28](28-SoundAndControl.md) | [Parameters](../Docs/Helpers/Parameters.md) |
 

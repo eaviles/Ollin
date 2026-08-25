@@ -22,6 +22,7 @@ enum Satellite: String, CaseIterable {
     case osc = "OllinOSC"
     case dmx = "OllinDMX"
     case midi = "OllinMIDI"
+    case serial = "OllinSerial"
     case physics = "OllinPhysics"
     case vision = "OllinVision"
     case video = "OllinVideo"
@@ -62,6 +63,12 @@ let package = Package(
         // to MIDI gear (control surfaces, keyboards, sequencers) over Core MIDI.
         // Kept out of `Ollin` so the drawing core stays free of Core MIDI.
         .library(name: "OllinMIDI", targets: ["OllinMIDI"]),
+        // Serial as a satellite library: `import OllinSerial` to read and drive
+        // USB microcontrollers (sensors in, servos and LEDs out) over the
+        // classic physical-computing loop: IOKit discovery, POSIX termios I/O,
+        // text lines and raw bytes in `draw()`. Kept out of `Ollin` so the
+        // drawing core stays free of IOKit.
+        .library(name: "OllinSerial", targets: ["OllinSerial"]),
         // Physics as a satellite library: `import OllinPhysics` for a small
         // Verlet world — particles, springs, and disk collisions — that a sketch
         // steps each frame so motion comes from simulation, not hand-tuned values.
@@ -447,6 +454,17 @@ let package = Package(
             name: "OllinMIDI",
             dependencies: ["Ollin"]
         ),
+        // Serial: the classic physical-computing loop over a USB serial device,
+        // discovered through IOKit and driven through POSIX termios (no vendored
+        // library). Framing stays at text lines and raw bytes; higher protocols
+        // are sketch or extension territory. A satellite (like OllinOSC) so the
+        // drawing core stays free of IOKit; sketches opt in with `import
+        // OllinSerial`. Depends on Ollin only to bind the incoming stream onto
+        // a `@Param` knob.
+        .target(
+            name: "OllinSerial",
+            dependencies: ["Ollin"]
+        ),
         // Physics: a small Verlet world — particles, springs, and disk collisions
         // — stepped each frame so motion can come from simulation. A satellite
         // library (like OllinAudio) so it stays opt-in; it depends on Ollin only
@@ -656,6 +674,15 @@ let package = Package(
         .testTarget(
             name: "OllinMIDITests",
             dependencies: ["OllinMIDI"]
+        ),
+        // Serial correctness: line reassembly over every line-ending convention
+        // and chunking (pure, runs everywhere), device matching, value parsing,
+        // plus an end-to-end loopback over a pty pair: the replica side opens as
+        // a real SerialPort, so open/read/drain/bind/write and the EOF
+        // disconnect all run against a live descriptor with no hardware.
+        .testTarget(
+            name: "OllinSerialTests",
+            dependencies: ["Ollin", "OllinSerial"]
         ),
         // Physics correctness: Verlet integration (a body falls the expected
         // distance under gravity), spring rest-length restoration, pinned bodies

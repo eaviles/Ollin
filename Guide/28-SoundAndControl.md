@@ -6,7 +6,7 @@
 
 <img src="Images/28-SoundAndControl/Resonator.jpg" alt="A glowing amber orb wearing a crown of spectrum spokes, magenta at the quiet ends and pale gold at the loud ones, with sparks drifting outward from a recent beat" width="560">
 
-Every sketch so far has listened to two things, the clock and the mouse. This chapter adds ears and hands. The ears come first. A microphone or a song becomes a handful of numbers you read in `draw()`, and the picture moves with the music. Then come the hands. A hardware knob, a phone fader, or the inspector slider drives the same parameters, and a running sketch becomes something you play. The piece above is doing both at once, and by the end you'll have built it. Making sound rather than hearing it is [Chapter 29](29-MakingSound.md), which picks up where the ears leave off.
+Every sketch so far has listened to two things, the clock and the mouse. This chapter adds ears and hands. The ears come first. A microphone or a song becomes a handful of numbers you read in `draw()`, and the picture moves with the music. Then come the hands. A hardware knob, a phone fader, the inspector slider, or a sensor you wired yourself drives the same parameters. A running sketch becomes something you play. The piece above is doing both at once, and by the end you'll have built it. Making sound rather than hearing it is [Chapter 29](29-MakingSound.md), which picks up where the ears leave off.
 
 ## The first listening sketch
 
@@ -293,6 +293,39 @@ Several people can play. `controller(2)` is player two, and a controller keeps i
 
 Because a controller is live input, an export reads it as centered and says so, the same way the microphone did earlier. The `Integration/ControllerInput` example turns a pad into a drawing instrument. A `map` knob draws every stick, trigger and button as it's read. That is the fastest way to tell whether a controller is talking to the machine at all. See [the controller reference](../Docs/Integration/Controller.md) for the rest, including the deadzone and running while another window is in front.
 
+## A wire to the physical world: serial
+
+The last hand is the one you solder. A light sensor, a bend sensor, or a homemade button doesn't arrive as a finished controller. It arrives as a bare component wired to a microcontroller board. The board reads it and prints numbers, and the sketch reads the numbers. Hardware people call that loop physical computing, and it runs over a serial port.
+
+The firmware side stays as simple as it gets: read the sensor, print it, one number per line, thirty-ish times a second. The sketch side is `OllinSerial`:
+
+```swift
+import OllinSerial
+
+let serial = SerialPort(matching: "usbmodem", baudRate: 9600)
+
+override func setup() { serial.open() }
+override func draw() {
+    let level = Double(serial.float(default: 0)) / 1023      // the latest reading
+    for line in serial.lines() where line == "pressed" {     // each event, once
+        flash()
+    }
+}
+```
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/28-SoundAndControl/SerialLoop-dark.jpg">
+  <img src="Images/28-SoundAndControl/SerialLoop.jpg" alt="A diagram of two boxes joined by two arrows: a microcontroller printing one number per line over USB to a SerialPort, a writeLine command returning, the port's three reads listed below, and a note that an unplugged port waits and reopens by itself" width="680">
+</picture>
+
+The two reads are the level-and-moment split this chapter has now made three times. `float(default:)` is the latest value, read fresh each frame, for a continuous sensor. `lines()` hands you every line since the last frame, once each, for discrete events. And the third read you can guess by now: `serial.bind(to: $radius)` wires the stream onto a `@Param`, mapped in from the `0...1023` an analog pin classically reads. A potentiometer on a breadboard drives the same knob the inspector slider does.
+
+`matching:` is worth a word. Serial devices live at paths like `/dev/cu.usbmodem101`, and the number changes between plugs. The match re-runs on every connection attempt, so the port finds the board wherever it lands. It even works when the board is plugged in after the sketch launches. The connection is patient by design too: `open()` doesn't fail, it waits. Unplug the board mid-performance and `isOpen` goes false while the port quietly retries; plug it back in and the values resume. A firmware re-flash mid-session heals the same way.
+
+The wire runs both directions. `serial.writeLine("led:on")` sends a line back, and firmware that reads lines can drive LEDs, servos, and motors from the sketch. Sensors in, movement out: the whole loop.
+
+No board in the house? The `Integration/SerialLoopback` example runs both ends of the wire itself: a fake device prints values into a real `SerialPort`. Clicking writes a line back that flips the wave. With a real board, `Integration/SerialMonitor` is the introduction ritual, the way `MIDIMonitor` was. It lists every device, opens the first USB one, and scrolls whatever the board prints. [The serial reference](../Docs/Integration/Serial.md) has the full surface.
+
 ## Putting it together: a playable instrument
 
 The finished piece wires the whole chapter together. `bands` is worn as a crown of spokes, and a core throbs on `beatCount`. Sparks are flung on each arrival, and two `@Param` knobs wait for whatever hands you have. Make `MySketches/Resonator.swift`, and bring `StageMic` along from [`Anatomy.swift`](Figures/28-SoundAndControl/Anatomy.swift). The committed figure with everything together is [`Resonator.swift`](Figures/28-SoundAndControl/Resonator.swift):
@@ -417,7 +450,7 @@ The idea that any sound splits into pure vibrations is Joseph Fourier's (1822). 
 
 Detecting arrivals by spectral flux is a standard technique from music information retrieval. Bello and colleagues survey it well in their onset-detection tutorial (2005). The real-time recipe Ollin follows is Böck, Krebs, and Schedl's online method (2012).
 
-MIDI was created in 1983 by Dave Smith and Ikutaro Kakehashi so rival instruments could talk to each other. It was a rare act of industry peace that still works four decades later. Open Sound Control came from Matt Wright and Adrian Freed at CNMAT, Berkeley (1997), built for the networked, higher-resolution rigs MIDI predates. And the audio-reactive visual itself has a long lineage. It runs from Oskar Fischinger's hand-drawn sound films through the oscilloscope and music-visualizer traditions to today's VJ and live-coding scenes. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+MIDI was created in 1983 by Dave Smith and Ikutaro Kakehashi so rival instruments could talk to each other. It was a rare act of industry peace that still works four decades later. Open Sound Control came from Matt Wright and Adrian Freed at CNMAT, Berkeley (1997), built for the networked, higher-resolution rigs MIDI predates. The print-a-number serial loop is physical computing's lingua franca. Tom Igoe and Dan O'Sullivan's *Physical Computing* taught it. Wiring and then Arduino put a serial-printing board in every art student's hands. And the audio-reactive visual itself has a long lineage. It runs from Oskar Fischinger's hand-drawn sound films through the oscilloscope and music-visualizer traditions to today's VJ and live-coding scenes. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
@@ -426,9 +459,10 @@ MIDI was created in 1983 by Dave Smith and Ikutaro Kakehashi so rival instrument
 - [Synthesis](../Docs/Helpers/Synthesis.md): `Synth` and its voices, which [Chapter 29](29-MakingSound.md) is about, since a sketch that listens usually ends up playing too.
 - [MIDI](../Docs/Integration/MIDI.md): messages, the three reads, binding, and sending MIDI out.
 - [OSC](../Docs/Integration/OSC.md): addresses and arguments, bundles, binding, and testing with a phone.
+- [Serial](../Docs/Integration/Serial.md): finding a board, the three reads, writing lines back, and staying connected through unplugs.
 - [Parameters](../Docs/Helpers/Parameters.md): the typed `@Param` family, smoothing, show-rules, and the binding surface.
 - Appendix B draws this chapter's math, one picture per idea: [Sound as numbers](B-JustEnoughMath.md#sound-as-numbers).
-- Worked examples: [`Examples/Audio/Listening`](../Examples/Audio/Listening/Sketch.swift), [`Examples/Audio/Spectrum`](../Examples/Audio/Spectrum/Sketch.swift), [`Examples/Audio/Microphone`](../Examples/Audio/Microphone/Sketch.swift), and the MIDI, OSC and controller examples in [`Examples/Integration/`](../Examples/Integration/).
+- Worked examples: [`Examples/Audio/Listening`](../Examples/Audio/Listening/Sketch.swift), [`Examples/Audio/Spectrum`](../Examples/Audio/Spectrum/Sketch.swift), [`Examples/Audio/Microphone`](../Examples/Audio/Microphone/Sketch.swift), and the MIDI, OSC, serial, and controller examples in [`Examples/Integration/`](../Examples/Integration/).
 
 ---
 

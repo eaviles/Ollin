@@ -20,7 +20,7 @@ If you're coming from p5.js or Processing, [the Guide's Appendix C](Guide/C-Comi
 
 Ollin is pre-1.0, and the public API still changes freely. Version 1.0.0 will be the first public release: the repository opens, semantic version tags and a changelog begin, and from that point on every public rename ships a deprecation shim (the migration discipline described in [`CLAUDE.md`](CLAUDE.md)). This section names what that release waits on, and only that. Everything else on this page stays open for work at any time: the release does not wait on it, and it does not wait for the release.
 
-- **The capabilities a newcomer will look for first.** The most visible gaps for someone arriving from p5.js, Processing, or openFrameworks: a serial port for the classic microcontroller loop (under [live rigs](#live-rigs-physical-computing-lighting-and-network-video)); a sketch packaged as a double-clickable app, so a finished piece can be handed to someone without the Swift toolchain (under [new output surfaces](#new-output-surfaces)); and the model examples under [Up next](#up-next).
+- **The capabilities a newcomer will look for first.** The most visible gaps for someone arriving from p5.js, Processing, or openFrameworks: a sketch packaged as a double-clickable app, so a finished piece can be handed to someone without the Swift toolchain (under [new output surfaces](#new-output-surfaces)); and the model examples under [Up next](#up-next).
 - **Stabilization.** A naming-and-consistency pass over the whole public API, since the shim discipline locks the names in at the release; the test suite reliable end to end, with no flaky or machine-bound failures; and the hand-verification backlog (features that still wait on eyes, ears, or hardware) worked down.
 - **The release itself.** The changelog, the release notes, the `1.0.0` tag, and a README presentation pass. The ecosystem legs that need a public repository (DocC, a Swift Package Index listing, the extension index) follow the release rather than gate it.
 
@@ -77,7 +77,7 @@ Beat, phase, and BPM from MIDI clock are the `TempoClock` in `OllinMIDI` (see [`
 
 The integration tier reaches other software (Syphon, OSC, MIDI, the virtual camera); this tier reaches the hardware and the network around the machine, the physical-computing heritage of the lineage Ollin comes from:
 
-- **Serial and Bluetooth LE.** A `SerialPort` for USB microcontrollers (sensors in, servos and LEDs out) and Bluetooth LE peripheral reads, each surfaced the way OSC and MIDI already read: a latest-value cache, a message drain, `@Param` binding.
+- **Bluetooth LE.** Peripheral reads surfaced the way OSC and MIDI already read: a latest-value cache, a message drain, `@Param` binding.
 - **Laser projection.** Drive a show laser from `draw()`: a galvo laser traces resampled vector paths, which is nearly what a `Contour` already is, so the geometry-first core supplies the raw material. Consumer laser DACs speak published protocols, repeating the written-from-spec recipe; the craft is the point optimizer between shapes and beam (corner dwell, blanking, point budgets, path ordering) and a safety-first output gate.
 - **NDI.** The network sibling of Syphon: send and receive live video between machines, the standard in VJ and broadcast rigs. Its SDK is binary-only under its own license, so unlike the source-vendored tier it needs a licensing review before any code; that review decides whether and how it ships.
 

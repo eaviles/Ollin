@@ -144,6 +144,14 @@ extension Capability {
         starterHint: "let receiver = OSCReceiver(port: 5005)"
     )
 
+    public static let serial = Capability(
+        id: "serial",
+        title: "Serial",
+        summary: "Read a USB microcontroller's sensor lines, and write lines back.",
+        module: "OllinSerial",
+        starterHint: "let serial = SerialPort(matching: \"usbmodem\")   // then serial.open()"
+    )
+
     public static let dmx = Capability(
         id: "dmx",
         title: "DMX lighting",
@@ -205,7 +213,7 @@ extension Capability {
     public static let all: [Capability] = [
         .images, .text, .shaders, .params,
         .audio, .vision, .video, .physics,
-        .midi, .osc, .dmx, .syphon, .controller, .screen, .virtualCamera,
+        .midi, .osc, .serial, .dmx, .syphon, .controller, .screen, .virtualCamera,
         .phone, .record3D,
     ]
 
