@@ -20,6 +20,8 @@ Scripts/test.sh                   # the whole suite, phased (many minutes; backg
 
 A change isn't verified until it builds and runs. If `swift --version` and `xcrun --find metal` both succeed, you're on a Mac with the toolchain, so build and run directly instead of adding caveats about being unable to compile.
 
+On a fresh clone, run `Scripts/install-git-hooks.sh` once: it links the pre-commit hook that lints staged Swift with SwiftFormat and SwiftLint (both from brew; a missing tool blocks the commit rather than skipping). Before committing, `Scripts/preflight.sh` runs the doc and figure gates the diff calls for.
+
 Three test-running rules, learned the hard way:
 
 - **The full suite takes many minutes.** Never run it as a plain foreground call with a default command timeout; run it in the background or with an explicit long timeout, and use the filtered forms for the edit loop.

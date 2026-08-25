@@ -139,9 +139,25 @@ enum Snapshot {
     private static func warnIfDrifting(_ mean: Double, named name: String) {
         let warnAt = tolerance * driftWarningFraction
         guard mean >= warnAt else { return }
+        if drifting.isEmpty { atexit { Snapshot.summarizeDrift() } }
+        drifting.append(name)
         let percent = Int((mean / tolerance * 100).rounded())
         print(String(format: "Ollin: snapshot '%@' is drifting: mean %.3f is %d%% of the %.1f tolerance. "
                      + "Find the cause before re-recording.", name, mean, percent, tolerance))
+    }
+
+    /// Per-case drift warnings scroll past inside a long run, so every name that
+    /// warned is re-listed once at process exit, under the test summary where it
+    /// gets read. Mutated only from the main-actor test path and read at exit
+    /// after every test has finished, which is what makes the unguarded static
+    /// safe.
+    nonisolated(unsafe) private static var drifting: [String] = []
+
+    private static func summarizeDrift() {
+        guard !drifting.isEmpty else { return }
+        print("Ollin: \(drifting.count) snapshot reference\(drifting.count == 1 ? " is" : "s are")"
+              + " drifting this run: \(drifting.joined(separator: ", "))."
+              + " Find the causes before re-recording.")
     }
 
     // MARK: Pixels
