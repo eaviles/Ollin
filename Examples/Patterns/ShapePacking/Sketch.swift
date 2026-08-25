@@ -49,7 +49,7 @@ final class ShapePacking: Sketch {
         let ink = Color(hex: 0x6FD3C7), accent = Color(hex: 0xF2799E)
         for i in start ..< packer.count {
             let c = packer.circles[i].center
-            let t = (signedNoise(c.x * 0.0016, c.y * 0.0016) + 1) * 0.5
+            let t = noise(c.x * 0.0016, c.y * 0.0016)
             fill(Color.mix(ink, accent, t: t))
             drawShape(packer.shapes[i])
         }

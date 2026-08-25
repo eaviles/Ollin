@@ -28,8 +28,8 @@ final class Stippling: Sketch {
         dots = points.map { p in
             let x = Int((p.x - frame.x) / frame.width * Double(picture.width))
             let y = Int((p.y - frame.y) / frame.height * Double(picture.height))
-            let c = picture[min(max(x, 0), picture.width - 1),
-                            min(max(y, 0), picture.height - 1)]
+            let c = picture[clamp(x, 0, picture.width - 1),
+                            clamp(y, 0, picture.height - 1)]
             return (p, 1 - c.luminance)
         }
     }

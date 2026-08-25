@@ -87,7 +87,7 @@ final class Rigging: Sketch {
                 line?.applyForce(Vector3(gust, 0, gust * 0.3))
             }
         }
-        if let grip { dragSoftGrab(grip, to: Vector2(mouseX, mouseY)) }
+        if let grip { dragSoftGrab(grip, to: mouse) }
         world.step(dt: deltaTime)
 
         drawSetting()
@@ -148,10 +148,7 @@ final class Rigging: Sketch {
     func drawSetting() {
         material(.dielectric(roughness: 0.9))
         fill(Color(hex: 0x2A3341))
-        withState {
-            translate(0, -0.1, 0)
-            drawBox(width: 16, height: 0.2, depth: 16)
-        }
+        drawGround(size: 16, thickness: 0.2)
         fill(Color(hex: 0x4A4137))
         withState {
             translate(0, Rigging.beamHeight + 0.1, 0)
@@ -166,7 +163,7 @@ final class Rigging: Sketch {
     }
 
     override func mousePressed() {
-        grip = grabSoftBody(at: Vector2(mouseX, mouseY), in: world)
+        grip = grabSoftBody(at: mouse, in: world)
     }
 
     override func mouseReleased() {

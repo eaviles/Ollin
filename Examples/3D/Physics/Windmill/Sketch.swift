@@ -17,7 +17,6 @@ final class Windmill: Sketch {
     var mill: Joint3D?
     var balls: [Body3D] = []
     var restFrames: [Int] = []
-    var grabbed: Joint3D?
     var powered = true
 
     @Param(0 ... 5, icon: "wind") var millSpeed = 2.5
@@ -108,15 +107,6 @@ final class Windmill: Sketch {
         ball.angularVelocity = .zero
     }
 
-    override func mousePressed() {
-        grabbed = grabBody(at: Vector2(mouseX, mouseY), in: world)
-    }
-
-    override func mouseReleased() {
-        grabbed?.remove()
-        grabbed = nil
-    }
-
     override func keyPressed() {
         if key == " " {
             powered.toggle()
@@ -134,7 +124,7 @@ final class Windmill: Sketch {
         // Re-asserting the rate each frame keeps the knob live and the mill
         // awake; the strength cap gives it a mechanical spin-up.
         if powered { mill?.drive(at: millSpeed, strength: 500) }
-        if let grabbed { dragGrab(grabbed, to: Vector2(mouseX, mouseY)) }
+        dragBodies(in: world)
         world.step(dt: deltaTime)
         // Batted past the gates, or parked out of the blades' reach for a
         // couple of seconds: either way, back into the drop.
@@ -150,10 +140,7 @@ final class Windmill: Sketch {
 
         fill(Color(hex: 0x1A202A))
         material(.dielectric(roughness: 0.85))
-        withState {
-            translate(0, -0.06, 0)
-            drawBox(width: 24, height: 0.12, depth: 24)
-        }
+        drawGround(size: 24)
 
         for body in world.bodies {
             withBody(body) {

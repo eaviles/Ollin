@@ -20,15 +20,15 @@ final class Petals: Sketch {
 
     override func draw() {
         background(Color(white: 0.06))
-        let center = Vector2(width / 2, height / 2)
+        let center = center
         let inner = 90.0 * scale
         let outer = 430.0 * scale
 
         for i in 0..<petals {
             let t = Double(i) / Double(petals)
             let base = t * .tau
-            let a = center + Vector2(cos(base + time * 0.4), sin(base + time * 0.4)) * inner
-            let b = center + Vector2(cos(base - time * 0.25), sin(base - time * 0.25)) * outer
+            let a = center + Vector2(angle: base + time * 0.4) * inner
+            let b = center + Vector2(angle: base - time * 0.25) * outer
 
             let waist = (30 + 26 * sin(time * 1.1 + base * 2)) * scale
             fill(Colormap.magma.color(at: 0.2 + 0.7 * t))

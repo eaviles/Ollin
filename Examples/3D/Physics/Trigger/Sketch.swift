@@ -19,7 +19,6 @@ final class Trigger: Sketch {
     var tray: Body3D?
     var balls: [Body3D] = []
     var restFrames: [Int] = []
-    var grabbed: Joint3D?
 
     var score = 0
     var scoreGlow = 0.0
@@ -114,15 +113,6 @@ final class Trigger: Sketch {
         ball.angularVelocity = .zero
     }
 
-    override func mousePressed() {
-        grabbed = grabBody(at: Vector2(mouseX, mouseY), in: world)
-    }
-
-    override func mouseReleased() {
-        grabbed?.remove()
-        grabbed = nil
-    }
-
     override func keyPressed() {
         if key == " " { dropBall() }
     }
@@ -134,7 +124,7 @@ final class Trigger: Sketch {
         castShadows()
         perspective(eye: Vector3(1.4, 4.0, 7.6), target: Vector3(0, 2.4, 0))
 
-        if let grabbed { dragGrab(grabbed, to: Vector2(mouseX, mouseY)) }
+        dragBodies(in: world)
         world.step(dt: deltaTime)
         readTheTriggers()
         keepBallsInPlay()
@@ -190,10 +180,7 @@ final class Trigger: Sketch {
     func drawStage() {
         fill(Color(hex: 0x161C26))
         material(.dielectric(roughness: 0.9))
-        withState {
-            translate(0, -0.07, 0)
-            drawBox(width: 26, height: 0.14, depth: 26)
-        }
+        drawGround(size: 26, thickness: 0.14)
 
         // The tray lights with its load: an empty pan is nearly dark, a full
         // one glows.

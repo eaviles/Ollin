@@ -19,12 +19,12 @@ final class Topography_Example: Sketch {
         // A closed curve through points whose radii drift with noise — the
         // landform whose "elevation" the insets trace.
         let lobes = 10
-        let baseRadius = min(width, height) * 0.36
+        let baseRadius = shortSide * 0.36
         let rim = (0..<lobes).map { k in
             let a = 2 * Double.pi * Double(k) / Double(lobes)
             let wobble = noise(cos(a) + 2, sin(a) + 2, time * 0.18)
             let radius = baseRadius * (0.45 + 0.95 * wobble)
-            return center + Vector2(cos(a), sin(a)) * radius
+            return center + Vector2(angle: a) * radius
         }
         var ring = Shape(curveThrough: rim)
 

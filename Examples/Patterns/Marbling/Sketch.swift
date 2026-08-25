@@ -68,11 +68,11 @@ final class Marbling_Example: Sketch {
     }
 
     override func mousePressed() {
-        pressPoint = Vector2(mouseX, mouseY)
+        pressPoint = mouse
     }
 
     override func mouseReleased() {
-        let release = Vector2(mouseX, mouseY)
+        let release = mouse
         let pull = release - pressPoint
         if pull.length > 24 {
             bath.tine(through: pressPoint, direction: pull,

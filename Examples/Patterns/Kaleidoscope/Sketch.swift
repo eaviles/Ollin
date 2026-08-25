@@ -18,7 +18,7 @@ final class Kaleidoscope: Sketch {
         background(Color(hex: 0x0B0E14))
         let lap = loopProgress(over: period) * .tau
 
-        translate(width / 2, height / 2)
+        translate(center)
         symmetry(8, mirrored: true)
 
         let teal = Color(hex: 0x2EC4B6)

@@ -10,7 +10,7 @@ final class Guilloche: Sketch {
     override func draw() {
         background(Color(hex: 0x0F2A24))   // deep enamel green
 
-        let reach = Double(min(width, height))
+        let reach = Double(shortSide)
         let rosettes = [
             Rosette(bumps: 8, amplitude: 0.022 * reach, phase: time * 0.1),
             Rosette(bumps: 40, amplitude: 0.004 * reach),
@@ -25,7 +25,7 @@ final class Guilloche: Sketch {
         stroke(Color(hex: 0xEFE6CF, alpha: 0.85))   // ivory line-work
         strokeWeight(1.3 * scale)
         withState {
-            translate(width / 2, height / 2)
+            translate(center)
             for ring in rings {
                 drawPolyline(ring.points, closed: true)
             }

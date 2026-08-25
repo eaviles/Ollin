@@ -22,15 +22,15 @@ final class Linkage: Sketch {
 
     override func draw() {
         background(Color(white: 0.97))
-        let center = Vector2(width / 2, height / 2)
+        let center = center
         let inner = 130.0 * scale
         let outer = 380.0 * scale
 
         for i in 0..<bars {
             let t = Double(i) / Double(bars)
             let base = t * .tau
-            let a = center + Vector2(cos(base + time * 0.9), sin(base + time * 0.9)) * inner
-            let b = center + Vector2(cos(base - time * 0.5), sin(base - time * 0.5)) * outer
+            let a = center + Vector2(angle: base + time * 0.9) * inner
+            let b = center + Vector2(angle: base - time * 0.5) * outer
 
             let thickness = (22 + 14 * sin(time * 1.3 + base)) * scale
             fill(Colormap.turbo.color(at: t))

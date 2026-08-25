@@ -10,7 +10,7 @@ final class Supershape: Sketch {
         background(Color(hex: 0x101418))
 
         let cx = width / 2, cy = height / 2
-        let reach = Double(min(width, height)) * 0.34
+        let reach = Double(shortSide) * 0.34
 
         // Echoes: the same formula a few beats back, dimmer each step.
         for echo in stride(from: 4, through: 0, by: -1) {

@@ -23,34 +23,29 @@ final class Harmonies: Sketch {
         ]
 
         let margin = width * 0.08
-        let contentWidth = width - margin * 2
         let rowHeight = height * 0.1
         let gap = (height - 5 * rowHeight) / 6
-        let pad = 14.0
+        // Five band slots down the canvas: four harmony rows plus the ramp.
+        let bands = grid(columns: 1, rows: 5,
+                         padding: .symmetric(horizontal: margin, vertical: gap), gutter: gap)
         for (row, entry) in rows.enumerated() {
-            let y = gap + Double(row) * (rowHeight + gap)
-            let n = entry.palette.count
-            let swatchWidth = (contentWidth - Double(n - 1) * pad) / Double(n)
-            for i in 0..<n {
-                fill(entry.palette[i])
-                drawRect(margin + Double(i) * (swatchWidth + pad), y,
-                         swatchWidth, rowHeight, cornerRadius: 14)
+            let frame = bands.cell(column: 0, row: row).frame
+            for cell in Grid(in: frame, columns: entry.palette.count, rows: 1, gutter: 14).cells {
+                fill(entry.palette[cell.column])
+                drawRect(cell.frame, cornerRadius: 14)
             }
-            fill(Color(hex: 0x9AA3AD))
-            drawText(entry.label, margin, y - 14)
+            drawText(entry.label, frame.x, frame.y - 14, color: Color(hex: 0x9AA3AD))
         }
 
         // The analogous set again, as a continuous gradient.
         let ramp = rows[3].palette.ramp(in: .oklch)
-        let y = gap + 4 * (rowHeight + gap)
+        let band = bands.cell(column: 0, row: 4).frame
         let columns = 160
         for i in 0..<columns {
-            let t = Double(i) / Double(columns - 1)
-            fill(ramp.color(at: t))
-            drawRect(margin + contentWidth * Double(i) / Double(columns), y,
-                     contentWidth / Double(columns) + 1, rowHeight)
+            fill(ramp.color(at: Double(i) / Double(columns - 1)))
+            drawRect(band.x + band.width * Double(i) / Double(columns), band.y,
+                     band.width / Double(columns) + 1, band.height)
         }
-        fill(Color(hex: 0x9AA3AD))
-        drawText("ANALOGOUS.RAMP(IN: .OKLCH)", margin, y - 14)
+        drawText("ANALOGOUS.RAMP(IN: .OKLCH)", band.x, band.y - 14, color: Color(hex: 0x9AA3AD))
     }
 }

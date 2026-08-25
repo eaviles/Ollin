@@ -58,7 +58,7 @@ final class GlyphMosaic: Sketch {
                                      0.66 * sin(3 * phase + 4.0), 18)
 
                 // A broad band of light sweeping through, one turn per loop.
-                let band = 0.5 + 0.5 * sin(2.6 * (u * cos(phase) + v * sin(phase)) - phase)
+                let band = unipolar(sin(2.6 * (u * cos(phase) + v * sin(phase)) - phase))
                 // Soft-knee compression holds the cores just under white, and
                 // a static grain nudges neighboring cells onto different
                 // rungs of the ramp, so dense regions stay a mix of marks

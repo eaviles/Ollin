@@ -68,7 +68,7 @@ final class ColorOutput_Example: Sketch {
         // three times as bright as white. `.clamp` is deliberate. A tone-map
         // curve would squeeze exactly this back under 1.0.
         let cx = width / 2, cy = height * 0.68
-        let r = min(width, height) * 0.20
+        let r = shortSide * 0.20
         let breathe = 1 + sin(time * 0.6) * 0.35
         blendMode(.add)
         for ring in 0 ..< 3 {

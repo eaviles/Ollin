@@ -14,7 +14,7 @@ final class InversionFractal: Sketch {
 
     override func draw() {
         background(Color(hex: 0x0D0F14))
-        let center = Vector2(width / 2, height / 2)
+        let center = center
         let ringRadius = width * 0.3
 
         // A ring of mutually tangent circles: neighbors at center distance

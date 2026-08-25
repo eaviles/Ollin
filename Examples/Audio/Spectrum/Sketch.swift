@@ -29,7 +29,7 @@ final class Spectrum: Sketch {
         // Glide the pitch over ~1.5 octaves and breathe the level, so the
         // analyzed picture keeps moving.
         tone.frequency = 110 * pow(2, sin(time * 0.2) * 1.5)
-        tone.amplitude = 0.10 + 0.08 * (sin(time * 1.7) * 0.5 + 0.5)
+        tone.amplitude = 0.10 + 0.08 * unipolar(sin(time * 1.7))
 
         let levels = tone.bands(bars)        // already normalized 0...1
         let inner = 150 * scale
@@ -41,7 +41,7 @@ final class Spectrum: Sketch {
             for i in 0..<bars {
                 let len = Double(levels[i]) * maxLen
                 let angle = Double(i) / Double(bars) * .tau
-                let dir = Vector2(cos(angle), sin(angle))
+                let dir = Vector2(angle: angle)
                 fill(Colormap.turbo.color(at: Double(i) / Double(bars - 1)))
                 drawOrientedBox(dir * inner, dir * (inner + len), thickness: 6 * scale)
             }

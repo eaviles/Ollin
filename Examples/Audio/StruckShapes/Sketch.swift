@@ -84,7 +84,7 @@ final class StruckShapes: Sketch {
     }
 
     override func mousePressed() {
-        let point = Vector2(mouseX, mouseY)
+        let point = mouse
         for index in pieces.indices {
             let local = point - pieces[index].center
             if pieces[index].outline.contains(local) { strike(index, at: point); return }
@@ -168,7 +168,7 @@ final class StruckShapes: Sketch {
     private static func polygon(sides: Int, radius: Double, turn: Double = 0) -> Shape {
         Shape((0..<sides).map { step in
             let angle = Double(step) / Double(sides) * .tau - .pi / 2 + turn
-            return Vector2(cos(angle), sin(angle)) * radius
+            return Vector2(angle: angle) * radius
         })
     }
 
@@ -187,7 +187,7 @@ final class StruckShapes: Sketch {
         Shape((0..<120).map { step in
             let angle = Double(step) / 120 * .tau
             let wobble = 1 + 0.26 * sin(angle * 3 + 0.7) + 0.13 * sin(angle * 5 - 1.9)
-            return Vector2(cos(angle), sin(angle)) * radius * wobble
+            return Vector2(angle: angle) * radius * wobble
         })
     }
 }

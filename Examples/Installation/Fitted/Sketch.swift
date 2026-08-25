@@ -57,7 +57,7 @@ final class Fitted: Sketch {
         for column in 0..<columns {
             let x = (Double(column) + 0.5) * step
             let phase = Double(column) / Double(columns) * .tau * 1.5
-            let tide = sin(lap + phase) * 0.5 + 0.5
+            let tide = unipolar(sin(lap + phase))
             let bar = height * (0.12 + 0.62 * tide)
             fill(ink.color(at: tide))
             drawRect(center: Vector2(x, height / 2), width: step * 0.55, height: bar)
@@ -73,7 +73,7 @@ final class Fitted: Sketch {
         strokeWeight(2)
         drawRect(corner: Vector2(1, 1), width: width - 2, height: height - 2)
 
-        let tick = min(width, height) * 0.06
+        let tick = shortSide * 0.06
         strokeWeight(3)
         stroke(Color(white: 1, alpha: 0.9))
         for corner in [Vector2(0, 0), Vector2(width, 0), Vector2(width, height), Vector2(0, height)] {

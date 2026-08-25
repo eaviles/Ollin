@@ -30,7 +30,6 @@ final class Cape: Sketch {
     var wave: SceneAnimation?
 
     var standing = true
-    var grabbed: Joint3D?
 
     /// How far the cloth may travel from where the shoulders put it, as a
     /// multiple of what it was built with. Low is a stiff mantle; high is a
@@ -106,7 +105,7 @@ final class Cape: Sketch {
             // solver's, and the cape only ever sees the skeleton that results.
             ragdoll.limbs[0].body.position = Vector3(sin(time * 1.7) * stride, 0.95, 0)
         }
-        if let grabbed { dragGrab(grabbed, to: Vector2(mouseX, mouseY)) }
+        dragBodies(in: world)
 
         // The order is the whole contract: pose the figure, hand the cape the
         // pose, then step. A cape told after the step is a frame behind.
@@ -154,21 +153,9 @@ final class Cape: Sketch {
         }
     }
 
-    override func mousePressed() {
-        grabbed = grabBody(at: Vector2(mouseX, mouseY), in: world)
-    }
-
-    override func mouseReleased() {
-        grabbed?.remove()
-        grabbed = nil
-    }
-
     func drawFloor() {
         material(.dielectric(roughness: 0.95))
         fill(Color(hex: 0x28303E))
-        withState {
-            translate(0, -0.15, 0)
-            drawBox(width: 14, height: 0.3, depth: 14)
-        }
+        drawGround(size: 14, thickness: 0.3)
     }
 }

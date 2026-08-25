@@ -15,10 +15,10 @@ final class HSBWheel: Sketch {
 
     override func draw() {
         background(Color(hex: 0x14171C))
-        translate(width / 2, height / 2)
+        translate(center)
         rotate(time * 0.1)
 
-        let outer = min(width, height) * 0.42
+        let outer = shortSide * 0.42
         for ring in (0..<rings).reversed() {
             let radius = outer * Double(ring + 1) / Double(rings)
             let saturation = Double(ring + 1) / Double(rings)

@@ -47,7 +47,7 @@ final class Evolution_Example: Sketch {
 
         run.mutationRate = mutationRate
         run.tournament = Int(tournament)
-        if mouseIsPressed { run.target = Vector2(mouseX, mouseY) }
+        if mouseIsPressed { run.target = mouse }
 
         blendMode(.add)
         updateEvolution(run)

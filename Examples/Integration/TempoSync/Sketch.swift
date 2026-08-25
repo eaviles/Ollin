@@ -51,7 +51,7 @@ final class TempoSync: Sketch {
         let litBeat = clock.beatCount % max(1, perBar)
         for i in 0..<perBar {
             let angle = Double(i) / Double(perBar) * .tau - .tau / 4
-            let spot = center + Vector2(cos(angle), sin(angle)) * 260 * scale
+            let spot = center + Vector2(angle: angle) * 260 * scale
             let lit = i == litBeat && clock.isPlaying
             fill(lit ? Color(white: 0.98) : Color(white: 0.3))
             drawCircle(center: spot, radius: (lit ? 26 : 14) * scale)
@@ -61,7 +61,7 @@ final class TempoSync: Sketch {
         let sweep = clock.barPhase * .tau - .tau / 4
         stroke(Color(white: 0.5))
         strokeWeight(4 * scale)
-        drawLine(center, center + Vector2(cos(sweep), sin(sweep)) * 210 * scale)
+        drawLine(center, center + Vector2(angle: sweep) * 210 * scale)
         noStroke()
 
         // The comet: one lap every eight beats, with a trail hung on earlier
@@ -70,7 +70,7 @@ final class TempoSync: Sketch {
             let lag = Double(i) * 0.12
             let lap = clock.progress(over: 8, phase: -lag / 8)
             let angle = lap * .tau - .tau / 4
-            let spot = center + Vector2(cos(angle), sin(angle)) * 380 * scale
+            let spot = center + Vector2(angle: angle) * 380 * scale
             fill(accent.withAlpha(1 - Double(i) / 10))
             drawCircle(center: spot, radius: (16 - Double(i)) * scale)
         }

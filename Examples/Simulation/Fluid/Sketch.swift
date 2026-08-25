@@ -28,7 +28,7 @@ final class Fluid_Example: Sketch {
         // passes through the center at t = 0, so there's no jump on the first frame.
         let brush: Vector2
         if mouseIsPressed {
-            brush = Vector2(mouseX, mouseY)
+            brush = mouse
         } else {
             let t = time * 0.6
             brush = Vector2(width  * (0.5 + 0.32 * sin(t * 1.3)),

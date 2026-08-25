@@ -36,7 +36,7 @@ final class Voronoi_Example: Sketch {
             return s + Vector2(dx, dy) * 30
         }
         // A live site under the cursor, so cells crystallize around the mouse.
-        let cursor = Vector2(mouseX, mouseY)
+        let cursor = mouse
         if canvasRectangle.contains(cursor) { live.append(cursor) }
 
         // A focal point sweeping the field gives the colors a living radial flow.

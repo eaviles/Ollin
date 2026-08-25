@@ -32,7 +32,7 @@ final class Defocus_Example: Sketch {
 
     override func draw() {
         // Drag to rack focus by hand; left idle, the focal plane sweeps on its own.
-        let focus = mouseIsPressed ? min(max(mouseX / width, 0), 1)
+        let focus = mouseIsPressed ? clamp(mouseX / width, 0, 1)
                                    : 0.5 + 0.45 * sin(time * 0.4)
 
         compose {

@@ -96,7 +96,7 @@ final class Drape: Sketch {
     }
 
     override func mousePressed() {
-        grip = grabSoftBody(at: Vector2(mouseX, mouseY), in: world)
+        grip = grabSoftBody(at: mouse, in: world)
     }
 
     override func mouseReleased() {
@@ -125,7 +125,7 @@ final class Drape: Sketch {
         // them being live: the ball deflates under your hand.
         ball?.pressure = air
         blow()
-        if let grip { dragSoftGrab(grip, to: Vector2(mouseX, mouseY)) }
+        if let grip { dragSoftGrab(grip, to: mouse) }
         world.step(dt: deltaTime)
 
         drawStage()
@@ -146,10 +146,7 @@ final class Drape: Sketch {
     func drawStage() {
         fill(Color(hex: 0x1A2230))
         material(.dielectric(roughness: 0.92))
-        withState {
-            translate(0, -0.06, 0)
-            drawBox(width: 40, height: 0.12, depth: 40)
-        }
+        drawGround(size: 40)
 
         fill(Color(hex: 0x6B5138))
         material(.dielectric(roughness: 0.7))

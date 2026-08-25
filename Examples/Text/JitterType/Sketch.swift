@@ -42,7 +42,7 @@ final class JitterType: Sketch {
         // The jitter amount pulses (kept well under the point spacing — and under
         // the counters' wall thickness — so the bowls of e/o don't fill in and turn
         // the letters into diamonds); reseed each frame for a continuous boil.
-        let amount = (sin(time * 0.8) * 0.5 + 0.5) * 7 * scale
+        let amount = unipolar(sin(time * 0.8)) * 7 * scale
         randomSeed(frameCount)
         for glyph in glyphs {
             drawShape(glyph.mapPoints { p in

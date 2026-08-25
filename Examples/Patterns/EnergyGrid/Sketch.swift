@@ -31,7 +31,7 @@ final class EnergyGrid: Sketch {
 
         // A centered square block filling 80% of the canvas — a 10% margin all
         // around, against the gray field.
-        let block = min(width, height) * 0.8
+        let block = shortSide * 0.8
         translate((width - block) / 2, (height - block) / 2)
         var x = 0.0
         for i in 0..<100 {

@@ -14,7 +14,7 @@ final class HarmonographTrace: Sketch {
     private let holdTime = 5.0
 
     override func setup() {
-        let s = Double(min(width, height))
+        let s = Double(shortSide)
         let sway = 0.40 * s
         let overtone = 0.14 * s
 
@@ -43,7 +43,7 @@ final class HarmonographTrace: Sketch {
         let visible = max(2, Int(progress * Double(trace.count)))
 
         withState {
-            translate(width / 2, height / 2)
+            translate(center)
             noFill()
             stroke(Color(hex: 0x232B4A).withAlpha(0.8))
             strokeWeight(1.5 * scale)

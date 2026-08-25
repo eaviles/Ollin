@@ -28,7 +28,7 @@ final class ParticleFluid_Example: Sketch {
         fluid.bounce = bounce
 
         background(Color(white: 0.03))
-        if mouseIsPressed { fluid.pull(at: Vector2(mouseX, mouseY)) }
+        if mouseIsPressed { fluid.pull(at: mouse) }
         blendMode(.add)
         updateParticleFluid(fluid)
         drawParticles(fluid)

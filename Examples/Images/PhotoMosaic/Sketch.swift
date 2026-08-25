@@ -97,7 +97,7 @@ final class PhotoMosaic_Example: Sketch {
                 field += 0.9 * glow(u, v, 0.36 * cos(-2 * phase + 1.3), 0.36 * sin(-2 * phase + 1.3), 11)
                 field += 0.7 * glow(u, v, 0.62 * cos(3 * phase + 4), 0.62 * sin(3 * phase + 4), 16)
 
-                let band = 0.5 + 0.5 * sin(2.4 * (u * cos(phase) + v * sin(phase)) - phase)
+                let band = unipolar(sin(2.4 * (u * cos(phase) + v * sin(phase)) - phase))
                 let tone = clamp(1 - exp(-1.4 * field * (0.3 + 0.7 * band)), 0, 1)
                 // A ground that shifts across the picture, so no two cells are the
                 // same color. A target that is mostly one flat dark takes one

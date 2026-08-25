@@ -16,7 +16,7 @@ final class HexGridPulse: Sketch {
         // The wave radiates from the hovered hexagon when the mouse is over
         // the grid, else from the middle cell.
         let home = grid.cell(column: grid.columns / 2, row: grid.rows / 2)
-        let focus = grid.cell(at: Vector2(mouseX, mouseY)) ?? home
+        let focus = grid.cell(at: mouse) ?? home
         let neighbors = grid.neighbors(of: focus)
 
         let phase = loopProgress(over: 6)

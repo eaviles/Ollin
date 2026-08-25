@@ -21,7 +21,7 @@ final class Guides: Sketch {
         // A dot orbiting the center — just something for the guides to sit over.
         noStroke()
         fill(Color(red: 0.1, green: 0.5, blue: 0.9))
-        let r = min(width, height) * 0.28
+        let r = shortSide * 0.28
         drawCircle(width / 2 + cos(time) * r, height / 2 + sin(time) * r, 64 * scale)
     }
 }

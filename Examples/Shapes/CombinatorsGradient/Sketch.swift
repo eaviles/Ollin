@@ -22,7 +22,7 @@ final class CombinatorsGradient: Sketch {
         // 1) Linear fill across a melted blob: a circle, a rounded rect, and a bump
         //    smooth-union into one region; the warm ramp sweeps across the whole thing
         //    as a single surface (the seams don't break it). The melt amount breathes.
-        let k = 26 + (sin(t) * 0.5 + 0.5) * 70
+        let k = 26 + unipolar(sin(t)) * 70
         let blob = SDF.circle(radius: 120)
             .smoothUnion(SDF.rect(width: 210, height: 120, cornerRadius: 28).at(x: 135, y: 12), k: k)
             .smoothUnion(SDF.circle(radius: 72).at(x: 44, y: 124), k: k)

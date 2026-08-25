@@ -34,7 +34,7 @@ final class CurlField_Example: Sketch {
 
         // Color by flow direction; faint, so crossing streams sum into bright veins.
         float angle = atan2(flow.y, flow.x);
-        color = float4(0.5 + 0.5 * cos(angle + float3(0.0, 2.1, 4.2)), 0.45);
+        color = float4(unipolar(cos(angle + float3(0.0, 2.1, 4.2))), 0.45);
         size = 1.3;
     """)
 

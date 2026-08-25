@@ -109,9 +109,9 @@ final class Raft: Sketch {
     override func mousePressed() {
         // The deck and the crates are taken hold of differently: a crate hangs
         // on a joint, a cloth has one of its particles pinned to the cursor.
-        crateGrip = grabBody(at: Vector2(mouseX, mouseY), in: world)
+        crateGrip = grabBody(at: mouse, in: world)
         if crateGrip == nil {
-            grip = grabSoftBody(at: Vector2(mouseX, mouseY), in: world)
+            grip = grabSoftBody(at: mouse, in: world)
         }
     }
 
@@ -139,8 +139,8 @@ final class Raft: Sketch {
         world.water?.waves?.amplitude = swell
         raft?.density = deckDensity
 
-        if let grip { dragSoftGrab(grip, to: Vector2(mouseX, mouseY)) }
-        if let crateGrip { dragGrab(crateGrip, to: Vector2(mouseX, mouseY)) }
+        if let grip { dragSoftGrab(grip, to: mouse) }
+        if let crateGrip { dragGrab(crateGrip, to: mouse) }
         world.step(dt: deltaTime)
         markLandings()
 

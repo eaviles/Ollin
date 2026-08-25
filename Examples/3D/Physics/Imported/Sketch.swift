@@ -93,37 +93,11 @@ final class Imported: Sketch {
             fill(colors[body.assetName ?? ""] ?? .white)
             material(body.assetName == "Ball" ? .glossy
                                               : .dielectric(roughness: 0.9))
-            withBody(body) { draw(body.collider) }
+            drawBody(body)
         }
 
         drawCaption("physics read from yard.usda"
                     + "      space drop the weight      R reset")
     }
 
-    /// Every body draws itself out of the collider the file described, the
-    /// compound ones part by part.
-    func draw(_ collider: Collider3D) {
-        switch collider {
-        case .box(let width, let height, let depth):
-            drawBox(width: width, height: height, depth: depth)
-        case .sphere(let radius):
-            drawSphere(radius: radius)
-        case .capsule(let height, let radius):
-            drawCapsule(radius: radius, height: height)
-        case .cylinder(let height, let radius):
-            drawCylinder(radius: radius, height: height)
-        case .cone(let height, let radius):
-            drawCone(radius: radius, height: height)
-        case .compound(let parts):
-            for part in parts {
-                withState {
-                    translate(part.position)
-                    if part.angle != 0 { rotate(part.angle, axis: part.axis) }
-                    draw(part.collider)
-                }
-            }
-        default:
-            break
-        }
-    }
 }

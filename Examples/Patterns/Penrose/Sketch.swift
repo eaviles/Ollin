@@ -29,7 +29,7 @@ final class PenroseRhombs: Sketch {
         // center, one wavefront per loop.
         noFill()
         strokeCap(.round)
-        let center = Vector2(width / 2, height / 2)
+        let center = center
         let maxDistance = center.length
         for tile in tiles {
             let distance = tile.points[0].distance(to: center) / maxDistance

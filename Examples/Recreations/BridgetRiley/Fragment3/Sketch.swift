@@ -44,7 +44,7 @@ final class Fragment3: Sketch {
 
     override func draw() {
         background(.white)
-        // All lengths scale with the canvas (`scale` = min(width, height) / 1000),
+        // All lengths scale with the canvas (`scale` = shortSide / 1000),
         // so the chevron field keeps its density at any size.
         let inset = 110 * scale
         let left = inset, right = width - inset

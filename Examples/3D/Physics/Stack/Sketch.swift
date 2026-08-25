@@ -52,30 +52,14 @@ final class Stack3D: Sketch {
 
     override func mousePressed() {
         // Fire from just inside the camera, down the ray under the cursor.
-        guard let camera = activeCamera else { return }
-        let cursor = Vector2(mouseX, mouseY)
-        let aim = rayDirection(toward: cursor, camera: camera)
+        guard let camera = activeCamera,
+              let ray = cameraRay(through: mouse) else { return }
+        let aim = ray.direction
         let ball = world.addBody(.sphere(radius: 0.3),
                                  at: camera.eye + aim * 1.2,
                                  density: 6, friction: 0.4)
         ball.velocity = aim * 24
         ball.userData = Color(hex: 0xD4DCE6)
-    }
-
-    /// The unit direction from the camera through a canvas point (the same ray
-    /// `grabBody` uses; rebuilt here to aim a launch instead of a pick).
-    func rayDirection(toward point: Vector2, camera: Camera3D) -> Vector3 {
-        guard case .perspective(let fov) = camera.projection else {
-            return (camera.target - camera.eye).normalized
-        }
-        let forward = (camera.target - camera.eye).normalized
-        let right = forward.cross(camera.up).normalized
-        let up = right.cross(forward)
-        let tanHalf = tan(fov / 2) // vertical field of view
-        let ndcX = 2 * (point.x / width) - 1
-        let ndcY = 1 - 2 * (point.y / height)
-        return (forward + right * (ndcX * tanHalf * width / height)
-            + up * (ndcY * tanHalf)).normalized
     }
 
     override func keyPressed() {
@@ -98,10 +82,7 @@ final class Stack3D: Sketch {
         // The floor the physics `ground` stands in for.
         fill(Color(hex: 0x1A1F28))
         material(.dielectric(roughness: 0.85))
-        withState {
-            translate(0, -0.06, 0)
-            drawBox(width: 26, height: 0.12, depth: 26)
-        }
+        drawGround(size: 26)
 
         material(.dielectric(roughness: 0.55))
         for body in world.bodies {

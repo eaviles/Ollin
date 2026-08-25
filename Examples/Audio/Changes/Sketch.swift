@@ -74,7 +74,7 @@ final class Changes: Sketch {
 
     private func drawCycle() {
         let middle = Vector2(width / 2, height * 0.46)
-        let radius = min(width, height) * 0.26
+        let radius = shortSide * 0.26
         let count = max(1, changes.count)
 
         // The cycle as a ring of wedges, one per chord.

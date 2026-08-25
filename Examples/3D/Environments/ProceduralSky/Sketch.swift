@@ -22,7 +22,7 @@ final class ProceduralSky: Sketch {
         // The sun travels a full loop: `rotated` swings it all the way around the compass while
         // its elevation eases between low and high, so it rises, arcs over, and circles back.
         let cycle = time * 0.6
-        let elevation = (sin(cycle) * 0.5 + 0.5) * (.pi / 2 - 0.1) + 0.05
+        let elevation = unipolar(sin(cycle)) * (.pi / 2 - 0.1) + 0.05
         let azimuth = cycle
         let turbidity = map(elevation, 0.05, .pi / 2, 5.0, 2.0)
 

@@ -79,7 +79,7 @@ final class ManyWindows: Sketch {
             let speed = 10 + steady(dot, 1) * 26                  // points a second
             let heading = steady(dot, 2) * .tau
             let gone = Vector2(steady(dot, 3) * world.width, steady(dot, 4) * world.height)
-                + Vector2(cos(heading), sin(heading)) * (speed * now)
+                + Vector2(angle: heading) * (speed * now)
             // The desk wraps at its edges, so a dot that leaves one side comes
             // back at the other rather than being gone for good.
             let place = Vector2(world.x + wrapped(gone.x, world.width),

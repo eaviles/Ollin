@@ -24,7 +24,7 @@ final class SoftBodies_Example: Sketch {
         blobs.bounce = bounce
 
         background(Color(white: 0.04))
-        if mouseIsPressed { blobs.pull(at: Vector2(mouseX, mouseY)) }
+        if mouseIsPressed { blobs.pull(at: mouse) }
         updateSoftBodies(blobs)
         drawParticles(blobs)
 

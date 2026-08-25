@@ -24,7 +24,7 @@ final class Booleans_Example: Sketch {
             ("symmetricDifference", { $0.symmetricDifference($1) }, Color(red: 0.55, green: 0.3, blue: 0.75, alpha: 0.85)),
         ]
 
-        let r = min(width, height) * 0.15
+        let r = shortSide * 0.15
         for (i, op) in ops.enumerated() {
             let cell = Vector2((Double(i % 2) + 0.5) * width / 2,
                                (Double(i / 2) + 0.5) * height / 2 - 40 * scale)
@@ -35,7 +35,7 @@ final class Booleans_Example: Sketch {
             let spin = time * 0.25
             let star = Shape(starPoints(outer: r, inner: r * 0.48, points: 7))
                 .mapPoints { $0.rotated(by: spin) + cell }
-            let orbit = cell + Vector2(cos(time * 0.7), sin(time * 0.7)) * r * 0.85
+            let orbit = cell + Vector2(angle: time * 0.7) * r * 0.85
             let disc = Shape(circlePoints(radius: r * 0.62)).mapPoints { $0 + orbit }
 
             let result = op.combine(star, disc)
@@ -68,7 +68,7 @@ final class Booleans_Example: Sketch {
         let n = max(48, Int(radius.rounded(.up)))
         return (0..<n).map { k in
             let a = 2 * Double.pi * Double(k) / Double(n)
-            return Vector2(cos(a), sin(a)) * radius
+            return Vector2(angle: a) * radius
         }
     }
 

@@ -48,7 +48,7 @@ final class Tumble3D: Sketch {
     }
 
     override func mousePressed() {
-        grabbed = grabBody(at: Vector2(mouseX, mouseY), in: world)
+        grabbed = grabBody(at: mouse, in: world)
     }
 
     override func mouseReleased() {
@@ -67,33 +67,17 @@ final class Tumble3D: Sketch {
         perspective(eye: Vector3(5.2, 4.6, 7.8), target: Vector3(0, 1.2, 0))
 
         if frameCount % 18 == 0 { spawn() }
-        if let grabbed { dragGrab(grabbed, to: Vector2(mouseX, mouseY)) }
+        if let grabbed { dragGrab(grabbed, to: mouse) }
         world.step(dt: deltaTime)
 
         fill(Color(hex: 0x1C222C))
         material(.dielectric(roughness: 0.85))
-        withState {
-            translate(0, -0.06, 0)
-            drawBox(width: 24, height: 0.12, depth: 24)
-        }
+        drawGround(size: 24)
 
         material(.dielectric(roughness: 0.5))
         for body in world.bodies {
             fill(body.userData as? Color ?? .white)
-            withBody(body) {
-                switch body.collider {
-                case .box(let w, let h, let d):
-                    drawBox(width: w, height: h, depth: d)
-                case .sphere(let r):
-                    drawSphere(radius: r)
-                case .capsule(let h, let r):
-                    drawCapsule(radius: r, height: h)
-                case .cylinder(let h, let r):
-                    drawCylinder(radius: r, height: h)
-                default:
-                    break
-                }
-            }
+            drawBody(body)
         }
     }
 }

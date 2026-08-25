@@ -27,7 +27,7 @@ final class GumowskiMira: Sketch {
             background(.black)
         }
 
-        let reach = Double(min(width, height)) * 0.052
+        let reach = Double(shortSide) * 0.052
         let cx = width / 2, cy = height / 2
 
         // A fresh orbit each frame, from a random start in the wide sea.

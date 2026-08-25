@@ -53,7 +53,7 @@ final class VirtualCamera: Sketch {
 
         // An orbiting satellite dot, for parallax against the ribbons.
         let orbit = Vector2(width * 0.5, height * 0.42)
-        let dot = orbit + Vector2(cos(time * 0.9), sin(time * 0.9)) * 230
+        let dot = orbit + Vector2(angle: time * 0.9) * 230
         fill(.white)
         drawCircle(center: dot, radius: 16 + 5 * sin(time * 3))
 

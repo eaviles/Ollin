@@ -119,13 +119,13 @@ final class Generative: Sketch {
     }
 
     private func mark(ring: Int, step: Int, tone: Double) {
-        marks.append((ring: ring, step: step, start: time, tone: min(max(0, tone), 1)))
+        marks.append((ring: ring, step: step, start: time, tone: clamp(0, tone, 1)))
     }
 
     // MARK: Drawing
 
     private var wheelCenter: Vector2 { Vector2(Double(width) / 2, Double(height) * 0.42) }
-    private var outerRadius: Double { Double(min(width, height)) * 0.29 }
+    private var outerRadius: Double { Double(shortSide) * 0.29 }
 
     private func radius(of ring: Int) -> Double {
         outerRadius - Double(ring) * outerRadius * 0.28
@@ -133,7 +133,7 @@ final class Generative: Sketch {
 
     private func point(ring: Int, step: Double) -> Vector2 {
         let angle = step / Double(steps) * .tau - .pi / 2
-        return wheelCenter + Vector2(cos(angle), sin(angle)) * radius(of: ring)
+        return wheelCenter + Vector2(angle: angle) * radius(of: ring)
     }
 
     private func drawWheel(rings: [Rhythm], beats: Double) {
@@ -168,7 +168,7 @@ final class Generative: Sketch {
         // One bar for all three rings, because they share a step count.
         let position = beats * 4
         let angle = position / Double(steps) * .tau - .pi / 2
-        let heading = Vector2(cos(angle), sin(angle))
+        let heading = Vector2(angle: angle)
         stroke(Color(white: 0.8))
         strokeWeight(1.5 * scale)
         drawLine(wheelCenter, wheelCenter + heading * (outerRadius + 26 * scale))

@@ -33,8 +33,8 @@ final class Triplanar: Sketch {
     /// and every run is identical.
     func veinField(_ u: Double, _ v: Double) -> Double {
         let warp = 0.09 * sin(v * 2 * .tau) + 0.05 * sin(u * 3 * .tau + 1.7)
-        let a = 0.5 + 0.5 * sin((u * 3 + warp) * .tau)
-        let b = 0.5 + 0.5 * sin((v * 4 + 0.14 * sin(u * 2 * .tau) + 0.31) * .tau)
+        let a = unipolar(sin((u * 3 + warp) * .tau))
+        let b = unipolar(sin((v * 4 + 0.14 * sin(u * 2 * .tau) + 0.31) * .tau))
         return min(pow(a, 0.16), pow(b, 0.22))
     }
 

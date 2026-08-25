@@ -68,14 +68,14 @@ final class NormalMaps: Sketch {
         }
         // Woven: two crossing sine bands.
         let woven = normalMap(size: 256, strength: 0.045) { u, v in
-            let a = sin(u * 24 * .tau) * 0.5 + 0.5
-            let b = sin(v * 24 * .tau) * 0.5 + 0.5
+            let a = unipolar(sin(u * 24 * .tau))
+            let b = unipolar(sin(v * 24 * .tau))
             return a * b
         }
         // Engraved rings around the map center.
         let rings = normalMap(size: 512, strength: 0.09) { u, v in
             let r = ((u - 0.5) * (u - 0.5) + (v - 0.5) * (v - 0.5)).squareRoot()
-            return sin(r * 30 * .tau) * 0.5 + 0.5
+            return unipolar(sin(r * 30 * .tau))
         }
         let base = Mesh.sphere(radius: 1, segments: 96, rings: 48)
         spheres = [base.normalMapped(hammered),

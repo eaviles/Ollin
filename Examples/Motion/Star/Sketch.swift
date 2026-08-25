@@ -9,9 +9,9 @@ import Ollin
 final class Star: Sketch {
     override func draw() {
         background(Color(white: 0.07))
-        let center = Vector2(width / 2, height / 2)
+        let center = center
         let spin = time * 0.3
-        let r = min(width, height) * 0.4
+        let r = shortSide * 0.4
         let pulse = map(sin(time), -1, 1, 0.32, 0.55)
 
         let outer = star(center, points: 5, outer: r, inner: r * pulse, rotation: spin)
@@ -30,7 +30,7 @@ final class Star: Sketch {
         return (0..<n).map { i in
             let radius = i % 2 == 0 ? outer : inner
             let a = rotation + Double(i) / Double(n) * .tau
-            return center + Vector2(cos(a), sin(a)) * radius
+            return center + Vector2(angle: a) * radius
         }
     }
 }

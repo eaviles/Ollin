@@ -30,7 +30,7 @@ final class Spirograph: Sketch {
 
         // The pen's furthest reach at full breathe, so the nest always fits.
         let reach = Double(r - w) + Double(w) * 1.35
-        let fit = min(width, height) * 0.47 / reach
+        let fit = shortSide * 0.47 / reach
 
         // The rosette repeats every ring/gcd lobes, so advancing one lobe
         // per loop lands back on itself.
@@ -40,7 +40,7 @@ final class Spirograph: Sketch {
         let b = Color(hex: 0xE84E7A)
 
         withState {
-            translate(width / 2, height / 2)
+            translate(center)
             scale(fit)
             rotate(loopProgress(over: period) * .tau / Double(max(1, lobes)))
             for i in 0..<count {

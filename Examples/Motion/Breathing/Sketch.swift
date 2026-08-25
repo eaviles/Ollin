@@ -6,7 +6,7 @@ import Ollin
 ///
 /// `time` is seconds since launch; `sin(time)` walks -1...1, so the radius
 /// oscillates between ⅔ and 1⅓ of its base. Sizes use `scale`
-/// (`min(width, height) / 1000`), so it breathes the same at any canvas size.
+/// (`shortSide / 1000`), so it breathes the same at any canvas size.
 @main
 final class Breathing: Sketch {
     override func draw() {

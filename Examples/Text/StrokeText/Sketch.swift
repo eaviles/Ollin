@@ -31,7 +31,7 @@ final class StrokeText: Sketch {
         // Title: pen weight breathes between a hairline and a fat nib.
         textAlign(.center, .middle)
         textSize(300 * scale)
-        strokeWeight((1.5 + (sin(time * 1.6) * 0.5 + 0.5) * 5) * scale)
+        strokeWeight((1.5 + unipolar(sin(time * 1.6)) * 5) * scale)
         drawText("ollin", width / 2, height * 0.42)
 
         // Caption: a steady thin line.

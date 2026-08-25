@@ -32,7 +32,7 @@ final class Attractor: Sketch {
         fill(.white)
         pointSize(3 * scale)
 
-        translate(width / 2, height / 2)
+        translate(center)
         let t = time * 0.002
         rotate(t * 1000 * .pi / 180)        // a slow overall spin
 

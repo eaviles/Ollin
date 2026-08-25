@@ -45,7 +45,6 @@ final class Sieve: Sketch {
     var beads: [Body3D] = []
     var nextBead = 0
     var sinceSpawn = 0.0
-    var grabbed: Joint3D?
 
     @Param(icon: "line.3.horizontal.decrease") var sorting = true
     @Param(0.08 ... 0.5, icon: "timer") var dropEvery = 0.15
@@ -227,15 +226,6 @@ final class Sieve: Sketch {
         }
     }
 
-    override func mousePressed() {
-        grabbed = grabBody(at: Vector2(mouseX, mouseY), in: world)
-    }
-
-    override func mouseReleased() {
-        grabbed?.remove()
-        grabbed = nil
-    }
-
     override func draw() {
         background(Color(hex: 0x0A0D14))
         environment(.night.lightingOnly())
@@ -250,7 +240,7 @@ final class Sieve: Sketch {
             dropOne()
         }
 
-        if let grabbed { dragGrab(grabbed, to: Vector2(mouseX, mouseY)) }
+        dragBodies(in: world)
         world.step(dt: deltaTime)
 
         drawFloor()
@@ -266,10 +256,7 @@ final class Sieve: Sketch {
     func drawFloor() {
         fill(Color(hex: 0x10141D))
         material(.dielectric(roughness: 0.94))
-        withState {
-            translate(0, -1.56, 0)
-            drawBox(width: 40, height: 0.12, depth: 40)
-        }
+        drawGround(size: 40, at: -1.5)
     }
 
     func drawMachine() {

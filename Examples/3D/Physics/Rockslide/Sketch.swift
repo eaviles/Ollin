@@ -135,7 +135,7 @@ final class Rockslide: Sketch {
         var pixels = [UInt8]()
         pixels.reserveCapacity(field.values.count * 4)
         for value in field.values {
-            let c = ramp.color(at: min(max(value, 0), 1))
+            let c = ramp.color(at: clamp(value, 0, 1))
             pixels.append(UInt8((c.red * 255).rounded()))
             pixels.append(UInt8((c.green * 255).rounded()))
             pixels.append(UInt8((c.blue * 255).rounded()))

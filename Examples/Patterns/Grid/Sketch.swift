@@ -9,7 +9,7 @@ import Ollin
 final class GridField: Sketch {
     override func draw() {
         background(Color(hex: 0x10_10_14))
-        let g = grid(columns: 16, rows: 16, padding: .all(min(width, height) * 0.08))
+        let g = grid(columns: 16, rows: 16, padding: .all(shortSide * 0.08))
         let mid = g.bounds.center
 
         // The cells: faint outlines, one per cell rectangle.

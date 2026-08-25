@@ -24,12 +24,12 @@ final class Caustic_Example: Sketch {
         background(Color(hex: 0x0A0C12))
 
         let middle = bounds.center
-        let radius = min(width, height) * 0.36
+        let radius = shortSide * 0.36
         let ring = (0 ..< 900).map { middle + Vector2(angle: Double($0) / 900 * .tau, length: radius) }
 
         let travel = (1 - cos(loopProgress(over: 14) * .tau)) / 2
         let source: LightSource = mouseIsPressed
-            ? .point(Vector2(mouseX, mouseY))
+            ? .point(mouse)
             : .point(middle + Vector2(angle: .pi * 0.82, length: radius * travel * 2.4))
 
         let wall = litArc(of: ring, from: source, around: middle)

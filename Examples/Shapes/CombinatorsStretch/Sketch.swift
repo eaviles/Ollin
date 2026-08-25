@@ -11,7 +11,7 @@ final class CombinatorsStretch: Sketch {
         background(Color(white: 0.07))
         noStroke()
         let t = time
-        let a = 70 + (sin(t) * 0.5 + 0.5) * 80
+        let a = 70 + unipolar(sin(t)) * 80
 
         // Stretch (exact): a vertical and a horizontal stadium (circles elongated) smooth-union
         // into a clean plus — the exact SDF keeps the blend fillet even.

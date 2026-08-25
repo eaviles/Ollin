@@ -20,7 +20,6 @@ final class Sightlines: Sketch {
     var crates: [Body3D] = []
     var pillars: [Body3D] = []
     var seen: [Bool] = []
-    var grabbed: Joint3D?
 
     /// Where the drone is now, and where the sweep says the ground under it is.
     var drone = Vector3(0, 3, 0)
@@ -77,15 +76,6 @@ final class Sightlines: Sketch {
         return Vector3(cos(angle) * lampOrbit, lampHeight, sin(angle) * lampOrbit)
     }
 
-    override func mousePressed() {
-        grabbed = grabBody(at: Vector2(mouseX, mouseY), in: world)
-    }
-
-    override func mouseReleased() {
-        grabbed?.remove()
-        grabbed = nil
-    }
-
     override func keyPressed() {
         if key == " " { firePulse() }
     }
@@ -98,7 +88,7 @@ final class Sightlines: Sketch {
         cameraShowcase(.autoOrbit(period: 46), from: Camera3D
             .perspective(eye: Vector3(2.4, 6.2, 11.5), target: Vector3(0, 1.6, 0)))
 
-        if let grabbed { dragGrab(grabbed, to: Vector2(mouseX, mouseY)) }
+        dragBodies(in: world)
         world.step(dt: deltaTime)
 
         lookAround()
@@ -171,10 +161,7 @@ final class Sightlines: Sketch {
     func drawYard() {
         fill(Color(hex: 0x121824))
         material(.dielectric(roughness: 0.92))
-        withState {
-            translate(0, -0.06, 0)
-            drawBox(width: 30, height: 0.12, depth: 30)
-        }
+        drawGround(size: 30)
         fill(Color(hex: 0x1B2434))
         material(.dielectric(roughness: 0.7))
         for pillar in pillars {

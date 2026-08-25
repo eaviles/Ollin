@@ -20,7 +20,7 @@ final class Polygons: Sketch {
         background(Color(white: 0.07))
 
         let columns = 6
-        let r = min(width, height) * 0.085
+        let r = shortSide * 0.085
         let topY = height * 0.36
         let bottomY = height * 0.64
 

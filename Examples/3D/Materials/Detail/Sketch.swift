@@ -47,7 +47,7 @@ final class Detail: Sketch {
         for y in 0..<size {
             for x in 0..<size {
                 let u = (Double(x) + 0.5) * d, v = (Double(y) + 0.5) * d
-                let h = min(max(field(u, v), 0), 1)
+                let h = clamp(field(u, v), 0, 1)
                 let i = (y * size + x) * 4
                 let (r, g, b) = tint(h)
                 color[i] = r; color[i + 1] = g; color[i + 2] = b
@@ -70,7 +70,7 @@ final class Detail: Sketch {
         // The detail color map is *data* with 128 the neutral: a speckle
         // swinging around it, so the mean brightness holds.
         (grain, grainBumps) = makeMap(96, field: speckle) { h in
-            let v = UInt8(min(max(88 + 80 * h, 0), 255))
+            let v = UInt8(clamp(88 + 80 * h, 0, 255))
             return (v, v, v)
         }
     }

@@ -37,7 +37,7 @@ final class Current: Sketch {
         stroke(.black)
         strokeWeight(1.6 * scale)
 
-        // All lengths scale with the canvas (`scale` = min(width, height) / 1000),
+        // All lengths scale with the canvas (`scale` = shortSide / 1000),
         // so the line field keeps its density at any export size.
         let inset = 70 * scale
         let left = inset, right = width - inset

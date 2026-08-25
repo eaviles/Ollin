@@ -20,7 +20,7 @@ final class Mandala: Sketch {
         background(Color(white: 0.05))
         strokeWeight(1.5 * scale)
         let cx = width / 2, cy = height / 2
-        let maxR = min(width, height) * 0.46
+        let maxR = shortSide * 0.46
         let dr = maxR / Double(rings)
 
         // Outer rings last, so the layers composite cleanly back-to-front.

@@ -52,7 +52,7 @@ final class ToneMapping_Example: Sketch {
         blendMode(.add)            // every lamp adds light to the frame
         noStroke()
 
-        let r = min(width, height) * 0.26
+        let r = shortSide * 0.26
         for lamp in lamps {
             let cx = width / 2 + sin(time * lamp.fx * .tau + lamp.px) * width * 0.24
             let cy = height / 2 + sin(time * lamp.fy * .tau + lamp.py) * height * 0.24

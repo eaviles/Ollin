@@ -41,7 +41,7 @@ final class PointShimmer: Sketch {
         // (the e's aperture, the o's ring) stay intact instead of scattering.
         let amp = map(sin(time * 0.7), -1, 1, 4, 15) * scale
         withState {
-            translate(width / 2, height / 2)
+            translate(center)
             let shimmered = dots.map { p in
                 Vector2(p.x + amp * sin(p.y * 0.04 + time * 2), p.y)
             }

@@ -252,7 +252,7 @@ final class Contraption: Sketch {
     }
 
     override func mousePressed() {
-        grabbed = grabBody(at: Vector2(mouseX, mouseY), in: world)
+        grabbed = grabBody(at: mouse, in: world)
     }
 
     override func mouseReleased() {
@@ -277,7 +277,7 @@ final class Contraption: Sketch {
         }
         ride?.drive(at: power ? 5 : 0, strength: 400)
 
-        if let grabbed { dragGrab(grabbed, to: Vector2(mouseX, mouseY)) }
+        if let grabbed { dragGrab(grabbed, to: mouse) }
         world.step(dt: deltaTime)
 
         // A block shoved off the end of its shelf goes back on it.

@@ -31,7 +31,7 @@ final class Hulls_Example: Sketch {
             for i in 0 ..< count {
                 let angle = Double(i) / Double(count) * .tau + random(-0.04, 0.04)
                 let r = radius + random(-13, 13)
-                scatter.append(hub + Vector2(cos(angle), sin(angle)) * r)
+                scatter.append(hub + Vector2(angle: angle) * r)
             }
         }
         let island = Vector2(870, 240)

@@ -55,7 +55,7 @@ final class Swarm_Example: Sketch {
         flock.alignment = mood == 0 ? alignment : 0
         flock.cohesion = mood == 0 ? cohesion : 0
 
-        flock.target = Vector2(mouseX, mouseY)
+        flock.target = mouse
         flock.seek = mouseIsPressed && !fleeing ? 1.8 : 0
         flock.flee = mouseIsPressed && fleeing ? 2.4 : 0
 

@@ -20,13 +20,13 @@ final class Capture: Sketch {
     override func draw() {
         background(Color(white: 0.07))
         // A slow rosette of orbiting dots — just something worth capturing.
-        let c = Vector2(width / 2, height / 2)
+        let c = center
         noStroke()
         let count = 12
         for i in 0..<count {
             let a = Double(i) / Double(count) * .tau + time * 0.3
-            let r = min(width, height) * 0.32 * (0.6 + 0.4 * sin(time + Double(i)))
-            let p = c + Vector2(cos(a), sin(a)) * r
+            let r = shortSide * 0.32 * (0.6 + 0.4 * sin(time + Double(i)))
+            let p = c + Vector2(angle: a) * r
             fill(CosinePalette.rainbow.color(at: Double(i) / Double(count)))
             drawCircle(center: p, radius: 46 * scale)
         }

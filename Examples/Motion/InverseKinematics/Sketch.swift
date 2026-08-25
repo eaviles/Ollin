@@ -38,7 +38,7 @@ final class InverseKinematics: Sketch {
         let t = loopProgress(over: 16)
         var lure = Vector2(width * (0.5 + signedNoise(3, loop: t, radius: 1.3) * 0.36),
                            height * (0.34 + signedNoise(9, loop: t, radius: 1.3) * 0.22))
-        if mouseIsPressed { lure = Vector2(mouseX, mouseY) }
+        if mouseIsPressed { lure = mouse }
 
         strokeCap(.round)
         for (i, arm) in arms.enumerated() {

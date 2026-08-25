@@ -51,7 +51,7 @@ final class Dispersion_Example: Sketch {
             blendMode(.add)
             let drift = Vector2(width * (0.5 + 0.3 * cos(time * 0.4)),
                                 height * (0.5 + 0.3 * sin(time * 0.27)))
-            for center in [drift, Vector2(mouseX, mouseY)] {
+            for center in [drift, mouse] {
                 fill(.radial(center: center, radius: width * 0.28, Ramp([.white, .black])))
                 drawCircle(center: center, radius: width * 0.28)
             }

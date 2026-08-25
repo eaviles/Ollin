@@ -23,7 +23,7 @@ final class PerfectLoop: Sketch {
     override func draw() {
         background(Color(hex: 0x0E1420))
         let phase = loopProgress(over: period)
-        let center = Vector2(width / 2, height / 2)
+        let center = center
 
         // Nested blobs, each wobbling on its own slice of the looping field.
         let layers: [(scale: Double, color: Color)] = [

@@ -53,10 +53,7 @@ final class Fog: Sketch {
 
         // The ground plane, oversized so the horizon is fog, not an edge.
         fill(Color(hex: 0x717A7E))
-        withState {
-            translate(0, -0.5, 0)
-            drawBox(width: 44, height: 1, depth: 44)
-        }
+        drawGround(size: 44, thickness: 1)
 
         // The colonnade: plain shafts with a square cap, in stone grays.
         for column in columns {

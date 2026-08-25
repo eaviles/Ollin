@@ -26,7 +26,7 @@ final class HyperbolicDisk: Sketch {
         // Pan on a small closed circuit of the hyperbolic plane, so the
         // loop comes back to its start exactly.
         let t = loopProgress(over: 24) * 2 * .pi
-        let viewpoint = Vector2(cos(t), sin(t)) * 0.32
+        let viewpoint = Vector2(angle: t) * 0.32
 
         let disk = canvasRectangle.inset(by: 60)
         let tiles = hyperbolicTiling(sides: preset.sides, meeting: preset.meeting,

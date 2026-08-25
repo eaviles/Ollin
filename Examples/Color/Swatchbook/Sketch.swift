@@ -24,33 +24,29 @@ final class Swatchbook: Sketch {
     override func draw() {
         background(Color(hex: 0x14171C))
         let margin = width * 0.08
-        let contentWidth = width - margin * 2
         let rowHeight = height * 0.062
         let gap = (height - Double(sets.count) * rowHeight) / Double(sets.count + 1)
-        let pad = 8.0
         let step = Int(time * 3)
+        // One grid gives the rows, and each row is its own grid of swatches.
+        let rows = grid(columns: 1, rows: sets.count,
+                        padding: .symmetric(horizontal: margin, vertical: gap), gutter: gap)
         for (row, entry) in sets.enumerated() {
-            let y = gap + Double(row) * (rowHeight + gap)
-            let n = entry.palette.count
-            let swatchWidth = (contentWidth - Double(n - 1) * pad) / Double(n)
-            let highlightIndex = (step + row) % n
-            for i in 0..<n {
-                let highlighted = i == highlightIndex
+            let frame = rows.cell(column: 0, row: row).frame
+            let highlightIndex = (step + row) % entry.palette.count
+            for cell in Grid(in: frame, columns: entry.palette.count, rows: 1, gutter: 8).cells {
                 noStroke()
-                fill(entry.palette[i])
-                drawRect(margin + Double(i) * (swatchWidth + pad), y,
-                         swatchWidth, rowHeight, cornerRadius: 10)
-                if highlighted {
+                fill(entry.palette[cell.column])
+                drawRect(cell.frame, cornerRadius: 10)
+                if cell.column == highlightIndex {
                     noFill()
                     stroke(.white)
                     strokeWeight(3)
-                    drawRect(margin + Double(i) * (swatchWidth + pad) - 5, y - 5,
-                             swatchWidth + 10, rowHeight + 10, cornerRadius: 13)
+                    drawRect(cell.frame.x - 5, cell.frame.y - 5,
+                             cell.frame.width + 10, cell.frame.height + 10, cornerRadius: 13)
                 }
             }
             noStroke()
-            fill(Color(hex: 0x9AA3AD))
-            drawText(entry.label, margin, y - 10)
+            drawText(entry.label, frame.x, frame.y - 10, color: Color(hex: 0x9AA3AD))
         }
     }
 }

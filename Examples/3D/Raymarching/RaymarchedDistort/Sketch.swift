@@ -36,7 +36,7 @@ final class RaymarchedDistort: Sketch {
             .colored(Color(hex: 0xffb454)))
 
         // A rippled sphere: sine-product displacement, the swell breathing.
-        let swell = 0.05 + (sin(t * 1.3) * 0.5 + 0.5) * 0.1
+        let swell = 0.05 + unipolar(sin(t * 1.3)) * 0.1
         drawSDF3D(SDF3D.sphere(radius: 0.95)
             .displaced(amplitude: swell, frequency: 6.5)
             .at(x: 1.15, y: 0.15, z: 0)

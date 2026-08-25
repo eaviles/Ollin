@@ -29,7 +29,7 @@ final class CornerCutting: Sketch {
             let base = i % 2 == 0 ? 0.34 : 0.16
             let wobble = signedNoise(Double(i) * 0.7, loop: phase, radius: 0.6) * 0.06
             burst.append(center + Vector2(angle: angle,
-                                          length: (base + wobble) * Double(min(width, height))))
+                                          length: (base + wobble) * Double(shortSide)))
         }
         let raw = Contour(burst, closed: true)
         let smooth = raw.smoothed(iterations: passes)

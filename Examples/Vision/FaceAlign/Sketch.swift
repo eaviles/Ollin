@@ -70,7 +70,7 @@ final class FaceAlign: Sketch {
         let mid = (leftEye + rightEye) / 2
 
         withState {
-            translate(width / 2, height / 2)
+            translate(center)
             rotate(-atan2(across.y, across.x))
             scale(width * 0.19 / max(across.length, 1))
             translate(-mid.x, -mid.y)

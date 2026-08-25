@@ -53,7 +53,7 @@ final class Formulas: Sketch {
 
         for i in 0..<count {
             let angle = (Double(i) / Double(count)) * .tau + spin * .pi / 180
-            let at = center + Vector2(cos(angle), sin(angle)) * ring
+            let at = center + Vector2(angle: angle) * ring
             if filled {
                 noStroke()
                 fill(Color.coral)

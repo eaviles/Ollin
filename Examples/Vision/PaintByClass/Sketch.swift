@@ -21,15 +21,7 @@ import OllinVision
 /// direct `swift run`), so the folder is found by walking up from this file
 /// instead of trusting whatever the working directory happens to be.
 private func modelsPath(_ name: String) -> String {
-    var dir = (#filePath as NSString).deletingLastPathComponent
-    while dir.count > 1 {
-        let models = (dir as NSString).appendingPathComponent("Models")
-        if FileManager.default.fileExists(atPath: models) {
-            return (models as NSString).appendingPathComponent(name)
-        }
-        dir = (dir as NSString).deletingLastPathComponent
-    }
-    return ("Models" as NSString).appendingPathComponent(name)
+    sketchResource(name) ?? ("Models" as NSString).appendingPathComponent(name)
 }
 
 @main
@@ -104,7 +96,7 @@ final class PaintByClass: Sketch {
         }
 
         // The cursor reads the class under it.
-        let cursor = Vector2(mouseX, mouseY)
+        let cursor = mouse
         let pointed = rect.contains(cursor) ? classes.label(at: cursor, in: rect) : nil
         drawCaption(pointed.map { "PaintByClass — under the cursor: \($0)" }
             ?? "PaintByClass — every pixel named: sit in frame with the everyday things it knows")

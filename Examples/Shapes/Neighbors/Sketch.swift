@@ -41,7 +41,7 @@ final class Neighbors_Example: Sketch {
         background(Color(hex: 0x0E1117))
 
         let probe = mouseIsPressed
-            ? Vector2(mouseX, mouseY)
+            ? mouse
             : center + Vector2(cos(time * 0.7) * 300, sin(time * 0.9) * 260)
         let reach = 92 + sin(time * 1.3) * 42
 

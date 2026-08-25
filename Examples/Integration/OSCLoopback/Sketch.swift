@@ -32,7 +32,7 @@ final class OSCLoopback: Sketch {
         // Send a Lissajous path and a breathing level out to ourselves.
         let tx = Float(0.5 + 0.42 * sin(time * 0.7))
         let ty = Float(0.5 + 0.42 * sin(time * 0.9 + 1.3))
-        let level = Float(0.5 + 0.5 * sin(time * 2.1))
+        let level = Float(unipolar(sin(time * 2.1)))
         sender.send("/ollin/x", .float(tx))
         sender.send("/ollin/y", .float(ty))
         sender.send("/ollin/level", .float(level))

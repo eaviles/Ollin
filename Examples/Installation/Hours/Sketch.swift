@@ -60,7 +60,7 @@ final class Hours: Sketch {
         let disc = Vector2(width * (0.12 + 0.76 * across),
                            height * (0.62 - 0.34 * sin(across * .pi)))
         fill(scheduledPeriod == "night" ? Color(white: 0.88) : Color(red: 1, green: 0.96, blue: 0.86))
-        drawCircle(center: disc, radius: min(width, height) * 0.055)
+        drawCircle(center: disc, radius: shortSide * 0.055)
 
         label()
     }
@@ -80,9 +80,9 @@ final class Hours: Sketch {
     private func label() {
         textAlign(.center, .middle)
         fill(Color(white: 0.16, alpha: 0.7))
-        textSize(min(width, height) * 0.038)
+        textSize(shortSide * 0.038)
         drawText(scheduledPeriod ?? "no hours kept", center.x, height * 0.88)
-        textSize(min(width, height) * 0.022)
+        textSize(shortSide * 0.022)
         fill(Color(white: 0.16, alpha: 0.45))
         let next = installation.schedule.nextChange(at: Date())?.text ?? ""
         drawText("until \(next)", center.x, height * 0.93)

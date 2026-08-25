@@ -26,7 +26,7 @@ final class SceneDefocus: Sketch {
 
     override func draw() {
         // Rack the focal plane: drag across the canvas, or let it sweep.
-        let focus = mouseIsPressed ? min(max(mouseX / width, 0), 1)
+        let focus = mouseIsPressed ? clamp(mouseX / width, 0, 1)
                                    : 0.5 + 0.45 * sin(time * 0.3)
 
         // The 3D scene, drawn into a render target. Drawing meshes into it turns on

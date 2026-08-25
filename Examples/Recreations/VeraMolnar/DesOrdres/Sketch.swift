@@ -31,7 +31,7 @@ final class DesOrdres: Sketch {
 
         // A 5×5 grid of centers inset ⅛ from each edge; each holds 10 nested
         // squares, the outermost nearly filling its cell. All canvas-relative.
-        let margin = min(width, height) * 0.125
+        let margin = shortSide * 0.125
         let g = grid(columns: 5, rows: 5, padding: .all(margin), distribution: .spanning)
         let cell = g.bounds.width / 4   // spacing between adjacent centers
         for p in g.points {

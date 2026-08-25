@@ -35,7 +35,7 @@ final class SyphonLoopback: Sketch {
         for i in 0..<count {
             let a = time * 0.6 + Double(i) / Double(count) * .tau
             let r = (180 + sin(time * 1.3 + Double(i)) * 60) * scale
-            let p = center + Vector2(cos(a), sin(a)) * r
+            let p = center + Vector2(angle: a) * r
             fill(palette.color(at: Double(i) / Double(count)))
             drawCircle(center: p, radius: (10 + 8 * sin(time * 2 + Double(i))) * scale)
         }

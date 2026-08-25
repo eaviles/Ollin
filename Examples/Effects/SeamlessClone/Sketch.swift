@@ -75,7 +75,7 @@ final class SeamlessClone_Example: Sketch {
             for i in 0 ..< 260 {
                 let a = Double(i) * 2.39996
                 let r = 162 * sqrt(Double(i) / 260)
-                let p = center + Vector2(cos(a), sin(a)) * r
+                let p = center + Vector2(angle: a) * r
                 fill(Color(hue: patchHue, saturation: 0.24,
                            brightness: 0.50 + noise(p.x * 0.016, p.y * 0.016) * 0.20))
                 drawCircle(p.x, p.y, 7 + noise(Double(i) * 0.31) * 8)

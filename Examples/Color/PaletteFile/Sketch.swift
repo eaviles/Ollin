@@ -40,7 +40,7 @@ final class PaletteFile: Sketch {
             let palette = rows[cell.row]
             // A slow shimmer: each swatch lifts as the wave passes through it.
             let phase = time * 0.6 - Double(cell.column) * 0.35 - Double(cell.row) * 0.2
-            let lift = (sin(phase) * 0.5 + 0.5) * 10
+            let lift = unipolar(sin(phase)) * 10
 
             fill(palette[cell.column])
             drawRect(center: cell.center, width: cell.frame.width,

@@ -52,7 +52,7 @@ final class Accumulation_Example: Sketch {
         noStroke()
 
         let cx = width / 2, cy = height / 2
-        let radius = min(width, height) * 0.34
+        let radius = shortSide * 0.34
         let angle = time * 0.25                      // a slow turn around the vertical axis
         let cosA = cos(angle), sinA = sin(angle)
 

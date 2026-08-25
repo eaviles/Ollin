@@ -47,8 +47,8 @@ final class Aside_Example: Sketch {
                     let t = time * 0.5 + Double(i)
                     let x = width * 0.5 + cos(t * 1.1) * width * 0.40
                     let y = height * 0.5 + sin(t) * height * 0.40
-                    fill(Color(red: 0.5 + 0.5 * sin(t),
-                               green: 0.5 + 0.5 * cos(t * 1.3),
+                    fill(Color(red: unipolar(sin(t)),
+                               green: unipolar(cos(t * 1.3)),
                                blue: 0.5, alpha: 0.6))
                     drawCircle(x, y, 360)
                 }

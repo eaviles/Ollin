@@ -63,8 +63,8 @@ final class InstancedMesh: Sketch {
         let low = Color(hex: 0x27435F)
         let high = Color(hex: 0xF2B75C)
         func height(_ seat: (position: Vector3, radius: Double, angle: Double)) -> Double {
-            let crest = sin(seat.radius * 1.15 - time * 1.6) * 0.5 + 0.5
-            let swirl = sin(seat.angle * 3 + time * 0.7) * 0.5 + 0.5
+            let crest = unipolar(sin(seat.radius * 1.15 - time * 1.6))
+            let swirl = unipolar(sin(seat.angle * 3 + time * 0.7))
             return 0.25 + crest * (1.6 + swirl * 1.2)
         }
 

@@ -18,7 +18,7 @@ final class Steering: Sketch {
         seed(11)
 
         // A wavy closed loop built on looping noise, so it meets itself.
-        let center = Vector2(width / 2, height / 2)
+        let center = center
         path = (0 ..< 160).map { i in
             let t = Double(i) / 160
             let wobble = signedNoise(0, loop: t, radius: 1.6) * 90 * scale

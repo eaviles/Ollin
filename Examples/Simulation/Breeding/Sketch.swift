@@ -102,7 +102,7 @@ final class Breeding_Example: Sketch {
     }
 
     override func mousePressed() {
-        for (i, cell) in grid.cells.enumerated() where cell.frame.contains(Vector2(mouseX, mouseY)) {
+        for (i, cell) in grid.cells.enumerated() where cell.frame.contains(mouse) {
             if chosen.contains(i) { chosen.remove(i) } else { chosen.insert(i) }
         }
     }

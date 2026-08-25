@@ -32,14 +32,14 @@ final class StraightSkeleton_Example: Sketch {
             let u = Double(i) / 40
             let angle = u * .tau
             let r = 330 + signedNoise(3, loop: u, radius: 1.7) * 110
-            return center + Vector2(cos(angle), sin(angle)) * r
+            return center + Vector2(angle: angle) * r
         }
         let lakeCenter = center + Vector2(random(-90, 90), random(-90, 90))
         let lake = (0 ..< 18).map { i in
             let u = Double(i) / 18
             let angle = u * .tau
             let r = 80 + signedNoise(11, loop: u, radius: 1.2) * 24
-            return lakeCenter + Vector2(cos(angle), sin(angle)) * r
+            return lakeCenter + Vector2(angle: angle) * r
         }
         island = Shape(outer: coast, holes: [lake])
         skeleton = straightSkeleton(of: island)

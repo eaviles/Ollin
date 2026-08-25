@@ -31,7 +31,7 @@ final class Feedback_Example: Sketch {
             // Draw last frame back, transformed about the canvas center so it
             // spirals inward into a tunnel, and faded a little so trails decay.
             withState {
-                translate(width / 2, height / 2)
+                translate(center)
                 rotate(0.06)
                 scale(0.98)
                 translate(-width / 2, -height / 2)

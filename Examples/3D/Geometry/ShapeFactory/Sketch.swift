@@ -45,7 +45,7 @@ final class ShapeFactory: Sketch {
                     elevation: 0.18, fieldOfView: .pi / 3.4)
 
         // The two morphing shapes, rebuilt from time-driven parameters.
-        let wobble = sin(time * 0.4) * 0.5 + 0.5                // 0…1
+        let wobble = unipolar(sin(time * 0.4))                // 0…1
         let supershape = Mesh.supershape(radius: 0.75, m: 4 + wobble * 8,
                                          n1: 0.3 + wobble * 0.5, n2: 1.7, n3: 1.7,
                                          segments: 96, rings: 48)

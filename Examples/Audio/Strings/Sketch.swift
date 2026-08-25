@@ -67,7 +67,7 @@ final class Strings: Sketch {
 
     private func pluck(string index: Int, at position: Double) {
         guard tuning.indices.contains(index) else { return }
-        let pick = min(max(0.02, position), 0.98)
+        let pick = clamp(0.02, position, 0.98)
         lastPluck = time
 
         // Changing the voice does not disturb notes already ringing, so each

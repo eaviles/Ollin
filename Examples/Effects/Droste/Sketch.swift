@@ -43,14 +43,14 @@ final class Droste_Example: Sketch {
     private func paint() {
         seed(4)
         background(Color(hex: 0x0A0E1A))
-        let middle = Vector2(width / 2, height / 2)
+        let middle = center
         let unit = height / 2
 
         // The windows, each turned to face the middle.
         let count = 14
         for i in 0 ..< count {
             let angle = Double(i) / Double(count) * .tau
-            let place = middle + Vector2(cos(angle), sin(angle)) * unit * 0.69
+            let place = middle + Vector2(angle: angle) * unit * 0.69
             withState {
                 translate(place)
                 rotate(angle)
@@ -69,14 +69,14 @@ final class Droste_Example: Sketch {
         for i in 0 ..< count {
             let angle = (Double(i) + 0.5) / Double(count) * .tau
             fill(Color(hex: 0xFFE08A, alpha: 0.9))
-            drawCircle(center: middle + Vector2(cos(angle), sin(angle)) * unit * 0.54,
+            drawCircle(center: middle + Vector2(angle: angle) * unit * 0.54,
                        radius: unit * 0.012)
         }
         for _ in 0 ..< 60 {
             let angle = random(.tau)
             let r = random(0.52, 0.86)
             fill(Color(white: 1, alpha: random(0.15, 0.6)))
-            drawCircle(center: middle + Vector2(cos(angle), sin(angle)) * unit * r,
+            drawCircle(center: middle + Vector2(angle: angle) * unit * r,
                        radius: unit * random(0.002, 0.005))
         }
     }

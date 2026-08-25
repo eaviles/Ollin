@@ -65,7 +65,7 @@ final class Watched: Sketch {
         strokeCap(.round)
 
         let shown = Array(runs.suffix(12))
-        let outer = min(width, height) * 0.40
+        let outer = shortSide * 0.40
         let step = outer / 15
         for (index, seconds) in shown.enumerated() {
             let radius = outer - Double(index) * step
@@ -87,13 +87,13 @@ final class Watched: Sketch {
         noStroke()
         textAlign(.center, .middle)
         fill(Color(white: 0.92))
-        textSize(min(width, height) * 0.045)
-        drawText("run \(runs.count)", center.x, center.y - min(width, height) * 0.02)
-        textSize(min(width, height) * 0.028)
+        textSize(shortSide * 0.045)
+        drawText("run \(runs.count)", center.x, center.y - shortSide * 0.02)
+        textSize(shortSide * 0.028)
         fill(Color(white: 0.55))
         drawText("\(Int(thisRun))s of \(Int(runs.reduce(0, +)))s in all",
-                 center.x, center.y + min(width, height) * 0.03)
-        textSize(min(width, height) * 0.022)
+                 center.x, center.y + shortSide * 0.03)
+        textSize(shortSide * 0.022)
         fill(Color(white: 0.38))
         drawText("c crashes it, h hangs it", center.x, height * 0.93)
     }

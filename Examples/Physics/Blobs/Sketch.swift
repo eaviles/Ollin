@@ -107,7 +107,7 @@ final class Blobs: Sketch {
     /// the cursor scatters the blobs.
     func repelFromCursor() {
         guard mouseX != 0 || mouseY != 0 else { return }   // mouse hasn't moved yet
-        let cursor = Vector2(mouseX, mouseY)
+        let cursor = mouse
         let reach = 180 * scale
         for p in world.particles {
             let away = p.position - cursor

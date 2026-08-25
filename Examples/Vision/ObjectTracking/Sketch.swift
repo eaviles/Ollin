@@ -59,7 +59,7 @@ final class ObjectTracking: Sketch {
             noFill()
             stroke(Color(red: 0.3, green: 1.0, blue: 0.6))
             strokeWeight(2 * scale)
-            drawRect(Rectangle(center: Vector2(mouseX, mouseY),
+            drawRect(Rectangle(center: mouse,
                                width: seedSize, height: seedSize))
         }
 
@@ -69,6 +69,6 @@ final class ObjectTracking: Sketch {
 
     override func mousePressed() {
         guard camera.frame != nil else { return }
-        tracker.track(centeredAt: Vector2(mouseX, mouseY), size: seedSize, in: view)
+        tracker.track(centeredAt: mouse, size: seedSize, in: view)
     }
 }

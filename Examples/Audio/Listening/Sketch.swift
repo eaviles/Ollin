@@ -65,7 +65,7 @@ final class Listening: Sketch {
             let angle = Double(hash) / 65535 * .tau
             let reach = (280 + Double(hash % 97) * 1.6) * scale
             marks.append(Mark(label: event.label, confidence: event.confidence,
-                              at: center + Vector2(cos(angle), sin(angle)) * reach,
+                              at: center + Vector2(angle: angle) * reach,
                               born: time))
         }
         marks.removeAll { time - $0.born > 6 }

@@ -23,7 +23,7 @@ final class Hatching_Example: Sketch {
 
     /// Each row: a shape (as a fillable outline) and the tone it's shaded in.
     private var rows: [(shape: Shape, tone: Double)] {
-        let r = min(width, height) * 0.13
+        let r = shortSide * 0.13
         return [
             (Shape(circlePoints(radius: r)), 0.85),               // dark  → dense
             (Shape(starPoints(outer: r, inner: r * 0.45, points: 5)), 0.55),
@@ -71,7 +71,7 @@ final class Hatching_Example: Sketch {
         let n = max(48, Int(radius.rounded(.up)))
         return (0..<n).map { k in
             let a = 2 * Double.pi * Double(k) / Double(n)
-            return Vector2(cos(a), sin(a)) * radius
+            return Vector2(angle: a) * radius
         }
     }
 

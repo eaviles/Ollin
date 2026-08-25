@@ -16,7 +16,7 @@ final class ArcField: Sketch {
 
     override func draw() {
         background(.black)
-        let dim = min(width, height) / 100
+        let dim = shortSide / 100
         strokeWeight(dim * 0.25)
 
         let margin = 0.125

@@ -33,7 +33,7 @@ final class Unattended: Sketch {
         background(Color(white: 0.05))
         noStroke()
 
-        let step = min(width, height) / 30
+        let step = shortSide / 30
         let lap = loopProgress(over: 120) * .tau
         let middle = center
 
@@ -45,7 +45,7 @@ final class Unattended: Sketch {
                 // One wave, traveling out from the middle. Everything the dot
                 // does comes from where it stands and how far along the lap the
                 // piece is, so there is no state to keep and nothing to drift.
-                let reach = point.distance(to: middle) / (min(width, height) * 0.5)
+                let reach = point.distance(to: middle) / (shortSide * 0.5)
                 let wave = sin(lap - reach * 3.4)
                 let size = step * 0.44 * (0.18 + 0.82 * (wave * 0.5 + 0.5))
                 fill(ink.color(at: (wave * 0.5 + 0.5) * 0.9 + reach * 0.1))

@@ -11,7 +11,7 @@ import Ollin
 final class Clipping: Sketch {
     override func draw() {
         background(Color(hex: 0x101418))
-        let center = Vector2(width / 2, height / 2)
+        let center = center
 
         // The window: a seven-pointed star, slowly turning.
         var star: [Vector2] = []
@@ -60,7 +60,7 @@ final class Clipping: Sketch {
         stroke(Color(hex: 0x9BF6FF).withAlpha(0.5))
         strokeWeight(2)
         drawCircle(center: lens.center, radius: lens.radius)
-        let dot = center + Vector2(cos(time * 0.9), sin(time * 0.9)) * 330
+        let dot = center + Vector2(angle: time * 0.9) * 330
         fill(.white)
         noStroke()
         drawCircle(dot.x, dot.y, 14)

@@ -53,7 +53,7 @@ final class Springs: Sketch {
 
         // The momentum dot: retargeted every frame, kicked on click.
         chaser = mouseIsPressed || mouseX > 0 || mouseY > 0
-            ? Vector2(mouseX, mouseY) : Vector2(540, 700)
+            ? mouse : Vector2(540, 700)
         noStroke()
         fill(Color(hex: 0xE9C46A))
         drawCircle(center: chaser, radius: 26)

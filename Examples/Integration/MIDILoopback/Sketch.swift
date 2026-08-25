@@ -52,7 +52,7 @@ final class MIDILoopback: Sketch {
 
         // The thin ring is the raw target; the filled circle is the smoothed param
         // gliding toward it — the gap between them is the softening in flight.
-        let center = Vector2(width / 2, height / 2)
+        let center = center
         stroke(Color(white: 0.35))
         strokeWeight(2 * scale)
         noFill()

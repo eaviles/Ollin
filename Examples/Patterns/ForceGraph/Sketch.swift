@@ -57,7 +57,7 @@ final class ForceGraph: Sketch {
 
         // A grabbed node rides the mouse; the reheat keeps the web following.
         if let grabbed, mouseIsPressed {
-            layout.positions[grabbed] = Vector2(mouseX, mouseY)
+            layout.positions[grabbed] = mouse
             layout.reheat(0.15)
         }
         layout.step()
@@ -80,8 +80,8 @@ final class ForceGraph: Sketch {
     }
 
     override func mousePressed() {
-        guard let layout, let nearest = layout.nearestNode(to: Vector2(mouseX, mouseY)),
-              layout.positions[nearest].distance(to: Vector2(mouseX, mouseY)) < 80 * scale
+        guard let layout, let nearest = layout.nearestNode(to: mouse),
+              layout.positions[nearest].distance(to: mouse) < 80 * scale
         else { return }
         grabbed = nearest
         layout.pinned[nearest] = true

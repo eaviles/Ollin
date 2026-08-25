@@ -49,7 +49,7 @@ final class Schotter: Sketch {
 
         let across = Int(columns.rounded()), down = Int(rows.rounded())
         let cell = min(width * 0.72 / Double(across), height * 0.88 / Double(down))
-        let grid = Grid(in: Rectangle(center: Vector2(width / 2, height / 2),
+        let grid = Grid(in: Rectangle(center: center,
                                       width: cell * Double(across), height: cell * Double(down)),
                         columns: across, rows: down)
 

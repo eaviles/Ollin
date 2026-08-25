@@ -20,7 +20,7 @@ final class Trail: Sketch {
         background(.black)
 
         // The figure's reach and the head dot scale with the canvas
-        // (`scale` = min(width, height) / 1000), so it fills any square the same.
+        // (`scale` = shortSide / 1000), so it fills any square the same.
         let reach = 375 * scale
         let head = Vector2(width / 2 + reach * cos(time * 3),
                            height / 2 + reach * sin(time * 3.7))

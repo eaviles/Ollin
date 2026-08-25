@@ -12,13 +12,13 @@ final class Spokes: Sketch {
 
     override func draw() {
         background(.black)
-        let c = Vector2(width / 2, height / 2)
-        let maxLen = min(width, height) * 0.42
+        let c = center
+        let maxLen = shortSide * 0.42
         let inner = maxLen * 0.18
         for i in 0..<count {
             let a = Double(i) / Double(count) * .tau + time * 0.1
-            let pulse = 0.5 + 0.5 * sin(time * 1.5 + Double(i) * 0.3)
-            let dir = Vector2(cos(a), sin(a))
+            let pulse = unipolar(sin(time * 1.5 + Double(i) * 0.3))
+            let dir = Vector2(angle: a)
             let outer = inner + maxLen * map(pulse, 0, 1, 0.25, 1)
 
             strokeWeight(map(pulse, 0, 1, 6, 26))

@@ -14,7 +14,6 @@ import OllinPhysics
 final class Chain3D: Sketch {
     let world = World3D()
     var ball: Body3D?
-    var grabbed: Joint3D?
 
     let linkCount = 7
     let linkHeight = 0.42
@@ -73,15 +72,6 @@ final class Chain3D: Sketch {
         }
     }
 
-    override func mousePressed() {
-        grabbed = grabBody(at: Vector2(mouseX, mouseY), in: world)
-    }
-
-    override func mouseReleased() {
-        grabbed?.remove()
-        grabbed = nil
-    }
-
     override func keyPressed() {
         if key == " " { buildTower() }
     }
@@ -95,15 +85,12 @@ final class Chain3D: Sketch {
         castShadows()
         perspective(eye: Vector3(-5.6, 4.2, 8.6), target: Vector3(0.8, 2.0, 0))
 
-        if let grabbed { dragGrab(grabbed, to: Vector2(mouseX, mouseY)) }
+        dragBodies(in: world)
         world.step(dt: deltaTime)
 
         fill(Color(hex: 0x1A202A))
         material(.dielectric(roughness: 0.85))
-        withState {
-            translate(0, -0.06, 0)
-            drawBox(width: 24, height: 0.12, depth: 24)
-        }
+        drawGround(size: 24)
 
         for body in world.bodies {
             withBody(body) {

@@ -47,7 +47,7 @@ final class RetainedBatch: Sketch {
         // The galaxy, turning: the draw-time transform moves the whole replay,
         // so the 150k recorded stars ride one rotate about the canvas center.
         withState {
-            translate(width / 2, height / 2)
+            translate(center)
             rotate(loopProgress(over: 40) * .tau)
             translate(-width / 2, -height / 2)
             if retained {
@@ -61,7 +61,7 @@ final class RetainedBatch: Sketch {
         // fresh transform around the same batch.
         for i in 0 ..< 5 {
             let a = Double(i) / 5 * .tau - .tau / 4
-            let orbit = min(width, height) * 0.42
+            let orbit = shortSide * 0.42
             withState {
                 translate(width / 2 + cos(a) * orbit, height / 2 + sin(a) * orbit)
                 rotate(a + loopProgress(over: 40) * .tau)
@@ -75,8 +75,8 @@ final class RetainedBatch: Sketch {
     /// a warm dense core, and a faint halo. Built once in `setup()` so the
     /// retained and per-frame paths draw the identical field.
     private func makeStars() {
-        let center = Vector2(width / 2, height / 2)
-        let reach = min(width, height) * 0.46
+        let center = center
+        let reach = shortSide * 0.46
         stars.reserveCapacity(150_000)
 
         let armColors = [Color(hex: 0x8DB4FF), Color(hex: 0xC8D9FF)]
@@ -86,7 +86,7 @@ final class RetainedBatch: Sketch {
             let arm = Double(i % 2) * .pi
             let angle = arm + t * 3.4 + randomGaussian() * 0.18
             let r = reach * t
-            let p = center + Vector2(cos(angle), sin(angle)) * r
+            let p = center + Vector2(angle: angle) * r
                   + Vector2(randomGaussian(), randomGaussian()) * reach * 0.035
             let bright = random(0.25, 1)
             stars.append(Star(position: p,

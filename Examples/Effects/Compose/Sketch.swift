@@ -55,7 +55,7 @@ final class Compose_Example: Sketch {
             // cage, screened on top so it brightens the scene beneath it.
             layer {
                 withState {
-                    translate(width / 2, height / 2)
+                    translate(center)
                     rotate(time * 0.05)
                     translate(-width / 2, -height / 2)
                     stroke(Color(white: 0.45)); strokeWeight(2); noFill()

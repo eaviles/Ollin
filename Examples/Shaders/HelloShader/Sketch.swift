@@ -23,7 +23,7 @@ final class HelloShader_Example: Sketch {
         float2 p = (uv * 2.0 - 1.0) * 6.0;
         float fx = cos(p.x) * cos(p.y);
         float fy = sin(p.x) * sin(p.y);
-        float v = 0.5 + 0.5 * sin((fx * fx + fy * fy) * 6.28318 + info.time);
+        float v = unipolar(sin((fx * fx + fy * fy) * 6.28318 + info.time));
 
         // A cosine gradient palette (iq), one of Ollin's shader-library helpers.
         float3 col = palette(v, float3(0.5), float3(0.5),

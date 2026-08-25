@@ -61,10 +61,7 @@ final class VolumetricLight: Sketch {
 
         // --- The set: a matte floor and a few standing props ---
         fill(Color(hex: 0x2E3138))
-        withState {
-            translate(0, -0.55, 0)
-            drawBox(width: 22, height: 1.1, depth: 22)
-        }
+        drawGround(size: 22, thickness: 1.1)
 
         fill(Color(hex: 0x8A8478))
         withState {

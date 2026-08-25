@@ -26,7 +26,7 @@ final class CliffordAttractor: Sketch {
     override func draw() {
         if frameCount == 1 { background(.black) }     // wipe once, then accumulate
 
-        let reach = Double(min(width, height)) * 0.22
+        let reach = Double(shortSide) * 0.22
         let cx = width / 2, cy = height / 2
 
         var points = [Vector2]()

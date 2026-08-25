@@ -30,7 +30,7 @@ final class DifferentialGrowthSketch: Sketch {
 
         // Tint the line by how far each node has drifted from the center, so the
         // folds read as depth without the geometry jumping.
-        let center = Vector2(width / 2, height / 2)
+        let center = center
         let nodes = growth.nodes
         for i in nodes.indices {
             let a = nodes[i], b = nodes[(i + 1) % nodes.count]

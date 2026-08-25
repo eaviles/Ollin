@@ -17,7 +17,7 @@ final class GirihStars: Sketch {
     override func setup() {
         // A honeycomb over an expanded rectangle, so cells cover the whole
         // canvas instead of letterboxing inside it.
-        let expanded = Rectangle(center: Vector2(width / 2, height / 2),
+        let expanded = Rectangle(center: center,
                                  width: width * 1.3, height: height * 1.3)
         hexes = HexGrid(in: expanded, columns: 13, rows: 12).cells.map(\.corners)
 
@@ -25,7 +25,7 @@ final class GirihStars: Sketch {
         // tiles share one edge length, so walking each decagon edge backward
         // lands a pentagon snug against it, on the outside.
         let edge = width * 0.052
-        let decagon = Girih.Tile.decagon.points(edge: edge, at: Vector2(width / 2, height / 2))
+        let decagon = Girih.Tile.decagon.points(edge: edge, at: center)
         flower = [decagon]
         for i in decagon.indices {
             let p = decagon[i], q = decagon[(i + 1) % decagon.count]

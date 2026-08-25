@@ -60,7 +60,7 @@ final class StrokeProfiles: Sketch {
         return (0...260).map { i in
             let t = Double(i) / 260
             let angle = t * .tau * turns - .pi / 2
-            return Vector2(cos(angle), sin(angle)) * (radius * (0.22 + 0.78 * t))
+            return Vector2(angle: angle) * (radius * (0.22 + 0.78 * t))
         }
     }
 

@@ -32,7 +32,7 @@ final class Streamlines: Sketch {
             let mid = line[line.count / 2]
             // A per-line value from the field's own noise sets the width and hue,
             // so neighboring lines vary together; time drifts the hue along it.
-            let v = (signedNoise(mid.x * 0.0011, mid.y * 0.0011) + 1) * 0.5
+            let v = noise(mid.x * 0.0011, mid.y * 0.0011)
             strokeWeight((2 + v * 5.5) * scale)
             let hue = (0.52 + v * 0.34 + time * 0.02).truncatingRemainder(dividingBy: 1)
             stroke(Color(hue: hue, saturation: 0.5, brightness: 0.96))

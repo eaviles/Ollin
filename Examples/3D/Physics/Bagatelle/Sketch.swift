@@ -32,7 +32,6 @@ final class Bagatelle: Sketch {
     var balls: [Body3D] = []
     var pins: [Vector3] = []
     var walls: [(body: Body3D, size: Vector3)] = []
-    var grabbed: Joint3D?
     var shots: Set<ObjectIdentifier> = []
 
     let boardWidth = 7.0
@@ -137,15 +136,6 @@ final class Bagatelle: Sketch {
         if key == " " { fire() }
     }
 
-    override func mousePressed() {
-        grabbed = grabBody(at: Vector2(mouseX, mouseY), in: world)
-    }
-
-    override func mouseReleased() {
-        grabbed?.remove()
-        grabbed = nil
-    }
-
     override func draw() {
         background(Color(hex: 0x0E1119))
         // Steel and brass need something to reflect, so the table stands in a
@@ -176,7 +166,7 @@ final class Bagatelle: Sketch {
         balls.removeAll { ball in escaped.contains { $0 === ball } }
 
         if balls.count < 14 && frameCount % 45 == 0 { drop() }
-        if let grabbed { dragGrab(grabbed, to: Vector2(mouseX, mouseY)) }
+        dragBodies(in: world)
         world.step(dt: deltaTime)
 
         drawTable()

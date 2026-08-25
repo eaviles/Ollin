@@ -100,8 +100,8 @@ final class PanAndZoom: Sketch {
     // MARK: The HUD, drawn at its own size
 
     func drawHUD() {
-        let nearest = places.min { $0.at.distance(to: Vector2(mouseX, mouseY))
-                                 < $1.at.distance(to: Vector2(mouseX, mouseY)) }
+        let nearest = places.min { $0.at.distance(to: mouse)
+                                 < $1.at.distance(to: mouse) }
         noStroke()
         fill(land.withAlpha(0.94))
         drawRect(0, 0, 1080, 92)

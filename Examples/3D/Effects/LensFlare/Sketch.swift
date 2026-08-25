@@ -91,10 +91,7 @@ final class LensFlare: Sketch {
             drawBox(width: 1.1, height: 3.4, depth: 0.5)
         }
         fill(Color(white: 0.22))
-        withState {
-            translate(0, -0.05, 0)
-            drawBox(width: 22, height: 0.1, depth: 22)
-        }
+        drawGround(size: 22, thickness: 0.1)
         fill(Color(hex: 0x2E4658))
         for i in 0..<5 {
             withState {

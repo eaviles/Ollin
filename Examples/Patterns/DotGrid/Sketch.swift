@@ -21,7 +21,7 @@ final class DotGrid: Sketch {
         background(.gray)
         // Canvas-relative layout: an eighth-of-canvas margin, the dots spanning
         // it edge to edge, so it fills any canvas size.
-        let margin = min(width, height) * 0.125
+        let margin = shortSide * 0.125
         let g = grid(columns: 21, rows: 21, padding: .all(margin), distribution: .spanning)
         let radius = g.bounds.width / 20 / 2   // dots touch: half the gap between them
         for dot in g.points {

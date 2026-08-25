@@ -33,7 +33,7 @@ final class BilliardsSketch: Sketch {
     override func draw() {
         background(paper)
 
-        let cell = Vector2(width / 2, height / 2)
+        let cell = center
         let radius = min(cell.x, cell.y) * 0.36
         // Where a ball is let go matters as much as the room. In a circle it
         // sets how big the hole in the middle is, and starting at the middle

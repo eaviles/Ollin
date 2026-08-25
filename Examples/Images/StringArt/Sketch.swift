@@ -20,7 +20,7 @@ final class StringArt: Sketch {
 
     override func setup() {
         noClear()
-        art = Ollin.StringArt(of: paint(), center: Vector2(width / 2, height / 2),
+        art = Ollin.StringArt(of: paint(), center: center,
                               radius: 470, pins: 200, chords: 3000, ink: 0.08)
     }
 

@@ -116,7 +116,7 @@ final class Scattered_Example: Sketch {
             // A fixed pattern of noise rather than a random one, so the marks wander with
             // the shape instead of flickering.
             let off = noise(cos(a) * 2 + 11, sin(a) * 2 + 7, time * 0.2) - 0.5
-            return truth + Vector2(cos(a), sin(a)) * (radius + off * 2 * wobble)
+            return truth + Vector2(angle: a) * (radius + off * 2 * wobble)
         }
 
         noStroke()

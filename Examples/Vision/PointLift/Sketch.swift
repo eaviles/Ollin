@@ -19,15 +19,7 @@ import OllinVision
 /// direct `swift run`), so the folder is found by walking up from this file
 /// instead of trusting whatever the working directory happens to be.
 private func modelsPath(_ name: String) -> String {
-    var dir = (#filePath as NSString).deletingLastPathComponent
-    while dir.count > 1 {
-        let models = (dir as NSString).appendingPathComponent("Models")
-        if FileManager.default.fileExists(atPath: models) {
-            return (models as NSString).appendingPathComponent(name)
-        }
-        dir = (dir as NSString).deletingLastPathComponent
-    }
-    return ("Models" as NSString).appendingPathComponent(name)
+    sketchResource(name) ?? ("Models" as NSString).appendingPathComponent(name)
 }
 
 @main
@@ -53,7 +45,7 @@ final class PointLift: Sketch {
 
     override func mousePressed() {
         guard let rect = camera.fittedRect(in: bounds) else { return }
-        let point = Vector2(mouseX, mouseY)
+        let point = mouse
         if modifiers.contains(.shift) {
             picker.exclude(point, in: rect)
         } else {

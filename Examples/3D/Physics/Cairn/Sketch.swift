@@ -154,7 +154,7 @@ final class Cairn: Sketch {
     }
 
     override func mousePressed() {
-        grabbed = grabBody(at: Vector2(mouseX, mouseY), in: world)
+        grabbed = grabBody(at: mouse, in: world)
     }
 
     override func mouseReleased() {
@@ -170,7 +170,7 @@ final class Cairn: Sketch {
         castShadows()
         perspective(eye: Vector3(3.0, 2.2, 5.3), target: Vector3(0.5, 1.0, 0))
 
-        if let grabbed { dragGrab(grabbed, to: Vector2(mouseX, mouseY)) }
+        if let grabbed { dragGrab(grabbed, to: mouse) }
         world.step(dt: deltaTime)
 
         drawGround()
@@ -205,10 +205,7 @@ final class Cairn: Sketch {
     func drawGround() {
         fill(Color(hex: 0x4A4437))
         material(.dielectric(roughness: 1))
-        withState {
-            translate(0, -0.2, 0)
-            drawBox(width: 80, height: 0.4, depth: 80)
-        }
+        drawGround(size: 80, thickness: 0.4)
     }
 
     /// Every body draws itself out of the collider it came back with.

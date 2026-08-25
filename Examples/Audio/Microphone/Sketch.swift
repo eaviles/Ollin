@@ -31,7 +31,7 @@ final class Microphone: Sketch {
             for i in 0..<bars {
                 let len = Double(levels[i]) * 340 * scale
                 let angle = Double(i) / Double(bars) * .tau
-                let dir = Vector2(cos(angle), sin(angle))
+                let dir = Vector2(angle: angle)
                 fill(Colormap.magma.color(at: Double(i) / Double(bars - 1)))
                 drawOrientedBox(dir * inner, dir * (inner + len), thickness: 6 * scale)
             }

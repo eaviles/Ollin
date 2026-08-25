@@ -24,7 +24,7 @@ final class TextBox: Sketch {
 
         // A box centered on the canvas whose width breathes.
         let w = width * 0.46 + sin(time * 0.6) * (width * 0.16)
-        let box = Rectangle(center: Vector2(width / 2, height / 2),
+        let box = Rectangle(center: center,
                             width: w, height: height * 0.62)
 
         // The box outline.

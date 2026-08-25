@@ -26,11 +26,11 @@ final class DeBruijn_Example: Sketch {
         background(Color(hex: 0x0B0E14))
         let beads = code.sequence.count
         let middle = bounds.center
-        let radius = min(width, height) * 0.34
+        let radius = shortSide * 0.34
 
         // Where the reader sits: walking over the loop, or under the pointer.
         let angle = mouseIsPressed
-            ? (Vector2(mouseX, mouseY) - middle).angle
+            ? (mouse - middle).angle
             : loopProgress(over: 16) * .tau - .pi / 2
         let at = ((Int(((angle + .pi / 2) / .tau * Double(beads)).rounded(.down)) % beads) + beads) % beads
 

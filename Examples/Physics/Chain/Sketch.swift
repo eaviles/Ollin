@@ -95,7 +95,7 @@ final class Chain: Sketch {
             self.held = nil
             return
         }
-        let cursor = Vector2(mouseX, mouseY)
+        let cursor = mouse
         var nearest: Body?
         var nearestDistance = 90 * scale    // grab radius
         for body in grabbable {
@@ -118,7 +118,7 @@ final class Chain: Sketch {
     override func draw() {
         background(Color(white: 0.11))
 
-        held?.target = Vector2(mouseX, mouseY)   // drag the held body to the cursor
+        held?.target = mouse   // drag the held body to the cursor
         world.step(dt: deltaTime)
 
         for body in world.bodies {

@@ -21,7 +21,7 @@ final class Combinators_Example: Sketch {
         // 1) Melt: a circle and a rounded rect smooth-union; their colors blend at the
         //    seam. A second circle is smoothly *subtracted* to carve a hole. The melt
         //    amount breathes.
-        let k = 20 + (sin(t) * 0.5 + 0.5) * 80
+        let k = 20 + unipolar(sin(t)) * 80
         let melt = SDF.circle(radius: 130).colored(Color(hex: 0xff5470))
             .smoothUnion(
                 SDF.rect(width: 230, height: 130, cornerRadius: 24)
@@ -33,11 +33,11 @@ final class Combinators_Example: Sketch {
         drawSDF(melt)
 
         // 2) Morph: a six-point star into a circle and back, scaled by a breath, spinning.
-        let amount = sin(t * 0.8) * 0.5 + 0.5
+        let amount = unipolar(sin(t * 0.8))
         let morph = SDF.star(outerRadius: 120, innerRadius: 54, points: 6)
             .colored(Color(hex: 0xffd166))
             .morph(SDF.circle(radius: 110).colored(Color(hex: 0x06d6a0)), amount: amount)
-            .scaled(0.85 + 0.15 * (sin(t * 1.3) * 0.5 + 0.5))
+            .scaled(0.85 + 0.15 * unipolar(sin(t * 1.3)))
             .rotated(t * 0.5)
             .at(x: width * 0.70, y: height * 0.36)
         drawSDF(morph)

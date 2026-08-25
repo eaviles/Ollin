@@ -17,7 +17,7 @@ final class EllipseField: Sketch {
 
     override func draw() {
         background(.black)
-        let dim = min(width, height) / 100
+        let dim = shortSide / 100
         strokeWeight(dim * 0.25)
 
         // Rows run from just above the top to just below the bottom, so ellipses

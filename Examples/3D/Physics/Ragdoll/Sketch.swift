@@ -30,7 +30,6 @@ final class Ragdoll: Sketch {
 
     var standing = true
     var showBones = false
-    var grabbed: Joint3D?
 
     /// How hard a joint may pull toward the pose, in newton-meters. Low is a
     /// figure too tired to hold itself up; high is one that will not be moved.
@@ -70,7 +69,7 @@ final class Ragdoll: Sketch {
             }
             ragdoll.drive(toward: target, strength: effort)
         }
-        if let grabbed { dragGrab(grabbed, to: Vector2(mouseX, mouseY)) }
+        dragBodies(in: world)
 
         world.step(dt: deltaTime)
         figure.apply(ragdoll)
@@ -126,15 +125,6 @@ final class Ragdoll: Sketch {
         }
     }
 
-    override func mousePressed() {
-        grabbed = grabBody(at: Vector2(mouseX, mouseY), in: world)
-    }
-
-    override func mouseReleased() {
-        grabbed?.remove()
-        grabbed = nil
-    }
-
     /// The capsules the fit found: each limb's shape, in the place the solver
     /// actually keeps it. `withLimb` poses the body *and* the offset that puts
     /// the shape on the bone.
@@ -159,9 +149,6 @@ final class Ragdoll: Sketch {
     func drawFloor() {
         material(.dielectric(roughness: 0.95))
         fill(Color(hex: 0x2A3140))
-        withState {
-            translate(0, -0.15, 0)
-            drawBox(width: 14, height: 0.3, depth: 14)
-        }
+        drawGround(size: 14, thickness: 0.3)
     }
 }

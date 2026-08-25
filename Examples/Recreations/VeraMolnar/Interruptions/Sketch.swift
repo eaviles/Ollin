@@ -38,7 +38,7 @@ final class Interruptions: Sketch {
 
         // Canvas-relative: a 1/16 inset, the segments spanning it edge to edge,
         // with each ~0.3 of the inset long.
-        let margin = min(width, height) * 0.0625
+        let margin = shortSide * 0.0625
         let half = margin * 0.3
         let g = grid(columns: 40, rows: 40, padding: .all(margin), distribution: .spanning)
         for dot in g.points {

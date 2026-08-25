@@ -67,7 +67,7 @@ final class TextVolume: Sketch {
             let y = margin - lineHeight + Double(i) * lineHeight - scroll
             if y < -lineHeight || y > height { continue }
             // A brightness + color wave rolling down the rows.
-            let wave = 0.5 + 0.5 * sin(time * 2.2 - Double(i) * 0.22)
+            let wave = unipolar(sin(time * 2.2 - Double(i) * 0.22))
             fill(brighten(palette.color(at: 0.25 + 0.5 * wave), 0.15 + 0.5 * wave))
             drawText(line, margin, y)
         }

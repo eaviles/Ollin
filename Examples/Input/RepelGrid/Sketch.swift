@@ -23,7 +23,7 @@ final class RepelGrid: Sketch {
         // Canvas-relative so the grid fills any canvas size and the cursor lines
         // up with it: a 1/16 inset, a quarter-canvas cursor reach, and a push and
         // dot radius scaled to that inset.
-        let s = min(width, height)
+        let s = shortSide
         let margin = s * 0.0625
         let reach = s * 0.25
         let push = s * 0.0625

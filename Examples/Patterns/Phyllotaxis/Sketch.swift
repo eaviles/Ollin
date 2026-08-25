@@ -16,7 +16,7 @@ final class Phyllotaxis: Sketch {
 
     override func draw() {
         background(.black)
-        let s = min(width, height)
+        let s = shortSide
         let count = Int(map(sin(time * 0.4), -1, 1, 300, 1000))
 
         let seeds = phyllotaxis(count: count, spacing: s * 0.02).enumerated()
@@ -26,7 +26,7 @@ final class Phyllotaxis: Sketch {
             }
 
         withState {
-            translate(width / 2, height / 2)
+            translate(center)
             rotate(time * 0.05)
             drawCircles(seeds)
         }

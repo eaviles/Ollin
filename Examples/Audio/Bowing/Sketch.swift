@@ -84,7 +84,7 @@ final class Bowing: Sketch {
     }
 
     private func drawInstrument() {
-        let middle = Vector2(width / 2, height / 2)
+        let middle = center
         let level = Double(synth.amplitude)
         trail.append(level)
         if trail.count > 260 { trail.removeFirst() }

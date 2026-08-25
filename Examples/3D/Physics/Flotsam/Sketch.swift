@@ -79,7 +79,7 @@ final class Flotsam: Sketch {
     }
 
     override func mousePressed() {
-        grip = grabBody(at: Vector2(mouseX, mouseY), in: world)
+        grip = grabBody(at: mouse, in: world)
     }
 
     override func mouseReleased() {
@@ -106,7 +106,7 @@ final class Flotsam: Sketch {
         world.water?.flow = Vector3(current, 0, 0)
         world.water?.density = brine
 
-        if let grip { dragGrab(grip, to: Vector2(mouseX, mouseY)) }
+        if let grip { dragGrab(grip, to: mouse) }
         world.step(dt: deltaTime)
         keepInFrame()
 

@@ -27,7 +27,7 @@ final class TilingNoise: Sketch {
         for y in 0 ..< size {
             for x in 0 ..< size {
                 let u = (Double(x) + 0.5) / Double(size), v = (Double(y) + 0.5) / Double(size)
-                let g = UInt8((min(max(shade(u, v), 0), 1) * 255).rounded())
+                let g = UInt8((clamp(shade(u, v), 0, 1) * 255).rounded())
                 let i = (y * size + x) * 4
                 bytes[i] = g; bytes[i + 1] = g; bytes[i + 2] = g
             }
