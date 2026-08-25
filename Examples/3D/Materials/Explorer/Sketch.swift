@@ -110,6 +110,34 @@ final class MaterialExplorer: Sketch {
     private var lastPreset: Material?
     private var copiedUntil = -1.0
 
+    /// Knobs hide while the shader ignores them, so the panel only offers what
+    /// can change the picture: the physically-based set acts under that shading
+    /// model alone, the specular pair only outside it, and each dependent scalar
+    /// waits for the knob that turns its term on. IOR stays with the
+    /// physically-based set (not behind transmission) because it also shapes the
+    /// normal-incidence reflectance of an opaque surface.
+    override func setup() {
+        $toonBands.show(when: $shading) { $0 == .toon }
+        $specularLevel.show(when: $shading) { $0 != .physicallyBased }
+        $shininessLevel.show(when: $shading) { $0 != .physicallyBased }
+        $metallic.show(when: $shading) { $0 == .physicallyBased }
+        $roughness.show(when: $shading) { $0 == .physicallyBased }
+        $anisotropy.show(when: $shading) { $0 == .physicallyBased }
+        $transmission.show(when: $shading) { $0 == .physicallyBased }
+        $ior.show(when: $shading) { $0 == .physicallyBased }
+        $thickness.show(when: $transmission) { $0 > 0 }
+        $clearcoat.show(when: $shading) { $0 == .physicallyBased }
+        $clearcoatRoughness.show(when: $clearcoat) { $0 > 0 }
+        $sheen.show(when: $shading) { $0 == .physicallyBased }
+        $sheenRoughness.show(when: $sheen) { $0 > 0 }
+        $sheenColor.show(when: $sheen) { $0 > 0 }
+        $iridescenceScale.show(when: $iridescence) { $0 > 0 }
+        $sparkleSize.show(when: $sparkle) { $0 > 0 }
+        $sparkleSharpness.show(when: $sparkle) { $0 > 0 }
+        $rimPower.show(when: $rim) { $0 > 0 }
+        $subsurfaceColor.show(when: $subsurface) { $0 > 0 }
+    }
+
     override func keyPressed() {
         if key == "c" || key == "C" {
             copyFinish()

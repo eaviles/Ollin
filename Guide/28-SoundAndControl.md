@@ -238,6 +238,17 @@ override func setup() {
 
 Each incoming value is mapped into the parameter's own range and assigned. The sketch keeps reading plain `radius`, without ever knowing who moved it. The inspector slider, the hardware, the phone, and plain assignment in code all stay live at once, and whichever moved most recently wins. One more line makes hardware feel good. Give the parameter a `smoothing:` and every source glides instead of stepping. `.eased(0.3)` is a fixed glide, and `.smoothed` is the adaptive filter that stays steady at rest and opens up under a moving hand. The softening belongs to the knob rather than to the wire.
 
+A panel that grows past a dozen knobs starts to hide the one you want behind the ones that don't matter yet. A *show-rule* trims it: tell a knob to appear only while another knob gives it something to do, and the inspector tucks the row away the rest of the time.
+
+```swift
+override func setup() {
+    $echoAmount.show(when: $echo) { $0 }        // the depth knob waits for the toggle
+    $bands.show(when: $style) { $0 == .spokes } // spokes have a count; rings don't
+}
+```
+
+The rule reads the other knob live, so flipping the toggle brings the row back, and a group whose rows are all hidden drops its whole card. Hiding is display only. The knob keeps its value, keeps persisting across reloads, and a MIDI or OSC binding keeps driving it while it's out of sight. The heaviest panel in the repo, [`Examples/3D/Materials/Explorer`](../Examples/3D/Materials/Explorer/Sketch.swift), runs a show-rule on every dependent finish scalar, which is why its glass knobs only appear under the shading model that reads them.
+
 ## Something to hold: game controllers
 
 A knob box is one kind of hand and a phone fader is another. A game controller is a third, and it's the one most people already own.
@@ -415,7 +426,7 @@ MIDI was created in 1983 by Dave Smith and Ikutaro Kakehashi so rival instrument
 - [Synthesis](../Docs/Helpers/Synthesis.md): `Synth` and its voices, which [Chapter 29](29-MakingSound.md) is about, since a sketch that listens usually ends up playing too.
 - [MIDI](../Docs/Integration/MIDI.md): messages, the three reads, binding, and sending MIDI out.
 - [OSC](../Docs/Integration/OSC.md): addresses and arguments, bundles, binding, and testing with a phone.
-- [Parameters](../Docs/Helpers/Parameters.md): the typed `@Param` family, smoothing, and the binding surface.
+- [Parameters](../Docs/Helpers/Parameters.md): the typed `@Param` family, smoothing, show-rules, and the binding surface.
 - Appendix B draws this chapter's math, one picture per idea: [Sound as numbers](B-JustEnoughMath.md#sound-as-numbers).
 - Worked examples: [`Examples/Audio/Listening`](../Examples/Audio/Listening/Sketch.swift), [`Examples/Audio/Spectrum`](../Examples/Audio/Spectrum/Sketch.swift), [`Examples/Audio/Microphone`](../Examples/Audio/Microphone/Sketch.swift), and the MIDI, OSC and controller examples in [`Examples/Integration/`](../Examples/Integration/).
 

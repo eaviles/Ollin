@@ -307,4 +307,62 @@ struct ParamTests {
         let p = Param(wrappedValue: 1.0, "Sweep", 0...4, icon: "wind", group: "Motion")
         #expect(p.label == "Sweep" && p.icon == "wind" && p.group == "Motion")
     }
+
+    // MARK: Show-rules
+
+    @Test func knobsShowByDefault() {
+        let p = Param(wrappedValue: 1.0, 0...10)
+        #expect(p.isShown)
+    }
+
+    @Test func aShowRuleFollowsItsSourceKnob() {
+        let transmission = Param(wrappedValue: 0.0, 0...1)
+        let thickness = Param(wrappedValue: 0.8, 0...3)
+        thickness.show(when: transmission) { $0 > 0 }
+        #expect(!thickness.isShown)
+        transmission.wrappedValue = 0.6
+        #expect(thickness.isShown)
+        transmission.wrappedValue = 0
+        #expect(!thickness.isShown)
+        // The value is untouched while hidden: it still holds and restores.
+        #expect(thickness.wrappedValue == 0.8)
+        thickness.restore(.number(1.5))
+        #expect(thickness.wrappedValue == 1.5)
+    }
+
+    @Test func aHandleForwardsVisibility() {
+        let gate = Param(wrappedValue: false)
+        let dependent = Param(wrappedValue: 0.5, 0...1)
+        dependent.show(when: gate) { $0 }
+        let handle = ParamHandle(name: "dependent", param: dependent)
+        #expect(!handle.isShown)
+        gate.wrappedValue = true
+        #expect(handle.isShown)
+    }
+
+    @Test func hiddenRowsLeaveTheSectionsAndAnEmptiedGroupDrops() {
+        let a = Param(wrappedValue: 1.0, 0...10)                     // ungrouped, stays
+        let b = Param(wrappedValue: 2.0, 0...10, group: "Glass")     // hides
+        let c = Param(wrappedValue: 3.0, 0...10, group: "Glass")     // hides
+        let d = Param(wrappedValue: 4.0, 0...10, group: "Glow")      // stays
+        let gate = Param(wrappedValue: false)
+        b.show(when: gate) { $0 }
+        c.show(when: gate) { $0 }
+        let handles = [ParamHandle(name: "a", param: a),
+                       ParamHandle(name: "b", param: b),
+                       ParamHandle(name: "c", param: c),
+                       ParamHandle(name: "d", param: d)]
+
+        let hidden = ParametersListView.hiddenIDs(in: handles)
+        #expect(hidden == ["b", "c"])
+        let sections = ParametersListView.visibleSections(of: handles, hiding: hidden)
+        #expect(sections.map(\.title) == ["Parameters", "Glow"])
+        #expect(sections[0].handles.map(\.id) == ["a"])
+
+        gate.wrappedValue = true
+        let all = ParametersListView.visibleSections(
+            of: handles, hiding: ParametersListView.hiddenIDs(in: handles))
+        #expect(all.map(\.title) == ["Parameters", "Glass", "Glow"])
+        #expect(all[1].handles.map(\.id) == ["b", "c"])
+    }
 }

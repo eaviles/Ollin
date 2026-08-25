@@ -732,6 +732,11 @@ public final class Param<Value: ParamValue>: @unchecked Sendable, FrameAdvancing
     }
     private let storage: OSAllocatedUnfairLock<Storage>
 
+    /// The show-rule, type-erased over its source knob, or `nil` while the row
+    /// always shows. Behind its own lock: `setup()` writes it once, and the
+    /// inspector reads it on the main thread while the value lock stays busy.
+    private let showRule = OSAllocatedUnfairLock<(@Sendable () -> Bool)?>(initialState: nil)
+
     /// The value kind's constraint payload: the range and optional step for a
     /// numeric parameter, `Void` for the kinds that need none.
     public let constraints: Value.Constraints
@@ -787,6 +792,35 @@ public final class Param<Value: ParamValue>: @unchecked Sendable, FrameAdvancing
             state.easeElapsed = .greatestFiniteMagnitude   // at rest
             state.filter?.reset(to: (v as? Double) ?? 0)
         }
+    }
+
+    /// Show this knob's inspector row only while `rule` passes for `other`'s
+    /// current value. While the rule fails, the row leaves the inspector, and a
+    /// group whose rows are all hidden drops its whole card. The value itself is
+    /// untouched: a hidden knob still holds, persists, and restores its value,
+    /// and any OSC/MIDI binding keeps driving it.
+    ///
+    /// Set the rule in `setup()`, reaching both knobs through `$`:
+    ///
+    /// ```swift
+    /// override func setup() {
+    ///     $toonBands.show(when: $shading) { $0 == .toon }
+    ///     $ior.show(when: $transmission) { $0 > 0 }
+    /// }
+    /// ```
+    ///
+    /// The rule captures the other parameter, never the sketch, so a live reload
+    /// swaps both out together. Calling this again replaces the rule.
+    public func show<Other: ParamValue>(when other: Param<Other>,
+                                        _ rule: @escaping @Sendable (Other) -> Bool) {
+        showRule.withLock { $0 = { rule(other.wrappedValue) } }
+    }
+
+    /// Whether the inspector should show this knob's row right now: `true`
+    /// unless a `show(when:_:)` rule is set and currently fails.
+    public var isShown: Bool {
+        guard let rule = showRule.withLock({ $0 }) else { return true }
+        return rule()
     }
 
     /// Set a new target. With no smoothing the value snaps; otherwise it begins
@@ -1042,6 +1076,9 @@ public protocol AnyParam: AnyObject, Sendable {
     var group: String? { get }
     /// The inspector control that edits this parameter (metadata + live get/set).
     var control: ParamControl { get }
+    /// Whether the inspector should show this parameter's row right now: `true`
+    /// unless a show-rule (`Param.show(when:_:)`) is set and currently fails.
+    var isShown: Bool { get }
     /// The current value in its host-persistable form.
     var stored: ParamStored { get }
     /// Jump straight to a persisted value with no glide; a payload of the wrong
@@ -1070,6 +1107,8 @@ public struct ParamHandle: Identifiable {
     public var icon: String? { param.icon }
     public var group: String? { param.group }
     public var control: ParamControl { param.control }
+    /// Whether the row belongs in the inspector right now (see `Param.show(when:_:)`).
+    public var isShown: Bool { param.isShown }
 
     /// "radius" -> "Radius", "noiseScale" -> "Noise Scale".
     static func humanize(_ name: String) -> String {

@@ -630,19 +630,32 @@ public struct ParametersListView: View {
 
     @SwiftUI.Environment(\.colorScheme) private var scheme
 
+    /// The rows whose show-rule currently fails, seeded at init and re-polled by
+    /// the body's task, so a rule flipping mid-run moves the list.
+    @State private var hiddenIDs: Set<String>
+
     public init(params: [ParamHandle], onChange: @escaping (String, ParamStored) -> Void = { _, _ in }) {
         self.params = params
         self.onChange = onChange
+        _hiddenIDs = State(initialValue: Self.hiddenIDs(in: params))
     }
 
     private var palette: OllinInspector.Palette { .resolve(scheme) }
 
-    /// The handles split into sections: the ungrouped knobs first (under the
-    /// default header), then each named group in order of first declaration.
-    private var sections: [(title: String, handles: [ParamHandle])] {
+    /// The ids of the rows whose `show(when:_:)` rule currently fails.
+    package nonisolated static func hiddenIDs(in params: [ParamHandle]) -> Set<String> {
+        Set(params.lazy.filter { !$0.isShown }.map(\.id))
+    }
+
+    /// The handles split into sections with the hidden rows left out: the
+    /// ungrouped knobs first (under the default header), then each named group
+    /// in order of first declaration. A group whose rows are all hidden drops
+    /// its whole card. Package-visible so tests can drive the split without a view.
+    package nonisolated static func visibleSections(of params: [ParamHandle], hiding hidden: Set<String>)
+        -> [(title: String, handles: [ParamHandle])] {
         var order: [String?] = []
         var byGroup: [String?: [ParamHandle]] = [:]
-        for handle in params {
+        for handle in params where !hidden.contains(handle.id) {
             if byGroup[handle.group] == nil { order.append(handle.group) }
             byGroup[handle.group, default: []].append(handle)
         }
@@ -653,6 +666,10 @@ public struct ParametersListView: View {
         return order.map { ($0 ?? "Parameters", byGroup[$0]!) }
     }
 
+    private var sections: [(title: String, handles: [ParamHandle])] {
+        Self.visibleSections(of: params, hiding: hiddenIDs)
+    }
+
     public var body: some View {
         if params.isEmpty {
             section(title: "Parameters") { emptyState }
@@ -660,6 +677,16 @@ public struct ParametersListView: View {
             VStack(alignment: .leading, spacing: 14) {
                 ForEach(sections, id: \.title) { group in
                     section(title: group.title) { card(for: group.handles) }
+                }
+            }
+            // The visibility poll, on the rows' own 100ms sync-pull cadence.
+            // Keyed on the handle identities so a reload's fresh params restart
+            // it (the old task would keep reading the swapped-out sketch's knobs).
+            .task(id: params.map { ObjectIdentifier($0.param) }) {
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .milliseconds(100))
+                    let hidden = Self.hiddenIDs(in: params)
+                    if hidden != hiddenIDs { hiddenIDs = hidden }
                 }
             }
         }

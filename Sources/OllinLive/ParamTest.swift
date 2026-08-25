@@ -120,6 +120,15 @@ enum ParamTest {
         check(subject.style == .meshLines, "menu write not reflected")
         check(menu.get() == 2, "menu selection readback wrong")
 
+        // Show-rules: a knob hides while its source knob keeps it inert, and the
+        // inspector reads the flag through the same type-erased face.
+        check(params[1].isShown, "isShown should default to true")
+        subject.$noiseScale.show(when: subject.$visible) { $0 }
+        check(!params[1].isShown, "the rule should hide while the gate is off")
+        subject.visible = true
+        check(params[1].isShown, "the rule should show once the gate is on")
+        subject.visible = false      // restore for the stored round-trip below
+
         // The stored round-trip the hosts persist across reloads.
         let fresh = Subject()
         for handle in fresh.parameters() {
@@ -138,7 +147,7 @@ enum ParamTest {
         check(fresh.radius == 0, "mismatched restore should be ignored")
 
         print("ParamTest: PASS. \(params.count) params discovered; labels, groups, "
-            + "clamping, steps, typed controls, and stored round-trips correct.")
+            + "clamping, steps, typed controls, show-rules, and stored round-trips correct.")
         exit(0)
     }
 

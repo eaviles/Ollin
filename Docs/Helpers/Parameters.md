@@ -24,6 +24,7 @@ final class Pulse: Sketch {
 
 - [The typed family](#family)
 - [Groups and icons](#groups)
+- [Show-rules: knobs that come and go](#show-rules)
 - [Where the controls appear](#controls)
 - [Scrubbing values](#scrubbing)
 - [Smoothing](#smoothing)
@@ -102,6 +103,23 @@ Every form takes an optional `icon:` and `group:`:
 ```
 
 `group:` names an inspector section, so each group renders as its own titled card, in the order groups first appear in the sketch. Knobs without a group lead the list under the default "Parameters" header. `icon:` is an SF Symbol name shown leading the row, and rows without one stay aligned when the card mixes both.
+
+<a name="show-rules"></a>
+
+### Show-rules: knobs that come and go
+
+A sketch with many knobs often has some that only matter while another knob turns them on. A toon band count means nothing outside toon shading, and a glass thickness does nothing at transmission zero. A show-rule hides such a row until its moment. Set it in `setup()`, reaching both knobs through `$`:
+
+```swift
+override func setup() {
+    $toonBands.show(when: $shading) { $0 == .toon }
+    $thickness.show(when: $transmission) { $0 > 0 }
+}
+```
+
+The rule reads the other knob's current value, and the inspector re-checks it while the sketch runs. Turn transmission up and the thickness row appears. Turn it back to zero and the row leaves. A group whose rows are all hidden drops its whole card, so a mode switch can swap entire sections in and out.
+
+Hiding is a display matter only. A hidden knob still holds its value, persists it across reloads, restores it, and keeps following an OSC or MIDI binding. Calling `show(when:_:)` again replaces the rule, and a knob without one always shows. The [Materials Explorer example](../../Examples/3D/Materials/Explorer/Sketch.swift) uses show-rules across its whole panel, one rule per dependent finish scalar.
 
 <a name="controls"></a>
 
