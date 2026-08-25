@@ -450,6 +450,9 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         default:
             break
         }
+        // A key pressed while the display link is held must speak right away;
+        // the next frame pass (if one comes) repeats this harmlessly.
+        updateReplayTitle(player)
     }
 
     /// Land a pending scrub: rewind when the target is behind, then re-simulate
@@ -503,7 +506,20 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         if let player = sketch.takePlayer {
             if player.isPastEnd(sketch.frameCount) { replayPaused = true }
             if replayPaused, pendingScrubTarget == nil { view.isPaused = true }
+            updateReplayTitle(player)
         }
+    }
+
+    /// The transport's face: during a replay the window title carries the
+    /// position and the state, so a frame with nothing drawn on it can never
+    /// read as a dead window.
+    private func updateReplayTitle(_ player: TakePlayer) {
+        guard let window = view?.window else { return }
+        let total = max(player.take.frameCount, 1)
+        let pct = min(100, Int((Double(sketch.frameCount) / Double(total) * 100).rounded()))
+        let state = sketch.frameCount >= total ? "end, space starts over"
+                  : replayPaused ? "paused" : "playing"
+        window.title = "\(sketch.title) - replay \(pct)% | \(state)"
     }
 
     public init(sketch: Sketch, view: MTKView, device: MTLDevice) {
