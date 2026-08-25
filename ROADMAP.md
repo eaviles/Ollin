@@ -91,7 +91,6 @@ Ways a sketch leaves the window:
 
 - **Haptics.** A `draw()` that also emits a felt pattern synced to the visuals, on Force Touch trackpads and on the phone.
 - **The OS as a canvas.** Wrap a sketch as a dynamic wallpaper, a desktop widget, or a menu-bar piece, so the output lives in the system rather than a window.
-- **G-code**, so the fabrication path reaches the machines that read it directly: CNC routers, laser cutters, and the pen plotters driven that way rather than through SVG.
 
 See the [design notes](DESIGN-NOTES.md#new-output-surfaces).
 

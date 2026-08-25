@@ -151,7 +151,8 @@ private func paintTone(_ paint: Paint) -> Color {
 
 /// A fill's outline as one or more closed contours in its local space, or `nil`
 /// when the geometry has no fillable region (lines, curves, open polylines).
-private func fillContours(_ geometry: SVGGeometry) -> (contours: [[Vector2]], winding: FillWinding)? {
+/// Shared with the G-code flattener (GCodeExport.swift).
+func fillContours(_ geometry: SVGGeometry) -> (contours: [[Vector2]], winding: FillWinding)? {
     switch geometry {
     case let .ellipse(center, rx, ry):
         let n = max(48, Int((max(rx, ry) * 0.8).rounded(.up)))
@@ -205,13 +206,6 @@ private func toneSpacing(_ base: Double, _ fill: Color) -> Double? {
 /// A fully-opaque copy of a color — the hatch lines are solid pen strokes; their
 /// spacing, not their alpha, carries the fill's tone.
 private func opaque(_ c: Color) -> Color { Color(red: c.red, green: c.green, blue: c.blue) }
-
-/// Apply a 2D homogeneous CTM to a point (the same `M · (x, y, 1)` the renderer
-/// uses), in `Double`.
-private func transformed(_ p: Vector2, _ m: simd_float3x3) -> Vector2 {
-    let v = m * SIMD3<Float>(Float(p.x), Float(p.y), 1)
-    return Vector2(Double(v.x), Double(v.y))
-}
 
 // MARK: - Serialization
 
@@ -654,6 +648,14 @@ extension OllinApp {
                                recipe: ExportMetadata.capture(from: sketch, frame: frame, fps: fps).recipe,
                                description: sketch.accessibleDescription)
     }
+}
+
+public extension Sketch {
+    /// True while this frame is being recorded for a vector export (SVG, PDF,
+    /// or G-code) rather than rendered to the screen. A sketch that previews
+    /// its own plot can read it to keep the preview chrome (a pen marker, a
+    /// caption, the travel overlay) out of the plotted line work.
+    var isVectorExporting: Bool { OllinApp.isVectorExporting }
 }
 
 // MARK: - OllinApp entry points

@@ -2370,6 +2370,7 @@ public extension OllinApp {
     /// Handle the shared headless command-line surface (the export flags
     /// `--export`, `--export-sequence`, `--export-video`, `--export-gif`,
     /// `--export-loop`, `--export-spatial`, `--export-svg`, `--export-pdf`,
+    /// `--export-gcode`,
     /// `--export-usdz`, `--export-grid`, `--export-sweep`,
     /// `--export-separations` with their options, `--seed` on any of them,
     /// `--replay` to drive any of them from a recorded take, plus `--bench`)
@@ -2764,12 +2765,15 @@ public extension OllinApp {
         }
         // `swift run Example-X --export-svg <path> [--frame N]` writes a vector SVG
         // of one frame and exits (no window, no GPU); `--export-pdf <path>` writes
-        // the same recorded frame as a single-page PDF (both may be passed at
+        // the same recorded frame as a single-page PDF; `--export-gcode <path>`
+        // writes it as a G-code program (`--gcode-machine plotter|laser|mill`,
+        // `--gcode-width MM`, `--gcode-margin MM`; any two may be passed at
         // once). Add `--hatch` (or `--cross-hatch`) to plot solid fills as pen
         // line work: `--hatch-spacing N` and `--hatch-angle DEG` tune it.
         let svgFlag = args.firstIndex(of: "--export-svg")
         let pdfFlag = args.firstIndex(of: "--export-pdf")
-        if svgFlag != nil || pdfFlag != nil {
+        let gcodeFlag = args.firstIndex(of: "--export-gcode")
+        if svgFlag != nil || pdfFlag != nil || gcodeFlag != nil {
             func value(_ flag: String) -> String? {
                 guard let j = args.firstIndex(of: flag), j + 1 < args.count else { return nil }
                 return args[j + 1]
@@ -2793,9 +2797,23 @@ public extension OllinApp {
                 OllinApp.exportPDF(make(), to: args[i + 1], frame: frame, hatching: hatching)
                 handled = true
             }
+            if let i = gcodeFlag, i + 1 < args.count {
+                let machine: GCode.Machine
+                switch value("--gcode-machine") ?? "plotter" {
+                case "laser": machine = .laser()
+                case "mill": machine = .mill()
+                default: machine = .plotter()
+                }
+                let width = value("--gcode-width").flatMap(Double.init) ?? 150
+                let margin = value("--gcode-margin").flatMap(Double.init) ?? 0
+                let settings = GCode(machine, width: width, margin: margin)
+                OllinApp.exportGCode(make(), to: args[i + 1], settings: settings,
+                                     frame: frame, hatching: hatching)
+                handled = true
+            }
             if !handled {
                 FileHandle.standardError.write(Data(
-                    "usage: --export-svg <path.svg> | --export-pdf <path.pdf> [--frame N] [--hatch | --cross-hatch] [--hatch-spacing N] [--hatch-angle DEG]\n".utf8))
+                    "usage: --export-svg <path.svg> | --export-pdf <path.pdf> | --export-gcode <path.gcode> [--frame N] [--gcode-machine plotter|laser|mill] [--gcode-width MM] [--gcode-margin MM] [--hatch | --cross-hatch] [--hatch-spacing N] [--hatch-angle DEG]\n".utf8))
             }
             return true
         }

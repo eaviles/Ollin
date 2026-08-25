@@ -190,6 +190,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 - [`Path-traced export`](./Output/PathTraced.md) - `--path-traced`: render the same 3D scene offline by tracing light paths, for soft shadows, color bleed, mirror-in-mirror reflections, and a real lens
 - [`Recording`](./Output/Recording.md) - record a live run as it happens, picture and the sketch's own sound (or the room) in one movie, in real time
 - [`Fabrication`](./Output/Fabrication.md) - write a `Mesh` as STL, OBJ, or 3MF for 3D printing, with real units and a printability check
+- [`G-code`](./Output/GCode.md) - write a frame's line work as a program a pen plotter, laser cutter, or CNC router runs directly
 - [`Installation`](./Output/Installation.md) - leave a piece running for days: full screen, no pointer, a clock that survives a week, a watch that starts it again, and the building's hours
 - [`Screen saver`](./Output/ScreenSaver.md) - wrap a sketch as the machine's screen saver: one command writes the project, one script installs it, and the sketch stays an ordinary sketch
 - [`Print separations`](./Output/PrintSeparations.md) - split a sketch into per-ink grayscale masters for risograph and screen printing, with an overprint preview and registration marks

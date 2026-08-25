@@ -83,6 +83,7 @@ let package = Package(
         example("Export/Record", [.audio]),
         example("Export/VectorExport"),
         example("Export/Hatching"),
+        example("Export/Toolpath"),
         example("Installation/Unattended"),
         example("Installation/Resuming"),
         example("Installation/Watched"),
