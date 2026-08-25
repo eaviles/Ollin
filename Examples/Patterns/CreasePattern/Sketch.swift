@@ -102,7 +102,7 @@ final class CreasePatternSketch: Sketch {
     }
 
     private func depth(of panel: [Vector3]) -> Double {
-        panel.reduce(0) { $0 + $1.x + $1.y } / Double(panel.count)
+        panel.reduce(0) { $0 + $1.x + $1.y + $1.z } / Double(panel.count)
     }
 
     // MARK: - The kirigami sheet

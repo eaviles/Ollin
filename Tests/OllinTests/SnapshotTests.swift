@@ -8903,7 +8903,8 @@ private final class CreasePatternScene: Sketch {
         let light = Vector3(-0.35, -0.55, 0.76).normalized
         strokeWeight(0.6)
         for index in panels.indices.sorted(by: {
-            panels[$0].reduce(0) { $0 + $1.x + $1.y } < panels[$1].reduce(0) { $0 + $1.x + $1.y }
+            panels[$0].reduce(0) { $0 + $1.x + $1.y + $1.z }
+                < panels[$1].reduce(0) { $0 + $1.x + $1.y + $1.z }
         }) {
             let corners = Array(placed[(index * 4) ..< (index * 4 + 4)])
             let normal = (panels[index][1] - panels[index][0])
