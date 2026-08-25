@@ -1,4 +1,4 @@
-// figure: frame=0 probe
+// figure: frame=0 probe themed
 //
 // Guide diagram (Chapter 31): every way a sketch leaves the machine. Files on
 // one side (still, sequence, video, GIF, SVG), live feeds on the other
@@ -9,17 +9,20 @@ import Ollin
 final class ExportMap: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.45)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.6)
-    let accent = Color(hex: 0xE4572E)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.45) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.6) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
 
         // The sketch, in the middle.
         let hub = Rectangle(x: 342, y: 220, width: 196, height: 92)
-        fill(.white)
+        fill(darkTheme ? Color(hex: 0x2A2724) : .white)
         stroke(accent)
         strokeWeight(2.5)
         drawRect(hub, cornerRadius: 12)
@@ -66,7 +69,7 @@ final class ExportMap: Sketch {
     }
 
     func node(x: Double, y: Double, name: String, detail: String) {
-        fill(.white)
+        fill(darkTheme ? Color(hex: 0x2A2724) : .white)
         stroke(faint)
         strokeWeight(1.5)
         drawRect(x, y, 196, 52, cornerRadius: 9)

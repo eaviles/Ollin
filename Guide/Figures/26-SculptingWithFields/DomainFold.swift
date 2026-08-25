@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide contact sheet (Chapter 26): domain operators fold space, so one
 // shape becomes many for free: a mirror, a tiling, and a radial fan of the
@@ -8,8 +8,13 @@ import Ollin
 final class DomainFold: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         noStroke()
 
         let coral = Color(hex: 0xE4572E)
@@ -29,7 +34,6 @@ final class DomainFold: Sketch {
             ("repeatedRadially(9)", petal.at(x: 82, y: 0).repeatedRadially(count: 9)),
         ]
 
-        let ink = Color(hex: 0x2B2B2B)
         for (i, tile) in tiles.enumerated() {
             let cx = 150.0 + Double(i) * 290
             withState {

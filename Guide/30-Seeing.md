@@ -34,7 +34,10 @@ Run it and you're on the canvas. `drawFrame(camera)` draws the latest frame lett
 
 Seeing more than pixels is the job of the **trackers**. Each one attaches to a frame source and runs one kind of perception over its frames, publishing typed results your sketch reads every frame:
 
-<img src="Images/30-Seeing/TrackerFlow.jpg" alt="A diagram of three boxes: Camera producing frames, FaceTracker analyzing in the background, and typed results read in draw. Below, two panels show a normalized lower-left-origin point mapping into the drawn frame's rectangle" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/30-Seeing/TrackerFlow-dark.jpg">
+  <img src="Images/30-Seeing/TrackerFlow.jpg" alt="A diagram of three boxes: Camera producing frames, FaceTracker analyzing in the background, and typed results read in draw. Below, two panels show a normalized lower-left-origin point mapping into the drawn frame's rectangle" width="680">
+</picture>
 
 ```swift
 final class Faces: Sketch {
@@ -70,7 +73,10 @@ The first family reads whoever stands in front of the camera. It starts with nam
 
 Three trackers carry most interactive pieces, and they all speak in named parts:
 
-<img src="Images/30-Seeing/Landmarks.jpg" alt="Three panels: a hand skeleton of 21 dots wired finger by finger, a face of 76 dots grouped into contour, brows, eyes, nose and lips regions, and a body skeleton of 19 dots" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/30-Seeing/Landmarks-dark.jpg">
+  <img src="Images/30-Seeing/Landmarks.jpg" alt="Three panels: a hand skeleton of 21 dots wired finger by finger, a face of 76 dots grouped into contour, brows, eyes, nose and lips regions, and a body skeleton of 19 dots" width="680">
+</picture>
 
 **`HandTracker`** finds up to two hands, and `maximumHandCount:` asks for more. Each is a `Hand` of 21 joints, the wrist plus four joints per finger, base to tip. `hand.point(.indexTip, in: rect)` is a fingertip as a canvas point. `finger(.index, in: rect)` gives one finger as a polyline, and `bones(in: rect)` the whole skeleton as line segments. Gestures fall out of arithmetic on a few joints. Thumb tip near index tip is a pinch. Five spread tips are an open hand. The index tip alone is a cursor that needs no mouse.
 
@@ -123,13 +129,19 @@ Two more trackers see *qualities* of the picture rather than things in it, and b
 
 **`ContourDetector`** traces the boundaries between dark and light into closed vector contours, and hands them back as [Chapter 15](15-ShapesAsMaterial.md)'s `Shape`s, holes and all:
 
-<img src="Images/30-Seeing/Contours.jpg" alt="Two panels: a black ink study of merged blobs beside a ring, and the same forms traced as orange vector outlines with the ring's hole preserved" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/30-Seeing/Contours-dark.jpg">
+  <img src="Images/30-Seeing/Contours.jpg" alt="Two panels: a black ink study of merged blobs beside a ring, and the same forms traced as orange vector outlines with the ring's hole preserved" width="680">
+</picture>
 
 The picture on the left was built pixel by pixel by the committed figure, standing in for a camera frame. The shapes on the right are what `ContourDetector.detect(in:)` traced out of it. Once a camera frame is `Shape`s, everything from [Chapter 15](15-ShapesAsMaterial.md) applies. Boolean it, offset it, hatch it, warp it, or export it as SVG for a plotter. A webcam pointed at high-contrast subjects becomes a live vectorizer.
 
 **`FlowTracker`** measures **optical flow**, meaning how every part of the picture moved since the previous frame. [Chapter 14](14-FieldsAndFlow.md) taught fields as "an answer at every point", and this is that exact idea. The difference is that the answers are measured from the world, not computed from noise:
 
-<img src="Images/30-Seeing/FlowArrows.jpg" alt="Two panels: a dark frame holding two pale speckled hands, and the same frame with orange arrows on one hand showing its measured motion. The other hand, mid-turnaround, gets no arrows" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/30-Seeing/FlowArrows-dark.jpg">
+  <img src="Images/30-Seeing/FlowArrows.jpg" alt="Two panels: a dark frame holding two pale speckled hands, and the same frame with orange arrows on one hand showing its measured motion. The other hand, mid-turnaround, gets no arrows" width="680">
+</picture>
 
 ```swift
 lazy var flow = FlowTracker(camera)
@@ -147,7 +159,10 @@ Motion is only measurable where the picture has texture. A featureless area, a b
 
 The next three trackers aren't looking for people. They look for the flat printed things the world is full of, and none of them needs Apple silicon. Two are classical computer vision with no neural model at all, and the third, the text reader, runs on a model every Mac already has.
 
-<img src="Images/30-Seeing/ReadingACard.jpg" alt="Two panels: a printed card lying at an angle on a speckled desk, and the same picture with an orange quad on the card's four corners and dark boxes around the two lines of type" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/30-Seeing/ReadingACard-dark.jpg">
+  <img src="Images/30-Seeing/ReadingACard.jpg" alt="Two panels: a printed card lying at an angle on a speckled desk, and the same picture with an orange quad on the card's four corners and dark boxes around the two lines of type" width="680">
+</picture>
 
 **`RectangleDetector`** finds rectangular things, a sheet of paper, a screen, a card on a desk, and reports each one's four corners. It works on them at an angle, so the corners come back in perspective rather than as an upright box. That is what a document scanner needs to flatten a page.
 
@@ -217,7 +232,10 @@ It asks two things of you. Hold the camera still, because a moving camera turns 
 
 Two trackers answer a question about the whole picture rather than finding things inside it. Both are neural models, so both want Apple silicon.
 
-<img src="Images/30-Seeing/AttentionAndLabels.jpg" alt="Two panels: a dimmed picture of the card with an orange saliency glow concentrated on the word SEEING, and a bar chart with document and printed page at 21 percent reaching past a dashed line, and six fainter labels below it starting with sticky note at 8 percent" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/30-Seeing/AttentionAndLabels-dark.jpg">
+  <img src="Images/30-Seeing/AttentionAndLabels.jpg" alt="Two panels: a dimmed picture of the card with an orange saliency glow concentrated on the word SEEING, and a bar chart with document and printed page at 21 percent reaching past a dashed line, and six fainter labels below it starting with sticky note at 8 percent" width="680">
+</picture>
 
 **`ImageClassifier`** names what's in view, from a fixed vocabulary of about 1,300 everyday words. It reports no positions at all, only labels and how confident it is about each. That is the right shape for a sketch that reacts to its surroundings instead of drawing on top of them.
 
@@ -365,7 +383,10 @@ Now the part worth playing with. Point a sketch at the screen it is drawn on and
 screen.excludesOwnWindows = false
 ```
 
-<img src="Images/30-Seeing/ScreenAsMaterial.jpg" alt="Two panels of a stand-in desktop. Left, a clean capture of a wallpaper with two windows. Right, the same capture with an Ollin sketch window on it showing the same picture, nested four levels deep" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/30-Seeing/ScreenAsMaterial-dark.jpg">
+  <img src="Images/30-Seeing/ScreenAsMaterial.jpg" alt="Two panels of a stand-in desktop. Left, a clean capture of a wallpaper with two windows. Right, the same capture with an Ollin sketch window on it showing the same picture, nested four levels deep" width="680">
+</picture>
 
 That is video feedback, the thing people have been getting by pointing a camera at a monitor since the 1960s. Here it costs one boolean. How deep it goes depends on how fast the sketch draws relative to the capture. It smears and drifts as you move the window, which is the good part. (The figure uses a made-up desktop rather than a real capture, since no committed figure could reproduce your screen. The nesting is what the live one does.)
 
@@ -392,7 +413,10 @@ override func draw() {
 
 The closure is the whole idea. It receives a pixel's position as fractions across the picture, and returns how far back to read there. In that answer, 0 is the newest frame and 1 is the oldest one still held. Returning `uv.x` means the left edge shows a moment ago and the right edge shows now, so time runs left to right across the image.
 
-<img src="Images/30-Seeing/SlitScanDelay.jpg" alt="Two panels: a synthetic clip's newest frame showing horizontal stripes with one bright horizontal band, and the slit-scanned version where that band has become a clean diagonal and the stripes have sheared" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/30-Seeing/SlitScanDelay-dark.jpg">
+  <img src="Images/30-Seeing/SlitScanDelay.jpg" alt="Two panels: a synthetic clip's newest frame showing horizontal stripes with one bright horizontal band, and the slit-scanned version where that band has become a clean diagonal and the stripes have sheared" width="680">
+</picture>
 
 The figure uses a made-up clip rather than a webcam so it can be reproduced, and it shows what the delay actually does. A bright band that was sweeping down the frame becomes a diagonal line, because each column caught it at a different height. Any delay map works, so `1 - uv.y` puts now at the bottom, and `dist(uv.x, uv.y, 0.5, 0.5) / 0.71` makes time ripple outward from the center. There's also a form that takes an `Image` as the delay map, which means you can paint where time runs slow.
 

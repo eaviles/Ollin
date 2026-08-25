@@ -29,7 +29,10 @@ let weathered = land
     .eroded(.thermal(talus: 0.012, iterations: 30))
 ```
 
-<img src="Images/23-Landscapes/Erosion.jpg" alt="Three grayscale heightmaps: raw diamond-square noise with soft blobby light and dark regions, the same field after rain with branching valleys carved through it, and after gravity with those valley walls slightly settled" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/23-Landscapes/Erosion-dark.jpg">
+  <img src="Images/23-Landscapes/Erosion.jpg" alt="Three grayscale heightmaps: raw diamond-square noise with soft blobby light and dark regions, the same field after rain with branching valleys carved through it, and after gravity with those valley walls slightly settled" width="680">
+</picture>
 
 `.hydraulic` drops tens of thousands of simulated raindrops on the terrain. Each one lands somewhere random and rolls downhill. It picks up sediment while it's moving fast, and drops that sediment again as it slows down or dries out. No single drop does much. Fifty thousand of them agree with each other about where the valleys are. Branching drainage networks appear that no amount of layered noise will give you. The middle panel above is the whole argument for the technique.
 
@@ -53,7 +56,10 @@ for river in water.rivers(minimumFlow: 140, in: mapFrame) {
 }
 ```
 
-<img src="Images/23-Landscapes/WhereWaterGoes.jpg" alt="Three panels of one landscape. On the left a faint contour map with a branching blue river network over it, thickening downstream. In the middle the same ground split into colored basins that meet along ridges. On the right the flow as a red field, every crease of the terrain lit up" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/23-Landscapes/WhereWaterGoes-dark.jpg">
+  <img src="Images/23-Landscapes/WhereWaterGoes.jpg" alt="Three panels of one landscape. On the left a faint contour map with a branching blue river network over it, thickening downstream. In the middle the same ground split into colored basins that meet along ridges. On the right the flow as a red field, every crease of the terrain lit up" width="680">
+</picture>
 
 Nothing in there decides where a river should go. Water on any cell runs to whichever of its eight neighbors is steepest downhill, and the flow through a cell is the count of every cell that ends up running through it. A cell joins the network once enough ground drains through it. The branching is the ground's, which is why it looks like branching you have seen.
 

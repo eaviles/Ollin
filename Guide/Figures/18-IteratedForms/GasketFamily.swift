@@ -1,4 +1,4 @@
-// figure: frame=0 probe
+// figure: frame=0 probe themed
 //
 // Guide diagram (Chapter 18): four members of the two-generator trace family,
 // drawn as circle orbits. The gasket at traces (2, 2), two complex-trace
@@ -10,10 +10,13 @@ final class GasketFamily: Sketch {
     override var canvasSize: CanvasSize { .size(880, 960) }
 
     let night = Color(hex: 0x0C0F16)
-    let paper = Color(hex: 0xF7F5F1)
-    let ink = Color(hex: 0x2B2B2B)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.12)
     let lace = Color(hex: 0xE8C97D)
+
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
 
     override func draw() {
         background(paper)

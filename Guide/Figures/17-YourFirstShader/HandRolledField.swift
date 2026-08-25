@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide figure (Chapter 17): a pattern field written by hand, next to the
 // built-in it imitates. The gyroid really is one line of sin and cos products,
@@ -8,6 +8,11 @@ import Ollin
 
 final class HandRolledField: Sketch {
     override var canvasSize: CanvasSize { .size(880, 500) }
+
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
 
     // The gyroid: a surface defined by one implicit equation. Reading it at a
     // fixed z is a flat slice through it, and the bands are where the equation
@@ -23,7 +28,7 @@ final class HandRolledField: Sketch {
     """)
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
 
         let tile = 396
         let panels: [(String, Image)] = [
@@ -38,7 +43,7 @@ final class HandRolledField: Sketch {
             drawImage(panel.1, in: Rectangle(x: x, y: 22, width: Double(tile),
                                              height: Double(tile)))
             noStroke()
-            fill(Color(hex: 0x2B2B2B, alpha: 0.62))
+            fill(ink.withAlpha(0.62))
             textSize(17)
             textAlign(.center, .top)
             drawText(panel.0, x + Double(tile) / 2, 22 + Double(tile) + 10)

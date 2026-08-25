@@ -13,7 +13,10 @@ land = land.eroded(.hydraulic())          // rain carves ravines and fans
 drawMesh(land.mesh(width: 10, depth: 10, height: 2.2))
 ```
 
-<img src="../../Guide/Images/23-Landscapes/Erosion.jpg" alt="Three grayscale heightmaps: raw diamond-square noise with soft blobby light and dark regions, the same field after rain with branching valleys carved through it, and after gravity with those valley walls slightly settled" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/23-Landscapes/Erosion-dark.jpg">
+  <img src="../../Guide/Images/23-Landscapes/Erosion.jpg" alt="Three grayscale heightmaps: raw diamond-square noise with soft blobby light and dark regions, the same field after rain with branching valleys carved through it, and after gravity with those valley walls slightly settled" width="680">
+</picture>
 
 ### Contents
 

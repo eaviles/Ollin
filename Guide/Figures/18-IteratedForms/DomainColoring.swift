@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide figure (Chapter 18): domain coloring. The color wheel itself, painted by
 // the function that hands back its own input; a zero and a pole side by side,
@@ -9,8 +9,13 @@ import Ollin
 final class DomainColoring: Sketch {
     override var canvasSize: CanvasSize { .size(880, 386) }
 
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
 
         let tile = 268, gap = 12.0
         let left = (width - Double(tile) * 3 - gap * 2) / 2
@@ -55,7 +60,7 @@ final class DomainColoring: Sketch {
             }
 
             noStroke()
-            fill(Color(hex: 0x2B2B2B, alpha: 0.62))
+            fill(ink.withAlpha(0.62))
             textSize(16)
             textAlign(.center, .top)
             drawText(panel.0, rect.x + rect.width / 2, rect.y + rect.height + 8)

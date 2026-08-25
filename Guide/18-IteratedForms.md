@@ -18,7 +18,10 @@ A word on where this sits. [Chapter 13](13-GrowingThings.md) grew things that sp
 
 Take four rules, each of which squashes, tilts, and shifts the entire plane. One draws the fern's main body slightly smaller and rotated. One draws the left frond, one the right, one the stem. Now put a dot anywhere at all, pick one of the four rules at random, move the dot by it, and mark where it lands. Then do that again, sixty thousand times.
 
-<img src="Images/18-IteratedForms/ChaosGame.jpg" alt="Three panels of the Barnsley fern from the chaos game, at 400 jumps a loose dust that vaguely suggests a leaf, at 6,000 a recognizable fern, and at 80,000 a dense one with every frond resolved" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/18-IteratedForms/ChaosGame-dark.jpg">
+  <img src="Images/18-IteratedForms/ChaosGame.jpg" alt="Three panels of the Barnsley fern from the chaos game, at 400 jumps a loose dust that vaguely suggests a leaf, at 6,000 a recognizable fern, and at 80,000 a dense one with every frond resolved" width="680">
+</picture>
 
 ```swift
 let cloud = ifsPoints(.barnsleyFern, count: 60_000)
@@ -38,7 +41,10 @@ Two small practical notes come with it. The points arrive in the system's own co
 
 The same move (play transformations at random, see where the orbit lives) generalizes further than ferns, and Ollin ships four of the places it goes.
 
-<img src="Images/18-IteratedForms/FractalFamily.jpg" alt="Three dark panels: a fractal flame in orange and blue smoke, a golden lace of dust sitting among five faint tangent circles, and a pale blue closed curve that spirals into itself at every scale" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/18-IteratedForms/FractalFamily-dark.jpg">
+  <img src="Images/18-IteratedForms/FractalFamily.jpg" alt="Three dark panels: a fractal flame in orange and blue smoke, a golden lace of dust sitting among five faint tangent circles, and a pale blue closed curve that spirals into itself at every scale" width="680">
+</picture>
 
 A **fractal flame** is the chaos game with two additions. Each rule finishes with a nonlinear twist, a swirl or a fold or a turning-inside-out. Instead of plotting dots, you have every pixel *count* how many times the orbit visited it. Displaying the logarithm of those counts is what lets the blazing core and the faintest veil appear in one image. The color comes from which rules carried the orbit there, rather than from where it landed.
 
@@ -61,7 +67,10 @@ renderer.accumulate(samples: 20_000)
 drawImage(renderer.image(), in: canvasRectangle)
 ```
 
-<img src="Images/18-IteratedForms/BuddhaPlate.jpg" alt="Two dark panels of the Buddhabrot. On the left a grayscale density plate of the seated figure; on the right the same figure in false color, a blue haze around a gold and red core" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/18-IteratedForms/BuddhaPlate-dark.jpg">
+  <img src="Images/18-IteratedForms/BuddhaPlate.jpg" alt="Two dark panels of the Buddhabrot. On the left a grayscale density plate of the seated figure; on the right the same figure in false color, a blue haze around a gold and red core" width="680">
+</picture>
 
 The `iterations` list does the coloring. Give it a single cap and the plate develops in gray. Give it three and the red, green, and blue channels expose at different orbit lengths, so color reads as orbit depth. A plate this deep resolves over many frames, the same way the flame does. Feed the `Renderer` a slice of samples per frame and let the figure rise. `Examples/Patterns/Buddhabrot` leaves one running.
 
@@ -89,7 +98,10 @@ Those Möbius maps have a second use, and this one hands you circles rather than
 
 Start with four circles and pair them up, two and two. A pairing is the map that turns everything outside one circle into the inside of its partner. Whatever you give it comes back smaller, and sitting in the partner. Hand a pairing the other three circles and you get three smaller circles nested inside one of them. Do it again with every pairing and its inverse, in every order, and those nest again, forever. The group you have built is a **Schottky group**, and the lace it leaves behind is that whole group drawn at once.
 
-<img src="Images/18-IteratedForms/CirclesPairOff.jpg" alt="Three dark panels: four circles in two colored pairs touching at two points, then the same circles with a first generation of pale circles nested inside them, then the full lace with a bright ring of cusps" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/18-IteratedForms/CirclesPairOff-dark.jpg">
+  <img src="Images/18-IteratedForms/CirclesPairOff.jpg" alt="Three dark panels: four circles in two colored pairs touching at two points, then the same circles with a first generation of pale circles nested inside them, then the full lace with a bright ring of cusps" width="680">
+</picture>
 
 ```swift
 let pairings = schottkyCuspedPairs(in: canvasRectangle.inset(by: .all(60)))
@@ -105,7 +117,10 @@ What comes back is `[Circle]`, not a cloud of points. A Möbius map sends a circ
 
 The circles and the Kleinian curves are two views of one thing, and the bridge between them is a pair of numbers. `schottkyCircles(ta:tb:in:)` takes the same two traces that `kleinianLimitSet` takes, and builds the same group. It draws the whole orbit as circles, instead of tracing its boundary as a curve. At traces `(2, 2)` the orbit is the Apollonian gasket. Every nearby pair of traces is another member of the same family. Bend the traces complex and the packing wobbles, or loosen them and it opens.
 
-<img src="Images/18-IteratedForms/GasketFamily.jpg" alt="Four dark panels of golden circle lace: the Apollonian gasket packing, two wobbled variations of it, and a looser open version, each labeled with its pair of traces" width="560">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/18-IteratedForms/GasketFamily-dark.jpg">
+  <img src="Images/18-IteratedForms/GasketFamily.jpg" alt="Four dark panels of golden circle lace: the Apollonian gasket packing, two wobbled variations of it, and a looser open version, each labeled with its pair of traces" width="560">
+</picture>
 
 ```swift
 noFill()
@@ -155,7 +170,10 @@ let room = Billiard(.circle(Circle(center: middle, radius: 380)))
 drawPolyline(room.path(from: start, heading: 0.7, bounces: 400))
 ```
 
-<img src="Images/18-IteratedForms/BallInARoom.jpg" alt="Four rooms with a bouncing path drawn in each. A circle holds a star-like rosette with a clean round hole in the middle. An ellipse holds a woven band that never reaches either end. A stadium and a square with a round post in it are both filled edge to edge with scribble" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/18-IteratedForms/BallInARoom-dark.jpg">
+  <img src="Images/18-IteratedForms/BallInARoom.jpg" alt="Four rooms with a bouncing path drawn in each. A circle holds a star-like rosette with a clean round hole in the middle. An ellipse holds a woven band that never reaches either end. A stadium and a square with a round post in it are both filled edge to edge with scribble" width="680">
+</picture>
 
 Nothing changes across those four panels except the wall, and the pictures are not related.
 
@@ -184,7 +202,10 @@ drawImage(generate(.mandelbrot(phase: time * 0.03)).image, 0, 0)
 
 Here is the entire method. Every pixel stands for a complex number, and the pixel runs one tiny loop of its own. Square the number you have, add a fixed one, and repeat. Some starting points stay near home forever. Others eventually run away to infinity, and the only thing the fractal records is **how many steps that took**. That count, turned into a color, is the picture. The regions that never escape are the set itself, painted in `interior`.
 
-<img src="Images/18-IteratedForms/FractalPair.jpg" alt="Three panels in blue, gold, and cream. The whole Mandelbrot set with a small red circle marking a point on the edge of its left bulb; a Julia set of dense spiral filigree; and a deep zoom into the Mandelbrot boundary showing the same shapes recurring at a smaller scale" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/18-IteratedForms/FractalPair-dark.jpg">
+  <img src="Images/18-IteratedForms/FractalPair.jpg" alt="Three panels in blue, gold, and cream. The whole Mandelbrot set with a small red circle marking a point on the edge of its left bulb; a Julia set of dense spiral filigree; and a deep zoom into the Mandelbrot boundary showing the same shapes recurring at a smaller scale" width="680">
+</picture>
 
 The first two panels are the same loop, differing only in which of its two numbers is held still. In the **Mandelbrot set**, the added number varies from pixel to pixel and the orbit always starts at zero. In a **Julia set**, that added number is fixed for the whole image, and you pass it as `c`. Each pixel then starts its orbit at its own position instead.
 
@@ -206,7 +227,10 @@ There is a second question you can ask the same loop. Instead of recording when 
 drawImage(generate(.orbitTrap(.cross(.zero), c: Vector2(-0.79, 0.15), zoom: 1.2)).image, 0, 0)
 ```
 
-<img src="Images/18-IteratedForms/TrappedOrbits.jpg" alt="The same Julia set three times. First colored by escape time as dark filigree on blue, then colored by an orbit trap as bright glowing stalks radiating through the filigree, then with the trap turned so the stalks lean" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/18-IteratedForms/TrappedOrbits-dark.jpg">
+  <img src="Images/18-IteratedForms/TrappedOrbits.jpg" alt="The same Julia set three times. First colored by escape time as dark filigree on blue, then colored by an orbit trap as bright glowing stalks radiating through the filigree, then with the trap turned so the stalks lean" width="680">
+</picture>
 
 All three panels are the same Julia set. Only the question changes. The first asks each orbit when it escaped. The other two ask how near the cross it passed, and then turn the cross a little with `angle`. Feed `angle` your `time` and the stalks sweep through the filigree while the set holds still. The traps on offer are a point, a cross, a circle, and a square, and `glow` sets how far their light reaches. `Examples/Effects/OrbitTraps` shows all four side by side.
 
@@ -224,7 +248,10 @@ drawImage(generate(.domainColoring(.power(3))).image, 0, 0)
 
 Every pixel stands for one number. The function is worked out there, and the *direction* its answer points picks the color. Size is thrown away at first, which sounds like a loss and is the whole trick. Direction is the part that carries the structure.
 
-<img src="Images/18-IteratedForms/DomainColoring.jpg" alt="Three panels. A smooth color wheel filling a square, all hues meeting at the middle; two color wheels side by side on a plain field, ringed and labeled zero and pole; and tan z ruled into a grid of curved tiles, with small wheels marching along a line" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/18-IteratedForms/DomainColoring-dark.jpg">
+  <img src="Images/18-IteratedForms/DomainColoring.jpg" alt="Three panels. A smooth color wheel filling a square, all hues meeting at the middle; two color wheels side by side on a plain field, ringed and labeled zero and pole; and tan z ruled into a grid of curved tiles, with small wheels marching along a line" width="680">
+</picture>
 
 The left panel is the simplest function there is: hand back whatever you were given. Its picture is the wheel itself, and it is how you read the other two. Red points right, and the colors run counter-clockwise from there, the way the plane is drawn on paper.
 

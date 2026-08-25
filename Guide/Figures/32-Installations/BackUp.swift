@@ -1,4 +1,4 @@
-// figure: frame=1
+// figure: frame=1 themed
 //
 // Guide diagram (Chapter 32): the two ways an unattended run ends badly, and
 // what the watch does about each. A night on the timeline: a crash, a frame
@@ -8,10 +8,12 @@ import Ollin
 final class BackUp: Sketch {
     override var canvasSize: CanvasSize { .size(880, 396) }
 
-    let paper = Color(hex: 0xF7F5F1)
-    let ink = Color(hex: 0x2B2B2B)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.55)
-    let accent = Color(hex: 0xE4572E)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.55) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
     let live = Color(hex: 0x6B9EC7)
     let frozen = Color(hex: 0x9AA3AE)
 

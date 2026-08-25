@@ -34,7 +34,10 @@ override func draw() {
 
 Conway's Game of Life is the classic proof that simple local rules make worlds. Each cell of a grid is alive or dead, and one generation to the next it only ever asks about its eight neighbors:
 
-<img src="Images/19-GridSimulations/LifeRules.jpg" alt="Three three-by-three neighborhoods and their outcomes: a cell with one neighbor dies, a cell with two or three lives on, an empty cell with exactly three neighbors is born" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/19-GridSimulations/LifeRules-dark.jpg">
+  <img src="Images/19-GridSimulations/LifeRules.jpg" alt="Three three-by-three neighborhoods and their outcomes: a cell with one neighbor dies, a cell with two or three lives on, an empty cell with exactly three neighbors is born" width="680">
+</picture>
 
 That's the entire rulebook. No cell knows about the picture. There is no picture, as far as any cell is concerned. And yet seed a field with a random soup and structures appear. You get stable blocks, blinking pairs, and now and then a *glider* that walks off across the grid on its own:
 
@@ -65,7 +68,10 @@ The Game of Life is one rule on one grid, and the same recipe runs in several ot
 let rows = elementaryCA(rule: 30, width: 161, generations: 161)
 ```
 
-<img src="Images/19-GridSimulations/WolframAndTurmite.jpg" alt="Two panels of black cells on cream. Left, rule 30 grown from a single cell into a triangle whose left half is regular stripes and whose right half is irregular, dotted with white triangles. Right, Langton's ant, a chaotic blot crossed by straight diagonal highways running off the edges" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/19-GridSimulations/WolframAndTurmite-dark.jpg">
+  <img src="Images/19-GridSimulations/WolframAndTurmite.jpg" alt="Two panels of black cells on cream. Left, rule 30 grown from a single cell into a triangle whose left half is regular stripes and whose right half is irregular, dotted with white triangles. Right, Langton's ant, a chaotic blot crossed by straight diagonal highways running off the edges" width="680">
+</picture>
 
 Rule 30, on the left, is the famous one, because a rule that small has no business producing something that irregular. Wolfram used its middle column as a source of random numbers for years. Rule 90 draws the Sierpinski triangle, and rule 110 turns out to be complicated enough to compute anything a computer can. `totalisticCA` is the same idea with more colors, where a cell reads the *sum* of its neighborhood rather than the exact pattern.
 
@@ -153,7 +159,10 @@ Everything in that figure came out of the rule. Nobody drew the circle, the four
 
 Reaction-diffusion is the Game of Life's continuous cousin, and the engine of this chapter's finished piece. The idea comes from Alan Turing. Two chemicals spread through a surface and react, one feeding the pattern and one killing it. In the balance between those two rates, patterns *make themselves*. Ollin ships it as `.reactionDiffusion(feed:kill:)`, and those two numbers are the whole temperament of the system:
 
-<img src="Images/19-GridSimulations/FeedKillMap.jpg" alt="A six-by-four grid of reaction-diffusion dishes at different feed and kill settings: most sit quiet, while a diagonal band grows spots, rings, mazes, and mitosing dots" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/19-GridSimulations/FeedKillMap-dark.jpg">
+  <img src="Images/19-GridSimulations/FeedKillMap.jpg" alt="A six-by-four grid of reaction-diffusion dishes at different feed and kill settings: most sit quiet, while a diagonal band grows spots, rings, mazes, and mitosing dots" width="680">
+</picture>
 
 Read the map honestly, because most of the parameter space is quiet. Life, in this system, is a narrow band where feeding and killing balance. Every regime along that band has its own signature. There are dividing dots, which are the defaults, plus worm mazes and coral walls. Put `feed` and `kill` on `@Param` knobs and you can walk the map live, and the `Simulation/GrayScott` example is exactly that.
 
@@ -161,7 +170,10 @@ The regime doesn't have to be one choice for the whole dish. Give the sim two se
 
 Seeding is drawing, same as before, and it's worth watching what one mark becomes:
 
-<img src="Images/19-GridSimulations/Seeding.jpg" alt="Four dishes seeded with the same ring at different moments, showing its growth: the raw ring, a thickened double ring, a wavy cross, and a labyrinth filling the dish" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/19-GridSimulations/Seeding-dark.jpg">
+  <img src="Images/19-GridSimulations/Seeding.jpg" alt="Four dishes seeded with the same ring at different moments, showing its growth: the raw ring, a thickened double ring, a wavy cross, and a labyrinth filling the dish" width="680">
+</picture>
 
 One more habit is worth forming here. The raw field is *data*, not a picture. Reaction-diffusion's state reads as dim red-green, so you give it a look by filtering. The catalog is the same one as everything else. Try `dish.filtered(.gradientMap(.viridis))`, a `.threshold` for hard ink, or [Chapter 16](16-LayersAndEffects.md)'s `.relight` to light it as matter.
 

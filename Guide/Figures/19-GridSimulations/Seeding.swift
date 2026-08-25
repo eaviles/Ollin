@@ -1,4 +1,4 @@
-// figure: frame=381
+// figure: frame=381 themed
 //
 // Guide diagram (Chapter 19): what a seed becomes. Four identical
 // reaction-diffusion fields, each seeded with the same ring at a different
@@ -8,11 +8,23 @@ import Ollin
 final class Seeding: Sketch {
     override var canvasSize: CanvasSize { .size(880, 330) }
 
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+
     var dishes: [SimField] = []
+    var tick = 0
     let ages = [0, 100, 220, 380]
 
+    override func setup() {
+        dishes = []
+        tick = 0
+    }
+
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
+        tick += 1
         let tile = 200.0, gutter = 15.0, ox = 12.0, oy = 20.0
         if dishes.isEmpty {
             dishes = ages.map { _ in
@@ -21,7 +33,7 @@ final class Seeding: Sketch {
         }
         for (i, dish) in dishes.enumerated() {
             withField(dish) {
-                if frameCount == 381 - ages[i] {         // stagger the seeding
+                if tick == 381 - ages[i] {               // stagger the seeding
                     noStroke()
                     stroke(.white)
                     strokeWeight(5)
@@ -36,7 +48,7 @@ final class Seeding: Sketch {
             drawImage(dish.filtered(.gradientMap(.viridis)).image,
                       in: Rectangle(x: x, y: oy, width: tile, height: tile))
             noStroke()
-            fill(Color(hex: 0x2B2B2B, alpha: 0.6))
+            fill(ink.withAlpha(0.6))
             textSize(16)
             textAlign(.center, .top)
             drawText(ages[i] == 0 ? "the seed, just drawn" : "\(ages[i]) frames later",
@@ -44,7 +56,7 @@ final class Seeding: Sketch {
         }
 
         noStroke()
-        fill(Color(hex: 0x2B2B2B))
+        fill(ink)
         textSize(19)
         textAlign(.center, .top)
         drawText("whatever you draw into the field is the chemistry it grows from", width / 2, 292)

@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram (Chapter 18): the same bouncing rule in four rooms. Two rooms
 // keep a pattern and two destroy it, and nothing changes but the wall.
@@ -8,11 +8,13 @@ import Ollin
 final class BallInARoom: Sketch {
     override var canvasSize: CanvasSize { .size(880, 300) }
 
-    let paper = Color(hex: 0xF7F5F1)
-    let ink = Color(hex: 0x232020)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.22)
-    let accent = Color(hex: 0xE4572E)
-    let calm = Color(hex: 0x2E6B9E)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x232020) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.22) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
+    var calm: Color { Color(hex: darkTheme ? 0x5E96C8 : 0x2E6B9E) }
 
     override func draw() {
         background(paper)

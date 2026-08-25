@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide listing (Chapter 31): what a spatial export keeps. The left arrangement
 // is drawn the ordinary way, with dust hanging around it. The right one is the
@@ -12,6 +12,11 @@ import Ollin
 
 final class SpatialExport: Sketch {
     override var canvasSize: CanvasSize { .size(880, 560) }
+
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
 
     /// Where each copy stands, in world units either side of the middle.
     private let offset = 1.9
@@ -31,7 +36,7 @@ final class SpatialExport: Sketch {
     }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         environment(.courtyard.lightingOnly())
         lightingPreset(.studio)
         perspective(eye: Vector3(0, 1.9, 4.4), target: Vector3(0, 0.05, 0))
@@ -112,11 +117,11 @@ final class SpatialExport: Sketch {
             textAlign(.center, .top)
 
             textSize(21)
-            fill(Color(hex: 0x2B2B2B))
+            fill(ink)
             drawText(title, anchor.x, height * 0.80)
 
             textSize(16)
-            fill(Color(hex: 0x6B6459))
+            fill(Color(hex: darkTheme ? 0x9A958D : 0x6B6459))
             drawText(detail, anchor.x, height * 0.875)
         }
     }

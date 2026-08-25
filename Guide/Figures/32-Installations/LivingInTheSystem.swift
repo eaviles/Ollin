@@ -1,4 +1,4 @@
-// figure: frame=1
+// figure: frame=1 themed
 //
 // Guide diagram (Chapter 32): the shape of a screen saver. On the left the
 // folder the script builds, with the one link that has to hold drawn across it:
@@ -10,13 +10,15 @@ import Ollin
 final class LivingInTheSystem: Sketch {
     override var canvasSize: CanvasSize { .size(880, 470) }
 
-    let paper = Color(hex: 0xF7F5F1)
-    let ink = Color(hex: 0x2B2B2B)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.55)
-    let accent = Color(hex: 0xE4572E)
-    let good = Color(hex: 0x2E7D5B)
-    let rule = Color(hex: 0x2B2B2B, alpha: 0.18)
-    let shade = Color(hex: 0x2B2B2B, alpha: 0.06)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.55) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
+    var good: Color { Color(hex: darkTheme ? 0x4EA57D : 0x2E7D5B) }
+    var rule: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.18) }
+    var shade: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.06) }
 
     override func draw() {
         background(paper)

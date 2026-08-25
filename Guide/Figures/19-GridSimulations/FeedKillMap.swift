@@ -1,4 +1,4 @@
-// figure: frame=650
+// figure: frame=650 themed
 //
 // Guide diagram (Chapter 19): the reaction-diffusion parameter map. The same
 // simulation, seeded the same way, at 24 different feed/kill settings; the
@@ -8,37 +8,45 @@ import Ollin
 final class FeedKillMap: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+
     var dishes: [SimField] = []
     let feeds = [0.022, 0.03, 0.038, 0.046, 0.055, 0.066]
     let kills = [0.055, 0.059, 0.062, 0.065]
 
+    override func setup() {
+        dishes = []
+    }
+
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
 
         let tile = 118.0, gutter = 10.0
         let ox = 96.0, oy = 14.0
         if dishes.isEmpty {
             for kill in kills {
                 for feed in feeds {
-                    dishes.append(simField(.reactionDiffusion(feed: feed, kill: kill),
-                                           width: Int(tile), height: Int(tile)))
+                    let dish = simField(.reactionDiffusion(feed: feed, kill: kill),
+                                        width: Int(tile), height: Int(tile))
+                    withField(dish) {
+                        noStroke()
+                        fill(.white)
+                        for row in 0 ..< 3 {
+                            for col in 0 ..< 3 {
+                                drawCircle(tile * (0.25 + 0.25 * Double(col)),
+                                           tile * (0.25 + 0.25 * Double(row)), 4)
+                            }
+                        }
+                    }
+                    dishes.append(dish)
                 }
             }
         }
 
         for (i, dish) in dishes.enumerated() {
-            withField(dish) {
-                if frameCount == 1 {
-                    noStroke()
-                    fill(.white)
-                    for row in 0 ..< 3 {
-                        for col in 0 ..< 3 {
-                            drawCircle(tile * (0.25 + 0.25 * Double(col)),
-                                       tile * (0.25 + 0.25 * Double(row)), 4)
-                        }
-                    }
-                }
-            }
             let x = ox + Double(i % feeds.count) * (tile + gutter)
             let y = oy + Double(i / feeds.count) * (tile + gutter)
             drawImage(dish.filtered(.gradientMap(.viridis)).image,
@@ -46,7 +54,7 @@ final class FeedKillMap: Sketch {
         }
 
         noStroke()
-        fill(Color(hex: 0x2B2B2B, alpha: 0.6))
+        fill(ink.withAlpha(0.6))
         textSize(16)
         textAlign(.center, .top)
         for (i, feed) in feeds.enumerated() {

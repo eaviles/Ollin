@@ -460,7 +460,10 @@ See `Examples/Effects/PatternFields` for the first five (plus a field chained in
   filaments. `angle` turns the trap about its own center; feed it your `time` and
   the stalks sweep.
 
-<img src="../../Guide/Images/18-IteratedForms/FractalPair.jpg" alt="Three panels in blue, gold, and cream. The whole Mandelbrot set with a small red circle marking a point on the edge of its left bulb; a Julia set of dense spiral filigree; and a deep zoom into the Mandelbrot boundary showing the same shapes recurring at a smaller scale" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/18-IteratedForms/FractalPair-dark.jpg">
+  <img src="../../Guide/Images/18-IteratedForms/FractalPair.jpg" alt="Three panels in blue, gold, and cream. The whole Mandelbrot set with a small red circle marking a point on the edge of its left bulb; a Julia set of dense spiral filigree; and a deep zoom into the Mandelbrot boundary showing the same shapes recurring at a smaller scale" width="680">
+</picture>
 
 **Diffusion**: not a look laid over a picture but a picture made out of a few marks.
 `.diffuse` holds every drawn pixel as a color source and lets the color out into the
@@ -627,7 +630,10 @@ Where a [`Filter`](#filter) transforms an image once, a `Sim` runs a **stateful 
 
 A `SimField` is **persistent** like `Feedback` (make it once in `setup()` and hold it). Each frame the marks you draw in `withField` land on the field's current state, the renderer steps the simulation, and the result is the field's `image`. The raw state is *data*, so recolor it through the same `Filter` catalog as everything else.
 
-<img src="../../Guide/Images/19-GridSimulations/FeedKillMap.jpg" alt="A six-by-four grid of reaction-diffusion dishes at different feed and kill settings: most sit quiet, while a diagonal band grows spots, rings, mazes, and mitosing dots" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/19-GridSimulations/FeedKillMap-dark.jpg">
+  <img src="../../Guide/Images/19-GridSimulations/FeedKillMap.jpg" alt="A six-by-four grid of reaction-diffusion dishes at different feed and kill settings: most sit quiet, while a diagonal band grows spots, rings, mazes, and mitosing dots" width="680">
+</picture>
 
 ```swift
 var rd: SimField!

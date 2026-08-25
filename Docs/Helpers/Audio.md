@@ -157,7 +157,10 @@ var smoothing: Float                        // response damping, 0...1
 
 `spectrum` has `fftSize / 2` bins, each spanning `sampleRate / fftSize` Hz, from 0 up toward the Nyquist frequency. The magnitudes are smoothed but unnormalized, so scale them to taste for drawing, or reach for [`bands`](#bands-and-beats) below, which does that shaping for you. `waveform` is a rolling window of the most recent `fftSize` samples, oldest first, so a scope trace drawn from it stays continuous no matter how the audio arrives in chunks. `smoothing` (0 = raw and twitchy, near 1 = heavily damped) trades responsiveness for steadiness and can be changed live.
 
-<img src="../../Guide/Images/28-SoundAndControl/Anatomy.jpg" alt="Three stacked panels from one analyzed instant: the raw waveform wiggle, the spectrum with spikes marked at the kick, bass, and melody frequencies, and 24 normalized band bars" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/28-SoundAndControl/Anatomy-dark.jpg">
+  <img src="../../Guide/Images/28-SoundAndControl/Anatomy.jpg" alt="Three stacked panels from one analyzed instant: the raw waveform wiggle, the spectrum with spikes marked at the kick, bass, and melody frequencies, and 24 normalized band bars" width="680">
+</picture>
 
 <a name="bands-and-beats"></a>
 
@@ -198,7 +201,10 @@ Raise `beatSensitivity` if it triggers too eagerly, lower it if it misses beats.
 
 The whole beat surface runs on the *sample clock*, so positions are counted in samples of audio, which means the same recording always beats at the same places, `timeSinceBeat` holds still while no audio arrives, and detection is testable without hardware.
 
-<img src="../../Guide/Images/28-SoundAndControl/BeatTimeline.jpg" alt="A six-second timeline in three strips: the loudness curve with regular peaks, the beat pulse snapping to one and decaying at each detection, and tick marks where beatCount incremented" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/28-SoundAndControl/BeatTimeline-dark.jpg">
+  <img src="../../Guide/Images/28-SoundAndControl/BeatTimeline.jpg" alt="A six-second timeline in three strips: the loudness curve with regular peaks, the beat pulse snapping to one and decaying at each detection, and tick marks where beatCount incremented" width="680">
+</picture>
 
 ```swift
 let lows = tone.bass

@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide figure (Chapter 18): the Buddhabrot two ways. The same seeded plate
 // developed in grayscale from one iteration cap, and in false color from
@@ -7,6 +7,11 @@ import Ollin
 
 final class BuddhaPlate: Sketch {
     override var canvasSize: CanvasSize { .size(880, 466) }
+
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
     private var gray: Image?
     private var color: Image?
 
@@ -23,7 +28,7 @@ final class BuddhaPlate: Sketch {
     }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
 
         let tile = 400.0, gap = 26.0
         let left = (width - tile * 2 - gap) / 2
@@ -38,7 +43,7 @@ final class BuddhaPlate: Sketch {
             let rect = Rectangle(x: x, y: 20, width: tile, height: tile)
             if let image = panel.1 { drawImage(image, in: rect) }
             noStroke()
-            fill(Color(hex: 0x2B2B2B, alpha: 0.62))
+            fill(ink.withAlpha(0.62))
             textSize(16)
             textAlign(.center, .top)
             drawText(panel.0, rect.x + rect.width / 2, rect.y + rect.height + 8)

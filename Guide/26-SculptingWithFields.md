@@ -12,7 +12,10 @@
 
 [Chapter 14](14-FieldsAndFlow.md) defined a field as an answer at every point. A **signed distance field** is a shape stored that way. Ask any point of the canvas and it answers with one number, *how far is the nearest surface*. The sign carries which side you're on. Positive is outside, negative is inside, and zero is exactly on the boundary.
 
-<img src="Images/26-SculptingWithFields/FieldMap.jpg" alt="A distance field visualized: a melted circle-and-box shape in warm orange, surrounded by concentric cool bands of equal distance, with a bold dark line at distance zero" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/26-SculptingWithFields/FieldMap-dark.jpg">
+  <img src="Images/26-SculptingWithFields/FieldMap.jpg" alt="A distance field visualized: a melted circle-and-box shape in warm orange, surrounded by concentric cool bands of equal distance, with a bold dark line at distance zero" width="680">
+</picture>
 
 That's the whole idea, and it's worth a slow look. The shape is not stored as an outline, and the *bold line* is only the places where the field happens to answer zero. [Chapter 17](17-YourFirstShader.md) used this trick per pixel (a circle was "all the points within `radius`", and `smoothstep` softened its edge). What's new here is what the representation makes possible, because if two shapes are each a distance function, then *combining the answers* combines the shapes.
 
@@ -41,7 +44,10 @@ final class Melt: Sketch {
 
 Run it and watch the seam. `SDF.circle` and `SDF.rect` are field *values*, like a `Shape` or a `Color`. From there `.at` moves one, `.colored` paints one, `.smoothUnion` merges two into a new field, and `drawSDF` rasterizes whatever field you hand it in a single pass. The knob `k` is the width of the melt, in canvas points:
 
-<img src="Images/26-SculptingWithFields/MeltStrip.jpg" alt="The same orange and blue circles at four smoothing radii: touching hard at k = 0, necking together at 22, flowing into a peanut at 55, and fused into one capsule at 110" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/26-SculptingWithFields/MeltStrip-dark.jpg">
+  <img src="Images/26-SculptingWithFields/MeltStrip.jpg" alt="The same orange and blue circles at four smoothing radii: touching hard at k = 0, necking together at 22, flowing into a peanut at 55, and fused into one capsule at 110" width="680">
+</picture>
 
 At `k = 0` the union is hard, two shapes overlapping like [Chapter 15](15-ShapesAsMaterial.md). As `k` grows, the seam becomes a fillet, then a neck, then the pair is one body. Look at the colors. The smooth union blends the two operands' colors across the melt, and that is what makes the result read as one object rather than a trick. This one knob is most of the medium, so put it on a `@Param` slider and you'll feel it immediately.
 
@@ -51,7 +57,10 @@ One habit is worth setting early, and it's that **order matters in the chain**. 
 
 Melting is one verb of six:
 
-<img src="Images/26-SculptingWithFields/Verbs.jpg" alt="Six tiles of the same circle and rounded rectangle combined by union, smoothUnion, morph, subtract, smoothSubtract, and intersect" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/26-SculptingWithFields/Verbs-dark.jpg">
+  <img src="Images/26-SculptingWithFields/Verbs.jpg" alt="Six tiles of the same circle and rounded rectangle combined by union, smoothUnion, morph, subtract, smoothSubtract, and intersect" width="680">
+</picture>
 
 ```swift
 a.union(b)               // either
@@ -111,7 +120,10 @@ Try building that from triangle meshes and you'll appreciate what just happened.
 
 A mesh is triangles, and the GPU knows how to draw triangles. A field is just a function, so how does it become pixels? By *asking it the right question, repeatedly*. For each pixel, a ray leaves the camera, and the field is asked how far the nearest surface is. The answer is a promise, nothing is closer than this, so the ray can safely hop exactly that far. Ask again, hop again:
 
-<img src="Images/26-SculptingWithFields/MarchRay.jpg" alt="A diagram of sphere tracing: a ray from an eye crossing the canvas in shrinking hops, each hop bounded by a circle showing the distance the field reported, ending on a gray blob's surface" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/26-SculptingWithFields/MarchRay-dark.jpg">
+  <img src="Images/26-SculptingWithFields/MarchRay.jpg" alt="A diagram of sphere tracing: a ray from an eye crossing the canvas in shrinking hops, each hop bounded by a circle showing the distance the field reported, ending on a gray blob's surface" width="680">
+</picture>
 
 The hops shrink as the ray nears a surface and grow again in open space, so the ray lands on the surface without ever stepping through it. Watch them tighten as the ray passes over the lower shape. This is called **sphere tracing**, and it's the second big advantage of the representation. The same number that let shapes melt is what steers the rays that draw them.
 
@@ -147,7 +159,10 @@ So there are two ways out of a field, and they cost differently. `drawSDF3D` sha
 
 Here is a use for a mesh carved out of a volume that has nothing to do with fields, and it is the best argument for paying by the volume rather than by the pixel.
 
-<img src="Images/26-SculptingWithFields/TwoShadowsOneSolid.jpg" alt="Five panels: a ring and a cross asked for as shadows, the lumpy solid they carve shown lit in the middle, and the two shadows it really throws, matching the ones asked for" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/26-SculptingWithFields/TwoShadowsOneSolid-dark.jpg">
+  <img src="Images/26-SculptingWithFields/TwoShadowsOneSolid.jpg" alt="Five panels: a ring and a cross asked for as shadows, the lumpy solid they carve shown lit in the middle, and the two shadows it really throws, matching the ones asked for" width="680">
+</picture>
 
 ```swift
 let art = shadowArt(fromFront: ring, fromSide: cross, resolution: 56)
@@ -187,7 +202,10 @@ Flip one `add()` to `carve()` and a bump becomes a dent, which is exactly the ki
 
 The last trick is the strangest one. Instead of copying a shape, you can fold the *space it lives in*, so one shape answers for many:
 
-<img src="Images/26-SculptingWithFields/DomainFold.jpg" alt="Three panels: an asymmetric cluster mirrored into a facing pair, the same cluster tiled into a three-by-three grid, and a petal fanned into a nine-fold rosette" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/26-SculptingWithFields/DomainFold-dark.jpg">
+  <img src="Images/26-SculptingWithFields/DomainFold.jpg" alt="Three panels: an asymmetric cluster mirrored into a facing pair, the same cluster tiled into a three-by-three grid, and a petal fanned into a nine-fold rosette" width="680">
+</picture>
 
 ```swift
 cluster.mirrored(x: true)                             // a facing pair

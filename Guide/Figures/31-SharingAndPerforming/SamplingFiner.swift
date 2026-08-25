@@ -1,4 +1,4 @@
-// figure: frame=0 format=png
+// figure: frame=0 format=png themed
 //
 // Guide figure (Chapter 31): the export supersample, demonstrating itself. One
 // small probe, a fan of wedges meeting at a point, is rendered twice through
@@ -14,10 +14,15 @@ import Ollin
 final class SamplingFiner: Sketch {
     override var canvasSize: CanvasSize { .size(880, 462) }
 
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+
     override func setup() { noLoop() }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
 
         let cell = 9.0, gap = 46.0
         let panel = cell * Double(EdgeProbe.side)
@@ -29,19 +34,19 @@ final class SamplingFiner: Sketch {
             drawPanel(pixels(atScale: scale), at: Vector2(x, 58), cell: cell)
 
             noStroke()
-            fill(Color(hex: 0x2B2B2B))
+            fill(ink)
             textSize(19)
             textAlign(.center, .bottom)
             drawText("--render-scale \(scale)", x + panel / 2, 44)
 
-            fill(Color(hex: 0x2B2B2B, alpha: 0.62))
+            fill(ink.withAlpha(0.62))
             textSize(16)
             textAlign(.center, .top)
             drawText(scale == 1 ? "one sample per pixel" : "sixteen, averaged",
                      x + panel / 2, 58 + panel + 12)
         }
 
-        fill(Color(hex: 0x2B2B2B))
+        fill(ink)
         textSize(19)
         textAlign(.center, .top)
         drawText("the same exported pixels, one square each", width / 2, 424)
@@ -58,7 +63,7 @@ final class SamplingFiner: Sketch {
             }
         }
         noFill()
-        stroke(Color(hex: 0x2B2B2B, alpha: 0.35))
+        stroke(ink.withAlpha(0.35))
         strokeWeight(1)
         drawRect(origin.x, origin.y,
                  cell * Double(rows.first?.count ?? 0), cell * Double(rows.count))

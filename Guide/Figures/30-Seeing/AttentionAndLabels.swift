@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram (Chapter 30): the two trackers that read a picture as a whole,
 // both run on the same made-up card scene as the reading figure. Left: the
@@ -27,10 +27,13 @@ final class AttentionAndLabels: Sketch {
     var regions: [Rectangle] = []
     var labels: [(name: String, confidence: Double)] = []
 
-    let ink = Color(hex: 0x2B2B2B)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.28)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.6)
-    let accent = Color(hex: 0xE4572E)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.28) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.6) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
 
     let leftPanel = Rectangle(x: 60, y: 100, width: 360, height: 360)
     let rightPanel = Rectangle(x: 460, y: 100, width: 360, height: 360)
@@ -61,7 +64,7 @@ final class AttentionAndLabels: Sketch {
     }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         textFont(.systemMedium)
         textSize(19)
 

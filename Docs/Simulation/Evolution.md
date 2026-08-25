@@ -115,7 +115,10 @@ It is off by default, because measuring means reading the whole population back 
 
 This is the older idea, and the stranger one. Sixteen candidates sit on screen. The only thing deciding which of them have children is that somebody liked looking at them.
 
-<img src="../../Guide/Images/20-ParticleSimulations/PickAndBreed.jpg" alt="Two four-by-four grids of small radial ornaments. In the left grid every ornament is different and two are outlined in orange. In the right grid, one breeding later, all sixteen are recognizable variations on the outlined pair" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/20-ParticleSimulations/PickAndBreed-dark.jpg">
+  <img src="../../Guide/Images/20-ParticleSimulations/PickAndBreed.jpg" alt="Two four-by-four grids of small radial ornaments. In the left grid every ornament is different and two are outlined in orange. In the right grid, one breeding later, all sixteen are recognizable variations on the outlined pair" width="680">
+</picture>
 
 ```swift
 var pool: Population!

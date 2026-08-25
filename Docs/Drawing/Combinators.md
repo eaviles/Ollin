@@ -19,7 +19,10 @@ the core; the [scoped block form](#scoped-blocks) is sugar over it. A solid `fil
 leaves individually (melting at smooth seams); a linear or radial `fill`/`stroke` paints the
 *whole* merged region/outline as one continuous surface instead (see [Gradient paint](#gradient-paint)).
 
-<img src="../../Guide/Images/26-SculptingWithFields/FieldMap.jpg" alt="A distance field visualized: a melted circle-and-box shape in warm orange, surrounded by concentric cool bands of equal distance, with a bold dark line at distance zero" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/26-SculptingWithFields/FieldMap-dark.jpg">
+  <img src="../../Guide/Images/26-SculptingWithFields/FieldMap.jpg" alt="A distance field visualized: a melted circle-and-box shape in warm orange, surrounded by concentric cool bands of equal distance, with a bold dark line at distance zero" width="680">
+</picture>
 
 ### Contents
 
@@ -91,7 +94,10 @@ Each combinator takes another field and returns the combined one, so they chain.
 variants take a smoothing radius `k` (in canvas points) that sets how wide the blend is, and
 they **blend the two operands' colors** across that blend so a melt reads as one object.
 
-<img src="../../Guide/Images/26-SculptingWithFields/MeltStrip.jpg" alt="The same orange and blue circles at four smoothing radii: touching hard at k = 0, necking together at 22, flowing into a peanut at 55, and fused into one capsule at 110" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/26-SculptingWithFields/MeltStrip-dark.jpg">
+  <img src="../../Guide/Images/26-SculptingWithFields/MeltStrip.jpg" alt="The same orange and blue circles at four smoothing radii: touching hard at k = 0, necking together at 22, flowing into a peanut at 55, and fused into one capsule at 110" width="680">
+</picture>
 
 ```swift
 let a = SDF.circle(radius: 100).colored(.red)
@@ -110,7 +116,10 @@ a.morph(b, amount: 0.5) // blend the shape itself between a and b (0 = a, 1 = b)
 `morph` is a *field* blend, not a crossfade: at `amount: 0.5` the boundary is genuinely
 halfway between the two shapes.
 
-<img src="../../Guide/Images/26-SculptingWithFields/Verbs.jpg" alt="Six tiles of the same circle and rounded rectangle combined by union, smoothUnion, morph, subtract, smoothSubtract, and intersect" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/26-SculptingWithFields/Verbs-dark.jpg">
+  <img src="../../Guide/Images/26-SculptingWithFields/Verbs.jpg" alt="Six tiles of the same circle and rounded rectangle combined by union, smoothUnion, morph, subtract, smoothSubtract, and intersect" width="680">
+</picture>
 
 Beside the smooth (melted) family sits the **joint** family, which shapes the seam like
 machined work instead of melting it: `chamfer*` cuts a crisp 45° bevel of the given size
@@ -236,7 +245,10 @@ number of copies evenly spaced around the origin; offset the wedge from the orig
 (`.at`) so the copies fan out around it. Because a domain operator wraps a whole field, you
 can tile a melted cluster, mirror a carved shape, or ring a wedge into a mandala.
 
-<img src="../../Guide/Images/26-SculptingWithFields/DomainFold.jpg" alt="Three panels: an asymmetric cluster mirrored into a facing pair, the same cluster tiled into a three-by-three grid, and a petal fanned into a nine-fold rosette" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/26-SculptingWithFields/DomainFold-dark.jpg">
+  <img src="../../Guide/Images/26-SculptingWithFields/DomainFold.jpg" alt="Three panels: an asymmetric cluster mirrored into a facing pair, the same cluster tiled into a three-by-three grid, and a petal fanned into a nine-fold rosette" width="680">
+</picture>
 
 <a name="scoped-blocks"></a>
 
@@ -321,7 +333,10 @@ one merged surface inside an active [3D camera](../3D/3D.md), lit by the scene's
 depth-composited with the rasterized meshes (each occludes the other where they meet). It is
 the 3D sibling of `SDF` / `drawSDF`, with the same combine, modifier, and transform vocabulary.
 
-<img src="../../Guide/Images/26-SculptingWithFields/MarchRay.jpg" alt="A diagram of sphere tracing: a ray from an eye crossing the canvas in shrinking hops, each hop bounded by a circle showing the distance the field reported, ending on a gray blob's surface" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/26-SculptingWithFields/MarchRay-dark.jpg">
+  <img src="../../Guide/Images/26-SculptingWithFields/MarchRay.jpg" alt="A diagram of sphere tracing: a ray from an eye crossing the canvas in shrinking hops, each hop bounded by a circle showing the distance the field reported, ending on a gray blob's surface" width="680">
+</picture>
 
 ```swift
 override func draw() {

@@ -80,7 +80,10 @@ The strikes come out as evenly as whole steps allow, which is [Bjorklund's algor
 
 `.tresillo` `.cinquillo` `.bellPattern` `.bossaNova` `.samba` `.aksak` `.ruchenitza` `.yorkSamai` `.nawakhat` `.agsagSamai` `.fandango`
 
-<img src="../../Guide/Images/29-MakingSound/Euclidean.jpg" alt="Seven rows showing 2, 3, 4, 5, 7, 9, and 11 strikes spread over sixteen steps, with the gaps between strikes listed beside each row, and below them the tresillo, cinquillo, and bell pattern drawn as the shape between their strikes on a circle" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/29-MakingSound/Euclidean-dark.jpg">
+  <img src="../../Guide/Images/29-MakingSound/Euclidean.jpg" alt="Seven rows showing 2, 3, 4, 5, 7, 9, and 11 strikes spread over sixteen steps, with the gaps between strikes listed beside each row, and below them the tresillo, cinquillo, and bell pattern drawn as the shape between their strikes on a circle" width="680">
+</picture>
 
 A rhythm can also be written out, which is what you want when the pattern is already in mind:
 
@@ -140,7 +143,10 @@ scale.chord(on: 0, notes: 4)   // four notes, so a seventh
 
 On a major scale the first of those is major and the second is minor, from the same call. That is the point of building a chord out of a key. The quality is a consequence of where you started rather than something you chose, so it follows the key when the key changes.
 
-<img src="../../Guide/Images/29-MakingSound/ScaleLadder.jpg" alt="Left: a ladder of pentatonic scale rungs over a faint semitone grid, with a wandering numbered sequence of dots landing only on rungs. Right: seven triads built on the degrees of C major, each three stacked marks two rungs apart, colored by what fell out: major on I, IV, and V, minor on ii, iii, and vi, diminished on the seventh" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/29-MakingSound/ScaleLadder-dark.jpg">
+  <img src="../../Guide/Images/29-MakingSound/ScaleLadder.jpg" alt="Left: a ladder of pentatonic scale rungs over a faint semitone grid, with a wandering numbered sequence of dots landing only on rungs. Right: seven triads built on the degrees of C major, each three stacked marks two rungs apart, colored by what fell out: major on I, IV, and V, minor on ii, iii, and vi, diminished on the seventh" width="680">
+</picture>
 
 `Scale.Mode` is a `ParamOption`, so a mode can be a knob:
 
@@ -177,7 +183,10 @@ for step in counter.steps(upTo: time * 2) {
 
 Degrees rather than names because that is the fact that survives changing key. `I vi IV V` is the same progression in every key there is. Writing it that way means the chords' qualities fall out of the scale, instead of having to be said. The same four numbers come out major in a major key and minor in a minor one, with nothing changed.
 
-<img src="../../Guide/Images/29-MakingSound/Changes.jpg" alt="Two rows of four chord stacks. The top row, in C major, reads C major, A minor, F major, G major; the bottom row, the same numerals in C minor, reads C minor, G sharp major, F minor, G minor. Each stack shows the three notes the progression hands back, at their own pitches" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/29-MakingSound/Changes-dark.jpg">
+  <img src="../../Guide/Images/29-MakingSound/Changes.jpg" alt="Two rows of four chord stacks. The top row, in C major, reads C major, A minor, F major, G major; the bottom row, the same numerals in C minor, reads C minor, G sharp major, F minor, G minor. Each stack shows the three notes the progression hands back, at their own pitches" width="680">
+</picture>
 
 Roman numerals `I` to `VII`, separated by anything. Case is accepted and ignored, since the key is what decides major or minor. Anything unreadable is skipped.
 

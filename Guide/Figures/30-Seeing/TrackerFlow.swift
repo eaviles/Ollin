@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram (Chapter 30): the tracker pipeline. A camera produces frames;
 // a tracker analyzes them on a background thread and publishes typed results;
@@ -10,13 +10,16 @@ import Ollin
 final class TrackerFlow: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.45)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.6)
-    let accent = Color(hex: 0xE4572E)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.45) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.6) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
 
         box(x: 45, y: 80, w: 200, h: 96, title: "Camera()",
             sub: "or a video, or your own feed")
@@ -94,7 +97,7 @@ final class TrackerFlow: Sketch {
     }
 
     func box(x: Double, y: Double, w: Double, h: Double, title: String, sub: String) {
-        fill(.white)
+        fill(darkTheme ? Color(hex: 0x2A2724) : .white)
         stroke(faint)
         strokeWeight(1.5)
         drawRect(x, y, w, h, cornerRadius: 10)

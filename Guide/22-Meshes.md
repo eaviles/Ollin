@@ -102,7 +102,10 @@ Loading a scene keeps the file in charge. Re-export from the tool and the sketch
 ollin new Yard --from-scene yard.usdz
 ```
 
-<img src="Images/22-Meshes/SceneAsSource.jpg" alt="Left, the generated draw() with its camera call, its lights and its nested withState blocks. Right, the same scene drawn from those placements: a torus on a pedestal beside a lamp and a blue sphere" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/22-Meshes/SceneAsSource-dark.jpg">
+  <img src="Images/22-Meshes/SceneAsSource.jpg" alt="Left, the generated draw() with its camera call, its lights and its nested withState blocks. Right, the same scene drawn from those placements: a torus on a pedestal beside a lamp and a blue sphere" width="680">
+</picture>
 
 That writes a project whose `draw()` is the scene, spelled out. The camera is a `Camera3D` with its own numbers. Each light is the factory that makes it. Every node is a `withState` block holding the moves that put it where the tool put it, nested the way the file nests them.
 

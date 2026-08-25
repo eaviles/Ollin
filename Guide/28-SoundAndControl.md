@@ -43,7 +43,10 @@ The analyzer is worth meeting directly, because it's also the seam for sounds Ol
 
 Sound arrives as **samples**, which are measurements of air pressure, 44,100 of them per second. A microphone hands the analyzer that stream, and the analyzer answers three questions about the most recent instant.
 
-<img src="Images/28-SoundAndControl/Anatomy.jpg" alt="Three stacked panels from one analyzed instant: the raw waveform wiggle, the spectrum with spikes marked at the kick, bass, and melody frequencies, and 24 normalized band bars" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/28-SoundAndControl/Anatomy-dark.jpg">
+  <img src="Images/28-SoundAndControl/Anatomy.jpg" alt="Three stacked panels from one analyzed instant: the raw waveform wiggle, the spectrum with spikes marked at the kick, bass, and melody frequencies, and 24 normalized band bars" width="680">
+</picture>
 
 The top panel is the **waveform**, the samples themselves. One big slow swell, the kick's low thump mid-decay, carries fast wiggles on it, which are the melody. It's the honest raw material, and mostly you'll draw it only when you want an oscilloscope look.
 
@@ -66,7 +69,10 @@ Between the raw spectrum and the shaped bands sit three named conveniences, `bas
 
 Loudness and spectrum answer "how much", but the other thing music has is **arrivals**. A drum hit is a moment, not a level. A visual that flashes on the drum reads as listening in a way a level meter never does.
 
-<img src="Images/28-SoundAndControl/BeatTimeline.jpg" alt="A six-second timeline in three strips: the loudness curve with regular peaks, the beat pulse snapping to one and decaying at each detection, and tick marks where beatCount incremented" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/28-SoundAndControl/BeatTimeline-dark.jpg">
+  <img src="Images/28-SoundAndControl/BeatTimeline.jpg" alt="A six-second timeline in three strips: the loudness curve with regular peaks, the beat pulse snapping to one and decaying at each detection, and tick marks where beatCount incremented" width="680">
+</picture>
 
 The detector behind this compares each instant's spectrum with the one just before and adds up the rises. A sudden brightening across many frequencies at once spikes that sum, and the analyzer counts it as a beat. A drum hit, a plucked string, and a note starting all do that. Three reads surface it:
 
@@ -177,7 +183,10 @@ Knobs aren't the only thing MIDI carries. Gear with a play button also broadcast
 
 The wire itself is almost comically simple, and knowing that makes everything else make sense. A MIDI clock master sends one tick, twenty-four times per beat, forever. There is no tempo number in the message, no bar count, no position. Twenty-four ticks per beat is the entire protocol, and everything musical you want is derived by counting them.
 
-<img src="Images/28-SoundAndControl/MusicalTime.jpg" alt="A strip of evenly spaced tick marks divided into four labeled beats spanning one bar, with a marker partway through beat two, and a list of what each clock reader returns at that position" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/28-SoundAndControl/MusicalTime-dark.jpg">
+  <img src="Images/28-SoundAndControl/MusicalTime.jpg" alt="A strip of evenly spaced tick marks divided into four labeled beats spanning one bar, with a marker partway through beat two, and a list of what each clock reader returns at that position" width="680">
+</picture>
 
 ```swift
 lazy var clock = TempoClock(from: midi)
@@ -222,7 +231,10 @@ override func setup() {
 }
 ```
 
-<img src="Images/28-SoundAndControl/BindingFlow.jpg" alt="A diagram of three boxes, a MIDI knob, an OSC message, and the inspector slider, with arrows converging on one @Param box, and one arrow onward to a dial labeled: the sketch reads radius" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/28-SoundAndControl/BindingFlow-dark.jpg">
+  <img src="Images/28-SoundAndControl/BindingFlow.jpg" alt="A diagram of three boxes, a MIDI knob, an OSC message, and the inspector slider, with arrows converging on one @Param box, and one arrow onward to a dial labeled: the sketch reads radius" width="680">
+</picture>
 
 Each incoming value is mapped into the parameter's own range and assigned. The sketch keeps reading plain `radius`, without ever knowing who moved it. The inspector slider, the hardware, the phone, and plain assignment in code all stay live at once, and whichever moved most recently wins. One more line makes hardware feel good. Give the parameter a `smoothing:` and every source glides instead of stepping. `.eased(0.3)` is a fixed glide, and `.smoothed` is the adaptive filter that stays steady at rest and opens up under a moving hand. The softening belongs to the knob rather than to the wire.
 

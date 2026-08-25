@@ -1,4 +1,4 @@
-// figure: frame=156
+// figure: frame=156 themed
 //
 // Guide diagram (Chapter 30): optical flow as a field of arrows. Left: one
 // frame from the pretend performer (two speckled hands on a dim speckled
@@ -15,16 +15,19 @@ final class FlowArrows: Sketch {
     var field: MotionField?
     var picture: Image?
 
-    let ink = Color(hex: 0x2B2B2B)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.28)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.6)
-    let accent = Color(hex: 0xE4572E)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.28) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.6) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
 
     override func draw() {
         field = performer.step()
         picture = performer.lastFrame
 
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         textSize(19)
 
         let leftPanel = Rectangle(x: 60, y: 100, width: 360, height: 360)

@@ -6,7 +6,10 @@
 
 The patterns sand draws on a ringing plate. Bow or drive a square plate at one of its resonant modes and it vibrates everywhere except along its **nodal lines**. Loose sand walks off the moving regions and gathers where the plate stands still, tracing the symmetric figures Ernst Chladni cataloged in 1787. Ollin ships the standing-wave field in closed form. It comes as a per-point function for geometry, and as a GPU [`Generator`](../Drawing/Effects.md#generate) that fills a layer with the finished figure.
 
-<img src="../../Guide/Images/17-YourFirstShader/ChladniModes.jpg" alt="Six panels of Chladni figures at different mode numbers, each showing dark sand collected along curved and diagonal nodal lines on a pale plate, the patterns growing more intricate as the numbers rise" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/17-YourFirstShader/ChladniModes-dark.jpg">
+  <img src="../../Guide/Images/17-YourFirstShader/ChladniModes.jpg" alt="Six panels of Chladni figures at different mode numbers, each showing dark sand collected along curved and diagonal nodal lines on a pale plate, the patterns growing more intricate as the numbers rise" width="680">
+</picture>
 
 ### Contents
 

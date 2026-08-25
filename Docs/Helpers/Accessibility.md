@@ -28,7 +28,10 @@ describe("the boat", as: "a small dark hull, halfway across", in: hull)
 
 A part is a shape, or a group of shapes that mean one thing together. Each one becomes something a screen reader can move to, read as `name: description`, in the order the parts were first named.
 
-<img src="../../Guide/Images/31-SharingAndPerforming/SayingWhatItShows.jpg" alt="Two columns: on the left a small seascape with a yellow sun high on the left, a blue band of water and a dark sailboat; on the right the four lines the sketch says about itself, a summary followed by the sun, the water and the boat" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/31-SharingAndPerforming/SayingWhatItShows-dark.jpg">
+  <img src="../../Guide/Images/31-SharingAndPerforming/SayingWhatItShows.jpg" alt="Two columns: on the left a small seascape with a yellow sun high on the left, a blue band of water and a dark sailboat; on the right the four lines the sketch says about itself, a summary followed by the sun, the water and the boat" width="680">
+</picture>
 
 The `in:` region is optional and worth giving. A part that carries one can be found by position rather than only in order. The accessibility inspector draws a box around it too.
 

@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide contact sheet (Chapter 26): the combining verbs. The same circle and
 // rounded rectangle under each operator; the smooth forms melt colors across
@@ -8,8 +8,13 @@ import Ollin
 final class Verbs: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         noStroke()
 
         let coral = Color(hex: 0xE4572E)
@@ -26,7 +31,6 @@ final class Verbs: Sketch {
             ("intersect", a.intersect(b)),
         ]
 
-        let ink = Color(hex: 0x2B2B2B)
         for (i, tile) in tiles.enumerated() {
             let cx = 160.0 + Double(i % 3) * 280
             let cy = 140.0 + Double(i / 3) * 250

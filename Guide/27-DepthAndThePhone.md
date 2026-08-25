@@ -14,7 +14,10 @@ The road runs from what a depth frame is, through a flat picture standing up int
 
 Every depth source hands you the same three things, whatever the hardware. First a color image, then a depth map holding one metric distance per pixel in meters. Last come the **intrinsics**, a handful of numbers describing the lens that took them.
 
-<img src="Images/27-DepthAndThePhone/Anatomy.jpg" alt="Two panels from the stand-in depth camera: a color image of a small staged room with a coral ball and teal crate, and its depth map, near surfaces bright and far ones dark, with the intrinsics listed below" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/27-DepthAndThePhone/Anatomy-dark.jpg">
+  <img src="Images/27-DepthAndThePhone/Anatomy.jpg" alt="Two panels from the stand-in depth camera: a color image of a small staged room with a coral ball and teal crate, and its depth map, near surfaces bright and far ones dark, with the intrinsics listed below" width="680">
+</picture>
 
 In Ollin that bundle is one value type, `RGBDFrame`, and there's nothing mysterious inside it. This is the entire construction:
 
@@ -31,7 +34,10 @@ Where did this chapter's frames come from, with no depth camera attached? We fak
 
 One pixel plus one depth is a 3D point. The recipe is small enough to say in a sentence. Slide the pixel off the image center, scale by depth over focal length, and step out along the ray.
 
-<img src="Images/27-DepthAndThePhone/Unproject.jpg" alt="A diagram of unprojection: a lens at the left, an image plane with a marked pixel, and a dashed ray extending out to a 3D point, with the recovered-coordinates formula below" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/27-DepthAndThePhone/Unproject-dark.jpg">
+  <img src="Images/27-DepthAndThePhone/Unproject.jpg" alt="A diagram of unprojection: a lens at the left, an image plane with a marked pixel, and a dashed ray extending out to a 3D point, with the recovered-coordinates formula below" width="680">
+</picture>
 
 That's called **unprojection**, and the intrinsics (`cx`, `cy` the image center, `fx`, `fy` the focal lengths) are exactly the numbers the recipe needs. You'll rarely do it per pixel yourself, because `RGBDFrame` does it wholesale. `pointCloud()` unprojects *every* valid depth pixel, colors each from the color image, and hands the result back as a `PointCloud`.
 

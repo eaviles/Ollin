@@ -1,4 +1,4 @@
-// figure: frame=0 probe
+// figure: frame=0 probe themed
 //
 // Guide diagram (Chapter 32): one DMX universe seen twice. Six RGB pars hang
 // over a dark stage, lit by the fixture sugar; below them, the same universe's
@@ -10,12 +10,15 @@ import OllinDMX
 final class LampsAndBytes: Sketch {
     override var canvasSize: CanvasSize { .size(880, 600) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.6)
-    let accent = Color(hex: 0xE4572E)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.6) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         noStroke()
 
         // Patch six RGB pars back to back (channels 1-18) and light them:
@@ -69,7 +72,7 @@ final class LampsAndBytes: Sketch {
         for channel in 1...18 {
             let level = universe.level(channel)
             let x = meters.x + barWidth * Double(channel - 1)
-            fill(Color(hex: 0x2B2B2B, alpha: 0.08))
+            fill(ink.withAlpha(0.08))
             drawRect(x + barWidth * 0.18, meters.y, barWidth * 0.64, meters.height)
             fill(ink.withAlpha(0.25 + 0.75 * level))
             drawRect(

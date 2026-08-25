@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram (Chapter 30): the screen as material. A stand-in desktop is
 // drawn into a layer (a real capture would put the machine's own screen there,
@@ -10,8 +10,10 @@ import Ollin
 final class ScreenAsMaterial: Sketch {
     override var canvasSize: CanvasSize { .size(880, 452) }
 
-    let paper = Color(hex: 0xF7F5F1)
-    let ink = Color(hex: 0x2B2B2B)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
 
     override func draw() {
         seed(7)
@@ -150,7 +152,7 @@ final class ScreenAsMaterial: Sketch {
 
     private func label(_ rect: Rectangle, _ code: String, _ caption: String) {
         noFill()
-        stroke(Color(hex: 0x2B2B2B, alpha: 0.35))
+        stroke(ink.withAlpha(0.35))
         strokeWeight(1)
         drawRect(rect)
 
@@ -159,7 +161,7 @@ final class ScreenAsMaterial: Sketch {
         textSize(16)
         textAlign(.center, .bottom)
         drawText(code, rect.x + rect.width / 2, rect.y - 12)
-        fill(Color(hex: 0x2B2B2B, alpha: 0.62))
+        fill(ink.withAlpha(0.62))
         textSize(15)
         textAlign(.center, .top)
         drawText(caption, rect.x + rect.width / 2, rect.y + rect.height + 10)

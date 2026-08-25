@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram (Chapter 26): shadow art. The two silhouettes asked for on the
 // left, the solid they carve in the middle, and the two shadows it really throws
@@ -8,10 +8,13 @@ import Ollin
 final class TwoShadowsOneSolid: Sketch {
     override var canvasSize: CanvasSize { .size(880, 460) }
 
-    let paper = Color(hex: 0xF7F5F1)
-    let ink = Color(hex: 0x2B2B2B)
     let accent = Color(hex: 0xE07A5F)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.12)
+
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.12) }
 
     override func draw() {
         background(paper)
@@ -54,7 +57,7 @@ final class TwoShadowsOneSolid: Sketch {
         textAlign(.center, .top)
         drawText("a point survives only where every shadow says solid", width / 2, 340)
         textSize(17)
-        fill(Color(hex: 0x6E6A63))
+        fill(Color(hex: darkTheme ? 0x9A958D : 0x6E6A63))
         drawText("two silhouettes come out exactly, as long as they are solid in the same rows",
                  width / 2, 374)
     }

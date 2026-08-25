@@ -46,7 +46,10 @@ final class Pose: Sketch {
 
 `RGBDFrame` carries a color [`Image`](../Drawing/Images.md), a metric depth map (meters, row-major from the top-left), an optional per-pixel confidence map, and the depth-grid [`CameraIntrinsics`](#space).
 
-<img src="../../Guide/Images/27-DepthAndThePhone/Anatomy.jpg" alt="Two panels from the stand-in depth camera: a color image of a small staged room with a coral ball and teal crate, and its depth map, near surfaces bright and far ones dark, with the intrinsics listed below" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/27-DepthAndThePhone/Anatomy-dark.jpg">
+  <img src="../../Guide/Images/27-DepthAndThePhone/Anatomy.jpg" alt="Two panels from the stand-in depth camera: a color image of a small staged room with a coral ball and teal crate, and its depth map, near surfaces bright and far ones dark, with the intrinsics listed below" width="680">
+</picture>
 
 ```swift
 struct RGBDFrame {
@@ -69,7 +72,10 @@ You rarely build one by hand, since a depth source hands it to you. That is what
 
 `unproject(normalized:)` takes a **Vision-normalized** image point and returns its metric 3D position, or `nil` if there's no valid depth there. Vision-normalized means `0…1` across the frame with the origin at the **lower-left** and y up, the convention [`Body`](../Vision/Vision.md) and the other trackers report points in.
 
-<img src="../../Guide/Images/27-DepthAndThePhone/Unproject.jpg" alt="A diagram of unprojection: a lens at the left, an image plane with a marked pixel, and a dashed ray extending out to a 3D point, with the recovered-coordinates formula below" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/27-DepthAndThePhone/Unproject-dark.jpg">
+  <img src="../../Guide/Images/27-DepthAndThePhone/Unproject.jpg" alt="A diagram of unprojection: a lens at the left, an image plane with a marked pixel, and a dashed ray extending out to a 3D point, with the recovered-coordinates formula below" width="680">
+</picture>
 
 ```swift
 if let p = frame.unproject(normalized: Vector2(0.5, 0.5)) {

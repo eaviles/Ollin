@@ -1,4 +1,4 @@
-// figure: frame=1
+// figure: frame=1 themed
 //
 // Guide diagram (Chapter 31): one knob that holds four numbers, two of them
 // under a rule and two left alone. The three outlines are the same rectangle
@@ -10,10 +10,13 @@ import Ollin
 final class KnobParts: Sketch {
     override var canvasSize: CanvasSize { .size(880, 430) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.6)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.22)
-    let mark = Color(hex: 0xE2603F)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.6) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.22) }
+    var mark: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE2603F) }
 
     let wide = "300 + sin(time) * 120"
     let tall = "150 + cos(time) * 60"
@@ -29,7 +32,7 @@ final class KnobParts: Sketch {
     let moments = [0.0, 2.0, 4.0]
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
 
         noStroke()
         fill(ink)

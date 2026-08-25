@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram (Chapter 29): how numbers become notes, and the two decisions
 // that are easy to get wrong. Every pitch drawn here is read out of a real
@@ -11,11 +11,13 @@ import OllinAudio
 final class SonificationFigure: Sketch {
     override var canvasSize: CanvasSize { .size(880, 720) }
 
-    let paper = Color(hex: 0xF7F5F1)
-    let ink = Color(hex: 0x232020)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.55)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.14)
-    let accent = Color(hex: 0xE4572E)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x232020) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.55) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.14) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
     let cool = Color(hex: 0x3A6EA5)
 
     // A short profile with a clear shape: up, down, up again.

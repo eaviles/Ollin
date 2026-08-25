@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide figure (Chapter 31): headless capture, demonstrating itself. This sketch
 // renders another sketch four times through OllinApp.image(of:frame:), at four
@@ -13,10 +13,15 @@ import Ollin
 final class HeadlessCapture: Sketch {
     override var canvasSize: CanvasSize { .size(880, 300) }
 
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+
     override func setup() { noLoop() }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
 
         let frames = [0, 30, 60, 90]
         let tile = 196.0, gap = 18.0
@@ -31,13 +36,13 @@ final class HeadlessCapture: Sketch {
                           in: Rectangle(x: x, y: 34, width: tile, height: tile))
             }
             noStroke()
-            fill(Color(hex: 0x2B2B2B, alpha: 0.62))
+            fill(ink.withAlpha(0.62))
             textSize(16)
             textAlign(.center, .top)
             drawText("frame: \(frame)", x + tile / 2, 34 + tile + 9)
         }
 
-        fill(Color(hex: 0x2B2B2B))
+        fill(ink)
         textSize(19)
         textAlign(.center, .top)
         drawText("OllinApp.image(of: Pulse(), frame:), four renders, no window",

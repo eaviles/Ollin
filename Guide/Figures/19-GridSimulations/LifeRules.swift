@@ -1,4 +1,4 @@
-// figure: frame=0 probe
+// figure: frame=0 probe themed
 //
 // Guide diagram (Chapter 19): Conway's rules. Three neighborhoods, three
 // fates: a cell with two or three live neighbors survives, any other count
@@ -8,13 +8,18 @@ import Ollin
 final class LifeRules: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.45)
-    let alive = Color(hex: 0x1F8A70)
-    let accent = Color(hex: 0xE4572E)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.45) }
+    var alive: Color { Color(hex: darkTheme ? 0x2FA786 : 0x1F8A70) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
+    var dead: Color { Color(hex: darkTheme ? 0x2A2724 : 0xEDE8DC) }
+    var gone: Color { Color(hex: darkTheme ? 0x38332D : 0xDDD8CC) }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
 
         // (center alive?, live neighbor cells, outcome alive?, caption)
         let cases: [(Bool, [(Int, Int)], Bool, String)] = [
@@ -31,7 +36,7 @@ final class LifeRules: Sketch {
                   to: Vector2(ox + cell * 1.5 - 20, 90 + cell * 3 + 80))
             // The outcome: the same center cell, next generation.
             noStroke()
-            fill(rule.2 ? alive : Color(hex: 0xDDD8CC))
+            fill(rule.2 ? alive : gone)
             drawRect(ox + cell, 90 + cell * 3 + 95, cell, cell)
             noFill()
             stroke(faint)
@@ -60,7 +65,7 @@ final class LifeRules: Sketch {
                 let isAlive = neighbors.contains { $0.0 == col && $0.1 == row }
                     || (isCenter && centerAlive)
                 noStroke()
-                fill(isAlive ? alive : Color(hex: 0xEDE8DC))
+                fill(isAlive ? alive : dead)
                 drawRect(x, y, cell, cell)
                 noFill()
                 stroke(isCenter ? accent : faint)

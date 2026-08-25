@@ -52,7 +52,10 @@ Where a ball is let go matters as much as the room. In a circle it decides how b
 
 #### What each room draws
 
-<img src="../../Guide/Images/18-IteratedForms/BallInARoom.jpg" alt="Four rooms with a bouncing path drawn in each. A circle holds a star-like rosette with a clean round hole in the middle. An ellipse holds a woven band that never reaches either end. A stadium and a square with a round post in it are both filled edge to edge with scribble" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/18-IteratedForms/BallInARoom-dark.jpg">
+  <img src="../../Guide/Images/18-IteratedForms/BallInARoom.jpg" alt="Four rooms with a bouncing path drawn in each. A circle holds a star-like rosette with a clean round hole in the middle. An ellipse holds a woven band that never reaches either end. A stadium and a square with a round post in it are both filled edge to edge with scribble" width="680">
+</picture>
 
 **A circle keeps a hole.** A bounce turns the path about the radius, which leaves untouched how far the chord passes from the middle. Every chord of the path misses the middle by the same distance, so the whole rosette wraps one smaller circle it can never enter. Every chord is also the same length as every other, and each bounce moves the ball around the rim by the same angle, so a turn that is a whole fraction of a circle closes exactly into a star.
 

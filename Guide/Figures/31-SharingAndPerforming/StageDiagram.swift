@@ -1,4 +1,4 @@
-// figure: frame=200
+// figure: frame=200 themed
 //
 // Guide diagram (Chapter 31): the performance host, annotated. A stylized
 // OllinLiveCoding window drawn with Ollin itself: the sketch fills the stage,
@@ -9,12 +9,15 @@ import Ollin
 final class StageDiagram: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.6)
-    let accent = Color(hex: 0xE4572E)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.6) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
 
         // The window: a dark stage with the piece letterboxed on it.
         let window = Rectangle(x: 230, y: 62, width: 420, height: 400)

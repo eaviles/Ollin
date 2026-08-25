@@ -1,4 +1,4 @@
-// figure: frame=1
+// figure: frame=1 themed
 //
 // Guide diagram (Chapter 31): the same two keys read by four curves. Each
 // panel builds a real Automation.Track and samples it, so the shapes are the
@@ -9,17 +9,20 @@ import Ollin
 final class KnobOnACurve: Sketch {
     override var canvasSize: CanvasSize { .size(880, 470) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.35)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.6)
-    let mark = Color(hex: 0xE2603F)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.35) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.6) }
+    var mark: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE2603F) }
 
     /// The moment every panel is read at, in seconds.
     let moment = 1.15
     let span = 2.0
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
 
         panel(0, "linear", .linear)
         panel(1, "easeInOut", .easeInOut)

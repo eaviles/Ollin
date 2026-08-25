@@ -1,4 +1,4 @@
-// figure: frame=1
+// figure: frame=1 themed
 //
 // Guide diagram (Chapter 32): one canvas, three displays. The canvas is drawn
 // once, at the top, and each display below carries the part of it that its own
@@ -10,11 +10,13 @@ import Ollin
 final class ManyDisplays: Sketch {
     override var canvasSize: CanvasSize { .size(880, 620) }
 
-    let paper = Color(hex: 0xF7F5F1)
-    let ink = Color(hex: 0x2B2B2B)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.55)
-    let rule = Color(hex: 0x2B2B2B, alpha: 0.18)
-    let accent = Color(hex: 0xE4572E)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.55) }
+    var rule: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.18) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
 
     /// The canvas as one long picture, before anybody divides it.
     let canvas = Rectangle(x: 56, y: 92, width: 768, height: 168)

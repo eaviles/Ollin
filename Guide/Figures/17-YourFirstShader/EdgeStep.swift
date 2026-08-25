@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram (Chapter 17): smoothstep as an edge. The same disc, defined
 // by distance from the center, drawn three ways: a hard step, a smoothstep
@@ -8,6 +8,11 @@ import Ollin
 
 final class EdgeStep: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
+
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
 
     func disc(_ softness: Double) -> Shader {
         Shader("""
@@ -23,7 +28,7 @@ final class EdgeStep: Sketch {
     }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
 
         let labels = ["edge = 0  (a hard step)", "edge = 0.008  (a clean rim)",
                       "edge = 0.2  (a glow)"]
@@ -34,14 +39,14 @@ final class EdgeStep: Sketch {
             let panel = Rectangle(x: x, y: 80, width: w, height: w)
             drawImage(generate(disc(widths[i]), width: Int(w), height: Int(w)).image, in: panel)
             noStroke()
-            fill(Color(hex: 0x2B2B2B, alpha: 0.6))
+            fill(ink.withAlpha(0.6))
             textSize(16)
             textAlign(.center, .top)
             drawText(labels[i], panel.center.x, panel.y + panel.height + 12)
         }
 
         noStroke()
-        fill(Color(hex: 0x2B2B2B))
+        fill(ink)
         textSize(19)
         textAlign(.center, .top)
         drawText("smoothstep(0.35, 0.35 - edge, d): Chapter 3's curve, working as an edge",

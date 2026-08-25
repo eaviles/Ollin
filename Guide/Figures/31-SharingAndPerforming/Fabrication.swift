@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide listing (Chapter 31): why a printable mesh needs checking rather than
 // looking at. Two copies of the same torus knot, one swept closed and one left
@@ -10,6 +10,11 @@ import Ollin
 
 final class Fabrication: Sketch {
     override var canvasSize: CanvasSize { .size(880, 560) }
+
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
 
     /// Where each copy stands, in world units either side of the middle.
     private let offset = 1.6
@@ -26,7 +31,7 @@ final class Fabrication: Sketch {
     }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         environment(.courtyard.lightingOnly())
         lightingPreset(.studio)
         perspective(eye: Vector3(0, 2.5, 3.9), target: Vector3(0, 0.15, 0))
@@ -59,15 +64,15 @@ final class Fabrication: Sketch {
             textAlign(.center, .top)
 
             textSize(21)
-            fill(Color(hex: 0x2B2B2B))
+            fill(ink)
             drawText(check.isClosed ? "closed" : "open at the ends", anchor.x, height * 0.78)
 
             textSize(17)
             if check.isPrintable {
-                fill(Color(hex: 0x2F7D4F))
+                fill(Color(hex: darkTheme ? 0x5BAD7C : 0x2F7D4F))
                 drawText("ready to print", anchor.x, height * 0.855)
             } else {
-                fill(Color(hex: 0xC2431E))
+                fill(Color(hex: darkTheme ? 0xE0684A : 0xC2431E))
                 drawText("\(check.boundaryEdgeCount) edges border a hole",
                          anchor.x, height * 0.855)
             }

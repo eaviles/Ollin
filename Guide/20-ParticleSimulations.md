@@ -225,7 +225,10 @@ let rings = g.value(2, in: 1 ... 4)
 pool.breed(from: chosen)
 ```
 
-<img src="Images/20-ParticleSimulations/PickAndBreed.jpg" alt="Two four-by-four grids of small radial ornaments. In the left grid every ornament is different and two are outlined in orange. In the right grid, one breeding later, all sixteen are recognizable variations on the outlined pair" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/20-ParticleSimulations/PickAndBreed-dark.jpg">
+  <img src="Images/20-ParticleSimulations/PickAndBreed.jpg" alt="Two four-by-four grids of small radial ornaments. In the left grid every ornament is different and two are outlined in orange. In the right grid, one breeding later, all sixteen are recognizable variations on the outlined pair" width="680">
+</picture>
 
 Nothing in a `Genome` knows what its numbers mean, which is exactly what lets the framework mate and mutate one without knowing what is being evolved. Sixteen ornaments become sixteen slightly different ornaments, then sixteen variations on the two you liked. After a dozen rounds the grid is full of things you would not have thought to draw.
 

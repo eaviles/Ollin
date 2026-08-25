@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram (Chapter 32): the canvas leaving the screen as LEDs. A strip
 // rides a wave over a colorful field and a matrix reads a panel of it (the
@@ -12,8 +12,11 @@ import OllinDMX
 final class LEDWall: Sketch {
     override var canvasSize: CanvasSize { .size(880, 600) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.6)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.6) }
     let picture = Rectangle(x: 60, y: 56, width: 760, height: 236)
 
     /// The picture as a function of position, so the lit lamps below can read
@@ -27,7 +30,7 @@ final class LEDWall: Sketch {
     }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         noStroke()
 
         // The map, built with the real API: its positions are what's drawn.

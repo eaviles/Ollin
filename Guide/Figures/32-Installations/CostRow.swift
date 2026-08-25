@@ -1,4 +1,4 @@
-// figure: frame=1
+// figure: frame=1 themed
 //
 // Guide diagram (Chapter 32): the inspector's cost row, annotated. A stylized
 // card drawn with Ollin itself: the frame-rate strip, the two bars scaled to one
@@ -8,9 +8,12 @@ import Ollin
 final class CostRow: Sketch {
     override var canvasSize: CanvasSize { .size(880, 456) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.6)
-    let accent = Color(hex: 0xE4572E)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.6) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
 
     // The card's own palette, the dark inspector the host shows.
     let cardFill = Color(hex: 0x232326)
@@ -26,7 +29,7 @@ final class CostRow: Sketch {
     let gpuMS = 5.4
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
 
         let card = Rectangle(x: 250, y: 96, width: 380, height: 250)
         noStroke()

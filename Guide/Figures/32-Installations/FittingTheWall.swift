@@ -1,4 +1,4 @@
-// figure: frame=1
+// figure: frame=1 themed
 //
 // Guide diagram (Chapter 32): what a projector does to a picture, and what
 // corner-pinning does about it. On the left the picture as it lands, on the
@@ -10,10 +10,12 @@ import Ollin
 final class FittingTheWall: Sketch {
     override var canvasSize: CanvasSize { .size(880, 508) }
 
-    let paper = Color(hex: 0xF7F5F1)
-    let ink = Color(hex: 0x2B2B2B)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.55)
-    let accent = Color(hex: 0xE4572E)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.55) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
     let beam = Color(hex: 0x6B9EC7)
     let other = Color(hex: 0x8A6A96)
 
@@ -44,7 +46,7 @@ final class FittingTheWall: Sketch {
         drawText(title, wall.x, wall.y - 14)
 
         noFill()
-        stroke(Color(white: 0.72))
+        stroke(Color(white: darkTheme ? 0.45 : 0.72))
         strokeWeight(2)
         drawRect(corner: wall.corner, width: wall.width, height: wall.height)
 
@@ -127,7 +129,7 @@ final class FittingTheWall: Sketch {
         // The band they share, in the middle.
         let bandFrom = 0.38, bandTo = 0.62
         noStroke()
-        fill(Color(white: 0.88))
+        fill(Color(white: darkTheme ? 0.22 : 0.88))
         drawRect(left + (right - left) * bandFrom, y,
                  (right - left) * (bandTo - bandFrom), height)
 

@@ -1,4 +1,4 @@
-// figure: frame=430
+// figure: frame=430 themed
 //
 // Guide diagram (Chapter 28): six seconds of listening, as a timeline. Top:
 // the loudness curve (amplitude). Middle: the beat pulse, snapping to 1 on
@@ -12,16 +12,29 @@ import OllinAudio
 final class BeatTimeline: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
-    let mic = StageMic()
+    var mic = StageMic()
     var loudness: [Double] = []
     var pulses: [Double] = []
     var beatFrames: [Int] = []
     var lastCount = 0
+    var tick = 0
 
-    let ink = Color(hex: 0x2B2B2B)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.28)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.6)
-    let accent = Color(hex: 0xE4572E)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.28) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.6) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
+
+    override func setup() {
+        mic = StageMic()
+        loudness = []
+        pulses = []
+        beatFrames = []
+        lastCount = 0
+        tick = 0
+    }
 
     let left = 70.0, plotWidth = 740.0
     let window = 360                      // six seconds at 60 fps
@@ -29,15 +42,16 @@ final class BeatTimeline: Sketch {
     override func draw() {
         // Listen, and take notes.
         mic.listen()
+        tick += 1
         let audio = mic.analyzer
         loudness.append(Double(audio.amplitude))
         pulses.append(Double(audio.beat))
         if audio.beatCount > lastCount {
             lastCount = audio.beatCount
-            beatFrames.append(frameCount)
+            beatFrames.append(tick)
         }
 
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         textSize(19)
         guard loudness.count > window else { return }
         let start = loudness.count - window

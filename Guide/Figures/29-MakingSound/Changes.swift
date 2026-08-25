@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram (Chapter 29): the same four numerals in two keys. Each chord
 // is drawn as the notes a Progression actually hands back, stacked at their
@@ -10,10 +10,12 @@ import OllinAudio
 final class Changes: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
-    let paper = Color(hex: 0xF7F5F1)
-    let ink = Color(hex: 0x2B2B2B)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.16)
-    let accent = Color(hex: 0xC1553B)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.16) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xC1553B) }
 
     let numerals = ["I", "vi", "IV", "V"]
 
@@ -86,7 +88,7 @@ final class Changes: Sketch {
             textAlign(.center, .top)
             drawText(numerals[i], x, top + 4)
             textSize(15)
-            fill(Color(hex: 0x2B2B2B, alpha: 0.62))
+            fill(ink.withAlpha(0.62))
             drawText(name(of: pitches), x, top + 30)
         }
     }

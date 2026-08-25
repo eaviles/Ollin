@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram (Chapter 28): three hands on one knob. A MIDI controller, an
 // OSC message from a phone, and the inspector slider all drive the same
@@ -9,13 +9,17 @@ import Ollin
 final class BindingFlow: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.45)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.6)
-    let accent = Color(hex: 0xE4572E)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.45) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.6) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
+    var card: Color { darkTheme ? Color(hex: 0x2A2724) : .white }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
 
         // The three sources.
         box(x: 50, y: 70, w: 250, h: 96, title: "a MIDI knob",
@@ -66,7 +70,7 @@ final class BindingFlow: Sketch {
 
     func box(x: Double, y: Double, w: Double, h: Double,
              title: String, sub: String, accented: Bool = false) {
-        fill(.white)
+        fill(card)
         stroke(accented ? accent : faint)
         strokeWeight(accented ? 2.5 : 1.5)
         drawRect(x, y, w, h, cornerRadius: 10)

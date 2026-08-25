@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide listing (Chapter 31): what the two numbers of a stereo pair do, seen
 // from above. Two eyes a fixed distance apart look parallel at a screen placed
@@ -20,8 +20,11 @@ final class StereoPair: Sketch {
     private let centerX = 440.0
     private let interocular = 64.0
 
-    private let ink = Color(hex: 0x2B2B2B)
-    private let quiet = Color(hex: 0x6B6459)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    private var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    private var quiet: Color { Color(hex: darkTheme ? 0x9A958D : 0x6B6459) }
     private let near = Color(hex: 0xC24A4A)
     private let far = Color(hex: 0x3E7CB1)
     private let onScreen = Color(hex: 0x4F8F5B)
@@ -30,7 +33,7 @@ final class StereoPair: Sketch {
     private var rightEye: Vector2 { Vector2(centerX + interocular / 2, eyeY) }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         noStroke()
         textFont(OutlineFont.systemMedium)
 

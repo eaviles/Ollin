@@ -23,13 +23,19 @@ Every position on the canvas is two numbers, counted in pixels from the top-left
 
 ### Normalized coordinates: 0…1 anywhere
 
-<img src="Images/17-YourFirstShader/UVSpace.jpg" alt="The uv gradient annotated: (0,0) at the top left, (1,1) at the bottom right, the center marked (0.5, 0.5)" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/17-YourFirstShader/UVSpace-dark.jpg">
+  <img src="Images/17-YourFirstShader/UVSpace.jpg" alt="The uv gradient annotated: (0,0) at the top left, (1,1) at the bottom right, the center marked (0.5, 0.5)" width="680">
+</picture>
 
 Instead of pixels, an address can be a *fraction* of the whole, 0 at one edge and 1 at the other. So (0.5, 0.5) is the center of anything, at any resolution. Shaders live entirely in these `uv` coordinates, which is where [Chapter 17](17-YourFirstShader.md) works. Subtracting 0.5 re-centers them, so distances measure from the middle. The same trick names positions inside a camera image regardless of its size ([Chapter 30](30-Seeing.md)).
 
 ### Putting a normalized point onto the canvas
 
-<img src="Images/30-Seeing/TrackerFlow.jpg" alt="A diagram of camera frames flowing through a tracker, and a normalized lower-left-origin point mapping into the drawn frame's rectangle" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/30-Seeing/TrackerFlow-dark.jpg">
+  <img src="Images/30-Seeing/TrackerFlow.jpg" alt="A diagram of camera frames flowing through a tracker, and a normalized lower-left-origin point mapping into the drawn frame's rectangle" width="680">
+</picture>
 
 A fraction-of-the-image point becomes a canvas point by scaling it into the rectangle you drew the image in. There's one wrinkle. Vision results count y *up* from the bottom-left, while the canvas counts y *down* from the top-left. So the y fraction flips on the way (`1 - y`). [Chapter 30](30-Seeing.md) wraps the flip-and-scale into one call, but this is all that call does.
 
@@ -324,7 +330,10 @@ Take a formula, feed it a point, feed it its own answer, and keep going, and the
 
 ### Optical flow: a measured field
 
-<img src="Images/30-Seeing/FlowArrows.jpg" alt="A camera frame of two hands, one overlaid with arrows showing its measured motion" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/30-Seeing/FlowArrows-dark.jpg">
+  <img src="Images/30-Seeing/FlowArrows.jpg" alt="A camera frame of two hands, one overlaid with arrows showing its measured motion" width="680">
+</picture>
 
 Every field so far was invented, while optical flow is *measured*. Comparing one camera frame with the next assigns each point an arrow, "which way did the picture move here". The result is a direction field you can trace, advect particles through, or paint with, exactly like a noise-built one. The camera becomes a field generator in [Chapter 30](30-Seeing.md).
 
@@ -341,7 +350,10 @@ Distributed systems need a definition of "nearby". That's a perception radius ar
 
 ### Local rules, global structure
 
-<img src="Images/19-GridSimulations/LifeRules.jpg" alt="Three three-by-three neighborhoods and their outcomes: lonely cells die, comfortable cells live on, empty cells with three neighbors are born" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/19-GridSimulations/LifeRules-dark.jpg">
+  <img src="Images/19-GridSimulations/LifeRules.jpg" alt="Three three-by-three neighborhoods and their outcomes: lonely cells die, comfortable cells live on, empty cells with three neighbors are born" width="680">
+</picture>
 
 No cell in the Game of Life knows what the board looks like. Each one asks only its eight neighbors and follows three lines of rules, and gliders, blinkers, and all the rest emerge unbidden. The same principle runs gentler machinery. Truchet tiles in [Chapter 6](06-GridsAndRepetition.md) agree only at their shared edges, yet loops and mazes appear. Boids in [Chapter 12](12-FlocksAndSwarms.md) know only their circle, yet the flock turns as one. Reaction-diffusion in [Chapter 19](19-GridSimulations.md) asks even less and builds coral. When a pattern looks globally planned, look for the local law first.
 
@@ -371,13 +383,19 @@ Wave Function Collapse solves a grid the way you solve sudoku. Every cell starts
 
 ### A parameter space is a map
 
-<img src="Images/19-GridSimulations/FeedKillMap.jpg" alt="A grid of reaction-diffusion dishes at different feed and kill settings: most quiet, a diagonal band growing spots, rings, mazes, and dividing dots" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/19-GridSimulations/FeedKillMap-dark.jpg">
+  <img src="Images/19-GridSimulations/FeedKillMap.jpg" alt="A grid of reaction-diffusion dishes at different feed and kill settings: most quiet, a diagonal band growing spots, rings, mazes, and dividing dots" width="680">
+</picture>
 
 Two knobs span a plane, where every pair of settings is a point. A system's behaviors live in *regions*, spots here, mazes there, dead calm nearly everywhere. Rendering the map, one small run per grid cell, turns knob-fiddling into geography. Interesting settings cluster along the borders between regions. [Chapter 19](19-GridSimulations.md) maps Gray-Scott's feed and kill this way.
 
 ### Escape time
 
-<img src="Images/18-IteratedForms/FractalPair.jpg" alt="Three panels banded in blue, gold, and cream: the whole Mandelbrot set with a small red circle marking one point on its edge, the Julia set that same point produces, and a deep zoom into the Mandelbrot boundary" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/18-IteratedForms/FractalPair-dark.jpg">
+  <img src="Images/18-IteratedForms/FractalPair.jpg" alt="Three panels banded in blue, gold, and cream: the whole Mandelbrot set with a small red circle marking one point on its edge, the Julia set that same point produces, and a deep zoom into the Mandelbrot boundary" width="680">
+</picture>
 
 Iterate a formula at every pixel and ask one question. How many rounds until the value flies off past a bound? Points that never escape are painted the set's interior. Everywhere else the *count itself* becomes the color, so the smooth bands you see are equal-patience contours. The most famous images in mathematics are literally a loop counter, colorized. Which of the formula's two numbers you hold still decides which fractal you get. The marked point in the first panel is the one whose Julia set sits beside it. [Chapter 19](19-GridSimulations.md) shades both this way.
 
@@ -469,37 +487,55 @@ Draw this frame on top of a transformed copy of the *last* frame, and the transf
 
 ### A function from position to color
 
-<img src="Images/17-YourFirstShader/PixelGrid.jpg" alt="The same glow function evaluated coarsely, one answer per grid cell, and at full pixel resolution where the answers fuse into a smooth image" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/17-YourFirstShader/PixelGrid-dark.jpg">
+  <img src="Images/17-YourFirstShader/PixelGrid.jpg" alt="The same glow function evaluated coarsely, one answer per grid cell, and at full pixel resolution where the answers fuse into a smooth image" width="680">
+</picture>
 
 A shader is one function answering one question, "what color at this position?", asked independently at every pixel. There's no canvas to accumulate onto and no loop you can see. The image is only hundreds of thousands of simultaneous answers, fusing smoothly because the function varies smoothly. Evaluate it coarsely and you can watch the answers before they fuse. [Chapter 17](17-YourFirstShader.md) starts pixel thinking here.
 
 ### Signed distance: how far, and which side
 
-<img src="Images/26-SculptingWithFields/FieldMap.jpg" alt="A distance field visualized: a melted shape in warm color surrounded by concentric bands of equal distance, with a bold line at zero" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/26-SculptingWithFields/FieldMap-dark.jpg">
+  <img src="Images/26-SculptingWithFields/FieldMap.jpg" alt="A distance field visualized: a melted shape in warm color surrounded by concentric bands of equal distance, with a bold line at zero" width="680">
+</picture>
 
 A signed distance field describes a shape by answering, at every point, "how far to the surface?". The *sign* says which side you're on. Negative is inside, positive is outside, and zero is exactly on the boundary. The shape stops being a list of vertices and becomes a question you can ask anywhere. That's what makes the sculpting in [Chapter 26](26-SculptingWithFields.md) possible.
 
 ### Level sets: an edge at a chosen distance
 
-<img src="Images/17-YourFirstShader/EdgeStep.jpg" alt="The same disc three times: a hard stepped edge, a clean rim from a narrow smoothstep, and a wide soft glow from a broad one" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/17-YourFirstShader/EdgeStep-dark.jpg">
+  <img src="Images/17-YourFirstShader/EdgeStep.jpg" alt="The same disc three times: a hard stepped edge, a clean rim from a narrow smoothstep, and a wide soft glow from a broad one" width="680">
+</picture>
 
 Given a distance field, a shape is "all points within r". The edge lives where the distance crosses that level, like one contour line on a topographic map. Testing the crossing with `step` gives a hard edge. Testing it with a `smoothstep` window turns the same boundary into a crisp anti-aliased rim, or a wide glow if you widen the window. Every disc in [Chapter 17](17-YourFirstShader.md) is drawn this way, distance in, coverage out.
 
 ### min melts, max trims
 
-<img src="Images/26-SculptingWithFields/MeltStrip.jpg" alt="Two circles at four smoothing radii: touching hard, necking together, flowing into a peanut, and fused into one capsule" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/26-SculptingWithFields/MeltStrip-dark.jpg">
+  <img src="Images/26-SculptingWithFields/MeltStrip.jpg" alt="Two circles at four smoothing radii: touching hard, necking together, flowing into a peanut, and fused into one capsule" width="680">
+</picture>
 
 Combine two distance fields and set operations fall out of two tiny functions. `min` keeps whichever surface is nearer, the union. `max` keeps the farther, the intersection, and negating one gives subtraction. The magic option is the **smooth minimum**, a min with a blending radius. Where the two fields are nearly tied it dips below both, so the shapes neck together and melt like wax instead of merely touching. The k dial in the picture is that radius. [Chapter 26](26-SculptingWithFields.md) sculpts with it.
 
 ### Sphere tracing: hop by what the field promises
 
-<img src="Images/26-SculptingWithFields/MarchRay.jpg" alt="A ray from an eye crossing in shrinking hops, each bounded by a circle showing the distance the field reported, ending on a surface" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/26-SculptingWithFields/MarchRay-dark.jpg">
+  <img src="Images/26-SculptingWithFields/MarchRay.jpg" alt="A ray from an eye crossing in shrinking hops, each bounded by a circle showing the distance the field reported, ending on a surface" width="680">
+</picture>
 
 To render a distance field, march a ray from the eye. Ask the field "how far to the nearest surface?", and since nothing can be closer than that answer, hop exactly that far, safely. Repeat, and the hops shrink as the surface nears, until a hop below a threshold counts as a hit. No triangles anywhere, just a field asked a few dozen times per pixel. It's how all of [Chapter 26](26-SculptingWithFields.md)'s 3D sculptures reach the screen.
 
 ### Folding space
 
-<img src="Images/26-SculptingWithFields/DomainFold.jpg" alt="An asymmetric cluster mirrored into a facing pair, tiled into a grid, and fanned into a nine-fold rosette" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/26-SculptingWithFields/DomainFold-dark.jpg">
+  <img src="Images/26-SculptingWithFields/DomainFold.jpg" alt="An asymmetric cluster mirrored into a facing pair, tiled into a grid, and fanned into a nine-fold rosette" width="680">
+</picture>
 
 Instead of copying a shape n times, fold the *question*. Mirror the query point, wrap it into a repeating cell, or rotate it into one wedge before asking the field. One shape, one evaluation, and the fold makes it appear everywhere the transformed points coincide. A grid of a thousand copies costs the same as one. It's repetition run backward, applied to space itself. [Chapter 26](26-SculptingWithFields.md) mirrors, tiles, and fans with it.
 
@@ -507,7 +543,10 @@ Instead of copying a shape n times, fold the *question*. Mirror the query point,
 
 ### An eye on a sphere
 
-<img src="Images/21-3DGently/Orbit.jpg" alt="A small camera on a ring around an object, with a sight line labeled radius, a ground arc labeled azimuth, and a climbing arc labeled elevation" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/21-3DGently/Orbit-dark.jpg">
+  <img src="Images/21-3DGently/Orbit.jpg" alt="A small camera on a ring around an object, with a sight line labeled radius, a ground arc labeled azimuth, and a climbing arc labeled elevation" width="680">
+</picture>
 
 Three numbers aim a camera at a thing: **azimuth** is how far around, **elevation** how far up, and **radius** how far away. Together they place an eye anywhere on a sphere around the target, which is why orbiting feels like turning an object in your hand. It's the polar-coordinates idea from the circle entries, plus one more angle for up. [Chapter 21](21-3DGently.md) drives its cameras with these three.
 
@@ -519,7 +558,10 @@ Perspective is one rule, that apparent size falls with distance, so equal sphere
 
 ### The pinhole: a pixel plus a depth is a ray
 
-<img src="Images/27-DepthAndThePhone/Unproject.jpg" alt="A lens, an image plane with a marked pixel, and a dashed ray extending out to a 3D point, with the recovered-coordinates formula below" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/27-DepthAndThePhone/Unproject-dark.jpg">
+  <img src="Images/27-DepthAndThePhone/Unproject.jpg" alt="A lens, an image plane with a marked pixel, and a dashed ray extending out to a 3D point, with the recovered-coordinates formula below" width="680">
+</picture>
 
 A camera flattens the world by sliding every point down a ray through the lens. A depth sensor records how far along its ray each pixel's surface was. Unprojection runs the flattening backward. Slide the pixel off the image center, scale by depth over focal length, and the 3D point returns. A flat photo plus a flat depth map quietly holds a full 3D scene. [Chapter 27](27-DepthAndThePhone.md) stands its point clouds up with exactly this.
 
@@ -539,13 +581,19 @@ A depth image knows only what its rays touched, so behind every object lies a sh
 
 ### The spectrum
 
-<img src="Images/28-SoundAndControl/Anatomy.jpg" alt="Three stacked panels from one analyzed instant: the raw waveform, the spectrum with spikes at the kick, bass, and melody, and normalized band bars" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/28-SoundAndControl/Anatomy-dark.jpg">
+  <img src="Images/28-SoundAndControl/Anatomy.jpg" alt="Three stacked panels from one analyzed instant: the raw waveform, the spectrum with spikes at the kick, bass, and melody, and normalized band bars" width="680">
+</picture>
 
 Any sound, however messy, splits into a sum of pure vibrations. The spectrum reports the energy at each frequency, the moment's recipe, bass at the left and brilliance at the right. One more fact makes it drawable. Hearing is logarithmic, and each *doubling* of frequency, an octave, sounds like one equal step. So useful band bars are log-spaced, giving the low and high octaves equal width instead of letting the treble hog the axis. [Chapter 28](28-SoundAndControl.md) turns spectra into instruments.
 
 ### Events, not levels
 
-<img src="Images/28-SoundAndControl/BeatTimeline.jpg" alt="A six-second timeline: the loudness curve with regular peaks, a beat pulse snapping up at each detection, and tick marks counting beats" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/28-SoundAndControl/BeatTimeline-dark.jpg">
+  <img src="Images/28-SoundAndControl/BeatTimeline.jpg" alt="A six-second timeline: the loudness curve with regular peaks, a beat pulse snapping up at each detection, and tick marks counting beats" width="680">
+</picture>
 
 Loudness is a level, while a beat is an *event*. You can't find events by watching a level's height, because a sustained chord is loud forever without ever being "a hit". Detection compares each instant with the moment just before. A sudden rise above the recent trend is an arrival, and a short refractory pause keeps one drum hit from counting twice. The signal is change over time, not amount. [Chapter 28](28-SoundAndControl.md) builds its beat-reactive pieces on that comparison.
 

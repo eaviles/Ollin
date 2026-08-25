@@ -73,7 +73,10 @@ A key carries the curve that *leaves* it, so the last key's curve is never read.
 | `.easeInOut` | slow at both ends, fast through the middle (the default) |
 | `.bezier(x1:y1:x2:y2:)` | a cubic Bezier through two handle points |
 
-<img src="../../Guide/Images/31-SharingAndPerforming/KnobOnACurve.jpg" alt="Four panels, each with the same two keys read by a different curve: a straight line, an S, a flat line that jumps at the end, and a hard snap. A red line marks one moment on each, and the circle above shows the size the knob holds there" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/31-SharingAndPerforming/KnobOnACurve-dark.jpg">
+  <img src="../../Guide/Images/31-SharingAndPerforming/KnobOnACurve.jpg" alt="Four panels, each with the same two keys read by a different curve: a straight line, an S, a flat line that jumps at the end, and a hard snap. A red line marks one moment on each, and the circle above shows the size the knob holds there" width="680">
+</picture>
 
 The Bezier is the editable one: the handles bend the clock as well as the value, which is how a curve drawn by hand behaves. The handles' `x` stays inside `0...1` so the curve reads left to right; `y` may travel outside it, which overshoots and comes back.
 

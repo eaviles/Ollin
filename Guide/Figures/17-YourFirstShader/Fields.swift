@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide figure (Chapter 17): all six pattern fields, the built-in generators
 // that are pure closed-form per-pixel math with no state, no source picture, and
@@ -9,8 +9,13 @@ import Ollin
 final class Fields: Sketch {
     override var canvasSize: CanvasSize { .size(880, 648) }
 
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
 
         let tile = 268, gap = 12.0
         let left = (width - Double(tile) * 3 - gap * 2) / 2
@@ -31,7 +36,7 @@ final class Fields: Sketch {
             drawImage(generate(field.1, width: tile, height: tile).image,
                       in: Rectangle(x: x, y: y, width: Double(tile), height: Double(tile)))
             noStroke()
-            fill(Color(hex: 0x2B2B2B, alpha: 0.62))
+            fill(ink.withAlpha(0.62))
             textSize(17)
             textAlign(.center, .top)
             drawText(field.0, x + Double(tile) / 2, y + Double(tile) + 8)

@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram (Chapter 26): a signed-distance field, seen whole. Every
 // point knows how far the nearest surface is; the sign says which side. The
@@ -9,14 +9,20 @@ import Ollin
 final class FieldMap: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
-    let field = Shader("""
+    @Param var darkTheme = false
+
+    var paperInk: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+
+    var field: Shader { Shader("""
     float4 shade(float2 uv, ShaderInfo info) {
+        float isDark = param(info, 0);
         float2 p = (uv - 0.5) * float2(info.resolution.x / info.resolution.y, 1.0) * 2.3;
         float d1 = length(p - float2(-0.42, 0.02)) - 0.34;
         float d2 = sdRoundBox(p - float2(0.36, -0.04), float2(0.33, 0.24), 0.08);
         float d = smin(d1, d2, 0.28);
 
-        float3 paper = float3(0.969, 0.961, 0.945);
+        float3 paper = mix(float3(0.969, 0.961, 0.945),
+                           float3(0.118, 0.106, 0.094), isDark);
         float3 cool = float3(0.62, 0.70, 0.78);
         float3 warm = float3(0.894, 0.341, 0.180);
 
@@ -28,15 +34,17 @@ final class FieldMap: Sketch {
             color = mix(warm, float3(1.0, 0.86, 0.78), 0.4 * bands);
         }
         float contour = 1.0 - smoothstep(0.006, 0.016, abs(d));
-        color = mix(color, float3(0.17, 0.17, 0.17), contour);
+        float3 line = mix(float3(0.17, 0.17, 0.17),
+                          float3(0.910, 0.898, 0.882), isDark);
+        color = mix(color, line, contour);
         return float4(color, 1.0);
     }
-    """)
+    """, params: [darkTheme ? 1 : 0]) }
 
     override func draw() {
         drawImage(generate(.shader(field)).image, 0, 0)
 
-        let ink = Color(hex: 0x2B2B2B)
+        let ink = paperInk
         fill(ink)
         textSize(26)
         textAlign(.left, .middle)

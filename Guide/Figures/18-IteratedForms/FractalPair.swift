@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide figure (Chapter 18): escape-time fractals. The whole Mandelbrot set with
 // one c marked, the Julia set that same c produces, and a deep zoom into the
@@ -9,11 +9,16 @@ import Ollin
 final class FractalPair: Sketch {
     override var canvasSize: CanvasSize { .size(880, 386) }
 
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+
     /// The c whose Julia set the middle panel shows, marked in the first panel.
     let pick = Vector2(-0.79, 0.15)
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
 
         let tile = 268, gap = 12.0
         let left = (width - Double(tile) * 3 - gap * 2) / 2
@@ -50,7 +55,7 @@ final class FractalPair: Sketch {
             }
 
             noStroke()
-            fill(Color(hex: 0x2B2B2B, alpha: 0.62))
+            fill(ink.withAlpha(0.62))
             textSize(16)
             textAlign(.center, .top)
             drawText(panel.0, rect.x + rect.width / 2, rect.y + rect.height + 8)

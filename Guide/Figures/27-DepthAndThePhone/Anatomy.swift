@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram (Chapter 27): the anatomy of an RGBD frame. A stand-in depth
 // camera (a small CPU ray march over a staged room) produces the same three
@@ -9,6 +9,11 @@ import Ollin
 final class Anatomy: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+
     var frame: RGBDFrame?
 
     override func setup() {
@@ -17,10 +22,9 @@ final class Anatomy: Sketch {
     }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         guard let frame else { return }
 
-        let ink = Color(hex: 0x2B2B2B)
         let panel = Rectangle(x: 40, y: 96, width: 360, height: 270)
         let panel2 = Rectangle(x: 440, y: 96, width: 360, height: 270)
 

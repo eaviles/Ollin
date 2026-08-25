@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram (Chapter 17): somebody else's shader. Left, a fragment shader
 // as it arrives, written in GLSL against the values a shader site supplies.
@@ -11,9 +11,11 @@ import OllinProjects
 final class ImportedShader: Sketch {
     override var canvasSize: CanvasSize { .size(920, 420) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.45)
-    let paper = Color(hex: 0xF7F5F1)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.45) }
 
     /// The shader as pasted. Written for this figure, so nobody else's terms
     /// travel with it. It centers its coordinates and then tiles them, so most

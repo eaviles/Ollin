@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram (Chapter 29): what modulation puts in. Four columns, each the
 // arithmetic one operator pushing another does: the carrier's wave on top and
@@ -11,10 +11,12 @@ import Ollin
 final class Modulation: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
-    let paper = Color(hex: 0xF7F5F1)
-    let ink = Color(hex: 0x2B2B2B)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.14)
-    let accent = Color(hex: 0xC1553B)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.14) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xC1553B) }
 
     /// One operator pushing another: a sine whose phase is bent by a second
     /// sine running at `ratio` times the note, by `index` radians.
@@ -57,7 +59,7 @@ final class Modulation: Sketch {
         }
 
         noStroke()
-        fill(Color(hex: 0x2B2B2B, alpha: 0.6))
+        fill(ink.withAlpha(0.6))
         textSize(15)
         textAlign(.center, .top)
         drawText("dark bars are the note's own harmonics, red ones fall between them",

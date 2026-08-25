@@ -1,4 +1,4 @@
-// figure: frame=0 probe
+// figure: frame=0 probe themed
 //
 // Guide diagram (Chapter 26): sphere tracing, one ray. From the eye, ask the
 // field how far the nearest surface is; that distance is a safe hop, because
@@ -9,8 +9,11 @@ import Ollin
 final class MarchRay: Sketch {
     override var canvasSize: CanvasSize { .size(880, 550) }
 
-    let ink = Color(hex: 0x2B2B2B)
-    let accent = Color(hex: 0xE4572E)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
 
     // The same scene the diagram draws, as a distance function for the steps.
     let c1 = Vector2(680, 230), r1 = 90.0
@@ -27,14 +30,14 @@ final class MarchRay: Sketch {
     }
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
         noStroke()
 
         // The surfaces being marched past and toward.
         let blob = SDF.circle(radius: r1).at(c1)
             .smoothUnion(SDF.circle(radius: r2).at(c2), k: k)
             .union(SDF.circle(radius: r3).at(c3))
-            .colored(Color(hex: 0x2B2B2B, alpha: 0.85))
+            .colored(ink.withAlpha(0.85))
         drawSDF(blob)
 
         // The march: hop by the reported distance until the surface is close.
@@ -51,7 +54,7 @@ final class MarchRay: Sketch {
 
         // The safe-hop circles, then the ray, then the sample points.
         noFill()
-        stroke(Color(hex: 0x2B2B2B, alpha: 0.35))
+        stroke(ink.withAlpha(0.35))
         strokeWeight(1.5)
         for q in points.dropLast() {
             drawCircle(center: q, radius: distance(q))
@@ -72,7 +75,7 @@ final class MarchRay: Sketch {
         textAlign(.left, .middle)
         drawText("the eye", 34, 310)
         drawText("each circle: how far the field says is safe", 130, 90)
-        fill(.white)
+        fill(Color(hex: darkTheme ? 0x1E1B18 : 0xFFFFFF))
         textAlign(.center, .middle)
         drawText("the surface", 690, 270)
     }

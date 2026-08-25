@@ -12,7 +12,10 @@ That aurora is about forty lines of code and no assets, and it runs at full reso
 
 [Chapter 14](14-FieldsAndFlow.md) gave you the mental model without saying so, in that a field is an answer at every point. A flow field answered with a direction. A shader is a field that answers with a **color**, and the GPU is hardware built to ask it at every pixel simultaneously:
 
-<img src="Images/17-YourFirstShader/PixelGrid.jpg" alt="Two panels evaluating the same glow function: coarsely on the left, where each grid cell shows one answer, and at full pixel resolution on the right where the answers fuse into a smooth image" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/17-YourFirstShader/PixelGrid-dark.jpg">
+  <img src="Images/17-YourFirstShader/PixelGrid.jpg" alt="Two panels evaluating the same glow function: coarsely on the left, where each grid cell shows one answer, and at full pixel resolution on the right where the answers fuse into a smooth image" width="680">
+</picture>
 
 That's the whole shift. Until now `draw()` has been imperative, telling the canvas to put a circle here and a line there. A shader is one small function with the opposite job: *given a position, say what color lives there*. No loops over shapes, no order of operations, just position in, color out, everywhere, at once. The million evaluations per frame are why the aurora costs nothing, and the "at once" is why a shader can't know what its neighbor pixels decided.
 
@@ -40,7 +43,10 @@ final class FirstShader: Sketch {
 
 The string is the shader, and everything around it is plumbing you already know, since [Chapter 16](16-LayersAndEffects.md)'s `generate` makes a layer and `drawImage` shows it. The function is the contract. Ollin calls your `shade` once per pixel, handing it that pixel's `uv` position, and whatever color you return is what that pixel becomes. Here red is `uv.x` and green is `uv.y`, so the image *is* the coordinate system:
 
-<img src="Images/17-YourFirstShader/UVSpace.jpg" alt="The uv gradient annotated: (0,0) at the top left, (1,0) top right, (0,1) bottom left, (1,1) bottom right, with the center marked (0.5, 0.5)" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/17-YourFirstShader/UVSpace-dark.jpg">
+  <img src="Images/17-YourFirstShader/UVSpace.jpg" alt="The uv gradient annotated: (0,0) at the top left, (1,0) top right, (0,1) bottom left, (1,1) bottom right, with the center marked (0.5, 0.5)" width="680">
+</picture>
 
 `uv` runs `0...1` across the layer whatever its pixel size, top-left origin like the rest of the canvas. Painting coordinates as color looks like a toy, but it's the debugging tool you'll use forever. When a shader misbehaves, return the thing you're unsure about as a color and look at it.
 
@@ -66,7 +72,10 @@ float4 shade(float2 uv, ShaderInfo info) {
 
 Look at the third line. `smoothstep` is [Chapter 3](03-MotionAndTime.md)'s easing curve, the one you watched as a graph and used to cushion motion. Here it answers a different question with the same shape, because as `d` crosses from 0.35 down to 0.34 the result ramps smoothly from 0 to 1, and that one-percent ramp is the disc's anti-aliased rim. Widen the ramp and the rim becomes a glow; collapse it and the edge goes hard and pixelated:
 
-<img src="Images/17-YourFirstShader/EdgeStep.jpg" alt="The same amber disc three times: a hard stepped edge, a clean rim from a narrow smoothstep, and a wide soft glow from a broad one" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/17-YourFirstShader/EdgeStep-dark.jpg">
+  <img src="Images/17-YourFirstShader/EdgeStep.jpg" alt="The same amber disc three times: a hard stepped edge, a clean rim from a narrow smoothstep, and a wide soft glow from a broad one" width="680">
+</picture>
 
 This is the sentence at the heart of nearly every shader ever written: *measure a distance, shape it with smoothstep, turn it into color.* Everything else is choosing more interesting distances and more interesting colors.
 
@@ -119,7 +128,10 @@ What makes them a group is a property, not a style. A pattern field is **closed 
 drawImage(generate(.quasicrystal(phase: time)).image, 0, 0)
 ```
 
-<img src="Images/17-YourFirstShader/Fields.jpg" alt="Six labeled tiles: a blue quasicrystal of interfering waves, a black and white moire of beating ring gratings, cream interwoven gyroid bands on slate, an orange golden-angle dot spiral, a hexagonal lattice of teal, red and gold cells, and a sandy white Chladni figure of nodal lines on near-black" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/17-YourFirstShader/Fields-dark.jpg">
+  <img src="Images/17-YourFirstShader/Fields.jpg" alt="Six labeled tiles: a blue quasicrystal of interfering waves, a black and white moire of beating ring gratings, cream interwoven gyroid bands on slate, an orange golden-angle dot spiral, a hexagonal lattice of teal, red and gold cells, and a sandy white Chladni figure of nodal lines on near-black" width="680">
+</picture>
 
 There are six. `.quasicrystal` sums plane waves at evenly spaced angles, so it's ordered but never repeats. `.moire` overlaps ring gratings and shows you their beat, which travels much faster than the rings themselves. `.gyroid` slices a famous minimal surface. `.phyllotaxis` is the sunflower's golden-angle spiral from [Chapter 15](15-ShapesAsMaterial.md), drawn per pixel. `.hexPulse` gives every cell of a hex lattice its own hashed heartbeat. `.chladni` is a ringing plate's standing wave, which [Chapter 19](19-GridSimulations.md) comes back to and [Chapter 28](28-SoundAndControl.md) plays with sound.
 
@@ -137,7 +149,10 @@ float4 shade(float2 uv, ShaderInfo info) {
 """)
 ```
 
-<img src="Images/17-YourFirstShader/HandRolledField.jpg" alt="Two panels: the five-line hand-written shader producing horizontal undulating cream bands on dark slate, and the built-in gyroid producing vertical interwoven cream bands with small dark seed shapes between them" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/17-YourFirstShader/HandRolledField-dark.jpg">
+  <img src="Images/17-YourFirstShader/HandRolledField.jpg" alt="Two panels: the five-line hand-written shader producing horizontal undulating cream bands on dark slate, and the built-in gyroid producing vertical interwoven cream bands with small dark seed shapes between them" width="680">
+</picture>
 
 Not identical, and the differences are instructive. The bands run a different way because the built-in slices along another axis, and it adds a dimmed second copy behind the first to suggest depth, which is where those little dark seeds come from. But it's plainly the same animal, and you wrote it with five lines of vocabulary from earlier in this chapter: coordinates recentered, `sin` and `cos`, `smoothstep` for the edge, `mix` for the color.
 
@@ -159,7 +174,10 @@ drawVisual(
 )
 ```
 
-<img src="Images/17-YourFirstShader/ChainGraph.jpg" alt="A chain shown as a graph of real renders: striped oscillator bands, folded into a hexagonal kaleidoscope, then organically warped by a noise driver patched in from below" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/17-YourFirstShader/ChainGraph-dark.jpg">
+  <img src="Images/17-YourFirstShader/ChainGraph.jpg" alt="A chain shown as a graph of real renders: striped oscillator bands, folded into a hexagonal kaleidoscope, then organically warped by a noise driver patched in from below" width="680">
+</picture>
 
 The signature move is the last step, where one chain's *color* drives another chain's *coordinates*, per pixel. That `displaced(by:)` is the same idea as [Chapter 16](16-LayersAndEffects.md)'s displacement combine, but the driver is any chain, and the whole expression, drivers included, compiles into a single GPU pass. Everything animates by default, every number can ride a knob or a beat without recompiling, and `generate(chain)` hands the result back as an ordinary layer for the rest of the effect graph. The [chains reference](../Docs/Shaders/Visuals.md) has the full vocabulary (sources, warps, color ops, blends, and the feedback loop).
 
@@ -171,7 +189,10 @@ You now know the shape well enough to read other people's. Shadertoy holds tens 
 ollin new Plasma --from-shader plasma.glsl
 ```
 
-<img src="Images/17-YourFirstShader/ImportedShader.jpg" alt="Left, a nine-line GLSL shader as pasted, with mod, iResolution and iTime picked out in dark ink. Right, the ring pattern it draws once translated, tiling evenly across the whole frame" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/17-YourFirstShader/ImportedShader-dark.jpg">
+  <img src="Images/17-YourFirstShader/ImportedShader.jpg" alt="Left, a nine-line GLSL shader as pasted, with mod, iResolution and iTime picked out in dark ink. Right, the ring pattern it draws once translated, tiling evenly across the whole frame" width="680">
+</picture>
 
 That writes a project with the translated shader in `imported.metal` beside the sketch, ready to build. A shader you have just copied can go straight in with `pbpaste | ollin new Plasma --from-shader -`. How many inputs it reads decides what it becomes. One that reads nothing is a generator. One that reads `iChannel0` is a filter over a layer, which is [Chapter 16](16-LayersAndEffects.md)'s vocabulary again.
 
@@ -201,7 +222,10 @@ let s = chladni(u, v, m: 5, n: 2)      // -1…1, over plate coordinates 0…1
 
 `u` and `v` run `0...1` across the plate, and `m` and `n` are the mode numbers, which is to say how the plate was driven. The result is how far the plate is displaced at that spot, so sand settles wherever the value is near zero. That's the whole recipe. Scatter grains, and keep the ones sitting near a nodal line.
 
-<img src="Images/17-YourFirstShader/ChladniModes.jpg" alt="Six panels of Chladni figures at different mode numbers, each showing dark sand collected along curved and diagonal nodal lines on a pale plate, the patterns growing more intricate as the numbers rise" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/17-YourFirstShader/ChladniModes-dark.jpg">
+  <img src="Images/17-YourFirstShader/ChladniModes.jpg" alt="Six panels of Chladni figures at different mode numbers, each showing dark sand collected along curved and diagonal nodal lines on a pale plate, the patterns growing more intricate as the numbers rise" width="680">
+</picture>
 
 One rule saves an afternoon. Setting `m` equal to `n` cancels the whole expression to zero, and the plate's diagonal is nodal in every mode. Those are properties of the physics rather than bugs to work around. Keep `m` larger than `n` and every mode gives you a figure.
 

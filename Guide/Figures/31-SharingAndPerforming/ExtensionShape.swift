@@ -1,4 +1,4 @@
-// figure: frame=1
+// figure: frame=1 themed
 //
 // Guide diagram (Chapter 31): what an extension package is. On the left, the
 // package and the one file that matters in it. On the right, the sketch that
@@ -14,10 +14,12 @@ import Ollin
 final class ExtensionShape: Sketch {
     override var canvasSize: CanvasSize { .size(880, 460) }
 
-    let paper = Color(hex: 0xF7F5F1)
-    let ink = Color(hex: 0x2B2B2B)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.55)
-    let accent = Color(hex: 0xE4572E)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.55) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
     let code = Color(hex: 0x0C0C10)
 
     override func draw() {
@@ -87,9 +89,9 @@ final class ExtensionShape: Sketch {
     /// A titled card, the two halves of the arrangement.
     func card(_ rect: Rectangle, title: String, subtitle: String) {
         noStroke()
-        fill(Color(white: 1))
+        fill(darkTheme ? Color(hex: 0x2A2724) : Color(white: 1))
         drawRect(rect, cornerRadius: 12)
-        stroke(Color(hex: 0x2B2B2B, alpha: 0.18))
+        stroke(Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.18))
         strokeWeight(1)
         noFill()
         drawRect(rect, cornerRadius: 12)

@@ -43,7 +43,10 @@ Notice you set up no lights. Solids are lit by a default rig automatically, so a
 
 The camera's home position is three numbers. The picture to keep in mind is an eye riding a sphere around a target:
 
-<img src="Images/21-3DGently/Orbit.jpg" alt="A diagram of the orbiting camera: a small camera body on a gray ring around a dark knot, with a dashed sight line labeled radius, a ground arc labeled azimuth, and a climbing arc labeled elevation" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/21-3DGently/Orbit-dark.jpg">
+  <img src="Images/21-3DGently/Orbit.jpg" alt="A diagram of the orbiting camera: a small camera body on a gray ring around a dark knot, with a dashed sight line labeled radius, a ground arc labeled azimuth, and a climbing arc labeled elevation" width="680">
+</picture>
 
 **Radius** is how far away the eye sits. **Azimuth** is how far around it has walked, an angle in radians like every angle since [Chapter 3](03-MotionAndTime.md). **Elevation** is how high it has climbed above the horizon. Every camera motion in this chapter, the automatic orbit and your mouse drags alike, is just these three numbers changing. The camera is per-frame state, like the things you draw, so it's set inside `draw()`.
 
@@ -384,7 +387,10 @@ drawImage(scene.combined(with: scene.depth,
                          .ambientOcclusion(radius: 0.7, intensity: 1.5)).image, 0, 0)
 ```
 
-<img src="Images/21-3DGently/DepthEffects.jpg" alt="Three panels of the same field of pale blocks on a ground plane: plain, then with ambient occlusion darkening the gaps and contacts, then with depth of field leaving one band of blocks sharp while the front and back blur" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/21-3DGently/DepthEffects-dark.jpg">
+  <img src="Images/21-3DGently/DepthEffects.jpg" alt="Three panels of the same field of pale blocks on a ground plane: plain, then with ambient occlusion darkening the gaps and contacts, then with depth of field leaving one band of blocks sharp while the front and back blur" width="680">
+</picture>
 
 `scene.depth` is an ordinary layer whose brightness is distance, so it feeds `combined(with:)` like any other, and everything else in [Chapter 16](16-LayersAndEffects.md) still applies.
 
@@ -394,7 +400,10 @@ drawImage(scene.combined(with: scene.depth,
 
 A blur has a shape, and it is not always a circle. Out of focus, a point of light is not a smudge. It is a picture of the opening its light came through. Hand `.defocus` a `blades` count and every highlight becomes a polygon of that many sides. That is what the iris of a real lens is made of. `catsEye` adds the barrel around that iris. The barrel clips the opening away from the middle of the frame. So a highlight that is whole in the middle lies down into a lemon toward the corners.
 
-<img src="Images/21-3DGently/TheOpening.jpg" alt="Three panels of the same handful of out-of-focus lights: round blobs through a round opening, clean pentagons through a five-bladed iris, and the same pentagons clipped into lemons toward the corners once the barrel is added" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/21-3DGently/TheOpening-dark.jpg">
+  <img src="Images/21-3DGently/TheOpening.jpg" alt="Three panels of the same handful of out-of-focus lights: round blobs through a round opening, clean pentagons through a five-bladed iris, and the same pentagons clipped into lemons toward the corners once the barrel is added" width="680">
+</picture>
 
 Leaving `blades` unsaid is not the same as asking for nothing. A scene defocused by its own depth takes the count from the camera that drew it. So one line, `camera.apertureBlades = 6`, shapes this blur, the flare ghosts of [Chapter 26](26-SculptingWithFields.md), and the path-traced export together. Name `blades` at the call only for a blur no camera knows about, such as a tilt-shift over a ramp you drew by hand. One practical note. The blur gathers a fixed number of samples. A light smaller than the space between them shows the pattern of the gather instead of a clean edge, so keep a light a few pixels across, or raise `quality`.
 

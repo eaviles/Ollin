@@ -6,7 +6,10 @@
 
 OllinLiveCoding is a performance instrument. One window holds the running sketch on the stage, and your code rides over it as translucent text, so writing the sketch *is* the show. You edit the full Ollin sketch in Swift, not a constrained shader DSL. Any drawing, effect, 3D scene, or `Visual` chain the framework offers is available. Then you evaluate on command. ⌘↩ recompiles the buffer and hot-swaps the sketch, while the previous one keeps drawing. The clock carries across the swap, so motion never jumps mid-set.
 
-<img src="../../Guide/Images/31-SharingAndPerforming/StageDiagram.jpg" alt="An annotated diagram of the performance host: a dark window with a posterized visual filling the stage, code lines riding over it on translucent strips, an Evaluated toast, and callouts naming each part" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/31-SharingAndPerforming/StageDiagram-dark.jpg">
+  <img src="../../Guide/Images/31-SharingAndPerforming/StageDiagram.jpg" alt="An annotated diagram of the performance host: a dark window with a posterized visual filling the stage, code lines riding over it on translucent strips, an Evaluated toast, and callouts naming each part" width="680">
+</picture>
 
 ```sh
 swift run OllinLiveCoding                                     # untitled buffer, starter sketch

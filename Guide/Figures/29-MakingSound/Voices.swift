@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide diagram (Chapter 29): the four numbers that shape a note, and what
 // different settings of them sound like. Each curve is the real envelope, read
@@ -11,11 +11,13 @@ import OllinAudio
 final class Voices: Sketch {
     override var canvasSize: CanvasSize { .size(880, 630) }
 
-    let paper = Color(hex: 0xF7F5F1)
-    let ink = Color(hex: 0x232020)
-    let soft = Color(hex: 0x2B2B2B, alpha: 0.45)
-    let faint = Color(hex: 0x2B2B2B, alpha: 0.14)
-    let accent = Color(hex: 0xE4572E)
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var ink: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x232020) }
+    var soft: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.45) }
+    var faint: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.14) }
+    var accent: Color { Color(hex: darkTheme ? 0xEF6A3E : 0xE4572E) }
 
     let left = 70.0, plotWidth = 740.0
     /// Every curve is drawn over the same three seconds, so they compare.
