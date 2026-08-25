@@ -66,6 +66,13 @@ if let c = Color(hex: userString) { fill(c) }
 fill(Color(hue: time * 0.1, saturation: 0.8, brightness: 1))   // cycle the rainbow
 ```
 
+The same three read back from any color as `hue`, `saturation`, and `brightness` properties, so a held color can be varied instead of rebuilt from numbers:
+
+```swift
+let shifted = Color(hue: fract(base.hue + 0.1), saturation: base.saturation,
+                    brightness: base.brightness)
+```
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/02-Color/HueWheels-dark.jpg">
   <img src="../../Guide/Images/02-Color/HueWheels.jpg" alt="Left: RGB as three component bars adding up to an orange. Right: the HSB hue wheel with saturation and brightness sweeps" width="680">
@@ -121,6 +128,7 @@ let complement = Color(lch)
 
 ```swift
 Color.mix(_ a: Color, _ b: Color, t: Double, in: ColorSpace = .oklab) -> Color
+someColor.mixed(with: other, _ t: Double, in: ColorSpace = .oklab) -> Color
 ```
 
 Interpolates between two colors in a chosen space. The spaces are `.rgb`, `.hsb`, `.oklab`, `.oklch`, and `.okhsl`. `.oklab` is the default and is perceptually even, and `.oklch` holds hue identity while arcing through chroma. `t` clamps to `0...1` and alpha interpolates linearly. In the polar spaces hue takes the shortest way around the wheel. An achromatic endpoint, meaning gray, black, or white, adopts the other color's hue. A fade to white therefore doesn't detour through unrelated hues.
@@ -134,6 +142,7 @@ Interpolates between two colors in a chosen space. The spaces are `.rgb`, `.hsb`
 let warm = Color(hex: 0xFF5500)
 let cool = Color(hex: 0x0066FF)
 fill(Color.mix(warm, cool, t: sin(time) * 0.5 + 0.5))
+fill(ink.mixed(with: .white, 0.3))        // the instance form, reading as a fade
 ```
 
 The `Mixing` example draws the same two colors mixed in all five spaces, band by band. The OKLab family and the gamut mapping are credited under [Influences & attribution](../../ATTRIBUTION.md#color).
@@ -372,6 +381,9 @@ Perceptual colormaps are smooth, perceptually even ramps that map a value in `0.
 ```swift
 let t = noise(x * 0.01, y * 0.01)            // 0...1
 fill(Colormap.magma.color(at: t))
+fill(Colormap.viridis.color(cycling: time / 8))   // wrap instead of clamping
 ```
+
+`color(cycling:)` treats the map as a cycle: `t` wraps by whole laps instead of clamping, so a growing value (an angle, the clock) tours the map forever. A [`Palette`](#palette)'s `color(at:)` already wraps this way; most colormaps end nowhere near where they begin, so each lap still lands a seam at the wrap (the seamless ring is [`CosinePalette`](#cosinepalette)).
 
 Eight cases: `viridis`, `magma`, `inferno`, `plasma`, `cividis`, `turbo`, `rocket`, `mako`. The `Colormaps` example shows all eight. Data origins (matplotlib, Google, seaborn) are credited under [Influences & attribution](../../ATTRIBUTION.md#color).

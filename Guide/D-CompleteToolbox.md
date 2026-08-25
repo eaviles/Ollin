@@ -19,7 +19,7 @@ Use it two ways. It is an index for the moment you remember the guide showing bl
 | Canvas and window | `canvasSize` presets, `windowMode` (auto, fixed, resizable) | [Ch 1](01-HelloOllin.md) | [Canvas](../Docs/Core/Canvas.md) |
 | Normalized coordinates | `uv(u, v)`: the canvas point at 0…1 fractions, layout without `width`/`height` | [Ch 1](01-HelloOllin.md) | [Canvas](../Docs/Core/Canvas.md#uv) |
 | Variations | `variation`: the seed a run grew from, stepped and rolled from the inspector's Variation card | [Ch 4](04-Randomness.md) | [Variations](../Docs/Core/Variations.md) |
-| Mouse | `mouseX`/`mouseY`, pressed state, press and release hooks | [Ch 1](01-HelloOllin.md) | [Input](../Docs/Helpers/Input.md) |
+| Mouse | `mouseX`/`mouseY`, the one-point `mouse`/`previousMouse`, pressed state, press and release hooks | [Ch 1](01-HelloOllin.md) | [Input](../Docs/Helpers/Input.md) |
 | Keyboard | `key`, typed `KeyCode`, `isKeyDown(_:)`, press and release hooks | [Ch 1](01-HelloOllin.md) | [Input](../Docs/Helpers/Input.md) |
 | `@Param` knobs | Properties as live inspector controls, typed per value (slider, color well, pad, …) | [Ch 1](01-HelloOllin.md), [Ch 28](28-SoundAndControl.md) | [Parameters](../Docs/Helpers/Parameters.md) |
 | Live reload | `swift run OllinLive Sketch.swift`: save the file, the window swaps the change in | [Ch 1](01-HelloOllin.md) | [Sketch](../Docs/Core/Sketch.md) |

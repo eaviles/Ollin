@@ -37,8 +37,52 @@ extension Drawer {
         }
     }
 
+    /// Run `body` with any of the given text style applied for its duration,
+    /// then put the standing state back exactly. `color` paints the glyphs in
+    /// that color whatever the font kind: the fill for bitmap and outline
+    /// text (with the outline decoration a standing `stroke` would add
+    /// suppressed, since a one-call color asks for exactly that color), or the
+    /// stroke for a stroke font. A `nil` argument changes nothing.
+    func withTextStyle(size: Double?, color: Color?,
+                       alignH: TextAlignH?, alignV: TextAlignV?, _ body: () -> Void) {
+        let savedSize = textPixelSize
+        let savedH = textAlignH
+        let savedV = textAlignV
+        let savedFill = fillPaint
+        let savedStroke = strokePaint
+        let savedStrokeSet = strokeSet
+        if let size { textSize(size) }
+        if let alignH { textAlignH = alignH }
+        if let alignV { textAlignV = alignV }
+        if let color {
+            if case .stroke = currentFont {
+                strokePaint = .color(color)
+                strokeSet = true
+            } else {
+                fillPaint = .color(color)
+                strokePaint = nil
+            }
+        }
+        body()
+        textPixelSize = savedSize
+        textAlignH = savedH
+        textAlignV = savedV
+        fillPaint = savedFill
+        strokePaint = savedStroke
+        strokeSet = savedStrokeSet
+    }
+
+    /// The one-call styled label: `drawText` with `size`/`color`/`align`
+    /// applied through `withTextStyle` for this draw alone.
+    func drawText(_ string: String, _ x: Double, _ y: Double,
+                  size: Double?, color: Color?, alignH: TextAlignH?, alignV: TextAlignV?) {
+        withTextStyle(size: size, color: color, alignH: alignH, alignV: alignV) {
+            drawText(string, x, y)
+        }
+    }
+
     /// Stroke path: each glyph is a set of open pen polylines, drawn with the
-    /// current `stroke` (weight, join, cap). Fill is ignored — the inverse of
+    /// current `stroke` (weight, join, cap). Fill is ignored: the inverse of
     /// outline text.
     private func drawStrokeText(_ string: String, _ x: Double, _ y: Double, font: StrokeFont) {
         guard strokePaint != nil, strokeWidth > 0 else { return }

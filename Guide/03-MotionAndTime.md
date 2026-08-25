@@ -123,6 +123,8 @@ drawCircle(width / 2, height / 2, sway(over: 4, in: 100...300))
 
 The circle breathes between a radius of 100 and 300, once every four seconds. `sway` leaves the low end, reaches the high end halfway through the lap, and is back at the low end as the lap closes. With no range it hands you a plain `0...1`, and `phase` staggers a row of them into a traveling wave, the same argument doing the same job it did above.
 
+When you would rather keep the raw sine spelling, `wave` names its parts instead: `wave(0.8, amplitude: 40, around: 150)` is `150 + sin(time * 0.8) * 40` with the center and the swing said out loud. `sway` thinks in seconds per lap and always closes one; `wave` thinks in the sine's own rate, the spelling to carry over when you already have one.
+
 What changes between one sway and another is the path it takes between the two ends, and `shape:` names five of them:
 
 <img src="Images/03-MotionAndTime/SwayShapes.jpg" alt="Five plots side by side, each one whole lap: a smooth sine hump, a triangle with sharp turns, a saw ramping up and jumping back, a square at one level then the other, and an irregular wander" width="680">

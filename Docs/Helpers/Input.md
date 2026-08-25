@@ -9,6 +9,7 @@ Pointer and keyboard input live on the sketch as plain properties and overridabl
 ### Contents
 
 - [mouseX / mouseY](#mouse)
+- [mouse / previousMouse](#mousePoint)
 - [mouseIsPressed](#mouseIsPressed)
 - [mousePressed / mouseReleased](#mousePressed)
 - [pressure / pressureIsAvailable](#pressure)
@@ -37,6 +38,25 @@ override func draw() {
 ```
 
 Two calls put the mouse into coordinates of their own for a while: [`withViewBox`](../Drawing/Drawing.md#viewbox) for the length of its block, and [`viewControl`](../Drawing/Drawing.md#viewcontrol) for the rest of the frame. That is what keeps a piece written for the whole canvas working when it is not looking at the whole canvas. In both, `mouseX` and `mouseY` read the content the pointer is over rather than the glass it is on. The pointer itself is restored before the next frame.
+
+<a name="mousePoint"></a>
+
+### mouse / previousMouse
+
+```swift
+mouse: Vector2
+previousMouse: Vector2
+```
+
+The same cursor as one point, the form the geometry calls take directly, and where it was when the previous frame drew.
+
+```swift
+drawLine(previousMouse, mouse)          // ink follows the pointer
+let speed = (mouse - previousMouse).length
+if circle.contains(mouse) { … }
+```
+
+`mouse - previousMouse` is this frame's drag, so motion needs no bookkeeping of your own. On the first frame `previousMouse` equals `mouse`, so the first delta is zero rather than a jump from the corner. `previousMouse` holds the canvas-space position the window reported; the coordinate remaps above apply to `mouse` for their frame and never land in it.
 
 <a name="mouseIsPressed"></a>
 

@@ -29,6 +29,22 @@ public enum Colormap: Sendable, CaseIterable {
         return Color(red: channel(0), green: channel(1), blue: channel(2))
     }
 
+    /// The color at `t` with the map treated as a cycle: `t` wraps by whole
+    /// laps instead of clamping, so a growing value (an angle, the clock)
+    /// tours the map forever. `color(at:)` is the clamped form; a `Palette`'s
+    /// `color(at:)` already wraps this way.
+    ///
+    /// ```swift
+    /// fill(Colormap.viridis.color(cycling: time / 8))
+    /// ```
+    ///
+    /// Most maps end nowhere near where they begin, so each lap still lands a
+    /// seam at the wrap; the seamless ring is `CosinePalette`, periodic by
+    /// construction.
+    public func color(cycling t: Double) -> Color {
+        color(at: t - t.rounded(.down))
+    }
+
     private var lookup: [Double] {
         switch self {
         case .magma: return Colormap.magmaLUT

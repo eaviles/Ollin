@@ -62,6 +62,15 @@ open class Sketch {
     /// proportions at any canvas size (and scales up cleanly for hi-res export).
     public var scale: Double { Swift.min(width, height) / 1000 }
 
+    /// The shorter canvas edge, `min(width, height)`: the length that decides
+    /// how big something can be and still fit whichever way the canvas turns.
+    /// `shortSide * 0.4` sizes a centerpiece the same on a square, a wide, and
+    /// a tall canvas.
+    public var shortSide: Double { Swift.min(width, height) }
+
+    /// The longer canvas edge, `max(width, height)`. See `shortSide`.
+    public var longSide: Double { Swift.max(width, height) }
+
     /// The center of the canvas, `(width / 2, height / 2)`.
     public var center: Vector2 { Vector2(width / 2, height / 2) }
 
@@ -105,6 +114,30 @@ open class Sketch {
     public internal(set) var mouseX: Double = 0
     /// Cursor y in sketch coordinates (points, top-left origin, y-down).
     public internal(set) var mouseY: Double = 0
+    /// The cursor as one point, `(mouseX, mouseY)`: the form the geometry calls
+    /// take directly.
+    ///
+    /// ```swift
+    /// drawLine(center, mouse)
+    /// if circle.contains(mouse) { … }
+    /// ```
+    public var mouse: Vector2 { Vector2(mouseX, mouseY) }
+    /// Where the cursor was when the previous frame drew, for measuring motion:
+    /// `mouse - previousMouse` is this frame's drag, and its `length` the speed
+    /// of the hand.
+    ///
+    /// ```swift
+    /// drawLine(previousMouse, mouse)      // ink follows the pointer
+    /// ```
+    ///
+    /// On the first frame it equals `mouse`, so the first delta is zero rather
+    /// than a jump from the corner. It holds the canvas-space position the
+    /// window reported; a remap inside `draw()` (a view box, `viewControl`)
+    /// applies to `mouse` for that frame only and never lands here.
+    public internal(set) var previousMouse: Vector2 = .zero
+    /// The raw pointer at the last `advance`, the value `previousMouse` takes
+    /// next frame (see the snapshot in `advance`).
+    private var pointerAtLastAdvance: Vector2 = .zero
     /// Whether a mouse button is currently held down over the canvas. Poll it
     /// in `draw()` for continuous response while the button is held — dragging,
     /// painting, steering — alongside `mouseX`/`mouseY`, which keep updating
@@ -2763,9 +2796,42 @@ open class Sketch {
     public func drawText(_ string: String, _ x: Double, _ y: Double) {
         drawer.drawText(string, x, y)
     }
-    /// Draw `string` anchored at `position` — the `Vector2` form of `drawText`.
+    /// Draw `string` anchored at `position`, the `Vector2` form of `drawText`.
     public func drawText(_ string: String, at position: Vector2) {
         drawer.drawText(string, position.x, position.y)
+    }
+    /// Draw `string` at `(x, y)` styled for this one call: any of `size`,
+    /// `color`, and `align` that are given apply to this text alone, and the
+    /// standing `textSize`/`textAlign`/`fill` state comes back untouched. The
+    /// one-line label, replacing the four-call preamble:
+    ///
+    /// ```swift
+    /// drawText("area", x, y, size: 17, color: ink, align: .center, .top)
+    /// ```
+    ///
+    /// `color` paints the glyphs in exactly that color whatever the font kind
+    /// (it sets the fill, or the stroke for a stroke font, and suppresses the
+    /// outline decoration a standing `stroke` would add). `align` takes the
+    /// same pair as `textAlign(_:_:)`, vertical defaulting to `.baseline`. An
+    /// argument left out changes nothing, so the call composes with state set
+    /// the usual way.
+    public func drawText(_ string: String, _ x: Double, _ y: Double,
+                         size: Double? = nil, color: Color? = nil,
+                         align horizontal: TextAlignH? = nil, _ vertical: TextAlignV? = nil) {
+        drawer.drawText(string, x, y, size: size, color: color,
+                        alignH: horizontal, alignV: horizontal == nil ? nil : (vertical ?? .baseline))
+    }
+    /// `drawText(_:_:_:size:color:align:_:)` anchored at `position`: the styled
+    /// one-call label, in the `Vector2` form.
+    ///
+    /// ```swift
+    /// drawText("Hello", at: center, size: 32, color: .white, align: .center, .middle)
+    /// ```
+    public func drawText(_ string: String, at position: Vector2,
+                         size: Double? = nil, color: Color? = nil,
+                         align horizontal: TextAlignH? = nil, _ vertical: TextAlignV? = nil) {
+        drawText(string, position.x, position.y,
+                 size: size, color: color, align: horizontal, vertical)
     }
     /// The on-screen width of `string`'s widest line, in points, at the current
     /// `textFont`/`textSize` — for laying text out.
@@ -2819,6 +2885,19 @@ open class Sketch {
     public func drawText(_ string: String, in rect: Rectangle) {
         drawer.drawText(string, in: rect)
     }
+    /// The wrapped box form, styled for this one call: any of `size`, `color`,
+    /// and `align` that are given apply to this text alone (see
+    /// `drawText(_:_:_:size:color:align:_:)`), and the standing state comes
+    /// back untouched.
+    public func drawText(_ string: String, in rect: Rectangle,
+                         size: Double? = nil, color: Color? = nil,
+                         align horizontal: TextAlignH? = nil, _ vertical: TextAlignV? = nil) {
+        drawer.withTextStyle(size: size, color: color,
+                             alignH: horizontal,
+                             alignV: horizontal == nil ? nil : (vertical ?? .baseline)) {
+            drawer.drawText(string, in: rect)
+        }
+    }
     /// Draw `string` glyph by glyph, handing each glyph to `perGlyph` for its own
     /// transform or color before you stamp it with `TextGlyph.draw()`. Single line,
     /// using the current `textFont`/`textSize`/`textAlign`. Per-letter waves,
@@ -2842,6 +2921,32 @@ open class Sketch {
     public func drawLine(_ a: Vector2, _ b: Vector2) { drawer.drawLine(a, b) }
     public func drawLine(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double) {
         drawer.drawLine(Vector2(x1, y1), Vector2(x2, y2))
+    }
+    /// Draw an arrow from one point to another: a stroked shaft ending in a
+    /// solid triangular head whose tip is exactly `to`. The whole mark, head
+    /// included, takes the current `stroke`, so one `stroke(...)` colors it;
+    /// `strokeWeight` thickens the shaft and, left to themselves, the head
+    /// measurements scale with it. A diagram's pointer, a vector field's
+    /// glyph, a force made visible:
+    ///
+    /// ```swift
+    /// stroke(.crimson)
+    /// strokeWeight(3)
+    /// drawArrow(from: center, to: mouse)
+    /// drawArrow(from: p, to: p + v, headLength: 12)
+    /// ```
+    ///
+    /// The head is an equal coat of the same ink (the shaft stops at its
+    /// base), so translucent arrows layer cleanly.
+    public func drawArrow(from a: Vector2, to b: Vector2,
+                          headLength: Double? = nil, headWidth: Double? = nil) {
+        drawer.drawArrow(from: a, to: b, headLength: headLength, headWidth: headWidth)
+    }
+    /// `drawArrow(from:to:)` with the two points as scalar coordinates.
+    public func drawArrow(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double,
+                          headLength: Double? = nil, headWidth: Double? = nil) {
+        drawer.drawArrow(from: Vector2(x1, y1), to: Vector2(x2, y2),
+                         headLength: headLength, headWidth: headWidth)
     }
     public func drawOrientedBox(_ a: Vector2, _ b: Vector2, thickness: Double) {
         drawer.drawOrientedBox(a, b, thickness: thickness)
@@ -2932,6 +3037,47 @@ open class Sketch {
         drawer.pushState()
         defer { drawer.popState() }
         body()
+    }
+
+    /// `withState` with the placement built in: run `body` translated to
+    /// `position`, turned by `rotation`, and scaled by `scale`, then restore
+    /// everything. The one-line form of the most common scoped block:
+    ///
+    /// ```swift
+    /// withState(at: p, rotation: a) { drawRect(center: .zero, width: 40, height: 8) }
+    /// ```
+    ///
+    /// is the same as
+    ///
+    /// ```swift
+    /// withState { translate(p); rotate(a); drawRect(…) }
+    /// ```
+    ///
+    /// Inside the block the origin sits at `position`, so draw around `.zero`.
+    /// The moves apply in the fixed order translate, rotate, scale; for any
+    /// other order, write the block out.
+    public func withState(at position: Vector2, rotation: Double = 0, scale: Double = 1,
+                          _ body: () -> Void) {
+        withState {
+            translate(position)
+            if rotation != 0 { rotate(rotation) }
+            if scale != 1 { self.scale(scale) }
+            body()
+        }
+    }
+
+    /// `withState` placed in space: run `body` translated to `position`, then
+    /// restore everything. The 3D sibling of `withState(at:rotation:scale:)`,
+    /// for the place-and-draw block around a mesh:
+    ///
+    /// ```swift
+    /// withState(at: Vector3(x, 0.5, z)) { drawBox(size: 1) }
+    /// ```
+    public func withState(at position: Vector3, _ body: () -> Void) {
+        withState {
+            translate(position)
+            body()
+        }
     }
 
     /// Run `body` with drawing confined to `shape`'s filled region, restoring the
@@ -3270,6 +3416,12 @@ open class Sketch {
         self.time = time
         self.deltaTime = deltaTime
         self.frameRate = frameRate
+        // The pointer the frame before this one saw, snapshotted here because
+        // the window writes the mouse only when it moves: reading it now (after
+        // the previous frame's in-draw remaps were unwound, before this frame's
+        // apply) is what makes `mouse - previousMouse` a true per-frame delta.
+        self.previousMouse = frameCount > 1 ? pointerAtLastAdvance : mouse
+        pointerAtLastAdvance = mouse
         // Surface scroll accumulated since the last frame, then reset the collector
         // so this frame's wheel events are gathered for the next one (nothing lost).
         scrollDeltaY = pendingScroll

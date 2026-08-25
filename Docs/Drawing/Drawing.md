@@ -11,7 +11,7 @@ The point and rectangle types these calls take (`Vector2`, `Rectangle`) are docu
 ### Contents
 
 - **Background and style:** [background](#background), [fill / noFill](#fill), [stroke / noStroke](#stroke), [strokeWeight](#strokeWeight), [strokeAlign](#strokeAlign), [strokeJoin](#strokeJoin), [strokeCap](#strokeCap), [strokeProfile](#strokeProfile), [hollow / solid](#hollow), [pointSize](#pointSize), [pointMarker](#pointMarker), [blendMode](#blendMode)
-- **Basic shapes:** [drawPoint](#point), [drawLine](#line), [drawCircle](#circle), [drawEllipse](#ellipse), [drawRect](#rect), [drawOrientedBox](#orientedbox), [drawTriangle](#triangle), [drawArc](#arc), [drawBezier](#bezier)
+- **Basic shapes:** [drawPoint](#point), [drawLine](#line), [drawArrow](#arrow), [drawCircle](#circle), [drawEllipse](#ellipse), [drawRect](#rect), [drawOrientedBox](#orientedbox), [drawTriangle](#triangle), [drawArc](#arc), [drawBezier](#bezier)
 - **More shapes:** [drawNgon](#ngon) (+ `drawPentagon`/`drawHexagon`/`drawHeptagon`/`drawOctagon`), [drawStar](#star), [drawRhombus](#rhombus), [drawVesica](#vesica), [drawOrientedVesica](#orientedvesica), [drawMoon](#moon), [drawCross](#cross), [drawRing](#ring), [drawTrapezoid](#trapezoid), [drawParallelogram](#parallelogram), [drawEgg](#egg), [drawHeart](#heart), [drawCutDisk](#cutdisk), [drawUnevenCapsule](#unevencapsule)
 - **Novelty shapes:** [drawHorseshoe](#horseshoe), [drawParabola](#parabola), [drawRoundedX](#roundedx), [drawBlobbyCross](#blobbycross), [drawTunnel](#tunnel), [drawStairs](#stairs), [drawCoolS](#cools)
 - **Paths & custom shapes:** [drawPolyline](#polyline), [drawPolygon](#polygon), [drawShape](#shape), [drawCurve](#curve)
@@ -331,6 +331,32 @@ A stroked line segment between two points. It honors [`strokeCap`](#strokeCap) (
 stroke(.black)
 drawLine(0, 0, width, height)           // corner to corner
 ```
+
+<a name="arrow"></a>
+
+#### drawArrow
+
+```swift
+drawArrow(from: Vector2, to: Vector2, headLength: Double? = nil, headWidth: Double? = nil)
+drawArrow(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double,
+          headLength: Double? = nil, headWidth: Double? = nil)
+```
+
+An arrow: a stroked shaft ending in a solid triangular head whose tip is exactly `to`. The whole mark, head included, takes the current [`stroke`](#stroke), so one `stroke(...)` colors it. [`strokeWeight`](#strokeWeight) thickens the shaft, and head measurements left to themselves scale with it. A diagram's pointer, a vector field's glyph, a force made visible.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawArrow-dark.jpg">
+  <img src="../../Guide/Images/Docs/DrawArrow.jpg" alt="An arrow with dots at its two anchor points, a thicker arrow whose head has grown with the stroke weight, and a ring of thin arrows pointing outward from a shared center" width="680">
+</picture>
+
+```swift
+stroke(.crimson)
+strokeWeight(3)
+drawArrow(from: center, to: mouse)
+drawArrow(from: p, to: p + force, headLength: 12)
+```
+
+The shaft stops at the head's base, so translucent arrows lay one even coat of ink.
 
 <a name="circle"></a>
 
@@ -1273,6 +1299,8 @@ Zooming costs nothing in fidelity, because the drawing is vector. Text set at fo
 
 ```swift
 withState(_ body: () -> Void)
+withState(at position: Vector2, rotation: Double = 0, scale: Double = 1, _ body: () -> Void)
+withState(at position: Vector3, _ body: () -> Void)
 ```
 
 Run `body` with the current transform and style saved, then restored. This is the scoped form of `pushState`/`popState`, and the one to reach for: the changes stay inside the braces, like scribbling on a sheet laid over your drawing and then lifting it off.
@@ -1286,6 +1314,16 @@ withState {
 }
 // transform and fill are back to what they were
 ```
+
+The `at:` form builds the placement in, collapsing the most common block, "move there, turn, draw", to its one interesting line. Inside it the origin sits at `position`, so draw around `.zero`:
+
+```swift
+withState(at: p, rotation: a) {
+    drawRect(center: .zero, width: 40, height: 8)
+}
+```
+
+The moves apply in the fixed order translate, rotate, scale; for any other order, write the block out. The `Vector3` form is the same idea for placing a mesh in space.
 
 <a name="push"></a>
 

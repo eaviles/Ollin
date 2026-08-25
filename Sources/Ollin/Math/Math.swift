@@ -108,6 +108,132 @@ public func smoothstep(_ edge0: Double, _ edge1: Double, _ x: Double) -> Double 
     return t * t * (3 - 2 * t)
 }
 
+/// Hold `x` within `minValue...maxValue`, for any comparable type. The generic
+/// sibling of the `Double` form, so an `Int` index clamps without a cast:
+///
+/// ```swift
+/// let column = clamp(i, 0, columns - 1)
+/// ```
+public func clamp<T: Comparable>(_ x: T, _ minValue: T, _ maxValue: T) -> T {
+    Swift.min(Swift.max(x, minValue), maxValue)
+}
+
+/// Hold `x` within `range`: `clamp(t, to: 0...1)`.
+public func clamp<T: Comparable>(_ x: T, to range: ClosedRange<T>) -> T {
+    Swift.min(Swift.max(x, range.lowerBound), range.upperBound)
+}
+
+/// Bring `x` back into `minValue..<maxValue` by whole laps of the range, the
+/// circular sibling of `clamp`. Where `clamp` stops a value at the edge, `wrap`
+/// carries it around to the far side, so a walker that leaves one edge of the
+/// canvas comes back in at the other:
+///
+/// ```swift
+/// x = wrap(x + step, 0, width)
+/// let a = wrap(angle, 0, .tau)
+/// ```
+///
+/// Floor-based, so it stays continuous through negative values (the same rule
+/// `fract` follows). An empty or reversed range returns `minValue`.
+public func wrap(_ x: Double, _ minValue: Double, _ maxValue: Double) -> Double {
+    let span = maxValue - minValue
+    guard span > 0 else { return minValue }
+    return minValue + (x - minValue) - span * ((x - minValue) / span).rounded(.down)
+}
+
+/// A signed `-1...1` value remapped onto `0...1`: `x * 0.5 + 0.5`.
+///
+/// The direct spelling of the most common remap in a sketch, taking a wave or
+/// a signed noise sample to a usable fraction:
+///
+/// ```swift
+/// let t = unipolar(sin(time))          // 0...1
+/// fill(palette.color(at: t))
+/// ```
+///
+/// `bipolar` is its inverse. (For noise there is a shorter road: `noise(x)`
+/// already answers in `0...1`, so `unipolar(signedNoise(x))` is just `noise(x)`.)
+public func unipolar(_ x: Double) -> Double {
+    x * 0.5 + 0.5
+}
+
+/// A `0...1` value remapped onto `-1...1`: `x * 2 - 1`. The inverse of
+/// `unipolar`, for when a fraction has to swing both ways:
+///
+/// ```swift
+/// let sway = bipolar(random())         // -1...1
+/// ```
+public func bipolar(_ x: Double) -> Double {
+    x * 2 - 1
+}
+
+// MARK: Dividing a whole
+
+/// `count` evenly spaced fractions of `0...1`, for walking a loop by its
+/// progress instead of its index:
+///
+/// ```swift
+/// for t in fractions(12) { drawCircle(lerp(80, width - 80, t), y, 20) }
+/// ```
+///
+/// By default the run is `0/count ... (count-1)/count`, the spacing that tiles
+/// a circle or a repeating strip with no doubled seam. Pass `inclusive: true`
+/// for `count` fractions from `0` through `1` exactly, the spacing of fence
+/// posts rather than fence panels. `count` below one returns an empty array.
+public func fractions(_ count: Int, inclusive: Bool = false) -> [Double] {
+    guard count > 0 else { return [] }
+    if inclusive {
+        guard count > 1 else { return [0] }
+        return (0..<count).map { Double($0) / Double(count - 1) }
+    }
+    return (0..<count).map { Double($0) / Double(count) }
+}
+
+/// `count` evenly spaced angles in radians, one full turn by default: the
+/// spokes of a wheel as a sequence.
+///
+/// ```swift
+/// for a in angles(12) { drawCircle(center: polar(a, 300, around: center), radius: 20) }
+/// for a in angles(5, from: time) { … }        // the whole ring turns
+/// ```
+///
+/// `from` rotates the whole fan; `turns` opens it to less or more than a full
+/// circle (`turns: 0.5` fans across a half). The last angle stops one step
+/// short of closing the turn, so the first and last spokes never double up.
+public func angles(_ count: Int, from start: Double = 0, turns: Double = 1) -> [Double] {
+    fractions(count).map { start + $0 * turns * .tau }
+}
+
+// MARK: Points
+
+/// The point at `angle` and `radius` from `center`: polar coordinates as one
+/// call, replacing the spelled-out pair
+/// `center + Vector2(cos(angle), sin(angle)) * radius`.
+///
+/// ```swift
+/// let p = polar(time, 300, around: center)     // a point riding a circle
+/// drawLine(center, polar(a, r, around: center))
+/// ```
+///
+/// Angle in radians, `0` pointing right and increasing clockwise on screen
+/// (y grows downward). With no `around:` the point is measured from the
+/// origin, which composes with `translate`.
+public func polar(_ angle: Double, _ radius: Double, around center: Vector2 = .zero) -> Vector2 {
+    center + Vector2(angle: angle, length: radius)
+}
+
+public extension Double {
+    /// The angle `value` degrees, as radians: `rotate(.degrees(45))`.
+    ///
+    /// The drawing calls all speak radians; this reads a familiar unit into
+    /// them at the call site, with `.turns(_:)` its whole-circle sibling.
+    static func degrees(_ value: Double) -> Double { value * .pi / 180 }
+
+    /// The angle `value` whole turns, as radians: `.turns(0.25)` is a quarter
+    /// circle, `.turns(1)` all the way around. See also `.degrees(_:)`.
+    static func turns(_ value: Double) -> Double { value * .tau }
+}
+
 // MARK: Looping progress
 
 public extension Sketch {

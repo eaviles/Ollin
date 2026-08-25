@@ -10,6 +10,7 @@ Motion is the default in Ollin, so most movement falls out of a `time`-driven te
 
 - [Looping progress](#loop): `loopProgress`, `pingPong`
 - [Sway](#sway): a value that travels between two ends and back
+- [Wave](#wave): the raw sine, spelled by center and swing
 - [Timers](#timers): `every`, `after`, `everyFrames`
 - [Easing curves](#easing)
 - [The curve catalog](#catalog)
@@ -88,6 +89,34 @@ The four worked-out shapes start at the low end, so changing your mind about the
 A sway reads the clock and nothing else, so two calls with the same arguments are the same value. Give them different phases or different durations to tell them apart. For `.wander` a phase is a delay along one tour rather than a different tour, so several independent drifts are better driven by `signedNoise(_:loop:)` with a coordinate each. A `duration` of zero or less holds at the low end.
 
 Worked example: [`Motion/Sway`](../../Examples/Motion/Sway/Sketch.swift).
+
+<a name="wave"></a>
+
+### Wave
+
+```swift
+wave(_ rate: Double = 1, amplitude: Double = 1, around center: Double = 0,
+     phase: Double = 0) -> Double
+```
+
+The sine oscillation most sketches write out by hand, spelled by its center and
+swing: `center + sin(time * rate + phase) * amplitude`.
+
+```swift
+let r = wave(0.8, amplitude: 40, around: 150)   // 110...190, slowly
+drawCircle(center: center, radius: r)
+```
+
+`rate` is in radians per second, exactly the `k` of a hand-written
+`sin(time * k)`, so an existing wave carries over unchanged. `phase` (radians
+too) offsets neighbors along one wave. With no arguments it is simply
+`sin(time)`.
+
+`sway` above is the sibling that thinks in seconds per lap and a range of
+values. Prefer it when the sketch declares a
+[`loopDuration`](../Output/Export.md#perfect-loops): a lap of `sway` always
+closes exactly, where a `wave` only closes when `loopDuration * rate` lands on
+a whole number of turns.
 
 <a name="timers"></a>
 

@@ -62,6 +62,8 @@ Angles here are radians, and the friendly way in is `.tau`, the angle of one ful
 
 To stand on a circle's rim, you need how far around (an angle) and how far out (a radius). `cos(angle) * radius` gives the across part, `sin(angle) * radius` the down part, and adding them to the center lands the point. This one pattern places petals, clock hands, orbiting moons, and everything else arranged in a ring. It first appears in [Chapter 1](01-HelloOllin.md) and never really leaves.
 
+Once the pattern is yours, it is also one call. `polar(angle, radius, around: center)` lands the same point, and `angles(12)` hands you twelve evenly spaced angles to stand things on. A whole ring becomes a `for` loop with no index arithmetic. This appendix keeps spelling the trig out so you can see it work.
+
 ### Sine: a smooth swing
 
 <picture>

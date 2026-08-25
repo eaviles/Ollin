@@ -50,6 +50,9 @@ The default font is `OutlineFont.systemMedium`, the system UI face (San Francisc
 ```swift
 drawText(_ string: String, _ x: Double, _ y: Double)
 drawText(_ string: String, at position: Vector2)
+drawText(_ string: String, at position: Vector2,
+         size: Double? = nil, color: Color? = nil,
+         align horizontal: TextAlignH? = nil, _ vertical: TextAlignV? = nil)
 ```
 
 Draw `string` at a point, in the current `fill` color, using the active `textFont` / `textSize` / `textAlign`. `\n` starts a new line. Glyphs are geometry (vector shapes for an outline font, SDF squares for a bitmap one), so text rotates and scales with the [transform stack](../Drawing/Drawing.md#translate) like everything else. `noFill()` draws nothing, and characters the font doesn't have advance the pen but draw nothing.
@@ -61,6 +64,14 @@ textSize(120)
 textAlign(.center, .middle)
 drawText("ollin", width / 2, height / 2)
 ```
+
+The styled form is the one-call label. Any of `size`, `color`, and `align` you give apply to this text alone, and the standing state comes back untouched. It replaces the four-call preamble a label usually drags along:
+
+```swift
+drawText("Hello", at: center, size: 32, color: .white, align: .center, .middle)
+```
+
+`align` takes the same pair as `textAlign(_:_:)`, vertical defaulting to `.baseline`. `color` paints the glyphs in exactly that color whatever the font kind (it sets the fill, or the stroke for a stroke font, and suppresses the outline decoration a standing `stroke` would add). The scalar `(x, y)` and [box](#box) forms take the same three arguments.
 
 <a name="notices"></a>
 

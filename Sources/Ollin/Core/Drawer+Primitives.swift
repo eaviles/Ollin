@@ -156,11 +156,47 @@ extension Drawer {
                   param0: (a - center).simd2, param1: (b - center).simd2, param2: (c - center).simd2)
     }
 
-    /// A triangle through three corners given as scalar coordinates — the positional
-    /// form of `drawTriangle(_:_:_:)`.
+    /// A triangle through three corners given as scalar coordinates, the
+    /// positional form of `drawTriangle(_:_:_:)`.
     func drawTriangle(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double,
                       _ x3: Double, _ y3: Double) {
         drawTriangle(Vector2(x1, y1), Vector2(x2, y2), Vector2(x3, y3))
+    }
+
+    /// An arrow from `a` to `b`: a stroked shaft ending in a solid triangular
+    /// head whose tip is exactly `b`. The whole mark, head included, is painted
+    /// with the current `stroke`, so one `stroke(...)` colors the arrow; with
+    /// no stroke set to `nil` there is nothing to draw. `nil` head measurements
+    /// scale with the stroke weight. The shaft stops at the head's base, so a
+    /// translucent arrow lays one coat of ink. Composed of the line and
+    /// triangle primitives, so it rides every path they do (SVG export
+    /// included).
+    func drawArrow(from a: Vector2, to b: Vector2, headLength: Double?, headWidth: Double?) {
+        guard let shaftPaint = strokePaint else { return }
+        let delta = b - a
+        let length = delta.length
+        guard length > 1e-9 else { return }
+        let head = headLength ?? Swift.max(10, strokeWidth * 5)
+        let width = headWidth ?? head * 0.75
+        guard head > 0, width > 0 else {
+            drawLine(a, b)
+            return
+        }
+        let dir = delta / length
+        // A head longer than the arrow is the whole arrow: base at `a`.
+        let reach = Swift.min(head, length)
+        let base = b - dir * reach
+        if reach < length { drawLine(a, base) }
+        // The head is part of the line, so it takes the stroke paint as its
+        // fill; both paints go back afterwards.
+        let savedFill = fillPaint
+        let savedStroke = strokePaint
+        fillPaint = shaftPaint
+        strokePaint = nil
+        let perp = dir.perpendicular * (width / 2)
+        drawTriangle(b, base + perp, base - perp)
+        fillPaint = savedFill
+        strokePaint = savedStroke
     }
 
     /// A regular polygon centered at `(x, y)` with `sides` equal-length edges and

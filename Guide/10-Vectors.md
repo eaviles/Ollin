@@ -19,6 +19,8 @@ let step = Vector2(4, -1)              // an arrow: a way to move
 
 Everything in this chapter comes from letting those two readings work together: points tell you where things are, arrows tell you where they're headed, and the arithmetic below moves freely between them.
 
+Two conveniences fall straight out of the point reading. The cursor is one point, `mouse`, and `previousMouse` remembers where it was a frame ago, so `mouse - previousMouse` is the arrow your hand just drew. And an arrow draws as itself: `drawArrow(from: home, to: home + step)` puts a stroked shaft and a solid head on the canvas, one `stroke(...)` coloring the whole mark. The vector figures in this chapter are drawn with it.
+
 ## Arrow arithmetic
 
 Vectors add, subtract, and scale, and each operation has a picture worth keeping:

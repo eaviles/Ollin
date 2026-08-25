@@ -281,6 +281,17 @@ public extension Color {
     /// linearly. In the polar spaces hue takes the shortest arc, and an
     /// achromatic endpoint (gray, black, white) adopts the other's hue so a
     /// fade to white doesn't swing through unrelated hues.
+    /// The color `t` of the way from this color to `other`: the instance form
+    /// of `Color.mix(_:_:t:in:)`, reading in the direction a fade runs.
+    ///
+    /// ```swift
+    /// fill(ink.mixed(with: .white, 0.3))
+    /// let c = a.mixed(with: b, t, in: .oklch)
+    /// ```
+    func mixed(with other: Color, _ t: Double, in space: ColorSpace = .oklab) -> Color {
+        Color.mix(self, other, t: t, in: space)
+    }
+
     static func mix(_ x: Color, _ y: Color, t: Double, in space: ColorSpace = .oklab) -> Color {
         let t = min(max(t, 0), 1)
         let alpha = x.alpha + (y.alpha - x.alpha) * t
@@ -319,6 +330,26 @@ public extension Color {
                          alpha: alpha)
         }
     }
+}
+
+public extension Color {
+    /// The color's hue as a `0..<1` fraction of the wheel (`0` red, `1/3`
+    /// green, `2/3` blue), the read-back of `init(hue:saturation:brightness:)`.
+    /// A gray has no hue of its own and reads `0`.
+    ///
+    /// ```swift
+    /// let shifted = Color(hue: fract(c.hue + 0.1), saturation: c.saturation,
+    ///                     brightness: c.brightness, alpha: c.alpha)
+    /// ```
+    var hue: Double { hsbComponents.h }
+
+    /// How far the color sits from gray, `0` (achromatic) to `1` (fully
+    /// saturated). See `hue`.
+    var saturation: Double { hsbComponents.s }
+
+    /// The color's HSB brightness (the value of its brightest channel), `0`
+    /// black to `1`. See `hue`.
+    var brightness: Double { hsbComponents.v }
 }
 
 extension Color {

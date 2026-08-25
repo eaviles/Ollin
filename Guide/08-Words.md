@@ -31,6 +31,8 @@ final class Hello: Sketch {
 
 `drawText` puts a string at a point, and three pieces of state decide how it lands: `fill` is the ink (text is geometry, so it uses the same fill as your shapes), `textSize` is the height of a line in points, and `textAlign` says how the string hangs on the point you gave. `.center, .middle` centers it both ways, and the default is `.left, .baseline`, which starts the text at your x and sits it on the line type sits on. One thing to know early is that glyphs honor a stroke you've set, so a leftover `stroke(...)` from earlier drawing will outline every letter. Call `noStroke()` for plain text, or keep the stroke on purpose (it's a look). The untouched default stroke is the one exception: it never applies to text, so a fresh sketch's first `drawText` comes out plain.
 
+When one label wants its own look for just one call, say it in the call: `drawText("hello", at: center, size: 32, color: .white, align: .center, .middle)` styles that string alone and puts every piece of state back, leftover stroke worries included. The state calls above are still the way to set a look that several strings share.
+
 A string can hold more than one line (`\n` starts the next one), and everything rides the transform stack from [Chapter 6](06-GridsAndRepetition.md), so you can translate to a point, rotate, and the words rotate with the paper.
 
 ## Three kinds of letters

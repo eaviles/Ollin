@@ -21,6 +21,7 @@ override func draw() {
 
 - [Resolution independence](#resolution-independence)
 - [scale](#scale)
+- [shortSide / longSide](#shortSide)
 - [Export size](#canvasSize)
 - [The preview window](#windowMode)
 - [The performance panel](#stats-overlay)
@@ -36,7 +37,7 @@ Coordinates are in **logical points**, with a top-left origin and y increasing d
 To keep a piece looking the same at every size, write it relative to the canvas instead of in fixed pixels. Two tools cover that:
 
 - **`scale`** grows and shrinks with the canvas, so multiplying a feature size by it holds that size's proportion at any canvas size. Pick the size you'd want on a roughly 1000-point canvas and multiply: a `12 * scale` dot, a `375 * scale` radius.
-- **`width` / `height` fractions** suit layout: `width * 0.8` for a centered block, `height / 8` for a wave's amplitude, `min(width, height) * 0.125` for an inset. For *positions*, [`uv(u, v)`](#uv) states the same fractions as one point: `uv(0.5, 0.75)` instead of `Vector2(width * 0.5, height * 0.75)`.
+- **`width` / `height` fractions** suit layout: `width * 0.8` for a centered block, `height / 8` for a wave's amplitude, [`shortSide`](#shortSide)` * 0.125` for an inset. For *positions*, [`uv(u, v)`](#uv) states the same fractions as one point: `uv(0.5, 0.75)` instead of `Vector2(width * 0.5, height * 0.75)`.
 
 A bare `drawCircle(400, 400, 150)` ties the sketch to one canvas size, and the same call lands somewhere else once the canvas changes. Reach for `scale` and fractions instead.
 
@@ -59,6 +60,28 @@ A read-only factor that grows and shrinks with the canvas; multiply sizes by it 
 drawCircle(width / 2, height / 2, 120 * scale)
 strokeWeight(2 * scale)
 ```
+
+<a name="shortSide"></a>
+
+#### shortSide / longSide
+
+```swift
+shortSide: Double
+longSide: Double
+```
+
+The two canvas edges by length: `shortSide` is `min(width, height)`, `longSide`
+its partner. The short side is the length that decides how big something can be
+and still fit whichever way the canvas turns, so `shortSide * 0.4` sizes a
+centerpiece the same on a square, a wide, and a tall canvas.
+
+```swift
+drawCircle(center: center, radius: shortSide * 0.4)
+let margin = shortSide * 0.08
+```
+
+(`scale` above is the same quantity divided by 1000, for holding a size's
+proportion; `shortSide` is for stating the fraction directly.)
 
 <a name="canvasSize"></a>
 

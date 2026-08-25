@@ -78,4 +78,29 @@ public extension Sketch {
         }
         return lerp(range.lowerBound, range.upperBound, unit)
     }
+
+    /// A sine wave on the clock, spelled by its center and swing:
+    /// `center + sin(time * rate + phase) * amplitude`.
+    ///
+    /// The one-call form of the oscillation most sketches write out by hand:
+    ///
+    /// ```swift
+    /// let r = wave(0.8, amplitude: 40, around: 150)   // 110...190, slowly
+    /// drawCircle(center: center, radius: r)
+    /// ```
+    ///
+    /// `rate` is in radians per second, exactly the `k` of `sin(time * k)`, so
+    /// a hand-written wave carries over unchanged; `phase` is in radians too,
+    /// and offsets neighbors along one wave. With no arguments it is simply
+    /// `sin(time)`.
+    ///
+    /// ``Sketch/sway(over:in:shape:phase:)`` is the sibling that thinks in
+    /// seconds per lap and a range of values. Prefer it when the sketch
+    /// declares a `loopDuration`, since a lap of `sway` always closes exactly;
+    /// a `wave` only closes when `loopDuration * rate` lands on a whole number
+    /// of turns.
+    func wave(_ rate: Double = 1, amplitude: Double = 1, around center: Double = 0,
+              phase: Double = 0) -> Double {
+        center + sin(time * rate + phase) * amplitude
+    }
 }
