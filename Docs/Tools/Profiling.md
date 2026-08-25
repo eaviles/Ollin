@@ -4,13 +4,13 @@
 
 ## Profiling
 
-Ollin sits on a GPU core, so a sketch can draw a great deal before it slows down. When one does slow down, the question is which half of the frame is to blame. The inspector answers it. Under the FPS strip sit two bars and three counts, and they say where the frame went.
+Ollin sits on a GPU core, so a sketch can draw a great deal before it slows down. When one does slow down, the question is which half of the frame is to blame. The inspector answers it. The cell grid ends with three counts, and two bars sit under it. Together they say where the frame went.
 
 Open the inspector with **⌘/** (standalone), or read it in the sidebar of OllinLive, the gallery, and the live-coding host. Every host shows the same card.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/32-Installations/CostRow-dark.jpg">
-  <img src="../../Guide/Images/32-Installations/CostRow.jpg" alt="A diagram of the inspector's cost row: a CPU bar filled a little over half, a GPU bar filled less, and a row of three cells reading 1 draw, 2 passes, 1 batch, with callouts naming what each part means" width="680">
+  <img src="../../Guide/Images/32-Installations/CostRow.jpg" alt="A diagram of the inspector's cost row: a row of cells reading 1 draw, 2 passes, 1 batch, over a CPU bar filled a little over half and a GPU bar filled less, with callouts naming what each part means" width="680">
 </picture>
 
 ### Contents

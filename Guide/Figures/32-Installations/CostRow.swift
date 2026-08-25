@@ -1,8 +1,8 @@
 // figure: frame=1 themed
 //
-// Guide diagram (Chapter 32): the inspector's cost row, annotated. A stylized
-// card drawn with Ollin itself: the frame-rate strip, the two bars scaled to one
-// frame, and the counts underneath. Callouts name what each part answers.
+// Guide diagram (Chapter 32): the inspector's cost tier, annotated. A stylized
+// card drawn with Ollin itself: the cell grid ending in the three counts, and
+// the two bars scaled to one frame. Callouts name what each part answers.
 import Ollin
 import OllinDiagram
 
@@ -38,8 +38,8 @@ final class CostRow: Sketch {
         fill(cardFill)
         drawRect(card, cornerRadius: 12)
 
-        // The fact strip the cost row sits under: frame rate, canvas, and a
-        // cell per drawing path in use.
+        // The cell grid, four to a row: frame rate, canvas, and a cell per
+        // drawing path in use, then the three counts on the second row.
         let strip = card.y + 58
         statCell("58", "FPS", at: Vector2(card.x + 48, strip), valueColor: gpuTint)
         statCell("1080²", "CANVAS", at: Vector2(card.x + 143, strip), valueColor: readout)
@@ -54,35 +54,32 @@ final class CostRow: Sketch {
         }
         drawLine(Vector2(card.x, card.y + 92), Vector2(card.x + card.width, card.y + 92))
 
-        // The two bars, both scaled to one frame.
-        bar(icon: "CPU", value: cpuMS, tint: cpuTint, y: card.y + 124, in: card)
-        bar(icon: "GPU", value: gpuMS, tint: gpuTint, y: card.y + 154, in: card)
-
-        // The counts, cells like the strip's.
-        stroke(cardLine)
-        strokeWeight(1)
-        drawLine(Vector2(card.x, card.y + 178), Vector2(card.x + card.width, card.y + 178))
         for i in 1...2 {
             let x = card.x + card.width / 3 * Double(i)
-            drawLine(Vector2(x, card.y + 178), Vector2(x, card.y + card.height))
+            drawLine(Vector2(x, card.y + 92), Vector2(x, card.y + 150))
         }
-        let counts = card.y + 206
+        drawLine(Vector2(card.x, card.y + 150), Vector2(card.x + card.width, card.y + 150))
+        let counts = card.y + 116
         statCell("1", "DRAW", at: Vector2(card.x + 63, counts), valueColor: readout)
         statCell("2", "PASSES", at: Vector2(card.x + 190, counts), valueColor: readout)
         statCell("1", "BATCH", at: Vector2(card.x + 317, counts), valueColor: readout)
 
+        // The two bars, both scaled to one frame.
+        bar(icon: "CPU", value: cpuMS, tint: cpuTint, y: card.y + 182, in: card)
+        bar(icon: "GPU", value: gpuMS, tint: gpuTint, y: card.y + 212, in: card)
+
         // Callouts. Every leader ends just outside the card, so no line crosses
         // the readout it is pointing at.
         textSize(15)
-        callout("the longer bar is", "the half to fix",
-                at: Vector2(40, 186), to: Vector2(card.x - 8, card.y + 124), alignRight: false)
         callout("draws, passes, batches:", "the work behind the bars",
-                at: Vector2(40, 300), to: Vector2(card.x - 8, card.y + 200), alignRight: false)
-        callout("the GPU's half comes", "from its own clock",
-                at: Vector2(845, 186), to: Vector2(card.x + card.width + 8, card.y + 154),
-                alignRight: true)
+                at: Vector2(40, 186), to: Vector2(card.x - 8, card.y + 120), alignRight: false)
+        callout("the longer bar is", "the half to fix",
+                at: Vector2(40, 300), to: Vector2(card.x - 8, card.y + 182), alignRight: false)
         callout("hover any cell for", "the full breakdown",
-                at: Vector2(845, 300), to: Vector2(card.x + card.width + 8, card.y + 200),
+                at: Vector2(845, 186), to: Vector2(card.x + card.width + 8, card.y + 120),
+                alignRight: true)
+        callout("the GPU's half comes", "from its own clock",
+                at: Vector2(845, 300), to: Vector2(card.x + card.width + 8, card.y + 212),
                 alignRight: true)
 
         noStroke()

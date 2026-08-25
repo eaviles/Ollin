@@ -206,11 +206,12 @@ public struct MonitorIdentity: Equatable {
 
 /// The centerpiece: a card of stacked tiers, an identity row (filename · path,
 /// with a Frame counter cell on the right; just the one cell, a second squeezed
-/// the identity block illegibly), the big centered timecode clock, the fact
-/// strip (FPS · Canvas · one cell per drawing path in use), the CPU/GPU cost
-/// bars, and the Draws · Passes · Batches count cells. Cells carry facts, the
-/// bars carry time, and no number appears in two places. Driven by a live
-/// `FrameStats`, so it updates a few times a second as the sketch runs.
+/// the identity block illegibly), the big centered timecode clock, one cell
+/// grid (FPS · Canvas · a cell per drawing path in use · Draws · Passes ·
+/// Batches, filling rows four at a time), and the CPU/GPU cost bars. Cells
+/// carry facts, the bars carry time, and no number appears in two places.
+/// Driven by a live `FrameStats`, so it updates a few times a second as the
+/// sketch runs.
 ///
 /// Each tier is its own `View` so a tick only re-renders the readouts that
 /// changed: the static identity block stays put while the clock and strip
@@ -239,8 +240,6 @@ public struct MonitorCardView: View {
             MonitorStatStrip(stats: stats)
             Hairline(palette: palette)
             MonitorCostRow(stats: stats)
-            Hairline(palette: palette)
-            MonitorCountRow(stats: stats)
         }
         .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
         .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
@@ -360,14 +359,15 @@ private struct MonitorClockRow: View {
     }
 }
 
-/// The fact strip: FPS and Canvas, then one cell per drawing path the sketch
-/// uses (SDF instances, triangle vertices, point splats, GPU particles), each
-/// its own value-over-label cell so no readout joins several numbers and
-/// truncates. Cells flow into hairline-separated rows of at most four, split
-/// evenly (five cells run 3+2, six run 3+3), so a path-heavy sketch grows a
-/// row rather than squeezing. A path's cell stays once it has appeared: a
-/// simulation whose particle count dips to zero for a frame must not reshuffle
-/// the row. The set clears when the frame counter restarts (a reload).
+/// The cell grid: FPS and Canvas, one cell per drawing path the sketch uses
+/// (SDF instances, triangle vertices, point splats, GPU particles), then the
+/// Draws · Passes · Batches counts, each its own value-over-label cell so no
+/// readout joins several numbers and truncates. Cells fill hairline-separated
+/// rows four at a time, the last row taking the remainder (eight cells run
+/// 4+4, seven run 4+3), so a path-heavy sketch grows a row rather than
+/// squeezing. A path's cell stays once it has appeared: a simulation whose
+/// particle count dips to zero for a frame must not reshuffle the grid. The
+/// set clears when the frame counter restarts (a reload).
 ///
 /// Every cell ticks with the live `FrameStats`, so it reads the object directly
 /// rather than threading scalars through; per-property observation still
@@ -422,9 +422,48 @@ private struct MonitorStatStrip: View {
         }
     }
 
-    /// The strip's cells for this tick: the two fixed facts, then the active
-    /// paths in a fixed order. With no path yet, one placeholder Geometry cell
-    /// keeps the strip from reading as though the sketch draws nothing.
+    private var drawDetail: String {
+        let p = stats.profile
+        var parts: [String] = []
+        func add(_ n: Int, _ name: String) { if n > 0 { parts.append("\(n) \(name)") } }
+        add(p.sdfInstances, "instanced SDF shapes")
+        add(p.triangleVertices, "fill vertices")
+        add(p.fringeVertices, "stroke vertices")
+        add(p.meshVertices, "mesh vertices")
+        add(p.glyphVertices, "glyph vertices")
+        add(p.imageVertices, "image vertices")
+        add(p.fieldQuads, "SDF fields")
+        add(p.pointSplats, "point splats")
+        add(p.particles, "particles")
+        add(p.clipVertices, "clip vertices")
+        add(p.computeDispatches, "compute dispatches")
+        let body = parts.isEmpty ? "nothing" : parts.joined(separator: ", ")
+        return "\(p.drawCalls) draw calls carrying \(body)."
+    }
+
+    private var passDetail: String {
+        "\(stats.profile.passes) render passes: the canvas and the present, plus every "
+            + "effects layer, filter, shadow map, and probe bake the frame asked for."
+    }
+
+    private var batchDetail: String {
+        "\(stats.profile.batches) recorded runs. A run breaks whenever the pipeline, blend mode, "
+            + "texture, or clip level changes, so many runs against few shapes means state is "
+            + "changing per shape."
+    }
+
+    /// One submitted-work cell. The label follows the count into the singular,
+    /// so a frame with one of something does not read "1 draws".
+    private func countCell(_ count: Int, _ one: String, _ many: String,
+                           detail: String) -> FactCell {
+        FactCell(value: compactCount(count, hasData: stats.hasData),
+                 label: count == 1 ? one : many, detail: detail)
+    }
+
+    /// The grid's cells for this tick: the two fixed facts, the active paths in
+    /// a fixed order, then the three counts. With no path yet, one placeholder
+    /// Geometry cell keeps the grid from reading as though the sketch draws
+    /// nothing.
     private var cells: [FactCell] {
         var cells = [
             FactCell(value: stats.hasData ? String(format: "%.0f", stats.fps) : noReadingYet,
@@ -440,17 +479,18 @@ private struct MonitorStatStrip: View {
         } else {
             cells.append(contentsOf: active.map(cell(for:)))
         }
+        cells.append(countCell(stats.profile.drawCalls, "Draw", "Draws", detail: drawDetail))
+        cells.append(countCell(stats.profile.passes, "Pass", "Passes", detail: passDetail))
+        cells.append(countCell(stats.profile.batches, "Batch", "Batches", detail: batchDetail))
         return cells
     }
 
-    /// The cells split into rows of at most four, as even as they divide (five
-    /// cells run 3+2, six run 3+3), each row sharing its width equally.
+    /// The cells filled into rows of four, the last row taking the remainder
+    /// (eight cells run 4+4, seven run 4+3), each row sharing its width equally.
     private var rows: [[FactCell]] {
         let cells = cells
-        let rowCount = (cells.count + 3) / 4
-        let perRow = (cells.count + rowCount - 1) / rowCount
-        return stride(from: 0, to: cells.count, by: perRow).map {
-            Array(cells[$0 ..< min($0 + perRow, cells.count)])
+        return stride(from: 0, to: cells.count, by: 4).map {
+            Array(cells[$0 ..< min($0 + 4, cells.count)])
         }
     }
 
@@ -540,7 +580,7 @@ private let noReadingYet = "\u{2014}"
 
 /// The profiler tier of the card: two bars answering "which side is the frame
 /// waiting on". This is the one place milliseconds appear on the card, so the
-/// fact strip above never repeats a number the bars already carry.
+/// cell grid above never repeats a number the bars already carry.
 ///
 /// The bars are drawn against the same scale, the frame's own period, so their
 /// lengths can be compared by eye: the longer one is the bottleneck, and a short
@@ -627,69 +667,6 @@ private struct MonitorCostRow: View {
         }
     }
 
-}
-
-/// The submitted-work tier: Draws, Passes, and Batches in the same
-/// value-over-label cells as the fact strip, each explaining itself on hover.
-/// The label follows the count into the singular, so a frame with one of
-/// something does not read "1 draws".
-private struct MonitorCountRow: View {
-    let stats: FrameStats
-
-    @SwiftUI.Environment(\.colorScheme) private var scheme
-    private var palette: OllinInspector.Palette { .resolve(scheme) }
-
-    private var drawDetail: String {
-        let p = stats.profile
-        var parts: [String] = []
-        func add(_ n: Int, _ name: String) { if n > 0 { parts.append("\(n) \(name)") } }
-        add(p.sdfInstances, "instanced SDF shapes")
-        add(p.triangleVertices, "fill vertices")
-        add(p.fringeVertices, "stroke vertices")
-        add(p.meshVertices, "mesh vertices")
-        add(p.glyphVertices, "glyph vertices")
-        add(p.imageVertices, "image vertices")
-        add(p.fieldQuads, "SDF fields")
-        add(p.pointSplats, "point splats")
-        add(p.particles, "particles")
-        add(p.clipVertices, "clip vertices")
-        add(p.computeDispatches, "compute dispatches")
-        let body = parts.isEmpty ? "nothing" : parts.joined(separator: ", ")
-        return "\(p.drawCalls) draw calls carrying \(body)."
-    }
-
-    private var passDetail: String {
-        "\(stats.profile.passes) render passes: the canvas and the present, plus every "
-            + "effects layer, filter, shadow map, and probe bake the frame asked for."
-    }
-
-    private var batchDetail: String {
-        "\(stats.profile.batches) recorded runs. A run breaks whenever the pipeline, blend mode, "
-            + "texture, or clip level changes, so many runs against few shapes means state is "
-            + "changing per shape."
-    }
-
-    private func cell(count: Int, one: String, many: String, detail: String) -> FactCell {
-        FactCell(value: compactCount(count, hasData: stats.hasData),
-                 label: count == 1 ? one : many, detail: detail)
-    }
-
-    var body: some View {
-        HStack(spacing: 0) {
-            MonitorFactCell(cell: cell(count: stats.profile.drawCalls, one: "Draw",
-                                       many: "Draws", detail: drawDetail),
-                            palette: palette)
-            Hairline(palette: palette, axis: .vertical)
-            MonitorFactCell(cell: cell(count: stats.profile.passes, one: "Pass",
-                                       many: "Passes", detail: passDetail),
-                            palette: palette)
-            Hairline(palette: palette, axis: .vertical)
-            MonitorFactCell(cell: cell(count: stats.profile.batches, one: "Batch",
-                                       many: "Batches", detail: batchDetail),
-                            palette: palette)
-        }
-        .fixedSize(horizontal: false, vertical: true)
-    }
 }
 
 // MARK: - Parameters
