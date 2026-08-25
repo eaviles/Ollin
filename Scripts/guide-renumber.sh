@@ -33,7 +33,7 @@
 #   since that number is a string on a code line and changing it blind could
 #   change what the picture says. Fix those by hand and re-render them.
 #
-# Run Scripts/guide-links.sh afterwards. That is the check that the move landed.
+# Run Scripts/check-links.sh afterwards. That is the check that the move landed.
 
 cd "$(dirname "$0")/.." || exit 1
 
@@ -268,5 +268,5 @@ if dry_run:
     for path in changed:
         print(f"  {path}")
 else:
-    print("guide-renumber: now run Scripts/guide-links.sh")
+    print("guide-renumber: now run Scripts/check-links.sh")
 PY

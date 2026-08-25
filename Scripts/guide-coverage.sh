@@ -134,7 +134,7 @@ for line in ${(f)rows}; do
     esac
 
     # Rule 2: every Docs page a row names has to exist.
-    for page in ${(f)"$(print -r -- $capability | grep -o '[A-Za-z0-9]*/*[A-Za-z0-9]*\.md')"}; do
+    for page in ${(f)"$(print -r -- $capability | grep -o '[A-Za-z0-9_/-]*\.md')"}; do
         [[ -n $page ]] || continue
         if [[ -f Docs/$page ]]; then
             page_row[$page]=$capability
@@ -147,9 +147,9 @@ for line in ${(f)rows}; do
 done
 
 # ------------------------------------------------- pages: rows, chapters, D
-chapter_links=$(grep -ho 'Docs/[A-Za-z0-9]*/*[A-Za-z0-9]*\.md' Guide/[0-9]*.md \
+chapter_links=$(grep -ho 'Docs/[A-Za-z0-9_/-]*\.md' Guide/[0-9]*.md \
                 | sed 's|^Docs/||' | sort -u)
-appendix_links=$(grep -ho 'Docs/[A-Za-z0-9]*/*[A-Za-z0-9]*\.md' $appendix \
+appendix_links=$(grep -ho 'Docs/[A-Za-z0-9_/-]*\.md' $appendix \
                  | sed 's|^Docs/||' | sort -u)
 
 # `**/` already matches zero directories, so this covers Docs/Swift.md too.

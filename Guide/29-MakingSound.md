@@ -668,7 +668,7 @@ The even spread behind `Rhythm` is Eric Bjorklund's algorithm for timing pulses 
 - [Physical models](../Docs/Helpers/Synthesis.md#physical-models): all four models, their settings, why the tuning is exact, and how a shape is measured for its modes.
 - [Composition](../Docs/Helpers/Composition.md): rhythms, scales, chords, progressions, arpeggios, chains, tunings, following a beat, and the step counter under all of them.
 - [Sonification](../Docs/Helpers/Sonification.md): the four sources, how the ends of the data are decided, the reference note, and reading a series by ear.
-- [Spatial audio](../Docs/Helpers/Synthesis.md#spatial-audio): placing a source in the room, the listener, and what an export writes.
+- [Spatial audio](../Docs/Helpers/Synthesis.md#placing-a-sound): placing a source in the room, the listener, and what an export writes.
 - Appendix B draws the idea this chapter rests on: [Sound as numbers](B-JustEnoughMath.md#sound-as-numbers).
 - Worked examples, in [`Examples/Audio/`](../Examples/Audio/): `Synth` (a playable keyboard), `Patching` (the graph drawn as it is wired), `Sampler`, `Strings`, `StruckShapes`, `Bowing`, `Generative` (this chapter's piece with knobs), `Changes`, `Sonification`, `Spatial`, and `SoundInAnExport`.
 

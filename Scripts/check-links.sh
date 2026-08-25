@@ -1,21 +1,26 @@
 #!/bin/zsh
 #
-# Scripts/guide-links.sh: check that the Guide's navigation is real.
+# Scripts/check-links.sh: check that the repository's navigation is real,
+# across the Guide, the Docs/ reference, and the root README.
 #
-#   Scripts/guide-links.sh           # check, exit nonzero on any error
-#   Scripts/guide-links.sh --list    # also print every note, including the quiet ones
+#   Scripts/check-links.sh           # check, exit nonzero on any error
+#   Scripts/check-links.sh --list    # also print every note, including the quiet ones
 #
-# The Guide navigates by number. Prose says "Chapter 5's noise hands back a
-# value at every point", the footer chain runs 1 to 22 and on into the
-# appendices, Appendix D keys 226 rows to a chapter, the coverage matrix keys
-# 272 more, and CAPABILITIES.md points at chapters by section heading. All of
-# that was verified by hand, which works until a chapter moves. Then 658 links,
-# 408 image tags and 498 chapter tokens go stale at once and nothing notices,
-# because no gate ever read them.
+# The prose navigates by number and by path. Chapters point at each other, the
+# footer chain runs through the appendices, Appendix D and the coverage matrix
+# key rows to chapters, CAPABILITIES.md points at chapters by section heading,
+# Docs pages cross-reference each other, and the root README's capability table
+# is the front door to every Docs page. All of that was once verified by hand,
+# which works until something moves; then hundreds of links, image tags and
+# chapter tokens go stale at once and nothing notices, because no gate ever
+# read them. (This script began life as guide-links.sh, scoped to Guide/; the
+# blind spots it grew out of, Docs-to-Docs links and the README's table, are
+# exactly where real breaks hid.)
 #
-# This is that gate. Nine checks, in the order a reader would trip over them:
+# This is that gate. Ten checks, in the order a reader would trip over them:
 #
-#   1. Every relative link target exists, from the file that names it.
+#   1. Every relative link target exists, from the file that names it. This
+#      now reads every Guide page, every Docs page, and the root README.
 #   2. Every `#anchor` resolves to a heading in the file it points at.
 #   3. Every <img src> file exists, in Guide pages and in Docs/ pages, which
 #      reuse Guide figures by relative path.
@@ -30,6 +35,10 @@
 #   9. Every chapter token names a chapter that exists: `Ch N` in PLAN.md and
 #      Appendix D, and `Guide Ch N § *Heading*` in CAPABILITIES.md, where the
 #      heading itself has to exist in that chapter.
+#  10. Every Docs page is reachable: linked from the root README's capability
+#      table and listed in Docs/README.md. This is the invariant that once
+#      broke silently and orphaned 21 pages; it used to live in CLAUDE.md as a
+#      `comm` command somebody had to remember to run.
 #
 # Check 9 is the one worth having. A pointer that carries a section heading
 # survives a renumber looking correct and aiming at nothing, and that is
@@ -46,7 +55,7 @@ cd "$(dirname "$0")/.." || exit 1
 emulate -L zsh
 setopt no_nomatch
 
-[[ "$1" == "--help" || "$1" == "-h" ]] && { sed -n '3,40p' "$0" | sed 's|^# \?||'; exit 0 }
+[[ "$1" == "--help" || "$1" == "-h" ]] && { sed -n '3,49p' "$0" | sed 's|^# \?||'; exit 0 }
 
 python3 - "$@" <<'PY'
 import pathlib, re, sys, collections
@@ -73,12 +82,18 @@ chapters = sorted(GUIDE.glob("[0-9]*.md"))
 appendices = sorted(GUIDE.glob("[A-D]-*.md"))
 pages = chapters + appendices + [GUIDE / "README.md"]
 authoring = [GUIDE / "PLAN.md", GUIDE / "AUTHORING.md"]
+docs_pages = sorted(pathlib.Path("Docs").rglob("*.md"))
+root_readme = pathlib.Path("README.md")
+readable = pages + authoring + docs_pages + [root_readme]
 
-text = {p: p.read_text() for p in pages + authoring}
+text = {p: p.read_text() for p in readable}
 lines = {p: text[p].splitlines() for p in text}
 
 if not chapters:
-    print("guide-links: no chapter files found", file=sys.stderr)
+    print("check-links: no chapter files found", file=sys.stderr)
+    sys.exit(2)
+if not docs_pages:
+    print("check-links: no Docs pages found", file=sys.stderr)
     sys.exit(2)
 
 
@@ -112,14 +127,26 @@ def headings(path):
     return out
 
 
+# An anchor is either the slug GitHub derives from a heading or an explicit
+# `<a name="...">` / `<a id="...">` tag; the Docs pages use the explicit form
+# heavily, the Guide the heading form.
+EXPLICIT_ANCHOR = re.compile(r"<a\s+(?:name|id)=\"([^\"]+)\"")
+
 anchors = {}
-for p in pages + authoring:
+for p in readable:
     seen = collections.Counter()
     have = set()
     for _, h in headings(p):
         s = slug(h)
         have.add(s if not seen[s] else f"{s}-{seen[s]}")
         seen[s] += 1
+    fenced = False
+    for line in lines[p]:
+        if line.lstrip().startswith("```"):
+            fenced = not fenced
+            continue
+        if not fenced:
+            have.update(EXPLICIT_ANCHOR.findall(line))
     anchors[p] = have
 
 heading_text = {}
@@ -137,8 +164,14 @@ for c in chapters + appendices:
 # --------------------------------------------- 1 and 2: links and anchors
 LINK = re.compile(r"\[(?:[^\]]*)\]\(([^)\s]+)\)")
 
-for p in pages + authoring:
+for p in readable:
+    fenced = False
     for n, line in enumerate(lines[p], 1):
+        if line.lstrip().startswith("```"):
+            fenced = not fenced
+            continue
+        if fenced:
+            continue
         for target in LINK.findall(line):
             if target.startswith(("http://", "https://", "mailto:")):
                 continue
@@ -160,8 +193,8 @@ for p in pages + authoring:
             if rel.suffix != ".md":
                 continue
             if rel not in anchors:
-                if rel.parts[0] == "Guide":
-                    fail(f"{p}:{n}", f"anchor into an unread Guide file: {target}")
+                if rel.parts[0] in ("Guide", "Docs"):
+                    fail(f"{p}:{n}", f"anchor into an unread file: {target}")
                 continue
             if anchor not in anchors[rel]:
                 fail(f"{p}:{n}", f"anchor does not resolve: {target}")
@@ -176,11 +209,8 @@ SRCSET = re.compile(r"<source\s+[^>]*srcset=\"([^\"]+)\"")
 referenced = set()
 # Docs pages reuse Guide figures by relative path, so their <img> tags rot the
 # same way a chapter's do when a figure moves; they get the existence check.
-# They stay out of the orphan rule: a figure lives or dies by its chapter.
-docs_pages = sorted(pathlib.Path("Docs").rglob("*.md"))
 for p in pages + docs_pages:
-    page_lines = lines[p] if p in lines else p.read_text().splitlines()
-    for n, line in enumerate(page_lines, 1):
+    for n, line in enumerate(lines[p], 1):
         for src in IMG.findall(line) + SRCSET.findall(line):
             if src.startswith(("http://", "https://")):
                 continue
@@ -401,19 +431,38 @@ for n, line in enumerate(lines[GUIDE / "PLAN.md"], 1):
         else:
             note(f"Guide/PLAN.md:{n}", f"\"{quoted}\" is not a heading in {home}")
 
+# ------------------- 10: every Docs page is reachable from the two indexes
+#
+# The root README links every Docs page by capability through its catalog
+# table, and Docs/README.md is the flat annotated index; a page missing from
+# either is invisible to a reader arriving from the front. Index files are
+# exempt: they are the doors, not the rooms.
+root_links = set(re.findall(r"\]\((Docs/[^)#\s]+\.md)", text[root_readme]))
+index_links = set()
+for target in re.findall(r"\]\(([^)#\s]+\.md)", text[pathlib.Path("Docs/README.md")]):
+    index_links.add(re.sub(r"^\./", "", target))
+
+for page in docs_pages:
+    if page.name == "README.md":
+        continue
+    if str(page) not in root_links:
+        fail("README.md", f"capability table does not link {page}")
+    if str(page.relative_to("Docs")) not in index_links:
+        fail("Docs/README.md", f"index does not list {page.relative_to('Docs')}")
+
 # ------------------------------------------------------------------- report
 for message in notes if list_notes else notes[:12]:
-    print(f"guide-links: note: {message}")
+    print(f"check-links: note: {message}")
 if notes and not list_notes and len(notes) > 12:
-    print(f"guide-links: note: {len(notes) - 12} more, run with --list")
+    print(f"check-links: note: {len(notes) - 12} more, run with --list")
 
 for message in errors:
-    print(f"guide-links: {message}", file=sys.stderr)
+    print(f"check-links: {message}", file=sys.stderr)
 
-pages_checked = len(pages)
 print(
-    f"guide-links: {pages_checked} pages, {len(chapters)} chapters, "
-    f"{len(referenced)} images, {len(errors)} errors, {len(notes)} notes"
+    f"check-links: {len(pages)} Guide pages, {len(docs_pages)} Docs pages, "
+    f"{len(chapters)} chapters, {len(referenced)} images, "
+    f"{len(errors)} errors, {len(notes)} notes"
 )
 sys.exit(1 if errors else 0)
 PY
