@@ -207,4 +207,45 @@ public extension Sketch {
         Grid(in: bounds, columns: columns, rows: rows,
              padding: padding, gutter: gutter, distribution: distribution)
     }
+
+    /// Draw a labeled sheet of tiles: the items laid into a near-square grid
+    /// over the whole canvas, `tile` drawing each one into its cell, and each
+    /// cell wearing its label on a dark plate along its bottom edge. The
+    /// gallery layout a comparison sketch keeps rebuilding by hand:
+    ///
+    /// ```swift
+    /// drawSheet(filters.map { ($0.name, $0) }) { filter, cell in
+    ///     drawImage(scene.filtered(filter).image, in: cell)
+    /// }
+    /// ```
+    ///
+    /// `columns` left out picks the near-square count (the ceiling of the
+    /// square root); `gutter` defaults to 1% of the canvas width. Labels use
+    /// the current `textFont`, sized to the column count, and the drawing
+    /// state around the call is untouched. An empty list draws nothing.
+    func drawSheet<Item>(_ items: [(String, Item)], columns: Int? = nil,
+                         gutter: Double? = nil, _ tile: (Item, Rectangle) -> Void) {
+        guard !items.isEmpty else { return }
+        let cols = max(1, columns ?? Int(Double(items.count).squareRoot().rounded(.up)))
+        let rows = (items.count + cols - 1) / cols
+        let space = gutter ?? width * 0.01
+        let cellW = (width - space * Double(cols + 1)) / Double(cols)
+        let cellH = (height - space * Double(rows + 1)) / Double(rows)
+        let labelSize = cols >= 4 ? 13.0 : 17.0
+        let plate = cols >= 4 ? 22.0 : 30.0
+        for (i, item) in items.enumerated() {
+            let cell = Rectangle(x: space + Double(i % cols) * (cellW + space),
+                                 y: space + Double(i / cols) * (cellH + space),
+                                 width: cellW, height: cellH)
+            tile(item.1, cell)
+            withState {
+                blendMode(.normal)
+                noStroke()
+                fill(Color(white: 0, alpha: 0.55))
+                drawRect(cell.x, cell.y + cell.height - plate, cell.width, plate)
+                drawText(item.0, cell.x + 8, cell.y + cell.height - plate / 2,
+                         size: labelSize, color: .white, align: .left, .middle)
+            }
+        }
+    }
 }

@@ -1,5 +1,37 @@
 import Foundation
 
+/// The path to a file kept in a folder beside (or above) the calling sketch:
+/// `sketchResource("Depth.mlmodel")` finds the nearest `Models` folder walking
+/// up from the sketch's own source file and answers the file's path inside it,
+/// or `nil` when no such folder exists on the way up.
+///
+/// The current directory is wherever the sketch was launched from, so a path
+/// relative to it breaks the moment the sketch runs from somewhere else; this
+/// walk is anchored to the source file instead, which stays put. A free
+/// function rather than a `Sketch` method so a `static let` can call it.
+///
+/// ```swift
+/// static let modelPath = sketchResource("StyleTransfer.mlmodel")
+/// let dataPath = sketchResource("quakes.csv", in: "Data")
+/// ```
+///
+/// Leave `from` alone: it defaults to the caller's own file, which is the
+/// anchor the walk wants. (For a file *bundled into a target*, use
+/// `Bundle.module` and the loaders' `resource:in:` forms instead; this is for
+/// the loose folder-next-to-the-sketch arrangement.)
+public func sketchResource(_ name: String, in folder: String = "Models",
+                           from file: String = #filePath) -> String? {
+    var dir = (file as NSString).deletingLastPathComponent
+    while dir.count > 1 {
+        let candidate = (dir as NSString).appendingPathComponent(folder)
+        if FileManager.default.fileExists(atPath: candidate) {
+            return (candidate as NSString).appendingPathComponent(name)
+        }
+        dir = (dir as NSString).deletingLastPathComponent
+    }
+    return nil
+}
+
 /// Where the framework's own bundled files come from: the shader segments, the
 /// built-in fonts, the matcap images, the area-light tables.
 ///

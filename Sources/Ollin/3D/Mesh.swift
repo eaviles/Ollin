@@ -445,6 +445,57 @@ public extension Mesh {
         return b.mesh()
     }
 
+    /// A cone with its point cut off: a wall of quads between a `bottomRadius`
+    /// ring at `-height/2` and a `topRadius` ring at `+height/2`, capped flat
+    /// where a ring has any width. The general form the cylinder (equal radii)
+    /// and cone (one radius zero) are special cases of; the tapered physics
+    /// colliders draw through it.
+    package static func frustum(topRadius: Double, bottomRadius: Double,
+                                height: Double, segments: Int = 32) -> Mesh {
+        let segs = max(segments, 3), hy = height / 2
+        var b = Builder()
+        // The slanted-wall normal: radial, tilted by the slope between the rings.
+        func sideNormal(_ phi: Double) -> Vector3 {
+            Vector3(height * cos(phi), bottomRadius - topRadius, height * sin(phi)).normalized
+        }
+        let base = 0
+        for j in 0...segs {
+            let phi = Double(j) / Double(segs) * 2 * .pi
+            let n = sideNormal(phi)
+            b.vertex(Vector3(cos(phi) * topRadius, hy, sin(phi) * topRadius), normal: n)
+            b.vertex(Vector3(cos(phi) * bottomRadius, -hy, sin(phi) * bottomRadius), normal: n)
+        }
+        for j in 0..<segs {
+            let top = UInt32(base + j * 2), bot = top + 1
+            b.gridQuad(top, top + 2, top + 3, bot)
+        }
+        // Caps only where a ring has width, wound out of the solid like the
+        // cylinder's, so the surface keeps a consistent inside.
+        if topRadius > 1e-9 {
+            let center = b.addVertex(Vector3(0, hy, 0), normal: .unitY)
+            let start = b.nextIndex
+            for j in 0...segs {
+                let phi = Double(j) / Double(segs) * 2 * .pi
+                b.vertex(Vector3(cos(phi) * topRadius, hy, sin(phi) * topRadius), normal: .unitY)
+            }
+            for j in 0..<segs {
+                b.triangle(center, start + UInt32(j) + 1, start + UInt32(j))
+            }
+        }
+        if bottomRadius > 1e-9 {
+            let center = b.addVertex(Vector3(0, -hy, 0), normal: -.unitY)
+            let start = b.nextIndex
+            for j in 0...segs {
+                let phi = Double(j) / Double(segs) * 2 * .pi
+                b.vertex(Vector3(cos(phi) * bottomRadius, -hy, sin(phi) * bottomRadius), normal: -.unitY)
+            }
+            for j in 0..<segs {
+                b.triangle(center, start + UInt32(j), start + UInt32(j) + 1)
+            }
+        }
+        return b.mesh()
+    }
+
     /// A square-base pyramid centered at the origin, `width` (x) × `depth` (z) base
     /// at `-height/2` rising to an apex at `+height/2`. Faceted: four flat triangular
     /// sides plus a flat base.

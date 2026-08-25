@@ -454,6 +454,47 @@ public extension Heightfield {
 
 public extension Heightfield {
 
+    /// The field painted through a ramp, one pixel per sample: each height
+    /// walks `ramp` (after mapping `range` onto `0...1`, values outside it
+    /// clamped), so the picture is the terrain's coloring. `nil` only if the
+    /// field is empty.
+    ///
+    /// ```swift
+    /// let look = field.image(Ramp([.darkGreen, .tan, .white]))
+    /// ```
+    func image(_ ramp: Ramp, in range: ClosedRange<Double> = 0...1) -> Image? {
+        guard !values.isEmpty else { return nil }
+        let span = range.upperBound - range.lowerBound
+        var pixels = [UInt8]()
+        pixels.reserveCapacity(values.count * 4)
+        for value in values {
+            let t = span > 0 ? (value - range.lowerBound) / span : 0
+            let c = ramp.color(at: Swift.min(Swift.max(t, 0), 1))
+            pixels.append(UInt8((c.red * 255).rounded()))
+            pixels.append(UInt8((c.green * 255).rounded()))
+            pixels.append(UInt8((c.blue * 255).rounded()))
+            pixels.append(255)
+        }
+        return Image(width: columns, height: rows, premultipliedRGBA: pixels)
+    }
+
+    /// The terrain mesh already wearing its height coloring: `mesh(...)` with
+    /// `image(_:in:)` applied as its texture, so one call goes from a field to
+    /// a paintable landscape. Build it once (when the field changes), not per
+    /// frame.
+    ///
+    /// ```swift
+    /// let terrain = field.coloredMesh(width: 10, depth: 10, height: 2.2,
+    ///                                 Ramp([.darkGreen, .tan, .white]))
+    /// drawMesh(terrain)
+    /// ```
+    func coloredMesh(width: Double = 500, depth: Double = 500, height: Double = 100,
+                     _ ramp: Ramp, in range: ClosedRange<Double> = 0...1) -> Mesh {
+        let bare = mesh(width: width, depth: depth, height: height)
+        guard let texture = image(ramp, in: range) else { return bare }
+        return bare.textured(texture)
+    }
+
     /// The field as a solid terrain `Mesh`: a `width` × `depth` grid centered
     /// on the origin in the ground plane, each sample lifted to
     /// `height · value` on +y, with smooth normals and `0…1` UVs. Draw it with

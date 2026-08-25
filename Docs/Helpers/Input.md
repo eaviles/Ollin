@@ -16,6 +16,7 @@ Pointer and keyboard input live on the sketch as plain properties and overridabl
 - [key / keyCode / keyIsPressed](#key)
 - [keyPressed / keyReleased](#keyPressed)
 - [isKeyDown](#isKeyDown)
+- [moveAxis](#moveAxis)
 - [Keyboard focus in the hosts](#keyboardFocus)
 
 <a name="mouse"></a>
@@ -175,6 +176,22 @@ override func draw() {
 ```
 
 The character form is case-sensitive, so `isKeyDown("w")` and `isKeyDown("W")` differ by whether Shift was down at the press.
+
+<a name="moveAxis"></a>
+
+### moveAxis
+
+```swift
+moveAxis: Vector2
+```
+
+The held movement keys as one direction: WASD and the arrows, each axis in `-1...1`, in canvas orientation (up is `(0, -1)`, right `(1, 0)`). Opposite keys held together cancel to zero.
+
+```swift
+position += moveAxis * speed * deltaTime
+```
+
+A 3D sketch reads the same value and maps y onto its own forward; canvas up meaning "ahead" is the usual choice, so `-moveAxis.y` is the throttle.
 
 <a name="keyboardFocus"></a>
 

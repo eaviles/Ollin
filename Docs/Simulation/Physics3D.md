@@ -1383,13 +1383,32 @@ if let grabbed { dragGrab(grabbed, to: Vector2(mouseX, mouseY)) }
 
 `grabBody(at:in:)` casts a ray from the active camera through the canvas point. It hangs the body it hits on a soft drag spring at the touched point, and remembers how deep into the view that point sat. `dragGrab(_:to:)` then moves the body in the screen-parallel plane at that depth, so dragging feels like sliding it across the glass. The probe without the pickup is `body(under:in:)`, which returns the body and the world point the ray touched. World-space dragging without a camera is the lower-level `world.grab(_:at:)` plus the joint's `target`.
 
+The whole lifecycle is also one call, polled in `draw()`:
+
+```swift
+dragBodies(in: world)
+```
+
+`dragBodies(in:)` owns the press, the drag, and the release: while the button is down the body under the cursor rides a grab joint in its own view-parallel plane, and releasing lets go. A press that lands on nothing grabs nothing for that press. The joint state lives on the world, so several worlds drag independently. Reach for the split calls above when a sketch needs its own rules in between.
+
 The camera drag and the body drag both want the mouse, so sketches that grab usually set a hand-placed `perspective(...)` rather than `cameraControl()`.
 
 <a name="drawing"></a>
 
 ### Drawing bodies
 
-`withBody(_:)` wraps `withState` and moves the 3D transform stack to the body's pose. The block therefore draws in body-local space, and every renderer feature applies untouched, materials, shadows, and export included:
+`drawBody(_:)` draws a body where it is, as the geometry it collides as, so a whole world renders as one loop:
+
+```swift
+for body in world.bodies {
+    fill(body.userData as? Color ?? .white)
+    drawBody(body)
+}
+```
+
+Under it, `drawCollider(_:)` renders any `Collider3D` at the current transform, every case included: the primitive shapes as themselves, a `.mesh` as its mesh, a `.heightfield` as its terrain (built per call, so cache the mesh yourself when it is large), a `.compound` recursing through its parts, and a `.hull` as a marker sphere at each corner. That closes the quiet hole a hand-written switch leaves: a `default: break` makes an exotic body simply invisible.
+
+For a body drawn as something other than its collider (a mesh, a figure), `withBody(_:)` wraps `withState` and moves the 3D transform stack to the body's pose. The block therefore draws in body-local space, and every renderer feature applies untouched, materials, shadows, and export included:
 
 ```swift
 for body in world.bodies {

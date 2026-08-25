@@ -75,6 +75,30 @@ public struct PointCloud: Sendable {
     }
 }
 
+public extension PointCloud {
+    /// The mean of the cloud's positions, or `nil` for an empty cloud. The
+    /// point a camera frames to look at the cloud as a whole.
+    var centroid: Vector3? {
+        guard !points.isEmpty else { return nil }
+        var sum = Vector3.zero
+        for p in points { sum += p.position }
+        return sum / Double(points.count)
+    }
+
+    /// How spread out the cloud is around its centroid: the root of the mean
+    /// squared distance, in the cloud's own units. `0` for an empty cloud.
+    /// With `centroid`, the two numbers a framing camera wants; an orbit
+    /// radius of a few times this keeps the whole cloud comfortably in view.
+    /// Depth feeds flicker a little frame to frame, so ease an orbit toward
+    /// these rather than snapping to them.
+    var spreadRadius: Double {
+        guard let center = centroid else { return 0 }
+        var sum = 0.0
+        for p in points { sum += p.position.distanceSquared(to: center) }
+        return (sum / Double(points.count)).squareRoot()
+    }
+}
+
 extension Vector3 {
     /// This point moved by a 4×4 transform, with `w = 1` so the translation applies.
     ///

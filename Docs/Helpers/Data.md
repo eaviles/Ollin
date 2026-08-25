@@ -24,6 +24,7 @@ Neither one throws. A file that can't be read, or that holds nothing usable, com
 - [JSON](#JSON)
 - [Reaching through a document](#reaching)
 - [When you want a type instead](#codable)
+- [Files beside the sketch](#sketchResource)
 
 <a name="loadTable"></a>
 
@@ -229,6 +230,23 @@ struct Station: Decodable { let name: String; let weight: Double }
 let url = Bundle.module.url(forResource: "places", withExtension: "json")!
 let stations = try JSONDecoder().decode([Station].self, from: Data(contentsOf: url))
 ```
+
+<a name="sketchResource"></a>
+
+### Files beside the sketch
+
+```swift
+sketchResource(_ name: String, in folder: String = "Models", from: String = #filePath) -> String?
+```
+
+A file kept in a folder beside (or above) the sketch resolves by walking up from the sketch's own source file: `sketchResource("net.mlmodel")` finds the nearest `Models` folder on the way up and answers the file's path inside it, or `nil` when there is none. The current directory is wherever the sketch was launched from, so a path relative to it breaks the moment the sketch runs from somewhere else; the source file stays put. It is a free function, so a `static let` can call it. Leave `from` alone, since it defaults to the caller's own file.
+
+```swift
+static let modelPath = sketchResource("StyleTransfer.mlmodel")
+let dataPath = sketchResource("quakes.csv", in: "Data")
+```
+
+(For a file bundled *into a target*, keep using `Bundle.module` and the loaders' `resource:in:` forms; this is for the loose folder-next-to-the-sketch arrangement.)
 
 ### See also
 

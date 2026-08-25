@@ -258,7 +258,7 @@ In the figure the attention piles onto the words rather than onto the card as a 
 
 ## Models of your own
 
-The built-in trackers end somewhere, and these three go past them on weights you bring. That makes this the one corner of the chapter with a download step, because Ollin ships no weights. Run `Scripts/fetch-models.sh` once and every file these sections and their examples need lands in `Models/`, skipping whatever is already there.
+The built-in trackers end somewhere, and these three go past them on weights you bring. That makes this the one corner of the chapter with a download step, because Ollin ships no weights. Run `Scripts/fetch-models.sh` once and every file these sections and their examples need lands in `Models/`, skipping whatever is already there. A sketch that lives elsewhere finds that folder with `sketchResource("file.mlpackage")`. It walks up from the sketch's own source file to the nearest `Models`, so the paths below keep working wherever the sketch is launched from.
 
 ### A click cuts it loose: PointSegmenter
 

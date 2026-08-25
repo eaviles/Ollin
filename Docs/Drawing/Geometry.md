@@ -231,6 +231,16 @@ grid(columns: Int, rows: Int, padding: Insets = .zero, gutter: Double = 0, distr
 
 The `Sketch` form `grid(columns:rows:…)` lays the grid over the canvas `bounds`, while the `Grid(in:…)` initializer takes any rectangle, so a grid can fill a render target, or a single cell, since grids nest. `padding` insets the whole grid from the edges, and `gutter` is the gap *between* cells.
 
+The labeled comparison sheet is its own call: `drawSheet(_:columns:gutter:_:)` lays a list of `(label, item)` pairs into a near-square grid over the canvas, hands each item's cell to your closure to draw, and sets each label on a dark plate along its cell's bottom edge. A filter gallery, a palette lineup, a parameter sweep:
+
+```swift
+drawSheet(filters.map { ($0.name, $0) }) { filter, cell in
+    drawImage(scene.filtered(filter).image, in: cell)
+}
+```
+
+`columns` left out picks the near-square count; `gutter` defaults to 1% of the canvas width; labels use the current `textFont` and the state around the call is untouched.
+
 - **Layout:** `bounds` (the region the cells fill, after `padding`), `columns`, `rows`, `gutter`, `cellWidth`, `cellHeight`, `cellSize`.
 - **Points:** `points`, every dot (`[Point]`, row-major), each carrying a `column`, `row`, and `position`, laid out per the grid's `distribution` (below). Use `point(column:row:)` for one.
 - **Cells:** `cells`, every cell (`[Cell]`, row-major), each carrying a `column`, `row`, true `center`, and `frame` rectangle. Use `cell(column:row:)` for one.

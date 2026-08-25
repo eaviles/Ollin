@@ -20,16 +20,10 @@ You might reach for a body with a capsule collider and start pushing it around w
 walker = world.addCharacter(radius: 0.3, height: 1.8, at: Vector3(0, 2, 0))
 ```
 
-Steering it is a `draw()` poll, like the mouse:
+Steering it is a `draw()` poll, like the mouse. `moveAxis` reads WASD and the arrows as one direction, up on the keys meaning ahead:
 
 ```swift
-var east = 0.0, south = 0.0
-if isKeyDown(.leftArrow)  { east -= 1 }
-if isKeyDown(.rightArrow) { east += 1 }
-if isKeyDown(.upArrow)    { south -= 1 }
-if isKeyDown(.downArrow)  { south += 1 }
-
-let heading = Vector3(east, 0, south)
+let heading = Vector3(moveAxis.x, 0, moveAxis.y)
 walker.move(heading.length > 0 ? heading.normalized * 3 : .zero)
 if isKeyDown(" ") { walker.jump() }
 
@@ -37,7 +31,7 @@ world.step(dt: deltaTime)
 withCharacter(walker) { drawCapsule(radius: 0.3, height: 1.2) }
 ```
 
-That's a walkable scene, eight lines and a `step`. The same `world.step` moves the character along with the crates, so there's no second update to forget. `move` sets the speed it's *trying* to walk at and keeps it until you say otherwise. Falling and jumping stay the world's business, which is why you only give it a horizontal direction. `jump` is granted only if it's on the ground when the step comes round, so holding the key hops rather than flies.
+That's a walkable scene, five lines and a `step`. The same `world.step` moves the character along with the crates, so there's no second update to forget. `move` sets the speed it's *trying* to walk at and keeps it until you say otherwise. Falling and jumping stay the world's business, which is why you only give it a horizontal direction. `jump` is granted only if it's on the ground when the step comes round, so holding the key hops rather than flies.
 
 <img src="Images/25-CharactersAndCloth/Walker.jpg" alt="A small orange figure with a pink cap brim mid-stride on the second of four pale steps, legs apart in a walking pose, two crates it has shouldered aside sitting on the green floor beside the stair" width="560">
 

@@ -172,7 +172,7 @@ extension Sketch {
     /// ```
     public func grabSoftBody(at canvasPoint: Vector2, in world: World3D) -> SoftGrip? {
         guard let camera = activeCamera,
-              let ray = cameraRay(through: canvasPoint, camera: camera) else {
+              let ray = cameraRay(through: canvasPoint) else {
             return nil
         }
         let reach = ray.direction * (camera.far - camera.near)
@@ -209,7 +209,7 @@ extension Sketch {
     /// view depth where it was picked up.
     public func dragSoftGrab(_ grip: SoftGrip, to canvasPoint: Vector2) {
         guard let camera = activeCamera,
-              let ray = cameraRay(through: canvasPoint, camera: camera) else {
+              let ray = cameraRay(through: canvasPoint) else {
             return
         }
         let forward = (camera.target - camera.eye).normalized
@@ -232,7 +232,7 @@ extension Sketch {
     public func body(under canvasPoint: Vector2, in world: World3D)
         -> (body: Body3D, point: Vector3)? {
         guard let camera = activeCamera,
-              let ray = cameraRay(through: canvasPoint, camera: camera) else {
+              let ray = cameraRay(through: canvasPoint) else {
             return nil
         }
         let reach = ray.direction * (camera.far - camera.near)
@@ -282,7 +282,7 @@ extension Sketch {
     /// keeping the body at the view depth where it was grabbed.
     public func dragGrab(_ joint: Joint3D, to canvasPoint: Vector2) {
         guard let camera = activeCamera, let depth = joint.grabViewDepth,
-              let ray = cameraRay(through: canvasPoint, camera: camera) else {
+              let ray = cameraRay(through: canvasPoint) else {
             return
         }
         let forward = (camera.target - camera.eye).normalized
@@ -291,32 +291,111 @@ extension Sketch {
         joint.target = ray.origin + ray.direction * (depth / along)
     }
 
-    /// The world-space ray from the camera through a canvas point (unit
-    /// direction). `nil` for a depth-feed (intrinsics) projection.
-    private func cameraRay(through canvasPoint: Vector2, camera: Camera3D)
-        -> (origin: Vector3, direction: Vector3)? {
-        guard width > 0, height > 0 else { return nil }
-        let ndcX = 2 * (canvasPoint.x / width) - 1
-        let ndcY = 1 - 2 * (canvasPoint.y / height)
-        let aspect = width / height
-        let forward = (camera.target - camera.eye).normalized
-        let right = forward.cross(camera.up).normalized
-        let up = right.cross(forward)
+    /// Draw `collider` as the geometry it collides as, at the current
+    /// transform: every case renders, so no body silently disappears the way a
+    /// hand-written switch with a `default: break` lets it. Spheres, boxes,
+    /// capsules, cylinders, cones, and tapered shapes draw as themselves; a
+    /// `.mesh` draws its mesh and a `.heightfield` its terrain (built per
+    /// call, so cache the mesh yourself when it is large); a `.compound`
+    /// recurses through its parts at their own placements; a `.hull` marks its
+    /// corners (a small sphere each), since the solid between them is the
+    /// solver's to know. Takes the current fill and material like any draw.
+    public func drawCollider(_ collider: Collider3D) {
+        switch collider {
+        case .sphere(let radius):
+            drawSphere(radius: radius)
+        case .box(let width, let height, let depth):
+            drawBox(width: width, height: height, depth: depth)
+        case .capsule(let height, let radius):
+            drawCapsule(radius: radius, height: height)
+        case .cylinder(let height, let radius):
+            drawCylinder(radius: radius, height: height)
+        case .cone(let height, let radius):
+            drawCone(radius: radius, height: height)
+        case .taperedCylinder(let height, let topRadius, let bottomRadius):
+            drawMesh(.frustum(topRadius: topRadius, bottomRadius: bottomRadius,
+                              height: height))
+        case .taperedCapsule(let height, let topRadius, let bottomRadius):
+            drawMesh(.frustum(topRadius: topRadius, bottomRadius: bottomRadius,
+                              height: height))
+            withState {
+                translate(0, height / 2, 0)
+                drawSphere(radius: topRadius)
+            }
+            withState {
+                translate(0, -height / 2, 0)
+                drawSphere(radius: bottomRadius)
+            }
+        case .hull(let corners):
+            var extent = 0.0
+            for c in corners { extent = max(extent, c.length) }
+            let marker = max(0.02, extent * 0.06)
+            for c in corners {
+                withState {
+                    translate(c)
+                    drawSphere(radius: marker, segments: 12, rings: 6)
+                }
+            }
+        case .mesh(let mesh):
+            drawMesh(mesh)
+        case .heightfield(let field, let width, let depth, let height):
+            drawMesh(field.mesh(width: width, depth: depth, height: height))
+        case .compound(let parts):
+            for part in parts {
+                withState {
+                    translate(part.position)
+                    if part.angle != 0 { rotate(part.angle, axis: part.axis) }
+                    drawCollider(part.collider)
+                }
+            }
+        }
+    }
 
-        switch camera.projection {
-        case .perspective(let fieldOfView):
-            let tanHalf = tan(fieldOfView / 2)
-            let direction = (forward
-                + right * (ndcX * tanHalf * aspect)
-                + up * (ndcY * tanHalf)).normalized
-            return (camera.eye, direction)
-        case .orthographic(let frameHeight):
-            let origin = camera.eye
-                + right * (ndcX * frameHeight / 2 * aspect)
-                + up * (ndcY * frameHeight / 2)
-            return (origin, forward)
-        default:
-            return nil
+    /// Draw `body` where it is: `withBody` around `drawCollider`, so a whole
+    /// world renders as one loop with no switch of its own.
+    ///
+    /// ```swift
+    /// for body in world.bodies {
+    ///     fill(body.userData as? Color ?? .white)
+    ///     drawBody(body)
+    /// }
+    /// ```
+    public func drawBody(_ body: Body3D) {
+        withBody(body) {
+            drawCollider(body.collider)
+        }
+    }
+
+    /// Let the mouse pick up, drag, and drop the world's bodies: one call in
+    /// `draw()`, replacing the grab-joint variable and the press and release
+    /// overrides it needs by hand.
+    ///
+    /// ```swift
+    /// override func draw() {
+    ///     …
+    ///     world.step(deltaTime)
+    ///     dragBodies(in: world)
+    /// }
+    /// ```
+    ///
+    /// While the button is down the body under the cursor is held on a grab
+    /// joint and dragged in its own view-parallel plane; releasing lets go. A
+    /// press that lands on nothing grabs nothing for that press (it does not
+    /// keep trying as the cursor moves). The joint state lives on the world,
+    /// so several worlds drag independently.
+    public func dragBodies(in world: World3D) {
+        if mouseIsPressed {
+            if world.pointerGrab == nil, !world.pointerGrabAttempted {
+                world.pointerGrab = grabBody(at: mouse, in: world)
+                world.pointerGrabAttempted = true
+            }
+            if let joint = world.pointerGrab {
+                dragGrab(joint, to: mouse)
+            }
+        } else {
+            world.pointerGrab?.remove()
+            world.pointerGrab = nil
+            world.pointerGrabAttempted = false
         }
     }
 }

@@ -25,6 +25,13 @@ internal import CJolt
 /// examples already draw at.
 public final class World3D {
 
+    /// The grab `dragBodies(in:)` is holding, and whether the current press
+    /// already tried and missed (so a miss does not retry every held frame).
+    /// On the world rather than the sketch, so several worlds drag on their
+    /// own.
+    var pointerGrab: Joint3D?
+    var pointerGrabAttempted = false
+
     /// Constant acceleration applied to every dynamic body, in units per
     /// second². The default pulls down the y-up world at earth strength.
     public var gravity: Vector3 = Vector3(0, -9.8, 0) {

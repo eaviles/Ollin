@@ -55,6 +55,25 @@ if let p = project(Vector3(1, 0.5, 0)) {
 
 Pair it with `depth(at:)` to draw a 2D mark at a 3D point *with* correct occlusion, or reach for `withBillboard`, which combines the two.
 
+The projected label is itself one call: `drawText(_:at: Vector3, size:color:align:)` projects the anchor and draws the string styled for that call alone, skipped when the point is behind the camera:
+
+```swift
+drawText("sun", at: Vector3(0, 2.2, 0), size: 26, color: .white, align: .center)
+```
+
+<a id="cameraRay"></a>
+### From the canvas back into the world
+
+`cameraRay(through:)` is `project`'s inverse: the world-space ray from the active camera through a canvas point, as an origin and a unit direction. It is the way from a click to the 3D thing under it, ready to march, intersect, or hand to a physics query:
+
+```swift
+if let ray = cameraRay(through: mouse) {
+    let probe = ray.origin + ray.direction * distance
+}
+```
+
+A perspective camera's rays share its eye; an orthographic camera's are parallel, each starting on its view plane. It answers `nil` with no active camera, and for a depth-feed (intrinsics) projection, which has no analytic inverse. The physics pickers (`grabBody`, `body(under:in:)`) ride this same ray.
+
 <a id="billboard"></a>
 ### Billboards
 

@@ -1606,6 +1606,30 @@ open class Sketch {
         drawer.drawMesh(.plane(width: width, depth: depth, segments: segments))
     }
 
+    /// Draw the floor: a thin square slab whose top surface sits at height
+    /// `y`, so bodies resting on `y = 0` stand on it by default. The one call
+    /// that replaces the place-a-thin-box block at the bottom of most scenes:
+    ///
+    /// ```swift
+    /// drawGround()                                      // 24 x 24, top at y = 0
+    /// drawGround(size: 40, color: Color(hex: 0x2E3440),
+    ///            material: .dielectric(roughness: 0.85))
+    /// ```
+    ///
+    /// `color` and `material` apply to the slab alone and leave the standing
+    /// state untouched; left out, the slab takes the current fill and
+    /// material like any other draw call. A slab rather than a bare plane, so
+    /// shadows, reflections, and physics debug views read a real thickness.
+    public func drawGround(size: Double = 24, at y: Double = 0, thickness: Double = 0.12,
+                           color: Color? = nil, material: Material? = nil) {
+        withState {
+            if let color { fill(color) }
+            if let material { self.material(material) }
+            translate(0, y - thickness / 2, 0)
+            drawBox(width: size, height: thickness, depth: size)
+        }
+    }
+
     /// Draw a torus (ring) centered at the model origin in the x–z plane: `radius`
     /// from the center to the tube's center, `tube` the tube's own radius.
     public func drawTorus(radius: Double = 0.5, tube: Double = 0.2,
@@ -1808,6 +1832,64 @@ open class Sketch {
         drawer.project(worldPoint, viewport: SIMD2<Float>(Float(width), Float(height)))
     }
 
+    /// The inverse of `project`: the world-space ray from the active camera
+    /// through a canvas point, as an origin and a unit direction. The way from
+    /// a click to the 3D thing under it: march it, intersect it with the
+    /// scene's own geometry, or hand it to a physics query.
+    ///
+    /// ```swift
+    /// if let ray = cameraRay(through: mouse) {
+    ///     let hit = world.raycast(from: ray.origin, to: ray.origin + ray.direction * 100)
+    /// }
+    /// ```
+    ///
+    /// A perspective camera's rays share its eye; an orthographic camera's are
+    /// parallel, each starting on its view plane. `nil` when there is no
+    /// active camera, the canvas has no size yet, or the projection has no
+    /// analytic inverse (a depth-feed intrinsics projection).
+    public func cameraRay(through canvasPoint: Vector2)
+        -> (origin: Vector3, direction: Vector3)? {
+        guard let camera = activeCamera, width > 0, height > 0 else { return nil }
+        let ndcX = 2 * (canvasPoint.x / width) - 1
+        let ndcY = 1 - 2 * (canvasPoint.y / height)
+        let aspect = width / height
+        let forward = (camera.target - camera.eye).normalized
+        let right = forward.cross(camera.up).normalized
+        let up = right.cross(forward)
+        switch camera.projection {
+        case .perspective(let fieldOfView):
+            let tanHalf = tan(fieldOfView / 2)
+            let direction = (forward
+                + right * (ndcX * tanHalf * aspect)
+                + up * (ndcY * tanHalf)).normalized
+            return (camera.eye, direction)
+        case .orthographic(let frameHeight):
+            let origin = camera.eye
+                + right * (ndcX * frameHeight / 2 * aspect)
+                + up * (ndcY * frameHeight / 2)
+            return (origin, forward)
+        default:
+            return nil
+        }
+    }
+
+    /// Draw `string` anchored to a world point: the point is projected through
+    /// the active camera and the text drawn at its canvas position, styled for
+    /// this one call (see `drawText(_:_:_:size:color:align:_:)`). The one-line
+    /// label for a thing in the scene; drawn over the 3D picture, and skipped
+    /// when the point is behind the camera.
+    ///
+    /// ```swift
+    /// drawText("sun", at: Vector3(0, 2.2, 0), size: 26, color: .white, align: .center)
+    /// ```
+    public func drawText(_ string: String, at position: Vector3,
+                         size: Double? = nil, color: Color? = nil,
+                         align horizontal: TextAlignH? = nil, _ vertical: TextAlignV? = nil) {
+        guard let screen = project(position) else { return }
+        drawText(string, screen.x, screen.y,
+                 size: size, color: color, align: horizontal, vertical)
+    }
+
     /// Draw a 2D billboard anchored to a world point: the origin is moved to the
     /// point's projected canvas position and the depth set to its depth, so 2D drawn
     /// inside `body` (in local coordinates around the origin) lands at the point and
@@ -1898,6 +1980,27 @@ open class Sketch {
     /// The space bar is a character, so poll it with `isKeyDown(" ")`.
     public func isKeyDown(_ code: KeyCode) -> Bool {
         pressedKeys.contains(.code(code))
+    }
+
+    /// The held movement keys as one direction: WASD and the arrows, each axis
+    /// in `-1...1`, in canvas orientation (up is `(0, -1)`, right `(1, 0)`).
+    /// The eight-line key check every driving sketch writes, as a read:
+    ///
+    /// ```swift
+    /// position += moveAxis * speed * deltaTime
+    /// ```
+    ///
+    /// Opposite keys held together cancel to `0`. A 3D sketch reads the same
+    /// value and maps y onto its own forward (canvas up meaning "ahead" is the
+    /// usual choice, so `-moveAxis.y` is the throttle).
+    public var moveAxis: Vector2 {
+        var x = 0.0
+        var y = 0.0
+        if isKeyDown("a") || isKeyDown(.leftArrow) { x -= 1 }
+        if isKeyDown("d") || isKeyDown(.rightArrow) { x += 1 }
+        if isKeyDown("w") || isKeyDown(.upArrow) { y -= 1 }
+        if isKeyDown("s") || isKeyDown(.downArrow) { y += 1 }
+        return Vector2(x, y)
     }
 
     // MARK: - Internals
