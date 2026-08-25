@@ -367,6 +367,64 @@ struct GeneratedProjectBuildTests {
                 "Info.plist and the @objc name have come apart")
     }
 
+    /// The app kind's quiet failure is a bundle that opens and shows nothing,
+    /// because the framework's resource files did not travel and the renderer
+    /// finds no shaders. A build that merely succeeds proves none of that, so
+    /// this one runs the script the generator wrote, checks the signature the
+    /// way the system will, and then runs the binary *from inside the bundle*:
+    /// the export only renders if every resource resolves from the app's own
+    /// Resources folder.
+    @Test("A generated app builds, signs, and renders from inside its bundle")
+    func aGeneratedAppBuildsSignsAndRuns() throws {
+        let repository = try #require(Self.repositoryRoot(), "could not find the Ollin folder from the test file")
+        let destination = try Self.temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: destination) }
+
+        let request = ProjectRequest(
+            name: "Orbit",
+            kind: .macApp,
+            template: .motion,
+            destination: destination,
+            framework: .localPath(repository)
+        )
+        let project = try ProjectGenerator.plan(request)
+        try ProjectGenerator.write(project)
+
+        let built = try Self.run([project.root.appendingPathComponent("build.sh").path])
+        #expect(built.succeeded, "the app's own build script failed:\n\(built.output)")
+
+        let app = project.root.appendingPathComponent("Orbit.app")
+        #expect(FileManager.default.fileExists(atPath: app.path), "no .app came out of the script")
+
+        // The framework's own files have to travel inside the app: run from a
+        // bundle, the binary looks for them in the bundle's Resources folder.
+        let resources = app.appendingPathComponent("Contents/Resources/Ollin_Ollin.bundle")
+        #expect(FileManager.default.fileExists(atPath: resources.path),
+                "the framework's resources did not travel with the app")
+
+        // The icon the sketch rendered of itself.
+        let icon = app.appendingPathComponent("Contents/Resources/AppIcon.icns")
+        #expect(FileManager.default.fileExists(atPath: icon.path),
+                "the script did not fold the rendered frame into an icon")
+
+        let bundle = try #require(Bundle(url: app), "the .app is not a bundle")
+        #expect(bundle.infoDictionary?["CFBundlePackageType"] as? String == "APPL",
+                "the property list does not describe an app")
+
+        // The question the system asks before launching anything.
+        let signed = try Self.run(["codesign", "--verify", "--strict", app.path])
+        #expect(signed.succeeded, "the signature does not verify:\n\(signed.output)")
+
+        // The proof the app actually runs as shipped: rendering needs the
+        // shader segments, and from here they can only come from the bundle.
+        let frame = destination.appendingPathComponent("frame.png")
+        let ran = try Self.run([app.appendingPathComponent("Contents/MacOS/Orbit").path,
+                                "--export", frame.path, "--frame", "3"])
+        #expect(ran.succeeded, "the bundled binary could not render:\n\(ran.output)")
+        #expect(FileManager.default.fileExists(atPath: frame.path),
+                "the bundled binary rendered nothing")
+    }
+
     // MARK: - Support
 
     /// Walk up from this file to the folder holding the framework's manifest.

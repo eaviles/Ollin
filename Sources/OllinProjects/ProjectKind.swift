@@ -79,6 +79,19 @@ extension ProjectKind {
         availability: .available
     )
 
+    /// A finished piece, wrapped as a double-clickable app.
+    ///
+    /// The package is the mac sketch's; what this kind adds is the wrapper: a
+    /// script that puts the `.app` folder around the built binary, renders the
+    /// sketch's own frame into the icon, and signs the result so a machine
+    /// that has never seen the toolchain can run it.
+    public static let macApp = ProjectKind(
+        id: "mac-app",
+        title: "Mac app",
+        summary: "A double-clickable .app built around the sketch, signed so it can be handed to a Mac without the toolchain.",
+        availability: .available
+    )
+
     /// A sketch added to the Swift package the chosen folder already sits in,
     /// rather than a package of its own. A folder of sketches is usually one
     /// package with a target each, so this is the right answer whenever there
@@ -137,7 +150,7 @@ extension ProjectKind {
     /// Every kind the generator knows about, ready or not, in the order a menu
     /// should show them.
     public static let all: [ProjectKind] = [
-        .singleFile, .macSketch, .inPackage, .extensionPackage,
+        .singleFile, .macSketch, .macApp, .inPackage, .extensionPackage,
         .iOSApp, .visionOSApp, .screenSaver, .arEffect,
     ]
 

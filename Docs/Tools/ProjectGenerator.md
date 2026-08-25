@@ -22,6 +22,7 @@ A **kind** is what the thing you get *is*.
 |---|---|
 | `single-file` | One `.swift` file, executable, run with `ollin`. The smallest thing that is a whole sketch. |
 | `mac-sketch` | A folder with its own manifest, sources, and assets, built with `swift run`. |
+| `mac-app` | A finished piece wrapped as a signed, double-clickable [Mac app](../Output/App.md), icon and all, for a machine without the toolchain. |
 | `in-package` | A sketch folder plus one target in the `Package.swift` already above it. |
 | `screen-saver` | A sketch wrapped as the machine's [screen saver](../Output/ScreenSaver.md), with the script that builds and installs it. |
 | `extension` | A library other people's sketches import, named and laid out by the [shared convention](Extensions.md). |

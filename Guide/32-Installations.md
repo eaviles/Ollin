@@ -384,6 +384,31 @@ The script signs the saver for this machine. Another Mac will refuse it. Handing
 
 One more thing worth knowing before you build something ambitious for it. The system makes a separate saver for each display, so two screens run two copies of your sketch, each from its own first frame. They are not in step and they do not share anything. A piece that has to line up across two screens is the installation earlier in this chapter, not a screen saver.
 
+## An app to hand somebody
+
+The screen saver lives on your own machine. The other thing a finished piece wants is to leave. It goes to a friend who has never typed `swift`, or to the gallery machine that will run the wall for a month. That is an app, and the path is the same two commands.
+
+```sh
+ollin new Orbit --kind mac-app
+cd Orbit && ./build.sh
+```
+
+`Orbit.app` appears beside the script. Double-click it and the sketch opens in its window, the same window `swift run` would have given you. Nothing about the sketch changed on the way in. It keeps its `@main`, its mouse, its keyboard, and every export flag. The app is a wrapper, not a port, so you keep working in a window (`ollin Sources/Orbit/Sketch.swift`) and wrap when it looks right.
+
+Two of the wrapper's choices are worth knowing.
+
+**The icon is the sketch.** The script runs the binary it just built, renders one frame, and folds that picture into the icon the Finder shows. The piece wears its own face, and the face changes as the piece does. Drop an `AppIcon.icns` beside `build.sh` when you would rather choose it yourself.
+
+**The signature decides how far it travels.** `./build.sh` alone signs the app for this machine and says so every time, so nobody ships one by accident. Handing it to somebody else takes a Developer ID and one more flag:
+
+```sh
+./build.sh --sign "Developer ID Application: Your Name (TEAMID)" --notarize ollin-notary
+```
+
+That signs with the hardened runtime, sends the app through Apple's notary, and leaves an `Orbit.zip` beside the app, ready to send. Any Mac opens what is inside. [The reference page](../Docs/Output/App.md) has the one-time setup behind the `ollin-notary` name.
+
+The app is also how the wall piece below reaches its wall. A sketch that declares an `Installation` keeps it inside the app, so the double click opens the piece full screen, unattended, hours and all. The machine that runs it never needs the repo or the toolchain, only the app.
+
 ## Putting it together: the wall piece
 
 The finished piece is one you could hang. Everything a room needs is in its declaration, and the drawing itself is deliberately calm, because a piece that stays up for a week is a different kind of thing from one that has to hold a scroll. Make `MySketches/WallPiece.swift`.

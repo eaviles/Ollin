@@ -29,6 +29,7 @@ public enum ProjectGenerator {
         switch request.kind.id {
         case ProjectKind.singleFile.id:  return planSingleFile(request)
         case ProjectKind.macSketch.id:   return planMacSketch(request)
+        case ProjectKind.macApp.id:      return planMacApp(request)
         case ProjectKind.inPackage.id:   return try planInPackage(request)
         case ProjectKind.screenSaver.id: return planScreenSaver(request)
         default:
@@ -101,6 +102,48 @@ public enum ProjectGenerator {
                 "Edit while it runs:  ollin \(root.path)/\(sourceDir)/Sketch.swift",
                 "Export a frame:  swift run \(target) --export frame.png",
                 "The sketch and everything it loads live in \(sourceDir)/.",
+            ]
+        )
+    }
+
+    /// A sketch wrapped as a double-clickable app.
+    ///
+    /// The package is the mac sketch's, unchanged: an ordinary executable
+    /// target. What makes it an app is the script beside it, which puts the
+    /// `.app` folder around the built binary, renders one frame of the sketch
+    /// into the icon, and signs the result. Ad-hoc by default, which runs on
+    /// the building machine and nowhere else; a Developer ID identity and a
+    /// notary profile make one that travels, and the script says which of the
+    /// two it made every time.
+    private static func planMacApp(_ request: ProjectRequest) -> GeneratedProject {
+        let root = request.destination.appendingPathComponent(request.folderName)
+        let target = request.typeName
+        let sourceDir = "Sources/\(target)"
+        var (files, resources) = sketchFiles(request, sourceDir: sourceDir)
+
+        files.append(GeneratedFile(path: "Package.swift",
+                                   contents: manifest(request, target: target, resources: resources),
+                                   isExecutable: false))
+        files.append(GeneratedFile(path: "Info.plist",
+                                   contents: appInfoPlist(request, target: target),
+                                   isExecutable: false))
+        files.append(GeneratedFile(path: "build.sh",
+                                   contents: appBuildScript(request, target: target),
+                                   isExecutable: true))
+        files.append(GeneratedFile(path: "README.md",
+                                   contents: appReadme(request, target: target),
+                                   isExecutable: false))
+        files.append(GeneratedFile(path: ".gitignore", contents: appGitignore, isExecutable: false))
+
+        return GeneratedProject(
+            root: root,
+            files: files.sorted { $0.path < $1.path },
+            runCommand: "\(root.path)/build.sh",
+            nextSteps: [
+                "Make the app:  cd \(root.path) && ./build.sh",
+                "Put it in Applications:  ./build.sh --install",
+                "Edit while it runs in a window:  ollin \(root.path)/\(sourceDir)/Sketch.swift",
+                "Hand it to somebody: README.md, under Giving it to somebody else.",
             ]
         )
     }
@@ -718,6 +761,248 @@ public enum ProjectGenerator {
         )
         """
     }
+
+    // MARK: - The app's own files
+
+    private static func appInfoPlist(_ request: ProjectRequest, target: String) -> String {
+        let identifier = "com.example.\(target.lowercased())"
+
+        // A bundled app that touches the camera or the microphone without the
+        // matching usage line is killed on the first ask, so the lines ride
+        // the capabilities that make those asks possible.
+        var usageKeys = ""
+        let capabilities = request.resolvedCapabilities.map(\.id)
+        if capabilities.contains(Capability.vision.id) {
+            usageKeys += """
+
+                <!-- Shown the first time the app opens the camera. Without this
+                     line the system kills the app instead of asking. -->
+                <key>NSCameraUsageDescription</key>
+                <string>\(request.folderName) draws with what the camera sees.</string>
+            """
+        }
+        if capabilities.contains(Capability.audio.id) {
+            usageKeys += """
+
+                <!-- Shown the first time the app opens the microphone. Without
+                     this line the system kills the app instead of asking. -->
+                <key>NSMicrophoneUsageDescription</key>
+                <string>\(request.folderName) listens and draws what it hears.</string>
+            """
+        }
+
+        return """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>CFBundleDevelopmentRegion</key>
+            <string>en</string>
+            <key>CFBundleExecutable</key>
+            <string>\(target)</string>
+            <!-- The icon build.sh renders from the sketch, or your own AppIcon.icns. -->
+            <key>CFBundleIconFile</key>
+            <string>AppIcon</string>
+            <!-- Yours to change before you hand this to anybody. Two apps with
+                 one identifier are one app as far as the system is concerned. -->
+            <key>CFBundleIdentifier</key>
+            <string>\(identifier)</string>
+            <key>CFBundleInfoDictionaryVersion</key>
+            <string>6.0</string>
+            <!-- The name in the menu bar and the Dock. -->
+            <key>CFBundleName</key>
+            <string>\(request.folderName)</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>CFBundleShortVersionString</key>
+            <string>1.0</string>
+            <key>CFBundleVersion</key>
+            <string>1</string>
+            <key>LSMinimumSystemVersion</key>
+            <string>26.0</string>
+            <key>NSHighResolutionCapable</key>
+            <true/>\(usageKeys)
+        </dict>
+        </plist>
+        """
+    }
+
+    private static func appBuildScript(_ request: ProjectRequest, target: String) -> String {
+        """
+        #!/bin/sh
+        # Build the sketch and put the .app folder around it.
+        #
+        #   ./build.sh                 build it here, signed for this machine
+        #   ./build.sh --install       build it and put it in /Applications
+        #   ./build.sh --sign "Developer ID Application: Name (TEAMID)"
+        #                              sign it so it can travel
+        #   ./build.sh --sign "..." --notarize <profile>
+        #                              also have Apple's notary pass it
+        #
+        set -e
+        cd "$(dirname "$0")"
+
+        NAME="\(request.folderName)"
+        TARGET="\(target)"
+        APP="$NAME.app"
+
+        IDENTITY="-"
+        PROFILE=""
+        INSTALL=0
+        while [ $# -gt 0 ]; do
+            case "$1" in
+                --install)  INSTALL=1 ;;
+                --sign)     IDENTITY="$2"; shift ;;
+                --notarize) PROFILE="$2"; shift ;;
+                *) echo "build.sh: unknown option $1" >&2; exit 2 ;;
+            esac
+            shift
+        done
+        if [ -n "$PROFILE" ] && [ "$IDENTITY" = "-" ]; then
+            echo "build.sh: --notarize needs --sign with a Developer ID identity" >&2
+            exit 2
+        fi
+
+        swift build -c release
+        # Asked for, not assumed: the two build systems the toolchain ships put
+        # the binary in different places.
+        BIN="$(swift build -c release --show-bin-path)"
+
+        rm -rf "$APP"
+        mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+        cp "$BIN/$TARGET" "$APP/Contents/MacOS/$TARGET"
+        cp Info.plist "$APP/Contents/Info.plist"
+        printf 'APPL????' > "$APP/Contents/PkgInfo"
+
+        # The framework's own files: shader segments, fonts, tables. Run from a
+        # bundle, the binary looks for them in the app's Resources folder, so
+        # every resource bundle the build produced travels inside.
+        for bundle in "$BIN"/*.bundle; do
+            [ -e "$bundle" ] || continue
+            cp -R "$bundle" "$APP/Contents/Resources/"
+        done
+
+        # The icon is the sketch: the freshly built binary renders one frame of
+        # itself, squared and scaled into the .icns. An AppIcon.icns of your own
+        # beside this script wins, and if the render fails the app just keeps
+        # the stock icon.
+        if [ -f AppIcon.icns ]; then
+            cp AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+        else
+            ICONWORK="$(mktemp -d)"
+            if "$BIN/$TARGET" --export "$ICONWORK/frame.png" --frame 120 >/dev/null 2>&1; then
+                W="$(sips -g pixelWidth  "$ICONWORK/frame.png" | awk '/pixelWidth/  {print $2}')"
+                H="$(sips -g pixelHeight "$ICONWORK/frame.png" | awk '/pixelHeight/ {print $2}')"
+                S="$W"
+                if [ "$H" -lt "$S" ]; then S="$H"; fi
+                sips -c "$S" "$S" "$ICONWORK/frame.png" --out "$ICONWORK/square.png" >/dev/null
+                mkdir "$ICONWORK/AppIcon.iconset"
+                for SIZE in 16 32 128 256 512; do
+                    sips -z "$SIZE" "$SIZE" "$ICONWORK/square.png" \\
+                         --out "$ICONWORK/AppIcon.iconset/icon_${SIZE}x${SIZE}.png" >/dev/null
+                    sips -z "$((SIZE * 2))" "$((SIZE * 2))" "$ICONWORK/square.png" \\
+                         --out "$ICONWORK/AppIcon.iconset/icon_${SIZE}x${SIZE}@2x.png" >/dev/null
+                done
+                iconutil -c icns -o "$APP/Contents/Resources/AppIcon.icns" "$ICONWORK/AppIcon.iconset"
+            else
+                echo "build.sh: could not render the icon frame; the app keeps the stock icon" >&2
+            fi
+            rm -rf "$ICONWORK"
+        fi
+
+        if [ "$IDENTITY" = "-" ]; then
+            # Ad-hoc: good on this machine, refused by any other. Said at every
+            # build, so nobody ships one by accident.
+            codesign --force --sign - --timestamp=none "$APP"
+            echo "Built $APP, signed for this machine only."
+            echo "Another Mac will refuse it. To make one that travels:"
+            echo "  ./build.sh --sign \\"Developer ID Application: Your Name (TEAMID)\\" --notarize <profile>"
+        else
+            # The hardened runtime and a timestamp are what the notary checks.
+            codesign --force --options runtime --timestamp --sign "$IDENTITY" "$APP"
+            echo "Built $APP, signed as $IDENTITY."
+        fi
+
+        if [ -n "$PROFILE" ]; then
+            # One-time setup for the profile named here:
+            #   xcrun notarytool store-credentials <profile> \\
+            #       --apple-id you@example.com --team-id TEAMID --password <app-specific>
+            ditto -c -k --keepParent "$APP" "$NAME.zip"
+            xcrun notarytool submit "$NAME.zip" --keychain-profile "$PROFILE" --wait
+            xcrun stapler staple "$APP"
+            # Re-zipped with the ticket inside, ready to hand over.
+            rm -f "$NAME.zip"
+            ditto -c -k --keepParent "$APP" "$NAME.zip"
+            echo "Notarized and stapled: $APP, with $NAME.zip to hand over."
+        fi
+
+        if [ "$INSTALL" = 1 ]; then
+            rm -rf "/Applications/$APP"
+            cp -R "$APP" /Applications/
+            echo "Installed to /Applications/$APP"
+        fi
+        """
+    }
+
+    private static func appReadme(_ request: ProjectRequest, target: String) -> String {
+        """
+        # \(request.folderName)
+
+        \(request.template.summary)
+
+        An Ollin sketch wrapped as a Mac app, so the piece can be opened with a double click on a machine that has never seen the toolchain.
+
+        ## Making the app
+
+        ```sh
+        ./build.sh
+        ```
+
+        `\(request.folderName).app` appears beside the script. `./build.sh --install` also puts it in /Applications. The icon is a frame the sketch renders of itself; drop an `AppIcon.icns` of your own beside `build.sh` to replace it, or change the `--frame 120` in the script to pick a different moment.
+
+        ## Working on it
+
+        Rebuilding an app is a slow way to see a change. Open the same sketch in a window instead, where it reloads as you save:
+
+        ```sh
+        ollin Sources/\(target)/Sketch.swift
+        ```
+
+        The sketch is an ordinary sketch: the window, the mouse, the keyboard, and every export flag work the same inside the app.
+
+        ## Giving it to somebody else
+
+        `build.sh` alone signs the app so this machine will run it. Another machine will refuse it. Traveling takes a paid Apple Developer account, once:
+
+        1. Sign with your Developer ID certificate and send the app to Apple's notary:
+
+           ```sh
+           xcrun notarytool store-credentials ollin-notary \\
+               --apple-id you@example.com --team-id TEAMID --password <app-specific password>
+           ./build.sh --sign "Developer ID Application: Your Name (TEAMID)" --notarize ollin-notary
+           ```
+
+           The first command is one-time setup; the password is an app-specific one from appleid.apple.com.
+
+        2. Hand over the `\(request.folderName).zip` the script leaves beside the app. Any Mac will open what is inside.
+
+        Before you do, change `CFBundleIdentifier` in `Info.plist` from `com.example.*` to something of yours.
+
+        ## Where things go
+
+        The sketch and everything it loads live in `Sources/\(target)/`. `Info.plist` is the app's name tag, and `build.sh` is the whole wrapper: the two are self-contained, so they can be copied into any sketch folder of this shape to make an app of it too.
+        """
+    }
+
+    /// The app folder and the notary zip are built, so they are not kept.
+    private static let appGitignore = """
+    .build/
+    .swiftpm/
+    .DS_Store
+    *.xcodeproj
+    *.app
+    *.zip
+    """
 
     // MARK: - The screen saver's own files
 

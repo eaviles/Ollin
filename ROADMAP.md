@@ -20,7 +20,7 @@ If you're coming from p5.js or Processing, [the Guide's Appendix C](Guide/C-Comi
 
 Ollin is pre-1.0, and the public API still changes freely. Version 1.0.0 will be the first public release: the repository opens, semantic version tags and a changelog begin, and from that point on every public rename ships a deprecation shim (the migration discipline described in [`CLAUDE.md`](CLAUDE.md)). This section names what that release waits on, and only that. Everything else on this page stays open for work at any time: the release does not wait on it, and it does not wait for the release.
 
-- **The capabilities a newcomer will look for first.** The most visible gaps for someone arriving from p5.js, Processing, or openFrameworks: a sketch packaged as a double-clickable app, so a finished piece can be handed to someone without the Swift toolchain (under [new output surfaces](#new-output-surfaces)); and the model examples under [Up next](#up-next).
+- **The capabilities a newcomer will look for first.** The most visible gaps for someone arriving from p5.js, Processing, or openFrameworks: the model examples under [Up next](#up-next).
 - **Stabilization.** A naming-and-consistency pass over the whole public API, since the shim discipline locks the names in at the release; the test suite reliable end to end, with no flaky or machine-bound failures; and the hand-verification backlog (features that still wait on eyes, ears, or hardware) worked down.
 - **The release itself.** The changelog, the release notes, the `1.0.0` tag, and a README presentation pass. The ecosystem legs that need a public repository (DocC, a Swift Package Index listing, the extension index) follow the release rather than gate it.
 
@@ -98,7 +98,6 @@ Ways a sketch leaves the window:
 
 - **Haptics.** A `draw()` that also emits a felt pattern synced to the visuals, on Force Touch trackpads and on the phone.
 - **The OS as a canvas.** Wrap a sketch as a dynamic wallpaper, a desktop widget, or a menu-bar piece, so the output lives in the system rather than a window.
-- **A sketch as an app.** A finished piece packaged as a signed, double-clickable app that runs on a Mac without the Swift toolchain, the screen-saver wrapper's sibling, so a piece can be handed to a gallery machine or a friend.
 
 See the [design notes](DESIGN-NOTES.md#new-output-surfaces).
 
