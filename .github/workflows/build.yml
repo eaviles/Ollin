@@ -116,9 +116,13 @@ jobs:
       # under a minute when healthy; the only way past ten minutes is a wedged
       # runner (see the job-level note), and cutting it here fails fast while
       # the job cap stays generous enough for a cold build.
+      # The snapshot pattern is anchored with its module name because `--skip`
+      # takes an unanchored regex over the full test ID: a bare `SnapshotTests`
+      # also matches OllinPhysicsTests.PhysicsSnapshotTests, which silently
+      # dropped 46 pure-CPU determinism tests from every run here for weeks.
       - name: Test (excluding GPU snapshots)
         timeout-minutes: 10
-        run: swift test --skip 'SnapshotTests|FlowTrackerTests'
+        run: swift test --skip 'OllinTests.SnapshotTests|FlowTrackerTests'
 
   # The anti-rot guard: every sketch still compiles against the current API.
   # Separate from `build` because it is the expensive half (see the note at the

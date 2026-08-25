@@ -13,10 +13,20 @@ Building and running needs **macOS 26+ and a Metal-capable GPU**. The Swift tool
 ```sh
 swift build                       # compile the framework and examples
 swift run --package-path Examples Example-Basic-HelloCircle     # open a window running an example
-swift test --skip SnapshotTests   # GPU-independent tests (snapshots stay local)
+Scripts/test.sh <SuiteName>       # the tests for the area you touched (seconds)
+Scripts/test.sh quick             # the sub-minute pass, no GPU snapshots or nested builds
+Scripts/test.sh                   # the whole suite, phased (many minutes; background it)
 ```
 
 A change isn't verified until it builds and runs. If `swift --version` and `xcrun --find metal` both succeed, you're on a Mac with the toolchain, so build and run directly instead of adding caveats about being unable to compile.
+
+Three test-running rules, learned the hard way:
+
+- **The full suite takes many minutes.** Never run it as a plain foreground call with a default command timeout; run it in the background or with an explicit long timeout, and use the filtered forms for the edit loop.
+- **A full-run failure in a wall-clock suite is usually load, not a regression.** `DataFeedTests`, the Vision live-wiring tests, and `ListeningTests` measure elapsed time or poll a system model, and they starve when the GPU snapshot table and the nested package builds run beside them. `Scripts/test.sh` runs them first on a quiet machine for exactly this reason; if one fails inside a plain `swift test`, rerun it alone (`Scripts/test.sh <SuiteName>`) before treating it as a signal, and say which tests failed rather than reporting the suite red.
+- **Skip patterns are unanchored regexes over the full test ID.** Write `OllinTests.SnapshotTests`, never a bare `SnapshotTests`, which also matches `PhysicsSnapshotTests` and silently drops 46 real tests.
+
+If another session or agent is working in this repo at the same time: work in a git worktree, expect a second SwiftPM invocation in the same checkout to block on the `.build` lock rather than fail, and never run `OLLIN_RECORD_SNAPSHOTS` or a full test pass while the other session is mid-build (the load makes the wall-clock suites fail, and recording rewrites 242 tracked files under them).
 
 ## A few load-bearing rules
 
@@ -25,7 +35,7 @@ These come up most often. `CLAUDE.md` has the full reasoning; the short version:
 - **Typed core first, bare call second.** The p5-style calls (`background`, `drawCircle`) are sugar over a public, typed core; they forward to an internal `Drawer`. Build a feature on the core, then add the bare call, so nothing is reachable only through the facade.
 - **Draw verbs, not nouns.** Geometry-emitting calls take a `draw` prefix (`drawCircle`, `drawRect`, `drawLine`). State (`fill`/`stroke`/`background`) and transforms (`translate`/`rotate`/`scale`) keep their own names.
 - **Inspired by, not ported.** Ollin borrows ideas and API vocabulary from p5.js, OPENRNDR, and openFrameworks, with the implementation written independently. Don't translate their source line by line; p5's LGPL is incompatible with shipping as MIT. The sourcing and attribution rules are in `CLAUDE.md` and [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).
-- **A feature isn't done until it has an example.** New primitives and capabilities ship with a small sketch in [`Examples/`](Examples/), and CI compile-tests them so they don't rot.
+- **A feature isn't done until it has an example.** New primitives and capabilities ship with a small sketch in [`Examples/`](Examples/). The anti-rot guard is `swift build --package-path Examples`, run locally at milestones: CI runs only on pull requests (macOS runners bill at 10x and mainline work goes straight to `main`), so while that's true it does not compile-test anything on its own.
 
 ## Where things live
 

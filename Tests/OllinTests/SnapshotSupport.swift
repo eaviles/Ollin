@@ -25,11 +25,18 @@ import UniformTypeIdentifiers
 ///
 /// **Recording references.** Set `OLLIN_RECORD_SNAPSHOTS=1` and run the tests
 /// to (re)write the reference PNGs into `Tests/OllinTests/References/` from the
-/// current render, then commit them. Do this on a known-good build, since the
-/// references are the source of truth thereafter, and only once the reason they
-/// moved is understood: the metric is a mean, so it hides a large local
-/// difference behind a small average, and "the tests still pass" is not by
-/// itself evidence that nothing changed.
+/// current render, then commit them. Set it to a *name* instead (any value other
+/// than `0`/`1`, matched as a case-insensitive substring) to record only the
+/// snapshots whose name matches while every other case still compares: adding
+/// one snapshot rewrites nothing else, so there is nothing to `git restore`
+/// afterwards. `0` or an empty value means compare mode, so a
+/// stale exported variable can't record by accident. Record on a known-good
+/// build, since the references are the source of truth thereafter, and only
+/// once the reason they moved is understood: the metric is a mean, so it hides
+/// a large local difference behind a small average, and "the tests still pass"
+/// is not by itself evidence that nothing changed. The write goes to the source
+/// tree while the compare path reads the built bundle, so the recording run
+/// itself verifies nothing; the next `swift test` does.
 enum Snapshot {
 
     /// Mean per-channel difference (0…255) allowed before a snapshot is a
@@ -75,6 +82,16 @@ enum Snapshot {
         }
     }
 
+    /// What `OLLIN_RECORD_SNAPSHOTS` asks of the case named `name`: `1` records
+    /// everything, `0`/empty/unset records nothing, and any other value records
+    /// only the names it matches as a case-insensitive substring.
+    private static func shouldRecord(_ name: String) -> Bool {
+        guard let value = ProcessInfo.processInfo.environment["OLLIN_RECORD_SNAPSHOTS"],
+              !value.isEmpty, value != "0" else { return false }
+        if value == "1" { return true }
+        return name.localizedCaseInsensitiveContains(value)
+    }
+
     /// Render `sketch` at `frame` and return its mean per-channel difference
     /// (0…255) from the reference named `name`. In record mode it writes the
     /// reference instead and returns `0`. Throws on a render or load failure.
@@ -82,8 +99,10 @@ enum Snapshot {
     static func meanDifference(of sketch: Sketch, against name: String, frame: Int = 0) throws -> Double {
         guard let actual = OllinApp.image(of: sketch, frame: frame) else { throw Failure.renderFailed }
 
-        if ProcessInfo.processInfo.environment["OLLIN_RECORD_SNAPSHOTS"] != nil {
+        if shouldRecord(name) {
             try writeReference(actual, named: name)
+            print("Ollin: recorded reference '\(name)' into the source tree; "
+                  + "the next test run compares against it.")
             return 0
         }
 
@@ -97,8 +116,9 @@ enum Snapshot {
         for i in a.bytes.indices { total += abs(Int(a.bytes[i]) - Int(r.bytes[i])) }
         let mean = Double(total) / Double(a.bytes.count)
 
-        // On a real divergence, drop the actual frame somewhere inspectable.
-        if mean >= tolerance { try? writeActual(actual, named: name) }
+        // On a real divergence, drop the actual frame, the reference it missed,
+        // and an amplified difference image somewhere inspectable together.
+        if mean >= tolerance { try? writeFailureArtifacts(actual: a, reference: r, named: name) }
         warnIfDrifting(mean, named: name)
         return mean
     }
@@ -163,12 +183,39 @@ enum Snapshot {
         try writePNG(image, to: referencesDirectory.appendingPathComponent("\(name).png"))
     }
 
-    private static func writeActual(_ image: CGImage, named name: String) throws {
+    /// Write the failing triple: `<name>.png` (the actual frame),
+    /// `<name>.reference.png`, and `<name>.diff.png`, where the diff holds the
+    /// per-channel absolute difference amplified 8x so a near-tolerance
+    /// divergence is visible at a glance instead of reading as black.
+    private static func writeFailureArtifacts(actual a: (bytes: [UInt8], width: Int, height: Int),
+                                              reference r: (bytes: [UInt8], width: Int, height: Int),
+                                              named name: String) throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("ollin-snapshot-failures")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        let url = dir.appendingPathComponent("\(name).png")
-        try writePNG(image, to: url)
-        print("Ollin: snapshot '\(name)' diverged; wrote the actual frame to \(url.path)")
+
+        var diff = [UInt8](repeating: 255, count: a.bytes.count)
+        for i in a.bytes.indices where i % 4 != 3 {
+            diff[i] = UInt8(min(255, abs(Int(a.bytes[i]) - Int(r.bytes[i])) * 8))
+        }
+
+        try writePNG(image(from: a.bytes, width: a.width, height: a.height),
+                     to: dir.appendingPathComponent("\(name).png"))
+        try writePNG(image(from: r.bytes, width: r.width, height: r.height),
+                     to: dir.appendingPathComponent("\(name).reference.png"))
+        try writePNG(image(from: diff, width: a.width, height: a.height),
+                     to: dir.appendingPathComponent("\(name).diff.png"))
+        print("Ollin: snapshot '\(name)' diverged; wrote actual, reference, and 8x diff to \(dir.path)/")
+    }
+
+    /// Wrap a tightly-packed RGBA8 buffer back into a `CGImage` for writing.
+    private static func image(from bytes: [UInt8], width: Int, height: Int) -> CGImage {
+        let data = Data(bytes)
+        let provider = CGDataProvider(data: data as CFData)!
+        return CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32,
+                       bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                       bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+                       provider: provider, decode: nil, shouldInterpolate: false,
+                       intent: .defaultIntent)!
     }
 
     private static func writePNG(_ image: CGImage, to url: URL) throws {

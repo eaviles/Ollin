@@ -6,9 +6,15 @@ import Testing
 ///
 /// A scaffold that does not compile is worse than no scaffold, and none of the
 /// pure tests can catch a template that calls something the framework renamed.
-/// These two drive a real compiler, so they are the slow pair in this suite, and
-/// they run one at a time rather than two builds at once.
-@Suite("Generated projects build", .serialized)
+/// These drive a real compiler, so they are the slow half of this suite, and
+/// they run one at a time rather than several builds at once. Every nested
+/// build shares one persistent scratch directory (see `scratchDirectory`), so
+/// the framework compiles cold once ever rather than once per test per run;
+/// without it, eight cold framework builds per run are most of this suite's
+/// weight, and that load starves the wall-clock suites running beside it. The
+/// time limit is the hang backstop: a nested build is a subprocess with no
+/// timeout of its own, so a wedged one would otherwise wait forever.
+@Suite("Generated projects build", .serialized, .timeLimit(.minutes(15)))
 struct GeneratedProjectBuildTests {
 
     @Test("Every template compiles against the framework as it stands")
@@ -473,9 +479,24 @@ struct GeneratedProjectBuildTests {
         return url
     }
 
+    /// One scratch directory for every nested build, persistent across runs so
+    /// even the first build of a run is warm. SwiftPM keeps it incrementally
+    /// correct; a second process building at the same moment blocks on the
+    /// scratch lock rather than corrupting anything. The generated screen
+    /// saver's own `build.sh` does not use it (that script is shipped generator
+    /// output, not test plumbing), so that one test still pays a cold build.
+    static let scratchDirectory: URL = {
+        let url = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Ollin", isDirectory: true)
+            .appendingPathComponent("test-scratch", isDirectory: true)
+        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        return url
+    }()
+
     static func swiftBuild(in directory: URL,
                            buildingTests: Bool = false) throws -> (succeeded: Bool, output: String) {
-        var arguments = ["swift", "build", "--package-path", directory.path]
+        var arguments = ["swift", "build", "--package-path", directory.path,
+                         "--scratch-path", scratchDirectory.path]
         if buildingTests { arguments.append("--build-tests") }
         return try run(arguments)
     }
@@ -483,7 +504,8 @@ struct GeneratedProjectBuildTests {
     /// Build *and* run a package's own tests, for the case where what the
     /// generator wrote includes tests an author is about to run.
     static func swiftTest(in directory: URL) throws -> (succeeded: Bool, output: String) {
-        try run(["swift", "test", "--package-path", directory.path])
+        try run(["swift", "test", "--package-path", directory.path,
+                 "--scratch-path", scratchDirectory.path])
     }
 
     static func run(_ arguments: [String]) throws -> (succeeded: Bool, output: String) {
