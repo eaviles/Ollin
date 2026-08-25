@@ -204,11 +204,14 @@ public struct MonitorIdentity: Equatable {
     }
 }
 
-/// The centerpiece: a card with three tiers, an identity row (filename · path,
+/// The centerpiece: a card of stacked tiers, an identity row (filename · path,
 /// with a Frame counter cell on the right; just the one cell, a second squeezed
-/// the identity block illegibly), the big centered timecode clock, and a
-/// four-up FPS · CPU · Canvas · Geometry stat strip. Driven by a live
-/// `FrameStats`, so it updates a few times a second as the sketch runs.
+/// the identity block illegibly), the big centered timecode clock, one cell
+/// grid (FPS · Canvas · a cell per drawing path in use · Draws · Passes ·
+/// Batches, filling rows four at a time), and the CPU/GPU cost bars. Cells
+/// carry facts, the bars carry time, and no number appears in two places.
+/// Driven by a live `FrameStats`, so it updates a few times a second as the
+/// sketch runs.
 ///
 /// Each tier is its own `View` so a tick only re-renders the readouts that
 /// changed: the static identity block stays put while the clock and strip
@@ -356,151 +359,67 @@ private struct MonitorClockRow: View {
     }
 }
 
-/// The four-up FPS · CPU · Canvas · Geometry strip. Every cell ticks with the
-/// live `FrameStats`, so it reads the object directly rather than threading nine
-/// scalars through; per-property observation still re-renders only on a change.
+/// The cell grid: FPS and Canvas, one cell per drawing path the sketch uses
+/// (SDF instances, triangle vertices, point splats, GPU particles), then the
+/// Draws · Passes · Batches counts, each its own value-over-label cell so no
+/// readout joins several numbers and truncates. Cells fill hairline-separated
+/// rows four at a time, the last row taking the remainder (eight cells run
+/// 4+4, seven run 4+3), so a path-heavy sketch grows a row rather than
+/// squeezing. A path's cell stays once it has appeared: a simulation whose
+/// particle count dips to zero for a frame must not reshuffle the grid. The
+/// set clears when the frame counter restarts (a reload).
+///
+/// Every cell ticks with the live `FrameStats`, so it reads the object directly
+/// rather than threading scalars through; per-property observation still
+/// re-renders only on a change. No time appears here: milliseconds belong to
+/// the cost bars below, so a number is never shown twice.
 private struct MonitorStatStrip: View {
     let stats: FrameStats
 
     @SwiftUI.Environment(\.colorScheme) private var scheme
     private var palette: OllinInspector.Palette { .resolve(scheme) }
 
+    /// The drawing paths whose cells have earned a place this run (see above).
+    @State private var seenPaths: Set<GeometryPath> = []
+
+    private enum GeometryPath: CaseIterable {
+        case sdf, tri, pts, particles
+    }
+
     private var canvasLabel: String {
         let w = Int(stats.canvasWidth.rounded()), h = Int(stats.canvasHeight.rounded())
-        guard w > 0, h > 0 else { return "—" }
+        guard w > 0, h > 0 else { return noReadingYet }
         return w == h ? "\(w)²" : "\(w)×\(h)"
     }
 
-    /// Geometry readout, naming each path in use (e.g. `5 sdf`, `31k tri`,
-    /// `12k pts` (3D point cloud), `1M particles`), space-joined when a sketch
-    /// mixes them (the full breakdown rides the cell's tooltip). Naming the path
-    /// rather than showing a bare number keeps a text/shape-heavy *or* a point-cloud
-    /// / particle sketch from reading as "0" when it's clearly drawing.
-    private var geometryLabel: String {
-        func compact(_ n: Int) -> String {
-            n >= 1_000_000 ? "\(n / 1_000_000)M" : n >= 1000 ? "\(n / 1000)k" : "\(n)"
+    private func count(of path: GeometryPath) -> Int {
+        switch path {
+        case .sdf: stats.sdfCount
+        case .tri: stats.vertexCount
+        case .pts: stats.pointCount
+        case .particles: stats.particleCount
         }
-        var parts: [String] = []
-        if stats.sdfCount > 0 { parts.append("\(compact(stats.sdfCount)) sdf") }
-        if stats.vertexCount > 0 { parts.append("\(compact(stats.vertexCount)) tri") }
-        if stats.pointCount > 0 { parts.append("\(compact(stats.pointCount)) pts") }
-        if stats.particleCount > 0 { parts.append("\(compact(stats.particleCount)) particles") }
-        return parts.isEmpty ? "0" : parts.joined(separator: " ")
     }
 
-    /// The Geometry cell's tooltip: the decoder for the compact value, so it
-    /// always spells out every path, zeros included.
-    private var geometryDetail: String {
-        func line(_ n: Int, _ one: String, _ many: String) -> String {
-            n == 1 ? "1 \(one)" : "\(n) \(many)"
+    private func cell(for path: GeometryPath) -> FactCell {
+        func detail(_ n: Int, _ one: String, _ many: String) -> String {
+            (n == 1 ? "1 \(one)" : "\(n) \(many)") + " this frame."
         }
-        let parts = [
-            line(stats.sdfCount, "instanced SDF shape", "instanced SDF shapes"),
-            line(stats.vertexCount, "tessellated triangle vertex", "tessellated triangle vertices"),
-            line(stats.pointCount, "3D point-cloud splat", "3D point-cloud splats"),
-            line(stats.particleCount, "GPU particle", "GPU particles"),
-        ]
-        return "Geometry this frame: " + parts.joined(separator: " + ")
-    }
-
-    var body: some View {
-        HStack(spacing: 0) {
-            statCell(value: stats.hasData ? String(format: "%.0f", stats.fps) : "—",
-                     label: "FPS", valueColor: OllinInspector.green)
-            Hairline(palette: palette, axis: .vertical)
-            // The whole CPU cost of the frame, which is what the bar below fills
-            // to. `frameTimeMS` is the sketch's draw alone, so showing it here
-            // would put two different numbers under one name.
-            statCell(value: stats.hasData ? String(format: "%.1f ms", stats.profile.cpuMS) : noReadingYet,
-                     label: "CPU", valueColor: .primary)
-            Hairline(palette: palette, axis: .vertical)
-            statCell(value: canvasLabel, label: "Canvas", valueColor: .primary)
-            Hairline(palette: palette, axis: .vertical)
-            statCell(value: stats.hasData ? geometryLabel : "—",
-                     label: "Geometry", valueColor: .primary)
-                .help(geometryDetail)
+        let n = count(of: path)
+        return switch path {
+        case .sdf:
+            FactCell(value: compactCount(n, hasData: stats.hasData), label: "SDF",
+                     detail: detail(n, "instanced SDF shape", "instanced SDF shapes"))
+        case .tri:
+            FactCell(value: compactCount(n, hasData: stats.hasData), label: "Tri",
+                     detail: detail(n, "tessellated triangle vertex", "tessellated triangle vertices"))
+        case .pts:
+            FactCell(value: compactCount(n, hasData: stats.hasData), label: "Pts",
+                     detail: detail(n, "3D point-cloud splat", "3D point-cloud splats"))
+        case .particles:
+            FactCell(value: compactCount(n, hasData: stats.hasData), label: "Particles",
+                     detail: detail(n, "GPU particle", "GPU particles"))
         }
-        .fixedSize(horizontal: false, vertical: true)
-    }
-
-    /// Stat-strip cell: content-sized (`maxWidth: .infinity`, even padding) so a
-    /// short value doesn't strand in an oversized column.
-    private func statCell(value: String, label: String, valueColor: SwiftUI.Color) -> some View {
-        VStack(spacing: 3) {
-            Text(value)
-                .font(.system(size: 12, design: .monospaced))
-                .foregroundStyle(valueColor)
-            Text(label)
-                .font(.system(size: 9, weight: .semibold))
-                .tracking(0.3)
-                .textCase(.uppercase)
-                .foregroundStyle(palette.textTertiary)
-        }
-        .lineLimit(1)
-        // Shrink rather than clip when a value outgrows its quarter-column;
-        // no fixedSize here, or the scale factor can never engage.
-        .minimumScaleFactor(0.8)
-        .padding(.horizontal, 8)
-        .padding(.top, 8)
-        .padding(.bottom, 9)
-        .frame(maxWidth: .infinity)
-    }
-}
-
-// MARK: - Cost row
-
-/// The "no reading yet" placeholder the card already shows before the first
-/// frame. Spelled as an escape so the source carries no em dash while the UI
-/// keeps the glyph the rest of the card uses.
-private let noReadingYet = "\u{2014}"
-
-/// The profiler tier of the card: two bars answering "which side is the frame
-/// waiting on", over an icon-led count of the work behind them.
-///
-/// The bars are drawn against the same scale, the frame's own period, so their
-/// lengths can be compared by eye: the longer one is the bottleneck, and a short
-/// pair means the sketch has headroom. They are deliberately *not* stacked into
-/// one bar, since the CPU builds frame N while the GPU is still drawing N-1, and
-/// a stack would read as though the two times added up.
-private struct MonitorCostRow: View {
-    let stats: FrameStats
-
-    @SwiftUI.Environment(\.colorScheme) private var scheme
-    private var palette: OllinInspector.Palette { .resolve(scheme) }
-
-    /// The frame period the bars are scaled against. It never rounds below the
-    /// numbers it has to hold, so a bar cannot overflow its track.
-    private var budgetMS: Double {
-        let period = stats.fps > 0 ? 1000 / stats.fps : 16.7
-        return max(period, stats.profile.cpuMS, stats.profile.gpuMS, 1)
-    }
-
-    private func ms(_ value: Double) -> String {
-        stats.hasData ? String(format: "%.1f", value) : noReadingYet
-    }
-
-    /// A count, shortened past a thousand so a busy frame keeps its column.
-    private func compact(_ n: Int) -> String {
-        guard stats.hasData else { return noReadingYet }
-        if n >= 1_000_000 { return "\(n / 1_000_000)M" }
-        if n >= 1_000 { return "\(n / 1_000)k" }
-        return "\(n)"
-    }
-
-    private var cpuDetail: String {
-        let p = stats.profile
-        return String(format: """
-            CPU: %.2f ms drawing (your sketch, including tessellation) \
-            + %.2f ms encoding the GPU commands.
-            Waiting for the display: %.2f ms, which is headroom rather than work.
-            """, p.cpuDrawMS, p.cpuEncodeMS, p.waitMS)
-    }
-
-    private var gpuDetail: String {
-        String(format: """
-            GPU: %.2f ms of a %.1f ms frame. Measured from the device's own \
-            timestamps, one frame behind, so it lags a sudden change by a frame.
-            """, stats.profile.gpuMS, budgetMS)
     }
 
     private var drawDetail: String {
@@ -533,6 +452,174 @@ private struct MonitorCostRow: View {
             + "changing per shape."
     }
 
+    /// One submitted-work cell. The label follows the count into the singular,
+    /// so a frame with one of something does not read "1 draws".
+    private func countCell(_ count: Int, _ one: String, _ many: String,
+                           detail: String) -> FactCell {
+        FactCell(value: compactCount(count, hasData: stats.hasData),
+                 label: count == 1 ? one : many, detail: detail)
+    }
+
+    /// The grid's cells for this tick: the two fixed facts, the active paths in
+    /// a fixed order, then the three counts. With no path yet, one placeholder
+    /// Geometry cell keeps the grid from reading as though the sketch draws
+    /// nothing.
+    private var cells: [FactCell] {
+        var cells = [
+            FactCell(value: stats.hasData ? String(format: "%.0f", stats.fps) : noReadingYet,
+                     label: "FPS", valueColor: OllinInspector.green),
+            FactCell(value: canvasLabel, label: "Canvas"),
+        ]
+        let active = GeometryPath.allCases.filter { seenPaths.contains($0) || count(of: $0) > 0 }
+        if active.isEmpty {
+            cells.append(FactCell(
+                value: stats.hasData ? "0" : noReadingYet, label: "Geometry",
+                detail: "Geometry this frame: nothing yet on any drawing path "
+                    + "(SDF shapes, triangle vertices, point-cloud splats, GPU particles)."))
+        } else {
+            cells.append(contentsOf: active.map(cell(for:)))
+        }
+        cells.append(countCell(stats.profile.drawCalls, "Draw", "Draws", detail: drawDetail))
+        cells.append(countCell(stats.profile.passes, "Pass", "Passes", detail: passDetail))
+        cells.append(countCell(stats.profile.batches, "Batch", "Batches", detail: batchDetail))
+        return cells
+    }
+
+    /// The cells filled into rows of four, the last row taking the remainder
+    /// (eight cells run 4+4, seven run 4+3), each row sharing its width equally.
+    private var rows: [[FactCell]] {
+        let cells = cells
+        return stride(from: 0, to: cells.count, by: 4).map {
+            Array(cells[$0 ..< min($0 + 4, cells.count)])
+        }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            let rows = rows
+            ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
+                if index > 0 { Hairline(palette: palette) }
+                HStack(spacing: 0) {
+                    ForEach(row) { cell in
+                        if cell.id != row.first?.id {
+                            Hairline(palette: palette, axis: .vertical)
+                        }
+                        MonitorFactCell(cell: cell, palette: palette)
+                    }
+                }
+                .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .onChange(of: stats.frameCount) { previous, current in
+            if current < previous { seenPaths.removeAll() }
+            let active = GeometryPath.allCases.filter { count(of: $0) > 0 }
+            if !seenPaths.isSuperset(of: active) { seenPaths.formUnion(active) }
+        }
+    }
+}
+
+/// A count shortened past a thousand (31k, 1M) so a busy frame keeps its cell.
+private func compactCount(_ n: Int, hasData: Bool) -> String {
+    guard hasData else { return noReadingYet }
+    if n >= 1_000_000 { return "\(n / 1_000_000)M" }
+    if n >= 1_000 { return "\(n / 1_000)k" }
+    return "\(n)"
+}
+
+/// One fact for the cell rows: a value over its label, an optional accent
+/// color, and an optional hover explanation. Identified by the label, which is
+/// unique across the card.
+private struct FactCell: Identifiable {
+    let value: String
+    let label: String
+    var valueColor: SwiftUI.Color = .primary
+    var detail: String?
+    var id: String { label }
+}
+
+/// The shared cell: a monospaced value over tiny caps, evenly sharing its row
+/// (`maxWidth: .infinity`, even padding) so a short value doesn't strand in an
+/// oversized column. Both the fact strip and the counts row are built from it.
+private struct MonitorFactCell: View {
+    let cell: FactCell
+    let palette: OllinInspector.Palette
+
+    var body: some View {
+        let content = VStack(spacing: 3) {
+            Text(cell.value)
+                .font(.system(size: 12, design: .monospaced))
+                .foregroundStyle(cell.valueColor)
+            Text(cell.label)
+                .font(.system(size: 9, weight: .semibold))
+                .tracking(0.3)
+                .textCase(.uppercase)
+                .foregroundStyle(palette.textTertiary)
+        }
+        .lineLimit(1)
+        // Shrink rather than clip when a value outgrows its column;
+        // no fixedSize here, or the scale factor can never engage.
+        .minimumScaleFactor(0.8)
+        .padding(.horizontal, 8)
+        .padding(.top, 8)
+        .padding(.bottom, 9)
+        .frame(maxWidth: .infinity)
+        if let detail = cell.detail {
+            content.help(detail)
+        } else {
+            content
+        }
+    }
+}
+
+// MARK: - Cost row
+
+/// The "no reading yet" placeholder the card already shows before the first
+/// frame. Spelled as an escape so the source carries no em dash while the UI
+/// keeps the glyph the rest of the card uses.
+private let noReadingYet = "\u{2014}"
+
+/// The profiler tier of the card: two bars answering "which side is the frame
+/// waiting on". This is the one place milliseconds appear on the card, so the
+/// cell grid above never repeats a number the bars already carry.
+///
+/// The bars are drawn against the same scale, the frame's own period, so their
+/// lengths can be compared by eye: the longer one is the bottleneck, and a short
+/// pair means the sketch has headroom. They are deliberately *not* stacked into
+/// one bar, since the CPU builds frame N while the GPU is still drawing N-1, and
+/// a stack would read as though the two times added up.
+private struct MonitorCostRow: View {
+    let stats: FrameStats
+
+    @SwiftUI.Environment(\.colorScheme) private var scheme
+    private var palette: OllinInspector.Palette { .resolve(scheme) }
+
+    /// The frame period the bars are scaled against. It never rounds below the
+    /// numbers it has to hold, so a bar cannot overflow its track.
+    private var budgetMS: Double {
+        let period = stats.fps > 0 ? 1000 / stats.fps : 16.7
+        return max(period, stats.profile.cpuMS, stats.profile.gpuMS, 1)
+    }
+
+    private func ms(_ value: Double) -> String {
+        stats.hasData ? String(format: "%.1f", value) : noReadingYet
+    }
+
+    private var cpuDetail: String {
+        let p = stats.profile
+        return String(format: """
+            CPU: %.2f ms drawing (your sketch, including tessellation) \
+            + %.2f ms encoding the GPU commands.
+            Waiting for the display: %.2f ms, which is headroom rather than work.
+            """, p.cpuDrawMS, p.cpuEncodeMS, p.waitMS)
+    }
+
+    private var gpuDetail: String {
+        String(format: """
+            GPU: %.2f ms of a %.1f ms frame. Measured from the device's own \
+            timestamps, one frame behind, so it lags a sudden change by a frame.
+            """, stats.profile.gpuMS, budgetMS)
+    }
+
     var body: some View {
         VStack(spacing: 7) {
             costBar(icon: "cpu", value: stats.profile.cpuMS,
@@ -541,18 +628,6 @@ private struct MonitorCostRow: View {
             costBar(icon: "memorychip", value: stats.profile.gpuMS,
                     tint: OllinInspector.green, label: "GPU")
                 .help(gpuDetail)
-
-            HStack(spacing: 0) {
-                countCell(icon: "square.stack.3d.down.right", count: stats.profile.drawCalls,
-                          one: "Draw", many: "Draws")
-                    .help(drawDetail)
-                countCell(icon: "rectangle.on.rectangle", count: stats.profile.passes,
-                          one: "Pass", many: "Passes")
-                    .help(passDetail)
-                countCell(icon: "square.grid.2x2", count: stats.profile.batches,
-                          one: "Batch", many: "Batches")
-                    .help(batchDetail)
-            }
         }
         .padding(.horizontal, 12)
         .padding(.top, 9)
@@ -592,26 +667,6 @@ private struct MonitorCostRow: View {
         }
     }
 
-    /// One icon-led count cell, three to a line. The name follows the count, so
-    /// a frame with one of something does not read "1 draws".
-    private func countCell(icon: String, count: Int, one: String, many: String) -> some View {
-        HStack(spacing: 4) {
-            SwiftUI.Image(systemName: icon)
-                .font(.system(size: 9.5))
-                .foregroundStyle(palette.textTertiary)
-            Text(compact(count))
-                .font(.system(size: 11, design: .monospaced))
-                .foregroundStyle(.primary)
-            Text(count == 1 ? one : many)
-                .font(.system(size: 9, weight: .semibold))
-                .tracking(0.2)
-                .textCase(.uppercase)
-                .foregroundStyle(palette.textTertiary)
-        }
-        .lineLimit(1)
-        .minimumScaleFactor(0.8)
-        .frame(maxWidth: .infinity)
-    }
 }
 
 // MARK: - Parameters
