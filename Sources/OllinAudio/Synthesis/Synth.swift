@@ -55,6 +55,11 @@ public final class Synth: AudioSource {
     /// Whether the engine is running.
     public private(set) var isRunning = false
 
+    /// While `true`, requests to start a new note are dropped: the take
+    /// transport holds the instrument quiet while it re-simulates frames that
+    /// should pass unheard. Releases and notes already sounding still apply.
+    package var transportMuted = false
+
     /// Where this instrument is in the scene, if a sketch has placed it.
     /// See ``place(at:heardFrom:)``.
     lazy var spatial = SpatialPlacement(owner: self)
@@ -274,6 +279,9 @@ public final class Synth: AudioSource {
             record(recordedEvent)
             return
         }
+        // Held quiet by the take transport: a new note is dropped before it
+        // can start the engine, while every other event still lands.
+        if transportMuted, event.kind == .noteOn { return }
         start()
         events.push(event)
     }

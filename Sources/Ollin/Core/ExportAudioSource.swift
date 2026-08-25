@@ -24,7 +24,31 @@ package protocol ExportAudioSource: AnyObject {
     func renderExportAudio(upTo seconds: Double, sampleRate: Double) -> [Float]
 }
 
+/// Something that starts notes, which the take transport can hold quiet while
+/// it re-simulates frames that should pass unheard: a rewound scrub replaying
+/// its way back up to a target, or a jump too long to listen through.
+package protocol TransportMutable: AnyObject {
+    /// While `true`, requests to start a new note are dropped. Releases and
+    /// notes already sounding still apply, so the state a scrub lands on is
+    /// the state the run had there.
+    var transportMuted: Bool { get set }
+}
+
 public extension Sketch {
+    /// The live sound makers this sketch is holding, found the way the export
+    /// sources below are: by looking at the sketch's own stored properties.
+    internal func transportMutables() -> [TransportMutable] {
+        var found: [TransportMutable] = []
+        var mirror: Mirror? = Mirror(reflecting: self)
+        while let current = mirror {
+            for child in current.children {
+                if let mutable = child.value as? TransportMutable { found.append(mutable) }
+            }
+            mirror = current.superclassMirror
+        }
+        return found
+    }
+
     /// The sound sources this sketch is holding, for the offline exporters.
     ///
     /// Found by looking at the sketch's own stored properties, the same way

@@ -1,6 +1,8 @@
 import AVFoundation
 import Ollin
 
+extension Synth: @MainActor TransportMutable {}
+
 extension Synth: @MainActor FrameAdvancing, @MainActor ExportAudioSource {
 
     /// Moves the instrument's own clock forward, once per frame.

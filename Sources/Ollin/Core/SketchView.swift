@@ -400,14 +400,23 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         view?.isPaused = false
     }
 
-    /// Back to frame 0 of the replay: reseed, restore the starting knobs,
-    /// rewind the player, and re-run `setup()`, so the re-simulation walks the
-    /// exact original path.
+    /// Back to frame 0 of the replay, on a fresh instance of the sketch.
+    ///
+    /// The original run began on a fresh instance, so a rewound one must too:
+    /// state a sketch accumulates in its stored properties (a rate gate like
+    /// `time >= nextNote`, a particle array) would otherwise carry the end of
+    /// the first pass into the start of the second, and the re-simulation
+    /// could never walk the recorded path. Reseeding and re-running `setup()`
+    /// on the old instance was measured wrong exactly that way: the clock
+    /// rewound while the gates stayed shut, and the whole second pass drew
+    /// and sounded nothing.
     private func rewindReplay() {
         guard let player = sketch.takePlayer else { return }
-        sketch.seed(player.take.seed)
-        player.take.applyStart(to: sketch)
-        player.rewind()
+        let take = player.take
+        let fresh = type(of: sketch).init()
+        reload(to: fresh)
+        didReload = false          // a rewind is a fresh run, not a code swap
+        take.install(on: fresh)
         restartForTransport()
     }
 
@@ -426,7 +435,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// reach a replayed sketch, so they are free to drive the transport).
     func handleTransportKey(character: Character?, code: KeyCode?, shift: Bool) {
         guard let player = sketch.takePlayer else { return }
-        let step = shift ? 30 : 1
+        let step = shift ? SketchRunner.audibleScrubSpan : 1
         let lastFrame = player.take.frameCount
         switch (character, code) {
         case (" ", _):
@@ -455,13 +464,28 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         updateReplayTitle(player)
     }
 
+    /// How many re-simulated frames a scrub may voice. A short forward jump
+    /// (the shift-arrow step) plays its notes by so a beat can be found by
+    /// ear; anything longer, and every rewound jump, re-simulates quiet.
+    static let audibleScrubSpan = 30
+
     /// Land a pending scrub: rewind when the target is behind, then re-simulate
     /// up to the frame before it. The normal frame path draws the target frame
-    /// itself in the same pass, so the landed frame reaches the screen.
+    /// itself in the same pass, so the landed frame reaches the screen (and
+    /// speaks: it is never muted, in either direction). The frames crossed on
+    /// the way voice only on a short forward jump; a rewound jump replays from
+    /// zero, and a long one compresses too much sound into one instant, so
+    /// both pass unheard.
     private func performScrub(to target: Int) {
         guard sketch.takePlayer != nil else { return }
-        if target <= sketch.frameCount { rewindReplay() }
+        let rewound = target <= sketch.frameCount
+        let crossed = target - (rewound ? 0 : sketch.frameCount)
+        if rewound { rewindReplay() }
+        let muted = rewound || crossed > SketchRunner.audibleScrubSpan
+            ? sketch.transportMutables() : []
+        for instrument in muted { instrument.transportMuted = true }
         while sketch.frameCount < target - 1 { stepReplayFrame() }
+        for instrument in muted { instrument.transportMuted = false }
     }
 
     /// One re-simulated frame with no present: advance (the player supplies

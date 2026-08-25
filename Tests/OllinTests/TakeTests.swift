@@ -2,6 +2,7 @@
 import CoreGraphics
 import Foundation
 import Metal
+import MetalKit
 import Testing
 
 /// Record and replay (`Take`): the claims worth pinning are determinism ones.
@@ -266,5 +267,169 @@ struct TakeTests {
         let replayedBytes = try #require(replayedImage.dataProvider?.data as Data?)
         #expect(originalBytes == replayedBytes,
                 "a replayed run should render byte-identically to the run it recorded")
+    }
+
+    // MARK: The windowed transport
+
+    /// The state-trap shape that broke the rewound replay at the desk: a rate
+    /// gate and an accumulator held in stored properties. Only a fresh
+    /// instance can walk the recorded path twice, so the marks of a second
+    /// pass equal the first's exactly when the rewind is honest.
+    private final class TransportProbe: Sketch {
+        var lastMark = -1.0
+        var marks: [Int] = []
+        override func draw() {
+            if mouseIsPressed, time >= lastMark + 0.1 {
+                lastMark = time
+                marks.append(frameCount)
+            }
+        }
+    }
+
+    /// A live sound maker as the transport sees one, held by the probe below
+    /// so the runner's discovery finds it.
+    private final class FakeInstrument: TransportMutable {
+        var transportMuted = false
+    }
+
+    /// Writes down, for every frame it draws, whether its instrument was
+    /// being held quiet at that moment.
+    private final class SoundingProbe: Sketch {
+        let instrument = FakeInstrument()
+        var mutedByFrame: [Int: Bool] = [:]
+        override func draw() { mutedByFrame[frameCount] = instrument.transportMuted }
+    }
+
+    /// A hand-built take: the pointer arrives, the button holds from frame 2
+    /// to frame 30, and the clock ticks a plain 60 fps.
+    private func transportTake(frames: Int = 40, sketchType: String) -> Take {
+        Take(version: Take.currentVersion, sketchType: sketchType, seed: 7,
+             canvas: [200, 200], initialParams: [:],
+             frames: (0..<frames).map {
+                 Take.Frame(time: Double($0) / 60, deltaTime: 1.0 / 60, frameRate: 60)
+             },
+             events: [
+                 Take.StampedEvent(frame: 2, event: .pointer(x: 50, y: 50)),
+                 Take.StampedEvent(frame: 2, event: .button(pressed: true)),
+                 Take.StampedEvent(frame: 30, event: .button(pressed: false)),
+             ],
+             changes: [])
+    }
+
+    /// A real runner over a small windowless view, pumped by hand.
+    private func makeRunner(_ sketch: Sketch) throws -> (SketchRunner, MTKView) {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let view = MTKView(frame: CGRect(x: 0, y: 0, width: 64, height: 64), device: device)
+        sketch.setCanvasSize(width: 200, height: 200)
+        let runner = SketchRunner(sketch: sketch, view: view, device: device)
+        return (runner, view)
+    }
+
+    @Test func aRewindFromPastTheEndReplaysTheWholeRun() throws {
+        let take = transportTake(sketchType: "TransportProbe")
+        let probe = TransportProbe()
+        let (runner, view) = try makeRunner(probe)
+        take.install(on: probe)
+
+        for _ in 0..<take.frameCount { runner.draw(in: view) }
+        let firstPass = probe.marks
+        #expect(!firstPass.isEmpty, "the take's held button should have marked frames")
+
+        // Space with the run past its end starts over; the second pass must
+        // walk the same path. The current probe is cleared first, so a stale
+        // instance surviving the rewind cannot pass on its first-run marks.
+        runner.handleTransportKey(character: " ", code: nil, shift: false)
+        let second = try #require(runner.sketch as? TransportProbe)
+        second.marks.removeAll()
+        for _ in 0..<take.frameCount { runner.draw(in: view) }
+        #expect(second.marks == firstPass,
+                "a rewound replay should re-fire the same marks at the same frames")
+    }
+
+    @Test func endThenSpaceRestartsCleanly() throws {
+        let take = transportTake(sketchType: "TransportProbe")
+        let probe = TransportProbe()
+        let (runner, view) = try makeRunner(probe)
+        take.install(on: probe)
+
+        for _ in 0..<10 { runner.draw(in: view) }
+        let firstMarks = probe.marks
+        runner.handleTransportKey(character: nil, code: .end, shift: false)
+        runner.draw(in: view)          // the pass that lands the jump
+        #expect((runner.sketch as? TransportProbe) != nil)
+
+        runner.handleTransportKey(character: " ", code: nil, shift: false)
+        let second = try #require(runner.sketch as? TransportProbe)
+        second.marks.removeAll()
+        for _ in 0..<take.frameCount { runner.draw(in: view) }
+        #expect(second.marks.count >= firstMarks.count)
+        #expect(!second.marks.isEmpty,
+                "after End then space, the second pass should play its events again")
+    }
+
+    @Test func theRunSurvivesReachingItsEndTwice() throws {
+        let take = transportTake(sketchType: "TransportProbe")
+        let probe = TransportProbe()
+        let (runner, view) = try makeRunner(probe)
+        take.install(on: probe)
+
+        for _ in 0..<take.frameCount { runner.draw(in: view) }
+        let firstPass = probe.marks
+
+        for _ in 0..<2 {
+            runner.handleTransportKey(character: " ", code: nil, shift: false)
+            let current = try #require(runner.sketch as? TransportProbe)
+            current.marks.removeAll()
+            for _ in 0..<take.frameCount { runner.draw(in: view) }
+            #expect(current.marks == firstPass,
+                    "every pass after a rewind should walk the recorded path")
+        }
+    }
+
+    @Test func aRewoundScrubResimulatesQuietAndLandsLoud() throws {
+        let take = transportTake(sketchType: "SoundingProbe")
+        let probe = SoundingProbe()
+        let (runner, view) = try makeRunner(probe)
+        take.install(on: probe)
+
+        for _ in 0..<40 { runner.draw(in: view) }
+        runner.handleTransportKey(character: nil, code: .leftArrow, shift: true)
+        runner.draw(in: view)          // lands the backward jump
+        let current = try #require(runner.sketch as? SoundingProbe)
+
+        let resimulated = current.mutedByFrame.filter { $0.key < 10 }.values
+        #expect(!resimulated.isEmpty && resimulated.allSatisfy { $0 },
+                "a rewound jump's re-simulated frames should be held quiet")
+        #expect(current.mutedByFrame[10] == false,
+                "the landed frame itself should speak")
+        #expect(current.instrument.transportMuted == false)
+    }
+
+    @Test func aShortForwardJumpStaysAudible() throws {
+        let take = transportTake(sketchType: "SoundingProbe")
+        let probe = SoundingProbe()
+        let (runner, view) = try makeRunner(probe)
+        take.install(on: probe)
+
+        for _ in 0..<5 { runner.draw(in: view) }
+        runner.handleTransportKey(character: nil, code: .rightArrow, shift: true)
+        runner.draw(in: view)
+        #expect(probe.mutedByFrame.values.allSatisfy { !$0 },
+                "a shift-step forward should voice every frame it crosses")
+    }
+
+    @Test func aLongForwardJumpGoesQuiet() throws {
+        let take = transportTake(sketchType: "SoundingProbe")
+        let probe = SoundingProbe()
+        let (runner, view) = try makeRunner(probe)
+        take.install(on: probe)
+
+        for _ in 0..<5 { runner.draw(in: view) }
+        runner.handleTransportKey(character: nil, code: .end, shift: false)
+        runner.draw(in: view)
+        let crossed = probe.mutedByFrame.filter { $0.key > 5 && $0.key < 40 }.values
+        #expect(!crossed.isEmpty && crossed.allSatisfy { $0 },
+                "a jump to the end crosses too much sound to voice")
+        #expect(probe.mutedByFrame[40] == false, "the landed frame still speaks")
     }
 }
