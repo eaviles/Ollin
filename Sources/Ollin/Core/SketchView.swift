@@ -465,7 +465,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     }
 
     /// How many re-simulated frames a scrub may voice. A short forward jump
-    /// (the shift-arrow step) plays its notes by so a beat can be found by
+    /// (the shift-arrow step) plays its notes, so a beat can be found by
     /// ear; anything longer, and every rewound jump, re-simulates quiet.
     static let audibleScrubSpan = 30
 
