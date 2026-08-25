@@ -1420,13 +1420,15 @@ fragment float4 ollin_rt_reflect_resolve(PresentOut in [[stage_in]],
 #endif
 
 // Temporal resolve for the deferred reflection: reproject last frame's accumulation by
-// the camera's motion, clamp it to the current frame's 3×3 neighborhood (ghosting
-// rejection), blend as an exponential moving average (the SSR temporal's scheme), but
-// reconstructing the world point from the reflection G-buffer's own full-precision
-// depth through the current inverse view-projection (no normalized-depth camera
-// geometry needed). A static camera reprojects to identity, so the jittered single-ray
-// trace converges to the supersampled reflection; under motion the clamp bounds any
-// stale history to the local neighborhood, degrading toward the single-ray look.
+// the camera's motion, rein the history in with a variance-clipping box (mean plus or
+// minus gamma sigma of the current 5x5 neighborhood, the moment-based form), blend as
+// an exponential moving average, reconstructing the world point from the reflection
+// G-buffer's own full-precision depth through the current inverse view-projection (no
+// normalized-depth camera geometry needed). Both the box width and the blend follow
+// the pixel's own reprojected motion: a still pixel earns a wide box and a longer
+// memory, so the jittered single-ray trace converges to the supersampled reflection;
+// a moving one falls back to a tight box and the base blend, degrading toward the
+// single-ray look.
 // params[0] = (texel.xy, alpha, hasHistory); params[4..7] = the current inverse
 // view-projection columns; params[8..11] = the previous view·projection columns.
 fragment float4 ollin_rt_reflect_temporal(PresentOut in [[stage_in]],
@@ -1452,15 +1454,47 @@ fragment float4 ollin_rt_reflect_temporal(PresentOut in [[stage_in]],
     float2 pndc = clip.xy / clip.w;
     float2 prevUV = float2(pndc.x * 0.5 + 0.5, 0.5 - pndc.y * 0.5); // Metal top-down uv
     if (any(prevUV < 0.0) || any(prevUV > 1.0)) return current;    // disoccluded / off-frame
-    float4 lo = current, hi = current;
-    for (int y = -1; y <= 1; y++) {
-        for (int x = -1; x <= 1; x++) {
+    // Variance clipping (the moment-based box, not a min/max clamp): a min/max box
+    // re-injects the current frame's own noise into the history every frame, which on a
+    // one-ray glossy layer holds the accumulation at the single-frame speckle forever
+    // (measured: the standing grain doubles and the pattern decorrelates every frame).
+    // The mean-and-sigma box scales itself: wide where the trace is noisy, so the
+    // average can build, and tight on a smooth mirror, where a ghost would show.
+    // 5x5 moments, not 3x3: the glossy layer's energy is sparse (a firefly every few
+    // pixels), and a window that catches none reads sigma 0, collapsing the box to a
+    // point that crushes the history there every frame.
+    float4 m1 = float4(0.0), m2 = float4(0.0);
+    for (int y = -2; y <= 2; y++) {
+        for (int x = -2; x <= 2; x++) {
             float4 s = traced.sample(samp, in.uv + float2(float(x), float(y)) * texel);
-            lo = min(lo, s); hi = max(hi, s);
+            m1 += s; m2 += s * s;
         }
     }
-    float4 hist = clamp(history.sample(samp, prevUV), lo, hi);
-    return mix(current, hist, alpha);             // exponential moving average
+    float4 mu = m1 / 25.0;
+    float4 sigma = sqrt(max(m2 / 25.0 - mu * mu, 0.0));
+    // How far this pixel reprojected, in texels. Still pixels earn a wide box and a
+    // longer memory; a moving one falls back to the tight box and the base blend. The
+    // 0.75-texel dead band keeps temporal AA's sub-pixel jitter from reading as motion.
+    float motion = length((in.uv - prevUV) / texel);
+    float still = 1.0 - saturate((motion - 0.75) / 1.5);
+    float gamma = mix(1.0, 6.0, still);
+    float4 lo = mu - gamma * sigma;
+    float4 hi = mu + gamma * sigma;
+    // Clip toward the box center rather than clamp per component (a clamp collects
+    // rejected history in the box corners and tints it).
+    // Color channels only: alpha is near constant, so its sigma-sized extent would
+    // crush every channel toward the current mean through the shared scale.
+    float4 hist = history.sample(samp, prevUV);
+    float3 center = 0.5 * (hi.rgb + lo.rgb);
+    float3 extent = 0.5 * (hi.rgb - lo.rgb) + 1e-5;
+    float3 v = hist.rgb - center;
+    float3 unit = abs(v / extent);
+    float ma = max(max(unit.x, unit.y), unit.z);
+    if (ma > 1.0) { hist.rgb = center + v / ma; }
+    // A still pixel keeps four times more of its history (0.88 becomes 0.97), which is
+    // what carries a one-ray trace to the export's finish; motion returns to the base.
+    float alphaEff = 1.0 - (1.0 - alpha) * mix(1.0, 0.25, still);
+    return mix(current, hist, alphaEff);          // exponential moving average
 }
 
 // MARK: - Temporal anti-aliasing (the 3D path's whole-frame accumulation)

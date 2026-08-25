@@ -3326,19 +3326,32 @@ trace into a small deferred chain (`encodeReflectionPass`, main canvas only):
    (see *The glossy lobe* below); without it, glossiness stays with the mesh
    fragment's roughness blend toward the prefiltered environment (the inline
    path's rule), because one ray cannot blur.
-3. **Temporal resolve, live** (`ollin_rt_reflect_temporal`): the SSR temporal's
-   scheme (reproject through the previous frame's view·projection, clamp the
-   history to the current 3×3 neighborhood, blend as an EMA on
-   `resolveSSRAlpha`-style tiers), but reconstructing the world point from the
-   G-buffer's own full-precision depth rather than the normalized depth layer.
-   The history is one `SSRHistorySlot` (`rtReflectHistory`), guarded by
+3. **Temporal resolve, live** (`ollin_rt_reflect_temporal`): reproject through
+   the previous frame's view·projection (reconstructing the world point from the
+   G-buffer's own full-precision depth rather than the normalized depth layer),
+   rein the history in with a **variance-clipping box** (mean ± γσ over the
+   current 5×5 neighborhood, the moment-based form), and blend as an EMA on
+   `resolveSSRAlpha`-style tiers. Both γ and the blend follow the pixel's own
+   reprojected motion: a still pixel earns a wide box (γ 6) and a longer memory
+   (the tier's 0.88 becomes 0.97), a moving one falls back to γ 1 and the base
+   tier. Three parts of that box are load-bearing, each measured on the glossy
+   example's satin floor with a static camera: a **min/max clamp holds the
+   accumulation at the single-frame speckle forever** (the box re-injects the
+   current frame's noise into the history every frame; the standing grain reads
+   double and the pattern decorrelates), the moments need **5×5, not 3×3** (the
+   glossy layer's energy is sparse, and a window that catches no firefly reads
+   σ 0 and crushes the history to a point), and the clip runs on the **color
+   channels only** (alpha is near constant, so its σ-sized extent would drag
+   every channel to the current mean through the clip's shared scale). The
+   history is one `SSRHistorySlot` (`rtReflectHistory`), guarded by
    `statefulEncodeIsRepeat` so the live frame-grab can't double-step it,
    reallocated on a size change. A static camera reprojects to identity and the
-   single jittered ray converges to the supersampled reflection in about a
-   dozen frames; under motion the clamp bounds stale history and it degrades
-   toward the single-ray look (the SSR temporal's accepted behavior; full
-   view-dependent reflection reprojection needs a depth history and was
-   declined as impractical, per the published technique's own author).
+   single jittered ray converges to the supersampled reflection (measured on the
+   window: standing grain 1.37 → 0.43, frame-to-frame change 3.24 → 0.53, with
+   0.38 the export's own figure); under motion the tight box bounds stale
+   history and it degrades toward the single-ray look (full view-dependent
+   reflection reprojection needs a depth history and was declined as
+   impractical, per the published technique's own author).
 4. **Headless/export supersample.** `image(of:)` runs the same chain with
    `supersample: true`: N deterministic jittered rays averaged **within the one
    frame** (perf 4 / default 8 / detail 16; export resolves `.detail`), no
