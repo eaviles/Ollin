@@ -29,9 +29,15 @@ final class GlossyReflections: Sketch {
 
     override func draw() {
         background(Color(hex: 0x0b0d11))
-        cameraShowcase(.autoOrbit(period: .tau / 0.09),
-                       target: Vector3(0, 1.0, 0), radius: 9.5, elevation: 0.30,
+        // A sway, not a full orbit: the arc keeps the room in frame instead of
+        // carrying the camera behind the back wall, and the reflections still
+        // get judged in motion.
+        cameraShowcase(.sway(amplitude: .pi / 5, period: 26),
+                       target: Vector3(0, 1.0, 0), radius: 14, elevation: 0.30,
                        fieldOfView: .pi / 4, near: 1, far: 40)
+        // The live window renders at two-thirds size and reconstructs the full
+        // canvas; exports and snapshots still render every pixel.
+        temporalUpscaling()
         environment(.studio.intensity(1.0).backgroundBlur(0.6))
         directionalLight(.white, direction: Vector3(-0.35, -1, -0.3), intensity: 0.8)
         castShadows()
