@@ -212,8 +212,10 @@ final class SceneExplorer: Sketch {
                 // The light rig is frame state, not stack state, so the cage is
                 // drawn lit; a bright fill keeps it reading as a marker.
                 withState {
-                    fill(Color(hue: 0.75, saturation: 0.35, brightness: 1))
-                    let edge = radius * 0.004
+                    // Brighter than any lit surface, so the bloom threshold
+                    // below catches the cage and nothing else.
+                    fill(Color(red: 2.9, green: 2.3, blue: 3.5))
+                    let edge = radius * 0.0024
                     let xs = [plo.x, phi.x], ys = [plo.y, phi.y], zs = [plo.z, phi.z]
                     for y in ys { for z in zs {
                         drawCapsule(from: Vector3(plo.x, y, z), to: Vector3(phi.x, y, z), radius: edge)
@@ -225,6 +227,7 @@ final class SceneExplorer: Sketch {
                         drawCapsule(from: Vector3(x, y, plo.z), to: Vector3(x, y, phi.z), radius: edge)
                     } }
                 }
+                postProcess(.bloom(threshold: 1.15, intensity: 0.9, radius: 0.04))
             }
             let leaf = p.chain[p.chain.count - 1]
             var notes: [String] = []
