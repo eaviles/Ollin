@@ -10,7 +10,7 @@ Open the inspector with **⌘/** (standalone), or read it in the sidebar of Olli
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/32-Installations/CostRow-dark.jpg">
-  <img src="../../Guide/Images/32-Installations/CostRow.jpg" alt="A diagram of the inspector's cost row: a CPU bar filled a little over half, a GPU bar filled less, and a line of three counts reading 1 draw, 2 passes, 1 batch, with callouts naming what each part means" width="680">
+  <img src="../../Guide/Images/32-Installations/CostRow.jpg" alt="A diagram of the inspector's cost row: a CPU bar filled a little over half, a GPU bar filled less, and a row of three cells reading 1 draw, 2 passes, 1 batch, with callouts naming what each part means" width="680">
 </picture>
 
 ### Contents

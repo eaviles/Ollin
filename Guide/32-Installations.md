@@ -65,7 +65,7 @@ Press **⌘/** for the inspector. Under the frame rate sit two bars and three co
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="Images/32-Installations/CostRow-dark.jpg">
-  <img src="Images/32-Installations/CostRow.jpg" alt="A diagram of the inspector's cost row: a CPU bar filled a little over half, a GPU bar filled less, and a line of three counts reading 1 draw, 2 passes, 1 batch, with callouts naming what each part means" width="680">
+  <img src="Images/32-Installations/CostRow.jpg" alt="A diagram of the inspector's cost row: a CPU bar filled a little over half, a GPU bar filled less, and a row of three cells reading 1 draw, 2 passes, 1 batch, with callouts naming what each part means" width="680">
 </picture>
 
 The **CPU** bar is your `draw()` plus the encoding that turns it into GPU commands. Tessellation lives there: every fill and every stroke is cut into triangles before the GPU sees it. The **GPU** bar is what the card spent on the frame, taken from its own clock.

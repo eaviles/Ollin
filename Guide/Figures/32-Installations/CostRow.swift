@@ -38,25 +38,38 @@ final class CostRow: Sketch {
         fill(cardFill)
         drawRect(card, cornerRadius: 12)
 
-        // The frame-rate strip the cost row sits under.
+        // The fact strip the cost row sits under: frame rate, canvas, and a
+        // cell per drawing path in use.
         let strip = card.y + 58
         statCell("58", "FPS", at: Vector2(card.x + 48, strip), valueColor: gpuTint)
-        statCell("9.8 ms", "CPU", at: Vector2(card.x + 143, strip), valueColor: readout)
-        statCell("1080²", "CANVAS", at: Vector2(card.x + 238, strip), valueColor: readout)
-        statCell("8k sdf", "GEOMETRY", at: Vector2(card.x + 333, strip), valueColor: readout)
+        statCell("1080²", "CANVAS", at: Vector2(card.x + 143, strip), valueColor: readout)
+        statCell("8k", "SDF", at: Vector2(card.x + 238, strip), valueColor: readout)
+        statCell("31k", "TRI", at: Vector2(card.x + 333, strip), valueColor: readout)
 
         stroke(cardLine)
         strokeWeight(1)
+        for i in 1...3 {
+            let x = card.x + 95.5 * Double(i)
+            drawLine(Vector2(x, card.y + 34), Vector2(x, card.y + 92))
+        }
         drawLine(Vector2(card.x, card.y + 92), Vector2(card.x + card.width, card.y + 92))
 
         // The two bars, both scaled to one frame.
         bar(icon: "CPU", value: cpuMS, tint: cpuTint, y: card.y + 124, in: card)
         bar(icon: "GPU", value: gpuMS, tint: gpuTint, y: card.y + 154, in: card)
 
-        // The counts.
-        countCell("1", "DRAW", at: Vector2(card.x + 68, card.y + 200))
-        countCell("2", "PASSES", at: Vector2(card.x + 190, card.y + 200))
-        countCell("1", "BATCH", at: Vector2(card.x + 312, card.y + 200))
+        // The counts, cells like the strip's.
+        stroke(cardLine)
+        strokeWeight(1)
+        drawLine(Vector2(card.x, card.y + 178), Vector2(card.x + card.width, card.y + 178))
+        for i in 1...2 {
+            let x = card.x + card.width / 3 * Double(i)
+            drawLine(Vector2(x, card.y + 178), Vector2(x, card.y + card.height))
+        }
+        let counts = card.y + 206
+        statCell("1", "DRAW", at: Vector2(card.x + 63, counts), valueColor: readout)
+        statCell("2", "PASSES", at: Vector2(card.x + 190, counts), valueColor: readout)
+        statCell("1", "BATCH", at: Vector2(card.x + 317, counts), valueColor: readout)
 
         // Callouts. Every leader ends just outside the card, so no line crosses
         // the readout it is pointing at.
@@ -115,20 +128,6 @@ final class CostRow: Sketch {
         textSize(10)
         textAlign(.left, .center)
         drawText("ms", card.x + card.width - 40, y)
-    }
-
-    /// One icon-led count under the bars.
-    func countCell(_ value: String, _ name: String, at p: Vector2) {
-        noStroke()
-        fill(Color(white: 1, alpha: 0.30))
-        drawRect(p.x - 34, p.y - 6, 11, 11, cornerRadius: 2)
-        fill(readout)
-        textSize(13)
-        textAlign(.left, .center)
-        drawText(value, p.x - 16, p.y)
-        fill(label)
-        textSize(10)
-        drawText(name, p.x - 2, p.y)
     }
 
     func callout(_ line1: String, _ line2: String, at p: Vector2, to target: Vector2,
