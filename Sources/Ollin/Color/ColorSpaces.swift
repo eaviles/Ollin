@@ -273,6 +273,10 @@ public enum ColorSpace: Sendable {
     case oklch
     /// OKHSL — like OKLCH but every step is displayable, so nothing clamps.
     case okhsl
+    /// Pigment-wise: each color becomes a reflectance spectrum and the two mix
+    /// the way scattering paints do (the Kubelka-Munk model, see `Spectrum`).
+    /// Yellow and blue meet in green, and mixes darken like real paint.
+    case paint
 }
 
 public extension Color {
@@ -328,6 +332,8 @@ public extension Color {
             let hb = b.s > 1e-5 ? b.h : a.h
             return Color(OKHSL(h: lerpHue(ha, hb, t), s: lerp(a.s, b.s), l: lerp(a.l, b.l)),
                          alpha: alpha)
+        case .paint:
+            return Color(Spectrum(x).mixedAsPaint(with: Spectrum(y), t), alpha: alpha)
         }
     }
 }

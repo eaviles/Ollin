@@ -167,6 +167,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("effects-glitter",
                  note: "The iridescence + glitter filters over a fixed heart + star at fixed shift/phase. Pins the thin-film interference color over the domain-warped fbm thickness field, the two hash-cell sparkle layers (dust + cross flares) with their alpha gating, and both dispatches.",
                  make: { EffectsGlitter() }),
+    SnapshotCase("spectral-color",
+                 note: "The spectral quartet on one sheet (no time, no random): the paint-mix combine (a yellow disc over a blue field, meeting in green), the measured thin-film filter at a fixed shift, the diffraction grating over bright dots, and on the CPU side a .paint-space gradient beside a Color(wavelength:) rainbow row. Pins the cooked tap block (basis, weights, and the taps' own XYZ-to-RGB inverse), all three spectral dispatches and fragments, the Kubelka-Munk mix on both processors, and the vendored data tables behind Spectrum.",
+                 make: { SpectralSheet() }),
     SnapshotCase("mesh-gradient",
                  note: "The mesh-gradient generator at a fixed phase. Pins the inverse-distance-weighted blob blend (power 3.5), the two-pass domain warp + vortex swirl, the sRGB-space palette blending, and the grain overlay + boundary jitter.",
                  make: { MeshGradientPattern() }),
@@ -6535,6 +6538,65 @@ private final class EffectsGlitter: Sketch {
             drawStar(width * 0.73, height * 0.5, 62, 31, points: 5)
         }
         drawImage(sparkle.filtered(.glitter(density: 60, amount: 1.2, saturation: 0.6, phase: 1.3)).image, 0, 0)
+    }
+}
+
+/// The spectral quartet on one sheet: the paint-mix combine, the measured
+/// thin-film filter, the diffraction grating, and the CPU side (.paint gradient
+/// and the wavelength door). Fixed parameters, no time, no random.
+private final class SpectralSheet: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.04))
+        let yellow = Color(red: 1, green: 0.85, blue: 0.05)
+        let blue = Color(red: 0.1, green: 0.25, blue: 0.9)
+
+        // Top left: yellow paint over a blue field, meeting in green.
+        let field = renderTarget()
+        withTarget(field) { background(blue) }
+        let wash = renderTarget()
+        withTarget(wash) {
+            noStroke(); fill(yellow)
+            drawCircle(128, 128, 80)
+        }
+        drawImage(field.combined(with: wash, .paintMix(amount: 0.5)).image,
+                  in: Rectangle(x: 1, y: 1, width: 126, height: 126))
+
+        // Top right: the measured film over a bright heart.
+        let sheen = renderTarget()
+        withTarget(sheen) {
+            background(Color(white: 0.08))
+            noStroke(); fill(Color(white: 0.85))
+            drawHeart(128, 128, 150)
+        }
+        drawImage(sheen.filtered(.thinFilm(amount: 0.9, thickness: 460, variation: 340,
+                                           scale: 2, shift: 0.7)).image,
+                  in: Rectangle(x: 129, y: 1, width: 126, height: 126))
+
+        // Bottom left: bright dots streaking into grating orders.
+        let sparks = renderTarget()
+        withTarget(sparks) {
+            background(.black)
+            noStroke(); fill(.white)
+            drawCircle(90, 110, 7)
+            drawCircle(160, 150, 5)
+            fill(Color(white: 0.7))
+            drawCircle(128, 190, 4)
+        }
+        drawImage(sparks.filtered(.diffraction(amount: 0.16, angle: 0.5, orders: 2)).image,
+                  in: Rectangle(x: 1, y: 129, width: 126, height: 126))
+
+        // Bottom right: the CPU side. A .paint gradient (yellow to blue through
+        // green) over a rainbow row of single wavelengths.
+        noStroke()
+        fill(.linear(from: Vector2(129, 129), to: Vector2(255, 129),
+                     Ramp([yellow, blue], in: .paint)))
+        drawRect(129, 129, 126, 80)
+        for (i, nm) in [430.0, 470, 510, 550, 590, 630, 670].enumerated() {
+            fill(Color(wavelength: nm))
+            drawRect(129 + Double(i) * 18, 212, 18, 43)
+        }
     }
 }
 

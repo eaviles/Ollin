@@ -241,6 +241,15 @@ public struct Filter: Sendable {
         /// `phase` animates the twinkle.
         case glitter(density: Double, amount: Double, size: Double, saturation: Double,
                      phase: Double)
+        /// A measured thin film washed over the content: interference worked out per
+        /// wavelength for a film `thickness` nanometers deep (swirled by `variation`),
+        /// index `ior`, so the colors follow the real film color order.
+        case thinFilm(amount: Double, thickness: Double, variation: Double, ior: Double,
+                      scale: Double, shift: Double, quality: RenderQuality)
+        /// Diffraction grating: bright content repeats into rainbow-split orders along
+        /// `angle`, each order's offset growing with wavelength (the grating equation).
+        case diffraction(amount: Double, angle: Double, orders: Double, falloff: Double,
+                         quality: RenderQuality)
         /// Scanlines: darken alternating horizontal lines (`count` across the height) by `intensity`.
         case scanlines(count: Double, intensity: Double)
         /// Glitch: shove random blocks of rows sideways and split their channels; `seed` reshuffles.
@@ -714,6 +723,44 @@ public struct Filter: Sendable {
         Filter(kind: .glitter(density: max(4, density), amount: max(0, amount),
                               size: min(max(size, 0.25), 3), saturation: min(max(saturation, 0), 1),
                               phase: phase))
+    }
+
+    /// Thin film, measured: wash the content with the colors a real film shows,
+    /// worked out per wavelength (a `quality`-sized set of taps) instead of a styled
+    /// rainbow, so the bands follow the film color order a soap bubble drains
+    /// through. `thickness` is the film's mean depth in nanometers (about 100 for
+    /// the near-clear film, 300 to 600 for the strong colors, toward 1500 for the
+    /// pale crowded bands), `variation` how many nanometers the swirl adds and
+    /// removes, `ior` the film's refractive index (1.35 soap, 1.45 oil), `scale` how
+    /// fine the swirl is, and `shift` slides the swirl: feed it your `time` for a
+    /// draining film. The stylized sibling is `iridescence`; this one buys the real
+    /// interference spectrum, including the pale washed-out look of a thick film.
+    public static func thinFilm(amount: Double = 0.7, thickness: Double = 420,
+                                variation: Double = 280, ior: Double = 1.35,
+                                scale: Double = 2.5, shift: Double = 0,
+                                quality: RenderQuality = .default) -> Filter {
+        Filter(kind: .thinFilm(amount: min(max(amount, 0), 1),
+                               thickness: min(max(thickness, 20), 2000),
+                               variation: min(max(variation, 0), 1200),
+                               ior: min(max(ior, 1.05), 2.5),
+                               scale: max(0.001, scale), shift: shift, quality: quality))
+    }
+
+    /// Diffraction grating: split the content into rainbow orders along `angle`, the
+    /// way a bright light streaks across a groove pattern. Each side of the image
+    /// repeats `orders` times, every repeat offset by wavelength (red reaching
+    /// farther than blue, the grating equation), so bright marks stretch into
+    /// spectral streaks while the image itself stays put. `amount` is the first
+    /// order's reach (a fraction of the layer), `falloff` how much dimmer each
+    /// further order is, and `quality` the wavelength tap count (more taps, smoother
+    /// rainbow). Run it on bright-on-dark content and follow with `.bloom` for the
+    /// full lens-flare sparkle.
+    public static func diffraction(amount: Double = 0.05, angle: Double = 0,
+                                   orders: Int = 2, falloff: Double = 0.55,
+                                   quality: RenderQuality = .default) -> Filter {
+        Filter(kind: .diffraction(amount: max(0, amount), angle: angle,
+                                  orders: Double(min(max(orders, 1), 3)),
+                                  falloff: min(max(falloff, 0), 1), quality: quality))
     }
 
     // MARK: Retro / optical

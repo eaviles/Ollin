@@ -1262,6 +1262,134 @@ fragment float4 ollin_fx_glitter(PresentOut in [[stage_in]],
     return ollin_premul(c + sparkle * amount * fade, s.a);
 }
 
+// MARK: - Spectral filters
+//
+// Thin film and diffraction work per wavelength rather than per channel. The
+// CPU appends a spectral tap block after the op's own params, cooked from the
+// tables behind Spectrum:
+//
+//   params[o]                   (taps, 0, 0, 0)
+//   params[o + 1 + i]           the reflectance basis at tap i, wavelength (nm) in .w
+//   params[o + 1 + taps + i]    the daylight-weighted observer (XYZ) at tap i
+//   params[o + 1 + 2*taps + r]  row r of the taps' own XYZ-to-linear-RGB inverse
+//
+// The inverse comes from the same taps the pass integrates over, so a spectrum
+// built from a color converts back to exactly that color at any tap count:
+// zero-amount passes and equal inputs stay identities.
+
+// The XYZ-to-linear-RGB matrix from its three packed rows.
+static inline float3x3 ollin_spectral_matrix(constant float4 *rows) {
+    return float3x3(float3(rows[0].x, rows[1].x, rows[2].x),
+                    float3(rows[0].y, rows[1].y, rows[2].y),
+                    float3(rows[0].z, rows[1].z, rows[2].z));
+}
+
+// thin film: the content washed with a measured interference film (params[0]:
+// amount, thickness nm, variation nm, ior; params[1]: scale, shift, aspect;
+// spectral block at offset 2). The film depth is the same domain-warped fbm
+// field the stylized iridescence uses, but in nanometers, and the color is the
+// real two-beam interference reflectance of a symmetric film integrated over
+// the wavelength taps, so thin runs clear, the strong colors arrive in the
+// film color order, and a thick film crowds its bands into the washed-out
+// pastel a real bubble shows just before it pops.
+fragment float4 ollin_fx_thin_film(PresentOut in [[stage_in]],
+                                   texture2d<float> src [[texture(0)]],
+                                   sampler samp [[sampler(0)]],
+                                   constant float4 *params [[buffer(0)]]) {
+    float amount = params[0].x, thickness = params[0].y;
+    float variation = params[0].z, ior = params[0].w;
+    float scale = params[1].x, shift = params[1].y, aspect = params[1].z;
+    int taps = int(params[2].x + 0.5);
+    constant float4 *basis = params + 3;
+    constant float4 *weight = basis + taps;
+    float3x3 rgbFromXYZ = ollin_spectral_matrix(weight + taps);
+
+    float4 s = src.sample(samp, in.uv);
+    if (amount <= 0.0) return s;   // zero is an exact identity, not a round trip
+    float3 c = ollin_unpremul(s);
+    float l = ollin_luma(c);
+
+    // The depth field, in nanometers: domain-warped fbm (contrast-stretched, as
+    // the iridescence field is) swinging the mean thickness by the variation,
+    // deepened a little where the content is bright.
+    float2 p = float2(in.uv.x * aspect, in.uv.y) * scale;
+    float2 drift = float2(shift * 0.31, -shift * 0.17);
+    float warp = ollin_fbm(p * 1.7 + drift * 1.3 + 3.7);
+    float field = ollin_fbm(p + 1.4 * float2(warp, warp * 0.6) + drift);
+    field = clamp((field - 0.5) * 1.8 + 0.5, 0.0, 1.0);
+    float depth = max(0.0, thickness + (field - 0.5) * 2.0 * variation
+                             + l * 0.35 * variation);
+
+    // Two-beam interference of a symmetric lossless film at normal incidence:
+    // per tap, the phase 4 pi n d / lambda and the exact reflectance for one
+    // boundary amplitude r = (n - 1) / (n + 1).
+    float r = (ior - 1.0) / (ior + 1.0);
+    float r2 = r * r;
+    float3 xyz = float3(0.0);
+    for (int i = 0; i < taps; ++i) {
+        float lambda = basis[i].w;
+        float cosd = cos(12.566370614 * ior * depth / lambda);
+        float filmR = 2.0 * r2 * (1.0 - cosd)
+                    / (1.0 + r2 * r2 - 2.0 * r2 * cosd);
+        xyz += weight[i].xyz * filmR;
+    }
+    // Normalize by the peak a single boundary pair can reach, so full
+    // constructive interference reads as full brightness and the thickness
+    // keeps its own contrast (a thick film's crowded bands average pale).
+    float peak = 4.0 * r2 / ((1.0 + r2) * (1.0 + r2));
+    float3 film = max(rgbFromXYZ * xyz, 0.0) / max(peak, 1e-6);
+    float3 sheen = film * (0.15 + 0.85 * l);
+    return ollin_premul(mix(c, sheen, clamp(amount, 0.0, 1.0)), s.a);
+}
+
+// diffraction: rainbow-split grating orders along an axis (params[0]: amount,
+// angle, orders, falloff; params[1]: aspect; spectral block at offset 2). Each
+// order repeats the image offset along the axis in proportion to wavelength
+// (the grating equation, small angles), tinted by that tap's own display
+// color; the zero order keeps the image itself. Accumulation runs on the
+// premultiplied samples, light spreading as light, so a bright mark streaks
+// past its own silhouette, and the per-channel weight normalization makes a
+// zero amount (every sample landing on the same texel) an exact identity. The
+// tap colors sum to white by construction, so a flat field keeps its color.
+fragment float4 ollin_fx_diffraction(PresentOut in [[stage_in]],
+                                     texture2d<float> src [[texture(0)]],
+                                     sampler samp [[sampler(0)]],
+                                     constant float4 *params [[buffer(0)]]) {
+    float amount = params[0].x, angle = params[0].y, falloff = params[0].w;
+    int orders = int(params[0].z + 0.5);
+    float aspect = params[1].x;
+    int taps = int(params[2].x + 0.5);
+    constant float4 *basis = params + 3;
+    constant float4 *weight = basis + taps;
+    float3x3 rgbFromXYZ = ollin_spectral_matrix(weight + taps);
+
+    float2 axis = float2(cos(angle), sin(angle)) / float2(aspect, 1.0);
+    float4 s0 = src.sample(samp, in.uv);
+    if (amount <= 0.0) return s0;   // zero is an exact identity, not a round trip
+    float3 acc = s0.rgb;
+    float accA = s0.a;
+    float3 wsum = float3(1.0);
+    float wsumA = 1.0;
+    for (int i = 0; i < taps; ++i) {
+        float lambda = basis[i].w;
+        float3 tapColor = max(rgbFromXYZ * weight[i].xyz, 0.0);
+        float2 reach = axis * amount * (lambda / 550.0);
+        float fall = 1.0;
+        for (int m = 1; m <= orders; ++m) {
+            fall *= falloff;
+            float3 w = tapColor * fall;
+            float4 sPlus = src.sample(samp, in.uv + reach * float(m));
+            float4 sMinus = src.sample(samp, in.uv - reach * float(m));
+            acc += (sPlus.rgb + sMinus.rgb) * w;
+            wsum += 2.0 * w;
+            float lw = ollin_luma(w);
+            accA += (sPlus.a + sMinus.a) * lw;
+            wsumA += 2.0 * lw;
+        }
+    }
+    return float4(acc / wsum, accA / max(wsumA, 1e-6));
+}
+
 // MARK: - Retro / optical filters
 
 // scanlines: darken alternating rows (params: count, intensity).

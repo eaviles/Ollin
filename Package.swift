@@ -309,6 +309,21 @@ let package = Package(
             exclude: ["LICENSE.txt", "README.md"],
             publicHeadersPath: "Include"
         ),
+        // Vendored spectral color data: the three BT.709 reflectance basis
+        // spectra from Mallett & Yuksel's "Spectral Primary Decomposition for
+        // Rendering with sRGB Reflectance" (EGSR 2019) reference implementation,
+        // plus the CIE 1931 observer and D65 illuminant tables it ships, all at
+        // 380-780 nm in 5 nm steps. Bundled third-party data under its MIT
+        // license; see External/CSpectralData/README.md and the repo-root
+        // THIRD-PARTY-NOTICES.md. Wrapped behind Ollin's own API (`Spectrum`,
+        // paint mixing, the spectral filters); the C symbols stay off Ollin's
+        // public surface.
+        .target(
+            name: "CSpectralData",
+            path: "External/CSpectralData",
+            exclude: ["LICENSE", "README.md"],
+            publicHeadersPath: "Include"
+        ),
         // Vendored Clipper2 (Angus Johnson's polygon clipping + offsetting
         // library, C++), the engine behind `Shape`'s booleans (union/
         // intersection/subtracting/symmetricDifference) and `offset(by:join:)`.
@@ -569,7 +584,8 @@ let package = Package(
         ),
         .target(
             name: "Ollin",
-            dependencies: ["CLibtess2", "CClipper2", "COllinShaders", "CHosekWilkie", "CMikkTSpace"],
+            dependencies: ["CLibtess2", "CClipper2", "COllinShaders", "CHosekWilkie", "CMikkTSpace",
+                           "CSpectralData"],
             // Declaring the `.metal` files as resources makes SwiftPM copy them
             // into the target's resource bundle and synthesize `Bundle.module`,
             // which MetalRenderer.loadLibrary reads and concatenates (ShaderCore

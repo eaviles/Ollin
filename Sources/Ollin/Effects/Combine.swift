@@ -54,6 +54,10 @@ public struct Combine: Sendable {
                       quality: RenderQuality)
         /// Cross-dissolve the base toward the aux by `amount` (0 = base, 1 = aux).
         case mix(amount: Double)
+        /// Blend the base toward the aux the way scattering paints blend: per pixel,
+        /// per wavelength tap, through the Kubelka-Munk model over reflectance
+        /// spectra, gated by the aux's own coverage.
+        case paintMix(amount: Double, quality: RenderQuality)
         /// Depth-of-field: blur the base by the aux read as a depth map. The band
         /// `focus ± range` stays sharp; the blur radius grows with distance from it
         /// up to `maxBlur` pixels. `quality` sets the bokeh sample count tier.
@@ -138,6 +142,20 @@ public struct Combine: Sendable {
     /// per-pixel lerp (0 keeps the base, 1 becomes the aux, 0.5 is an even blend).
     public static func mix(amount: Double = 0.5) -> Combine {
         Combine(kind: .mix(amount: min(max(amount, 0), 1)))
+    }
+
+    /// Paint mix: blend the base toward the aux the way scattering paints blend,
+    /// not the way lights cross-dissolve. Each pixel's two colors become
+    /// reflectance spectra and mix through the Kubelka-Munk model over a
+    /// `quality`-sized set of wavelength taps (the GPU form of
+    /// `Color.mix(_:_:t:in: .paint)`), so a yellow wash over a blue field meets it
+    /// in green and overlaps darken like glazes. The aux's coverage gates the mix:
+    /// where the aux layer is empty the base passes through untouched, so the aux
+    /// reads as paint laid over the base. `amount` is the mix at full coverage
+    /// (0 keeps the base, 1 becomes the aux where it's opaque).
+    public static func paintMix(amount: Double = 0.5,
+                                quality: RenderQuality = .default) -> Combine {
+        Combine(kind: .paintMix(amount: min(max(amount, 0), 1), quality: quality))
     }
 
     /// Depth of field: blur the base layer by the aux layer, read as a *depth map*

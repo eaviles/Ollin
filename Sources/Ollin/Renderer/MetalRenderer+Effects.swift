@@ -518,6 +518,16 @@ extension MetalRenderer {
             return pass("ollin_fx_glitter", [input],
                         [SIMD4(Float(density), Float(amount), Float(phase), aspect),
                          f(saturation, size, 0, 0)])
+        case let .thinFilm(amount, thickness, variation, ior, scale, shift, quality):
+            return pass("ollin_fx_thin_film", [input],
+                        [f(amount, thickness, variation, ior),
+                         SIMD4(Float(scale), Float(shift), aspect, 0)]
+                        + SpectralTaps.block(resolveDispersionTaps(quality)))
+        case let .diffraction(amount, angle, orders, falloff, quality):
+            return pass("ollin_fx_diffraction", [input],
+                        [f(amount, angle, orders, falloff),
+                         SIMD4(aspect, 0, 0, 0)]
+                        + SpectralTaps.block(resolveDispersionTaps(quality)))
 
         // Retro / optical
         case let .scanlines(count, intensity):
@@ -1067,6 +1077,10 @@ extension MetalRenderer {
                          SIMD4(1 / Float(width), 1 / Float(height), 0, 0)])
         case let .mix(amount):
             return pass("ollin_fx_mix", [SIMD4(Float(amount), 0, 0, 0)])
+        case let .paintMix(amount, quality):
+            return pass("ollin_fx_paint_mix",
+                        [SIMD4(Float(amount), 0, 0, 0)]
+                        + SpectralTaps.block(resolveDispersionTaps(quality)))
         case let .seamlessClone(amount, threshold):
             // Three passes and no new solver: read the patch's rim as boundary values,
             // settle them on the shared Laplace ladder, add the answer back under the

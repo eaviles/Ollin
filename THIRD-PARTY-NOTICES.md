@@ -146,6 +146,24 @@ redistributed inside this repository.
 
 ---
 
+## Spectral primaries data (simple-spectral)
+
+- **Used for:** spectral color (`Spectrum`, `.paint` mixing, and the spectral thin-film / diffraction / paint-mix GPU passes): the three BT.709 reflectance basis spectra a color decomposes into, plus the CIE 1931 2° observer and D65 illuminant tables, all at 380-780 nm in 5 nm steps. Cooked once on the CPU; Ollin's own shaders receive derived per-tap constants and never see the tables.
+- **Location in this repo:** [`External/CSpectralData/`](External/CSpectralData/), the CSV data reformatted verbatim as C arrays (provenance and the exact files taken in the directory's [`README.md`](External/CSpectralData/README.md))
+- **Upstream:** https://github.com/geometrian/simple-spectral (commit `4b36e4d`, 2020-07-19), the reference implementation accompanying *Spectral Primary Decomposition for Rendering with sRGB Reflectance* (Agatha Mallett and Cem Yuksel, EGSR 2019), by the paper's first author.
+- **License:** MIT, full text at [`External/CSpectralData/LICENSE`](External/CSpectralData/LICENSE)
+
+> MIT License
+>
+> Copyright (c) 2019
+>
+> Permission is hereby granted, free of charge, to any person obtaining a copy
+> of this software and associated documentation files (the "Software"), to deal
+> in the Software without restriction… (see `External/CSpectralData/LICENSE` for
+> the full text, including the warranty disclaimer).
+
+---
+
 ## Cozette
 
 - **Used for:** the bundled default bitmap font (`BitmapFont.builtin`), loaded at runtime from its BDF by the font loader and rendered by `drawText`.

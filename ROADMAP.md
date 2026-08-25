@@ -107,7 +107,7 @@ Deeper use of the Metal core and Apple displays, all opt-in so the 2D path stays
 
 - **Dolby Vision.** Dynamic per-scene HDR metadata, where the static HDR10 metadata a video carries describes the whole file at once. It needs the licensed encoder path rather than AVFoundation's plain HDR writer, so it is a licensing question before it is an API one.
 
-See the [design notes](DESIGN-NOTES.md#rendering-and-color-frontier). (The most speculative items here, spectral rendering, AI frame interpolation, optical-flow self-warp, and print color management, sit under [Further out / exploratory](#further-out--exploratory).)
+See the [design notes](DESIGN-NOTES.md#rendering-and-color-frontier). (The most speculative items here, AI frame interpolation, optical-flow self-warp, and print color management, sit under [Further out / exploratory](#further-out--exploratory).)
 
 ## Authoring and editor tooling
 
@@ -147,7 +147,6 @@ See the [design notes](DESIGN-NOTES.md#a-third-party-extension-ecosystem).
 
 Lower-confidence ideas kept on record but deliberately not near-term: each is plausible on the platform, but speculative enough that it shouldn't crowd the planned work above. Distinct from [On the horizon](#on-the-horizon), which is the platform-gated later legs (iOS, visionOS, AR), not uncertainty.
 
-- **Spectral rendering.** Composite in spectra rather than RGB, for physically-correct subtractive color mixing, thin-film iridescence, and diffraction. (Detail under [rendering and color frontier](DESIGN-NOTES.md#rendering-and-color-frontier).)
 - **AI frame interpolation.** Render at a lower frame rate and ship smooth slow-motion via an on-device interpolation model.
 - **Optical-flow self-warp.** Feed the sketch's own motion field, from the existing Vision optical flow, back into its history for flow and glitch looks.
 - **Print color management.** CMYK process separation through real ICC profiles, plus a soft-proof filter previewing the canvas as a chosen printer profile reproduces it: the offset-print sibling of the spot-ink `printInks` separations. (Detail under [rendering and color frontier](DESIGN-NOTES.md#rendering-and-color-frontier).)

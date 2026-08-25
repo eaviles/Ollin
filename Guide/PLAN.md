@@ -329,6 +329,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | Kaleidoscope symmetry (`symmetry`/`noSymmetry`, in `Drawing/Drawing.md`) | Ch 6 | taught ("The fold, done for you" after the hand-rolled rotate loop, with a three-panel figure: symmetry as drawing state, why the mirrored form is the one worth having, and folding around the current origin) |
 | Clipping (`withClip`, in `Drawing/Drawing.md`) | Ch 6 | taught ("Drawing inside a shape" with a three-panel figure: the same stripes confined three ways, all three region types, and nesting as intersection) |
 | `Drawing/Color.md` (Color, OKLab, palettes, colormaps) | Ch 2 | taught |
+| `Drawing/Spectrum.md` (Spectrum, `.paint` mixing, wavelength/blackbody, `.thinFilm`/`.diffraction`/`.paintMix`) | Ch 2 | taught ("Blue and yellow make green": the three-row PaintMixing figure, the `.paint` call and Ramp form, the reflectance story, and the pointer to the full spectral surface) |
 | Gradient paint (`Drawing/Color.md`) | Ch 2 | taught |
 | Palette file import (`loadPalette`/`loadPalettes`, hex/CSV/TSV/JSON/ASE; `Drawing/Color.md`) | Ch 2 | taught |
 | Palette extraction from an image (`Palette(extractedFrom:)`; `Drawing/Color.md`) | Ch 2 | taught |

@@ -53,6 +53,7 @@ Use it two ways. It is an index for the moment you remember the guide showing bl
 |---|---|---|---|
 | Color values | Named colors, hex, RGB, HSB, alpha, blackbody `Color(kelvin:)` | [Ch 2](02-Color.md) | [Color](../Docs/Drawing/Color.md) |
 | Perceptual color | The OKLab family and `Color.mix` that trusts your eye | [Ch 2](02-Color.md) | [Color](../Docs/Drawing/Color.md) |
+| Spectral color | `Spectrum` behind every color: `.paint` mixing that meets in green, wavelength and blackbody doors, thin-film, diffraction, and paint-mix effects | [Ch 2](02-Color.md) | [Spectral color](../Docs/Drawing/Spectrum.md) |
 | Palettes and ramps | ColorBrewer sets, harmony builders, smooth ramps, cosine palettes | [Ch 2](02-Color.md) | [Color](../Docs/Drawing/Color.md) |
 | Colormaps | Viridis, magma, turbo: perceptually even data-to-color ramps | [Ch 2](02-Color.md) | [Color](../Docs/Drawing/Color.md) |
 

@@ -15,7 +15,7 @@ Palettes, colormaps, and driving color from a value or from time.
 | [Gradients](Gradients/Sketch.swift) | gradient paint everywhere: a linear sky, a radial sun, along-path ramps on a Bézier and a polyline, a conic ring sweep, and per-vertex shading on a star and a curved shape |
 | [Harmonies](Harmonies/Sketch.swift) | a drifting base color and its complementary / split-complementary / triadic / analogous palettes, plus the analogous set as a `Ramp` |
 | [HSBWheel](HSBWheel/Sketch.swift) | a turning HSB color wheel (hue around, saturation outward), over a hex-literal backdrop |
-| [Mixing](Mixing/Sketch.swift) | the same two colors mixed in RGB, HSB, OKLab, OKLCH, and OKHSL, band by band |
+| [Mixing](Mixing/Sketch.swift) | the same two colors mixed in RGB, HSB, OKLab, OKLCH, OKHSL, and paint (Kubelka-Munk over spectra), band by band |
 | [PaletteFile](PaletteFile/Sketch.swift) | palettes read off disk: a CSV of six, and a hex-per-line file of one, with no format declared |
 | [PaletteFromImage](PaletteFromImage/Sketch.swift) | a palette clustered out of an image's pixels, recovering the five colors the picture was painted with |
 | [Palettes](Palettes/Sketch.swift) | seven cosine-gradient `CosinePalette` presets, each swept across the canvas and scrolled |

@@ -54,6 +54,49 @@ fragment float4 ollin_fx_mix(PresentOut in [[stage_in]],
     return mix(base.sample(samp, in.uv), other.sample(samp, in.uv), params[0].x);
 }
 
+// paint mix: blend the base toward the aux the way scattering paints blend
+// (params[0].x: amount; the spectral tap block, documented above
+// ollin_spectral_matrix, at offset 1). Per pixel both colors become
+// reflectance spectra on the tap grid, their Kubelka-Munk absorption ratios
+// mix by amount gated by the aux's coverage, and the mixed reflectance
+// converts back through the taps' own inverse, so equal inputs and an empty
+// aux are identities and yellow over blue meets in green. Colors clamp to the
+// reflectance range 0...1 (paint is a surface, not a light), and the output
+// coverage is the plain union of the two layers'.
+fragment float4 ollin_fx_paint_mix(PresentOut in [[stage_in]],
+                                   texture2d<float> base [[texture(0)]],
+                                   texture2d<float> other [[texture(1)]],
+                                   sampler samp [[sampler(0)]],
+                                   constant float4 *params [[buffer(0)]]) {
+    float amount = params[0].x;
+    int taps = int(params[1].x + 0.5);
+    constant float4 *basis = params + 2;
+    constant float4 *weight = basis + taps;
+    float3x3 rgbFromXYZ = ollin_spectral_matrix(weight + taps);
+
+    float4 sBase = base.sample(samp, in.uv);
+    float4 sAux = other.sample(samp, in.uv);
+    float t = amount * sAux.a;
+    if (t <= 1e-4) return sBase;
+    float3 cBase = clamp(ollin_unpremul(sBase), 0.0, 1.0);
+    float3 cAux = clamp(ollin_unpremul(sAux), 0.0, 1.0);
+    if (sBase.a <= 1e-4) cBase = cAux;   // paint over nothing is just the paint
+
+    float3 xyz = float3(0.0);
+    for (int i = 0; i < taps; ++i) {
+        float rBase = clamp(dot(cBase, basis[i].xyz), 1e-4, 0.9999);
+        float rAux = clamp(dot(cAux, basis[i].xyz), 1e-4, 0.9999);
+        float kBase = (1.0 - rBase) * (1.0 - rBase) / (2.0 * rBase);
+        float kAux = (1.0 - rAux) * (1.0 - rAux) / (2.0 * rAux);
+        float k = mix(kBase, kAux, t);
+        float mixed = 1.0 + k - sqrt(k * k + 2.0 * k);
+        xyz += weight[i].xyz * mixed;
+    }
+    float3 rgb = max(rgbFromXYZ * xyz, 0.0);
+    float aOut = sBase.a + sAux.a * (1.0 - sBase.a);
+    return ollin_premul(rgb, aOut);
+}
+
 // MARK: - Convolution pyramid
 //
 // Spread a handful of known values smoothly across a whole layer, in one pass

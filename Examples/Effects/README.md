@@ -15,6 +15,7 @@ Layered effects: draw into off-screen layers, filter them on the GPU, and compos
 | [RetroFilters](RetroFilters/Sketch.swift) | the retro / optical family: scanlines, glitch, CRT |
 | [Relight](Relight/Sketch.swift) | a layer read as a height map and lit as embossed physical matter: matte, metal, glass, sand, liquid (`.relight`) |
 | [Glitter](Glitter/Sketch.swift) | iridescent and glittering shapes: the thin-film `.iridescence` sheen and the sparkle-fleck `.glitter` filter, per shape via `compose { }` |
+| [SoapFilm](SoapFilm/Sketch.swift) | the measured spectral pair: `.thinFilm` interference draining through the real film color order, over `.diffraction` grating streaks |
 | [Distortion](Distortion/Sketch.swift) | uv-warp filters that re-sample the image: kaleidoscope, swirl, bulge, wave, ripple, polar, … |
 | [Patterns](Patterns/Sketch.swift) | procedural pattern `Generator`s (`generate(_:)`) and a composed mix |
 | [Cellular](Cellular/Sketch.swift) | the Worley cellular generator's three styles (cells, borders, mosaic), the feature points wandering on phase-periodic orbits so the field loops seamlessly (`.cellular`) |

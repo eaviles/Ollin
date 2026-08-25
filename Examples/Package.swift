@@ -116,6 +116,7 @@ let package = Package(
         example("Effects/RetroFilters"),
         example("Effects/Relight"),
         example("Effects/Glitter"),
+        example("Effects/SoapFilm"),
         example("Effects/MeshGradient"),
         example("Effects/DesignPatterns"),
         example("Effects/PatternFields"),

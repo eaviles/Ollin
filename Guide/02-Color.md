@@ -87,6 +87,25 @@ for i in 0..<12 {
 
 Twelve different hues, and none of them shouts over the others, because they genuinely share a lightness. Do the same with `Color(hue:...)` and the yellow will glow while the blue turns heavy and dark.
 
+## Blue and yellow make green
+
+Every space above still disagrees with your childhood. Mix blue and yellow in RGB or the OK family and you land on a neutral, never on green. That's not a bug. A screen mixes *light*, and halfway between two opposite lights sits gray. Paint works the other way around: pigment absorbs light, and green is what survives both pigments. Two kinds of mixing, two different answers.
+
+`.paint` is the second kind, in the same call:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/02-Color/PaintMixing-dark.jpg">
+  <img src="Images/02-Color/PaintMixing.jpg" alt="Three rows mixing the same blue and yellow: the RGB row lands in olive mud, the OKLab row stays a steady neutral, and the paint row travels through real greens" width="680">
+</picture>
+
+```swift
+Color.mix(blue, yellow, t: 0.5, in: .paint)   // green, the way a palette gives it
+```
+
+Behind the call, each color becomes the reflectance curve of a surface painted with it. The two curves then mix the way scattering pigments mix, wavelength by wavelength. The mixes also darken a little, because pigment only ever absorbs, and that darkening is half of what makes the result read as paint. It's the same trade as before, one level up: `.oklab` gives you even steps, `.paint` gives you a medium's honesty. Pick by what the piece needs.
+
+The curve itself is a type you can hold, called `Spectrum`, and mixing is only its first door. It also holds the pure hue of one wavelength, a heated body's glow, filtered light, and three GPU effects that split light for real. The [Spectral color](../Docs/Drawing/Spectrum.md) reference holds all of it.
+
 ## Kits you carry: Palette and Ramp
 
 Individual colors get you started, but finished pieces usually run on a kit of colors chosen once and used throughout. Ollin has two kinds, plus two ready-made variants of the second:
@@ -106,7 +125,7 @@ fill(p.color(at: t))                  // 0...1 quantized into eight bands
 
 Eight classic sets ship built in, from `.set1` through `.accent`. The **harmony builders** grow a whole palette out of one base color, and because they work in OKLCH the companions keep the base's weight rather than drifting lighter or darker: `Palette.complementary(of: base)`, `.triadic(of: base)`, `.analogous(of: base)`, and `.splitComplementary(of: base)`.
 
-A **`Ramp`** is the continuous version, a gradient you can sample anywhere along its length. Give it a list of colors to spread evenly, or explicit stops if you want to place them yourself, and read it with `color(at:)`. Blending runs through OKLab by default, so the in-betweens stay clean:
+A **`Ramp`** is the continuous version, a gradient you can sample anywhere along its length. Give it a list of colors to spread evenly, or explicit stops if you want to place them yourself, and read it with `color(at:)`. Blending runs through OKLab by default, so the in-betweens stay clean. Every mixing space from earlier is on the menu, `.paint` included, so `Ramp([blue, yellow], in: .paint)` travels through green:
 
 ```swift
 let dusk = Ramp([Color(hex: 0x14213D), Color(hex: 0x5E60CE),

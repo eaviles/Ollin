@@ -2,9 +2,11 @@ import Ollin
 
 /// The same two colors mixed band by band in each interpolation space, so the
 /// differences sit side by side: RGB dips through gray, HSB detours around
-/// the hue wheel, and the OK family stays perceptually even. The endpoints
-/// drift around the hue wheel over time, picked in OKHSL so their perceived
-/// lightness holds still while they travel.
+/// the hue wheel, the OK family stays perceptually even, and PAINT mixes the
+/// two as scattering pigments (so complementary pairs meet in a real mixed
+/// hue, and every mix darkens the way paint does). The endpoints drift around
+/// the hue wheel over time, picked in OKHSL so their perceived lightness holds
+/// still while they travel.
 @main
 final class Mixing: Sketch {
     let spaces: [(label: String, space: ColorSpace)] = [
@@ -13,6 +15,7 @@ final class Mixing: Sketch {
         ("OKLAB", .oklab),
         ("OKLCH", .oklch),
         ("OKHSL", .okhsl),
+        ("PAINT", .paint),
     ]
 
     override func setup() {
