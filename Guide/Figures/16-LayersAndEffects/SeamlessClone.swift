@@ -1,4 +1,7 @@
-// figure: frame=0
+// figure: frame=0 unstable
+// Unstable is measured, not assumed: two back-to-back lossless renders of this
+// sketch differ at the pixel level on a quiet machine, so the nondeterminism
+// is in the render itself, not the JPEG encoder. Worth a real diagnosis one day.
 //
 // Guide figure (Chapter 16): a seamless clone. The patch on its own, pasted with
 // the seam left in, and cloned so the join disappears.

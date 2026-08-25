@@ -1,4 +1,7 @@
-// figure: frame=0
+// figure: frame=0 unstable
+// Unstable is measured, not assumed: two back-to-back lossless renders of this
+// sketch differ at the pixel level on a quiet machine, so the nondeterminism
+// is in the render itself, not the JPEG encoder. Worth a real diagnosis one day.
 //
 // Guide diagram (Chapter 7): polyominoes. The twelve pentominoes along the top,
 // one fit of all twelve into a six by ten board on the left, and on the right the

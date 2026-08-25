@@ -1,6 +1,7 @@
 import AppKit
 import CryptoKit
 import Foundation
+import ImageIO
 import Ollin
 import OllinRuntime
 
@@ -33,9 +34,18 @@ import OllinRuntime
 ///   figure renders.
 /// - **A probe sample.** Most framework edits move no pixels at all, so a
 ///   framework change renders the figures marked `// figure: probe` first (a
-///   sample chosen to witness every drawing path) and compares each to the
-///   image committed beside it. All identical means the change was
-///   render-neutral, and the rest keep their cache entries.
+///   sample chosen to witness every drawing path) and compares each, pixel for
+///   pixel, to the image committed beside it. All identical means the change
+///   was render-neutral, and the rest keep their cache entries.
+///
+/// One rule spans both: **"changed" means the pixels, never the bytes.** The
+/// JPEG and PNG encoders here are not byte-deterministic, so a fresh render of
+/// an unchanged figure can encode to different bytes with identical pixels. A
+/// render therefore lands in a dot-temp beside the committed image and replaces
+/// it only when the decoded pixels differ (`promote`); without that rule, every
+/// full pass leaves a few byte-churned images dirty in the working tree, and a
+/// sub-perceptual framework change rewrites megabytes of identical-looking
+/// JPEGs into git history.
 /// - **Sharded worker processes.** The work left after the cache is split
 ///   across child copies of this executable. Sharding rather than in-process
 ///   concurrency is deliberate: the expensive figures spend their time in
@@ -422,9 +432,9 @@ enum GuideFigures {
         return results.filter { result in
             guard result.ok, !result.output.isEmpty else { return true }
             let directory = imageFolder(result.figure, root: root)
-            if fileHash(directory + "/" + result.outputPath) != result.output { return true }
+            if pixelHash(directory + "/" + result.outputPath) != result.output { return true }
             if let darkPath = result.darkPath, let darkOutput = result.darkOutput {
-                return fileHash(directory + "/" + darkPath) != darkOutput
+                return pixelHash(directory + "/" + darkPath) != darkOutput
             }
             return false
         }.map(\.figure).sorted()
@@ -467,14 +477,17 @@ enum GuideFigures {
 
                 // Verifying rather than recording: render beside the committed
                 // image and throw the result away. Probing is the same detour
-                // with the result hashed first, so the caller can compare it to
-                // what is committed without ever overwriting that.
+                // with the result pixel-hashed first, so the caller can compare
+                // it to what is committed without ever overwriting that. And a
+                // recording render goes to a dot-temp too, promoted over the
+                // committed image only when the pixels actually changed (see
+                // the type comment on byte-nondeterministic encoders).
                 let verifying = work.verifyOnly
                     && FileManager.default.fileExists(atPath: outPath)
                 let probing = work.probeOnly
                 let writePath = verifying || probing
                     ? directory + "/." + (probing ? "probe-" : "verify-") + name
-                    : outPath
+                    : directory + "/.new-" + name
 
                 if echo { print("guide-figures: \(relative)") }
                 switch SketchLoader(sketchPath: sourcePath).load() {
@@ -504,7 +517,7 @@ enum GuideFigures {
                                 + "-dark" + directive.stillExtension
                             let darkWrite = verifying || probing
                                 ? directory + "/." + (probing ? "probe-" : "verify-") + darkName
-                                : directory + "/" + darkName
+                                : directory + "/.new-" + darkName
                             knob.param.restore(.boolean(true))
                             if directive.png {
                                 OllinApp.export(sketch, to: darkWrite, frame: directive.frame)
@@ -513,13 +526,15 @@ enum GuideFigures {
                             }
                             if FileManager.default.fileExists(atPath: darkWrite) {
                                 darkOutPath = directory + "/" + darkName
-                                if probing { darkProbeHash = fileHash(darkWrite) }
+                                if probing { darkProbeHash = pixelHash(darkWrite) }
                             } else {
                                 ok = false
                                 log = "no dark output written"
                             }
                             if verifying || probing {
                                 try? FileManager.default.removeItem(atPath: darkWrite)
+                            } else if ok {
+                                promote(darkWrite, over: directory + "/" + darkName)
                             }
                         } else {
                             ok = false
@@ -527,9 +542,11 @@ enum GuideFigures {
                                 + " `@Param var darkTheme = false` knob to flip"
                         }
                     }
-                    if probing { probeHash = fileHash(writePath) }
+                    if probing { probeHash = pixelHash(writePath) }
                     if verifying || probing {
                         try? FileManager.default.removeItem(atPath: writePath)
+                    } else if ok {
+                        promote(writePath, over: outPath)
                     }
                 case .failure(let error):
                     log = "\(error)"
@@ -843,7 +860,9 @@ enum GuideFigures {
         }.sorted { $0.1 > $1.1 }.prefix(6)
         guard !timed.isEmpty else { return }
         let total = figures.compactMap { cache.figures[$0]?.seconds }.reduce(0, +)
-        print("guide-figures: a full run costs about \(format(total)); the slowest figures are")
+        print("guide-figures: \(figures.count) figures, about \(format(total)) of"
+              + " summed render time (wall clock divides by the workers);"
+              + " the slowest are")
         for (figure, seconds) in timed {
             print("  \(format(seconds).padding(toLength: 8, withPad: " ", startingAt: 0)) \(figure)")
         }
@@ -860,6 +879,47 @@ enum GuideFigures {
     private static func fileHash(_ path: String) -> String {
         guard let data = FileManager.default.contents(atPath: path) else { return "" }
         return hex(SHA256.hash(data: data))
+    }
+
+    /// A hash of what an image *shows* rather than the bytes that encode it:
+    /// every frame decoded to tightly packed RGBA8 and hashed. The JPEG and PNG
+    /// encoders here are not byte-deterministic, so a byte comparison reports
+    /// change where a reader could never see one; this comparison means "the
+    /// pixels moved". Falls back to the byte hash when the file does not decode.
+    private static func pixelHash(_ path: String) -> String {
+        guard let source = CGImageSourceCreateWithURL(
+                URL(fileURLWithPath: path) as CFURL, nil),
+              CGImageSourceGetCount(source) > 0 else { return fileHash(path) }
+        var hasher = SHA256()
+        for index in 0..<CGImageSourceGetCount(source) {
+            guard let image = CGImageSourceCreateImageAtIndex(source, index, nil),
+                  let context = CGContext(
+                    data: nil, width: image.width, height: image.height,
+                    bitsPerComponent: 8, bytesPerRow: image.width * 4,
+                    space: CGColorSpaceCreateDeviceRGB(),
+                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+            else { return fileHash(path) }
+            context.draw(image, in: CGRect(x: 0, y: 0,
+                                           width: image.width, height: image.height))
+            guard let data = context.data else { return fileHash(path) }
+            hasher.update(data: Data(bytes: data,
+                                     count: image.width * image.height * 4))
+        }
+        return hex(hasher.finalize())
+    }
+
+    /// Put a fresh render into place: keep the committed file when the new
+    /// pixels are identical, so a nondeterministic encoder cannot churn the
+    /// working tree, and replace it only when the picture actually changed.
+    private static func promote(_ fresh: String, over committed: String) {
+        let manager = FileManager.default
+        if manager.fileExists(atPath: committed),
+           pixelHash(fresh) == pixelHash(committed) {
+            try? manager.removeItem(atPath: fresh)
+            return
+        }
+        try? manager.removeItem(atPath: committed)
+        try? manager.moveItem(atPath: fresh, toPath: committed)
     }
 
     private static func hex(_ digest: some Sequence<UInt8>) -> String {
@@ -903,11 +963,15 @@ enum GuideFigures {
         Most framework edits move no pixels: a new function, a comment, a type
         nothing draws through. So a framework change first renders the figures
         marked `// figure: probe`, a sample covering every drawing path, and
-        compares each to the image committed beside it. All identical means the
-        change was render-neutral and the rest are left alone, which turns a ten
-        minute gate into about fifteen seconds. Any probe that moved or failed
-        hands the run back to the full re-render. --no-probe skips the sample
-        and re-renders everything.
+        compares each, pixel for pixel, to the image committed beside it. All
+        identical means the change was render-neutral and the rest are left
+        alone, which turns a ten minute gate into about fifteen seconds. Any
+        probe that moved or failed hands the run back to the full re-render.
+        --no-probe skips the sample and re-renders everything.
+
+        Every comparison here is of decoded pixels, never encoded bytes: the
+        JPEG/PNG encoders are not byte-deterministic, so a fresh render replaces
+        a committed image only when the picture actually changed.
         """)
         exit(0)
     }

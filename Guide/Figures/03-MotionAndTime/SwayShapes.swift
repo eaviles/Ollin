@@ -1,4 +1,7 @@
-// figure: frame=0
+// figure: frame=0 unstable
+// Unstable is measured, not assumed: two back-to-back lossless renders of this
+// sketch differ at the pixel level on a quiet machine, so the nondeterminism
+// is in the render itself, not the JPEG encoder. Worth a real diagnosis one day.
 //
 // Guide diagram: the five paths a sway can take between the two ends of its
 // range, each plotted over one whole lap. Every one of them arrives back where
