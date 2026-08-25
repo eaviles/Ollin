@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide figure (Chapter 14): a field fitted through a few known values, the warp the same
 // fit makes when it carries vectors, and the circle a downhill walk finds in scattered marks.
@@ -7,13 +7,18 @@ import Ollin
 final class Fitting: Sketch {
     override var canvasSize: CanvasSize { .size(880, 386) }
 
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var labelInk: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.62) }
+
     let anchors = [Vector2(56, 70), Vector2(214, 60), Vector2(140, 148),
                    Vector2(46, 200), Vector2(228, 206), Vector2(120, 246)]
     let inks = [Color(hex: 0xE8734A), Color(hex: 0x49B0A5), Color(hex: 0xE0C25C),
                 Color(hex: 0xC85A7C), Color(hex: 0x6E8FD4), Color(hex: 0x8FC46B)]
 
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
 
         let tile = 268.0, gap = 12.0
         let left = (width - tile * 3 - gap * 2) / 2
@@ -32,7 +37,7 @@ final class Fitting: Sketch {
                     }
                 }
             }
-            fill(Color(hex: 0x2B2B2B, alpha: 0.62))
+            fill(labelInk)
             textSize(16)
             textAlign(.center, .top)
             drawText(labels[index], x + tile / 2, 20 + tile + 8)

@@ -1,4 +1,4 @@
-// figure: frame=0
+// figure: frame=0 themed
 //
 // Guide figure (Chapter 16): one page under a light that falls across it, cut two ways.
 // The same picture, one number for the whole page against each pixel's own neighborhood.
@@ -7,8 +7,13 @@ import Ollin
 final class LocalAverages: Sketch {
     override var canvasSize: CanvasSize { .size(880, 386) }
 
+    @Param var darkTheme = false
+
+    var paper: Color { Color(hex: darkTheme ? 0x1E1B18 : 0xF7F5F1) }
+    var labelInk: Color { Color(hex: darkTheme ? 0xE8E5E1 : 0x2B2B2B, alpha: 0.62) }
+
     override func draw() {
-        background(Color(hex: 0xF7F5F1))
+        background(paper)
 
         let tile = 268.0, gap = 12.0
         let left = (width - tile * 3 - gap * 2) / 2
@@ -32,7 +37,7 @@ final class LocalAverages: Sketch {
                 drawImage(page.filtered(.adaptiveThreshold(window: 90)).image, in: frame)
             }
 
-            fill(Color(hex: 0x2B2B2B, alpha: 0.62))
+            fill(labelInk)
             textSize(16)
             textAlign(.center, .top)
             drawText(labels[index], frame.x + frame.width / 2, frame.y + frame.height + 8)

@@ -13,9 +13,12 @@ extension Drawer {
     /// `textAlign`. `\n` starts a new line; text rides the transform stack and
     /// stays crisp at any size. A **bitmap** font stamps each lit pixel as a fill
     /// color square on the SDF path; an **outline** font draws each glyph as a
-    /// vector `Shape`, so — like every other shape — it takes the current `fill`
-    /// *and* an active `stroke` (call `noStroke()` for plain filled text, or
-    /// `noFill()` for outline-only text); a **stroke** (single-line) font draws each
+    /// vector `Shape`: it takes the current `fill`, and, once the sketch has set
+    /// one, the current `stroke` (`noFill()` plus a `stroke(...)` gives
+    /// outline-only text). The initial default stroke never applies to text: a
+    /// 1px opaque band straddling every contour reads as bolding on a light
+    /// ground and eats thin light glyphs on a dark one, so glyphs decorate only
+    /// with a stroke the sketch asked for; a **stroke** (single-line) font draws each
     /// glyph as open pen paths with the current `stroke` and no fill. Unknown
     /// characters advance the pen but draw nothing.
     func drawText(_ string: String, _ x: Double, _ y: Double) {
@@ -99,6 +102,19 @@ extension Drawer {
         }
     }
 
+    /// Run `body` with the stroke the text paths honor: the active stroke once
+    /// the sketch has set one, and none under the initial default (see
+    /// `drawText`). Gates the glyph paths that decorate through `drawShape`
+    /// (the SVG branch, text on a path, per-glyph drawing); `drawOutlineText`'s
+    /// raster path checks `strokeSet` directly.
+    func withTextStroke(_ body: () -> Void) {
+        if strokeSet { body(); return }
+        let saved = strokePaint
+        strokePaint = nil
+        body()
+        strokePaint = saved
+    }
+
     /// Outline path: each glyph fills (and strokes) like any other shape. The
     /// per-glyph flatten + triangulation are cached in local space and reused, so a
     /// redrawn label only translates cached vertices — the same geometry a
@@ -106,7 +122,7 @@ extension Drawer {
     /// frame. SVG export keeps the `drawShape` path (its recorder wants `Shape`s).
     private func drawOutlineText(_ string: String, _ x: Double, _ y: Double, font: OutlineFont) {
         let hasFill = fillPaint != nil
-        let hasStroke = strokePaint != nil && strokeWidth > 0
+        let hasStroke = strokeSet && strokePaint != nil && strokeWidth > 0
         guard hasFill || hasStroke else { return }
 
         let placed = font.placedGlyphs(for: string, size: textPixelSize,
@@ -124,7 +140,7 @@ extension Drawer {
                     drawImage(picture, in: glyph.pictureRect)
                     continue
                 }
-                OutlineFont.shapes(of: [glyph]).forEach(drawShape)
+                withTextStroke { OutlineFont.shapes(of: [glyph]).forEach(drawShape) }
             }
             return
         }
@@ -617,7 +633,7 @@ extension Drawer {
                                       } else if strokesGlyphs {
                                           shapes.forEach { $0.contours.forEach { self.drawPolyline($0.points) } }
                                       } else {
-                                          shapes.forEach { self.drawShape($0) }
+                                          self.withTextStroke { shapes.forEach { self.drawShape($0) } }
                                       }
                                   })
             perGlyph(glyph)
@@ -680,7 +696,7 @@ extension Drawer {
                 if strokesGlyphs {
                     placed.contours.forEach { drawPolyline($0.points) }
                 } else {
-                    drawShape(placed)
+                    withTextStroke { drawShape(placed) }
                 }
             }
         }

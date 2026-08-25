@@ -227,6 +227,12 @@ final class Drawer {
     private(set) var backgroundColor: Color = .black
     var fillPaint: Paint? = .color(.white)     // default: white fill
     var strokePaint: Paint? = .color(.black)   // default: black stroke
+    /// Whether the sketch has set a stroke itself (any `stroke(...)` call; rides
+    /// the state stack like the paint). Outline text decorates with the stroke
+    /// only once this is true: the initial black shape stroke never outlines
+    /// glyphs, where a 1px opaque band straddling every contour eats thin light
+    /// text on a dark ground. Shapes keep the classic default look untouched.
+    var strokeSet = false
     var strokeWidth: Double = 1         // default: 1px
     var pointDiameter: Double = 1       // default: 1px dot (see pointSize / drawPoint)
     var marker: PointMarker = .circle   // default: round dot (see pointMarker / drawPoint)
@@ -1636,6 +1642,7 @@ final class Drawer {
         var modelIsIdentity: Bool
         var fillPaint: Paint?
         var strokePaint: Paint?
+        var strokeSet: Bool
         var strokeWidth: Double
         var pointDiameter: Double
         var marker: PointMarker
@@ -1751,9 +1758,9 @@ final class Drawer {
     func fill(_ gradient: Gradient) { fillPaint = .gradient(gradient) }
     func fill(_ paint: Paint) { fillPaint = paint }
     func noFill() { fillPaint = nil }
-    func stroke(_ color: Color) { strokePaint = .color(color) }
-    func stroke(_ gradient: Gradient) { strokePaint = .gradient(gradient) }
-    func stroke(_ paint: Paint) { strokePaint = paint }
+    func stroke(_ color: Color) { strokePaint = .color(color); strokeSet = true }
+    func stroke(_ gradient: Gradient) { strokePaint = .gradient(gradient); strokeSet = true }
+    func stroke(_ paint: Paint) { strokePaint = paint; strokeSet = true }
     func noStroke() { strokePaint = nil }
     func strokeWeight(_ weight: Double) { strokeWidth = max(0, weight) }
     func pointSize(_ size: Double) { pointDiameter = max(0, size) }
@@ -3836,6 +3843,7 @@ final class Drawer {
         stateStack.append(SavedState(transform: transform, transformIsIdentity: transformIsIdentity,
                                      modelMatrix: modelMatrix, modelIsIdentity: modelIsIdentity,
                                      fillPaint: fillPaint, strokePaint: strokePaint,
+                                     strokeSet: strokeSet,
                                      strokeWidth: strokeWidth, pointDiameter: pointDiameter,
                                      marker: marker, hollowWidth: hollowWidth,
                                      strokeAlignment: strokeAlignment,
@@ -3868,6 +3876,7 @@ final class Drawer {
         modelIsIdentity = s.modelIsIdentity
         fillPaint = s.fillPaint
         strokePaint = s.strokePaint
+        strokeSet = s.strokeSet
         strokeWidth = s.strokeWidth
         pointDiameter = s.pointDiameter
         marker = s.marker

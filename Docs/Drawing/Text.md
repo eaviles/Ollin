@@ -6,7 +6,7 @@
 
 Ollin draws text in three kinds of font, all behind the same `drawText` / `textFont` / `textSize` / `textAlign` surface:
 
-- An **outline font** is a real TrueType/OpenType (`.ttf`/`.otf`) face, each glyph stored as vector contours and drawn as a [`Shape`](../Drawing/Geometry.md#shape). One load draws crisp at *any* size, the type takes both `fill` and `stroke`, and the glyph geometry is yours to manipulate. The default font is an outline font, so text works with zero setup.
+- An **outline font** is a real TrueType/OpenType (`.ttf`/`.otf`) face, each glyph stored as vector contours and drawn as a [`Shape`](../Drawing/Geometry.md#shape). One load draws crisp at *any* size, the type takes `fill` and any `stroke` you set, and the glyph geometry is yours to manipulate. The default font is an outline font, so text works with zero setup.
 - A **bitmap font** stores each glyph as a small grid of pixels, each lit pixel stamped as one square on the same instanced-SDF path the shapes use. No rasterizer, no separate pipeline.
 - A **stroke font** is a single-line (plotter) face whose glyphs are open pen paths with *no fill*, drawn with the current `stroke`. It's the kind of letterform a pen plotter draws, and Hershey Sans comes bundled.
 
@@ -158,7 +158,7 @@ textFont(_ font: OutlineFont)
 
 An `OutlineFont` is a real TrueType/OpenType (`.ttf`/`.otf`) face. Unlike a bitmap font it stores each glyph as **vector contours**, so one load draws crisp at *any* `textSize` and you never reload per size. Set it with the same `textFont`, and `drawText`, `textSize`, `textAlign`, and `textWidth` all work exactly as before.
 
-Because an outline glyph is rendered as a [`Shape`](../Drawing/Geometry.md#shape), the same vector fill the triangulator draws, outline text takes the current `fill` **and** an active `stroke`, and composites in draw order with everything else. Filled, outlined, and stroke-only text all fall out of that:
+Because an outline glyph is rendered as a [`Shape`](../Drawing/Geometry.md#shape), the same vector fill the triangulator draws, outline text takes the current `fill` and composites in draw order with everything else. Once you've set a `stroke`, text takes that too. Filled, outlined, and stroke-only text all fall out of that:
 
 ```swift
 let display = OutlineFont(name: "Avenir Next") ?? .system
@@ -174,7 +174,7 @@ drawText("outline", width / 2, 480)
 ```
 
 > [!NOTE]
-> Outline text honors `stroke` like every other shape, so the default 1px stroke will outline your glyphs. Call `noStroke()` for plain filled text.
+> Text honors a stroke you have *set*, so a leftover `stroke(...)` from earlier drawing will outline your glyphs; call `noStroke()` when that isn't the look you want. The one stroke that never applies to text is the initial default, the 1px black every fresh sketch starts with. A band straddling every contour would bold text on a light ground and eat thin light glyphs on a dark one, so glyphs only decorate with a stroke the sketch asked for.
 
 **Loading a font, from anywhere:**
 

@@ -137,7 +137,10 @@ let field = RadialBasis(points: anchors, values: inks)!
 fill(field.value(at: Vector2(x, y)))
 ```
 
-<img src="Images/14-FieldsAndFlow/Fitting.jpg" alt="Three panels. A soft field of orange, pink, blue, green and yellow filling a square with six small dark rings marking the points it was fitted through; a white grid on black bent into curves by six orange arrows pulling on it; and a ring of pale dots wobbling around a circle, with a gold circle drawn through the middle of them and a gold dot at its center" width="680">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/14-FieldsAndFlow/Fitting-dark.jpg">
+  <img src="Images/14-FieldsAndFlow/Fitting.jpg" alt="Three panels. A soft field of orange, pink, blue, green and yellow filling a square with six small dark rings marking the points it was fitted through; a white grid on black bent into curves by six orange arrows pulling on it; and a ring of pale dots wobbling around a circle, with a gold circle drawn through the middle of them and a gold dot at its center" width="680">
+</picture>
 
 The left panel is six colors at six places, read back at every pixel. It looks like a gradient and it is not one. Nothing was blended between two stops; every pixel is a weighted sum of all six. Look at the rings marking the points: what shows inside each one is the field's own color there, and it matches the color that point was given. **A field that passes through its data is interpolating. One that merely heads in the right direction is blurring.**
 
