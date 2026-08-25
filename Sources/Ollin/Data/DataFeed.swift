@@ -433,7 +433,7 @@ public final class DataFeed: @unchecked Sendable {
     }
 
     /// Whether the first byte that isn't whitespace opens an object or an array.
-    private static func opensLikeJSON(_ bytes: Data) -> Bool {
+    static func opensLikeJSON(_ bytes: Data) -> Bool {
         for byte in bytes {
             switch byte {
             case 0x20, 0x09, 0x0A, 0x0D: continue

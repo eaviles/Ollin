@@ -20,7 +20,7 @@ If you're coming from p5.js or Processing, [the Guide's Appendix C](Guide/C-Comi
 
 Ollin is pre-1.0, and the public API still changes freely. Version 1.0.0 will be the first public release: the repository opens, semantic version tags and a changelog begin, and from that point on every public rename ships a deprecation shim (the migration discipline described in [`CLAUDE.md`](CLAUDE.md)). This section names what that release waits on, and only that. Everything else on this page stays open for work at any time: the release does not wait on it, and it does not wait for the release.
 
-- **The capabilities a newcomer will look for first.** The most visible gaps for someone arriving from p5.js, Processing, or openFrameworks: a serial port for the classic microcontroller loop (under [live rigs](#live-rigs-physical-computing-lighting-and-network-video)); a sketch packaged as a double-clickable app, so a finished piece can be handed to someone without the Swift toolchain (under [new output surfaces](#new-output-surfaces)); a pushed network feed (under [new input sources](#new-input-sources)); and the model examples under [Up next](#up-next).
+- **The capabilities a newcomer will look for first.** The most visible gaps for someone arriving from p5.js, Processing, or openFrameworks: a serial port for the classic microcontroller loop (under [live rigs](#live-rigs-physical-computing-lighting-and-network-video)); a sketch packaged as a double-clickable app, so a finished piece can be handed to someone without the Swift toolchain (under [new output surfaces](#new-output-surfaces)); and the model examples under [Up next](#up-next).
 - **Stabilization.** A naming-and-consistency pass over the whole public API, since the shim discipline locks the names in at the release; the test suite reliable end to end, with no flaky or machine-bound failures; and the hand-verification backlog (features that still wait on eyes, ears, or hardware) worked down.
 - **The release itself.** The changelog, the release notes, the `1.0.0` tag, and a README presentation pass. The ecosystem legs that need a public repository (DocC, a Swift Package Index listing, the extension index) follow the release rather than gate it.
 
@@ -87,7 +87,6 @@ All of it is the interop posture: play in someone's existing rig, not replace it
 
 More of the platform's live signals, each a `FrameSource` or a simple value read in `draw()`:
 
-- **A feed that is pushed rather than polled.** A socket held open, so a machine can say something the moment it happens rather than waiting for the next poll.
 - **Apple Pencil.** Tilt, azimuth, and hover on the iOS leg, with its force joining the pressure a sketch already reads.
 - **Body and world data.** Heart rate from a paired Watch for biofeedback, and real-world ambient data (weather, location) as a slow live input.
 

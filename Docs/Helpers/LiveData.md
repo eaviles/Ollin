@@ -4,7 +4,7 @@
 
 ## Live data
 
-[`loadTable`](./Data.md) and [`loadJSON`](./Data.md) read a document once and keep it. A `DataFeed` reads one address over and over. That lets a sketch draw something currently true: the tide, a day of earthquakes, a number a machine down the hall is publishing.
+[`loadTable`](./Data.md) and [`loadJSON`](./Data.md) read a document once and keep it. A `DataFeed` reads one address over and over. That lets a sketch draw something currently true: the tide, a day of earthquakes, a number a machine down the hall is publishing. And when the machine wants to do the saying, a [`PushFeed`](#PushFeed) holds a connection open so each message arrives the moment it is sent.
 
 The request runs on a background queue. `draw()` never waits for the network, and the bytes are read into a `JSON` or a `Table` on that queue too, so no frame pays for the parse.
 
@@ -18,6 +18,9 @@ Nothing throws. Before the first answer arrives, and whenever the network is dow
 - [How it is going](#health)
 - [What the bytes are read as](#content)
 - [How often it asks](#polling)
+- [PushFeed: a feed that is pushed](#PushFeed)
+- [Messages, one by one](#messages)
+- [Staying connected](#reconnect)
 - [In an export](#export)
 - [Sending a key or a contact](#headers)
 - [Sandboxed apps](#sandbox)
@@ -136,6 +139,79 @@ Polling is unhurried on purpose, because a sketch on a wall runs for weeks.
 </picture>
 
 Keep a feed small. The parse happens off the frame, but a document of many megabytes is still a document of many megabytes. A big one belongs in a file read once in `setup()`.
+
+<a name="PushFeed"></a>
+
+### PushFeed: a feed that is pushed
+
+```swift
+PushFeed(_ address: String, headers: [String: String] = [:],
+         greeting: String? = nil, retryEvery: Double = 3)
+PushFeed(_ url: URL, headers: [String: String] = [:],
+         greeting: String? = nil, retryEvery: Double = 3)
+```
+
+A `DataFeed` asks on a schedule, which suits a value that changes slowly. A machine that wants to say something the moment it happens needs a connection held open instead, and that is a `PushFeed`. The address decides how the connection is made. `ws://` and `wss://` open a web socket; anything else is read as a stream of server-sent events, the plain-HTTP way a server pushes.
+
+```swift
+final class Edits: Sketch {
+    private let edits = PushFeed("https://stream.wikimedia.org/v2/stream/recentchange")
+
+    override func setup() {
+        edits.start()
+    }
+
+    override func draw() {
+        background(.black)
+        for message in edits.messages() {
+            splash(message.json["title"].string ?? "")
+        }
+    }
+}
+```
+
+The reads a `DataFeed` taught still work: `json`, `text`, and `bytes` are the latest message, `problem` says why when something is wrong, and nothing throws. `event` adds the label, on a stream that names its events.
+
+| Call | What it does |
+|---|---|
+| `start()` | Connects, and keeps the connection alive from then on. A feed that is already running ignores it. |
+| `stop()` | Hangs up. What arrived stays readable. |
+| `reconnect()` | Hangs up and dials again now, which is what a key press binds to when a piece looks stale. |
+| `send(_:)` | Says something to the server, on a feed that is a web socket. A stream of server-sent events has no way to take it. |
+
+<a name="messages"></a>
+
+### Messages, one by one
+
+More than one message can arrive between two frames, and the latest-message reads only show the last of them. `messages()` is the read that misses nothing: every message since the last time it was called, oldest first, each one a `Message` carrying `bytes`, `text`, `json`, and `event`.
+
+```swift
+for message in edits.messages() {
+    ripples.append(Ripple(title: message.json["title"].string ?? ""))
+}
+```
+
+A feed nobody drains keeps the newest few hundred and lets the oldest go, so an undrained buffer never grows without bound.
+
+`updates` counts every message, and on a `PushFeed` a repeat still counts. A poll can bring back what a feed already had; a push is sent because the server had something to say. `timeSinceUpdate` is seconds since the last message, or `nil` before the first one.
+
+<a name="reconnect"></a>
+
+### Staying connected
+
+Reconnection is the point, because a piece on a wall outlives any socket. The feed does all of it on its own; a sketch only ever reads `isConnected` and `problem` to say what is happening.
+
+- A dropped connection redials after `retryEvery:` seconds, which never goes below one. A run of failures doubles the wait each time, up to eight times that, and anything arriving puts it back.
+- A stream of server-sent events that names its own retry time is obeyed, and one that labels its messages with ids is resumed with the last id seen, so a blink loses nothing the server still holds.
+- A web socket is pinged every few seconds, so a connection that died without a word is noticed and redialed rather than trusted forever. A quiet stream of events is given a minute before the same treatment.
+- `greeting:` is said each time the connection opens, not once. A service that wants a subscribe message wants it again after every redial, which is why the greeting is part of the feed rather than a `send(_:)` made in `setup()`.
+- A server that ends the stream on purpose (a `204`) is honored: the feed stops rather than redialing at a door that was closed politely.
+
+| Read | Type | Meaning |
+|---|---|---|
+| `isConnected` | `Bool` | Whether the connection is open right now. |
+| `failures` | `Int` | Connections that have failed or dropped in a row. Back to zero once something arrives. |
+| `problem` | `String?` | Why the connection is down, in a sentence a sketch can draw. `nil` while it is up. |
 
 <a name="export"></a>
 

@@ -396,6 +396,40 @@ The rest is politeness, and the framework handles it. The next request waits for
 
 One more thing worth knowing before you export. A headless export reads the feed once and holds that answer for every frame. An export that fetched per frame would render something different each time you ran it.
 
+## Messages that arrive on their own: PushFeed
+
+A `DataFeed` asks. Some sources would rather tell: every edit to an encyclopedia, every reading a machine takes, every move in a game somebody is playing right now. For those, polling is always either too often or too late. A `PushFeed` holds one connection open instead, and each message arrives the moment the other end sends it.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/09-Pictures/MessagesThatPushThemselves-dark.jpg">
+  <img src="Images/09-Pictures/MessagesThatPushThemselves.jpg" alt="A diagram on cream paper. A top row of message dots at irregular moments, one marked as said into the blink. Below it a connection band that drops, shows two red crosses with widening waits marked wait, twice, four times, then resumes, with a greeting tick at each open. A bottom row shows the messages the sketch reads, with the blink's message arriving right after the redial, labeled resumed by its id, late but not lost, and a problem band covering the outage" width="680">
+</picture>
+
+The address decides how the connection is made. `ws://` and `wss://` open a web socket. Anything else is read as a stream of server-sent events, the plain-HTTP way a server pushes. You write the same code either way:
+
+```swift
+final class Edits: Sketch {
+    private let edits = PushFeed("https://stream.wikimedia.org/v2/stream/recentchange")
+
+    override func setup() {
+        edits.start()
+    }
+
+    override func draw() {
+        background(.black)
+        for message in edits.messages() {
+            splash(message.json["title"].string ?? "")
+        }
+    }
+}
+```
+
+The read to notice is `messages()`. On a busy stream, dozens of messages land between two frames, and the familiar `json` and `text` reads only show the last of them. `messages()` hands over every message since the last frame, oldest first, so nothing slips between two draws. `updates` counts every message here, not just the changed ones. A poll can bring back what you already had; a push was sent because there was something to say.
+
+The rest of the work is staying connected, and the feed does all of it, the way the figure shows. A dropped connection redials on its own, waiting a little longer after each failure. A stream that labels its messages with ids is resumed from the last one seen, so a message said into the blink arrives late instead of being lost. And the `greeting:` you give the feed is said at every open, not once. That is what keeps a service that wants a subscribe message subscribed across every redial. Your sketch's whole job is to read `isConnected` and `problem` and say what is happening, while it keeps drawing everything that already arrived.
+
+In a headless export, the feed waits for one message while `start()` runs, then holds it for every frame. The polled feed reads once for the same reason. The `Data/Edits` example is this section as a finished piece. The encyclopedia's edits fall as rain, each drop sized by the bytes somebody just added or took away.
+
 ## Putting it together: a picture painted with type
 
 This is the piece from the top of the chapter, and it's the whole chapter in one grid: words drawn with `drawText`, a picture read with `image[x, y]`, and the two fused so the picture is *made of* the words. A message repeats across a grid in reading order, and each letter samples the sunset at its own position, takes the pixel's color, and scales by its brightness.
