@@ -29,6 +29,14 @@ final class CreasePatternSketch: Sketch {
     @Param(25 ... 88, icon: "angle") var corner = 60.0
     @Param(icon: "scissors") var cutInstead = false
 
+    // What a real page does that the ideal fold machine does not: paper
+    // thickness stops the collapse short, one side complies slightly ahead,
+    // and the held sheet carries a gentle bow. All three fade to zero at the
+    // flat state, so the crease pattern below always matches the sheet.
+    @Param("Max fold", 0.75 ... 1, group: "Page") var maxFold = 0.94
+    @Param("Lead", 0 ... 0.15, group: "Page") var lead = 0.05
+    @Param("Bow", 0 ... 0.5, group: "Page") var bow = 0.12
+
     private let paper = Color(hex: 0x11131A)
     private let chalk = Color(hex: 0xF2ECDD)
     private let ridge = Color(hex: 0xE0724A)
@@ -37,7 +45,7 @@ final class CreasePatternSketch: Sketch {
     override func draw() {
         background(paper)
         let drive = 0.5 * (1 - cos(time * 0.7))
-        if cutInstead { drawCutSheet(opened: drive) } else { drawFoldedSheet(at: drive) }
+        if cutInstead { drawCutSheet(opened: drive) } else { drawFoldedSheet(at: drive * maxFold) }
     }
 
     // MARK: - The Miura fold
@@ -49,7 +57,7 @@ final class CreasePatternSketch: Sketch {
 
         let stage = Rectangle(x: width * 0.06, y: height * 0.08,
                               width: width * 0.88, height: height * 0.42)
-        drawPanels(sheet, in: stage)
+        drawPanels(pagePanels(at: amount), in: stage)
 
         let sheetBelow = Rectangle(x: width * 0.06, y: height * 0.56,
                                    width: width * 0.88, height: height * 0.30)
@@ -71,10 +79,38 @@ final class CreasePatternSketch: Sketch {
                 + "\(percent(size.x / flat.x)) as wide and \(percent(size.y / flat.y)) as long")
     }
 
+    /// The facets of a page rather than a machine: one side folds slightly
+    /// ahead of the other, and the sheet carries a gentle bow, both strongest
+    /// mid-fold so the flat and the folded ends stay the exact fold.
+    private func pagePanels(at amount: Double) -> [[Vector3]] {
+        let give = lead * sin(.pi * amount)
+        func facets(at fold: Double) -> [[Vector3]] {
+            MiuraFold(columns: Int(across), rows: Int(down),
+                      major: 1.0, minor: 0.78, angle: corner * .pi / 180,
+                      fold: fold).facets
+        }
+        let a = facets(at: max(0, amount - give / 2))
+        let b = facets(at: min(1, amount + give / 2))
+        var lo = Vector3(.infinity, .infinity, 0), hi = Vector3(-.infinity, -.infinity, 0)
+        for facet in a { for p in facet {
+            lo = Vector3(min(lo.x, p.x), min(lo.y, p.y), 0)
+            hi = Vector3(max(hi.x, p.x), max(hi.y, p.y), 0)
+        } }
+        let spanX = max(hi.x - lo.x, 1e-9), spanY = max(hi.y - lo.y, 1e-9)
+        let arch = bow * sin(.pi * amount)
+        return a.indices.map { i in
+            a[i].indices.map { k in
+                let u = (a[i][k].x - lo.x) / spanX
+                let v = (a[i][k].y - lo.y) / spanY * 2 - 1
+                let p = a[i][k] + (b[i][k] - a[i][k]) * u
+                return Vector3(p.x, p.y, p.z + arch * (1 - v * v))
+            }
+        }
+    }
+
     /// The folded sheet seen from a corner, far panels first so near ones cover
     /// them, each shaded by the way it happens to be facing.
-    private func drawPanels(_ sheet: MiuraFold, in frame: Rectangle) {
-        let panels = sheet.facets
+    private func drawPanels(_ panels: [[Vector3]], in frame: Rectangle) {
         let flattened = panels.map { $0.map(isometric) }
         let placed = place(flattened.flatMap { $0 }, in: frame)
         let light = Vector3(-0.35, -0.55, 0.76).normalized
@@ -83,6 +119,9 @@ final class CreasePatternSketch: Sketch {
             depth(of: panels[$0]) < depth(of: panels[$1])
         }
         strokeWeight(width * 0.0016)
+        // A panel seen almost edge-on tapers to a razor point; a round join
+        // blunts the tip the way paper thickness would.
+        strokeJoin(.round)
         for index in order {
             let corners = Array(placed[(index * 4) ..< (index * 4 + 4)])
             let edge1 = panels[index][1] - panels[index][0]
