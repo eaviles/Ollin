@@ -16,6 +16,14 @@ A few things worth knowing before you pick something up:
 
 If you're coming from p5.js or Processing, [the Guide's Appendix C](Guide/C-ComingFromP5.md) maps the API you already know onto Ollin, and [`Docs/Swift.md`](Docs/Swift.md) covers just enough Swift to get productive.
 
+## Toward 1.0
+
+Ollin is pre-1.0, and the public API still changes freely. Version 1.0.0 will be the first public release: the repository opens, semantic version tags and a changelog begin, and from that point on every public rename ships a deprecation shim (the migration discipline described in [`CLAUDE.md`](CLAUDE.md)). This section names what that release waits on. Everything else on this page is the longer view, and it can land after 1.0 without holding the release back.
+
+- **The capabilities a newcomer will look for first.** The most visible gaps for someone arriving from p5.js, Processing, or openFrameworks: a serial port for the classic microcontroller loop (under [live rigs](#live-rigs-physical-computing-lighting-and-network-video)); a sketch packaged as a double-clickable app, so a finished piece can be handed to someone without the Swift toolchain (under [new output surfaces](#new-output-surfaces)); a pushed network feed (under [new input sources](#new-input-sources)); and the model examples under [Up next](#up-next).
+- **Stabilization.** A naming-and-consistency pass over the whole public API, since the shim discipline locks the names in at the release; the test suite reliable end to end, with no flaky or machine-bound failures; and the hand-verification backlog (features that still wait on eyes, ears, or hardware) worked down.
+- **The release itself.** The changelog, the release notes, the `1.0.0` tag, and a README presentation pass. The ecosystem legs that need a public repository (DocC, a Swift Package Index listing, the extension index) follow the release rather than gate it.
+
 ## Up next
 
 Near-term, fairly self-contained pieces, each small and well-scoped.
@@ -91,6 +99,7 @@ Ways a sketch leaves the window:
 
 - **Haptics.** A `draw()` that also emits a felt pattern synced to the visuals, on Force Touch trackpads and on the phone.
 - **The OS as a canvas.** Wrap a sketch as a dynamic wallpaper, a desktop widget, or a menu-bar piece, so the output lives in the system rather than a window.
+- **A sketch as an app.** A finished piece packaged as a signed, double-clickable app that runs on a Mac without the Swift toolchain, the screen-saver wrapper's sibling, so a piece can be handed to a gallery machine or a friend.
 
 See the [design notes](DESIGN-NOTES.md#new-output-surfaces).
 
