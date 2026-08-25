@@ -114,8 +114,8 @@ marks, the middle of a thick stroke can see nothing but more stroke, decides tha
 paper looks like there, and comes out hollow:
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/HollowStroke-dark.jpg">
-  <img src="../../Guide/Images/Docs/HollowStroke.jpg" alt="The same page of a solid disc, a fat ring, and a heavy bar cut by the adaptive threshold twice: with a 20 pixel window every mark comes out as a hollow outline, and with a 160 pixel window all three stay solid ink" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/HollowStroke-dark.jpg">
+  <img src="../Images/HollowStroke.jpg" alt="The same page of a solid disc, a fat ring, and a heavy bar cut by the adaptive threshold twice: with a 20 pixel window every mark comes out as a hollow outline, and with a 160 pixel window all three stay solid ink" width="680">
 </picture>
 
 Since the window costs nothing to widen, err on the wide side. The published default of an
@@ -129,8 +129,8 @@ the left of it, itself included. Once you have it, the sum over any rectangle is
 subtractions and an addition:
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/SummedAreaLookup-dark.jpg">
-  <img src="../../Guide/Images/Docs/SummedAreaLookup.jpg" alt="A table grid with a shaded rectangle whose corners are marked A, B, C, and D, beside four miniature tables each shading everything above and to the left of one corner, combined as D minus B minus C plus A to leave exactly the box" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/SummedAreaLookup-dark.jpg">
+  <img src="../Images/SummedAreaLookup.jpg" alt="A table grid with a shaded rectangle whose corners are marked A, B, C, and D, beside four miniature tables each shading everything above and to the left of one corner, combined as D minus B minus C plus A to leave exactly the box" width="680">
 </picture>
 
 Divide by the area and you have the average. Four lookups, always.

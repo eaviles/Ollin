@@ -58,8 +58,8 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
 **`length` / `lengthSquared`** measure how far the point is from the origin, that is, how long the arrow is. It's the Pythagorean theorem, the hypotenuse of the right triangle with sides `x` and `y`: `(3, 4)` has length `√(3² + 4²) = 5`. `lengthSquared` is that without the square root (`25` here), for when you only compare.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/VectorHeading-dark.jpg">
-  <img src="../../Guide/Images/Docs/VectorHeading.jpg" alt="Three panels in screen space with y down: the vector (3, 4) as the hypotenuse of its 3-4-5 right triangle, the angle measured from the positive x-axis and growing clockwise, and perpendicular turning (3, 0) a quarter turn into (0, 3)" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/VectorHeading-dark.jpg">
+  <img src="../Images/VectorHeading.jpg" alt="Three panels in screen space with y down: the vector (3, 4) as the hypotenuse of its 3-4-5 right triangle, the angle measured from the positive x-axis and growing clockwise, and perpendicular turning (3, 0) a quarter turn into (0, 3)" width="680">
 </picture>
 
 **In a sketch:** turn a distance or a speed into something you can see, a dot that grows as the mouse nears, or a trail that reacts to how fast it moves (`velocity.length`).
@@ -104,8 +104,8 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
 **`dot(_:)`** is one number measuring how much two vectors point the *same way*, `ax·bx + ay·by`, which equals `|a|·|b|·cos θ`. Its sign alone tells you the rough relationship: positive under 90° (aiming similar ways), zero at exactly 90°, negative past it (aiming opposite ways).
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/VectorMeasures-dark.jpg">
-  <img src="../../Guide/Images/Docs/VectorMeasures.jpg" alt="Three panels in screen space with y down: the dot product's sign for headings aiming with, square to, and against a reference vector, the cross product as the area of the parallelogram two vectors span with b clockwise from a giving a positive sign, and angle(to:) as a signed turn from a to b where positive turns clockwise" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/VectorMeasures-dark.jpg">
+  <img src="../Images/VectorMeasures.jpg" alt="Three panels in screen space with y down: the dot product's sign for headings aiming with, square to, and against a reference vector, the cross product as the area of the parallelogram two vectors span with b clockwise from a giving a positive sign, and angle(to:) as a signed turn from a to b where positive turns clockwise" width="680">
 </picture>
 
 **In a sketch:** this answers "same way or opposite?" and "in front of me or behind?", the basis of simple lighting (how squarely a surface faces the light) and field-of-view checks.
@@ -125,8 +125,8 @@ Vector2(angle: Double, length: Double = 1)   // polar: `length` units at `angle`
 **`lerp(to:_:)`** slides from `a` toward `b` by a fraction `t` (`0` = `a`, `1` = `b`). `t = 0.5` is the midpoint, and `t` past `0…1` extrapolates.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/VectorMoves-dark.jpg">
-  <img src="../../Guide/Images/Docs/VectorMoves.jpg" alt="Four panels in screen space with y down: lerp dots stepping from a to b with the midpoint at t equals 0.5, a vector rotated by an angle about a pivot point, limited clamping a long vector to the circle of the maximum length m, and projected dropping a's shadow perpendicularly onto b's line" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/VectorMoves-dark.jpg">
+  <img src="../Images/VectorMoves.jpg" alt="Four panels in screen space with y down: lerp dots stepping from a to b with the midpoint at t equals 0.5, a vector rotated by an angle about a pivot point, limited clamping a long vector to the circle of the maximum length m, and projected dropping a's shadow perpendicularly onto b's line" width="680">
 </picture>
 
 **In a sketch:** this is the easiest smooth-follow there is, since `pos = pos.lerp(to: target, 0.1)` makes anything glide after the mouse with a soft lag. Also midpoints and in-betweens.

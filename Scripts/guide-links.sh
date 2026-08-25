@@ -19,8 +19,9 @@
 #   2. Every `#anchor` resolves to a heading in the file it points at.
 #   3. Every <img src> file exists, in Guide pages and in Docs/ pages, which
 #      reuse Guide figures by relative path.
-#   4. Every image under Guide/Images/ is referenced by some page. Both halves
-#      of that rule are in Guide/AUTHORING.md and neither was enforced.
+#   4. Every image under Guide/Images/ or Docs/Images/ is referenced by some
+#      page. Both halves of that rule are in Guide/AUTHORING.md and neither
+#      was enforced.
 #   5. The footer chain is contiguous, and each Previous/Next title matches the
 #      title of the file it points at.
 #   6. A chapter's filename number, breadcrumb number and H1 number agree.
@@ -189,7 +190,8 @@ for p in pages + docs_pages:
             else:
                 referenced.add(dest)
 
-for image in sorted((GUIDE / "Images").rglob("*")):
+for image in sorted((GUIDE / "Images").rglob("*")) \
+        + sorted(pathlib.Path("Docs/Images").rglob("*")):
     if image.is_file() and image.resolve() not in referenced:
         fail(str(image), "image is not referenced by any page")
 

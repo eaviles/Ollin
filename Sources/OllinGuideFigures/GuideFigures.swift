@@ -4,9 +4,10 @@ import Foundation
 import Ollin
 import OllinRuntime
 
-/// `swift run OllinGuideFigures [options]` renders every Guide figure sketch
-/// (`Guide/Figures/**/*.swift`) to its committed image
-/// (`Guide/Images/<chapter>/<name>.jpg`, `.png`, or `.gif`), and exits nonzero
+/// `swift run OllinGuideFigures [options]` renders every figure sketch, the
+/// chapters' (`Guide/Figures/**/*.swift`, to `Guide/Images/<chapter>/`) and
+/// the reference pages' own (`Docs/Figures/*.swift`, to `Docs/Images/`,
+/// keyed with a `Docs/` prefix), and exits nonzero
 /// if any figure fails to compile or render. This is the Guide's verification
 /// gate: a listing that no longer builds fails here before it can mislead a
 /// reader.
@@ -218,8 +219,6 @@ enum GuideFigures {
         }
 
         let root = FileManager.default.currentDirectoryPath
-        let figuresDir = root + "/Guide/Figures"
-        let imagesDir = root + "/Guide/Images"
 
         // Shard mode: render exactly the listed figures, report back as JSON,
         // touch no cache. The parent owns all cache and reporting decisions.
@@ -227,7 +226,7 @@ enum GuideFigures {
             let list = ((try? String(contentsOfFile: listPath, encoding: .utf8)) ?? "")
                 .split(separator: "\n").map(String.init).filter { !$0.isEmpty }
                 .map(Work.init(line:))
-            let results = render(list, figuresDir: figuresDir, imagesDir: imagesDir,
+            let results = render(list, root: root,
                                  progressPath: progressPath, echo: true)
             if let data = try? JSONEncoder().encode(results) {
                 try? data.write(to: URL(fileURLWithPath: resultsPath))
@@ -236,16 +235,21 @@ enum GuideFigures {
         }
 
         var isDirectory: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: figuresDir, isDirectory: &isDirectory),
+        guard FileManager.default.fileExists(atPath: root + "/Guide/Figures",
+                                             isDirectory: &isDirectory),
               isDirectory.boolValue else {
             die("Guide/Figures not found under \(root); run from the repository root")
         }
 
-        // Deterministic order so runs (and their logs) are comparable.
+        // Deterministic order so runs (and their logs) are comparable. The
+        // Docs pages' own figures live in their own tree but key with a
+        // `Docs/` prefix, so both trees share one work list and one cache.
         var figures: [String] = []
-        let enumerator = FileManager.default.enumerator(atPath: figuresDir)
-        while let relative = enumerator?.nextObject() as? String {
-            if relative.hasSuffix(".swift") { figures.append(relative) }
+        for (tree, prefix) in [("/Guide/Figures", ""), ("/Docs/Figures", "Docs/")] {
+            let enumerator = FileManager.default.enumerator(atPath: root + tree)
+            while let relative = enumerator?.nextObject() as? String {
+                if relative.hasSuffix(".swift") { figures.append(prefix + relative) }
+            }
         }
         figures.sort()
         if let only {
@@ -253,7 +257,7 @@ enum GuideFigures {
             if figures.isEmpty { die("no figure matches --only \(only)") }
         }
         guard !figures.isEmpty else {
-            print("guide-figures: no figures under Guide/Figures yet, nothing to render")
+            print("guide-figures: no figure sketches found, nothing to render")
             exit(0)
         }
 
@@ -274,10 +278,9 @@ enum GuideFigures {
                 // back to the full re-render below.
                 if only == nil, !force, cache.version == Cache.currentVersion,
                    !cache.figures.isEmpty, probing,
-                   case let sample = probeFigures(figures, figuresDir: figuresDir),
+                   case let sample = probeFigures(figures, root: root),
                    !sample.isEmpty {
-                    let moved = runProbe(sample, imagesDir: imagesDir, figuresDir: figuresDir,
-                                         jobs: jobs, verbose: verbose)
+                    let moved = runProbe(sample, root: root, jobs: jobs, verbose: verbose)
                     if moved.isEmpty {
                         cache.framework = digest
                         saveCache(cache, to: cachePath)
@@ -312,7 +315,7 @@ enum GuideFigures {
         }
 
         let staleFigures = renderAll ? figures : figures.filter {
-            isStale($0, cache: cache, figuresDir: figuresDir, imagesDir: imagesDir)
+            isStale($0, cache: cache, root: root)
         }
         // An `unstable` figure whose own source is unchanged is only being
         // redone because the framework moved, so verify it without touching its
@@ -327,9 +330,9 @@ enum GuideFigures {
             let verifyOnly: Bool
             if let entry = previous.figures[figure] {
                 verifyOnly = entry.unstable
-                    && unchanged(figure, cache: previous, figuresDir: figuresDir)
+                    && unchanged(figure, cache: previous, root: root)
             } else {
-                verifyOnly = directiveIsUnstable(figure, figuresDir: figuresDir)
+                verifyOnly = directiveIsUnstable(figure, root: root)
             }
             return Work(figure: figure, verifyOnly: verifyOnly)
         }
@@ -348,8 +351,7 @@ enum GuideFigures {
         var results: [Rendered]
         if workers <= 1 {
             print("guide-figures: rendering \(stale.count) figure\(plural(stale.count))")
-            results = render(stale, figuresDir: figuresDir, imagesDir: imagesDir,
-                             progressPath: nil, echo: true)
+            results = render(stale, root: root, progressPath: nil, echo: true)
         } else {
             print("guide-figures: rendering \(stale.count) figure\(plural(stale.count))"
                   + " across \(workers) job\(plural(workers))")
@@ -391,9 +393,9 @@ enum GuideFigures {
     /// compared. An `unstable` figure renders differently every time, so a
     /// probe made of one would report a change on every run and the sample
     /// would never pass.
-    private static func probeFigures(_ figures: [String], figuresDir: String) -> [String] {
+    private static func probeFigures(_ figures: [String], root: String) -> [String] {
         figures.filter { figure in
-            guard let data = FileManager.default.contents(atPath: figuresDir + "/" + figure),
+            guard let data = FileManager.default.contents(atPath: sourceFile(figure, root: root)),
                   let source = String(data: data, encoding: .utf8) else { return false }
             let directive = Directive(source: source)
             if directive.probe, directive.unstable {
@@ -408,20 +410,18 @@ enum GuideFigures {
     /// committed beside them. A figure that fails to render counts as changed:
     /// the point of the probe is to hand any doubt to the full run.
     @MainActor
-    private static func runProbe(_ sample: [String], imagesDir: String, figuresDir: String,
+    private static func runProbe(_ sample: [String], root: String,
                                  jobs: Int, verbose: Bool) -> [String] {
         print("guide-figures: the framework changed; probing \(sample.count)"
               + " figure\(plural(sample.count)) to see whether it moved any pixels")
         let work = sample.map { Work(figure: $0, verifyOnly: false, probeOnly: true) }
         let workers = min(jobs, work.count)
         let results = workers <= 1
-            ? render(work, figuresDir: figuresDir, imagesDir: imagesDir,
-                     progressPath: nil, echo: verbose)
+            ? render(work, root: root, progressPath: nil, echo: verbose)
             : renderSharded(work, workers: workers, verbose: verbose)
         return results.filter { result in
             guard result.ok, !result.output.isEmpty else { return true }
-            let directory = imagesDir + "/"
-                + ((result.figure as NSString).deletingLastPathComponent)
+            let directory = imageFolder(result.figure, root: root)
             if fileHash(directory + "/" + result.outputPath) != result.output { return true }
             if let darkPath = result.darkPath, let darkOutput = result.darkOutput {
                 return fileHash(directory + "/" + darkPath) != darkOutput
@@ -436,12 +436,12 @@ enum GuideFigures {
     /// serial heart of the runner: everything else decides *which* figures get
     /// here and how many processes are doing it at once.
     @MainActor
-    private static func render(_ list: [Work], figuresDir: String, imagesDir: String,
+    private static func render(_ list: [Work], root: String,
                                progressPath: String?, echo: Bool) -> [Rendered] {
         var results: [Rendered] = []
         for work in list {
             let relative = work.figure
-            let sourcePath = figuresDir + "/" + relative
+            let sourcePath = sourceFile(relative, root: root)
             let started = Date()
             var log = ""
             var outPath = ""
@@ -460,7 +460,7 @@ enum GuideFigures {
                 let stem = (relative as NSString).deletingPathExtension
                 let name = (stem as NSString).lastPathComponent
                     + (directive.gif ? ".gif" : directive.stillExtension)
-                let directory = imagesDir + "/" + (stem as NSString).deletingLastPathComponent
+                let directory = imageFolder(relative, root: root)
                 outPath = directory + "/" + name
                 try? FileManager.default.createDirectory(
                     atPath: directory, withIntermediateDirectories: true)
@@ -694,13 +694,42 @@ enum GuideFigures {
         }
     }
 
+    // MARK: - The two figure trees
+
+    /// Where a figure key lives. A chapter figure keys as
+    /// `<chapter>/<Name>.swift` under `Guide/Figures`, rendering to
+    /// `Guide/Images/<chapter>/`; a `Docs/` prefix routes the key to the
+    /// reference pages' own `Docs/Figures`, rendering to `Docs/Images`. The
+    /// prefix is part of the key, not a folder under the Guide: cache
+    /// entries, shard lists, and `--only` matches all name figures by key,
+    /// so both trees share one namespace here.
+    private static func trees(_ figure: String) -> (figures: String, images: String, path: String) {
+        if figure.hasPrefix("Docs/") {
+            return ("/Docs/Figures", "/Docs/Images", String(figure.dropFirst("Docs/".count)))
+        }
+        return ("/Guide/Figures", "/Guide/Images", figure)
+    }
+
+    /// The figure key's source file on disk.
+    private static func sourceFile(_ figure: String, root: String) -> String {
+        let tree = trees(figure)
+        return root + tree.figures + "/" + tree.path
+    }
+
+    /// The folder the figure's rendered images belong in, light and dark.
+    private static func imageFolder(_ figure: String, root: String) -> String {
+        let tree = trees(figure)
+        let parent = (tree.path as NSString).deletingLastPathComponent
+        return root + tree.images + (parent.isEmpty ? "" : "/" + parent)
+    }
+
     // MARK: - Staleness
 
     /// Whether a figure's own source carries the `unstable` directive, read
     /// directly when the cache has no entry to say so.
     private static func directiveIsUnstable(_ relative: String,
-                                            figuresDir: String) -> Bool {
-        guard let data = FileManager.default.contents(atPath: figuresDir + "/" + relative),
+                                            root: String) -> Bool {
+        guard let data = FileManager.default.contents(atPath: sourceFile(relative, root: root)),
               let source = String(data: data, encoding: .utf8) else { return false }
         return Directive(source: source).unstable
     }
@@ -708,27 +737,24 @@ enum GuideFigures {
     /// Whether a figure's own source still matches what the cache recorded,
     /// regardless of the framework digest that may have invalidated the entry.
     private static func unchanged(_ relative: String, cache: Cache,
-                                  figuresDir: String) -> Bool {
+                                  root: String) -> Bool {
         guard let entry = cache.figures[relative],
-              let source = FileManager.default.contents(atPath: figuresDir + "/" + relative)
+              let source = FileManager.default.contents(atPath: sourceFile(relative, root: root))
         else { return false }
         return hex(SHA256.hash(data: source)) == entry.source
     }
 
     private static func isStale(_ relative: String, cache: Cache,
-                                figuresDir: String, imagesDir: String) -> Bool {
+                                root: String) -> Bool {
         guard let entry = cache.figures[relative] else { return true }
-        guard let source = FileManager.default.contents(atPath: figuresDir + "/" + relative),
+        guard let source = FileManager.default.contents(atPath: sourceFile(relative, root: root)),
               hex(SHA256.hash(data: source)) == entry.source else { return true }
-        let stem = (relative as NSString).deletingPathExtension
-        let image = imagesDir + "/" + (stem as NSString).deletingLastPathComponent
-            + "/" + entry.outputPath
+        let image = imageFolder(relative, root: root) + "/" + entry.outputPath
         guard FileManager.default.fileExists(atPath: image) else { return true }
         // A themed figure's dark sibling is part of its output: missing or
         // hand-edited means the figure needs redoing, same as the light one.
         if let darkPath = entry.darkPath {
-            let dark = imagesDir + "/" + (stem as NSString).deletingLastPathComponent
-                + "/" + darkPath
+            let dark = imageFolder(relative, root: root) + "/" + darkPath
             guard FileManager.default.fileExists(atPath: dark) else { return true }
             if !entry.unstable, fileHash(dark) != (entry.darkOutput ?? "") { return true }
         }
@@ -849,7 +875,8 @@ enum GuideFigures {
 
     private static func usage() -> Never {
         print("""
-        OllinGuideFigures: render the Guide's figure sketches to Guide/Images.
+        OllinGuideFigures: render the Guide's and Docs' figure sketches to
+        their Images trees.
 
           --only <substring>   only figures whose path contains this
           --force              re-render even figures the cache calls unchanged

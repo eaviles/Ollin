@@ -85,8 +85,8 @@ ring(innerRadius: Double, outerRadius: Double) -> Vector2
 A random point in the ring between the two radii, centered on the origin. Add a center to place it. See the `Ring` example.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/RandomRing-dark.jpg">
-  <img src="../../Guide/Images/Docs/RandomRing.jpg" alt="Two panels around the same pair of circles. Left, the band between the inner and outer radius washed in orange, the two radii drawn as rays from the center dot, and the hole labeled no points. Right, fifteen hundred orange samples filling the band evenly and leaving the hole and the outside empty" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/RandomRing-dark.jpg">
+  <img src="../Images/RandomRing.jpg" alt="Two panels around the same pair of circles. Left, the band between the inner and outer radius washed in orange, the two radii drawn as rays from the center dot, and the hole labeled no points. Right, fifteen hundred orange samples filling the band evenly and leaving the hole and the outside empty" width="680">
 </picture>
 
 ```swift

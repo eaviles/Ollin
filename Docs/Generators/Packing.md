@@ -10,8 +10,8 @@ Fill a region with circles that grow until they touch but never overlap, the cla
 - **Front relaxation** (`relaxCircles`): start from circles that overlap and push every overlapping pair apart until none do, holding their radii fixed. It's the way to settle a set you sized yourself.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/PackingMechanisms-dark.jpg">
-  <img src="../../Guide/Images/Docs/PackingMechanisms.jpg" alt="Three panels of the same region packed three ways: packCircles(count:) growing big circles first and filling the gaps with ever smaller ones, packCircles(around:) growing one circle per handed point into an even foam, and relaxCircles holding hand-picked radii while pushing every overlap apart" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/PackingMechanisms-dark.jpg">
+  <img src="../Images/PackingMechanisms.jpg" alt="Three panels of the same region packed three ways: packCircles(count:) growing big circles first and filling the gaps with ever smaller ones, packCircles(around:) growing one circle per handed point into an even foam, and relaxCircles holding hand-picked radii while pushing every overlap apart" width="680">
 </picture>
 
 The output is `[Circle]`, so it feeds straight into [`drawCircles`](../Drawing/Drawing.md), the [shape booleans](../Drawing/Geometry.md), hatching, and SVG export.

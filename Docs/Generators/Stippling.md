@@ -7,8 +7,8 @@
 **Weighted-Voronoi stippling** places a fixed budget of dots so their local density reproduces a picture's tone. Shadow packs them tight and highlight spreads them out, so from a small distance the scatter *is* the picture. It's the classic hand-stippled illustration look. Because the output is plain points, it feeds dots, marks, [Voronoi cells](../Drawing/Voronoi.md), and the pen-plotter and [SVG](../Output/Export.md) paths.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/StippleTone-dark.jpg">
-  <img src="../../Guide/Images/Docs/StippleTone.jpg" alt="A small sunset over water beside the same picture as a stipple: black dots on cream, packed tight in the dark water, sparser in the bright sky, and absent where the sun leaves clean paper" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/StippleTone-dark.jpg">
+  <img src="../Images/StippleTone.jpg" alt="A small sunset over water beside the same picture as a stipple: black dots on cream, packed tight in the dark water, sparser in the bright sky, and absent where the sun leaves clean paper" width="680">
 </picture>
 
 Under the hood it's a weighted centroidal Voronoi iteration. Seed the dots by rejection-sampling the darkness, then repeatedly move every dot to the darkness-weighted centroid of its cell. Each pass evens the spacing while the weighting holds the dots to the tone. The result is locally blue-noise-even yet globally image-shaped.

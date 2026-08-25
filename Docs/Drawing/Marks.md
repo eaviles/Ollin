@@ -46,8 +46,8 @@ Four types, each doing one thing:
 | `StrokeMark` | The recorded path plus the width and opacity at every point of it. |
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/MarkDataflow-dark.jpg">
-  <img src="../../Guide/Images/Docs/MarkDataflow.jpg" alt="Four boxes joined by arrows: the hand moving 25 points in a sixtieth of a second while pressing at 0.4, measured into a StrokeInput of speed 1500 points per second and pressure 0.4, answered by StrokeDynamics with width from pressure and opacity from speed, landing in the mark as width 0.62 and opacity 0.40 at that point" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/MarkDataflow-dark.jpg">
+  <img src="../Images/MarkDataflow.jpg" alt="Four boxes joined by arrows: the hand moving 25 points in a sixtieth of a second while pressing at 0.4, measured into a StrokeInput of speed 1500 points per second and pressure 0.4, answered by StrokeDynamics with width from pressure and opacity from speed, landing in the mark as width 0.62 and opacity 0.40 at that point" width="680">
 </picture>
 
 <a name="input"></a>

@@ -7,8 +7,8 @@
 **`drawHalftone`** rebuilds an image as the classic print dot screen. Round dots sit on a grid rotated to the traditional 45 degrees. Each one is sized so its ink area matches the tone under its cell. It is how newspapers and screen prints have carried photographs for a century, and the vector counterpart of the raster screening the [print separations](../Output/PrintSeparations.md) use. Because the sizing is area-exact, tone survives the screen. A 30 percent gray becomes dots covering 30 percent of their cells. Shadows grow dots that overrun their cells and merge into the traditional checkered diamonds.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/HalftoneScreen-dark.jpg">
-  <img src="../../Guide/Images/Docs/HalftoneScreen.jpg" alt="A small sunset over water beside the same picture as a halftone screen: black dots on cream, small in the bright sky, leaving the sun as clean paper, and swelling in the dark water until they merge into checkered diamonds" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/HalftoneScreen-dark.jpg">
+  <img src="../Images/HalftoneScreen.jpg" alt="A small sunset over water beside the same picture as a halftone screen: black dots on cream, small in the bright sky, leaving the sun as clean paper, and swelling in the dark water until they merge into checkered diamonds" width="680">
 </picture>
 
 ### Contents

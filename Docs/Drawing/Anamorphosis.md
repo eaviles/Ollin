@@ -16,8 +16,8 @@ Nothing is undone in software. The plate on the page is a real drawing, and the 
 </picture>
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/AnamorphosisSetup-dark.jpg">
-  <img src="../../Guide/Images/Docs/AnamorphosisSetup.jpg" alt="The page seen from above: a circle labeled mirror with an orange band wrapped along its near face, faint sight lines fanning from an eye below it, and orange marks landing on those lines between the glass and the eye, wider toward the edges" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/AnamorphosisSetup-dark.jpg">
+  <img src="../Images/AnamorphosisSetup.jpg" alt="The page seen from above: a circle labeled mirror with an orange band wrapped along its near face, faint sight lines fanning from an eye below it, and orange marks landing on those lines between the glass and the eye, wider toward the edges" width="680">
 </picture>
 
 ### Contents

@@ -94,7 +94,7 @@ if let reason = tracker.unavailableReason {
 drawCaption("FaceTracking · \(faces.count) faces")
 ```
 
-<img src="../../Guide/Images/Docs/StatusAndCaption.jpg" alt="A dark canvas waiting on a camera feed, with the quiet gray drawStatus notice centered in it and the small white drawCaption label along the bottom edge, each pointed out by name" width="560">
+<img src="../Images/StatusAndCaption.jpg" alt="A dark canvas waiting on a camera feed, with the quiet gray drawStatus notice centered in it and the small white drawCaption label along the bottom edge, each pointed out by name" width="560">
 
 Both draw in their own standard typeface, size, and alignment, scoped like a `withState { }`, so the sketch's fill, font, and alignment are untouched afterward.
 
@@ -134,8 +134,8 @@ Set how text is anchored to the `drawText` position.
 - Vertical (`TextAlignV`): `.baseline` (default, like p5) sits the first line's baseline on the y, `.top` / `.bottom` align the block's top / bottom edge, and `.middle` centers the whole block (`.center` is accepted as an alias, so `textAlign(.center, .center)` compiles).
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/TextAlignAnchors-dark.jpg">
-  <img src="../../Guide/Images/Docs/TextAlignAnchors.jpg" alt="A three-by-three grid of the same two-line block with a dot marking the anchor point in every horizontal and vertical alignment combination: left starts the text at the x, center centers it, right ends it there, while top hangs the block below the y, middle centers it, and bottom stands it above; a strip below shows the default baseline anchor with the first line's baseline sitting on the y" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/TextAlignAnchors-dark.jpg">
+  <img src="../Images/TextAlignAnchors.jpg" alt="A three-by-three grid of the same two-line block with a dot marking the anchor point in every horizontal and vertical alignment combination: left starts the text at the x, center centers it, right ends it there, while top hangs the block below the y, middle centers it, and bottom stands it above; a strip below shows the default baseline anchor with the first line's baseline sitting on the y" width="680">
 </picture>
 
 ```swift
@@ -418,8 +418,8 @@ textBounds(_ string: String, at position: Vector2) -> Rectangle
 ```
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/TypeMetrics-dark.jpg">
-  <img src="../../Guide/Images/Docs/TypeMetrics.jpg" alt="A large sample line with the ascender line, baseline, and descender line ruled through it, textAscent and textDescent bracketed from the baseline at the right, a ghosted next line one textLeading below, and the baseline labeled as drawText's y" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/TypeMetrics-dark.jpg">
+  <img src="../Images/TypeMetrics.jpg" alt="A large sample line with the ascender line, baseline, and descender line ruled through it, textAscent and textDescent bracketed from the baseline at the right, a ghosted next line one textLeading below, and the baseline labeled as drawText's y" width="680">
 </picture>
 
 All in points at the current `textFont` / `textSize`, for every font kind. `textBounds` returns the box `string` would occupy if drawn at `(x, y)` with the current alignment, handy for backings, layout, and hit-testing.

@@ -105,8 +105,8 @@ strokeAlign(_ align: StrokeAlign)   // .center (default), .inside, .outside
 Where the stroke sits relative to a shape's outline. The default `.center` straddles the edge, half the weight inside and half outside, which is what p5 and Processing do. `.inside` keeps the whole stroke within the shape, so its footprint doesn't change as the weight grows, which is handy for tiled grids where an outward border would overlap its neighbors. `.outside` puts the stroke entirely beyond the edge. This is state, like `strokeWeight`, so it holds until changed.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/StrokeAnatomy-dark.jpg">
-  <img src="../../Guide/Images/Docs/StrokeAnatomy.jpg" alt="Three labeled rows. strokeAlign: the same heavy circle outline straddling the marked shape edge, held entirely inside it, and pushed entirely outside it. strokeJoin: the same bend turned with a sharp miter, a cut-off bevel, and a rounded arc. strokeCap: the same segment ended flat at its marked endpoints, rounded past them, and squared past them" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/StrokeAnatomy-dark.jpg">
+  <img src="../Images/StrokeAnatomy.jpg" alt="Three labeled rows. strokeAlign: the same heavy circle outline straddling the marked shape edge, held entirely inside it, and pushed entirely outside it. strokeJoin: the same bend turned with a sharp miter, a cut-off bevel, and a rounded arc. strokeCap: the same segment ended flat at its marked endpoints, rounded past them, and squared past them" width="680">
 </picture>
 
 ```swift
@@ -207,8 +207,8 @@ solid()
 Draw region shapes (circle, rect, star, triangle, heart, …) as a constant-width band hugging their outline instead of a solid interior, which is what `drawRing` is to a circle, applied to every shape. The `fill` color paints the band, and an active `stroke` borders *both* of its edges, so you can frame a hollow shape in a second color (something a stroke alone can't do, since that would be the only band). `width` is the band thickness, centered on the edge. This is state, like `fill` and `stroke`, and `solid()` returns to filled shapes. Points, lines, and `drawRing` (already a band) ignore it.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/HollowBand-dark.jpg">
-  <img src="../../Guide/Images/Docs/HollowBand.jpg" alt="The same five-point star drawn twice: solid, a filled shape with one stroked outline, and under hollow(16), a constant-width band hugging the outline with the fill painting the band and the stroke running along both of its edges" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/HollowBand-dark.jpg">
+  <img src="../Images/HollowBand.jpg" alt="The same five-point star drawn twice: solid, a filled shape with one stroked outline, and under hollow(16), a constant-width band hugging the outline with the fill painting the band and the stroke running along both of its edges" width="680">
 </picture>
 
 ```swift
@@ -297,8 +297,8 @@ drawPoint(_ p: Vector2, size: Double)
 A filled marker in the current `fill` color (it ignores stroke, so `noFill()` draws nothing). The glyph is the current [`pointMarker`](#pointMarker), a round dot by default. `size` is the on-screen *diameter*, and without it the current [`pointSize`](#pointSize) is used. Each point is a single SDF instance, so a field of thousands stays cheap.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawPoint-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawPoint.jpg" alt="A row of round dots stepping down from bold to a faint sub-pixel speck, each labeled with its size, beside a block of tiny points reading as an even gray wash" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawPoint-dark.jpg">
+  <img src="../Images/DrawPoint.jpg" alt="A row of round dots stepping down from bold to a faint sub-pixel speck, each labeled with its size, beside a block of tiny points reading as an even gray wash" width="680">
 </picture>
 
 ```swift
@@ -323,8 +323,8 @@ drawLine(_ a: Vector2, _ b: Vector2)
 A stroked line segment between two points. It honors [`strokeCap`](#strokeCap) (butt by default) and takes solid, translucent, or gradient stroke paint. Rendered through the high-quality stroke path (edge-expanded triangles plus a ~1px anti-aliasing fringe), so it stays crisp and even at any angle and resolution, down to sub-pixel widths.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawLine-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawLine.jpg" alt="Straight lines at stroke weights from 14 down to a half-pixel hairline, at several angles, the thickest with accent dots where its flat butt ends stop exactly at the endpoints" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawLine-dark.jpg">
+  <img src="../Images/DrawLine.jpg" alt="Straight lines at stroke weights from 14 down to a half-pixel hairline, at several angles, the thickest with accent dots where its flat butt ends stop exactly at the endpoints" width="680">
 </picture>
 
 ```swift
@@ -345,8 +345,8 @@ drawArrow(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double,
 An arrow: a stroked shaft ending in a solid triangular head whose tip is exactly `to`. The whole mark, head included, takes the current [`stroke`](#stroke), so one `stroke(...)` colors it. [`strokeWeight`](#strokeWeight) thickens the shaft, and head measurements left to themselves scale with it. A diagram's pointer, a vector field's glyph, a force made visible.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawArrow-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawArrow.jpg" alt="An arrow with dots at its two anchor points, a thicker arrow whose head has grown with the stroke weight, and a ring of thin arrows pointing outward from a shared center" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawArrow-dark.jpg">
+  <img src="../Images/DrawArrow.jpg" alt="An arrow with dots at its two anchor points, a thicker arrow whose head has grown with the stroke weight, and a ring of thin arrows pointing outward from a shared center" width="680">
 </picture>
 
 ```swift
@@ -371,8 +371,8 @@ drawCircle(_ circle: Circle)
 A circle, by scalar center (positional `x, y, radius`), a `Vector2` `center:`, or a [`Circle`](../Drawing/Geometry.md#circle) value.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawCircle-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawCircle.jpg" alt="A circle with its center dotted and an accent ray labeled radius reaching the rim, beside three concentric circles sharing one dotted center" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawCircle-dark.jpg">
+  <img src="../Images/DrawCircle.jpg" alt="A circle with its center dotted and an accent ray labeled radius reaching the rim, beside three concentric circles sharing one dotted center" width="680">
 </picture>
 
 ```swift
@@ -395,8 +395,8 @@ drawEllipse(center: Vector2, rx: Double, ry: Double)
 An ellipse, by scalar center (positional `x, y, rx, ry`) or a `Vector2` `center:`. As with `drawCircle`, the size is given as *radii* (`rx`, `ry`), not diameters, so equal radii draw a circle.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawEllipse-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawEllipse.jpg" alt="An ellipse with accent rays from its dotted center labeled rx across and ry down, beside one drawn with equal radii that reads as a circle" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawEllipse-dark.jpg">
+  <img src="../Images/DrawEllipse.jpg" alt="An ellipse with accent rays from its dotted center labeled rx across and ry down, beside one drawn with equal radii that reads as a circle" width="680">
 </picture>
 
 ```swift
@@ -418,8 +418,8 @@ drawRect(_ rectangle: Rectangle, cornerRadius: Double = 0)
 A rectangle, anchored by its top-left corner or its center (the center form matches p5's `rectMode(CENTER)`), or from a `Rectangle` value. `cornerRadius` rounds the corners, clamped to half the shorter side, and the default `0` is a sharp rectangle.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawRect-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawRect.jpg" alt="Three rectangles: one anchored by an accent dot at its top-left corner, one by a dot at its center, and one with its corners rounded by a cornerRadius of 26" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawRect-dark.jpg">
+  <img src="../Images/DrawRect.jpg" alt="Three rectangles: one anchored by an accent dot at its top-left corner, one by a dot at its center, and one with its corners rounded by a cornerRadius of 26" width="680">
 </picture>
 
 ```swift
@@ -440,8 +440,8 @@ drawOrientedBox(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double, thicknes
 A rectangle placed by its two centerline endpoints `a` and `b` with the given `thickness` across it, so it draws a thick bar between two points with square (not round) ends. Where `drawRect` is axis-aligned and you'd rotate it about its own center, this is positioned by *both* of its ends, so connecting a pair of moving points (a linkage, a truss, an edge between nodes) is one call with no trigonometry. It's a filled region, taking `fill`, an outline `stroke`, `strokeAlign`, and `hollow`, where `drawLine` is a stroke with no interior. A zero-length bar (`a == b`) or a non-positive thickness draws nothing.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawOrientedBox-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawOrientedBox.jpg" alt="A thick square-ended bar laid between two accent-dotted endpoints labeled a and b, its thickness marked straight across it, beside three such bars joining three dots into a truss" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawOrientedBox-dark.jpg">
+  <img src="../Images/DrawOrientedBox.jpg" alt="A thick square-ended bar laid between two accent-dotted endpoints labeled a and b, its thickness marked straight across it, beside three such bars joining three dots into a truss" width="680">
 </picture>
 
 ```swift
@@ -466,8 +466,8 @@ drawTriangle(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double, _ x3: Doubl
 A triangle, in three forms. The three-argument form is an **equilateral** triangle *centered* at `(x, y)`, point-up, with circumradius `radius` (the center-to-vertex distance, like `drawCircle`'s radius), so rotating it spins it about that center. The four-argument form is an **isosceles** triangle whose *apex* (tip) is at `(x, y)`, opening toward +y (downward) by `height` with the given `base` width, so rotating it sweeps it about the apex. The **three-point** form places the corners directly, so any triangle is one call (the corners may be in any winding order, and a zero-area triangle draws nothing). All three are analytic SDF shapes, crisp at any size and effectively free per triangle, and they honor `strokeAlign` and `hollow`. Aim them with the transform stack.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawTriangle-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawTriangle.jpg" alt="Three triangles in a row, each with its anchor dotted in orange: an equilateral centered on its dotted middle, an isosceles hanging from its dotted apex and opening downward, and a scalene with all three corners dotted" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawTriangle-dark.jpg">
+  <img src="../Images/DrawTriangle.jpg" alt="Three triangles in a row, each with its anchor dotted in orange: an equilateral centered on its dotted middle, an isosceles hanging from its dotted apex and opening downward, and a scalene with all three corners dotted" width="680">
 </picture>
 
 ```swift
@@ -495,8 +495,8 @@ An elliptical arc sweeping from `start` to `stop` (radians, measured from the po
 The outline is stroked like any other path, so [`strokeJoin`](#strokejoin) shapes its corners and [`strokeCap`](#strokecap) finishes an open arc's two ends.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawArc-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawArc.jpg" alt="The same three-quarter arc sweep under the three modes: open with only the curve stroked, chord closed by a straight edge, and pie closed through the center as a wedge. The first is annotated with the zero angle on the positive x-axis and an arrow showing angles increasing clockwise" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawArc-dark.jpg">
+  <img src="../Images/DrawArc.jpg" alt="The same three-quarter arc sweep under the three modes: open with only the curve stroked, chord closed by a straight edge, and pie closed through the center as a wedge. The first is annotated with the zero angle on the positive x-axis and an arrow showing angles increasing clockwise" width="680">
 </picture>
 
 ```swift
@@ -516,8 +516,8 @@ drawBezier(_ x1: Double, _ y1: Double, _ cx: Double, _ cy: Double, _ x2: Double,
 A **quadratic** Bézier curve, stroked from `start` to `end` and bending toward the single control point `control`. It takes the current `stroke` paint (solid, translucent, or gradient) and `strokeWeight` (a curve has no interior, so there's no fill), and honors [`strokeCap`](#strokeCap) on its ends (butt by default). The curve flattens to a polyline and renders through the high-quality stroke path (edge-expanded triangles plus a ~1px anti-aliasing fringe), so it stays crisp and even at any angle and resolution, down to sub-pixel widths.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawBezier-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawBezier.jpg" alt="One thick curve from a dotted start to a dotted end, bending up toward an orange control point above it, the two straight control legs ghosted behind the stroke, labeled leaned toward, never reached" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawBezier-dark.jpg">
+  <img src="../Images/DrawBezier.jpg" alt="One thick curve from a dotted start to a dotted end, bending up toward an orange control point above it, the two straight control legs ghosted behind the stroke, labeled leaned toward, never reached" width="680">
 </picture>
 
 For a **cubic** curve (two control points) or a chain of joined curves, sample the curve into a `Shape` contour and use `drawShape`, which takes any number of points and can be filled.
@@ -541,8 +541,8 @@ drawNgon(center: Vector2, radius: Double, sides: Int)
 A regular polygon centered at `(x, y)` with `sides` equal-length edges (3 or more) and circumradius `radius` (the center-to-vertex distance, like `drawCircle`'s radius), one vertex pointing up. It's an analytic SDF shape, crisp at any size and effectively free per shape, and you rotate it about its center with the transform stack. For an arbitrary, non-regular polygon, use `drawPolygon`.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawNgon-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawNgon.jpg" alt="A pentagon, hexagon, octagon, and twelve-sided polygon in a row, each with one vertex up and its center dotted, the first with an orange line from center to top vertex labeled radius" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawNgon-dark.jpg">
+  <img src="../Images/DrawNgon.jpg" alt="A pentagon, hexagon, octagon, and twelve-sided polygon in a row, each with one vertex up and its center dotted, the first with an orange line from center to top vertex labeled radius" width="680">
 </picture>
 
 ```swift
@@ -569,8 +569,8 @@ drawStar(center: Vector2, outerRadius: Double, innerRadius: Double, points: Int)
 A star centered at `(x, y)` with `points` tips (3 or more), alternating between `outerRadius` (the tips) and `innerRadius` (the valleys), one tip pointing up. `innerRadius` runs `0...outerRadius`, and smaller is spikier. At the apothem the points flatten into a regular polygon's edges, which is exactly how `drawNgon` is built. It's an analytic SDF shape, crisp at any size and effectively free, and you rotate it about its center with the transform stack.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawStar-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawStar.jpg" alt="Three stars with dotted centers: five points spiky at a small inner radius, the same five points gentle at a large one, and an eight-point burst" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawStar-dark.jpg">
+  <img src="../Images/DrawStar.jpg" alt="Three stars with dotted centers: five points spiky at a small inner radius, the same five points gentle at a large one, and an eight-point burst" width="680">
 </picture>
 
 ```swift
@@ -590,8 +590,8 @@ drawRhombus(center: Vector2, width: Double, height: Double, cornerRadius: Double
 A rhombus (diamond) centered at `(x, y)`, `width` by `height` (the full diagonals), with a vertex at each end of those diagonals. `cornerRadius` rounds the corners while keeping the footprint, so push it up and the diamond rounds toward a circle. It's an analytic SDF shape, crisp at any size, and you rotate it about its center with the transform stack.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawRhombus-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawRhombus.jpg" alt="Three diamonds: a tall one with its two diagonals drawn in orange as its width and height, a wide one with its center dotted, and one rounded toward a circle by a corner radius" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawRhombus-dark.jpg">
+  <img src="../Images/DrawRhombus.jpg" alt="Three diamonds: a tall one with its two diagonals drawn in orange as its width and height, a wide one with its center dotted, and one rounded toward a circle by a corner radius" width="680">
 </picture>
 
 ```swift
@@ -611,8 +611,8 @@ drawVesica(center: Vector2, width: Double, height: Double, cornerRadius: Double 
 A vesica, meaning a pointed lens formed by the overlap of two circles, centered at `(x, y)` and `width` by `height`. The two tips lie along the longer axis, so a tall lens points up and down while a wide one points left and right. `cornerRadius` rounds the tips (and slightly enlarges the lens, like `drawMoon`), easing it toward an ellipse. It's an analytic SDF shape, so rotate it with the transform stack for in-between angles.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawVesica-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawVesica.jpg" alt="Three pointed lenses: a tall one with its two tips dotted top and bottom, a wide one with its tips dotted left and right, and the wide lens again with its tips softened by a corner radius" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawVesica-dark.jpg">
+  <img src="../Images/DrawVesica.jpg" alt="Three pointed lenses: a tall one with its two tips dotted top and bottom, a wide one with its tips dotted left and right, and the wide lens again with its tips softened by a corner radius" width="680">
 </picture>
 
 ```swift
@@ -632,8 +632,8 @@ drawOrientedVesica(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double, width
 A vesica placed by its two tip points `a` and `b`, bulging to `width` across the middle. It's the oriented analog of `drawVesica`, the way [`drawOrientedBox`](#orientedbox) is to `drawRect`. Because both tips are placed rather than a center plus a rotation, spanning a moving pair of points takes one call with no trigonometry. It's a filled region, so `fill`, an outline `stroke`, `strokeAlign`, and `hollow` all apply. `width` is the full waist width, so keep it below the tip distance for a lens, or equal to it for a circle. A zero-length span (`a == b`) or a non-positive width draws nothing.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawOrientedVesica-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawOrientedVesica.jpg" alt="Three lenses each spanning two marked tip points: a broad lens, a narrow sliver, and one whose waist equals the tip distance, closing into a circle" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawOrientedVesica-dark.jpg">
+  <img src="../Images/DrawOrientedVesica.jpg" alt="Three lenses each spanning two marked tip points: a broad lens, a narrow sliver, and one whose waist equals the tip distance, closing into a circle" width="680">
 </picture>
 
 ```swift
@@ -654,8 +654,8 @@ drawMoon(center: Vector2, outerRadius: Double, innerRadius: Double, offset: Doub
 A crescent moon at `(x, y)`, drawn as the disk of `outerRadius` with a disk of `innerRadius` removed, the cut disk shifted `offset` toward +x. Keep `innerRadius` near `outerRadius` with a modest `offset` for a classic crescent, since a larger `offset` opens it toward a half-moon. `cornerRadius` rounds the two cusps. It's an analytic SDF shape, so rotate it with the transform stack to face the crescent any direction.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawMoon-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawMoon.jpg" alt="Three crescents from the same marked center: a slim classic crescent, one opened toward a half-moon by a larger offset, and one with its two cusps rounded" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawMoon-dark.jpg">
+  <img src="../Images/DrawMoon.jpg" alt="Three crescents from the same marked center: a slim classic crescent, one opened toward a half-moon by a larger offset, and one with its two cusps rounded" width="680">
 </picture>
 
 ```swift
@@ -675,8 +675,8 @@ drawCross(center: Vector2, length: Double, thickness: Double, cornerRadius: Doub
 A plus-sign cross centered at `(x, y)`, spanning `length` tip-to-tip on both axes with arms `thickness` wide. `cornerRadius` rounds the outer corners (the inner notches stay sharp), the usual rounded-plus look. It's an analytic SDF shape, so rotate it 45° with the transform stack for an ✕.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawCross-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawCross.jpg" alt="Three crosses: a sharp plus, the same plus with rounded outer corners, and the same shape rotated an eighth of a turn into an x" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawCross-dark.jpg">
+  <img src="../Images/DrawCross.jpg" alt="Three crosses: a sharp plus, the same plus with rounded outer corners, and the same shape rotated an eighth of a turn into an x" width="680">
 </picture>
 
 ```swift
@@ -696,8 +696,8 @@ drawRing(center: Vector2, innerRadius: Double, outerRadius: Double)
 A filled ring centered at `(x, y)`, between `innerRadius` and `outerRadius`. It takes the current `fill`, not stroke, so for two outlined circles instead, draw `drawCircle` twice with `noFill`. It's an analytic SDF shape, crisp at any size.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawRing-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawRing.jpg" alt="Three filled rings of one outer radius: a thin band, a thick band around a small hole, and a fine ring, each with its center marked" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawRing-dark.jpg">
+  <img src="../Images/DrawRing.jpg" alt="Three filled rings of one outer radius: a thin band, a thick band around a small hole, and a fine ring, each with its center marked" width="680">
 </picture>
 
 ```swift
@@ -717,8 +717,8 @@ drawTrapezoid(center: Vector2, topWidth: Double, bottomWidth: Double, height: Do
 An isosceles trapezoid centered at `(x, y)`, `topWidth` across the top edge and `bottomWidth` across the bottom, `height` tall. Equal widths give a rectangle, and a zero width gives a triangle. It's an analytic SDF shape, crisp at any size, and you rotate it about its center with the transform stack.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawTrapezoid-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawTrapezoid.jpg" alt="Three trapezoids: a narrow top over a wide base, equal widths making a rectangle, and a zero-width top making a triangle" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawTrapezoid-dark.jpg">
+  <img src="../Images/DrawTrapezoid.jpg" alt="Three trapezoids: a narrow top over a wide base, equal widths making a rectangle, and a zero-width top making a triangle" width="680">
 </picture>
 
 ```swift
@@ -738,8 +738,8 @@ drawParallelogram(center: Vector2, width: Double, height: Double, skew: Double)
 A parallelogram centered at `(x, y)`, `width` wide and `height` tall, with the top edge sheared `skew` points along +x relative to the bottom (`0` is a rectangle, negative leans the other way). It's an analytic SDF shape, and you rotate it about its center with the transform stack.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawParallelogram-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawParallelogram.jpg" alt="Three parallelograms: leaning right under a positive skew, upright as a rectangle at zero, and leaning left under a negative skew" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawParallelogram-dark.jpg">
+  <img src="../Images/DrawParallelogram.jpg" alt="Three parallelograms: leaning right under a positive skew, upright as a rectangle at zero, and leaning left under a negative skew" width="680">
 </picture>
 
 ```swift
@@ -759,8 +759,8 @@ drawEgg(center: Vector2, bottomRadius: Double, topRadius: Double)
 An egg centered at `(x, y)`, drawn as a circle of `bottomRadius` at the fat lower end tapering to a rounded tip of `topRadius` at the top, pointing up. `bottomRadius` must be at least `topRadius` (equal gives a circle). It's an analytic SDF shape, and you rotate it about its center with the transform stack to tip it over.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawEgg-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawEgg.jpg" alt="Three eggs on their marked centers: the classic taper, a narrower sharper tip, and the equal-radii case, which is a circle" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawEgg-dark.jpg">
+  <img src="../Images/DrawEgg.jpg" alt="Three eggs on their marked centers: the classic taper, a narrower sharper tip, and the equal-radii case, which is a circle" width="680">
 </picture>
 
 ```swift
@@ -780,8 +780,8 @@ drawHeart(center: Vector2, size: Double)
 A heart centered at `(x, y)`, `size` points wide (a touch shorter than it is wide), lobes up and point down. It's an analytic SDF shape, so rotate it with the transform stack (180° points it up, 45° tips it like a playing-card suit).
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawHeart-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawHeart.jpg" alt="Three hearts on their marked centers: lobes up and point down as drawn, pointed up by a half turn, and tipped like a playing-card suit by a quarter turn" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawHeart-dark.jpg">
+  <img src="../Images/DrawHeart.jpg" alt="Three hearts on their marked centers: lobes up and point down as drawn, pointed up by a half turn, and tipped like a playing-card suit by a quarter turn" width="680">
 </picture>
 
 ```swift
@@ -801,8 +801,8 @@ drawCutDisk(center: Vector2, radius: Double, cut: Double)
 A disk of `radius` centered at `(x, y)` with a straight horizontal slice removed, giving a dome with the flat edge down and the bulge up. `cut` (in `-radius...radius`) is the signed offset of the flat edge from the center, where `0` is a half disk, positive raises the cut toward the dome and keeps a smaller cap, and negative keeps more than half. It's an analytic SDF shape, so rotate it with the transform stack to aim the flat edge.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawCutDisk-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawCutDisk.jpg" alt="Three domes cut from the same disk, on their marked centers: the half disk at cut zero, a smaller cap at a positive cut, and more than half the disk at a negative one" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawCutDisk-dark.jpg">
+  <img src="../Images/DrawCutDisk.jpg" alt="Three domes cut from the same disk, on their marked centers: the half disk at cut zero, a smaller cap at a positive cut, and more than half the disk at a negative one" width="680">
 </picture>
 
 ```swift
@@ -822,8 +822,8 @@ drawUnevenCapsule(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double, _ ra: 
 A tapered capsule, a round-capped bar with unequal end radii, running from `a` (radius `ra`) to `b` (radius `rb`) and taking fill and stroke like a shape. The end-to-end distance must be at least `|ra − rb|`, otherwise the smaller cap is swallowed. It's an analytic SDF shape, crisp at any size.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawUnevenCapsule-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawUnevenCapsule.jpg" alt="A capsule tapering from a fat round end to a small one between its two marked endpoints, beside the equal-radii case, a plain capsule" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawUnevenCapsule-dark.jpg">
+  <img src="../Images/DrawUnevenCapsule.jpg" alt="A capsule tapering from a fat round end to a small one between its two marked endpoints, beside the equal-radii case, a plain capsule" width="680">
 </picture>
 
 ```swift
@@ -847,8 +847,8 @@ drawHorseshoe(center: Vector2, radius: Double, thickness: Double, gap: Double)
 A horseshoe, meaning a thick arc with a gap, centered at `(x, y)`. It's a band at mid-radius `radius`, `thickness` thick, with an opening that spans `gap` radians (the full angular gap, so a smaller `gap` is more nearly a closed ring). Rotate it with the transform stack to aim the opening.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawHorseshoe-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawHorseshoe.jpg" alt="Three horseshoes on their marked centers, the gap widening from nearly a closed ring through the classic open shoe to a wide horseshoe barely past a half ring" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawHorseshoe-dark.jpg">
+  <img src="../Images/DrawHorseshoe.jpg" alt="Three horseshoes on their marked centers, the gap widening from nearly a closed ring through the classic open shoe to a wide horseshoe barely past a half ring" width="680">
 </picture>
 
 ```swift
@@ -868,8 +868,8 @@ drawParabola(center: Vector2, width: Double, height: Double)
 A filled parabolic arch centered at `(x, y)`, `width` across the flat base and `height` tall, the curve peaking at the top. It's an exact parabola, with no tessellation. Rotate it with the transform stack.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawParabola-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawParabola.jpg" alt="Three filled arches on their marked centers: a rounded arch, a low wide one, and a narrow tall one, each peaking at the top over a flat base" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawParabola-dark.jpg">
+  <img src="../Images/DrawParabola.jpg" alt="Three filled arches on their marked centers: a rounded arch, a low wide one, and a narrow tall one, each peaking at the top over a flat base" width="680">
 </picture>
 
 ```swift
@@ -888,8 +888,8 @@ drawRoundedX(center: Vector2, length: Double, thickness: Double)
 An X (saltire) centered at `(x, y)`, `length` tip-to-tip along each axis, with round-capped arms `thickness` wide. It's `drawCross` turned 45°, but with rounded ends. Rotate it with the transform stack.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawRoundedX-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawRoundedX.jpg" alt="The round-capped X three times: with chunky arms, with thin arms, and turned off-axis, each with its center marked" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawRoundedX-dark.jpg">
+  <img src="../Images/DrawRoundedX.jpg" alt="The round-capped X three times: with chunky arms, with thin arms, and turned off-axis, each with its center marked" width="680">
 </picture>
 
 ```swift
@@ -908,8 +908,8 @@ drawBlobbyCross(center: Vector2, radius: Double, blobbiness: Double = 0.5)
 A four-armed cross with concave, inward-curving sides, its tips reaching `radius` along each axis. `blobbiness` (`0...1`) sets how pinched the waist is, so larger is more bulbous and smaller is spikier. Rotate it with the transform stack (45° gives a diagonal four-point pinwheel).
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawBlobbyCross-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawBlobbyCross.jpg" alt="Three four-armed crosses with concave sides: bulbous at blobbiness 0.8, the default 0.5, and spiky at 0.2, the first with the center-to-tip radius marked" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawBlobbyCross-dark.jpg">
+  <img src="../Images/DrawBlobbyCross.jpg" alt="Three four-armed crosses with concave sides: bulbous at blobbiness 0.8, the default 0.5, and spiky at 0.2, the first with the center-to-tip radius marked" width="680">
 </picture>
 
 ```swift
@@ -929,8 +929,8 @@ drawTunnel(center: Vector2, width: Double, height: Double)
 A tunnel or archway centered at `(x, y)`, with vertical walls and a flat base under a semicircular top, `width` wide and `height` tall overall. The arch radius is half the width, so `height` must be at least `width / 2`. Rotate it with the transform stack to aim the opening.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawTunnel-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawTunnel.jpg" alt="Three archways: a tall doorway, a squat tunnel whose height is exactly half its width, and the doorway turned on its side with the transform stack" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawTunnel-dark.jpg">
+  <img src="../Images/DrawTunnel.jpg" alt="Three archways: a tall doorway, a squat tunnel whose height is exactly half its width, and the doorway turned on its side with the transform stack" width="680">
 </picture>
 
 ```swift
@@ -949,8 +949,8 @@ drawStairs(center: Vector2, stepWidth: Double, stepHeight: Double, steps: Int)
 A staircase centered at `(x, y)`, with `steps` steps ascending to the right, each `stepWidth` wide and `stepHeight` tall. The whole flight spans `stepWidth · steps` by `stepHeight · steps`. Rotate it with the transform stack.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawStairs-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawStairs.jpg" alt="Three staircases ascending to the right: four square steps, eight smaller ones, and four wide shallow treads, each centered on its marked anchor" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawStairs-dark.jpg">
+  <img src="../Images/DrawStairs.jpg" alt="Three staircases ascending to the right: four square steps, eight smaller ones, and four wide shallow treads, each centered on its marked anchor" width="680">
 </picture>
 
 ```swift
@@ -969,8 +969,8 @@ drawCoolS(center: Vector2, size: Double)
 The hand-drawn "S" off the back of every school notebook, centered at `(x, y)`, `size` points tall, drawn as its filled silhouette. Add a stroke to trace its outline, or rotate it with the transform stack.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawCoolS-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawCoolS.jpg" alt="The pointed notebook S twice: as a solid ink silhouette, and washed pale with a stroke tracing its outline" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawCoolS-dark.jpg">
+  <img src="../Images/DrawCoolS.jpg" alt="The pointed notebook S twice: as a solid ink silhouette, and washed pale with a stroke tracing its outline" width="680">
 </picture>
 
 ```swift
@@ -990,8 +990,8 @@ drawPolyline(_ points: [Vector2], closed: Bool = false)
 A connected path through `points`, stroked. It's open by default, and `closed: true` joins it back to its first point. Its corners (including a closed path's seam) follow [strokeJoin](#strokeJoin), and its open ends follow [strokeCap](#strokeCap).
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawPolyline-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawPolyline.jpg" alt="The same seven dotted points twice: stroked as an open path with its two ends marked, and joined back to the first point with closed true" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawPolyline-dark.jpg">
+  <img src="../Images/DrawPolyline.jpg" alt="The same seven dotted points twice: stroked as an open path with its two ends marked, and joined back to the first point with closed true" width="680">
 </picture>
 
 ```swift
@@ -1013,8 +1013,8 @@ drawPolygon(_ points: [Vector2])
 A filled convex polygon through `points` (plus a stroked outline). The fan fill is convex-only, so for concave outlines or holes, use `drawShape`.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawPolygon-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawPolygon.jpg" alt="Five orange dots joined by a faint outline on the left, and on the right the filled, outlined pentagon drawPolygon draws through the same five points" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawPolygon-dark.jpg">
+  <img src="../Images/DrawPolygon.jpg" alt="Five orange dots joined by a faint outline on the left, and on the right the filled, outlined pentagon drawPolygon draws through the same five points" width="680">
 </picture>
 
 ```swift
@@ -1034,8 +1034,8 @@ drawShape(_ shape: Shape)
 A vector [`Shape`](../Drawing/Geometry.md#shape), which is a filled region that may be **concave** and may have **holes**, plus a stroked outline of each contour. The fill is triangulated with even-odd winding, so nested contours become holes, and open contours are stroke-only.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawShape-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawShape.jpg" alt="A filled square frame whose nested inner square has emptied into a hole, its corners dotted, beside a closed curved outline traced through four dotted points and filled" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawShape-dark.jpg">
+  <img src="../Images/DrawShape.jpg" alt="A filled square frame whose nested inner square has emptied into a hole, its corners dotted, beside a closed curved outline traced through four dotted points and filled" width="680">
 </picture>
 
 ```swift
@@ -1069,8 +1069,8 @@ drawCurve(_ points: [Vector2], closed: Bool = false)
 A **smooth curve through `points`**, a Catmull-Rom spline that passes through each point with tangents derived from its neighbors, so you draw a "wiggle" straight from a list of points with no control points to place. `closed: false` (the default) is an open, stroked line, and `closed: true` makes a closed, fillable loop. It's sugar over [`Path`](../Drawing/Geometry.md#path) + `curve(to:)`.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/DrawCurve-dark.jpg">
-  <img src="../../Guide/Images/Docs/DrawCurve.jpg" alt="One set of six dotted points drawn twice: open, a smooth stroked line threading through every dot, and closed, the same spline looped back into a filled ring" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/DrawCurve-dark.jpg">
+  <img src="../Images/DrawCurve.jpg" alt="One set of six dotted points drawn twice: open, a smooth stroked line threading through every dot, and closed, the same spline looped back into a filled ring" width="680">
 </picture>
 
 ```swift

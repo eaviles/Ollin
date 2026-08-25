@@ -7,8 +7,8 @@
 **`spanningTree`** connects a set of points with the shortest total line work that still reaches every one of them. That is the minimum spanning tree, the branching sibling of the [single line](./SingleLine.md). [Stipple](./Stippling.md) a picture, span the dots, and the tree reads as the picture drawn in veins: trunks along the darks, capillaries feathering into the shading. Where the tour meanders, the tree branches, so the same dots come out organic rather than labyrinthine. The technique is the minimum-spanning-tree halftoning of Inoue and Urahama, from the same family as TSP art.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/Docs/SpanningTreeVeins-dark.jpg">
-  <img src="../../Guide/Images/Docs/SpanningTreeVeins.jpg" alt="The same clustered dots twice: alone on the left, and joined on the right by an orange minimum spanning tree, trunks where the dots crowd and twigs feathering outward, with no loops anywhere" width="680">
+  <source media="(prefers-color-scheme: dark)" srcset="../Images/SpanningTreeVeins-dark.jpg">
+  <img src="../Images/SpanningTreeVeins.jpg" alt="The same clustered dots twice: alone on the left, and joined on the right by an orange minimum spanning tree, trunks where the dots crowd and twigs feathering outward, with no loops anywhere" width="680">
 </picture>
 
 The result comes back as a handful of open `Contour` chains that together draw every tree edge exactly once. It therefore feeds `drawPolyline`, [hatching and SVG export](../Output/Export.md), and anything else a polyline feeds. Each chain is one pen-down stroke on a plotter.
