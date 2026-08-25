@@ -128,13 +128,26 @@ kernel void ollin_caustics_leafcounts(const device float *density [[buffer(0)]],
     if (gid.x >= edge || gid.y >= edge) return;
     uint i = gid.y * edge + gid.x;
     float want;
+    uint k;
     if (cu.counts2.z != 0) {
         want = float(cu.counts.z) / float(edge * edge);
+        k = uint(floor(sqrt(max(want, 0.0))));
     } else {
         float total = float(atomic_load_explicit(&totals[0], memory_order_relaxed)) / 16.0;
         want = density[i] * (float(cu.counts.z) / max(total, 1.0));
+        // Floor alone zeroes every texel wanting less than one ray, and at the
+        // seed density that is the WHOLE map (want sits at 1.0 minus float
+        // dust), so the plan collapses on its first adaptive frame. Stochastic
+        // rounding keeps the expectation instead: promote by the fractional
+        // part, hashed per texel per frame so no texel is structurally starved.
+        // The uniform branch above keeps the exact floor, so an export's plan
+        // is untouched and stays a pure function of the frame.
+        float s = sqrt(max(want, 0.0));
+        k = uint(floor(s));
+        float fi = float(cu.counts2.y % 4096u);
+        float2 hp = float2(gid) + float2(fi * 17.0, fi * 41.0);
+        if (hash12(hp) < s - float(k)) k += 1;
     }
-    uint k = uint(floor(sqrt(max(want, 0.0))));
     k = min(k, 64u);                       // cap: 4096 rays per texel
     leafCounts[i] = k * k;
 }
@@ -179,12 +192,18 @@ kernel void ollin_caustics_quadtree(device uint4 *tree [[buffer(0)]],
 // grown by the trace kernel's photon appends) GPU-side, so no CPU-written buffer
 // needs a per-frame ring.
 kernel void ollin_caustics_reset_args(device uint *args [[buffer(0)]],
+                                      device uint *totals [[buffer(2)]],
                                       uint gid [[thread_position_in_grid]]) {
     if (gid > 0) return;
     args[0] = 4;    // vertexCount (a triangle-strip quad)
     args[1] = 0;    // instanceCount (the photon append cursor)
     args[2] = 0;    // vertexStart
     args[3] = 0;    // baseInstance
+    // The density sum is a per-frame quantity: the leaf-count pass divides the
+    // ray budget by it, so a total left accumulating splits the budget over
+    // every frame ever rendered and the whole map starves within a second
+    // (measured: rays per frame 65536 -> 427 -> 3 while it grew unreset).
+    totals[0] = 0; totals[1] = 0; totals[2] = 0; totals[3] = 0;
 }
 
 // Clamp the appended photon count to the buffer's capacity (the trace kernel
@@ -715,16 +734,43 @@ fragment float4 ollin_caustics_temporal(PresentOut in [[stage_in]],
     float2 pndc = clip.xy / clip.w;
     float2 prevUV = float2(pndc.x * 0.5 + 0.5, 0.5 - pndc.y * 0.5);
     if (any(prevUV < 0.0) || any(prevUV > 1.0)) return float4(cur, 1.0);
-    float3 lo = cur, hi = cur;
-    for (int y = -1; y <= 1; y++) {
-        for (int x = -1; x <= 1; x++) {
+    // Variance clipping (the moment-based box, never a min/max clamp): the
+    // splat layer is sparse, most pixels catching a photon only some frames,
+    // so a min/max box of the current neighborhood collapses to a point
+    // wherever this frame landed nothing and crushes the history there every
+    // frame; the pattern then flickers at its raw single-frame churn forever.
+    // The mean-and-sigma box scales itself: wide where the splats are noisy so
+    // the average can build, tight where the layer is smooth. 5x5, the sparse-
+    // energy window rule (a 3x3 that catches no splat reads sigma 0 and
+    // collapses the box to a point).
+    float3 m1 = float3(0.0), m2 = float3(0.0);
+    for (int y = -2; y <= 2; y++) {
+        for (int x = -2; x <= 2; x++) {
             float3 s = current.sample(samp, in.uv + float2(float(x), float(y)) * texel).rgb;
-            lo = min(lo, s); hi = max(hi, s);
+            m1 += s; m2 += s * s;
         }
     }
+    float3 mu = m1 / 25.0;
+    float3 sigma = sqrt(max(m2 / 25.0 - mu * mu, 0.0));
+    // A still pixel earns a wide box and a longer memory; a moving one falls
+    // back to a tight box and the base blend. The 0.75-texel dead band keeps
+    // sub-pixel jitter from reading as motion.
+    float motion = length((in.uv - prevUV) / texel);
+    float still = 1.0 - saturate((motion - 0.75) / 1.5);
+    float gamma = mix(1.0, 6.0, still);
+    float3 boxLo = mu - gamma * sigma;
+    float3 boxHi = mu + gamma * sigma;
     float3 rawHist = history.sample(samp, prevUV).rgb;
-    float3 hist = clamp(rawHist, lo, hi);
-    float3 resolved = mix(cur, hist, alpha);
+    // Clip toward the box center rather than clamp per component (a clamp
+    // collects rejected history in the box corners and tints it).
+    float3 center = 0.5 * (boxHi + boxLo);
+    float3 extent = 0.5 * (boxHi - boxLo) + 1e-5;
+    float3 off = rawHist - center;
+    float3 unit = fabs(off / extent);
+    float ma = max(max(unit.x, unit.y), unit.z);
+    float3 hist = (ma > 1.0) ? center + off / ma : rawHist;
+    float alphaEff = 1.0 - (1.0 - alpha) * mix(1.0, 0.25, still);
+    float3 resolved = mix(cur, hist, alphaEff);
     // Variance for the feedback loop: luminance distance between the frames,
     // normalized softly so a bright flicker saturates instead of exploding.
     float lc = dot(cur, float3(0.2126, 0.7152, 0.0722));
