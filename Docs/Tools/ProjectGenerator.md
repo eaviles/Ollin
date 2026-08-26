@@ -25,6 +25,8 @@ A **kind** is what the thing you get *is*.
 | `mac-app` | A finished piece wrapped as a signed, double-clickable [Mac app](../Output/App.md), icon and all, for a machine without the toolchain. |
 | `in-package` | A sketch folder plus one target in the `Package.swift` already above it. |
 | `screen-saver` | A sketch wrapped as the machine's [screen saver](../Output/ScreenSaver.md), with the script that builds and installs it. |
+| `wallpaper` | A sketch that runs as the [desktop wallpaper](../Output/Wallpaper.md), drawn across every display behind the icons. |
+| `menu-bar` | A sketch that runs as a small live strip [in the menu bar](../Output/MenuBar.md), beside the clock all day. |
 | `extension` | A library other people's sketches import, named and laid out by the [shared convention](Extensions.md). |
 
 `ollin new --list` shows more kinds than these, and each of the rest carries the reason it is not ready. There is an iPhone app, a Vision app, and an AR effect. They are named rather than hidden, because that is the map of where this goes. Each waits on a platform leg rather than on the generator.

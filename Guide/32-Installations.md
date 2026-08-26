@@ -384,6 +384,30 @@ The script signs the saver for this machine. Another Mac will refuse it. Handing
 
 One more thing worth knowing before you build something ambitious for it. The system makes a separate saver for each display, so two screens run two copies of your sketch, each from its own first frame. They are not in step and they do not share anything. A piece that has to line up across two screens is the installation earlier in this chapter, not a screen saver.
 
+## The desktop and the menu bar
+
+The screen saver waits for you to leave. Two more surfaces work while you stay. The desktop can run a sketch behind the icons, and the menu bar can hold a moving strip of one beside the clock. Each is two commands, and the sketch stays an ordinary sketch.
+
+```sh
+ollin new Drift --kind wallpaper
+cd Drift && swift run Drift
+```
+
+The desktop becomes the piece. Windows still stack over it, icons still sit on it, and clicks still land where they always did. The piece takes no input at all. A small sparkle appears at the right end of the menu bar, and its menu is the way out. Each display runs its own copy, edge to edge. `./build.sh --install` makes it an app in /Applications. Add that app to your Login Items and it is the machine's wallpaper for good.
+
+It earns one honest note about cost. Wallpaper draws at the display's rate for as long as the machine is up, through every meeting and every compile. Calm pieces wear well here, and a still one can call `noLoop()` and cost nothing at all.
+
+The menu bar is the same idea at the other extreme of size:
+
+```sh
+ollin new Pulse --kind menu-bar
+cd Pulse && swift run Pulse
+```
+
+A strip 56 points wide appears among the status items and starts moving. It draws at 30 frames a second, a rate a surface that never goes away can afford. The sketch inside sees a canvas of the strip's own points, so `width / 2` is still the middle and everything this guide taught still works. It is simply the smallest canvas you will ever draw on. A click opens the strip's menu, and Quit is there.
+
+Both kinds write the same wrapper the next section describes, plus one line that keeps the app out of the Dock. A program with no window has nothing to show from a Dock icon. The reference pages ([wallpaper](../Docs/Output/Wallpaper.md), [menu bar](../Docs/Output/MenuBar.md)) carry the rest, the strip's width knob among them.
+
 ## An app to hand somebody
 
 The screen saver lives on your own machine. The other thing a finished piece wants is to leave. It goes to a friend who has never typed `swift`, or to the gallery machine that will run the wall for a month. That is an app, and the path is the same two commands.

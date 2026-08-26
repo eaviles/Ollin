@@ -32,6 +32,8 @@ public enum ProjectGenerator {
         case ProjectKind.macApp.id:      return planMacApp(request)
         case ProjectKind.inPackage.id:   return try planInPackage(request)
         case ProjectKind.screenSaver.id: return planScreenSaver(request)
+        case ProjectKind.wallpaper.id:   return planWallpaper(request)
+        case ProjectKind.menuBar.id:     return planMenuBar(request)
         default:
             throw ProjectGeneratorError.kindUnavailable(request.kind)
         }
@@ -194,6 +196,90 @@ public enum ProjectGenerator {
                 "Then pick it in System Settings, under Screen Saver.",
                 "See it in a window first:  ollin \(root.path)/\(sourceDir)/Sketch.swift",
                 "The sketch and everything it loads live in \(sourceDir)/.",
+            ]
+        )
+    }
+
+    /// A sketch wrapped as the desktop wallpaper.
+    ///
+    /// The package is the app's shape: an ordinary executable target with the
+    /// app's own build script. What changes is the entry point, which moves
+    /// from the sketch to a wrapper file that hands the sketch to the
+    /// wallpaper host, and one line in the property list that keeps the app
+    /// out of the Dock, since its only faces are the desktop itself and the
+    /// menu-bar mark that quits it.
+    private static func planWallpaper(_ request: ProjectRequest) -> GeneratedProject {
+        let root = request.destination.appendingPathComponent(request.folderName)
+        let target = request.typeName
+        let sourceDir = "Sources/\(target)"
+        var (files, resources) = sketchFiles(request, sourceDir: sourceDir)
+
+        files.append(GeneratedFile(
+            path: "\(sourceDir)/Main.swift",
+            contents: surfaceMain(target: target,
+                                  host: "OllinApp.runAsWallpaper { \(target)() }")))
+        files.append(GeneratedFile(path: "Package.swift",
+                                   contents: manifest(request, target: target, resources: resources),
+                                   isExecutable: false))
+        files.append(GeneratedFile(path: "Info.plist",
+                                   contents: appInfoPlist(request, target: target, accessory: true),
+                                   isExecutable: false))
+        files.append(GeneratedFile(path: "build.sh",
+                                   contents: appBuildScript(request, target: target),
+                                   isExecutable: true))
+        files.append(GeneratedFile(path: "README.md",
+                                   contents: wallpaperReadme(request, target: target),
+                                   isExecutable: false))
+        files.append(GeneratedFile(path: ".gitignore", contents: appGitignore, isExecutable: false))
+
+        return GeneratedProject(
+            root: root,
+            files: files.sorted { $0.path < $1.path },
+            runCommand: "\(root.path)/build.sh",
+            nextSteps: [
+                "See it now:  cd \(root.path) && swift run \(target)  (the sparkle in the menu bar quits it)",
+                "Make the app:  ./build.sh   then put it in Applications with ./build.sh --install",
+                "Have it start with the machine: System Settings, General, Login Items, add the app.",
+                "Edit in a window instead:  ollin \(root.path)/\(sourceDir)/Sketch.swift",
+            ]
+        )
+    }
+
+    /// A sketch wrapped as a menu-bar piece: the same app shape as the
+    /// wallpaper, with the strip's host in the wrapper file instead.
+    private static func planMenuBar(_ request: ProjectRequest) -> GeneratedProject {
+        let root = request.destination.appendingPathComponent(request.folderName)
+        let target = request.typeName
+        let sourceDir = "Sources/\(target)"
+        var (files, resources) = sketchFiles(request, sourceDir: sourceDir)
+
+        files.append(GeneratedFile(
+            path: "\(sourceDir)/Main.swift",
+            contents: surfaceMain(target: target,
+                                  host: "OllinApp.runInMenuBar { \(target)() }")))
+        files.append(GeneratedFile(path: "Package.swift",
+                                   contents: manifest(request, target: target, resources: resources),
+                                   isExecutable: false))
+        files.append(GeneratedFile(path: "Info.plist",
+                                   contents: appInfoPlist(request, target: target, accessory: true),
+                                   isExecutable: false))
+        files.append(GeneratedFile(path: "build.sh",
+                                   contents: appBuildScript(request, target: target),
+                                   isExecutable: true))
+        files.append(GeneratedFile(path: "README.md",
+                                   contents: menuBarReadme(request, target: target),
+                                   isExecutable: false))
+        files.append(GeneratedFile(path: ".gitignore", contents: appGitignore, isExecutable: false))
+
+        return GeneratedProject(
+            root: root,
+            files: files.sorted { $0.path < $1.path },
+            runCommand: "\(root.path)/build.sh",
+            nextSteps: [
+                "See it now:  cd \(root.path) && swift run \(target)  (the strip's own menu quits it)",
+                "Make the app:  ./build.sh   then put it in Applications with ./build.sh --install",
+                "Have it start with the machine: System Settings, General, Login Items, add the app.",
+                "Edit in a window instead:  ollin \(root.path)/\(sourceDir)/Sketch.swift",
             ]
         )
     }
@@ -764,8 +850,22 @@ public enum ProjectGenerator {
 
     // MARK: - The app's own files
 
-    private static func appInfoPlist(_ request: ProjectRequest, target: String) -> String {
+    private static func appInfoPlist(_ request: ProjectRequest, target: String,
+                                     accessory: Bool = false) -> String {
         let identifier = "com.example.\(target.lowercased())"
+
+        // A piece that lives on the desktop or in the menu bar has no window
+        // of its own to stand behind a Dock icon, so the app stays out of the
+        // Dock and the app switcher.
+        let accessoryKeys = accessory ? """
+
+
+                <!-- The piece lives in the system, not in a window, so the app
+                     keeps out of the Dock and the app switcher. Quit lives in
+                     its menu-bar item. -->
+                <key>LSUIElement</key>
+                <true/>
+            """ : ""
 
         // A bundled app that touches the camera or the microphone without the
         // matching usage line is killed on the first ask, so the lines ride
@@ -821,7 +921,7 @@ public enum ProjectGenerator {
             <key>LSMinimumSystemVersion</key>
             <string>26.0</string>
             <key>NSHighResolutionCapable</key>
-            <true/>\(usageKeys)
+            <true/>\(accessoryKeys)\(usageKeys)
         </dict>
         </plist>
         """
@@ -1003,6 +1103,117 @@ public enum ProjectGenerator {
     *.app
     *.zip
     """
+
+    // MARK: - The pieces that live in the system
+
+    /// The program for a kind whose sketch does not run itself: one wrapper
+    /// file that keeps the shared command-line surface and then hands the
+    /// sketch to the host for this surface.
+    private static func surfaceMain(target: String, host: String) -> String {
+        """
+        import Ollin
+
+        // The program around the sketch. The export flags keep working, which
+        // is also how build.sh renders the icon from a frame of the piece.
+        @main
+        enum \(target)Main {
+            @MainActor static func main() {
+                if OllinApp.handleCommandLine(makeSketch: { \(target)() }) { return }
+                \(host)
+            }
+        }
+        """
+    }
+
+    private static func wallpaperReadme(_ request: ProjectRequest, target: String) -> String {
+        """
+        # \(request.folderName)
+
+        \(request.template.summary)
+
+        An Ollin sketch wrapped as the desktop wallpaper: the piece runs across every display, behind the icons, while the machine is used for everything else.
+
+        ## Seeing it
+
+        ```sh
+        swift run \(target)
+        ```
+
+        The desktop becomes the piece. The sparkle at the right end of the menu bar is the way out: click it and pick Quit.
+
+        ## Making the app
+
+        ```sh
+        ./build.sh
+        ```
+
+        `\(request.folderName).app` appears beside the script, signed for this machine. `./build.sh --install` also puts it in /Applications. To have the piece start with the machine, add the app under System Settings, General, Login Items.
+
+        The icon is a frame the sketch renders of itself; drop an `AppIcon.icns` of your own beside `build.sh` to replace it. `build.sh` alone signs for this machine only; `./build.sh --sign "Developer ID Application: Your Name (TEAMID)" --notarize <profile>` makes one that travels, and the script says which of the two it made every time.
+
+        ## Working on it
+
+        Open the same sketch in a window, where it reloads as you save:
+
+        ```sh
+        ollin Sources/\(target)/Sketch.swift
+        ```
+
+        The sketch declares `.resizable`, so on the desktop `width` and `height` are the display's own, and each display runs a sketch of its own. Give it a `canvasSize` instead to keep fixed proportions, centered on black.
+
+        ## Where things go
+
+        The sketch and everything it loads live in `Sources/\(target)/`. `Main.swift` is the whole program: it hands the sketch to the wallpaper host. `Info.plist` and `build.sh` are the same self-contained wrapper the Mac app kind writes, plus the one line that keeps the app out of the Dock.
+        """
+    }
+
+    private static func menuBarReadme(_ request: ProjectRequest, target: String) -> String {
+        """
+        # \(request.folderName)
+
+        \(request.template.summary)
+
+        An Ollin sketch wrapped as a menu-bar piece: a small live strip among the status items, on screen for the whole working day.
+
+        ## Seeing it
+
+        ```sh
+        swift run \(target)
+        ```
+
+        The strip appears in the menu bar. A click on it opens its menu, and Quit is the way out.
+
+        ## The strip
+
+        The strip is 56 points wide and draws at 30 frames a second, a rate a surface that never goes away can afford. Change the width where `Main.swift` hands the sketch over:
+
+        ```swift
+        OllinApp.runInMenuBar(width: 90) { \(target)() }
+        ```
+
+        The sketch declares `.resizable`, so `width` and `height` are the strip's own few points. Give it a `canvasSize` instead to fit fixed proportions into the strip.
+
+        ## Making the app
+
+        ```sh
+        ./build.sh
+        ```
+
+        `\(request.folderName).app` appears beside the script, signed for this machine. `./build.sh --install` also puts it in /Applications. To have the piece start with the machine, add the app under System Settings, General, Login Items. `--sign` and `--notarize` make one that travels, exactly as the Mac app kind does.
+
+        ## Working on it
+
+        Open the same sketch in a window, where it reloads as you save:
+
+        ```sh
+        ollin Sources/\(target)/Sketch.swift
+        ```
+
+        ## Where things go
+
+        The sketch and everything it loads live in `Sources/\(target)/`. `Main.swift` is the whole program: it hands the sketch to the menu-bar host. `Info.plist` and `build.sh` are the same self-contained wrapper the Mac app kind writes, plus the one line that keeps the app out of the Dock.
+        """
+    }
 
     // MARK: - The screen saver's own files
 

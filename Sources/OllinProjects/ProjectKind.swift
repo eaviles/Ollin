@@ -18,19 +18,22 @@ public struct ProjectKind: Sendable, Hashable, Identifiable {
     public let availability: Availability
     /// Whether a sketch of this kind runs itself.
     ///
-    /// A program does; a plug-in does not, because the program that loads it has
-    /// an entry point already and a second one is at best dead weight. It is the
-    /// one thing that changes the sketch file rather than the files around it,
-    /// which is why it rides the kind instead of being asked about later.
+    /// A windowed program does. A plug-in does not, because the program that
+    /// loads it has an entry point already and a second one is at best dead
+    /// weight; and neither does a piece whose program is a wrapper file beside
+    /// the sketch (the wallpaper and menu-bar kinds), where a second `@main`
+    /// would refuse to build. It is the one thing that changes the sketch file
+    /// rather than the files around it, which is why it rides the kind instead
+    /// of being asked about later.
     public let carriesEntryPoint: Bool
     /// Whether a sketch of this kind is drawn onto whatever it is put on, rather
     /// than into a window sized to the canvas.
     ///
-    /// A screen saver takes the whole display, and so will the platform kinds
-    /// still waiting. The sketch is written to suit: it declares its window mode
-    /// as `.resizable`, so `width` and `height` are the display's. Data rather
-    /// than a code path, because it is the same fact for every kind that has no
-    /// window of its own.
+    /// A screen saver and the wallpaper take a whole display, and the menu-bar
+    /// strip is the same fact at a smaller size. The sketch is written to suit:
+    /// it declares its window mode as `.resizable`, so `width` and `height` are
+    /// the surface's. Data rather than a code path, because it is the same fact
+    /// for every kind that has no window of its own.
     public let fillsTheDisplay: Bool
 
     public enum Availability: Sendable, Hashable {
@@ -140,6 +143,28 @@ extension ProjectKind {
         fillsTheDisplay: true
     )
 
+    /// A sketch running as the desktop wallpaper: one window per display, at
+    /// desktop level, behind the icons.
+    public static let wallpaper = ProjectKind(
+        id: "wallpaper",
+        title: "Wallpaper",
+        summary: "A sketch that runs as the desktop wallpaper, drawn across every display behind the icons.",
+        availability: .available,
+        carriesEntryPoint: false,
+        fillsTheDisplay: true
+    )
+
+    /// A sketch running as a small live strip among the menu bar's status
+    /// items, on screen for the whole working day.
+    public static let menuBar = ProjectKind(
+        id: "menu-bar",
+        title: "Menu bar piece",
+        summary: "A sketch that runs as a small live strip in the menu bar, beside the clock all day.",
+        availability: .available,
+        carriesEntryPoint: false,
+        fillsTheDisplay: true
+    )
+
     public static let arEffect = ProjectKind(
         id: "ar-effect",
         title: "AR effect",
@@ -151,7 +176,7 @@ extension ProjectKind {
     /// should show them.
     public static let all: [ProjectKind] = [
         .singleFile, .macSketch, .macApp, .inPackage, .extensionPackage,
-        .iOSApp, .visionOSApp, .screenSaver, .arEffect,
+        .iOSApp, .visionOSApp, .screenSaver, .wallpaper, .menuBar, .arEffect,
     ]
 
     /// The kinds that can be generated today.

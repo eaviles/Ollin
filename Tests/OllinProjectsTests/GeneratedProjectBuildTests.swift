@@ -425,6 +425,89 @@ struct GeneratedProjectBuildTests {
                 "the bundled binary rendered nothing")
     }
 
+    /// The wallpaper kind splits the program in two, a sketch with no entry
+    /// point and a wrapper carrying it, and only a build proves the two files
+    /// agree (a stray `@main` on the sketch refuses to compile beside the
+    /// wrapper's). The rest is the app's own wrapper, checked the app's way,
+    /// plus the one line that keeps the piece out of the Dock.
+    @Test("A generated wallpaper builds, stays out of the Dock, and renders from its bundle")
+    func aGeneratedWallpaperBuildsAndRuns() throws {
+        let repository = try #require(Self.repositoryRoot(), "could not find the Ollin folder from the test file")
+        let destination = try Self.temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: destination) }
+
+        let request = ProjectRequest(
+            name: "Drift",
+            kind: .wallpaper,
+            template: .motion,
+            destination: destination,
+            framework: .localPath(repository)
+        )
+        let project = try ProjectGenerator.plan(request)
+        try ProjectGenerator.write(project)
+
+        let built = try Self.run([project.root.appendingPathComponent("build.sh").path])
+        #expect(built.succeeded, "the wallpaper's own build script failed:\n\(built.output)")
+
+        let app = project.root.appendingPathComponent("Drift.app")
+        #expect(FileManager.default.fileExists(atPath: app.path), "no .app came out of the script")
+
+        let bundle = try #require(Bundle(url: app), "the .app is not a bundle")
+        // Out of the Dock: a Dock icon for a program with no window reads as
+        // a hang, since clicking it shows nothing.
+        #expect(bundle.infoDictionary?["LSUIElement"] as? Bool == true,
+                "the wallpaper app would appear in the Dock")
+
+        let signed = try Self.run(["codesign", "--verify", "--strict", app.path])
+        #expect(signed.succeeded, "the signature does not verify:\n\(signed.output)")
+
+        // The wrapper keeps the shared command-line surface, which is what the
+        // script's own icon render depends on too.
+        let frame = destination.appendingPathComponent("frame.png")
+        let ran = try Self.run([app.appendingPathComponent("Contents/MacOS/Drift").path,
+                                "--export", frame.path, "--frame", "3"])
+        #expect(ran.succeeded, "the bundled binary could not render:\n\(ran.output)")
+        #expect(FileManager.default.fileExists(atPath: frame.path),
+                "the bundled binary rendered nothing")
+    }
+
+    /// The menu-bar kind is the wallpaper's shape pointed at the other host,
+    /// so what this build proves is the one thing that differs: the wrapper's
+    /// call compiles against the framework it names.
+    @Test("A generated menu-bar piece builds and renders from its bundle")
+    func aGeneratedMenuBarPieceBuildsAndRuns() throws {
+        let repository = try #require(Self.repositoryRoot(), "could not find the Ollin folder from the test file")
+        let destination = try Self.temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: destination) }
+
+        let request = ProjectRequest(
+            name: "Pulse",
+            kind: .menuBar,
+            template: .motion,
+            destination: destination,
+            framework: .localPath(repository)
+        )
+        let project = try ProjectGenerator.plan(request)
+        try ProjectGenerator.write(project)
+
+        let built = try Self.run([project.root.appendingPathComponent("build.sh").path])
+        #expect(built.succeeded, "the menu-bar piece's own build script failed:\n\(built.output)")
+
+        let app = project.root.appendingPathComponent("Pulse.app")
+        #expect(FileManager.default.fileExists(atPath: app.path), "no .app came out of the script")
+
+        let bundle = try #require(Bundle(url: app), "the .app is not a bundle")
+        #expect(bundle.infoDictionary?["LSUIElement"] as? Bool == true,
+                "the menu-bar app would appear in the Dock")
+
+        let frame = destination.appendingPathComponent("frame.png")
+        let ran = try Self.run([app.appendingPathComponent("Contents/MacOS/Pulse").path,
+                                "--export", frame.path, "--frame", "3"])
+        #expect(ran.succeeded, "the bundled binary could not render:\n\(ran.output)")
+        #expect(FileManager.default.fileExists(atPath: frame.path),
+                "the bundled binary rendered nothing")
+    }
+
     // MARK: - Support
 
     /// Walk up from this file to the folder holding the framework's manifest.

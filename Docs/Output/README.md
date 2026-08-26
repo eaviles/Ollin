@@ -10,6 +10,8 @@
 - [`Installation`](./Installation.md) - leave a piece running for days: full screen, no pointer, a clock that survives a week, a watch that starts it again, and the building's hours
 - [`A sketch as an app`](./App.md) - wrap a finished piece as a signed, double-clickable Mac app, icon and all, for a machine that has never seen the toolchain
 - [`Screen saver`](./ScreenSaver.md) - wrap a sketch as the machine's screen saver, so the work runs when nobody is at the desk
+- [`Wallpaper`](./Wallpaper.md) - run a sketch as the desktop wallpaper: behind the icons on every display, moving all day while the machine is used for everything else
+- [`Menu bar`](./MenuBar.md) - run a sketch as a small live strip among the menu bar's status items, beside the clock for the whole working day
 - [`Fabrication`](./Fabrication.md) - write a `Mesh` as STL, OBJ, or 3MF for 3D printing, with real units and a printability check
 - [`G-code`](./GCode.md) - write a frame's line work as a program a pen plotter, laser cutter, or CNC router runs directly, planned to keep travel short
 - [`Print separations`](./PrintSeparations.md) - split a sketch into per-ink grayscale masters for risograph and screen printing, with an overprint preview and registration marks

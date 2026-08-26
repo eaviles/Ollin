@@ -196,6 +196,8 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 - [`Installation`](./Output/Installation.md) - leave a piece running for days: full screen, no pointer, a clock that survives a week, a watch that starts it again, and the building's hours
 - [`A sketch as an app`](./Output/App.md) - wrap a finished piece as a signed, double-clickable Mac app that runs without the toolchain, wearing a frame of itself as its icon
 - [`Screen saver`](./Output/ScreenSaver.md) - wrap a sketch as the machine's screen saver: one command writes the project, one script installs it, and the sketch stays an ordinary sketch
+- [`Wallpaper`](./Output/Wallpaper.md) - run a sketch as the desktop wallpaper: one window per display at desktop level, behind the icons, with a menu-bar mark to quit it
+- [`Menu bar`](./Output/MenuBar.md) - run a sketch as a small live strip among the menu bar's status items, drawn at a rate an all-day surface can afford
 - [`Print separations`](./Output/PrintSeparations.md) - split a sketch into per-ink grayscale masters for risograph and screen printing, with an overprint preview and registration marks
 - [`Spatial`](./Output/Spatial.md) - write a 3D frame or a `Scene` as USDZ, so a piece opens in Quick Look, sends in a message, and stands on a real table through AR; and write the motion as spatial video, a stereo pair per frame for a headset
 

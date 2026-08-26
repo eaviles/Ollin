@@ -363,6 +363,8 @@ enum OllinNewCommand {
                ollin new                     one loose file, named by the next dated serial
                ollin new <name> --kind mac-app        a double-clickable app to hand out
                ollin new <name> --kind screen-saver   this machine's screen saver
+               ollin new <name> --kind wallpaper      the desktop wallpaper, live
+               ollin new <name> --kind menu-bar       a small live strip in the menu bar
                ollin new <name> --kind extension      a library other sketches import
                ollin new --list              every kind, template, seam, and extra
                ollin new --examples          every example that can be started from
