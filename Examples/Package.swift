@@ -33,6 +33,7 @@ enum Satellite: String, CaseIterable {
     case audio = "OllinAudio"
     case osc = "OllinOSC"
     case dmx = "OllinDMX"
+    case laser = "OllinLaser"
     case midi = "OllinMIDI"
     case serial = "OllinSerial"
     case remote = "OllinRemote"
@@ -579,6 +580,10 @@ let package = Package(
         // node's IP and the same universe drives real lights.
         example("Integration/DMXLoopback", [.dmx]),
         example("Integration/LEDMapping", [.dmx]),
+        // The optimizer made visible: the beam's own path across a drawing,
+        // with the knobs that decide what it costs. Runs with no hardware; the
+        // header says the two lines that point it at a real projector.
+        example("Integration/LaserPreview", [.laser]),
         // Self-contained: a virtual-source output sends animated MIDI to itself and
         // the input draws it back, so it runs with no hardware (like OSCLoopback).
         example("Integration/MIDILoopback", [.midi]),

@@ -78,7 +78,6 @@ Beat, phase, and BPM from MIDI clock are the `TempoClock` in `OllinMIDI` (see [`
 The integration tier reaches other software (Syphon, OSC, MIDI, the virtual camera); this tier reaches the hardware and the network around the machine, the physical-computing heritage of the lineage Ollin comes from:
 
 - **Bluetooth LE.** Peripheral reads surfaced the way OSC and MIDI already read: a latest-value cache, a message drain, `@Param` binding.
-- **Laser projection.** Drive a show laser from `draw()`: a galvo laser traces resampled vector paths, which is nearly what a `Contour` already is, so the geometry-first core supplies the raw material. Consumer laser DACs speak published protocols, repeating the written-from-spec recipe; the craft is the point optimizer between shapes and beam (corner dwell, blanking, point budgets, path ordering) and a safety-first output gate.
 - **NDI.** The network sibling of Syphon: send and receive live video between machines, the standard in VJ and broadcast rigs. Its SDK is binary-only under its own license, so unlike the source-vendored tier it needs a licensing review before any code; that review decides whether and how it ships.
 
 All of it is the interop posture: play in someone's existing rig, not replace it. See the [design notes](DESIGN-NOTES.md#live-rigs-physical-computing-lighting-and-network-video).

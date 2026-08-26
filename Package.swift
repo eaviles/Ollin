@@ -21,6 +21,7 @@ enum Satellite: String, CaseIterable {
     case audio = "OllinAudio"
     case osc = "OllinOSC"
     case dmx = "OllinDMX"
+    case laser = "OllinLaser"
     case midi = "OllinMIDI"
     case serial = "OllinSerial"
     case remote = "OllinRemote"
@@ -60,6 +61,12 @@ let package = Package(
         // implemented from their published specs over Network.framework (UDP).
         // Kept out of `Ollin` so the drawing core stays free of networking.
         .library(name: "OllinDMX", targets: ["OllinDMX"]),
+        // Laser projection as a satellite library: `import OllinLaser` to send
+        // a sketch's line work to a show laser, as an optimized point stream
+        // over a network DAC or as an ILDA file. The wire and the file format
+        // are both implemented from their published specs. Kept out of `Ollin`
+        // so the drawing core stays free of networking.
+        .library(name: "OllinLaser", targets: ["OllinLaser"]),
         // MIDI as a satellite library: `import OllinMIDI` to receive from and send
         // to MIDI gear (control surfaces, keyboards, sequencers) over Core MIDI.
         // Kept out of `Ollin` so the drawing core stays free of Core MIDI.
@@ -466,6 +473,18 @@ let package = Package(
             name: "OllinDMX",
             dependencies: ["Ollin"]
         ),
+        // Laser: drive a show laser from `draw()`. The point optimizer (spacing,
+        // corner and blanking dwell, path order, the point budget) and the
+        // safety rules are the substance; the two sinks are a network DAC's
+        // wire protocol and the ILDA file format, both written from their
+        // published specs (no vendored library). A satellite (like OllinOSC) so
+        // the drawing core stays free of networking; sketches opt in with
+        // `import OllinLaser`. Depends on Ollin for the geometry and color
+        // types, and for the greedy path tour the plotter path already walks.
+        .target(
+            name: "OllinLaser",
+            dependencies: ["Ollin"]
+        ),
         // MIDI: receive from and send to MIDI gear over Core MIDI, with the MIDI
         // 1.0 message format parsed/encoded from the spec (no vendored library). A
         // satellite library (like OllinOSC) so the drawing core stays free of Core
@@ -698,6 +717,17 @@ let package = Package(
         .testTarget(
             name: "OllinDMXTests",
             dependencies: ["Ollin", "OllinDMX"]
+        ),
+        // Laser correctness: the optimizer's rules measured on the stream it
+        // produces (spacing, corners kept, dwell counts, travel ordering, the
+        // budget), the safety rules verified red by sabotage, golden bytes for
+        // the DAC commands and the ILDA records against both published specs,
+        // an ILDA file read back through an in-test parser, and an end-to-end
+        // loopback against a fake DAC that speaks the protocol on localhost.
+        // GPU-independent, so it runs in CI.
+        .testTarget(
+            name: "OllinLaserTests",
+            dependencies: ["Ollin", "OllinLaser"]
         ),
         // MIDI correctness: MIDI 1.0 / UMP parse+encode round-trips (every message
         // kind, malformed/non-1.0 words rejected without trapping) — Core MIDI-free,

@@ -341,19 +341,36 @@ func mergedPaths(_ paths: [Contour], tolerance: Double, sequentialOnly: Bool) ->
     return out
 }
 
-/// Order paths by a greedy nearest-neighbor walk from `origin`: each step
+/// One step of the greedy tour: which of the original paths to take next, and
+/// which of its vertices to enter at. A closed path rotates to start there; an
+/// open one entered at its last vertex is walked backwards.
+package struct PathOrderStep: Equatable, Sendable {
+    /// Index into the array handed to `orderedPathSteps`.
+    package var index: Int
+    /// Vertex index to enter at: any vertex of a closed path, the first or the
+    /// last of an open one.
+    package var entry: Int
+}
+
+/// Plan a greedy nearest-neighbor walk over `paths` from `origin`: each step
 /// takes the path whose nearest usable entry point is closest, reversing an
 /// open path or rotating a closed one to enter there.
-func orderedPaths(_ paths: [Contour], from origin: Vector2) -> [Contour] {
-    var remaining = paths
-    var out: [Contour] = []
-    out.reserveCapacity(paths.count)
+///
+/// The plan is separate from applying it because two callers need the same
+/// tour over different path types: the plotter walks `Contour`s, and the laser
+/// walks paths that also carry a color per point, which have to be reversed
+/// and rotated alongside their points.
+package func orderedPathSteps(_ paths: [Contour], from origin: Vector2) -> [PathOrderStep] {
+    var remaining = Array(paths.enumerated())
+    var steps: [PathOrderStep] = []
+    steps.reserveCapacity(paths.count)
     var position = origin
     while !remaining.isEmpty {
         var bestIndex = 0
         var bestDistance = Double.infinity
         var bestEntry = 0                     // vertex index (closed) or 0/last (open)
-        for (i, path) in remaining.enumerated() {
+        for (i, entry) in remaining.enumerated() {
+            let path = entry.element
             if path.isClosed {
                 for (v, point) in path.points.enumerated() {
                     let d = position.distanceSquared(to: point)
@@ -367,20 +384,31 @@ func orderedPaths(_ paths: [Contour], from origin: Vector2) -> [Contour] {
                 if end < bestDistance { bestDistance = end; bestIndex = i; bestEntry = last }
             }
         }
-        var chosen = remaining.remove(at: bestIndex)
-        if chosen.isClosed {
-            if bestEntry > 0 {
-                let rotated = Array(chosen.points[bestEntry...]) + Array(chosen.points[..<bestEntry])
-                chosen = Contour(rotated, closed: true)
-            }
-            position = chosen.points[0]
+        let chosen = remaining.remove(at: bestIndex)
+        let path = chosen.element
+        if path.isClosed {
+            position = path.points[bestEntry]
         } else {
-            if bestEntry != 0 { chosen = Contour(chosen.points.reversed(), closed: false) }
-            position = chosen.points[chosen.points.count - 1]
+            position = bestEntry == 0 ? path.points[path.points.count - 1] : path.points[0]
         }
-        out.append(chosen)
+        steps.append(PathOrderStep(index: chosen.offset, entry: bestEntry))
     }
-    return out
+    return steps
+}
+
+/// Order paths by the greedy walk `orderedPathSteps` plans, applied to the
+/// contours themselves.
+func orderedPaths(_ paths: [Contour], from origin: Vector2) -> [Contour] {
+    orderedPathSteps(paths, from: origin).map { step in
+        let path = paths[step.index]
+        if path.isClosed {
+            guard step.entry > 0 else { return path }
+            return Contour(Array(path.points[step.entry...]) + Array(path.points[..<step.entry]),
+                           closed: true)
+        }
+        guard step.entry != 0 else { return path }
+        return Contour(path.points.reversed(), closed: false)
+    }
 }
 
 // MARK: - Emission
