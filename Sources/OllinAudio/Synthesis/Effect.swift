@@ -29,6 +29,8 @@ public enum Effect: Sendable, Hashable, Codable {
     case equalizer(Equalizer)
     /// Driving it past where it fits, from a warm edge to a broken one.
     case distortion(Distortion)
+    /// One you wrote yourself: a closure over the samples. See ``CustomEffect``.
+    case custom(CustomEffect)
 
     /// Which kind of effect this is, ignoring its settings.
     ///
@@ -36,7 +38,7 @@ public enum Effect: Sendable, Hashable, Codable {
     /// same order are the same wiring, whatever their settings say, so changing
     /// a setting never disturbs the graph.
     public enum Kind: String, Sendable, Hashable, Codable, CaseIterable {
-        case delay, reverb, equalizer, distortion
+        case delay, reverb, equalizer, distortion, custom
     }
 
     public var kind: Kind {
@@ -45,17 +47,21 @@ public enum Effect: Sendable, Hashable, Codable {
         case .reverb:     return .reverb
         case .equalizer:  return .equalizer
         case .distortion: return .distortion
+        case .custom:     return .custom
         }
     }
 
     /// A unit that can do this kind of work. The settings are applied
-    /// separately, so one unit serves every setting of its kind.
+    /// separately, so one unit serves every setting of its kind. For a custom
+    /// effect the closure itself is the setting, which is what lets a sketch
+    /// swap the work without the chain being rewired.
     static func makeUnit(for kind: Kind) -> AVAudioUnit {
         switch kind {
         case .delay:      return AVAudioUnitDelay()
         case .reverb:     return AVAudioUnitReverb()
         case .equalizer:  return AVAudioUnitEQ(numberOfBands: 3)
         case .distortion: return AVAudioUnitDistortion()
+        case .custom:     return ClosureAudioUnit.makeUnit()
         }
     }
 
@@ -74,7 +80,28 @@ public enum Effect: Sendable, Hashable, Codable {
         case .distortion(let distortion):
             guard let unit = unit as? AVAudioUnitDistortion else { return }
             distortion.apply(to: unit)
+        case .custom(let custom):
+            guard let closureUnit = unit.auAudioUnit as? ClosureAudioUnit else { return }
+            closureUnit.slot.set(custom.runner)
         }
+    }
+
+    /// An effect you wrote yourself, in place: the closure is handed each
+    /// ``AudioBlock`` on its way out and rewrites the samples.
+    public static func custom(
+        _ name: String = "effect",
+        _ process: @escaping @Sendable (AudioBlock) -> Void
+    ) -> Effect {
+        .custom(CustomEffect(name, process))
+    }
+
+    /// An effect of your own that remembers something between blocks; the
+    /// memory goes in as `state:` and comes back `inout` every time.
+    public static func custom<State: Sendable>(
+        _ name: String = "effect", state: State,
+        _ process: @escaping @Sendable (AudioBlock, inout State) -> Void
+    ) -> Effect {
+        .custom(CustomEffect(name, state: state, process))
     }
 }
 

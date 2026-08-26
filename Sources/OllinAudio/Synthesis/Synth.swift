@@ -405,12 +405,23 @@ public final class Synth: AudioSource {
         wiredKinds = effects.map(\.kind)
 
         engine.disconnectNodeOutput(chainHead)
+        // A connection touching a custom unit names the chain's format
+        // outright: left to work the format out, the engine keeps such a
+        // unit's declared format and quietly resamples around it instead,
+        // which is a converter in the middle of the sound. Connections between
+        // built-in kinds stay worked out by the engine.
+        let chainFormat = chainHead.outputFormat(forBus: 0)
+        func isCustom(_ node: AVAudioNode) -> Bool {
+            (node as? AVAudioUnit)?.auAudioUnit is ClosureAudioUnit
+        }
         var previous: AVAudioNode = chainHead
         for unit in effectUnits {
-            engine.connect(previous, to: unit, format: nil)
+            let named = (isCustom(unit) || isCustom(previous)) && chainFormat.sampleRate > 0
+            engine.connect(previous, to: unit, format: named ? chainFormat : nil)
             previous = unit
         }
-        engine.connect(previous, to: engine.mainMixerNode, format: nil)
+        engine.connect(previous, to: engine.mainMixerNode,
+                       format: isCustom(previous) && chainFormat.sampleRate > 0 ? chainFormat : nil)
     }
 
     /// Settings applied in one place, because an export builds its own units

@@ -179,11 +179,21 @@ extension Synth: @MainActor FrameAdvancing, @MainActor ExportAudioSource {
                 engine.connect(source, to: listener, format: mono)
                 head = listener
             }
+            // A connection touching a custom unit names the chain's format
+            // outright, exactly as the live path does: left to work it out,
+            // the engine resamples around the unit instead of running it at
+            // the export's rate. Here that format is known, not queried: two
+            // channels at the rate this whole machine renders at.
+            func isCustom(_ node: AVAudioNode) -> Bool {
+                (node as? AVAudioUnit)?.auAudioUnit is ClosureAudioUnit
+            }
             for unit in chain {
-                engine.connect(head, to: unit, format: nil)
+                let named = isCustom(unit) || isCustom(head)
+                engine.connect(head, to: unit, format: named ? stereo : nil)
                 head = unit
             }
-            engine.connect(head, to: engine.mainMixerNode, format: nil)
+            engine.connect(head, to: engine.mainMixerNode,
+                           format: isCustom(head) ? stereo : nil)
 
             do {
                 try engine.enableManualRenderingMode(.offline, format: stereo,

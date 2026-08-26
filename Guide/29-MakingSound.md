@@ -110,6 +110,28 @@ Order is the point, and it is the reason this is a list and not a pair of switch
 
 Changing a setting costs nothing. Changing which effects are in the chain rewires it, and that happens on the running engine rather than around a stop. Measured on this wiring, reconnecting while it plays costs nothing you can hear.
 
+### An effect nobody wrote for you
+
+The four kinds in the chain are the classics. The fifth is a closure, and you write it:
+
+```swift
+synth.effects = [
+    .custom("fold") { sound in
+        for i in 0..<sound.frameCount {
+            sound.left[i] = sin(sound.left[i] * 4)
+            sound.right[i] = sin(sound.right[i] * 4)
+        }
+    },
+    .reverb(Reverb(.hall, mix: 0.3)),
+]
+```
+
+The closure is handed each block of samples on its way to the speakers and rewrites them in place. That is all an audio effect is. This one is a wavefolder: push a sample past the top and it comes back down. That fills a plain tone with harmonics no filter could put there. `sound.left` and `sound.right` are the two channels, `sound.sampleRate` is what a frequency means, and `sound.time` is a clock for anything that moves. It sits anywhere in the chain, so the reverb above hears the folded sound. It reaches an export like every other link.
+
+An effect that has to remember something between blocks takes its memory as `state:` and gets it back on every block. That is how a filter, an envelope follower, or an echo of your own carries itself from one block to the next. The closure runs on the audio thread with the speakers waiting. Keep it to arithmetic over the samples: no allocating, no locking, no reaching back into the sketch. `state:` exists because the thread rule also means the closure cannot write into a captured variable.
+
+`Examples/Audio/Shaping` is three of these behind one knob: a wavefolder, a crush that remembers each held sample in `state:`, and a wobble that breathes on `sound.time`. The sound going in is drawn dim, and the sound coming out bright.
+
 ## An instrument somebody recorded
 
 Everything in this chapter so far is worked out as it goes. The other way round is to start from a recording.

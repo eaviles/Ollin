@@ -595,6 +595,7 @@ The voice side of this library is routing as a value. A [`Patch`](#patch) says w
 | `.reverb(Reverb)` | a room around it |
 | `.equalizer(Equalizer)` | lifting or cutting part of the spectrum |
 | `.distortion(Distortion)` | driving it past where it fits |
+| `.custom(...)` | [one you wrote yourself](#an-effect-of-your-own): a closure over the samples |
 
 #### The two that were here first
 
@@ -643,6 +644,46 @@ Distortion(.softClip, drive: -6, mix: 0.3)
 
 `.softClip` is warmth rather than damage. `.overdrive`, `.bitCrush`, `.ring` and `.squeeze` get progressively less polite. `drive` is how hard it is pushed in, in decibels, and `mix` dials the whole thing back to nothing.
 
+#### An effect of your own
+
+```swift
+synth.effects = [
+    .custom("fold") { sound in
+        for i in 0..<sound.frameCount {
+            sound.left[i] = sin(sound.left[i] * 3)
+            sound.right[i] = sin(sound.right[i] * 3)
+        }
+    },
+    .reverb(Reverb(.hall, mix: 0.3)),
+]
+```
+
+The four kinds above cover the classics. `.custom` is the seam for everything else, the way [`Shader`](../Shaders/Shaders.md) is that seam for drawing. The closure is handed each block of samples on its way to the speakers, free to rewrite them. It sits anywhere in the chain, and it reaches an [export](#sound-in-an-export) like every other link.
+
+The closure gets an `AudioBlock`. `left` and `right` are the two channels. On a mono sound they are the same channel, so code written against both is right either way. `frameCount` is how many samples each holds this time, `sampleRate` is what a frequency is measured against, and `time` is seconds since the effect started running, for anything that moves. Samples run `-1...1`.
+
+An effect that has to remember something between blocks takes its memory as `state:` and gets it back `inout` every time. A filter or an echo of its own is this kind:
+
+```swift
+// A one-pole lowpass: each sample pulled toward the one before it.
+.custom("soften", state: (l: Float(0), r: Float(0))) { sound, held in
+    for i in 0..<sound.frameCount {
+        held.l += (sound.left[i] - held.l) * 0.08
+        held.r += (sound.right[i] - held.r) * 0.08
+        sound.left[i] = held.l
+        sound.right[i] = held.r
+    }
+}
+```
+
+Why not a captured variable? The audio thread calls this closure, so it has to be `@Sendable`, and Swift will not let a `@Sendable` closure write into anything it captured. `state:` is the memory that is allowed.
+
+Two rules, both about where the closure runs. It lands on the audio thread with the speakers waiting. Keep it to arithmetic over the samples: nothing allocated, nothing locked, nothing reached back into the sketch. And to change how it behaves from a knob, build a new effect and set the chain again. The new closure swaps onto the same link without the wiring being touched, so the sound never stops to change. A new effect does start with fresh `state:`.
+
+The effect is a value, with two footnotes. Putting the same one in two places shares one memory. And one that went through `Codable` comes back as a passthrough that still knows its name, because a closure cannot be written down.
+
+`Examples/Audio/Shaping` is three of these behind a knob: a wavefolder, a sample-holding crush with `state:`, and a wobble run off `time`.
+
 #### What it costs to change one
 
 Changing a **setting** costs nothing. The chain is the same wiring, and only the numbers move. Changing **which effects are in the chain** rewires it. That is done on the running engine rather than around a stop. Measured on this wiring, reconnecting while it runs costs nothing audible, and stopping costs the same.
@@ -658,7 +699,6 @@ Said plainly, so you can plan around it rather than go looking:
 - **One instrument, one sound at a time.** A `Synth` plays one `voice`. Several sounds at once means several `Synth`s, which is fine and cheap.
 - **A patch is oscillators, not a whole modular rack.** Operators push each other and mix. There is no filter, envelope, or effect inside a patch. Those are the `Voice` around it, one per voice rather than one per operator.
 - **The chain is on the instrument, not on a note.** Every note a `Synth` plays goes through the same effects. Two different treatments means two `Synth`s.
-- **No effect of your own.** The chain holds the four kinds above. There is no seam for a filter you wrote yourself, the way [`Shader`](../Shaders/Shaders.md) is that seam for drawing.
 - **No sequencer.** Notes are asked for from `draw()`, on whatever clock the sketch keeps. [`Composition`](./Composition.md) is what decides which notes and when. [`TempoClock`](../Integration/MIDI.md) is the way to run on someone else's clock.
 - **A sampler, but not a sample editor.** [Recordings](#sampled-instruments) are read and played. Nothing here trims, loops by ear, or lays out a map for you. The map is the `.sfz`.
 - **One recording at a time per note.** There is no crossfading between velocity layers, or between neighboring recordings. A change of layer is a step rather than a fade.

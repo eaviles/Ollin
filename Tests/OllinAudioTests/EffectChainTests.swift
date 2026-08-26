@@ -77,7 +77,8 @@ import Testing
         #expect(Effect.reverb(Reverb()).kind == .reverb)
         #expect(Effect.equalizer(Equalizer()).kind == .equalizer)
         #expect(Effect.distortion(Distortion()).kind == .distortion)
-        #expect(Effect.Kind.allCases.count == 4)
+        #expect(Effect.custom(CustomEffect("mine") { _ in }).kind == .custom)
+        #expect(Effect.Kind.allCases.count == 5)
     }
 
     @MainActor
@@ -99,12 +100,13 @@ import Testing
             .distortion(Distortion(.overdrive)),
             .equalizer(.warm),
             .delay(Delay(time: 0.2)),
+            .custom("nothing") { _ in },
             .reverb(Reverb(.hall)),
         ]
-        #expect(synth.effects.count == 4)
+        #expect(synth.effects.count == 5)
         // And in the other order, since a chain is not a fixed rack.
         synth.effects = synth.effects.reversed()
-        #expect(synth.effects.map(\.kind) == [.reverb, .delay, .equalizer, .distortion])
+        #expect(synth.effects.map(\.kind) == [.reverb, .custom, .delay, .equalizer, .distortion])
     }
 
     // MARK: - The settings
