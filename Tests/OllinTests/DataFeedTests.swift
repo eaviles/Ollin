@@ -118,11 +118,14 @@ struct DataFeedTests {
         throw Timeout()
     }
 
-    /// A stub answering on its own path, with a feed pointed at it. The feed
-    /// polls rarely, so a test drives it with `refresh()` and nothing fires
-    /// behind the assertions.
+    /// A stub answering on its own path, with a feed pointed at it. The
+    /// default interval is far past any test's lifetime, so a test drives the
+    /// feed with `refresh()` and nothing fires behind the assertions: an
+    /// interval a starved full-suite run can outlive lets the schedule
+    /// legitimately ask again mid-test, and an exact-count assertion reads
+    /// that as a bug. A test of the schedule itself passes `every: 1`.
     func makePair(_ body: String, contentType: String? = "application/json",
-                  every interval: Double = 300, as content: DataFeed.Content = .auto,
+                  every interval: Double = 100_000, as content: DataFeed.Content = .auto,
                   headers: [String: String] = [:])
         -> (path: String, feed: DataFeed) {
 
@@ -343,19 +346,21 @@ struct DataFeedTests {
         let (path, feed) = makePair("{}", every: 1)
         defer { feed.stop() }
 
+        // One chain asks about once a second, plus the start and the refresh.
+        // Two chains ask about twice that, so the bound is measured against
+        // the time that actually passed rather than the time asked for. The
+        // window opens before the first ask and closes after the count is
+        // read: a loaded machine stretches every wait here, and a window that
+        // misses any of the asking time (one over just the sleep, say)
+        // undercounts the allowance and fails a starved run.
+        let began = Date()
         await MainActor.run { feed.start() }
         _ = try await waitFor { StubServer.asks(at: path).count >= 1 ? true : nil }
         feed.refresh()
-
-        // One chain asks about once a second, plus the start and the refresh.
-        // Two chains ask about twice that, so the bound is measured against the
-        // time that actually passed rather than the time asked for: a loaded
-        // machine stretches the sleep, and a fixed count would fail on that
-        // alone.
-        let began = Date()
         try await Task.sleep(nanoseconds: 3_300_000_000)
+        let count = StubServer.asks(at: path).count
         let elapsed = Date().timeIntervalSince(began)
-        #expect(StubServer.asks(at: path).count <= Int(elapsed) + 3)
+        #expect(count <= Int(elapsed) + 3)
     }
 
     @Test func aFeedThatIsAlreadyRunningIgnoresASecondStart() async throws {

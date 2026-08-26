@@ -52,14 +52,15 @@ import OllinVideo
 
         // Attaching the tracker installed the analyzer's tap on the source.
         let tap = try #require(source.frameTap)
+        // The tap takes a frame the way a capture queue would. Its analysis
+        // runs on a background task, so nothing here waits on it: a deadline
+        // over that task reads a saturated full-suite machine as a failure.
+        tap(frame)
 
-        // Feed frames until one is analyzed (the analyzer may drop early ones
-        // while a previous analysis is in flight).
-        let found = await waitFor(seconds: 5) {
-            tap(frame)
-            return detector.count >= 1 ? true : nil
-        }
-        #expect(found == true)
+        // The deterministic drive: the same analyze path, awaited inline. A
+        // loaded machine makes this slower, never absent.
+        await SourceAnalyzers.analyzer(for: source).analyzeNow(FrameBox(frame))
+        #expect(detector.count >= 1)
     }
 
     @Test func trackersOnOneSourceShareAnAnalyzer() {

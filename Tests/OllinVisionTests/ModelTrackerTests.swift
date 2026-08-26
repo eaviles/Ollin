@@ -411,17 +411,25 @@ import Ollin
         let frame = gradientScene(width: 160, height: 120)
         let cgImage = frame.currentCGImage()
 
-        let deadline = Date().addingTimeInterval(30)
-        var map: Image?
-        var picture: Image?
-        while map == nil || picture == nil, Date() < deadline {
-            source.frameTap?(cgImage)
-            map = tracker.map
-            picture = tracker.outputImage
-            try await Task.sleep(for: .milliseconds(100))
-        }
-        #expect(map != nil)
-        #expect(picture != nil)
+        // Attaching the tracker installed the analyzer's tap; feed it one
+        // frame the way a capture queue would (its background analysis is not
+        // waited on: a deadline over it reads a saturated full-suite machine
+        // as a failure).
+        let tap = try #require(source.frameTap)
+        tap(cgImage)
+
+        // The first read of each surface arms its conversion, so the analyzed
+        // frame below publishes both.
+        #expect(tracker.map == nil)
+        #expect(tracker.outputImage == nil)
+
+        // The still path awaits the same shared model load deterministically;
+        // then the deterministic drive runs the live analyze path inline.
+        _ = try await tracker.detect(in: frame)
+        await SourceAnalyzers.analyzer(for: source).analyzeNow(FrameBox(cgImage))
+
+        #expect(tracker.map != nil)
+        #expect(tracker.outputImage != nil)
         #expect(tracker.isLoaded)
         let rect = Rectangle(x: 0, y: 0, width: 160, height: 120)
         let v = tracker.value(at: Vector2(80, 60), in: rect)

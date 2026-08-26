@@ -252,11 +252,31 @@ final class VisionAnalyzer: @unchecked Sendable {
         }
         guard !trackers.isEmpty else { return }
 
-        Task.detached { [weak self] in
+        // User-initiated: the analysis feeds a live sketch's next frames. At
+        // the default priority it starves behind bulk work on a busy machine,
+        // and the sketch's trackers go quiet while the picture keeps moving.
+        Task.detached(priority: .userInitiated) { [weak self] in
             for tracker in trackers {
                 await tracker.analyze(box.cgImage, size: box.size)
             }
             self?.lock.withLock { $0.processing = false }
+        }
+    }
+
+    /// Runs one frame through the registered trackers inline, awaiting the
+    /// whole analysis: the same trackers and the same `analyze` calls as
+    /// `submit`, with no dependence on a background task being scheduled. The
+    /// deterministic drive for tests, where a fixed deadline over `submit`
+    /// reads a saturated machine as a failure. Skips the drop gate on purpose
+    /// (every tracker publishes behind its own lock, so an overlap with an
+    /// in-flight `submit` pass is safe).
+    func analyzeNow(_ box: FrameBox) async {
+        let trackers: [any VisionTracking] = lock.withLock { state in
+            state.trackers.removeAll { $0.tracker == nil }
+            return state.trackers.compactMap { $0.tracker }
+        }
+        for tracker in trackers {
+            await tracker.analyze(box.cgImage, size: box.size)
         }
     }
 }
