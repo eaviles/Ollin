@@ -11,6 +11,10 @@ import Ollin
 final class Mixing: Sketch {
     let spaces: [(label: String, space: ColorSpace)] = [
         ("RGB", .rgb),
+        // The HSB band pops now and then, on purpose: hue mixes the shortest
+        // way around the wheel, and when the drifting endpoints' HSB hue gap
+        // crosses half a turn, the short way switches sides in one frame. The
+        // OK bands hold a fixed gap in their own hue, so only HSB flips.
         ("HSB", .hsb),
         ("OKLAB", .oklab),
         ("OKLCH", .oklch),
@@ -25,8 +29,8 @@ final class Mixing: Sketch {
 
     override func draw() {
         background(Color(hex: 0x14171C))
-        let a = Color(OKHSL(h: time * 0.02, s: 0.95, l: 0.55))
-        let b = Color(OKHSL(h: time * 0.02 + 0.45, s: 0.95, l: 0.7))
+        let a = Color(OKHSL(h: time * 0.04, s: 0.95, l: 0.55))
+        let b = Color(OKHSL(h: time * 0.04 + 0.45, s: 0.95, l: 0.7))
 
         let margin = width * 0.08
         let bandHeight = height * 0.1
