@@ -29,7 +29,10 @@
 cd "$(dirname "$0")/.." || exit 1
 
 # The suites that need a quiet machine, as anchored ID prefixes.
-sensitive='OllinTests.DataFeedTests|OllinVisionTests.FrameSourceTests|OllinVisionTests.ModelTrackerTests|OllinAudioTests.ListeningTests'
+# SpatialVideoTests is here for a different reason than the wall-clock ones:
+# its stereo HEVC readback goes through the hardware video decoder, and under
+# a full parallel run that wait has wedged indefinitely rather than failing.
+sensitive='OllinTests.DataFeedTests|OllinVisionTests.FrameSourceTests|OllinVisionTests.ModelTrackerTests|OllinAudioTests.ListeningTests|OllinTests.SpatialVideoTests'
 
 case "$1" in
 --help | -h)
