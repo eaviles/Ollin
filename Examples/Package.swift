@@ -134,6 +134,7 @@ let package = Package(
         example("Simulation/MultiScaleTuring"),
         example("Simulation/Sandpile"),
         example("Simulation/Fluid"),
+        example("Simulation/SelfWarp"),
         example("Simulation/Ripples"),
         example("Simulation/Watercolor"),
         example("Simulation/Attractor"),

@@ -1046,6 +1046,38 @@ final class MetalRenderer {
     var watercolorSlots: [ObjectIdentifier: WatercolorSlot] = [:]
     var watercolorUsedThisFrame: Set<ObjectIdentifier> = []
 
+    /// One self-warp `SimField`'s persistent state: the previous frame's clean source
+    /// (what this frame's motion is measured against), the motion-field ping-pong pair
+    /// (kept across frames so the estimate can be temporally steadied, at a quarter of
+    /// the field's resolution: motion is a smooth quantity, and the coarser grid both
+    /// regularizes the fit and extends the reach of the window), and the history
+    /// ping-pong pair the warp accumulates into. `primed` defers the first-frame fill
+    /// (source and history start as the first drawn seed, so the first frame measures
+    /// zero motion instead of a jump from black). `owner` is weak so the slot is
+    /// pruned once the sketch releases the field.
+    final class SelfWarpSlot {
+        let source: MTLTexture
+        let flowA: MTLTexture, flowB: MTLTexture
+        let histA: MTLTexture, histB: MTLTexture
+        let w: Int, h: Int
+        let flowW: Int, flowH: Int
+        var primed = false
+        var flipped = false
+        weak var owner: AnyObject?
+        init(source: MTLTexture, flowA: MTLTexture, flowB: MTLTexture,
+             histA: MTLTexture, histB: MTLTexture,
+             w: Int, h: Int, flowW: Int, flowH: Int, owner: AnyObject) {
+            self.source = source
+            self.flowA = flowA; self.flowB = flowB
+            self.histA = histA; self.histB = histB
+            self.w = w; self.h = h; self.flowW = flowW; self.flowH = flowH
+            self.owner = owner
+        }
+    }
+    /// Persistent self-warp storage, kept and pruned like `fluidSlots`.
+    var selfWarpSlots: [ObjectIdentifier: SelfWarpSlot] = [:]
+    var selfWarpUsedThisFrame: Set<ObjectIdentifier> = []
+
     /// How many blur-pyramid rungs a multi-scale Turing step is handed. Must stay equal
     /// to `OLLIN_TURING_LEVELS` in `ShaderSim.metal`, which sizes the texture binding:
     /// twelve rungs cover a field up to 4096 texels on its longest side, and a shallower

@@ -581,6 +581,97 @@ fragment float4 ollin_fluid_advect(PresentOut in [[stage_in]],
     return float4(result.rgb / (1.0 + dissipation * dt), result.a);
 }
 
+// MARK: - Self-warp (motion feedback)
+//
+// The field watches how its own picture moves and drags its history along with that
+// motion. The renderer (`runSelfWarp`) drives the pass order: luminance at the flow
+// resolution for both endpoints, a two-level windowed least-squares motion fit
+// (coarse for reach, fine for locality), then a semi-Lagrangian carry of the history
+// along the fitted motion with the fresh drawing mixed back in. Motion is stored in
+// uv units in .xy, so a pass at any resolution reads it unchanged.
+
+// luminance: one channel of a source picture, for the motion fit. Rendering it into
+// the reduced flow grid doubles as the fit's low-pass filter.
+fragment float4 ollin_warp_luma(PresentOut in [[stage_in]],
+                                texture2d<float> src [[texture(0)]],
+                                sampler samp [[sampler(0)]],
+                                constant float4 *params [[buffer(0)]]) {
+    return float4(ollin_luma(src.sample(samp, in.uv).rgb), 0.0, 0.0, 1.0);
+}
+
+// motion fit, one level: the classic windowed least-squares flow (Lucas-Kanade). Each
+// output texel gathers a 3x3 window of the two luminance images, with the previous
+// image pre-shifted by the initialization (texture 2: last frame's motion for the
+// coarse level, the coarse result for the fine one), forms the normal equations from
+// the spatial gradient of the frame average and the temporal difference, and solves
+// the regularized 2x2 system for the displacement increment that best explains the
+// change. The fine level also steadies the result against last frame's field
+// (texture 3). params[0].xy = this level's grid texel; params[1].x = temporal
+// smoothing (0 on the coarse level).
+fragment float4 ollin_warp_flow(PresentOut in [[stage_in]],
+                                texture2d<float> prevLuma [[texture(0)]],
+                                texture2d<float> curLuma [[texture(1)]],
+                                texture2d<float> initFlow [[texture(2)]],
+                                texture2d<float> priorFlow [[texture(3)]],
+                                sampler samp [[sampler(0)]],
+                                constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float smoothing = params[1].x;
+    float2 d0 = initFlow.sample(samp, in.uv).xy;
+    float sxx = 0.0, sxy = 0.0, syy = 0.0, sxt = 0.0, syt = 0.0;
+    for (int j = -1; j <= 1; j++) {
+        for (int i = -1; i <= 1; i++) {
+            float2 o = in.uv + float2(i, j) * t;
+            float2 op = o - d0;
+            float xp = 0.5 * (curLuma.sample(samp, o + float2(t.x, 0.0)).x
+                            + prevLuma.sample(samp, op + float2(t.x, 0.0)).x);
+            float xm = 0.5 * (curLuma.sample(samp, o - float2(t.x, 0.0)).x
+                            + prevLuma.sample(samp, op - float2(t.x, 0.0)).x);
+            float yp = 0.5 * (curLuma.sample(samp, o + float2(0.0, t.y)).x
+                            + prevLuma.sample(samp, op + float2(0.0, t.y)).x);
+            float ym = 0.5 * (curLuma.sample(samp, o - float2(0.0, t.y)).x
+                            + prevLuma.sample(samp, op - float2(0.0, t.y)).x);
+            float gx = 0.5 * (xp - xm);
+            float gy = 0.5 * (yp - ym);
+            float gt = curLuma.sample(samp, o).x - prevLuma.sample(samp, op).x;
+            sxx += gx * gx; syy += gy * gy; sxy += gx * gy;
+            sxt += gx * gt; syt += gy * gt;
+        }
+    }
+    // Regularized solve: a flat window (no gradient anywhere) falls softly back to
+    // its initialization instead of dividing by nothing.
+    float eps = 1e-4;
+    float det = (sxx + eps) * (syy + eps) - sxy * sxy;
+    float2 dd = float2((syy + eps) * sxt - sxy * syt,
+                       (sxx + eps) * syt - sxy * sxt) * (-1.0 / det);
+    // The window can only vouch for about its own radius; clamp the increment so a
+    // bad fit cannot fling the history. The coarser level (and `strength`) carry the
+    // longer reach.
+    dd = clamp(dd, -1.5, 1.5) * t;
+    float2 d = d0 + dd;
+    float2 prior = priorFlow.sample(samp, in.uv).xy;
+    return float4(mix(d, prior, smoothing), 0.0, 1.0);
+}
+
+// carry: trace each texel back along the fitted motion (semi-Lagrangian, stable for
+// any step), fade the history by decay, and mix this frame's drawing back in where
+// it covers. The drawing arrives premultiplied (geometry output), so its alpha is
+// the coverage and the mix stays premultiplied throughout.
+// texture(0) history, texture(1) this frame's drawing, texture(2) the fitted motion.
+// params[1] = (strength, refresh, decay, 0).
+fragment float4 ollin_warp_advect(PresentOut in [[stage_in]],
+                                  texture2d<float> history [[texture(0)]],
+                                  texture2d<float> source [[texture(1)]],
+                                  texture2d<float> flow [[texture(2)]],
+                                  sampler samp [[sampler(0)]],
+                                  constant float4 *params [[buffer(0)]]) {
+    float strength = params[1].x, refresh = params[1].y, decay = params[1].z;
+    float2 d = flow.sample(samp, in.uv).xy * strength;
+    float4 h = history.sample(samp, in.uv - d) * decay;
+    float4 s = source.sample(samp, in.uv);
+    return h * (1.0 - refresh * s.a) + s * refresh;
+}
+
 // MARK: - Multi-scale Turing patterns
 //
 // One substance in the red channel, held in 0...1 (the state's rgb are all the same

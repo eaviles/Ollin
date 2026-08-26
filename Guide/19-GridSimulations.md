@@ -308,6 +308,45 @@ Two verbs manage the sheet between washes. `paint.dry()` bakes everything so far
 
 There are knobs for the paper too. `dryBrush` above zero makes strokes skip across the raised tooth and break up, `grain` sizes the tooth, and `paperSeed` picks the sheet. A pigment you can't find in the twelve presets you can invent by describing it. `WatercolorPigment(overWhite:overBlack:)` takes the color a layer shows over white and over black paper, and works out the optics from those two swatches. The full model, effect by effect, is on the [watercolor page](../Docs/Simulation/Watercolor.md).
 
+## The picture dragging its past: self-warp
+
+Every sim so far evolves a state of its own. The last one has no chemistry inside it at all; its state is the picture itself. A self-warp field watches what you draw, works out which way every part of it just moved, and carries everything it has already shown along that motion. Whatever moves smears. Whatever holds still stays sharp.
+
+```swift
+var warp: SimField!
+
+override func setup() {
+    warp = simField(.selfWarp(strength: 0.55, refresh: 0.05))
+}
+
+override func draw() {
+    withField(warp) {
+        background(Color(hex: 0x08080F))
+        noStroke()
+        let c = bounds.center
+        orb(at: c + Vector2(cos(time * 1.15), sin(time * 1.15)) * 310,
+            radius: 84, Color(red: 1.0, green: 0.45, blue: 0.15))
+        orb(at: c + Vector2(cos(-time * 0.74 + 2.1), sin(-time * 0.74 + 2.1)) * 215,
+            radius: 66, Color(red: 0.2, green: 0.75, blue: 1.0))
+    }
+    drawImage(warp.image, 0, 0)
+}
+
+func orb(at center: Vector2, radius: Double, _ color: Color) {
+    fill(.radial(center: center, radius: radius,
+                 [.white, color, color.withAlpha(0)]))
+    drawCircle(center: center, radius: radius)
+}
+```
+
+<img src="Images/19-GridSimulations/SelfWarp.jpg" alt="Two soft-cored orbs on near-black, an orange one stretched into a long curved ribbon along its orbit and a smaller cyan one trailing a short wake" width="560">
+
+You draw the whole scene into the field, background and all, and composite the field instead of the scene. The measuring is the sim's job: it compares this frame's drawing with the last one, so anything that visibly moves, moves the history. Notice the sketch never declares a velocity. The fluid needed a `force:`; this field reads the push off the picture itself.
+
+`strength` picks the look. At 1 the carried ghost lands exactly back under whatever moved, and the effect nearly vanishes. Below 1 the picture outruns its history and stretches it into the ribbons above. Above 1 the history overshoots, and glitchy echoes race ahead of the motion. Negative drags the past against the motion. `refresh` is how much of the fresh drawing wins back each frame, so low values leave long-lived smears, and `decay` a touch under 1 sinks old trails toward black.
+
+One practical note: the motion is measured from the picture's own shading, so the field reads best on content with soft gradients, edges, or texture. The gradient-cored orbs above are ideal, and a camera or video frame drawn into the field works just as well, smearing along whatever moves in it. A flat shape on a flat ground gives the fit nothing to hold.
+
 ## Putting it together: the organism
 
 The finished piece grows a culture. A scatter of spores seeds a reaction-diffusion dish in its mitosis regime, and whatever you draw while it runs joins the chemistry. The display pipeline is pure [Chapter 16](16-LayersAndEffects.md), a levels stretch, a gradient map for the skin, and a liquid relight so the ridges catch light. Make `MySketches/Organism.swift`:
@@ -368,14 +407,14 @@ The multi-scale patterns are Jonathan McCabe's, from his 2010 Bridges paper "Cyc
 The newer arrivals have their own names attached. The 256 elementary rules were cataloged and numbered by Stephen Wolfram in 1983, and turmites generalize Christopher Langton's 1986 ant. Lenia is Bert Wang-Chak Chan's continuous generalization of the Game of Life, from his 2019 paper "Lenia: Biology of Artificial Life". Ollin implements the exponential kernel and growth rule it describes, with the paper's Orbium creature as the defaults.
 
 
-The two waves in this chapter are older than any of it. The ripple pool integrates the 2D wave equation, which Jean le Rond d'Alembert wrote down for a vibrating string in 1747. The interactive-water form of it circulated widely as demoscene and graphics-tutorial code through the 1990s. The closed form Ollin evaluates comes from the standard treatment of a square plate driven at its center. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
+The two waves in this chapter are older than any of it. The ripple pool integrates the 2D wave equation, which Jean le Rond d'Alembert wrote down for a vibrating string in 1747. The interactive-water form of it circulated widely as demoscene and graphics-tutorial code through the 1990s. The closed form Ollin evaluates comes from the standard treatment of a square plate driven at its center. The self-warp's motion measurement is Bruce Lucas and Takeo Kanade's 1981 least-squares optical flow, run coarse to fine, and its history carry is the same semi-Lagrangian step the fluid uses. Full credits are in the project's [attribution notes](../ATTRIBUTION.md).
 
 ## Go deeper
 
 - [Simulation fields](../Docs/Drawing/Effects.md#simfield): the `Sim` catalog with every knob, seeding semantics, and field scale.
 - [Cellular automata](../Docs/Generators/CellularAutomata.md): every elementary and totalistic rule, random start rows, the `Turmite` preset catalog, and writing your own rule table.
 - Appendix B draws this chapter's math, one picture per idea: [Local rules, global structure](B-JustEnoughMath.md#local-rules-global-structure).
-- Worked examples: [`Examples/Simulation/GrayScott`](../Examples/Simulation/GrayScott/Sketch.swift), [`Examples/Simulation/GameOfLife`](../Examples/Simulation/GameOfLife/Sketch.swift), [`Examples/Simulation/MultiScaleTuring`](../Examples/Simulation/MultiScaleTuring/Sketch.swift), [`Examples/Simulation/Sandpile`](../Examples/Simulation/Sandpile/Sketch.swift), [`Examples/Simulation/Fluid`](../Examples/Simulation/Fluid/Sketch.swift), [`Examples/Simulation/Ripples`](../Examples/Simulation/Ripples/Sketch.swift), [`Examples/Simulation/Watercolor`](../Examples/Simulation/Watercolor/Sketch.swift), [`Examples/Compute/CurlField`](../Examples/Compute/CurlField/Sketch.swift), and [`Examples/Compute/ReactionDiffusion`](../Examples/Compute/ReactionDiffusion/Sketch.swift).
+- Worked examples: [`Examples/Simulation/GrayScott`](../Examples/Simulation/GrayScott/Sketch.swift), [`Examples/Simulation/GameOfLife`](../Examples/Simulation/GameOfLife/Sketch.swift), [`Examples/Simulation/MultiScaleTuring`](../Examples/Simulation/MultiScaleTuring/Sketch.swift), [`Examples/Simulation/Sandpile`](../Examples/Simulation/Sandpile/Sketch.swift), [`Examples/Simulation/Fluid`](../Examples/Simulation/Fluid/Sketch.swift), [`Examples/Simulation/SelfWarp`](../Examples/Simulation/SelfWarp/Sketch.swift), [`Examples/Simulation/Ripples`](../Examples/Simulation/Ripples/Sketch.swift), [`Examples/Simulation/Watercolor`](../Examples/Simulation/Watercolor/Sketch.swift), [`Examples/Compute/CurlField`](../Examples/Compute/CurlField/Sketch.swift), and [`Examples/Compute/ReactionDiffusion`](../Examples/Compute/ReactionDiffusion/Sketch.swift).
 
 ---
 

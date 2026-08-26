@@ -46,6 +46,7 @@ public struct Sim: Sendable {
         case briansBrain
         case hodgepodge(states: Int, k1: Int, k2: Int, g: Int,
                         neighborhood: CellNeighborhood, seed: Double)
+        case selfWarp(SelfWarpConfig)
     }
 
     let kind: Kind
@@ -61,6 +62,17 @@ public struct Sim: Sendable {
         var pressureIterations: Int     // Jacobi iterations of the pressure solve
         var buoyancy: Float             // upward lift per unit dye brightness (smoke)
         var dt: Float                   // fixed timestep (deterministic; not frame time)
+    }
+
+    /// The fixed configuration a `.selfWarp` hands the renderer's motion-feedback
+    /// pipeline. Like the fluid it bypasses the single-texture step hooks and runs a
+    /// dedicated pass chain (`runSelfWarp`) over its own source / flow / history
+    /// state, so its parameters travel here rather than in `params`.
+    struct SelfWarpConfig: Sendable {
+        var strength: Float     // how far history rides the measured motion (1 = with it)
+        var refresh: Float      // how much of this frame's drawing re-enters (0...1)
+        var decay: Float        // per-frame multiplier on the carried history (1 = keep)
+        var smoothing: Float    // temporal steadying of the motion field (0...0.98)
     }
 
     /// Gray-Scott **reaction-diffusion**: two chemicals diffuse and react, and where
@@ -179,6 +191,60 @@ public struct Sim: Sendable {
             pressureIterations: max(1, min(60, pressureIterations)),
             buoyancy: Float(max(0, buoyancy)),
             dt: 0.016)))
+    }
+
+    /// **Self-warp**: the field watches how its own picture moves and drags its history
+    /// along with that motion, so everything you draw trails a smeared echo of itself.
+    /// Draw the scene into the field each frame (a `background` inside the block keeps
+    /// the seed opaque, the usual whole-picture use); the sim measures a dense motion
+    /// field between this frame's drawing and the last one, carries the accumulated
+    /// history along it, and mixes `refresh` of the fresh drawing back in. Moving
+    /// shapes comb into comets, a panning texture liquefies, and a camera or video
+    /// frame drawn into the field smears along whatever moves in it. The raw `image`
+    /// is the smeared picture, ready to composite or filter like any layer.
+    ///
+    /// The motion is estimated from the pictures themselves (a coarse-to-fine
+    /// least-squares fit over the luminance, the classic Lucas-Kanade scheme), so it
+    /// needs no cooperation from the sketch: anything that visibly moves, moves the
+    /// history. It reads best on content with some texture or edges; a flat field has
+    /// no motion to measure.
+    ///
+    /// ```swift
+    /// var warp: SimField!
+    /// override func setup() { warp = simField(.selfWarp()) }
+    ///
+    /// override func draw() {
+    ///     withField(warp) {
+    ///         background(.black)
+    ///         fill(.orange); drawCircle(bounds.center.x + cos(time) * 300,
+    ///                                   bounds.center.y + sin(time) * 300, 60)
+    ///     }
+    ///     drawImage(warp.image, 0, 0)
+    /// }
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - strength: How far the history rides the measured motion each frame, as a
+    ///     multiple of it, and the dial that picks the look. Below 1 the picture
+    ///     outruns its history and stretches it into ribbons trailing the motion
+    ///     (the default regime); at 1 the carried ghost lands exactly back under the
+    ///     mover, which reads as almost nothing; above 1 it overshoots and throws
+    ///     glitchy echoes ahead of the motion; negative drags the history against it.
+    ///   - refresh: How much of this frame's drawing re-enters per frame (0...1). Low
+    ///     values leave long-lived smears; 1 shows only the fresh drawing warped by
+    ///     one frame of motion; 0 freezes the first frame and lets later motion push
+    ///     it around like wet paint.
+    ///   - decay: Per-frame multiplier on the carried history (0...1). 1 never fades,
+    ///     so still regions hold; a touch below 1 sinks old trails toward black.
+    ///   - smoothing: Temporal steadying of the motion field (0...0.98). Higher reads
+    ///     calmer and keeps trails coherent; lower answers faster and twitches more.
+    public static func selfWarp(strength: Double = 0.6, refresh: Double = 0.08,
+                                decay: Double = 1, smoothing: Double = 0.6) -> Sim {
+        Sim(kind: .selfWarp(SelfWarpConfig(
+            strength: Float(min(8, max(-8, strength))),
+            refresh: Float(min(1, max(0, refresh))),
+            decay: Float(min(1, max(0, decay))),
+            smoothing: Float(min(0.98, max(0, smoothing))))))
     }
 
     /// **Multi-scale Turing patterns**: one substance, looked at through several
@@ -411,6 +477,13 @@ public struct Sim: Sendable {
     /// The fluid configuration, when this is a `.fluid` (else `nil`).
     var fluidConfig: FluidConfig? { if case let .fluid(c) = kind { return c }; return nil }
 
+    /// The self-warp configuration, when this is a `.selfWarp` (else `nil`). Like the
+    /// fluid it runs its own multi-pass pipeline (`runSelfWarp`) over its own source,
+    /// motion, and history state rather than the single-texture step path.
+    var selfWarpConfig: SelfWarpConfig? {
+        if case let .selfWarp(c) = kind { return c }; return nil
+    }
+
     /// The multi-scale Turing configuration, when this is a `.multiScaleTuring`
     /// (else `nil`). Like the fluid it runs its own multi-pass pipeline
     /// (`runMultiScaleTuring`) rather than the single-texture step path, because a
@@ -443,6 +516,7 @@ public struct Sim: Sendable {
         case .excitable:         return 1
         case .briansBrain:       return 1
         case .hodgepodge:        return 1
+        case .selfWarp:          return 1   // unused: self-warp runs its own pipeline
         }
     }
 
@@ -468,6 +542,8 @@ public struct Sim: Sendable {
         case .briansBrain:       return SIMD4(0, 0, 0, 1)   // everything ready
         case .hodgepodge:        return SIMD4(0, 0, 0, 1)   // unused: starts as seeded
                                                             // random states (stateSeedFill)
+        case .selfWarp:          return SIMD4(0, 0, 0, 0)   // unused: runSelfWarp clears
+                                                            // and primes its own state
         }
     }
 
@@ -486,6 +562,7 @@ public struct Sim: Sendable {
         case .excitable:         return "ollin_sim_excitable"
         case .briansBrain:       return "ollin_sim_brain"
         case .hodgepodge:        return "ollin_sim_hodgepodge"
+        case .selfWarp:          return ""   // unused: self-warp dispatches its own fragments
         }
     }
 
@@ -558,6 +635,8 @@ public struct Sim: Sendable {
         case let .hodgepodge(states, k1, k2, g, neighborhood, _):
             return [SIMD4(Float(states), Float(k1), Float(k2), Float(g)),
                     SIMD4(neighborhood == .moore ? 1 : 0, 0, 0, 0)]
+        case .selfWarp:
+            return []   // unused: self-warp binds per-pass parameters itself
         }
     }
 }

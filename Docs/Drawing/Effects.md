@@ -41,7 +41,7 @@ override func draw() {
 - [generate / Generator](#generate) - procedural pattern sources
 - [postProcess](#postprocess) - filter the whole frame
 - [feedback / withFeedback](#feedback) - a layer that remembers itself (trails, tunnels)
-- [simField / Sim](#simfield) - a layer that runs a simulation (reaction-diffusion, Game of Life, fluid)
+- [simField / Sim](#simfield) - a layer that runs a simulation (reaction-diffusion, Game of Life, fluid, the self-warp motion feedback)
 - [compose / layer](#compose) - declare a stack of layers as one block
 - [aside](#aside) - a helper layer that feeds another layer's effect
 - [Notes](#notes)
@@ -686,6 +686,22 @@ override func draw() {
         drawCircle(width / 2, height / 2, 16)
     }
     drawImage(fluid.filtered(.bloom()).image, 0, 0)      // the swirling dye, bloomed
+}
+```
+
+- **`.selfWarp(strength:refresh:decay:smoothing:)`** the picture dragging its own history around. Draw the scene into the field each frame (a `background` inside the block keeps the seed opaque, the usual whole-picture use) and the sim measures a dense motion field between this frame's drawing and the last one (a coarse-to-fine least-squares fit over the luminance, the classic Lucas-Kanade scheme, so it needs no cooperation from the sketch: anything that visibly moves, moves the history), carries its accumulated history along that motion, and mixes `refresh` of the fresh drawing back in. Whatever moves smears; whatever holds still stays sharp; a camera or video frame drawn into the field smears along whatever moves in it. `strength` picks the look: below 1 the picture outruns its history and stretches it into ribbons trailing the motion (the default regime), at 1 the carried ghost lands exactly back under the mover (which reads as almost nothing), above 1 it overshoots into glitchy echoes thrown ahead, and negative drags the history against the motion. `decay` fades old trails toward black, and `smoothing` steadies the measured motion over time. It reads best on content with some texture or edges (soft gradients are ideal); a flat field has no motion to measure. See the `Simulation/SelfWarp` example.
+
+```swift
+var warp: SimField!
+override func setup() { warp = simField(.selfWarp()) }
+
+override func draw() {
+    withField(warp) {                                    // draw the scene into the field
+        background(.black)
+        fill(.orange)
+        drawCircle(width / 2 + cos(time) * 300, height / 2 + sin(time) * 300, 60)
+    }
+    drawImage(warp.image, 0, 0)                          // the smeared picture
 }
 ```
 

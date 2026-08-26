@@ -218,6 +218,10 @@ extension MetalRenderer {
                     if let slot = fluidSlot(for: sf, width: pw, height: ph, into: cb) {
                         target.texture = slot.flipped ? slot.dyeB : slot.dyeA
                     }
+                } else if sf.sim.selfWarpConfig != nil {
+                    if let slot = selfWarpSlots[ObjectIdentifier(sf)] {
+                        target.texture = slot.flipped ? slot.histB : slot.histA
+                    }
                 } else if let slot = feedbackSlot(for: sf, width: pw, height: ph,
                                                   fill: initialNoiseFill(sf.sim, into: cb),
                                                   into: cb) {
@@ -259,6 +263,15 @@ extension MetalRenderer {
                               width: pw, height: ph, into: cb, pooled: pooled)
                 target.texture = slot.display
                 watercolorUsedThisFrame.insert(ObjectIdentifier(sf))
+            } else if let config = sf.sim.selfWarpConfig {
+                // Self-warp: its own persistent source / motion / history state, evolved
+                // by the dedicated motion-feedback chain. `image` resolves to the freshly
+                // warped history.
+                guard let slot = selfWarpSlot(for: sf, width: pw, height: ph, into: cb) else { continue }
+                runSelfWarp(config, seed: seed, slot: slot,
+                            width: pw, height: ph, into: cb, pooled: pooled)
+                target.texture = slot.flipped ? slot.histA : slot.histB
+                selfWarpUsedThisFrame.insert(ObjectIdentifier(sf))
             } else if let config = sf.sim.fluidConfig {
                 // Multi-field fluid: its own persistent velocity + dye pairs, evolved by
                 // the dedicated solver. `image` resolves to the freshly advected dye.
@@ -346,6 +359,11 @@ extension MetalRenderer {
         watercolorUsedThisFrame.removeAll(keepingCapacity: true)
         if watercolorSlots.contains(where: { $0.value.owner == nil }) {
             watercolorSlots = watercolorSlots.filter { $0.value.owner != nil }
+        }
+        for id in selfWarpUsedThisFrame { selfWarpSlots[id]?.flipped.toggle() }
+        selfWarpUsedThisFrame.removeAll(keepingCapacity: true)
+        if selfWarpSlots.contains(where: { $0.value.owner == nil }) {
+            selfWarpSlots = selfWarpSlots.filter { $0.value.owner != nil }
         }
         // Advance each SSR temporal history drawn this frame (its back becomes next frame's
         // front). Slots aren't pruned here (`ssrHistorySlot` bounds the map on allocation),
@@ -1323,6 +1341,70 @@ extension MetalRenderer {
                              params: [texel, SIMD4(dt, config.densityDissipation, 0, 0)], into: cb)
     }
 
+    /// Evolve a self-warp `SimField` one frame: measure how the picture moved between
+    /// the previous drawn source and this frame's, then carry the accumulated history
+    /// along that motion and mix the fresh drawing back in. The motion is a
+    /// coarse-to-fine windowed least-squares fit over the luminance (solved on a
+    /// sixteenth-of-the-field grid for reach, refined on a quarter grid for locality),
+    /// stored in uv units so every later pass is resolution independent, and steadied
+    /// against last frame's field by `smoothing`. The passes chain through pooled
+    /// scratch, landing the motion in the flow pair's back and the warped picture in
+    /// the history pair's back, which the field's `image` serves.
+    private func runSelfWarp(_ config: Sim.SelfWarpConfig, seed: MTLTexture,
+                             slot: SelfWarpSlot, width: Int, height: Int,
+                             into cb: MTLCommandBuffer, pooled: Bool) {
+        let flowFront = slot.flipped ? slot.flowB : slot.flowA
+        let flowBack  = slot.flipped ? slot.flowA : slot.flowB
+        let histFront = slot.flipped ? slot.histB : slot.histA
+        let histBack  = slot.flipped ? slot.histA : slot.histB
+        // First use: source and history begin as this frame's drawing, so the first
+        // frame measures zero motion and shows the drawing itself, not a jump from
+        // black.
+        if !slot.primed {
+            if let blit = cb.makeBlitCommandEncoder() {
+                blit.copy(from: seed, to: slot.source)
+                blit.copy(from: seed, to: histFront)
+                blit.endEncoding()
+            }
+            slot.primed = true
+        }
+        let fw = slot.flowW, fh = slot.flowH
+        let cw = max(4, fw / 4), ch = max(4, fh / 4)
+        guard let lumaPrev = acquireFilterTexture(width: fw, height: fh, pooled: pooled),
+              let lumaCur  = acquireFilterTexture(width: fw, height: fh, pooled: pooled),
+              let coarse   = acquireFilterTexture(width: cw, height: ch, pooled: pooled) else { return }
+        // 1. Luminance at the flow resolution, for both endpoints: the downsample is
+        //    the fit's low-pass, so motion is solved on these, never on the pictures.
+        encodeEffectFragment("ollin_warp_luma", inputs: [slot.source], output: lumaPrev,
+                             params: [], into: cb)
+        encodeEffectFragment("ollin_warp_luma", inputs: [seed], output: lumaCur,
+                             params: [], into: cb)
+        // 2. The two-level fit. The coarse solve initializes from last frame's motion
+        //    (steady movement keeps its lock past the window's reach) and its result
+        //    initializes the fine one, which folds in the temporal smoothing.
+        encodeEffectFragment("ollin_warp_flow",
+                             inputs: [lumaPrev, lumaCur, flowFront, flowFront], output: coarse,
+                             params: [SIMD4(1 / Float(cw), 1 / Float(ch), 0, 0),
+                                      SIMD4(0, 0, 0, 0)], into: cb)
+        encodeEffectFragment("ollin_warp_flow",
+                             inputs: [lumaPrev, lumaCur, coarse, flowFront], output: flowBack,
+                             params: [SIMD4(1 / Float(fw), 1 / Float(fh), 0, 0),
+                                      SIMD4(config.smoothing, 0, 0, 0)], into: cb)
+        // 3. Carry the history along the motion, fade it by decay, and mix the fresh
+        //    drawing back in where it covers.
+        encodeEffectFragment("ollin_warp_advect",
+                             inputs: [histFront, seed, flowBack], output: histBack,
+                             params: [SIMD4(1 / Float(width), 1 / Float(height), 0, 0),
+                                      SIMD4(config.strength, config.refresh, config.decay, 0)],
+                             into: cb)
+        // 4. This frame's drawing becomes next frame's "previous" source. The blit is
+        //    ordered after the passes above, so they still read the old source.
+        if let blit = cb.makeBlitCommandEncoder() {
+            blit.copy(from: seed, to: slot.source)
+            blit.endEncoding()
+        }
+    }
+
     /// Evolve a watercolor `SimField` one frame: the classic three-layer wash model.
     /// Each main step moves water in the shallow-water layer (velocity substeps with
     /// the paper's slope, divergence relaxation so local additions push globally, and
@@ -2100,6 +2182,35 @@ extension MetalRenderer {
         let slot = FluidSlot(velA: velA, velB: velB, dyeA: dyeA, dyeB: dyeB,
                              w: width, h: height, owner: sf)
         fluidSlots[id] = slot
+        return slot
+    }
+
+    /// `sf`'s persistent self-warp slot, allocating the source, motion, and history
+    /// textures (cleared; the first `runSelfWarp` primes source and history from the
+    /// first drawing) on first use, a size change, or after the address was reused by
+    /// a different field. The motion pair lives on a quarter-resolution grid: motion
+    /// is a smooth quantity, the coarser grid regularizes the fit, and the fit's
+    /// window reaches further in picture pixels for the same cost.
+    private func selfWarpSlot(for sf: AnyObject, width: Int, height: Int,
+                              into cb: MTLCommandBuffer) -> SelfWarpSlot? {
+        let id = ObjectIdentifier(sf)
+        if let slot = selfWarpSlots[id], slot.owner === sf, slot.w == width, slot.h == height {
+            return slot
+        }
+        let fw = max(8, width / 4), fh = max(8, height / 4)
+        guard let source = makeFloatResolve(width: width, height: height),
+              let flowA = makeFloatResolve(width: fw, height: fh),
+              let flowB = makeFloatResolve(width: fw, height: fh),
+              let histA = makeFloatResolve(width: width, height: height),
+              let histB = makeFloatResolve(width: width, height: height) else { return nil }
+        let rest = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
+        for tex in [source, flowA, flowB, histA, histB] {
+            clearFloatTexture(tex, color: rest, into: cb)
+        }
+        let slot = SelfWarpSlot(source: source, flowA: flowA, flowB: flowB,
+                                histA: histA, histB: histB,
+                                w: width, h: height, flowW: fw, flowH: fh, owner: sf)
+        selfWarpSlots[id] = slot
         return slot
     }
 

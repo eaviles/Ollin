@@ -221,6 +221,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("effects-fluid", frame: 48,
                  note: "A fluid SimField driven by a fixed brush path, run to frame 48. Pins the multi-field fluid pipeline end to end: the velocity + dye splat, curl and vorticity confinement, the Jacobi pressure projection, semi-Lagrangian advection, and the persistent two-pair ping-pong with render-every-frame warmup.",
                  make: { EffectsFluid() }),
+    SnapshotCase("effects-selfwarp", frame: 48,
+                 note: "A self-warp SimField fed two gradient-cored orbs on fixed orbits, run to frame 48 in the ribbon regime (strength 0.55). Pins the motion-feedback pipeline end to end: the luminance downsamples, the two-level windowed least-squares motion fit with temporal steadying, the semi-Lagrangian history carry with refresh mix-back, and the persistent source + flow + history ping-pong with render-every-frame warmup. SelfWarpTests pins the motion's direction and the still-scene null, which a whole-frame mean diff cannot.",
+                 make: { EffectsSelfWarp() }),
     SnapshotCase("ripples", frame: 90,
                  note: "A ripples SimField rained on by seeded drops (seed set once in setup), run to frame 90 and shaded by .relight. Pins the wave-equation step (height/velocity coupling, damping, the absorbing rim), the add-to-height inject that keeps the velocity channel clean, the sub-CFL coupling gain and 6-substep pacing that keep the grid-scale mode from rattling, and the render-every-frame headless warmup the evolving surface depends on.",
                  make: { RipplesScene() }),
@@ -7629,6 +7632,39 @@ private final class EffectsFluid: Sketch {
             drawCircle(brush.x, brush.y, 8)
         }
         drawImage(fluid.image, 0, 0)
+    }
+}
+
+/// A self-warp `SimField` fed two gradient-cored orbs on fixed orbits (no
+/// random/mouse), run to frame 48 in the ribbon regime. Pins the motion-feedback
+/// pipeline: the luminance downsamples, the two-level windowed least-squares motion
+/// fit with its temporal steadying, the semi-Lagrangian history carry with refresh
+/// mix-back, and the persistent source + flow + history state across frames.
+private final class EffectsSelfWarp: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+    var warp: SimField!
+
+    override func setup() {
+        warp = simField(.selfWarp(strength: 0.55, refresh: 0.06, smoothing: 0.6))
+    }
+
+    private func orb(at center: Vector2, radius: Double, _ color: Color) {
+        fill(Gradient.radial(center: center, radius: radius,
+                             Ramp([.white, color, color.withAlpha(0)])))
+        drawCircle(center: center, radius: radius)
+    }
+
+    override func draw() {
+        withField(warp) {
+            background(Color(red: 0.03, green: 0.03, blue: 0.06))
+            noStroke()
+            let c = bounds.center
+            orb(at: c + Vector2(cos(time * 1.6), sin(time * 1.6)) * 74,
+                radius: 26, Color(red: 1.0, green: 0.45, blue: 0.15))
+            orb(at: c + Vector2(cos(-time * 1.05 + 2.1), sin(-time * 1.05 + 2.1)) * 46,
+                radius: 18, Color(red: 0.2, green: 0.75, blue: 1.0))
+        }
+        drawImage(warp.image, 0, 0)
     }
 }
 
