@@ -826,6 +826,14 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         if let target = pendingScrubTarget {
             pendingScrubTarget = nil
             performScrub(to: target)
+        } else if replayPaused, sketch.takePlayer != nil {
+            // The pause is enforced here, not only by stopping the display
+            // link: a tick can already be queued when the pause lands (the
+            // scrub pass re-simulates the take, so there is time for one),
+            // and advancing in it would walk off the frame a single back
+            // step just landed on.
+            view.isPaused = true
+            return
         }
 
         let now = CACurrentMediaTime()

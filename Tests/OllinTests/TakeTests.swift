@@ -386,6 +386,27 @@ struct TakeTests {
         }
     }
 
+    @Test func aSingleBackStepHoldsAgainstAQueuedTick() throws {
+        let take = transportTake(sketchType: "TransportProbe")
+        let probe = TransportProbe()
+        let (runner, view) = try makeRunner(probe)
+        take.install(on: probe)
+
+        for _ in 0..<20 { runner.draw(in: view) }
+        let before = runner.sketch.frameCount
+        runner.handleTransportKey(character: nil, code: .leftArrow, shift: false)
+        runner.draw(in: view)          // the pass that lands the step
+        let landed = runner.sketch.frameCount
+        #expect(landed == before - 1, "a single back step should land one frame behind")
+
+        // The display link can have one more tick queued by the time the
+        // landing pass re-pauses the view; that pass must hold the frame,
+        // or the step visibly bounces back to where it started.
+        runner.draw(in: view)
+        #expect(runner.sketch.frameCount == landed,
+                "a queued tick must not walk the paused replay off the landed frame")
+    }
+
     @Test func aRewoundScrubResimulatesQuietAndLandsLoud() throws {
         let take = transportTake(sketchType: "SoundingProbe")
         let probe = SoundingProbe()
