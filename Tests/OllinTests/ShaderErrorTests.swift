@@ -88,6 +88,32 @@ struct ShaderErrorTests {
 
     // MARK: End to end: the Metal compiler honors the directive
 
+    /// A helper the reference page promises has to exist in the library a user
+    /// shader is actually compiled against. A missing one is invisible until a
+    /// sketch runs, because a shader is a string until then: a sweep that
+    /// rewrote a sketch-side idiom inside a shader literal broke two shipped
+    /// examples exactly this way, and nothing failed until the gallery ran them.
+    @Test func theDocumentedVocabularyCompiles() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let shader = """
+        float4 shade(float2 uv, ShaderInfo info) {
+            float2 p = rotate2D(bipolar(uv), info.time);
+            float wave = unipolar(sin(p.x * 6.0));
+            float grain = fbm(p * 3.0) + valueNoise(p) + gradientNoise(p);
+            float3 tint = palette(wave, float3(0.5), float3(0.5),
+                                  float3(1.0), float3(0.0, 0.33, 0.67));
+            float3 lit = linearToSrgb(srgbToLinear(tint) * grain);
+            return float4(lit * perceptualCoverage(wave) * luma(tint), 1.0);
+        }
+        """
+        let (composed, _) = MetalRenderer.composeUserShaderSource(
+            userSource: shader, modules: .all, variant: .generator,
+            sourceName: "/tmp/Sketch.swift", sourceStartLine: 1)
+        #expect(throws: Never.self) {
+            _ = try device.makeLibrary(source: composed, options: nil)
+        }
+    }
+
     @Test func compilerReportsErrorsAtTheTaggedLocation() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())
         // A broken shader whose error sits on its second line: pretend it starts

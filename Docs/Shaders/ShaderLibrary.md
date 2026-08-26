@@ -47,6 +47,8 @@ Always available. The render pipeline composites in linear light, so these conve
 | `float luma(float3 c)` | Rec. 709 luminance of a linear color. |
 | `float2 rotate2D(float2 p, float a)` | rotate a 2D point by `a` radians. |
 | `float perceptualCoverage(float c)` | remap anti-aliasing coverage so a thin dark mark reads evenly dark in linear light (for hand-rolled AA). |
+| `unipolar(v)` | a signed `-1…1` value read as a `0…1` amount (`v * 0.5 + 0.5`), for `float` through `float4`. What `sin` and `cos` need before they drive a mix, a brightness, or a size. |
+| `bipolar(v)` | the inverse: a `0…1` fraction swung onto `-1…1`, for `float` through `float4`. |
 
 A `shade` returns straight sRGB and Ollin handles the linear conversion, so you only need these for your own color math.
 

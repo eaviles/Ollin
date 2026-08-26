@@ -77,6 +77,19 @@ static inline float2 ollin_rot2(float2 p, float a) {
     return float2(p.x * c - p.y * s, p.x * s + p.y * c);
 }
 static inline float2 rotate2D(float2 p, float a) { return ollin_rot2(p, a); }   // public-facing name
+
+// A signed -1...1 value read as a 0...1 amount, and back. sin and cos answer
+// signed, while almost everything they drive (a mix, a brightness, a size)
+// wants the unsigned form, so the pair is worth a name here as well as on the
+// sketch side.
+static inline float unipolar(float v) { return v * 0.5 + 0.5; }
+static inline float2 unipolar(float2 v) { return v * 0.5 + 0.5; }
+static inline float3 unipolar(float3 v) { return v * 0.5 + 0.5; }
+static inline float4 unipolar(float4 v) { return v * 0.5 + 0.5; }
+static inline float bipolar(float v) { return v * 2.0 - 1.0; }
+static inline float2 bipolar(float2 v) { return v * 2.0 - 1.0; }
+static inline float3 bipolar(float3 v) { return v * 2.0 - 1.0; }
+static inline float4 bipolar(float4 v) { return v * 2.0 - 1.0; }
 // OLLIN_LIB_END base
 
 // OLLIN_LIB_BEGIN hash
