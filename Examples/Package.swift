@@ -35,6 +35,7 @@ enum Satellite: String, CaseIterable {
     case dmx = "OllinDMX"
     case midi = "OllinMIDI"
     case serial = "OllinSerial"
+    case remote = "OllinRemote"
     case physics = "OllinPhysics"
     case vision = "OllinVision"
     case video = "OllinVideo"
@@ -596,6 +597,10 @@ let package = Package(
         // prints: plug a microcontroller in and its lines (and a numeric
         // value bar) appear; keys pick a device and send a line back.
         example("Integration/SerialMonitor", [.serial]),
+        // Serves its own @Param knobs to a phone on the same network: open the
+        // address the canvas shows and every slider, toggle, menu, color, pad,
+        // and stepper appears as a touch control, live both ways.
+        example("Integration/RemoteSurface", [.remote]),
         // Self-contained: publishes its own frames as a Syphon source and
         // subscribes to them, so the feedback inset is the round-trip (like
         // OSCLoopback). Open Syphon's Simple Client to see it cross-app.

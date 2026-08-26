@@ -328,6 +328,36 @@ Ollin installation [2026-08-16 03:12:08]: the screens woke
 ```
 
 
+## Tuning it from the floor
+
+The piece is on the wall and the Mac is behind it. The right place to judge a speed or a color is in front of the wall, twenty steps from the keyboard. One line serves every knob the sketch declares to your phone.
+
+```swift
+import OllinRemote
+
+@Param(0.1...4) var speed = 1.4
+@Param var accent = Color.purple
+
+override func setup() {
+    extend(RemoteInspector())
+}
+```
+
+On launch the sketch prints `Remote surface: http://your-mac.local:9330`. Open that address in the phone's browser, on the same Wi-Fi. Every `@Param` appears as a touch control. Sliders take the width of the screen; a `style: .pad` vector becomes an XY pad; switches, menus, and a color picker cover the rest. The groups match the inspector sidebar. A strip at the top carries the frame rate, the clock, and the frame count. The piece's health is readable from the floor too.
+
+Edits go both ways. Drag a slider on the phone and the value lands before the next frame, exactly where the inspector's own edits land. Turn a knob on the Mac and the phone follows. Stand in front of the wall, look at the piece, and turn the speed until it breathes right.
+
+One honest note: anyone on the same network who has the address can move the knobs. On your studio Wi-Fi or a private show network that is the convenience working as intended. On a network you do not control, do not leave it up.
+
+In plain terms: the tuning knobs come off the laptop and into your hand, so you adjust the piece from where the audience stands.
+
+The `RemoteSurface` example serves a tunable aurora with every control family. It draws its own address at the bottom of the canvas, so the piece tells you how to reach it:
+
+```sh
+swift run --package-path Examples Example-Integration-RemoteSurface
+```
+
+
 ## Living in the system
 
 A wall is one place a piece can wait. Your own machine is another, and it is a much shorter walk. Every Mac already has a screen that goes idle several times a day. It also has a list of things it could show while it does. Putting your sketch in that list takes two commands.
@@ -545,7 +575,8 @@ A piece that has to run unattended is a reliability problem rather than a graphi
 - [Screen saver](../Docs/Output/ScreenSaver.md): the project the generator writes, the sandbox a saver runs in, filling against fitting, and signing one for somebody else's machine.
 - [DMX](../Docs/Integration/DMX.md): universes and fixtures, Art-Net and sACN, the send cadence, the console-drives-the-sketch direction, and the LED map's sampling.
 - [Profiling](../Docs/Tools/Profiling.md): reading the cost row, what to do about each answer, and capturing a frame for a closer look.
-- Worked examples, in [`Examples/Installation/`](../Examples/Installation/): `Unattended` (the one-line declaration), `Resuming`, `Watched`, `Hours`, `Fitted`, `ManyDisplays`, and `ManyWindows`, plus [`Examples/Integration/DMXLoopback`](../Examples/Integration/DMXLoopback/Sketch.swift) and [`Examples/Integration/LEDMapping`](../Examples/Integration/LEDMapping/Sketch.swift).
+- [Remote](../Docs/Integration/Remote.md): the `@Param` knobs served to a phone as touch controls, what each kind becomes, how values land, and the network honesty.
+- Worked examples, in [`Examples/Installation/`](../Examples/Installation/): `Unattended` (the one-line declaration), `Resuming`, `Watched`, `Hours`, `Fitted`, `ManyDisplays`, and `ManyWindows`, plus [`Examples/Integration/DMXLoopback`](../Examples/Integration/DMXLoopback/Sketch.swift), [`Examples/Integration/LEDMapping`](../Examples/Integration/LEDMapping/Sketch.swift), and [`Examples/Integration/RemoteSurface`](../Examples/Integration/RemoteSurface/Sketch.swift).
 
 ---
 

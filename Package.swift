@@ -23,6 +23,7 @@ enum Satellite: String, CaseIterable {
     case dmx = "OllinDMX"
     case midi = "OllinMIDI"
     case serial = "OllinSerial"
+    case remote = "OllinRemote"
     case physics = "OllinPhysics"
     case vision = "OllinVision"
     case video = "OllinVideo"
@@ -69,6 +70,11 @@ let package = Package(
         // text lines and raw bytes in `draw()`. Kept out of `Ollin` so the
         // drawing core stays free of IOKit.
         .library(name: "OllinSerial", targets: ["OllinSerial"]),
+        // Remote as a satellite library: `import OllinRemote` to serve the
+        // sketch's `@Param` knobs to a phone or a second machine on the local
+        // network, for tuning an installation from in front of it. Kept out of
+        // `Ollin` so the drawing core stays free of Network.framework.
+        .library(name: "OllinRemote", targets: ["OllinRemote"]),
         // Physics as a satellite library: `import OllinPhysics` for a small
         // Verlet world — particles, springs, and disk collisions — that a sketch
         // steps each frame so motion comes from simulation, not hand-tuned values.
@@ -480,6 +486,16 @@ let package = Package(
             name: "OllinSerial",
             dependencies: ["Ollin"]
         ),
+        // Remote: the sketch's `@Param` inspector served over the local network
+        // as a touch surface: one small HTTP + WebSocket listener, the page a
+        // bundled resource, values riding the same `ParamStored` payloads the
+        // hosts persist. A satellite (like OllinOSC) so the drawing core stays
+        // free of Network.framework; sketches opt in with `import OllinRemote`.
+        .target(
+            name: "OllinRemote",
+            dependencies: ["Ollin"],
+            resources: [.copy("Resources/surface.html")]
+        ),
         // Physics: a small Verlet world — particles, springs, and disk collisions
         // — stepped each frame so motion can come from simulation. A satellite
         // library (like OllinAudio) so it stays opt-in; it depends on Ollin only
@@ -699,6 +715,14 @@ let package = Package(
         .testTarget(
             name: "OllinSerialTests",
             dependencies: ["Ollin", "OllinSerial"]
+        ),
+        // Remote correctness, socket-free on purpose: the HTTP head parse, the
+        // WebSocket accept key and frame codec (pure functions), the descriptor
+        // snapshot built from a real sketch's parameters, and a queued set
+        // applied through beforeDraw. The wire pieces never open a port here.
+        .testTarget(
+            name: "OllinRemoteTests",
+            dependencies: ["Ollin", "OllinRemote"]
         ),
         // Physics correctness: Verlet integration (a body falls the expected
         // distance under gravity), spring rest-length restoration, pinned bodies

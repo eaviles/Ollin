@@ -1,0 +1,626 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1c1c1e">
+<title>Ollin Remote</title>
+<style>
+  :root {
+    --win-bg: #1c1c1e;
+    --card: rgba(255,255,255,0.055);
+    --card-stroke: rgba(255,255,255,0.07);
+    --field: rgba(255,255,255,0.08);
+    --field-stroke: rgba(255,255,255,0.10);
+    --text-1: rgba(255,255,255,0.92);
+    --text-2: rgba(255,255,255,0.56);
+    --text-3: rgba(255,255,255,0.34);
+    --sep: rgba(255,255,255,0.085);
+    --track: rgba(255,255,255,0.16);
+    --knob: #f6f6f8;
+    --knob-shadow: 0 1px 2px rgba(0,0,0,0.55), 0 0 0 0.5px rgba(0,0,0,0.25);
+    --accent: #bf5af2;
+    --accent-soft: color-mix(in srgb, var(--accent) 22%, transparent);
+    --accent-text: color-mix(in srgb, var(--accent) 62%, white);
+    --readout: #e8e2f2;
+    --ok: #30d158;
+    --warn: #ff9f0a;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --win-bg: #ECECEE;
+      --card: #ffffff;
+      --card-stroke: rgba(0,0,0,0.07);
+      --field: rgba(0,0,0,0.045);
+      --field-stroke: rgba(0,0,0,0.10);
+      --text-1: rgba(0,0,0,0.86);
+      --text-2: rgba(0,0,0,0.5);
+      --text-3: rgba(0,0,0,0.32);
+      --sep: rgba(0,0,0,0.09);
+      --track: rgba(0,0,0,0.14);
+      --knob: #ffffff;
+      --knob-shadow: 0 1px 3px rgba(0,0,0,0.28), 0 0 0 0.5px rgba(0,0,0,0.08);
+      --accent: #af52de;
+      --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
+      --accent-text: color-mix(in srgb, var(--accent) 78%, black);
+      --readout: #3a2b4a;
+      --ok: #248a3d;
+      --warn: #c93400;
+      color-scheme: light;
+    }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; }
+  body {
+    background: var(--win-bg);
+    color: var(--text-1);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding: 14px 14px calc(20px + env(safe-area-inset-bottom));
+    display: flex; flex-direction: column; gap: 14px;
+    touch-action: pan-y;
+  }
+  .mono { font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+  .header { display: flex; align-items: center; gap: 10px; padding: 6px 4px 0; }
+  .identity { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+  .name { font-size: 17px; font-weight: 700; letter-spacing: -0.2px; }
+  .host { font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 10.5px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chip { display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 13px; background: var(--field); border: 0.5px solid var(--field-stroke); flex: 0 0 auto; }
+  .chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 7px rgba(48,209,88,0.7); }
+  .chip.off .dot { background: var(--warn); box-shadow: 0 0 7px rgba(255,159,10,0.6); }
+  .chip .state { font-size: 12px; font-weight: 500; color: var(--text-2); }
+  .card { background: var(--card); border: 0.5px solid var(--card-stroke); border-radius: 9px; overflow: hidden; }
+  .monitor { display: flex; }
+  .cell { flex: 1 1 auto; padding: 9px 10px 10px; text-align: center; white-space: nowrap; }
+  .cell + .cell { border-left: 0.5px solid var(--sep); }
+  .cell .v { font-size: 13px; font-family: "SF Mono", ui-monospace, Menlo, monospace; }
+  .cell .v.ok { color: var(--ok); }
+  .cell .v.clock { color: var(--readout); }
+  .cell .v.accent { color: var(--accent-text); }
+  .cell .k { font-size: 8.5px; font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase; color: var(--text-3); margin-top: 3px; }
+  .group-h { font-size: 11px; font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase; color: var(--text-3); padding: 0 4px 7px; }
+  .stack { display: flex; flex-direction: column; gap: 8px; }
+  .bar { position: relative; height: 46px; border-radius: 7px; overflow: hidden; background: var(--field); border: 0.5px solid var(--field-stroke); display: flex; align-items: center; touch-action: none; }
+  .bar .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent-soft); border-right: 2px solid var(--accent); pointer-events: none; }
+  .bar .label { position: relative; padding-left: 13px; font-size: 15px; font-weight: 500; pointer-events: none; }
+  .bar .val { position: relative; margin-left: auto; padding-right: 13px; font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 13px; pointer-events: none; }
+  .bar .thumb { position: absolute; top: 50%; width: 22px; height: 22px; border-radius: 50%; background: var(--knob); box-shadow: var(--knob-shadow); transform: translate(-50%, -50%); pointer-events: none; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 13px; min-height: 52px; }
+  .row + .row { border-top: 0.5px solid var(--sep); }
+  .row .label { font-size: 15px; font-weight: 500; }
+  .switch { width: 51px; height: 31px; border-radius: 16px; background: var(--track); position: relative; flex: 0 0 auto; transition: background 0.15s; }
+  .switch.on { background: var(--accent); }
+  .switch .nub { position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.3); transition: left 0.15s; }
+  .switch.on .nub { left: 22px; }
+  .dropdown { position: relative; display: inline-flex; align-items: center; gap: 8px; background: var(--field); border: 0.5px solid var(--field-stroke); border-radius: 7px; padding: 0 10px 0 13px; height: 40px; font-size: 14px; }
+  .dropdown select { position: absolute; inset: 0; opacity: 0; width: 100%; }
+  .dropdown .chev { color: var(--text-3); }
+  .segment { display: inline-flex; align-items: stretch; background: var(--field); border: 0.5px solid var(--field-stroke); border-radius: 8px; padding: 2px; gap: 2px; height: 40px; }
+  .segment .seg { display: flex; align-items: center; font-size: 13px; font-weight: 500; color: var(--text-2); padding: 0 13px; border-radius: 6px; }
+  .segment .seg.on { background: var(--accent); color: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.25); }
+  .stepper { display: inline-flex; align-items: stretch; border: 0.5px solid var(--field-stroke); border-radius: 7px; overflow: hidden; height: 40px; }
+  .stepper .sv { display: flex; align-items: center; justify-content: center; font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 14px; padding: 0 14px; min-width: 52px; }
+  .stepper button { width: 44px; display: flex; align-items: center; justify-content: center; background: var(--field); color: var(--text-2); border: 0; font-size: 20px; line-height: 1; }
+  .stepper button:first-child { border-right: 0.5px solid var(--field-stroke); }
+  .stepper button:last-child { border-left: 0.5px solid var(--field-stroke); }
+  .swatch-wrap { position: relative; display: inline-flex; align-items: stretch; border-radius: 7px; overflow: hidden; border: 0.5px solid var(--field-stroke); height: 40px; }
+  .swatch-wrap .swatch { width: 64px; }
+  .swatch-wrap .hex { display: flex; align-items: center; padding: 0 11px; background: var(--field); border-left: 0.5px solid var(--field-stroke); font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 12px; color: var(--text-2); }
+  .swatch-wrap input[type=color] { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; }
+  .pad { position: relative; height: 168px; background: var(--field); border: 0.5px solid var(--card-stroke); border-radius: 9px; overflow: hidden; touch-action: none; }
+  .pad .axis-v { position: absolute; left: 50%; top: 0; bottom: 0; width: 0.5px; background: var(--sep); }
+  .pad .axis-h { position: absolute; top: 50%; left: 0; right: 0; height: 0.5px; background: var(--sep); }
+  .pad .dot { position: absolute; width: 26px; height: 26px; border-radius: 50%; background: var(--knob); box-shadow: var(--knob-shadow); border: 2px solid var(--accent); transform: translate(-50%, -50%); pointer-events: none; }
+  .pad .tag { position: absolute; left: 10px; top: 8px; font-size: 12px; font-weight: 600; color: var(--text-2); pointer-events: none; }
+  .pad .read { position: absolute; right: 10px; bottom: 8px; font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 11.5px; color: var(--text-2); background: var(--card); border: 0.5px solid var(--card-stroke); border-radius: 5px; padding: 3px 7px; pointer-events: none; }
+  .fields { display: flex; gap: 8px; }
+  .fields .f { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+  .fields .f .fk { font-size: 9.5px; font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase; color: var(--text-3); padding-left: 2px; }
+  input[type=number], input[type=text] {
+    width: 100%; height: 40px; border-radius: 7px; border: 0.5px solid var(--field-stroke);
+    background: var(--field); color: var(--text-1); font-family: "SF Mono", ui-monospace, Menlo, monospace;
+    font-size: 13px; padding: 0 10px; appearance: none; outline: none;
+  }
+  input[type=text] { font-family: inherit; font-size: 14px; }
+  .rangebar { position: relative; height: 46px; border-radius: 7px; background: var(--field); border: 0.5px solid var(--field-stroke); overflow: hidden; touch-action: none; }
+  .rangebar .band { position: absolute; top: 0; bottom: 0; background: var(--accent-soft); border-left: 2px solid var(--accent); border-right: 2px solid var(--accent); pointer-events: none; }
+  .rangebar .label { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); font-size: 15px; font-weight: 500; pointer-events: none; }
+  .rangebar .val { position: absolute; right: 13px; top: 50%; transform: translateY(-50%); font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 13px; pointer-events: none; }
+  .hidden { display: none; }
+  .empty { text-align: center; color: var(--text-3); font-size: 13px; padding: 40px 20px; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="identity">
+      <div class="name" id="sketch-name">Ollin</div>
+      <div class="host" id="host-name"></div>
+    </div>
+    <div class="chip off" id="chip"><span class="dot"></span><span class="state" id="chip-state">Connecting</span></div>
+  </div>
+  <div class="card monitor">
+    <div class="cell"><div class="v ok" id="stat-fps">--</div><div class="k">Display</div></div>
+    <div class="cell"><div class="v clock mono" id="stat-clock">--:--:--.-</div><div class="k">Clock</div></div>
+    <div class="cell"><div class="v accent" id="stat-frame">--</div><div class="k">Frame</div></div>
+  </div>
+  <div id="groups"></div>
+<script>
+(function () {
+  'use strict';
+
+  var groupsHost = document.getElementById('groups');
+  var chip = document.getElementById('chip');
+  var chipState = document.getElementById('chip-state');
+  var rows = {};       // name -> {desc, root, update(valueStored), touching}
+  var socket = null;
+
+  // ---- stored-value helpers (the server's persisted payload encoding) ----
+
+  function readStored(v) {
+    if (!v) { return null; }
+    if (v.number) { return { kind: 'number', value: v.number._0 }; }
+    if (v.boolean) { return { kind: 'boolean', value: v.boolean._0 }; }
+    if (v.option) { return { kind: 'option', value: v.option._0 }; }
+    if (v.color) { return { kind: 'color', value: v.color }; }
+    if (v.vector) { return { kind: 'vector', value: v.vector }; }
+    if (v.vector3) { return { kind: 'vector3', value: v.vector3 }; }
+    if (v.rect) { return { kind: 'rect', value: v.rect }; }
+    if (v.insets) { return { kind: 'insets', value: v.insets }; }
+    if (v.range) { return { kind: 'range', value: v.range }; }
+    if (v.text) { return { kind: 'text', value: v.text._0 }; }
+    return null;
+  }
+  function storedNumber(x) { return { number: { _0: x } }; }
+  function storedBool(b) { return { boolean: { _0: b } }; }
+  function storedText(t) { return { text: { _0: t } }; }
+
+  function sendSet(name, value) {
+    if (!socket || socket.readyState !== 1) { return; }
+    socket.send(JSON.stringify({ kind: 'set', name: name, value: value }));
+  }
+
+  // ---- formatting ----
+
+  function decimalsFor(desc) {
+    if (desc.step && desc.step >= 1) { return 0; }
+    var span = (desc.upper || 1) - (desc.lower || 0);
+    return span >= 100 ? 1 : 2;
+  }
+  function fmt(x, decimals) { return Number(x).toFixed(decimals); }
+  function clamp(x, lo, hi) { return Math.min(hi, Math.max(lo, x)); }
+  function snap(x, step, lo) {
+    if (!step) { return x; }
+    return lo + Math.round((x - lo) / step) * step;
+  }
+  function clockText(t) {
+    var s = Math.max(0, t);
+    var h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, sec = Math.floor(s) % 60;
+    var tenths = Math.floor((s - Math.floor(s)) * 10);
+    function two(n) { return (n < 10 ? '0' : '') + n; }
+    return two(h) + ':' + two(m) + ':' + two(sec) + '.' + tenths;
+  }
+  function hexOf(c) {
+    function b(x) { return ('0' + Math.round(clamp(x, 0, 1) * 255).toString(16)).slice(-2); }
+    return '#' + b(c.red) + b(c.green) + b(c.blue);
+  }
+  function colorFromHex(hex) {
+    return { color: {
+      red: parseInt(hex.slice(1, 3), 16) / 255,
+      green: parseInt(hex.slice(3, 5), 16) / 255,
+      blue: parseInt(hex.slice(5, 7), 16) / 255,
+      alpha: 1
+    } };
+  }
+
+  // ---- throttled send while dragging ----
+
+  function throttled(fn) {
+    var queued = null, timer = null;
+    function fire() { timer = null; if (queued) { fn(queued); queued = null; } }
+    return function (value) {
+      queued = value;
+      if (!timer) { timer = setTimeout(fire, 50); fn(queued); queued = null; }
+    };
+  }
+
+  // ---- control builders, one per kind ----
+
+  function barSlider(desc) {
+    var decimals = decimalsFor(desc);
+    var root = document.createElement('div');
+    root.className = 'bar';
+    root.innerHTML = '<div class="fill"></div><div class="label"></div><div class="val mono"></div>';
+    root.querySelector('.label').textContent = desc.label;
+    var fill = root.querySelector('.fill');
+    var val = root.querySelector('.val');
+    var current = 0;
+    var send = throttled(function (x) { sendSet(desc.name, storedNumber(x)); });
+    function paint(x) {
+      current = x;
+      var t = (x - desc.lower) / (desc.upper - desc.lower || 1);
+      fill.style.width = (clamp(t, 0, 1) * 100).toFixed(2) + '%';
+      val.textContent = fmt(x, decimals);
+    }
+    function fromEvent(e) {
+      var r = root.getBoundingClientRect();
+      var t = clamp((e.clientX - r.left) / r.width, 0, 1);
+      var x = snap(desc.lower + t * (desc.upper - desc.lower), desc.step, desc.lower);
+      paint(x);
+      send(x);
+    }
+    var row = attachDrag(root, fromEvent);
+    return { root: root, touching: row, update: function (s) { if (s.kind === 'number') { paint(s.value); } }, seed: paint };
+  }
+
+  function attachDrag(el, fromEvent) {
+    var state = { active: false };
+    el.addEventListener('pointerdown', function (e) {
+      state.active = true;
+      el.setPointerCapture(e.pointerId);
+      fromEvent(e);
+      e.preventDefault();
+    });
+    el.addEventListener('pointermove', function (e) { if (state.active) { fromEvent(e); } });
+    function up() { state.active = false; }
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+    return state;
+  }
+
+  function numberField(desc) {
+    var decimals = Math.max(2, decimalsFor(desc));
+    var root = document.createElement('div');
+    root.className = 'card';
+    root.innerHTML = '<div class="row"><div class="label"></div>'
+      + '<input type="number" step="any" style="width: 120px; text-align: right;"></div>';
+    root.querySelector('.label').textContent = desc.label;
+    var input = root.querySelector('input');
+    function paint(x) { if (document.activeElement !== input) { input.value = fmt(x, decimals); } }
+    input.addEventListener('change', function () {
+      var x = Number(input.value);
+      if (isFinite(x)) { sendSet(desc.name, storedNumber(clamp(x, desc.lower, desc.upper))); }
+    });
+    return { root: root, touching: { active: false }, update: function (s) { if (s.kind === 'number') { paint(s.value); } }, seed: paint };
+  }
+
+  function stepperRow(desc) {
+    var root = document.createElement('div');
+    root.className = 'card';
+    root.innerHTML = '<div class="row"><div class="label"></div>'
+      + '<div class="stepper"><button type="button">&minus;</button><div class="sv mono"></div><button type="button">+</button></div></div>';
+    root.querySelector('.label').textContent = desc.label;
+    var sv = root.querySelector('.sv');
+    var buttons = root.querySelectorAll('button');
+    var current = 0;
+    var step = desc.step || 1;
+    function paint(x) { current = x; sv.textContent = String(Math.round(x)); }
+    function bump(direction) {
+      var x = clamp(current + direction * step, desc.lower, desc.upper);
+      paint(x);
+      sendSet(desc.name, storedNumber(x));
+    }
+    buttons[0].addEventListener('click', function () { bump(-1); });
+    buttons[1].addEventListener('click', function () { bump(1); });
+    return { root: root, touching: { active: false }, update: function (s) { if (s.kind === 'number') { paint(s.value); } }, seed: paint };
+  }
+
+  function toggleRow(desc) {
+    var root = document.createElement('div');
+    root.className = 'card';
+    root.innerHTML = '<div class="row"><div class="label"></div><div class="switch"><div class="nub"></div></div></div>';
+    root.querySelector('.label').textContent = desc.label;
+    var sw = root.querySelector('.switch');
+    var current = false;
+    function paint(on) { current = !!on; sw.classList.toggle('on', current); }
+    sw.addEventListener('click', function () {
+      paint(!current);
+      sendSet(desc.name, storedBool(current));
+    });
+    return { root: root, touching: { active: false }, update: function (s) { if (s.kind === 'boolean') { paint(s.value); } }, seed: paint };
+  }
+
+  function menuRow(desc) {
+    var root = document.createElement('div');
+    root.className = 'card';
+    var current = 0;
+    var paint;
+    if (desc.segmented && desc.options.length <= 4) {
+      root.innerHTML = '<div class="row"><div class="label"></div><div class="segment"></div></div>';
+      var seg = root.querySelector('.segment');
+      desc.options.forEach(function (option, i) {
+        var b = document.createElement('div');
+        b.className = 'seg';
+        b.textContent = option;
+        b.addEventListener('click', function () {
+          paint(i);
+          sendSet(desc.name, storedNumber(i));
+        });
+        seg.appendChild(b);
+      });
+      paint = function (i) {
+        current = i;
+        seg.querySelectorAll('.seg').forEach(function (b, j) { b.classList.toggle('on', j === Math.round(i)); });
+      };
+    } else {
+      root.innerHTML = '<div class="row"><div class="label"></div>'
+        + '<div class="dropdown"><span class="picked"></span>'
+        + '<svg class="chev" width="10" height="6" viewBox="0 0 10 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l4 4 4-4"></path></svg>'
+        + '<select></select></div></div>';
+      var picked = root.querySelector('.picked');
+      var select = root.querySelector('select');
+      desc.options.forEach(function (option, i) {
+        var o = document.createElement('option');
+        o.value = String(i);
+        o.textContent = option;
+        select.appendChild(o);
+      });
+      select.addEventListener('change', function () {
+        paint(Number(select.value));
+        sendSet(desc.name, storedNumber(Number(select.value)));
+      });
+      paint = function (i) {
+        current = Math.round(i);
+        select.value = String(current);
+        picked.textContent = desc.options[current] || '';
+      };
+    }
+    root.querySelector('.label').textContent = desc.label;
+    return { root: root, touching: { active: false }, update: function (s) { if (s.kind === 'number') { paint(s.value); } }, seed: paint };
+  }
+
+  function colorRow(desc) {
+    var root = document.createElement('div');
+    root.className = 'card';
+    root.innerHTML = '<div class="row"><div class="label"></div>'
+      + '<div class="swatch-wrap"><div class="swatch"></div><div class="hex mono"></div><input type="color"></div></div>';
+    root.querySelector('.label').textContent = desc.label;
+    var swatch = root.querySelector('.swatch');
+    var hex = root.querySelector('.hex');
+    var input = root.querySelector('input');
+    function paint(c) {
+      var h = hexOf(c);
+      swatch.style.background = h;
+      hex.textContent = h.slice(1).toUpperCase();
+      input.value = h;
+    }
+    var send = throttled(function (h) { sendSet(desc.name, colorFromHex(h)); });
+    input.addEventListener('input', function () {
+      paint(colorFromHex(input.value).color);
+      send(input.value);
+    });
+    return { root: root, touching: { active: false }, update: function (s) { if (s.kind === 'color') { paint(s.value); } }, seed: paint };
+  }
+
+  function padControl(desc) {
+    var decimals = 2;
+    var root = document.createElement('div');
+    root.className = 'pad';
+    root.innerHTML = '<div class="axis-v"></div><div class="axis-h"></div><div class="dot"></div>'
+      + '<div class="tag"></div><div class="read mono"></div>';
+    root.querySelector('.tag').textContent = desc.label;
+    var dot = root.querySelector('.dot');
+    var read = root.querySelector('.read');
+    var send = throttled(function (v) { sendSet(desc.name, { vector: v }); });
+    function paint(v) {
+      var tx = (v.x - desc.xLower) / (desc.xUpper - desc.xLower || 1);
+      var ty = (v.y - desc.yLower) / (desc.yUpper - desc.yLower || 1);
+      dot.style.left = (clamp(tx, 0, 1) * 100).toFixed(2) + '%';
+      dot.style.top = (clamp(ty, 0, 1) * 100).toFixed(2) + '%';
+      read.textContent = fmt(v.x, decimals) + ', ' + fmt(v.y, decimals);
+    }
+    function fromEvent(e) {
+      var r = root.getBoundingClientRect();
+      var v = {
+        x: desc.xLower + clamp((e.clientX - r.left) / r.width, 0, 1) * (desc.xUpper - desc.xLower),
+        y: desc.yLower + clamp((e.clientY - r.top) / r.height, 0, 1) * (desc.yUpper - desc.yLower)
+      };
+      paint(v);
+      send(v);
+    }
+    var state = attachDrag(root, fromEvent);
+    return { root: root, touching: state, update: function (s) { if (s.kind === 'vector') { paint(s.value); } }, seed: paint };
+  }
+
+  function fieldsControl(desc, keys, storedKey, labels) {
+    var root = document.createElement('div');
+    root.className = 'card';
+    var row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML = '<div class="label"></div>';
+    row.querySelector('.label').textContent = desc.label;
+    var fields = document.createElement('div');
+    fields.className = 'fields';
+    fields.style.flex = '1';
+    fields.style.maxWidth = (keys.length * 78) + 'px';
+    var inputs = {};
+    keys.forEach(function (key, i) {
+      var f = document.createElement('div');
+      f.className = 'f';
+      f.innerHTML = '<div class="fk"></div><input type="number" step="any">';
+      f.querySelector('.fk').textContent = labels ? labels[i] : key;
+      inputs[key] = f.querySelector('input');
+      fields.appendChild(f);
+    });
+    row.appendChild(fields);
+    root.appendChild(row);
+    var current = {};
+    function paint(v) {
+      current = v;
+      keys.forEach(function (key) {
+        if (document.activeElement !== inputs[key]) { inputs[key].value = fmt(v[key], 2); }
+      });
+    }
+    keys.forEach(function (key) {
+      inputs[key].addEventListener('change', function () {
+        var x = Number(inputs[key].value);
+        if (!isFinite(x)) { return; }
+        var next = {};
+        keys.forEach(function (k) { next[k] = current[k]; });
+        next[key] = x;
+        current = next;
+        var payload = {};
+        payload[storedKey] = next;
+        sendSet(desc.name, payload);
+      });
+    });
+    return { root: root, touching: { active: false }, update: function (s) { if (s.kind === storedKey) { paint(s.value); } }, seed: paint };
+  }
+
+  function rangeControl(desc) {
+    var decimals = decimalsFor(desc);
+    var root = document.createElement('div');
+    root.className = 'rangebar';
+    root.innerHTML = '<div class="band"></div><div class="label"></div><div class="val mono"></div>';
+    root.querySelector('.label').textContent = desc.label;
+    var band = root.querySelector('.band');
+    var val = root.querySelector('.val');
+    var current = { lower: desc.lower, upper: desc.upper };
+    var send = throttled(function (v) { sendSet(desc.name, { range: v }); });
+    function paint(v) {
+      current = v;
+      var span = desc.upper - desc.lower || 1;
+      var a = clamp((v.lower - desc.lower) / span, 0, 1);
+      var b = clamp((v.upper - desc.lower) / span, 0, 1);
+      band.style.left = (a * 100).toFixed(2) + '%';
+      band.style.width = (Math.max(0, b - a) * 100).toFixed(2) + '%';
+      val.textContent = fmt(v.lower, decimals) + ' - ' + fmt(v.upper, decimals);
+    }
+    function fromEvent(e) {
+      var r = root.getBoundingClientRect();
+      var x = desc.lower + clamp((e.clientX - r.left) / r.width, 0, 1) * (desc.upper - desc.lower);
+      var next = { lower: current.lower, upper: current.upper };
+      if (Math.abs(x - next.lower) <= Math.abs(x - next.upper)) { next.lower = Math.min(x, next.upper); }
+      else { next.upper = Math.max(x, next.lower); }
+      paint(next);
+      send(next);
+    }
+    var state = attachDrag(root, fromEvent);
+    return { root: root, touching: state, update: function (s) { if (s.kind === 'range') { paint(s.value); } }, seed: paint };
+  }
+
+  function textRow(desc) {
+    var root = document.createElement('div');
+    root.className = 'card';
+    root.innerHTML = '<div class="row"><div class="label"></div><input type="text" style="flex: 1; max-width: 200px;"></div>';
+    root.querySelector('.label').textContent = desc.label;
+    var input = root.querySelector('input');
+    function paint(t) { if (document.activeElement !== input) { input.value = t; } }
+    input.addEventListener('change', function () { sendSet(desc.name, storedText(input.value)); });
+    return { root: root, touching: { active: false }, update: function (s) { if (s.kind === 'text') { paint(s.value); } }, seed: paint };
+  }
+
+  function build(desc) {
+    switch (desc.kind) {
+      case 'slider': return desc.field ? numberField(desc) : barSlider(desc);
+      case 'stepper': return stepperRow(desc);
+      case 'toggle': return toggleRow(desc);
+      case 'menu': return menuRow(desc);
+      case 'color': return colorRow(desc);
+      case 'vector':
+        if (desc.pad) { return padControl(desc); }
+        return fieldsControl(desc, ['x', 'y'], 'vector');
+      case 'vector3': return fieldsControl(desc, ['x', 'y', 'z'], 'vector3');
+      case 'rect': return fieldsControl(desc, ['x', 'y', 'width', 'height'], 'rect', ['X', 'Y', 'W', 'H']);
+      case 'insets': return fieldsControl(desc, ['top', 'right', 'bottom', 'left'], 'insets', ['T', 'R', 'B', 'L']);
+      case 'range': return desc.field ? fieldsControl(desc, ['lower', 'upper'], 'range', ['Min', 'Max']) : rangeControl(desc);
+      default: return textRow(desc);
+    }
+  }
+
+  // ---- page assembly ----
+
+  function renderHello(hello) {
+    document.getElementById('sketch-name').textContent = hello.sketch || 'Ollin';
+    document.getElementById('host-name').textContent = hello.host || location.hostname;
+    document.title = (hello.sketch || 'Ollin') + ' Remote';
+    groupsHost.innerHTML = '';
+    rows = {};
+    if (!hello.params.length) {
+      var note = document.createElement('div');
+      note.className = 'empty';
+      note.textContent = 'This sketch declares no @Param knobs yet.';
+      groupsHost.appendChild(note);
+      return;
+    }
+    var order = [];
+    var byGroup = {};
+    hello.params.forEach(function (desc) {
+      var key = desc.group || '';
+      if (!byGroup[key]) { byGroup[key] = []; order.push(key); }
+      byGroup[key].push(desc);
+    });
+    groupsHost.style.display = 'flex';
+    groupsHost.style.flexDirection = 'column';
+    groupsHost.style.gap = '14px';
+    order.forEach(function (key) {
+      var section = document.createElement('div');
+      if (key) {
+        var h = document.createElement('div');
+        h.className = 'group-h';
+        h.textContent = key;
+        section.appendChild(h);
+      }
+      var stack = document.createElement('div');
+      stack.className = 'stack';
+      byGroup[key].forEach(function (desc) {
+        var control = build(desc);
+        var stored = readStored(desc.value);
+        if (stored) { control.seed(stored.value); }
+        control.root.classList.toggle('hidden', desc.shown === false);
+        rows[desc.name] = control;
+        stack.appendChild(control.root);
+      });
+      section.appendChild(stack);
+      groupsHost.appendChild(section);
+    });
+  }
+
+  function applyUpdate(update) {
+    Object.keys(update.values || {}).forEach(function (name) {
+      var row = rows[name];
+      if (!row || row.touching.active) { return; }
+      var stored = readStored(update.values[name]);
+      if (stored) { row.update(stored); }
+    });
+    Object.keys(update.shown || {}).forEach(function (name) {
+      var row = rows[name];
+      if (row) { row.root.classList.toggle('hidden', update.shown[name] === false); }
+    });
+  }
+
+  function applyStats(stats) {
+    document.getElementById('stat-fps').textContent = Math.round(stats.fps) + ' fps';
+    document.getElementById('stat-clock').textContent = clockText(stats.clock);
+    document.getElementById('stat-frame').textContent = stats.frame.toLocaleString('en-US');
+  }
+
+  // ---- socket ----
+
+  function setState(text, ok) {
+    chipState.textContent = text;
+    chip.classList.toggle('off', !ok);
+  }
+
+  function connect() {
+    setState('Connecting', false);
+    socket = new WebSocket('ws://' + location.host + '/ws');
+    socket.onopen = function () { setState('Connected', true); };
+    socket.onmessage = function (event) {
+      var message;
+      try { message = JSON.parse(event.data); } catch (error) { return; }
+      if (message.kind === 'hello') { renderHello(message); }
+      else if (message.kind === 'update') { applyUpdate(message); }
+      else if (message.kind === 'stats') { applyStats(message); }
+    };
+    socket.onclose = function () {
+      setState('Reconnecting', false);
+      setTimeout(connect, 1000);
+    };
+  }
+  connect();
+})();
+</script>
+</body>
+</html>
