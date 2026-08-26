@@ -152,6 +152,47 @@ The interesting part is what happens for a color no single ink can make. Ollin s
 
 One practical note carries over from [Chapter 8](08-Words.md)'s halftone. A press cannot hold a dot smaller than about two percent coverage. Anything fainter drops to bare paper rather than becoming invisible speckle. `separation.halftoned(pitch:)` rotates each ink's dot grid to its own angle, so the drums overprint into a rosette instead of a moire. `separation.dithered()` is the grainier alternative. [Print separations](../Docs/Output/PrintSeparations.md) has the full ink catalog, plus the screening details. The catalog carries the community-measured colors of the standard risograph line.
 
+## Seeing the print before you print it
+
+A screen makes color with light. A press makes it with ink on paper, and the screen wins. The electric cyan you picked in [Chapter 2](02-Color.md) is not a color four inks can lay down. It reaches the press and comes back as the nearest thing ink can do.
+
+You can find that out on paper, a week later, at your own expense. Or you can ask first.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/31-SharingAndPerforming/ProofBeforePrint-dark.jpg">
+  <img src="Images/31-SharingAndPerforming/ProofBeforePrint.jpg" alt="Three panels of one poster: as the screen shows it, the same poster proofed for a four-ink press with the cyan and green gone flat, and the gamut check with those areas replaced by gray" width="680">
+</picture>
+
+A **profile** is a file that describes what one device does with color. Your shop hands you theirs for the press and paper the job will run on. Ollin carries a generic four-ink one for when you have not asked yet:
+
+```swift
+var press = SoftProof(.genericCMYK)     // or ICCProfile(contentsOf: theShopsFile)
+postProcess(.softProof(press))          // the canvas, as it will print
+```
+
+That is a **soft proof**. Every color on the canvas is carried into the press's profile and back out again. Whatever comes home changed is exactly what the press is going to change. It runs on the GPU, so you can leave it on while you work and watch the piece the way the paper will hold it.
+
+Two things always move on that trip. Saturated colors come back duller, because ink covers less ground than a lit screen. Blacks come back lighter, because ink on paper is not as dark as a black pixel. Ollin shows you both rather than flattering the picture. Paper color is the third, and you have to ask for it: `press.simulatePaper = true`. A proof of cream stock reads as a wrong-looking white until you are expecting it.
+
+The proof shows what changes. The **gamut check** names what is unreachable at all, which is the third panel above:
+
+```swift
+postProcess(.softProof(press, warning: .magenta, amount: 0))   // flag it, change nothing
+artwork.outOfGamutFraction(press)                              // 0…1, how much is at risk
+```
+
+Print that fraction while you tune a palette. A few percent is ordinary. A third of the canvas means you are drawing in colors that will not survive, and it is easier to hear that now.
+
+When the piece is ready, the same profile splits it into **plates**, one grayscale image per ink, black where that ink lands:
+
+```swift
+override var printProfile: ICCProfile? { .genericCMYK }
+```
+
+Declare that and `--export-plates poster.png` writes the four plates plus the proof, with registration marks, exactly as `--export-separations` does for spot inks. The separation also reports **total ink**, the sum of all four coverages at the heaviest spot. Ask your shop what they will take. Around 300% is usual for coated paper, and newsprint gives up sooner.
+
+Both paths lead to a press, and the profile is what tells them apart. Spot separations are for a shop printing one named ink at a time, where no profile exists and Ollin has to model the overprint. Plates are for a press whose behavior has actually been measured, where there is nothing to model and the profile answers directly. [Print color](../Docs/Output/PrintColor.md) has the intents, the installed-profile lookup, and the screening.
+
 ## Something you can hold: a 3D print
 
 A plotter turns a `Contour` into ink on paper. A 3D printer does the same job for a `Mesh`, and the call is just as short:

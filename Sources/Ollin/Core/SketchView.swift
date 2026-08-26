@@ -2803,6 +2803,61 @@ public extension OllinApp {
                                        quality: renderQuality, screen: screen)
             return true
         }
+        // `--export-plates <path.png> [--frame N] [--profile PATH-or-NAME]
+        // [--intent perceptual|relative|saturation|absolute] [--paper]
+        // [--screen dither|halftone] [--pitch PX] [--no-marks]` splits one frame
+        // into process-color printing plates through an ICC profile, plus the
+        // proof of the finished print, and exits. The profile comes from the
+        // sketch's declared `printProfile` unless `--profile` names a file or an
+        // installed profile.
+        if let i = args.firstIndex(of: "--export-plates"), i + 1 < args.count {
+            func value(_ flag: String) -> String? {
+                guard let j = args.firstIndex(of: flag), j + 1 < args.count else { return nil }
+                return args[j + 1]
+            }
+            let frame = value("--frame").flatMap(Int.init) ?? 0
+            var profile: ICCProfile?
+            if let named = value("--profile") {
+                let expanded = (named as NSString).expandingTildeInPath
+                profile = ICCProfile(contentsOf: URL(fileURLWithPath: expanded))
+                    ?? ICCProfile.installed(named: named)
+                guard profile != nil else {
+                    let installed = ICCProfile.installed().filter { $0.space == .cmyk }
+                    FileHandle.standardError.write(Data("""
+                        unknown profile '\(named)': pass a path to a .icc file, or the name of one \
+                        installed on this machine. The printer profiles installed here are: \
+                        \(installed.map(\.name).joined(separator: ", "))
+
+                        """.utf8))
+                    return true
+                }
+            }
+            var intent = RenderingIntent.relative
+            if let named = value("--intent") {
+                guard let parsed = RenderingIntent(rawValue: named) else {
+                    FileHandle.standardError.write(Data(
+                        "unknown intent '\(named)': one of \(RenderingIntent.allCases.map(\.rawValue).joined(separator: ", "))\n".utf8))
+                    return true
+                }
+                intent = parsed
+            }
+            let pitch = value("--pitch").flatMap(Double.init) ?? 8
+            let screen: (ProcessSeparation) -> ProcessSeparation
+            switch value("--screen") ?? "none" {
+            case "none": screen = { $0 }
+            case "dither": screen = { $0.dithered() }
+            case "halftone": screen = { $0.halftoned(pitch: pitch) }
+            default:
+                FileHandle.standardError.write(Data(
+                    "usage: --export-plates <path.png> [--frame N] [--profile PATH] [--intent relative|perceptual|saturation|absolute] [--paper] [--screen dither|halftone] [--pitch PX] [--no-marks]\n".utf8))
+                return true
+            }
+            OllinApp.exportPlates(make(), to: args[i + 1], profile: profile, intent: intent,
+                                  simulatePaper: args.contains("--paper"), frame: frame,
+                                  registrationMarks: !args.contains("--no-marks"),
+                                  quality: renderQuality, screen: screen)
+            return true
+        }
         if let i = args.firstIndex(of: "--export"), i + 1 < args.count {
             var frame = 0
             if let f = args.firstIndex(of: "--frame"), f + 1 < args.count {

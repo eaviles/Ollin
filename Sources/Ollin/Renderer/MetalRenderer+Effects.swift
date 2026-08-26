@@ -449,6 +449,13 @@ extension MetalRenderer {
         case let .gradientMap(lut, amount):
             guard let lutTex = makeLUTTexture(lut) else { return nil }
             return pass("ollin_fx_gradient_map", [input, lutTex], [f(amount, 0, 0, 0)])
+        case let .softProof(lut, warning, amount):
+            // A printing condition whose profiles could not be read leaves the
+            // layer alone rather than showing something invented.
+            guard let lut, let table = proofLUTTexture(lut) else { return nil }
+            return pass("ollin_fx_soft_proof", [input, table],
+                        [f(amount, warning == nil ? 0 : 1, 0, 0),
+                         warning ?? SIMD4<Float>(repeating: 0)])
 
         case .edges(let intensity):
             return pass("ollin_fx_edges", [input], [SIMD4(texel.x, texel.y, Float(intensity), 0)])
@@ -2103,6 +2110,41 @@ extension MetalRenderer {
                         withBytes: $0.baseAddress!, bytesPerRow: samples.count * MemoryLayout<SIMD4<Float>>.stride)
         }
         return tex
+    }
+
+    /// The 3D lookup a live soft proof reads: one texel per lattice node, sampled
+    /// with the ordinary linear image sampler, whose interpolation across three axes
+    /// is exactly the trilinear read a lookup table wants (and whose clamped edges
+    /// are what keeps the ends of the ramp on the outermost nodes). Kept across
+    /// frames, since the lattice behind it is: a sketch proofs against the same
+    /// printing condition every frame and re-uploading half a megabyte for that
+    /// would be pure waste. Bounded, so sweeping a knob through conditions cannot
+    /// grow it without end.
+    private func proofLUTTexture(_ lut: ProofLUT) -> MTLTexture? {
+        let id = ObjectIdentifier(lut)
+        if let cached = proofLUTTextures[id], cached.owner === lut { return cached.texture }
+
+        let desc = MTLTextureDescriptor()
+        desc.textureType = .type3D
+        desc.pixelFormat = .rgba32Float
+        desc.width = lut.size
+        desc.height = lut.size
+        desc.depth = lut.size
+        desc.usage = .shaderRead
+        desc.storageMode = .shared
+        guard lut.samples.count == lut.size * lut.size * lut.size,
+              let texture = device.makeTexture(descriptor: desc) else { return nil }
+        let rowBytes = lut.size * MemoryLayout<SIMD4<Float>>.stride
+        lut.samples.withUnsafeBytes {
+            texture.replace(region: MTLRegionMake3D(0, 0, 0, lut.size, lut.size, lut.size),
+                            mipmapLevel: 0, slice: 0, withBytes: $0.baseAddress!,
+                            bytesPerRow: rowBytes, bytesPerImage: rowBytes * lut.size)
+        }
+        if proofLUTTextures.count >= 8 {
+            proofLUTTextures.removeValue(forKey: proofLUTTextures.keys.first!)
+        }
+        proofLUTTextures[id] = (owner: lut, texture: texture)
+        return texture
     }
 
     /// `fb`'s persistent ping-pong slot, allocating both textures (and clearing them

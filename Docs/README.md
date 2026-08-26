@@ -200,6 +200,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 - [`Wallpaper`](./Output/Wallpaper.md) - run a sketch as the desktop wallpaper: one window per display at desktop level, behind the icons, with a menu-bar mark to quit it
 - [`Menu bar`](./Output/MenuBar.md) - run a sketch as a small live strip among the menu bar's status items, drawn at a rate an all-day surface can afford
 - [`Print separations`](./Output/PrintSeparations.md) - split a sketch into per-ink grayscale masters for risograph and screen printing, with an overprint preview and registration marks
+- [`Print color`](./Output/PrintColor.md) - soft-proof a canvas against a press profile, flag the colors ink cannot reach, and split it into process-color plates with their total-ink figures
 - [`Spatial`](./Output/Spatial.md) - write a 3D frame or a `Scene` as USDZ, so a piece opens in Quick Look, sends in a message, and stands on a real table through AR; and write the motion as spatial video, a stereo pair per frame for a headset
 
 ### Tools

@@ -15,4 +15,5 @@
 - [`Fabrication`](./Fabrication.md) - write a `Mesh` as STL, OBJ, or 3MF for 3D printing, with real units and a printability check
 - [`G-code`](./GCode.md) - write a frame's line work as a program a pen plotter, laser cutter, or CNC router runs directly, planned to keep travel short
 - [`Print separations`](./PrintSeparations.md) - split a sketch into per-ink grayscale masters for risograph and screen printing, with an overprint preview and registration marks
+- [`Print color`](./PrintColor.md) - soft-proof a canvas against a press profile, flag the colors ink cannot reach, and split it into process-color plates with their total-ink figures
 - [`Spatial`](./Spatial.md) - write a 3D frame or a `Scene` as USDZ, so a piece opens in Quick Look, sends in a message, and stands on a real table through AR

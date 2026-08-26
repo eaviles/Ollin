@@ -494,6 +494,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("print-separation",
                  note: "A two-ink artwork split into spot-color printing masters: the artwork, its halftoned overprint preview, and the two grayscale masters. Pins the separation search (the linear-light overprint model judged in OKLab), the preview reconstruction from the masters, the rotated round-dot screens, and the minimum-dot highlight cutoff. No rng and no time, so it is deterministic.",
                  make: { PrintSeparationScene() }),
+    SnapshotCase("soft-proof",
+                 note: "A vivid poster read four ways: as drawn, soft-proofed for a four-ink press by the live GPU filter, the same proof at amount 0 so only the out-of-gamut flag shows, and the black plate. Pins the baked proofing lattice and its 3D lookup, the encode in and the linear values out, the gamut flag in the lattice's alpha, and the CPU separation through the same profile. No rng and no time, so it is deterministic.",
+                 make: { SoftProofScene() }),
     SnapshotCase("truchet",
                  note: "A Truchet tiling: arc tiles in the top half, diagonal tiles in the bottom, each cell's orientation chosen by the seed. Pins both tile geometries and the cross-cell connectivity (the arcs meet at shared edge midpoints, the diagonals at corners). Seeded, no time, so the layout is deterministic.",
                  make: { TruchetScene() }),
@@ -3860,6 +3863,67 @@ private final class PrintSeparationScene: Sketch {
                 c = Color(red: c.red * (1 - disk + disk * blue.red),
                           green: c.green * (1 - disk + disk * blue.green),
                           blue: c.blue * (1 - disk + disk * blue.blue))
+                image[x, y] = c
+            }
+        }
+        return image
+    }
+}
+
+/// One vivid poster read four ways at fixed values (no time, no random): as
+/// drawn, soft-proofed for a four-ink press by the live GPU filter, the same
+/// proof at `amount: 0` so only the out-of-gamut flag shows, and the black
+/// plate the separation hands the press. Pins the whole printing path: the
+/// baked lattice and its 3D lookup, the encode into the lattice and the linear
+/// values out of it, the gamut flag riding in the lattice's alpha, and the
+/// CPU separation through the same profile (the strip of neutrals along the
+/// bottom is the control, since ink reproduces those and they must survive
+/// every panel unchanged).
+private final class SoftProofScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    private let proof = SoftProof(.genericCMYK)
+    private var source = Image(width: 1, height: 1)
+    private var plate = Image(width: 1, height: 1)
+
+    override func setup() {
+        source = paint()
+        let plates = source.separated(into: proof)
+        plate = plates.plates.last?.master ?? source
+    }
+
+    override func draw() {
+        background(.black)
+        let layer = renderTarget()
+        withTarget(layer) { drawImage(source, in: Rectangle(x: 0, y: 0, width: 256, height: 256)) }
+
+        func panel(_ index: Int) -> Rectangle {
+            Rectangle(x: Double(index % 2) * 128, y: Double(index / 2) * 128,
+                      width: 128, height: 128)
+        }
+        drawImage(source, in: panel(0))
+        drawImage(layer.filtered(.softProof(proof)).image, in: panel(1))
+        drawImage(layer.filtered(.softProof(proof, warning: Color(white: 0.55), amount: 0)).image,
+                  in: panel(2))
+        drawImage(plate, in: panel(3))
+    }
+
+    /// Colors a screen holds and ink does not (an electric sea, a fluorescent
+    /// hill, a hot sky) over a ramp of neutrals it does.
+    private func paint() -> Image {
+        let n = 128
+        let image = Image(width: n, height: n)
+        for y in 0..<n {
+            let v = Double(y) / Double(n - 1)
+            for x in 0..<n {
+                let u = Double(x) / Double(n - 1)
+                var c = Color.mix(Color(hex: 0x2B1B6B), Color(hex: 0xFF2D55),
+                                  t: smoothstep(0.05, 0.62, v))
+                c = Color.mix(c, Color(hex: 0xFFD400),
+                              t: 1 - smoothstep(0.145, 0.152, dist(u, v, 0.62, 0.30)))
+                if v > 0.62 { c = Color(hex: 0x00E5FF) }
+                if v > 0.78 + 0.10 * sin(u * 3.4 + 2.1) { c = Color(hex: 0x00FF66) }
+                if v > 0.9 { c = Color(white: 0.12 + (u * 8).rounded(.down) / 7 * 0.8) }
                 image[x, y] = c
             }
         }

@@ -151,6 +151,11 @@ public struct Filter: Sendable {
         /// Map luminance through a baked 256-step color ramp (linear, straight alpha),
         /// blended over the original by `amount`.
         case gradientMap(lut: [SIMD4<Float>], amount: Double)
+        /// Show the layer as a printing condition reproduces it, read from a lattice
+        /// baked once per condition (`nil` when its profiles could not be read, which
+        /// leaves the layer alone). `warning`, when present, replaces every color the
+        /// destination cannot hold.
+        case softProof(lut: ProofLUT?, warning: SIMD4<Float>?, amount: Double)
         /// Invert the tones above `value` (with a `softness`-wide fold) — the
         /// part-positive, part-negative darkroom solarization.
         case solarize(value: Double, softness: Double)
@@ -435,6 +440,38 @@ public struct Filter: Sendable {
     public static func gradientMap(_ colormap: Colormap, amount: Double = 1) -> Filter {
         Filter(kind: .gradientMap(lut: bakeLUT { colormap.color(at: $0) },
                                   amount: min(max(amount, 0), 1)))
+    }
+
+    /// Soft proof: show the layer as a printing condition will reproduce it. The
+    /// colors ink cannot reach come in, the blacks lift to what ink can actually
+    /// do, and with `simulatePaper` the stock's own color arrives too.
+    ///
+    /// ```swift
+    /// let press = SoftProof(.genericCMYK)
+    /// postProcess(.softProof(press))                                // proofed
+    /// postProcess(.softProof(press, warning: .magenta))             // and what will not survive
+    /// postProcess(.softProof(press, warning: .magenta, amount: 0))  // flag only, colors untouched
+    /// ```
+    ///
+    /// The profile round trip is baked into a lattice once per printing
+    /// condition (about 4 ms) and sampled per pixel after that, so proofing
+    /// live costs one pass. `warning`, when given, paints every color the
+    /// destination cannot hold in that color instead. See
+    /// `Docs/Output/PrintColor.md`.
+    public static func softProof(_ proof: SoftProof, warning: Color? = nil,
+                                 amount: Double = 1) -> Filter {
+        Filter(kind: .softProof(lut: ProofLUTCache.lut(for: proof),
+                                warning: warning?.linearRGBA,
+                                amount: min(max(amount, 0), 1)))
+    }
+
+    /// Soft proof against a printer profile, from an sRGB canvas: the short
+    /// form of `softProof(SoftProof(...))`.
+    public static func softProof(_ profile: ICCProfile, intent: RenderingIntent = .relative,
+                                 simulatePaper: Bool = false, warning: Color? = nil,
+                                 amount: Double = 1) -> Filter {
+        softProof(SoftProof(profile, intent: intent, simulatePaper: simulatePaper),
+                  warning: warning, amount: amount)
     }
 
     // MARK: Stylize & optical

@@ -92,6 +92,21 @@ struct ExportMetadataTests {
             #"{"tool":"Ollin","seed":5,"params":{"flag":true,"name":"a\"b","size":[1.5,2]},"git":"abc1234-dirty"}"#)
     }
 
+    /// A plate export is only reproducible if the recipe says which press and
+    /// intent made it, so both ride the same line as the seed.
+    @Test func recipeCarriesThePrintingCondition() {
+        var meta = ExportMetadata(randomSeed: 5, noiseSeed: 5, params: [],
+                                  gitHash: nil, frame: nil, fps: nil)
+        meta.inks = ["Cyan", "Magenta", "Yellow", "Black"]
+        meta.printingCondition = "Generic CMYK Profile / relative"
+        #expect(meta.recipe ==
+            #"{"tool":"Ollin","seed":5,"inks":["Cyan","Magenta","Yellow","Black"],"printingCondition":"Generic CMYK Profile / relative"}"#)
+        // Everything else leaves the field out entirely.
+        meta.inks = nil
+        meta.printingCondition = nil
+        #expect(meta.recipe == #"{"tool":"Ollin","seed":5}"#)
+    }
+
     @Test func pdfCarriesTheRecipeAsSubject() {
         let pdf = OllinApp.pdf(of: Seeded(), frame: 3)
         #expect(pdf.contains(Data(#""tool":"Ollin""#.utf8)))

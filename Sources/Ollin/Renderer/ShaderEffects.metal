@@ -388,6 +388,32 @@ fragment float4 ollin_fx_gradient_map(PresentOut in [[stage_in]],
     return ollin_premul(mix(c, mapped, params[0].x), s.a);
 }
 
+// softProof: show the layer as a printing condition reproduces it, read from
+// the baked lattice bound at texture(1). The lattice is indexed by *encoded*
+// values (what a color profile speaks) and stores *linear* ones (what the
+// effect chain works in), so the encode happens here and no decode is needed.
+// Its alpha carries the gamut flag: 1 where the destination cannot hold the
+// color at all. params[0].x = amount, .y = 1 when the warning is on;
+// params[1].rgb = the warning color.
+fragment float4 ollin_fx_soft_proof(PresentOut in [[stage_in]],
+                                    texture2d<float> src [[texture(0)]],
+                                    texture3d<float> lut [[texture(1)]],
+                                    sampler samp [[sampler(0)]],
+                                    constant float4 *params [[buffer(0)]]) {
+    float4 s = src.sample(samp, in.uv);
+    float3 c = ollin_unpremul(s);
+    // Ink has no highlights above white, so a value past 1 proofs as 1.
+    float3 encoded = clamp(linearToSrgb(clamp(c, 0.0, 1.0)), 0.0, 1.0);
+    // Node i of n sits at (i + 0.5) / n in texture coordinates, so the ends of
+    // the ramp land on the outermost nodes instead of half a node beyond them.
+    float n = float(lut.get_width());
+    float3 uvw = encoded * ((n - 1.0) / n) + 0.5 / n;
+    float4 table = lut.sample(samp, uvw);
+    float3 proofed = mix(c, table.rgb, params[0].x);
+    if (params[0].y > 0.5 && table.a > 0.5) proofed = params[1].rgb;
+    return ollin_premul(proofed, s.a);
+}
+
 // MARK: - Stylize & optical filters
 
 // edges: Sobel magnitude over luminance (params[0].xy = texel size, .z = intensity).

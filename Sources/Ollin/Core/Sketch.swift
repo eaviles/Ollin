@@ -331,6 +331,20 @@ open class Sketch {
     /// See `Docs/Output/PrintSeparations.md`.
     open var printInks: [Ink]? { nil }
 
+    /// The printing condition this sketch is made for: the profile of the
+    /// press and paper it will be printed on. Declaring it lets
+    /// `--export-plates` write one grayscale plate per channel plus a proof
+    /// with no further flags, and it is the profile to proof against while
+    /// working:
+    ///
+    /// ```swift
+    /// override var printProfile: ICCProfile? { .genericCMYK }
+    /// ```
+    ///
+    /// `nil` (the default) declares none; the export then needs `--profile`.
+    /// See `Docs/Output/PrintColor.md`.
+    open var printProfile: ICCProfile? { nil }
+
     /// How far apart the two eyes stand when this sketch is exported as spatial
     /// video, and how far away they agree. Both numbers are worked out from the
     /// camera by default, which is usually enough; declare them when the piece

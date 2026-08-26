@@ -24,6 +24,10 @@ struct ExportMetadata {
     /// The ink names of a print-separation export, in print order; `nil`
     /// everywhere else.
     var inks: [String]? = nil
+    /// The printing condition of a process-color plate export: the destination
+    /// profile and the intent it was separated under, which are as much a part
+    /// of reproducing those files as the seed is. `nil` everywhere else.
+    var printingCondition: String? = nil
 
     /// Capture the recipe from `sketch` as it stands: the last seeds applied,
     /// every `@Param`'s current value, and the working tree's git commit.
@@ -55,6 +59,9 @@ struct ExportMetadata {
         }
         if let inks, !inks.isEmpty {
             fields.append("\"inks\":[\(inks.map(jsonString).joined(separator: ","))]")
+        }
+        if let printingCondition {
+            fields.append("\"printingCondition\":\(jsonString(printingCondition))")
         }
         if let gitHash { fields.append("\"git\":\(jsonString(gitHash))") }
         if let frame { fields.append("\"frame\":\(frame)") }

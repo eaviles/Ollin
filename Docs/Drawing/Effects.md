@@ -141,6 +141,7 @@ layer.filtered(.bilateral(radius: 6, sigma: 0.18))
 - **`.sepia(amount:)`** a warm monochrome tone, blended by `amount`.
 - **`.duotone(dark:light:amount:)`** map luminance between two colors (shadows → `dark`, highlights → `light`).
 - **`.gradientMap(_:amount:)`** read luminance and look its color up along a [`Ramp`](../Drawing/Color.md) or [`Colormap`](../Drawing/Color.md) (viridis, magma, turbo, …). A fast recolor of a grayscale field or a whole scene.
+- **`.softProof(_:warning:amount:)`** show the layer as a press will print it, through an ICC profile: the colors ink cannot reach pulled in, the blacks lifted to what ink can do. `warning` paints what will not survive in that color instead, and `amount: 0` leaves the colors alone so only the flag shows. See [Print color](../Output/PrintColor.md).
 - **`.exposure(stops:)`** scale the light in linear-light stops (+1 doubles, −1 halves).
 - **`.levels(blackPoint:whitePoint:gamma:)`** the photo-tool staple: pull `blackPoint` to black and `whitePoint` to white, then bend the midtones by `gamma` (>1 darkens).
 - **`.solarize(_:softness:)`** invert the tones above a brightness with a soft fold, the part-positive, part-negative darkroom (Sabattier) look.

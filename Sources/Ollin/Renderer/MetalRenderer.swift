@@ -984,6 +984,15 @@ final class MetalRenderer {
     /// (a layer skipped this frame keeps its content as the next front).
     var feedbackUsedThisFrame: Set<ObjectIdentifier> = []
 
+    /// The 3D lookup textures a live soft proof samples, one per printing
+    /// condition. Baking the lattice costs milliseconds and uploading it costs
+    /// half a megabyte, while a sketch proofs against the same condition every
+    /// frame, so the texture is kept and keyed by the lattice's own identity
+    /// (`ProofLUTCache` hands back the same object for the same condition). The
+    /// owner is held beside it, as the feedback slots do, so an identity can
+    /// never be read as a match for a different lattice.
+    var proofLUTTextures: [ObjectIdentifier: (owner: ProofLUT, texture: MTLTexture)] = [:]
+
     /// One fluid `SimField`'s persistent state: the velocity and dye ping-pong pairs
     /// that carry across frames. These are the only fields a fluid must keep — pressure,
     /// divergence, and curl are recomputed each frame from pooled scratch. Each frame

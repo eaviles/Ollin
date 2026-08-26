@@ -107,7 +107,7 @@ Deeper use of the Metal core and Apple displays, all opt-in so the 2D path stays
 
 - **Dolby Vision.** Dynamic per-scene HDR metadata, where the static HDR10 metadata a video carries describes the whole file at once. It needs the licensed encoder path rather than AVFoundation's plain HDR writer, so it is a licensing question before it is an API one.
 
-See the [design notes](DESIGN-NOTES.md#rendering-and-color-frontier). (The most speculative items here, AI frame interpolation and print color management, sit under [Further out / exploratory](#further-out--exploratory).)
+See the [design notes](DESIGN-NOTES.md#rendering-and-color-frontier). (The most speculative item here, AI frame interpolation, sits under [Further out / exploratory](#further-out--exploratory).)
 
 ## Authoring and editor tooling
 
@@ -147,7 +147,6 @@ See the [design notes](DESIGN-NOTES.md#a-third-party-extension-ecosystem).
 Lower-confidence ideas kept on record but deliberately not near-term: each is plausible on the platform, but speculative enough that it shouldn't crowd the planned work above. Distinct from [On the horizon](#on-the-horizon), which is the platform-gated later legs (iOS, visionOS, AR), not uncertainty.
 
 - **AI frame interpolation.** Render at a lower frame rate and ship smooth slow-motion via an on-device interpolation model.
-- **Print color management.** CMYK process separation through real ICC profiles, plus a soft-proof filter previewing the canvas as a chosen printer profile reproduces it: the offset-print sibling of the spot-ink `printInks` separations. (Detail under [rendering and color frontier](DESIGN-NOTES.md#rendering-and-color-frontier).)
 - **Text-to-image as a material.** On-device diffusion a sketch could invoke as an optional, labeled material. The one to weigh hardest against the AI boundary, since it sits closest to the contested use, so it lives here rather than in the planned [authoring tier](#authoring-and-editor-tooling); see the AI stance stated there.
 - **SharePlay co-creation.** Two people tuning one sketch together over a FaceTime call (GroupActivities). The most speculative of the [collaboration](#collaboration-and-multi-device) ideas.
 

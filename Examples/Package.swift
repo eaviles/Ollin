@@ -382,6 +382,7 @@ let package = Package(
         example("Color/PaletteFromImage"),
         example("Color/Dithering"),
         example("Color/PrintSeparation"),
+        example("Color/SoftProof"),
         example("Color/Colormaps"),
         example("Motion/FlowField"),
         example("Motion/EllipseField"),

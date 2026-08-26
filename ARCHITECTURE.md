@@ -7510,6 +7510,77 @@ knob flips artwork/masters/preview so exports separate the artwork, not a
 demo layout); snapshot `print-separation`; `PrintSeparationTests`.
 `Docs/Output/PrintSeparations.md`.
 
+### Print color management (soft proof, gamut check, process plates)
+
+`Color/ICCProfile.swift` + `Color/SoftProof.swift` +
+`Color/ProcessSeparation.swift` + `Export/ProcessSeparationExport.swift`, the
+process-color sibling of the spot-ink path above. Nothing here is a color
+engine: every transform is ColorSync's, which is the same engine the rest of
+the machine color-manages through and reads the same `.icc` files a print
+shop hands out. What Ollin owns is the value layer, the caching, and the
+decision about which chain answers which question.
+
+`ICCProfile` is bytes plus the few header fields worth reading (data color
+space at offset 16, `prtr` at offset 12, the channel count spelled into an
+`nCLR` tag), so it stays `Sendable`/`Hashable` and keys a cache by an FNV
+digest rather than by tens of kilobytes. The built-ins come from
+`CGColorSpace.copyICCData()`, so no filesystem lookup is involved;
+`installed()` walks the three ColorSync directories for what a studio has
+added.
+
+`ProofTransform` builds one of four chains and caches it per printing
+condition behind an `OSAllocatedUnfairLock`: the proof itself (canvas to
+press to canvas, four steps), `toDevice` (the separation), `fromDevice` (the
+plate preview), and the gamut check, which is ColorSync's own
+`kColorSyncTransformGamutCheck` rather than a distance in a perceptual space.
+Three facts about that API were established by probe and are easy to get
+wrong:
+
+- **The gamut check writes one 32-bit float per pixel** (1 means out of
+  gamut) whatever depth is asked for. Requesting `kColorSync1BitGamut` with a
+  packed bit buffer overruns it and traps.
+- **Float conversions carry device-encoded values, never linear light.** The
+  image path therefore unpremultiplies to encoded floats, and the baked
+  lattice is indexed by encoded values while storing linear ones.
+- **The module must be imported `@preconcurrency`.** The SDK spells its
+  CFString keys as mutable globals, which Swift 6 rejects at every use.
+
+Black point compensation stays off and `simulatePaper` switches the *return*
+leg's intent, which is what makes the proof honest in the two ways that
+matter. Measured on the generic four-ink profile: relative in and relative
+out leaves white at 1.005 and lifts black to 0.055 (ink black, always shown);
+relative in and absolute out lands white at .934/.864/.726 (the stock's
+tint, opt-in). Turning BPC on for the four-step chain misbehaves outright
+(white drops to .862), which is why it is not exposed as a knob.
+
+The live filter exists because the full transform measures about 145 ms on a
+1080 by 1080 canvas. `ProofLUTCache` bakes the condition into a 33 cubed
+lattice instead (about 4.4 ms), rgb in linear light and the gamut flag riding
+in alpha, and hands back **the same `ProofLUT` object** for the same
+condition every frame. That identity is what the renderer's texture cache is
+keyed on, so a steady sketch uploads its 574 KB once rather than per frame.
+`ollin_fx_soft_proof` encodes with `linearToSrgb` before the lookup and
+samples at `(i + 0.5)/n` through the clamped image sampler, whose linear
+filtering across three axes is exactly the trilinear read a lookup table
+wants. Dropping that encode is a real picture change rather than a rounding
+one, which `theLiveProofMatchesTheImageProof` pins (verified red by
+sabotage).
+
+Plates come from the `toDevice` chain (1 is full ink), written out under the
+spot path's own convention (`master byte = 255 - ink`) so both exports hand a
+shop the same kind of file, screening included: `ProcessSeparation` reuses
+`PrintSeparation`'s plane helpers at the conventional rosette angles (cyan
+15, magenta 75, yellow 0, black 45). `preview()` runs the `fromDevice` chain
+*from the plates* rather than proofing the source, which is what makes the
+CPU separation and the GPU proof cross-check each other
+(`thePlatePreviewMatchesTheDirectProof`). Total area coverage is reported
+rather than enforced, and is meaningful only on unscreened plates, since a
+screened set counts overlapping dots and reaches 400% at a rosette.
+`Sketch.printProfile` + `--export-plates` mirror `printInks` +
+`--export-separations`; the recipe carries the plate names and the printing
+condition. `PrintColorTests`, snapshot `soft-proof`, example
+`Color/SoftProof`. `Docs/Output/PrintColor.md`.
+
 ---
 
 ## Wide gamut and HDR output (`colorOutput`)

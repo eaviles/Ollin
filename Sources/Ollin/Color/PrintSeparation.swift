@@ -170,13 +170,17 @@ public struct PrintSeparation {
     /// bare paper, and above its complement as solid ink. Without the cutoff,
     /// the sub-1% coverages left by 8-bit rounding (a 254-byte "white")
     /// screen into stray specks across clean paper.
-    private static let minimumDot = 0.02
+    ///
+    /// The three screening helpers below are shared with the process-color
+    /// plates (`ProcessSeparation`), which screen the same way: a coverage
+    /// plane in, a plane of ones and zeros out.
+    static let minimumDot = 0.02
 
     /// One scalar dither pass over a coverage plane, quantizing to 0 or 1.
     /// Coverage is already the linear quantity (an area fraction), so the
     /// error diffuses in the plane's own units and a threshold map compares
     /// the fraction directly, the same tone rule as the image dither.
-    private static func ditherPlane(_ plane: inout [Double], width: Int, height: Int,
+    static func ditherPlane(_ plane: inout [Double], width: Int, height: Int,
                                     method: Dither, serpentine: Bool) {
         clampToPrintableDots(&plane)
         let kernel = method.diffusionKernel
@@ -220,7 +224,7 @@ public struct PrintSeparation {
     /// reaches that spot in its cell, so measure{threshold < c} = c exactly
     /// and every tone survives the screen. Dots join into the classic
     /// checkered diamonds past half coverage as the disks overrun the cell.
-    private static func halftonePlane(_ plane: inout [Double], width: Int, height: Int,
+    static func halftonePlane(_ plane: inout [Double], width: Int, height: Int,
                                       pitch: Double, angle: Double) {
         clampToPrintableDots(&plane)
         let cosA = cos(angle), sinA = sin(angle)
@@ -239,7 +243,7 @@ public struct PrintSeparation {
         }
     }
 
-    private static func clampToPrintableDots(_ plane: inout [Double]) {
+    static func clampToPrintableDots(_ plane: inout [Double]) {
         for i in plane.indices {
             if plane[i] < minimumDot { plane[i] = 0 }
             else if plane[i] > 1 - minimumDot { plane[i] = 1 }

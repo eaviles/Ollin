@@ -656,6 +656,7 @@ extension Colormap: ParamOption {}
 extension Turmite.Preset: ParamOption {}
 extension RenderQuality: ParamOption {}
 extension WFCSymmetry: ParamOption {}
+extension RenderingIntent: ParamOption {}
 
 // The curated-preset structs join through the named-choices tier. The
 // parameterized Material helpers (`.glass(...)`, `.metal(...)`, `.skin(radius:)`)
