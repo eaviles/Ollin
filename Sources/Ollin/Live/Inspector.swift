@@ -1397,12 +1397,6 @@ private struct MenuParamRow: View {
 
     var body: some View {
         layout
-        .onChange(of: selection) { _, newValue in
-            guard newValue != control.get() else { return }
-            control.set(newValue)
-            // Report what the param now holds (the case name, not the index).
-            onChange(handle.param.stored)
-        }
         .task {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(100))
@@ -1410,6 +1404,22 @@ private struct MenuParamRow: View {
                 if live != selection { selection = live }
             }
         }
+    }
+
+    /// The pick is pushed synchronously inside the binding write, not from an
+    /// `onChange`: menu tracking blocks the main queue, so poll ticks queue up
+    /// while the menu is open, and one landing between the state write and a
+    /// deferred `onChange` reads the still-old param and snaps the pick back.
+    private var pushingSelection: Binding<Int> {
+        Binding(
+            get: { selection },
+            set: { newValue in
+                selection = newValue
+                guard newValue != control.get() else { return }
+                control.set(newValue)
+                // Report what the param now holds (the case name, not the index).
+                onChange(handle.param.stored)
+            })
     }
 
     /// `.menu` is a single-line row with a pop-up. `.segmented` stays on one
@@ -1444,7 +1454,7 @@ private struct MenuParamRow: View {
     }
 
     private var basePicker: some View {
-        Picker("", selection: $selection) {
+        Picker("", selection: pushingSelection) {
             ForEach(Array(control.options.enumerated()), id: \.offset) { index, name in
                 Text(name).tag(index)
             }
