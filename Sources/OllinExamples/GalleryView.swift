@@ -21,13 +21,19 @@ struct GalleryView: View {
 
     let examples: [Example]
 
-    @State private var selection: Example.ID?
-    @State private var cache: [Example.ID: Sketch] = [:]
-    @State private var detail: DetailState = .empty
+    /// The gallery's mutable heart (selection, the stage, the compile cache) as
+    /// one shared reference. See `GalleryModel` for why this must be a class
+    /// and not a spread of view-struct `@State`.
+    @State private var model: GalleryModel
     /// One `FrameStats` for the whole gallery: each loaded example's runner
     /// writes into it, and the inspector card reads it live.
     @State private var stats = FrameStats()
     @State private var filterText = ""
+
+    init(examples: [Example]) {
+        self.examples = examples
+        _model = State(initialValue: GalleryModel(examples: examples))
+    }
 
     @AppStorage(Self.examplesShownKey) private var examplesShown = true
     @AppStorage(Self.inspectorShownKey) private var inspectorShown = true
@@ -37,24 +43,15 @@ struct GalleryView: View {
     /// disclosure toggle, mid-animation. Empty = everything collapsed, the tidy
     /// first-launch view.
     @State private var expandedNodes = Self.loadExpandedNodes()
-    /// The last selection, restored on launch (and its containers re-expanded).
-    @AppStorage("ollin.gallery.selection") private var storedSelection = ""
 
     @SwiftUI.Environment(\.colorScheme) private var colorScheme
-
-    private enum DetailState {
-        case empty
-        case loading(String)
-        case loaded(Example, Sketch)
-        case failed(String)
-    }
 
     /// The stage's fixed size; every state (sketch, placeholder, error) fills
     /// exactly this, so the window never changes size as examples load.
     private var stageSize: CGSize { OllinApp.defaultWindowSize }
 
     private var selectedExample: Example? {
-        selection.flatMap { id in examples.first { $0.id == id } }
+        model.running.flatMap { id in examples.first { $0.id == id } }
     }
 
     /// A scrim laid over the sidebar vibrancy so the panels read over a bright
@@ -66,13 +63,16 @@ struct GalleryView: View {
     }
 
     var body: some View {
-        HStack(spacing: 0) {
+        @Bindable var model = model
+        return HStack(spacing: 0) {
             if examplesShown {
                 ExamplesSidebar(
                     tree: ExampleCatalog.tree(of: examples),
-                    selection: $selection,
+                    selection: $model.selection,
                     filterText: $filterText,
-                    expandedNodes: $expandedNodes)
+                    expandedNodes: $expandedNodes,
+                    running: model.running,
+                    restartRunning: { [model] in model.restartRunning() })
                 .frame(width: Self.examplesSidebarWidth, height: stageSize.height)
                 .background {
                     ZStack {
@@ -143,8 +143,18 @@ struct GalleryView: View {
         }
         .toolbarBackground(OllinInspector.titleBarGradient(colorScheme), for: .windowToolbar)
         .toolbarBackground(.visible, for: .windowToolbar)
-        .task(id: selection) { await loadSelected() }
-        .onAppear(perform: restoreSelection)
+        .task(id: model.runRequest) { await model.loadSelected() }
+        .task { await model.runHarnessIfRequested() }
+        // A selection landing on a leaf puts it on the stage; landing on a
+        // folder changes nothing there, so browsing never blanks the canvas.
+        .onChange(of: model.selection) { _, id in
+            guard let id, let example = examples.first(where: { $0.id == id }) else { return }
+            expand(around: example)   // a filter pick stays visible once the filter clears
+            model.running = example.id
+        }
+        .onAppear {
+            if let restored = model.restoreSelection() { expand(around: restored) }
+        }
         .onChange(of: expandedNodes) { _, nodes in
             UserDefaults.standard.set(nodes.sorted().joined(separator: "\n"),
                                       forKey: Self.expandedNodesKey)
@@ -157,7 +167,7 @@ struct GalleryView: View {
         // Pin the stage to a fixed square so the sketch renders at its true size
         // (never stretched to fill the pane) and the window stays put.
         Group {
-            switch detail {
+            switch model.detail {
             case .empty:
                 ContentUnavailableView(
                     "Pick an example", systemImage: "sidebar.left",
@@ -191,7 +201,7 @@ struct GalleryView: View {
 
     /// What the inspector shows: the loaded example (card + knobs) or nothing.
     private var inspectorContent: InspectorSidebar.Content {
-        if case .loaded(let example, let sketch) = detail {
+        if case .loaded(let example, let sketch) = model.detail {
             return .example(example, sketch)
         }
         return .idle
@@ -215,62 +225,219 @@ struct GalleryView: View {
             expandedNodes.insert("\(example.category)/\(subgroup)")
         }
     }
+}
 
-    private func restoreSelection() {
-        guard selection == nil, !storedSelection.isEmpty,
-              let restored = examples.first(where: { $0.id == storedSelection }) else { return }
-        expand(around: restored)
-        selection = restored.id
+// MARK: - Gallery model
+
+/// The gallery's mutable state and loading machinery, as one shared reference.
+///
+/// A class on purpose, not view-struct `@State`: escaping closures formed in
+/// `body` (a sidebar row's action, the restart hook) capture the whole view
+/// value, and `List` rows are lazily cached, so a stale closure can outlive
+/// many selection changes off screen. A view value carrying the stage state
+/// inline hands every one of those stale closures a strong reference to
+/// whatever `Sketch` was loaded at capture time, keeping its audio playing
+/// and its resources held long after the switch. Through a class reference
+/// the closures share one object and pin nothing; `--cycletest` is the gate.
+@MainActor @Observable
+final class GalleryModel {
+    let examples: [Example]
+
+    /// The selected sidebar row: an example's id, or a folder row's id. Folder
+    /// rows take part in selection so the arrow keys sweep the whole tree; the
+    /// stage follows `running`, not this, so parking on a folder while browsing
+    /// leaves the current example playing.
+    var selection: String?
+    /// The example on the stage. Set whenever the selection lands on a leaf.
+    var running: Example.ID?
+    /// Bumped to relaunch the running example as a fresh instance.
+    private var runNonce = 0
+    /// Compiled dylib path per example. The cache holds *artifacts*, never live
+    /// `Sketch` instances: a cached instance would keep running out of sight
+    /// (its audio engines, capture sessions, and players stay live), so sound
+    /// from every visited example piles up, and so do their resources until the
+    /// process falls over. A fresh instance per visit costs one `dlopen` +
+    /// factory call (instant); the compile stays the only slow step.
+    private var compiledDylibs: [Example.ID: String] = [:]
+    private(set) var detail: DetailState = .empty
+
+    enum DetailState {
+        case empty
+        case loading(String)
+        case loaded(Example, Sketch)
+        case failed(String)
     }
+
+    /// The `.task(id:)` key: a fresh value reruns `loadSelected`, so the same
+    /// example relaunches when only the nonce moves.
+    struct RunRequest: Equatable {
+        let id: Example.ID?
+        let nonce: Int
+    }
+
+    var runRequest: RunRequest { RunRequest(id: running, nonce: runNonce) }
+
+    init(examples: [Example]) {
+        self.examples = examples
+    }
+
+    func restartRunning() {
+        runNonce += 1
+    }
+
+    /// Re-select the example the last session left on the stage. Returns it so
+    /// the view can re-open the folders around it.
+    func restoreSelection() -> Example? {
+        let stored = UserDefaults.standard.string(forKey: Self.storedSelectionKey) ?? ""
+        guard selection == nil, !stored.isEmpty,
+              let restored = examples.first(where: { $0.id == stored }) else { return nil }
+        selection = restored.id
+        running = restored.id
+        return restored
+    }
+
+    static let storedSelectionKey = "ollin.gallery.selection"
 
     // MARK: Loading
 
-    /// Load the current selection: cached → instant; otherwise compile off the
-    /// main actor (the slow `swiftc`) and instantiate on the main actor. Driven by
-    /// `.task(id: selection)`, which cancels this when the selection changes — so
+    /// Load the running example: already compiled → instantiate fresh, instant;
+    /// otherwise compile off the main actor (the slow `swiftc`) first. Driven by
+    /// `.task(id: runRequest)`, which cancels this when the target changes, so
     /// a stale compile's result is dropped rather than racing the new one in.
-    @MainActor
-    private func loadSelected() async {
-        guard let id = selection, let example = examples.first(where: { $0.id == id }) else {
+    ///
+    /// Every assignment to `detail` here drops the previous example's only strong
+    /// reference: its view dismantles, the instance deallocates, and everything
+    /// it was running (audio, capture, playback) stops with it. That release is
+    /// the switch's off switch; never park an outgoing `Sketch` anywhere.
+    func loadSelected() async {
+        guard let id = running, let example = examples.first(where: { $0.id == id }) else {
             CrashReporter.setCurrentExample(nil)
             detail = .empty
             return
         }
-        storedSelection = id
+        UserDefaults.standard.set(id, forKey: Self.storedSelectionKey)
         // Name the example for the crash reporter as soon as it's the selection, so
         // a fault while it loads or runs is attributed to it.
         CrashReporter.setCurrentExample(example.displayName)
-        if let cached = cache[id] {
-            detail = .loaded(example, cached)
+        let path = example.sketchPath
+        if let dylibPath = compiledDylibs[id] {
+            instantiate(example, from: dylibPath)
             return
         }
         detail = .loading(example.name)
-        let path = example.sketchPath
         let compiled = await Task.detached(priority: .userInitiated) {
             SketchLoader(sketchPath: path).compile()
         }.value
         guard !Task.isCancelled else { return }   // user moved on while compiling
         switch compiled {
         case .success(let dylibPath):
-            switch SketchLoader(sketchPath: path).instantiate(dylibPath: dylibPath) {
-            case .success(let sketch):
-                cache[id] = sketch
-                detail = .loaded(example, sketch)
-            case .failure(let error):
-                detail = .failed(String(describing: error))
-            }
+            compiledDylibs[id] = dylibPath
+            instantiate(example, from: dylibPath)
         case .failure(let error):
             detail = .failed(String(describing: error))
         }
+    }
+
+    /// Build a fresh `Sketch` instance from an already compiled dylib and put it
+    /// on the stage. `dlopen` + the factory are cheap, so this is the instant path.
+    private func instantiate(_ example: Example, from dylibPath: String) {
+        switch SketchLoader(sketchPath: example.sketchPath).instantiate(dylibPath: dylibPath) {
+        case .success(let sketch):
+            detail = .loaded(example, sketch)
+        case .failure(let error):
+            detail = .failed(String(describing: error))
+        }
+    }
+
+    // MARK: Harness (--cycletest / --self-shot; see GalleryHarness)
+
+    func runHarnessIfRequested() async {
+        if let count = GalleryHarness.cycleCount {
+            await runCycleTest(count: count)
+        } else if let path = GalleryHarness.shotPath {
+            try? await Task.sleep(for: .seconds(5))
+            let ok = GalleryHarness.writeWindowShot(to: path)
+            print("OllinExamples self-shot: \(ok ? "wrote" : "FAILED to write") \(path)")
+            exit(ok ? 0 : 1)
+        }
+    }
+
+    /// Visit `count` examples spread across the whole catalog through the real
+    /// selection path, then require every instance but the last to have
+    /// deallocated. See `GalleryHarness` for why this is the leak gate.
+    private func runCycleTest(count: Int) async {
+        let picks: [Example]
+        if let filter = GalleryHarness.cycleFilter {
+            picks = examples.filter { example in filter.contains { example.id.contains($0) } }
+        } else {
+            let step = max(1, examples.count / count)
+            picks = stride(from: 0, to: examples.count, by: step).map { examples[$0] }
+        }
+        var visited: [GalleryHarness.WeakSketch] = []
+        var failures: [String] = []
+        let watchdog = GalleryHarness.Watchdog()
+        watchdog.start()
+        print("OllinExamples cycletest: visiting \(picks.count) of \(examples.count) examples…")
+        for (index, example) in picks.enumerated() {
+            watchdog.beat(example.displayName)
+            selection = example.id
+            running = example.id   // the view's onChange also does this; direct keeps it headless-safe
+            if await waitForLoad(of: example.id) {
+                if case .loaded(_, let sketch) = detail {
+                    visited.append(GalleryHarness.WeakSketch(sketch, name: example.displayName))
+                }
+                // Let it render and start whatever it starts (audio, players).
+                try? await Task.sleep(for: .milliseconds(700))
+            } else {
+                failures.append(example.displayName)
+            }
+            print("OllinExamples cycletest: [\(index + 1)/\(picks.count)] \(example.displayName)"
+                  + (failures.last == example.displayName ? " FAILED TO LOAD" : ""))
+        }
+        // One more beat for the last teardown to settle, then the verdict.
+        watchdog.finish()
+        try? await Task.sleep(for: .seconds(1))
+        let leaked = visited.dropLast().filter { $0.sketch != nil }.map(\.name)
+        if !failures.isEmpty {
+            print("OllinExamples cycletest: \(failures.count) failed to load: "
+                  + failures.joined(separator: ", "))
+        }
+        if leaked.isEmpty {
+            print("OllinExamples cycletest: PASS: \(visited.count) examples ran; every "
+                  + "outgoing instance deallocated (its sound and resources stop with it)")
+            if !GalleryHarness.cycleHold { exit(failures.isEmpty ? 0 : 1) }
+        } else {
+            print("OllinExamples cycletest: FAIL: \(leaked.count) instances stayed alive: "
+                  + leaked.joined(separator: ", "))
+            if !GalleryHarness.cycleHold { exit(1) }
+        }
+        print("OllinExamples cycletest: holding for inspection (pid \(ProcessInfo.processInfo.processIdentifier))")
+    }
+
+    /// Wait until the stage shows `id` loaded, or its load failed, or a timeout.
+    private func waitForLoad(of id: Example.ID, timeout: Double = 60) async -> Bool {
+        let start = Date()
+        while Date().timeIntervalSince(start) < timeout {
+            if case .loaded(let example, _) = detail, example.id == id { return true }
+            if case .failed = detail { return false }
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+        return false
     }
 }
 
 // MARK: - Examples sidebar
 
-/// The example list: categories and groups (3D topics, Recreations artists) as
-/// collapsible header rows over their examples, with a filter bar pinned at the
-/// bottom. While a filter is typed, the tree gives way to a flat match list with
-/// each row naming where it lives.
+/// The example list: one outline in the navigator idiom. Folder rows (categories
+/// and their groups) carry a chevron, an icon and a count; example rows sit
+/// under them; a filter bar is pinned at the bottom. While a filter is typed,
+/// the tree gives way to a flat match list with each row naming where it lives.
+///
+/// Every row is selectable, folders included, which is what lets the arrow keys
+/// sweep the whole tree: up and down never stop at a folder, right opens one
+/// (then steps inside), left closes one (or jumps to the parent), Return toggles
+/// a folder and relaunches an example. Landing on an example runs it; landing on
+/// a folder leaves the stage alone.
 ///
 /// Deliberately a *flat* `List` over rows computed from the tree + the expanded
 /// set, not `Section(isExpanded:)`/`DisclosureGroup`: the outline machinery
@@ -278,34 +445,67 @@ struct GalleryView: View {
 /// AppKit row-cache glitch), and a flat identified list has nothing to mis-cache.
 private struct ExamplesSidebar: View {
     let tree: [ExampleCatalog.Category]
-    @Binding var selection: Example.ID?
+    @Binding var selection: String?
     @Binding var filterText: String
     @Binding var expandedNodes: Set<String>
+    /// The example on the stage, marked in the list even when not selected.
+    let running: Example.ID?
+    /// Return on the running example: relaunch it as a fresh instance.
+    let restartRunning: () -> Void
 
-    /// One visible sidebar line. Headers and leaves share the enum so the whole
-    /// sidebar is a single `ForEach` over stable string ids.
-    private enum Row: Identifiable {
-        case category(name: String, expanded: Bool)
-        case group(id: String, name: String, expanded: Bool)
-        case example(Example, indented: Bool)
-        case noMatches
+    @FocusState private var filterFocused: Bool
 
-        var id: String {
-            switch self {
-            case .category(let name, _): "category:\(name)"
-            case .group(let id, _, _): "group:\(id)"
-            case .example(let example, _): example.id
-            case .noMatches: "no-matches"
-            }
+    /// One visible sidebar line, carrying everything navigation needs: what it
+    /// shows, its parent row (the left-arrow target), and its depth.
+    private struct Row: Identifiable {
+        enum Kind {
+            case folder(node: String, icon: String?, expanded: Bool, count: Int)
+            case example(Example)
+            case noMatches
         }
 
-        /// Only leaves take part in the List selection; a leaf's row id *is*
-        /// its example id, so the selected tag is the selected example.
-        var isSelectable: Bool {
-            if case .example = self { return true }
-            return false
+        let id: String
+        let name: String
+        let kind: Kind
+        let parent: String?
+        let depth: Int   // 0 category, 1 group or direct example, 2 grouped example
+
+        var isFolder: Bool { if case .folder = kind { return true } else { return false } }
+        var isExpanded: Bool {
+            if case .folder(_, _, let expanded, _) = kind { return expanded } else { return false }
         }
+        var isSelectable: Bool { if case .noMatches = kind { return false } else { return true } }
     }
+
+    /// The curated icon per top-level category; unknown categories get a plain
+    /// folder, so a new `Examples/` directory needs no code to appear.
+    private static let categoryIcons: [String: String] = [
+        "3D": "cube",
+        "Audio": "waveform",
+        "Basic": "circle",
+        "Color": "paintpalette",
+        "Compute": "cpu",
+        "Data": "tablecells",
+        "Effects": "sparkles",
+        "Export": "square.and.arrow.up",
+        "Images": "photo",
+        "Input": "cursorarrow.click",
+        "Installation": "display",
+        "Integration": "link",
+        "Live": "dot.radiowaves.left.and.right",
+        "Motion": "wind",
+        "Patterns": "square.grid.3x3",
+        "Physics": "atom",
+        "Randomness": "dice",
+        "Recreations": "photo.artframe",
+        "Rendering": "square.stack.3d.up",
+        "Shaders": "fx",
+        "Shapes": "square.on.circle",
+        "Simulation": "circle.hexagongrid",
+        "Text": "textformat",
+        "Video": "film",
+        "Vision": "eye",
+    ]
 
     private var isFiltering: Bool {
         !filterText.trimmingCharacters(in: .whitespaces).isEmpty
@@ -317,16 +517,31 @@ private struct ExamplesSidebar: View {
         if isFiltering { return matchRows }
         var rows: [Row] = []
         for category in tree {
-            let expanded = expandedNodes.contains(category.name)
-            rows.append(.category(name: category.name, expanded: expanded))
-            guard expanded else { continue }
-            rows.append(contentsOf: category.direct.map { .example($0, indented: false) })
+            let categoryID = "category:\(category.name)"
+            rows.append(Row(
+                id: categoryID, name: category.name,
+                kind: .folder(node: category.name,
+                              icon: Self.categoryIcons[category.name] ?? "folder",
+                              expanded: expandedNodes.contains(category.name),
+                              count: category.count),
+                parent: nil, depth: 0))
+            guard expandedNodes.contains(category.name) else { continue }
+            rows.append(contentsOf: category.direct.map {
+                Row(id: $0.id, name: $0.name, kind: .example($0), parent: categoryID, depth: 1)
+            })
             for group in category.groups {
-                let groupID = "\(category.name)/\(group.name)"
-                let groupExpanded = expandedNodes.contains(groupID)
-                rows.append(.group(id: groupID, name: group.name, expanded: groupExpanded))
+                let node = "\(category.name)/\(group.name)"
+                let groupID = "group:\(node)"
+                let groupExpanded = expandedNodes.contains(node)
+                rows.append(Row(
+                    id: groupID, name: group.name,
+                    kind: .folder(node: node, icon: nil, expanded: groupExpanded,
+                                  count: group.examples.count),
+                    parent: categoryID, depth: 1))
                 if groupExpanded {
-                    rows.append(contentsOf: group.examples.map { .example($0, indented: true) })
+                    rows.append(contentsOf: group.examples.map {
+                        Row(id: $0.id, name: $0.name, kind: .example($0), parent: groupID, depth: 2)
+                    })
                 }
             }
         }
@@ -342,56 +557,145 @@ private struct ExamplesSidebar: View {
                     || example.category.localizedCaseInsensitiveContains(needle)
             }
         }
-        return matches.isEmpty ? [.noMatches] : matches.map { .example($0, indented: false) }
+        if matches.isEmpty {
+            return [Row(id: "no-matches", name: "", kind: .noMatches, parent: nil, depth: 0)]
+        }
+        return matches.map { Row(id: $0.id, name: $0.name, kind: .example($0), parent: nil, depth: 0) }
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            List(selection: $selection) {
-                ForEach(rows) { row in
-                    SidebarRowView(row: row, showsContext: isFiltering) { node in
-                        withAnimation(.easeOut(duration: 0.15)) {
-                            if expandedNodes.contains(node) {
-                                expandedNodes.remove(node)
-                            } else {
-                                expandedNodes.insert(node)
-                            }
-                        }
+            ScrollViewReader { scroller in
+                List(selection: $selection) {
+                    ForEach(rows) { row in
+                        SidebarRowView(
+                            row: row,
+                            isSelected: selection == row.id,
+                            running: running,
+                            showsContext: isFiltering,
+                            toggle: { toggle(row, select: true) })
+                        // The tag rides the row's top-level content (a nested tag
+                        // doesn't reach the List); only the empty-state row is
+                        // skipped by selection.
+                        .tag(row.id)
+                        .selectionDisabled(!row.isSelectable)
                     }
-                    // The tag rides the row's top-level content (a nested tag
-                    // doesn't reach the List); headers and the empty-state row
-                    // are skipped by selection (and by arrow-key navigation).
-                    .tag(row.id)
-                    .selectionDisabled(!row.isSelectable)
+                }
+                .listStyle(.sidebar)
+                .scrollContentBackground(.hidden)   // the vibrancy panel shows through
+                .environment(\.defaultMinListRowHeight, 25)
+                // The identity purple marks selection, as in the sibling hosts.
+                .tint(OllinInspector.accent)
+                .onMoveCommand(perform: move)
+                .onKeyPress(.return) { activateSelection() }
+                // A selection set by keyboard fold-navigation (jump to parent,
+                // step inside) can sit off screen; keep it visible. Deferred a
+                // turn: scrolling inside the selection change re-enters the
+                // list's own layout pass (AppKit warns, and will trap one day).
+                .onChange(of: selection) { _, id in
+                    guard let id else { return }
+                    DispatchQueue.main.async { scroller.scrollTo(id) }
                 }
             }
-            .listStyle(.sidebar)
-            .scrollContentBackground(.hidden)   // the vibrancy panel shows through
-            FilterBar(text: $filterText)
+            FilterBar(text: $filterText, focused: $filterFocused, onSubmit: runFirstMatch)
+        }
+        .background {
+            // The filter shortcut: an invisible button so the sidebar needs no
+            // menu plumbing. Esc in the field clears it and hands the keys back.
+            Button("") { filterFocused = true }
+                .keyboardShortcut("f", modifiers: .command)
+                .buttonStyle(.plain)
+                .opacity(0)
+                .accessibilityHidden(true)
         }
     }
 
-    /// A single sidebar line. Wrapped in one root container (and tagged only for
-    /// leaves) so every row is unary with a stable id.
+    // MARK: Keyboard
+
+    /// Left and right drive the fold, the way every outline does it: right opens
+    /// a folder and then steps into it; left closes one, or jumps to the parent.
+    /// Up and down stay with the List, which now traverses every row.
+    private func move(_ direction: MoveCommandDirection) {
+        guard !isFiltering,
+              let id = selection,
+              let row = rows.first(where: { $0.id == id }) else { return }
+        switch direction {
+        case .left:
+            if row.isFolder && row.isExpanded {
+                toggle(row, select: false)
+            } else if let parent = row.parent {
+                selection = parent
+            }
+        case .right:
+            guard row.isFolder else { return }
+            if !row.isExpanded {
+                toggle(row, select: false)
+            } else if let child = rows.first(where: { $0.parent == row.id }) {
+                selection = child.id
+            }
+        default:
+            break
+        }
+    }
+
+    /// Return: toggle a folder, relaunch the running example.
+    private func activateSelection() -> KeyPress.Result {
+        guard let id = selection, let row = rows.first(where: { $0.id == id }) else {
+            return .ignored
+        }
+        switch row.kind {
+        case .folder:
+            toggle(row, select: false)
+            return .handled
+        case .example(let example):
+            guard example.id == running else { return .ignored }
+            restartRunning()
+            return .handled
+        case .noMatches:
+            return .ignored
+        }
+    }
+
+    /// Filter field Return: run the first match and hand focus to the list.
+    private func runFirstMatch() {
+        guard isFiltering,
+              let first = rows.first(where: { if case .example = $0.kind { return true } else { return false } })
+        else { return }
+        selection = first.id
+        filterFocused = false
+    }
+
+    private func toggle(_ row: Row, select: Bool) {
+        guard case .folder(let node, _, _, _) = row.kind else { return }
+        withAnimation(.easeOut(duration: 0.15)) {
+            if expandedNodes.contains(node) {
+                expandedNodes.remove(node)
+            } else {
+                expandedNodes.insert(node)
+            }
+        }
+        if select { selection = row.id }
+    }
+
+    // MARK: Rows
+
+    /// A single sidebar line. Wrapped in one root container so every row is
+    /// unary with a stable id.
     private struct SidebarRowView: View {
         let row: Row
+        let isSelected: Bool
+        let running: Example.ID?
         /// Filter mode: leaves show where they live under their name.
         let showsContext: Bool
-        let toggle: (String) -> Void
+        let toggle: () -> Void
 
         var body: some View {
             VStack(alignment: .leading, spacing: 0) {
-                switch row {
-                case .category(let name, let expanded):
-                    header(name, node: name, expanded: expanded)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                case .group(let id, let name, let expanded):
-                    header(name, node: id, expanded: expanded)
-                        .font(.system(size: 13))
-                        .padding(.leading, 10)
-                case .example(let example, let indented):
-                    leaf(example, indented: indented)
+                switch row.kind {
+                case .folder(_, let icon, let expanded, let count):
+                    folder(icon: icon, expanded: expanded, count: count)
+                case .example(let example):
+                    leaf(example)
                 case .noMatches:
                     Text("No matches")
                         .foregroundStyle(.secondary)
@@ -400,42 +704,89 @@ private struct ExamplesSidebar: View {
             }
         }
 
-        /// A disclosure header: chevron + name, the whole row toggling its node.
-        private func header(_ name: String, node: String, expanded: Bool) -> some View {
-            Button { toggle(node) } label: {
-                HStack(spacing: 5) {
+        /// A folder row: chevron, icon (top level only), name, count. The whole
+        /// row is the toggle, which also takes the selection with it.
+        private func folder(icon: String?, expanded: Bool, count: Int) -> some View {
+            Button(action: toggle) {
+                HStack(spacing: 6) {
                     SwiftUI.Image(systemName: "chevron.right")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(isSelected ? .primary : .secondary)
                         .rotationEffect(.degrees(expanded ? 90 : 0))
-                    Text(name)
-                    Spacer(minLength: 0)
+                        .frame(width: 12)
+                    if let icon {
+                        SwiftUI.Image(systemName: icon)
+                            .font(.system(size: 12))
+                            .foregroundStyle(isSelected ? .primary : .secondary)
+                            .frame(width: 18)
+                    }
+                    Text(row.name)
+                        .font(.system(size: 13, weight: row.depth == 0 ? .medium : .regular))
+                        .lineLimit(1)
+                    Spacer(minLength: 8)
+                    Text("\(count)")
+                        .font(.system(size: 11))
+                        .monospacedDigit()
+                        .foregroundStyle(isSelected ? .secondary : .tertiary)
                 }
+                .padding(.leading, row.depth == 0 ? 0 : 20)
                 .contentShape(SwiftUI.Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("\(expanded ? "Collapse" : "Expand") \(name)")
+            .accessibilityLabel("\(expanded ? "Collapse" : "Expand") \(row.name), \(count) examples")
         }
 
-        @ViewBuilder private func leaf(_ example: Example, indented: Bool) -> some View {
-            if showsContext {
-                VStack(alignment: .leading, spacing: 1) {
+        @ViewBuilder private func leaf(_ example: Example) -> some View {
+            let isRunning = example.id == running
+            HStack(spacing: 6) {
+                if showsContext {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(example.name)
+                        Text(example.subgroup.map { "\(example.category) · \($0)" } ?? example.category)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
                     Text(example.name)
-                    Text(example.subgroup.map { "\(example.category) · \($0)" } ?? example.category)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 13, weight: isRunning ? .medium : .regular))
+                        .lineLimit(1)
+                        .foregroundStyle(isRunning && !isSelected
+                            ? AnyShapeStyle(OllinInspector.accent)
+                            : AnyShapeStyle(.primary))
                 }
-            } else {
-                Text(example.name)
-                    .padding(.leading, indented ? 24 : 14)
+                if isRunning {
+                    Spacer(minLength: 8)
+                    PlayingGlyph(color: isSelected ? .white : OllinInspector.accent)
+                }
             }
+            .padding(.leading, showsContext ? 0 : (row.depth == 2 ? 44 : 26))
+            .accessibilityLabel(isRunning ? "\(example.name), running" : example.name)
+        }
+    }
+
+    /// The mark on the example that is playing: three level bars, the visual
+    /// shorthand for "this one is making the sound you hear".
+    private struct PlayingGlyph: View {
+        let color: SwiftUI.Color
+
+        var body: some View {
+            HStack(alignment: .center, spacing: 2) {
+                Capsule().frame(width: 2, height: 5)
+                Capsule().frame(width: 2, height: 10)
+                Capsule().frame(width: 2, height: 7)
+            }
+            .foregroundStyle(color)
+            .accessibilityHidden(true)
         }
     }
 }
 
-/// The filter field pinned under the example list.
+/// The filter field pinned under the example list, advertising its shortcut.
 private struct FilterBar: View {
     @Binding var text: String
+    let focused: FocusState<Bool>.Binding
+    /// Return in the field: run the first match.
+    let onSubmit: () -> Void
     @SwiftUI.Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -446,6 +797,12 @@ private struct FilterBar: View {
             TextField("Filter", text: $text)
                 .textFieldStyle(.plain)
                 .font(.system(size: 12))
+                .focused(focused)
+                .onSubmit(onSubmit)
+                .onExitCommand {
+                    text = ""
+                    focused.wrappedValue = false
+                }
             if !text.isEmpty {
                 Button {
                     text = ""
@@ -456,6 +813,16 @@ private struct FilterBar: View {
                 }
                 .buttonStyle(.borderless)
                 .accessibilityLabel("Clear filter")
+            } else if !focused.wrappedValue {
+                Text("⌘F")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.tertiary)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 1)
+                    .background(
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .fill(colorScheme == .dark
+                                ? SwiftUI.Color.white.opacity(0.08) : .black.opacity(0.06)))
             }
         }
         .padding(.horizontal, 7)

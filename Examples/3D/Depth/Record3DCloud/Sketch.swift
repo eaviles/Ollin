@@ -26,10 +26,22 @@ final class Record3DCloud: Sketch {
     var orbitCenter: Vector3?
     var orbitRadius = 0.0
 
+    // The Downloads scan, held for a couple of seconds between looks. Listing a
+    // folder is a blocking filesystem call (and the folder is privacy-guarded,
+    // so the very first look can wait on a consent prompt); at every frame it
+    // stalls the draw loop for nothing, since a new AirDrop landing within two
+    // seconds is as fresh as anyone needs.
+    var foundPath: String?
+    var lastScan = -Double.greatestFiniteMagnitude
+
     override func draw() {
         background(Color(white: 0.04))
 
-        guard let path = Self.findRecording() else {
+        if time - lastScan > 2 {
+            lastScan = time
+            foundPath = Self.findRecording()
+        }
+        guard let path = foundPath else {
             return drawStatus("Record a clip in the Record3D app, then AirDrop the .r3d here.\n" +
                               "This sketch reads the newest .r3d in ~/Downloads\n" +
                               "(or set OLLIN_R3D to a path).", style: .info)
