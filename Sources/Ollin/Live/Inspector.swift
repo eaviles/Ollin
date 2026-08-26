@@ -219,13 +219,19 @@ public struct MonitorIdentity: Equatable {
 public struct MonitorCardView: View {
     let identity: MonitorIdentity
     let stats: FrameStats
+    let reloads: Int?
     let clockSize: CGFloat
 
     @SwiftUI.Environment(\.colorScheme) private var scheme
 
-    public init(identity: MonitorIdentity, stats: FrameStats, clockSize: CGFloat = 30) {
+    /// `reloads` is the host's hot-swap count; the live hosts pass it and get
+    /// a Reloads cell in the grid, the standalone panel and the gallery have
+    /// no such number and leave it nil (no cell).
+    public init(identity: MonitorIdentity, stats: FrameStats, reloads: Int? = nil,
+                clockSize: CGFloat = 30) {
         self.identity = identity
         self.stats = stats
+        self.reloads = reloads
         self.clockSize = clockSize
     }
 
@@ -237,7 +243,7 @@ public struct MonitorCardView: View {
             Hairline(palette: palette)
             MonitorClockRow(time: stats.time, clockSize: clockSize)
             Hairline(palette: palette)
-            MonitorStatStrip(stats: stats)
+            MonitorStatStrip(stats: stats, reloads: reloads)
             Hairline(palette: palette)
             MonitorCostRow(stats: stats)
         }
@@ -375,6 +381,7 @@ private struct MonitorClockRow: View {
 /// the cost bars below, so a number is never shown twice.
 private struct MonitorStatStrip: View {
     let stats: FrameStats
+    let reloads: Int?
 
     @SwiftUI.Environment(\.colorScheme) private var scheme
     private var palette: OllinInspector.Palette { .resolve(scheme) }
@@ -482,6 +489,13 @@ private struct MonitorStatStrip: View {
         cells.append(countCell(stats.profile.drawCalls, "Draw", "Draws", detail: drawDetail))
         cells.append(countCell(stats.profile.passes, "Pass", "Passes", detail: passDetail))
         cells.append(countCell(stats.profile.batches, "Batch", "Batches", detail: batchDetail))
+        if let reloads {
+            cells.append(FactCell(
+                value: "\(reloads)", label: reloads == 1 ? "Reload" : "Reloads",
+                detail: reloads == 1
+                    ? "1 hot code swap since this session opened."
+                    : "\(reloads) hot code swaps since this session opened."))
+        }
         return cells
     }
 

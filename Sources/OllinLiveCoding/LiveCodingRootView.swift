@@ -153,7 +153,7 @@ struct LiveCodingRootView: View {
                     MonitorCardView(
                         identity: MonitorIdentity(name: session.displayName,
                                                   folder: session.folderDisplay),
-                        stats: session.core.stats)
+                        stats: session.core.stats, reloads: session.core.reloadCount)
                     VariationCardView(stats: session.core.stats) { seed in
                         session.core.recordSeed(seed)
                     }

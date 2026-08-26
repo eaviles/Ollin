@@ -16,7 +16,7 @@ struct InspectorPanel: View {
                 VStack(spacing: 16) {
                     MonitorCardView(
                         identity: MonitorIdentity(name: session.fileName, folder: session.folder),
-                        stats: session.stats)
+                        stats: session.stats, reloads: session.reloadCount)
                     VariationCardView(stats: session.stats) { seed in
                         session.recordSeed(seed)
                     }
