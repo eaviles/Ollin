@@ -20,6 +20,7 @@ Palettes, colormaps, and driving color from a value or from time.
 | [PaletteFromImage](PaletteFromImage/Sketch.swift) | a palette clustered out of an image's pixels, recovering the five colors the picture was painted with |
 | [Palettes](Palettes/Sketch.swift) | seven cosine-gradient `CosinePalette` presets, each swept across the canvas and scrolled |
 | [PrintSeparation](PrintSeparation/Sketch.swift) | a sunrise poster split into three spot-ink printing masters, with a halftoned overprint preview and a view knob to flip between them |
+| [SoftProof](SoftProof/Sketch.swift) | a poster carried into a press profile and back before it is printed, so what the ink cannot hold comes home changed on screen, beside the gamut check and the process plates |
 | [Swatchbook](Swatchbook/Sketch.swift) | the built-in qualitative `Palette` sets as labeled swatch rows, with a wrapping-index highlight |
 
 Run one with `swift run Example-Color-<Name>`, e.g. `swift run Example-Color-Palettes`.

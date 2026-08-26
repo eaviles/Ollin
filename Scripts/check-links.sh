@@ -17,7 +17,7 @@
 # blind spots it grew out of, Docs-to-Docs links and the README's table, are
 # exactly where real breaks hid.)
 #
-# This is that gate. Ten checks, in the order a reader would trip over them:
+# This is that gate. Eleven checks, in the order a reader would trip over them:
 #
 #   1. Every relative link target exists, from the file that names it. This
 #      now reads every Guide page, every Docs page, and the root README.
@@ -39,6 +39,12 @@
 #      table and listed in Docs/README.md. This is the invariant that once
 #      broke silently and orphaned 21 pages; it used to live in CLAUDE.md as a
 #      `comm` command somebody had to remember to run.
+#  11. Every example is listed in the README that covers it, and every row
+#      names a folder that is there. A group README owns the sketches under
+#      it, except those a nested README owns instead (which it must link);
+#      rows point at `Name/Sketch.swift` or at the folder, and either counts.
+#      Nothing checked this, and 102 sketches across eleven groups had
+#      shipped with no row by the time anybody looked.
 #
 # Check 9 is the one worth having. A pointer that carries a section heading
 # survives a renumber looking correct and aiming at nothing, and that is
@@ -55,7 +61,7 @@ cd "$(dirname "$0")/.." || exit 1
 emulate -L zsh
 setopt no_nomatch
 
-[[ "$1" == "--help" || "$1" == "-h" ]] && { sed -n '3,49p' "$0" | sed 's|^# \?||'; exit 0 }
+[[ "$1" == "--help" || "$1" == "-h" ]] && { sed -n '3,55p' "$0" | sed 's|^# \?||'; exit 0 }
 
 python3 - "$@" <<'PY'
 import pathlib, re, sys, collections
@@ -450,6 +456,37 @@ for page in docs_pages:
     if str(page.relative_to("Docs")) not in index_links:
         fail("Docs/README.md", f"index does not list {page.relative_to('Docs')}")
 
+
+# ------------------------- 11: every example is listed where a reader looks
+#
+# Examples/ is a second navigation tree, and nothing read it: an example
+# shipped, its folder appeared, and the group README stayed as it was. A
+# README owns every sketch folder beneath it, except the ones a nested README
+# owns instead, which it links rather than lists (that is how Recreations
+# delegates to a page per artist and how the groups hang off Examples/README).
+# A row may point at `Name/Sketch.swift` or at the folder; both are in use.
+examples = pathlib.Path("Examples")
+for readme in sorted(examples.rglob("README.md")):
+    home = readme.parent
+    links = set()
+    for target in re.findall(r"\]\(([^)#\s]+)\)", readme.read_text()):
+        if target.startswith(("http", "..", "/")):
+            continue
+        links.add(target.rstrip("/").removesuffix("/Sketch.swift"))
+    delegated = {nested.parent for nested in home.glob("*/README.md")}
+    owned = {d.relative_to(home).as_posix() for d in delegated}
+    for sketch in home.rglob("Sketch.swift"):
+        folder = sketch.parent
+        if any(folder == d or d in folder.parents for d in delegated):
+            continue
+        owned.add(folder.relative_to(home).as_posix())
+    for item in sorted(owned):
+        if item not in links:
+            fail(str(readme), f"nothing links {item}")
+    for link in sorted(links):
+        if not (home / link).exists():
+            fail(str(readme), f"links {link}, which is not there")
+
 # ------------------------------------------------------------------- report
 for message in notes if list_notes else notes[:12]:
     print(f"check-links: note: {message}")
@@ -459,9 +496,10 @@ if notes and not list_notes and len(notes) > 12:
 for message in errors:
     print(f"check-links: {message}", file=sys.stderr)
 
+sketches = len(list(examples.rglob("Sketch.swift")))
 print(
     f"check-links: {len(pages)} Guide pages, {len(docs_pages)} Docs pages, "
-    f"{len(chapters)} chapters, {len(referenced)} images, "
+    f"{len(chapters)} chapters, {len(referenced)} images, {sketches} examples, "
     f"{len(errors)} errors, {len(notes)} notes"
 )
 sys.exit(1 if errors else 0)

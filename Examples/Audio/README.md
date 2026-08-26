@@ -4,13 +4,30 @@
 
 ## Audio
 
-Sound-reactive sketches. Audio lives in a separate library — add `import OllinAudio` — with three sources (`AudioInput` for the microphone, `AudioPlayer` for files, `Tone` for an oscillator) analyzed into `amplitude`, a frequency `spectrum`, and band values a sketch reads in `draw()`. See the [Audio reference](../../Docs/Helpers/Audio.md).
+Sketches that listen and sketches that play. Audio lives in a separate library, so add `import OllinAudio`.
+
+On the way in, three sources (`AudioInput` for the microphone, `AudioPlayer` for files, `Tone` for an oscillator) are analyzed into `amplitude`, a frequency `spectrum`, and band values a sketch reads in `draw()`, plus speech and named sounds. On the way out, a `Synth` plays shaped voices through effects, a composition tier works out what to play, four physical models are struck, plucked, bowed and blown, a sampler reads recordings, data is read out as notes, sound is placed in the 3D scene, and a take can leave with the video.
+
+The references are [Audio](../../Docs/Helpers/Audio.md), [Synthesis](../../Docs/Helpers/Synthesis.md), [Composition](../../Docs/Helpers/Composition.md), [Sonification](../../Docs/Helpers/Sonification.md), and [Listening](../../Docs/Helpers/Listening.md).
 
 | Example | What it shows |
 |---|---|
-| [Spectrum](Spectrum/Sketch.swift) | a generated sawtooth `Tone` that glides in pitch, its harmonics analyzed into a radial ring of normalized `bands` while the central disc pulses with the level — self-contained, so it runs with no microphone permission or bundled file (`Tone`, `bands`) |
-| [Microphone](Microphone/Sketch.swift) | the same radial visual driven by the live microphone — bars trace the normalized `bands`, the central disc flashes on each detected `beat` (clap at it); `AudioInput.start()` requests mic permission and the sketch stays quiet until it's granted (`AudioInput`, `bands`, `beat`) |
+| [Spectrum](Spectrum/Sketch.swift) | a generated sawtooth `Tone` that glides in pitch, its harmonics analyzed into a radial ring of normalized `bands` while the central disc pulses with the level; self-contained, so it runs with no microphone permission or bundled file (`Tone`, `bands`) |
+| [Microphone](Microphone/Sketch.swift) | the same radial visual driven by the live microphone: bars trace the normalized `bands`, the central disc flashes on each detected `beat` (clap at it); `AudioInput.start()` requests mic permission and the sketch stays quiet until it's granted (`AudioInput`, `bands`, `beat`) |
 | [Listening](Listening/Sketch.swift) | the microphone read for *what* it is hearing: a live caption that corrects itself as more is heard, and named sounds (a clap, a knock, music) landing as marks that fade; both listeners share one microphone, and recognition runs on the Mac with no consent of its own (`SpeechListener`, `SoundClassifier`, `events()`) |
-| [FilePlayer](FilePlayer/Sketch.swift) | reacts to a playing audio file — a `bands` bar chart plus a `waveform` oscilloscope, the whole canvas flashing on each `beat`; loops a bundled clip (*El Fandanguito*, a traditional Mexican son huasteco for violin, CC BY-SA) by default, or pass a path on launch to play your own track (`AudioPlayer`, `bands`, `beat`, `waveform`) |
+| [FilePlayer](FilePlayer/Sketch.swift) | reacts to a playing audio file: a `bands` bar chart plus a `waveform` oscilloscope, the whole canvas flashing on each `beat`; loops a bundled clip (*El Fandanguito*, a traditional Mexican son huasteco for violin, CC BY-SA) by default, or pass a path on launch to play your own track (`AudioPlayer`, `bands`, `beat`, `waveform`) |
+| [ChladniResonance](ChladniResonance/Sketch.swift) | a signal generator sweeping a Chladni plate: a `Tone` glides in pitch and the plate listens, each mode ringing when the sweep passes its own frequency (`magnitude(in:)`) |
+| [Synth](Synth/Sketch.swift) | a playable instrument: the home row is two octaves of a scale, held keys sound until you let go, the number keys change what a note is made of, and space adds a room around it (`Synth`, `noteOn`, `noteOff`) |
+| [Shaping](Shaping/Sketch.swift) | an effect written in the sketch itself: each bend is a few lines of arithmetic in a `.custom` link of the chain, beside the built-in kinds |
+| [Changes](Changes/Sketch.swift) | chords that come out of a key: a progression written as scale degrees rather than chord names, because that is the fact that survives a change of key (`Chord`, `Scale`) |
+| [Generative](Generative/Sketch.swift) | music the sketch works out for itself from four small pieces: each ring is a `Rhythm`, strikes spread over steps as evenly as whole steps allow |
+| [Strings](Strings/Sketch.swift) | six strings plucked wherever you click: a delay line one period long with a filtered loop round it, so where you pluck decides the tone (`PluckedString`) |
+| [StruckShapes](StruckShapes/Sketch.swift) | shapes you can hit, that sound like the shape they are: an outline's own standing waves decide the frequencies, and where you strike decides which ones you hear (`StruckShape`) |
+| [Bowing](Bowing/Sketch.swift) | a note you keep playing: a bowed string or a blown tube, both worked out continuously, so the sound answers the hand for as long as it lasts rather than being decided at its start (`BowedString`, `BlownTube`) |
+| [Patching](Patching/Sketch.swift) | an instrument built rather than picked: a `Patch` is the tier under a fixed voice, where operators are wired into each other (`Patch`) |
+| [Sampler](Sampler/Sketch.swift) | an instrument made of recordings: a note finds the nearest recorded one and shifts it, which is the opposite of working the sound out (`SampledInstrument`) |
+| [Sonification](Sonification/Sketch.swift) | numbers you can hear: a line across a landscape drawn as a profile and read out as a tune from the same numbers, the playhead being the note sounding (`Sonification`) |
+| [Spatial](Spatial/Sketch.swift) | sound that comes from somewhere: three chimes stand around you and one walks a circle past them, with the camera as what hears (`place(at:heardFrom:)`) |
+| [SoundInAnExport](SoundInAnExport/Sketch.swift) | a piece that carries its own sound out of the window: the same score rendered offline into the exported video rather than played to the room |
 
 Run one with `swift run Example-Audio-<Name>`, e.g. `swift run Example-Audio-Spectrum`.

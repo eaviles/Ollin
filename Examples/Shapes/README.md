@@ -33,5 +33,9 @@ The shape-drawing vocabulary: every primitive, the stroke and hollow modes, and 
 | [StrokeProfiles](StrokeProfiles/Sketch.swift) | one spiral at one weight under each width profile: taper, lift off, wedge, a turning calligraphy nib, and one by hand (`strokeProfile`) |
 | [SVGImport](SVGImport/Sketch.swift) | SVG import: the bundled rocket badge drawn as authored (`loadSVG`/`drawSVG`), then mined as geometry, its outlines resampled into even dots |
 | [Watercolor](Watercolor/Sketch.swift) | watercolor pigment from polygon deformation: three pools of interleaved translucent layers glazing where they overlap, plus a clipped speckle for granulating texture; a fresh sheet per variation (`Watercolor`, `drawShape`) |
+| [Brushes](Brushes/Sketch.swift) | marks made by repeating a shape along a path: a `strokeBrush` swaps the continuous ribbon for a row of stamps that take their size from `strokeWeight` and their color from the stroke |
+| [Superellipse](Superellipse/Sketch.swift) | a wall of superellipse plates with one exponent sliding the whole family, from pinched star through diamond, ellipse, and squircle to an almost-rectangle |
+| [Supershape](Supershape/Sketch.swift) | one closed contour breathing through star, flower, and gear-like forms as the 2D superformula is swept by slow sines, over fading echoes of its recent shapes |
+| [Scattered](Scattered/Sketch.swift) | fitting: a value known at a few scattered places turned into one everywhere, each known point contributing a bump (`RadialBasis`) |
 
 Run one with `swift run Example-Shapes-<Name>`, e.g. `swift run Example-Shapes-Primitives`.

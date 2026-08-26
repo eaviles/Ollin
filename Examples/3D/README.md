@@ -31,6 +31,22 @@ Meshes, point clouds, and the 3D transform stack.
 | [TexturedMesh](Geometry/TexturedMesh/) | A UV-gridded globe textured with an image over a base-color-tinted floor, both lit. |
 | [Wireframe](Geometry/Wireframe/) | Orbiting solids drawn as their triangle edges (`wireframe()`), faces see-through. |
 | [SurfaceScatter](Geometry/SurfaceScatter/) | Trees standing on a globe: `surfacePoints` scatters over the skin by area, `alignment` stands each one up, and the `spread` knob compares an even covering, a plain draw, and the vertex-list shortcut. |
+| [Terrain](Geometry/Terrain/) | Generated terrain, weathered: a heightfield grown by diamond-square subdivision, then eroded by tens of thousands of simulated raindrops carving ravines and building sediment fans. |
+| [Metaballs](Geometry/Metaballs/) | Soft spheres that reach for each other and fuse: every ball adds a bump to one shared field, and `isosurface` walks it into a mesh. |
+| [MeshGrowth](Geometry/MeshGrowth/) | A surface that makes more of itself than it has room for: vertices pushed apart, faster where the surface is already crowded, until it buckles. |
+| [SubdivisionSurfaces](Geometry/SubdivisionSurfaces/) | A chunky low-poly cage refined into a smooth solid (`mesh.subdivided(_:levels:)`). |
+| [SurfaceFromPoints](Geometry/SurfaceFromPoints/) | From points back to a surface, two ways: a knot sampled into a bare cloud and reconstructed from it. |
+| [HopfFibration](Geometry/HopfFibration/) | A sphere's worth of circles, no two of which meet and every two of which are linked exactly once. |
+| [LoadedScene](Geometry/LoadedScene/) | A whole authored scene drawn in place, opening on its own camera and lights. |
+| [SceneExplorer](Geometry/SceneExplorer/) | A read-only lens on a scene file: point it at a glTF or USD scene and look around it, part by part. |
+| [AnimatedScene](Geometry/AnimatedScene/) | A scene file's authored animation played back: keyframe tracks posing named nodes. |
+| [SkinnedScene](Geometry/SkinnedScene/) | A scene file's deforming animation: skins that bend meshes and morph targets that blend them. |
+| [USDScene](Geometry/USDScene/) | A USD scene loaded with its structure kept, drawn under its own authored camera and lights. |
+| [USDAnimatedScene](Geometry/USDAnimatedScene/) | A USD file's authored transform animation played on the sketch clock. |
+| [USDSkinnedScene](Geometry/USDSkinnedScene/) | A USD file's skeletal animation and blend shapes, read by Ollin's own parser. |
+| [Fabrication](Geometry/Fabrication/) | A generated shape written out as something a 3D printer can build, with a report on whether it can be. |
+| [SpatialExport](Geometry/SpatialExport/) | A sketch that leaves as a model instead of a picture: ordinary 3D written out as USDZ. |
+| [SpatialVideo](Geometry/SpatialVideo/) | A sketch that leaves as something you can look into: a scene built for depth rather than for a flat frame. |
 
 ### Physics
 
@@ -82,6 +98,18 @@ What surfaces are made of, from stylized finishes to physically-based metal.
 | [Materials](Materials/Materials/) | The material library: one orbiting sphere grid wearing each built-in `Material` (`.iridescent`/`.soapBubble`/`.velvet`/`.jade`/`.toon`/`.gooch`/…), the view-angle finishes shifting as it turns. |
 | [PhysicalMaterials](Materials/PhysicalMaterials/) | The physically-based finish as a metallic × roughness sweep: `Material.physicallyBased` shades one sphere grid from tight mirror highlights to matte, dielectric to metal. |
 | [Matcap](Materials/Matcap/) | Matcaps: a whole surface-and-lighting look baked into one sphere texture, sampled by the view normal (`matcap(_:)`), for chrome, clay, wax, or a cel look with no scene lights at all. |
+| [Explorer](Materials/Explorer/) | The material explorer: every finish in the hand, on one shape, with its knobs. |
+| [SurfaceMaps](Materials/SurfaceMaps/) | The rest of the surface-map set: metallic-roughness, occlusion, and emissive maps varying a finish per pixel. |
+| [NormalMaps](Materials/NormalMaps/) | Per-pixel surface relief without per-pixel geometry. |
+| [Detail](Materials/Detail/) | Detail maps: texture that survives a close look. |
+| [Parallax](Materials/Parallax/) | One height map read two ways: parallax occlusion, and real displacement. |
+| [Triplanar](Materials/Triplanar/) | Texture for meshes that have no uvs at all, projected from three directions. |
+| [Decals](Materials/Decals/) | Pictures stamped onto the scene, projected rather than mapped. |
+| [Glass](Materials/Glass/) | Physically-based transmission and refraction. |
+| [SoapBubble](Materials/SoapBubble/) | Thin glass with a living, swirling film. |
+| [CoatAndCloth](Materials/CoatAndCloth/) | Clearcoat and sheen, the two layered finishes on the physically-based material. |
+| [Subsurface](Materials/Subsurface/) | Light that travels under the surface before it comes back out. |
+| [BrushedMetal](Materials/BrushedMetal/) | Anisotropic specular: brushed, turned, and satin finishes whose highlight is a streak instead of a dot. |
 
 ### Lighting
 
@@ -94,6 +122,14 @@ Light kinds, curated rigs, and cast shadows.
 | [Shadows](Lighting/Shadows/) | Directional cast shadows: solids drop shadows onto a floor and onto one another via `castShadows()`. |
 | [SpotShadow](Lighting/SpotShadow/) | A spot light as the shadow caster: a perspective shadow map fit to its cone, so the solids inside the beam drop crisp shadows. |
 | [PointShadow](Lighting/PointShadow/) | An omnidirectional point-light caster: a bulb at the center throws shadows in every direction (ray-traced on an RT GPU, a depth cube elsewhere). |
+| [TwoCasters](Lighting/TwoCasters/) | A warm key and a cool spot, each throwing its own shadow. |
+| [PointCasters](Lighting/PointCasters/) | A key light and two lamps in the room, all three throwing shadows. |
+| [AreaLights](Lighting/AreaLights/) | Rect, disk, and tube sources shading a small studio set. |
+| [AreaShadows](Lighting/AreaShadows/) | A softbox panel casting shadows whose softness is its size. |
+| [LightShaping](Lighting/LightShaping/) | Photometric profiles and a projected cookie, the two ways a real fixture shapes its beam. |
+| [VolumetricLight](Lighting/VolumetricLight/) | Beams, gobos, and shafts you can see in the air. |
+| [Caustics](Lighting/Caustics/) | The light a glass or a polished metal focuses onto what is around it. |
+| [GlobalIllumination](Lighting/GlobalIllumination/) | Light that bounces, so a red wall reddens what stands beside it. |
 
 ### Environments
 
@@ -106,6 +142,8 @@ Image-based lighting: HDRIs bundled, downloaded, loaded from a URL, or synthesiz
 | [HighResEnvironment](Environments/HighResEnvironment/) | `highRes(_:)` fetches a sharper 2K/4K/8K backdrop for a bundled environment on first run (the 1K shows meanwhile), lighting unchanged. |
 | [EnvironmentURL](Environments/EnvironmentURL/) | An environment loaded from any equirectangular HDRI URL (`Environment.hdri(downloadURL:)`), downloaded once and cached. |
 | [ProceduralSky](Environments/ProceduralSky/) | A zero-asset daylight dome: `environment(.sky(...))` synthesizes a physically-based sky at runtime and sweeps its sun through a full day. |
+| [Cloudscape](Environments/Cloudscape/) | A raymarched cloudscape over the procedural sky. |
+| [LiveEnvironment](Environments/LiveEnvironment/) | A live camera environment: the room the sketch is in lights the scene. |
 
 ### Effects
 
@@ -117,6 +155,16 @@ Scene-wide realism passes over the 3D frame.
 | [AmbientOcclusion](Effects/AmbientOcclusion/) | Screen-space ambient occlusion from the scene's own depth and normals: the soft darkening in crevices and contact gaps that grounds a brightly lit scene. |
 | [ScreenSpaceReflections](Effects/ScreenSpaceReflections/) | Surfaces reflecting the scene around them: SSR traced over the frame, on a ring of reflective spheres in different metal finishes. |
 | [RayTracedReflections](Effects/RayTracedReflections/) | Metals mirroring the *actual* scene (off-screen geometry included, none of SSR's streaks) by tracing reflection rays into the image-based lighting. Needs a ray-tracing GPU and an environment. |
+| [ContactShadows](Effects/ContactShadows/) | The fine dark seam that seats an object on the surface it stands on. |
+| [GlossyReflections](Effects/GlossyReflections/) | A satin surface shows the room rather than the sky. |
+| [MirrorTunnel](Effects/MirrorTunnel/) | How far a reflection is allowed to travel (`reflectionBounces`). |
+| [Fog](Effects/Fog/) | Distance and height atmosphere over a colonnade. |
+| [AerialPerspective](Effects/AerialPerspective/) | The depth cue that sells scale outdoors: air itself, between you and the far hill. |
+| [MotionBlur](Effects/MotionBlur/) | The streak a real camera's open shutter leaves on something moving. |
+| [TemporalAA](Effects/TemporalAA/) | Edges refined past MSAA by accumulating jittered frames. |
+| [Upscaling](Effects/Upscaling/) | Render small, reconstruct full size, keep the frame rate. |
+| [LensFlare](Effects/LensFlare/) | The light a camera adds to a picture all by itself. |
+| [PathTraced](Effects/PathTraced/) | Tune the scene live, then render the same frame offline with a path tracer. |
 
 ### Raymarching
 
@@ -138,6 +186,10 @@ The 3D SDF combinators: fields that merge, sphere-traced beside the meshes.
 | [RaymarchedReceiveShadow](Raymarching/RaymarchedReceiveShadow/) | A field *receiving* a mesh's cast shadow: the traced surface samples the shadow map where the mesh's shadow lands. |
 | [RaymarchedPointCast](Raymarching/RaymarchedPointCast/) | Field→mesh shadows under a *point* light: with no 2D map to render into, the lit mesh fragments march the field inline toward the light. |
 | [RaymarchedPointReceive](Raymarching/RaymarchedPointReceive/) | Mesh→field shadows under a *point* light: the field samples the shadow cube (or, on an RT GPU, the acceleration structure) at its hit. |
+| [RaymarchedClay](Raymarching/RaymarchedClay/) | The sculpt block: combine mode and melt amount held as state, so a form reads top to bottom like working clay. |
+| [RaymarchedJoinery](Raymarching/RaymarchedJoinery/) | Machined joints and hardware: chamfered and stepped unions, a hanging chain, a capped-torus hook. |
+| [RaymarchedDetailing](Raymarching/RaymarchedDetailing/) | The detailing ops: fluted seams, engraved rings, grooved bands, beading, and a pipe bead left hanging where two bodies crossed. |
+| [RaymarchedDistort](Raymarching/RaymarchedDistort/) | The sculpting distortions: twisted, bent, displaced, and roughened, one plinth each. |
 
 ### Depth
 

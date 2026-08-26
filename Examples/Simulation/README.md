@@ -26,5 +26,11 @@ Systems that evolve on the GPU each frame: the built-in `Sim` field catalog (sta
 | [Physarum](Physarum/Sketch.swift) | slime-mold agents growing branching trail networks (`physarum(...)`) |
 | [ParticleFluid](ParticleFluid/Sketch.swift) | a box of water made of particles, dam break to splash to pool, drag to grab (`particleFluid(...)`) |
 | [SoftBodies](SoftBodies/Sketch.swift) | shape-matched jelly blobs tumbling into a pile, drag to knead (`softBodies(...)`) |
+| [Swarm](Swarm/Sketch.swift) | steering at scale: 30,000 creatures deciding where to go from the same short list of urges, worked out on the GPU, so the same weights make a flock, a crowd, or a drifting cloud (`swarm(...)`) |
+| [SwarmChemistry](SwarmChemistry/Sketch.swift) | every particle carries its own copy of the rule it moves by, and on contact one copy overwrites the other: a recipe spreads because the particles holding it keep meeting others and winning |
+| [ParticleLenia](ParticleLenia/Sketch.swift) | no force law at all: an energy field, and particles walking downhill on it, with a ring-shaped kernel reading how crowded each one is |
+| [Attractor](Attractor/Sketch.swift) | a strange attractor as moving material rather than a still curve: a million particles integrating the same velocity field on the GPU, pulled onto the shape and then streaming along it |
+| [Evolution](Evolution/Sketch.swift) | thirty thousand attempts at one journey, none of which knows the route: a genome is a list of pushes, whoever lands nearest is likelier to be a parent, and the route is found in a dozen generations |
+| [Breeding](Breeding/Sketch.swift) | evolution with nobody keeping score: sixteen ornaments drawn from eight numbers each, and the only thing deciding who has children is which ones you liked looking at |
 
 Run one with `swift run Example-Simulation-<Name>`, e.g. `swift run Example-Simulation-ParticleFluid`.

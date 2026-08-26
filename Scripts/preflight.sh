@@ -17,7 +17,7 @@
 # What runs when:
 #   Sources/, External/, Package.*, or figure sketches changed
 #       -> Scripts/guide-figures.sh (the probe decides how much renders)
-#   any .md prose or any image changed
+#   any .md prose, any image, or anything under Examples/ changed
 #       -> Scripts/check-links.sh and Scripts/guide-coverage.sh
 #   Guide/ or Docs/ prose changed
 #       -> Scripts/prose-lint.sh over just those files
@@ -64,6 +64,7 @@ framework=$(grep -E '^(Sources/|External/|Package\.(swift|resolved)$)' <<<"$chan
 figures=$(grep -E '^(Guide|Docs)/Figures/' <<<"$changed")
 images=$(grep -E '^(Guide|Docs)/Images/' <<<"$changed")
 prose=$(grep -E '\.md$' <<<"$changed")
+examples=$(grep -E '^Examples/' <<<"$changed")
 reader_prose=$(grep -E '^(Guide|Docs)/.*\.md$' <<<"$changed" | grep -vE '^Guide/(PLAN|AUTHORING)\.md$')
 
 # The figure gate: a framework change may move any figure (the probe decides),
@@ -77,12 +78,13 @@ else
 fi
 
 # Navigation and coverage read the whole tree in seconds, so any prose or
-# image change buys both.
-if [[ -n "$prose" || -n "$images" || $milestone -eq 1 ]]; then
+# image change buys both. A new example is a navigation change too: its folder
+# appears and the group README does not follow it by itself.
+if [[ -n "$prose" || -n "$images" || -n "$examples" || $milestone -eq 1 ]]; then
     run "check-links" Scripts/check-links.sh
     run "guide-coverage" Scripts/guide-coverage.sh
 else
-    skip "check-links and guide-coverage" "no prose or image change"
+    skip "check-links and guide-coverage" "no prose, image, or example change"
 fi
 
 # Vale, scoped to the reader-facing files actually touched.
