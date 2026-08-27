@@ -30,7 +30,8 @@ import CHosekWilkie   // ollin_hosek_rgb_configs, the procedural-sky coefficient
 /// Main-actor isolated: it's created and driven from the main thread (the
 /// `MTKViewDelegate` draw callback and the headless export path). The only work
 /// that intentionally runs off-actor is the GPU completed-handler, which signals
-/// `frameBoundary` (a `Sendable` semaphore) and touches nothing else.
+/// `frameBoundary` (a `Sendable` semaphore), drops the frame count that mirrors
+/// it, records the GPU time, and touches nothing else.
 @MainActor
 final class MetalRenderer {
 
@@ -599,6 +600,42 @@ final class MetalRenderer {
     /// slot is grown on demand to keep steady-state frames allocation-free.
     private static let maxFramesInFlight = 3
     private let frameBoundary = DispatchSemaphore(value: MetalRenderer.maxFramesInFlight)
+    /// How many of those slots the GPU still holds, kept beside the semaphore
+    /// because a semaphore cannot be asked: waiting on it is the only way to
+    /// learn, and that wait lands on whichever thread starts the frame. On the
+    /// live path that is the main thread, which is also the one AppKit and
+    /// SwiftUI run on, so a frame the GPU has no room for freezes the window
+    /// rather than merely slowing the picture. `canStartFrame` is the question
+    /// asked instead; every slot claimed and every slot handed back below moves
+    /// this with the semaphore, the GPU's completed handler included.
+    private let framesInFlight = OSAllocatedUnfairLock(initialState: 0)
+    /// Whether a frame can start without the caller waiting on the GPU.
+    ///
+    /// False means every buffer in the ring is still in flight. A caller that
+    /// draws anyway is not wrong, only blocked: it stops until the GPU hands a
+    /// slot back. The live path asks first and skips the whole refresh instead,
+    /// so a sketch heavy enough to fall behind gives slow frames and a window
+    /// that still answers the mouse, rather than a picture and a window that
+    /// both stop. Nothing else in the frame is skipped by asking: a skipped
+    /// refresh does not draw, so it has nothing to throw away.
+    var canStartFrame: Bool {
+        framesInFlight.withLock { $0 } < MetalRenderer.maxFramesInFlight
+    }
+
+    /// Take a slot in the ring, blocking until one is free. Paired with
+    /// `returnFrameSlot()`, and the two must stay in lockstep or the count the
+    /// live path reads drifts from the semaphore it mirrors.
+    private func takeFrameSlot() {
+        frameBoundary.wait()
+        framesInFlight.withLock { $0 += 1 }
+    }
+
+    /// Hand a slot back on a frame that encoded nothing. The GPU's own
+    /// completed handler does the same pair inline, since it runs off-actor.
+    private func returnFrameSlot() {
+        framesInFlight.withLock { $0 -= 1 }
+        frameBoundary.signal()
+    }
     var vertexBuffers: [MTLBuffer?] = Array(repeating: nil, count: MetalRenderer.maxFramesInFlight)
     /// Parallel ring for SDF instance data, advanced with `frameIndex` alongside
     /// `vertexBuffers` (one semaphore gates both — they're written and read
@@ -1629,7 +1666,7 @@ final class MetalRenderer {
         profile.resetCounts()
         profile.batches = drawer.batches.count
         let waitStart = CACurrentMediaTime()
-        frameBoundary.wait()
+        takeFrameSlot()
         let encodeStart = CACurrentMediaTime()
         profile.waitMS = (encodeStart - waitStart) * 1000
         frameIndex = (frameIndex + 1) % MetalRenderer.maxFramesInFlight
@@ -1678,7 +1715,7 @@ final class MetalRenderer {
                                                width: renderWidth, height: renderHeight)
 
         guard let commandBuffer = commandQueue.makeCommandBuffer() else {
-            frameBoundary.signal()   // nothing encoded; hand the slot back
+            returnFrameSlot()   // nothing encoded; hand the slot back
             return
         }
         encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
@@ -1810,17 +1847,18 @@ final class MetalRenderer {
             width: renderWidth, height: renderHeight, taaJitter: taaJitter)
 
         guard let geomEncoder = countedEncoder(commandBuffer, geomPass, caller: "canvas") else {
-            frameBoundary.signal()   // nothing encoded; hand the slot back
+            returnFrameSlot()   // nothing encoded; hand the slot back
             return
         }
         // Runs off the main actor when the GPU finishes, so it touches only the
         // semaphore and the lock. The GPU's own timestamps are the honest half
         // of the frame split: everything else here is measured on the CPU.
-        commandBuffer.addCompletedHandler { [frameBoundary, gpuFrameMS] buffer in
+        commandBuffer.addCompletedHandler { [frameBoundary, framesInFlight, gpuFrameMS] buffer in
             // Read the timestamps out first: the command buffer is not `Sendable`,
             // so it must not be captured by the lock's own closure.
             let ms = (buffer.gpuEndTime - buffer.gpuStartTime) * 1000
             gpuFrameMS.withLock { $0 = ms }
+            framesInFlight.withLock { $0 -= 1 }
             frameBoundary.signal()
         }
 
@@ -1933,7 +1971,7 @@ final class MetalRenderer {
         profile.resetCounts()
         profile.batches = drawer.batches.count
         let waitStart = CACurrentMediaTime()
-        frameBoundary.wait()
+        takeFrameSlot()
         let encodeStart = CACurrentMediaTime()
         profile.waitMS = (encodeStart - waitStart) * 1000
         frameIndex = (frameIndex + 1) % MetalRenderer.maxFramesInFlight
@@ -1941,7 +1979,7 @@ final class MetalRenderer {
         guard let pass = accumulationPass(drawer, width: width, height: height),
               let resolve = accumResolve,
               let commandBuffer = commandQueue.makeCommandBuffer() else {
-            frameBoundary.signal()      // nothing encoded; hand the slot back
+            returnFrameSlot()      // nothing encoded; hand the slot back
             return
         }
         // Clipping works while accumulating too: the stencil is per-frame (cleared
@@ -1950,12 +1988,13 @@ final class MetalRenderer {
                                                width: width, height: height)
         encodeCompute(drawer, into: commandBuffer)   // sim steps before the render pass
         guard let encoder = countedEncoder(commandBuffer, pass, caller: "canvas (accumulating)") else {
-            frameBoundary.signal()      // nothing encoded; hand the slot back
+            returnFrameSlot()      // nothing encoded; hand the slot back
             return
         }
-        commandBuffer.addCompletedHandler { [frameBoundary, gpuFrameMS] buffer in
+        commandBuffer.addCompletedHandler { [frameBoundary, framesInFlight, gpuFrameMS] buffer in
             let ms = (buffer.gpuEndTime - buffer.gpuStartTime) * 1000
             gpuFrameMS.withLock { $0 = ms }
+            framesInFlight.withLock { $0 -= 1 }
             frameBoundary.signal()
         }
 

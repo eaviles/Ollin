@@ -133,6 +133,12 @@ let r = 120 + sin(time) * 40            // animate against the clock
 drawCircle(width / 2, height / 2, r)
 ```
 
+A frame heavier than one display refresh drops the refreshes it cannot serve,
+rather than queueing them. `draw()` is not called for a dropped refresh, so
+`frameCount` counts only the frames drawn, and `deltaTime` reports the real gap.
+The window keeps answering the mouse while the picture runs slow, and motion
+scaled by `deltaTime` still runs at the right speed.
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../../Guide/Images/03-MotionAndTime/DeltaTime-dark.jpg">
   <img src="../../Guide/Images/03-MotionAndTime/DeltaTime.jpg" alt="Three dotted strips comparing one second of motion: a fixed per-frame step at 60 fps, the same step at 120 fps reaching twice as far, and a deltaTime-scaled step landing back in line" width="680">

@@ -58,6 +58,11 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     private let renderer: MetalRenderer
     private weak var view: MTKView?
 
+    /// Whether the GPU has room for another frame: the question `draw(in:)`
+    /// asks before it starts one, so a refresh it cannot take is dropped
+    /// rather than waited on.
+    var canStartFrame: Bool { renderer.canStartFrame }
+
     /// The built-in stats observer (overlay + inspector), kept here so it can be
     /// re-attached to each freshly reloaded sketch — extensions otherwise reset
     /// with the new instance. Set via `observeStats(into:)`; nil for headless runs.
@@ -877,6 +882,22 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             pendingSetupRerun = false
             sketch.setup()            // in-place asset reload; clock keeps running
         }
+
+        // A refresh the GPU has no room for is dropped whole, here, before the
+        // sketch draws anything. Starting it instead would park this thread in
+        // the frame ring until the GPU handed a slot back, and this thread is
+        // the one the window's own controls run on: a frame heavy enough to
+        // fall behind would take the mouse and the inspector down with the
+        // frame rate. Dropped early, a heavy sketch gives slow frames and a
+        // window that still answers. The clock is untouched (it is real time,
+        // read at the top of the next refresh), and nothing is drawn and
+        // thrown away, which is what an accumulating canvas needs.
+        //
+        // A take is the exception, playing or recording: a replay consumes one
+        // recorded frame per refresh and a recording claims to hold every frame
+        // it drew, so both want the wait rather than the gap.
+        let carryingATake = sketch.takePlayer != nil || sketch.takeRecorder != nil
+        guard renderer.canStartFrame || carryingATake else { return }
 
         // The clock is the sum of its own steps, each one capped (see
         // `longestFrameStep`), so a gap in the frames is a pause rather than a

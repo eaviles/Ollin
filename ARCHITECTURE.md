@@ -99,6 +99,29 @@ geometry on screen, so the ring (`maxFramesInFlight` slots, a frame-boundary
 semaphore) hands each frame its own buffer. This is load-bearing: do not collapse
 it back to one shared buffer.
 
+**A refresh the ring cannot take is dropped rather than waited on.** The live
+frame runs on the main thread, which is also the thread AppKit and SwiftUI run
+the window's own controls on, so waiting for the ring there stops the window and
+not only the picture. `MetalRenderer.canStartFrame` answers the question without
+waiting (a frame count moved in lockstep with the semaphore, including in the
+GPU's completed handler, because a semaphore can only be asked by waiting on
+it), and `SketchRunner.draw(in:)` asks it at the top, before `advance` and
+`performDraw`, so a dropped refresh costs nothing and discards nothing. A take
+is the exception, playing or recording: a replay consumes one recorded frame per
+refresh, so it waits.
+
+The defect this closes presented as a hang: in the scene explorer, switching the
+camera to the file's own made the whole app unresponsive, and a sample put the
+main thread 93% inside `nextDrawable` (the drawable is taken before the ring, so
+it takes the blame). Measured headlessly at 2160², the frame under that camera
+costs ~86 ms against ~21 ms from the orbit camera, and the difference is almost
+all one thing: the scene's **point** light, whose caster is shadowed by tracing
+a visibility ray per pixel. The close camera fills the picture with lit surface,
+so the ray count rises with the coverage. The point light alone adds ~40 ms
+where the spot adds ~4 ms and the directional ~7 ms, and this GPU (M2) traces in
+software. Six times the cost is a low frame rate, not a hang. The freeze was the
+ring, and only the ring.
+
 **Compositing is linear-light, with a single present pass.** Geometry composites
 into a linear `rgba16Float` intermediate, so the hardware blends and resolves MSAA
 physically; a final present pass tone-maps and dithers that float frame down to
