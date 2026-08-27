@@ -17,7 +17,7 @@ struct VideoExportTests {
 
     @Test(.enabled(if: Snapshot.hasMetal))
     func h264ExportWritesPlayableMP4() async throws {
-        let path = NSTemporaryDirectory() + "ollin-video-test.mp4"
+        let path = ollinTempPath("ollin-video-test.mp4")
         defer { try? FileManager.default.removeItem(atPath: path) }
         OllinApp.exportVideo(MovingDot(), to: path, frames: 12, fps: 30)
 
@@ -33,7 +33,7 @@ struct VideoExportTests {
 
     @Test(.enabled(if: Snapshot.hasMetal))
     func hevcExportAtABitrateWritesQuickTime() async throws {
-        let path = NSTemporaryDirectory() + "ollin-video-test.mov"
+        let path = ollinTempPath("ollin-video-test.mov")
         defer { try? FileManager.default.removeItem(atPath: path) }
         OllinApp.exportVideo(MovingDot(), to: path, frames: 12, fps: 30,
                              codec: .hevc, bitsPerSecond: 2_000_000)
@@ -46,7 +46,7 @@ struct VideoExportTests {
 
     @Test(.enabled(if: Snapshot.hasMetal))
     func gifExportLoopsAndDownscales() throws {
-        let path = NSTemporaryDirectory() + "ollin-gif-test.gif"
+        let path = ollinTempPath("ollin-gif-test.gif")
         defer { try? FileManager.default.removeItem(atPath: path) }
         // 25 fps is a whole-centisecond rate (4/100s), so the frame count is
         // used exactly as requested.

@@ -389,8 +389,7 @@ struct DataFeedTests {
     /// Every test above answers inside `URLSession`. This one goes all the way
     /// through it, at the one address that needs nothing running.
     @Test func readsARealURLAndNoticesItChange() async throws {
-        let folder = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("ollin-feed\(StubServer.claimPath().dropFirst(5))")
+        let folder = ollinTempURL("ollin-feed\(StubServer.claimPath().dropFirst(5))")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: folder) }
 

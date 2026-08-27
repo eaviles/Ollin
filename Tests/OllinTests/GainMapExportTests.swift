@@ -73,7 +73,7 @@ struct GainMapExportTests {
     }
 
     private func temporary(_ name: String) -> URL {
-        URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("ollin-gainmap-\(name)")
+        ollinTempURL("ollin-gainmap-\(name)")
     }
 
     /// The frame the renderer produced, as floats, so a file can be compared

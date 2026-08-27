@@ -118,7 +118,7 @@ struct ExportMetadataTests {
                                          bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(),
                                          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
         let image = try #require(ctx.makeImage())
-        let path = NSTemporaryDirectory() + "ollin-metadata-test.png"
+        let path = ollinTempPath("ollin-metadata-test.png")
         defer { try? FileManager.default.removeItem(atPath: path) }
         let recipe = #"{"tool":"Ollin","seed":7}"#
         #expect(OllinApp.writePNG(image, to: path, recipe: recipe))
@@ -131,7 +131,7 @@ struct ExportMetadataTests {
 
     @Test(.enabled(if: Snapshot.hasMetal))
     func videoCarriesTheRecipe() async throws {
-        let path = NSTemporaryDirectory() + "ollin-metadata-test.mp4"
+        let path = ollinTempPath("ollin-metadata-test.mp4")
         defer { try? FileManager.default.removeItem(atPath: path) }
         OllinApp.exportVideo(Seeded(), to: path, frames: 4, fps: 30)
         let asset = AVURLAsset(url: URL(fileURLWithPath: path))

@@ -147,15 +147,46 @@ final class ScriptedCarrier: @unchecked Sendable {
         func send(_ text: String) { log.withLock { $0.sent.append(text) } }
     }
 
-    private let made = OSAllocatedUnfairLock(initialState: [Transport]())
+    private struct Dialled {
+        var made: [Transport] = []
+        var waiting: [(index: Int, resume: CheckedContinuation<Transport, Never>)] = []
+    }
+    private let dialled = OSAllocatedUnfairLock(initialState: Dialled())
 
-    var transports: [Transport] { made.withLock { $0 } }
+    var transports: [Transport] { dialled.withLock { $0.made } }
 
     var factory: PushTransportFactory {
-        { [made] request, deliver in
+        { [dialled] request, deliver in
             let transport = Transport(deliver: deliver)
-            made.withLock { $0.append(transport) }
+            let due: [(CheckedContinuation<Transport, Never>, Transport)] = dialled.withLock { state in
+                state.made.append(transport)
+                let count = state.made.count
+                let ready = state.waiting.filter { $0.index < count }
+                state.waiting.removeAll { $0.index < count }
+                return ready.map { ($0.resume, state.made[$0.index]) }
+            }
+            // Resumed outside the lock: a continuation runs its caller, and
+            // that caller reaching back into the carrier would deadlock.
+            for (resume, transport) in due { resume.resume(returning: transport) }
             return transport
+        }
+    }
+
+    /// The transport of the `index`th dial, awaited rather than polled.
+    ///
+    /// A redial is a dispatch timer, and a full run can leave one unserviced
+    /// for far longer than it asked to wait, so a deadline over it measures how
+    /// busy the machine is rather than whether the feed redialled. This resumes
+    /// the moment the feed dials, however late that is; the suite's time limit
+    /// is what catches a feed that never does.
+    func dial(_ index: Int) async -> Transport {
+        await withCheckedContinuation { continuation in
+            let already: Transport? = dialled.withLock { state in
+                if index < state.made.count { return state.made[index] }
+                state.waiting.append((index, continuation))
+                return nil
+            }
+            if let already { continuation.resume(returning: already) }
         }
     }
 }
@@ -178,7 +209,12 @@ final class ScriptedCarrier: @unchecked Sendable {
 /// on a machine doing nothing at all. Measured that way: eight of eight pool
 /// threads in `semaphore_wait_trap`, the process at 2% CPU, seven tests
 /// timing out together on a stopwatch none of them got to read.
-@Suite
+/// The time limit is a hang backstop, not a performance expectation. These
+/// tests take about 2.6 s together on their own, and minutes inside a full run
+/// while they queue behind the render suites, so it is sized to catch a feed
+/// that never dials rather than a machine that is busy. `dial(_:)` above is
+/// what has no deadline of its own.
+@Suite(.timeLimit(.minutes(5)))
 struct PushFeedTests {
 
     struct Timeout: Error {}
@@ -416,7 +452,7 @@ struct PushFeedTests {
 
         // The redial makes a fresh transport, and the greeting is said to it
         // too, which is what keeps a subscription alive across the blink.
-        let second = try await waitFor { carrier.transports.count == 2 ? carrier.transports[1] : nil }
+        let second = await carrier.dial(1)
         second.deliver(.opened)
         #expect(second.sent == [#"{"op": "subscribe"}"#])
         second.deliver(.message(Data("b".utf8), isText: true, event: nil, id: nil))
@@ -440,7 +476,7 @@ struct PushFeedTests {
         first.deliver(.closed("the connection closed"))
         #expect(feed.failures == 1)
 
-        _ = try await waitFor { carrier.transports.count == 2 ? true : nil }
+        _ = await carrier.dial(1)
         try await Task.sleep(nanoseconds: 1_500_000_000)
         #expect(carrier.transports.count == 2)   // one redial, not two
     }
@@ -646,8 +682,7 @@ struct PushFeedTests {
     /// Every stream test above answers inside `URLSession`. This one goes all
     /// the way through it, at the one address that needs nothing running.
     @Test func readsARealEventStreamFile() async throws {
-        let folder = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("ollin-push\(StreamStub.claimPath().dropFirst(5))")
+        let folder = ollinTempURL("ollin-push\(StreamStub.claimPath().dropFirst(5))")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: folder) }
 
