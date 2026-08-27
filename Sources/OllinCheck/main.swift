@@ -15,12 +15,17 @@ your own line, what the shader is, the parameters it reads, and the files it inc
   --as <shape>   compile it as a generator (no input layer), a filter (one), or a
                  combine (two). Left off, the shape follows from the layer readers
                  the shader calls, which is the same rule the effect graph uses.
+  --using <list> splice only these sections of Ollin's shader library, matching the
+                 `using:` a Shader takes: all (the default), none, or a comma list
+                 of color, hash, noise, sdf, domain, visual.
 
 Exits nonzero when any shader fails.
 """
 
 var paths: [String] = []
 var given: ShaderCheckReport.Shape?
+var modules: Shader.Modules = .all
+var modulesWereGiven = false
 var arguments = Array(CommandLine.arguments.dropFirst())
 
 while !arguments.isEmpty {
@@ -37,6 +42,16 @@ while !arguments.isEmpty {
         }
         arguments.removeFirst()
         given = shape
+    case "--using":
+        guard let list = arguments.first, let found = ShaderCheck.modules(named: list) else {
+            let names = "color, hash, noise, sdf, domain, visual"
+            FileHandle.standardError.write(Data(
+                "ollin check: --using takes all, none, or a comma list of \(names)\n".utf8))
+            exit(2)
+        }
+        arguments.removeFirst()
+        modules = found
+        modulesWereGiven = true
     default:
         if argument.hasPrefix("-") {
             FileHandle.standardError.write(Data("ollin check: unknown flag \(argument)\n".utf8))
@@ -67,7 +82,7 @@ func parameterLine(_ indices: [Int]) -> String {
 
 var failures = 0
 for path in paths {
-    let report = ShaderCheck.check(path: path, as: given)
+    let report = ShaderCheck.check(path: path, as: given, using: modules)
     guard report.ok else {
         failures += 1
         let count = report.diagnostics.split(separator: "\n").filter { $0.contains(": error:") }.count
@@ -79,6 +94,10 @@ for path in paths {
     let because = report.shapeWasGiven ? "as you asked" : "because \(report.shape.reason)"
     print("  a \(report.shape.rawValue), \(because)")
     print("  \(parameterLine(report.parameters))")
+    if modulesWereGiven {
+        let names = ShaderCheck.names(of: report.modules)
+        print("  library: \(names.isEmpty ? "none of the optional sections" : names.joined(separator: ", "))")
+    }
     for file in report.included {
         print("  includes \(file)")
     }

@@ -780,27 +780,51 @@ extension MetalRenderer {
     /// layer(s) for the filter (one) and combine (two) variants, so the user reads
     /// them with `sample(info, uv)` / `sampleAux(info, uv)`, or with the `…Raw` pair
     /// when the layer holds data rather than a picture.
+    ///
+    /// **The readers are functions, and that is load-bearing.** They were macros once,
+    /// which spelled the same thing but obeyed no scope: `sample` is a member function
+    /// on every Metal texture type (Ollin's own segments call it 497 times), so a
+    /// function-like `#define sample(info, p)` rewrote `t.sample(s, uv)` in anything
+    /// the shader pulled in, into a member that does not exist, and reported it as
+    /// three errors naming symbols the author never wrote. A different argument count
+    /// failed in the preprocessor instead, and a helper of the author's own named
+    /// `sample` could not be declared at all. As free functions the same spellings
+    /// resolve by overload, so a member call is never a candidate and a helper of any
+    /// other signature is simply another overload. `info` is taken by reference
+    /// because the struct carries the whole parameter block.
     private static func userShaderWrapperHead(_ variant: UserShaderVariant) -> String {
         let layerFields: String
-        let sampleMacros: String
+        let sampleReaders: String
         switch variant {
         case .generator:
             layerFields = ""
-            sampleMacros = ""
+            sampleReaders = ""
         case .filter:
             layerFields = "    texture2d<float> in0; sampler in0samp;\n"
-            sampleMacros = """
-            #define sample(info, p) ollin_layer_sample((info).in0, (info).in0samp, (p))
-            #define sampleRaw(info, p) ollin_layer_read((info).in0, (info).in0samp, (p))
+            sampleReaders = """
+            inline float4 sample(thread const ShaderInfo &info, float2 p) {
+                return ollin_layer_sample(info.in0, info.in0samp, p);
+            }
+            inline float4 sampleRaw(thread const ShaderInfo &info, float2 p) {
+                return ollin_layer_read(info.in0, info.in0samp, p);
+            }
 
             """
         case .combine:
             layerFields = "    texture2d<float> in0; sampler in0samp;\n    texture2d<float> in1; sampler in1samp;\n"
-            sampleMacros = """
-            #define sample(info, p) ollin_layer_sample((info).in0, (info).in0samp, (p))
-            #define sampleAux(info, p) ollin_layer_sample((info).in1, (info).in1samp, (p))
-            #define sampleRaw(info, p) ollin_layer_read((info).in0, (info).in0samp, (p))
-            #define sampleAuxRaw(info, p) ollin_layer_read((info).in1, (info).in1samp, (p))
+            sampleReaders = """
+            inline float4 sample(thread const ShaderInfo &info, float2 p) {
+                return ollin_layer_sample(info.in0, info.in0samp, p);
+            }
+            inline float4 sampleAux(thread const ShaderInfo &info, float2 p) {
+                return ollin_layer_sample(info.in1, info.in1samp, p);
+            }
+            inline float4 sampleRaw(thread const ShaderInfo &info, float2 p) {
+                return ollin_layer_read(info.in0, info.in0samp, p);
+            }
+            inline float4 sampleAuxRaw(thread const ShaderInfo &info, float2 p) {
+                return ollin_layer_read(info.in1, info.in1samp, p);
+            }
 
             """
         }
@@ -836,8 +860,13 @@ extension MetalRenderer {
             uint paramCount;
             float4 params[OLLIN_SHADER_PARAM_ROWS];
         \(layerFields)};
-        #define param(info, i) ((info).params[(i) >> 2][(i) & 3])
-        \(sampleMacros)
+        inline float param(thread const ShaderInfo &info, int i) {
+            return info.params[i >> 2][i & 3];
+        }
+        inline float param(thread const ShaderInfo &info, uint i) {
+            return info.params[i >> 2][i & 3];
+        }
+        \(sampleReaders)
         """
     }
 

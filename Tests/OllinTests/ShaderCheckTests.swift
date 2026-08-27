@@ -166,6 +166,94 @@ struct ShaderCheckTests {
         #expect(asGenerator.shape == .generator)
     }
 
+    // MARK: The readers are functions, not macros
+
+    /// `sample` is a member function on every Metal texture type, and Ollin's own
+    /// segments call it hundreds of times. While the readers were macros, a
+    /// function-like `#define sample(info, p)` rewrote any two-argument `t.sample(s, uv)`
+    /// in an included file into a member that does not exist. As a free function it is
+    /// never a candidate for member-call syntax, so the call goes through untouched.
+    @Test(.enabled(if: hasMetal))
+    func aTextureMemberSampleIsLeftAlone() throws {
+        let dir = try folder(["member.metal": """
+        float4 shade(float2 uv, ShaderInfo info) {
+            texture2d<float> t = info.in0;
+            sampler s = info.in0samp;
+            return t.sample(s, uv);
+        }
+        """])
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let report = ShaderCheck.check(path: dir.appendingPathComponent("member.metal").path,
+                                       as: .filter)
+        #expect(report.ok, "\(report.diagnostics)")
+    }
+
+    /// The same call with a sampling option takes three arguments. A macro refused that
+    /// outright ("too many arguments provided to function-like macro invocation"), which
+    /// is worse than a wrong rewrite, since the call is ordinary Metal.
+    @Test(.enabled(if: hasMetal))
+    func aTextureSampleWithAnOptionIsLeftAlone() throws {
+        let dir = try folder(["level.metal": """
+        float4 shade(float2 uv, ShaderInfo info) {
+            texture2d<float> t = info.in0;
+            sampler s = info.in0samp;
+            return t.sample(s, uv, level(0));
+        }
+        """])
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let report = ShaderCheck.check(path: dir.appendingPathComponent("level.metal").path,
+                                       as: .filter)
+        #expect(report.ok, "\(report.diagnostics)")
+    }
+
+    /// A shader may declare a helper of its own called `sample`. Under a macro the
+    /// declaration itself failed, whatever it meant.
+    @Test(.enabled(if: hasMetal))
+    func aHelperOfYourOwnMayBeCalledSample() throws {
+        let dir = try folder(["own.metal": """
+        float sample(float x) { return x * 2.0; }
+
+        float4 shade(float2 uv, ShaderInfo info) {
+            return float4(sample(uv.x), 0.0, 0.0, 1.0);
+        }
+        """])
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let report = ShaderCheck.check(path: dir.appendingPathComponent("own.metal").path)
+        #expect(report.ok, "\(report.diagnostics)")
+    }
+
+    // MARK: Narrowing the library
+
+    @Test func aUsingListIsReadOrRefused() {
+        #expect(ShaderCheck.modules(named: "all") == .all)
+        #expect(ShaderCheck.modules(named: "none")?.isEmpty == true)
+        #expect(ShaderCheck.modules(named: "noise") == .noise)
+        #expect(ShaderCheck.modules(named: "sdf, domain") == [.sdf, .domain])
+        #expect(ShaderCheck.modules(named: "SDF") == .sdf)
+        #expect(ShaderCheck.modules(named: "nonsense") == nil)
+        #expect(ShaderCheck.modules(named: "sdf,nonsense") == nil)
+        #expect(ShaderCheck.names(of: [.color, .sdf]) == ["color", "sdf"])
+    }
+
+    /// The point of the flag: a shader written against a narrowed library can be checked
+    /// the way it runs, rather than only against everything.
+    @Test(.enabled(if: hasMetal))
+    func aNarrowedLibraryLeavesOutWhatWasNotAskedFor() throws {
+        let dir = try folder(["noisy.metal": """
+        float4 shade(float2 uv, ShaderInfo info) {
+            return float4(float3(fbm(uv * 4.0)), 1.0);
+        }
+        """])
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let path = dir.appendingPathComponent("noisy.metal").path
+        let withNoise = ShaderCheck.check(path: path, using: .noise)
+        #expect(withNoise.ok, "\(withNoise.diagnostics)")
+        #expect(withNoise.modules == .noise)
+        let without = ShaderCheck.check(path: path, using: .sdf)
+        #expect(!without.ok)
+        #expect(without.diagnostics.contains("fbm"))
+    }
+
     // MARK: What it reads
 
     @Test func theParametersItReadsAreCollected() {

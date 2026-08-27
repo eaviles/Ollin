@@ -28,6 +28,8 @@ package struct ShaderCheckReport: Sendable {
     package let parameters: [Int]
     /// The files it pulled in, in the order they were read.
     package let included: [String]
+    /// The sections of Ollin's shader library that were spliced in.
+    package let modules: Shader.Modules
     /// The compiler's complaint, tidied and pointing at the author's own line. Empty
     /// when the shader compiled.
     package let diagnostics: String
@@ -46,14 +48,17 @@ package struct ShaderCheckReport: Sendable {
 package enum ShaderCheck {
 
     /// Check the shader in `path`. `shape` names what to compile it as; leave it off and
-    /// the checker works it out from how many layers the shader reads.
-    package static func check(path: String,
-                              as shape: ShaderCheckReport.Shape? = nil) -> ShaderCheckReport {
+    /// the checker works it out from how many layers the shader reads. `modules` is the
+    /// part of Ollin's shader library to splice, matching the `using:` a `Shader` takes,
+    /// so a shader written against a narrowed library can be checked the way it runs.
+    package static func check(path: String, as shape: ShaderCheckReport.Shape? = nil,
+                              using modules: Shader.Modules = .all) -> ShaderCheckReport {
         let full = URL(fileURLWithPath: path).standardizedFileURL.path
         func failed(_ message: String, shape: ShaderCheckReport.Shape = .generator)
             -> ShaderCheckReport {
             ShaderCheckReport(path: full, shape: shape, shapeWasGiven: false,
-                              parameters: [], included: [], diagnostics: message)
+                              parameters: [], included: [], modules: modules,
+                              diagnostics: message)
         }
         guard let text = try? String(contentsOfFile: full, encoding: .utf8) else {
             return failed("\(full): cannot read the file.")
@@ -75,12 +80,12 @@ package enum ShaderCheck {
         case .combine: variant = .combine
         }
         let (composed, offset) = MetalRenderer.composeUserShaderSource(
-            userSource: resolved.source, modules: .all, variant: variant,
+            userSource: resolved.source, modules: modules, variant: variant,
             sourceName: full, sourceStartLine: 1)
         func report(_ diagnostics: String) -> ShaderCheckReport {
             ShaderCheckReport(path: full, shape: found, shapeWasGiven: shape != nil,
                               parameters: parameters, included: resolved.included,
-                              diagnostics: diagnostics)
+                              modules: modules, diagnostics: diagnostics)
         }
         do {
             let library = try device.makeLibrary(source: composed, options: nil)
@@ -103,6 +108,34 @@ package enum ShaderCheck {
                 (error as NSError).localizedDescription, userLineOffset: offset,
                 sourceName: full, sourceStartLine: 1))
         }
+    }
+
+    /// The library sections a `--using` list names: `all`, `none`, or a comma-separated
+    /// run of section names. `nil` when a name is not one of them, so the caller can say
+    /// which names there are rather than compile against a library the author did not
+    /// ask for. `noise` implies `hash` and `visual` implies both, but the splice
+    /// resolves that itself, so the set here stays literally what was asked for.
+    package static func modules(named list: String) -> Shader.Modules? {
+        let byName: [String: Shader.Modules] = [
+            "color": .color, "hash": .hash, "noise": .noise,
+            "sdf": .sdf, "domain": .domain, "visual": .visual]
+        let trimmed = list.trimmingCharacters(in: .whitespaces).lowercased()
+        if trimmed == "all" { return .all }
+        if trimmed == "none" { return [] }
+        var found: Shader.Modules = []
+        for name in trimmed.split(separator: ",") {
+            guard let one = byName[name.trimmingCharacters(in: .whitespaces)] else { return nil }
+            found.insert(one)
+        }
+        return found.isEmpty ? nil : found
+    }
+
+    /// The names in `modules`, for a line the command prints back.
+    package static func names(of modules: Shader.Modules) -> [String] {
+        let inOrder: [(String, Shader.Modules)] = [
+            ("color", .color), ("hash", .hash), ("noise", .noise),
+            ("sdf", .sdf), ("domain", .domain), ("visual", .visual)]
+        return inOrder.filter { modules.contains($0.1) }.map(\.0)
     }
 
     /// What the shader is, from the layer readers it calls. `sampleAux` needs a second

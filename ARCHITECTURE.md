@@ -4270,7 +4270,30 @@ framework-shader reload. `ShaderInfo` is built per frame from
 `encodeEffectTargets`, so the filter/combine call sites need no `drawer`). The
 bound uniform struct `OllinShaderUniforms` is scalars-only (no array) so Swift
 fills it with the plain memberwise init; user params (up to 32 floats, read via
-the `param(info, i)` macro) ride a separate `float4` buffer at index 0.
+`param(info, i)`) ride a separate `float4` buffer at index 0.
+
+**The readers are functions, and that is load-bearing.** `param`, `sample`,
+`sampleAux`, `sampleRaw` and `sampleAuxRaw` were function-like macros until
+2026-08-27. They spelled the right thing but obeyed no scope, and `sample` is a
+member function on every Metal texture type: Ollin's own segments call it 497
+times, and survive only because the macros were emitted into the user-shader
+compile unit and the framework library is a different one. Inside a user
+shader, a `#define sample(info, p)` rewrote any two-argument `t.sample(s, uv)`
+in anything the shader included into a member that does not exist, and reported
+it as three errors naming `ollin_layer_sample`, `in0` and `in0samp`, none of
+which the author wrote. A three-argument call (`t.sample(s, uv, level(0))`,
+which is what the sampler rule asks for) failed in the preprocessor instead,
+and a helper of the author's own named `sample` could not be declared at all.
+That reached nothing until the include resolver made third-party source
+reachable, and then it hit 15 files of the first library tried. As free
+functions the same spellings resolve by overload: a member call is never a
+candidate, and a helper of any other signature is simply another overload. They
+take `thread const ShaderInfo &` rather than a value, since the struct carries
+the whole parameter block, and `param` has an `int` and a `uint` overload so a
+literal and a loop counter both bind. Verified: every one of the 52 call sites
+in the repo already passed `info` first, nothing used `param(...)` as an
+assignment target (the one thing a macro could do that a function cannot), and
+the whole snapshot table stayed byte-identical.
 
 **Friendly errors are the headline.** `Shader.init` captures its call site
 (`#filePath`/`#line` default args) and the wrapper emits

@@ -61,6 +61,16 @@ ollin check Ripple.metal --as combine
 
 The shapes are `generator`, `filter`, and `combine`. A shader compiled as the wrong shape fails, which is itself useful. It is how you find out that a shader you meant as a generator is quietly reading a layer.
 
+## Checking against a narrowed library
+
+A `Shader` can take `using:` to splice only part of Ollin's shader library, which trims compile time. Pass the same list to the check, so a shader written that way is compiled the way it runs:
+
+```sh
+ollin check Ripple.metal --using noise,sdf
+```
+
+The sections are `color`, `hash`, `noise`, `sdf`, `domain`, and `visual`, plus `all` (the default) and `none`. A helper the shader calls but did not ask for shows up as an undeclared identifier, which is the point.
+
 ## Several files at once
 
 ```sh
