@@ -4,7 +4,7 @@ import Ollin
 /// `swift run OllinLive --paramtest`: a headless check of the `@Param` model.
 /// Reflection-based discovery, auto-derived vs explicit labels, declaration
 /// order, ranges, value clamping and step snapping, the typed control family
-/// (slider / stepper / toggle / menu / color well), group + icon metadata, and
+/// (slider / stepper / toggle / menu / color well / swatch strip), group + icon metadata, and
 /// the stored-value round-trip the hosts persist across reloads. Needs no window.
 enum ParamTest {
     enum Style: String, CaseIterable, ParamOption { case dots, rings, meshLines }
@@ -27,6 +27,9 @@ enum ParamTest {
         @Param(in: 0...50) var sizes = 5.0...20.0
         @Param var caption = "hello"
         @Param var mood: LightingPreset = .standard
+        @Param var curve: Easing = .easeInOut
+        @Param(count: 1...6) var inks = Palette(.red, .white, .black)
+        @Param var fade = Ramp([.black, .white])
     }
 
     @MainActor
@@ -34,16 +37,16 @@ enum ParamTest {
         let subject = Subject()
         let params = subject.parameters()
 
-        check(params.count == 16, "expected 16 params, got \(params.count)")
+        check(params.count == 19, "expected 19 params, got \(params.count)")
         check(params.map(\.name) == ["radius", "noiseScale", "speed", "quantized",
                                      "rings", "visible", "tint", "style", "anchor",
                                      "eye", "iterations", "region", "margins",
-                                     "sizes", "caption", "mood"],
+                                     "sizes", "caption", "mood", "curve", "inks", "fade"],
               "names/order wrong: \(params.map(\.name))")
         check(params.map(\.label) == ["Radius", "Noise Scale", "Tempo", "Quantized",
                                       "Rings", "Visible", "Tint", "Style", "Anchor",
                                       "Eye", "Iterations", "Region", "Margins",
-                                      "Sizes", "Caption", "Mood"],
+                                      "Sizes", "Caption", "Mood", "Curve", "Inks", "Fade"],
               "labels wrong: \(params.map(\.label))")
         check(params[4].icon == "circle.grid.2x2", "icon metadata lost")
         check(params[4].group == "Layout" && params[5].group == "Layout" && params[0].group == nil,
@@ -120,6 +123,26 @@ enum ParamTest {
         check(subject.style == .meshLines, "menu write not reflected")
         check(menu.get() == 2, "menu selection readback wrong")
 
+        guard case .menu(let curve) = params[16].control else { fatal("curve isn't a menu") }
+        check(curve.options.contains("Ease Out Bounce"), "curve names not humanized: \(curve.options)")
+        curve.set(curve.options.firstIndex(of: "Ease Out Bounce") ?? 0)
+        check(subject.curve == .easeOutBounce, "curve write not reflected")
+        check(subject.curve(1) == 1, "the picked curve should still shape a value")
+
+        guard case .swatches(let inks) = params[17].control else { fatal("inks isn't a swatch strip") }
+        check(inks.style == .blocks && inks.count == 1...6, "swatch strip metadata wrong")
+        check(inks.get().map(\.position) == [0, 0.5, 1], "palette colors should spread evenly")
+        inks.set([.init(position: 0, color: .blue), .init(position: 1, color: .green)])
+        check(subject.inks.colors == [.blue, .green], "swatch write not reflected")
+        subject.inks = Palette(.red, .white, .black, .blue, .orange, .purple, .green)
+        check(subject.inks.count == 6, "swatch count clamp failed: \(subject.inks.count)")
+
+        guard case .swatches(let fade) = params[18].control else { fatal("fade isn't a swatch strip") }
+        check(fade.style == .gradient, "a ramp should read as a band")
+        fade.set([.init(position: 0, color: .black), .init(position: 0.7, color: .red),
+                  .init(position: 1, color: .white)])
+        check(subject.fade.stops.map(\.position) == [0, 0.7, 1], "ramp stops not reflected")
+
         // Show-rules: a knob hides while its source knob keeps it inert, and the
         // inspector reads the flag through the same type-erased face.
         check(params[1].isShown, "isShown should default to true")
@@ -139,7 +162,9 @@ enum ParamTest {
                 && fresh.tint == .orange && fresh.style == .meshLines
                 && fresh.anchor == Vector2(1080, 0)
                 && fresh.region == Rectangle(x: 0, y: 0, width: 500, height: 50)
-                && fresh.sizes == 40...50 && fresh.caption == "ollin" && fresh.mood == .noir,
+                && fresh.sizes == 40...50 && fresh.caption == "ollin" && fresh.mood == .noir
+                && fresh.curve == .easeOutBounce && fresh.inks.count == 6
+                && fresh.fade.stops.map(\.position) == [0, 0.7, 1],
               "stored round-trip lost a value")
         // A payload of the wrong kind is ignored, keeping the current value
         // (the clamp checks above left radius at 0, carried by the round-trip).

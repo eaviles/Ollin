@@ -50,6 +50,9 @@ Each supported type declares itself the same way and gets the matching inspector
 | `Insets` | t/r/b/l fields | `@Param(0...200) var margins = Insets.all(40)` |
 | `ClosedRange<Double>` | two-thumb slider + min/max fields | `@Param(in: 1...60) var sizes = 6.0...24.0` |
 | `String` | text field | `@Param var caption = "hello"` |
+| `Palette` | strip of swatches | `@Param var inks = Palette(.red, .white, .black)` |
+| `Ramp` | gradient band with a handle per stop | `@Param var fade = Ramp([.black, .white])` |
+| `Easing` | pop-up menu of the named curves | `@Param var curve: Easing = .easeInOut` |
 | `ParamChoices` type | pop-up menu | `@Param var mood: LightingPreset = .standard` |
 
 A numeric value is always clamped to its range, and the property's default is the starting value. The label is derived from the property name (`noiseScale` becomes "Noise Scale"), or pass one explicitly as the first argument when the name reads poorly.
@@ -69,9 +72,34 @@ enum Style: String, CaseIterable, ParamOption { case dots, rings, meshLines }
 
 The menu shows humanized case names ("Mesh Lines"), and `optionLabel` overrides the wording. The persisted selection keys on the case *name*, so renaming a case forgets a tuned choice while reordering is safe. Ollin's own mode enums already conform, so a mode knob needs no declaration at all. `@Param var blend: BlendMode = .normal` gets its menu directly, and `StrokeCap`, `StrokeJoin`, `Colormap`, and `RenderQuality` do the same. A quality tier becomes a live dial the same way: `@Param var quality = RenderQuality.default` feeds `globalIlluminationQuality(quality)`, or its shadow, raymarch, and volumetric siblings.
 
-A type that isn't an enum but has a fixed roster of named built-ins joins the menu tier through `ParamChoices` instead. Provide `paramChoices`, a list of `(name, value)` pairs, and the inspector shows the humanized names. `LightingPreset` and `Material` conform out of the box, so `@Param var finish: Material = .glossy` puts the whole curated library on a menu. The type's `Equatable` is what lets the menu find the current selection. That requirement keeps `Easing` (a closure wrapper, no equality) out of this route, and the parameterized `Material` helpers (`.glass(...)`, `.metal(...)`, `.skin(radius:)`) stay off the menu because a menu needs fixed values.
+A type that isn't an enum but has a fixed roster of named built-ins joins the menu tier through `ParamChoices` instead. Provide `paramChoices`, a list of `(name, value)` pairs, and the inspector shows the humanized names. `LightingPreset`, `Material`, and `Easing` conform out of the box, so `@Param var finish: Material = .glossy` puts the whole curated library on a menu. The type's `Equatable` is what lets the menu find the current selection, which is why the parameterized `Material` helpers (`.glass(...)`, `.metal(...)`, `.skin(radius:)`) stay off the menu: a menu needs fixed values, so pick the nearest built-in and turn its knobs from there.
 
-The color well opens the system color panel, eyedropper included, so a sketch's palette is tunable live. The vector, rectangle, and insets forms take a range per field, and clamp each field on its own. The min/max pair stays ordered inside its `in:` bounds. Drag the minimum past the maximum, and the maximum moves along.
+The color well opens the system color panel, eyedropper included, so a sketch's ink is tunable live. The vector, rectangle, and insets forms take a range per field, and clamp each field on its own. The min/max pair stays ordered inside its `in:` bounds. Drag the minimum past the maximum, and the maximum moves along.
+
+#### Curves
+
+A shaping curve is a value like any other, so a knob can hold one. `@Param var curve: Easing = .easeInOut` gets a menu of every built-in curve, and the sketch calls it as usual:
+
+```swift
+@Param var spacing: Easing = .linear
+// …
+let r = radius * spacing(Double(i) / Double(rings - 1))
+```
+
+Each built-in carries its own name, which is what the menu selects on and what a tuned choice persists under. The three friendly aliases are the cubic curves themselves, so `.easeInOut` reads on the menu as "Ease In Out Cubic". A curve you build from a closure (`Easing { t in t * t }`) is not on the menu: it equals itself and nothing else, so the row reads as the first entry, and a reload restores that entry rather than your closure. Write a closure curve straight into the code you want it in, and leave the knob for the named ones.
+
+#### Palettes and gradients
+
+A `Palette` knob is a strip of blocks, one per color. A `Ramp` knob is one blended band with a handle per stop. Both edit the same way: click a block or a handle to select it, and the color well beside the label edits that one. The `+` and `−` buttons add and remove a color, and `count:` says how far they go:
+
+```swift
+@Param(count: 2...8) var inks = Palette(.red, .white, .black)
+@Param(count: 2...6) var fade = Ramp([.black, .white])
+```
+
+A palette's colors are spread evenly, so only their order matters. A ramp's handles drag along the band, never past their neighbors, so the order the strip shows is the order the ramp holds. The band is drawn by asking the ramp for the color at each step rather than by fading between the stops, so what you see is the blend the sketch draws, in whatever space the ramp mixes in. Editing a ramp's stops never changes that space.
+
+A palette given more colors than `count:` allows drops the extra ones from the end. A palette shorter than the lower bound is left alone, since there is no color to invent; the bound is there to stop the remove button. The [Parameters example](../../Examples/Live/Parameters/Sketch.swift) has one of each.
 
 #### Control styles
 

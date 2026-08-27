@@ -21,7 +21,7 @@ public struct RemoteParamDescriptor: Codable, Equatable, Sendable {
     public var group: String?
     public var shown: Bool
     /// One of: slider, stepper, toggle, menu, color, vector, vector3, rect,
-    /// insets, range, text.
+    /// insets, range, text, swatches.
     public var kind: String
     public var value: ParamStored
 
@@ -34,6 +34,9 @@ public struct RemoteParamDescriptor: Codable, Equatable, Sendable {
     public var options: [String]?
     public var segmented: Bool?
     public var pad: Bool?
+    /// A swatch strip that reads as one blended band (a `Ramp`) rather than
+    /// separate blocks (a `Palette`).
+    public var gradient: Bool?
     public var xLower: Double?
     public var xUpper: Double?
     public var yLower: Double?
@@ -129,6 +132,10 @@ public enum RemoteWire {
             if case .field = r.style { d.field = true }
         case .text:
             d.kind = "text"
+        case .swatches(let s):
+            d.kind = "swatches"
+            d.lower = Double(s.count.lowerBound); d.upper = Double(s.count.upperBound)
+            if case .gradient = s.style { d.gradient = true }
         }
         return d
     }

@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// A shaping curve for interpolation: maps normalized progress `0...1` onto an
 /// eased `0...1`. Use one to reshape a `lerp`, or hand it to `@Eased` to give a
@@ -14,12 +15,49 @@ import Foundation
 /// ```swift
 /// let bounceish = Easing { t in t * t * (3 - 2 * t) }
 /// ```
-public struct Easing: Sendable {
+///
+/// Every named curve carries its name, so a curve is a value you can compare,
+/// persist, and pick from a menu: `@Param var curve: Easing = .easeInOut` gets
+/// an inspector row like any other knob. Two closures cannot be compared, so a
+/// curve built from one takes a serial of its own instead: it equals itself
+/// (and every copy of itself) and nothing else.
+public struct Easing: Sendable, Equatable {
     /// The shaping function. Receives progress already clamped to `0...1`.
     public let curve: @Sendable (Double) -> Double
 
+    /// What tells one curve from another.
+    private enum Identity: Equatable, Sendable {
+        case named(String)
+        case custom(UInt64)
+    }
+    private let identity: Identity
+
+    /// Hands out one serial per curve built from a closure.
+    private static let serials = OSAllocatedUnfairLock(initialState: UInt64(0))
+
     public init(_ curve: @escaping @Sendable (Double) -> Double) {
         self.curve = curve
+        self.identity = .custom(Easing.serials.withLock { serial in
+            serial += 1
+            return serial
+        })
+    }
+
+    /// A built-in curve, which carries its name as its identity. The name is
+    /// also the key the inspector menu persists, so it must stay stable.
+    private init(_ name: String, _ curve: @escaping @Sendable (Double) -> Double) {
+        self.curve = curve
+        self.identity = .named(name)
+    }
+
+    /// The name of a built-in curve, or `nil` for one built from a closure.
+    var name: String? {
+        guard case .named(let name) = identity else { return nil }
+        return name
+    }
+
+    public static func == (lhs: Easing, rhs: Easing) -> Bool {
+        lhs.identity == rhs.identity
     }
 
     /// Shape `t` through the curve. The input `t` is clamped to `0...1` first, so
@@ -30,56 +68,56 @@ public struct Easing: Sendable {
         curve(Swift.min(Swift.max(t, 0), 1))
     }
 
-    /// Constant speed — no easing.
-    public static let linear = Easing { $0 }
+    /// Constant speed, no easing.
+    public static let linear = Easing("linear") { $0 }
 
     // MARK: Sine
 
-    public static let easeInSine = Easing { 1 - cos(($0 * .pi) / 2) }
-    public static let easeOutSine = Easing { sin(($0 * .pi) / 2) }
-    public static let easeInOutSine = Easing { -(cos(.pi * $0) - 1) / 2 }
+    public static let easeInSine = Easing("easeInSine") { 1 - cos(($0 * .pi) / 2) }
+    public static let easeOutSine = Easing("easeOutSine") { sin(($0 * .pi) / 2) }
+    public static let easeInOutSine = Easing("easeInOutSine") { -(cos(.pi * $0) - 1) / 2 }
 
     // MARK: Quadratic
 
-    public static let easeInQuad = Easing { $0 * $0 }
-    public static let easeOutQuad = Easing { 1 - (1 - $0) * (1 - $0) }
-    public static let easeInOutQuad = Easing { t in
+    public static let easeInQuad = Easing("easeInQuad") { $0 * $0 }
+    public static let easeOutQuad = Easing("easeOutQuad") { 1 - (1 - $0) * (1 - $0) }
+    public static let easeInOutQuad = Easing("easeInOutQuad") { t in
         t < 0.5 ? 2 * t * t : 1 - pow(-2 * t + 2, 2) / 2
     }
 
     // MARK: Cubic
 
-    public static let easeInCubic = Easing { $0 * $0 * $0 }
-    public static let easeOutCubic = Easing { 1 - pow(1 - $0, 3) }
-    public static let easeInOutCubic = Easing { t in
+    public static let easeInCubic = Easing("easeInCubic") { $0 * $0 * $0 }
+    public static let easeOutCubic = Easing("easeOutCubic") { 1 - pow(1 - $0, 3) }
+    public static let easeInOutCubic = Easing("easeInOutCubic") { t in
         t < 0.5 ? 4 * t * t * t : 1 - pow(-2 * t + 2, 3) / 2
     }
 
     // MARK: Quartic
 
-    public static let easeInQuart = Easing { $0 * $0 * $0 * $0 }
-    public static let easeOutQuart = Easing { 1 - pow(1 - $0, 4) }
-    public static let easeInOutQuart = Easing { t in
+    public static let easeInQuart = Easing("easeInQuart") { $0 * $0 * $0 * $0 }
+    public static let easeOutQuart = Easing("easeOutQuart") { 1 - pow(1 - $0, 4) }
+    public static let easeInOutQuart = Easing("easeInOutQuart") { t in
         t < 0.5 ? 8 * t * t * t * t : 1 - pow(-2 * t + 2, 4) / 2
     }
 
     // MARK: Quintic
 
-    public static let easeInQuint = Easing { pow($0, 5) }
-    public static let easeOutQuint = Easing { 1 - pow(1 - $0, 5) }
-    public static let easeInOutQuint = Easing { t in
+    public static let easeInQuint = Easing("easeInQuint") { pow($0, 5) }
+    public static let easeOutQuint = Easing("easeOutQuint") { 1 - pow(1 - $0, 5) }
+    public static let easeInOutQuint = Easing("easeInOutQuint") { t in
         t < 0.5 ? 16 * pow(t, 5) : 1 - pow(-2 * t + 2, 5) / 2
     }
 
     // MARK: Exponential
 
-    public static let easeInExpo = Easing { t in
+    public static let easeInExpo = Easing("easeInExpo") { t in
         t == 0 ? 0 : pow(2, 10 * t - 10)
     }
-    public static let easeOutExpo = Easing { t in
+    public static let easeOutExpo = Easing("easeOutExpo") { t in
         t == 1 ? 1 : 1 - pow(2, -10 * t)
     }
-    public static let easeInOutExpo = Easing { t in
+    public static let easeInOutExpo = Easing("easeInOutExpo") { t in
         if t == 0 { return 0 }
         if t == 1 { return 1 }
         return t < 0.5 ? pow(2, 20 * t - 10) / 2 : (2 - pow(2, -20 * t + 10)) / 2
@@ -87,9 +125,9 @@ public struct Easing: Sendable {
 
     // MARK: Circular
 
-    public static let easeInCirc = Easing { 1 - sqrt(1 - pow($0, 2)) }
-    public static let easeOutCirc = Easing { sqrt(1 - pow($0 - 1, 2)) }
-    public static let easeInOutCirc = Easing { t in
+    public static let easeInCirc = Easing("easeInCirc") { 1 - sqrt(1 - pow($0, 2)) }
+    public static let easeOutCirc = Easing("easeOutCirc") { sqrt(1 - pow($0 - 1, 2)) }
+    public static let easeInOutCirc = Easing("easeInOutCirc") { t in
         t < 0.5
             ? (1 - sqrt(1 - pow(2 * t, 2))) / 2
             : (sqrt(1 - pow(-2 * t + 2, 2)) + 1) / 2
@@ -97,15 +135,15 @@ public struct Easing: Sendable {
 
     // MARK: Back (overshoots, then settles)
 
-    public static let easeInBack = Easing { t in
+    public static let easeInBack = Easing("easeInBack") { t in
         let c1 = 1.70158, c3 = 1.70158 + 1
         return c3 * t * t * t - c1 * t * t
     }
-    public static let easeOutBack = Easing { t in
+    public static let easeOutBack = Easing("easeOutBack") { t in
         let c1 = 1.70158, c3 = 1.70158 + 1
         return 1 + c3 * pow(t - 1, 3) + c1 * pow(t - 1, 2)
     }
-    public static let easeInOutBack = Easing { t in
+    public static let easeInOutBack = Easing("easeInOutBack") { t in
         let c2 = 1.70158 * 1.525
         return t < 0.5
             ? (pow(2 * t, 2) * ((c2 + 1) * 2 * t - c2)) / 2
@@ -114,19 +152,19 @@ public struct Easing: Sendable {
 
     // MARK: Elastic (springs past, then settles)
 
-    public static let easeInElastic = Easing { t in
+    public static let easeInElastic = Easing("easeInElastic") { t in
         if t == 0 { return 0 }
         if t == 1 { return 1 }
         let c4 = (2 * Double.pi) / 3
         return -pow(2, 10 * t - 10) * sin((t * 10 - 10.75) * c4)
     }
-    public static let easeOutElastic = Easing { t in
+    public static let easeOutElastic = Easing("easeOutElastic") { t in
         if t == 0 { return 0 }
         if t == 1 { return 1 }
         let c4 = (2 * Double.pi) / 3
         return pow(2, -10 * t) * sin((t * 10 - 0.75) * c4) + 1
     }
-    public static let easeInOutElastic = Easing { t in
+    public static let easeInOutElastic = Easing("easeInOutElastic") { t in
         if t == 0 { return 0 }
         if t == 1 { return 1 }
         let c5 = (2 * Double.pi) / 4.5
@@ -137,9 +175,9 @@ public struct Easing: Sendable {
 
     // MARK: Bounce
 
-    public static let easeInBounce = Easing { 1 - bounceOut(1 - $0) }
-    public static let easeOutBounce = Easing { bounceOut($0) }
-    public static let easeInOutBounce = Easing { t in
+    public static let easeInBounce = Easing("easeInBounce") { 1 - bounceOut(1 - $0) }
+    public static let easeOutBounce = Easing("easeOutBounce") { bounceOut($0) }
+    public static let easeInOutBounce = Easing("easeInOutBounce") { t in
         t < 0.5
             ? (1 - bounceOut(1 - 2 * t)) / 2
             : (1 + bounceOut(2 * t - 1)) / 2
@@ -156,7 +194,35 @@ public struct Easing: Sendable {
     /// Hermite smoothstep, a gentler S than `easeInOut`. The same curve as the
     /// bare `smoothstep(0, 1, t)`, packaged as an `Easing` for the APIs that
     /// take one.
-    public static let smoothstep = Easing { t in t * t * (3 - 2 * t) }
+    public static let smoothstep = Easing("smoothstep") { t in t * t * (3 - 2 * t) }
+
+    /// Every built-in curve, in the order a menu shows them. The three friendly
+    /// aliases are the cubic curves themselves, so they are not listed twice:
+    /// picking `.easeInOut` reads, and persists, as `easeInOutCubic`.
+    static let all: [(name: String, value: Easing)] = [
+        ("linear", .linear),
+        ("easeInSine", .easeInSine), ("easeOutSine", .easeOutSine),
+        ("easeInOutSine", .easeInOutSine),
+        ("easeInQuad", .easeInQuad), ("easeOutQuad", .easeOutQuad),
+        ("easeInOutQuad", .easeInOutQuad),
+        ("easeInCubic", .easeInCubic), ("easeOutCubic", .easeOutCubic),
+        ("easeInOutCubic", .easeInOutCubic),
+        ("easeInQuart", .easeInQuart), ("easeOutQuart", .easeOutQuart),
+        ("easeInOutQuart", .easeInOutQuart),
+        ("easeInQuint", .easeInQuint), ("easeOutQuint", .easeOutQuint),
+        ("easeInOutQuint", .easeInOutQuint),
+        ("easeInExpo", .easeInExpo), ("easeOutExpo", .easeOutExpo),
+        ("easeInOutExpo", .easeInOutExpo),
+        ("easeInCirc", .easeInCirc), ("easeOutCirc", .easeOutCirc),
+        ("easeInOutCirc", .easeInOutCirc),
+        ("easeInBack", .easeInBack), ("easeOutBack", .easeOutBack),
+        ("easeInOutBack", .easeInOutBack),
+        ("easeInElastic", .easeInElastic), ("easeOutElastic", .easeOutElastic),
+        ("easeInOutElastic", .easeInOutElastic),
+        ("easeInBounce", .easeInBounce), ("easeOutBounce", .easeOutBounce),
+        ("easeInOutBounce", .easeInOutBounce),
+        ("smoothstep", .smoothstep),
+    ]
 }
 
 /// A value the sketch advances once per frame with the frame's `deltaTime`:

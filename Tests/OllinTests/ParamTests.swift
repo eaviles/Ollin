@@ -308,6 +308,178 @@ struct ParamTests {
         #expect(p.label == "Sweep" && p.icon == "wind" && p.group == "Motion")
     }
 
+    // MARK: Curves
+
+    @Test func aCurveIsItsOwnValue() {
+        // A built-in is its name, so the two spellings of the same curve match.
+        #expect(Easing.easeInOut == Easing.easeInOutCubic)
+        #expect(Easing.easeIn != Easing.easeOut)
+        // A curve from a closure equals itself and every copy of itself, and
+        // nothing else: two closures cannot be compared.
+        let mine = Easing { t in t * t }
+        let copy = mine
+        let twin = Easing { t in t * t }
+        #expect(mine == mine)
+        #expect(mine == copy)
+        #expect(mine != twin)
+        #expect(mine != .easeInQuad)
+    }
+
+    @Test func everyCurveIsListedUnderItsOwnName() {
+        // The menu's roster and the curves' own identities are two lists, and a
+        // typo in either would key a persisted choice to the wrong curve.
+        for (name, curve) in Easing.all {
+            #expect(curve.name == name)
+        }
+        #expect(Easing.all.count == 32)                 // linear + 30 + smoothstep
+        #expect(Set(Easing.all.map(\.name)).count == 32)
+    }
+
+    @Test func curvesPresentAMenuKeyedOnTheirNames() {
+        let p = Param(wrappedValue: Easing.easeInOut)
+        guard case .menu(let control) = p.control else {
+            Issue.record("Easing should present a menu")
+            return
+        }
+        #expect(control.options.contains("Ease Out Bounce"))       // humanized name
+        // The friendly alias reads as the curve it is: easeInOut is the cubic.
+        #expect(control.options[control.get()] == "Ease In Out Cubic")
+        #expect(p.stored == .option("easeInOutCubic"))
+
+        control.set(control.options.firstIndex(of: "Ease Out Bounce") ?? 0)
+        #expect(p.wrappedValue == .easeOutBounce)
+        #expect(p.stored == .option("easeOutBounce"))
+        p.restore(.option("linear"))
+        #expect(p.wrappedValue == .linear)
+        p.restore(.option("gone"))                                  // unknown name is ignored
+        #expect(p.wrappedValue == .linear)
+        // The picked curve still shapes a value, which is the point of it.
+        #expect(p.wrappedValue(0.25) == 0.25)
+    }
+
+    // MARK: Palettes and ramps
+
+    @Test func aPalettePresentsItsColorsAsAStrip() {
+        let p = Param(wrappedValue: Palette(.red, .white, .black))
+        guard case .swatches(let control) = p.control else {
+            Issue.record("Palette should present a swatch strip")
+            return
+        }
+        #expect(control.style == .blocks)
+        #expect(control.count == 1...12)
+        // The colors come back in order, spread evenly over 0...1.
+        #expect(control.get().map(\.color) == [.red, .white, .black])
+        #expect(control.get().map(\.position) == [0, 0.5, 1])
+        // The strip draws what the palette itself shows at each step.
+        #expect(control.sample(0.1) == .red)
+        #expect(control.sample(0.9) == .black)
+
+        control.set([.init(position: 0, color: .blue), .init(position: 1, color: .green)])
+        #expect(p.wrappedValue.colors == [.blue, .green])
+    }
+
+    @Test func aPaletteRoundTripsAndTruncatesToItsCount() {
+        let p = Param(wrappedValue: Palette(.red, .white), count: 1...3)
+        guard case .colors(let stops, let space) = p.stored else {
+            Issue.record("a palette should store as colors")
+            return
+        }
+        #expect(space == nil)                       // a palette blends through nothing
+        #expect(stops.map(\.color) == [.red, .white])
+
+        p.restore(.colors(stops: [ParamColorStop(position: 0, color: .black),
+                                  ParamColorStop(position: 0.5, color: .orange),
+                                  ParamColorStop(position: 1, color: .purple)],
+                          space: nil))
+        #expect(p.wrappedValue.colors == [.black, .orange, .purple])
+
+        // One color too many is dropped from the end.
+        p.wrappedValue = Palette(.red, .white, .black, .blue)
+        #expect(p.wrappedValue.colors == [.red, .white, .black])
+        p.restore(.number(3))                       // the wrong kind is ignored
+        #expect(p.wrappedValue.count == 3)
+    }
+
+    @Test func aRampKeepsItsSpaceAndItsStops() {
+        let p = Param(wrappedValue: Ramp(stops: [(0, .black), (0.25, .red), (1, .white)], in: .oklch))
+        guard case .swatches(let control) = p.control else {
+            Issue.record("Ramp should present a swatch strip")
+            return
+        }
+        #expect(control.style == .gradient)
+        #expect(control.count == 2...8)
+        #expect(control.get().map(\.position) == [0, 0.25, 1])
+        // The band is the ramp's own blend, not a straight line between stops.
+        #expect(control.sample(0) == .black)
+        #expect(control.sample(0.25) == p.wrappedValue.color(at: 0.25))
+        #expect(control.sample(0.6) == p.wrappedValue.color(at: 0.6))
+        #expect(control.sample(0.6) != Color.mix(.red, .white, t: 0.4))   // not a plain line
+
+        // Moving a stop keeps the space the ramp blends through.
+        control.set([.init(position: 0, color: .black), .init(position: 0.7, color: .red),
+                     .init(position: 1, color: .white)])
+        #expect(p.wrappedValue.stops.map(\.position) == [0, 0.7, 1])
+        #expect(p.wrappedValue.space == .oklch)
+
+        guard case .colors(_, let space) = p.stored else {
+            Issue.record("a ramp should store as colors")
+            return
+        }
+        #expect(space == "oklch")
+        p.restore(.colors(stops: [ParamColorStop(position: 0, color: .blue),
+                                  ParamColorStop(position: 1, color: .white)],
+                          space: "paint"))
+        #expect(p.wrappedValue.space == .paint)
+        #expect(p.wrappedValue.stops.map(\.color) == [.blue, .white])
+    }
+
+    @Test func aStoredPaletteRestoresIntoARampAsAnEvenBlend() {
+        // Both kinds carry the same payload, so a knob that changed from one to
+        // the other keeps its colors; a palette names no space, so the ramp
+        // falls back to the default one.
+        let palette = Param(wrappedValue: Palette(.red, .white, .black))
+        let ramp = Param(wrappedValue: Ramp([.blue, .green]))
+        ramp.restore(palette.stored)
+        #expect(ramp.wrappedValue.stops.map(\.color) == [.red, .white, .black])
+        #expect(ramp.wrappedValue.stops.map(\.position) == [0, 0.5, 1])
+        #expect(ramp.wrappedValue.space == .oklab)
+    }
+
+    @Test func aNewSwatchLandsWhereThereIsRoomForIt() {
+        // A palette grows at its end, keeping the color already there.
+        let blocks = [ParamControl.Swatches.Stop(position: 0, color: .red),
+                      ParamControl.Swatches.Stop(position: 1, color: .blue)]
+        let grown = swatchStripAdding(to: blocks, blocks: true, sample: { _ in .green })
+        #expect(grown.stops.map(\.color) == [.red, .blue, .blue])
+        #expect(grown.selected == 2)
+
+        // A ramp splits its widest gap, and takes the color the band shows
+        // there, so adding a stop cannot change the picture.
+        let band = [ParamControl.Swatches.Stop(position: 0, color: .black),
+                    ParamControl.Swatches.Stop(position: 0.2, color: .red),
+                    ParamControl.Swatches.Stop(position: 1, color: .white)]
+        let split = swatchStripAdding(to: band, blocks: false, sample: { _ in .green })
+        #expect(split.stops.map(\.position) == [0, 0.2, 0.6, 1])   // the 0.2...1 gap
+        #expect(split.selected == 2)
+        #expect(split.stops[2].color == .green)                    // read off the band
+
+        // A ramp of one stop still has somewhere to put the second.
+        let lone = swatchStripAdding(to: [.init(position: 0, color: .black)],
+                                     blocks: false, sample: { _ in .white })
+        #expect(lone.stops.map(\.position) == [0, 0.5])
+        #expect(lone.selected == 1)
+    }
+
+    @Test func aSetOfColorsHoldsThroughAKeyAndHasNoParts() {
+        // Nothing sits between two palettes, so an automation holds the one it
+        // left, the way it does for a switch or a piece of text.
+        let from = ParamStored.colors(stops: [ParamColorStop(position: 0, color: .red)], space: nil)
+        let to = ParamStored.colors(stops: [ParamColorStop(position: 0, color: .blue)], space: nil)
+        #expect(Automation.blend(from, to, 0.5) == from)
+        #expect(Automation.parts(of: from).isEmpty)
+        #expect(Automation.applying(["red": 1], to: from) == from)
+    }
+
     // MARK: Show-rules
 
     @Test func knobsShowByDefault() {

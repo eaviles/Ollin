@@ -68,6 +68,9 @@ The page renders one touch control per knob, grouped the way `group:` arranges t
 - a `Vector2` declared `style: .pad` becomes a draggable XY pad; the fields form shows two numeric fields
 - `Vector3`, `Rectangle`, `Insets`, and `ClosedRange` become labeled numeric fields
 - a `String` becomes a text field
+- a `Palette` or `Ramp` becomes a chip per color, each opening the phone's color picker, with a ramp's band drawn above them
+
+The phone recolors a strip; it does not move a ramp's stops or change how many colors there are. Those stay on the Mac, where the handles are. The band the page draws fades straight between the stops, so it is close to what the sketch shows without being the sketch's own blend.
 
 A header shows the sketch's name and the connection state. A monitor strip carries the frame rate, the clock, and the frame count, refreshed a few times a second. Rows ruled by `Param.show(when:)` appear and disappear as their rule flips.
 

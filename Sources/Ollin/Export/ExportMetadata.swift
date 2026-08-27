@@ -124,7 +124,9 @@ struct ExportMetadata {
 // MARK: - Compact JSON encoding
 
 /// A parameter value as a compact JSON value: numbers bare, composites as
-/// arrays in their natural component order.
+/// arrays in their natural component order. A palette or ramp is an array of
+/// those, one `[position, red, green, blue, alpha]` per color; the space a ramp
+/// blends through is not part of the recipe.
 private func jsonValue(_ stored: ParamStored) -> String {
     switch stored {
     case .number(let v): return jsonNumber(v)
@@ -137,6 +139,9 @@ private func jsonValue(_ stored: ParamStored) -> String {
     case let .rect(x, y, w, h): return jsonArray([x, y, w, h])
     case let .insets(top, right, bottom, left): return jsonArray([top, right, bottom, left])
     case let .range(lower, upper): return jsonArray([lower, upper])
+    case let .colors(stops, _):
+        let each = stops.map { jsonArray([$0.position, $0.red, $0.green, $0.blue, $0.alpha]) }
+        return "[" + each.joined(separator: ",") + "]"
     }
 }
 

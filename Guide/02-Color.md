@@ -135,6 +135,15 @@ fill(dusk.color(at: t))
 
 Two kinds of ramp come pre-made. **`Colormap`** holds eight scientific maps such as `.viridis` and `.magma`, built so that perceived brightness climbs evenly from one end to the other, which makes them the standard way to turn a number into color a viewer can read. **`CosinePalette`** holds seven cyclic palettes such as `.sunset` and `.neon`, all generated from one small formula, and because they loop they work beautifully when fed with `time`. Both answer to the same `color(at:)`.
 
+Either one can be a knob, which saves a lot of editing and rerunning:
+
+```swift
+@Param var inks = Palette(.red, .white, .black)      // a strip of blocks
+@Param var dusk = Ramp([.black, .white])             // a band with a handle per stop
+```
+
+The palette shows in the inspector as its colors side by side. Click one and the color well beside the label edits it. The ramp shows as the gradient itself, and its handles drag along the band to move a stop. The `+` and `−` buttons add and remove a color in either. When you like what you see, copy the colors back into the code.
+
 ## Palettes from a file
 
 Typing hex codes gets old, and two calls let you skip it.

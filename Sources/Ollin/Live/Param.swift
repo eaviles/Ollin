@@ -59,6 +59,46 @@ public enum ParamStored: Equatable, Sendable, Codable {
     case range(lower: Double, upper: Double)
     /// A `String` parameter's value.
     case text(String)
+    /// A `Palette` or `Ramp` parameter's value: its colors in order, each with
+    /// the position it sits at, and the name of the space a ramp blends
+    /// through (`nil` for a palette, whose colors are evenly spread and never
+    /// blended).
+    case colors(stops: [ParamColorStop], space: String?)
+}
+
+/// One color of a stored palette or ramp: where it sits in `0...1`, and its
+/// sRGB components.
+public struct ParamColorStop: Equatable, Sendable, Codable {
+    public var position: Double
+    public var red: Double
+    public var green: Double
+    public var blue: Double
+    public var alpha: Double
+
+    public init(position: Double, red: Double, green: Double, blue: Double, alpha: Double) {
+        self.position = position
+        self.red = red
+        self.green = green
+        self.blue = blue
+        self.alpha = alpha
+    }
+
+    public init(position: Double, color: Color) {
+        self.init(position: position, red: color.red, green: color.green,
+                  blue: color.blue, alpha: color.alpha)
+    }
+
+    /// The stop's color.
+    public var color: Color {
+        Color(red: red, green: green, blue: blue, alpha: alpha)
+    }
+}
+
+/// Positions for `count` colors spread evenly over `0...1`, which is how a
+/// palette's colors sit (and how `Palette.ramp(in:)` places them).
+private func evenPositions(_ count: Int) -> [Double] {
+    guard count > 1 else { return count == 1 ? [0] : [] }
+    return (0..<count).map { Double($0) / Double(count - 1) }
 }
 
 // MARK: - Controls
@@ -80,6 +120,7 @@ public enum ParamControl {
     case insets(InsetsFields)
     case range(RangeFields)
     case text(TextBox)
+    case swatches(Swatches)
 
     /// A `Double` knob: a slider over `range`, optionally snapped to `step`.
     /// `style: .field` drops the track and leaves the scrubbable value field.
@@ -231,6 +272,42 @@ public enum ParamControl {
             self.get = get; self.set = set
         }
     }
+
+    /// A `Palette` or `Ramp` knob: a strip of colors, each opened in a color
+    /// well. Every color carries the position it sits at, so a ramp's stops
+    /// can be moved along the band; a palette's colors are spread evenly and
+    /// their positions only say where each block is drawn.
+    public struct Swatches: Sendable {
+        /// One color on the strip.
+        public struct Stop: Equatable, Sendable {
+            public var position: Double
+            public var color: Color
+            public init(position: Double, color: Color) {
+                self.position = position
+                self.color = color
+            }
+        }
+
+        /// Whether the strip reads as blocks or as one blended band.
+        public let style: ParamSwatchStyle
+        /// How many colors the strip may hold; the add and remove buttons stop
+        /// at its ends.
+        public let count: ClosedRange<Int>
+        /// What the value itself shows at `t`. The blended band draws this
+        /// rather than a plain gradient between the stops, since a ramp blends
+        /// through a space of its own choosing.
+        public let sample: @Sendable (Double) -> Color
+        public let get: @Sendable () -> [Stop]
+        public let set: @Sendable ([Stop]) -> Void
+
+        public init(style: ParamSwatchStyle, count: ClosedRange<Int>,
+                    sample: @escaping @Sendable (Double) -> Color,
+                    get: @escaping @Sendable () -> [Stop],
+                    set: @escaping @Sendable ([Stop]) -> Void) {
+            self.style = style; self.count = count; self.sample = sample
+            self.get = get; self.set = set
+        }
+    }
 }
 
 // MARK: - Value kinds
@@ -262,6 +339,25 @@ public enum ParamMenuStyle: Sendable {
     /// four short names; more than fits the row falls back to reading poorly,
     /// so prefer the menu for long case lists.
     case segmented
+}
+
+/// How a `Palette` or `Ramp` parameter presents in the inspector.
+public enum ParamSwatchStyle: Sendable {
+    /// Separate blocks of color, one per swatch: a `Palette`.
+    case blocks
+    /// One blended band with a handle per stop: a `Ramp`.
+    case gradient
+}
+
+/// The constraint payload of a `Palette` or `Ramp` parameter: how many colors
+/// the strip may hold, and how it reads.
+public struct ParamSwatchConstraints: Sendable {
+    public var count: ClosedRange<Int>
+    public var style: ParamSwatchStyle
+    public init(count: ClosedRange<Int>, style: ParamSwatchStyle) {
+        self.count = count
+        self.style = style
+    }
 }
 
 /// The numeric constraint payload of a `Double` or `Int` parameter: the allowed
@@ -563,6 +659,110 @@ extension String: ParamValue {
     }
 }
 
+extension Palette: ParamValue {
+    public typealias Constraints = ParamSwatchConstraints
+
+    /// Colors past the upper bound are dropped from the end. A palette shorter
+    /// than the lower bound is left as it is: there is no color to invent, and
+    /// the bound is there to stop the row's remove button, not to pad a value
+    /// the sketch set for itself.
+    public static func clamped(_ value: Palette, by constraints: Constraints) -> Palette {
+        guard value.count > constraints.count.upperBound else { return value }
+        return Palette(Array(value.colors.prefix(constraints.count.upperBound)))
+    }
+
+    public static func stored(_ value: Palette) -> ParamStored {
+        let positions = evenPositions(value.count)
+        return .colors(stops: zip(positions, value.colors).map { ParamColorStop(position: $0, color: $1) },
+                       space: nil)
+    }
+
+    public static func restored(_ stored: ParamStored) -> Palette? {
+        guard case .colors(let stops, _) = stored else { return nil }
+        return Palette(stops.map(\.color))
+    }
+
+    public static func control(for param: Param<Palette>) -> ParamControl {
+        .swatches(.init(
+            style: .blocks, count: param.constraints.count,
+            sample: { param.wrappedValue.color(at: $0) },
+            get: {
+                let palette = param.wrappedValue
+                return zip(evenPositions(palette.count), palette.colors)
+                    .map { ParamControl.Swatches.Stop(position: $0, color: $1) }
+            },
+            set: { param.wrappedValue = Palette($0.map(\.color)) }))
+    }
+}
+
+extension Ramp: ParamValue {
+    public typealias Constraints = ParamSwatchConstraints
+
+    /// Stops past the upper bound are dropped from the end, the same way a
+    /// palette's colors are.
+    public static func clamped(_ value: Ramp, by constraints: Constraints) -> Ramp {
+        guard value.stops.count > constraints.count.upperBound else { return value }
+        return Ramp(stops: value.stops.prefix(constraints.count.upperBound)
+                        .map { (position: $0.position, color: $0.color) },
+                    in: value.space)
+    }
+
+    public static func stored(_ value: Ramp) -> ParamStored {
+        .colors(stops: value.stops.map { ParamColorStop(position: $0.position, color: $0.color) },
+                space: value.space.paramName)
+    }
+
+    /// A palette's payload restores too (it carries no space), so a knob that
+    /// changed from one to the other keeps its colors.
+    public static func restored(_ stored: ParamStored) -> Ramp? {
+        guard case .colors(let stops, let space) = stored else { return nil }
+        return Ramp(stops: stops.map { (position: $0.position, color: $0.color) },
+                    in: space.flatMap(ColorSpace.init(paramName:)) ?? .oklab)
+    }
+
+    public static func control(for param: Param<Ramp>) -> ParamControl {
+        .swatches(.init(
+            style: .gradient, count: param.constraints.count,
+            sample: { param.wrappedValue.color(at: $0) },
+            get: {
+                param.wrappedValue.stops.map {
+                    ParamControl.Swatches.Stop(position: $0.position, color: $0.color)
+                }
+            },
+            set: { stops in
+                param.wrappedValue = Ramp(stops: stops.map { (position: $0.position, color: $0.color) },
+                                          in: param.wrappedValue.space)
+            }))
+    }
+}
+
+private extension ColorSpace {
+    /// The name a ramp knob persists its blending space under. Stable: a
+    /// renamed key forgets a tuned ramp's space.
+    var paramName: String {
+        switch self {
+        case .rgb: "rgb"
+        case .hsb: "hsb"
+        case .oklab: "oklab"
+        case .oklch: "oklch"
+        case .okhsl: "okhsl"
+        case .paint: "paint"
+        }
+    }
+
+    init?(paramName: String) {
+        switch paramName {
+        case "rgb": self = .rgb
+        case "hsb": self = .hsb
+        case "oklab": self = .oklab
+        case "oklch": self = .oklch
+        case "okhsl": self = .okhsl
+        case "paint": self = .paint
+        default: return nil
+        }
+    }
+}
+
 /// An enum a `@Param` can hold: the inspector shows its cases as a pop-up menu.
 /// Declare the enum `CaseIterable` and conform:
 ///
@@ -683,6 +883,14 @@ extension LightingPreset: ParamChoices {
         [("standard", .standard), ("threePoint", .threePoint), ("goldenHour", .goldenHour),
          ("noir", .noir), ("studio", .studio), ("moonlight", .moonlight)]
     }
+}
+
+// The shaping curves join the same tier: each built-in carries its own name,
+// which is what lets the menu find the current one and persist it. A curve
+// built from a closure is not on the menu, so the row reads as the first
+// entry, and a reload restores that rather than the closure.
+extension Easing: ParamChoices {
+    public static var paramChoices: [(name: String, value: Easing)] { Easing.all }
 }
 
 // MARK: - The wrapper
@@ -1048,6 +1256,40 @@ public extension Param where Value == ClosedRange<Double> {
                      in outer: ClosedRange<Double>, style: ParamNumericStyle = .slider,
                      icon: String? = nil, group: String? = nil) {
         self.init(wrappedValue, label: label, constraints: .init(outer: outer, style: style),
+                  smoothing: nil, icon: icon, group: group)
+    }
+}
+
+public extension Param where Value == Palette {
+    /// A palette of colors: a strip of blocks, each opened in its own color
+    /// well. `count:` bounds how many the strip holds, which is where the
+    /// row's add and remove buttons stop.
+    convenience init(wrappedValue: Palette, count: ClosedRange<Int> = 1...12,
+                     icon: String? = nil, group: String? = nil) {
+        self.init(wrappedValue, label: nil, constraints: .init(count: count, style: .blocks),
+                  smoothing: nil, icon: icon, group: group)
+    }
+
+    convenience init(wrappedValue: Palette, _ label: String, count: ClosedRange<Int> = 1...12,
+                     icon: String? = nil, group: String? = nil) {
+        self.init(wrappedValue, label: label, constraints: .init(count: count, style: .blocks),
+                  smoothing: nil, icon: icon, group: group)
+    }
+}
+
+public extension Param where Value == Ramp {
+    /// A gradient: one blended band with a handle per stop, each opened in its
+    /// own color well and dragged along the band. The ramp keeps the space it
+    /// blends through; only its stops are edited here.
+    convenience init(wrappedValue: Ramp, count: ClosedRange<Int> = 2...8,
+                     icon: String? = nil, group: String? = nil) {
+        self.init(wrappedValue, label: nil, constraints: .init(count: count, style: .gradient),
+                  smoothing: nil, icon: icon, group: group)
+    }
+
+    convenience init(wrappedValue: Ramp, _ label: String, count: ClosedRange<Int> = 2...8,
+                     icon: String? = nil, group: String? = nil) {
+        self.init(wrappedValue, label: label, constraints: .init(count: count, style: .gradient),
                   smoothing: nil, icon: icon, group: group)
     }
 }

@@ -109,6 +109,13 @@
   .swatch-wrap .swatch { width: 64px; }
   .swatch-wrap .hex { display: flex; align-items: center; padding: 0 11px; background: var(--field); border-left: 0.5px solid var(--field-stroke); font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 12px; color: var(--text-2); }
   .swatch-wrap input[type=color] { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; }
+  .strip { padding: 0 13px 13px; display: flex; flex-direction: column; gap: 9px; }
+  .strip .band { height: 26px; border-radius: 7px; border: 0.5px solid var(--field-stroke); }
+  .strip .chips { display: flex; gap: 9px; flex-wrap: wrap; }
+  .strip .blocks { display: flex; gap: 4px; }
+  .strip .chip { position: relative; height: 38px; width: 38px; border-radius: 9px; border: 0.5px solid var(--field-stroke); }
+  .strip .blocks .chip { flex: 1 1 0; width: auto; }
+  .strip .chip input[type=color] { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; }
   .pad { position: relative; height: 168px; background: var(--field); border: 0.5px solid var(--card-stroke); border-radius: 9px; overflow: hidden; touch-action: none; }
   .pad .axis-v { position: absolute; left: 50%; top: 0; bottom: 0; width: 0.5px; background: var(--sep); }
   .pad .axis-h { position: absolute; top: 50%; left: 0; right: 0; height: 0.5px; background: var(--sep); }
@@ -170,6 +177,7 @@
     if (v.insets) { return { kind: 'insets', value: v.insets }; }
     if (v.range) { return { kind: 'range', value: v.range }; }
     if (v.text) { return { kind: 'text', value: v.text._0 }; }
+    if (v.colors) { return { kind: 'colors', value: v.colors }; }
     return null;
   }
   function storedNumber(x) { return { number: { _0: x } }; }
@@ -511,6 +519,94 @@
     return { root: root, touching: { active: false }, update: function (s) { if (s.kind === 'text') { paint(s.value); } }, seed: paint };
   }
 
+  // A palette or ramp: one tappable chip per color, opening the phone's own
+  // color picker. The band above a ramp is a plain gradient between the stops,
+  // which is close but not the blend the sketch draws (only the sketch knows
+  // the space it mixes in). Positions and the number of colors are set on the
+  // Mac; the phone recolors what is there.
+  function swatchesRow(desc) {
+    var root = document.createElement('div');
+    root.className = 'card';
+    root.innerHTML = '<div class="row"><div class="label"></div><div class="hex mono"></div></div>'
+      + '<div class="strip"></div>';
+    root.querySelector('.label').textContent = desc.label;
+    var countText = root.querySelector('.hex');
+    var strip = root.querySelector('.strip');
+    var current = { stops: [], space: null };
+    var band = null;
+    var chips = [];
+    var send = throttled(function () {
+      sendSet(desc.name, { colors: { stops: current.stops, space: current.space } });
+    });
+
+    function gradientCSS() {
+      if (!current.stops.length) { return 'transparent'; }
+      return 'linear-gradient(to right, ' + current.stops.map(function (s) {
+        return hexOf(s) + ' ' + (clamp(s.position, 0, 1) * 100).toFixed(1) + '%';
+      }).join(', ') + ')';
+    }
+
+    function rebuild() {
+      strip.innerHTML = '';
+      chips = [];
+      band = null;
+      if (desc.gradient) {
+        band = document.createElement('div');
+        band.className = 'band';
+        strip.appendChild(band);
+      }
+      var host = document.createElement('div');
+      host.className = desc.gradient ? 'chips' : 'blocks';
+      current.stops.forEach(function (stop, index) {
+        var chip = document.createElement('label');
+        chip.className = 'chip';
+        var input = document.createElement('input');
+        input.type = 'color';
+        input.addEventListener('input', function () {
+          var c = colorFromHex(input.value).color;
+          current.stops[index].red = c.red;
+          current.stops[index].green = c.green;
+          current.stops[index].blue = c.blue;
+          chip.style.background = input.value;
+          if (band) { band.style.background = gradientCSS(); }
+          send(current.stops);   // a truthy argument, or a queued send is dropped
+        });
+        chip.appendChild(input);
+        host.appendChild(chip);
+        chips.push({ chip: chip, input: input });
+      });
+      strip.appendChild(host);
+    }
+
+    // Rebuild only when the strip's shape changed; recoloring in place keeps
+    // an open picker alive through the echo of its own edit.
+    function paint(v) {
+      var stops = (v && v.stops) || [];
+      var changedShape = stops.length !== current.stops.length;
+      current.space = (v && v.space !== undefined) ? v.space : null;
+      current.stops = stops.map(function (s) {
+        return { position: s.position, red: s.red, green: s.green, blue: s.blue, alpha: s.alpha };
+      });
+      countText.textContent = current.stops.length + (current.stops.length === 1 ? ' color' : ' colors');
+      if (changedShape) { rebuild(); }
+      current.stops.forEach(function (stop, index) {
+        var row = chips[index];
+        if (!row) { return; }
+        var h = hexOf(stop);
+        row.chip.style.background = h;
+        if (document.activeElement !== row.input) { row.input.value = h; }
+      });
+      if (band) { band.style.background = gradientCSS(); }
+    }
+
+    return {
+      root: root,
+      touching: { active: false },
+      update: function (s) { if (s.kind === 'colors') { paint(s.value); } },
+      seed: paint
+    };
+  }
+
   function build(desc) {
     switch (desc.kind) {
       case 'slider': return desc.field ? numberField(desc) : barSlider(desc);
@@ -525,6 +621,7 @@
       case 'rect': return fieldsControl(desc, ['x', 'y', 'width', 'height'], 'rect', ['X', 'Y', 'W', 'H']);
       case 'insets': return fieldsControl(desc, ['top', 'right', 'bottom', 'left'], 'insets', ['T', 'R', 'B', 'L']);
       case 'range': return desc.field ? fieldsControl(desc, ['lower', 'upper'], 'range', ['Min', 'Max']) : rangeControl(desc);
+      case 'swatches': return swatchesRow(desc);
       default: return textRow(desc);
     }
   }

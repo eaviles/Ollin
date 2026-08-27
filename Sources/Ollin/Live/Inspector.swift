@@ -855,8 +855,50 @@ private struct ParamRow: View {
         case .text(let control):
             TextParamRow(handle: handle, control: control, palette: palette,
                          iconGutter: iconGutter, onChange: onChange)
+        case .swatches(let control):
+            SwatchesParamRow(handle: handle, control: control, palette: palette,
+                             iconGutter: iconGutter, onChange: onChange)
         }
     }
+}
+
+/// Where a new color lands on a swatch strip, and which one the row selects
+/// after: the far end of a palette (taking the color already there, since a
+/// palette's blocks say nothing about where a new one belongs), or the middle
+/// of a ramp's widest gap, taking the color the band already shows there so the
+/// picture does not jump when a stop is added.
+func swatchStripAdding(to stops: [ParamControl.Swatches.Stop], blocks: Bool,
+                       sample: (Double) -> Color)
+    -> (stops: [ParamControl.Swatches.Stop], selected: Int) {
+    var stops = stops
+    if blocks {
+        stops.append(.init(position: 1, color: stops.last?.color ?? .white))
+        return (stops, stops.count - 1)
+    }
+    var widest = (gap: -1.0, at: 0.5)
+    var previous = 0.0
+    for stop in stops {
+        let gap = stop.position - previous
+        if gap > widest.gap { widest = (gap, (stop.position + previous) / 2) }
+        previous = stop.position
+    }
+    if 1 - previous > widest.gap { widest = (1 - previous, (1 + previous) / 2) }
+    let index = stops.firstIndex { $0.position > widest.at } ?? stops.count
+    stops.insert(.init(position: widest.at, color: sample(widest.at)), at: index)
+    return (stops, index)
+}
+
+/// The bridge between a sketch's `Color` and SwiftUI's, both ways, through
+/// sRGB. Shared by the color well and the swatch strip.
+private func swiftUIColor(_ color: Color) -> SwiftUI.Color {
+    SwiftUI.Color(.sRGB, red: color.red, green: color.green, blue: color.blue,
+                  opacity: color.alpha)
+}
+
+private func ollinColor(_ color: SwiftUI.Color) -> Color? {
+    guard let converted = NSColor(color).usingColorSpace(.sRGB) else { return nil }
+    return Color(red: converted.redComponent, green: converted.greenComponent,
+                 blue: converted.blueComponent, alpha: converted.alphaComponent)
 }
 
 /// Whole numbers over a wide (pixel-sized) range, decimals over a narrow one.
@@ -1499,7 +1541,7 @@ private struct ColorParamRow: View {
         self.iconGutter = iconGutter
         self.onChange = onChange
         let current = control.get()
-        _color = State(initialValue: ColorParamRow.swiftUIColor(current))
+        _color = State(initialValue: swiftUIColor(current))
         _lastKnown = State(initialValue: current)
     }
 
@@ -1510,7 +1552,7 @@ private struct ColorParamRow: View {
                 .controlSize(.small)
         }
         .onChange(of: color) { _, newValue in
-            guard let value = ColorParamRow.ollinColor(newValue) else { return }
+            guard let value = ollinColor(newValue) else { return }
             guard value != lastKnown else { return }
             control.set(value)
             lastKnown = value
@@ -1522,21 +1564,10 @@ private struct ColorParamRow: View {
                 let live = control.get()
                 if live != lastKnown {
                     lastKnown = live
-                    color = ColorParamRow.swiftUIColor(live)
+                    color = swiftUIColor(live)
                 }
             }
         }
-    }
-
-    private static func swiftUIColor(_ color: Color) -> SwiftUI.Color {
-        SwiftUI.Color(.sRGB, red: color.red, green: color.green, blue: color.blue,
-                      opacity: color.alpha)
-    }
-
-    private static func ollinColor(_ color: SwiftUI.Color) -> Color? {
-        guard let converted = NSColor(color).usingColorSpace(.sRGB) else { return nil }
-        return Color(red: converted.redComponent, green: converted.greenComponent,
-                     blue: converted.blueComponent, alpha: converted.alphaComponent)
     }
 }
 
@@ -2074,5 +2105,224 @@ private struct TextParamRow: View {
                 if live != text { text = live }
             }
         }
+    }
+}
+
+/// A `Palette` or `Ramp` row: the strip of colors on its own line under the
+/// label, with the selected color's well and the add/remove buttons beside the
+/// label. A palette reads as separate blocks; a ramp reads as one blended band
+/// (drawn by asking the ramp itself for the color at each step, so the band is
+/// the blend the sketch draws, whatever space it mixes in) with a draggable
+/// handle per stop.
+private struct SwatchesParamRow: View {
+    let handle: ParamHandle
+    let control: ParamControl.Swatches
+    let palette: OllinInspector.Palette
+    let iconGutter: Bool
+    let onChange: (ParamStored) -> Void
+
+    @State private var stops: [ParamControl.Swatches.Stop]
+    /// What the param held when this row last wrote or pulled, so the sync pull
+    /// can tell an external change from this row's own echo.
+    @State private var lastKnown: [ParamControl.Swatches.Stop]
+    @State private var selected: Int
+    /// True while a handle is being dragged; parks the sync pull.
+    @State private var isDragging = false
+
+    private static let stripHeight: CGFloat = 24
+    private static let handleSize: CGFloat = 13
+    /// How far a handle's travel stays off each end, so it never clips.
+    private static let handleInset: CGFloat = 8
+    private static let bandSamples = 32
+
+    init(handle: ParamHandle, control: ParamControl.Swatches, palette: OllinInspector.Palette,
+         iconGutter: Bool, onChange: @escaping (ParamStored) -> Void) {
+        self.handle = handle
+        self.control = control
+        self.palette = palette
+        self.iconGutter = iconGutter
+        self.onChange = onChange
+        let current = control.get()
+        _stops = State(initialValue: current)
+        _lastKnown = State(initialValue: current)
+        _selected = State(initialValue: 0)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                ParamRowLabel(handle: handle, palette: palette, iconGutter: iconGutter)
+                Spacer(minLength: 12)
+                if stops.indices.contains(selected) {
+                    ColorPicker("", selection: selectedColor, supportsOpacity: true)
+                        .labelsHidden()
+                        .controlSize(.small)
+                }
+                countButton("minus", disabled: stops.count <= control.count.lowerBound) { removeSelected() }
+                countButton("plus", disabled: stops.count >= control.count.upperBound) { addStop() }
+            }
+            strip
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 11)
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(100))
+                guard !isDragging else { continue }
+                let live = control.get()
+                if live != lastKnown {
+                    lastKnown = live
+                    stops = live
+                    selected = Swift.min(selected, Swift.max(live.count - 1, 0))
+                }
+            }
+        }
+    }
+
+    // MARK: The strip
+
+    @ViewBuilder private var strip: some View {
+        if stops.isEmpty {
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(palette.fieldFill)
+                .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .strokeBorder(palette.fieldStroke, lineWidth: 0.5))
+                .frame(height: Self.stripHeight)
+        } else if control.style == .blocks {
+            HStack(spacing: 3) {
+                ForEach(Array(stops.enumerated()), id: \.offset) { index, stop in
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .fill(swiftUIColor(stop.color))
+                        .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous)
+                            .strokeBorder(index == selected ? OllinInspector.accent : palette.fieldStroke,
+                                          lineWidth: index == selected ? 2 : 0.5))
+                        .frame(maxWidth: .infinity)
+                        .contentShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                        .onTapGesture { selected = index }
+                }
+            }
+            .frame(height: Self.stripHeight)
+        } else {
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(LinearGradient(stops: bandStops, startPoint: .leading, endPoint: .trailing))
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .strokeBorder(palette.fieldStroke, lineWidth: 0.5)
+                    ForEach(Array(stops.enumerated()), id: \.offset) { index, stop in
+                        handleView(index: index, stop: stop)
+                            .position(x: handleX(stop.position, in: geo.size.width),
+                                      y: Self.stripHeight / 2)
+                            .gesture(dragGesture(index: index, width: geo.size.width))
+                    }
+                }
+            }
+            .coordinateSpace(name: "swatchStrip")
+            .frame(height: Self.stripHeight)
+        }
+    }
+
+    /// The band, sampled from the value itself rather than interpolated between
+    /// the stops: the ramp decides how two colors meet.
+    private var bandStops: [SwiftUI.Gradient.Stop] {
+        (0..<Self.bandSamples).map { step in
+            let t = Double(step) / Double(Self.bandSamples - 1)
+            return SwiftUI.Gradient.Stop(color: swiftUIColor(control.sample(t)), location: t)
+        }
+    }
+
+    private func handleView(index: Int, stop: ParamControl.Swatches.Stop) -> some View {
+        SwiftUI.Circle()
+            .fill(swiftUIColor(stop.color))
+            .overlay(SwiftUI.Circle()
+                .strokeBorder(index == selected ? OllinInspector.accent : SwiftUI.Color.white.opacity(0.9),
+                              lineWidth: index == selected ? 2.5 : 1.5))
+            .shadow(color: .black.opacity(0.35), radius: 1.5, y: 0.5)
+            .frame(width: Self.handleSize, height: Self.handleSize)
+            .contentShape(SwiftUI.Circle())
+    }
+
+    private func handleX(_ position: Double, in width: CGFloat) -> CGFloat {
+        let travel = Swift.max(width - Self.handleInset * 2, 1)
+        return Self.handleInset + CGFloat(Swift.min(Swift.max(position, 0), 1)) * travel
+    }
+
+    /// A stop drags along the band but never past its neighbors, so the order
+    /// the strip shows is the order the ramp holds and the dragged index stays
+    /// the dragged index.
+    private func dragGesture(index: Int, width: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 0, coordinateSpace: .named("swatchStrip"))
+            .onChanged { drag in
+                isDragging = true
+                selected = index
+                guard stops.indices.contains(index) else { return }
+                let travel = Swift.max(width - Self.handleInset * 2, 1)
+                let raw = Double((drag.location.x - Self.handleInset) / travel)
+                let low = index > 0 ? stops[index - 1].position : 0
+                let high = index < stops.count - 1 ? stops[index + 1].position : 1
+                let moved = Swift.min(Swift.max(raw, low), high)
+                guard moved != stops[index].position else { return }
+                stops[index].position = moved
+                push()
+            }
+            .onEnded { _ in isDragging = false }
+    }
+
+    // MARK: Editing
+
+    private var selectedColor: Binding<SwiftUI.Color> {
+        Binding(
+            get: {
+                guard stops.indices.contains(selected) else { return .clear }
+                return swiftUIColor(stops[selected].color)
+            },
+            set: { newValue in
+                guard stops.indices.contains(selected), let value = ollinColor(newValue) else { return }
+                guard value != stops[selected].color else { return }
+                stops[selected].color = value
+                push()
+            })
+    }
+
+    private func addStop() {
+        guard stops.count < control.count.upperBound else { return }
+        let added = swatchStripAdding(to: stops, blocks: control.style == .blocks,
+                                      sample: control.sample)
+        stops = added.stops
+        selected = added.selected
+        push()
+    }
+
+    private func removeSelected() {
+        guard stops.count > control.count.lowerBound, stops.indices.contains(selected) else { return }
+        stops.remove(at: selected)
+        selected = Swift.min(selected, Swift.max(stops.count - 1, 0))
+        push()
+    }
+
+    /// Write the edited strip through the param, read back what it actually
+    /// holds, and reflect + report that.
+    private func push() {
+        guard stops != lastKnown else { return }
+        control.set(stops)
+        let actual = control.get()
+        if actual != stops { stops = actual }
+        lastKnown = actual
+        selected = Swift.min(selected, Swift.max(actual.count - 1, 0))
+        onChange(handle.param.stored)
+    }
+
+    private func countButton(_ symbol: String, disabled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            SwiftUI.Image(systemName: symbol)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(disabled ? palette.textTertiary : .secondary)
+                .frame(width: 20, height: 20)
+                .background(palette.fieldFill, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .strokeBorder(palette.fieldStroke, lineWidth: 0.5))
+        }
+        .buttonStyle(.plain)
+        .disabled(disabled)
     }
 }

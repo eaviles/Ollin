@@ -181,6 +181,8 @@ Same start, same finish, same four seconds. The only difference is *when* each d
 
 The full table of thirty names is in the [Animation](../Docs/Helpers/Animation.md#catalog) reference, and the [EasingGallery example](../Examples/Motion/EasingGallery/Sketch.swift) plots them all side by side.
 
+Picking a curve by reading a table is slow work, so a curve can be a knob instead. Write `@Param var curve: Easing = .easeInOut` and the inspector shows a menu of every named curve. Try them against the motion itself and keep the one that feels right.
+
 ## Values that chase, signals that shake: @Eased, @Sprung, @Smoothed
 
 The shaping functions all assume you're steering `t` yourself, which makes them the chapter's second act, curves under your hand. The third act is motion that runs itself. Three property wrappers handle the everyday cases where you'd rather not steer.

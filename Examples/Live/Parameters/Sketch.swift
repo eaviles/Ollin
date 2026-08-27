@@ -10,10 +10,11 @@ import Ollin
 // inspector panel: View ▸ Show Inspector (⌘/).
 //
 // The control follows the property's type: Double → slider, Int → stepper,
-// Bool → toggle, a ParamOption enum → menu, Color → color well. `group:` names
-// an inspector section, `icon:` gives the row an SF Symbol. Numeric value
-// boxes scrub: drag across one to change it (Option = fine, Shift = coarse),
-// or click to type.
+// Bool → toggle, a ParamOption enum → menu, Color → color well, Palette → a
+// strip of swatches, Ramp → a band with a handle per stop, Easing → a menu of
+// the named curves. `group:` names an inspector section, `icon:` gives the row
+// an SF Symbol. Numeric value boxes scrub: drag across one to change it
+// (Option = fine, Shift = coarse), or click to type.
 
 enum RingStyle: String, CaseIterable, ParamOption { case rings, dots, beads }
 
@@ -28,37 +29,44 @@ final class Parameters: Sketch {
 
     @Param(0...4, icon: "speedometer", group: "Motion") var speed = 1.0
     @Param(icon: "wind", group: "Motion") var breathe = true
+    // A curve is a value like any other: this one spaces the rings, tight at
+    // the ends and open in the middle, or the other way about.
+    @Param("Spacing", icon: "chart.line.uptrend.xyaxis", group: "Motion")
+    var spacing: Easing = .linear
 
-    @Param(icon: "paintpalette", group: "Look") var ink: Color = .black
+    @Param(icon: "paintpalette", group: "Look") var paper: Color = .white
+    // A color each for the rings, and a gradient the dots read along.
+    @Param(count: 2...8, icon: "swatchpalette", group: "Look")
+    var inks = Palette(Color(hex: 0x1B1B1B), Color(hex: 0xE4572E), Color(hex: 0x2E86AB))
+    @Param(count: 2...6, icon: "circle.lefthalf.filled", group: "Look")
+    var fade = Ramp([Color(hex: 0xE4572E), Color(hex: 0x2E86AB)])
     @Param(0.5...12, step: 0.5, icon: "lineweight", group: "Look") var weight = 2.5
     @Param(icon: "character.cursor.ibeam", group: "Look") var caption = "rings"
 
     override func draw() {
-        background(.white)
-        noFill()
-        stroke(ink)
+        background(paper)
         strokeWeight(weight * scale)
 
         for i in 0..<rings {
-            let t = Double(i) / Double(rings)
+            let t = Double(i) / Double(max(rings - 1, 1))
             let phase: Double = time * speed + t * .tau
             let swell: Double = breathe ? sin(phase) * 30 : 0
-            let r: Double = (radius * (0.25 + t) + swell) * scale
+            let r: Double = (radius * (0.25 + spacing(t)) + swell) * scale
 
             switch style {
             case .rings:
+                noFill()
+                stroke(inks[i])
                 drawCircle(anchor.x * scale, anchor.y * scale, r)
             case .dots, .beads:
                 let count = style == .dots ? 48 : 12
                 let dot = (style == .dots ? 2.0 : 6.0) * weight * scale
-                fill(ink)
+                fill(fade.color(at: t))
                 noStroke()
                 for j in 0..<count {
                     let a = Double(j) / Double(count) * .tau + time * speed * 0.2
                     drawCircle(anchor.x * scale + cos(a) * r, anchor.y * scale + sin(a) * r, dot)
                 }
-                noFill()
-                stroke(ink)
             }
         }
 

@@ -18,6 +18,9 @@ private final class RemoteProbeSketch: Sketch {
     @Param var palette = Palette.dusk
     @Param var accent = Color.purple
     @Param(x: 0...1, y: 0...1, style: .pad) var focus = Vector2(0.5, 0.5)
+    // Module-qualified: the nested option enum above owns the bare name here.
+    @Param(count: 1...8) var inks = Ollin.Palette(.red, .white, .black)
+    @Param var fade = Ramp([.black, .white])
 }
 
 @MainActor @Suite struct RemoteWireTests {
@@ -138,6 +141,42 @@ private final class RemoteProbeSketch: Sketch {
         #expect(focus.kind == "vector")
         #expect(focus.pad == true)
         #expect(focus.xUpper == 1)
+
+        let inks = try #require(byName["inks"])
+        #expect(inks.kind == "swatches")
+        #expect(inks.gradient == nil)          // blocks, not a band
+        #expect(inks.lower == 1 && inks.upper == 8)
+
+        let fade = try #require(byName["fade"])
+        #expect(fade.kind == "swatches")
+        #expect(fade.gradient == true)
+    }
+
+    @Test func aStripOfColorsTravelsBothWays() throws {
+        let sketch = RemoteProbeSketch()
+        let handle = try #require(sketch.parameters().first { $0.name == "inks" })
+
+        // Out: the page reads the colors and their places from the payload.
+        let text = String(decoding: try JSONEncoder().encode(RemoteWire.snapshotValue(of: handle)),
+                          as: UTF8.self)
+        #expect(text.contains(#""stops""#))
+        #expect(text.contains(#""position":0.5"#))
+        #expect(!text.contains(#""space""#))       // a palette names no space
+
+        // In: the exact JSON shape the page sends after a tap on a chip.
+        let stops = #"[{"position":0,"red":0,"green":0,"blue":1,"alpha":1},"#
+            + #"{"position":1,"red":0,"green":1,"blue":0,"alpha":1}]"#
+        let json = #"{"kind":"set","name":"inks","value":{"colors":{"stops":"#
+            + stops + #","space":null}}}"#
+        let set = try JSONDecoder().decode(RemoteSet.self, from: Data(json.utf8))
+        RemoteWire.apply(set.value, to: handle)
+        #expect(sketch.inks.colors == [.blue, .green])
+
+        // The same payload with the space left out reads the same way, so the
+        // page may send either shape.
+        let bare = #"{"kind":"set","name":"inks","value":{"colors":{"stops":"# + stops + #"}}}"#
+        let second = try JSONDecoder().decode(RemoteSet.self, from: Data(bare.utf8))
+        #expect(second.value == set.value)
     }
 
     @Test func aMenuTravelsByIndexBothWays() throws {

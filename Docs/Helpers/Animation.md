@@ -177,6 +177,8 @@ Build a custom curve from any closure:
 let gentle = Easing { t in t * t * (3 - 2 * t) }   // a hand-rolled smoothstep
 ```
 
+A built-in curve carries its own name, so curves compare, persist, and sit on a menu: `@Param var spacing: Easing = .easeInOut` is a [knob](Parameters.md#family) like any other. The friendly aliases are the cubic curves themselves, so `.easeInOut == .easeInOutCubic`. A curve built from a closure equals itself and every copy of itself, and nothing else, since two closures cannot be compared.
+
 <a name="catalog"></a>
 
 ### The curve catalog
