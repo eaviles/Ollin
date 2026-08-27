@@ -44,8 +44,6 @@ Always available. The render pipeline composites in linear light, so these conve
 | --- | --- |
 | `float3 srgbToLinear(float3 c)` | sRGB → linear RGB. |
 | `float3 linearToSrgb(float3 c)` | linear RGB → sRGB (clamped to 0…1). |
-| `float luma(float3 c)` | Rec. 709 luminance of a linear color. |
-| `float2 rotate2D(float2 p, float a)` | rotate a 2D point by `a` radians. |
 | `float perceptualCoverage(float c)` | remap anti-aliasing coverage so a thin dark mark reads evenly dark in linear light (for hand-rolled AA). |
 | `unipolar(v)` | a signed `-1…1` value read as a `0…1` amount (`v * 0.5 + 0.5`), for `float` through `float4`. What `sin` and `cos` need before they drive a mix, a brightness, or a size. |
 | `bipolar(v)` | the inverse: a `0…1` fraction swung onto `-1…1`, for `float` through `float4`. |
@@ -58,6 +56,7 @@ A `shade` returns straight sRGB and Ollin handles the linear conversion, so you 
 
 | Function | Description |
 | --- | --- |
+| `float luma(float3 c)` | Rec. 709 luminance of a linear color. |
 | `float3 palette(float t, float3 a, float3 b, float3 c, float3 d)` | cosine gradient palette: `a + b·cos(2π(c·t + d))`. A compact way to get rich procedural color from one scalar. |
 | `float3 linearToOklab(float3 c)` | linear RGB → OKLab (perceptual lightness/a/b). |
 | `float3 oklabToLinear(float3 lab)` | OKLab → linear RGB. |
@@ -139,10 +138,11 @@ Mixing in OKLab/OKLCH (interpolate, then convert back) gives even lightness and 
 
 ## Domain operators
 
-`using: .domain`. In-place point-domain transforms: they mutate the point and return the cell/side index, so a shape evaluated at the transformed point tiles or reflects across space without re-evaluating per copy.
+`using: .domain`. Transforms of the point a field is evaluated at. The tiling ones mutate the point and return the cell/side index, so a shape evaluated at the transformed point tiles or reflects across space without re-evaluating per copy; rotation takes a point and hands back another.
 
 | Function | Description |
 | --- | --- |
+| `float2 rotate2D(float2 p, float a)` | rotate a 2D point by `a` radians. |
 | `float pmod(thread float &p, float s)` | repeat one axis with period `s`, centered cells; returns the cell index. |
 | `float2 pmod2(thread float2 &p, float2 s)` | repeat both axes with per-axis period `s`; returns the cell. |
 | `float mirror(thread float &p, float d)` | mirror across the plane at distance `d` from the origin; returns the original side (`±1`). |

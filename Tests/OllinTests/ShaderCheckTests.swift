@@ -254,6 +254,47 @@ struct ShaderCheckTests {
         #expect(without.diagnostics.contains("fbm"))
     }
 
+    /// Every public helper must sit in a section `using:` can turn off, or an included
+    /// file that happens to define the same name at the same signature has no way out.
+    /// `luma` and `rotate2D` were thin aliases in the always-spliced part until
+    /// 2026-08-27; they live under `color` and `domain` now, beside `palette` and the
+    /// other operators that move the point a field is read at.
+    @Test(.enabled(if: hasMetal))
+    func aShaderMayDefineItsOwnLumaOrRotate2D() throws {
+        let dir = try folder([
+            "own.metal": """
+            float luma(float3 c) { return c.g; }
+            float2 rotate2D(float2 p, float a) { return p; }
+
+            float4 shade(float2 uv, ShaderInfo info) {
+                return float4(float3(luma(float3(rotate2D(uv, 0.5), 0.0))), 1.0);
+            }
+            """])
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let path = dir.appendingPathComponent("own.metal").path
+        let narrowed = ShaderCheck.check(path: path, using: [])
+        #expect(narrowed.ok, "\(narrowed.diagnostics)")
+        // Asking for the section that owns the name is still a clash, which is the
+        // point of asking for it.
+        #expect(!ShaderCheck.check(path: path, using: .color).ok)
+        #expect(!ShaderCheck.check(path: path, using: .domain).ok)
+    }
+
+    /// The move must not take the names away from a shader that did not narrow anything.
+    @Test(.enabled(if: hasMetal))
+    func bothNamesAreStillThereByDefault() throws {
+        let dir = try folder(["uses.metal": """
+        float4 shade(float2 uv, ShaderInfo info) {
+            float2 p = rotate2D(uv - 0.5, 0.4);
+            return float4(float3(luma(float3(p, 0.0))), 1.0);
+        }
+        """])
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let path = dir.appendingPathComponent("uses.metal").path
+        #expect(ShaderCheck.check(path: path).ok)
+        #expect(ShaderCheck.check(path: path, using: [.color, .domain]).ok)
+    }
+
     // MARK: What it reads
 
     @Test func theParametersItReadsAreCollected() {

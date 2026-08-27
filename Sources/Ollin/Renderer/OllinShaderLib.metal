@@ -62,8 +62,10 @@ static inline float perceptualCoverage(float c) {
 }
 
 // Linear-light luminance (Rec. 709), the value tone and stylize math keys on.
+// The internal name stays here because the always-spliced sections and the
+// framework's own segments read it; the public `luma` lives under `color`, so a
+// shader that asks for a narrower library can define a `luma` of its own.
 static inline float ollin_luma(float3 c) { return dot(c, float3(0.2126, 0.7152, 0.0722)); }
-static inline float luma(float3 c) { return ollin_luma(c); }   // public-facing name
 
 // Un-premultiply / re-premultiply: a color op acts on straight color, but a
 // composited layer stays premultiplied. Matters only where alpha < 1; an opaque
@@ -71,12 +73,13 @@ static inline float luma(float3 c) { return ollin_luma(c); }   // public-facing 
 static inline float3 ollin_unpremul(float4 c) { return c.a > 1e-4 ? c.rgb / c.a : c.rgb; }
 static inline float4 ollin_premul(float3 rgb, float a) { return float4(rgb * a, a); }
 
-// Rotate a 2D coordinate by `a` radians.
+// Rotate a 2D coordinate by `a` radians. The internal name stays here because the
+// segments read it; the public `rotate2D` lives under `domain`, beside the other
+// operators that move the point a field is evaluated at.
 static inline float2 ollin_rot2(float2 p, float a) {
     float c = cos(a), s = sin(a);
     return float2(p.x * c - p.y * s, p.x * s + p.y * c);
 }
-static inline float2 rotate2D(float2 p, float a) { return ollin_rot2(p, a); }   // public-facing name
 
 // A signed -1...1 value read as a 0...1 amount, and back. sin and cos answer
 // signed, while almost everything they drive (a mix, a brightness, a size)
@@ -406,6 +409,10 @@ static inline float chladni(float2 p, float m, float n) {
 // A cosine gradient palette (cheap, expressive procedural color) plus the OKLab
 // perceptual color space (linear RGB <-> OKLab <-> OKLCH) for even lightness and
 // hue interpolation. OKLab math assumes non-negative linear RGB input.
+
+// Linear-light luminance (Rec. 709). A thin public name over `ollin_luma`, which
+// the always-spliced part keeps for itself.
+static inline float luma(float3 c) { return ollin_luma(c); }
 
 // Cosine gradient palette: col(t) = a + b * cos(2*pi*(c*t + d)).
 static inline float3 palette(float t, float3 a, float3 b, float3 c, float3 d) {
@@ -850,10 +857,14 @@ static float sdBezier(float2 pos, float2 A, float2 B, float2 C, thread float &ou
 // OLLIN_LIB_BEGIN domain
 // MARK: - Domain operators
 //
-// In-place point-domain transforms (repetition, mirroring, polar folding) that
-// tile or reflect a field across space. Each returns the cell/side index and
-// mutates the point in place, so a shape evaluated at the transformed point
-// repeats without re-evaluating per copy.
+// Transforms of the point a field is evaluated at: rotation, repetition,
+// mirroring, polar folding. The tiling ones return the cell/side index and mutate
+// the point in place, so a shape evaluated at the transformed point repeats
+// without re-evaluating per copy; rotation takes a point and hands back another.
+
+// Rotate a 2D coordinate by `a` radians. A thin public name over `ollin_rot2`,
+// which the always-spliced part keeps for itself.
+static inline float2 rotate2D(float2 p, float a) { return ollin_rot2(p, a); }
 
 // Repeat one axis with period `s`, centered cells. Returns the cell index.
 static inline float pmod(thread float &p, float s) {

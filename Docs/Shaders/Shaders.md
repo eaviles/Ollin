@@ -104,11 +104,12 @@ Ollin's shader library is spliced into every user shader, so these helpers are a
 
 | Group | Helpers |
 | --- | --- |
-| **color** | `srgbToLinear` / `linearToSrgb` / `luma` / `rotate2D` / `unipolar` / `bipolar`, `palette(t, a, b, c, d)` (cosine gradient), `linearToOklab` / `oklabToLinear` / `oklabToOklch` / `oklchToOklab` |
+| **always there** | `srgbToLinear` / `linearToSrgb` / `unipolar` / `bipolar` / `perceptualCoverage`. These splice whatever you ask for, because the generated fragment reads them. |
+| **color** | `luma`, `palette(t, a, b, c, d)` (cosine gradient), `linearToOklab` / `oklabToLinear` / `oklabToOklch` / `oklchToOklab` |
 | **hash** | `hash12`, `hash22`, `hash33` |
 | **noise** | `valueNoise`, `fbm`, `gradientNoise`, `simplexNoise`, `worley` / `worley2`, `ridgedFbm`, `turbulence`, `warpedFbm`, `curlNoise` |
 | **sdf** | `smin(a, b, k)` (smooth minimum) plus the 2D distance catalog (`sdEllipse`, `sdRoundBox`, `sdSegment`, `sdStar`, `sdHeart`, `sdBezier`, …) |
-| **domain** | `pmod` / `pmod2` (repeat), `mirror`, `pmodPolar` (radial fold) |
+| **domain** | `rotate2D`, `pmod` / `pmod2` (repeat), `mirror`, `pmodPolar` (radial fold) |
 
 See the **[shader library reference](./ShaderLibrary.md)** for every function with its full signature.
 
