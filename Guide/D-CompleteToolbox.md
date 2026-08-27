@@ -8,7 +8,20 @@ Everything Ollin can do, one line each. The guide teaches by building pieces, so
 
 Use it two ways. It is an index for the moment you remember the guide showing blur somewhere and want it again. It is also a map of what you haven't tried yet. If something you want isn't in these tables, it isn't in the framework yet. The [roadmap](../ROADMAP.md) is the list of what's ahead.
 
-**Contents:** [The sketch and its window](#the-sketch-and-its-window) · [Drawing](#drawing) · [Color](#color) · [Text and images](#text-and-images) · [Geometry you can hold](#geometry-you-can-hold) · [Motion, math, and randomness](#motion-math-and-randomness) · [Generative systems](#generative-systems) · [Physics and simulation](#physics-and-simulation) · [Layers and effects](#layers-and-effects) · [Shaders and compute](#shaders-and-compute) · [3D](#3d) · [Sculpting with fields](#sculpting-with-fields) · [Depth and the phone](#depth-and-the-phone) · [Sound and control](#sound-and-control) · [Seeing and video](#seeing-and-video) · [Sharing and performing](#sharing-and-performing)
+**Contents:** [The ideas underneath](#the-ideas-underneath) · [The sketch and its window](#the-sketch-and-its-window) · [Drawing](#drawing) · [Color](#color) · [Text and images](#text-and-images) · [Geometry you can hold](#geometry-you-can-hold) · [Motion, math, and randomness](#motion-math-and-randomness) · [Generative systems](#generative-systems) · [Physics and simulation](#physics-and-simulation) · [Layers and effects](#layers-and-effects) · [Shaders and compute](#shaders-and-compute) · [3D](#3d) · [Sculpting with fields](#sculpting-with-fields) · [Depth and the phone](#depth-and-the-phone) · [Sound and control](#sound-and-control) · [Seeing and video](#seeing-and-video) · [Sharing and performing](#sharing-and-performing)
+
+## The ideas underneath
+
+Before the capabilities, the ideas they all assume. These six pages live in the reference, one screen each, and they are the layer between a chapter and a function signature.
+
+| Idea | What it says | Guide | Reference |
+|---|---|---|---|
+| The frame | A drawing call records rather than paints, call order is draw order, and nothing is kept for you | [Ch 1](01-HelloOllin.md) | [The frame](../Docs/Concepts/Frame.md) |
+| Layers | An off-screen picture you draw into and then read back: what one costs, and when you need one | [Ch 16](16-LayersAndEffects.md) | [Layers](../Docs/Concepts/Layers.md) |
+| What survives a frame | What carries into the next frame, and what a batch, a reload, and a checkpoint hold | [Ch 15](15-ShapesAsMaterial.md), [Ch 32](32-Installations.md) | [What survives a frame](../Docs/Concepts/Persistence.md) |
+| Why a run repeats | The seed and the fixed export clock, and the four things that break a repeat | [Ch 4](04-Randomness.md) | [Why a run repeats](../Docs/Concepts/Determinism.md) |
+| Light and color | Why the middle of a frame is linear light, and what tone-mapping and dithering do at the end of it | [Ch 16](16-LayersAndEffects.md) | [Light and color](../Docs/Concepts/Light.md) |
+| Values and bare calls | The typed values under the short calls, and why the value is the half worth keeping | [Ch 10](10-Vectors.md), [Ch 15](15-ShapesAsMaterial.md) | [Values and bare calls](../Docs/Concepts/Values.md) |
 
 ## The sketch and its window
 

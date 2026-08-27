@@ -338,6 +338,7 @@ The `setup()` and `draw()` sketch model comes from [Processing](https://processi
 
 ## Go deeper
 
+- [The frame](../Docs/Concepts/Frame.md): one screen on what a drawing call actually does, why the picture is built from nothing each time, and what happens once `draw()` returns.
 - [Sketch](../Docs/Core/Sketch.md): the full lifecycle, `noLoop()` for stills, and running a sketch as its own standalone program with `@main`.
 - [Canvas](../Docs/Core/Canvas.md): canvas sizes and presets, the preview window, and writing sketches that hold up at any resolution (`scale` for sizes, and `uv(u, v)` for placing things as 0…1 fractions of the canvas).
 - [Drawing](../Docs/Drawing/Drawing.md): every shape and the complete ink state.

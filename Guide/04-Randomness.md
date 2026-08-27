@@ -311,6 +311,7 @@ The grammar of this chapter is the founding grammar of computer art. Vera Molná
 
 - [Random](../Docs/Generators/Random.md): the full reference, including `randomVector` (a roll inside a rectangle), `ring` (a roll inside a ring, great for halos), and the seeded `shuffled`.
 - [Variations](../Docs/Core/Variations.md): `variation` and the seed-exploration tools in full, including contact sheets (`--export-grid`) and re-rendering a keeper (`--seed`).
+- [Why a run repeats](../Docs/Concepts/Determinism.md): one screen on the seed and the export's fixed clock, and the four habits that break a repeat.
 - [Walks](../Docs/Generators/Walks.md): the hand-rolled walk from this chapter, shipped and seeded, plus two relatives worth meeting. `levyFlight` mostly shuffles and occasionally leaps, which is how foraging animals actually move, and `selfAvoidingWalk` refuses to cross its own path.
 - [Percolation](../Docs/Generators/Percolation.md): the crowd game in full, including the outline tracing and reading clusters off any boolean grid.
 - [Noise](../Docs/Generators/Noise.md): the next chapter's subject, if you can't wait to make chance glide.

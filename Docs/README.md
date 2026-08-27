@@ -8,6 +8,17 @@ Reference for Ollin's drawing surface and helpers. The bare calls you write in `
 
 New to Swift? Start with the [Swift quick reference](./Swift.md), which covers just enough of the language to be productive in `draw()`. Coming from p5.js or Processing? [Appendix C of the Guide](../Guide/C-ComingFromP5.md) maps the API you already know onto Ollin.
 
+### Concepts
+
+One screen each on the ideas the pages below assume, for when you want the why rather than the signature.
+
+- [`The frame`](./Concepts/Frame.md) - what a drawing call actually does, and what happens between `draw()` and the picture
+- [`Layers`](./Concepts/Layers.md) - what an off-screen layer is, what it costs, and when you need one
+- [`What survives a frame`](./Concepts/Persistence.md) - what Ollin keeps between frames and what it drops: state, the canvas, layers, batches, saved values
+- [`Why a run repeats`](./Concepts/Determinism.md) - the seed and the clock, and what makes a sketch draw the same picture twice
+- [`Light and color`](./Concepts/Light.md) - why color mixes in linear light, and what the last pass of a frame does
+- [`Values and bare calls`](./Concepts/Values.md) - the typed values under `drawCircle(x, y, r)`, and when to reach for them
+
 ### Core
 
 - [`Sketch`](./Core/Sketch.md) - the lifecycle (`setup`/`draw`), temporal state (`time`, `frameCount`, …), and loop control

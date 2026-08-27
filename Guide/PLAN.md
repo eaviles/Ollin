@@ -319,6 +319,12 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 
 | Capability (Docs page) | Guide home | Depth |
 |---|---|---|
+| `Concepts/Frame.md` (the recorder model: a call records, call order is draw order, no scene) | Ch 1 | taught ("Once, then every frame" and "It moves on its own": `setup()` against `draw()`, the loop at the display's rate, and a picture drawn fresh each frame) |
+| `Concepts/Layers.md` (what an off-screen layer is, what it costs, when one is needed) | Ch 16 | taught ("A drawing you can hold" opens on the layer, and the chapter builds the whole stack from it) |
+| `Concepts/Persistence.md` (what carries into the next frame: state, canvas, layers, batches, `@Saved`) | Ch 16; batches in Ch 15, `@Saved` in Ch 32 | taught ("The canvas that keeps everything", "Record it once: batches", "Leaving it running"; the page is where the whole list stands in one place) |
+| `Concepts/Determinism.md` (the seed, the export's fixed clock, and what breaks a repeat) | Ch 4; the recipe in Ch 31 | taught ("Seeds: randomness you can keep", "Finding a seed worth keeping", "Reproducibility is part of the piece") |
+| `Concepts/Light.md` (why the middle of a frame is linear, and what the last pass does) | Ch 16; linear light in Ch 9 | taught ("Brighter than the screen: toneMap" for the float frame and the roll-off, with Ch 9's mosaic averaging for why linear light matters) |
+| `Concepts/Values.md` (the typed values under the bare calls, and the scoped state stack) | Ch 10, Ch 15 | taught ("An arrow you can draw" for `Vector2`, "Shapes you can hold" for `Shape`; both spellings of a call appear from Ch 1 on) |
 | `Core/Sketch.md` (lifecycle, time, loop) | Ch 1 | taught (`setup()`/`draw()` and the clock; `noLoop()` and `@main` pointed) |
 | `Core/Canvas.md` (canvasSize, windowMode) | Ch 1 | taught ("The canvas is not the window" with a diagram: the two are independent, `width` reports the canvas either way, exports ignore the window, the preset families including paper sizes and `.dpi()`, and the three `windowMode` cases) |
 | `Swift.md` (language primer) | Ch 1 callouts, Appendix A | taught |
