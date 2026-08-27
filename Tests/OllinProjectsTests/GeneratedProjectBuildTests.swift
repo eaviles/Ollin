@@ -2,6 +2,15 @@ import Foundation
 import Testing
 @testable import OllinProjects
 
+/// Whether this run builds the four signed bundles. `Scripts/test.sh milestone`
+/// sets it, and so does `Scripts/preflight.sh --milestone` through it. Left
+/// unset the four report as skipped rather than passing quietly, so a run that
+/// did not make the check cannot be read as one that did.
+private let buildsBundles = ProcessInfo.processInfo.environment["OLLIN_BUNDLE_BUILDS"] == "1"
+
+private let bundlesSkipped: Comment =
+    "the signed-bundle builds run on the milestone pass; Scripts/test.sh milestone"
+
 /// The check that matters most: what comes out of the generator has to build.
 ///
 /// A scaffold that does not compile is worse than no scaffold, and none of the
@@ -14,6 +23,13 @@ import Testing
 /// weight, and that load starves the wall-clock suites running beside it. The
 /// time limit is the hang backstop: a nested build is a subprocess with no
 /// timeout of its own, so a wedged one would otherwise wait forever.
+///
+/// The four that build a whole signed bundle are gated on `buildsBundles`
+/// below: each makes, for its own bundle shape, the check the plain generated
+/// package build already makes, and together they cost 569 s of this suite's
+/// 725 s (screen saver 142.4, app 143.1, wallpaper 145.0, menu-bar piece
+/// 140.9). They run on the milestone pass instead, where the examples build
+/// already lives, which leaves the everyday suite at 155 s.
 @Suite("Generated projects build", .serialized, .timeLimit(.minutes(15)))
 struct GeneratedProjectBuildTests {
 
@@ -326,7 +342,8 @@ struct GeneratedProjectBuildTests {
     /// Loading it here is safe because this test target links the generator
     /// alone, never the framework, so the copy inside the saver arrives in a
     /// process that has none.
-    @Test("A generated screen saver builds into a bundle the system can load")
+    @Test("A generated screen saver builds into a bundle the system can load",
+          .enabled(if: buildsBundles, bundlesSkipped))
     func aGeneratedScreenSaverBuildsAndLoads() throws {
         let repository = try #require(Self.repositoryRoot(), "could not find the Ollin folder from the test file")
         let destination = try Self.temporaryDirectory()
@@ -374,7 +391,8 @@ struct GeneratedProjectBuildTests {
     /// way the system will, and then runs the binary *from inside the bundle*:
     /// the export only renders if every resource resolves from the app's own
     /// Resources folder.
-    @Test("A generated app builds, signs, and renders from inside its bundle")
+    @Test("A generated app builds, signs, and renders from inside its bundle",
+          .enabled(if: buildsBundles, bundlesSkipped))
     func aGeneratedAppBuildsSignsAndRuns() throws {
         let repository = try #require(Self.repositoryRoot(), "could not find the Ollin folder from the test file")
         let destination = try Self.temporaryDirectory()
@@ -430,7 +448,8 @@ struct GeneratedProjectBuildTests {
     /// agree (a stray `@main` on the sketch refuses to compile beside the
     /// wrapper's). The rest is the app's own wrapper, checked the app's way,
     /// plus the one line that keeps the piece out of the Dock.
-    @Test("A generated wallpaper builds, stays out of the Dock, and renders from its bundle")
+    @Test("A generated wallpaper builds, stays out of the Dock, and renders from its bundle",
+          .enabled(if: buildsBundles, bundlesSkipped))
     func aGeneratedWallpaperBuildsAndRuns() throws {
         let repository = try #require(Self.repositoryRoot(), "could not find the Ollin folder from the test file")
         let destination = try Self.temporaryDirectory()
@@ -474,7 +493,8 @@ struct GeneratedProjectBuildTests {
     /// The menu-bar kind is the wallpaper's shape pointed at the other host,
     /// so what this build proves is the one thing that differs: the wrapper's
     /// call compiles against the framework it names.
-    @Test("A generated menu-bar piece builds and renders from its bundle")
+    @Test("A generated menu-bar piece builds and renders from its bundle",
+          .enabled(if: buildsBundles, bundlesSkipped))
     func aGeneratedMenuBarPieceBuildsAndRuns() throws {
         let repository = try #require(Self.repositoryRoot(), "could not find the Ollin folder from the test file")
         let destination = try Self.temporaryDirectory()

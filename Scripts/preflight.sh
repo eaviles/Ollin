@@ -24,9 +24,11 @@
 #   always
 #       -> the em-dash and invisible-character net over the added diff lines
 #   --milestone adds
-#       -> Scripts/test.sh (both phases), guide-figures --no-probe, and
-#          swift build --package-path Examples (the examples anti-rot guard;
-#          CI runs on pull requests only, so nothing else compiles them)
+#       -> Scripts/test.sh milestone (both phases plus the four nested
+#          signed-bundle builds the everyday run leaves out), guide-figures
+#          --no-probe, and swift build --package-path Examples (the examples
+#          anti-rot guard; CI runs on pull requests only, so nothing else
+#          compiles them)
 #
 # This does not commit and does not replace the docs audit's judgment passes
 # (stale prose, snippet APIs, comment leaks); it is the mechanical half.
@@ -125,7 +127,7 @@ if [[ -n "$parked" ]]; then
 fi
 
 if [[ $milestone -eq 1 ]]; then
-    run "test.sh (full suite)" Scripts/test.sh
+    run "test.sh (full suite + bundle builds)" Scripts/test.sh milestone
     run "examples build" swift build --package-path Examples
 fi
 

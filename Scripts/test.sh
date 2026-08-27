@@ -5,7 +5,17 @@
 #   Scripts/test.sh              # the whole suite, in two phases (see below)
 #   Scripts/test.sh quick        # the sub-minute pass: skips the GPU snapshot
 #                                # table and the nested-build suite
+#   Scripts/test.sh milestone    # the whole suite plus the four nested
+#                                # signed-bundle builds (+570 s), which the
+#                                # everyday run leaves out
 #   Scripts/test.sh <pattern>    # swift test --filter <pattern>
+#
+# What the everyday run leaves out: the four cases in `Generated projects
+# build` that build a whole signed bundle. They repeat, per bundle shape, the
+# check the plain generated-package build already makes, and they take the
+# suite from 155 s to 725 s. `Scripts/preflight.sh --milestone` runs them; so
+# does `Scripts/test.sh milestone`. They report as skipped otherwise, so a run
+# that did not make that check cannot be mistaken for one that did.
 #
 # Why phases: a few suites measure the world against a wall clock or a system
 # ML model (DataFeedTests counts polls per elapsed second; ListeningTests waits
@@ -42,19 +52,28 @@ cd "$(dirname "$0")/.." || exit 1
 # a full parallel run that wait has wedged indefinitely rather than failing.
 sensitive='OllinTests.DataFeedTests|OllinVisionTests.FrameSourceTests|OllinVisionTests.ModelTrackerTests|OllinAudioTests.ListeningTests|OllinTests.SpatialVideoTests'
 
+phases() {
+    echo "test.sh: phase 1 of 2, the wall-clock and device suites alone"
+    swift test --filter "$sensitive" || exit 1
+    echo "test.sh: phase 2 of 2, everything else"
+    exec swift test --skip "$sensitive"
+}
+
 case "$1" in
 --help | -h)
-    sed -n '3,31p' "$0" | sed 's|^# \?||'
+    sed -n '3,40p' "$0" | sed 's|^# \?||'
     exit 0
     ;;
 quick)
     exec swift test --skip "OllinTests.SnapshotTests|GeneratedProjectBuildTests|$sensitive"
     ;;
+milestone | --milestone)
+    echo "test.sh: milestone run; the four signed-bundle builds are included"
+    export OLLIN_BUNDLE_BUILDS=1
+    phases
+    ;;
 "")
-    echo "test.sh: phase 1 of 2, the wall-clock and model suites alone"
-    swift test --filter "$sensitive" || exit 1
-    echo "test.sh: phase 2 of 2, everything else"
-    exec swift test --skip "$sensitive"
+    phases
     ;;
 *)
     exec swift test --filter "$1"
