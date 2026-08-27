@@ -53,10 +53,11 @@ static inline uint ollin_caustics_level_offset(uint level) {
 // is the texel's average projected footprint area last frame, a_t the target
 // area, v the average temporal variance its photons saw, and g the variance
 // gain. The result is blended with the 3x3 neighborhood of the *current*
-// density (temporal weight wt) so small features move smoothly, floored so
-// every texel keeps at least a probe ray (a texel at zero density could never
-// discover a caustic appearing there), and summed (fixed-point atomic) so the
-// leaf-count pass can normalize the whole map to the frame's ray budget.
+// density (temporal weight wt) so small features move smoothly, bounded above
+// and below as shares of the uniform plan (a texel at zero density could never
+// discover a caustic appearing there, and one whose target is out of reach
+// would otherwise take the whole budget), and summed (fixed-point atomic) so
+// the leaf-count pass can normalize the whole map to the frame's ray budget.
 // This kernel also clears the feedback slots it consumed.
 
 kernel void ollin_caustics_density(device float *density [[buffer(0)]],
@@ -68,7 +69,29 @@ kernel void ollin_caustics_density(device float *density [[buffer(0)]],
     if (gid.x >= edge || gid.y >= edge) return;
     uint i = gid.y * edge + gid.x;
     float d0 = float(cu.counts.z) / float(edge * edge);   // the uniform seed density
-    float dmin = max(1.0, d0 * 0.02);
+    // Every bound here is a multiple of the uniform share, because the leaf pass
+    // normalizes the whole map to the ray budget: an absolute floor stops meaning
+    // anything as the map's total grows, and a texel holding "one ray" can end up
+    // emitting nothing at all. A texel whose photons landed keeps half the
+    // uniform share, one that landed nothing keeps a probe share, and no texel
+    // may hold more than `dmax`.
+    //
+    // The ceiling is the windup guard, and it is what keeps the plan honest: the
+    // update is a proportional controller driving the footprint area to a target,
+    // and some texels can never reach that target however many rays they get
+    // (a photon landing at a grazing angle draws a large footprint because of the
+    // surface it lands on, not because the rays were spread). Unbounded, those
+    // texels multiply by up to 4 every frame until they hold the whole budget,
+    // and every other texel then plans for a fraction of a ray and emits nothing:
+    // the sharpest caustic in the scene goes out first and never comes back,
+    // because its own footprints are small, which the same rule reads as
+    // over-sampling. Measured without the guard: a lens's focused spot fell to
+    // nothing within 30 frames while a few hundred grazing texels held the whole
+    // budget. The guard is ours, not the published technique's.
+    float dlive = d0 * 0.5;
+    float didle = d0 * 0.05;
+    float dmax = d0 * 32.0;
+    float dmin = didle;
     float suggested;
     if (cu.counts2.z != 0) {
         // Uniform mode (first frame / export): every texel gets the seed density.
@@ -84,10 +107,11 @@ kernel void ollin_caustics_density(device float *density [[buffer(0)]],
             float vAvg = (float(varFx) / 1024.0) / float(count);       // variance is x1024
             suggested = d * clamp(aAvg / max(cu.feedback.x, 1.0), 0.25, 4.0)
                       + vAvg * cu.feedback.y * d0;
+            dmin = dlive;
         } else {
             // No photon from this texel landed anywhere useful: decay toward the
             // probe floor, freeing budget for the texels that do cast.
-            suggested = max(d * 0.8, dmin);
+            suggested = max(d * 0.8, didle);
         }
         // Blend with the neighborhood's current density so a small bright
         // feature ramps instead of popping (the technique's spatial filter).
@@ -104,14 +128,20 @@ kernel void ollin_caustics_density(device float *density [[buffer(0)]],
         }
         suggested = wt * suggested + (1.0 - wt) * (nsum / max(nw, 1.0));
     }
-    suggested = clamp(suggested, dmin, 4096.0);
+    suggested = clamp(suggested, dmin, dmax);
     density[i] = suggested;
     // Reset the feedback slots for this frame's accumulation.
     atomic_store_explicit(&feedback[i * 4 + 0], 0u, memory_order_relaxed);
     atomic_store_explicit(&feedback[i * 4 + 1], 0u, memory_order_relaxed);
     atomic_store_explicit(&feedback[i * 4 + 2], 0u, memory_order_relaxed);
-    // Fixed-point (x16) running total for the budget normalization.
-    atomic_fetch_add_explicit(&totals[0], uint(suggested * 16.0), memory_order_relaxed);
+    // Fixed-point running total for the budget normalization. The scale is x256
+    // and the add rounds, because this sum is a divisor: a coarser scale that
+    // truncates counts every texel holding less than one step as zero, and since
+    // most of the map sits near the probe floor, the map then under-reports its
+    // own total and every texel's plan comes out too big (x16 inflated it by a
+    // sixth, which is enough to overrun the budget on its own).
+    atomic_fetch_add_explicit(&totals[0], uint(suggested * 256.0 + 0.5),
+                              memory_order_relaxed);
 }
 
 // Leaf ray counts from the density map: normalize the map's total to the ray
@@ -133,7 +163,7 @@ kernel void ollin_caustics_leafcounts(const device float *density [[buffer(0)]],
         want = float(cu.counts.z) / float(edge * edge);
         k = uint(floor(sqrt(max(want, 0.0))));
     } else {
-        float total = float(atomic_load_explicit(&totals[0], memory_order_relaxed)) / 16.0;
+        float total = float(atomic_load_explicit(&totals[0], memory_order_relaxed)) / 256.0;
         want = density[i] * (float(cu.counts.z) / max(total, 1.0));
         // Floor alone zeroes every texel wanting less than one ray, and at the
         // seed density that is the WHOLE map (want sits at 1.0 minus float
@@ -142,11 +172,24 @@ kernel void ollin_caustics_leafcounts(const device float *density [[buffer(0)]],
         // part, hashed per texel per frame so no texel is structurally starved.
         // The uniform branch above keeps the exact floor, so an export's plan
         // is untouched and stays a pure function of the frame.
+        //
+        // Promote in RAYS, never in k. A texel emits k * k rays, so promoting by
+        // the fractional part of k asks for more rays than it was given: at
+        // want = 3.2 the k-side coin lands on 4 rays 79% of the time, for 3.6
+        // rays on average. Every texel doing that overshoots the whole plan (the
+        // budget is what the trace dispatches, so a plan of 118k rays against a
+        // 65k budget simply loses the rays past it), and the loss is not spread:
+        // the quadtree hands out tasks in traversal order, so what falls off the
+        // end is always the same corner of the map, and whatever caustic sits
+        // there goes out. Solving for the promotion that keeps E[k * k] == want
+        // costs one divide and plans the budget it was given.
         float s = sqrt(max(want, 0.0));
         k = uint(floor(s));
+        float lo = float(k * k);
+        float hi = float((k + 1) * (k + 1));
         float fi = float(cu.counts2.y % 4096u);
         float2 hp = float2(gid) + float2(fi * 17.0, fi * 41.0);
-        if (hash12(hp) < s - float(k)) k += 1;
+        if (hash12(hp) < (want - lo) / max(hi - lo, 1.0)) k += 1;
     }
     k = min(k, 64u);                       // cap: 4096 rays per texel
     leafCounts[i] = k * k;
