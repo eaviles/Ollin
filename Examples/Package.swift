@@ -734,5 +734,8 @@ let package = Package(
         // after Nick Cave's Soundsuits; the tethered phone can wear it live.
         example("Recreations/NickCave/Soundsuit", [.audio, .phone]),
         example("Recreations/JaredTarbell/Substrate"),
+        // A machine that composes in an artist's own language and weighs the
+        // result, after Manuel Felguerez's "La maquina estetica".
+        example("Recreations/ManuelFelguerez/MaquinaEstetica"),
     ]
 )

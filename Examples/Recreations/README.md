@@ -20,3 +20,4 @@ Each sketch is a **recreation and homage** made after the artist. It isn't a rep
 - [**Osamu Sato**](OsamuSato/). Surreal totems and glyphs built from basic shapes, in bold black and white with red.
 - [**Nick Cave**](NickCave/). The Soundsuits: wearable sculptures that conceal the body and sound as it moves, recreated live on the streamed skeleton.
 - [**Jared Tarbell**](JaredTarbell/). Emergent city maps grown from colliding cracks, shaded with sand-grain washes.
+- [**Manuel Felguérez**](ManuelFelguerez/). A machine that composed in the artist's own geometric language, and weighed what it made.
