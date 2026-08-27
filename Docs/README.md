@@ -177,6 +177,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 - [`Syphon`](./Integration/Syphon.md) - `import OllinSyphon` to share live visuals with other Mac apps (openFrameworks, Resolume, MadMapper, VDMX, …): publish a sketch's frames as a Syphon source, and draw an incoming Syphon feed as an `Image`
 - [`Virtual camera`](./Integration/VirtualCamera.md) - `import OllinCamera` to feed a sketch's frames to the Ollin Camera system camera, so webcam apps and browser tools (Zoom, OBS, Hydra via `getUserMedia`, …) read the sketch as a live camera
 - [`Game controllers`](./Integration/Controller.md) - `import OllinController` to read a game controller in `draw()`: sticks, triggers and buttons on any pad, plus motion and a touchpad on hardware that has them, with several players at once
+- [`Haptics`](./Integration/Haptics.md) - `import OllinHaptics` to put touch under the hand beside the picture: a designed pattern of taps and hums composed like a phrase and played from `draw()`, translated for the trackpad's three feelings and one strength, and played as written where a full haptic engine exists
 - [`Screen capture`](./Integration/ScreenCapture.md) - `import OllinScreen` to take any display, app, or window on the Mac as a live GPU-textured frame source, drawn and filtered like any image and read by the vision trackers; the non-cooperative counterpart to Syphon, including the feedback tunnel when a sketch captures the screen it is drawn on
 
 ### Vision

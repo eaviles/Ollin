@@ -46,6 +46,7 @@ enum Satellite: String, CaseIterable {
     case phone = "OllinPhone"
     case screen = "OllinScreen"
     case controller = "OllinController"
+    case haptics = "OllinHaptics"
 
     var dependency: Target.Dependency { .product(name: rawValue, package: "Ollin") }
 }
@@ -626,6 +627,7 @@ let package = Package(
         // A game controller as a drawing instrument: sticks steer the pen,
         // triggers set its weight, and a pad that reports motion tips the page.
         example("Integration/ControllerInput", [.controller]),
+        example("Integration/HapticRidges", [.haptics]),
         // Physics — a Verlet world stepped each frame. Packing is a field of
         // colliding discs; Blobs are spring-built soft bodies that squish.
         example("Physics/Packing", [.physics]),

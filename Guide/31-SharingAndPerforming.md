@@ -465,6 +465,47 @@ Two facts about the frame will save you a confused minute:
 
 And when the picture looks wrong, suspect the *viewer* first. Photo Booth mirrors every camera preview like a selfie mirror. Text in your sketch reads backwards there, exactly as it would on the built-in camera. It also crops, because its preview pane isn't 16:9. Conferencing apps usually mirror your self-view while sending the unmirrored picture to everyone else. QuickTime's File ▸ New Movie Recording shows the frame as published, uncropped and unmirrored. It's the fastest way to see what other apps are really receiving.
 
+## Touch as an output: haptics
+
+A sketch already leaves the machine as pixels and as sound. There is a third way out, and the Mac has had it under your hand the whole time. The trackpad can knock.
+
+```swift
+import OllinHaptics
+
+override func draw() {
+    background(.white)
+    if ball.justLanded { playHaptic(.tap(intensity: 0.9, sharpness: 0.8)) }
+    drawCircle(ball.position, radius: 24)
+}
+```
+
+A `HapticPattern` is a value, like a color. It holds taps and hums on a little timeline of its own. Two numbers describe each one, both running 0 to 1: `intensity` is how strong it feels, and `sharpness` runs from a dull thud to a tight click. A hum also takes a length, and a `fadeIn` and `fadeOut` in seconds.
+
+Patterns join the way words make a sentence:
+
+```swift
+let heartbeat = HapticPattern.tap(intensity: 1, sharpness: 0.7)
+    .then(.silence(0.12))
+    .then(.tap(intensity: 0.55, sharpness: 0.5))
+
+playHaptic(heartbeat.repeated(4, every: 0.85))
+```
+
+`then` puts one piece after another, `over` starts two together, and `delayed`, `repeated`, `scaled`, `speed`, and `reversed` do what they say. Nothing here reads your canvas and guesses. Touch is designed, the way the picture is.
+
+Now the part that decides how a piece should be written. A trackpad is not a small speaker. It has three fixed feelings and exactly one strength, and it gives them one at a time. So a pattern is translated before it is played:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/31-SharingAndPerforming/FeltPattern-dark.jpg">
+  <img src="Images/31-SharingAndPerforming/FeltPattern.jpg" alt="Two panels. On the left a tall mark, a triangle that rises and falls, and a second mark, with height standing for strength. On the right the same phrase as 16 upright knocks of equal height, spaced far apart at the start and close together at the peak" width="680">
+</picture>
+
+Sharpness picks which of the three feelings each event asks for. Strength turns into *density*. A strong hum arrives as a fast run of knocks and a weak one as a slow run, and a fade thins the run instead of lowering it. The hand reads a faster run as a stronger buzz, which is why this works. Anything under a floor is dropped, so a pattern that fades away ends in silence rather than one last stray knock.
+
+Two habits follow from that. Play at the moment something happens, not every frame: touch marks events, the way a drum marks a bar. And if a piece leans on strength alone, it will read flat on a trackpad. Ask `hapticHardware` and give that case fewer, crisper marks instead.
+
+The `Integration/HapticRidges` example is three strips of ridges you drag across. It draws the plan along its bottom edge, so you can see what your pattern really asked the hardware for. On a machine with nothing to feel, and in every export, all of this quietly does nothing and the sketch runs on.
+
 ## Adding behavior without touching the sketch: SketchExtension
 
 One more piece is worth knowing about once you have several sketches. It answers a question that comes up as soon as you want the same extra behavior in all of them. How do you add something to a sketch's life cycle without editing the sketch?
@@ -737,6 +778,7 @@ Live coding as a performance practice was organized by TOPLAP (founded 2004), wh
 - [Fabrication](../Docs/Output/Fabrication.md): writing a mesh as STL, OBJ, or 3MF, real-world sizing, and what makes a surface printable.
 - [Syphon](../Docs/Integration/Syphon.md): publishing, receiving, discovery, and the loopback.
 - [Virtual camera](../Docs/Integration/VirtualCamera.md): the one-time install, publishing, the test card.
+- [Haptics](../Docs/Integration/Haptics.md): writing and composing a pattern, the two kinds of hardware, and the four rules that turn a pattern into knocks.
 - [Live coding](../Docs/Tools/LiveCoding.md): the evaluate loop, errors, recovery, and the keyboard reference.
 - [Writing an extension](../Docs/Tools/Extensions.md): the four seams, the naming convention, the publishing checklist, and what is deliberately closed.
 - [Formula](../Docs/Helpers/Formula.md): the whole arithmetic vocabulary a knob's rule speaks, what it can name, and what it reports rather than throws.

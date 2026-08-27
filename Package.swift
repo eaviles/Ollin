@@ -34,6 +34,7 @@ enum Satellite: String, CaseIterable {
     case phone = "OllinPhone"
     case screen = "OllinScreen"
     case controller = "OllinController"
+    case haptics = "OllinHaptics"
 
     var dependency: Target.Dependency { .byName(name: rawValue) }
 }
@@ -71,6 +72,11 @@ let package = Package(
         // to MIDI gear (control surfaces, keyboards, sequencers) over Core MIDI.
         // Kept out of `Ollin` so the drawing core stays free of Core MIDI.
         .library(name: "OllinMIDI", targets: ["OllinMIDI"]),
+        // Haptics as a satellite library: `import OllinHaptics` to send a felt
+        // pattern out beside the frame, on a trackpad that knocks or on a full
+        // haptic engine. Kept out of `Ollin` so the drawing core stays free of
+        // Core Haptics and of the device registry.
+        .library(name: "OllinHaptics", targets: ["OllinHaptics"]),
         // Serial as a satellite library: `import OllinSerial` to read and drive
         // USB microcontrollers (sensors in, servos and LEDs out) over the
         // classic physical-computing loop: IOKit discovery, POSIX termios I/O,
@@ -494,6 +500,16 @@ let package = Package(
             name: "OllinMIDI",
             dependencies: ["Ollin"]
         ),
+        // Haptics: a designed pattern of taps and hums played beside the frame,
+        // so touch joins pixels and sound as an output. Two back ends behind one
+        // seam: the window system's trackpad performer (three feelings, one
+        // strength, so a pattern is planned into knocks first) and Core Haptics
+        // where a full engine exists. A satellite (like OllinOSC) so the drawing
+        // core stays free of both. Depends on Ollin for the `Sketch` calls.
+        .target(
+            name: "OllinHaptics",
+            dependencies: ["Ollin"]
+        ),
         // Serial: the classic physical-computing loop over a USB serial device,
         // discovered through IOKit and driven through POSIX termios (no vendored
         // library). Framing stays at text lines and raw bytes; higher protocols
@@ -736,6 +752,16 @@ let package = Package(
         .testTarget(
             name: "OllinMIDITests",
             dependencies: ["OllinMIDI"]
+        ),
+        // Haptics correctness, hardware-free on purpose: the pattern algebra
+        // (composing, moving, scaling, reversing), the trackpad plan as a pure
+        // function (rate coding, fades thinning the train, the silence floor,
+        // the spacing rule), the Core Haptics translation read back off the
+        // built system pattern, and the hub's scheduling and spacing against a
+        // fake performer and a fake clock. Runs in CI.
+        .testTarget(
+            name: "OllinHapticsTests",
+            dependencies: ["Ollin", "OllinHaptics"]
         ),
         // Serial correctness: line reassembly over every line-ending convention
         // and chunking (pure, runs everywhere), device matching, value parsing,

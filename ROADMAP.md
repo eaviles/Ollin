@@ -95,7 +95,7 @@ Several overlap the [iPhone sensor array](#iphone-as-a-sensor-array); these are 
 
 Ways a sketch leaves the window:
 
-- **Haptics.** A `draw()` that also emits a felt pattern synced to the visuals, on Force Touch trackpads and on the phone.
+- **Rumble on a game controller.** A pad's motors are an output of the same kind as [haptics](Docs/Integration/Haptics.md), so they belong with that rather than with reading the pad. It needs a controller on the desk to write against.
 - **A desktop widget.** Wrap a sketch as a widget, so the output lives in the system rather than a window. The timeline refresh there is measured in minutes, so what a `draw()` means under that constraint is the design question.
 
 See the [design notes](DESIGN-NOTES.md#new-output-surfaces).

@@ -290,6 +290,7 @@ Use it two ways. It is an index for the moment you remember the guide showing bl
 | Serial | A USB microcontroller's sensor lines read in `draw()` or bound to a knob, lines written back to drive the hardware, and a port that waits through unplugs and reopens itself | [Ch 28](28-SoundAndControl.md) | [Serial](../Docs/Integration/Serial.md) |
 | Remote surface | The sketch's `@Param` knobs served to a phone on the same Wi-Fi as touch controls, live both ways, for tuning an installation from in front of it | [Ch 32](32-Installations.md) | [Remote](../Docs/Integration/Remote.md) |
 | Game controllers | Sticks, triggers, and buttons read in `draw()`, plus motion and a touchpad on hardware that has them, with several players at once and a null read when nothing is plugged in | [Ch 28](28-SoundAndControl.md) | [Controller](../Docs/Integration/Controller.md) |
+| Haptics | A designed pattern of taps and hums played from `draw()`, composed like a phrase, translated for a trackpad's three feelings and one strength | [Ch 31](31-SharingAndPerforming.md) | [Haptics](../Docs/Integration/Haptics.md) |
 | Parameter binding | One `@Param` driven by MIDI, OSC, and the inspector alike, with smoothing | [Ch 28](28-SoundAndControl.md) | [Parameters](../Docs/Helpers/Parameters.md) |
 
 ## Making sound
