@@ -8,7 +8,13 @@
 #   Scripts/test.sh milestone    # the whole suite plus the four nested
 #                                # signed-bundle builds (+570 s), which the
 #                                # everyday run leaves out
+#   Scripts/test.sh shard        # the same suite with OllinTests split
+#                                # across processes: fewer minutes, more fans
 #   Scripts/test.sh <pattern>    # swift test --filter <pattern>
+#
+# The sharded run exists because OllinTests draws through `Sketch`, which is
+# main-actor isolated, so one process can only ever use one thread for it. See
+# Scripts/shard-tests.sh for what that costs and what it buys.
 #
 # What the everyday run leaves out: the four cases in `Generated projects
 # build` that build a whole signed bundle. They repeat, per bundle shape, the
@@ -61,11 +67,21 @@ phases() {
 
 case "$1" in
 --help | -h)
-    sed -n '3,40p' "$0" | sed 's|^# \?||'
+    sed -n '3,46p' "$0" | sed 's|^# \?||'
     exit 0
     ;;
 quick)
     exec swift test --skip "OllinTests.SnapshotTests|GeneratedProjectBuildTests|$sensitive"
+    ;;
+shard | --shard)
+    echo "test.sh: phase 1 of 3, the wall-clock and device suites alone"
+    swift test --filter "$sensitive" || exit 1
+    failed=0
+    echo "test.sh: phase 2 of 3, OllinTests across several processes"
+    Scripts/shard-tests.sh || failed=1
+    echo "test.sh: phase 3 of 3, every other target"
+    swift test --skip "$sensitive|^OllinTests\\." || failed=1
+    exit $failed
     ;;
 milestone | --milestone)
     echo "test.sh: milestone run; the four signed-bundle builds are included"
