@@ -69,11 +69,14 @@ import Ollin
         let tap = try #require(source.frameTap)
         let frame = image.currentCGImage()
 
-        let deadline = Date(timeIntervalSinceNow: 8)
-        while Date() < deadline, classifier.labels.isEmpty {
-            tap(frame)   // the analyzer drops frames while one is in flight
-            try? await Task.sleep(for: .milliseconds(50))
-        }
+        // The tap takes a frame the way a capture queue would. Its analysis
+        // runs on a background task, so nothing here waits on it: a deadline
+        // over that task reads a saturated full-suite machine as a failure.
+        tap(frame)
+
+        // The deterministic drive: the same analyze path, awaited inline. A
+        // loaded machine makes this slower, never absent.
+        await SourceAnalyzers.analyzer(for: source).analyzeNow(FrameBox(frame))
         let labels = classifier.labels
         #expect(!labels.isEmpty)
 

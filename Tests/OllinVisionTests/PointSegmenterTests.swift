@@ -170,14 +170,17 @@ import Ollin
         segmenter.pick(at: Self.discCenter, in: rect)
         #expect(segmenter.pick == nil)
 
+        // The tap takes a frame the way a capture queue would. Its analysis
+        // runs on a background task, so nothing here waits on it: a deadline
+        // over that task reads a saturated full-suite machine as a failure.
         source.frameTap?(frame)
-        try await Task.sleep(for: .milliseconds(50))
+
+        // The deterministic drive: the same analyze path awaited inline, then
+        // the pick's own worker awaited. A loaded machine makes both slower,
+        // never absent.
+        await SourceAnalyzers.analyzer(for: source).analyzeNow(FrameBox(frame))
         segmenter.pick(at: Self.discCenter, in: rect)
-        let deadline = Date().addingTimeInterval(60)
-        while segmenter.pick == nil, Date() < deadline {
-            source.frameTap?(frame)
-            try await Task.sleep(for: .milliseconds(100))
-        }
+        await segmenter.settle()
         let disc = try #require(segmenter.pick)
         let bounds = disc.bounds(in: rect)
         #expect(abs(bounds.x - (Self.discCenter.x - Self.discRadius)) < 20)
@@ -186,10 +189,7 @@ import Ollin
         // and the mask retreats leftward.
         segmenter.exclude(Vector2(Self.discCenter.x + Self.discRadius * 0.6,
                                   Self.discCenter.y), in: rect)
-        let refined = Date().addingTimeInterval(30)
-        while segmenter.isWorking, Date() < refined {
-            try await Task.sleep(for: .milliseconds(50))
-        }
+        await segmenter.settle()
         if let after = segmenter.pick {
             let refinedBounds = after.bounds(in: rect)
             #expect(refinedBounds.x + refinedBounds.width

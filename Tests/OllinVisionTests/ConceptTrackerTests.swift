@@ -172,11 +172,16 @@ import Ollin
                         color: Color(red: 0.85, green: 0.1, blue: 0.1, alpha: 1))
         let cgImage = red.currentCGImage()
 
-        let deadline = Date().addingTimeInterval(60)
-        while tracker.labels.count < 2, Date() < deadline {
-            source.frameTap?(cgImage)
-            try await Task.sleep(for: .milliseconds(100))
-        }
+        // The tap takes a frame the way a capture queue would. Its analysis
+        // runs on a background task, so nothing here waits on it: a deadline
+        // over that task reads a saturated full-suite machine as a failure.
+        source.frameTap?(cgImage)
+
+        // The still path awaits the model load and the two phrase encodings
+        // deterministically; then the live analyze path runs inline. A loaded
+        // machine makes both slower, never absent.
+        _ = try await tracker.detect(in: red)
+        await SourceAnalyzers.analyzer(for: source).analyzeNow(FrameBox(cgImage))
         #expect(tracker.labels.count == 2)
         #expect(tracker.top?.label == "a plain red picture")
         #expect(tracker.confidence(of: "a plain red picture") > 0.5)
@@ -185,12 +190,12 @@ import Ollin
         #expect(tracker.imageEmbedding?.count == 512)
 
         // A phrase first seen mid-run: reads 0 now, scored on a later frame.
+        // The read queues it for the background text-encoder drain; awaiting
+        // its embedding encodes it here instead, into the same cache, so the
+        // frame below scores three phrases with no clock involved.
         _ = tracker.confidence(of: "a solid green picture")
-        let joined = Date().addingTimeInterval(30)
-        while tracker.labels.count < 3, Date() < joined {
-            source.frameTap?(cgImage)
-            try await Task.sleep(for: .milliseconds(100))
-        }
+        _ = try await tracker.embedding(of: "a solid green picture")
+        await SourceAnalyzers.analyzer(for: source).analyzeNow(FrameBox(cgImage))
         #expect(tracker.labels.count == 3)
         let total = tracker.labels.reduce(0) { $0 + $1.confidence }
         #expect(abs(total - 1) < 1e-6)

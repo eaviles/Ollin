@@ -167,12 +167,33 @@ final class ScriptedCarrier: @unchecked Sendable {
 /// suite that polls from it starves behind the render suites under a full
 /// run, which reads as a timeout in a test that has nothing to do with the
 /// main thread.
+///
+/// The hop to `start()` is `await MainActor.run`, and it must never park a
+/// thread on a semaphore instead. Test bodies run on the concurrency pool,
+/// which is exactly one thread per core: parking one there costs the whole
+/// process a worker, and this suite runs enough of these at once to take every
+/// worker there is. The pool is then empty while the main actor is busy with
+/// the render suites, so nothing anywhere in the process resumes (every
+/// `Task.sleep` in every other suite included), and the deadlines below expire
+/// on a machine doing nothing at all. Measured that way: eight of eight pool
+/// threads in `semaphore_wait_trap`, the process at 2% CPU, seven tests
+/// timing out together on a stopwatch none of them got to read.
 @Suite
 struct PushFeedTests {
 
     struct Timeout: Error {}
 
     /// Polls `probe` until it returns a non-nil value or the timeout elapses.
+    ///
+    /// Every stream probe below asks `>=`, never `==`, and never for a value
+    /// the feed only passes through. A full run resumes this task up to 74
+    /// seconds after the connection it is watching already opened (measured),
+    /// and the session's own 60-second request timeout redials an idle stream
+    /// in the meantime, so by the first poll the counters have moved on: 4
+    /// updates where the test wanted 2, three dials where it wanted two, a
+    /// failure already reset by the redial that cleared it. Nothing is slow
+    /// there. The test is late, and an equality question has no answer once
+    /// it is.
     func waitFor<T>(timeout: Double = 20.0, _ probe: () -> T?) async throws -> T {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
@@ -272,28 +293,17 @@ struct PushFeedTests {
         #expect(PushFeed.retryDelay(after: 9, base: 3) == 24)
     }
 
-    @Test func theServerNamedRetryTimeWins() {
+    @Test func theServerNamedRetryTimeWins() async {
         let carrier = ScriptedCarrier()
         let feed = PushFeed("wss://feed.test/x", carriedBy: carrier.factory)
         defer { feed.stop() }
         #expect(feed.retryBase == 3)
 
-        awaitless(feed)
+        await MainActor.run { feed.start() }
         carrier.transports[0].deliver(.retryHint(5))
         #expect(feed.retryBase == 5)
         carrier.transports[0].deliver(.retryHint(0.2))
         #expect(feed.retryBase == 1)   // politeness clamps it, like everything here
-    }
-
-    /// `start()` needs the main actor and nothing else does; the scripted
-    /// tests drive everything synchronously after it.
-    func awaitless(_ feed: PushFeed) {
-        let started = DispatchSemaphore(value: 0)
-        Task { @MainActor in
-            feed.start()
-            started.signal()
-        }
-        started.wait()
     }
 
     @Test func theRetryIntervalNeverGoesBelowOneSecond() {
@@ -303,11 +313,11 @@ struct PushFeedTests {
 
     // MARK: Messages, scripted
 
-    @Test func aMessageBecomesTheLatestAndCounts() {
+    @Test func aMessageBecomesTheLatestAndCounts() async {
         let carrier = ScriptedCarrier()
         let feed = PushFeed("wss://feed.test/x", carriedBy: carrier.factory)
         defer { feed.stop() }
-        awaitless(feed)
+        await MainActor.run { feed.start() }
 
         let transport = carrier.transports[0]
         #expect(transport.wasOpened)
@@ -321,13 +331,13 @@ struct PushFeedTests {
         #expect((feed.timeSinceUpdate ?? -1) >= 0)
     }
 
-    @Test func everyMessageCountsEvenARepeat() {
+    @Test func everyMessageCountsEvenARepeat() async {
         // A poll that brings back the same bytes is not news, but a push is
         // sent because the server had something to say.
         let carrier = ScriptedCarrier()
         let feed = PushFeed("wss://feed.test/x", carriedBy: carrier.factory)
         defer { feed.stop() }
-        awaitless(feed)
+        await MainActor.run { feed.start() }
 
         let transport = carrier.transports[0]
         transport.deliver(.opened)
@@ -336,11 +346,11 @@ struct PushFeedTests {
         #expect(feed.updates == 2)
     }
 
-    @Test func messagesDrainsOldestFirst() {
+    @Test func messagesDrainsOldestFirst() async {
         let carrier = ScriptedCarrier()
         let feed = PushFeed("wss://feed.test/x", carriedBy: carrier.factory)
         defer { feed.stop() }
-        awaitless(feed)
+        await MainActor.run { feed.start() }
 
         let transport = carrier.transports[0]
         transport.deliver(.opened)
@@ -352,11 +362,11 @@ struct PushFeedTests {
         #expect(feed.text == "two")     // the latest reads are not the drain
     }
 
-    @Test func aFeedNobodyDrainsKeepsTheNewest() {
+    @Test func aFeedNobodyDrainsKeepsTheNewest() async {
         let carrier = ScriptedCarrier()
         let feed = PushFeed("wss://feed.test/x", carriedBy: carrier.factory)
         defer { feed.stop() }
-        awaitless(feed)
+        await MainActor.run { feed.start() }
 
         let transport = carrier.transports[0]
         transport.deliver(.opened)
@@ -370,11 +380,11 @@ struct PushFeedTests {
         #expect(feed.updates == 300)        // dropped is not uncounted
     }
 
-    @Test func bytesThatAreNotTextStillArrive() {
+    @Test func bytesThatAreNotTextStillArrive() async {
         let carrier = ScriptedCarrier()
         let feed = PushFeed("wss://feed.test/x", carriedBy: carrier.factory)
         defer { feed.stop() }
-        awaitless(feed)
+        await MainActor.run { feed.start() }
 
         let transport = carrier.transports[0]
         transport.deliver(.opened)
@@ -391,7 +401,7 @@ struct PushFeedTests {
         let feed = PushFeed("wss://feed.test/x", greeting: #"{"op": "subscribe"}"#,
                             retryEvery: 1, carriedBy: carrier.factory)
         defer { feed.stop() }
-        awaitless(feed)
+        await MainActor.run { feed.start() }
 
         let first = carrier.transports[0]
         first.deliver(.opened)
@@ -422,7 +432,7 @@ struct PushFeedTests {
         let carrier = ScriptedCarrier()
         let feed = PushFeed("wss://feed.test/x", retryEvery: 1, carriedBy: carrier.factory)
         defer { feed.stop() }
-        awaitless(feed)
+        await MainActor.run { feed.start() }
 
         let first = carrier.transports[0]
         first.deliver(.opened)
@@ -438,7 +448,7 @@ struct PushFeedTests {
     @Test func stopHangsUpAndStaysDown() async throws {
         let carrier = ScriptedCarrier()
         let feed = PushFeed("wss://feed.test/x", retryEvery: 1, carriedBy: carrier.factory)
-        awaitless(feed)
+        await MainActor.run { feed.start() }
 
         let transport = carrier.transports[0]
         transport.deliver(.opened)
@@ -454,11 +464,11 @@ struct PushFeedTests {
         #expect(feed.failures == 0)
     }
 
-    @Test func reconnectRedialsNow() {
+    @Test func reconnectRedialsNow() async {
         let carrier = ScriptedCarrier()
         let feed = PushFeed("wss://feed.test/x", carriedBy: carrier.factory)
         defer { feed.stop() }
-        awaitless(feed)
+        await MainActor.run { feed.start() }
 
         carrier.transports[0].deliver(.opened)
         feed.reconnect()
@@ -470,7 +480,7 @@ struct PushFeedTests {
         let carrier = ScriptedCarrier()
         let feed = PushFeed("wss://feed.test/x", retryEvery: 1, carriedBy: carrier.factory)
         defer { feed.stop() }
-        awaitless(feed)
+        await MainActor.run { feed.start() }
 
         carrier.transports[0].deliver(.opened)
         carrier.transports[0].deliver(.ended("the server ended the stream"))
@@ -481,11 +491,11 @@ struct PushFeedTests {
         #expect(carrier.transports.count == 1)   // no redial: it was asked to stop
     }
 
-    @Test func sendOnlySpeaksWhileConnected() {
+    @Test func sendOnlySpeaksWhileConnected() async {
         let carrier = ScriptedCarrier()
         let feed = PushFeed("wss://feed.test/x", carriedBy: carrier.factory)
         defer { feed.stop() }
-        awaitless(feed)
+        await MainActor.run { feed.start() }
 
         let transport = carrier.transports[0]
         feed.send("too early")
@@ -495,12 +505,12 @@ struct PushFeedTests {
         #expect(transport.sent == ["hello"])
     }
 
-    @Test func aSecondStartDoesNothing() {
+    @Test func aSecondStartDoesNothing() async {
         let carrier = ScriptedCarrier()
         let feed = PushFeed("wss://feed.test/x", carriedBy: carrier.factory)
         defer { feed.stop() }
-        awaitless(feed)
-        awaitless(feed)
+        await MainActor.run { feed.start() }
+        await MainActor.run { feed.start() }
         #expect(carrier.transports.count == 1)
     }
 
@@ -508,7 +518,7 @@ struct PushFeedTests {
         let carrier = ScriptedCarrier()
         let feed = PushFeed("not an address", carriedBy: carrier.factory)
         defer { feed.stop() }
-        awaitless(feed)
+        await MainActor.run { feed.start() }
 
         let problem = try await waitFor { feed.problem }
         #expect(problem.contains("not an address"))
@@ -536,7 +546,7 @@ struct PushFeedTests {
         defer { feed.stop() }
 
         await MainActor.run { feed.start() }
-        _ = try await waitFor { feed.updates == 2 ? true : nil }
+        _ = try await waitFor { feed.updates >= 2 ? true : nil }
 
         let messages = feed.messages()
         #expect(messages[0].event == "quake")
@@ -561,7 +571,7 @@ struct PushFeedTests {
         defer { feed.stop() }
 
         await MainActor.run { feed.start() }
-        _ = try await waitFor { feed.updates == 2 ? true : nil }
+        _ = try await waitFor { feed.updates >= 2 ? true : nil }
 
         // The redial told the server where it was, so the blink loses nothing
         // the server still holds.
@@ -573,15 +583,20 @@ struct PushFeedTests {
     }
 
     @Test func aKeepaliveCommentResetsTheFailures() async throws {
-        let (_, feed) = makeStream([
+        let (path, feed) = makeStream([
             [.fail(.networkConnectionLost)],
             [.respond(status: 200), .send(":ok\n")],
         ])
         defer { feed.stop() }
 
         await MainActor.run { feed.start() }
-        _ = try await waitFor { feed.failures == 1 ? true : nil }
-        _ = try await waitFor { feed.failures == 0 ? true : nil }
+        // Watch the redial, and not the 1 the failure count passed through:
+        // the keepalive clears that the moment it lands. A second dial only
+        // follows a failure, so the pair below is what says the keepalive
+        // reset it; the count on a drop is asserted synchronously in the
+        // scripted tests above.
+        _ = try await waitFor { StreamStub.asks(at: path).count >= 2 ? true : nil }
+        _ = try await waitFor { feed.isConnected && feed.failures == 0 ? true : nil }
         #expect(feed.updates == 0)   // a keepalive is a sign of life, not a message
     }
 
@@ -605,11 +620,25 @@ struct PushFeedTests {
         defer { feed.stop() }
 
         await MainActor.run { feed.start() }
+        // Same rule: the redial is a fact that stays true, while the drop's own
+        // `problem` is cleared the instant the redial connects. What a server
+        // error says is checked next door, on a feed that stays down.
+        _ = try await waitFor { StreamStub.asks(at: path).count >= 2 ? true : nil }
+        _ = try await waitFor { feed.updates >= 1 ? true : nil }
+        #expect(feed.text == "back")
+        #expect(StreamStub.asks(at: path).count >= 2)
+    }
+
+    @Test func aServerErrorIsSaidInThePlainText() async throws {
+        // Every dial gets the same answer, so the feed never comes up and what
+        // it says about the last try stays readable however late the read is.
+        let (_, feed) = makeStream([[.respond(status: 503), .finish]])
+        defer { feed.stop() }
+
+        await MainActor.run { feed.start() }
         let problem = try await waitFor { feed.problem }
         #expect(problem.contains("503"))
-        _ = try await waitFor { feed.updates == 1 ? true : nil }
-        #expect(feed.text == "back")
-        #expect(StreamStub.asks(at: path).count == 2)
+        #expect(!feed.isConnected)
     }
 
     // MARK: A load the system really performs
@@ -629,7 +658,9 @@ struct PushFeedTests {
         defer { feed.stop() }
 
         await MainActor.run { feed.start() }
-        _ = try await waitFor { feed.updates == 2 ? true : nil }
+        // At least two, not exactly two: the file ends, so the feed redials and
+        // reads it again. The last message is `n: 2` on every pass.
+        _ = try await waitFor { feed.updates >= 2 ? true : nil }
         #expect(feed.json["n"].number == 2)
         feed.stop()   // the file ends, and a redial would only read it again
     }

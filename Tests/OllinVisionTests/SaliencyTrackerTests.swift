@@ -119,16 +119,19 @@ import Ollin
         let tap = try #require(source.frameTap)
         let frame = image.currentCGImage()
 
-        let deadline = Date(timeIntervalSinceNow: 8)
-        var published = false
-        while Date() < deadline {
-            tap(frame)   // the analyzer drops frames while one is in flight
-            // The heat-map read arms its conversion (the first read turns it
-            // on), so poll until it publishes.
-            if saliency.heatMap != nil { published = true; break }
-            try? await Task.sleep(for: .milliseconds(50))
-        }
-        #expect(published)
+        // The tap takes a frame the way a capture queue would. Its analysis
+        // runs on a background task, so nothing here waits on it: a deadline
+        // over that task reads a saturated full-suite machine as a failure.
+        tap(frame)
+
+        // The heat-map read arms its conversion (the first read turns it on),
+        // so the analyzed frame below publishes it.
+        #expect(saliency.heatMap == nil)
+
+        // The deterministic drive: the same analyze path, awaited inline. A
+        // loaded machine makes this slower, never absent.
+        await SourceAnalyzers.analyzer(for: source).analyzeNow(FrameBox(frame))
+        #expect(saliency.heatMap != nil)
         // Once published, the query surface answers from the same observation —
         // the disk's center out-heats a corner here too.
         #expect(saliency.salience(at: Vector2(160, 120), in: diskRect)

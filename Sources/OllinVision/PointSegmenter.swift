@@ -116,6 +116,8 @@ public final class PointSegmenter: VisionTracking, @unchecked Sendable {
         /// publishing.
         var generation = 0
         var working = false
+        /// The running drain, so a caller can await it instead of polling.
+        var worker: Task<Void, Never>?
         var pick: Pick?
     }
     private let lock = OSAllocatedUnfairLock(uncheckedState: State())
@@ -282,10 +284,25 @@ public final class PointSegmenter: VisionTracking, @unchecked Sendable {
             return true
         }
         guard shouldStart else { return }
-        Task.detached { [weak self] in
+        let worker = Task.detached { [weak self] in
             guard let self else { return }
             await self.ensureLoading().value
             self.drain()
+        }
+        lock.withLockUnchecked { $0.worker = worker }
+    }
+
+    /// Awaits the background worker until nothing is left to answer, so a
+    /// caller holds a finished pick rather than polling for one. The
+    /// deterministic drive for tests: a fixed deadline over the worker reads a
+    /// saturated machine as a failure, while this only takes longer there.
+    /// Returns at once when no pick is pending.
+    func settle() async {
+        while let worker = lock.withLockUnchecked({ $0.worker }) {
+            await worker.value
+            // A refine that landed mid-drain starts a fresh worker; the drain
+            // lowers `working` only once the queue is empty, so that is the end.
+            guard lock.withLockUnchecked({ $0.working }) else { return }
         }
     }
 

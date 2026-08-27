@@ -7,15 +7,23 @@
 #                                # table and the nested-build suite
 #   Scripts/test.sh <pattern>    # swift test --filter <pattern>
 #
-# Why phases: a handful of suites measure the world against a wall clock or a
-# system ML model (DataFeedTests counts polls per elapsed second; the Vision
-# live-wiring tests poll an analyzer; ListeningTests waits on the speech
-# stack). Run beside the heavy neighbors (241 off-screen GPU renders, nested
-# package builds), they starve and fail while passing alone in under a second,
-# and the machine's GPU/ANE state right after heavy load can degrade model
-# output too. So the sensitive suites run FIRST, on a cold quiet machine, and
-# everything else runs after. A failure in phase 1 is a real signal; a failure
-# of one of these suites inside a plain `swift test` usually is not.
+# Why phases: a few suites measure the world against a wall clock or a system
+# ML model (DataFeedTests counts polls per elapsed second; ListeningTests waits
+# on the speech stack), and one waits on the hardware video decoder. Run beside
+# the heavy neighbors (241 off-screen GPU renders, nested package builds) they
+# compete for a device they need to themselves, so they run FIRST on a quiet
+# machine and everything else runs after.
+#
+# What phases do NOT fix, measured 2026-08-26: a suite that starves inside its
+# own target. OllinVisionTests reached 113 s and 129 s running completely alone
+# at 15% CPU, and PushFeedTests was frozen by its own helper parking all eight
+# cooperative-pool threads. Both looked exactly like load and neither was. So
+# the list below is only for a suite competing with OTHER targets for a
+# device. A suite that fails while running alone has a defect, and moving it
+# here only hides it. Before
+# adding anything to the list below, run that suite's whole target by itself:
+# if it still fails, this is the wrong tool. Check the process CPU too, since
+# a timeout at 2% CPU is a parked thread pool, not a busy machine.
 #
 # Agent sessions: the full run takes many minutes, well past a default command
 # timeout. Run it in the background or with an explicit long timeout, never as
@@ -36,7 +44,7 @@ sensitive='OllinTests.DataFeedTests|OllinVisionTests.FrameSourceTests|OllinVisio
 
 case "$1" in
 --help | -h)
-    sed -n '3,26p' "$0" | sed 's|^# \?||'
+    sed -n '3,31p' "$0" | sed 's|^# \?||'
     exit 0
     ;;
 quick)
