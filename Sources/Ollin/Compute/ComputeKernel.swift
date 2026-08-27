@@ -29,11 +29,16 @@ public struct ComputeKernel: Sendable {
     public let source: String
     /// The name of the `kernel` function to dispatch.
     public let entry: String
+    /// Where the source came from, so a `#include "…"` inside it resolves against that
+    /// file's own folder: the `.metal` file for the resource and file forms, and the
+    /// `.swift` the string was written in for the inline form.
+    let sourcePath: String
 
     /// Make a kernel from MSL `source`, dispatching the function named `entry`.
-    public init(entry: String, _ source: String) {
+    public init(entry: String, _ source: String, file: String = #filePath) {
         self.entry = entry
         self.source = source
+        self.sourcePath = file
     }
 
     /// Load a kernel's MSL from a bundled **`.metal` resource file**, dispatching the
@@ -56,6 +61,7 @@ public struct ComputeKernel: Sendable {
               let source = try? String(contentsOf: url, encoding: .utf8) else { return nil }
         self.entry = entry
         self.source = source
+        self.sourcePath = url.path
     }
 
     /// Load a kernel's MSL from a `.metal` file at `url`, dispatching `entry`. Like
@@ -65,5 +71,6 @@ public struct ComputeKernel: Sendable {
         guard let source = try? String(contentsOf: url, encoding: .utf8) else { return nil }
         self.entry = entry
         self.source = source
+        self.sourcePath = url.path
     }
 }

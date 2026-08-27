@@ -274,6 +274,14 @@ let package = Package(
             name: "OllinNew",
             dependencies: ["OllinProjects", "OllinSceneImport"]
         ),
+        // `ollin check`: compile a shader file on the real device and report what it
+        // found. It links the framework because the point is to compile the shader
+        // exactly the way a running sketch would, through the same compose path, so a
+        // shader that passes here cannot fail in a window.
+        .executableTarget(
+            name: "OllinCheck",
+            dependencies: ["Ollin"]
+        ),
         // The generator's window. Shows each starting point by *running* it, so
         // what you pick is what you get; it compiles a template through the same
         // loader the gallery uses, hence the satellite links and -export_dynamic

@@ -31,6 +31,7 @@ override func draw() {
 - [`ShaderInfo` and params](#shaderinfo-and-params)
 - [The shader library](#the-shader-library)
 - [Inline source or a `.metal` file](#inline-source-or-a-metal-file)
+- [Pulling in another file](#pulling-in-another-file)
 - [Errors](#errors)
 
 ---
@@ -131,6 +132,42 @@ let s = Shader(resource: "warp", in: .module)   // reads warp.metal from the ske
 
 ---
 
+## Pulling in another file
+
+Once two shaders want the same helper, write it once and include it:
+
+```metal
+#include "helpers.metal"
+
+float4 shade(float2 uv, ShaderInfo info) {
+    return sample(info, swirl(uv, param(info, 0)));   // swirl lives in helpers.metal
+}
+```
+
+The path is relative to the file that names it, so a helper sitting beside the shader is just its name. An inline Swift string resolves the same way against the folder of the `.swift` it is written in. A [compute kernel](./Compute.md) can include a file too, so one helper file serves both.
+
+The rules are short:
+
+- **A file is read once**, however many times it is named, so two shaders that both include the same helper do not define it twice.
+- **A mistake inside an included file is reported against that file, at its own line.** The include is only worth having if the error still points at what you would edit.
+- A file that is not there, or a loop of files that include each other, is **reported before the compiler is asked**, since what follows would only be a pile of undeclared identifiers pointing away from the real mistake.
+
+Ollin's own shader library needs no include: it is already spliced into every shader (see [The shader library](#the-shader-library) above). `#include <angle>` forms are left for the compiler, so `<metal_stdlib>` still works if you want a file that also compiles on its own.
+
+Under OllinLive an edit to the helper reloads the shaders that read it, so working on the helper is the same loop as working on the shader.
+
+### Reading a library from somewhere else
+
+A spelling that starts with `/` or `~` is taken as it is, so a shader can read a shader library cloned anywhere on the machine:
+
+```metal
+#include "~/Developer/References/lygia/generative/snoise.msl"
+```
+
+What that file includes then resolves from where it sits, which is the form most shader libraries use between their own files, so one line brings the whole chain. Two things stay yours to check: the file has to be Metal, since a `.glsl` will not compile whatever it is called, and **the terms of that library travel with the files you include**. Ollin neither ships nor depends on any of them.
+
+---
+
 ## Errors
 
 A shader that doesn't compile is reported at **the file and line you wrote it in** (the sketch's own `.swift` for an inline string, the `.metal` file for a resource), with the offending line and a caret, so the location is real and an IDE can jump straight to it. The frame keeps running with the broken pass skipped, so a typo never crashes the sketch.
@@ -145,10 +182,13 @@ A shader that doesn't compile is reported at **the file and line you wrote it in
 
 In a plain `swift run`, the message goes to the terminal. In [OllinLive](../../README.md), it appears in the on-screen error overlay and clears when you fix it.
 
+To try a shader without launching a sketch at all, hand the file to [`ollin check`](../Tools/ShaderCheck.md), which compiles it on this machine's GPU and prints the same errors at the same lines.
+
 ---
 
 ### See also
 
+- [Checking a shader](../Tools/ShaderCheck.md): compile a `.metal` file from the command line and see what it reads
 - [Layered effects](../Drawing/Effects.md): the off-screen layers, filters, and `compose { }` your shader plugs into
 - [Compute & GPU particles](./Compute.md): runtime-compiled compute kernels (the sibling for buffer/texture work)
 - [SDF combinators](../Drawing/Combinators.md): compose signed-distance fields without writing raw shader code

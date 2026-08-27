@@ -2,6 +2,11 @@
 // shared helpers it relies on) and compiled as one library, not on its own. See
 // MetalRenderer.loadLibrary.
 
+// What this segment builds on. The resolver reads each one in ahead of this file
+// and only once, so the segment list itself carries no order (see ShaderIncludes).
+#include "ShaderCore.metal"
+#include "ShaderShapes.metal"
+
 // MARK: - GPU particles
 //
 // The instanced render path for a compute-resident particle buffer (OllinParticle,

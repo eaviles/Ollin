@@ -18,6 +18,10 @@
 // Coordinates are y-normalized: y runs -1…1 over the frame's height and x is
 // scaled by the aspect, so a round lens stays round on a wide canvas.
 
+// What this segment builds on. The resolver reads each one in ahead of this file
+// and only once, so the segment list itself carries no order (see ShaderIncludes).
+#include "ShaderEffects.metal"
+
 // How far a pixel is from the edge of the iris opening, negative inside. A round
 // iris is a circle; a bladed one is a regular polygon, which is what gives a
 // stopped-down ghost its flat sides. The fold uses a floored modulo, since

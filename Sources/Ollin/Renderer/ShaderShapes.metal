@@ -2,6 +2,10 @@
 // shared helpers it relies on) and compiled as one library, not on its own. See
 // MetalRenderer.loadLibrary.
 
+// What this segment builds on. The resolver reads each one in ahead of this file
+// and only once, so the segment list itself carries no order (see ShaderIncludes).
+#include "ShaderCore.metal"
+
 // MARK: - SDF instanced shapes
 //
 // Circles, ellipses, rectangles, lines, and circular arcs skip CPU

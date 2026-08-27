@@ -13,6 +13,11 @@
 // and ShaderEffects' `PresentOut` fullscreen varyings. Everything here compiles only on
 // a ray-tracing device (`OLLIN_RT_SHADOWS`), matching the renderer's gating.
 
+// What this segment builds on. The resolver reads each one in ahead of this file
+// and only once, so the segment list itself carries no order (see ShaderIncludes).
+#include "Shader3D.metal"
+#include "ShaderEffects.metal"
+
 #if OLLIN_RT_SHADOWS
 
 // Relocation statistics come from a FIXED, never-rotated fan (the production papers'

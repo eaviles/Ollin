@@ -2035,15 +2035,23 @@ extension MetalRenderer {
     /// error, recording it in `userShaderErrors[hash]` so it isn't retried every frame.
     private func userShaderState(for shader: Shader,
                                  variant: UserShaderVariant) -> (MTLRenderPipelineState?, UInt64) {
-        let userSource = resolveUserShaderSource(shader)
+        let resolved = resolveUserShaderSource(shader)
         let sourceName = shader.diagnosticSourceName
         let startLine = shader.diagnosticStartLine
         let (composed, offset) = MetalRenderer.composeUserShaderSource(
-            userSource: userSource, modules: shader.modules, variant: variant,
+            userSource: resolved.source, modules: shader.modules, variant: variant,
             sourceName: sourceName, sourceStartLine: startLine)
         let hash = MetalRenderer.fnv1a(composed)
         if let p = userShaderPipelines[hash] { return (p, hash) }
         if userShaderErrors[hash] != nil { return (nil, hash) }   // cached failure
+        // An include the resolver could not honor is reported as the shader's error
+        // before the compiler sees the source, since what follows would only be a pile
+        // of undeclared identifiers pointing away from the real mistake.
+        if !resolved.problems.isEmpty {
+            userShaderErrors[hash] = ShaderCompileError(
+                message: resolved.problems.joined(separator: "\n"), raw: "")
+            return (nil, hash)
+        }
         do {
             let lib: MTLLibrary
             if let cached = userShaderLibraries[hash] { lib = cached }
@@ -2077,6 +2085,7 @@ extension MetalRenderer {
     /// recompiles from source. Used on a framework-shader reload (the spliced library
     /// may have changed) and when OllinLive reloads a watched user `.metal` file.
     func invalidateUserShaderCaches() {
+        MetalRenderer.dropUserShaderLibraryText()
         userShaderLibraries.removeAll()
         userShaderPipelines.removeAll()
         userShaderErrors.removeAll()
@@ -2084,16 +2093,27 @@ extension MetalRenderer {
         printedShaderErrorHashes.removeAll()
     }
 
-    /// The user's MSL for a shader: the inline source, or the cached contents of its
-    /// `.metal` resource (read once per path, re-read after an invalidation so an
-    /// edited file hot-reloads).
-    private func resolveUserShaderSource(_ shader: Shader) -> String {
-        if !shader.source.isEmpty { return shader.source }
-        guard !shader.resourcePath.isEmpty else { return "" }
+    /// The user's MSL for a shader, with any file it includes already read in: the
+    /// inline source, or the cached contents of its `.metal` resource (read and resolved
+    /// once per path, re-read after an invalidation so an edited file hot-reloads, which
+    /// covers a file the shader includes as well as the shader itself).
+    private func resolveUserShaderSource(_ shader: Shader) -> MetalRenderer.ResolvedShaderSource {
+        // An inline shader's `#include` resolves against the folder of the `.swift` it
+        // was written in; a `.metal` resource's against its own folder. Either way the
+        // spelling is relative to the file the author is looking at.
+        if !shader.source.isEmpty {
+            let resolved = ShaderIncludes.resolveFromFilesystem(
+                shader.source, name: shader.sourceFile, startLine: shader.diagnosticStartLine)
+            return .init(source: resolved.source, problems: resolved.problems)
+        }
+        guard !shader.resourcePath.isEmpty else { return .init(source: "", problems: []) }
         if let cached = userShaderSources[shader.resourcePath] { return cached }
         let content = (try? String(contentsOfFile: shader.resourcePath, encoding: .utf8)) ?? ""
-        userShaderSources[shader.resourcePath] = content
-        return content
+        let resolved = ShaderIncludes.resolveFromFilesystem(content, name: shader.resourcePath)
+        let entry = MetalRenderer.ResolvedShaderSource(source: resolved.source,
+                                                       problems: resolved.problems)
+        userShaderSources[shader.resourcePath] = entry
+        return entry
     }
 
     /// A small linear-float lookup texture (256×1) for `gradientMap`, uploaded from

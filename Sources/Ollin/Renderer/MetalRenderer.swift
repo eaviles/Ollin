@@ -542,9 +542,17 @@ final class MetalRenderer {
     var userShaderLibraries: [UInt64: MTLLibrary] = [:]
     var userShaderPipelines: [UInt64: MTLRenderPipelineState] = [:]
     var userShaderErrors: [UInt64: ShaderCompileError] = [:]
-    /// Contents of `.metal` resource shaders, cached by absolute path (read once, not
-    /// per frame). Cleared on invalidation so an edited `.metal` is re-read.
-    var userShaderSources: [String: String] = [:]
+    /// Contents of `.metal` resource shaders, with their own `#include`s already
+    /// resolved, cached by absolute path (read once, not per frame). Cleared on
+    /// invalidation so an edited `.metal`, or an edited file it includes, is re-read.
+    var userShaderSources: [String: ResolvedShaderSource] = [:]
+    /// A shader's source with its includes resolved, beside anything the resolver could
+    /// not honor (a file it could not find, a cycle). A problem is reported as the
+    /// shader's compile error, before the compiler is ever asked.
+    struct ResolvedShaderSource {
+        let source: String
+        let problems: [String]
+    }
     /// Hashes already printed to stderr, so a broken shader logs once (for a plain
     /// `swift run`), not every frame.
     var printedShaderErrorHashes: Set<UInt64> = []

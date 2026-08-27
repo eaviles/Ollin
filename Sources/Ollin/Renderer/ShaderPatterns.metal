@@ -11,6 +11,10 @@
 // color inside the fragment, so a translucent stop reads as a soft hole rather
 // than fringing dark.
 
+// What this segment builds on. The resolver reads each one in ahead of this file
+// and only once, so the segment list itself carries no order (see ShaderIncludes).
+#include "ShaderEffects.metal"
+
 // MARK: - Shared pattern helpers
 
 // Centered square-unit coordinates: the shorter side of the layer spans ±0.5,

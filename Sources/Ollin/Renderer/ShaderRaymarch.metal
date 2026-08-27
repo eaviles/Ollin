@@ -2,6 +2,11 @@
 // `meshLitColor` shading tail and ShaderCore's `srgbToLinear`) and before ShaderEffects.
 // Compiled as one library, not on its own. See MetalRenderer.loadLibrary.
 
+// What this segment builds on. The resolver reads each one in ahead of this file
+// and only once, so the segment list itself carries no order (see ShaderIncludes).
+#include "Shader3D.metal"
+#include "ShaderCombinator.metal"
+
 // MARK: - Raymarched 3D SDF combinators
 //
 // A composed 3D signed-distance field (the `SDF3D` value type) drawn by sphere-tracing

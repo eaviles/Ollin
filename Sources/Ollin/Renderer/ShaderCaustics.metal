@@ -28,6 +28,11 @@
 // `#if OLLIN_RT_SHADOWS`, and a non-tracing device never requests these
 // pipelines (`caustics()` is a no-op there).
 
+// What this segment builds on. The resolver reads each one in ahead of this file
+// and only once, so the segment list itself carries no order (see ShaderIncludes).
+#include "Shader3D.metal"
+#include "ShaderEffects.metal"
+
 // MARK: - Quadtree layout
 //
 // Levels 0 (the root) through depth-1, each level l a 2^l x 2^l grid of uint4

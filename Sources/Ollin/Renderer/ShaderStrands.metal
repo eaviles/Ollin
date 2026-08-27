@@ -7,6 +7,10 @@
 // GI, fog) exactly like any solid mesh. Must follow Shader3D (MeshOut) in the
 // segment order; <metal_mesh> is included by ShaderCore.
 
+// What this segment builds on. The resolver reads each one in ahead of this file
+// and only once, so the segment list itself carries no order (see ShaderIncludes).
+#include "Shader3D.metal"
+
 // One object threadgroup per tile: thread 0 tests the tile's AABB against the
 // frustum and launches the tile's blade bundles (zero threadgroups = culled).
 // The payload hands the mesh stage its tile coordinates and segment count.

@@ -4,6 +4,11 @@
 // vertex it reuses; the deferred trace also calls Shader3D's shared hit shade)
 // and compiled as one library, not on its own. See MetalRenderer.loadLibrary.
 
+// What this segment builds on. The resolver reads each one in ahead of this file
+// and only once, so the segment list itself carries no order (see ShaderIncludes).
+#include "ShaderEffects.metal"
+#include "Shader3D.metal"
+
 // MARK: - Combine filters (two inputs: a base layer modulated by an aux layer)
 //
 // Where the single-input filters above read texture(0) and write a new layer,

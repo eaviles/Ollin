@@ -2,6 +2,10 @@
 // segment's `ollin_sdf_distance` + coverage tail and ShaderCore's color helpers)
 // and compiled as one library, not on its own. See MetalRenderer.loadLibrary.
 
+// What this segment builds on. The resolver reads each one in ahead of this file
+// and only once, so the segment list itself carries no order (see ShaderIncludes).
+#include "ShaderShapes.metal"
+
 // MARK: - SDF combinators (composed signed-distance fields)
 //
 // A composed field (shapes merged by smooth union/subtract/intersect/morph, hollowed

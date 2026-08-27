@@ -3,6 +3,10 @@
 // (whose preamble and shared helpers it relies on) and compiled as one library,
 // not on its own. See MetalRenderer.loadLibrary.
 
+// What this segment builds on. The resolver reads each one in ahead of this file
+// and only once, so the segment list itself carries no order (see ShaderIncludes).
+#include "ShaderCore.metal"
+
 // MARK: - Present / tone-map pass
 //
 // The frame's geometry is composited in a linear `rgba16Float` intermediate, so

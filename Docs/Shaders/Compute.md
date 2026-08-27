@@ -215,6 +215,8 @@ let blur = ComputeKernel(entry: "blur", resource: "Kernels", in: .module)!
 
 The shared types and the [shader library](#prelude) are still spliced in, so the file references `OllinComputeUniforms` / `hash22` / `curlNoise` / … and writes no `#include`s. One file can hold any number of kernels, and you load each by its `entry` name (they share one compile). Pass `in: .module` explicitly (a default would resolve to *Ollin's* bundle, not yours), and list the file as a `.copy` resource on your target. There's also `ComputeKernel(entry:contentsOf:)` for an arbitrary file URL. See `Examples/Compute/ReactionDiffusion`, which keeps its seed and colorize passes in `Kernels.metal`.
 
+A kernel can write **one** kind of include: `#include "helpers.metal"` pulls in another file of your own, resolved against the folder the kernel's source came from, exactly as it works [for a fragment shader](./Shaders.md#pulling-in-another-file). So one helper file can serve a kernel and a shader rather than being copied into both.
+
 <a id="core"></a>
 ### The typed core
 

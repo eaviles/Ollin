@@ -33,6 +33,12 @@
 // Russian roulette for unbiased termination, and a counter-based integer hash for the
 // sample stream (see ATTRIBUTION.md's Techniques list).
 
+// What this segment builds on. The resolver reads each one in ahead of this file
+// and only once, so the segment list itself carries no order (see ShaderIncludes).
+#include "Shader3D.metal"
+#include "ShaderEffects.metal"
+#include "ShaderIBL.metal"
+
 #if OLLIN_RT_SHADOWS
 
 // MARK: - Sample stream

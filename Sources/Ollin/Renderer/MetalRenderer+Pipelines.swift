@@ -28,7 +28,8 @@ extension MetalRenderer {
     /// is free, and the composed library is cached per source so several entries in
     /// one source share one compile.
     func computePipeline(for kernel: ComputeKernel) throws -> MTLComputePipelineState {
-        let composed = MetalRenderer.composeComputeSource(kernel.source)
+        let composed = MetalRenderer.composeComputeSource(kernel.source,
+                                                          sourcePath: kernel.sourcePath)
         let hash = MetalRenderer.fnv1a(composed)
         let key = ComputeKey(sourceHash: hash, entry: kernel.entry)
         if let existing = computePipelines[key] { return existing }
@@ -623,25 +624,40 @@ extension MetalRenderer {
         return meshInstanceExportBuffer
     }
 
-    /// Splice the shared CPU/GPU type header into shader source for runtime
-    /// compilation. `makeLibrary(source:)` has no include search path, so the
-    /// `#include "OllinShaderTypes.h"` directive in `ShaderCore.metal` (the first
-    /// concatenated segment) can't be resolved the normal way; we replace it with
-    /// the header's text (the header ships beside the segments as a resource). A
-    /// precompiled metallib resolves the include at build time and skips this path.
+    /// Resolve the quoted `#include`s in shader source for runtime compilation.
+    /// `makeLibrary(source:)` has no include search path, so a directive naming
+    /// another file (the shared `OllinShaderTypes.h`, or one segment naming another)
+    /// can't be resolved the normal way; `ShaderIncludes` reads the named file out of
+    /// Ollin's resource bundle and splices its text in place. A precompiled metallib
+    /// resolves the same directives at build time and skips this path.
     ///
-    /// If the header resource is missing we leave the source untouched and let
-    /// the compiler report the undefined types — louder than a silent fallback.
+    /// A file that can't be found leaves a blank line and lets the compiler report the
+    /// undefined types that follow, which is louder than a silent fallback.
     static func composeShaderSource(_ source: String, rayTracing: Bool = false) -> String {
         // Gate the inline-RT mesh-shadow path on device capability (the symbol the
         // `#if OLLIN_RT_SHADOWS` blocks in Shader3D.metal read). A device without
         // render-stage ray tracing compiles it out entirely, so the cube path stays.
-        let prefix = "#define OLLIN_RT_SHADOWS \(rayTracing ? 1 : 0)\n"
-        guard let url = OllinResources.bundle.url(forResource: "OllinShaderTypes", withExtension: "h"),
-              let header = try? String(contentsOf: url, encoding: .utf8) else {
-            return prefix + source
-        }
-        return prefix + source.replacingOccurrences(of: "#include \"OllinShaderTypes.h\"", with: header)
+        rayTracingDefine(rayTracing) + ShaderIncludes.resolve(source, name: "Ollin",
+                                                             load: bundleShaderFile).source
+    }
+
+    /// The one-line preamble that gates the inline-ray-tracing blocks, prepended to
+    /// every runtime compile of the built-in library.
+    static func rayTracingDefine(_ rayTracing: Bool) -> String {
+        "#define OLLIN_RT_SHADOWS \(rayTracing ? 1 : 0)\n"
+    }
+
+    /// Find a shader file by the spelling inside an `#include`, in Ollin's own resource
+    /// bundle: the built-in `.metal` segments and the shared CPU/GPU `.h` header all
+    /// ship there. `askedBy` is unused, because a bundle is flat: every spelling is a
+    /// plain resource name however deep the chain that asked for it.
+    static func bundleShaderFile(_ spelling: String, _ askedBy: String) -> ShaderIncludes.Source? {
+        let stem = (spelling as NSString).deletingPathExtension
+        let ext = (spelling as NSString).pathExtension
+        guard let url = OllinResources.bundle.url(forResource: stem,
+                                                  withExtension: ext.isEmpty ? nil : ext),
+              let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+        return ShaderIncludes.Source(key: url.path, name: url.path, text: text)
     }
 
     /// Build the full MSL source for a user compute kernel: the shared shader
@@ -653,17 +669,19 @@ extension MetalRenderer {
     /// fragment shader works the same in a kernel. Resources are read as text
     /// because the runtime compiler has no include search path (same reason
     /// `composeShaderSource` splices).
-    static func composeComputeSource(_ userSource: String) -> String {
+    static func composeComputeSource(_ userSource: String, sourcePath: String = "") -> String {
         var lib = "#include <metal_stdlib>\nusing namespace metal;\n#include \"OllinShaderTypes.h\"\n"
         if let url = OllinResources.bundle.url(forResource: "OllinShaderLib", withExtension: "metal"),
            let text = try? String(contentsOf: url, encoding: .utf8) {
             lib = text
         }
-        if let url = OllinResources.bundle.url(forResource: "OllinShaderTypes", withExtension: "h"),
-           let header = try? String(contentsOf: url, encoding: .utf8) {
-            lib = lib.replacingOccurrences(of: "#include \"OllinShaderTypes.h\"", with: header)
-        }
-        return lib + "\n" + userSource
+        lib = ShaderIncludes.resolve(lib, name: "OllinShaderLib.metal", load: bundleShaderFile).source
+        // A kernel may pull in a file of its own, the same way a fragment shader does,
+        // so one helper file can serve both. It resolves against the folder the kernel's
+        // source came from.
+        let user = sourcePath.isEmpty ? userSource
+            : ShaderIncludes.resolveFromFilesystem(userSource, name: sourcePath).source
+        return lib + "\n" + user
     }
 
     /// FNV-1a hash of a string's UTF-8, for the compute-pipeline cache key.
@@ -676,8 +694,8 @@ extension MetalRenderer {
     }
 
     /// Build the full MSL source for a user-supplied `Shader`: the OllinShaderLib
-    /// segment (preamble + shared types + helpers, with the header spliced in place of
-    /// its `#include` since the runtime compiler has no include path), then the wrapper
+    /// segment (preamble + shared types + helpers, with the file it includes read in by
+    /// `ShaderIncludes`, since the runtime compiler has no include path), then the wrapper
     /// (the fullscreen vertex, the `ShaderInfo` struct, the `param`/`sample` helpers),
     /// then the user's source tagged with a `#line` directive naming the file it came
     /// from (`sourceName`, the sketch's own `.swift` or the `.metal` resource) at the
@@ -690,15 +708,7 @@ extension MetalRenderer {
                                         variant: UserShaderVariant,
                                         sourceName: String = "Shader",
                                         sourceStartLine: Int = 1) -> (source: String, userLineOffset: Int) {
-        var lib = ""
-        if let url = OllinResources.bundle.url(forResource: "OllinShaderLib", withExtension: "metal"),
-           let text = try? String(contentsOf: url, encoding: .utf8) {
-            lib = filterLibModules(text, modules)
-        }
-        if let url = OllinResources.bundle.url(forResource: "OllinShaderTypes", withExtension: "h"),
-           let header = try? String(contentsOf: url, encoding: .utf8) {
-            lib = lib.replacingOccurrences(of: "#include \"OllinShaderTypes.h\"", with: header)
-        }
+        let lib = userShaderLibraryText(modules)
         let name = sourceName.isEmpty ? "Shader" : sourceName
         let escaped = name
             .replacingOccurrences(of: "\\", with: "\\\\")
@@ -709,6 +719,33 @@ extension MetalRenderer {
         let tail = "\n#line 1 \"ollin-wrapper\"\n" + userShaderWrapperTail(variant)
         return (head + userSource + tail, offset)
     }
+
+    /// The shader library a user shader is compiled against: the `OllinShaderLib`
+    /// segment trimmed to `modules`, with its own `#include` of the shared CPU/GPU
+    /// header already read in.
+    ///
+    /// Kept in memory per module set, because this runs once per user shader per frame
+    /// (the composed source is what the pipeline cache is keyed on) and the bundled
+    /// library cannot change while the process runs. `dropUserShaderLibraryText` empties
+    /// it where that stops being true.
+    static func userShaderLibraryText(_ modules: Shader.Modules) -> String {
+        if let cached = userShaderLibraryTexts[modules.rawValue] { return cached }
+        var lib = ""
+        if let url = OllinResources.bundle.url(forResource: "OllinShaderLib", withExtension: "metal"),
+           let text = try? String(contentsOf: url, encoding: .utf8) {
+            lib = filterLibModules(text, modules)
+        }
+        lib = ShaderIncludes.resolve(lib, name: "OllinShaderLib.metal", load: bundleShaderFile).source
+        userShaderLibraryTexts[modules.rawValue] = lib
+        return lib
+    }
+
+    /// Forget the composed library text, so the next user shader reads it again.
+    static func dropUserShaderLibraryText() {
+        userShaderLibraryTexts.removeAll()
+    }
+
+    private static var userShaderLibraryTexts: [Int: String] = [:]
 
     /// Keep only the requested sections of the shader library, by the
     /// `// OLLIN_LIB_BEGIN <module>` / `// OLLIN_LIB_END <module>` markers. Unmarked
@@ -894,26 +931,46 @@ extension MetalRenderer {
         return kept.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    /// The shader source segments, in concatenation order. They're compiled as one
-    /// library, so order matters: `OllinShaderLib` carries the preamble, the shared
-    /// CPU/GPU structs, and the general color/hash/noise helpers the rest depend on,
-    /// so it goes first (Metal needs a declaration before its use); `ShaderCore`
-    /// follows with the 2D core pipelines. The single `Shaders.metal` split into
-    /// these once it crossed ~2,000 lines; the renderer never assumes one file.
-    static let shaderSourceNames = ["OllinShaderLib", "ShaderCore", "ShaderShapes", "ShaderCombinator", "Shader3D", "ShaderRaymarch", "ShaderStrands", "ShaderEffects", "ShaderCombine", "ShaderFlare", "ShaderGI", "ShaderCaustics", "ShaderSim", "ShaderPatterns", "ShaderIBL", "ShaderPathTrace"]
+    /// The shader source segments. They're compiled as one library, and Metal needs a
+    /// declaration before its use, so they have to reach the compiler in dependency
+    /// order. That order is **not** this list: each segment names what it needs with an
+    /// `#include` at its top, and `ShaderIncludes.resolveAll` pulls a named file in
+    /// ahead of the file that asked for it and splices each one exactly once. So this
+    /// is a set kept in alphabetical order, and adding a segment means adding its name
+    /// here and declaring its dependencies in the file itself, rather than working out
+    /// which slot in a hand-kept sequence it belongs in. The single `Shaders.metal`
+    /// split into these once it crossed ~2,000 lines; the renderer never assumes one file.
+    static let shaderSourceNames = ["OllinShaderLib", "Shader3D", "ShaderCaustics", "ShaderCombinator", "ShaderCombine", "ShaderCore", "ShaderEffects", "ShaderFlare", "ShaderGI", "ShaderIBL", "ShaderPathTrace", "ShaderPatterns", "ShaderRaymarch", "ShaderShapes", "ShaderSim", "ShaderStrands"]
 
-    /// Read and concatenate the shader segments from a filesystem `directory`, in
-    /// `shaderSourceNames` order. This is the source live shader reload feeds back
-    /// in (the bundled copy is built, not the file being edited). `nil` if
-    /// any segment is unreadable.
+    /// Assemble the built-in library out of `roots`, resolving each segment's declared
+    /// includes through `load`. The result holds every file once, each after everything
+    /// it names, whatever order the roots arrive in.
+    static func assembleShaderSource(roots: [ShaderIncludes.Source],
+                                     load: (String, String) -> ShaderIncludes.Source?)
+        -> ShaderIncludes.Result {
+        ShaderIncludes.resolveAll(roots, load: load)
+    }
+
+    /// Read and assemble the shader segments from a filesystem `directory`. This is the
+    /// source live shader reload feeds back in (the bundled copy is built, not the file
+    /// being edited), so a segment's `#include` resolves against that same directory.
+    /// `nil` if any segment is unreadable.
     static func concatenatedShaderSource(fromDirectory directory: String) -> String? {
-        var parts: [String] = []
+        var roots: [ShaderIncludes.Source] = []
         for name in shaderSourceNames {
             let path = (directory as NSString).appendingPathComponent("\(name).metal")
-            guard let part = try? String(contentsOfFile: path, encoding: .utf8) else { return nil }
-            parts.append(part)
+            guard let text = try? String(contentsOfFile: path, encoding: .utf8) else { return nil }
+            let key = URL(fileURLWithPath: path).resolvingSymlinksInPath().path
+            roots.append(ShaderIncludes.Source(key: key, name: key, text: text))
         }
-        return parts.joined(separator: "\n")
+        return assembleShaderSource(roots: roots) { spelling, askedBy in
+            let folder = (askedBy as NSString).deletingLastPathComponent
+            let path = (folder.isEmpty ? directory : folder as String)
+            let full = (path as NSString).appendingPathComponent(spelling)
+            guard let text = try? String(contentsOfFile: full, encoding: .utf8) else { return nil }
+            let key = URL(fileURLWithPath: full).resolvingSymlinksInPath().path
+            return ShaderIncludes.Source(key: key, name: key, text: text)
+        }.source
     }
 
     /// Load the built-in shader library.
@@ -933,18 +990,17 @@ extension MetalRenderer {
         if !rt, let library = try? device.makeDefaultLibrary(bundle: OllinResources.bundle) {
             return library
         }
-        // Read every segment from the bundle and concatenate in order; the combined
-        // source is one compile unit (ShaderCore's `#include` is spliced by
-        // composeShaderSource). Require all of them, so a missing segment fails
-        // loudly rather than compiling an incomplete library.
-        let parts = shaderSourceNames.map { name in
-            OllinResources.bundle.url(forResource: name, withExtension: "metal")
-                .flatMap { try? String(contentsOf: $0, encoding: .utf8) }
-        }
-        if parts.allSatisfy({ $0 != nil }) {
-            let combined = parts.compactMap { $0 }.joined(separator: "\n")
+        // Read every segment from the bundle and assemble one compile unit, each
+        // segment's declared `#include`s (its dependencies, and the shared CPU/GPU
+        // header) resolved out of the same bundle. Require all of them, so a missing
+        // segment fails loudly rather than compiling an incomplete library.
+        let roots = shaderSourceNames.map { bundleShaderFile("\($0).metal", "") }
+        if roots.allSatisfy({ $0 != nil }) {
+            let assembled = assembleShaderSource(roots: roots.compactMap { $0 },
+                                                 load: bundleShaderFile)
             // Let compile errors propagate: a bad shader should fail loudly here.
-            return try device.makeLibrary(source: composeShaderSource(combined, rayTracing: rt), options: nil)
+            return try device.makeLibrary(source: rayTracingDefine(rt) + assembled.source,
+                                          options: nil)
         }
         if !rt, let library = device.makeDefaultLibrary() {
             return library

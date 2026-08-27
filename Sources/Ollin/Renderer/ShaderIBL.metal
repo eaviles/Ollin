@@ -1,3 +1,7 @@
+// What this segment builds on. The resolver reads each one in ahead of this file
+// and only once, so the segment list itself carries no order (see ShaderIncludes).
+#include "OllinShaderLib.metal"
+
 #include <metal_stdlib>
 using namespace metal;
 

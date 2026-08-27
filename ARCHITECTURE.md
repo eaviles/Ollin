@@ -4324,6 +4324,45 @@ end-to-end: edit reloads, a break shows the line-accurate overlay error, a fix
 recovers). A framework-segment `.metal` (under the repo's `Renderer` dir) still
 routes to the full library reload; the dispatch tells them apart by path.
 
+**`#include "…"` is resolved by hand, for everything compiled at runtime.**
+`makeLibrary(source:)` has no include search path, so a quoted include would be
+an error rather than a file. `ShaderIncludes` (`Sources/Ollin/Renderer/`) reads
+the directive, splices the named file's text in its place, and writes a `#line`
+on each side, so a mistake inside an included file is reported against that
+file at its own line. It is one resolver with three callers, differing only in
+how a spelling is turned into a file: the built-in segments look themselves up
+in the resource bundle (`bundleShaderFile`), a live shader reload looks in the
+repo directory being edited, and a user's shader or compute kernel resolves
+against the folder its own source came from (`resolveFromFilesystem`, with the
+kernel's folder coming from the `sourcePath` `ComputeKernel` now carries).
+
+Two properties do the work. **A file is spliced once per compile**, tracked by
+resolved path, with the root seeded into that set so a file naming itself is
+caught as a cycle rather than read a second time; a cycle and a nest past
+`depthLimit` are reported instead of followed. And **the segment list carries
+no order**: each `Shader*.metal` opens with an `#include` naming what it needs,
+`resolveAll` walks the roots sharing one already-spliced set, so a dependency
+lands ahead of whatever named it whatever order the roots arrive in.
+`shaderSourceNames` is therefore a plain alphabetical set, and adding a segment
+is a name in that list plus its declarations in the file.
+`theBuiltInSegmentsCompileInAnyOrder` compiles six orders on the device and is
+verified red by sabotage. Writing it found two dependencies nobody had ever
+declared, because the old fixed order happened to satisfy them: `Shader3D` uses
+`ShaderShapes`' `diskCoverage`, and `ShaderPathTrace` uses `ShaderIBL`'s
+equirect helpers. A problem the resolver finds is raised as the shader's own
+`ShaderCompileError` before the compiler is asked, since a missing helper would
+otherwise arrive as a page of undeclared identifiers pointing away from it. The
+composed library text is memoized per `Modules` set
+(`userShaderLibraryText`), because the user-shader compose runs once per shader
+per frame and the bundled library cannot change mid-process.
+
+**`ollin check`** (`ShaderCheck` plus the `OllinCheck` target) is the same path
+without a sketch: resolve, infer the variant from the layer readers the source
+calls, compose through `composeUserShaderSource`, compile, and build the
+pipeline too, since a shader can compile and still be refused there. It reports
+through `cleanShaderDiagnostics`, so the line numbers are the ones a running
+sketch would print.
+
 ---
 
 ## Scene import (`loadScene` / `drawScene`)

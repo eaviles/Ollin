@@ -210,6 +210,64 @@ Then there is the part no tool can decide for you. **A shader belongs to whoever
 
 What you get back is Metal source sitting in your own project, with Ollin's shader library already spliced in. You can call `palette` or `fbm` inside somebody else's plasma and watch what happens. That is the difference between bringing a shader over and admiring it in a browser tab.
 
+## One helper, two shaders
+
+Sooner or later you write a small function you want in more than one shader. A swirl, a mask, a curve you tuned by hand. Copying it into the second file works until you change one copy and forget the other.
+
+Put it in a file of its own and name it:
+
+```metal
+#include "helpers.metal"
+
+float4 shade(float2 uv, ShaderInfo info) {
+    return sample(info, swirl(uv, param(info, 0)));
+}
+```
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/17-YourFirstShader/SharedHelper-dark.jpg">
+  <img src="Images/17-YourFirstShader/SharedHelper.jpg" alt="On the left a helper file holding one swirl function. On the right two shader files, each naming that helper in an include line and calling it with a different amount, and beside each one a grid warped by that amount" width="680">
+</picture>
+
+The path is relative to the file that names it, so a helper sitting in the same folder is just its name. It works from an inline Swift string too. The folder there is the one your `.swift` file is in. A [compute kernel](../Docs/Shaders/Compute.md) can do it as well, so a kernel and a shader can share one file.
+
+Three things are worth knowing.
+
+A file is read once, however many times it is named. Two shaders that both include the same helper do not end up defining it twice.
+
+A mistake inside the helper is reported against the helper, at its own line. That is the whole point. An include that made errors point at the wrong file would be worse than copying the function by hand.
+
+A file that is not there is reported before the compiler is asked. So is a loop of files that include each other. Either one, left to the compiler, would arrive as a page of undeclared identifiers pointing anywhere but at the real mistake.
+
+You do not need an include for Ollin's own library. `palette`, `fbm`, `smin` and the rest are already there in every shader.
+
+## Trying a shader on its own
+
+A shader is compiled by the sketch that uses it. So the usual way to find out whether it compiles is to launch something that draws it, and the first sign that it does not is a layer that stays blank.
+
+You can ask directly instead:
+
+```sh
+ollin check Ripple.metal
+```
+
+```
+Ripple.metal: ok
+  a filter, because it reads one layer
+  reads parameters 0, 1, so pass 2 floats
+  includes /Users/you/Sketches/helpers.metal
+```
+
+It compiles the file on this machine's GPU, the same way a sketch would, and reports at your own line numbers when something is wrong. It also says three things you cannot see by reading the file quickly.
+
+What the shader is. A shader that reads no layer is a generator, one layer makes it a filter, two make it a combine, and the check works that out from the readers you call. It is worth seeing before you wire the shader into a chain that expects something else. You can name the shape yourself with `--as filter` if you want it compiled a particular way.
+
+Which parameters it reads, so you know how many floats to pass. A gap gets called out, because an index nothing writes reads as zero and is usually a slip.
+
+Which files it pulled in, in the order it read them.
+
+Pass several files at once and each is reported on its own. The command exits nonzero if any of them failed, which is what you want in a script.
+
 ## Standing waves: Chladni figures
 
 Not every wave needs simulating, and this one is a formula you can evaluate at a pixel. In 1787 Ernst Chladni scattered sand on a metal plate and drew a bow across its edge. The sand skipped away from the parts that were moving, and settled along the lines that weren't. Those lines are the plate's nodes, and the figures they make are beautiful enough that Chladni toured Europe demonstrating them.
@@ -321,6 +379,7 @@ Shaders come out of computer graphics research and the demoscene, but the reason
 - [Chladni figures](../Docs/Generators/Chladni.md): the mode numbers, the closed form behind the plate, and the knobs on the pattern. The [`Patterns/Chladni`](../Examples/Patterns/Chladni/Sketch.swift) example sweeps the modes, and [`Audio/ChladniResonance`](../Examples/Audio/ChladniResonance/Sketch.swift) drives them from a live signal.
 - [User shaders](../Docs/Shaders/Shaders.md): the full contract, filters and combines that read layers, `.metal` file loading, and the error model.
 - [Bringing a shader over](../Docs/Tools/ShaderImport.md): `ollin new --from-shader` translates a GLSL fragment shader into Metal and writes the project around it, with the `mod` rounding difference, the flipped vertical axis, and the license header explained.
+- [Checking a shader](../Docs/Tools/ShaderCheck.md): `ollin check` on the command line, with what it reports, naming the shape yourself, and checking several files in one go.
 - [The shader library](../Docs/Shaders/ShaderLibrary.md): every spliced-in helper with its signature.
 - [Generators](../Docs/Drawing/Effects.md#generate): `Generator` and `generate(_:)`, the whole pattern-field catalog with every knob, and how a generated layer feeds the rest of an effect chain.
 - [Visual chains](../Docs/Shaders/Visuals.md): all sources, warps, color ops, combines, and modulations.

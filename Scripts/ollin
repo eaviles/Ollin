@@ -50,6 +50,10 @@ usage: ollin <path/to/Sketch.swift> [flags]   run the sketch (live window)
                                               or a web address) into a project
        ollin new --list                       every kind, template, and extra
        ollin generate                         the same, in a window
+       ollin check <file.metal> [...]         compile a shader on this machine's
+                                              GPU and say what it found: errors at
+                                              your own line, what the shader is,
+                                              the parameters it reads
        ollin install [dir]                    symlink ollin onto your PATH
        ollin help                             show this help
 
@@ -74,6 +78,18 @@ cmd_new() {
 # running it, so it needs the framework built.
 cmd_generate() {
     exec swift run -c "${OLLIN_CONFIG:-release}" --package-path "$repo" OllinProjectGenerator "$@"
+}
+
+# ollin check <file.metal> [...]: compile a shader against the real device and
+# report. Paths are absolutized because the host runs with the repo as its
+# package and must find the file whatever directory the caller is in.
+cmd_check() {
+    local -a args
+    local a
+    for a in "$@"; do
+        if [[ -f "$a" ]]; then args+=("${a:A}"); else args+=("$a"); fi
+    done
+    exec swift run -c "${OLLIN_CONFIG:-release}" --package-path "$repo" OllinCheck "${args[@]}"
 }
 
 # ollin install [dir]: symlink this script (symlink-resolved) onto the PATH.
@@ -112,6 +128,8 @@ case "${1:-}" in
         shift; cmd_new "$@" ;;
     generate)
         shift; cmd_generate "$@" ;;
+    check)
+        shift; cmd_check "$@" ;;
     install)
         shift; cmd_install "$@" ;;
     help|--help|-h)

@@ -3,6 +3,10 @@
 // which provides the preamble, the shared CPU/GPU structs, and the color / hash
 // helpers this segment uses. See MetalRenderer.loadLibrary / composeShaderSource.
 
+// What this segment builds on. The resolver reads each one in ahead of this file
+// and only once, so the segment list itself carries no order (see ShaderIncludes).
+#include "OllinShaderLib.metal"
+
 // Inline ray tracing for point-light shadows, compiled in only when the device
 // supports tracing from the render stages (`OLLIN_RT_SHADOWS`, spliced in by
 // MetalRenderer.composeShaderSource from `device.supportsRaytracing`). On a device
