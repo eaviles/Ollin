@@ -111,6 +111,19 @@ if [[ -n "$net" ]]; then
     failures+=("em-dash net")
 fi
 
+# No blocking wait in a test. Test bodies run on the concurrency pool, which is
+# one thread per core; parking one costs the whole process a worker, and a suite
+# running enough of them at once takes every worker there is. Measured
+# 2026-08-26: one helper froze a 2902-test run at 2% CPU for minutes at a time,
+# and the tests that failed were whichever ones held a stopwatch. Costs
+# milliseconds, so it runs every time rather than on a diff match.
+parked=$(grep -rn 'DispatchSemaphore\|\.wait(' Tests/ 2>/dev/null)
+if [[ -n "$parked" ]]; then
+    echo "preflight: a test parks a thread; hop with 'await MainActor.run' instead:" >&2
+    echo "$parked" >&2
+    failures+=("parked thread in Tests/")
+fi
+
 if [[ $milestone -eq 1 ]]; then
     run "test.sh (full suite)" Scripts/test.sh
     run "examples build" swift build --package-path Examples
