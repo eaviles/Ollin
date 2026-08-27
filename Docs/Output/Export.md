@@ -40,6 +40,7 @@ swift run OllinLive MySketches/Loop.swift --export poster.png --frame 90
 - [What SVG export records](#what-svg-export-records) - the shape mapping and the limits
 - [Hatching: solid fills for a pen plotter](#hatching-solid-fills-for-a-pen-plotter) - `--hatch`, `Hatching`
 - [Reproducibility metadata](#reproducibility-metadata) - the regeneration recipe every export carries
+- [Captures that know their source](#captures-that-know-their-source) - `--capture-source`, keeping the exact code a file came from
 - [Rendering a chosen variation](#rendering-a-chosen-variation) - `--seed`, on every export path
 - [Driving the knobs from a file](#driving-the-knobs-from-a-file) - `--automation`, keyframed parameters on every export path
 - [Contact sheets](#contact-sheets-proofing-a-variation-space) - `--export-grid` (seeds) and `--export-sweep` (a `@Param`), `OllinApp.contactSheet` / `exportContactSheet`
@@ -328,6 +329,43 @@ When `randomSeed`/`noiseSeed` were set individually they appear as separate fiel
 | Video | a description metadata item (`ffprobe` or any tag inspector shows it) |
 
 GIF is the one format without a writable slot. For a quick look at a PNG, run `exiftool frame.png`, or `strings frame.png | grep tool`. An artifact found months later names its own seed and knob settings, so the same sketch source plus `--seed` and `--frame` regenerates it exactly. Seeding is covered in [Random](../Generators/Random.md).
+
+---
+
+### Captures that know their source
+
+The recipe names the commit, and marks it `-dirty` when the tree carried uncommitted edits. That marker is honest, and it is also a dead end: the edits themselves are gone. `--capture-source` closes it. Add the flag beside any export flag:
+
+```sh
+swift run --package-path Examples Example-Randomness-Variations --export keeper.png --capture-source
+```
+
+```
+Ollin: source captured as 93ae989, uncommitted work included. Read it with: git show 93ae989
+Ollin: exported frame 0 → keeper-93ae989.png (1080×1080)
+```
+
+Three things happen. The working tree is written into the repository as a commit, tracked edits and new files alike. The exported file is named after that commit. The recipe gains a `capture` field holding the same hash, so the name and the metadata agree.
+
+Nothing you own moves. Your index, your working tree, `HEAD`, and every branch are exactly as they were. The capture sits on no branch and is reachable only through a ref under `refs/ollin/captures/`, which is what keeps `git gc` from collecting it.
+
+Getting the code back needs nothing but the file name:
+
+```sh
+git show 93ae989:Sketch.swift      # read one file as it was
+git checkout 93ae989               # stand the whole tree up, detached
+git diff HEAD 93ae989              # see what was uncommitted at the time
+```
+
+A clean tree needs no capture, because the commit is already `HEAD`. The flag then only names the file after it and says which commit that is.
+
+The rest is worth knowing before you rely on it:
+
+- **Ignored files stay out.** The capture honors `.gitignore`, so build products never travel with it. Exports are not ignored by default, so write them outside the repository or ignore them. Otherwise a capture carries your last render as well.
+- **The same tree captures once.** The tree identifies the source, so a second export of unchanged files reuses the first commit instead of writing a near twin.
+- **The name suffix travels.** A directory takes it too, so `--export-sequence frames` writes into `frames-93ae989`, and a separation stem takes it before the ink names.
+- **Listing and clearing.** `git for-each-ref refs/ollin/captures` lists them. To drop them all: `git for-each-ref --format='%(refname)' refs/ollin/captures | xargs -n1 git update-ref -d`.
+- **Outside a repository** the flag prints a note, and the files keep the names you gave.
 
 ---
 

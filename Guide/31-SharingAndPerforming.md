@@ -365,7 +365,21 @@ exiftool -Description poster.png
 
 This matters when you need to recover a past render. You find an image from four months ago that you like. You have no memory of which of eleven variations produced it, and the sketch has changed since. The file tells you: seed 48213, these knob values, that commit. Check out the commit, pass the seed, and you have it back.
 
-Two limits. GIF has no metadata slot in its format, so a GIF export carries nothing. And a recipe only takes you back to the code if the code still exists, which is another argument for committing your sketches. See [the details](../Docs/Output/Export.md#reproducibility-metadata) for every field.
+One limit stays. GIF has no metadata slot in its format, so a GIF export carries nothing.
+
+The other one has a fix. A recipe takes you back to the code only if that code still exists. Uncommitted edits often do not: the commit is marked dirty, and the next save overwrites what you rendered. Add `--capture-source` to any export and the code is kept for you.
+
+```sh
+swift run --package-path Examples Example-Randomness-Variations --export keeper.png --capture-source
+```
+
+Your working tree goes into the repository as a commit that sits on no branch, and the file is named after it. `keeper.png` becomes `keeper-93ae989.png`. Nothing you own moves: your branch, your index, and your edits are exactly where you left them. Months later the file name is enough to get the code back.
+
+```sh
+git show 93ae989:Sketch.swift
+```
+
+See [the details](../Docs/Output/Export.md#reproducibility-metadata) for every field the recipe holds, and [captures that know their source](../Docs/Output/Export.md#captures-that-know-their-source) for the rest of that flag.
 
 ## Saying what it shows: describable output
 

@@ -2436,6 +2436,29 @@ public extension OllinApp {
     @discardableResult
     static func handleCommandLine(_ args: [String] = CommandLine.arguments,
                                   makeSketch: () -> Sketch) -> Bool {
+        // `--capture-source` beside any export flag ties the files to the source
+        // that drew them: the commit is recorded in the recipe and added to
+        // every written name, and an uncommitted tree is written into the
+        // repository first, so the exact code stays recoverable. Resolved here,
+        // before the export branches read their paths.
+        var args = args
+        if args.contains("--capture-source"),
+           args.contains(where: { $0.hasPrefix("--export") }) {
+            let source = CaptureSource.resolve(note: ProcessInfo.processInfo.processName)
+            CaptureSource.current = source
+            if let source {
+                args = CaptureSource.stamped(args, with: source.id)
+                if source.isCapture {
+                    print("Ollin: source captured as \(source.id), uncommitted work included."
+                          + " Read it with: git show \(source.id)")
+                } else {
+                    print("Ollin: source is commit \(source.id).")
+                }
+            } else {
+                FileHandle.standardError.write(Data(
+                    "Ollin: --capture-source needs a git repository; the files keep their given names.\n".utf8))
+            }
+        }
         // `--render-quality <performance|default|detail>` sets the render-quality fallback for
         // the export paths, applied to any feature the sketch left at `.default` (an explicit
         // sketch dial still wins). Defaults to `.detail`: exported art is full quality unless

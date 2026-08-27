@@ -28,6 +28,10 @@ struct ExportMetadata {
     /// profile and the intent it was separated under, which are as much a part
     /// of reproducing those files as the seed is. `nil` everywhere else.
     var printingCondition: String? = nil
+    /// The commit `--capture-source` wrote the uncommitted working tree into,
+    /// so a `-dirty` run stays recoverable. `nil` when the flag was absent or
+    /// the tree was already clean (`gitHash` is then the whole answer).
+    var captureCommit: String? = nil
 
     /// Capture the recipe from `sketch` as it stands: the last seeds applied,
     /// every `@Param`'s current value, and the working tree's git commit.
@@ -37,7 +41,8 @@ struct ExportMetadata {
                        noiseSeed: sketch.recordedNoiseSeed,
                        params: sketch.parameters().map { ($0.name, $0.param.stored) },
                        gitHash: ExportMetadata.workingTreeHash,
-                       frame: frame, fps: fps)
+                       frame: frame, fps: fps,
+                       captureCommit: ExportMetadata.capturedCommit)
     }
 
     /// The recipe as one compact JSON line, e.g.
@@ -64,6 +69,7 @@ struct ExportMetadata {
             fields.append("\"printingCondition\":\(jsonString(printingCondition))")
         }
         if let gitHash { fields.append("\"git\":\(jsonString(gitHash))") }
+        if let captureCommit { fields.append("\"capture\":\(jsonString(captureCommit))") }
         if let frame { fields.append("\"frame\":\(frame)") }
         if let fps { fields.append("\"fps\":\(jsonNumber(fps))") }
         return "{\(fields.joined(separator: ","))}"
@@ -72,10 +78,12 @@ struct ExportMetadata {
     /// The recipe for a contact sheet, which reproduces from its seed list
     /// rather than a single sketch state: any tile re-renders at full
     /// resolution with `--export --seed N` at the recorded frame.
+    @MainActor
     static func sheetRecipe(seeds: [Int], frame: Int, fps: Double) -> String {
         var fields: [String] = ["\"tool\":\"Ollin\""]
         fields.append("\"seeds\":[\(seeds.map(String.init).joined(separator: ","))]")
         if let hash = workingTreeHash { fields.append("\"git\":\(jsonString(hash))") }
+        if let capture = capturedCommit { fields.append("\"capture\":\(jsonString(capture))") }
         fields.append("\"frame\":\(frame)")
         fields.append("\"fps\":\(jsonNumber(fps))")
         return "{\(fields.joined(separator: ","))}"
@@ -84,6 +92,7 @@ struct ExportMetadata {
     /// The recipe for a parameter sweep: the swept `@Param`'s name, its
     /// values, and the seed every tile was pinned to, so any tile re-renders
     /// at full resolution by setting that knob at that seed.
+    @MainActor
     static func sheetRecipe(sweep name: String, values: [Double], seed: Int,
                             frame: Int, fps: Double) -> String {
         var fields: [String] = ["\"tool\":\"Ollin\""]
@@ -91,6 +100,7 @@ struct ExportMetadata {
         fields.append("\"values\":[\(values.map { jsonNumber($0) }.joined(separator: ","))]")
         fields.append("\"seed\":\(seed)")
         if let hash = workingTreeHash { fields.append("\"git\":\(jsonString(hash))") }
+        if let capture = capturedCommit { fields.append("\"capture\":\(jsonString(capture))") }
         fields.append("\"frame\":\(frame)")
         fields.append("\"fps\":\(jsonNumber(fps))")
         return "{\(fields.joined(separator: ","))}"
@@ -119,6 +129,17 @@ struct ExportMetadata {
         let dirty = git(["status", "--porcelain"]).map { !$0.isEmpty } ?? false
         return dirty ? hash + "-dirty" : hash
     }()
+
+    /// The commit `--capture-source` wrote the uncommitted working tree into,
+    /// which turns the `-dirty` marker above from a dead end into something a
+    /// reader can check out. `nil` when the flag was absent, when the run was
+    /// outside a repository, or when the tree was already clean, since the
+    /// commit is then `gitHash` itself.
+    @MainActor
+    static var capturedCommit: String? {
+        guard let source = CaptureSource.current, source.isCapture else { return nil }
+        return source.id
+    }
 }
 
 // MARK: - Compact JSON encoding
