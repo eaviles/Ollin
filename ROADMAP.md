@@ -126,7 +126,7 @@ See the [design notes](DESIGN-NOTES.md#authoring-and-editor-tooling).
 
 ## Collaboration and multi-device
 
-Apple-native, low-ceremony ways several machines share one piece: **Multipeer** local networking so several Macs and iPhones form one canvas with no server, the **iPhone as a 6DoF wand** (extending the sensor stream the phone already sends). (A more speculative **SharePlay** co-creation idea sits under [Further out / exploratory](#further-out--exploratory).) See the [design notes](DESIGN-NOTES.md#collaboration-and-multi-device).
+Apple-native, low-ceremony ways several machines share one piece: the **iPhone as a 6DoF wand** (extending the sensor stream the phone already sends). (A more speculative **SharePlay** co-creation idea sits under [Further out / exploratory](#further-out--exploratory).) See the [design notes](DESIGN-NOTES.md#collaboration-and-multi-device).
 
 ## Learning: the Guide
 

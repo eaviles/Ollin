@@ -25,6 +25,7 @@ enum Satellite: String, CaseIterable {
     case midi = "OllinMIDI"
     case serial = "OllinSerial"
     case remote = "OllinRemote"
+    case room = "OllinRoom"
     case physics = "OllinPhysics"
     case vision = "OllinVision"
     case video = "OllinVideo"
@@ -88,6 +89,11 @@ let package = Package(
         // network, for tuning an installation from in front of it. Kept out of
         // `Ollin` so the drawing core stays free of Network.framework.
         .library(name: "OllinRemote", targets: ["OllinRemote"]),
+        // Room as a satellite library: `import OllinRoom` to let several machines
+        // on one network draw one piece, sharing values, knobs, and a clock with
+        // no server between them. Kept out of `Ollin` so the drawing core stays
+        // free of MultipeerConnectivity.
+        .library(name: "OllinRoom", targets: ["OllinRoom"]),
         // Physics as a satellite library: `import OllinPhysics` for a small
         // Verlet world — particles, springs, and disk collisions — that a sketch
         // steps each frame so motion comes from simulation, not hand-tuned values.
@@ -539,6 +545,15 @@ let package = Package(
             dependencies: ["Ollin"],
             resources: [.copy("Resources/surface.html")]
         ),
+        // Room: several machines on one local network drawing one piece, over
+        // MultipeerConnectivity, so there is no server and no address to type.
+        // Values, shared `@Param` knobs, and one agreed clock travel between
+        // them. A satellite (like OllinOSC) so the drawing core stays free of
+        // MultipeerConnectivity; sketches opt in with `import OllinRoom`.
+        .target(
+            name: "OllinRoom",
+            dependencies: ["Ollin"]
+        ),
         // Physics: a small Verlet world — particles, springs, and disk collisions
         // — stepped each frame so motion can come from simulation. A satellite
         // library (like OllinAudio) so it stays opt-in; it depends on Ollin only
@@ -790,6 +805,14 @@ let package = Package(
         .testTarget(
             name: "OllinRemoteTests",
             dependencies: ["Ollin", "OllinRemote"]
+        ),
+        // Room correctness, network-free on purpose: the frame codec and its
+        // refusals (pure functions over bytes), the service name rules, the clock
+        // arithmetic, and two whole rooms talking to each other over a transport
+        // that lives in memory. No socket is opened here.
+        .testTarget(
+            name: "OllinRoomTests",
+            dependencies: ["Ollin", "OllinRoom"]
         ),
         // Physics correctness: Verlet integration (a body falls the expected
         // distance under gravity), spring rest-length restoration, pinned bodies

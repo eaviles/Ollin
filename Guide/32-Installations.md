@@ -312,6 +312,72 @@ Then draw in desk coordinates and move each point into this canvas at the last m
 
 The other half is that nothing here talks to anything. The windows are separate programs, and separate programs are hard to keep in step. So make the whole world a function of the time of day, which they all read the same, and they cannot disagree. That is worth reaching for before anything with a network in it. The `Installation/ManyWindows` example is the whole thing, in about eighty lines.
 
+Windows on one machine can share a clock that way. Machines cannot, and that is the next section.
+
+### Several machines, one piece
+
+A wall longer than one projector took two machines, each told which part of the canvas it shows. Nothing has told them what time it is.
+
+Each sketch starts its clock when it starts. Switch on the machine at the left of the wall, walk to the one at the right, switch that on. The two are now seconds apart, and everything that moves in the piece says so.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/32-Installations/OneRoom-dark.jpg">
+  <img src="Images/32-Installations/OneRoom.jpg" alt="Two rows, each with two screens showing a bead on a ring. In the top row, labeled each machine's own clock, the beads sit in different places and two timelines below start at different points, one reading 7.0 s and the other 4.6 s. In the bottom row, labeled the room's clock, both beads sit in the same place over one shared timeline reading now, 7.0 s on both" width="680">
+</picture>
+
+A room fixes that. The machines find each other by a name you make up: no server, no address, nothing to configure.
+
+```swift
+import OllinRoom
+
+let room = Room(named: "wall", seat: 0)   // the machine at the right says seat: 1
+
+override func setup() {
+    extend(room)
+    room.shareAll()
+}
+
+override func draw() {
+    let angle = room.time * speed     // room.time, not time
+}
+```
+
+Three things arrive with it.
+
+**One clock.** `room.time` is the same number on every machine. One of them keeps it, and the others ask it what time it is a few times a second. The answer allows for the time it spent on the wire. Measured between two sketches on one Mac, the first answer lands within a quarter second of joining. The clocks then agree to a tenth of a millisecond, which is as fine as the measurement could see. Before that first answer `room.clockError` is `nil`, so a piece that must not start early can wait for it. When the machine keeping the clock leaves, the room picks another and keeps the time it already had.
+
+**One seat each.** `room.seat` counts from zero and `room.seatCount` says how many there are. A piece can then lay itself out across the whole wall and slide its own part into view:
+
+```swift
+let wall = width * Double(room.seatCount)
+withState {
+    translate(-Double(room.seat) * width, 0)
+    drawWholePiece(across: wall)
+}
+```
+
+That is a different tool from the `shows` rectangle earlier in this chapter, and they get on. `shows` cuts a finished canvas for a projector that is hung where it is hung. A seat tells the sketch which part of the wall it *is*, so the drawing itself can be wider than one screen. Ask for a fixed seat, as above, and a machine that restarts comes back to the same slice.
+
+**One set of knobs.** `room.shareAll()` makes every `@Param` travel; `room.share("speed", "hue")` picks. Turn a knob on any machine and the rest follow within a frame. Two people turning one knob at the same moment is settled by the room's clock: the later turn wins everywhere.
+
+Anything else the piece wants to say travels under a key, and reads the way OSC and MIDI read in [Chapter 28](28-SoundAndControl.md):
+
+```swift
+room.send("bird", position, reliable: false)      // sent every frame
+let bird = room.point("bird", default: center)     // the latest one
+for message in room.messages() { }                 // or every one that arrived
+```
+
+The first time a sketch opens a room, the system asks to use the local network. A sketch run from a terminal inherits the terminal's answer, so grant it once at the desk before the show. Anyone on that network who knows the room name can join, which is the convenience working as intended on a show network and a reason for the `passcode:` on a network you do not control.
+
+You do not need a second machine to see the loop. `RoomLoopback` puts two rooms in one sketch: the left panel sends where the pointer is, the right panel draws only what arrived, and the space bar cuts the wire.
+
+```sh
+swift run --package-path Examples Example-Integration-RoomLoopback
+```
+
+In plain terms: give the machines a name to meet under, and they draw one piece on one clock instead of several copies of it.
+
 ### The log
 
 An unattended run prints a line when it starts, when it resumes, and when the machine wakes or the displays change. The hours and the watch print their own. Send it somewhere you can read on Monday:
@@ -576,7 +642,8 @@ A piece that has to run unattended is a reliability problem rather than a graphi
 - [DMX](../Docs/Integration/DMX.md): universes and fixtures, Art-Net and sACN, the send cadence, the console-drives-the-sketch direction, and the LED map's sampling.
 - [Profiling](../Docs/Tools/Profiling.md): reading the cost row, what to do about each answer, and capturing a frame for a closer look.
 - [Remote](../Docs/Integration/Remote.md): the `@Param` knobs served to a phone as touch controls, what each kind becomes, how values land, and the network honesty.
-- Worked examples, in [`Examples/Installation/`](../Examples/Installation/): `Unattended` (the one-line declaration), `Resuming`, `Watched`, `Hours`, `Fitted`, `ManyDisplays`, and `ManyWindows`, plus [`Examples/Integration/DMXLoopback`](../Examples/Integration/DMXLoopback/Sketch.swift), [`Examples/Integration/LEDMapping`](../Examples/Integration/LEDMapping/Sketch.swift), and [`Examples/Integration/RemoteSurface`](../Examples/Integration/RemoteSurface/Sketch.swift).
+- [Room](../Docs/Integration/Room.md): several machines joining by name, the three ways to read what arrives, shared knobs, the clock they agree on and what it costs, seats, and who can join.
+- Worked examples, in [`Examples/Installation/`](../Examples/Installation/): `Unattended` (the one-line declaration), `Resuming`, `Watched`, `Hours`, `Fitted`, `ManyDisplays`, and `ManyWindows`, plus [`Examples/Integration/DMXLoopback`](../Examples/Integration/DMXLoopback/Sketch.swift), [`Examples/Integration/LEDMapping`](../Examples/Integration/LEDMapping/Sketch.swift), [`Examples/Integration/RemoteSurface`](../Examples/Integration/RemoteSurface/Sketch.swift), [`Examples/Integration/RoomCanvas`](../Examples/Integration/RoomCanvas/Sketch.swift), and [`Examples/Integration/RoomLoopback`](../Examples/Integration/RoomLoopback/Sketch.swift).
 
 ---
 

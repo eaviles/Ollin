@@ -37,6 +37,7 @@ enum Satellite: String, CaseIterable {
     case midi = "OllinMIDI"
     case serial = "OllinSerial"
     case remote = "OllinRemote"
+    case room = "OllinRoom"
     case physics = "OllinPhysics"
     case vision = "OllinVision"
     case video = "OllinVideo"
@@ -613,6 +614,14 @@ let package = Package(
         // address the canvas shows and every slider, toggle, menu, color, pad,
         // and stepper appears as a touch control, live both ways.
         example("Integration/RemoteSurface", [.remote]),
+        // One piece across several machines: open it on two Macs on the same
+        // network and they find each other by the room's name, sharing a clock,
+        // a seat each, and every knob. It runs alone as one seat of one.
+        example("Integration/RoomCanvas", [.room]),
+        // Self-contained: two rooms inside one sketch trade values over a
+        // transport that never leaves the process (like OSCLoopback), so the
+        // whole loop is on one screen and the space bar cuts the wire.
+        example("Integration/RoomLoopback", [.room]),
         // Self-contained: publishes its own frames as a Syphon source and
         // subscribes to them, so the feedback inset is the round-trip (like
         // OSCLoopback). Open Syphon's Simple Client to see it cross-app.
