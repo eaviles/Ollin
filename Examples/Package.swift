@@ -240,6 +240,7 @@ let package = Package(
         example("3D/Effects/LensFlare"),
         example("3D/Effects/TemporalAA"),
         example("3D/Effects/Upscaling"),
+        example("3D/Effects/FrameInterpolation"),
         example("3D/Effects/RayTracedReflections"),
         example("3D/Effects/MirrorTunnel"),
         example("3D/Effects/GlossyReflections"),

@@ -1248,6 +1248,24 @@ final class MetalRenderer {
     /// Whether this GPU supports the platform temporal scaler, resolved once.
     var fxSupportChecked = false
     var fxSupported = false
+    /// The frame interpolator and the textures it works between (see
+    /// `frameInterpolation`). Rebuilt on a size change; the headless path never
+    /// touches it, since an export writes only the frames the sketch drew.
+    var interpolationSlot: FXInterpolatorSlot?
+    /// Whether this GPU supports the platform frame interpolator, resolved once.
+    var interpolationSupportChecked = false
+    var interpolationSupported = false
+    /// The drawn frame waiting for the next refresh, set when a made frame went
+    /// to the screen in its place. Read by the runner through `hasHeldFrame`.
+    var heldFrame: MTLTexture?
+    /// Whether the host can give up a refresh to a made frame. The renderer
+    /// cannot see the conditions that decide it (a take being played or
+    /// recorded, a still sketch, a wall of displays that all want every frame),
+    /// so the runner sets it each frame.
+    var hostAllowsInterpolation = false
+    /// Seconds between the last two drawn frames, which is what a made frame is
+    /// placed in the middle of. Set by the host each frame, like `presentCeiling`.
+    var frameDelta: Double = 1.0 / 60
     /// The reflection G-buffer's cached targets (world normal + coverage, metal/rough,
     /// own depth), reallocated on a size change. GPU-private and fully rewritten by the
     /// pass each frame, so reuse across in-flight frames is safe (command buffers on
@@ -1717,11 +1735,13 @@ final class MetalRenderer {
         // A 3D camera *or* a depth scene adds a depth attachment, paired to mainMSAA
         // (allocated lazily; a plain 2D sketch never allocates one). Memoryless,
         // cleared to the far plane. Temporal AA additionally resolves the depth
-        // (`.min`, the front surface) for its reprojection, and motion blur reads
-        // the same resolve for its velocity fill; a frame using neither attaches
-        // no resolve and stays byte-identical.
+        // (`.min`, the front surface) for its reprojection, and motion blur, the
+        // upscaler, the lens flare, and the frame interpolator read the same
+        // resolve; a frame using none of them attaches no resolve and stays
+        // byte-identical.
         let taaActive = temporalAAActive(drawer)
         let blurActive = motionBlurActive(drawer)
+        let interpolationActive = frameInterpolationActive(drawer)
         var passDepthFormat: MTLPixelFormat? = nil
         if drawer.usesDepthBuffer {
             if mainDepth?.width != renderWidth || mainDepth?.height != renderHeight {
@@ -1733,7 +1753,7 @@ final class MetalRenderer {
                 geomPass.depthAttachment.clearDepth = 1.0
                 geomPass.depthAttachment.storeAction = .dontCare
                 passDepthFormat = depthPixelFormat
-                if taaActive || blurActive || fxActive || lensFlareActive(drawer) {
+                if taaActive || blurActive || fxActive || interpolationActive || lensFlareActive(drawer) {
                     if mainDepthResolve?.width != renderWidth || mainDepthResolve?.height != renderHeight {
                         mainDepthResolve = makeDepthResolve(width: renderWidth, height: renderHeight)
                     }
@@ -1992,8 +2012,17 @@ final class MetalRenderer {
                                     pooled: true)
         let presented = applyFrameFilters(drawer, resolved: flared, width: width, height: height,
                                           into: commandBuffer, pooled: true)
+        // Frame interpolation keeps this frame back one refresh and shows the
+        // frame that belongs between it and the one before. Returns nil (and
+        // holds nothing) whenever it is not running, and then the drawable
+        // carries the frame just drawn, byte-identically.
+        let toPresent = applyFrameInterpolation(drawer, drawn: presented, depth: mainDepthResolve,
+                                                upscalerMotion: fxActive ? fxSlot?.motion : nil,
+                                                meshBuffer: meshBuf, into: commandBuffer,
+                                                inputWidth: renderWidth, inputHeight: renderHeight,
+                                                outputWidth: width, outputHeight: height) ?? presented
         if let presentEncoder = countedEncoder(commandBuffer, presentPass(into: drawable.texture), caller: "present") {
-            encodePresent(from: presented, drawer: drawer, into: presentEncoder, projected: true)
+            encodePresent(from: toPresent, drawer: drawer, into: presentEncoder, projected: true)
             presentEncoder.endEncoding()
         }
         commandBuffer.present(drawable)

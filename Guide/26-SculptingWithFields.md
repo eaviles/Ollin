@@ -411,6 +411,23 @@ The live window draws the whole frame at a fraction of the canvas. The platform'
 
 What you keep is never the preview. Exports and snapshots render at full resolution with the deterministic average. So upscaling is purely a live-window trade, and the same sketch previews fast and exports full. The [`Upscaling` example](../Examples/3D/Effects/Upscaling/Sketch.swift) is a mirror floor tracing a ring of columns, with the toggle and the tier on knobs. Watch the FPS readout while you flip them, since that scene runs about twice as fast at `.performance` on an M2. Like temporal AA, the win is temporal and a still can't show it, so the example carries the demonstration.
 
+## Drawing fewer frames: the ones in between
+
+Upscaling spends less on each frame. The other lever is to draw fewer frames and let the machine fill the gaps:
+
+```swift
+rayTracedReflections()
+frameInterpolation()     // draw every other refresh, show a made frame between
+```
+
+`draw()` then runs on every other refresh. On the refresh between, the platform builds the picture that belongs in the middle out of the two frames either side of it, guided by the depth buffer and the same `withMotion { }` declarations everything else in this chapter reads. A scene that can hold thirty drawn frames a second moves at the display's sixty.
+
+Your clock is untouched, which is the part that matters for a sketch. `time` still runs on real seconds, so the motion keeps its speed and only its sampling halves. The FPS readout counts frames you drew, so watch it fall to thirty while the picture on screen does not change pace. That gap between the two numbers *is* the feature.
+
+Two things come with it. A drawn frame waits one refresh before it is shown, because the made frame belongs in front of it, so everything arrives about sixteen milliseconds later than it would; a piece steered by the mouse can feel that. And a made frame is a guess: where something moves further than the interpolator can follow, it repeats the drawn frame instead of smearing it. The first frame after it starts is repeated for the same reason, which is why turning it on shows nothing odd.
+
+Exports never interpolate. What you keep is the frames you drew, so no file ever carries a guessed picture. The [`FrameInterpolation` example](../Examples/3D/Effects/FrameInterpolation/Sketch.swift) is a ring of orbiting blocks with a fast arm sweeping through them, with the toggle and a speed knob. Turn the speed up until the arm stops keeping up, which is the honest edge of what this can do.
+
 ## Putting it together: molten
 
 The finished piece is a single body of four melted lobes, twisted a little. It's finished as glass under studio light, breathing slowly over a floor that catches its shadow. Make `MySketches/Molten.swift`:

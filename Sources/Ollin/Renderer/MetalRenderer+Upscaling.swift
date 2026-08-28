@@ -149,29 +149,11 @@ extension MetalRenderer {
         taaHistory = nil
 
         let aspect = outputHeight > 0 ? Double(outputWidth) / Double(outputHeight) : 1
-        let curVP = camera.projectionMatrix(aspect: aspect) * camera.viewMatrix
-        let prevVP = drawer.previousCamera3D.map {
-            $0.projectionMatrix(aspect: aspect) * $0.viewMatrix
-        } ?? curVP
-
-        // The mover pass at render resolution (nil without declared movers),
-        // then the fill compositing it over the camera term. Both matrices are
-        // unjittered (the remove-the-jitter rule; the scaler is told the jitter
-        // separately, below).
-        let mover = encodeMoverVelocity(drawer, into: cb, meshBuffer: meshBuffer,
-                                        width: inputWidth, height: inputHeight,
-                                        previousViewProjection: prevVP)
+        let mover = encodeFXVelocityFill(drawer, camera: camera, into: cb, depth: depth,
+                                         fallbackColor: resolved, meshBuffer: meshBuffer,
+                                         motion: slot.motion,
+                                         width: inputWidth, height: inputHeight, aspect: aspect)
         slot.lastMover = mover
-        let invVP = simd_inverse(curVP)
-        var params = [SIMD4<Float>](repeating: .zero, count: 10)
-        params[0] = SIMD4(1 / Float(inputWidth), 1 / Float(inputHeight), 0, 0)
-        params[1] = SIMD4(mover != nil ? 1 : 0, 0, 0, 0)
-        params[2] = invVP.columns.0; params[3] = invVP.columns.1
-        params[4] = invVP.columns.2; params[5] = invVP.columns.3
-        params[6] = prevVP.columns.0; params[7] = prevVP.columns.1
-        params[8] = prevVP.columns.2; params[9] = prevVP.columns.3
-        encodeEffectFragment("ollin_fx_velocity_fill", inputs: [depth, mover ?? resolved],
-                             output: slot.motion, params: params, into: cb)
 
         // The jitter offset handed to the scaler is the pixel shift the
         // jittered projection applied to the frame's content (x right, y down,
@@ -194,6 +176,39 @@ extension MetalRenderer {
         slot.needsReset = false
         s.encode(commandBuffer: cb)
         return (slot.output, mover)
+    }
+
+    /// Fill a render-resolution motion field for the platform's temporal
+    /// effects: this frame's declared movers over the camera term the depth
+    /// buffer implies, as raw previous-minus-current pixels, y-down. Shared by
+    /// the temporal upscaler and the frame interpolator, which read the same
+    /// field under the same convention (a vector points at where its pixel was
+    /// in the previous frame). Both matrices are unjittered, the
+    /// remove-the-jitter rule; the platform object is told the jitter separately.
+    /// Returns the mover-velocity texture, or nil when the frame declared none.
+    @discardableResult
+    func encodeFXVelocityFill(_ drawer: Drawer, camera: Camera3D, into cb: MTLCommandBuffer,
+                              depth: MTLTexture, fallbackColor: MTLTexture,
+                              meshBuffer: MTLBuffer?, motion: MTLTexture,
+                              width: Int, height: Int, aspect: Double) -> MTLTexture? {
+        let curVP = camera.projectionMatrix(aspect: aspect) * camera.viewMatrix
+        let prevVP = drawer.previousCamera3D.map {
+            $0.projectionMatrix(aspect: aspect) * $0.viewMatrix
+        } ?? curVP
+        let mover = encodeMoverVelocity(drawer, into: cb, meshBuffer: meshBuffer,
+                                        width: width, height: height,
+                                        previousViewProjection: prevVP)
+        let invVP = simd_inverse(curVP)
+        var params = [SIMD4<Float>](repeating: .zero, count: 10)
+        params[0] = SIMD4(1 / Float(width), 1 / Float(height), 0, 0)
+        params[1] = SIMD4(mover != nil ? 1 : 0, 0, 0, 0)
+        params[2] = invVP.columns.0; params[3] = invVP.columns.1
+        params[4] = invVP.columns.2; params[5] = invVP.columns.3
+        params[6] = prevVP.columns.0; params[7] = prevVP.columns.1
+        params[8] = prevVP.columns.2; params[9] = prevVP.columns.3
+        encodeEffectFragment("ollin_fx_velocity_fill", inputs: [depth, mover ?? fallbackColor],
+                             output: motion, params: params, into: cb)
+        return mover
     }
 
     /// TEST SEAM: run the upscaler's velocity fill over crafted inputs (a full

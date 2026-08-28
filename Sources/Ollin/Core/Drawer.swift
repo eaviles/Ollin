@@ -619,6 +619,15 @@ final class Drawer {
     /// while `temporalUpscalingEnabled` is set.
     private(set) var temporalUpscalingQuality: RenderQuality = .default
 
+    /// Whether this frame asks for a made frame between the drawn ones (see
+    /// `frameInterpolation`). Per-frame state like `temporalAAEnabled`. When on
+    /// (and a 3D camera with a field of view is active, on a supporting GPU),
+    /// the live window draws on every other refresh and shows a frame built
+    /// from the two drawn either side of it on the refresh between. The
+    /// headless/export path never interpolates: it writes every frame the
+    /// sketch drew, so an export holds only real frames.
+    private(set) var frameInterpolationEnabled = false
+
     /// Whether this frame motion-blurs the 3D scene (see `motionBlur`). Per-frame
     /// state like `temporalAAEnabled`. When on (and a 3D camera is active), the
     /// renderer streaks the resolved frame along per-pixel screen motion: camera
@@ -2263,6 +2272,18 @@ final class Drawer {
     /// Stop temporally upscaling (the default). Per-frame state.
     func noTemporalUpscaling() { temporalUpscalingEnabled = false }
 
+    /// Show a made frame between the drawn ones: live, the sketch draws on every
+    /// other refresh and the platform interpolator builds the frame between the
+    /// two it drew. Per-frame state like the lights; set it in `draw()`. A no-op
+    /// without an active 3D camera that has a field of view, on a GPU without
+    /// frame-interpolation support, while a take is playing or recording, on the
+    /// accumulation surface, and on the headless/export path, which always writes
+    /// the frames the sketch drew.
+    func frameInterpolation() { frameInterpolationEnabled = true }
+
+    /// Stop showing made frames (the default). Per-frame state.
+    func noFrameInterpolation() { frameInterpolationEnabled = false }
+
     /// Motion-blur the 3D scene this frame: streak each pixel along its screen
     /// motion, camera motion read from the depth buffer and per-object motion from
     /// `withMotion` blocks. `shutter` is the fraction of a frame the virtual
@@ -3771,6 +3792,7 @@ final class Drawer {
         temporalAAEnabled = false
         temporalUpscalingEnabled = false
         temporalUpscalingQuality = .default
+        frameInterpolationEnabled = false
         motionBlurEnabled = false
         motionBlurShutter = 0.5
         lensFlareSetting = nil

@@ -651,6 +651,9 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         // sketch is a different run (its take is written out, so nothing is
         // lost), and a replay's recorded inputs belong to the code they drove.
         finishTake()
+        // A frame held for the next refresh belongs to the sketch being
+        // replaced, and the interpolator's history to the run that ends here.
+        renderer.dropHeldFrame()
         // Size the fresh instance the way `updateCanvasSize` will keep asserting
         // it: a `.resizable` sketch's canvas follows the live view, so carry the
         // current size across the swap; otherwise honor the *new* sketch's
@@ -897,6 +900,22 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         // recorded frame per refresh and a recording claims to hold every frame
         // it drew, so both want the wait rather than the gap.
         let carryingATake = sketch.takePlayer != nil || sketch.takeRecorder != nil
+
+        // Frame interpolation shows two pictures for every one the sketch draws:
+        // the made frame on the refresh that drew it, and the drawn frame here.
+        // This refresh runs no sketch code at all, which is where the time for a
+        // heavy scene comes from. The clock is untouched, so the next draw's step
+        // spans both refreshes and the motion keeps its real-time speed.
+        if renderer.hasHeldFrame {
+            renderer.presentHeldFrame(sketch.drawer, in: view)
+            return
+        }
+        // What the renderer cannot see about this refresh: a take wants every
+        // frame it drew (and a replay consumes one per refresh), a still sketch
+        // may never be asked to draw again, and every display of a wall wants
+        // the same frame rather than one made picture each.
+        renderer.hostAllowsInterpolation = !carryingATake && sketch.isLooping && otherDisplays.isEmpty
+
         guard renderer.canStartFrame || carryingATake else { return }
 
         // The clock is the sum of its own steps, each one capped (see
@@ -921,6 +940,10 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         }
 
         sketch.advance(time: elapsed, deltaTime: dt, frameRate: smoothedFrameRate)
+        // A made frame sits in the middle of the gap between two drawn ones, and
+        // that gap is this step (which already spans both refreshes while
+        // interpolation runs, since the refresh between drew nothing).
+        renderer.frameDelta = dt
 
         // Where this canvas is on the desk, read fresh each frame so a window
         // being dragged is current in the frames drawn during the drag. It is
@@ -1040,6 +1063,14 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
                         in: view, also: wall)
 
         if capturing, let capture { renderer.endGPUCapture(at: capture) }
+
+        // A sketch that stops the loop inside the draw that just ran will not be
+        // asked for another refresh, so the frame held behind a made one would
+        // never be shown and a guessed picture would stand as the final still.
+        // Hand it over now: it queues onto the next refresh either way.
+        if !sketch.isLooping, renderer.hasHeldFrame {
+            renderer.presentHeldFrame(sketch.drawer, in: view)
+        }
 
         // The grid is host chrome for the live window only. It was appended after the
         // sketch's own draw, so pop it back off before anything re-consumes the drawer:

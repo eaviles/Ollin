@@ -1303,6 +1303,36 @@ open class Sketch {
     /// Stop temporally upscaling (the default).
     public func noTemporalUpscaling() { drawer.noTemporalUpscaling() }
 
+    /// Show a made frame between the drawn ones, so a scene too heavy to draw at
+    /// the display's rate still moves at it: the live window runs `draw()` on
+    /// every other refresh, and on the refresh between it shows a frame the
+    /// platform interpolator builds from the two drawn either side of it, using
+    /// the depth buffer and the same per-pixel motion the upscaler reads (so a
+    /// mover declared with `withMotion { }` is carried exactly). The sketch's
+    /// own clock still runs on real time, so the motion keeps its speed and only
+    /// its sampling halves.
+    ///
+    /// Two costs to know before reaching for it. A drawn frame waits one refresh
+    /// before it is shown, since the made frame belongs *between* it and the one
+    /// before, so a sketch driven by the mouse feels about 16 ms later. And a
+    /// made frame is a guess: motion faster than the interpolator can follow
+    /// falls back to repeating the drawn frame rather than smearing it.
+    ///
+    /// Per-frame state like the lights and camera, so call it in `draw()` after
+    /// the camera. It applies to the main canvas (not layers or the accumulation
+    /// surface) and needs an active 3D camera that has a field of view (a
+    /// perspective or intrinsic one; an orthographic camera renders normally
+    /// with a one-time note), plus a GPU with frame-interpolation support. It
+    /// stays off while a take is playing or recording, on a still sketch
+    /// (`noLoop()`), and across a wall of several displays, all of which want
+    /// every frame drawn. Exports, snapshots, and frame grabs never interpolate:
+    /// what you keep is the frames the sketch drew. Call `noFrameInterpolation()`
+    /// to turn it back off.
+    public func frameInterpolation() { drawer.frameInterpolation() }
+
+    /// Stop showing made frames between the drawn ones (the default).
+    public func noFrameInterpolation() { drawer.noFrameInterpolation() }
+
     /// Motion-blur the 3D scene this frame, the cinematic streak a real camera's
     /// open shutter leaves: each pixel smears along its own screen motion, with
     /// camera movement read from the depth buffer (so panning past a still scene

@@ -166,6 +166,7 @@ Scene-wide realism passes over the 3D frame.
 | [MotionBlur](Effects/MotionBlur/) | The streak a real camera's open shutter leaves on something moving. |
 | [TemporalAA](Effects/TemporalAA/) | Edges refined past MSAA by accumulating jittered frames. |
 | [Upscaling](Effects/Upscaling/) | Render small, reconstruct full size, keep the frame rate. |
+| [FrameInterpolation](Effects/FrameInterpolation/) | Draw half as often and let the display keep its rate, with a made frame in between. |
 | [LensFlare](Effects/LensFlare/) | The light a camera adds to a picture all by itself. |
 | [PathTraced](Effects/PathTraced/) | Tune the scene live, then render the same frame offline with a path tracer. |
 

@@ -4350,6 +4350,79 @@ at full resolution vs 57.7-60.2 (vsync-capped) at `.performance`.
 
 ---
 
+## Frames between the drawn ones
+
+`frameInterpolation()` is the velocity buffer's fourth customer, and the first
+feature that changes *when* the sketch runs rather than what it renders. Apple's
+`MTLFXFrameInterpolator` (macOS 26) takes two rendered frames plus the depth and
+motion of the newer one and builds the picture between them, so the live window
+shows two pictures for every one `draw()` produced.
+
+**The scheduling is the whole design, and it lives in two places.** In
+`MetalRenderer.render`, after every filter has run, `applyFrameInterpolation`
+copies the finished frame into one half of a ping-pong pair, encodes the
+interpolator against the other half, and returns the *made* frame for the
+drawable. The frame just drawn becomes `heldFrame`. In `SketchRunner.draw(in:)`,
+the next refresh sees `hasHeldFrame`, calls `presentHeldFrame`, and returns
+before the clock, `advance`, or `performDraw` are touched at all: that refresh
+runs no sketch code, which is where the time comes from. So the display carries
+`drawn(k-1)`, `made(k-1, k)`, `drawn(k)`, `made(k, k+1)` and the sketch is
+sampled at half the refresh rate on a clock that never stopped running in real
+seconds.
+
+Ordering is the reason a drawn frame waits. The made frame belongs *between* the
+two, so it has to be shown first; presenting the drawn frame on the refresh that
+produced it and the made frame afterward would run time backwards. That is the
+one-refresh input latency, and it is inherent rather than an implementation
+detail to optimize away.
+
+Three smaller decisions carry weight. The pair of color textures alternates
+because the older frame is still being read while the newer one is written, and
+the newer one is read again a refresh later by the present pass. `isDepthReversed`
+is set false (the platform default is true; Ollin's depth runs 0 near, 1 far),
+and `jitterOffset` is zero because the color handed over is always a resolved
+frame, from the temporal-AA resolve or the upscaler's output, and so already sits
+on the reference grid. `presentHeldFrame` takes no slot in the frame ring and
+signals none: it is the present pass alone over a finished texture, so the ring's
+count stays balanced.
+
+Composition falls out of the sizes. The descriptor separates the depth/motion
+size from the color/output size, which is exactly the split the upscaler already
+creates, so with both on the interpolator reads the reconstructed full-size color
+and the render-resolution depth and motion, and the motion field is the upscaler's
+own (`encodeFXVelocityFill`, shared by both, is where that field is written once).
+
+The gates are split by who can see the condition. The renderer checks the sketch's
+request, an active 3D camera with a field of view (`verticalFieldOfView`:
+perspective, or derived from a pinhole calibration's focal length; orthographic
+returns nil), and device support. The runner sets `hostAllowsInterpolation` for
+what the renderer cannot see: a take recording or playing wants every drawn frame,
+a `noLoop()` sketch may never be asked to draw again, and a wall of displays wants
+one frame on all of them. A reload calls `dropHeldFrame()`, since both the held
+frame and the interpolator's history belong to the run that ended.
+
+**One wiring bug is worth recording, because the seam test could not see it.** The
+depth resolve is allocated only for the features that read it, and the condition
+listed temporal AA, motion blur, the upscaler, and the lens flare. Interpolation
+was not on it, so the live path found no depth, took the early return, and made
+nothing at all while every probe over crafted textures passed. What caught it was
+a test that drives `renderer.render` against an off-screen `MTKView` and asserts
+the pattern of refreshes (`drawn, made, held, made, held, made`), with a sketch
+that never asks as the counterfactual. An off-screen `MTKView` does vend
+drawables in the test process, which is what makes that whole-path probe possible
+without a window.
+
+Verification is deterministic where it can be. `debugFrameInterpolationReadback`
+walks crafted frames (a bar stepping 8 px per frame) through the interpolator and
+measures where the made frame puts the mark: halfway, within 1.5 px, from the
+third made frame on. The first two repeat the drawn frame, which is the platform's
+warm-up and is pinned as such, since it is also what makes starting up
+artifact-free. Forcing `shouldResetHistory` every step collapses every made frame
+onto the drawn one and reads red. The exported frames are pinned byte-identical to
+not asking at all.
+
+---
+
 ## The canvas sample pass (`CanvasSampler`)
 
 The seam behind LED mapping (and anything else that turns rendered pixels into
