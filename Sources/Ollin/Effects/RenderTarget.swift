@@ -45,7 +45,9 @@ public final class RenderTarget {
     /// a `.combine` target is the output of `combined(with:_:)`, run from `base`
     /// modulated by `aux`; a `.feedback` target is a `Feedback` layer's per-frame
     /// write surface, filled like a `.geometry` target but into persistent
-    /// ping-pong storage the renderer keeps across frames. Internal: the renderer
+    /// ping-pong storage the renderer keeps across frames; an `.ocean` target is
+    /// one frame of a wave field, filled by the spectrum pass, the inverse
+    /// Fourier ladder, and the resolve. Internal: the renderer
     /// reads it at render time.
     enum Origin {
         case geometry
@@ -54,6 +56,7 @@ public final class RenderTarget {
         case combine(base: RenderTarget, aux: RenderTarget, op: Combine)
         case feedback(Feedback)
         case simField(SimField)
+        case ocean(OceanRequest)
     }
     /// Settable so a `Feedback` can stamp its write layer with `.feedback(self)`
     /// once `self` exists (the layer is built before the back-reference is known).

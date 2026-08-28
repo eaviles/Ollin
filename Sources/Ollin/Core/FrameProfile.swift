@@ -115,6 +115,7 @@ public struct FrameProfile: Sendable, Equatable {
         case .meshInstanced: meshVertices += n   // n = base vertices x copies (total shaded)
         case .meshField:  meshVertices += n      // n = copies placed (the GPU culls; visible count never round-trips)
         case .strands:    meshVertices += n      // n = blades placed (grown in-draw; the GPU culls and grades)
+        case .ocean:      meshVertices += n      // n = grid vertices (worked out in-draw from the vertex index)
         case .points3D:   pointSplats += n
         case .particles:  particles += n
         case .clipPush:   clipVertices += n

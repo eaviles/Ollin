@@ -698,6 +698,12 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("strands",
                  note: "A StrandField meadow patch (drawStrands) grown entirely in-draw by the mesh pipeline: 60k hashed blades over a floor with a box casting a shadow the blades receive, framed so part of the patch is off-screen with tile culling ON. Pins the object-stage tile cull + distance grading, the mesh-stage ribbon synthesis (roots, heights, leans, tapers, tints all from hashes), the blades shading through the shared lit fragment, and that culling never eats a visible tile. No time (phase-zero sway) and no rng, deterministic (the render is pinned byte-exact by its own test).",
                  make: { StrandsScene() }),
+    SnapshotCase("ocean",
+                 note: "A wave field (oceanField) drawn as water (drawOcean): the spectrum pass, the inverse Fourier ladder, and the resolve run on the GPU, then a grid with no geometry buffers reads the field for where each corner has moved. Pins the whole chain, the per-pixel normal read off the field (the light running over the water), the body color, the Fresnel sky mix, the sun glitter, and foam where the crests fold. No environment (the flat sky color path), t = 0, one seed, deterministic.",
+                 make: { OceanScene() }),
+    SnapshotCase("fourier-spectrum",
+                 note: "The transform itself: a plate of concentric rings beside its own frequency spectrum (.fourier + .spectrum) and the round trip back (.inverseFourier). Pins the butterfly ladder both ways, the quadrant shift that puts the lowest frequency in the middle, the channel extract, and the log view. No time and no rng, deterministic.",
+                 make: { FourierScene() }),
     SnapshotCase("tiling-grids",
                  note: "The hex and triangle grids on one sheet: a pointy-top hex grid tinted by hex distance from its center cell (concentric rings), a flat-top grid tinted by column, and a triangle grid whose up/down parity splits two palettes. Pins both hex orientations' lattice math (centers, corners, the offset half-step, axial distance, gutter insets) and the triangle tiling. No rng and no time, so it is deterministic.",
                  make: { TilingGridsScene() }),
@@ -8327,6 +8333,48 @@ private final class StrandsScene: Sketch {
         meadow.bladeHeight = 0.55
         meadow.swayAmount = 0.08
         drawStrands(meadow)
+    }
+}
+
+/// A sea built from its own spectrum and drawn as water, low over the surface so
+/// the waves read against the horizon. No environment (the flat sky color path),
+/// one seed, t = 0, deterministic.
+private final class OceanScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x8FB6D4))
+        light(.directional(Color(hex: 0xFFF1DC), direction: Vector3(0, -0.22, -0.97),
+                           intensity: 1.1))
+        camera(.perspective(eye: Vector3(0, 5, -70), target: Vector3(0, 3, 200),
+                            fieldOfView: .pi / 3.4))
+        let sea = oceanField(Ocean(waveHeight: 3.2, windSpeed: 13, windDirection: 90,
+                                   choppiness: 1.3, patchSize: 160, seed: 4),
+                             resolution: 256)
+        drawOcean(sea, segments: 200, tiles: 5)
+    }
+}
+
+/// A plate of rings, its frequency spectrum, and the round trip back: the three
+/// stages of the transform side by side. No time and no rng, deterministic.
+private final class FourierScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0B0E14))
+        let plate = renderTarget(width: 256, height: 256)
+        withTarget(plate) {
+            background(.black)
+            noStroke()
+            for i in stride(from: 9, through: 1, by: -1) {
+                fill(Color(white: i % 2 == 0 ? 0.95 : 0.1))
+                drawCircle(128, 128, Double(i) * 13)
+            }
+        }
+        let spectrum = plate.filtered(.fourier())
+        drawImage(plate.image, 0, 0, 128, 128)
+        drawImage(spectrum.filtered(.spectrum()).image, 128, 0, 128, 128)
+        drawImage(spectrum.filtered(.inverseFourier()).image, 64, 128, 128, 128)
     }
 }
 

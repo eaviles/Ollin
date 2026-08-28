@@ -214,6 +214,56 @@ There is no vertex buffer and no instance list behind that call, and `setup()` b
 
 And the blades are not a special effect painted over the scene. They shade on the same lit path as every solid, so the boulders' cast shadows fall across the grass, the fog takes the far rows, and your `material(_:)` finish applies. The meadow above draws in about 22.5 ms on an M2, from zero bytes of geometry and zero per-frame CPU. The [`Grassland`](../Examples/Rendering/Grassland/Sketch.swift) example is that meadow with a knob on the distance grading. The [strand reference](../Docs/3D/Strands.md) has the blade knobs and the fine print (blades receive shadows but cast none; nothing exists for an exporter to record).
 
+## The sea, from what a sea is made of
+
+Water defeats the same trick grass did, for the opposite reason. Grass is half a million
+separate things. The sea is one thing, and it moves everywhere at once.
+
+You could try to place waves. Nobody who has looked at the ocean for long thinks that will
+work: the surface has waves at every size from a swell that takes eight seconds to pass to
+the ripple on its back, all crossing each other. So do what oceanographers do and describe
+the sea by its **spectrum** instead: how much water stands at each wavelength and heading
+for a given wind. That is a small, smooth description, and one inverse Fourier transform
+([Chapter 16](16-LayersAndEffects.md)) turns the whole of it into the surface in one step.
+
+```swift
+let sea = oceanField(.breeze)              // the transform runs here
+drawOcean(sea, segments: 320, tiles: 5)
+```
+
+<img src="Images/23-Landscapes/OceanSurface.jpg" alt="Open sea seen from just above the surface under a low sun: waves of several sizes crossing each other, teal in the troughs and pale where the sky catches a crest, with a soft column of light running from the sun down to the foreground" width="680">
+
+Both halves of that are free of geometry. The field is a layer the GPU wrote: at each texel,
+how far the water has moved sideways, how high it stands, and how hard it is folding over
+there. The draw then works out its grid from vertex indices alone, the way the grass did, and
+reads the field for where each corner has gone. Nothing is uploaded.
+
+**The knob worth trusting is `waveHeight`.** It is in world units, and it means what a sailor
+means: the average height of the tallest third of the waves. Ask for 3 and the water stands
+3, whatever the wind or the grid resolution is doing, because the scale is worked out from
+the spectrum's own arithmetic rather than turned by eye until it looks right.
+
+```swift
+let sea = oceanField(Ocean(waveHeight: 3, windSpeed: 18, choppiness: 1.3))
+```
+
+`windSpeed` then decides *which* waves carry that height, moving the energy between short
+chop and long swell without changing how tall it stands. `choppiness` moves water sideways
+toward the crests, which is what makes them narrow and the troughs wide, and past about 1.5
+they fold through themselves, which is where the foam comes from. `WaterSurface` is the look
+on top of all that: the color of the body, what it reflects, and how the sun glitters off it.
+
+The motion is not animated either. Each wave turns at the speed its own wavelength travels
+at, and long waves genuinely travel faster than short ones, which is the whole reason a sea
+reads as a sea rather than as a shaking sheet. Set `loopSeconds` and every wave is nudged to
+a frequency that closes on that period, so a recording loops with no seam.
+
+What it will not do is worth knowing before you build a scene around it: there is nothing
+under the water (no refraction and no floating bodies), the surface is not in the shadow map
+or a vector export, since it exists only inside the draw, and a wide sea is one period laid
+out again and again, which a still can show if the patch is small. The
+[ocean reference](../Docs/3D/Ocean.md) has the rest.
+
 ## Putting it together: the valley
 
 The finished piece is a valley you could stand in, and every part of it is this chapter. The land is grown and weathered, the meadow is grass that does not exist between frames, the far world is a culled field, and the trees near the camera are an instanced draw the wind can reach. Make `MySketches/Valley.swift`. It is long enough to be worth taking in three parts.
@@ -475,10 +525,11 @@ Lorenz and his relatives come from Edward Lorenz's 1963 paper on deterministic n
 - [Terrain](../Docs/Generators/Terrain.md): building heightfields from noise or subdivision, every erosion knob, and reading a field out as a mesh, an image, or samples.
 - [Instancing](../Docs/3D/Instancing.md): the whole `MeshInstance` surface, placements written by a compute kernel so they never visit the CPU, and the `MeshField` fine print (what the cull tests, what it does to shadow casters, what a placed color does to your `fill`).
 - [Points on a surface](../Docs/Generators/SurfaceSampling.md): the whole `surfacePoints` surface, asking by spacing instead of count, what a `SurfaceSample` carries, `alignment(spin:)`, and `surfaceArea` for holding a density rather than a count.
+- [The ocean](../Docs/3D/Ocean.md): the whole sea state, the field a transform writes, every look knob, what it costs, and the four things it will not do.
 - [Strands](../Docs/3D/Strands.md): every blade knob, the distance grading, and what a strand field cannot do (blades receive shadows and cast none, and nothing exists for an exporter to record).
 - [Strange attractors](../Docs/Drawing/Attractors.md): all eight systems with their constants, the `AttractorFlow` knobs, and the velocity fields as [shader-library functions](../Docs/Shaders/ShaderLibrary.md#chaotic-systems-compute-only) you can ride in a compute kernel of your own.
 - Appendix B draws two ideas this chapter leans on: [Layering scales](B-JustEnoughMath.md#layering-scales), which is what makes a heightfield look like land, and [The 3D world frame](B-JustEnoughMath.md#the-3d-world-frame).
-- Worked examples: [`Examples/3D/Geometry/Terrain`](../Examples/3D/Geometry/Terrain/Sketch.swift), [`Examples/Rendering/InstancedMesh`](../Examples/Rendering/InstancedMesh/Sketch.swift) (a knob that flips between the loop and the instanced call), [`Examples/Rendering/MeshField`](../Examples/Rendering/MeshField/Sketch.swift), [`Examples/Rendering/Grassland`](../Examples/Rendering/Grassland/Sketch.swift), [`Examples/3D/Geometry/SurfaceScatter`](../Examples/3D/Geometry/SurfaceScatter/Sketch.swift) (the three ways to pick spots, side by side), and [`Examples/Simulation/Attractor`](../Examples/Simulation/Attractor/Sketch.swift).
+- Worked examples: [`Examples/3D/Geometry/Ocean`](../Examples/3D/Geometry/Ocean/Sketch.swift), [`Examples/3D/Geometry/Terrain`](../Examples/3D/Geometry/Terrain/Sketch.swift), [`Examples/Rendering/InstancedMesh`](../Examples/Rendering/InstancedMesh/Sketch.swift) (a knob that flips between the loop and the instanced call), [`Examples/Rendering/MeshField`](../Examples/Rendering/MeshField/Sketch.swift), [`Examples/Rendering/Grassland`](../Examples/Rendering/Grassland/Sketch.swift), [`Examples/3D/Geometry/SurfaceScatter`](../Examples/3D/Geometry/SurfaceScatter/Sketch.swift) (the three ways to pick spots, side by side), and [`Examples/Simulation/Attractor`](../Examples/Simulation/Attractor/Sketch.swift).
 
 ---
 

@@ -108,6 +108,7 @@ let package = Package(
         example("3D/Raymarching/RaymarchedStretch"),
         example("3D/Raymarching/RaymarchedEnvironment"),
         example("Effects/Feedback"),
+        example("Effects/Fourier"),
         example("Effects/Compose"),
         example("Effects/Aside"),
         example("Effects/Defocus"),
@@ -188,6 +189,7 @@ let package = Package(
         example("3D/Geometry/Transforms"),
         example("3D/Geometry/Solids"),
         example("3D/Geometry/HopfFibration"),
+        example("3D/Geometry/Ocean"),
         // 3D rigid bodies (Jolt-backed World3D): a crate pyramid under cannon
         // fire, a mixed-solid pile you can drag, a wrecking-ball chain, and a
         // motor-driven windmill with spring-shut gates.

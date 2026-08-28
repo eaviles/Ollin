@@ -90,6 +90,15 @@ extension MetalRenderer {
                             width: target.pixelWidth, height: target.pixelHeight, into: cb)
             target.texture = out
         }
+        // Ocean fields: like a generator, a source layer nothing else has to be
+        // filled first for, but three stages rather than one (the spectrum, the
+        // inverse transform of it, and the resolve into world units). Filled
+        // before the geometry, because the draw that reads the field is
+        // geometry and a filter may read it too.
+        for target in drawer.renderTargets {
+            guard case let .ocean(request) = target.origin else { continue }
+            target.texture = encodeOceanField(request, into: cb, pooled: pooled)
+        }
         for target in drawer.renderTargets {
             guard case .geometry = target.origin else { continue }
             let pw = target.pixelWidth, ph = target.pixelHeight
@@ -464,6 +473,38 @@ extension MetalRenderer {
             return pass("ollin_fx_antialias", [input],
                         [SIMD4(texel.x, texel.y, Float(threshold), Float(threshold) * 0.5),
                          SIMD4(Float(amount), Float(antialiasSearchSteps(quality)), 0, 0)])
+        case .fourier(let channel):
+            // A layer the transform cannot work on comes back untouched rather
+            // than empty; the note is printed where the filter is recorded, which
+            // is the one place that knows the sketch's own line.
+            guard fourierFits(input) else { return input }
+            let n = input.width
+            guard let complex = acquireSATTexture(width: n, height: n, pooled: pooled),
+                  let shifted = acquireSATTexture(width: n, height: n, pooled: pooled)
+            else { return input }
+            encodeEffectFragment("ollin_fft_extract", inputs: [input], output: complex,
+                                 params: [SIMD4(channel.rawIndex, 0, 0, 0)],
+                                 into: cb, format: .rgba32Float)
+            guard let spectrum = fourierLadder(complex, inverse: false, normalize: false,
+                                               into: cb, pooled: pooled) else { return input }
+            // Put the lowest frequency in the middle, where a spectrum is legible
+            // and a mask drawn over it covers what it looks like it covers.
+            encodeEffectFragment("ollin_fft_shift", inputs: [spectrum], output: shifted,
+                                 params: [], into: cb, format: .rgba32Float)
+            return shifted
+        case .inverseFourier:
+            guard fourierFits(input) else { return input }
+            let n = input.width
+            guard let unshifted = acquireSATTexture(width: n, height: n, pooled: pooled)
+            else { return input }
+            encodeEffectFragment("ollin_fft_shift", inputs: [input], output: unshifted,
+                                 params: [], into: cb, format: .rgba32Float)
+            guard let picture = fourierLadder(unshifted, inverse: true, normalize: true,
+                                              into: cb, pooled: pooled) else { return input }
+            return pass("ollin_fft_real", [picture], [])
+        case .spectrum(let gain):
+            let texels = Float(max(1, input.width * input.height))
+            return pass("ollin_fft_view", [input], [SIMD4(Float(gain), 1 / texels, 0, 0)])
         case .edges(let intensity):
             return pass("ollin_fx_edges", [input], [SIMD4(texel.x, texel.y, Float(intensity), 0)])
         case .sharpen(let amount):
@@ -736,6 +777,79 @@ extension MetalRenderer {
             }
         }
         return read
+    }
+
+    /// Whether a texture is one the transform can work on: square, and a power
+    /// of two on a side. The radix-2 butterfly halves the length at every rung,
+    /// so anything else has no ladder to climb.
+    func fourierFits(_ texture: MTLTexture) -> Bool {
+        let n = texture.width
+        return texture.height == n && n >= 2 && n & (n - 1) == 0
+    }
+
+    /// The two-dimensional discrete Fourier transform of `input`, as a ladder of
+    /// butterfly passes over a ping-pong pair: the rows first, then the columns,
+    /// log2(n) passes each. Both complex fields the texture carries (rg and ba)
+    /// are transformed together, since the butterfly reads them the same way.
+    ///
+    /// The pair is `rgba32Float` and that is load-bearing: the sum a transform
+    /// builds is the whole picture added up, so the low frequencies of a 256
+    /// square field run into the tens of thousands, well past what half float
+    /// holds with any precision left over.
+    ///
+    /// `normalize` divides by the texel count on the way back, which is what
+    /// makes the inverse the exact opposite of the forward. The ocean asks for
+    /// the raw sum instead, because its spectrum is written as the amplitudes
+    /// of the waves themselves rather than as a transformed picture.
+    func fourierLadder(_ input: MTLTexture, inverse: Bool, normalize: Bool,
+                       into cb: MTLCommandBuffer, pooled: Bool) -> MTLTexture? {
+        let n = input.width
+        guard input.height == n, n >= 2, n & (n - 1) == 0 else { return nil }
+        guard let first = acquireSATTexture(width: n, height: n, pooled: pooled),
+              let second = acquireSATTexture(width: n, height: n, pooled: pooled)
+        else { return nil }
+        let wide: MTLPixelFormat = .rgba32Float
+        var read = input, write = first
+        for axis in [0.0, 1.0] {
+            var size = 2
+            while size <= n {
+                // The scale rides the last rung of each axis, so the divide costs
+                // no pass of its own.
+                let scale: Float = (inverse && normalize && size == n) ? 1 / Float(n) : 1
+                encodeEffectFragment("ollin_fft_stage", inputs: [read], output: write,
+                                     params: [SIMD4<Float>(Float(n), Float(size), Float(axis),
+                                                           inverse ? 1 : 0),
+                                              SIMD4<Float>(scale, 0, 0, 0)],
+                                     into: cb, format: wide)
+                read = write
+                write = (write === first) ? second : first
+                size *= 2
+            }
+        }
+        return read
+    }
+
+    /// One frame of a wave field: the spectrum at this instant, the inverse
+    /// transform of it, and the resolve that turns the transformed pair into
+    /// (sideways x, height, sideways z, fold) in world units.
+    func encodeOceanField(_ request: OceanRequest, into cb: MTLCommandBuffer,
+                          pooled: Bool) -> MTLTexture? {
+        let n = request.resolution
+        let wide: MTLPixelFormat = .rgba32Float
+        guard let spectrum = acquireSATTexture(width: n, height: n, pooled: pooled) else { return nil }
+        encodeEffectFragment("ollin_ocean_spectrum", inputs: [], output: spectrum,
+                             params: request.ocean.spectrumParams(resolution: n,
+                                                                  time: request.time,
+                                                                  amplitude: request.amplitude),
+                             into: cb, format: wide)
+        guard let waves = fourierLadder(spectrum, inverse: true, normalize: false,
+                                        into: cb, pooled: pooled),
+              let surface = acquireSATTexture(width: n, height: n, pooled: pooled)
+        else { return nil }
+        encodeEffectFragment("ollin_ocean_resolve", inputs: [waves], output: surface,
+                             params: request.ocean.resolveParams(resolution: n),
+                             into: cb, format: wide)
+        return surface
     }
 
     /// Measure how far every pixel is from the nearest edge in `input`, and which way
@@ -3079,7 +3193,7 @@ extension MetalRenderer {
                 // the camera projection), so only plain 2D batches feed `clipDepth`.
                 let wantsDepth = depthFormat != nil && (batch.kind == .points3D || batch.kind == .mesh3D
                     || batch.kind == .meshInstanced || batch.kind == .meshField
-                    || batch.kind == .strands
+                    || batch.kind == .strands || batch.kind == .ocean
                     || batch.kind == .depthScene || batch.kind == .sdfGroup3D || batch.depth != nil)
                 if hasStencil {
                     switch batch.kind {
@@ -3117,7 +3231,7 @@ extension MetalRenderer {
                 }
                 if depthFormat != nil,
                    batch.kind != .points3D && batch.kind != .mesh3D && batch.kind != .meshInstanced
-                    && batch.kind != .meshField && batch.kind != .strands
+                    && batch.kind != .meshField && batch.kind != .strands && batch.kind != .ocean
                     && batch.kind != .depthScene && batch.kind != .sdfGroup3D {
                     uniforms.clipDepth = batch.depth ?? 0
                     encoder.setVertexBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: 1)
@@ -3543,6 +3657,37 @@ extension MetalRenderer {
                     threadsPerObjectThreadgroup: MTLSize(width: 1, height: 1, depth: 1),
                     threadsPerMeshThreadgroup: MTLSize(width: Int(OLLIN_STRAND_BUNDLE),
                                                        height: 1, depth: 1))
+            case .ocean:
+                // A wave field drawn as water. Like the strands, no vertex, index,
+                // or instance buffer exists: each vertex works out which corner of
+                // which cell it is from its own index and reads the field for where
+                // the water has moved it, so the whole surface is one draw of a
+                // grid that was never built. The field is bound to both stages (the
+                // vertex moves the corner, the fragment reads the slope around it
+                // per pixel), and the scene's own environment, where one is set, is
+                // what the surface reflects.
+                guard depthFormat != nil, drawer.camera3D != nil,
+                      let draw = batch.oceanDraw,
+                      let fieldTexture = draw.field.layer.texture,
+                      let u3 = uniforms3D else { continue }
+                let environment = lighting.iblEnabled != 0 ? currentIBLSkyboxTexture : nil
+                encoder.setRenderPipelineState(state)
+                var oceanParams = makeOceanParams(draw, batch: batch, drawer: drawer,
+                                                  view: u3.view, lighting: lighting,
+                                                  environment: environment != nil)
+                let oceanLength = MemoryLayout<OllinOceanParams>.stride
+                encoder.setVertexBytes(&oceanParams, length: oceanLength, index: 8)
+                encoder.setFragmentBytes(&oceanParams, length: oceanLength, index: 0)
+                encoder.setVertexTexture(fieldTexture, index: 0)
+                encoder.setFragmentTexture(fieldTexture, index: 0)
+                // The second slot must hold something even with no environment set
+                // (the fragment's read is behind a flag, but the binding is not):
+                // the field itself stands in, the way the chromatic pass stands in
+                // for its own unused drive.
+                encoder.setFragmentTexture(environment ?? fieldTexture, index: 1)
+                let oceanVertices = draw.segments * draw.segments * 6
+                profile.countDraw(batch.kind, oceanVertices)
+                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: oceanVertices)
             case .depthScene:
                 // A backdrop quad (in `imageVertices`, like an image) whose fragment
                 // also writes per-pixel depth from the depth map: color at texture 0,
@@ -3894,6 +4039,41 @@ extension MetalRenderer {
         params.tilesZ = UInt32(tiling.tilesZ)
         params.bladesPerTile = UInt32(StrandField.bladesPerTile)
         params.cullEnabled = field.cullingEnabled ? 1 : 0
+        return params
+    }
+
+    /// The constants one ocean draw needs: where the patch sits, what the water
+    /// looks like, and the one light the glitter comes from. The camera position
+    /// is read back out of the view matrix rather than off the camera value, so
+    /// every projection (and a camera a move is driving) gives the same answer.
+    func makeOceanParams(_ draw: OceanDraw, batch: GeometryBatch, drawer: Drawer,
+                         view: simd_float4x4, lighting: OllinLighting,
+                         environment: Bool) -> OllinOceanParams {
+        var params = OllinOceanParams()
+        params.model = batch.fieldTransform
+        let water = draw.water
+        params.deepColor = water.deep.simd4
+        params.shallowColor = water.shallow.simd4
+        params.skyColor = water.sky.simd4
+        params.foamColor = water.foam.simd4
+        // The sun of this scene: the first directional light, pointed back at
+        // where it comes from. With none set the glitter is off and the water is
+        // body color and reflection alone.
+        if let sun = drawer.lights.first(where: { $0.kind == .directional }) {
+            let toLight = (-sun.direction).normalized
+            params.sun = SIMD4<Float>(Float(toLight.x), Float(toLight.y), Float(toLight.z), 1)
+            let tint = sun.specular ?? sun.color
+            params.sunColor = SIMD4<Float>(Float(tint.red), Float(tint.green), Float(tint.blue),
+                                           Float(water.glitter * sun.intensity))
+        }
+        let eye = simd_inverse(view).columns.3
+        params.eye = SIMD4<Float>(eye.x, eye.y, eye.z, Float(draw.field.ocean.patchSize))
+        params.grid = SIMD4<Float>(Float(draw.segments), Float(draw.field.resolution),
+                                   Float(water.foamAmount), environment ? 1 : 0)
+        params.tuning = SIMD4<Float>(Float(water.reflectance), Float(water.glitterTightness),
+                                     Float(draw.tiles),
+                                     Float(max(0.01, draw.field.ocean.waveHeight * 0.5)))
+        params.environment = SIMD4<Float>(lighting.iblRotation, lighting.iblIntensity, 0, 0)
         return params
     }
 

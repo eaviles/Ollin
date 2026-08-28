@@ -40,10 +40,6 @@ A tier of classic generative-art building blocks that emit vector geometry (poin
 
 **Near-term.** A standing, growing catalog of classic creative-coding techniques and algorithms as first-class helpers, the way the SDF shapes, the effect `Filter`s, and the [generative-geometry](#generative-geometry) builders are catalogs that keep growing. Each one lands wherever it fits the existing core (a geometry emitter beside the shape builders, a GPU `Generator` or shader for an escape-time or field technique, a simulation beside the compute and `SimField` paths), ships with an example, runs off the seedable `random`/`noise` so a result reproduces, and is implemented from the published technique (credited in `ATTRIBUTION.md`'s Techniques list). Many map onto the *Nature of Code* canon (vectors, forces, particles, autonomous agents, cellular automata, fractals, evolution), so the catalog doubles as a familiar on-ramp from that world, and the geometry-emitting recipes are flagged plotter-friendly for the pen-plotter path.
 
-One named addition sits at the front of this queue:
-
-- **A 2D Fourier transform on the GPU, with an ocean surface as its first reader.** The transform is the part that gets reused: a forward and inverse pass over a layer opens frequency-domain filtering, convolution against a real kernel for blur and bloom, and spectral synthesis. An ocean is what makes it worth looking at, where an inverse transform of a wave spectrum displaces a mesh and the surface normals and foam fall out of the same field. The audio side's FFT is a separate thing on the CPU over a sample buffer, so this shares none of its code.
-
 See the [design notes](DESIGN-NOTES.md#technique-and-algorithm-helpers).
 
 ## Expressive brushes and strokes

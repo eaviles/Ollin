@@ -313,6 +313,50 @@ marks.filtered(.distanceField(maxDistance: 64))
 
 Past that distance the field reads flat, with a zero direction, which is its way of saying nothing is within reach.
 
+## A picture read as waves
+
+There is one more way to stop treating a layer as a picture, and it is the oldest. A grid of
+pixels is one reading of a drawing. A **sum of waves** is another, and the two hold exactly
+the same information. The Fourier transform is how you get from one to the other, and it
+runs on the GPU:
+
+```swift
+let spectrum = plate.filtered(.fourier())
+```
+
+<img src="Images/16-LayersAndEffects/FrequencyDomain.jpg" alt="Three panels. A dark plate with a pale circle, a blue square, a red triangle and a row of fine white stripes; the same plate as a spectrum, a bright center with a star of lines radiating from it and a grid of faint dots; and the plate blurred smooth, its stripes gone to a flat gray band and rings of ripple around every shape" width="680">
+
+The middle panel is that spectrum. It is not a picture of the drawing, it is a map of the
+drawing's *scales*: slow, wide gradients near the middle, fine detail out at the edges. The
+star through it is the shapes' straight edges, and the grid of dots is the row of stripes,
+which is one wavelength and so lands in one place.
+
+Why make the trip? Because filtering by scale, which is awkward on the pixel side, is a
+multiplication on this side. Draw a shape over the spectrum and you have a filter:
+
+```swift
+let soft = plate.filtered(.fourier())
+    .combined(with: mask, .mask())     // white circle in the middle of a black layer
+    .filtered(.inverseFourier())
+```
+
+Keep the middle and the fine detail is gone: that is the third panel, and the stripes have
+become one flat band. Invert the mask and the opposite happens, leaving the edges and
+nothing else. A ring keeps one band of scales and drops both the coarse and the fine, which
+no ordinary blur can do at all.
+
+Three things to know before you reach for it. The layer has to be square with a side that is
+a power of two (`renderTarget(width: 512, height: 512)`), because the transform works by
+halving. It reads one channel, the brightness unless you name another, so what comes back is
+gray. And a hard-edged mask *rings*: look at the ripples around every shape in the third
+panel, which are the price of cutting a band off sharply, and soften the mask's own edge to
+soften them.
+
+It also runs the other way on its own. Write a spectrum, transform it, and a field comes out
+that nobody drew. That sounds like a curiosity until you learn that the physics of a sea is
+written as a spectrum, which is exactly how [Chapter 23](23-Landscapes.md) makes an ocean.
+The [reference](../Docs/Drawing/Fourier.md) has the cost and the rest of the rules.
+
 ## Light that works itself out
 
 The measured field above is the hard half of a much bigger trick, and the trick is worth having on its own. Draw a scene into one layer and some lamps into another, and ask what light reaches every pixel.
@@ -715,11 +759,12 @@ Off-screen layers are as old as computer graphics has had memory to spare. The s
 - [Accumulation](../Docs/Drawing/Accumulation.md) and [HDR & tone-mapping](../Docs/Drawing/HDR.md): the persistent canvas and the float pipeline underneath it.
 - [Wide gamut & HDR output](../Docs/Drawing/ColorOutput.md): `colorOutput`, colors outside sRGB, and what each export format carries.
 - [Measured distance fields](../Docs/Drawing/DistanceFields.md): what the field holds, reading it back, and the jump flood underneath it.
+- [The frequency domain](../Docs/Drawing/Fourier.md): the transform both ways, filtering by scale, building a field from its spectrum, and what the ladder costs.
 - [Light in a flat sketch](../Docs/Drawing/Light.md): the two layers, every knob, what it costs at each quality tier, what it will not do, and the ladder underneath it.
 - [Local averages](../Docs/Drawing/LocalAverages.md): the box blur, the adaptive threshold, choosing the window, and what the summed-area table costs.
 - [Blend modes](../Docs/Drawing/Drawing.md#blendMode): the arithmetic of each mode.
 - Appendix B draws this chapter's math, one picture per idea: [Shaping a value](B-JustEnoughMath.md#shaping-a-value), [Color and light as numbers](B-JustEnoughMath.md#color-and-light-as-numbers).
-- Worked examples: [`Examples/Effects/Bloom`](../Examples/Effects/Bloom/Sketch.swift), [`Examples/Effects/Compose`](../Examples/Effects/Compose/Sketch.swift), [`Examples/Effects/Feedback`](../Examples/Effects/Feedback/Sketch.swift), [`Examples/Effects/Relight`](../Examples/Effects/Relight/Sketch.swift), [`Examples/Effects/DiffusionCurves`](../Examples/Effects/DiffusionCurves/Sketch.swift), [`Examples/Effects/DistanceField`](../Examples/Effects/DistanceField/Sketch.swift), [`Examples/Effects/Light`](../Examples/Effects/Light/Sketch.swift), [`Examples/Effects/Droste`](../Examples/Effects/Droste/Sketch.swift), [`Examples/Effects/SummedArea`](../Examples/Effects/SummedArea/Sketch.swift), [`Examples/Rendering/Accumulation`](../Examples/Rendering/Accumulation/Sketch.swift), and [`Examples/Rendering/ToneMapping`](../Examples/Rendering/ToneMapping/Sketch.swift).
+- Worked examples: [`Examples/Effects/Fourier`](../Examples/Effects/Fourier/Sketch.swift), [`Examples/Effects/Bloom`](../Examples/Effects/Bloom/Sketch.swift), [`Examples/Effects/Compose`](../Examples/Effects/Compose/Sketch.swift), [`Examples/Effects/Feedback`](../Examples/Effects/Feedback/Sketch.swift), [`Examples/Effects/Relight`](../Examples/Effects/Relight/Sketch.swift), [`Examples/Effects/DiffusionCurves`](../Examples/Effects/DiffusionCurves/Sketch.swift), [`Examples/Effects/DistanceField`](../Examples/Effects/DistanceField/Sketch.swift), [`Examples/Effects/Light`](../Examples/Effects/Light/Sketch.swift), [`Examples/Effects/Droste`](../Examples/Effects/Droste/Sketch.swift), [`Examples/Effects/SummedArea`](../Examples/Effects/SummedArea/Sketch.swift), [`Examples/Rendering/Accumulation`](../Examples/Rendering/Accumulation/Sketch.swift), and [`Examples/Rendering/ToneMapping`](../Examples/Rendering/ToneMapping/Sketch.swift).
 
 ---
 

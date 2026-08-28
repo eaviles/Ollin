@@ -969,7 +969,7 @@ extension MetalRenderer {
     /// here and declaring its dependencies in the file itself, rather than working out
     /// which slot in a hand-kept sequence it belongs in. The single `Shaders.metal`
     /// split into these once it crossed ~2,000 lines; the renderer never assumes one file.
-    static let shaderSourceNames = ["OllinShaderLib", "Shader3D", "ShaderCaustics", "ShaderCombinator", "ShaderCombine", "ShaderCore", "ShaderEffects", "ShaderFlare", "ShaderGI", "ShaderIBL", "ShaderPathTrace", "ShaderPatterns", "ShaderRadiance", "ShaderRaymarch", "ShaderShapes", "ShaderSim", "ShaderStrands"]
+    static let shaderSourceNames = ["OllinShaderLib", "Shader3D", "ShaderCaustics", "ShaderCombinator", "ShaderCombine", "ShaderCore", "ShaderEffects", "ShaderFlare", "ShaderFourier", "ShaderGI", "ShaderIBL", "ShaderOcean", "ShaderPathTrace", "ShaderPatterns", "ShaderRadiance", "ShaderRaymarch", "ShaderShapes", "ShaderSim", "ShaderStrands"]
 
     /// Assemble the built-in library out of `roots`, resolving each segment's declared
     /// includes through `load`. The result holds every file once, each after everything

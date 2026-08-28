@@ -1605,6 +1605,44 @@ open class Sketch {
     /// the transform stack places the patch. A no-op without a camera.
     public func drawStrands(_ field: StrandField) { drawer.drawStrands(field) }
 
+    /// Build one frame of a moving sea on the GPU: a wave spectrum, an inverse
+    /// Fourier transform of it, and the surface that comes out, as a layer.
+    /// Call it in `draw()` (it is per-frame work, like a generator) and hand
+    /// the result to `drawOcean(_:)`.
+    ///
+    /// ```swift
+    /// let sea = oceanField(.swell)
+    /// drawOcean(sea, segments: 220, tiles: 3)
+    /// ```
+    ///
+    /// `resolution` is how many texels the field carries along each side: 256
+    /// is the default, 128 is cheaper and coarser, 512 holds finer chop. It is
+    /// rounded to a power of two, which is what the transform works on.
+    public func oceanField(_ ocean: Ocean = .breeze, resolution: Int = 256) -> OceanField {
+        drawer.oceanField(ocean, time: time, resolution: resolution)
+    }
+
+    /// One frame of a sea at an instant you name, rather than at the sketch
+    /// clock: for scrubbing, for a still, or for a sea that runs at its own
+    /// speed (`oceanField(.storm, at: time * 0.4)`).
+    public func oceanField(_ ocean: Ocean, at time: Double, resolution: Int = 256) -> OceanField {
+        drawer.oceanField(ocean, time: time, resolution: resolution)
+    }
+
+    /// Draw a wave field as water: a grid the GPU builds inside the draw call,
+    /// each corner moved by the field and lit as a water surface (the body color
+    /// under it, the sky or the environment reflected off it, the sun's
+    /// glitter, and foam where a crest folds over). The transform stack places
+    /// the patch and the camera decides the view; a no-op without a camera.
+    ///
+    /// `segments` is how finely the grid is cut (more is smoother and dearer),
+    /// and `tiles` how many periods of the field the water covers, which is how
+    /// it reaches the horizon without the waves growing.
+    public func drawOcean(_ field: OceanField, segments: Int = 192, tiles: Int = 1,
+                          water: WaterSurface = .open) {
+        drawer.drawOcean(field, segments: segments, tiles: tiles, water: water)
+    }
+
     /// Draw a loaded `Scene`: every node's mesh at its authored place, the node
     /// transforms composed down the tree and onto the 3D transform stack (so
     /// `translate`/`rotate`/`scale` before this call move the whole scene). The

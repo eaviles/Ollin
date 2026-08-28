@@ -100,6 +100,8 @@ enum GeometryKind {
                        // by ONE executeCommandsInBuffer, GPU-culled per copy
     case strands       // a `StrandField`: blades a mesh pipeline grows in-draw
                        // (no geometry buffers anywhere), tile-culled + LOD'd on the GPU
+    case ocean         // an `OceanField`: a grid the vertex stage works out from the
+                       // vertex index alone, displaced by the wave field's texture
     case fringe       // edge-expanded stroke + ~1px AA fringe in `vertices` (the high-quality stroke path)
     case depthScene   // a backdrop quad in `imageVertices` that also primes the depth buffer from a depth map
     case sdfGroup     // composed SDF field (combinator) in `sdfGroups`, evaluating `sdfNodes`
@@ -162,6 +164,9 @@ struct GeometryBatch {
     /// The strand parameters for a `.strands` batch (`nil` otherwise); the
     /// draw-time CTM rides `fieldTransform` like a mesh field's.
     var strandField: StrandField?
+    /// The wave field, look, and grid for an `.ocean` batch (`nil` otherwise);
+    /// the draw-time CTM rides `fieldTransform`, like the two fields above.
+    var oceanDraw: OceanDraw?
     /// The *metric* depth map (meters) for a metric `.depthScene` batch, written to
     /// the depth buffer as true clip-space depth against the active camera's near/far
     /// (the conversion coefficients ride in the quad's vertex tint). `nil` for the
@@ -783,6 +788,10 @@ final class Drawer {
     /// Whole-frame filters from `postProcess(_:)`, applied to the finished frame
     /// before the present pass, in record order.
     private(set) var frameFilters: [Filter] = []
+    /// The amplitude each sea state needs to stand the height it was asked for,
+    /// kept because working it out sums the spectrum over the whole grid (65k
+    /// terms at the default resolution) and a sea state rarely changes.
+    private var oceanAmplitudes: [OceanAmplitudeKey: Double] = [:]
 
     /// A `withTarget` block's start state, so `background(_:)` inside it truncates
     /// back to here (clearing only this target's own geometry).
@@ -1438,6 +1447,17 @@ final class Drawer {
 
     /// Record a filter of `input`, returning the output layer the renderer will fill.
     func recordFilter(_ filter: Filter, of input: RenderTarget) -> RenderTarget {
+        // The transform needs a square power-of-two layer. Saying so here, where
+        // the sketch's own call is, beats a layer that silently comes back
+        // untouched later.
+        switch filter.kind {
+        case .fourier, .inverseFourier:
+            let w = input.pixelWidth, h = input.pixelHeight
+            if w != h || w < 2 || w & (w - 1) != 0 {
+                noteOnce("a Fourier transform needs a square layer whose side is a power of two; \(w)x\(h) is left untouched. Try renderTarget(width: 512, height: 512).")
+            }
+        default: break
+        }
         let output = RenderTarget(width: input.width, height: input.height, scale: input.scale,
                                   drawer: self, origin: .filter(input: input, filter: filter))
         filterOps.append(output)
@@ -3436,6 +3456,77 @@ final class Drawer {
                                      fieldTransform: modelIsIdentity ? matrix_identity_float4x4 : modelMatrix,
                                      strandField: field,
                                      finish: currentMaterial.gpuMaterial(),
+                                     target: currentTarget, clipLevel: activeClipLevel))
+        currentKind = nil
+    }
+
+    /// Record one frame of a wave field: the spectrum pass, the inverse Fourier
+    /// ladder, and the resolve all run on the GPU before the frame's geometry,
+    /// like a generator's single pass. The amplitude is worked out here, on the
+    /// CPU, because it is a closed form of the sea state and the shader would
+    /// otherwise have to be tuned by eye.
+    func oceanField(_ ocean: Ocean, time: Double, resolution: Int) -> OceanField {
+        let n = Ocean.roundedResolution(resolution)
+        if n != resolution {
+            noteOnce("an ocean field is transformed as a power of two, so \(resolution) became \(n).")
+        }
+        let key = OceanAmplitudeKey(ocean: ocean, resolution: n)
+        let amplitude: Double
+        if let cached = oceanAmplitudes[key] {
+            amplitude = cached
+        } else {
+            amplitude = ocean.amplitude(resolution: n)
+            oceanAmplitudes[key] = amplitude
+        }
+        let request = OceanRequest(ocean: ocean, time: time, amplitude: amplitude, resolution: n)
+        let target = RenderTarget(width: n, height: n, scale: 1, drawer: self,
+                                  origin: .ocean(request))
+        renderTargets.append(target)
+        return OceanField(ocean: ocean, resolution: n, layer: target)
+    }
+
+    /// Draw a wave field as water: a grid with no geometry buffers, each corner
+    /// working out where it sits from its own vertex index and reading the field
+    /// for where the waves have moved it. The surface shades through its own
+    /// water fragment (body color, reflection, sun glitter, foam) rather than
+    /// the lit mesh path, so `material(_:)` does not apply to it; the 3D CTM
+    /// moves the patch, and the current camera decides the view.
+    ///
+    /// Like a `StrandField`, the geometry exists only inside the draw, so the
+    /// shadow casters, the vector recorder, and the spatial recorder skip it.
+    func drawOcean(_ field: OceanField, segments: Int, tiles: Int, water: WaterSurface) {
+        if isRecordingBatch {
+            noteBatchRecording("an ocean inside makeBatch { } is not recorded (its surface is built by the GPU each frame); draw it where the batch is drawn.")
+            return
+        }
+        guard camera3D != nil else { return }
+        if !combineStack.isEmpty {
+            if !warnedMeshInCombine {
+                print("Ollin: an ocean inside a combine block is ignored (a 3D combine merges analytic fields only).")
+                warnedMeshInCombine = true
+            }
+            return
+        }
+        if svgRecorder != nil { return }
+        if spatialRecorder != nil {
+            noteOnce("an ocean's surface exists only inside the draw, so a spatial export can't record it.")
+            return
+        }
+        currentTarget?.needsDepth = true
+        let draw = OceanDraw(field: field, water: water,
+                             segments: min(512, max(2, segments)),
+                             tiles: min(16, max(1, tiles)))
+        batches.append(GeometryBatch(kind: .ocean, vertexStart: vertices.count,
+                                     instanceStart: sdfInstances.count,
+                                     imageStart: imageVertices.count,
+                                     glyphStart: glyphVertices.count,
+                                     pointStart: points.count,
+                                     meshStart: meshVertices.count,
+                                     sdfGroupStart: sdfGroups.count,
+                                     sdf3DGroupStart: sdf3DGroups.count,
+                                     blendMode: currentBlend, depth: currentDepth,
+                                     fieldTransform: modelIsIdentity ? matrix_identity_float4x4 : modelMatrix,
+                                     oceanDraw: draw,
                                      target: currentTarget, clipLevel: activeClipLevel))
         currentKind = nil
     }

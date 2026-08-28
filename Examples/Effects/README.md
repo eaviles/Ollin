@@ -24,6 +24,7 @@ Layered effects: draw into off-screen layers, filter them on the GPU, and compos
 | [Fractals](Fractals/Sketch.swift) | escape-time fractals: the Mandelbrot set and a morphing Julia set (`.mandelbrot` / `.julia`) |
 | [OrbitTraps](OrbitTraps/Sketch.swift) | orbit traps: the same iteration colored by the orbit's closest pass to a point, cross, circle, or square, two of them sweeping (`.orbitTrap`) |
 | [Feedback](Feedback/Sketch.swift) | a layer that remembers itself across frames: a spiralling feedback tunnel (`withFeedback`) |
+| [Fourier](Fourier/Sketch.swift) | a picture, what it is made of, and the way back: filtering by scale with a shape drawn over the spectrum (`.fourier`, `.spectrum`, `.inverseFourier`) |
 | [Bokeh](Bokeh/Sketch.swift) | the shape of the opening a highlight came through: an iris with `blades`, and the barrel that lays a highlight down into a lemon toward the corners (`catsEye`) |
 | [Compose](Compose/Sketch.swift) | the `compose { }` DSL: a blurred backdrop, a bloomed ring, a screened lattice |
 | [Aside](Aside/Sketch.swift) | multi-input effects: a displacement map and a spotlight mask fed into layers (`aside { }`) |

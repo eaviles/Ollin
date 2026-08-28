@@ -483,6 +483,31 @@ typedef struct {
 #define OLLIN_STRAND_BUNDLE 24
 #define OLLIN_STRAND_MAX_SEGMENTS 4
 
+// Parameters for one ocean draw (`drawOcean`): a grid with no vertex buffer,
+// each corner reading where the wave field has moved it to. The field itself is
+// a texture the transform wrote (shift x, height, shift z, foam), so nothing
+// here describes a wave; these are only the patch's place in the world and how
+// the water looks. The vertex stage reads it at buffer 8 (beside `Uniforms3D` at
+// 2) and the fragment at buffer 0.
+typedef struct {
+    simd_float4x4 model;        // patch local -> world (the draw-time 3D CTM)
+    simd_float4 deepColor;      // straight sRGB: the water where it is deep and flat
+    simd_float4 shallowColor;   // straight sRGB: the water where a crest stands up
+    simd_float4 skyColor;       // straight sRGB: what the surface reflects with no environment set
+    simd_float4 foamColor;      // straight sRGB: the white where a crest folds over
+    simd_float4 sun;            // xyz = world direction toward the light; w = 1 when one is set
+    simd_float4 sunColor;       // rgb straight sRGB; w = how strong its glitter is
+    simd_float4 eye;            // xyz = world camera position; w = the patch's extent in world units
+    simd_float4 grid;           // x = cells per side, y = field texels per side,
+                                // z = foam gain, w = 1 when an environment is bound
+    simd_float4 tuning;         // x = reflectance straight down, y = glitter tightness,
+                                // z = how many times the field repeats across the patch,
+                                // w = the wave height the body color is read against
+    simd_float4 environment;    // the scene's own environment, bound as the equirect at
+                                // fragment texture 1: x = its rotation in radians,
+                                // y = its intensity, z = the level to read it at, w unused
+} OllinOceanParams;
+
 // The surface *finish* of a 3D mesh: how it responds to light, separate from the surface
 // color (which is the baked vertex color = the current `fill`). A material is constant
 // across a mesh, so it's bound per mesh batch as a fragment uniform rather than baked into

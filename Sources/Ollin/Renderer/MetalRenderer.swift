@@ -257,6 +257,15 @@ final class MetalRenderer {
                         depthFormat: depth, object: "ollin_strand_object",
                         mesh: "ollin_strand_mesh", payloadLength: 16)
         }
+        // OceanField (drawOcean): a grid with no geometry buffers, each vertex
+        // working out its own corner from its index and reading the wave field
+        // for where the water has moved it. Its own water fragment, not the lit
+        // mesh one: the surface is a reflection and a body color rather than a
+        // material.
+        static func ocean(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
+            PipelineKey(vertex: "ollin_ocean_vertex", fragment: "ollin_ocean_fragment",
+                        blend: blend, depthFormat: depth)
+        }
         // textured 3D triangle mesh: the surface samples a base-color texture at the
         // vertex UVs, otherwise the same depth-tested, lit mesh path.
         static func meshTextured(_ blend: BlendMode, depth: MTLPixelFormat? = nil) -> PipelineKey {
@@ -464,6 +473,7 @@ final class MetalRenderer {
             case .meshInstanced: return .meshInstanced(blend, depth: depth)
             case .meshField:  return .meshField(blend, depth: depth)
             case .strands:    return .strands(blend, depth: depth)
+            case .ocean:      return .ocean(blend, depth: depth)
             case .depthScene: return .depthScene(blend, depth: depth)
             case .clipPush:   return .clipWrite(depth: depth)
             case .clipPop:    return .clipCover(depth: depth)

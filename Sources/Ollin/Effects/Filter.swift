@@ -24,6 +24,25 @@ import Foundation
 /// reads as one expression, and `postProcess(_:)` runs one over the whole frame.
 public struct Filter: Sendable {
 
+    /// Which channel of a layer the Fourier transform reads. A transform works
+    /// on one signal, and a color layer is three, so the one to transform is
+    /// named rather than guessed. `luminance` is the linear-light brightness,
+    /// which is what a picture's own structure lives in.
+    public enum FourierChannel: Sendable {
+        case luminance, red, green, blue, alpha
+
+        /// The shader's channel index (kept in step with `ollin_fft_extract`).
+        var rawIndex: Float {
+            switch self {
+            case .luminance: return 0
+            case .red:       return 1
+            case .green:     return 2
+            case .blue:      return 3
+            case .alpha:     return 4
+            }
+        }
+    }
+
     /// How `pixelate` collapses each block's color: keep it, or read one channel
     /// out as a gray value (which a `tint` can then recolor).
     public enum PixelChannel: Sendable {
@@ -187,6 +206,15 @@ public struct Filter: Sendable {
         /// it, `quality` how far it may look along one, and `amount` how much of the
         /// result to keep (0 hands the layer back unchanged).
         case antialias(amount: Double, threshold: Double, quality: RenderQuality)
+        /// The layer's frequency spectrum: one channel of it transformed, with the
+        /// lowest frequency in the middle. The output is complex (red the real part,
+        /// green the imaginary one) rather than a picture.
+        case fourier(FourierChannel)
+        /// A spectrum turned back into a picture, the exact opposite of `fourier`.
+        case inverseFourier
+        /// A spectrum as something to look at: its magnitude, compressed so the
+        /// high frequencies are visible beside the low ones.
+        case spectrum(gain: Double)
         /// Sobel edge magnitude, scaled by `intensity`.
         case edges(intensity: Double)
         /// Unsharp mask: add back `amount` of the high-frequency detail.
@@ -501,6 +529,49 @@ public struct Filter: Sendable {
                                  quality: RenderQuality = .default) -> Filter {
         Filter(kind: .antialias(amount: min(max(amount, 0), 1),
                                 threshold: min(max(threshold, 0.01), 1), quality: quality))
+    }
+
+    /// The layer's frequency spectrum: what it is made of, wave by wave, instead
+    /// of pixel by pixel. Slow, smooth gradients sit near the middle of the
+    /// result and fine detail out at the edges, so the picture becomes a map of
+    /// its own scales.
+    ///
+    /// ```swift
+    /// let plate = renderTarget(width: 512, height: 512)
+    /// withTarget(plate) { background(.black); fill(.white); drawCircle(256, 256, 90) }
+    /// drawImage(plate.filtered(.fourier()).filtered(.spectrum()).image, 0, 0)
+    /// ```
+    ///
+    /// Three things are worth knowing. The layer has to be square and its side a
+    /// power of two (512, 1024), which is what the transform works on; a layer
+    /// that is not comes back untouched with a note. The result is not a picture
+    /// but a pair of numbers per texel (red the real part, green the imaginary
+    /// one), so look at it through `.spectrum()` and turn it back into a picture
+    /// with `.inverseFourier()`. And it transforms one channel, the linear
+    /// luminance unless you name another.
+    ///
+    /// Between the two, a layer drawn over the spectrum multiplies it, which is
+    /// filtering by scale: keep the middle and the picture comes back soft, keep
+    /// the outside and only its edges come back.
+    public static func fourier(of channel: FourierChannel = .luminance) -> Filter {
+        Filter(kind: .fourier(channel))
+    }
+
+    /// A spectrum turned back into a picture: the exact opposite of `fourier`,
+    /// so the two with nothing in between hand back the channel that went in.
+    /// The result is gray (one channel went in, one comes out).
+    public static func inverseFourier() -> Filter {
+        Filter(kind: .inverseFourier)
+    }
+
+    /// A spectrum as something to look at: the strength of each wave as gray.
+    /// The lowest frequencies of an ordinary picture are tens of thousands of
+    /// times the highest, so the scale is compressed by a logarithm and `gain`
+    /// decides how hard. The useful range is wide (a few thousand to a few
+    /// million): raise it until the faint high frequencies come up out of the
+    /// black, and drop it if the middle floods.
+    public static func spectrum(gain: Double = 12_000) -> Filter {
+        Filter(kind: .spectrum(gain: max(1, gain)))
     }
 
     /// Sobel edge detection: bright edges on black, scaled by `intensity`. A quick
