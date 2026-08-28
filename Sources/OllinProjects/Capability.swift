@@ -152,6 +152,14 @@ extension Capability {
         starterHint: "let serial = SerialPort(matching: \"usbmodem\")   // then serial.open()"
     )
 
+    public static let bluetooth = Capability(
+        id: "bluetooth",
+        title: "Bluetooth",
+        summary: "A Bluetooth sensor read in draw(), and the room of devices in range.",
+        module: "OllinBluetooth",
+        starterHint: "let sensor = BluetoothDevice(service: .heartRate)   // then sensor.connect()"
+    )
+
     public static let dmx = Capability(
         id: "dmx",
         title: "DMX lighting",
@@ -213,7 +221,7 @@ extension Capability {
     public static let all: [Capability] = [
         .images, .text, .shaders, .params,
         .audio, .vision, .video, .physics,
-        .midi, .osc, .serial, .dmx, .syphon, .controller, .screen, .virtualCamera,
+        .midi, .osc, .serial, .bluetooth, .dmx, .syphon, .controller, .screen, .virtualCamera,
         .phone, .record3D,
     ]
 

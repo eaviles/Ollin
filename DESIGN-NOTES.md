@@ -137,7 +137,6 @@ Locking a sketch's clock to external musical time, for live performance and inst
 
 The hardware-and-network interop tier, extending the app-to-app integrations (Syphon, OSC, MIDI, the virtual camera) to the physical rig around the machine. Same posture throughout: play in the existing rig, implement published protocols from the spec, vendor nothing incompatible.
 
-- **Bluetooth LE.** CoreBluetooth central reads from BLE peripherals (buttons, environmental sensors; heart-rate straps overlap the HealthKit item under [new input sources](#new-input-sources)), the same value-cache surface. Needs its entitlement and consent prompt, the "make the permission explicit" concern screen capture set.
 - **NDI.** Network video send/receive between machines, the cross-machine sibling of Syphon. The SDK is a binary-only distribution under NDI's own license, which doesn't fit the source-vendored tier (Syphon, Box2D, Clipper2 all ship as permissively-licensed source); a satellite that links a user-installed NDI runtime may fit instead. The licensing review is the gate before any code, and its outcome decides send-only, both directions, or staying out.
 
 All output paths are real-time side effects of `draw()`, so they follow the render-thread rule (non-isolated closures) and the background-producer handoff pattern the receivers already use.

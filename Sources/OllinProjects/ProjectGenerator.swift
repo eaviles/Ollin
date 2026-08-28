@@ -881,6 +881,16 @@ public enum ProjectGenerator {
                 <string>\(request.folderName) draws with what the camera sees.</string>
             """
         }
+        if capabilities.contains(Capability.bluetooth.id) {
+            usageKeys += """
+
+                <!-- Shown the first time the app uses Bluetooth. Without this
+                     line the system kills the app instead of asking, and until
+                     the question is answered the radio reports nothing at all. -->
+                <key>NSBluetoothAlwaysUsageDescription</key>
+                <string>\(request.folderName) draws with what a Bluetooth sensor reads.</string>
+            """
+        }
         if capabilities.contains(Capability.audio.id) {
             usageKeys += """
 

@@ -48,6 +48,7 @@ enum Satellite: String, CaseIterable {
     case screen = "OllinScreen"
     case controller = "OllinController"
     case haptics = "OllinHaptics"
+    case bluetooth = "OllinBluetooth"
 
     var dependency: Target.Dependency { .product(name: rawValue, package: "Ollin") }
 }
@@ -644,6 +645,15 @@ let package = Package(
         // triggers set its weight, and a pad that reports motion tips the page.
         example("Integration/ControllerInput", [.controller]),
         example("Integration/HapticRidges", [.haptics]),
+        // Every Bluetooth device around the Mac, drawn as a room: each one
+        // sits at the distance its signal suggests, so a phone in a pocket
+        // moves a dot. Needs no gear of your own, since a room is already
+        // full of devices announcing themselves.
+        example("Integration/BluetoothRoom", [.bluetooth]),
+        // One Bluetooth device, connected and read: type part of a name into
+        // the knob and every value it offers appears as it arrives, with a
+        // heart rate driving the disc.
+        example("Integration/BluetoothSensor", [.bluetooth]),
         // Physics — a Verlet world stepped each frame. Packing is a field of
         // colliding discs; Blobs are spring-built soft bodies that squish.
         example("Physics/Packing", [.physics]),

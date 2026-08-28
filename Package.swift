@@ -36,6 +36,7 @@ enum Satellite: String, CaseIterable {
     case screen = "OllinScreen"
     case controller = "OllinController"
     case haptics = "OllinHaptics"
+    case bluetooth = "OllinBluetooth"
 
     var dependency: Target.Dependency { .byName(name: rawValue) }
 }
@@ -84,6 +85,12 @@ let package = Package(
         // text lines and raw bytes in `draw()`. Kept out of `Ollin` so the
         // drawing core stays free of IOKit.
         .library(name: "OllinSerial", targets: ["OllinSerial"]),
+        // Bluetooth as a satellite library: `import OllinBluetooth` to read a
+        // Bluetooth Low Energy sensor (a heart rate strap, a weather sensor, a
+        // maker's own board) as values in `draw()`, and to write back to it.
+        // Built on CoreBluetooth. Kept out of `Ollin` so the drawing core stays
+        // free of it, and free of the permission it asks for.
+        .library(name: "OllinBluetooth", targets: ["OllinBluetooth"]),
         // Remote as a satellite library: `import OllinRemote` to serve the
         // sketch's `@Param` knobs to a phone or a second machine on the local
         // network, for tuning an installation from in front of it. Kept out of
@@ -645,6 +652,15 @@ let package = Package(
             name: "OllinController",
             dependencies: ["Ollin"]
         ),
+        // Bluetooth Low Energy: a sensor in the room read as values in
+        // `draw()`, over CoreBluetooth. A satellite (like OllinSerial) so the
+        // drawing core stays free of CoreBluetooth. The radio itself sits
+        // behind a small internal seam, which is what lets the whole reading
+        // path be tested with no radio and no second device in the room.
+        .target(
+            name: "OllinBluetooth",
+            dependencies: ["Ollin"]
+        ),
         // The structs shared between Swift and the Metal shaders (`OllinVertex`,
         // `Uniforms`, `SDFInstance`) are defined once in a C header so their
         // memory layout can't drift between the two sides. This thin C module
@@ -870,6 +886,16 @@ let package = Package(
         .testTarget(
             name: "OllinControllerTests",
             dependencies: ["Ollin", "OllinController"]
+        ),
+        // Bluetooth reading correctness, radio-free on purpose: a stand-in
+        // backend plays the part of the radio, so discovery, matching,
+        // connecting, subscribing, the value cache, the drain, the knob
+        // binding, polling, and the reconnect all run exactly as shipped with
+        // nothing switched on. The value formats are checked against the
+        // standard's own byte layouts.
+        .testTarget(
+            name: "OllinBluetoothTests",
+            dependencies: ["Ollin", "OllinBluetooth"]
         ),
         // Record3D decode correctness: synthesizes a tiny `.r3d` in memory (a ZIP
         // of metadata + one JPEG + one LZFSE depth/confidence buffer) and checks
