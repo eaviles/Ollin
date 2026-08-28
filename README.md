@@ -222,7 +222,7 @@ New to creative coding, or to Ollin? [The Guide](Guide/README.md) is a practical
 
 The full API reference lives in [`Docs/`](Docs/), one page per topic, and **[`Docs/README.md`](Docs/README.md) is the annotated index**. Most of it ships with the core `import Ollin`, while the satellite libraries live in the same package behind their own `import` (shown on each page), so a sketch links only what it uses.
 
-Between the guide and the reference sits a short set of [concept pages](Docs/Concepts/README.md), one screen each, for when you want the idea rather than the signature. They are [the frame](Docs/Concepts/Frame.md) (what a drawing call actually does), [layers](Docs/Concepts/Layers.md), [what survives a frame](Docs/Concepts/Persistence.md), [why a run repeats](Docs/Concepts/Determinism.md), [light and color](Docs/Concepts/Light.md), and [values and bare calls](Docs/Concepts/Values.md).
+Between the guide and the reference sits a short set of [concept pages](Docs/Concepts/README.md), one screen each, for when you want the idea rather than the signature. They are [the frame](Docs/Concepts/Frame.md) (what a drawing call actually does), [where a point is](Docs/Concepts/Coordinates.md), [layers](Docs/Concepts/Layers.md), [what survives a frame](Docs/Concepts/Persistence.md), [why a run repeats](Docs/Concepts/Determinism.md), [light and color](Docs/Concepts/Light.md), and [values and bare calls](Docs/Concepts/Values.md).
 
 Good places to start:
 
@@ -238,7 +238,7 @@ Good places to start:
 
 New to Swift? The [Swift quick reference](Docs/Swift.md) teaches just enough of the language to be productive in `draw()`, and the Guide's [Appendix A](Guide/A-JustEnoughSwift.md) is its slower, narrative companion. Coming from p5.js or Processing? [Appendix C of the Guide](Guide/C-ComingFromP5.md) maps the API you already know onto Ollin.
 
-Coordinates use a top-left origin with y increasing downward, the same as p5, Processing, and OPENRNDR.
+Coordinates use a top-left origin with y increasing downward, the same as p5, Processing, and OPENRNDR. [Where a point is](Docs/Concepts/Coordinates.md) is the one-screen version, units and other frames included.
 
 ## How it works
 

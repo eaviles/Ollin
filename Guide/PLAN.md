@@ -320,6 +320,7 @@ Why the script exists rather than a habit: a row marked `pointed` used to satisf
 | Capability (Docs page) | Guide home | Depth |
 |---|---|---|
 | `Concepts/Frame.md` (the recorder model: a call records, call order is draw order, no scene) | Ch 1 | taught ("Once, then every frame" and "It moves on its own": `setup()` against `draw()`, the loop at the display's rate, and a picture drawn fresh each frame) |
+| `Concepts/Coordinates.md` (the canvas frame and its units, transforms as a change of frame, the frames that arrive with data) | Ch 1; Appendix B collects the frames | taught ("Where things go" for the top-left origin and y down with its figure, "The canvas is not the window" for the surface against the view of it, and Appendix B's opening section, which sets the canvas, uv, Vision, and world frames side by side) |
 | `Concepts/Layers.md` (what an off-screen layer is, what it costs, when one is needed) | Ch 16 | taught ("A drawing you can hold" opens on the layer, and the chapter builds the whole stack from it) |
 | `Concepts/Persistence.md` (what carries into the next frame: state, canvas, layers, batches, `@Saved`) | Ch 16; batches in Ch 15, `@Saved` in Ch 32 | taught ("The canvas that keeps everything", "Record it once: batches", "Leaving it running"; the page is where the whole list stands in one place) |
 | `Concepts/Determinism.md` (the seed, the export's fixed clock, and what breaks a repeat) | Ch 4; the recipe in Ch 31 | taught ("Seeds: randomness you can keep", "Finding a seed worth keeping", "Reproducibility is part of the piece") |

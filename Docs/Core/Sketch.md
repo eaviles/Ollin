@@ -171,7 +171,7 @@ drawCircle(width / 2, height / 2, min(width, height) / 4)   // centered, proport
 
 The rectangle covers the canvas alone. A title bar or a sidebar falls outside it. It follows the window, so a drag lands in the next frame. An export has no window, and both properties read `nil` there. The `Installation/ManyWindows` example is built on the pair.
 
-To keep a sketch looking the same at every canvas size, write it relative to the canvas with `scale` and `width`/`height` fractions. That, the `canvasSize` export presets, and the preview window are all on the [Canvas](../Core/Canvas.md) page.
+To keep a sketch looking the same at every canvas size, write it relative to the canvas with `scale` and `width`/`height` fractions. That, the `canvasSize` export presets, and the preview window are all on the [Canvas](../Core/Canvas.md) page, and [Where a point is](../Concepts/Coordinates.md) puts this frame beside the others a sketch meets.
 
 <a name="loop-control"></a>
 

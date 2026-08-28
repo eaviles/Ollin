@@ -12,11 +12,12 @@ Use it two ways. It is an index for the moment you remember the guide showing bl
 
 ## The ideas underneath
 
-Before the capabilities, the ideas they all assume. These six pages live in the reference, one screen each, and they are the layer between a chapter and a function signature.
+Before the capabilities, the ideas they all assume. These seven pages live in the reference, one screen each, and they are the layer between a chapter and a function signature.
 
 | Idea | What it says | Guide | Reference |
 |---|---|---|---|
 | The frame | A drawing call records rather than paints, call order is draw order, and nothing is kept for you | [Ch 1](01-HelloOllin.md) | [The frame](../Docs/Concepts/Frame.md) |
+| Where a point is | The canvas frame and its units, transforms as a change of frame, and every other frame a sketch meets | [Ch 1](01-HelloOllin.md), [Appendix B](B-JustEnoughMath.md) | [Where a point is](../Docs/Concepts/Coordinates.md) |
 | Layers | An off-screen picture you draw into and then read back: what one costs, and when you need one | [Ch 16](16-LayersAndEffects.md) | [Layers](../Docs/Concepts/Layers.md) |
 | What survives a frame | What carries into the next frame, and what a batch, a reload, and a checkpoint hold | [Ch 15](15-ShapesAsMaterial.md), [Ch 32](32-Installations.md) | [What survives a frame](../Docs/Concepts/Persistence.md) |
 | Why a run repeats | The seed and the fixed export clock, and the four things that break a repeat | [Ch 4](04-Randomness.md) | [Why a run repeats](../Docs/Concepts/Determinism.md) |

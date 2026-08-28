@@ -682,7 +682,3 @@ if let font = BitmapFont(fnt: text) { textFont(font) }
 ```
 
 Ollin bundles only the *loader*, not a library of `.fnt` fonts, so drop your own beside your sketch (the `PlaydateFont` example does exactly this). Free, redistributable pixel fonts are easy to find, and the public-domain set at [playdate-arcade-fonts](https://github.com/idleberg/playdate-arcade-fonts) is one source.
-
----
-
-Coordinates use a **top-left origin with y increasing downward**, the same as the rest of Ollin's drawing surface.

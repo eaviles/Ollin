@@ -13,6 +13,7 @@ New to Swift? Start with the [Swift quick reference](./Swift.md), which covers j
 One screen each on the ideas the pages below assume, for when you want the why rather than the signature.
 
 - [`The frame`](./Concepts/Frame.md) - what a drawing call actually does, and what happens between `draw()` and the picture
+- [`Where a point is`](./Concepts/Coordinates.md) - the canvas coordinates and their units, and the other frames a sketch meets
 - [`Layers`](./Concepts/Layers.md) - what an off-screen layer is, what it costs, and when you need one
 - [`What survives a frame`](./Concepts/Persistence.md) - what Ollin keeps between frames and what it drops: state, the canvas, layers, batches, saved values
 - [`Why a run repeats`](./Concepts/Determinism.md) - the seed and the clock, and what makes a sketch draw the same picture twice
@@ -233,4 +234,4 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 - [`Dragging a shape`](./Tools/DragToEdit.md) - Command-drag a shape in the live window and the numbers that place it change in your own file, with your spacing and comments untouched
 - [`Profiling`](./Tools/Profiling.md) - the inspector's cost row: CPU against GPU on one scale, the draw and pass counts, and a frame handed to Xcode
 
-Coordinates use a **top-left origin with y increasing downward**, the same as p5, Processing, and OPENRNDR.
+Coordinates use a **top-left origin with y increasing downward**, the same as p5, Processing, and OPENRNDR. [Where a point is](./Concepts/Coordinates.md) covers that in one screen, units included.

@@ -9,6 +9,7 @@ The ideas the rest of the reference assumes. Each page is one screen, answers on
 Read one when a reference page tells you what a call does and you wanted to know why the call exists at all. They are reference material rather than a lesson: come back to them, in any order.
 
 - [`The frame`](./Frame.md) - what a drawing call actually does, and what happens between `draw()` and the picture
+- [`Where a point is`](./Coordinates.md) - the canvas coordinates and their units, and the other frames a sketch meets
 - [`Layers`](./Layers.md) - what an off-screen layer is, what it costs, and when you need one
 - [`What survives a frame`](./Persistence.md) - what Ollin keeps between frames and what it drops: state, the canvas, layers, batches, saved values
 - [`Why a run repeats`](./Determinism.md) - the seed and the clock, and what makes a sketch draw the same picture twice
