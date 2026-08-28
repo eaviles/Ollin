@@ -37,10 +37,11 @@ case "${1:-all}" in
   instancing) filter="MeshInstanceBenchmarkTests" ;;
   field)    filter="MeshFieldBenchmarkTests" ;;
   strands)  filter="StrandBenchmarkTests" ;;
+  ocean)    filter="OceanBenchmarkTests" ;;
   all)      filter="BenchmarkTests" ;;   # substring matches all suites
-  *) echo "usage: $0 [all|shadows|dof|ssao|ssr|raymarch|instancing|field|strands] [resolution]" >&2; exit 1 ;;
+  *) echo "usage: $0 [all|shadows|dof|ssao|ssr|raymarch|instancing|field|strands|ocean] [resolution]" >&2; exit 1 ;;
 esac
 [ "${2:-}" != "" ] && export OLLIN_BENCH_RES="$2"
 
 # Run only the gated benchmark test(s); surface just their report blocks.
-swift test --filter "$filter" 2>&1 | awk '/=== Ollin .* benchmark ===/,/=== end ===/'
+swift test --filter "$filter" 2>&1 | awk '/=== Ollin .*benchmark/,/=== end ===/'

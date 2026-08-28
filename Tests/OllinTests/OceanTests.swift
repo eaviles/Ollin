@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import Metal
 @testable import Ollin
 import Testing
 
@@ -266,5 +267,64 @@ private final class DrawnSeaProbe: Sketch {
         camera(.perspective(eye: Vector3(0, 6, -60), target: Vector3(0, 2, 120)))
         let sea = oceanField(Ocean(waveHeight: 3, patchSize: 200, seed: 6), resolution: 128)
         drawOcean(sea, segments: 96, tiles: 3)
+    }
+}
+
+/// The ocean's GPU cost on this machine: the field (a spectrum pass, the
+/// butterfly ladder, and a resolve) and the draw (a grid worked out from vertex
+/// indices, shaded per pixel off the same field). Run through
+/// `Scripts/benchmark.sh ocean`.
+@Suite
+@MainActor
+struct OceanBenchmarkTests {
+
+    @Test(.benchmark)
+    func seaCostByGridAndField() throws {
+        guard let device = MTLCreateSystemDefaultDevice() else { return }
+        let renderer = try MetalRenderer(device: device, pixelFormat: ollinColorPixelFormat,
+                                         sampleCount: ollinPreferredSampleCount(device))
+        let res = 1080
+        let viewport = SIMD2<Float>(Float(res), Float(res))
+
+        func measure(segments: Int, resolution: Int) -> Double {
+            let sketch = OceanBenchScene()
+            sketch.setCanvasSize(width: Double(res), height: Double(res))
+            sketch.segments = segments
+            sketch.resolution = resolution
+            sketch.setup()
+            sketch.advance(time: 1, deltaTime: 1 / 60, frameRate: 60)
+            sketch.performDraw()
+            return renderer.benchmarkGPUMilliseconds(sketch.drawer, viewport: viewport,
+                                                     width: res, height: res, iterations: 20)
+        }
+
+        print("\n=== Ollin ocean benchmark (\(res)² px, sky environment + sun) ===")
+        for (segments, resolution) in [(160, 256), (320, 256), (320, 512), (512, 512)] {
+            let ms = measure(segments: segments, resolution: resolution)
+            print(String(format: "%4d segments over a %4d field: GPU %6.2f ms (%.0f fps)",
+                         segments, resolution, ms, 1000 / max(ms, 0.0001)))
+        }
+        print("=== end ===\n")
+    }
+}
+
+/// The benchmark's sea: the example's own camera and sea state, so the numbers
+/// measure what the example draws.
+@MainActor
+private final class OceanBenchScene: Sketch {
+    var segments = 320
+    var resolution = 256
+
+    override func draw() {
+        background(Color(hex: 0x8FB6D4))
+        environment(.sky(turbidity: 2.6, sunElevation: 0.13))
+        light(.directional(Color(hex: 0xFFF1DC), direction: Vector3(0, -0.13, -0.99),
+                           intensity: 1.1))
+        camera(.perspective(eye: Vector3(0, 4.6, -95), target: Vector3(0, 2.6, 220),
+                            fieldOfView: .pi / 3.4))
+        let sea = oceanField(Ocean(waveHeight: 2.6, windSpeed: 12, windDirection: 90,
+                                   choppiness: 1.25, patchSize: 170, seed: 7),
+                             resolution: resolution)
+        drawOcean(sea, segments: segments, tiles: 7)
     }
 }

@@ -143,8 +143,12 @@ reflection alone.
 
 The field is one spectrum pass, `2 · log2(n)` butterfly passes, and one resolve: 18 passes at
 256 texels, 20 at 512, each over a small square. The draw is `segments² · 6` vertices and
-four texture reads per pixel for the normal. A 320 segment sea over a 256 field runs
-comfortably at display rate on the machines this was written on.
+four texture reads per pixel for the normal.
+
+Measured on an M2 at 1080 square, with the sky environment and a sun (`Scripts/benchmark.sh
+ocean`): **1.4 ms** of GPU at 160 segments over a 256 field, **1.8 ms** at 320 over 256,
+**2.8 ms** at 320 over 512, and **3.7 ms** at 512 over 512. Doubling either the grid or the
+field costs about a millisecond at this size.
 
 <a id="limits"></a>
 ### What it will not do
