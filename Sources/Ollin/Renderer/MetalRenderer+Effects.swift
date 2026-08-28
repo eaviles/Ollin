@@ -775,6 +775,113 @@ extension MetalRenderer {
         return output
     }
 
+    /// Work out the light arriving at every pixel of a flat scene, by radiance
+    /// cascades (Sannikov; credited in `ATTRIBUTION.md` and written from the published
+    /// description, never from anyone's shader).
+    ///
+    /// The ladder is a sequence of light fields, each holding one ring of distance
+    /// around every point it samples. Rung 0 puts a probe every `spacing` pixels and
+    /// gives it four directions over a span of `spacing` pixels. Each rung above it
+    /// halves the probes along both axes, quadruples the directions, and takes a span
+    /// four times as long beginning where the rung below it ended. Those two changes
+    /// cancel, so **every rung is one texture of the same size**, which is why the
+    /// whole ladder costs what one rung costs times the number of rungs.
+    ///
+    /// Three things about the arrangement are load-bearing:
+    ///
+    /// - **The probe grid is padded to a multiple of `2^(rungs-1)`.** Every rung
+    ///   divides it in half, and a grid that cannot be halved that many times puts one
+    ///   rung's probes out of step with the next one's, which shows up as a grid of
+    ///   bright and dark cells rather than as light.
+    /// - **The march is against a measured distance field, not a step per pixel.** The
+    ///   field is built once and shared by every rung and every bounce, and it is what
+    ///   makes the cost independent of how much was drawn: a ray crosses an empty room
+    ///   in one step whatever stands outside it.
+    /// - **A bounce needs the light *outside* a surface, and only the field knows where
+    ///   that is.** The field's direction channels point at the nearest edge, so a
+    ///   surface pixel can read the light standing just off its own face. Sampling the
+    ///   light *at* a surface reads zero every time, because a probe inside a shape
+    ///   meets that shape at once and sees nothing else.
+    private func radianceCascades(scene: MTLTexture, lights: MTLTexture,
+                                  width: Int, height: Int, reach: Double?,
+                                  brightness: Double, bounces: Int, sky: SIMD4<Float>,
+                                  quality: RenderQuality,
+                                  into cb: MTLCommandBuffer, pooled: Bool) -> MTLTexture? {
+        let spacing = Double(resolveLightProbeSpacing(quality))
+        let steps = Float(resolveLightMarchSteps(quality))
+        let diagonal = (Double(width) * Double(width) + Double(height) * Double(height)).squareRoot()
+        let far = min(reach ?? diagonal, diagonal)
+
+        // Rung i spans `spacing · 4^i` pixels and starts where rung i-1 ended, so a
+        // ladder of n rungs reaches `spacing · (4^n - 1) / 3`. Take the shortest ladder
+        // that covers `far`, which is what makes a short reach genuinely cheaper.
+        var rungs = 1
+        while spacing * (pow(4.0, Double(rungs)) - 1) / 3 < far && rungs < 8 { rungs += 1 }
+
+        let halvings = 1 << (rungs - 1)
+        func probeCount(_ extent: Int) -> Int {
+            let count = max(1, Int((Double(extent) / spacing).rounded(.up)))
+            return ((count + halvings - 1) / halvings) * halvings
+        }
+        let probesX = probeCount(width), probesY = probeCount(height)
+        let ladderW = probesX * 2, ladderH = probesY * 2
+
+        guard let emissionA = acquireFilterTexture(width: width, height: height, pooled: pooled),
+              let front = acquireFilterTexture(width: ladderW, height: ladderH, pooled: pooled),
+              let back = acquireFilterTexture(width: ladderW, height: ladderH, pooled: pooled),
+              let output = acquireFilterTexture(width: width, height: height, pooled: pooled)
+        else { return nil }
+        var emissionB: MTLTexture? = nil
+        if bounces > 0 {
+            guard let second = acquireFilterTexture(width: width, height: height, pooled: pooled)
+            else { return nil }
+            emissionB = second
+        }
+
+        // The scene as the ladder reads it: what each pixel gives off, and whether it
+        // stops a ray. A lamp stops light as well as making it, so the two coverages
+        // are taken together, and the one field measured from that covers both.
+        encodeEffectFragment("ollin_light_scene", inputs: [scene, lights], output: emissionA,
+                             params: [SIMD4<Float>(Float(brightness), 0, 0, 0)], into: cb)
+        guard let field = measuredDistanceField(of: emissionA, width: width, height: height,
+                                                source: .alpha, threshold: 0.5,
+                                                maxDistance: far, into: cb, pooled: pooled)
+        else { return nil }
+
+        let geometry = SIMD4<Float>(Float(probesX), Float(probesY), Float(width), Float(height))
+        let litSky = SIMD4<Float>(sky.x * sky.w, sky.y * sky.w, sky.z * sky.w, sky.w)
+        var emission = emissionA
+        for bounce in 0...max(0, bounces) {
+            var read = front, write = back
+            for rung in stride(from: rungs - 1, through: 0, by: -1) {
+                let top = rung == rungs - 1
+                encodeEffectFragment(
+                    "ollin_light_cascade",
+                    // At the top there is no rung above; the flag says so, and the
+                    // scene stands in for the binding so it is never left unset.
+                    inputs: [field, emission, top ? emission : read], output: write,
+                    params: [SIMD4<Float>(Float(rung), Float(rungs), Float(spacing), Float(spacing)),
+                             geometry,
+                             SIMD4<Float>(steps, top ? 1 : 0, Float(far), 0),
+                             litSky],
+                    into: cb)
+                swap(&read, &write)
+            }
+            encodeEffectFragment("ollin_light_resolve", inputs: [read], output: output,
+                                 params: [SIMD4<Float>(0, 0, Float(spacing), 0), geometry],
+                                 into: cb)
+            guard bounce < bounces, let other = emissionB else { break }
+            encodeEffectFragment("ollin_light_bounce",
+                                 inputs: [emission, scene, output, field], output: other,
+                                 params: [SIMD4<Float>(1, 1.0 / 255, 0, 0),
+                                          SIMD4<Float>(Float(width), Float(height), 0, 0)],
+                                 into: cb)
+            emissionB = emission
+            emission = other
+        }
+        return output
+    }
+
     /// Let the color of every drawn pixel out into the empty space around it
     /// until it settles: a Laplace solve whose sources are the layer's own
     /// marks, run coarse to fine so a color reaches across the whole layer in a
@@ -1183,6 +1290,10 @@ extension MetalRenderer {
             encodeEffectFragment("ollin_fx_ssao_blur", inputs: [base, aoTex, aux], output: out,
                                  params: [SIMD4(Float(intensity), 0, 0, 0), texel], into: cb)
             return out
+        case let .light(reach, brightness, bounces, sky, quality):
+            return radianceCascades(scene: base, lights: aux, width: width, height: height,
+                                    reach: reach, brightness: brightness, bounces: bounces,
+                                    sky: sky, quality: quality, into: cb, pooled: pooled)
         case let .screenSpaceReflections(intensity, maxDistance, thickness, roughness, fresnel, edgeFade, quality):
             // Four passes: a screen-space ray march (rebuilding view-space position + normal from
             // the aux depth, reflecting the eye ray about the normal, then marching until it

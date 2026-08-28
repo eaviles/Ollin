@@ -84,6 +84,11 @@ public struct Combine: Sendable {
         case screenSpaceReflections(intensity: Double, maxDistance: Double, thickness: Double,
                                     roughness: Double, fresnel: Double, edgeFade: Double,
                                     quality: RenderQuality)
+        /// Light a flat scene: the base is what the light meets (its color, and its
+        /// alpha stops light), the aux is what gives light off, and the result is the
+        /// light arriving at every pixel.
+        case light(reach: Double?, brightness: Double, bounces: Int,
+                   sky: SIMD4<Float>, quality: RenderQuality)
     }
 
     let kind: Kind
@@ -320,5 +325,56 @@ public struct Combine: Sendable {
             thickness: max(0.0001, thickness), roughness: min(max(roughness, 0), 1),
             fresnel: max(0, fresnel), edgeFade: min(max(edgeFade, 0), 0.5), quality: quality),
                 sourceID: "\(file):\(line)")
+    }
+
+    /// Light a flat scene: work out how much light reaches every pixel of the base
+    /// layer from the lamps drawn in the aux layer, and hand that back as a layer of
+    /// its own.
+    ///
+    /// The base is **the scene**: whatever you draw there is solid, and its alpha is
+    /// how much of a ray it stops. The aux is **the lights**: whatever you draw there
+    /// gives light off in its own color. The result is a picture of the light itself,
+    /// so you draw it as the frame rather than over the scene.
+    ///
+    /// ```swift
+    /// let room = renderTarget()
+    /// withTarget(room) { fill(Color(hex: 0x2E6F5E)); drawRect(300, 500, 480, 40) }
+    /// let lamps = renderTarget()
+    /// withTarget(lamps) { fill(.white); drawCircle(mouseX, mouseY, 18) }
+    /// drawImage(room.combined(with: lamps, .light()).image, 0, 0)
+    /// ```
+    ///
+    /// Light behaves the way light behaves, and none of it is drawn by hand: a shape
+    /// throws a shadow that is sharp beside it and soft further away, a small lamp
+    /// falls off with distance because it covers less and less of the sky a pixel
+    /// sees, and a lit wall gives its own color back to what stands near it.
+    ///
+    /// The work is done by a ladder of light fields, each with fewer places and more
+    /// directions than the one below it (radiance cascades). It costs the same
+    /// whatever the scene holds: one lamp and two hundred lamps take the same time,
+    /// as do ten shapes and ten thousand.
+    ///
+    /// - Parameters:
+    ///   - reach: how far light travels, in pixels. `nil` reaches across the whole
+    ///     layer. A shorter reach is the speed knob, since it takes rungs off the
+    ///     ladder, and it also reads as a smaller room.
+    ///   - brightness: scales the lights before anything is traced. Raise it for a
+    ///     small lamp that has to fill a large space.
+    ///   - bounces: how many times light comes back off what it lands on. `0` leaves
+    ///     every surface black, which is the plain shadow look; `1` is the default and
+    ///     is what makes a red wall throw red onto its neighbors; more is softer and
+    ///     costs one more ladder each.
+    ///   - sky: the light that arrives from beyond the reach of the field, for a scene
+    ///     that is outdoors or in a lit room. Clear (the default) is a dark room.
+    ///   - quality: how closely the light is measured (`.default` / `.performance` /
+    ///     `.detail`, hardware-relative). It sets how far apart the probes of the first
+    ///     rung sit and how many steps a ray may take.
+    public static func light(reach: Double? = nil, brightness: Double = 1,
+                             bounces: Int = 1, sky: Color = .clear,
+                             quality: RenderQuality = .default) -> Combine {
+        Combine(kind: .light(reach: reach.map { max(1, $0) },
+                             brightness: max(0, brightness),
+                             bounces: min(max(bounces, 0), 4),
+                             sky: sky.linearRGBA, quality: quality))
     }
 }

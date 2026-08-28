@@ -722,6 +722,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("buddhabrot",
                  note: "A seeded Buddhabrot plate accumulated to a fixed orbit count and developed once, in the three-cap false-color split. Pins the orbit test (interior shortcuts, escape step), the half-disc seed region, the mirrored upright deposit, the per-channel cap gating, and the percentile-ceiling gamma develop. Seeded and fixed-count, so the render is deterministic.",
                  make: { BuddhabrotScene() }),
+    SnapshotCase("light-2d",
+                 note: "A room with a lamp in it, drawn as the light that reaches every pixel (Combine.light). Pins the whole radiance-cascade ladder: the rung geometry and its per-probe merge rays, the march against the measured field, the shadow that sharpens toward the shape that casts it, and the bounce that gives a lit surface its own color back. Fixed lamp, no time, and the quality tier is named rather than resolved, so the frame is deterministic.",
+                 make: { Light2DScene() }),
     SnapshotCase("taa",
                  note: "Thin tilted slats and a sphere under temporalAntialiasing(): pins the deterministic export path (N jittered geometry renders under the fixed sequence, averaged within the frame), the jittered-projection plumbing on the mesh path, and the weighted-sum normalization. Fixed camera, no time; runs on any Metal GPU.",
                  make: { TAAScene() }),
@@ -8455,6 +8458,39 @@ private final class SubdivisionScene: Sketch {
 
 /// Three perfect mazes, one per carving algorithm, each with its longest path
 /// traced through. Seeded and `time`-free, so the mazes are deterministic.
+/// A lit room: two coloured walls, a bar to cast a shadow, and one lamp.
+private final class Light2DScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(.black)
+        let scene = renderTarget()
+        withTarget(scene) {
+            noStroke()
+            fill(Color(hex: 0x2B3138))
+            drawRect(20, 20, 216, 10)
+            drawRect(20, 226, 216, 10)
+            drawRect(20, 20, 10, 216)
+            drawRect(226, 20, 10, 216)
+            fill(Color(hex: 0xC8503C))
+            drawRect(30, 90, 10, 100)
+            fill(Color(hex: 0x3F8F6B))
+            drawRect(70, 170, 90, 8)
+            fill(Color(hex: 0xD9A441))
+            drawCircle(180, 180, 20)
+        }
+        let lamps = renderTarget()
+        withTarget(lamps) {
+            noStroke()
+            fill(.white)
+            drawCircle(150, 70, 6)
+        }
+        drawImage(scene.combined(with: lamps,
+                                 .light(brightness: 5, bounces: 1,
+                                        quality: .performance)).image, 0, 0)
+    }
+}
+
 private final class MazeScene: Sketch {
     override var canvasSize: CanvasSize { .square(256) }
 

@@ -282,6 +282,38 @@ marks.filtered(.distanceField(maxDistance: 64))
 
 Past that distance the field reads flat, with a zero direction, which is its way of saying nothing is within reach.
 
+## Light that works itself out
+
+The measured field above is the hard half of a much bigger trick, and the trick is worth having on its own. Draw a scene into one layer and some lamps into another, and ask what light reaches every pixel.
+
+```swift
+let lit = scene.combined(with: lamps, .light())
+drawImage(lit.image, 0, 0)
+```
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/16-LayersAndEffects/LightField-dark.jpg">
+  <img src="Images/16-LayersAndEffects/LightField.jpg" alt="Three dark panels. A room drawn flat: walls, a comb of four teeth, a red bar, a yellow disc and a small white dot. The same room as light, with the dot lit and four beams thrown between the teeth into soft shadows. The same again, with the red bar, the yellow disc and the green wall now glowing in their own colors" width="680">
+</picture>
+
+The base layer is **the scene**: whatever you draw there is solid, and its alpha is how much of a ray it stops. The aux layer is **the lamps**: whatever you draw there gives light off, in its own color. What comes back is the light itself, which is why you draw it as the frame instead of over the scene.
+
+Look at what nobody drew. The comb throws four beams, and they fan out. Each shadow is hard where it meets the tooth that casts it, and soft further down. A pixel further down can see more of the lamp. The light thins out with distance, and it thins out at the rate a real one does. In the third panel the red bar reddens the floor beside it and the green wall greens its own corner of the room. Those are all one measurement rather than five effects that have to be kept in step by hand.
+
+The knob for that third panel is `bounces`:
+
+```swift
+scene.combined(with: lamps, .light(brightness: 5, bounces: 1))
+```
+
+At `0` every surface stays black and only the lamps are seen. That is the middle panel, and a good look in its own right. At `1`, the default, light comes back off whatever it lands on, carrying that surface's color with it. Each further bounce costs another pass, and past one or two you will not see the difference.
+
+Two more knobs are worth knowing early. `sky` is the light arriving from beyond the reach of the field. A color there turns a dark room into a lit one with a window in it. `reach` is how far light travels in pixels, which is both an answer ("this is a small room") and the speed knob.
+
+Speed is the thing to say plainly. This is the most expensive effect in the chapter. It is also the one whose cost does *not* follow how much you drew. One lamp and two hundred cost the same, and so do ten shapes and ten thousand. What costs is the size of the layer and how far light may travel. If a sketch needs its frame rate back, draw the light into a half-size layer first (`renderTarget(scale: 0.5)`), or pass `quality: .performance`.
+
+Underneath, the answer is a ladder of light fields. Each one holds a single ring of distance around every point it samples. Close in there are many places and few directions; further out there are few places and many directions, over a span four times as long. That trade is exactly why one lamp on the far side of the room costs no more than one beside you. The rays are marched against the measured field from the section above, which is why an empty room is crossed in a single step.
+
 ## Averages of a neighborhood, at a flat price
 
 The section above asked every pixel how far away something was. Here is a different question, and a cheaper answer than you would expect. **What does the neighborhood around this pixel look like?**
@@ -652,10 +684,11 @@ Off-screen layers are as old as computer graphics has had memory to spare. The s
 - [Accumulation](../Docs/Drawing/Accumulation.md) and [HDR & tone-mapping](../Docs/Drawing/HDR.md): the persistent canvas and the float pipeline underneath it.
 - [Wide gamut & HDR output](../Docs/Drawing/ColorOutput.md): `colorOutput`, colors outside sRGB, and what each export format carries.
 - [Measured distance fields](../Docs/Drawing/DistanceFields.md): what the field holds, reading it back, and the jump flood underneath it.
+- [Light in a flat sketch](../Docs/Drawing/Light.md): the two layers, every knob, what it costs at each quality tier, what it will not do, and the ladder underneath it.
 - [Local averages](../Docs/Drawing/LocalAverages.md): the box blur, the adaptive threshold, choosing the window, and what the summed-area table costs.
 - [Blend modes](../Docs/Drawing/Drawing.md#blendMode): the arithmetic of each mode.
 - Appendix B draws this chapter's math, one picture per idea: [Shaping a value](B-JustEnoughMath.md#shaping-a-value), [Color and light as numbers](B-JustEnoughMath.md#color-and-light-as-numbers).
-- Worked examples: [`Examples/Effects/Bloom`](../Examples/Effects/Bloom/Sketch.swift), [`Examples/Effects/Compose`](../Examples/Effects/Compose/Sketch.swift), [`Examples/Effects/Feedback`](../Examples/Effects/Feedback/Sketch.swift), [`Examples/Effects/Relight`](../Examples/Effects/Relight/Sketch.swift), [`Examples/Effects/DiffusionCurves`](../Examples/Effects/DiffusionCurves/Sketch.swift), [`Examples/Effects/DistanceField`](../Examples/Effects/DistanceField/Sketch.swift), [`Examples/Effects/Droste`](../Examples/Effects/Droste/Sketch.swift), [`Examples/Effects/SummedArea`](../Examples/Effects/SummedArea/Sketch.swift), [`Examples/Rendering/Accumulation`](../Examples/Rendering/Accumulation/Sketch.swift), and [`Examples/Rendering/ToneMapping`](../Examples/Rendering/ToneMapping/Sketch.swift).
+- Worked examples: [`Examples/Effects/Bloom`](../Examples/Effects/Bloom/Sketch.swift), [`Examples/Effects/Compose`](../Examples/Effects/Compose/Sketch.swift), [`Examples/Effects/Feedback`](../Examples/Effects/Feedback/Sketch.swift), [`Examples/Effects/Relight`](../Examples/Effects/Relight/Sketch.swift), [`Examples/Effects/DiffusionCurves`](../Examples/Effects/DiffusionCurves/Sketch.swift), [`Examples/Effects/DistanceField`](../Examples/Effects/DistanceField/Sketch.swift), [`Examples/Effects/Light`](../Examples/Effects/Light/Sketch.swift), [`Examples/Effects/Droste`](../Examples/Effects/Droste/Sketch.swift), [`Examples/Effects/SummedArea`](../Examples/Effects/SummedArea/Sketch.swift), [`Examples/Rendering/Accumulation`](../Examples/Rendering/Accumulation/Sketch.swift), and [`Examples/Rendering/ToneMapping`](../Examples/Rendering/ToneMapping/Sketch.swift).
 
 ---
 

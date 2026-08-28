@@ -190,6 +190,29 @@ public struct ComposeLayer {
         return copy
     }
 
+    /// Light this layer by the lamps drawn in an `aside` layer, and become the light
+    /// that reaches every pixel. This layer is the scene: what it holds is solid, and
+    /// its alpha is how much of a ray it stops. The aside holds the lamps, and is drawn
+    /// only to give light off, not composited.
+    ///
+    /// ```swift
+    /// layer { fill(Color(hex: 0x2E6F5E)); drawRect(300, 500, 480, 40) }
+    ///     .lit(by: aside { fill(.white); drawCircle(mouseX, mouseY, 18) })
+    /// ```
+    ///
+    /// `reach`, `brightness`, `bounces`, `sky`, and `quality` mean what they mean on
+    /// `Combine.light(reach:brightness:bounces:sky:quality:)`.
+    public func lit(by aside: ComposeLayer, reach: Double? = nil,
+                    brightness: Double = 1, bounces: Int = 1,
+                    sky: Color = .clear,
+                    quality: RenderQuality = .default) -> ComposeLayer {
+        var copy = self
+        copy.steps.append(.combine(aside: aside,
+                                   op: .light(reach: reach, brightness: brightness,
+                                              bounces: bounces, sky: sky, quality: quality)))
+        return copy
+    }
+
     /// Composite this layer with `mode` instead of the default `.normal` (so a glow
     /// layer can add as light, a shade layer can multiply, and so on).
     public func blend(_ mode: BlendMode) -> ComposeLayer {

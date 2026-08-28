@@ -33,6 +33,7 @@ Layered effects: draw into off-screen layers, filter them on the GPU, and compos
 | [MeshGradient](MeshGradient/Sketch.swift) | the mesh-gradient generator: color blobs drifting on their own orbits over a domain-warped field |
 | [DiffusionCurves](DiffusionCurves/Sketch.swift) | a few marks held as color sources and the color let out between them until it settles (`.diffuse`) |
 | [DistanceField](DistanceField/Sketch.swift) | a layer asked how far the nearest edge is, and which way, at every pixel |
+| [Light](Light/Sketch.swift) | a room, a lamp carried on the pointer, and the light that reaches every pixel of it: soft shadows, falloff, beams through a comb, and walls that give their color back (`combined(with:.light)`) |
 | [Droste](Droste/Sketch.swift) | a ring of lit windows falling into itself without end, the copies wound into one spiral, unwound to plain rings on mouse hold (`.droste(inner:twist:zoom:)`) |
 | [DomainColoring](DomainColoring/Sketch.swift) | a complex function painted over the plane it acts on, its zeros and poles read off the color wheels |
 | [SeamlessClone](SeamlessClone/Sketch.swift) | one layer dropped into another so the join disappears: the patch keeps its marks and takes the surroundings' color |

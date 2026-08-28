@@ -941,6 +941,39 @@ extension MetalRenderer {
     /// march/blur/temporal passes run at (the composite upsamples back to full). Live trades
     /// reflection resolution for frame rate; export resolves to full (1.0) so exported art and
     /// snapshots are never downscaled. Mirrors `resolveRaymarchScale`.
+    /// How far apart the probes of the first rung of a light ladder sit, in pixels
+    /// (`Combine.light`). It is the one knob that decides the whole cost: the ladder's
+    /// texture is two probes across per probe of that first rung, every rung is the
+    /// same size, and halving the spacing quadruples all of them at once.
+    ///
+    /// The first rung's span is that same spacing, so a wider spacing also lengthens
+    /// every span above it and reaches the far end of the field in fewer rungs.
+    ///
+    /// Measured M2 release 1080², one bounce, the whole term (`--bench --gpu`):
+    /// 11.3 ms at 4, 23.4 ms at 2, 79.6 ms at 1 (7.8 / 13.1 / 42.0 with no bounce). Four is visibly blocky around a small
+    /// lamp at native size, which is what the tier is trading. One differs from two
+    /// mostly at a lamp's own rim (max 94/255 there, 0.73 mean over the frame), and
+    /// an export lifts `.default` to `.detail`, so an exported frame buys that rim.
+    func resolveLightProbeSpacing(_ quality: RenderQuality) -> Int {
+        switch effectiveQuality(quality) {
+        case .performance: return 4
+        case .default:     return 2
+        case .detail:      return 1
+        }
+    }
+
+    /// How many steps one light ray may take (`Combine.light`). The march is against a
+    /// measured distance field, so a step crosses a whole empty region rather than a
+    /// pixel and a few dozen carry a ray the width of a canvas. Running out is not a
+    /// hard edge: the ray reports that it met nothing, and the rung above it fills in.
+    func resolveLightMarchSteps(_ quality: RenderQuality) -> Int {
+        switch effectiveQuality(quality) {
+        case .performance: return 16
+        case .default:     return 24
+        case .detail:      return 48
+        }
+    }
+
     func resolveSSRScale(_ quality: RenderQuality) -> Double {
         if let s = ssrScaleOverride { return min(1.0, max(0.1, s)) }
         switch effectiveQuality(quality) {

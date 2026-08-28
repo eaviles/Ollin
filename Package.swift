@@ -673,6 +673,7 @@ let package = Package(
                 .copy("Renderer/ShaderCaustics.metal"),
                 .copy("Renderer/ShaderSim.metal"),
                 .copy("Renderer/ShaderPatterns.metal"),
+                .copy("Renderer/ShaderRadiance.metal"),
                 .copy("Renderer/ShaderIBL.metal"),
                 .copy("Renderer/ShaderPathTrace.metal"),
                 .copy("Renderer/OllinShaderTypes.h"),

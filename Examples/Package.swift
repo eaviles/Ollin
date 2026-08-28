@@ -126,6 +126,7 @@ let package = Package(
         example("Effects/DesignFilters"),
         example("Effects/Distortion"),
         example("Effects/DistanceField"),
+        example("Effects/Light"),
         example("Effects/Dispersion"),
         example("Simulation/GrayScott"),
         example("Simulation/GameOfLife"),
