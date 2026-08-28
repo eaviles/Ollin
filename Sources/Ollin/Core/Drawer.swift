@@ -457,6 +457,33 @@ final class Drawer {
     private var moverStack: [MoverContext] = []
     private var moverOccurrence: [String: Int] = [:]
 
+    // MARK: Where a draw call was written
+
+    /// Whether each shape records the call site that drew it, so a host can say
+    /// which line of the file the pointer is over. Off unless a host asks: a
+    /// sketch nobody is editing pays one branch per draw call and nothing else.
+    var recordsSourceSites = false
+
+    /// The site of the draw call being served, set by the `Sketch` method the
+    /// sketch called and cleared when it returns. One shape can append several
+    /// instances (a symmetry fold, an arrow's line and head), and they all
+    /// belong to the same line of the file.
+    var currentSourceSite: SourceSite?
+
+    /// The shapes drawn this frame that know where they came from, in draw
+    /// order, so the last one under the pointer is the topmost. Reset each
+    /// frame like the geometry it mirrors.
+    private(set) var sourcePickTargets: [SourcePickTarget] = []
+
+    /// Remember one shape as pickable, in the coordinates the call drew it in.
+    /// No-op when no host is tracking, or for a shape drawn by the framework
+    /// itself rather than by a line of the sketch.
+    func recordSourcePick(_ region: SourcePickTarget.Region) {
+        guard recordsSourceSites, let site = currentSourceSite else { return }
+        sourcePickTargets.append(
+            SourcePickTarget(site: site, transform: transform, region: region))
+    }
+
     /// Lights for the 3D mesh material, set this frame (see `Light`). Per-frame
     /// state like the camera — reset each frame, accumulated by `addLight`.
     private(set) var lights: [Light] = []
@@ -3713,6 +3740,7 @@ final class Drawer {
         // history persists (it's the cross-frame memory) but drops entries not
         // refreshed last frame, so a mover that skipped a frame starts over.
         moverFrame += 1
+        if recordsSourceSites { sourcePickTargets.removeAll(keepingCapacity: true) }
         moverRanges.removeAll(keepingCapacity: true)
         moverOccurrence.removeAll(keepingCapacity: true)
         moverStack.removeAll(keepingCapacity: true)

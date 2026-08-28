@@ -363,6 +363,7 @@ let package = Package(
         example("Motion/Orbits"),
         example("Motion/Linkage"),
         example("Motion/Petals"),
+        example("Live/DragToEdit"),
         example("Live/Parameters"),
         example("Motion/Trail"),
         example("Motion/Steering"),

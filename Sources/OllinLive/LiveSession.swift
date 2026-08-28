@@ -87,6 +87,15 @@ final class LiveSession {
     /// The source file's name (`Sketch.swift`) for the monitor card header.
     var fileName: String { (sketchPath as NSString).lastPathComponent }
 
+    /// The watched file itself, which is also the file a dragged shape is
+    /// written back into (see `ShapeDragController`).
+    var sourcePath: String { sketchPath }
+
+    /// The sketch running right now. Unlike `sketch`, which mounts the view,
+    /// this follows every hot swap, so a host surface that acts on the live
+    /// instance reads it fresh each time.
+    var currentSketch: Sketch? { core.currentSketch }
+
     /// The source file's folder, home-abbreviated (`~/Live/Parameters`).
     var folder: String {
         ((sketchPath as NSString).deletingLastPathComponent as NSString).abbreviatingWithTildeInPath

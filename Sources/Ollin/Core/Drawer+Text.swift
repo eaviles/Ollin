@@ -881,6 +881,11 @@ extension Drawer {
             return
         }
         guard (b - a).length > 1e-9 else { return }
+        // A hairline is almost impossible to hit with a pointer, so the region a
+        // host picks it by is at least a few points wide either side of it.
+        if recordsSourceSites {
+            recordSourcePick(.capsule(a: a, b: b, radius: Swift.max(strokeWidth / 2, 5)))
+        }
         appendFringeStroke([a, b], closed: false, paint: vertexPaint(stroke, anchor: (a + b) / 2))
     }
 

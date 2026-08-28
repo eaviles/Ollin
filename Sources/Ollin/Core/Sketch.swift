@@ -2086,6 +2086,22 @@ open class Sketch {
     /// The state machine + per-frame geometry recorder the bare API forwards to.
     let drawer = Drawer()
 
+    /// Remember which line of the sketch is drawing, so a host can find the
+    /// shape under a pointer and the numbers that placed it (see `SourcePick`).
+    /// Every shape-drawing method calls this with its own `#line`/`#column`.
+    /// Costs one branch while nobody is editing.
+    @inline(__always)
+    func markSite(_ file: StaticString, _ line: Int, _ column: Int, _ move: SourceMove) {
+        guard drawer.recordsSourceSites else { return }
+        drawer.currentSourceSite = SourceSite(file: file, line: line, column: column, move: move)
+    }
+
+    /// The draw call has returned; later shapes belong to later lines.
+    @inline(__always)
+    func clearSite() {
+        if drawer.currentSourceSite != nil { drawer.currentSourceSite = nil }
+    }
+
     /// Registered lifecycle extensions (the `extend(...)` seam), and whether
     /// their one-time `setup` has run yet (lazily, on the first `performDraw`).
     private var extensions: [SketchExtension] = []
@@ -2275,14 +2291,34 @@ open class Sketch {
     public func noStrokeBrush() { drawer.noStrokeBrush() }
     public func pointSize(_ size: Double) { drawer.pointSize(size) }
     public func pointMarker(_ marker: PointMarker) { drawer.pointMarker(marker) }
-    public func drawPoint(_ x: Double, _ y: Double) { drawer.drawPoint(x, y) }
-    public func drawPoint(_ x: Double, _ y: Double, _ size: Double) { drawer.drawPoint(x, y, size) }
-    public func drawPoint(_ p: Vector2) { drawer.drawPoint(p.x, p.y) }
-    public func drawPoint(_ p: Vector2, size: Double) { drawer.drawPoint(p.x, p.y, size) }
-    public func drawCircle(_ x: Double, _ y: Double, _ radius: Double) {
+    public func drawPoint(_ x: Double, _ y: Double,
+                          file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .xy); defer { clearSite() }
+        drawer.drawPoint(x, y)
+    }
+    public func drawPoint(_ x: Double, _ y: Double, _ size: Double,
+                          file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .xy); defer { clearSite() }
+        drawer.drawPoint(x, y, size)
+    }
+    public func drawPoint(_ p: Vector2,
+                          file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .point); defer { clearSite() }
+        drawer.drawPoint(p.x, p.y)
+    }
+    public func drawPoint(_ p: Vector2, size: Double,
+                          file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .point); defer { clearSite() }
+        drawer.drawPoint(p.x, p.y, size)
+    }
+    public func drawCircle(_ x: Double, _ y: Double, _ radius: Double,
+                           file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .xy); defer { clearSite() }
         drawer.drawCircle(x, y, radius)
     }
-    public func drawCircle(center: Vector2, radius: Double) {
+    public func drawCircle(center: Vector2, radius: Double,
+                           file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .point); defer { clearSite() }
         drawer.drawCircle(center.x, center.y, radius)
     }
     public func drawCircle(_ circle: Circle) {
@@ -2449,188 +2485,304 @@ open class Sketch {
         drawer.beginCombineDomain(.polar(count: n), .polar(axis: unit, count: n))
         body(); drawer.endCombine()
     }
-    public func drawEllipse(_ x: Double, _ y: Double, _ rx: Double, _ ry: Double) {
+    public func drawEllipse(_ x: Double, _ y: Double, _ rx: Double, _ ry: Double,
+                            file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .xy); defer { clearSite() }
         drawer.drawEllipse(x, y, rx, ry)
     }
-    public func drawEllipse(center: Vector2, rx: Double, ry: Double) {
+    public func drawEllipse(center: Vector2, rx: Double, ry: Double,
+                            file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .point); defer { clearSite() }
         drawer.drawEllipse(center.x, center.y, rx, ry)
     }
-    public func drawTriangle(_ x: Double, _ y: Double, _ radius: Double) {
+    public func drawTriangle(_ x: Double, _ y: Double, _ radius: Double,
+                             file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .xy); defer { clearSite() }
         drawer.drawTriangle(x, y, radius)
     }
-    public func drawTriangle(center: Vector2, radius: Double) {
+    public func drawTriangle(center: Vector2, radius: Double,
+                             file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .point); defer { clearSite() }
         drawer.drawTriangle(center.x, center.y, radius)
     }
-    public func drawTriangle(_ x: Double, _ y: Double, _ base: Double, _ height: Double) {
+    public func drawTriangle(_ x: Double, _ y: Double, _ base: Double, _ height: Double,
+                             file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .xy); defer { clearSite() }
         drawer.drawTriangle(x, y, base, height)
     }
-    public func drawTriangle(apex: Vector2, base: Double, height: Double) {
+    public func drawTriangle(apex: Vector2, base: Double, height: Double,
+                             file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .point); defer { clearSite() }
         drawer.drawTriangle(apex.x, apex.y, base, height)
     }
-    public func drawTriangle(_ a: Vector2, _ b: Vector2, _ c: Vector2) {
+    public func drawTriangle(_ a: Vector2, _ b: Vector2, _ c: Vector2,
+                             file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .points([0, 1, 2])); defer { clearSite() }
         drawer.drawTriangle(a, b, c)
     }
     public func drawTriangle(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double,
-                             _ x3: Double, _ y3: Double) {
+                             _ x3: Double, _ y3: Double,
+                             file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .scalars([0, 1, 2, 3, 4, 5])); defer { clearSite() }
         drawer.drawTriangle(x1, y1, x2, y2, x3, y3)
     }
-    public func drawNgon(_ x: Double, _ y: Double, _ radius: Double, sides: Int) {
+    public func drawNgon(_ x: Double, _ y: Double, _ radius: Double, sides: Int,
+                         file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .xy); defer { clearSite() }
         drawer.drawNgon(x, y, radius, sides: sides)
     }
-    public func drawNgon(center: Vector2, radius: Double, sides: Int) {
+    public func drawNgon(center: Vector2, radius: Double, sides: Int,
+                         file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .point); defer { clearSite() }
         drawer.drawNgon(center.x, center.y, radius, sides: sides)
     }
-    public func drawStar(_ x: Double, _ y: Double, _ outerRadius: Double, _ innerRadius: Double, points: Int) {
+    public func drawStar(_ x: Double, _ y: Double, _ outerRadius: Double, _ innerRadius: Double, points: Int,
+                         file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .xy); defer { clearSite() }
         drawer.drawStar(x, y, outerRadius, innerRadius, points: points)
     }
-    public func drawStar(center: Vector2, outerRadius: Double, innerRadius: Double, points: Int) {
+    public func drawStar(center: Vector2, outerRadius: Double, innerRadius: Double, points: Int,
+                         file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .point); defer { clearSite() }
         drawer.drawStar(center.x, center.y, outerRadius, innerRadius, points: points)
     }
-    public func drawPentagon(_ x: Double, _ y: Double, _ radius: Double) {
+    public func drawPentagon(_ x: Double, _ y: Double, _ radius: Double,
+                             file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .xy); defer { clearSite() }
         drawer.drawPentagon(x, y, radius)
     }
-    public func drawPentagon(center: Vector2, radius: Double) {
+    public func drawPentagon(center: Vector2, radius: Double,
+                             file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .point); defer { clearSite() }
         drawer.drawPentagon(center.x, center.y, radius)
     }
-    public func drawHexagon(_ x: Double, _ y: Double, _ radius: Double) {
+    public func drawHexagon(_ x: Double, _ y: Double, _ radius: Double,
+                            file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .xy); defer { clearSite() }
         drawer.drawHexagon(x, y, radius)
     }
-    public func drawHexagon(center: Vector2, radius: Double) {
+    public func drawHexagon(center: Vector2, radius: Double,
+                            file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .point); defer { clearSite() }
         drawer.drawHexagon(center.x, center.y, radius)
     }
-    public func drawHeptagon(_ x: Double, _ y: Double, _ radius: Double) {
+    public func drawHeptagon(_ x: Double, _ y: Double, _ radius: Double,
+                             file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .xy); defer { clearSite() }
         drawer.drawHeptagon(x, y, radius)
     }
-    public func drawHeptagon(center: Vector2, radius: Double) {
+    public func drawHeptagon(center: Vector2, radius: Double,
+                             file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .point); defer { clearSite() }
         drawer.drawHeptagon(center.x, center.y, radius)
     }
-    public func drawOctagon(_ x: Double, _ y: Double, _ radius: Double) {
+    public func drawOctagon(_ x: Double, _ y: Double, _ radius: Double,
+                            file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .xy); defer { clearSite() }
         drawer.drawOctagon(x, y, radius)
     }
-    public func drawOctagon(center: Vector2, radius: Double) {
+    public func drawOctagon(center: Vector2, radius: Double,
+                            file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .point); defer { clearSite() }
         drawer.drawOctagon(center.x, center.y, radius)
     }
-    public func drawRhombus(_ x: Double, _ y: Double, _ width: Double, _ height: Double, cornerRadius: Double = 0) {
+    public func drawRhombus(_ x: Double, _ y: Double, _ width: Double, _ height: Double, cornerRadius: Double = 0,
+                            file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .xy); defer { clearSite() }
         drawer.drawRhombus(x, y, width, height, cornerRadius: cornerRadius)
     }
-    public func drawRhombus(center: Vector2, width: Double, height: Double, cornerRadius: Double = 0) {
+    public func drawRhombus(center: Vector2, width: Double, height: Double, cornerRadius: Double = 0,
+                            file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .point); defer { clearSite() }
         drawer.drawRhombus(center.x, center.y, width, height, cornerRadius: cornerRadius)
     }
-    public func drawVesica(_ x: Double, _ y: Double, _ width: Double, _ height: Double, cornerRadius: Double = 0) {
+    public func drawVesica(_ x: Double, _ y: Double, _ width: Double, _ height: Double, cornerRadius: Double = 0,
+                           file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .xy); defer { clearSite() }
         drawer.drawVesica(x, y, width, height, cornerRadius: cornerRadius)
     }
-    public func drawVesica(center: Vector2, width: Double, height: Double, cornerRadius: Double = 0) {
+    public func drawVesica(center: Vector2, width: Double, height: Double, cornerRadius: Double = 0,
+                           file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .point); defer { clearSite() }
         drawer.drawVesica(center.x, center.y, width, height, cornerRadius: cornerRadius)
     }
     public func drawMoon(_ x: Double, _ y: Double, _ outerRadius: Double, _ innerRadius: Double,
-                         _ offset: Double, cornerRadius: Double = 0) {
+                         _ offset: Double, cornerRadius: Double = 0,
+                         file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .xy); defer { clearSite() }
         drawer.drawMoon(x, y, outerRadius, innerRadius, offset, cornerRadius: cornerRadius)
     }
     public func drawMoon(center: Vector2, outerRadius: Double, innerRadius: Double,
-                         offset: Double, cornerRadius: Double = 0) {
+                         offset: Double, cornerRadius: Double = 0,
+                         file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .point); defer { clearSite() }
         drawer.drawMoon(center.x, center.y, outerRadius, innerRadius, offset, cornerRadius: cornerRadius)
     }
-    public func drawCross(_ x: Double, _ y: Double, _ length: Double, _ thickness: Double, cornerRadius: Double = 0) {
+    public func drawCross(_ x: Double, _ y: Double, _ length: Double, _ thickness: Double, cornerRadius: Double = 0,
+                          file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .xy); defer { clearSite() }
         drawer.drawCross(x, y, length, thickness, cornerRadius: cornerRadius)
     }
-    public func drawCross(center: Vector2, length: Double, thickness: Double, cornerRadius: Double = 0) {
+    public func drawCross(center: Vector2, length: Double, thickness: Double, cornerRadius: Double = 0,
+                          file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .point); defer { clearSite() }
         drawer.drawCross(center.x, center.y, length, thickness, cornerRadius: cornerRadius)
     }
     /// A filled ring (annulus) between `innerRadius` and `outerRadius`. Unlike the
     /// other region shapes it's **fill-only**: it takes the current `fill` and
     /// ignores `stroke`. For an outlined ring, draw two `drawCircle`s with `noFill()`.
-    public func drawRing(_ x: Double, _ y: Double, _ innerRadius: Double, _ outerRadius: Double) {
+    public func drawRing(_ x: Double, _ y: Double, _ innerRadius: Double, _ outerRadius: Double,
+                         file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .xy); defer { clearSite() }
         drawer.drawRing(x, y, innerRadius, outerRadius)
     }
     /// A filled ring (annulus). **Fill-only** — takes `fill`, ignores `stroke`; for
     /// an outlined ring, draw two `drawCircle`s with `noFill()`.
-    public func drawRing(center: Vector2, innerRadius: Double, outerRadius: Double) {
+    public func drawRing(center: Vector2, innerRadius: Double, outerRadius: Double,
+                         file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .point); defer { clearSite() }
         drawer.drawRing(center.x, center.y, innerRadius, outerRadius)
     }
-    public func drawTrapezoid(_ x: Double, _ y: Double, _ topWidth: Double, _ bottomWidth: Double, _ height: Double) {
+    public func drawTrapezoid(_ x: Double, _ y: Double, _ topWidth: Double, _ bottomWidth: Double, _ height: Double,
+                              file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .xy); defer { clearSite() }
         drawer.drawTrapezoid(x, y, topWidth, bottomWidth, height)
     }
-    public func drawTrapezoid(center: Vector2, topWidth: Double, bottomWidth: Double, height: Double) {
+    public func drawTrapezoid(center: Vector2, topWidth: Double, bottomWidth: Double, height: Double,
+                              file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .point); defer { clearSite() }
         drawer.drawTrapezoid(center.x, center.y, topWidth, bottomWidth, height)
     }
-    public func drawParallelogram(_ x: Double, _ y: Double, _ width: Double, _ height: Double, _ skew: Double) {
+    public func drawParallelogram(_ x: Double, _ y: Double, _ width: Double, _ height: Double, _ skew: Double,
+                                  file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .xy); defer { clearSite() }
         drawer.drawParallelogram(x, y, width, height, skew)
     }
-    public func drawParallelogram(center: Vector2, width: Double, height: Double, skew: Double) {
+    public func drawParallelogram(center: Vector2, width: Double, height: Double, skew: Double,
+                                  file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .point); defer { clearSite() }
         drawer.drawParallelogram(center.x, center.y, width, height, skew)
     }
-    public func drawEgg(_ x: Double, _ y: Double, _ bottomRadius: Double, _ topRadius: Double) {
+    public func drawEgg(_ x: Double, _ y: Double, _ bottomRadius: Double, _ topRadius: Double,
+                        file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .xy); defer { clearSite() }
         drawer.drawEgg(x, y, bottomRadius, topRadius)
     }
-    public func drawEgg(center: Vector2, bottomRadius: Double, topRadius: Double) {
+    public func drawEgg(center: Vector2, bottomRadius: Double, topRadius: Double,
+                        file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .point); defer { clearSite() }
         drawer.drawEgg(center.x, center.y, bottomRadius, topRadius)
     }
-    public func drawHeart(_ x: Double, _ y: Double, _ size: Double) {
+    public func drawHeart(_ x: Double, _ y: Double, _ size: Double,
+                          file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .xy); defer { clearSite() }
         drawer.drawHeart(x, y, size)
     }
-    public func drawHeart(center: Vector2, size: Double) {
+    public func drawHeart(center: Vector2, size: Double,
+                          file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .point); defer { clearSite() }
         drawer.drawHeart(center.x, center.y, size)
     }
-    public func drawCutDisk(_ x: Double, _ y: Double, _ radius: Double, _ cut: Double) {
+    public func drawCutDisk(_ x: Double, _ y: Double, _ radius: Double, _ cut: Double,
+                            file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .xy); defer { clearSite() }
         drawer.drawCutDisk(x, y, radius, cut)
     }
-    public func drawCutDisk(center: Vector2, radius: Double, cut: Double) {
+    public func drawCutDisk(center: Vector2, radius: Double, cut: Double,
+                            file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .point); defer { clearSite() }
         drawer.drawCutDisk(center.x, center.y, radius, cut)
     }
-    public func drawUnevenCapsule(_ a: Vector2, _ b: Vector2, _ ra: Double, _ rb: Double) {
+    public func drawUnevenCapsule(_ a: Vector2, _ b: Vector2, _ ra: Double, _ rb: Double,
+                                  file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .points([0, 1])); defer { clearSite() }
         drawer.drawUnevenCapsule(a, b, ra, rb)
     }
-    public func drawUnevenCapsule(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double, _ ra: Double, _ rb: Double) {
+    public func drawUnevenCapsule(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double, _ ra: Double, _ rb: Double,
+                                  file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .scalars([0, 1, 2, 3])); defer { clearSite() }
         drawer.drawUnevenCapsule(Vector2(x1, y1), Vector2(x2, y2), ra, rb)
     }
-    public func drawHorseshoe(_ x: Double, _ y: Double, _ radius: Double, _ thickness: Double, gap: Double) {
+    public func drawHorseshoe(_ x: Double, _ y: Double, _ radius: Double, _ thickness: Double, gap: Double,
+                              file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .xy); defer { clearSite() }
         drawer.drawHorseshoe(x, y, radius, thickness, gap: gap)
     }
-    public func drawHorseshoe(center: Vector2, radius: Double, thickness: Double, gap: Double) {
+    public func drawHorseshoe(center: Vector2, radius: Double, thickness: Double, gap: Double,
+                              file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .point); defer { clearSite() }
         drawer.drawHorseshoe(center.x, center.y, radius, thickness, gap: gap)
     }
-    public func drawParabola(_ x: Double, _ y: Double, _ width: Double, _ height: Double) {
+    public func drawParabola(_ x: Double, _ y: Double, _ width: Double, _ height: Double,
+                             file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .xy); defer { clearSite() }
         drawer.drawParabola(x, y, width, height)
     }
-    public func drawParabola(center: Vector2, width: Double, height: Double) {
+    public func drawParabola(center: Vector2, width: Double, height: Double,
+                             file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .point); defer { clearSite() }
         drawer.drawParabola(center.x, center.y, width, height)
     }
-    public func drawRoundedX(_ x: Double, _ y: Double, _ length: Double, _ thickness: Double) {
+    public func drawRoundedX(_ x: Double, _ y: Double, _ length: Double, _ thickness: Double,
+                             file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .xy); defer { clearSite() }
         drawer.drawRoundedX(x, y, length, thickness)
     }
-    public func drawRoundedX(center: Vector2, length: Double, thickness: Double) {
+    public func drawRoundedX(center: Vector2, length: Double, thickness: Double,
+                             file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .point); defer { clearSite() }
         drawer.drawRoundedX(center.x, center.y, length, thickness)
     }
-    public func drawBlobbyCross(_ x: Double, _ y: Double, _ radius: Double, blobbiness: Double = 0.5) {
+    public func drawBlobbyCross(_ x: Double, _ y: Double, _ radius: Double, blobbiness: Double = 0.5,
+                                file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .xy); defer { clearSite() }
         drawer.drawBlobbyCross(x, y, radius, blobbiness: blobbiness)
     }
-    public func drawBlobbyCross(center: Vector2, radius: Double, blobbiness: Double = 0.5) {
+    public func drawBlobbyCross(center: Vector2, radius: Double, blobbiness: Double = 0.5,
+                                file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .point); defer { clearSite() }
         drawer.drawBlobbyCross(center.x, center.y, radius, blobbiness: blobbiness)
     }
-    public func drawTunnel(_ x: Double, _ y: Double, _ width: Double, _ height: Double) {
+    public func drawTunnel(_ x: Double, _ y: Double, _ width: Double, _ height: Double,
+                           file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .xy); defer { clearSite() }
         drawer.drawTunnel(x, y, width, height)
     }
-    public func drawTunnel(center: Vector2, width: Double, height: Double) {
+    public func drawTunnel(center: Vector2, width: Double, height: Double,
+                           file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .point); defer { clearSite() }
         drawer.drawTunnel(center.x, center.y, width, height)
     }
-    public func drawStairs(_ x: Double, _ y: Double, _ stepWidth: Double, _ stepHeight: Double, steps: Int) {
+    public func drawStairs(_ x: Double, _ y: Double, _ stepWidth: Double, _ stepHeight: Double, steps: Int,
+                           file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .xy); defer { clearSite() }
         drawer.drawStairs(x, y, stepWidth, stepHeight, steps: steps)
     }
-    public func drawStairs(center: Vector2, stepWidth: Double, stepHeight: Double, steps: Int) {
+    public func drawStairs(center: Vector2, stepWidth: Double, stepHeight: Double, steps: Int,
+                           file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .point); defer { clearSite() }
         drawer.drawStairs(center.x, center.y, stepWidth, stepHeight, steps: steps)
     }
-    public func drawCoolS(_ x: Double, _ y: Double, _ size: Double) {
+    public func drawCoolS(_ x: Double, _ y: Double, _ size: Double,
+                          file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .xy); defer { clearSite() }
         drawer.drawCoolS(x, y, size)
     }
-    public func drawCoolS(center: Vector2, size: Double) {
+    public func drawCoolS(center: Vector2, size: Double,
+                          file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .point); defer { clearSite() }
         drawer.drawCoolS(center.x, center.y, size)
     }
     public func drawArc(_ x: Double, _ y: Double, _ rx: Double, _ ry: Double,
-                        start: Double, stop: Double, mode: ArcMode = .open) {
+                        start: Double, stop: Double, mode: ArcMode = .open,
+                        file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .xy); defer { clearSite() }
         drawer.drawArc(x, y, rx, ry, start: start, stop: stop, mode: mode)
     }
     public func drawArc(center: Vector2, rx: Double, ry: Double,
-                        start: Double, stop: Double, mode: ArcMode = .open) {
+                        start: Double, stop: Double, mode: ArcMode = .open,
+                        file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .point); defer { clearSite() }
         drawer.drawArc(center.x, center.y, rx, ry, start: start, stop: stop, mode: mode)
     }
     public func drawPolyline(_ points: [Vector2], closed: Bool = false) {
@@ -2687,13 +2839,19 @@ open class Sketch {
     public func drawRect(_ rectangle: Rectangle, cornerRadius: Double = 0) {
         drawer.drawRect(rectangle, cornerRadius: cornerRadius)
     }
-    public func drawRect(_ x: Double, _ y: Double, _ width: Double, _ height: Double, cornerRadius: Double = 0) {
+    public func drawRect(_ x: Double, _ y: Double, _ width: Double, _ height: Double, cornerRadius: Double = 0,
+                         file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .xy); defer { clearSite() }
         drawer.drawRect(Rectangle(x: x, y: y, width: width, height: height), cornerRadius: cornerRadius)
     }
-    public func drawRect(corner: Vector2, width: Double, height: Double, cornerRadius: Double = 0) {
+    public func drawRect(corner: Vector2, width: Double, height: Double, cornerRadius: Double = 0,
+                         file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .point); defer { clearSite() }
         drawer.drawRect(Rectangle(corner: corner, width: width, height: height), cornerRadius: cornerRadius)
     }
-    public func drawRect(center: Vector2, width: Double, height: Double, cornerRadius: Double = 0) {
+    public func drawRect(center: Vector2, width: Double, height: Double, cornerRadius: Double = 0,
+                         file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .point); defer { clearSite() }
         drawer.drawRect(Rectangle(center: center, width: width, height: height), cornerRadius: cornerRadius)
     }
 
@@ -3099,8 +3257,14 @@ open class Sketch {
     }
     public func translate(_ offset: Vector2) { drawer.translate(offset) }
     public func translate(_ x: Double, _ y: Double) { drawer.translate(Vector2(x, y)) }
-    public func drawLine(_ a: Vector2, _ b: Vector2) { drawer.drawLine(a, b) }
-    public func drawLine(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double) {
+    public func drawLine(_ a: Vector2, _ b: Vector2,
+                         file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .points([0, 1])); defer { clearSite() }
+        drawer.drawLine(a, b)
+    }
+    public func drawLine(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double,
+                         file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .scalars([0, 1, 2, 3])); defer { clearSite() }
         drawer.drawLine(Vector2(x1, y1), Vector2(x2, y2))
     }
     /// Draw an arrow from one point to another: a stroked shaft ending in a
@@ -3125,20 +3289,30 @@ open class Sketch {
     }
     /// `drawArrow(from:to:)` with the two points as scalar coordinates.
     public func drawArrow(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double,
-                          headLength: Double? = nil, headWidth: Double? = nil) {
+                          headLength: Double? = nil, headWidth: Double? = nil,
+                          file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .scalars([0, 1, 2, 3])); defer { clearSite() }
         drawer.drawArrow(from: Vector2(x1, y1), to: Vector2(x2, y2),
                          headLength: headLength, headWidth: headWidth)
     }
-    public func drawOrientedBox(_ a: Vector2, _ b: Vector2, thickness: Double) {
+    public func drawOrientedBox(_ a: Vector2, _ b: Vector2, thickness: Double,
+                                file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .points([0, 1])); defer { clearSite() }
         drawer.drawOrientedBox(a, b, thickness: thickness)
     }
-    public func drawOrientedBox(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double, thickness: Double) {
+    public func drawOrientedBox(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double, thickness: Double,
+                                file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .scalars([0, 1, 2, 3])); defer { clearSite() }
         drawer.drawOrientedBox(x1, y1, x2, y2, thickness: thickness)
     }
-    public func drawOrientedVesica(_ a: Vector2, _ b: Vector2, width: Double) {
+    public func drawOrientedVesica(_ a: Vector2, _ b: Vector2, width: Double,
+                                   file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .points([0, 1])); defer { clearSite() }
         drawer.drawOrientedVesica(a, b, width: width)
     }
-    public func drawOrientedVesica(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double, width: Double) {
+    public func drawOrientedVesica(_ x1: Double, _ y1: Double, _ x2: Double, _ y2: Double, width: Double,
+                                   file: StaticString = #fileID, line: Int = #line, column: Int = #column) {
+        markSite(file, line, column, .scalars([0, 1, 2, 3])); defer { clearSite() }
         drawer.drawOrientedVesica(x1, y1, x2, y2, width: width)
     }
     public func drawBezier(_ start: Vector2, _ control: Vector2, _ end: Vector2) {

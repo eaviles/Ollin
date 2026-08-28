@@ -896,6 +896,13 @@ let package = Package(
             name: "OllinProjectsTests",
             dependencies: ["OllinProjects"]
         ),
+        // Editing a sketch's own source from the window it runs in: the scanner
+        // that finds one draw call's numbers and writes the new ones. Text in,
+        // text out, with no GPU and no compile, so it runs in a second.
+        .testTarget(
+            name: "OllinRuntimeTests",
+            dependencies: ["Ollin", "OllinRuntime"]
+        ),
     ],
     // The whole package builds in the Swift 6 language mode, so data-race safety
     // is enforced as errors everywhere — framework, hosts, and example sketches.

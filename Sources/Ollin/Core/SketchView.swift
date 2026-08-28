@@ -1262,8 +1262,20 @@ final class OllinMTKView: MTKView {
             userInfo: nil))
     }
 
-    override func mouseMoved(with event: NSEvent) { reportPointer(event) }
+    override func mouseMoved(with event: NSEvent) {
+        reportPointer(event)
+        if let dragger = shapeDragging, event.modifierFlags.contains(Self.shapeDragModifier),
+           let point = canvasPoint(event.locationInWindow) {
+            dragger.pointerHovered(at: point)
+        }
+    }
     override func mouseDragged(with event: NSEvent) {
+        if draggingShape {
+            if let point = canvasPoint(event.locationInWindow) {
+                shapeDragging?.dragMoved(to: point)
+            }
+            return
+        }
         reportPointer(event)
         // While a pressure-event stream is live, drag events must stay quiet: a
         // pressure-sensing trackpad's drag events carry the legacy constant 1 in
@@ -1276,6 +1288,14 @@ final class OllinMTKView: MTKView {
         // A click reclaims keyboard focus (e.g. after a click on an inspector
         // control moved first responder away), so the canvas keeps the keys.
         window?.makeFirstResponder(self)
+        // A host that can edit the sketch's source takes the modified press,
+        // and only if there is a shape under it; the sketch never sees that
+        // one, so a drag that moves a circle can't also paint with it.
+        if let dragger = shapeDragging, event.modifierFlags.contains(Self.shapeDragModifier),
+           let point = canvasPoint(event.locationInWindow), dragger.dragBegan(at: point) {
+            draggingShape = true
+            return
+        }
         // The hosting layer's gesture recognizers install their own deep-click
         // pressure configuration, which takes precedence over the view property
         // for the press that is starting: re-claim the drawing gesture for this
@@ -1287,6 +1307,11 @@ final class OllinMTKView: MTKView {
         sketch?.handleMouseButton(pressed: true)
     }
     override func mouseUp(with event: NSEvent) {
+        if draggingShape {
+            draggingShape = false
+            shapeDragging?.dragEnded()
+            return
+        }
         reportPointer(event)
         sketch?.setPressure(0, canVary: false)
         sketch?.handleMouseButton(pressed: false)
@@ -1349,7 +1374,31 @@ final class OllinMTKView: MTKView {
     /// flags onto Ollin's platform-neutral set.
     override func flagsChanged(with event: NSEvent) {
         sketch?.setModifiers(ModifierKeys(event.modifierFlags))
+        // Holding the modifier is what arms shape dragging: the sketch starts
+        // recording where each shape was written, so the next frame can say
+        // what the pointer is over. Letting go puts that cost away again.
+        if let dragger = shapeDragging {
+            let held = event.modifierFlags.contains(Self.shapeDragModifier)
+            let pointer = window.flatMap { canvasPoint($0.mouseLocationOutsideOfEventStream) }
+            dragger.modifierChanged(held: held, at: pointer)
+        }
     }
+
+    // MARK: Dragging a shape back into the source
+
+    /// The modifier that hands a press to the host instead of the sketch.
+    /// Command is free here: the camera rig's own modified drags are shift and
+    /// option, and a sketch reading a modifier is reading a *held* key, not a
+    /// press the canvas swallowed.
+    static let shapeDragModifier = NSEvent.ModifierFlags.command
+
+    /// Installed by a host that can edit the sketch's own source; `nil` in
+    /// every other run, which is what keeps an ordinary window's clicks
+    /// entirely the sketch's.
+    weak var shapeDragging: (any ShapeDragging)?
+
+    /// Whether the press being held belongs to the host's shape drag.
+    private var draggingShape = false
 
     // MARK: Keyboard
 
@@ -1476,13 +1525,20 @@ final class OllinMTKView: MTKView {
         report(windowPoint: event.locationInWindow)
     }
 
-    /// Convert a point in window coordinates to sketch space and hand it to the
-    /// sketch. The view's bounds are in points, but the logical canvas
-    /// (`sketch.width`/`height`) may be larger — e.g. a 1080 canvas shown in an
-    /// 810-pt preview window — so normalize by the bounds and rescale into canvas
-    /// space. AppKit is y-up, so y is flipped to the sketch's top-left origin.
+    /// Hand the sketch a window point in its own coordinates (see
+    /// `canvasPoint(_:)` for the conversion).
     private func report(windowPoint: NSPoint) {
-        guard let sketch else { return }
+        guard let sketch, let point = canvasPoint(windowPoint) else { return }
+        sketch.setMouse(x: point.x, y: point.y)
+    }
+
+    /// A point in window coordinates, in sketch space. The view's bounds are in
+    /// points, but the logical canvas (`sketch.width`/`height`) may be larger
+    /// (a 1080 canvas shown in an 810-pt preview window), so normalize by the
+    /// bounds and rescale into canvas space. AppKit is y-up, so y is flipped to
+    /// the sketch's top-left origin.
+    func canvasPoint(_ windowPoint: NSPoint) -> Vector2? {
+        guard let sketch else { return nil }
         let p = convert(windowPoint, from: nil)
         let bw = Double(bounds.width), bh = Double(bounds.height)
         // A fitted piece fills the display and puts its picture inside that
@@ -1491,12 +1547,11 @@ final class OllinMTKView: MTKView {
         if let projection, bw > 0, bh > 0 {
             let onCanvas = projection.canvasPoint(
                 fromOutput: Vector2(Double(p.x) / bw, (bh - Double(p.y)) / bh))
-            sketch.setMouse(x: onCanvas.x * sketch.width, y: onCanvas.y * sketch.height)
-            return
+            return Vector2(onCanvas.x * sketch.width, onCanvas.y * sketch.height)
         }
         let x = bw > 0 ? Double(p.x) / bw * sketch.width : Double(p.x)
         let y = bh > 0 ? (bh - Double(p.y)) / bh * sketch.height : bh - Double(p.y)
-        sketch.setMouse(x: x, y: y)
+        return Vector2(x, y)
     }
 
     // MARK: - What the canvas says about itself
@@ -1716,6 +1771,9 @@ public struct SketchView: View {
     private let keyboardFocus: KeyboardFocus
     private let showsKeyboardHint: Bool
     private let onRunner: (@MainActor (SketchRunner) -> Void)?
+    /// A host that turns a modified drag on the canvas into an edit of the
+    /// sketch's own file (see `draggingShapes(with:)`).
+    private var shapeDragging: (any ShapeDragging)?
 
     /// Whether the canvas holds the keys right now, driving the hint.
     @State private var keyFocus = CanvasKeyFocus()
@@ -1762,10 +1820,21 @@ public struct SketchView: View {
 
     private var stats: FrameStats { injectedStats ?? ownedStats }
 
+    /// Hand modified drags on the canvas to `handler`, which moves the shape
+    /// under the pointer by editing the file the sketch was written in. Only a
+    /// host that owns that file installs one; every other window leaves every
+    /// click to the sketch.
+    package func draggingShapes(with handler: any ShapeDragging) -> SketchView {
+        var copy = self
+        copy.shapeDragging = handler
+        return copy
+    }
+
     public var body: some View {
         ZStack(alignment: .bottom) {
             MetalCanvas(sketch: sketch, stats: stats, cameraState: cameraState,
-                        keyboardFocus: keyboardFocus, keyFocus: keyFocus, onRunner: onRunner)
+                        keyboardFocus: keyboardFocus, keyFocus: keyFocus,
+                        shapeDragging: shapeDragging, onRunner: onRunner)
             // Mounted only for a 3D frame the sketch or the menu asked to annotate,
             // so a 2D sketch never builds the widget or its animation timeline. The
             // widget is its own size, so it intercepts clicks only over itself.
@@ -1810,6 +1879,7 @@ private struct MetalCanvas: NSViewRepresentable {
     let cameraState: CameraOrientationState
     let keyboardFocus: KeyboardFocus
     let keyFocus: CanvasKeyFocus
+    let shapeDragging: (any ShapeDragging)?
     let onRunner: (@MainActor (SketchRunner) -> Void)?
 
     func makeCoordinator() -> Coordinator {
@@ -1826,6 +1896,7 @@ private struct MetalCanvas: NSViewRepresentable {
         view.onKeyboardFocusChange = { [weak keyFocus] focused in
             keyFocus?.isFocused = focused
         }
+        view.shapeDragging = shapeDragging
         let runner = SketchRunner(sketch: sketch, view: view, device: device)
         runner.observeStats(into: stats)
         runner.observeOrientation(into: cameraState)
@@ -1835,7 +1906,11 @@ private struct MetalCanvas: NSViewRepresentable {
         return view
     }
 
-    func updateNSView(_ nsView: MTKView, context: Context) {}
+    func updateNSView(_ nsView: MTKView, context: Context) {
+        // A host can install its editor after the view exists (the live host
+        // mounts the canvas on the first successful compile).
+        (nsView as? OllinMTKView)?.shapeDragging = shapeDragging
+    }
 
     /// Stop the old view's loop when SwiftUI removes it — notably when the gallery
     /// swaps one example for another (the detail pane is keyed by example `id`, so

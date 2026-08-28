@@ -704,6 +704,20 @@ extension Drawer {
         let weight = strokeWidth ?? self.strokeWidth
         let hasStroke = stroke != nil && weight > 0
         guard fill != nil || hasStroke else { return }
+        // Where this shape was written, for a host that lets a pointer drag it.
+        // A shape with nothing to draw never gets here, so it can't be picked.
+        if recordsSourceSites {
+            let half = Vector2(Double(size.x), Double(size.y))
+            switch shape {
+            case .ellipse:
+                recordSourcePick(.ellipse(center: center, radii: half))
+            case .triangle:
+                // The isosceles form's origin is its apex, and it opens toward +y.
+                recordSourcePick(.wedge(apex: center, halfBase: half.x, height: half.y))
+            default:
+                recordSourcePick(.box(center: center, half: half))
+            }
+        }
         // An analytic shape carries one width in its instance, so a width profile
         // has nowhere to live: it draws at the plain weight and says so once.
         if hasStroke, !strokeProfileShape.isUniform {

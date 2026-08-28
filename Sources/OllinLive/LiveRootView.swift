@@ -41,6 +41,15 @@ struct LiveRootView: View {
 
     let session: LiveSession
 
+    /// Command-drag on the canvas: what the pointer is over, and the edit it
+    /// writes into the sketch's own file.
+    @State private var shapeDrag: ShapeDragController
+
+    init(session: LiveSession) {
+        self.session = session
+        _shapeDrag = State(initialValue: ShapeDragController(session: session))
+    }
+
     /// Briefly shown after a successful hot reload.
     @State private var showReloadedToast = false
     /// The pending hide of the reload toast — canceled and rescheduled by each
@@ -168,6 +177,13 @@ struct LiveRootView: View {
                 SketchView(sketch, stats: session.stats, showsInspectorPanel: false) { runner in
                     session.attach(runner)
                 }
+                .draggingShapes(with: shapeDrag)
+
+                // Host chrome, never canvas: the outline of the shape a
+                // Command-drag is about to move sits over the sketch as a
+                // sibling view, so it can never land in an export.
+                ShapeDragOverlay(controller: shapeDrag, canvas: sketch.canvasSize.cgSize,
+                                 display: size)
 
                 // A reload compile leaves the canvas alone — the last good
                 // sketch keeps animating while the title-bar chip pulses amber.

@@ -180,6 +180,23 @@ When you want a rectangle centered on a point instead of hung from its corner, a
 
 > **Swift note.** Some calls take bare values in a fixed order, like `drawCircle(540, 540, 200)` for x, y, and radius, which is a convention you'll internalize quickly. Others name their values, like `Color(hex: 0xE4572E)`, where the `hex:` is part of the call. And `.white` is shorthand for `Color.white`, because Swift lets you drop the type name when it can already tell what you mean.
 
+## Moving something by hand
+
+Placing a shape by typing numbers is fine until you want it *a bit to the left*. Then it becomes a loop of guessing: change 300 to 280, save, look, change it again.
+
+While the sketch is running under `swift run OllinLive`, you can skip that. Hold Command and move the pointer over the window. The shape under it is outlined, and the line of your file that drew it is named above the outline. Drag the shape where you want it, let go, and those numbers in your file are the ones that change.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/01-HelloOllin/DragToSource-dark.jpg">
+  <img src="Images/01-HelloOllin/DragToSource.jpg" alt="Two panels: a circle outlined with the label Sketch.swift:12 while Command is held, and the same circle after being dragged, with the two numbers in the code line below changed" width="680">
+</picture>
+
+Your editor will offer to reload the file, and the running window has already reloaded itself. Nothing else on the line moves: the radius, your spacing, and the comment you left at the end are all where you put them.
+
+Two things are worth knowing before you rely on it. A number written whole stays whole: a shape placed at `300` lands on `286`, never `285.7`, and a nudge under half a point changes nothing. And only a plain number can be dragged. If you wrote `drawCircle(width / 2, 300, 40)`, that first slot holds no number to change. The host says so rather than moving anything: *places this shape with `width / 2`, so there is no number to move.*
+
+That limit is the honest shape of the feature. The file is the sketch, and dragging edits the file. So anything the file works out for itself is changed the way it was written. [Dragging a shape](../Docs/Tools/DragToEdit.md) covers the rest, including named points and lines with two ends.
+
 ## It moves on its own
 
 This is the idea the framework is named for. Change your `drawCircle` line to:
@@ -343,11 +360,12 @@ The `setup()` and `draw()` sketch model comes from [Processing](https://processi
 - [Canvas](../Docs/Core/Canvas.md): canvas sizes and presets, the preview window, and writing sketches that hold up at any resolution (`scale` for sizes, and `uv(u, v)` for placing things as 0…1 fractions of the canvas).
 - [Drawing](../Docs/Drawing/Drawing.md): every shape and the complete ink state.
 - [The project generator](../Docs/Tools/ProjectGenerator.md): every template and option behind `ollin new` and `ollin generate`, what a generated folder holds, and how to add a template of your own.
+- [Dragging a shape](../Docs/Tools/DragToEdit.md): everything a Command-drag can move, what it writes, and why a calculation is refused by name.
 - [Input](../Docs/Helpers/Input.md): the keyboard, click hooks, and the rest of the mouse.
 - [Parameters](../Docs/Helpers/Parameters.md): the full knob family (toggles, menus, pads, and friends), grouping knobs into cards, icons, smoothing, and driving knobs from MIDI or OSC hardware.
 - [Appendix A, Just enough Swift](A-JustEnoughSwift.md): the language met properly, every construct these sketches lean on taught in order. [The Swift quick reference](../Docs/Swift.md) is its terse sibling, for whenever a single construct felt mysterious.
 - Appendix B draws this chapter's math, one picture per idea: [Where things are](B-JustEnoughMath.md#where-things-are), [Angles and circles](B-JustEnoughMath.md#angles-and-circles), [Fractions, mapping, and wrapping](B-JustEnoughMath.md#fractions-mapping-and-wrapping).
-- Worked examples: [`Examples/Basic/HelloCircle`](../Examples/Basic/HelloCircle/Sketch.swift) and the knobs demo [`Examples/Live/Parameters`](../Examples/Live/Parameters/Sketch.swift).
+- Worked examples: [`Examples/Basic/HelloCircle`](../Examples/Basic/HelloCircle/Sketch.swift), the knobs demo [`Examples/Live/Parameters`](../Examples/Live/Parameters/Sketch.swift), and a page of shapes to drag around, [`Examples/Live/DragToEdit`](../Examples/Live/DragToEdit/Sketch.swift).
 
 ---
 
