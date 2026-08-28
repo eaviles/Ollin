@@ -1195,6 +1195,32 @@ open class Sketch {
     /// environment reflection remains. Pass `false` to turn it back off.
     public func rayTracedReflections(_ on: Bool = true) { drawer.rayTracedReflections(on) }
 
+    /// Show the scene *through* this frame's glass, on any Metal GPU. A transmissive
+    /// material (`Material.glass`) normally shows only its `environment(_:)`, so a bottle
+    /// standing in front of a drawn scene stays empty: the wall behind it, the floor, the
+    /// other objects, none of them appear inside the glass. With this on, they do. The
+    /// renderer draws the frame a second time with every transmissive surface taken out,
+    /// and each piece of glass reads that picture where its own refracted view ray leaves
+    /// the body, so a solid sphere gathers a narrower, shifted view the way a glass ball
+    /// does and a frosted one blurs it. Per-frame state like the lights, so call it in
+    /// `draw()`.
+    ///
+    /// It needs a camera, an `environment(_:)` (transmission always does), and something
+    /// in the frame that transmits; it is a no-op otherwise. Two limits come with reading
+    /// the screen rather than tracing rays: only what the camera drew can show through, so
+    /// a lookup that leaves the frame fades back into the environment, and one piece of
+    /// glass does not appear inside another. A solid body also shifts and gathers the
+    /// scene rather than inverting it, since it reads one point per pixel where a lens is
+    /// a whole path with a second bend on the way out. `rayTracedReflections()` has none
+    /// of those limits and takes over where it runs, so turning both on costs nothing. The second
+    /// pass is the price: a frame with glass draws its scene twice. Pass `false`, or call
+    /// `noSceneThroughGlass()`, to turn it back off.
+    public func sceneThroughGlass(_ on: Bool = true) { drawer.sceneThroughGlass(on) }
+
+    /// Stop showing the scene through glass (the default): transmissive surfaces go back
+    /// to refracting the environment alone.
+    public func noSceneThroughGlass() { drawer.sceneThroughGlass(false) }
+
     /// Gather real-time global illumination this frame, so light *bounces*: a red wall
     /// tints the white floor beside it, a bright floor fills in an overhang's shadow, and
     /// a room lit through a doorway glows with light the sun never touches directly. The

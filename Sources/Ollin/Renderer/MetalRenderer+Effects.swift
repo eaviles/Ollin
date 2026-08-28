@@ -2565,6 +2565,8 @@ extension MetalRenderer {
                         gi: GIResolved? = nil,
                         caustics: MTLTexture? = nil,
                         pathTraced: (color: MTLTexture, depth: MTLTexture, invSamples: Float)? = nil,
+                        sceneBehind: (texture: MTLTexture, viewProjection: simd_float4x4)? = nil,
+                        skippingTransmissive: Bool = false,
                         target passTarget: RenderTarget? = nil,
                         taaJitter: SIMD2<Float> = .zero) {
         let vertices = drawer.vertices
@@ -2786,6 +2788,18 @@ extension MetalRenderer {
         // (nil keeps `causticsEnabled` 0 and every carrier's branch untaken,
         // byte-identical). Main canvas only, like the deferred reflection; the
         // scale is 1 while the layer renders at full resolution.
+        // The scene behind the glass (`sceneThroughGlass()`): the layer this frame's
+        // pre-pass drew with every transmissive surface taken out, read by a transmissive
+        // fragment along its own refracted direction. nil keeps `sceneBehind.x` 0 and
+        // every carrier's branch untaken, byte-identical. The view projection is the one
+        // the layer was actually drawn with, so an exit point lands on the texel it
+        // holds; the layer's top mip drives the roughness blur, and the fade band is a
+        // fixed fraction of the frame.
+        if let sceneBehind {
+            lighting.sceneBehind = SIMD4(1, Float(sceneBehind.texture.mipmapLevelCount - 1),
+                                         Float(sceneBehindEdgeFade), 0)
+            lighting.sceneViewProjection = sceneBehind.viewProjection
+        }
         if caustics != nil {
             lighting.causticsEnabled = 1
             lighting.causticsScale = 1.0
@@ -2948,6 +2962,10 @@ extension MetalRenderer {
             // The contact-shadow mask (tex 16), sampled by screen position when
             // `lighting.contactShadow.x` is set; a never-sampled stand-in otherwise.
             encoder.setFragmentTexture(contactShadow ?? strip, index: 16)
+            // The scene behind the glass (tex 27), read along a transmissive surface's
+            // own refracted direction when `lighting.sceneBehind.x` is set; a
+            // never-sampled stand-in otherwise.
+            encoder.setFragmentTexture(sceneBehind?.texture ?? strip, index: 27)
             // The pre-traced reflection layer (tex 7) when the deferred path is on;
             // a never-sampled stand-in otherwise (`rtReflectionDeferred` gates the
             // read). Only part of the RT-compiled fragment signature.
@@ -2989,6 +3007,10 @@ extension MetalRenderer {
             // skips target-tagged runs, and a target pass skips everything but its
             // own. `next` stays the globally-next batch so the buffer range is right.
             if batch.target !== passTarget { continue }
+            // The scene-behind pre-pass draws the frame with the glass taken out, so a
+            // refracted read finds what stands behind the body rather than the body
+            // itself. Off (the default) this never fires and the loop is unchanged.
+            if skippingTransmissive, batch.isTransmissive { continue }
             // A clip batch without a stencil attachment can't draw (its pipeline
             // declares the stencil format); skip it, so a failed stencil allocation
             // degrades to unclipped drawing rather than a validation error.

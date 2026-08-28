@@ -972,6 +972,24 @@ final class MetalRenderer {
     var contactShadowDepthTex: MTLTexture?
     var contactShadowSize = (width: 0, height: 0)
 
+    /// The scene-behind pre-pass targets (`sceneThroughGlass()`): the whole frame drawn
+    /// once more with every transmissive run left out, into the same MSAA color format
+    /// and depth the main pass uses, resolving into a *mipmapped* texture the glass reads
+    /// (the mip chain is the roughness blur, so a frosted body softens the scene the way
+    /// it softens the environment). Cached by size, rewritten whole each frame the
+    /// feature is on. `.private`, so nothing round-trips to the CPU.
+    var sceneBehindMSAATex: MTLTexture?
+    var sceneBehindDepthTex: MTLTexture?
+    var sceneBehindResolveTex: MTLTexture?
+    var sceneBehindSize = (width: 0, height: 0)
+
+    /// How far into the frame the scene-behind read fades out, in uv. A screen-space
+    /// lookup knows only what the camera drew, so rather than smearing the border pixel
+    /// across a body's edge, the sample eases back into the refracted environment across
+    /// this band. Two percent of the frame is wide enough to read as a soft handover and
+    /// narrow enough to leave the middle of a picture untouched.
+    var sceneBehindEdgeFade: Float { 0.02 }
+
     /// Per-frame-ring pools of effects-layer textures, reused across frames so a
     /// sketch that uses render targets every frame allocates them once. Keyed by the
     /// ring slot (`frameIndex`) so a texture is never reused while an in-flight frame
@@ -1853,6 +1871,19 @@ final class MetalRenderer {
         let contactShadow = encodeContactShadowPass(
             drawer, into: commandBuffer, meshBuffer: buffers.mesh,
             width: renderWidth, height: renderHeight, taaJitter: taaJitter)
+        // The scene behind the glass: the frame drawn once more with every transmissive
+        // run left out, for a transmissive surface to read along its refracted direction.
+        // nil when the sketch didn't ask, when nothing transmits, or when the reflection
+        // trace already covers the same view (its gate then zeroes, byte-identical).
+        let sceneBehind = encodeSceneBehindPass(
+            drawer, into: commandBuffer, viewport: viewport, buffers: buffers,
+            width: renderWidth, height: renderHeight,
+            shadowMap: renderedShadow.twoD, shadowCube: renderedShadow.cube,
+            shadowAccel: renderedShadow.accel,
+            reflectAccel: renderedShadow.reflectAccel,
+            reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
+            halfResField: halfResField, halfResFieldShadow: halfResFieldShadow,
+            contactShadow: contactShadow, gi: gi, caustics: caustics)
 
         guard let geomEncoder = countedEncoder(commandBuffer, geomPass, caller: "canvas") else {
             returnFrameSlot()   // nothing encoded; hand the slot back
@@ -1890,6 +1921,7 @@ final class MetalRenderer {
                contactShadow: contactShadow,
                gi: gi,
                caustics: caustics,
+               sceneBehind: sceneBehind,
                taaJitter: taaJitter)
         geomEncoder.endEncoding()
 
@@ -2453,6 +2485,19 @@ final class MetalRenderer {
         let contactShadow = encodeContactShadowPass(
             drawer, into: commandBuffer, meshBuffer: buffers.mesh,
             width: width, height: height)
+        // The scene behind the glass, encoded once outside any TAA sample loop for the
+        // same reason the contact mask is: it is screen-space and unjittered, and a
+        // jittered composite reads it at most half a pixel off.
+        let sceneBehind = encodeSceneBehindPass(
+            drawer, into: commandBuffer, viewport: viewport, buffers: buffers,
+            width: width, height: height,
+            shadowMap: renderedShadow.twoD, shadowCube: renderedShadow.cube,
+            shadowAccel: renderedShadow.accel,
+            reflectAccel: renderedShadow.reflectAccel,
+            reflectGeoOffsets: renderedShadow.reflectGeoOffsets,
+            halfResField: halfResField, halfResFieldShadow: halfResFieldShadow,
+            contactShadow: contactShadow, gi: gi, caustics: caustics,
+            pathTraced: pathTraced)
 
         // Temporal AA, historyless: render the geometry N times under the fixed
         // jitter sequence and average within this one frame, the deterministic
@@ -2496,6 +2541,7 @@ final class MetalRenderer {
                        gi: gi,
                        caustics: caustics,
                        pathTraced: pathTraced,
+                       sceneBehind: sceneBehind,
                        taaJitter: jitter)
                 encoder.endEncoding()
                 let scattered = applySubsurfaceScattering(drawer, resolved: resolveTexture,
@@ -2551,7 +2597,8 @@ final class MetalRenderer {
                    contactShadow: contactShadow,
                    gi: gi,
                    caustics: caustics,
-                   pathTraced: pathTraced)
+                   pathTraced: pathTraced,
+                   sceneBehind: sceneBehind)
             encoder.endEncoding()
 
             // Tone-map the resolved float frame (after the subsurface-scattering

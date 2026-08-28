@@ -211,6 +211,22 @@ struct GeometryBatch {
     var retainedTransform: matrix_float3x3?
 }
 
+extension GeometryBatch {
+    /// Whether this run draws glass: a lit physically-based surface that lets light
+    /// through. The scene-behind pre-pass (`sceneThroughGlass`) leaves these runs out,
+    /// so what it draws is the scene with the glass removed, which is exactly what a
+    /// refracted ray should find. The wireframe, grid, and matcap variants of a mesh
+    /// batch carry no finish, so they never count.
+    var isTransmissive: Bool {
+        switch kind {
+        case .mesh3D, .meshInstanced, .meshField: break
+        default: return false
+        }
+        guard !meshWireframe, !meshGrid, matcap == nil else { return false }
+        return finish.shadingModel == 3 && finish.transmission > 0
+    }
+}
+
 /// The drawing state machine and per-frame geometry recorder.
 ///
 /// `Drawer` is a state machine: you set *state* (fill, stroke, weight,
@@ -504,6 +520,15 @@ final class Drawer {
     /// acceleration structure for it and sets `OllinLighting.rtReflections`. A no-op on a
     /// non-ray-tracing GPU (the IBL-prefilter reflection remains).
     private(set) var rayTracedReflectionsEnabled = false
+
+    /// Whether this frame shows the scene *through* its transmissive surfaces without
+    /// tracing it (see `sceneThroughGlass`). Per-frame state like the lights. When on,
+    /// the renderer draws the frame once more with every transmissive surface taken out
+    /// and the glass reads that layer along its own refracted direction, so a bottle
+    /// standing in front of the scene carries the scene inside it on any Metal GPU.
+    /// Inert when nothing in the frame transmits, and stood aside for by
+    /// `rayTracedReflections`, which traces the same view against the real geometry.
+    private(set) var sceneThroughGlassEnabled = false
 
     /// The lens flare this frame adds, or nil for none (see `lensFlare`). Per-frame
     /// state like the lights. When set, the renderer works out the ghosts the lens
@@ -2129,6 +2154,14 @@ final class Drawer {
     /// a no-op without a ray-tracing device or an environment to fall back to on a miss.
     func rayTracedReflections(_ enabled: Bool = true) { rayTracedReflectionsEnabled = enabled }
 
+    /// Show the scene *through* this frame's transmissive surfaces, on any Metal GPU.
+    /// Per-frame state like the lights; set it in `draw()`. The renderer draws the frame
+    /// a second time with every transmissive surface taken out, and the glass reads that
+    /// layer where its own refracted view ray leaves the body. A no-op when nothing in
+    /// the frame transmits, when there is no environment to transmit against, and
+    /// wherever `rayTracedReflections` already traces the same view.
+    func sceneThroughGlass(_ enabled: Bool = true) { sceneThroughGlassEnabled = enabled }
+
     /// Gather real-time global illumination this frame: bounce light between the scene's
     /// surfaces through a re-traced probe grid. Per-frame state like the lights; set it
     /// in `draw()`. `intensity` scales the bounce (1 = physical). A no-op without a
@@ -3610,6 +3643,7 @@ final class Drawer {
         contactShadowsEnabled = false
         contactShadowLength = nil
         rayTracedReflectionsEnabled = false
+        sceneThroughGlassEnabled = false
         globalIlluminationEnabled = false
         giIntensity = 1
         causticsEnabled = false

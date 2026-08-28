@@ -955,6 +955,24 @@ typedef struct {
                                   // low-elevation reddening and the overall in-scatter gain);
                                   // w = the aerosol (haze) fraction of the extinction, 0…1
                                   // (0 = pure molecular blue-shift, 1 = gray haze).
+    simd_float4 sceneBehind;      // screen-space refraction (`sceneThroughGlass()`, every GPU):
+                                  // the frame drawn once more with every transmissive surface
+                                  // taken out, bound at fragment texture 27 and read by a
+                                  // transmissive physically-based surface along its own refracted
+                                  // direction, so what stands behind the glass shows *inside* it.
+                                  // x = the gate (1 while the layer is bound; 0 leaves every
+                                  // carrier's branch untaken, byte-identical), y = the layer's top
+                                  // mip level (the roughness lod ramp, so frosting blurs what
+                                  // shows through the way it blurs the environment), z = the
+                                  // screen-edge fade width in uv (a lookup that leaves the frame
+                                  // dissolves back into the environment instead of smearing the
+                                  // border pixel, which is the honest edge of a screen-space
+                                  // read), w unused.
+    simd_float4x4 sceneViewProjection;
+                                  // world -> clip of the frame being rendered, carrying the same
+                                  // temporal-AA jitter the geometry does, so a refracted exit
+                                  // point projects onto the texel the layer actually holds. Read
+                                  // only under `sceneBehind.x`.
     int   causticsEnabled;        // 1 = the resolved caustics layer is bound at fragment texture
                                   // 25 (main canvas, `caustics()` on a ray-tracing device) and the
                                   // lit mesh fragments add it by screen position; 0 leaves every

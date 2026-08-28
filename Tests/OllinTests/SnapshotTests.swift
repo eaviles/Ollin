@@ -341,6 +341,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("glass-materials",
                  note: "Transmissive (glass) physically-based spheres over a bundled environment, no ray tracing: pins the environment-refraction base path every GPU gets (the entry refract + analytic interior span + curvature-blended exit for a solid, the parallel thin exit, the IOR-remapped frosting lod, Beer-Lambert absorption, the f0-from-IOR packing, and the transmitted-for-diffuse swap in the IBL ambient and the direct-light diffKeep). Fixed camera + environment, no time.",
                  make: { GlassScene() }),
+    SnapshotCase("scene-through-glass",
+                 note: "The same glass bodies over colored pillars with sceneThroughGlass() on and no ray tracing: pins the whole screen-space transmission chain (the second geometry pass that leaves every transmissive run out, its multisample resolve into a mipmapped layer, the mip generation the roughness lod rides, the exit point projected through the frame's own view projection, the screen-edge coverage fade back into the environment, and the mix over the environment refraction inside the IBL ambient). Fixed camera + environment, no time.",
+                 make: { SceneThroughGlassScene() }),
     SnapshotCase("normal-maps",
                  note: "Tangent-space normal maps on generated spheres beside a bare control: pins the normal-mapped textured twin pipeline (packed half4 vertex tangents, the raw-data linear texture read, the sign * cross(N, T) bitangent, the glTF-sign MikkTSpace basis from generatingTangents, and normalScale). Authored green-up maps from height functions, fixed camera + light, no time, no rng.",
                  make: { NormalMapScene() }),
@@ -2142,6 +2145,45 @@ private final class GlassScene: Sketch {
         withState {
             translate(0, -0.6, 0); fill(Color(white: 0.5)); material(.roughPlastic)
             drawBox(width: 20, height: 0.3, depth: 20)
+        }
+    }
+}
+
+/// The screen-space transmission path: colored pillars behind a row of glass bodies,
+/// with no ray tracing available to the trace. Each body reads the pre-pass layer along
+/// its own refracted exit, so the pillars show up inside them; the frosted one reads a
+/// coarser mip and softens them.
+private final class SceneThroughGlassScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x14171d))
+        camera(.orbiting(target: Vector3(0, 0.8, 0), radius: 8,
+                         azimuth: 0.15, elevation: 0.14,
+                         fieldOfView: .pi / 4, near: 2, far: 24))
+        environment(.studio.intensity(1.1))
+        directionalLight(.white, direction: Vector3(-0.4, -1, -0.25), intensity: 0.7)
+        sceneThroughGlass()
+        // The content the glass has to carry: a floor and three colored pillars.
+        withState {
+            material(.dielectric(roughness: 0.8)); fill(Color(hex: 0x3a3f4c))
+            translate(0, -0.55, 0); drawBox(width: 24, height: 1.0, depth: 14)
+        }
+        for (i, c) in [Color(hex: 0xe6533c), Color(hex: 0x4fb477), Color(hex: 0x3f7fd6)].enumerated() {
+            withState {
+                material(.dielectric(roughness: 0.6)); fill(c)
+                translate((Double(i) - 1) * 1.8, 1.5, -2.6)
+                drawBox(width: 1.2, height: 4.0, depth: 0.5)
+            }
+        }
+        // A solid clear body, a frosted solid, and a thin bubble in front.
+        let bodies: [(Color, Material, Double)] = [
+            (.white, .glass(thickness: 1.8), -2.0),
+            (.white, .glass(roughness: 0.4, thickness: 1.8), 0),
+            (Color(hex: 0xcfe4ff), .glass(), 2.0),
+        ]
+        for (c, m, x) in bodies {
+            withState { translate(x, 0.9, 0.8); fill(c); material(m); drawSphere(radius: 0.9) }
         }
     }
 }

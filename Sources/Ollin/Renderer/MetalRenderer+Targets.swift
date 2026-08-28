@@ -2933,6 +2933,118 @@ extension MetalRenderer {
         return color
     }
 
+    /// The scene behind the glass (`sceneThroughGlass()`): draw the whole frame once
+    /// more with every transmissive run left out, so what the layer holds is the picture
+    /// the sketch would have made with the glass removed. A transmissive fragment then
+    /// reads it where its own refracted view ray leaves the body, which is how the scene
+    /// shows up *inside* a bottle on a GPU that cannot trace a ray through it.
+    ///
+    /// The pass mirrors the main geometry pass exactly (same size, same sample count,
+    /// same depth format and clear, same shadow / environment / probe inputs), which is
+    /// what lets it share every pipeline the main pass already built and what makes the
+    /// two pictures line up pixel for pixel. It resolves into a *mipmapped* texture: the
+    /// mip chain is the roughness blur, so a frosted body softens the scene the way the
+    /// prefiltered environment cube softens the sky.
+    ///
+    /// It is encoded once, unjittered, outside any temporal-AA sample loop (the deferred
+    /// reflection's rule: a jittered composite reads it at most half a pixel off, which
+    /// the average absorbs), and returns the matrix it was drawn with so the projection
+    /// into it cannot disagree with it.
+    ///
+    /// Returns nil, leaving `sceneBehind.x` 0 and every carrier's branch untaken, when
+    /// the sketch did not ask for it, when there is no camera or environment (transmission
+    /// needs one either way), when nothing in the frame transmits, or when ray-traced
+    /// reflections are already tracing the same view against the real geometry.
+    func encodeSceneBehindPass(_ drawer: Drawer, into cb: MTLCommandBuffer,
+                               viewport: SIMD2<Float>,
+                               buffers: GeometryBuffers,
+                               width: Int, height: Int,
+                               shadowMap: MTLTexture?,
+                               shadowCube: MTLTexture?,
+                               shadowAccel: MTLAccelerationStructure?,
+                               reflectAccel: MTLAccelerationStructure?,
+                               reflectGeoOffsets: MTLBuffer?,
+                               halfResField: (color: MTLTexture, depth: MTLTexture,
+                                              region: SIMD4<Float>)? = nil,
+                               halfResFieldShadow: MTLTexture? = nil,
+                               contactShadow: MTLTexture? = nil,
+                               gi: GIResolved? = nil,
+                               caustics: MTLTexture? = nil,
+                               pathTraced: (color: MTLTexture, depth: MTLTexture,
+                                            invSamples: Float)? = nil)
+        -> (texture: MTLTexture, viewProjection: simd_float4x4)? {
+        guard drawer.sceneThroughGlassEnabled else { return nil }
+        guard let camera = drawer.camera3D else {
+            drawer.noteOnce("sceneThroughGlass() shows the scene through 3D glass; without a camera there is none.")
+            return nil
+        }
+        guard drawer.environment != nil else {
+            drawer.noteOnce("sceneThroughGlass() needs an environment(_:), the same as transmission itself.")
+            return nil
+        }
+        guard drawer.batches.contains(where: { $0.isTransmissive && $0.target == nil }) else { return nil }
+        // Ray-traced reflections trace this same view against the real geometry, with
+        // none of a screen read's limits, so the fragments ignore the layer there and
+        // drawing it would be pure cost.
+        guard reflectAccel == nil else { return nil }
+
+        if sceneBehindSize != (width, height) || sceneBehindResolveTex == nil {
+            guard let msaa = makeFloatMSAA(width: width, height: height, storage: .memoryless),
+                  let depth = makeDepthMSAA(width: width, height: height),
+                  let resolve = makeFloatResolveMipped(width: width, height: height)
+            else { return nil }
+            sceneBehindMSAATex = msaa
+            sceneBehindDepthTex = depth
+            sceneBehindResolveTex = resolve
+            sceneBehindSize = (width, height)
+        }
+        guard let msaa = sceneBehindMSAATex, let depth = sceneBehindDepthTex,
+              let resolve = sceneBehindResolveTex else { return nil }
+
+        let pass = MTLRenderPassDescriptor()
+        pass.colorAttachments[0].texture = msaa
+        pass.colorAttachments[0].resolveTexture = resolve
+        pass.colorAttachments[0].loadAction = .clear
+        pass.colorAttachments[0].clearColor = drawer.backgroundColor.mtlClearColor
+        pass.colorAttachments[0].storeAction = .multisampleResolve
+        pass.depthAttachment.texture = depth
+        pass.depthAttachment.loadAction = .clear
+        pass.depthAttachment.clearDepth = 1.0
+        pass.depthAttachment.storeAction = .dontCare
+        let hasStencil = attachClipStencil(to: pass, active: drawer.usesClipStencil,
+                                           width: width, height: height)
+        guard let enc = countedEncoder(cb, pass, caller: "scene behind glass") else { return nil }
+        // The geometry buffers already hold this frame's data (the main pass or the
+        // caller filled them), and re-copying them is harmless: `encode` writes the same
+        // bytes into the same buffers before it draws.
+        encode(drawer, viewport: viewport, into: enc,
+               triangleBuffer: buffers.triangle, sdfBuffer: buffers.sdf,
+               imageBuffer: buffers.image, glyphBuffer: buffers.glyph,
+               pointBuffer: buffers.point, meshBuffer: buffers.mesh,
+               instancedMeshBuffer: buffers.instancedMesh,
+               meshInstanceBuffer: buffers.meshInstance,
+               sdfGroupBuffer: buffers.sdfGroup, sdfNodeBuffer: buffers.sdfNode,
+               sdf3DGroupBuffer: buffers.sdf3DGroup, sdf3DNodeBuffer: buffers.sdf3DNode,
+               depthFormat: depthPixelFormat, stencil: hasStencil,
+               shadowMap: shadowMap, shadowCube: shadowCube,
+               shadowAccel: shadowAccel,
+               reflectAccel: reflectAccel, reflectGeoOffsets: reflectGeoOffsets,
+               halfResField: halfResField, halfResFieldShadow: halfResFieldShadow,
+               contactShadow: contactShadow, gi: gi, caustics: caustics,
+               pathTraced: pathTraced,
+               skippingTransmissive: true)
+        enc.endEncoding()
+        // The mip chain the roughness blur rides. Generated after the resolve wrote
+        // level 0, in its own blit, so the whole layer is finished before any glass
+        // fragment reads it.
+        if let blit = cb.makeBlitCommandEncoder() {
+            blit.generateMipmaps(for: resolve)
+            blit.endEncoding()
+        }
+        let u3 = makeUniforms3D(drawer, camera: camera, viewport: viewport)
+        return (resolve, u3.projection * u3.view)
+    }
+
     /// Contact shadows (`contactShadows()`): march a short screen-space ray from each
     /// pixel toward the casting light through the scene's own depth, so a resting
     /// object's fine contact darkens where the shadow map's resolution and bias leave
@@ -3953,6 +4065,18 @@ extension MetalRenderer {
     func makeFloatResolve(width: Int, height: Int) -> MTLTexture? {
         let desc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: linearFormat, width: width, height: height, mipmapped: false)
+        desc.usage = [.renderTarget, .shaderRead]
+        desc.storageMode = .private
+        return device.makeTexture(descriptor: desc)
+    }
+
+    /// A linear-float resolve target that carries a full mip chain: the scene-behind
+    /// layer a transmissive surface reads (`sceneThroughGlass()`), where the mips are
+    /// the roughness blur rather than a minification aid. The pass resolves level 0 and
+    /// a blit fills the rest of the chain; `.private`, since it never leaves the GPU.
+    func makeFloatResolveMipped(width: Int, height: Int) -> MTLTexture? {
+        let desc = MTLTextureDescriptor.texture2DDescriptor(
+            pixelFormat: linearFormat, width: width, height: height, mipmapped: true)
         desc.usage = [.renderTarget, .shaderRead]
         desc.storageMode = .private
         return device.makeTexture(descriptor: desc)

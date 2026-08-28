@@ -3952,6 +3952,55 @@ static inline float3 ollin_env_refraction(float3 n, float3 viewDir,
     return t;
 }
 
+// The *scene* seen through a transmissive surface on a GPU that cannot trace it
+// (`sceneThroughGlass()`): the renderer draws the frame once more with every
+// transmissive surface taken out, and this reads that layer where the refracted view
+// ray leaves the body. The walk is the environment one above, step for step (the same
+// entry refraction, the same interior span, the same roughness fade as the IOR nears
+// 1), so a body reads the same shape whichever backdrop it ends up sampling; only the
+// last step differs. Instead of sampling a direction in a cube, it projects the exit
+// *point* into the frame and reads the pixel there. Returns the linear radiance in rgb
+// and how much of it to trust in a: 1 well inside the frame, easing to 0 across
+// `light.sceneBehind.z` of the border and at once behind the camera, because a
+// screen-space read only knows what the camera drew. Roughness rides the layer's own
+// mip chain, so frosting blurs the scene the way the prefiltered cube blurs the
+// environment. Written from the published screen-space transmission technique (README
+// Techniques list).
+static inline float4 ollin_scene_refraction(float3 worldPos, float3 n, float3 viewDir,
+                                            constant OllinMaterial &mat,
+                                            constant OllinLighting &light,
+                                            texture2d<float> sceneTex) {
+    constexpr sampler sceneSamp(filter::linear, mip_filter::linear, address::clamp_to_edge);
+    float etaIR = 1.0 / mat.ior;
+    float rough = clamp((float)mat.roughness, 0.0, 1.0);
+    rough = mix(rough, 0.0, saturate(etaIR * 3.0 - 2.0));
+    float3 exitPos = worldPos;
+    float span = 0.0;
+    if (mat.thickness > 0.0) {
+        float3 rr = refract(-viewDir, n, etaIR);
+        float NoR = dot(n, rr);                        // negative heading in
+        span = mat.thickness * -NoR;                   // the analytic interior span
+        exitPos = worldPos + rr * span;                // where that walk leaves the body
+    }
+    // A thin wall (thickness 0) exits parallel to the view, so its exit point is the
+    // fragment's own: it shows what stands behind it, undistorted, which is what a pane
+    // of window glass does. Only the tint and the frosting are its own.
+    float4 clip = light.sceneViewProjection * float4(exitPos, 1.0);
+    if (clip.w <= 0.0) return float4(0.0);             // behind the camera: nothing to read
+    float2 ndc = clip.xy / clip.w;
+    float2 uv = float2(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
+    // How much of the frame the read is inside: full in the middle, easing away across
+    // the border band, zero outside. `smoothstep` on the distance to the nearest edge.
+    float edge = max(light.sceneBehind.z, 1e-4);
+    float2 d = min(uv, 1.0 - uv);
+    float coverage = smoothstep(0.0, edge, min(d.x, d.y));
+    if (coverage <= 0.0) return float4(0.0);
+    float3 t = sceneTex.sample(sceneSamp, saturate(uv), level(rough * light.sceneBehind.y)).rgb;
+    if (span > 0.0 && mat.attenuation.w > 0.0)
+        t *= pow(mat.attenuation.rgb, span / mat.attenuation.w);
+    return float4(t, coverage);
+}
+
 // MARK: - Global illumination probes
 //
 // Real-time bounce light (`globalIllumination()`, ray-tracing devices): a uniform 3D grid
@@ -4260,6 +4309,14 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
                                            , float4 bodyExit = float4(0.0)
                                            , float3 bodyExitNormal = float3(0.0)
 #endif
+                                           // The screen-space read of the scene behind a
+                                           // transmissive surface (`sceneThroughGlass()`), taken
+                                           // by the caller because only it holds this fragment's
+                                           // world position on every GPU: rgb = the linear
+                                           // radiance found there, a = how much of it to trust
+                                           // (0 outside the frame, and 0 whenever the feature is
+                                           // off, which leaves the environment path untouched).
+                                           , float4 sceneBehind = float4(0.0)
                                            ) {
     constexpr sampler cubeSamp(filter::linear, mip_filter::linear, address::clamp_to_edge);
     constexpr sampler lutSamp(filter::linear, address::clamp_to_edge);
@@ -4342,6 +4399,7 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
     float trans = mat.transmission * (1.0 - mat.metallic);
     if (trans > 0.0) {
         float3 Ft = ollin_env_refraction(n, viewDir, mat, light, prefilterTex, cubeSamp, rot);
+        bool traced = false;
 #if OLLIN_RT_SHADOWS
         if (light.rtReflections != 0) {
             Ft = ollin_rt_refraction(worldPos, n, viewDir, mat, reflAccel, meshVerts,
@@ -4349,8 +4407,14 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
                                      cubeSamp, rot, Ft, ltcAmp, iesProfiles, cookies, sheenLUT,
                                      giIrradianceTex, giDepthTex, giOffsetsTex,
                                      bodyExit, bodyExitNormal);
+            traced = true;
         }
 #endif
+        // Where the scene was not traced, the screen-space read of it stands in
+        // (`sceneThroughGlass()`, every GPU), fading back into the refracted environment
+        // wherever the lookup leaves the frame. A zero alpha (the feature off, or the
+        // exit point off screen) leaves the environment exactly as it was.
+        if (!traced && sceneBehind.a > 0.0) Ft = mix(Ft, sceneBehind.rgb, sceneBehind.a);
         float3 E = F0 * brdf.x + brdf.y;   // the specular lobe's share of the energy
         diffusePart = mix(diffusePart, Ft * (float3(1.0) - E) * base, trans);
     }
@@ -4452,6 +4516,14 @@ static inline float3 ollin_pbr_ibl_ambient_mapped(float3 base, float3 n, float3 
                                            , float4 bodyExit = float4(0.0)
                                            , float3 bodyExitNormal = float3(0.0)
 #endif
+                                           // The screen-space read of the scene behind a
+                                           // transmissive surface (`sceneThroughGlass()`), taken
+                                           // by the caller because only it holds this fragment's
+                                           // world position on every GPU: rgb = the linear
+                                           // radiance found there, a = how much of it to trust
+                                           // (0 outside the frame, and 0 whenever the feature is
+                                           // off, which leaves the environment path untouched).
+                                           , float4 sceneBehind = float4(0.0)
                                            ) {
     constexpr sampler cubeSamp(filter::linear, mip_filter::linear, address::clamp_to_edge);
     constexpr sampler lutSamp(filter::linear, address::clamp_to_edge);
@@ -4534,6 +4606,7 @@ static inline float3 ollin_pbr_ibl_ambient_mapped(float3 base, float3 n, float3 
     float trans = mat.transmission * (1.0 - pxMetal);
     if (trans > 0.0) {
         float3 Ft = ollin_env_refraction(n, viewDir, mat, light, prefilterTex, cubeSamp, rot);
+        bool traced = false;
 #if OLLIN_RT_SHADOWS
         if (light.rtReflections != 0) {
             Ft = ollin_rt_refraction(worldPos, n, viewDir, mat, reflAccel, meshVerts,
@@ -4541,8 +4614,14 @@ static inline float3 ollin_pbr_ibl_ambient_mapped(float3 base, float3 n, float3 
                                      cubeSamp, rot, Ft, ltcAmp, iesProfiles, cookies, sheenLUT,
                                      giIrradianceTex, giDepthTex, giOffsetsTex,
                                      bodyExit, bodyExitNormal);
+            traced = true;
         }
 #endif
+        // Where the scene was not traced, the screen-space read of it stands in
+        // (`sceneThroughGlass()`, every GPU), fading back into the refracted environment
+        // wherever the lookup leaves the frame. A zero alpha (the feature off, or the
+        // exit point off screen) leaves the environment exactly as it was.
+        if (!traced && sceneBehind.a > 0.0) Ft = mix(Ft, sceneBehind.rgb, sceneBehind.a);
         float3 E = F0 * brdf.x + brdf.y;   // the specular lobe's share of the energy
         diffusePart = mix(diffusePart, Ft * (float3(1.0) - E) * base, trans);
     }
@@ -4692,7 +4771,12 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                     texture2d_array<float> iesProfiles [[texture(10)]],
                                     texture2d_array<float> cookies [[texture(11)]],
                                     texture2d<float> sheenLUT [[texture(12)]],
-                                    texture2d<float> contactShadowTex [[texture(16)]]
+                                    texture2d<float> contactShadowTex [[texture(16)]],
+                                    // The frame drawn once more with the glass taken out
+                                    // (`sceneThroughGlass()`, tex 27), read along a
+                                    // transmissive surface's own refracted direction; a
+                                    // never-sampled stand-in when off (`sceneBehind.x` gates).
+                                    texture2d<float> sceneBehindTex [[texture(27)]]
 #if OLLIN_RT_SHADOWS
                                     , instance_acceleration_structure shadowAccel [[buffer(3)]]
                                     // The flat mesh buffer + its per-geometry base-vertex offsets, so a
@@ -4781,6 +4865,16 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                                     in.position.xy, in.normal, light);
         }
 #endif
+        // The scene standing behind this surface, read where its own refracted view ray
+        // leaves the body (`sceneThroughGlass()`). Taken here rather than inside the
+        // ambient because only the fragment holds a world position on every GPU. The
+        // gate is off unless the renderer bound the layer, so every other frame is
+        // byte-identical.
+        float4 sceneBehind = float4(0.0);
+        if (light.sceneBehind.x > 0.0 && mat.transmission > 0.0) {
+            sceneBehind = ollin_scene_refraction(in.worldPos, normalize(in.normal), viewDir,
+                                                 mat, light, sceneBehindTex);
+        }
         c.rgb += ollin_pbr_ibl_ambient(base, normalize(in.normal), viewDir, mat, light,
                                        iblIrradiance, iblPrefilter, iblBRDF, sheenLUT
 #if OLLIN_RT_SHADOWS
@@ -4788,7 +4882,11 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                                        deferredRefl, ltcAmp, iesProfiles, cookies, gi,
                                        giIrradianceTex, giDepthTex, giOffsetsTex
 #endif
-                                       );
+                                       , float4(0.0)   // no per-vertex tangent here
+#if OLLIN_RT_SHADOWS
+                                       , float4(0.0), float3(0.0)   // a mesh traces its own exit
+#endif
+                                       , sceneBehind);
     } else if (light.iblEnabled != 0 && mat.shadingModel != 2) {
 #if OLLIN_RT_SHADOWS
         if (light.giOrigin.w > 0.0) {
@@ -5044,7 +5142,12 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                              texture2d_array<float> iesProfiles [[texture(10)]],
                                              texture2d_array<float> cookies [[texture(11)]],
                                              texture2d<float> sheenLUT [[texture(12)]],
-                                             texture2d<float> contactShadowTex [[texture(16)]]
+                                             texture2d<float> contactShadowTex [[texture(16)]],
+                                             // The frame drawn once more with the glass taken out
+                                             // (`sceneThroughGlass()`, tex 27), read along a
+                                             // transmissive surface's own refracted direction; a
+                                             // never-sampled stand-in when off (`sceneBehind.x` gates).
+                                             texture2d<float> sceneBehindTex [[texture(27)]]
 #if OLLIN_RT_SHADOWS
                                              , instance_acceleration_structure shadowAccel [[buffer(3)]]
                                              , const device OllinMeshVertex *meshVerts [[buffer(6)]]
@@ -5112,6 +5215,16 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                                     in.position.xy, in.normal, light);
         }
 #endif
+        // The scene standing behind this surface, read where its own refracted view ray
+        // leaves the body (`sceneThroughGlass()`). Taken here rather than inside the
+        // ambient because only the fragment holds a world position on every GPU. The
+        // gate is off unless the renderer bound the layer, so every other frame is
+        // byte-identical.
+        float4 sceneBehind = float4(0.0);
+        if (light.sceneBehind.x > 0.0 && mat.transmission > 0.0) {
+            sceneBehind = ollin_scene_refraction(in.worldPos, normalize(in.normal), viewDir,
+                                                 mat, light, sceneBehindTex);
+        }
         c.rgb += ollin_pbr_ibl_ambient(base, normalize(in.normal), viewDir, mat, light,
                                        iblIrradiance, iblPrefilter, iblBRDF, sheenLUT
 #if OLLIN_RT_SHADOWS
@@ -5119,7 +5232,11 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
                                        deferredRefl, ltcAmp, iesProfiles, cookies, gi,
                                        giIrradianceTex, giDepthTex, giOffsetsTex
 #endif
-                                       );
+                                       , float4(0.0)   // no per-vertex tangent here
+#if OLLIN_RT_SHADOWS
+                                       , float4(0.0), float3(0.0)   // a mesh traces its own exit
+#endif
+                                       , sceneBehind);
     } else if (light.iblEnabled != 0 && mat.shadingModel != 2) {
 #if OLLIN_RT_SHADOWS
         if (light.giOrigin.w > 0.0) {
@@ -5215,6 +5332,11 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
                                        texture2d_array<float> cookies [[texture(11)]],
                                        texture2d<float> sheenLUT [[texture(12)]],
                                        texture2d<float> contactShadowTex [[texture(16)]],
+                                       // The frame drawn once more with the glass taken out
+                                       // (`sceneThroughGlass()`, tex 27), read along a
+                                       // transmissive surface's own refracted direction; a
+                                       // never-sampled stand-in when off (`sceneBehind.x` gates).
+                                       texture2d<float> sceneBehindTex [[texture(27)]],
                                        texture2d<float> normalMapTex [[texture(17)]]
 #if OLLIN_RT_SHADOWS
                                        , instance_acceleration_structure shadowAccel [[buffer(3)]]
@@ -5287,6 +5409,16 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
                                                     in.position.xy, in.normal, light);
         }
 #endif
+        // The scene standing behind this surface, read where its own refracted view ray
+        // leaves the body (`sceneThroughGlass()`). Taken here rather than inside the
+        // ambient because only the fragment holds a world position on every GPU. The
+        // gate is off unless the renderer bound the layer, so every other frame is
+        // byte-identical.
+        float4 sceneBehind = float4(0.0);
+        if (light.sceneBehind.x > 0.0 && mat.transmission > 0.0) {
+            sceneBehind = ollin_scene_refraction(in.worldPos, N, viewDir,
+                                                 mat, light, sceneBehindTex);
+        }
         c.rgb += ollin_pbr_ibl_ambient(base, N, viewDir, mat, light,
                                        iblIrradiance, iblPrefilter, iblBRDF, sheenLUT
 #if OLLIN_RT_SHADOWS
@@ -5294,7 +5426,11 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
                                        deferredRefl, ltcAmp, iesProfiles, cookies, gi,
                                        giIrradianceTex, giDepthTex, giOffsetsTex
 #endif
-                                       , in.tangent);
+                                       , in.tangent
+#if OLLIN_RT_SHADOWS
+                                       , float4(0.0), float3(0.0)   // a mesh traces its own exit
+#endif
+                                       , sceneBehind);
     } else if (light.iblEnabled != 0 && mat.shadingModel != 2) {
 #if OLLIN_RT_SHADOWS
         if (light.giOrigin.w > 0.0) {
@@ -5525,6 +5661,11 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
                                          texture2d_array<float> cookies [[texture(11)]],
                                          texture2d<float> sheenLUT [[texture(12)]],
                                          texture2d<float> contactShadowTex [[texture(16)]],
+                                         // The frame drawn once more with the glass taken out
+                                         // (`sceneThroughGlass()`, tex 27), read along a
+                                         // transmissive surface's own refracted direction; a
+                                         // never-sampled stand-in when off (`sceneBehind.x` gates).
+                                         texture2d<float> sceneBehindTex [[texture(27)]],
                                          texture2d<float> normalMapTex [[texture(17)]],
                                          texture2d<float> mrTex [[texture(18)]],
                                          texture2d<float> occlusionTex [[texture(19)]],
@@ -5739,6 +5880,16 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
 #endif
         // The whole environment ambient is indirect light, so the occlusion map
         // dims all of it (diffuse and specular alike, the real-time treatment).
+        // The scene standing behind this surface, read where its own refracted view ray
+        // leaves the body (`sceneThroughGlass()`). Taken here rather than inside the
+        // ambient because only the fragment holds a world position on every GPU. The
+        // gate is off unless the renderer bound the layer, so every other frame is
+        // byte-identical.
+        float4 sceneBehind = float4(0.0);
+        if (light.sceneBehind.x > 0.0 && mat.transmission > 0.0) {
+            sceneBehind = ollin_scene_refraction(in.worldPos, N, viewDir,
+                                                 mat, light, sceneBehindTex);
+        }
         c.rgb += pxAO * ollin_pbr_ibl_ambient_mapped(base, N, viewDir, pxMetal, pxRough, mat, light,
                                        iblIrradiance, iblPrefilter, iblBRDF, sheenLUT
 #if OLLIN_RT_SHADOWS
@@ -5746,7 +5897,11 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
                                        deferredRefl, ltcAmp, iesProfiles, cookies, gi,
                                        giIrradianceTex, giDepthTex, giOffsetsTex
 #endif
-                                       , in.tangent);
+                                       , in.tangent
+#if OLLIN_RT_SHADOWS
+                                       , float4(0.0), float3(0.0)   // a mesh traces its own exit
+#endif
+                                       , sceneBehind);
     } else if (light.iblEnabled != 0 && mat.shadingModel != 2) {
 #if OLLIN_RT_SHADOWS
         if (light.giOrigin.w > 0.0) {
