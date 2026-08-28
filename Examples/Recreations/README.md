@@ -21,3 +21,4 @@ Each sketch is a **recreation and homage** made after the artist. It isn't a rep
 - [**Nick Cave**](NickCave/). The Soundsuits: wearable sculptures that conceal the body and sound as it moves, recreated live on the streamed skeleton.
 - [**Jared Tarbell**](JaredTarbell/). Emergent city maps grown from colliding cracks, shaded with sand-grain washes.
 - [**Manuel Felguérez**](ManuelFelguerez/). A machine that composed in the artist's own geometric language, and weighed what it made.
+- [**Manfred Mohr**](ManfredMohr/). A cube taken apart and used as an alphabet, and the walks through its four-dimensional relative.
