@@ -643,6 +643,61 @@ premultiplied linear only on output: designer palettes mixed in linear read as
 washed-out pastel (a real bug), and the mesh gradient's inverse-distance
 weighting especially depends on this.
 
+### Post-process anti-aliasing (`.antialias`)
+
+The renderer has four anti-aliasing paths, and a layer written by a fragment
+shader reaches none of them: multisampling covers the triangle path, the SDF and
+fringe paths carry analytic coverage, the temporal pass covers a moving 3D
+frame, and MetalFX covers an upscaled one. A `Generator`, a raymarched field, an
+imported shader, or a finished chain writes a final color per pixel with no
+shape behind it, so a hard edge in one is a staircase. `ollin_fx_antialias` is
+the repair, reimplementing FXAA (credited in `ATTRIBUTION.md`): a range test
+that returns early on a flat neighborhood, a second-difference test for the edge
+orientation, a walk to both ends of the edge with a growing stride, and a
+low-pass term for a lone pixel with no span to walk.
+
+Three decisions in it are Ollin's rather than the paper's, and each was found by
+measurement rather than reasoning.
+
+**The published orientation test ties constantly here, and the tie decides the
+picture.** For an ideal two-value edge the "runs across" and "runs down" sums
+come out equal, in both orientations: a horizontal edge and a vertical one each
+score 2. Photographic content, which the technique was written for, rarely ties;
+a shader writes exactly two-value edges, so here the tie is the ordinary case.
+Taking the larger with `>=` then answers *across* for every edge, and a vertical
+one gets `lFirst == lSecond`, an end contrast of 0, a span of zero length, and
+no offset at all. Measured: a steep staircase improved by 20% while a shallow
+one improved by 51%. The tie is broken by `|lN - lS|` against `|lW - lE|`, the
+plain difference across the pixel, which a two-value edge always answers; both
+orientations then land within a hundredth of each other.
+
+**The layer is linear-light, and the technique assumes display-encoded input.**
+The edge walk compares each tap against the brightness of the pixel pair the
+edge divides. The published form averages the two brightnesses already in hand,
+which is right when the sampler that reads the half-pixel tap averages those
+same encoded numbers. Here the sampler averages in linear light and the encoding
+happens after, so the two disagree: across black and white, the average of the
+brightnesses is 0.5 and the brightness of the average is 0.735, a gap of 0.235
+against an end test of 0.25, which ends nearly every walk at its first step. One
+extra tap reads the pair from the layer itself instead, and both sides of the
+comparison become the same measurement.
+
+**Brightness is read over a mid-gray backdrop, and encoded past 1 rather than
+clamped there.** A layer is premultiplied, so a black shape on a clear layer
+carries color 0 on both sides of its silhouette and a pass reading color alone
+finds no edge where a viewer plainly sees one; compositing over a backdrop turns
+the alpha step into a brightness step, and leaves an opaque layer (alpha 1
+everywhere) exactly as it was. The sRGB curve is then carried on past 1 instead
+of clamping, because a layer is linear and the tone map is at the present pass:
+clamping makes every edge between two values brighter than white read as flat.
+
+`AntialiasFilterTests` pins all of it against **edge wander**, the RMS distance
+from the straight line a shallow edge's sub-pixel positions should lie on, read
+as coverage in linear light. A 1-in-8 staircase wanders 0.286 px; through the
+filter it wanders 0.140 px. Half rather than none is what a pass reading the
+finished image can buy, and it is why the filter is placed rather than applied
+to every layer: it cannot tell a stair-step from genuine one-pixel detail.
+
 ### Feedback (previous-frame) layers
 
 `feedback(scale:)` returns a *persistent* `Feedback` layer: made once in
