@@ -982,6 +982,114 @@ Apple MPS (first-party, in use).
 
 ---
 
+## Light in a flat sketch (radiance cascades)
+
+`Combine.light` is a two-input combine like the screen-space ones below, but its
+work is a ladder rather than a pass. The base layer is the scene (its alpha stops
+a ray), the aux layer is the lamps (its rgb gives light off), and the result is
+the light arriving at every pixel. The technique is Sannikov's radiance cascades,
+written from the published description and credited in `ATTRIBUTION.md`; the
+mechanism lives in `MetalRenderer+Effects.radianceCascades` and
+`ShaderRadiance.metal`, and the invariants are in `CAPABILITIES.md`. What follows
+is the reasoning and the measurements behind them.
+
+### Why a ladder
+
+To resolve a lamp you need probe density near it and angular resolution far from
+it, and the two requirements pull in opposite directions. The cascade structure
+satisfies both by splitting the field into rings of distance: rung `i` samples
+with probes `s0·2^i` apart, `4^(i+1)` directions each, over the span
+`[s0·(4^i - 1)/3, s0·(4^i - 1)/3 + s0·4^i]`. Probes divided by four and
+directions times four cancel exactly, so every rung is one texture of the same
+size, and the whole ladder costs one rung times the rung count. That is also why
+the cost is independent of scene complexity: nothing in the loop reads a
+primitive list.
+
+One texture holds one rung, cut into `2^(i+1)`-texel square blocks, one block per
+probe, a texel's place inside its block naming its direction. The probe grid is
+padded up to a multiple of `2^(rungs-1)` so every rung can halve it, and the
+merge reads the rung above **texel by texel** rather than through the sampler
+(neighboring texels there are different directions, so a filtered tap returns a
+ray that was never cast).
+
+### The bilinear fix, and the measurement that justified it
+
+The plain merge (each rung's ray running from its own probe to its own probe's
+interval end, then bilinearly interpolating the four upper probes' matching rays)
+leaves a gap of up to a probe spacing between where one rung's ray stops and
+where the rung above it starts. The relative size of that gap is `2·2^-i`, so it
+shrinks with the rung and never disappears. It draws itself as a ring of light at
+every hand-over distance, plus blotches at the coarse rungs; the first render of
+this feature showed both plainly at 85 px and 341 px on a 1080 canvas, exactly
+the rung boundaries for a one-pixel probe spacing.
+
+The published correction is to trace **one ray per merge neighbor**, each ending
+where that neighbor's own ray begins. It costs four marches instead of one on
+every rung but the top, and it removed the rings, the blotches and the petals in
+one change.
+
+The regression net is a physical one rather than a smoothness one, because the
+artifact is a step rather than a bump: a disc lamp of radius `R` seen from `r`
+away covers `2·asin(R/r)` of the circle of directions, so the average light
+arriving is exactly `asin(R/r)/π` of the disc's own. Measured over r = 80…370 px
+on a 512 canvas, the reading is **0.902…0.952** of that exact answer with the fix
+and **0.900…1.108** without it. Running a few per cent under is the disc's
+antialiased rim; running *over* is light nobody emitted, which is a stretch of
+each ray counted twice. `theLightMatchesWhatTheGeometryAllows` fails on the
+one-line sabotage.
+
+### The march, and why the distance field is shared
+
+Rays sphere-march the shipped `measuredDistanceField`, built once per call from
+the *combined* coverage of scene and lamps (a lamp is a thing in the world, so it
+occludes) and reused by every rung and every bounce. That is what makes an empty
+room cost one step: the field says how far the nearest edge is, so the ray jumps
+that whole distance.
+
+Two details are not free to change. The step is `max(d - 0.5, 0.5)` because the
+field is kept in half floats, which space whole numbers a unit apart past 1024; a
+step longer than the truth walks a ray through a thin wall. And the emission is
+read **1.5 px inside** the surface the ray stopped on, so an antialiased rim
+hands back the shape's own light rather than a fraction of it.
+
+The top rung's ray is cut at the requested `reach`. Without that cut the knob
+would round up to the next whole rung, and a reach of 90 px would light 340.
+
+### The bounce, and what it can and cannot say
+
+A bounce is a second run of the ladder with the emission raised by what each
+surface received. The obvious form of that (`emission += albedo · radiance` at
+the same pixel) hands back nothing, because a probe inside a shape meets that
+shape at once, so the field inside a wall is dark by construction.
+
+The measured field is what steps back outside: its direction channels point at
+the nearest edge, so a surface pixel reads the light standing just off its own
+face. That is the light a ray meeting that face came from, which is the quantity
+wanted.
+
+The cost is one artifact, and it is cosmetic only. Every interior pixel of a
+solid leans on its own nearest face, so a wide round shape lit unevenly shows its
+rim smeared radially, with a seam where two sides meet. No ray ever reads deeper
+than a shape's shell, so this decides only how a solid shows its own lit face,
+never how it lights anything else. Five taps spread along the edge, the spread
+growing with depth, turn most of the fan back into the gradient it should have
+been; the seam at the middle survives and is documented as a limit.
+
+### The tiers
+
+Quality resolves to probe spacing (4 / 2 / 1 px) and march budget (16 / 24 / 48
+steps). Measured M2 release at 1080², one bounce, the whole term including the
+field: **11.3 / 23.4 / 79.6 ms**, and 7.8 / 13.1 / 42.0 with no bounce. Running
+out of march steps is a graceful failure: the ray reports meeting nothing and the
+rung above it fills in, so a budget too small leaks light rather than tearing.
+
+`.detail` is what an export resolves `.default` to, so an exported frame pays the
+one-pixel spacing. It differs from two mostly at a lamp's own rim (max 94/255
+there, 0.73 mean over the frame), which is the right thing for a still and the
+wrong trade live.
+
+---
+
 ## Screen-space combine effects
 
 Ambient occlusion, screen-space reflections, and depth of field are all
