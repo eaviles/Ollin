@@ -12,6 +12,7 @@ Layered effects: draw into off-screen layers, filter them on the GPU, and compos
 | [BlurFilters](BlurFilters/Sketch.swift) | the blur family: Gaussian, edge-preserving bilateral, and directional motion/radial blur |
 | [ColorFilters](ColorFilters/Sketch.swift) | the color & tone family as a contact sheet: grade, invert, posterize, duotone, gradient map, … |
 | [StylizeFilters](StylizeFilters/Sketch.swift) | the stylize & optical family: edges, sharpen, emboss, halftone, dither, oil paint, crosshatch, … |
+| [Antialias](Antialias/Sketch.swift) | the stair-steps in a shader-written layer smoothed from the image alone, split-screen against the raw layer (`.antialias`) |
 | [RetroFilters](RetroFilters/Sketch.swift) | the retro / optical family: scanlines, glitch, CRT |
 | [Relight](Relight/Sketch.swift) | a layer read as a height map and lit as embossed physical matter: matte, metal, glass, sand, liquid (`.relight`) |
 | [Glitter](Glitter/Sketch.swift) | iridescent and glittering shapes: the thin-film `.iridescence` sheen and the sparkle-fleck `.glitter` filter, per shape via `compose { }` |

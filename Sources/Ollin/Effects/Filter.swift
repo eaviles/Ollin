@@ -182,6 +182,11 @@ public struct Filter: Sendable {
         case bilateral(radius: Double, sigma: Double)
 
         // Stylize & optical --------------------------------------------------
+        /// Soften the stair-stepped edges of a layer a fragment shader wrote per
+        /// pixel. `threshold` is the contrast an edge needs before the pass touches
+        /// it, `quality` how far it may look along one, and `amount` how much of the
+        /// result to keep (0 hands the layer back unchanged).
+        case antialias(amount: Double, threshold: Double, quality: RenderQuality)
         /// Sobel edge magnitude, scaled by `intensity`.
         case edges(intensity: Double)
         /// Unsharp mask: add back `amount` of the high-frequency detail.
@@ -475,6 +480,28 @@ public struct Filter: Sendable {
     }
 
     // MARK: Stylize & optical
+
+    /// Smooth the stair-stepped edges in a layer that a fragment shader wrote pixel
+    /// by pixel: a `generate(_:)` pattern, a raymarched field, an imported shader, or
+    /// a finished chain. Those have no coverage of their own, and none of the
+    /// renderer's other anti-aliasing reaches them, so a hard edge inside one comes
+    /// out as a staircase. This pass works from the finished image alone: it finds
+    /// each edge by brightness, follows it to both ends, and reads the layer back a
+    /// fraction of a pixel across it, which turns the steps into a ramp.
+    ///
+    /// `threshold` is the contrast an edge needs before the pass touches it at all
+    /// (lower reaches fainter edges and costs more), `quality` how far it may follow
+    /// one (a long, nearly flat edge needs the longer look), and `amount` how much of
+    /// the result to keep, so `amount: 0` hands the layer back unchanged.
+    ///
+    /// It reads pixels, not shapes, so it cannot tell a stair-step from detail that
+    /// is genuinely one pixel wide, and it softens both. That is why it is a filter
+    /// you place rather than something every layer gets.
+    public static func antialias(amount: Double = 1, threshold: Double = 0.125,
+                                 quality: RenderQuality = .default) -> Filter {
+        Filter(kind: .antialias(amount: min(max(amount, 0), 1),
+                                threshold: min(max(threshold, 0.01), 1), quality: quality))
+    }
 
     /// Sobel edge detection: bright edges on black, scaled by `intensity`. A quick
     /// outline / comic-ink pass.

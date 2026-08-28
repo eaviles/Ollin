@@ -159,6 +159,11 @@ layer.filtered(.vibrance(amount: 0.6))
 
 #### Stylize & optical
 
+- **`.antialias(amount:threshold:quality:)`** smooth the stair-stepped edges of a layer a fragment shader wrote pixel by pixel. Ollin anti-aliases the shapes you draw. But a [`generate(_:)`](#generate) pattern, a raymarched field, an [imported shader](../Tools/ShaderImport.md), or a finished chain writes a final color per pixel and carries no coverage, so a hard edge inside one comes out as a staircase. This pass works from the image alone: it finds each edge by brightness, follows it to both ends, and reads the layer back a fraction of a pixel across it. That turns the steps into a ramp.
+
+  `threshold` is the contrast an edge needs before the pass touches it at all; lower reaches fainter edges and costs more, and a layer with nothing over it comes back byte for byte. `quality` is how far the pass may follow one edge. `amount` is how much of the result to keep, so `amount: 0` hands the layer back unchanged.
+
+  It reads pixels rather than shapes, which sets what it can do. It cannot tell a stair-step from detail that is genuinely one pixel wide, and it softens both. That is why it is a filter you place rather than something every layer gets. Place it right after whatever wrote the layer, and before a warp that would smear the ramp it just made. On a measured shallow edge it halves how far the edge strays from the straight line it should lie on. Half rather than none is what a pass reading the finished image can buy. See `Examples/Effects/Antialias`.
 - **`.edges(intensity:)`** Sobel edge magnitude, bright edges on black, a quick ink or outline pass.
 - **`.sharpen(amount:)`** unsharp mask, emphasizing local detail.
 - **`.vignette(amount:radius:softness:)`** darken toward the corners (aspect-correct, so circular).

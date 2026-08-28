@@ -164,6 +164,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("effects-relight",
                  note: "The relight height-map material pass (metal), the two-tone ordered dither, and the off-center swirl and ripple warps at fixed parameters. Pins the new fragments and dispatches, and the center plumbing on the radial warps.",
                  make: { EffectsRelight() }),
+    SnapshotCase("effects-antialias",
+                 note: "The post-process anti-aliasing pass over a shader-written layer, split down the middle: the raw staircase left of the divider, the same layer filtered right of it. Pins the fragment's early return on a flat pixel, both arms of the runs-across / runs-down test (the wheel carries edges at every angle) and the tie-break under it, the pair tap the edge walk measures against, and the dispatch.",
+                 make: { EffectsAntialias() }),
     SnapshotCase("effects-glitter",
                  note: "The iridescence + glitter filters over a fixed heart + star at fixed shift/phase. Pins the thin-film interference color over the domain-warped fbm thickness field, the two hash-cell sparkle layers (dust + cross flares) with their alpha gating, and both dispatches.",
                  make: { EffectsGlitter() }),
@@ -6583,6 +6586,35 @@ private final class EffectsRelight: Sketch {
         for (i, tile) in tiles.enumerated() {
             let x = Double(i % 2) * 128, y = Double(i / 2) * 128
             drawImage(tile.image, in: Rectangle(x: x, y: y, width: 128, height: 128))
+        }
+    }
+}
+
+/// The post-process anti-aliasing pass over a layer a shader wrote pixel by pixel,
+/// split down the middle: the raw staircase on the left, the same layer filtered on
+/// the right. A spoke wheel carries an edge at every angle, and the band across the
+/// top is the shallow case, one step every seventeen pixels. No time and no random.
+private final class EffectsAntialias: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.05))
+        let wheel = Shader("""
+        float4 shade(float2 uv, ShaderInfo info) {
+            float2 p = uv * 2.0 - 1.0;
+            float r = length(p);
+            float a = atan2(p.y, p.x);
+            float spokes = step(0.0, sin(a * 17.0)) * step(0.28, r) * step(r, 0.92);
+            float band = step(uv.y, 0.10 + uv.x * 0.06);
+            float3 col = mix(float3(0.07, 0.09, 0.15), float3(0.97, 0.83, 0.42), spokes);
+            col = mix(col, float3(0.85, 0.27, 0.36), band);
+            return float4(col, 1.0);
+        }
+        """)
+        let raw = generate(wheel)
+        drawImage(raw.image, 0, 0)
+        withClip(Rectangle(x: width * 0.5, y: 0, width: width * 0.5, height: height)) {
+            drawImage(raw.filtered(.antialias()).image, 0, 0)
         }
     }
 }

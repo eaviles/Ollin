@@ -441,6 +441,163 @@ fragment float4 ollin_fx_edges(PresentOut in [[stage_in]],
     return float4(float3(mag), 1.0);
 }
 
+// The brightness one antialias tap reads. Two things happen to the sample before it
+// becomes a number the thresholds below can be quoted against.
+//
+// It is composited over a mid-gray backdrop first, because a layer is premultiplied:
+// a black shape on a clear layer carries color 0 on both sides of its silhouette, so
+// the color alone says there is no edge where a viewer plainly sees one. Over a
+// backdrop the alpha step becomes a brightness step, and an opaque layer, whose alpha
+// is 1 everywhere, is left exactly as it was.
+//
+// It is then encoded for display, because the thresholds are contrast a person judges
+// and this pass has to agree with the eye about which steps are worth softening. The
+// curve is the ordinary sRGB one carried on past 1 rather than clamped there: a layer
+// is linear and may run well past 1, since the tone map is later, at the present pass,
+// and clamping would make every edge between two bright values read as flat.
+static inline float ollin_aa_luma(float4 c) {
+    float3 over = max(c.rgb + (1.0 - c.a) * 0.2140, 0.0);   // 0.2140 linear = mid gray
+    float l = ollin_luma(over);
+    return l > 0.0031308 ? 1.055 * pow(l, 1.0 / 2.4) - 0.055 : l * 12.92;
+}
+
+// antialias: soften the stair-steps in a layer a fragment shader wrote per pixel (a
+// generator, a raymarched field, an imported shader, a finished chain), which none of
+// the renderer's four anti-aliasing paths reach. It works from the image alone, with
+// no geometry and no history: read brightness around this pixel, decide whether the
+// edge through it runs across or down, walk along that edge to both of its ends, and
+// read the layer back a fraction of a pixel toward the side the step falls away on.
+// A pixel near the middle of a long edge barely moves; one near an end moves half a
+// pixel, which is what turns a staircase into a ramp.
+//
+// params[0].xy texel size, .z the contrast an edge needs, .w the floor under it in
+// the dark (a relative test alone finds edges in near-black that are noise).
+// params[1].x how much of the result to keep, .y how many steps each walk may take.
+//
+// Every tap names level(0). The pass returns early for a pixel with no edge in it,
+// which is most of the frame, and a level the sampler derives for itself is formed
+// across neighbors that early return has already left undefined.
+fragment float4 ollin_fx_antialias(PresentOut in [[stage_in]],
+                                   texture2d<float> src [[texture(0)]],
+                                   sampler samp [[sampler(0)]],
+                                   constant float4 *params [[buffer(0)]]) {
+    float2 t = params[0].xy;
+    float relative = params[0].z, floorContrast = params[0].w;
+    float amount = params[1].x;
+    int steps = int(params[1].y);
+
+    float4 center = src.sample(samp, in.uv, level(0));
+    float lM = ollin_aa_luma(center);
+    float lN = ollin_aa_luma(src.sample(samp, in.uv + float2(0, -t.y), level(0)));
+    float lS = ollin_aa_luma(src.sample(samp, in.uv + float2(0,  t.y), level(0)));
+    float lW = ollin_aa_luma(src.sample(samp, in.uv + float2(-t.x, 0), level(0)));
+    float lE = ollin_aa_luma(src.sample(samp, in.uv + float2( t.x, 0), level(0)));
+
+    float hi = max(lM, max(max(lN, lS), max(lW, lE)));
+    float lo = min(lM, min(min(lN, lS), min(lW, lE)));
+    float range = hi - lo;
+    // Flat enough to leave alone. This is most of a frame, and returning here is
+    // also what keeps the pass off detail that was never a stair-step.
+    if (range < max(floorContrast, hi * relative)) return center;
+
+    float lNW = ollin_aa_luma(src.sample(samp, in.uv + float2(-t.x, -t.y), level(0)));
+    float lNE = ollin_aa_luma(src.sample(samp, in.uv + float2( t.x, -t.y), level(0)));
+    float lSW = ollin_aa_luma(src.sample(samp, in.uv + float2(-t.x,  t.y), level(0)));
+    float lSE = ollin_aa_luma(src.sample(samp, in.uv + float2( t.x,  t.y), level(0)));
+
+    // Which way does the edge run? Add up how sharply brightness turns over, once
+    // for each answer. An edge running across shows as a turn straight up and down
+    // through this pixel, which counts double, with the turns along the rows above
+    // and below it filling in the rest; an edge running down is the same measure
+    // turned a quarter. The larger sum is the answer.
+    float runsAcross = abs(lNW - 2.0 * lN + lNE) + 2.0 * abs(lN - 2.0 * lM + lS)
+                     + abs(lSW - 2.0 * lS + lSE);
+    float runsDown   = abs(lNW - 2.0 * lW + lSW) + 2.0 * abs(lW - 2.0 * lM + lE)
+                     + abs(lNE - 2.0 * lE + lSE);
+    // The two sums tie whenever the layer holds a hard two-value edge, and that is
+    // exactly what a fragment shader writes, so here the tie is the ordinary case
+    // rather than a rarity. Taking the larger alone would then answer "across" for
+    // every edge, including the ones running down. Break it by which way brightness
+    // actually changes through this pixel, which a two-value edge always answers.
+    bool across = (abs(runsAcross - runsDown) > 1e-5) ? (runsAcross > runsDown)
+                                                     : (abs(lN - lS) >= abs(lW - lE));
+
+    // Of the two sides the edge could fall away on, take the steeper one. Everything
+    // after this measures along the edge and steps across it toward that side.
+    float lFirst  = across ? lN : lW;
+    float lSecond = across ? lS : lE;
+    float dropFirst = abs(lFirst - lM), dropSecond = abs(lSecond - lM);
+    bool towardFirst = dropFirst >= dropSecond;
+    float endContrast = 0.25 * max(dropFirst, dropSecond);
+
+    float stepAcross = across ? t.y : t.x;
+    if (towardFirst) stepAcross = -stepAcross;
+    float2 acrossUV = across ? float2(0, stepAcross) : float2(stepAcross, 0);
+    float2 alongUV  = across ? float2(t.x, 0) : float2(0, t.y);
+
+    // Walk from the edge itself (half a pixel across, so each tap reads the pair of
+    // pixels the edge divides) to both of its ends. An end is where the brightness
+    // stops matching that pair. The stride grows once the near neighborhood is
+    // clear, so a long edge is reached in few taps.
+    //
+    // What the pair reads is taken from the layer, not worked out from the two
+    // brightnesses already in hand, and that is load-bearing. The published form
+    // averages them, which is right for a display-encoded image, where the sampler
+    // that reads the half-pixel tap averages the same encoded numbers. This layer is
+    // linear: the sampler averages there and the encoding happens after, so an
+    // averaged brightness and the brightness of the average are two different values.
+    // Across black and white they differ by 0.235, against an end test of 0.25, which
+    // ends nearly every walk at its first step. One more tap and both sides of the
+    // comparison are the same measurement.
+    float2 mid = in.uv + acrossUV * 0.5;
+    float lPair = ollin_aa_luma(src.sample(samp, mid, level(0)));
+    float2 pA = mid - alongUV, pB = mid + alongUV;
+    float endA = ollin_aa_luma(src.sample(samp, pA, level(0))) - lPair;
+    float endB = ollin_aa_luma(src.sample(samp, pB, level(0))) - lPair;
+    bool doneA = abs(endA) >= endContrast, doneB = abs(endB) >= endContrast;
+    float travelled = 1.0, reachA = 1.0, reachB = 1.0, stride = 1.0;
+    for (int i = 1; i < steps; ++i) {
+        if (doneA && doneB) break;
+        stride = (i < 4) ? 1.0 : min(stride * 2.0, 4.0);
+        travelled += stride;
+        if (!doneA) {
+            pA -= alongUV * stride;
+            endA = ollin_aa_luma(src.sample(samp, pA, level(0))) - lPair;
+            doneA = abs(endA) >= endContrast;
+            reachA = travelled;
+        }
+        if (!doneB) {
+            pB += alongUV * stride;
+            endB = ollin_aa_luma(src.sample(samp, pB, level(0))) - lPair;
+            doneB = abs(endB) >= endContrast;
+            reachB = travelled;
+        }
+    }
+
+    // How far across to read: nothing at the middle of the span, half a pixel at
+    // either end. That gradient along the run is the ramp.
+    float nearest = min(reachA, reachB);
+    float offset = 0.5 - nearest / (reachA + reachB);
+
+    // Only the stepped side of the edge moves. If the nearer end turns the same way
+    // this pixel does, this pixel sits on the flat side, and moving it would blur
+    // something that was never jagged.
+    bool centerIsDarker = lM < lPair;
+    float nearestEnd = (reachA < reachB) ? endA : endB;
+    if ((nearestEnd < 0.0) == centerIsDarker) offset = 0.0;
+
+    // A lone pixel off on its own has no span to walk, so it gets its own answer:
+    // how far it sits from the average of its eight neighbors, eased twice so only
+    // a pixel that really stands out is moved.
+    float lLowPass = (2.0 * (lN + lS + lW + lE) + lNW + lNE + lSW + lSE) / 12.0;
+    float alone = clamp(abs(lLowPass - lM) / range, 0.0, 1.0);
+    alone = alone * alone * (3.0 - 2.0 * alone);
+    offset = max(offset, alone * alone * 0.75);
+
+    float4 smoothed = src.sample(samp, in.uv + acrossUV * offset, level(0));
+    return mix(center, smoothed, amount);
+}
+
 // sharpen: unsharp mask against a 4-neighbor blur (params[0].xy texel, .z amount).
 fragment float4 ollin_fx_sharpen(PresentOut in [[stage_in]],
                                  texture2d<float> src [[texture(0)]],

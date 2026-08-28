@@ -112,7 +112,6 @@ See the [design notes](DESIGN-NOTES.md#new-output-surfaces).
 Deeper use of the Metal core and Apple displays, all opt-in so the 2D path stays untaxed:
 
 - **Dolby Vision.** Dynamic per-scene HDR metadata, where the static HDR10 metadata a video carries describes the whole file at once. It needs the licensed encoder path rather than AVFoundation's plain HDR writer, so it is a licensing question before it is an API one.
-- **Anti-aliasing for pixels nothing else covers.** Multisampling smooths the triangle path, the SDF and fringe paths carry their own analytic coverage, and the temporal pass covers a moving 3D frame. A generator, a raymarched field, or an imported shader drawn into a layer gets none of those, so its edges stair-step. A single post-process pass over a finished layer, reading luminance to find an edge and blending along it, would reach exactly those pixels, and it belongs in the `Filter` catalog where a chain can place it.
 
 See the [design notes](DESIGN-NOTES.md#rendering-and-color-frontier). (The most speculative item here, AI frame interpolation, sits under [Further out / exploratory](#further-out--exploratory).)
 

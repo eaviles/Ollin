@@ -161,6 +161,37 @@ drawImage(sky.filtered(.paperTexture()).image, 0, 0)
 
 Three lines, and the canvas is a printed poster. It is a mesh gradient of soft color blobs melting into each other, laid onto a synthesized sheet of paper, crumples and all.
 
+## The edges a generated layer has no coverage for
+
+A layer like that one comes with a catch, and it is worth knowing before it bites you.
+
+When you draw a circle, Ollin knows it is a circle. It works out how much of each edge pixel the shape covers, and paints that pixel part-way. That is what keeps the edge smooth instead of built out of little squares.
+
+A generated layer has none of that. A pattern, a raymarched shape, [a shader you wrote yourself](17-YourFirstShader.md) or [borrowed from the web](../Docs/Tools/ShaderImport.md): each one runs a piece of math per pixel and writes a color. No shape stands behind the answer, so there is no coverage to work out. A hard edge inside one comes out as a staircase.
+
+`.antialias` is the repair, and it works from the finished picture:
+
+```swift
+let field = generate(myShader).filtered(.antialias())
+```
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/16-LayersAndEffects/Antialias-dark.jpg">
+  <img src="Images/16-LayersAndEffects/Antialias.jpg" alt="Two magnified panels of the same small shader-drawn picture, a yellow disc under a red band: on the left every edge is a hard staircase of whole pixels, on the right the same edges carry in-between tones that read as a smooth slope" width="680">
+</picture>
+
+Both panels are magnified, so you are looking at real pixels rather than a photograph of a screen. On the left, each edge jumps a whole pixel at a time. On the right, the pixels along the edge have taken in-between tones, and the jump reads as a slope.
+
+What the filter does is close to what your own eye does with that picture. It looks at brightness around each pixel. Where it is flat, it moves on, which is most of a frame. Where there is a step, it works out which way the edge runs, across or down. Then it follows that edge in both directions until the edge ends. Finally it reads the layer back a fraction of a pixel, toward the side the step falls away on. A pixel in the middle of a long edge barely moves. One near the end of a step moves half a pixel. That gradient along the run is the ramp.
+
+Three things follow from working on the image alone, and all three are worth remembering:
+
+- **It cannot tell a stair-step from real detail.** One pixel of deliberate speckle looks exactly like one pixel of aliasing, and both get softened. That is why it is a filter you place rather than something every layer gets.
+- **Place it right after whatever wrote the layer.** Before a warp, which would smear the ramp it just made, and before a blur, which makes it pointless.
+- **It halves the problem rather than removing it.** On a measured shallow edge, the edge strays 0.29 of a pixel from the straight line it should lie on, and 0.14 of a pixel after the filter. Half rather than none is the honest trade for a pass that never sees the shape.
+
+Two knobs. `threshold` is the contrast an edge needs before the filter touches it at all, so raising it leaves faint edges alone and lowering it reaches them. `amount` is how much of the result to keep, and `amount: 0` hands the layer back exactly as it came, which makes an A and B comparison free.
+
 ## A picture made of a few marks: diffusion
 
 Every filter so far took a picture and did something to it. This one makes the picture.

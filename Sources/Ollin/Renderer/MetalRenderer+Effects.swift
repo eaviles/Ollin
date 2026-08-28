@@ -457,6 +457,13 @@ extension MetalRenderer {
                         [f(amount, warning == nil ? 0 : 1, 0, 0),
                          warning ?? SIMD4<Float>(repeating: 0)])
 
+        case let .antialias(amount, threshold, quality):
+            // The floor under the relative test is half of it. A ratio alone finds
+            // "edges" in near-black, where a step of a few thousandths is a large
+            // fraction of nothing, so one knob sets both and they stay in step.
+            return pass("ollin_fx_antialias", [input],
+                        [SIMD4(texel.x, texel.y, Float(threshold), Float(threshold) * 0.5),
+                         SIMD4(Float(amount), Float(antialiasSearchSteps(quality)), 0, 0)])
         case .edges(let intensity):
             return pass("ollin_fx_edges", [input], [SIMD4(texel.x, texel.y, Float(intensity), 0)])
         case .sharpen(let amount):

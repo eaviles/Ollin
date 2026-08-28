@@ -1043,6 +1043,19 @@ extension MetalRenderer {
         }
     }
 
+    /// Resolve an anti-aliasing quality tier to how many steps each end of an edge may
+    /// walk. The stride grows after the fourth step, so the reach is far longer than the
+    /// count: 4 steps see about 4 pixels, 8 about 16, and 12 about 30. What the reach
+    /// buys is the shallow edge, where a long run of pixels shares one step and a walk
+    /// that gives up early reports the middle of the span everywhere along it.
+    func antialiasSearchSteps(_ quality: RenderQuality) -> Int {
+        switch effectiveQuality(quality) {
+        case .performance: return 4
+        case .default:     return 8
+        case .detail:      return 12
+        }
+    }
+
     /// Resolve a raymarch quality setting to the camera-march and self-shadow step budgets.
     /// The `.default` tier returns the pre-dial constants (128 / 48) **exactly**, so a sketch
     /// that sets no quality renders byte-identically to before. The step budget is a fidelity
