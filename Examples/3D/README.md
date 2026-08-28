@@ -112,6 +112,7 @@ What surfaces are made of, from stylized finishes to physically-based metal.
 | [CoatAndCloth](Materials/CoatAndCloth/) | Clearcoat and sheen, the two layered finishes on the physically-based material. |
 | [Subsurface](Materials/Subsurface/) | Light that travels under the surface before it comes back out. |
 | [BrushedMetal](Materials/BrushedMetal/) | Anisotropic specular: brushed, turned, and satin finishes whose highlight is a streak instead of a dot. |
+| [ThinFilm](Materials/ThinFilm/) | Thin-film interference: color made by a film's thickness rather than by pigment. |
 
 ### Lighting
 

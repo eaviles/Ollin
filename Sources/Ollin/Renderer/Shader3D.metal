@@ -2141,6 +2141,25 @@ static inline float3 ollin_pbr_coat_f0(float3 f0) {
     return r * r;
 }
 
+// Thin-film interference over the physically-based lobe (`thinFilm` in the shared
+// library carries the optics). It depends on the view angle alone, so both forms take
+// the view cosine the caller already has, and both are inert at strength 0, which is
+// what keeps every film-less material on its exact old arithmetic.
+//
+// A term that traces one direction takes the reflectance straight (the film replaces
+// the surface's own Fresnel); a term that integrates a whole lobe at once (an area
+// light, an environment) takes the straight-on reflectance that stands in for it,
+// since those carry their own angular response and would otherwise apply it twice.
+static inline float3 ollin_pbr_film_F(float3 F, float3 f0, float NoV,
+                                      float strength, float thicknessNm, float filmIor) {
+    return mix(F, thinFilm(NoV, f0, filmIor, thicknessNm), strength);
+}
+static inline float3 ollin_pbr_film_f0(float3 f0, float NoV,
+                                       float strength, float thicknessNm, float filmIor) {
+    float3 reflectance = thinFilm(NoV, f0, filmIor, thicknessNm);
+    return mix(f0, thinFilmF0(reflectance, NoV), strength);
+}
+
 // MARK: - Area lights (linearly transformed cosines)
 //
 // A panel, disk, or tube of light has no closed-form shading integral for a microfacet
@@ -2742,6 +2761,12 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
     // factor is exactly 1 (byte-identical).
     float diffKeep = (model == 3 && light.iblEnabled != 0)
                    ? (1.0 - mat.transmission * (1.0 - mat.metallic)) : 1.0;
+    // Thin-film interference, resolved once per pixel: what the film does depends on
+    // the view angle alone, so the light loop only ever mixes it into a term it
+    // already has. Strength 0 never reaches the model, so a film-less material stays
+    // on its exact old arithmetic.
+    float interference = (model == 3) ? mat.thinFilm : 0.0;
+    float filmNoV = (interference > 0.0) ? saturate(dot(n, viewDir)) : 0.0;
     // The layered physically-based lobes, resolved once per pixel: the coat intensity
     // and roughness, and the sheen's directional albedo E (from the baked LUT), which
     // both scales the base down and sets the sheen's own strength. Zero coat and zero
@@ -2873,6 +2898,10 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                 // ride the light's diffuse color, like the punctual microfacet path.
                 float3 F0 = mix(float3(mat.f0), base, mat.metallic);
                 if (coat > 0.0) F0 = mix(F0, ollin_pbr_coat_f0(F0), coat);
+                if (interference > 0.0) {
+                    F0 = ollin_pbr_film_f0(F0, filmNoV, interference,
+                                           mat.thinFilmThickness, mat.thinFilmIor);
+                }
                 float3 spec = (F0 * lt2.x + (float3(1.0) - F0) * lt2.y) * specI;
                 float3 diff = base * ((1.0 - mat.metallic) * diffI * diffKeep);
                 float3 term = diff + spec;
@@ -3064,6 +3093,10 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                     Vis = ollin_pbr_V_SmithGGX(NoV, NoL, rough);
                 }
                 float3 F   = ollin_pbr_F_Schlick(VoH, F0);
+                if (interference > 0.0) {
+                    F = ollin_pbr_film_F(F, F0, filmNoV, interference,
+                                         mat.thinFilmThickness, mat.thinFilmIor);
+                }
                 float3 spec = D * Vis * F;
                 float3 kD   = (float3(1.0) - F) * (1.0 - mat.metallic);
                 float3 diff = kD * base * (diffKeep / 3.14159265);
@@ -3274,6 +3307,9 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
     // factor is exactly 1 (byte-identical).
     float diffKeep = (model == 3 && light.iblEnabled != 0)
                    ? (1.0 - mat.transmission * (1.0 - pxMetal)) : 1.0;
+    // Thin-film interference, resolved once per pixel (see the solid fragment).
+    float interference = (model == 3) ? mat.thinFilm : 0.0;
+    float filmNoV = (interference > 0.0) ? saturate(dot(n, viewDir)) : 0.0;
     // The layered physically-based lobes, resolved once per pixel: the coat intensity
     // and roughness, and the sheen's directional albedo E (from the baked LUT), which
     // both scales the base down and sets the sheen's own strength. Zero coat and zero
@@ -3405,6 +3441,10 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
                 // ride the light's diffuse color, like the punctual microfacet path.
                 float3 F0 = mix(float3(mat.f0), base, pxMetal);
                 if (coat > 0.0) F0 = mix(F0, ollin_pbr_coat_f0(F0), coat);
+                if (interference > 0.0) {
+                    F0 = ollin_pbr_film_f0(F0, filmNoV, interference,
+                                           mat.thinFilmThickness, mat.thinFilmIor);
+                }
                 float3 spec = (F0 * lt2.x + (float3(1.0) - F0) * lt2.y) * specI;
                 float3 diff = base * ((1.0 - pxMetal) * diffI * diffKeep);
                 float3 term = diff + spec;
@@ -3596,6 +3636,10 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
                     Vis = ollin_pbr_V_SmithGGX(NoV, NoL, rough);
                 }
                 float3 F   = ollin_pbr_F_Schlick(VoH, F0);
+                if (interference > 0.0) {
+                    F = ollin_pbr_film_F(F, F0, filmNoV, interference,
+                                         mat.thinFilmThickness, mat.thinFilmIor);
+                }
                 float3 spec = D * Vis * F;
                 float3 kD   = (float3(1.0) - F) * (1.0 - pxMetal);
                 float3 diff = kD * base * (diffKeep / 3.14159265);
@@ -4348,6 +4392,11 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
     // reflectance re-derives for the film interface, blended by the coat intensity.
     float3 F0 = mix(float3(mat.f0), base, mat.metallic);
     if (mat.clearcoat > 0.0) F0 = mix(F0, ollin_pbr_coat_f0(F0), mat.clearcoat);
+    // A thin film reflects the surroundings in its own colors, so the whole lobe (and
+    // the energy it leaves for the body under it) rides the film's reflectance here.
+    if (mat.thinFilm > 0.0) {
+        F0 = ollin_pbr_film_f0(F0, NoV, mat.thinFilm, mat.thinFilmThickness, mat.thinFilmIor);
+    }
     // Roughness-aware Fresnel so rough grazing angles don't blow out.
     float3 F = F0 + (max(float3(1.0 - rough), F0) - F0) * pow(1.0 - NoV, 5.0);
     float3 kD = (float3(1.0) - F) * (1.0 - mat.metallic);
@@ -4555,6 +4604,10 @@ static inline float3 ollin_pbr_ibl_ambient_mapped(float3 base, float3 n, float3 
     // reflectance re-derives for the film interface, blended by the coat intensity.
     float3 F0 = mix(float3(mat.f0), base, pxMetal);
     if (mat.clearcoat > 0.0) F0 = mix(F0, ollin_pbr_coat_f0(F0), mat.clearcoat);
+    // The film colors what the surroundings reflect off this surface (see the solid form).
+    if (mat.thinFilm > 0.0) {
+        F0 = ollin_pbr_film_f0(F0, NoV, mat.thinFilm, mat.thinFilmThickness, mat.thinFilmIor);
+    }
     // Roughness-aware Fresnel so rough grazing angles don't blow out.
     float3 F = F0 + (max(float3(1.0 - rough), F0) - F0) * pow(1.0 - NoV, 5.0);
     float3 kD = (float3(1.0) - F) * (1.0 - pxMetal);

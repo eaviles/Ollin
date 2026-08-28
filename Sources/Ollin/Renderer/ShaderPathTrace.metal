@@ -442,6 +442,12 @@ static inline float3 ollin_pt_bsdf(OllinPTHit h, float3 wo, float3 wi) {
     float D = ollin_pbr_D_GGX(NoH, h.s.rough);
     float Vis = ollin_pbr_V_SmithGGX(max(NoV, 1e-4), NoL, h.s.rough);
     float3 F = ollin_pbr_F_Schlick(VoH, F0);
+    // A thin film colors what this surface reflects, here as in the raster path, so a
+    // filmed material carries its color into an offline frame too. Inert at strength 0.
+    if (h.mat.thinFilm > 0.0) {
+        F = ollin_pbr_film_F(F, F0, NoV, h.mat.thinFilm,
+                             h.mat.thinFilmThickness, h.mat.thinFilmIor);
+    }
     float3 spec = D * Vis * F;
     float3 diff = (float3(1.0) - F) * (1.0 - h.s.metal) * h.s.albedo * (1.0 / 3.14159265);
     return diff + spec;

@@ -151,7 +151,7 @@ Three passes work on the finished frame rather than on any one surface, and they
 - Wireframes, the ground grid, and matcap meshes. A matcap is an unlit finish, so a glowing prop drawn over an area light keeps its glow and never blocks the light's rays.
 - Point clouds, strand fields, raymarched fields, instanced meshes, and mesh fields.
 
-Two more things thin out inside a traced frame. The **layered lobes simplify**: clearcoat, sheen, iridescence, anisotropy and subsurface all trace as their metallic-roughness base, and toon and gooch trace as matte. And three **surface tricks stay raster**: a height map's parallax relief, the tiled detail pair, and decals, so a traced hit reads the flat surface at its plain uv.
+Two more things thin out inside a traced frame. The **layered lobes simplify**: clearcoat, sheen, the thin film, iridescence, anisotropy and subsurface all trace as their metallic-roughness base, and toon and gooch trace as matte. And three **surface tricks stay raster**: a height map's parallax relief, the tiled detail pair, and decals, so a traced hit reads the flat surface at its plain uv.
 
 The practical reading is simple. A scene built from meshes and physically based finishes gains the most from tracing. A scene built from fields, clouds, strands or stylized finishes gains the least. [Caustics](./Caustics.md) are the sharpest example. The bent, focused bright lines under glass are a live feature, and the trace puts a straight tinted shadow there instead.
 

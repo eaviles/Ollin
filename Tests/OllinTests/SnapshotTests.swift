@@ -332,6 +332,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("anisotropy-materials",
                  note: "The anisotropic specular finish: a strength sweep (0 / 0.5 / 0.9 / -0.9), the rotation spinning the streak, and the .brushedMetal preset on a torus, under fixed lights + the studio environment. Pins the OllinMaterial anisotropy packing, the anisotropic GGX + Smith direct lobe, the world-frame tangent fallback, and the bent-reflection environment gather. Fixed camera, no time, deterministic.",
                  make: { AnisotropyScene() }),
+    SnapshotCase("thin-film-materials",
+                 note: "Thin-film interference on the physically-based finish: a thickness sweep over one metal (250/400/550/750 nm) and the four ready-made films (.anodized, .oilOnWater, .nacre, .soapFilm). Pins the OllinMaterial thinFilm packing, the interference model itself (both faces' Fresnel, the phase shifts, the frequency-domain color), and its two ways into the shading (the reflectance replacing a traced ray's Fresnel, the straight-on stand-in feeding the environment lobe). Fixed camera + environment, no time.",
+                 make: { ThinFilmScene() }),
     SnapshotCase("pbr-ibl",
                  note: "Physically-based balls lit by a bundled HDRI environment (image-based lighting): pins the whole IBL path (the equirect->cube / irradiance / GGX-prefilter / BRDF-LUT bake, the split-sum ambient on the mesh fragment, and the skybox backdrop). Fixed camera + environment, no time, so the bake is deterministic.",
                  make: { IBLScene() }),
@@ -2103,6 +2106,45 @@ private final class IBLScene: Sketch {
         ]
         for (m, c, x) in balls {
             withState { translate(x, 0, 0); fill(c); material(m); drawSphere(radius: 0.8) }
+        }
+    }
+}
+
+private final class ThinFilmScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.04))
+        camera(.orbiting(target: .zero, radius: 7.4,
+                         azimuth: 0.0, elevation: 0.16, fieldOfView: .pi / 3.4))
+        environment(.courtyard.intensity(1.25).rotated(-0.8).lightingOnly())
+        directionalLight(Color(kelvin: 5400), direction: Vector3(-0.25, -0.45, -0.85),
+                         intensity: 1.1)
+
+        // Top row: one metal, four thicknesses, so the color series is pinned.
+        for (col, nm) in [250.0, 400, 550, 750].enumerated() {
+            withState {
+                translate(-2.4 + Double(col) * 1.6, 0.95, 0)
+                fill(Color(white: 0.75))
+                material(Material(shading: .physicallyBased, metallic: 1, roughness: 0.18,
+                                  thinFilm: 1, thinFilmThickness: nm))
+                drawSphere(radius: 0.65)
+            }
+        }
+        // Bottom row: the ready-made films, the last of them a wall you see through.
+        let finishes: [(Material, Color)] = [
+            (.anodized, Color(white: 0.72)),
+            (.oilOnWater, Color(hex: 0x0A0C10)),
+            (.nacre, Color(white: 0.85)),
+            (.soapFilm(thickness: 520), Color(white: 0.85)),
+        ]
+        for (col, pair) in finishes.enumerated() {
+            withState {
+                translate(-2.4 + Double(col) * 1.6, -0.95, 0)
+                fill(pair.1)
+                material(pair.0)
+                drawSphere(radius: 0.65)
+            }
         }
     }
 }

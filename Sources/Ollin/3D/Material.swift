@@ -59,6 +59,14 @@ import COllinShaders
 /// bends it, `thickness` makes the body solid (with `attenuationColor` /
 /// `attenuationDistance` deepening the tint the farther light travels inside).
 ///
+/// A **thin film** rides it too (`thinFilm`, with its thickness in nanometers): a
+/// transparent skin on the surface whose two faces reflect the same light out of step,
+/// so the colors that survive depend on the film's thickness and on the angle you look
+/// from. That is where a soap bubble, anodized titanium, oil on a puddle, and the inside
+/// of a shell get their color, and unlike the stylized `iridescence` sheen it is
+/// computed from the interference itself (use the `.soapFilm(thickness:)` helper or the
+/// `.anodized` / `.oilOnWater` / `.nacre` built-ins).
+///
 /// Two more layered lobes ride the physically-based finish: **clearcoat** (a thin
 /// polished lacquer over the base, at its own `clearcoatRoughness`: car paint, piano
 /// lacquer; use the `.carPaint(roughness:)` helper or the `.lacquer` built-in) and
@@ -165,6 +173,29 @@ public struct Material: Equatable, Sendable {
     /// band near the silhouette, higher spreads it into a dry, felty haze.
     public var sheenRoughness: Double
 
+    /// Physically-based shading: how much of the surface's reflection comes off a
+    /// transparent **film** lying on it, `0…1` (a soap bubble's wall, the oxide on
+    /// anodized metal, oil on wet asphalt, the nacre of a shell). Light bounces off
+    /// both faces of the film, and the two reflections meet again out of step, so some
+    /// wavelengths add and others cancel: the color is *interference*, not a tint, and
+    /// it changes with the angle you look from. `0` (the default) is off.
+    /// Ignored unless `shading == .physicallyBased`.
+    ///
+    /// Distinct from `iridescence`, the stylized rim rainbow that rides any shading
+    /// model: this one is measured in nanometers and computed from the physics, so it
+    /// keeps its color under a moving light and reads as a real film.
+    public var thinFilm: Double
+    /// How thick that film is, in **nanometers** (light's own scale, not the scene's,
+    /// so the number stays the same however big the object is). Around `300` runs
+    /// gold to violet, `550` sits in the magenta-green band, and past about `1000` the
+    /// bands crowd together and wash toward silver. `0` turns the film off whatever
+    /// `thinFilm` says. A soap wall is roughly `300…800`.
+    public var thinFilmThickness: Double
+    /// The film's index of refraction: `1.3` (the default) is the soap or oxide film
+    /// on most real surfaces, and a higher value both brightens the film's own
+    /// reflection and shortens the color cycle.
+    public var thinFilmIor: Double
+
     /// Specular highlight strength: `0` matte, `~0.5` glossy, `1` a bright hotspot.
     public var specular: Double
     /// Blinn-Phong shininess exponent: higher is a tighter, sharper highlight.
@@ -257,6 +288,8 @@ public struct Material: Equatable, Sendable {
                 clearcoat: Double = 0, clearcoatRoughness: Double = 0,
                 sheen: Double = 0, sheenColor: Color = .white,
                 sheenRoughness: Double = 0.5,
+                thinFilm: Double = 0, thinFilmThickness: Double = 400,
+                thinFilmIor: Double = 1.3,
                 specular: Double = 0, shininess: Double = 32,
                 iridescence: Double = 0, iridescenceScale: Double = 1,
                 iridescenceFlow: Double = 0, iridescencePhase: Double = 0,
@@ -285,6 +318,9 @@ public struct Material: Equatable, Sendable {
         self.sheen = min(1, max(0, sheen))
         self.sheenColor = sheenColor
         self.sheenRoughness = min(1, max(0, sheenRoughness))
+        self.thinFilm = min(1, max(0, thinFilm))
+        self.thinFilmThickness = max(0, thinFilmThickness)
+        self.thinFilmIor = min(3, max(1, thinFilmIor))
         self.specular = max(0, specular)
         self.shininess = max(1, shininess)
         self.iridescence = min(1, max(0, iridescence))
@@ -365,6 +401,12 @@ public struct Material: Equatable, Sendable {
                                  Float(max(0.001, scatteringColor.blue)),
                                  Float(scatteringRadius))
         m.scatterStrength = Float(scattering)
+        // A film of no thickness has nothing to interfere in, so the strength ships as
+        // zero there: that keeps the shader's gate a single compare and stops a
+        // thickness of 0 from asking the model for a color it has no basis for.
+        m.thinFilm = thinFilmThickness > 0 ? Float(thinFilm) : 0
+        m.thinFilmThickness = Float(thinFilmThickness)
+        m.thinFilmIor = Float(thinFilmIor)
         // The brushing rotation ships as cos/sin so the fragment never evaluates the
         // angle; at strength 0 the shader's gate keeps the whole lobe untouched.
         m.anisotropy = SIMD4<Float>(Float(anisotropy),
@@ -600,4 +642,37 @@ public extension Material {
     /// light. Tint `sheenColor` away from the `fill` for the two-tone velvet look.
     static let felt = Material(shading: .physicallyBased, metallic: 0, roughness: 0.9,
                                sheen: 0.9, sheenRoughness: 0.75)
+
+    // Thin-film interference: a transparent film lying on a physically-based surface,
+    // colored by light meeting itself out of step rather than by any pigment. The
+    // thickness is in nanometers, so these values are the same on a bubble and on a
+    // building. Curved surfaces band on their own, because the film's path grows as
+    // the surface turns away.
+
+    /// **Anodized metal**: a polished conductor under a hard oxide film, the peacock
+    /// blues and violets of anodized titanium or a heat-tinted exhaust pipe. The
+    /// `fill` colors the metal under the film.
+    static let anodized = Material(shading: .physicallyBased, metallic: 1, roughness: 0.18,
+                                   thinFilm: 1, thinFilmThickness: 420)
+
+    /// **Oil on water**: a slick over a dark wet surface, the swirl of color on a
+    /// puddle. Reads best over a dark `fill`.
+    static let oilOnWater = Material(shading: .physicallyBased, metallic: 0, roughness: 0.08,
+                                     thinFilm: 1, thinFilmThickness: 550)
+
+    /// **Nacre** / mother-of-pearl: a pale shell that runs through soft pinks and
+    /// greens as it turns, over a smooth body.
+    static let nacre = Material(shading: .physicallyBased, metallic: 0, roughness: 0.14,
+                                thinFilm: 1, thinFilmThickness: 320)
+
+    /// **A soap film** of the given thickness in nanometers: a clear thin wall you see
+    /// through, colored the way a real bubble is. Wants an environment set, like the
+    /// other transmissive finishes, and a thickness from about `300` to `800`. A real
+    /// bubble drains as it stands, so drive the thickness down over time for the
+    /// color to walk down its series.
+    static func soapFilm(thickness: Double = 520) -> Material {
+        Material(shading: .physicallyBased, metallic: 0, roughness: 0,
+                 transmission: 1, ior: 1.33,
+                 thinFilm: 1, thinFilmThickness: thickness, thinFilmIor: 1.33)
+    }
 }

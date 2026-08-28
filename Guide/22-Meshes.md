@@ -494,6 +494,28 @@ Now the second pair. The felt sphere is the same blue as its neighbor, but its s
 
 Both layers work under ordinary lights, under the area-light panels of [Chapter 21](21-3DGently.md), and from an environment. Under the ray-traced reflections of [Chapter 26](26-SculptingWithFields.md) the coat's reflection upgrades to the traced scene along with everything else. The one honest edge matches glass. Seen *inside a mirror*, a coated or fuzzed surface shows only its base there.
 
+### Color with no pigment: the thin film
+
+Blow a soap bubble and it turns colors that were never in the soap. The wall of that bubble is a film a few hundred nanometers thick, and light reflects off both of its faces. The second reflection travels a little farther, so the two come back out of step. Where they line up a color gets brighter, and where they oppose each other it disappears. **What is left is a color made by a distance, not by a pigment.** The same thing colors anodized titanium, oil on a wet road, and the inside of a shell.
+
+```swift
+fill(Color(white: 0.75))
+material(.anodized)                     // an oxide film over polished metal
+
+var m = Material.metal(roughness: 0.16)
+m.thinFilm = 1                          // how much of the reflection is the film's
+m.thinFilmThickness = 480               // nanometers, and this is the color knob
+material(m)
+```
+
+<img src="Images/22-Meshes/ThinFilm.jpg" alt="Four spheres in a row labeled bare metal, 360 nm, 600 nm, and soap film. The bare metal is a neutral mirror of a warm room; the 360 nm ball wears a violet and gold band around its edge; the 600 nm ball turns green at the top and red below; the soap film ball is dark and see-through with a colored rim" width="680">
+
+The three metals are the same metal. Only the thickness of the film on them changes, and it changes everything about their color. That number is in **nanometers**, which is light's own scale rather than the scene's. It is the one measurement in the whole material that is not in world units. It also means the same value works on a bubble and on a building. Around `300` the film runs gold into violet, and `550` sits in the magenta and green band. Past about `1000` the bands crowd together and everything washes toward silver.
+
+Now look at any one of the filmed balls on its own. One thickness, and yet the color changes from the middle of the ball to its edge. A slanted path through the film is a longer path, so the color walks as the surface turns away from you, and it walks again when you move. That is the whole reason a bubble looks alive rather than painted, and you get it for nothing. The surface *under* the film matters too, since the film's lower face is where the two meet. That is why `.anodized`, over metal, and `.oilOnWater`, over a dark wet dielectric, look nothing alike.
+
+The fourth ball is the bubble itself: `.soapFilm(thickness:)` is [glass](#glass) and a film together, a wall you see through that is colored by its own thinness. A real bubble drains as it stands, thinning from the top until it goes black and pops, so walk the thickness down over time and yours will do the same. `.nacre` is the last preset, the pearl. And this is a different thing from the stylized `iridescence` sheen of [Chapter 21](21-3DGently.md), which is a rim rainbow you dial by band count. This one is measured, so it holds its color under a moving light the way the real surface does.
+
 ### Skin, wax, and stone: subsurface scattering
 
 Every surface so far bounces light off its outside. Skin doesn't. Hold a flashlight against your fingers and the flesh glows red around it. Some of the light went *in*, wandered a little way under the surface, and came back out somewhere else. Marble, wax, milk, and jade all do this, and the eye is remarkably good at noticing when a render of them doesn't. **A surface without it reads as painted plastic no matter how carefully it's colored.**

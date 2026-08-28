@@ -623,6 +623,15 @@ typedef struct {
                                   // highlight along the surface's u/tangent axis, negative
                                   // across it); y/z = cos/sin of the brushing rotation, packed
                                   // CPU-side so the fragment never evaluates the angle; w pads.
+    float thinFilm;               // thin-film interference (physically-based only): how much of
+                                  // the specular reflection comes from a transparent film over
+                                  // the surface, 0…1. 0 = no film (the gate; every other batch
+                                  // keeps this zero, so filmless frames are untouched).
+    float thinFilmThickness;      // the film's thickness in nanometers (the wavelength scale is
+                                  // why the unit is not world units): what sets which colors
+                                  // interfere constructively and which cancel.
+    float thinFilmIor;            // the film's index of refraction (1.3 = the common soap or
+                                  // oxide film). Only read while thinFilm > 0.
     float uvWrap;                 // what every one of this material's textures does outside the
                                   // 0…1 uv square (`MeshMaterial.wrap`): 0 = clamp to the edge
                                   // pixel, 1 = repeat, 2 = mirrored repeat. 0 on every batch that

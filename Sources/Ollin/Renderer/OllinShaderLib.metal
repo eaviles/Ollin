@@ -441,6 +441,138 @@ static inline float3 oklabToLinear(float3 lab) {
 }
 static inline float3 oklabToOklch(float3 lab) { return float3(lab.x, length(lab.yz), atan2(lab.z, lab.y)); }
 static inline float3 oklchToOklab(float3 lch) { return float3(lch.x, lch.y * cos(lch.z), lch.y * sin(lch.z)); }
+
+// MARK: - Thin-film interference
+//
+// The color a clear film makes when it lies on a surface: light reflects off the top
+// of the film and off the bottom, the second wave travels a little farther, and the
+// two meet again out of step. Wavelengths that come back in step add and the ones
+// that come back opposed cancel, so the surviving color is made by the geometry
+// rather than by any pigment. It is what colors a soap bubble, an oil slick on a
+// puddle, the oxide on anodized metal, and the inside of a shell.
+//
+// Two numbers set it: how thick the film is (in nanometers, because that is the
+// scale light itself works at) and how far the light bends going in. The color also
+// moves with the angle you look from, because a slanted path through the film is a
+// longer one. The eye's own response is what turns that phase difference into a
+// color, so the three sensitivity curves are summed in the frequency domain rather
+// than by marching over wavelengths, which is what makes this cheap enough to run
+// per pixel. The technique is credited in ATTRIBUTION.md.
+
+// Reflectance straight on at the boundary between two indices.
+static inline float ollin_film_r0(float inner, float outer) {
+    float r = (inner - outer) / (inner + outer);
+    return r * r;
+}
+static inline float3 ollin_film_r0(float3 inner, float outer) {
+    float3 r = (inner - outer) / (inner + outer);
+    return r * r;
+}
+
+// The index a surface must have to reflect `f0` straight on: the inverse of the
+// above, which is how a base coat described by its reflectance rejoins the optics.
+static inline float3 ollin_film_ior(float3 f0) {
+    float3 s = sqrt(clamp(f0, 0.0, 0.9999));
+    return (1.0 + s) / max(1.0 - s, 1e-4);
+}
+
+// Reflectance away from straight on (the standard cheap approximation).
+static inline float ollin_film_fresnel(float f0, float cosTheta) {
+    float m = clamp(1.0 - cosTheta, 0.0, 1.0);
+    float m2 = m * m;
+    return f0 + (1.0 - f0) * (m2 * m2 * m);
+}
+static inline float3 ollin_film_fresnel3(float3 f0, float cosTheta) {
+    float m = clamp(1.0 - cosTheta, 0.0, 1.0);
+    float m2 = m * m;
+    return f0 + (1.0 - f0) * (m2 * m2 * m);
+}
+
+// How much color a given phase difference leaves behind: the eye's three response
+// curves, each fitted as a Gaussian and evaluated in the frequency domain, which
+// turns an integral over every wavelength into a handful of instructions. `opd` is
+// the extra distance the second reflection travels, in nanometers; `shift` is the
+// phase each face of the film adds on reflection.
+static inline float3 ollin_film_sensitivity(float opd, float3 shift) {
+    float phase = 6.28318530718 * opd * 1.0e-9;
+    float3 amp   = float3(5.4856e-13, 4.4201e-13, 5.2481e-13);
+    float3 center = float3(1.6810e+06, 1.7953e+06, 2.2084e+06);
+    float3 width  = float3(4.3278e+09, 9.3046e+09, 6.6121e+09);
+    float phase2 = phase * phase;
+    float3 xyz = amp * sqrt(6.28318530718 * width)
+               * cos(center * phase + shift) * exp(-phase2 * width);
+    // The x response has a second, smaller lobe at the blue end.
+    xyz.x += 9.7470e-14 * sqrt(6.28318530718 * 4.5282e+09)
+           * cos(2.2399e+06 * phase + shift.x) * exp(-4.5282e+09 * phase2);
+    xyz /= 1.0685e-7;
+    // Straight to linear light, which is the space everything here composites in.
+    return float3( 3.2404542 * xyz.x - 1.5371385 * xyz.y - 0.4985314 * xyz.z,
+                  -0.9692660 * xyz.x + 1.8760108 * xyz.y + 0.0415560 * xyz.z,
+                   0.0556434 * xyz.x - 0.2040259 * xyz.y + 1.0572252 * xyz.z);
+}
+
+/// The reflectance of a clear film of `thicknessNm` nanometers and index `filmIor`,
+/// lying on a surface that reflects `baseF0` straight on, seen at `cosTheta` (the
+/// cosine between the surface normal and the eye). Returns one reflectance per
+/// channel, so it drops in wherever a plain Fresnel term would go. At a thickness of
+/// zero it returns the plain reflectance of the surface under it.
+static inline float3 thinFilm(float cosTheta, float3 baseF0, float filmIor, float thicknessNm) {
+    // A film that is not there must not bend the light: fade its index back to the
+    // air's over the first fraction of a nanometer so the whole term stays continuous
+    // as the thickness runs to zero.
+    float eta = mix(1.0, filmIor, smoothstep(0.0, 0.03, thicknessNm));
+    // Where the light goes once it enters the film.
+    float sinT2sq = (1.0 / (eta * eta)) * (1.0 - cosTheta * cosTheta);
+    float cosT2sq = 1.0 - sinT2sq;
+    if (cosT2sq < 0.0) return float3(1.0);       // the light never gets in: a mirror
+    float cosT2 = sqrt(cosT2sq);
+
+    // The film's own top face.
+    float R12 = ollin_film_fresnel(ollin_film_r0(eta, 1.0), cosTheta);
+    float T121 = 1.0 - R12;
+    // Reflecting off something denser turns the wave over; off something thinner
+    // leaves it alone. That half-turn is what makes a very thin film go dark.
+    float phi12 = eta < 1.0 ? 3.14159265 : 0.0;
+    float phi21 = 3.14159265 - phi12;
+
+    // The face where the film meets the surface under it.
+    float3 baseIor = ollin_film_ior(baseF0);
+    float3 R23 = ollin_film_fresnel3(ollin_film_r0(baseIor, eta), cosT2);
+    float3 phi23 = float3(baseIor.x < eta ? 3.14159265 : 0.0,
+                          baseIor.y < eta ? 3.14159265 : 0.0,
+                          baseIor.z < eta ? 3.14159265 : 0.0);
+
+    // How much farther the second reflection traveled, and by how much the two faces
+    // put it out of step.
+    float opd = 2.0 * eta * thicknessNm * cosT2;
+    float3 phi = phi21 + phi23;
+
+    // The light that ends up coming back, summed over every trip it can make between
+    // the two faces: a part that carries no color (the average over all wavelengths)
+    // plus a pair of terms that do, one per round trip.
+    float3 R123 = clamp(R12 * R23, 1e-5, 0.9999);
+    float3 r123 = sqrt(R123);
+    float3 Rs = (T121 * T121) * R23 / (1.0 - R123);
+    float3 reflectance = R12 + Rs;
+    float3 Cm = Rs - T121;
+    for (int m = 1; m <= 2; m++) {
+        Cm *= r123;
+        reflectance += Cm * (2.0 * ollin_film_sensitivity(float(m) * opd, float(m) * phi));
+    }
+    // The sum can leave the colors a display can show; hold it at zero rather than
+    // letting a negative channel travel into the shading.
+    return max(reflectance, 0.0);
+}
+
+/// The reflectance `thinFilm` returns, turned back into the straight-on reflectance
+/// that would produce it at this angle, so a film can also drive a term that expects
+/// an F0 (an image-based or area-light lobe rather than a single ray).
+static inline float3 thinFilmF0(float3 filmReflectance, float cosTheta) {
+    float m = clamp(1.0 - cosTheta, 0.0, 1.0);
+    float m2 = m * m;
+    float m5 = clamp(m2 * m2 * m, 0.0, 0.9999);
+    return max((filmReflectance - m5) / (1.0 - m5), 0.0);
+}
 // OLLIN_LIB_END color
 
 // OLLIN_LIB_BEGIN sdf

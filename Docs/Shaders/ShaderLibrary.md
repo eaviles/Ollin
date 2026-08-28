@@ -17,7 +17,7 @@ let s = Shader(source, using: [.noise, .sdf])   // only these sections splice
 | Module | What it covers | Always on? |
 | --- | --- | --- |
 | (base) | color conversion, luminance, 2D rotation | yes |
-| `.color` | cosine palette, OKLab / OKLCH | no |
+| `.color` | cosine palette, OKLab / OKLCH, thin-film interference | no |
 | `.hash` | integer-free pseudo-random hashes, disc sampling | no |
 | `.noise` | value / FBM / gradient / simplex / Worley / curl noise, ridged / turbulence / warped fbm (depends on `.hash`) | no |
 | `.sdf` | smooth-min and the 2D signed-distance catalog | no |
@@ -62,8 +62,12 @@ A `shade` returns straight sRGB and Ollin handles the linear conversion, so you 
 | `float3 oklabToLinear(float3 lab)` | OKLab → linear RGB. |
 | `float3 oklabToOklch(float3 lab)` | OKLab → OKLCH (lightness, chroma, hue). |
 | `float3 oklchToOklab(float3 lch)` | OKLCH → OKLab. |
+| `float3 thinFilm(float cosTheta, float3 baseF0, float filmIor, float thicknessNm)` | the color a clear film of that thickness (in nanometers) makes over a surface reflecting `baseF0`, seen at that view cosine. Light reflects off both faces of the film and the two waves meet out of step, so some colors add and others cancel: a soap bubble, an oil slick, anodized metal. |
+| `float3 thinFilmF0(float3 filmReflectance, float cosTheta)` | that reflectance turned back into the straight-on value that would produce it, for a term that takes an F0 rather than a single ray. |
 
 Mixing in OKLab/OKLCH (interpolate, then convert back) gives even lightness and clean hue sweeps that linear-RGB mixing can't.
+
+`thinFilm` returns a reflectance, not a finished color: multiply it by whatever the surface is reflecting. The color moves with `cosTheta`, which is the whole point. A sketch that wants bands across a shape should feed it a coordinate rather than a constant. The [3D material](../3D/3D.md#thin-film) is the same model wired into the physically based finish.
 
 ## Hashing
 

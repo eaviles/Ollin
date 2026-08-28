@@ -874,7 +874,8 @@ extension Material: ParamChoices {
          ("smoothPlastic", .smoothPlastic), ("roughPlastic", .roughPlastic),
          ("frostedGlass", .frostedGlass), ("clearGlass", .clearGlass),
          ("gummy", .gummy), ("lacquer", .lacquer),
-         ("satin", .satin), ("felt", .felt)]
+         ("satin", .satin), ("felt", .felt),
+         ("anodized", .anodized), ("oilOnWater", .oilOnWater), ("nacre", .nacre)]
     }
 }
 
