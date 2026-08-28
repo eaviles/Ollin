@@ -701,6 +701,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("strands",
                  note: "A StrandField meadow patch (drawStrands) grown entirely in-draw by the mesh pipeline: 60k hashed blades over a floor with a box casting a shadow the blades receive, framed so part of the patch is off-screen with tile culling ON. Pins the object-stage tile cull + distance grading, the mesh-stage ribbon synthesis (roots, heights, leans, tapers, tints all from hashes), the blades shading through the shared lit fragment, and that culling never eats a visible tile. No time (phase-zero sway) and no rng, deterministic (the render is pinned byte-exact by its own test).",
                  make: { StrandsScene() }),
+    SnapshotCase("planet",
+                 note: "The procedural planet: six compute kernels bake the height, surface, relief, finish, city-light and cloud maps into textures the sketch keeps, a sphere wears them under one directional sun, and the night lights are drawn into a second layer and masked by the darkness of the lit one (Combine.mask, inverted), so the terminator decides where a city shows. Pins the whole chain, the compute-texture-as-mesh-texture path (base color, normal, metallic-roughness and emissive maps all GPU-written), the layer mask, and the bloom. The kernels are read from the example's own .metal files. t = 0, one world, deterministic.",
+                 make: { PlanetScene() }),
     SnapshotCase("ocean",
                  note: "A wave field (oceanField) drawn as water (drawOcean): the spectrum pass, the inverse Fourier ladder, and the resolve run on the GPU, then a grid with no geometry buffers reads the field for where each corner has moved. Pins the whole chain, the per-pixel normal read off the field (the light running over the water), the body color, the Fresnel sky mix, the sun glitter, and foam where the crests fold. No environment (the flat sky color path), t = 0, one seed, deterministic.",
                  make: { OceanScene() }),
@@ -8375,6 +8378,133 @@ private final class StrandsScene: Sketch {
         meadow.bladeHeight = 0.55
         meadow.swayAmount = 0.08
         drawStrands(meadow)
+    }
+}
+
+/// A world baked on the GPU and then lit like any other solid. The kernels and the
+/// star shader are read from the example's own files, so this pins what ships. Half
+/// the example's map size and segment count, t = 0, one world, deterministic.
+private final class PlanetScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    private static func exampleFile(_ name: String) -> URL {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()      // OllinTests
+            .deletingLastPathComponent()      // Tests
+            .deletingLastPathComponent()      // the repository
+            .appendingPathComponent("Examples/3D/Geometry/Planet/\(name)")
+    }
+    private static func kernel(_ entry: String) -> ComputeKernel? {
+        ComputeKernel(entry: entry, contentsOf: exampleFile("planet.metal"))
+    }
+
+    private let heightMap = ComputeTexture(width: 512, height: 256)
+    private let surfaceMap = ComputeTexture(width: 512, height: 256)
+    private let reliefMap = ComputeTexture(width: 512, height: 256)
+    private let finishMap = ComputeTexture(width: 512, height: 256)
+    private let lightMap = ComputeTexture(width: 512, height: 256)
+    private let cloudMap = ComputeTexture(width: 256, height: 128)
+    private let cloudReliefMap = ComputeTexture(width: 256, height: 128)
+
+    private var globe = Mesh(positions: [], normals: [], indices: [])
+    private var cities = Mesh(positions: [], normals: [], indices: [])
+    private var weather = Mesh(positions: [], normals: [], indices: [])
+    private var air = Mesh(positions: [], normals: [], indices: [])
+    private var stars: Shader?
+
+    override func setup() {
+        toneMap(.aces)
+        let ball = Mesh.sphere(radius: 1, segments: 128, rings: 64)
+        globe = ball.textured(surfaceMap.image)
+            .normalMapped(reliefMap.image, scale: 1)
+            .surfaceMapped(metallicRoughness: finishMap.image)
+        cities = ball.textured(lightMap.image, baseColor: .black)
+        cities.material?.emissiveTexture = lightMap.image
+        cities.material?.emissiveFactor = Color(white: 1.4)
+        weather = Mesh.sphere(radius: 1.003, segments: 128, rings: 64)
+            .textured(cloudMap.image)
+            .normalMapped(cloudReliefMap.image, scale: 1)
+        air = Mesh.sphere(radius: 1.028, segments: 96, rings: 48)
+        air.material = MeshMaterial(baseColor: .black)
+        if let source = try? String(contentsOf: Self.exampleFile("stars.metal"),
+                                    encoding: .utf8) {
+            stars = Shader(source)
+        }
+    }
+
+    override func draw() {
+        background(.black)
+        guard let bakeHeight = Self.kernel("planet_height"),
+              let bakeSurface = Self.kernel("planet_surface"),
+              let bakeRelief = Self.kernel("planet_relief"),
+              let bakeFinish = Self.kernel("planet_finish"),
+              let bakeLights = Self.kernel("planet_lights"),
+              let bakeClouds = Self.kernel("planet_clouds") else { return }
+
+        var seed = ComputeParams(); seed.append(Float(3))
+        compute(bakeHeight, writing: heightMap, params: seed)
+        compute(bakeSurface, reading: heightMap, writing: surfaceMap, params: seed)
+        var relief = ComputeParams(); relief.append(Float(5.5)); relief.append(Float(0))
+        compute(bakeRelief, reading: heightMap, writing: reliefMap, params: relief)
+        compute(bakeFinish, reading: heightMap, writing: finishMap)
+        compute(bakeLights, reading: heightMap, writing: lightMap, params: seed)
+        var sky = ComputeParams(); sky.append(Float(3)); sky.append(Float(0.66))
+        compute(bakeClouds, writing: cloudMap, params: sky)
+        var cloudRelief = ComputeParams()
+        cloudRelief.append(Float(3.0)); cloudRelief.append(Float(1))
+        compute(bakeRelief, reading: cloudMap, writing: cloudReliefMap, params: cloudRelief)
+
+        let eye = Camera3D.perspective(eye: Vector3(0, 0.26, 3.55), target: .zero,
+                                       fieldOfView: .pi / 4.6)
+        let scene = renderTarget()
+        withTarget(scene) {
+            background(.black)
+            if let stars { drawImage(generate(stars).image, 0, 0) }
+            camera(eye)
+            light(.directional(.white, direction: Vector3(-0.86, -0.36, -0.36),
+                               intensity: 2.1, castsShadow: false))
+            fill(.white)
+            var surface = Material.physicallyBased(metallic: 1, roughness: 1)
+            surface.rim = 0.16
+            surface.rimPower = 5.0
+            surface.rimColor = Color(hex: 0x8FC0FF)
+            material(surface)
+            drawMesh(globe)
+            material(.dielectric(roughness: 0.92))
+            drawMesh(weather)
+        }
+        let lights = renderTarget()
+        withTarget(lights) {
+            camera(eye)
+            fill(.white)
+            material(Material())
+            drawMesh(cities)
+        }
+        let atmosphere = renderTarget()
+        withTarget(atmosphere) {
+            camera(eye)
+            fill(.white)
+            var shell = Material()
+            shell.rim = 0.42
+            shell.rimPower = 4.0
+            shell.rimColor = Color(hex: 0x6EA8FF)
+            material(shell)
+            drawMesh(air)
+        }
+        let night = lights.combined(with: scene, .mask(channel: .luminance, invert: true))
+        let daylight = scene.filtered(.gaussianBlur(radius: 30))
+        let halo = atmosphere.combined(with: daylight, .mask(channel: .luminance))
+
+        drawImage(scene.image, 0, 0)
+        withState {
+            blendMode(.add)
+            drawImage(night.image, 0, 0)
+            drawImage(halo.filtered(.gaussianBlur(radius: 4)).image, 0, 0)
+            drawImage(scene.filtered(.bloom(threshold: 0.80, intensity: 0.5,
+                                            radius: 46)).image, 0, 0)
+            drawImage(night.filtered(.bloom(threshold: 0.12, intensity: 0.7,
+                                            radius: 14)).image, 0, 0)
+        }
     }
 }
 
