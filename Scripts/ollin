@@ -54,6 +54,12 @@ usage: ollin <path/to/Sketch.swift> [flags]   run the sketch (live window)
                                               GPU and say what it found: errors at
                                               your own line, what the shader is,
                                               the parameters it reads
+       ollin docs [topic]                     the written reference, here in the
+                                              terminal; <topic>#<heading> for one
+                                              section, --search <text> to read the
+                                              whole reference for a word
+       ollin examples [filter]                the examples set: what each one shows,
+                                              how to run it, --source to read it
        ollin install [dir]                    symlink ollin onto your PATH
        ollin help                             show this help
 
@@ -90,6 +96,31 @@ cmd_check() {
         if [[ -f "$a" ]]; then args+=("${a:A}"); else args+=("$a"); fi
     done
     exec swift run -c "${OLLIN_CONFIG:-release}" --package-path "$repo" OllinCheck "${args[@]}"
+}
+
+# ollin docs [topic] / ollin examples [filter]: the reference and the examples
+# set, read out of this checkout. Like the generator, it links no framework, so
+# the first run is a second or two.
+#
+# The pager is the shell's job, not the command's: only the shell knows whether
+# a person is looking. When one is, the terminal's own colors are asked for
+# even though the output is now a pipe, and `less` is told to keep short output
+# on screen and to leave the page there afterwards.
+cmd_reference() {
+    local -a args=("$@")
+    local paged=1
+    local -a kept
+    local a
+    for a in "${args[@]}"; do
+        if [[ "$a" == "--no-pager" ]]; then paged=0; else kept+=("$a"); fi
+    done
+    if [[ -t 1 && $paged == 1 ]]; then
+        local pager="${PAGER:-less -FRX}"
+        swift run -c "${OLLIN_CONFIG:-debug}" --package-path "$repo" OllinDocs \
+            "${kept[@]}" --color | ${=pager}
+        return ${pipestatus[1]}
+    fi
+    exec swift run -c "${OLLIN_CONFIG:-debug}" --package-path "$repo" OllinDocs "${kept[@]}"
 }
 
 # ollin install [dir]: symlink this script (symlink-resolved) onto the PATH.
@@ -130,6 +161,8 @@ case "${1:-}" in
         shift; cmd_generate "$@" ;;
     check)
         shift; cmd_check "$@" ;;
+    docs|examples)
+        cmd_reference "$@" ;;
     install)
         shift; cmd_install "$@" ;;
     help|--help|-h)

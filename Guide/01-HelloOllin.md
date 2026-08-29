@@ -294,6 +294,37 @@ This is the same thing in a window, and it does one thing the terminal cannot: i
 
 Nothing about this changes what a sketch is. It is still your `.swift` file, still readable on its own, and the folder is just somewhere to keep it and its material. [The project generator](../Docs/Tools/ProjectGenerator.md) has the whole list of templates and options.
 
+## Looking something up without leaving the terminal
+
+You are going to want to look things up constantly, and switching to a browser to do it breaks the loop you just built. Everything the documentation says is already on your machine, in the folder you cloned, so you can read it where you are working:
+
+```sh
+ollin docs color             # the page about color
+ollin examples flocking      # the example, what it shows, how to run it
+```
+
+Name a page however you happen to think of it. `Color`, `Drawing/Color`, and a word from its description all land on the same page. An exact name always wins over a page that merely mentions the word. A long page can be opened at one part of itself:
+
+```sh
+ollin docs Color#ramps
+```
+
+The command that pays for itself, though, is the one for when you know what you want and not what it is called:
+
+```sh
+ollin docs --search "long exposure"
+```
+
+That reads every page and shows you each line that says it, with the page and the heading it sits under. A topic that matches no page falls through to the same search, so a wrong guess still tells you something.
+
+The examples answer the other half of the question. `ollin examples` with no filter lists all of them, grouped by folder. With a word, it finds the ones whose name, folder, or description matches. And `--source` prints the sketch itself, which is often the fastest answer there is:
+
+```sh
+ollin examples ocean --source
+```
+
+None of this needs a network. [The reference offline](../Docs/Tools/Reference.md) covers the rest, including how it behaves in a pipe.
+
 ## Putting it together: a breathing ring
 
 Now we can build the piece from the top of the chapter, and everything in it is something this chapter has already covered. A loop places 28 circles around a ring using the `cos` and `sin` recipe, `time` inside the angle makes the whole ring drift, and `sin` swings both the ring's radius and each circle's size so that the piece breathes. Make a new file, `MySketches/HelloMotion.swift`:
@@ -362,6 +393,7 @@ The `setup()` and `draw()` sketch model comes from [Processing](https://processi
 - [Drawing](../Docs/Drawing/Drawing.md): every shape and the complete ink state.
 - [The project generator](../Docs/Tools/ProjectGenerator.md): every template and option behind `ollin new` and `ollin generate`, what a generated folder holds, and how to add a template of your own.
 - [Dragging a shape](../Docs/Tools/DragToEdit.md): everything a Command-drag can move, what it writes, and why a calculation is refused by name.
+- [The reference offline](../Docs/Tools/Reference.md): `ollin docs` and `ollin examples` in full, including one section of a page, the search across everything, and what happens in a pipe.
 - [Input](../Docs/Helpers/Input.md): the keyboard, click hooks, and the rest of the mouse.
 - [Parameters](../Docs/Helpers/Parameters.md): the full knob family (toggles, menus, pads, and friends), grouping knobs into cards, icons, smoothing, and driving knobs from MIDI or OSC hardware.
 - [Appendix A, Just enough Swift](A-JustEnoughSwift.md): the language met properly, every construct these sketches lean on taught in order. [The Swift quick reference](../Docs/Swift.md) is its terse sibling, for whenever a single construct felt mysterious.

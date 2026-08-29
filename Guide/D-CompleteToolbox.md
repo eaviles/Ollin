@@ -40,6 +40,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 | Dragging a shape | Hold Command in the live window and drag a shape: the numbers that placed it change in your file | [Ch 1](01-HelloOllin.md) | [DragToEdit](../Docs/Tools/DragToEdit.md) |
 | Single-file sketches | `ollin new` and `ollin <file>.swift`: one loose file is a whole sketch, runnable from anywhere | [Ch 1](01-HelloOllin.md) | [SingleFile](../Docs/Tools/SingleFile.md) |
 | Project generator | `ollin new <Name>` and `ollin generate`: a ready-to-run folder from a template you can watch running first | [Ch 1](01-HelloOllin.md) | [ProjectGenerator](../Docs/Tools/ProjectGenerator.md) |
+| The reference offline | `ollin docs` and `ollin examples`: these pages and every example read in the terminal, with a search across all of them | [Ch 1](01-HelloOllin.md) | [Reference](../Docs/Tools/Reference.md) |
 | Bringing a shader over | `ollin new --from-shader`: a GLSL fragment shader translated into Metal, with a project written around it | [Ch 17](17-YourFirstShader.md) | [ShaderImport](../Docs/Tools/ShaderImport.md) |
 | Checking a shader | `ollin check`: compile a `.metal` file on the GPU and see the errors at your own line, what the shader is, and the parameters it reads | [Ch 17](17-YourFirstShader.md) | [ShaderCheck](../Docs/Tools/ShaderCheck.md) |
 | Bringing a scene over | `ollin new --from-scene`: a glTF or USD scene written out as the camera, light and placement calls that draw it | [Ch 22](22-Meshes.md) | [SceneImport](../Docs/Tools/SceneImport.md) |

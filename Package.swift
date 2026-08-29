@@ -288,6 +288,22 @@ let package = Package(
             name: "OllinNew",
             dependencies: ["OllinProjects", "OllinSceneImport"]
         ),
+        // The written reference and the examples set, read as text: which pages
+        // exist and what each is for, markdown dressed for a terminal, and the
+        // search that answers a question a page name cannot. It depends on
+        // OllinProjects for the example walker rather than keeping a second
+        // one, and on nothing else, so it stays a text target.
+        .target(
+            name: "OllinReference",
+            dependencies: ["OllinProjects"]
+        ),
+        // `ollin docs` and `ollin examples`: the reference in the terminal, out
+        // of this checkout, for anybody with no network or no wish to open a
+        // browser. It links no framework, so the first run is a second or two.
+        .executableTarget(
+            name: "OllinDocs",
+            dependencies: ["OllinReference"]
+        ),
         // `ollin check`: compile a shader file on the real device and report what it
         // found. It links the framework because the point is to compile the shader
         // exactly the way a running sketch would, through the same compose path, so a
@@ -922,6 +938,14 @@ let package = Package(
         .testTarget(
             name: "OllinProjectsTests",
             dependencies: ["OllinProjects"]
+        ),
+        // The reference in the terminal: the page catalog, the markdown
+        // renderer, the lookup, the search, and the example listing. Text in,
+        // text out, and it reads the repository's own Docs and Examples
+        // folders, so a page that stops rendering is caught here.
+        .testTarget(
+            name: "OllinReferenceTests",
+            dependencies: ["OllinReference"]
         ),
         // Editing a sketch's own source from the window it runs in: the scanner
         // that finds one draw call's numbers and writes the new ones. Text in,

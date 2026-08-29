@@ -177,6 +177,16 @@ ollin generate                                     # the same, in a window
 
 `ollin generate` shows each starting point by *running* it, so you pick a template by watching it rather than by reading its name.
 
+The same `ollin` command also reads the documentation and the examples out of your own checkout, so looking something up costs a command rather than a browser:
+
+```sh
+ollin docs color            # the page, in the terminal
+ollin docs --search "long exposure"   # every place the reference says it
+ollin examples ocean        # what it shows, and how to run it
+```
+
+See [The reference offline](Docs/Tools/Reference.md) for sections, filters, and reading an example's source.
+
 The same command starts a library other people's sketches import, laid out the shared way. See [Writing an extension](Docs/Tools/Extensions.md) for the `ollinx-` naming convention and the seams a third party can build on.
 
 ```sh

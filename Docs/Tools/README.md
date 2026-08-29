@@ -12,4 +12,5 @@
 - [`Bringing a scene over`](./SceneImport.md) - `ollin new --from-scene`: a glTF or USD scene written out as the sketch that draws it
 - [`Writing an extension`](./Extensions.md) - `ollin new --kind extension`: a library other sketches import, the `ollinx-` naming convention, and the seams to build on
 - [`Dragging a shape`](./DragToEdit.md) - Command-drag a shape in the live window and the numbers that place it change in your own file
+- [`The reference offline`](./Reference.md) - `ollin docs` and `ollin examples`: these pages and every example sketch read in the terminal, out of the checkout you build against
 - [`Profiling`](./Profiling.md) - the inspector's cost row: CPU against GPU on one scale, the draw and pass counts, and a frame handed to Xcode

@@ -232,6 +232,7 @@ Writing GPU code yourself: fragment shaders run through the effect graph, comput
 - [`Bringing a scene over`](./Tools/SceneImport.md) - `ollin new --from-scene`: a glTF or USD scene written out as the camera, lights and placement calls that draw it
 - [`Writing an extension`](./Tools/Extensions.md) - `ollin new --kind extension`: a library other sketches import, the `ollinx-` naming convention, and the seams to build on
 - [`Dragging a shape`](./Tools/DragToEdit.md) - Command-drag a shape in the live window and the numbers that place it change in your own file, with your spacing and comments untouched
+- [`The reference offline`](./Tools/Reference.md) - `ollin docs` and `ollin examples`: these pages and every example sketch read in the terminal, out of the checkout you build against, with a search across the whole reference
 - [`Profiling`](./Tools/Profiling.md) - the inspector's cost row: CPU against GPU on one scale, the draw and pass counts, and a frame handed to Xcode
 
 Coordinates use a **top-left origin with y increasing downward**, the same as p5, Processing, and OPENRNDR. [Where a point is](./Concepts/Coordinates.md) covers that in one screen, units included.
