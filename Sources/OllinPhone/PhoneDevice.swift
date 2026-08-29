@@ -45,6 +45,11 @@ import Darwin
 /// given, and reports each one it finds: `latestMarkers` carries a name, a placement
 /// in the room, and the thing's real size, so a sketch stands on a printed picture.
 ///
+/// In **Wand** mode the phone becomes a pointer rather than an observer:
+/// `latestWand` carries where it is, which way it points, and what the thumb is
+/// doing on the screen, so a sketch can be pointed at and pressed. It runs on plain
+/// world tracking, so it needs no LiDAR.
+///
 /// `latestLight` says how bright and how warm the room is. It arrives in every mode,
 /// so a sketch can match the light it is standing in.
 ///
@@ -168,6 +173,14 @@ public final class PhoneDevice: FrameSource, VideoFeed {
         let followed = latestMarkers.filter(\.isTracked)
         return followed.max { a, b in a.width * a.height < b.width * b.height }
     }
+
+    /// The phone held as a pointer, or `nil` before a reading arrives. Populated in
+    /// **Wand** mode (rear camera, plain world tracking, so it needs no LiDAR).
+    ///
+    /// It carries where the phone is, which way it points, and what the thumb is
+    /// doing on the screen. `ray` runs out of the back of the phone, so a sketch
+    /// asks it what the person is pointing at.
+    public var latestWand: PhoneWand? { reader.latestWand.map(PhoneWand.init) }
 
     /// The latest CoreMotion sample, or `nil` before one arrives — the cheap
     /// transport smoke-test (it moves the moment the wire is alive, before ARKit
@@ -337,6 +350,7 @@ final class PhoneStreamReader: @unchecked Sendable {
         var latestHands: [PhoneHandSample] = []
         var latestTexts: [PhoneTextSample] = []
         var latestMarkers: [PhoneMarkerSample] = []
+        var latestWand: PhoneWandSample?
         var latestMotion: PhoneMotionSample?
         var latestDepth: PhoneDepthFrameBox?
         var depthSequence = 0
@@ -368,6 +382,7 @@ final class PhoneStreamReader: @unchecked Sendable {
     var latestHands: [PhoneHandSample] { lock.withLock { $0.latestHands } }
     var latestTexts: [PhoneTextSample] { lock.withLock { $0.latestTexts } }
     var latestMarkers: [PhoneMarkerSample] { lock.withLock { $0.latestMarkers } }
+    var latestWand: PhoneWandSample? { lock.withLock { $0.latestWand } }
     var latestMotion: PhoneMotionSample? { lock.withLock { $0.latestMotion } }
     var latestDepth: PhoneDepthFrameBox? { lock.withLock { $0.latestDepth } }
     var latestSegmentation: PhoneSegmentationBox? { lock.withLock { $0.latestSegmentation } }
@@ -507,6 +522,7 @@ final class PhoneStreamReader: @unchecked Sendable {
                         case .hands(let h): state.latestHands = h
                         case .texts(let t): state.latestTexts = t
                         case .markers(let m): state.latestMarkers = m
+                        case .wand(let w): state.latestWand = w
                         case .light(let l): state.latestLight = l
                         case .depth, .segmentation, .sceneMesh, .plane: break   // handled above
                         }

@@ -6,7 +6,7 @@
 
 Borrow a tethered iPhone's on-device perception in a sketch that still renders on the Mac. **Ollin Capture**, Ollin's own iOS app ([`Apps/OllinPhoneApp`](../../Apps/OllinPhoneApp/README.md)), runs ARKit on the phone's Neural Engine and streams the results over the USB cable. `PhoneDevice` reads them on the Mac as typed values you use in `draw()`.
 
-Nine payloads come over. A **3D body skeleton**. **Faces**, up to 3 at once, each a deforming mesh plus the 52 expression blendshapes. The **hands** in view, up to 4, each a 21-joint skeleton lifted to metric 3D where the phone has LiDAR. The lines of **text** it can read, each with its corners lifted the same way. The **pictures and objects it knows**, each found in the room as a named 6DoF placement with its real size. A world-facing **RGBD depth frame** from the rear LiDAR, which unprojects into a point cloud and carries the camera's 6DoF pose. The **room mesh**, the space itself reconstructed as a labeled triangle surface. A **person-segmentation matte** from the rear camera, as a silhouette and a cutout. And **device motion**.
+Ten payloads come over. A **3D body skeleton**. **Faces**, up to 3 at once, each a deforming mesh plus the 52 expression blendshapes. The **hands** in view, up to 4, each a 21-joint skeleton lifted to metric 3D where the phone has LiDAR. The lines of **text** it can read, each with its corners lifted the same way. The **pictures and objects it knows**, each found in the room as a named 6DoF placement with its real size. A world-facing **RGBD depth frame** from the rear LiDAR, which unprojects into a point cloud and carries the camera's 6DoF pose. The **room mesh**, the space itself reconstructed as a labeled triangle surface. A **person-segmentation matte** from the rear camera, as a silhouette and a cutout. **Device motion**. And the phone itself **held as a pointer**, which is the one payload that carries the person rather than the room.
 
 Where [`Record3D`](../3D/Record3D.md) borrows another app's color-plus-depth feed, this is Ollin's own app, so the stream carries what ARKit *perceives*. The chain is Ollin's end to end.
 
@@ -41,6 +41,7 @@ final class Pose: Sketch {
 - [The hands](#the-hands) - `PhoneHand`, 21 joints, the 3D lift, `pinchDistance`
 - [The text in view](#the-text-in-view) - `PhoneText`, the corners, `worldTransform`
 - [The pictures and objects it knows](#the-pictures-and-objects-it-knows) - `PhoneMarker`, the reference folder, `placement`
+- [The phone as a pointer](#the-phone-as-a-pointer) - `PhoneWand`, the beam, the button, the thumb
 - [World depth](#world-depth) - `latestDepthFrame`, `pointCloud(...)`, the camera pose
 - [World fusion](#world-fusion) - `WorldCloud`, sweeping a room into one cloud, [keeping it registered](#drift), and [recognizing a place already scanned](#loops) with `ScanGraph`
 - [The room mesh](#the-room-mesh) - `sceneMesh`, the room as a labeled surface, the Room mode
@@ -80,6 +81,7 @@ device.latestHands                   // [PhoneHand], every hand in view, up to 4
 device.latestHand                    // PhoneHand?, the most confident one
 device.latestTexts                   // [PhoneText], the lines it can read (Text mode)
 device.latestMarkers                 // [PhoneMarker], the pictures it knows (Markers mode)
+device.latestWand                    // PhoneWand?, the phone as a pointer (Wand mode)
 device.latestDepthFrame              // RGBDFrame?, the latest depth frame (World mode)
 device.sceneMesh                     // PhoneSceneMesh, the room scanned so far (Room mode)
 device.planes                        // PhonePlanes, the flat surfaces found (Room mode)
@@ -89,7 +91,7 @@ device.latestMotion                  // PhoneMotion?, the latest device-motion s
 
 These are fresh each time the phone sends one, so read them within the current `draw()`. Each is `nil` until the first of its kind arrives. Motion typically lights up first, since it needs no camera or model, proving the wire before ARKit has found a body, face, or depth.
 
-**The camera modes are mutually exclusive.** Body, World, Segment, Room, Hands, Text, and Markers use the rear camera, Face and Selfie the front camera, and only one camera session runs at a time. The capture app has a **Body / Face / World / Segment / Selfie / Room / Hands / Text / Markers** toggle, and whichever is selected is the one that updates: `latestBody`, `latestFace`, `latestHands`, `latestTexts`, `latestMarkers`, `latestDepthFrame`, the segmentation images (Segment and Selfie both feed them), or the room's `sceneMesh` and `planes`. The others hold their last value, so read the one for the mode you mean to drive. Motion streams across all of them, and `latestLight` across every mode except Selfie, the one mode that runs no ARKit session.
+**The camera modes are mutually exclusive.** Body, World, Segment, Room, Hands, Text, Markers, and Wand use the rear camera, Face and Selfie the front camera, and only one camera session runs at a time. The capture app has a **Body / Face / World / Segment / Selfie / Room / Hands / Text / Markers / Wand** toggle, and whichever is selected is the one that updates: `latestBody`, `latestFace`, `latestHands`, `latestTexts`, `latestMarkers`, `latestWand`, `latestDepthFrame`, the segmentation images (Segment and Selfie both feed them), or the room's `sceneMesh` and `planes`. The others hold their last value, so read the one for the mode you mean to drive. Motion streams across all of them, and `latestLight` across every mode except Selfie, the one mode that runs no ARKit session.
 
 ## The body
 
@@ -293,6 +295,46 @@ Three things decide whether this works in a room:
 - **An object is found, not followed.** ARKit tracks a picture while it stays in view; a scanned object gets one placement where it was found and keeps it. So an object marks a place, and a picture marks a moving thing.
 
 The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneMarkers`.
+
+<a name="the-phone-as-a-pointer"></a>
+
+## The phone as a pointer
+
+Every payload above describes the room. **Wand** mode describes the person holding the phone. The phone tracks its own place with plain world tracking, so it needs no LiDAR, and the screen under the thumb becomes the button.
+
+```swift
+guard let wand = device.latestWand, wand.isTracked else { return }
+
+wand.position                        // Vector3, where the phone is (meters)
+wand.pointing                        // Vector3, out of the back of it, length 1
+wand.ray                             // Ray3, the beam: ask it what it hits
+wand.point(at: 2)                    // Vector3, two meters out in front
+wand.placement                       // simd_float4x4, ready for transform(_:)
+wand.up                              // Vector3, up the screen
+wand.across                          // Vector3, right across the screen
+wand.isPressed                       // Bool, a finger is on the pad now
+wand.pressCount                      // Int, presses so far, never falls
+wand.touch                           // Vector2?, -1...1 across and up, nil when free
+```
+
+`ray` is what a sketch usually asks. It starts at the phone and runs the way the phone points, so [`Ray3`](../Drawing/Geometry.md#ray3) answers what the person is pointing at:
+
+```swift
+for (i, ball) in balls.enumerated() where wand.ray.hit(sphereAt: ball, radius: 0.13) != nil {
+    aimed = i
+}
+```
+
+Four things are worth knowing before you build on it:
+
+- **The beam comes out of the back.** Point the rear camera at a thing and you are pointing at it. `placement` is the phone's own frame (x across the screen, y up it, z out of it toward you), so `pointing` is its **-z**, the same way a camera looks in [Ollin's own 3D](./3D.md).
+- **The press is carried twice, on purpose.** `isPressed` is the state now, which is what a drag reads. `pressCount` only rises, so a tap that landed and left between two `draw()` calls is still seen: keep last frame's count and compare.
+- **The thumb is a rate, not a place.** `touch` is where the thumb sits on the pad, and the pad is small while a room is not, so read it as a speed (`distance += touch.y * speed * deltaTime`) rather than as a position.
+- **The room's origin is where the mode started.** Everything is in the same ARKit world space as the [depth sweep](#world-fusion) and the room, and that world begins where the phone stood when Wand mode began. So lay a scene out in front of that spot, or let the person walk to it.
+
+`isTracked` goes off while the phone is finding its place, and the button keeps working through that, so a sketch can take presses while the pose is worth nothing.
+
+The bundled example is `swift run --package-path Examples Example-3D-Phone-PhonePointer`.
 
 ## World depth
 

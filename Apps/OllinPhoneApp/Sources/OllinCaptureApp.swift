@@ -31,6 +31,10 @@ struct OllinCaptureApp: App {
 /// way; Markers the reference pictures and scanned objects it knows, each reported
 /// where it stands in the room.
 ///
+/// Wand is the one mode that reports the person rather than the room: the phone's
+/// own place and heading, with the thumb on the screen beside it, so a sketch on
+/// the Mac can be pointed at and pressed.
+///
 /// The room's light streams in every ARKit mode, so it is not a mode of its own.
 /// Selfie runs no ARKit session, so it is the one mode with no light readings.
 enum CaptureMode: String, CaseIterable, Identifiable {
@@ -43,6 +47,7 @@ enum CaptureMode: String, CaseIterable, Identifiable {
     case hands = "Hands"
     case text = "Text"
     case markers = "Markers"
+    case wand = "Wand"
     var id: String { rawValue }
 }
 
@@ -73,6 +78,8 @@ final class SensorStreamer {
     var textInfo = ""
     var markersFound = false
     var markerInfo = ""
+    var wandTracked = false
+    var wandInfo = ""
     /// What the phone is looking for, and what it could not use, for the screen.
     var markerReferences: [MarkerReference] = []
     var markerNotes: [String] = []
@@ -101,6 +108,9 @@ final class SensorStreamer {
     private let hands = HandStreamer()
     private let text = TextStreamer()
     private let markers = MarkerStreamer()
+    /// The one streamer the screen writes into rather than only reading: the pad
+    /// under the thumb is part of this sensor, so the view reaches it directly.
+    let wand = WandStreamer()
     private let motion = MotionStreamer()
 
     /// How many blocks of the room have gone out, and how many were dropped for
@@ -240,6 +250,16 @@ final class SensorStreamer {
             }
         }
 
+        wand.onWand = { [weak self] sample in
+            guard let self else { return }
+            self.server?.send(PhoneWire.encode(.wand(sample)))
+            self.wandTracked = sample.tracked
+            var parts = [sample.tracked ? "tracking" : "finding its place…"]
+            if sample.pressed { parts.append("pressed") }
+            parts.append("\(sample.pressCount) presses")
+            self.wandInfo = parts.joined(separator: " · ")
+        }
+
         markers.onLibrary = { [weak self] library in
             guard let self else { return }
             self.markerReferences = library.references
@@ -249,7 +269,7 @@ final class SensorStreamer {
         // Every ARKit session estimates the light, so they all report to the same
         // handler and a mode switch never interrupts it. Selfie runs no ARKit
         // session and reports none.
-        let reporters: [any LightReporting] = [ar, face, depth, seg, room, hands, text, markers]
+        let reporters: [any LightReporting] = [ar, face, depth, seg, room, hands, text, markers, wand]
         for reporter in reporters {
             reporter.lightSampler.onLight = { [weak self] sample in
                 guard let self else { return }
@@ -313,6 +333,11 @@ final class SensorStreamer {
             markerInfo = ""
             markers.start()
             status = "Looking for the pictures and objects in the app's own folder"
+        case .wand:
+            wandTracked = false
+            wandInfo = ""
+            wand.start()
+            status = "Point the back of the phone at the sketch, and press the pad below"
         case .room:
             // A fresh session rebuilds the room from nothing, so the Mac's own count
             // starts again with it.
@@ -340,7 +365,7 @@ final class SensorStreamer {
     /// calls it unconditionally.
     private func stopAllSessions() {
         ar.stop(); face.stop(); depth.stop(); seg.stop(); selfie.stop()
-        room.stop(); hands.stop(); text.stop(); markers.stop()
+        room.stop(); hands.stop(); text.stop(); markers.stop(); wand.stop()
     }
 
     /// Name the strongest-firing blendshape, for the status readout.
@@ -354,6 +379,13 @@ final class SensorStreamer {
 
 struct ContentView: View {
     @State private var streamer = SensorStreamer()
+
+    /// Whether the thumb is on the wand pad, kept here because the gesture reports
+    /// a change rather than a landing, and the first change after a release is what
+    /// counts as a press.
+    @State private var padPressed = false
+    /// Where the thumb sits on the pad, in the pad's own points, for the marker.
+    @State private var padPoint: CGPoint = .zero
 
     private var connected: Bool { streamer.clientCount > 0 }
 
@@ -386,13 +418,14 @@ struct ContentView: View {
                 }
 
                 // Capture mode: one camera session at a time (rear: body/world/
-                // segment/room/hands/text/markers, front: face/selfie), so the modes
-                // are mutually exclusive. Nine modes outgrew the segmented control,
-                // so they wrap as three rows of chips.
+                // segment/room/hands/text/markers/wand, front: face/selfie), so the
+                // modes are mutually exclusive. Ten modes outgrew the segmented
+                // control, so they wrap as four rows of chips.
                 VStack(spacing: 8) {
                     modeRow([.body, .face, .world])
                     modeRow([.segment, .selfie, .room])
                     modeRow([.hands, .text, .markers])
+                    modeRow([.wand], padTo: 3)
                 }
                 .padding(.horizontal, 28)
 
@@ -441,6 +474,11 @@ struct ContentView: View {
                             : streamer.markerInfo,
                             ok: streamer.markersFound)
                         markerLibrary
+                    case .wand:
+                        row("Wand", streamer.wandInfo.isEmpty
+                            ? "looking around the room…"
+                            : streamer.wandInfo,
+                            ok: streamer.wandTracked)
                     case .room:
                         row("Surface", streamer.meshSupported
                             ? (streamer.meshInfo.isEmpty ? "walk around to build it…" : "streaming · \(streamer.meshInfo)")
@@ -464,6 +502,8 @@ struct ContentView: View {
                 .padding(20)
                 .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 16))
                 .padding(.horizontal, 28)
+
+                if streamer.mode == .wand { wandPad }
 
                 Text(streamer.status)
                     .font(.footnote)
@@ -509,9 +549,71 @@ struct ContentView: View {
         }
     }
 
+    /// The wand's button, and its second control. A wand is held pointing away from
+    /// the person, so the screen is under the thumb and out of sight: the pad is
+    /// therefore large, takes a press anywhere on it, and needs no aim. Sliding
+    /// while held reports where the thumb is, which is the one extra axis a wand
+    /// gets for nothing.
+    private var wandPad: some View {
+        GeometryReader { geometry in
+            let size = geometry.size
+            ZStack {
+                RoundedRectangle(cornerRadius: 22)
+                    .fill(Color.white.opacity(padPressed ? 0.22 : 0.07))
+                RoundedRectangle(cornerRadius: 22)
+                    .strokeBorder(Color.white.opacity(padPressed ? 0.5 : 0.15), lineWidth: 1.5)
+                if padPressed {
+                    Circle()
+                        .fill(Color.white.opacity(0.9))
+                        .frame(width: 26, height: 26)
+                        .position(padPoint)
+                } else {
+                    Text("HOLD AND SLIDE")
+                        .font(.system(.caption, design: .rounded).weight(.semibold))
+                        .tracking(3)
+                        .foregroundStyle(.white.opacity(0.35))
+                }
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 22))
+            .gesture(
+                // A minimum distance of zero makes the first change the landing, so
+                // one gesture carries the press, the slide, and the release.
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        padPoint = value.location
+                        let point = Self.padPoint(value.location, in: size)
+                        if padPressed {
+                            streamer.wand.slide(to: point)
+                        } else {
+                            padPressed = true
+                            streamer.wand.press(at: point)
+                        }
+                    }
+                    .onEnded { _ in
+                        padPressed = false
+                        streamer.wand.release()
+                    }
+            )
+        }
+        .frame(height: 170)
+        .padding(.horizontal, 28)
+    }
+
+    /// Where a touch sits on the pad, as -1 to 1 across and -1 to 1 up, the middle
+    /// at zero. The screen measures down and the wire carries up, so the y is
+    /// turned over here.
+    private static func padPoint(_ location: CGPoint, in size: CGSize) -> SIMD2<Float> {
+        guard size.width > 0, size.height > 0 else { return .zero }
+        let x = min(max(Float(location.x / size.width) * 2 - 1, -1), 1)
+        let y = min(max(1 - Float(location.y / size.height) * 2, -1), 1)
+        return SIMD2<Float>(x, y)
+    }
+
     /// One row of mode chips: the same one-of-many choice a segmented control
-    /// gives, drawn as capsules so seven modes fit across two rows.
-    private func modeRow(_ modes: [CaptureMode]) -> some View {
+    /// gives, drawn as capsules so ten modes fit across four rows. A short row
+    /// pads with empty space rather than stretching, so every chip keeps the same
+    /// width down the whole list.
+    private func modeRow(_ modes: [CaptureMode], padTo width: Int = 0) -> some View {
         HStack(spacing: 8) {
             ForEach(modes) { mode in
                 let selected = streamer.mode == mode
@@ -522,6 +624,9 @@ struct ContentView: View {
                     .frame(maxWidth: .infinity)
                     .background(selected ? Color.white : Color.white.opacity(0.08),
                                 in: Capsule())
+            }
+            ForEach(modes.count..<max(modes.count, width), id: \.self) { _ in
+                Color.clear.frame(maxWidth: .infinity, maxHeight: 1)
             }
         }
     }

@@ -402,6 +402,43 @@ for marker in device.latestMarkers where marker.isTracked {
 
 The card lies flat and the poster hangs upright, and one loop drew both cities. `width` and `height` are meters, so a piece written for a business card fits a poster by itself. Two things are worth knowing before you print. A picture is found by its detail, so a photograph or a dense drawing works where a flat logo does not. The app checks each reference as it loads, and says on its own screen when one is too plain. And a scanned object, an `.arobject` file in the same folder, is *found* once rather than followed. It marks a place, where a picture marks a moving thing. The `3D/Phone/PhoneMarkers` example is this section live.
 
+### Pointing at it with the phone
+
+Everything so far has the phone looking at the room and telling you what it saw. Turn that around. The phone knows where it is in the room. So it also knows where it is *pointing*, and that makes it a wand: something you aim at your own sketch. Tap **Wand**. It needs no LiDAR, since plain world tracking is enough to know your own place.
+
+```swift
+guard let wand = device.latestWand, wand.isTracked else { return }
+```
+
+A `PhoneWand` is a place, a direction, and a button. `wand.position` is where the phone is, in the same meters as everything else in this chapter. `wand.ray` is the line out of the back of it, the end you point at things:
+
+```swift
+for (i, ball) in balls.enumerated() {
+    if let distance = wand.ray.hit(sphereAt: ball, radius: 0.13) {
+        aimed = (i, distance)                    // how far along the beam it sits
+    }
+}
+```
+
+That `hit` is a [`Ray3`](../Docs/Drawing/Geometry.md#ray3), the small value type that answers what a line runs into. It knows about a ball, a box standing square to the world, and a flat surface. It counts only what is **in front of** the origin. That is what separates pointing from drawing a line and hoping.
+
+<img src="Images/27-DepthAndThePhone/WandAsPointer.jpg" alt="A pale phone slab at the lower left with a small dot on its screen, a green beam leaving the back of it and stopping at a yellow ball, three blue balls around it untouched" width="680">
+
+The beam stops where it lands, because the hit told it how far to go: `wand.point(at: distance)`. Draw the phone itself through `wand.placement` and it leans in your hand the way the real one does.
+
+The button is the screen, and it arrives twice. `wand.isPressed` is whether a finger is down now, which is what a drag reads. `wand.pressCount` only ever rises, so a tap that landed and left between two `draw()` calls is still there to find:
+
+```swift
+if wand.pressCount > lastPressCount, held == nil { held = aimed?.index }
+lastPressCount = wand.pressCount
+```
+
+Keeping last frame's number and comparing is the habit worth taking from this. Any counter that only rises tells you *something happened* without asking you to be watching at the moment it did.
+
+`wand.touch` is where the thumb sits while it is down, `-1` to `1` across and up. The pad is a few centimeters and the room is not. So read it as a speed rather than a place: `distance += touch.y * 0.8 * deltaTime` pushes a held thing away and pulls it back. The `3D/Phone/PhonePointer` example is this section live, with a ball you can pick up, carry, push out, and drop.
+
+One thing to set up before you build on it. The room's origin is wherever the phone stood when Wand mode began. Lay your scene out in front of that spot, or expect to walk to it.
+
 ## Putting it together: the ghost room
 
 The finished piece turns the sweep itself into the artwork. Nine frames of the staged room join the world one per second, drawn as additive light while the camera orbits. It reads as a room scanning itself into existence. Make `MySketches/GhostRoom.swift` (bring `StageCamera` along from [`Anatomy.swift`](Figures/27-DepthAndThePhone/Anatomy.swift), plus the `pose` helper from [`GhostRoom.swift`](Figures/27-DepthAndThePhone/GhostRoom.swift), the committed figure with the complete listing):

@@ -22,10 +22,10 @@ Each body joint carries a position, an orientation, and a camera-observed flag; 
 body also carries its world anchor and the person's estimated scale.
 The chain is Ollin's end to end.
 
-Body, World, Segment, Room, Hands, Text, and Markers use the rear camera; Face
+Body, World, Segment, Room, Hands, Text, Markers, and Wand use the rear camera; Face
 (ARKit, TrueDepth) and Selfie (AVFoundation + Vision, no ARKit) the front camera.
 Only one camera session runs at a time. The app has a **Body / Face / World /
-Segment / Selfie / Room / Hands / Text / Markers** toggle and runs one mode at a
+Segment / Selfie / Room / Hands / Text / Markers / Wand** toggle and runs one mode at a
 time. Device motion
 streams in all of them; the room's light in every mode except Selfie, which has no
 ARKit session to measure it.
@@ -78,7 +78,7 @@ Requirements:
 
 1. Build + run on the iPhone. The screen shows **READY** until the Mac connects,
    then **ON AIR**, with the **Body / Face / World / Segment / Selfie / Room /
-   Hands / Text / Markers** toggle and live status.
+   Hands / Text / Markers / Wand** toggle and live status.
 2. Connect the cable to the Mac.
 3. On the Mac, run a sketch. With the toggle on **Body**:
    `swift run --package-path Examples Example-3D-Phone-PhoneBodyPose`, and the
@@ -106,7 +106,10 @@ Requirements:
    folder first (connect the cable, open the phone in Finder, then Files, then Ollin
    Capture; name it with its printed width, like `poster@30cm.png`), then
    `swift run --package-path Examples Example-3D-Phone-PhoneMarkers` and point the
-   rear camera at the print: a city of columns rises off it. Before tracking begins, the
+   rear camera at the print: a city of columns rises off it. On **Wand**:
+   `swift run --package-path Examples Example-3D-Phone-PhonePointer`, then point the
+   back of the phone at the balls on the Mac's screen and press the pad to pick one
+   up, sliding the thumb to push it away. Before tracking begins, the
    gravity readout proves the USB wire is alive (tilt the phone and it moves), and
    the light row reads the room's brightness and color in every ARKit mode.
 
@@ -157,6 +160,16 @@ Requirements:
   Sending is paced by what is happening: every frame while anything is followed, a
   few times a second while nothing is. A picture is *followed*; a scanned object is
   *found once* and holds its place, which is what an object anchor means.
+- The wand stream (`WandStreamer`) is the one that reports the person rather than
+  the room. It runs the cheapest ARKit session there is, plain world tracking with
+  no plane detection and no scene depth, so any ARKit phone can be a wand, and it
+  sends the camera pose once per frame with the thumb beside it. The screen is part
+  of this sensor: the pad writes the press and the slide into the streamer, and the
+  next camera frame carries them out, which keeps one message per frame rather than
+  two streams the Mac would have to line up. The pose goes out **raw**, with the
+  hold's quarter-turn count beside it, so the Mac stands the landscape axes upright
+  through the shared `PhoneWire.wandFrame` and a wrong convention is fixed there
+  rather than by reinstalling the app.
 - The room stream (`RoomStreamer`) runs `ARWorldTrackingConfiguration` with scene
   reconstruction and sends the room one anchor block at a time: vertices, normals,
   triangles, the anchor's placement, and one label per triangle. Two rules shape it.

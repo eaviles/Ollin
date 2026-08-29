@@ -110,6 +110,13 @@ public enum PhoneMessageKind: UInt8, Sendable, CaseIterable {
     /// ARKit world space, with the thing's real size in meters. This is what puts
     /// a sketch on a poster, a book cover, or a real object on a table.
     case marker = 11
+    /// The phone held as a pointer: where it is and which way it points in ARKit
+    /// world space, plus what the thumb is doing on the screen. This is the one
+    /// message the person, rather than the room, fills in: a press, a slide, and a
+    /// release ride beside the pose, so a sketch can be pointed at and pressed.
+    /// Plain world tracking carries it, so it needs no LiDAR, and the payload is
+    /// small enough to send every frame.
+    case wand = 12
 }
 
 /// The named joints the stream carries — a practical subset of ARKit's ~91-joint
@@ -668,7 +675,80 @@ public struct PhoneMarkerSample: Sendable, Equatable {
     }
 }
 
+/// The phone held as a pointer: where it is, which way it points, and what the
+/// thumb is doing on the screen.
+///
+/// `transform` is the camera's own pose in ARKit world space, exactly as ARKit
+/// reports it, whose axes are fixed to the **landscape** sensor however the phone
+/// is held. `quarterTurnsCW` is what turns those axes upright for the hold, and
+/// `PhoneWire.wandFrame(fromCamera:quarterTurnsCW:)` does it, so the correction is
+/// arithmetic a Mac test can pin rather than something buried in the app.
+///
+/// The press is carried two ways on purpose. `pressed` says whether a finger is
+/// down at this instant, which is what a held drag reads; `pressCount` rises by
+/// one each time a finger lands and never falls, so a sketch reading at its own
+/// rate still sees a quick tap it was not looking at the moment it happened.
+public struct PhoneWandSample: Sendable, Equatable {
+    /// Whether ARKit is tracking the room normally. False while it is starting up
+    /// or has lost its place, when the pose is worth nothing.
+    public var tracked: Bool
+    public var timestamp: Double
+    /// The camera pose in ARKit world space (meters, y up, the origin where the
+    /// session started), landscape axes.
+    public var transform: simd_float4x4
+    /// Quarter turns clockwise that stand the landscape axes upright for how the
+    /// phone is being held. Portrait is 1, the same count the other streams carry.
+    public var quarterTurnsCW: UInt8
+    /// Whether a finger is on the screen right now.
+    public var pressed: Bool
+    /// How many presses have happened since the app started. Rises by one as each
+    /// finger lands, and never falls.
+    public var pressCount: UInt32
+    /// Whether `touch` means anything this frame.
+    public var hasTouch: Bool
+    /// Where the thumb sits on the screen: -1 to 1 across, -1 to 1 up, the middle
+    /// at zero. Zero when nothing is touching.
+    public var touch: SIMD2<Float>
+
+    public init(tracked: Bool, timestamp: Double, transform: simd_float4x4,
+                quarterTurnsCW: UInt8 = 1, pressed: Bool = false, pressCount: UInt32 = 0,
+                hasTouch: Bool = false, touch: SIMD2<Float> = .zero) {
+        self.tracked = tracked
+        self.timestamp = timestamp
+        self.transform = transform
+        self.quarterTurnsCW = quarterTurnsCW
+        self.pressed = pressed
+        self.pressCount = pressCount
+        self.hasTouch = hasTouch
+        self.touch = touch
+    }
+}
+
 public extension PhoneWire {
+
+    /// Turn ARKit's camera pose into the frame of the phone **as it is held**: x
+    /// across the screen to the right, y up the screen, z out of the screen toward
+    /// the person. The rear camera therefore looks along **-z**, the same way a
+    /// camera looks in Ollin's own 3D.
+    ///
+    /// ARKit fixes the camera's axes to the landscape sensor whatever the hold, so
+    /// in portrait its "up" runs across the phone. `quarterTurnsCW` is the count
+    /// that stands the picture upright (portrait is 1), and the axes turn by the
+    /// same amount about the camera's own z: a picture turned a quarter clockwise
+    /// puts its old top at its new right, so the old y axis becomes the new x.
+    ///
+    /// Only the axes turn. The origin, the scale, and the pointing direction are
+    /// untouched, so a wrong count tips the drawing on its side without moving it.
+    static func wandFrame(fromCamera transform: simd_float4x4,
+                          quarterTurnsCW: UInt8) -> simd_float4x4 {
+        let x = transform.columns.0, y = transform.columns.1
+        switch quarterTurnsCW % 4 {
+        case 1:  return simd_float4x4(y, -x, transform.columns.2, transform.columns.3)
+        case 2:  return simd_float4x4(-x, -y, transform.columns.2, transform.columns.3)
+        case 3:  return simd_float4x4(-y, x, transform.columns.2, transform.columns.3)
+        default: return transform
+        }
+    }
 
     /// How wide the picture in a reference file is printed, read from the file's own
     /// name: `poster@30cm.png` is 30 centimeters across, `card-50mm.jpg` is 50
@@ -813,6 +893,10 @@ public enum PhoneMessage: Sendable, Equatable {
     /// The list is the complete current set, empty when it knows nothing it can
     /// see, so the reader swaps it in wholesale and a picture leaving clears itself.
     case markers([PhoneMarkerSample])
+    /// Where the phone is pointing and what the thumb is doing, one reading per
+    /// frame. Unlike every other kind, this one carries the person rather than
+    /// the room.
+    case wand(PhoneWandSample)
 
     public var kind: PhoneMessageKind {
         switch self {
@@ -827,6 +911,7 @@ public enum PhoneMessage: Sendable, Equatable {
         case .hands: return .handPose
         case .texts: return .recognizedText
         case .markers: return .marker
+        case .wand: return .wand
         }
     }
 }
@@ -879,6 +964,7 @@ public extension PhoneWire {
         case .hands(let hands): payload = encodeHandsPayload(hands)
         case .texts(let texts): payload = encodeTextsPayload(texts)
         case .markers(let markers): payload = encodeMarkersPayload(markers)
+        case .wand(let w): payload = encodeWandPayload(w)
         }
         var out = Data()
         appendU32(&out, magic)
@@ -1175,6 +1261,21 @@ public extension PhoneWire {
         appendF32(&p, m.scaleFactor)
     }
 
+    /// One wand reading: tracked, timestamp, the camera pose, the hold's quarter
+    /// turns, the button, the running press count, and the thumb point.
+    private static func encodeWandPayload(_ w: PhoneWandSample) -> Data {
+        var p = Data()
+        p.append(w.tracked ? 1 : 0)
+        appendF64(&p, w.timestamp)
+        appendMatrix(&p, w.transform)
+        p.append(w.quarterTurnsCW)
+        p.append(w.pressed ? 1 : 0)
+        appendU32(&p, w.pressCount)
+        p.append(w.hasTouch ? 1 : 0)
+        appendF32(&p, w.touch.x); appendF32(&p, w.touch.y)
+        return p
+    }
+
     /// The size the payload for `chunk` will take, so the phone can skip a block
     /// too big for one frame before it pays to encode it.
     static func sceneMeshPayloadSize(vertexCount: Int, indexCount: Int,
@@ -1204,6 +1305,7 @@ public extension PhoneWire {
         case .handPose: return decodeHands(payload).map(PhoneMessage.hands)
         case .recognizedText: return decodeTexts(payload).map(PhoneMessage.texts)
         case .marker: return decodeMarkers(payload).map(PhoneMessage.markers)
+        case .wand: return decodeWand(payload).map(PhoneMessage.wand)
         }
     }
 
@@ -1650,6 +1752,26 @@ public extension PhoneWire {
         return PhoneMarkerSample(tracked: tracked, timestamp: timestamp, id: id, name: name,
                                  kind: kind, transform: transform, size: size,
                                  center: center, scaleFactor: scaleFactor)
+    }
+
+    private static func decodeWand(_ data: Data) -> PhoneWandSample? {
+        // tracked(1) + timestamp(8) + transform(64) + turns(1) + pressed(1)
+        // + pressCount(4) + hasTouch(1) + touch(8).
+        guard data.count >= 88 else { return nil }
+        let s = data.startIndex
+        var o = 0
+        func f32() -> Float { defer { o += 4 }; return readF32(data, s + o) }
+        let tracked = data[s + o] != 0; o += 1
+        let timestamp = readF64(data, s + o); o += 8
+        let transform = readMatrix(data, s + o); o += 64
+        let turns = data[s + o]; o += 1
+        let pressed = data[s + o] != 0; o += 1
+        let pressCount = readU32(data, s + o); o += 4
+        let hasTouch = data[s + o] != 0; o += 1
+        let touch = SIMD2<Float>(f32(), f32())
+        return PhoneWandSample(tracked: tracked, timestamp: timestamp, transform: transform,
+                               quarterTurnsCW: turns, pressed: pressed, pressCount: pressCount,
+                               hasTouch: hasTouch, touch: touch)
     }
 }
 

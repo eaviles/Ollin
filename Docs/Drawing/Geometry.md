@@ -4,7 +4,7 @@
 
 ## Geometry
 
-`Vector2`, `Vector3`, `Rectangle`, `Circle`, `Contour`, `Shape`, and `Path` are Ollin's geometry value types: the data primitives take, and the values you pass around and compose. Canvas coordinates use a top-left origin with y increasing downward.
+`Vector2`, `Vector3`, `Ray3`, `Rectangle`, `Circle`, `Contour`, `Shape`, and `Path` are Ollin's geometry value types: the data primitives take, and the values you pass around and compose. Canvas coordinates use a top-left origin with y increasing downward.
 
 ### Contents
 
@@ -16,6 +16,7 @@
   - [Producing new vectors](#v2-producing)
   - [Putting it together](#v2-together)
 - [Vector3](#vector3)
+- [Ray3](#ray3)
 - [Rectangle](#rectangle)
 - [Grid](#grid)
 - [Insets](#insets)
@@ -189,6 +190,33 @@ let joint = Vector3(0.2, 1.4, -0.3)          // meters, say
 drawCircle(center + joint.xy * 200, 6)        // front view: drop the z
 drawCircle(center + Vector2(joint.z, -joint.y) * 200, 6)   // side view: look along x
 ```
+
+<a name="ray3"></a>
+
+### `Ray3`
+
+A straight line in space, given as the point it starts at and the direction it runs in, plus the tests that ask what it hits. This is the value behind *pointing at something*: a [phone held as a wand](../3D/Phone.md#the-phone-as-a-pointer), a sight line from a camera, a click carried into a scene.
+
+```swift
+Ray3(origin: Vector3, direction: Vector3)     // direction is scaled to length 1
+Ray3(from: Vector3, toward: Vector3)
+```
+
+The direction is kept at length 1, so every distance a hit reports is a real distance in the same units as the origin, and `point(at:)` reads as "this far along". A hit is only counted **in front of** the origin, so a body behind you never answers.
+
+- **Along the line:** `point(at:)` is the point that far out, `distanceAlong(_:)` how far along a point sits (negative behind), and `distance(to:)` how far off the line it sits, measured square to it.
+- **What it hits:** `hit(sphereAt:radius:)`, `hit(boxAt:size:)` (axis-aligned, `size` being the whole width, height, and depth), and `hit(planeAt:normal:)`. Each answers the distance to the first meeting, or `nil` for a miss.
+- **The edge cases are answers, not crashes.** A ray with no direction hits nothing. A ray starting inside a ball reports the far side, so what it hands back is never behind the origin. A ray running parallel to a box's faces is judged by whether it sits inside that slab.
+
+```swift
+let ray = Ray3(origin: eye, direction: target - eye)
+if let distance = ray.hit(sphereAt: ball, radius: 0.2) {
+    let landing = ray.point(at: distance)
+    drawTube([ray.origin, landing], radius: 0.004)
+}
+```
+
+Its 2D sibling is [`Ray2`](./Envelopes.md), which carries a family of lines rather than a pointer and leaves its direction as given.
 
 <a name="rectangle"></a>
 

@@ -181,7 +181,6 @@ Editing experiences the live-reload core makes possible, and the place Ollin sta
 
 Apple-native, low-ceremony ways several machines share one piece.
 
-- **iPhone as a 6DoF wand.** The phone already streams CoreMotion attitude and the sensor link is in place, so exposing the phone as a spatial input device (its pose driving a cursor or tool in a Mac sketch) is a small addition over the shipped transport, not new plumbing.
 - **SharePlay co-creation.** GroupActivities so two people tune one sketch together over a FaceTime call. The most speculative, listed for the direction, and Apple-unique.
 
 ## Learning: the Guide
