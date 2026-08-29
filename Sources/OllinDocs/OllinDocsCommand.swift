@@ -253,15 +253,20 @@ struct OllinDocsCommand {
                 print(lead + item.it)
                 continue
             }
-            let padded = item.it.count < column
-                ? item.it + String(repeating: " ", count: column - item.it.count)
-                : item.it
             let width = max(20, style.width - indent - column - 2)
             let lines = Markdown.wrapped(item.says, width: width)
-            print(lead + padded + "  " + (lines.first ?? ""))
-            for line in lines.dropFirst() {
-                print(lead + String(repeating: " ", count: column + 2) + line)
+            let under = lead + String(repeating: " ", count: column + 2)
+            // A name wider than the column takes the line to itself. Padding
+            // it out instead would start its first line further right than the
+            // ones wrapping under it, and the block would step sideways.
+            if item.it.count > column {
+                print(lead + item.it)
+                for line in lines { print(under + line) }
+                continue
             }
+            let padded = item.it + String(repeating: " ", count: column - item.it.count)
+            print(lead + padded + "  " + (lines.first ?? ""))
+            for line in lines.dropFirst() { print(under + line) }
         }
     }
 
