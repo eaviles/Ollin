@@ -103,6 +103,13 @@ public enum PhoneMessageKind: UInt8, Sendable, CaseIterable {
     /// metric 3D position in ARKit world space, lifted through the depth map and
     /// the camera pose, so a sign stands where it hangs in the room.
     case recognizedText = 10
+    /// The pictures and objects the phone knows, and has found in the room,
+    /// bundled per frame. The phone holds a library of reference pictures (any
+    /// image file, with its printed width) and reference objects (a scanned
+    /// `.arobject`), and reports each one it finds as a named 6DoF placement in
+    /// ARKit world space, with the thing's real size in meters. This is what puts
+    /// a sketch on a poster, a book cover, or a real object on a table.
+    case marker = 11
 }
 
 /// The named joints the stream carries — a practical subset of ARKit's ~91-joint
@@ -606,6 +613,152 @@ public struct PhoneTextSample: Sendable, Equatable {
     }
 }
 
+/// Which kind of thing the phone recognized: a flat picture it knows, or a solid
+/// object someone scanned into an `.arobject` file.
+public enum PhoneMarkerKind: UInt8, CaseIterable, Sendable {
+    case image = 0
+    case object = 1
+}
+
+/// One picture or object the phone knows and has found in the room: its name (the
+/// reference file's own name), where it stands, and how big it really is.
+///
+/// `transform` is the anchor's own matrix in ARKit world space (meters, y up, the
+/// origin where the session started), the same world the depth sweep, the room, and
+/// the hands stand in. A picture's anchor sits at the middle of the picture and
+/// **lies flat in that frame's x-z plane**, with the anchor's y axis pointing out of
+/// the printed face; a solid object's anchor keeps the origin the scan gave it, and
+/// `center` is the offset from there to the middle of its box. `size` is the thing
+/// itself in meters (a picture's width and height, a zero depth; an object's whole
+/// box), and `scaleFactor` is what ARKit makes of the printed size when it is asked
+/// to estimate it: 1.1 means the picture in the room is a tenth bigger than the
+/// name said.
+public struct PhoneMarkerSample: Sendable, Equatable {
+    public var tracked: Bool
+    public var timestamp: Double
+    /// The anchor's own id, stable for as long as the phone holds this find.
+    public var id: UUID
+    /// The reference's name: the picture or object file's own name, without its
+    /// extension and without the size the name may state.
+    public var name: String
+    public var kind: PhoneMarkerKind
+    /// Anchor to world, in meters.
+    public var transform: simd_float4x4
+    /// The thing's real size in meters: width, height, depth (a picture's depth is 0).
+    public var size: SIMD3<Float>
+    /// The middle of the thing's box, in the anchor's own frame (zero for a picture,
+    /// whose anchor already sits at its middle).
+    public var center: SIMD3<Float>
+    /// What ARKit makes of the stated size, 1 when it has nothing to say.
+    public var scaleFactor: Float
+
+    public init(tracked: Bool, timestamp: Double, id: UUID, name: String,
+                kind: PhoneMarkerKind, transform: simd_float4x4,
+                size: SIMD3<Float>, center: SIMD3<Float> = .zero,
+                scaleFactor: Float = 1) {
+        self.tracked = tracked
+        self.timestamp = timestamp
+        self.id = id
+        self.name = name
+        self.kind = kind
+        self.transform = transform
+        self.size = size
+        self.center = center
+        self.scaleFactor = scaleFactor
+    }
+}
+
+public extension PhoneWire {
+
+    /// How wide the picture in a reference file is printed, read from the file's own
+    /// name: `poster@30cm.png` is 30 centimeters across, `card-50mm.jpg` is 50
+    /// millimeters, `plate 12in.heic` is twelve inches, `tile_0.4m.png` is 0.4
+    /// meters. ARKit needs that measurement to place a picture in meters, and the
+    /// name is the one place a person can state it with no app of our own to type it
+    /// into. A name that says nothing gets `stated: false` and the fallback width,
+    /// which the app then reports on its own screen.
+    ///
+    /// The size must end the name (`poster@30cm`), so a word that merely ends in a
+    /// unit (`diagram`, `platinum`) says nothing, and an absurd measurement (under a
+    /// centimeter, over five meters) is refused rather than trusted. Lives here, in
+    /// the file both ends share, so a Mac test can pin arithmetic the phone runs.
+    static func markerWidth(fromName name: String,
+                            fallback: Double = 0.15) -> (meters: Double, stated: Bool) {
+        // Drop the extension, then read backwards: a unit at the very end, and a
+        // number right before it.
+        let chars = Array(markerStem(name).lowercased())
+        // Longest unit first, so "mm" is never read as "m".
+        let units: [(suffix: [Character], toMeters: Double)] = [
+            (["m", "m"], 0.001), (["c", "m"], 0.01), (["i", "n"], 0.0254), (["m"], 1),
+        ]
+        for unit in units {
+            let n = unit.suffix.count
+            guard chars.count > n, Array(chars.suffix(n)) == unit.suffix else { continue }
+            var i = chars.count - n
+            var digits: [Character] = []
+            var dots = 0
+            while i > 0 {
+                let c = chars[i - 1]
+                if c.isNumber {
+                    digits.append(c)
+                } else if c == "." && dots == 0 && !digits.isEmpty {
+                    dots += 1
+                    digits.append(c)
+                } else {
+                    break
+                }
+                i -= 1
+            }
+            guard !digits.isEmpty, let value = Double(String(digits.reversed())) else { continue }
+            let meters = value * unit.toMeters
+            guard meters >= 0.01, meters <= 5 else { continue }
+            return (meters, true)
+        }
+        return (fallback, false)
+    }
+
+    /// The reference's name with any stated size taken off the end, which is what a
+    /// sketch matches on: `poster@30cm.png` is the marker named `poster`.
+    static func markerName(fromFileName fileName: String) -> String {
+        let stem = markerStem(fileName)
+        guard markerWidth(fromName: stem).stated else { return stem }
+        // Walk back over the unit, the number, and one separator.
+        var chars = Array(stem)
+        while let last = chars.last, last.isLetter { chars.removeLast() }
+        while let last = chars.last, last.isNumber || last == "." { chars.removeLast() }
+        while let last = chars.last, last == "@" || last == "-" || last == "_" || last == " " {
+            chars.removeLast()
+        }
+        let trimmed = String(chars)
+        return trimmed.isEmpty ? stem : trimmed
+    }
+
+    /// The picture files the phone will read as a reference. HEIC is in the list
+    /// because that is what the phone's own camera writes.
+    static let markerImageExtensions: Set<String> = [
+        "png", "jpg", "jpeg", "heic", "heif", "tiff", "tif", "bmp",
+    ]
+
+    /// The file a scanned solid object arrives in.
+    static let markerObjectExtension = "arobject"
+
+    /// The file name with its extension taken off, and nothing else. Only a known
+    /// reference extension counts, so `tile_0.4m.png` loses `png` and keeps the
+    /// `0.4m` that states its size, and `my.great.poster` keeps all three words.
+    /// Both readers above run through this, so calling either one twice gives the
+    /// same answer.
+    static func markerStem(_ fileName: String) -> String {
+        guard let dot = fileName.lastIndex(of: "."), dot != fileName.startIndex else {
+            return fileName
+        }
+        let tail = String(fileName[fileName.index(after: dot)...]).lowercased()
+        guard markerImageExtensions.contains(tail) || tail == markerObjectExtension else {
+            return fileName
+        }
+        return String(fileName[fileName.startIndex..<dot])
+    }
+}
+
 public extension PhoneWire {
     /// Map an upright normalized point (lower-left origin, y up: the convention
     /// every 2D hand joint is carried in) back onto the camera-native buffer's
@@ -656,6 +809,10 @@ public enum PhoneMessage: Sendable, Equatable {
     /// The list is the complete current set, empty when no text is in view, so
     /// the reader swaps it in wholesale and a sign leaving clears itself.
     case texts([PhoneTextSample])
+    /// Every picture and object the phone currently finds, bundled into one frame.
+    /// The list is the complete current set, empty when it knows nothing it can
+    /// see, so the reader swaps it in wholesale and a picture leaving clears itself.
+    case markers([PhoneMarkerSample])
 
     public var kind: PhoneMessageKind {
         switch self {
@@ -669,6 +826,7 @@ public enum PhoneMessage: Sendable, Equatable {
         case .light: return .light
         case .hands: return .handPose
         case .texts: return .recognizedText
+        case .markers: return .marker
         }
     }
 }
@@ -720,6 +878,7 @@ public extension PhoneWire {
         case .light(let light): payload = encodeLightPayload(light)
         case .hands(let hands): payload = encodeHandsPayload(hands)
         case .texts(let texts): payload = encodeTextsPayload(texts)
+        case .markers(let markers): payload = encodeMarkersPayload(markers)
         }
         var out = Data()
         appendU32(&out, magic)
@@ -990,6 +1149,32 @@ public extension PhoneWire {
         }
     }
 
+    private static func encodeMarkersPayload(_ markers: [PhoneMarkerSample]) -> Data {
+        var p = Data()
+        // A marker count, then that many self-contained records (capped at 255
+        // defensively; a library of that size is far past what ARKit follows).
+        p.append(UInt8(min(markers.count, 255)))
+        for marker in markers.prefix(255) { appendMarkerRecord(&p, marker) }
+        return p
+    }
+
+    /// One marker record: tracked, timestamp, the anchor id, the kind, the UTF-8
+    /// name, the placement, the real size, the box center, and the estimated scale.
+    /// Self-contained so the list decoder reads records back to back.
+    private static func appendMarkerRecord(_ p: inout Data, _ m: PhoneMarkerSample) {
+        p.append(m.tracked ? 1 : 0)
+        appendF64(&p, m.timestamp)
+        appendUUID(&p, m.id)
+        p.append(m.kind.rawValue)
+        let utf8 = Data(m.name.utf8.prefix(Int(UInt16.max)))
+        appendU16(&p, UInt16(utf8.count))
+        p.append(utf8)
+        appendMatrix(&p, m.transform)
+        appendF32(&p, m.size.x); appendF32(&p, m.size.y); appendF32(&p, m.size.z)
+        appendF32(&p, m.center.x); appendF32(&p, m.center.y); appendF32(&p, m.center.z)
+        appendF32(&p, m.scaleFactor)
+    }
+
     /// The size the payload for `chunk` will take, so the phone can skip a block
     /// too big for one frame before it pays to encode it.
     static func sceneMeshPayloadSize(vertexCount: Int, indexCount: Int,
@@ -1018,6 +1203,7 @@ public extension PhoneWire {
         case .light: return decodeLight(payload).map(PhoneMessage.light)
         case .handPose: return decodeHands(payload).map(PhoneMessage.hands)
         case .recognizedText: return decodeTexts(payload).map(PhoneMessage.texts)
+        case .marker: return decodeMarkers(payload).map(PhoneMessage.markers)
         }
     }
 
@@ -1424,6 +1610,46 @@ public extension PhoneWire {
         return PhoneTextSample(tracked: tracked, timestamp: timestamp, text: text,
                                confidence: confidence, corners: corners,
                                hasWorldCorners: hasWorld, worldCorners: worldCorners)
+    }
+
+    private static func decodeMarkers(_ data: Data) -> [PhoneMarkerSample]? {
+        // A marker count, then that many records. An empty set (count 0) is valid;
+        // it means nothing the phone knows is in view this frame.
+        guard !data.isEmpty else { return nil }
+        let count = Int(data[data.startIndex])
+        var o = 1
+        var markers = [PhoneMarkerSample](); markers.reserveCapacity(count)
+        for _ in 0..<count {
+            guard let marker = readMarkerRecord(data, &o) else { return nil }
+            markers.append(marker)
+        }
+        return markers
+    }
+
+    /// Read one marker record starting at offset `o` (advanced past the record on
+    /// success), or `nil` if the buffer is short.
+    private static func readMarkerRecord(_ data: Data, _ o: inout Int) -> PhoneMarkerSample? {
+        // Fixed prefix: tracked(1) + timestamp(8) + id(16) + kind(1) + byteCount(2).
+        guard data.count >= o + 1 + 8 + 16 + 1 + 2 else { return nil }
+        let s = data.startIndex
+        func f32() -> Float { defer { o += 4 }; return readF32(data, s + o) }
+        let tracked = data[s + o] != 0; o += 1
+        let timestamp = readF64(data, s + o); o += 8
+        let id = readUUID(data, s + o); o += 16
+        let kind = PhoneMarkerKind(rawValue: data[s + o]) ?? .image; o += 1
+        let byteCount = Int(UInt16(data[s + o]) | (UInt16(data[s + o + 1]) << 8)); o += 2
+
+        // The name bytes, then transform(64) + size(12) + center(12) + scale(4).
+        guard data.count >= o + byteCount + 64 + 12 + 12 + 4 else { return nil }
+        let name = String(decoding: data[(s + o)..<(s + o + byteCount)], as: UTF8.self)
+        o += byteCount
+        let transform = readMatrix(data, s + o); o += 64
+        let size = SIMD3<Float>(f32(), f32(), f32())
+        let center = SIMD3<Float>(f32(), f32(), f32())
+        let scaleFactor = f32()
+        return PhoneMarkerSample(tracked: tracked, timestamp: timestamp, id: id, name: name,
+                                 kind: kind, transform: transform, size: size,
+                                 center: center, scaleFactor: scaleFactor)
     }
 }
 

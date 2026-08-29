@@ -381,6 +381,27 @@ for line in device.latestTexts {
 
 The upright word stands on a wall and the flat one lies on a table, and neither needed different code. Each panel is the line's own quad, and the type inside it is `textToShapes` run through `drawTube`, scaled by `worldWidth`. The frame does the placing. A line lifts all four corners or none, so `worldTransform` is either a real place or `nil`. The flat fallback draws the same lines over the canvas with `corners(in:)`. Underline a read word, replace it, translate it, or move it off its wall. The `3D/Phone/PhoneWorldText` example is this section live: aim the phone at anything readable and the words stand in the room.
 
+### A picture it knows
+
+Reading is one way to recognize something. Knowing it by sight is the other. Give the capture app a picture and it will find that picture in the room. Drop the file into the app's own folder over the cable, in Finder, under Files, then Ollin Capture. Say how wide you printed it in the file's name, `poster@30cm.png`. ARKit places a print by its real width, and no image file carries one. Tap **Markers** and the phone starts looking.
+
+Each find arrives as a `PhoneMarker`, and `placement` is the whole of it. The frame stands at the middle of the print: x runs across the width, y up the height, z straight off the paper toward you. So the drawing code never mentions walls or tables:
+
+```swift
+for marker in device.latestMarkers where marker.isTracked {
+    withState {
+        transform(marker.placement)                 // the print is now the x-y plane
+        drawBox(width: marker.width, height: marker.height, depth: 0.002)
+        translate(0, 0, 0.08)
+        drawBox(size: 0.06)                         // a cube floating off the paper
+    }
+}
+```
+
+<img src="Images/27-DepthAndThePhone/PrintAsStage.jpg" alt="Two printed pictures on a dark ground, each carrying the same little city of pale green columns inside an orange frame: one card lying face up on a table slab, one poster standing on the wall behind it" width="680">
+
+The card lies flat and the poster hangs upright, and one loop drew both cities. `width` and `height` are meters, so a piece written for a business card fits a poster by itself. Two things are worth knowing before you print. A picture is found by its detail, so a photograph or a dense drawing works where a flat logo does not. The app checks each reference as it loads, and says on its own screen when one is too plain. And a scanned object, an `.arobject` file in the same folder, is *found* once rather than followed. It marks a place, where a picture marks a moving thing. The `3D/Phone/PhoneMarkers` example is this section live.
+
 ## Putting it together: the ghost room
 
 The finished piece turns the sweep itself into the artwork. Nine frames of the staged room join the world one per second, drawn as additive light while the camera orbits. It reads as a room scanning itself into existence. Make `MySketches/GhostRoom.swift` (bring `StageCamera` along from [`Anatomy.swift`](Figures/27-DepthAndThePhone/Anatomy.swift), plus the `pose` helper from [`GhostRoom.swift`](Figures/27-DepthAndThePhone/GhostRoom.swift), the committed figure with the complete listing):

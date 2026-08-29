@@ -22,10 +22,11 @@ Each body joint carries a position, an orientation, and a camera-observed flag; 
 body also carries its world anchor and the person's estimated scale.
 The chain is Ollin's end to end.
 
-Body, World, Segment, Room, Hands, and Text use the rear camera; Face (ARKit,
-TrueDepth) and Selfie (AVFoundation + Vision, no ARKit) the front camera. Only one
-camera session runs at a time. The app has a **Body / Face / World / Segment /
-Selfie / Room / Hands / Text** toggle and runs one mode at a time. Device motion
+Body, World, Segment, Room, Hands, Text, and Markers use the rear camera; Face
+(ARKit, TrueDepth) and Selfie (AVFoundation + Vision, no ARKit) the front camera.
+Only one camera session runs at a time. The app has a **Body / Face / World /
+Segment / Selfie / Room / Hands / Text / Markers** toggle and runs one mode at a
+time. Device motion
 streams in all of them; the room's light in every mode except Selfie, which has no
 ARKit session to measure it.
 
@@ -77,7 +78,7 @@ Requirements:
 
 1. Build + run on the iPhone. The screen shows **READY** until the Mac connects,
    then **ON AIR**, with the **Body / Face / World / Segment / Selfie / Room /
-   Hands / Text** toggle and live status.
+   Hands / Text / Markers** toggle and live status.
 2. Connect the cable to the Mac.
 3. On the Mac, run a sketch. With the toggle on **Body**:
    `swift run --package-path Examples Example-3D-Phone-PhoneBodyPose`, and the
@@ -101,7 +102,11 @@ Requirements:
    skeleton, a pinch closing into a bead. On **Text**:
    `swift run --package-path Examples Example-3D-Phone-PhoneWorldText`, then aim
    the rear camera at a sign or a page and each line stands in the room as
-   wire-frame type on a framed panel. Before tracking begins, the
+   wire-frame type on a framed panel. On **Markers**: drop a picture into the app's
+   folder first (connect the cable, open the phone in Finder, then Files, then Ollin
+   Capture; name it with its printed width, like `poster@30cm.png`), then
+   `swift run --package-path Examples Example-3D-Phone-PhoneMarkers` and point the
+   rear camera at the print: a city of columns rises off it. Before tracking begins, the
    gravity readout proves the USB wire is alive (tilt the phone and it moves), and
    the light row reads the room's brightness and color in every ARKit mode.
 
@@ -140,6 +145,18 @@ Requirements:
   arithmetic. A line lifts all four corners or none. It reads at the accurate
   recognition level, so a few finished readings arrive per second. Without LiDAR
   the lines stay 2D.
+- The marker stream (`MarkerStreamer`) hands ARKit a library of reference pictures
+  and scanned objects and reads back the anchors it finds. The library is the app's
+  own Documents folder (`UIFileSharingEnabled`, so it appears in Finder and Files),
+  read at mode start and on the **Read the folder again** button. A picture needs a
+  printed width, which no image file carries, so the file's name states it
+  (`poster@30cm.png`, `card-50mm.jpg`, `plate 12in.heic`, `tile_0.4m.png`); the
+  parser lives in the shared `PhoneWire` so a Mac test pins it, and a name that says
+  nothing takes 15 cm and says so on the screen. Each reference is validated as it
+  loads, so a picture with too little detail is named rather than looked for in vain.
+  Sending is paced by what is happening: every frame while anything is followed, a
+  few times a second while nothing is. A picture is *followed*; a scanned object is
+  *found once* and holds its place, which is what an object anchor means.
 - The room stream (`RoomStreamer`) runs `ARWorldTrackingConfiguration` with scene
   reconstruction and sends the room one anchor block at a time: vertices, normals,
   triangles, the anchor's placement, and one label per triangle. Two rules shape it.

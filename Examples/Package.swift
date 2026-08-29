@@ -360,6 +360,9 @@ let package = Package(
         // The words the phone can read, standing in the room where they really are:
         // each line a framed panel of glowing wire type, facing the way it faces.
         example("3D/Phone/PhoneWorldText", [.phone]),
+        // The pictures and objects the phone knows, found in the room: a city of
+        // columns rises off every print it recognizes, framed by the print's edge.
+        example("3D/Phone/PhoneMarkers", [.phone]),
         example("Motion/Breathing"),
         example("Motion/SineSweep"),
         example("Motion/Easing"),

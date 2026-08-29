@@ -41,6 +41,10 @@ import Darwin
 /// that room: `planes` holds a floor, a table top, or a wall as an outline to stand
 /// something on or hang something from, and it needs no LiDAR.
 ///
+/// In **Markers** mode the phone looks for pictures and scanned objects it has been
+/// given, and reports each one it finds: `latestMarkers` carries a name, a placement
+/// in the room, and the thing's real size, so a sketch stands on a printed picture.
+///
 /// `latestLight` says how bright and how warm the room is. It arrives in every mode,
 /// so a sketch can match the light it is standing in.
 ///
@@ -136,6 +140,33 @@ public final class PhoneDevice: FrameSource, VideoFeed {
     /// of them.
     public var latestText: PhoneText? {
         latestTexts.max { $0.imageArea < $1.imageArea }
+    }
+
+    /// Every picture and object the phone knows and can currently see, newest set
+    /// each frame, empty before any arrive or when none is in view. Populated in
+    /// **Markers** mode (rear camera): the phone holds a library of reference
+    /// pictures and scanned objects, and reports each one it finds as a named 6DoF
+    /// placement in ARKit world space with the thing's real size in meters.
+    ///
+    /// A picture that has left the view stays in the list with `isTracked` off,
+    /// holding its last placement, so a sketch decides whether to keep drawing on it.
+    public var latestMarkers: [PhoneMarker] { reader.latestMarkers.map(PhoneMarker.init) }
+
+    /// The marker with this name, or `nil` when the phone is not seeing it. The
+    /// name is the reference file's own name without its extension or its stated
+    /// size, so `poster@30cm.png` on the phone is `device.marker(named: "poster")`.
+    /// A marker being followed wins over one that has left the view.
+    public func marker(named name: String) -> PhoneMarker? {
+        let matches = latestMarkers.filter { $0.name == name }
+        return matches.first(where: \.isTracked) ?? matches.first
+    }
+
+    /// The biggest marker the phone is following, or `nil` when it is following
+    /// none: the convenience for the common one-picture case. Read `latestMarkers`
+    /// to handle several at once.
+    public var latestMarker: PhoneMarker? {
+        let followed = latestMarkers.filter(\.isTracked)
+        return followed.max { a, b in a.width * a.height < b.width * b.height }
     }
 
     /// The latest CoreMotion sample, or `nil` before one arrives — the cheap
@@ -305,6 +336,7 @@ final class PhoneStreamReader: @unchecked Sendable {
         var latestFaces: [PhoneFaceSample] = []
         var latestHands: [PhoneHandSample] = []
         var latestTexts: [PhoneTextSample] = []
+        var latestMarkers: [PhoneMarkerSample] = []
         var latestMotion: PhoneMotionSample?
         var latestDepth: PhoneDepthFrameBox?
         var depthSequence = 0
@@ -335,6 +367,7 @@ final class PhoneStreamReader: @unchecked Sendable {
     var latestFaces: [PhoneFaceSample] { lock.withLock { $0.latestFaces } }
     var latestHands: [PhoneHandSample] { lock.withLock { $0.latestHands } }
     var latestTexts: [PhoneTextSample] { lock.withLock { $0.latestTexts } }
+    var latestMarkers: [PhoneMarkerSample] { lock.withLock { $0.latestMarkers } }
     var latestMotion: PhoneMotionSample? { lock.withLock { $0.latestMotion } }
     var latestDepth: PhoneDepthFrameBox? { lock.withLock { $0.latestDepth } }
     var latestSegmentation: PhoneSegmentationBox? { lock.withLock { $0.latestSegmentation } }
@@ -473,6 +506,7 @@ final class PhoneStreamReader: @unchecked Sendable {
                         case .face(let f): state.latestFaces = f
                         case .hands(let h): state.latestHands = h
                         case .texts(let t): state.latestTexts = t
+                        case .markers(let m): state.latestMarkers = m
                         case .light(let l): state.latestLight = l
                         case .depth, .segmentation, .sceneMesh, .plane: break   // handled above
                         }

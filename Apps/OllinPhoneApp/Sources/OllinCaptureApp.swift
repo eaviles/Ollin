@@ -28,7 +28,8 @@ struct OllinCaptureApp: App {
 /// labeled, and the flat planes found alongside it; Hands the 21-joint hand
 /// skeletons in view, lifted to metric 3D through the LiDAR depth where the device
 /// has it; Text the lines it can read in the scene, their corners lifted the same
-/// way.
+/// way; Markers the reference pictures and scanned objects it knows, each reported
+/// where it stands in the room.
 ///
 /// The room's light streams in every ARKit mode, so it is not a mode of its own.
 /// Selfie runs no ARKit session, so it is the one mode with no light readings.
@@ -41,6 +42,7 @@ enum CaptureMode: String, CaseIterable, Identifiable {
     case room = "Room"
     case hands = "Hands"
     case text = "Text"
+    case markers = "Markers"
     var id: String { rawValue }
 }
 
@@ -69,6 +71,11 @@ final class SensorStreamer {
     var handsInfo = ""
     var textTracked = false
     var textInfo = ""
+    var markersFound = false
+    var markerInfo = ""
+    /// What the phone is looking for, and what it could not use, for the screen.
+    var markerReferences: [MarkerReference] = []
+    var markerNotes: [String] = []
     var lightInfo = ""
     var lightLive = false
     var gravity = SIMD3<Float>(0, 0, 0)
@@ -93,6 +100,7 @@ final class SensorStreamer {
     private let room = RoomStreamer()
     private let hands = HandStreamer()
     private let text = TextStreamer()
+    private let markers = MarkerStreamer()
     private let motion = MotionStreamer()
 
     /// How many blocks of the room have gone out, and how many were dropped for
@@ -217,10 +225,31 @@ final class SensorStreamer {
             }
         }
 
+        markers.onMarkers = { [weak self] samples in
+            guard let self else { return }
+            self.server?.send(PhoneWire.encode(.markers(samples)))
+            let following = samples.filter(\.tracked)
+            self.markersFound = !following.isEmpty
+            if following.isEmpty {
+                self.markerInfo = self.markerReferences.isEmpty
+                    ? "nothing to look for yet"
+                    : "looking for \(self.markerReferences.count)"
+            } else {
+                let names = following.prefix(3).map(\.name).joined(separator: ", ")
+                self.markerInfo = "\(following.count) in view · \(names)"
+            }
+        }
+
+        markers.onLibrary = { [weak self] library in
+            guard let self else { return }
+            self.markerReferences = library.references
+            self.markerNotes = library.notes
+        }
+
         // Every ARKit session estimates the light, so they all report to the same
         // handler and a mode switch never interrupts it. Selfie runs no ARKit
         // session and reports none.
-        let reporters: [any LightReporting] = [ar, face, depth, seg, room, hands, text]
+        let reporters: [any LightReporting] = [ar, face, depth, seg, room, hands, text, markers]
         for reporter in reporters {
             reporter.lightSampler.onLight = { [weak self] sample in
                 guard let self else { return }
@@ -244,32 +273,28 @@ final class SensorStreamer {
     }
 
     private func applyMode() {
-        // Only one camera session at a time; stop the others before starting one.
+        // Only one camera session at a time, so every switch stops them all and then
+        // starts the one it wants. One list, so a new mode can never forget one.
+        stopAllSessions()
         switch mode {
         case .body:
-            face.stop(); depth.stop(); seg.stop(); selfie.stop(); room.stop(); hands.stop(); text.stop()
             ar.start()
             status = bodySupported ? "Streaming body" : "This device doesn't support body tracking"
         case .face:
-            ar.stop(); depth.stop(); seg.stop(); selfie.stop(); room.stop(); hands.stop(); text.stop()
             face.start()
             status = faceSupported ? "Streaming face" : "This device doesn't support face tracking"
         case .world:
-            ar.stop(); face.stop(); seg.stop(); selfie.stop(); room.stop(); hands.stop(); text.stop()
             depth.start()
             status = depthSupported ? "Streaming depth" : "This device has no LiDAR for depth"
         case .segment:
-            ar.stop(); face.stop(); depth.stop(); selfie.stop(); room.stop(); hands.stop(); text.stop()
             seg.start()
             status = segSupported ? "Streaming segmentation" : "This device doesn't support person segmentation"
         case .selfie:
-            ar.stop(); face.stop(); depth.stop(); seg.stop(); room.stop(); hands.stop(); text.stop()
             selfie.start()
             status = selfieSupported
                 ? "Streaming the front-camera person matte, mirrored like the preview"
                 : "This device has no front camera"
         case .hands:
-            ar.stop(); face.stop(); depth.stop(); seg.stop(); selfie.stop(); room.stop(); text.stop()
             handsTracked = false
             handsInfo = ""
             hands.start()
@@ -277,15 +302,18 @@ final class SensorStreamer {
                 ? "Streaming hand pose, lifted to 3D through the LiDAR depth"
                 : "Streaming hand pose in 2D (this device has no LiDAR to lift it)"
         case .text:
-            ar.stop(); face.stop(); depth.stop(); seg.stop(); selfie.stop(); room.stop(); hands.stop()
             textTracked = false
             textInfo = ""
             text.start()
             status = textLift
                 ? "Streaming the readable text, lifted to 3D through the LiDAR depth"
                 : "Streaming the readable text in 2D (this device has no LiDAR to lift it)"
+        case .markers:
+            markersFound = false
+            markerInfo = ""
+            markers.start()
+            status = "Looking for the pictures and objects in the app's own folder"
         case .room:
-            ar.stop(); face.stop(); depth.stop(); seg.stop(); selfie.stop(); hands.stop(); text.stop()
             // A fresh session rebuilds the room from nothing, so the Mac's own count
             // starts again with it.
             meshBlocksSent = 0
@@ -299,6 +327,20 @@ final class SensorStreamer {
                 ? "Streaming the room surface and its flat planes"
                 : "Streaming flat planes (this device has no LiDAR to build a surface)"
         }
+    }
+
+    /// Read the reference folder again, so a picture dropped in over the cable while
+    /// the app is running is looked for without a restart.
+    func reloadMarkers() {
+        guard mode == .markers else { return }
+        markers.reload()
+    }
+
+    /// Stop every camera session. Safe on one that never started, so a mode switch
+    /// calls it unconditionally.
+    private func stopAllSessions() {
+        ar.stop(); face.stop(); depth.stop(); seg.stop(); selfie.stop()
+        room.stop(); hands.stop(); text.stop(); markers.stop()
     }
 
     /// Name the strongest-firing blendshape, for the status readout.
@@ -344,12 +386,13 @@ struct ContentView: View {
                 }
 
                 // Capture mode: one camera session at a time (rear: body/world/
-                // segment/room/hands/text, front: face/selfie), so the modes are
-                // mutually exclusive. Eight modes outgrew the segmented control,
-                // so they wrap as two rows of chips.
+                // segment/room/hands/text/markers, front: face/selfie), so the modes
+                // are mutually exclusive. Nine modes outgrew the segmented control,
+                // so they wrap as three rows of chips.
                 VStack(spacing: 8) {
-                    modeRow([.body, .face, .world, .segment])
-                    modeRow([.selfie, .room, .hands, .text])
+                    modeRow([.body, .face, .world])
+                    modeRow([.segment, .selfie, .room])
+                    modeRow([.hands, .text, .markers])
                 }
                 .padding(.horizontal, 28)
 
@@ -392,6 +435,12 @@ struct ContentView: View {
                             ? "looking for readable text…"
                             : "streaming · \(streamer.textInfo)",
                             ok: streamer.textTracked)
+                    case .markers:
+                        row("Markers", streamer.markerInfo.isEmpty
+                            ? "reading the folder…"
+                            : streamer.markerInfo,
+                            ok: streamer.markersFound)
+                        markerLibrary
                     case .room:
                         row("Surface", streamer.meshSupported
                             ? (streamer.meshInfo.isEmpty ? "walk around to build it…" : "streaming · \(streamer.meshInfo)")
@@ -430,6 +479,34 @@ struct ContentView: View {
             }
         }
         .onAppear { streamer.start() }
+    }
+
+    /// What the phone is looking for: one line per reference file, what it assumed
+    /// about a picture with no size in its name, and the button that reads the
+    /// folder again after somebody drops a file in.
+    private var markerLibrary: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(streamer.markerReferences) { reference in
+                row(reference.kind == .object ? "Object" : "Picture",
+                    reference.kind == .object
+                        ? reference.name
+                        : String(format: "%@ · %.0f cm%@", reference.name,
+                                 reference.width * 100, reference.statedWidth ? "" : " (assumed)"),
+                    ok: true)
+            }
+            ForEach(streamer.markerNotes, id: \.self) { note in
+                Text(note)
+                    .font(.caption)
+                    .foregroundStyle(.orange.opacity(0.85))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Button("Read the folder again") { streamer.reloadMarkers() }
+                .font(.system(.caption, design: .rounded).weight(.semibold))
+                .foregroundStyle(.white.opacity(0.9))
+                .padding(.vertical, 6)
+                .padding(.horizontal, 14)
+                .background(Color.white.opacity(0.12), in: Capsule())
+        }
     }
 
     /// One row of mode chips: the same one-of-many choice a segmented control

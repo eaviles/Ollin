@@ -6,7 +6,7 @@
 
 Borrow a tethered iPhone's on-device perception in a sketch that still renders on the Mac. **Ollin Capture**, Ollin's own iOS app ([`Apps/OllinPhoneApp`](../../Apps/OllinPhoneApp/README.md)), runs ARKit on the phone's Neural Engine and streams the results over the USB cable. `PhoneDevice` reads them on the Mac as typed values you use in `draw()`.
 
-Eight payloads come over. A **3D body skeleton**. **Faces**, up to 3 at once, each a deforming mesh plus the 52 expression blendshapes. The **hands** in view, up to 4, each a 21-joint skeleton lifted to metric 3D where the phone has LiDAR. The lines of **text** it can read, each with its corners lifted the same way. A world-facing **RGBD depth frame** from the rear LiDAR, which unprojects into a point cloud and carries the camera's 6DoF pose. The **room mesh**, the space itself reconstructed as a labeled triangle surface. A **person-segmentation matte** from the rear camera, as a silhouette and a cutout. And **device motion**.
+Nine payloads come over. A **3D body skeleton**. **Faces**, up to 3 at once, each a deforming mesh plus the 52 expression blendshapes. The **hands** in view, up to 4, each a 21-joint skeleton lifted to metric 3D where the phone has LiDAR. The lines of **text** it can read, each with its corners lifted the same way. The **pictures and objects it knows**, each found in the room as a named 6DoF placement with its real size. A world-facing **RGBD depth frame** from the rear LiDAR, which unprojects into a point cloud and carries the camera's 6DoF pose. The **room mesh**, the space itself reconstructed as a labeled triangle surface. A **person-segmentation matte** from the rear camera, as a silhouette and a cutout. And **device motion**.
 
 Where [`Record3D`](../3D/Record3D.md) borrows another app's color-plus-depth feed, this is Ollin's own app, so the stream carries what ARKit *perceives*. The chain is Ollin's end to end.
 
@@ -40,6 +40,7 @@ final class Pose: Sketch {
 - [The face](#the-face) - `PhoneFace`, the blendshapes, the mesh and its texture coordinates, [the eyes and the gaze](#the-eyes-and-the-gaze)
 - [The hands](#the-hands) - `PhoneHand`, 21 joints, the 3D lift, `pinchDistance`
 - [The text in view](#the-text-in-view) - `PhoneText`, the corners, `worldTransform`
+- [The pictures and objects it knows](#the-pictures-and-objects-it-knows) - `PhoneMarker`, the reference folder, `placement`
 - [World depth](#world-depth) - `latestDepthFrame`, `pointCloud(...)`, the camera pose
 - [World fusion](#world-fusion) - `WorldCloud`, sweeping a room into one cloud, [keeping it registered](#drift), and [recognizing a place already scanned](#loops) with `ScanGraph`
 - [The room mesh](#the-room-mesh) - `sceneMesh`, the room as a labeled surface, the Room mode
@@ -77,6 +78,8 @@ device.latestFaces                   // [PhoneFace], every tracked face, up to 3
 device.latestFace                    // PhoneFace?, the most prominent face (= latestFaces.first)
 device.latestHands                   // [PhoneHand], every hand in view, up to 4 (Hands mode)
 device.latestHand                    // PhoneHand?, the most confident one
+device.latestTexts                   // [PhoneText], the lines it can read (Text mode)
+device.latestMarkers                 // [PhoneMarker], the pictures it knows (Markers mode)
 device.latestDepthFrame              // RGBDFrame?, the latest depth frame (World mode)
 device.sceneMesh                     // PhoneSceneMesh, the room scanned so far (Room mode)
 device.planes                        // PhonePlanes, the flat surfaces found (Room mode)
@@ -86,7 +89,7 @@ device.latestMotion                  // PhoneMotion?, the latest device-motion s
 
 These are fresh each time the phone sends one, so read them within the current `draw()`. Each is `nil` until the first of its kind arrives. Motion typically lights up first, since it needs no camera or model, proving the wire before ARKit has found a body, face, or depth.
 
-**The camera modes are mutually exclusive.** Body, World, Segment, Room, and Hands use the rear camera, Face and Selfie the front camera, and only one camera session runs at a time. The capture app has a **Body / Face / World / Segment / Selfie / Room / Hands** toggle, and whichever is selected is the one that updates: `latestBody`, `latestFace`, `latestHands`, `latestDepthFrame`, the segmentation images (Segment and Selfie both feed them), or the room's `sceneMesh` and `planes`. The others hold their last value, so read the one for the mode you mean to drive. Motion streams across all of them, and `latestLight` across every mode except Selfie, the one mode that runs no ARKit session.
+**The camera modes are mutually exclusive.** Body, World, Segment, Room, Hands, Text, and Markers use the rear camera, Face and Selfie the front camera, and only one camera session runs at a time. The capture app has a **Body / Face / World / Segment / Selfie / Room / Hands / Text / Markers** toggle, and whichever is selected is the one that updates: `latestBody`, `latestFace`, `latestHands`, `latestTexts`, `latestMarkers`, `latestDepthFrame`, the segmentation images (Segment and Selfie both feed them), or the room's `sceneMesh` and `planes`. The others hold their last value, so read the one for the mode you mean to drive. Motion streams across all of them, and `latestLight` across every mode except Selfie, the one mode that runs no ARKit session.
 
 ## The body
 
@@ -258,6 +261,38 @@ device.latestText                    // PhoneText?, the line filling the most of
 `latestTexts` is the complete current set each frame, so a sign that leaves the view drops out. A line lifts all four corners, never three. `hasWorldPlacement` says whether the lift happened. The recognizer completes a few readings per second, below camera rate, because it runs at the `.accurate` recognition level. The `.fast` level misses small text across a room.
 
 The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneWorldText`.
+
+## The pictures and objects it knows
+
+In **Markers** mode the phone looks for things it has been given. A reference is a file in the capture app's own folder: any picture, or an `.arobject` a scan produced. Connect the cable, open the phone in Finder, then Files, then Ollin Capture, and drop the file in. AirDrop and the Files app work the same way. The app reads the folder when the mode starts, and the **Read the folder again** button picks up a file dropped in later.
+
+A picture needs its printed width in meters, which no image file carries, so its own name states it. `poster@30cm.png`, `card-50mm.jpg`, `plate 12in.heic`, and `tile_0.4m.png` all say a size; centimeters, millimeters, inches, and meters are the units. A name that says nothing gets 15 cm and the app says so on its screen. What is left after the size is the marker's **name**, so `poster@30cm.png` is the marker `poster`.
+
+Each find arrives as a `PhoneMarker` in ARKit world space, the same fixed world as the [depth sweep](#world-fusion), the room, and the hands. `placement` is the frame to draw through. Its origin sits at the middle of the thing, x runs across the width, y up the height, and z out of the face. It is orthonormal, so nothing drawn through it is scaled.
+
+```swift
+for marker in device.latestMarkers where marker.isTracked {
+    marker.name                      // String, the reference file's own name
+    marker.kind                      // .image or .object
+    marker.width                     // Double, meters (what it really measures)
+    marker.placement                 // simd_float4x4, ready for transform(_:)
+    marker.position                  // Vector3, the middle of it
+    marker.facing                    // Vector3, out of the printed face
+    marker.corners                   // [Vector3], perimeter order (tl, tr, br, bl)
+}
+device.marker(named: "poster")       // PhoneMarker?, by name
+device.latestMarker                  // PhoneMarker?, the biggest one being followed
+```
+
+`latestMarkers` is the complete current set each frame. A picture that leaves the view stays in it with `isTracked` off, holding its last placement, so a sketch decides whether to keep drawing on it.
+
+Three things decide whether this works in a room:
+
+- **A picture is found by its detail.** A photograph or a dense drawing is found across a room; a flat logo or a large plain area is not. ARKit checks each reference as it loads and the app prints what it complains about, so a picture that will never be found says so before you go looking for it.
+- **The printed width is what places it.** A wrong width puts the picture at the wrong distance rather than losing it. ARKit also estimates the real size and reports it through `scaleFactor`, which `width` and `height` already carry.
+- **An object is found, not followed.** ARKit tracks a picture while it stays in view; a scanned object gets one placement where it was found and keeps it. So an object marks a place, and a picture marks a moving thing.
+
+The bundled example is `swift run --package-path Examples Example-3D-Phone-PhoneMarkers`.
 
 ## World depth
 
@@ -586,5 +621,5 @@ Tilt the phone and `gravity` swings, a one-line check that the wire is alive.
 - **USB only.** The transport is the `usbmuxd` tunnel over the cable, on port 1338, distinct from Record3D's 1337. Wi-Fi is deliberately out.
 - **Per-frame clouds are camera-relative, and fusion is world-space.** A single `pointCloud(...)` is in the camera's own frame, root at the lens, and the skeleton is in model space, root at the origin. [World fusion](#world-fusion) is what lifts a sweep into one fixed world cloud, by applying each frame's `latestPose`. It fuses several poses' clouds into a single *registered* scene. [Keeping a long sweep straight](#drift) and [recognizing a place already scanned](#loops) correct ARKit's own drift on top. The body's anchor lives in the same world, so a skeleton and a swept room combine directly.
 - **Depth is raw over the wire.** The LiDAR depth map ships uncompressed, and a 256×192 frame is ~196 KB, comfortable over USB. LZFSE compression is a later optimization. The color image is sent as a downscaled JPEG.
-- **A growing catalog.** Body pose, face, hands, world depth, the room mesh, the flat surfaces, the room's light, person segmentation, and motion are the payloads today. Richer sensors are the same app sending new tagged payloads, not new pipelines.
+- **A growing catalog.** Body pose, face, hands, the text in view, the pictures and objects it knows, world depth, the room mesh, the flat surfaces, the room's light, person segmentation, and motion are the payloads today. Richer sensors are the same app sending new tagged payloads, not new pipelines.
 - **A mesh block is carried raw, and sending is what is throttled.** The phone reads a block's geometry the moment ARKit hands it over, since those buffers belong to the session. It then queues the block and sends a few at a time. A block too big for one payload is skipped and counted on the app's own screen.

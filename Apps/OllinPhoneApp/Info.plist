@@ -22,6 +22,14 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- Markers mode reads its reference pictures and scanned objects from the
+	     app's own Documents folder, so that folder has to be reachable: these two
+	     keys are what put "Ollin Capture" in Finder's Files list and in the Files
+	     app, where somebody drops a picture in. -->
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UIApplicationSceneManifest</key>

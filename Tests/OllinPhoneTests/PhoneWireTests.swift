@@ -268,6 +268,31 @@ import Darwin
         #expect(roundTrip(message) == message)
     }
 
+    @Test func roundTripsMarkers() {
+        // Two finds in one frame: a picture being followed (its name leaves ASCII,
+        // and ARKit has an opinion about its printed size), and a scanned object,
+        // which reports the box its scan measured and where that box's middle sits.
+        let picture = PhoneMarkerSample(
+            tracked: true, timestamp: 9.5, id: UUID(), name: "cartel café",
+            kind: .image,
+            transform: simd_float4x4(SIMD4<Float>(1, 0, 0, 0), SIMD4<Float>(0, 0, -1, 0),
+                                     SIMD4<Float>(0, 1, 0, 0), SIMD4<Float>(0.2, 1.4, -2, 1)),
+            size: SIMD3<Float>(0.3, 0.42, 0), scaleFactor: 1.08)
+        let object = PhoneMarkerSample(
+            tracked: true, timestamp: 9.5, id: UUID(), name: "teapot", kind: .object,
+            transform: matrix_identity_float4x4,
+            size: SIMD3<Float>(0.18, 0.12, 0.14), center: SIMD3<Float>(0, 0.06, 0))
+        let message = PhoneMessage.markers([picture, object])
+        #expect(roundTrip(message) == message)
+    }
+
+    @Test func roundTripsNoMarkers() {
+        // Nothing the phone knows is in view: the empty set, so a picture leaving
+        // clears itself rather than standing in the room for ever.
+        let message = PhoneMessage.markers([])
+        #expect(roundTrip(message) == message)
+    }
+
     @Test func handJointOrderIsContiguous() {
         // The wire carries a hand joint as one byte, so the cases must be 0…20.
         let raws = PhoneHandJoint.allCases.map { Int($0.rawValue) }
