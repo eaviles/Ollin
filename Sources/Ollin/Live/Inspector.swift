@@ -1,4 +1,9 @@
 import SwiftUI
+#if os(macOS)
+import AppKit
+#else
+import UIKit
+#endif
 
 // Within the Ollin module the bare name `Color` is the framework's own color
 // value type, so the explicit color declarations below say `SwiftUI.Color`.
@@ -64,9 +69,15 @@ public enum OllinInspector {
     // (#30D158 / #FF9F0A-ish / #FF453A) and light gets the correct, less
     // fluorescent variants — hard-coding the dark hexes had light mode showing
     // dark-palette neon.
+    #if os(macOS)
     public static let green = SwiftUI.Color(nsColor: .systemGreen)
     public static let amber = SwiftUI.Color(nsColor: .systemOrange)
     public static let red = SwiftUI.Color(nsColor: .systemRed)
+    #else
+    public static let green = SwiftUI.Color(uiColor: .systemGreen)
+    public static let amber = SwiftUI.Color(uiColor: .systemOrange)
+    public static let red = SwiftUI.Color(uiColor: .systemRed)
+    #endif
 
     /// The brand accent: the slider tint, the frame counter, the ring spinner,
     /// the `@Param` mention in the empty state. One token so they can't drift.
@@ -896,9 +907,15 @@ private func swiftUIColor(_ color: Color) -> SwiftUI.Color {
 }
 
 private func ollinColor(_ color: SwiftUI.Color) -> Color? {
+    #if os(macOS)
     guard let converted = NSColor(color).usingColorSpace(.sRGB) else { return nil }
     return Color(red: converted.redComponent, green: converted.greenComponent,
                  blue: converted.blueComponent, alpha: converted.alphaComponent)
+    #else
+    var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+    guard UIColor(color).getRed(&r, green: &g, blue: &b, alpha: &a) else { return nil }
+    return Color(red: Double(r), green: Double(g), blue: Double(b), alpha: Double(a))
+    #endif
 }
 
 /// Whole numbers over a wide (pixel-sized) range, decimals over a narrow one.
@@ -993,7 +1010,11 @@ private struct ScrubbableField: View {
     private var scrubSurface: some View {
         SwiftUI.Color.clear
             .contentShape(SwiftUI.Rectangle())
+            // The cursor shape is a desk affordance: there is no pointer to
+            // change on glass.
+            #if os(macOS)
             .pointerStyle(.columnResize)
+            #endif
             .onTapGesture { isTyping = true }
             .gesture(
                 DragGesture(minimumDistance: 2)
@@ -1003,9 +1024,15 @@ private struct ScrubbableField: View {
                             isInteracting = true
                         }
                         guard let base = scrubBase else { return }
-                        // Option refines the drag, Shift accelerates it.
+                        // Option refines the drag, Shift accelerates it. A
+                        // finger carries no modifier, so a touch drag runs at
+                        // the plain rate.
+                        #if os(macOS)
                         let flags = NSEvent.modifierFlags
                         let gain = flags.contains(.option) ? 0.1 : flags.contains(.shift) ? 10.0 : 1.0
+                        #else
+                        let gain = 1.0
+                        #endif
                         var v = base + drag.translation.width * perPoint * gain
                         if let snap, snap > 0 {
                             v = snapOrigin + ((v - snapOrigin) / snap).rounded() * snap

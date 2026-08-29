@@ -1,3 +1,4 @@
+#if os(macOS)
 #if canImport(AppKit)
 
 import AppKit
@@ -205,5 +206,7 @@ final class WallpaperPane {
         window.contentView = nil
     }
 }
+
+#endif
 
 #endif

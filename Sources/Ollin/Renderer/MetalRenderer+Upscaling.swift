@@ -1,3 +1,6 @@
+// MetalFX is absent from the simulator, where MetalRenderer+NoMetalFX stands in.
+#if !targetEnvironment(simulator)
+
 import Metal
 import MetalFX
 import simd
@@ -329,3 +332,5 @@ extension MetalRenderer {
                             motion: motion, output: output)
     }
 }
+
+#endif

@@ -1,3 +1,4 @@
+#if os(macOS)
 import AppKit
 import Observation
 import SwiftUI
@@ -281,3 +282,5 @@ struct CalibrationOverlay: View {
         .background(.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 10))
     }
 }
+
+#endif

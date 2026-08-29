@@ -124,7 +124,7 @@ extension ProjectKind {
         id: "ios-app",
         title: "iPhone and iPad app",
         summary: "A sketch wrapped as an app for the phone and the tablet, with touch and the device sensors as input.",
-        availability: .waiting(on: "the iOS platform leg: the framework declares macOS only, and the view layer's AppKit seam has no UIKit twin yet")
+        availability: .waiting(on: "an Xcode project to write: an app is installed onto a device rather than run from the command line, so this kind emits a project and a signing team rather than a package")
     )
 
     public static let visionOSApp = ProjectKind(

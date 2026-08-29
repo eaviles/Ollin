@@ -1,0 +1,52 @@
+# Xcode project spec for Ollin Sketch, a sketch running as an iOS app.
+#
+# Generate with:  xcodegen generate   (from this directory)
+# Run in the simulator:
+#   xcodebuild -project OllinSketchApp.xcodeproj -scheme OllinSketchApp \
+#     -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
+# Run on the phone:
+#   xcodebuild ... -destination 'platform=iOS,id=<device id>' \
+#     -allowProvisioningUpdates build
+#
+# Like Apps/OllinPhoneApp, this is an Xcode (not SwiftPM) project: an iOS app
+# cannot be `swift run`, it is installed onto a device or a simulator. The
+# framework arrives as a local package dependency, so a change to Ollin is
+# picked up by the next build with nothing to publish.
+
+name: OllinSketchApp
+
+options:
+  bundleIdPrefix: dev.ollin
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    DEVELOPMENT_TEAM: "3ET6D79498"
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1"
+    CURRENT_PROJECT_VERSION: "1"
+    GENERATE_INFOPLIST_FILE: NO
+
+packages:
+  Ollin:
+    path: ../..
+
+targets:
+  OllinSketchApp:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+    dependencies:
+      - package: Ollin
+        product: Ollin
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.ollin.OllinSketchApp
+        PRODUCT_NAME: "Ollin Sketch"
+        INFOPLIST_FILE: Info.plist
+        TARGETED_DEVICE_FAMILY: "1,2"   # iPhone and iPad
+        ENABLE_USER_SCRIPT_SANDBOXING: YES

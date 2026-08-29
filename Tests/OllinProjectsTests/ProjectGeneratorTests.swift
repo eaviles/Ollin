@@ -83,7 +83,7 @@ struct ProjectGeneratorTests {
         }
         // The message is the whole point of gating rather than omitting.
         let error = ProjectGeneratorError.kindUnavailable(.iOSApp)
-        #expect(error.description.contains("iOS platform leg"))
+        #expect(error.description.contains("Xcode project"))
     }
 
     @Test("A single file is one executable file carrying the interpreter line")

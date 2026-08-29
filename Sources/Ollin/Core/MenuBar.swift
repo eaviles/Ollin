@@ -1,3 +1,4 @@
+#if os(macOS)
 #if canImport(AppKit)
 
 import AppKit
@@ -126,5 +127,7 @@ final class MenuBarHost: NSObject, NSApplicationDelegate {
         statusItem = nil
     }
 }
+
+#endif
 
 #endif

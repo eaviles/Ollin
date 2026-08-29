@@ -1,3 +1,4 @@
+#if os(macOS)
 import SwiftUI
 import AppKit
 
@@ -269,3 +270,5 @@ public struct OllinCameraCommands: Commands {
         OllinActiveSketch.runner?.requestCameraView(view)
     }
 }
+
+#endif

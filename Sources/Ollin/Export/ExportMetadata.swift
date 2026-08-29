@@ -110,7 +110,10 @@ struct ExportMetadata {
     /// `-dirty` suffix when the tree has uncommitted changes; `nil` outside a
     /// repository (or without git). Looked up once per process, so a sequence
     /// or video export reuses the answer for every frame.
+    /// A phone or a tablet runs no other program, so there is nothing to ask
+    /// and the field stays out of the metadata.
     static let workingTreeHash: String? = {
+        #if os(macOS)
         func git(_ arguments: [String]) -> String? {
             let process = Process()
             process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
@@ -128,6 +131,9 @@ struct ExportMetadata {
         guard let hash = git(["rev-parse", "--short", "HEAD"]), !hash.isEmpty else { return nil }
         let dirty = git(["status", "--porcelain"]).map { !$0.isEmpty } ?? false
         return dirty ? hash + "-dirty" : hash
+        #else
+        return nil
+        #endif
     }()
 
     /// The commit `--capture-source` wrote the uncommitted working tree into,

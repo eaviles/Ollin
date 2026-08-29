@@ -1,3 +1,4 @@
+#if os(macOS)
 import SwiftUI
 import AppKit
 
@@ -143,3 +144,5 @@ private final class WindowAttachmentView: NSView {
         if let window { onAttach?(window) }
     }
 }
+
+#endif

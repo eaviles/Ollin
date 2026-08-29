@@ -44,7 +44,8 @@ enum Satellite: String, CaseIterable {
 let package = Package(
     name: "Ollin",
     platforms: [
-        .macOS("26.0")
+        .macOS("26.0"),
+        .iOS("26.0")
     ],
     products: [
         .library(name: "Ollin", targets: ["Ollin"]),

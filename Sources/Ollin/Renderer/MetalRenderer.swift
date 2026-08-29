@@ -1490,7 +1490,7 @@ final class MetalRenderer {
         let desc = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .rgba8Unorm_srgb, width: 1, height: 1, mipmapped: false)
         desc.usage = .shaderRead
-        desc.storageMode = .managed
+        desc.storageMode = ollinUploadStorageMode
         guard let tex = device.makeTexture(descriptor: desc) else { return nil }
         var white: [UInt8] = [255, 255, 255, 255]
         tex.replace(region: MTLRegionMake2D(0, 0, 1, 1), mipmapLevel: 0,

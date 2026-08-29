@@ -301,8 +301,11 @@ public final class SessionRecorder: SketchExtension {
     private static var signalSources: [DispatchSourceSignal] = []
 
     static func defaultDestination(for sketch: Sketch) -> URL {
+        // The home directory is read by name on a sandboxed platform, where the
+        // property is not offered and the path is the container's own.
+        let home = URL(fileURLWithPath: NSHomeDirectory())
         let movies = FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask).first
-            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Movies")
+            ?? home.appendingPathComponent("Movies")
         let folder = movies.appendingPathComponent("Ollin", isDirectory: true)
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let stamp = DateFormatter()

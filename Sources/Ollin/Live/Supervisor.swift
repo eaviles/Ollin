@@ -1,3 +1,4 @@
+#if os(macOS)
 import Foundation
 import os
 
@@ -352,3 +353,5 @@ final class Heartbeat {
         try? Data(String(Date().timeIntervalSince1970).utf8).write(to: url)
     }
 }
+
+#endif

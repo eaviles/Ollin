@@ -1,3 +1,4 @@
+#if os(macOS)
 import AppKit
 import Metal
 import QuartzCore
@@ -382,3 +383,5 @@ final class OllinDisplayView: NSView {
         onSized?()
     }
 }
+
+#endif

@@ -1,3 +1,6 @@
+// MetalFX is absent from the simulator, where MetalRenderer+NoMetalFX stands in.
+#if !targetEnvironment(simulator)
+
 import Metal
 import MetalFX
 import MetalKit
@@ -416,3 +419,5 @@ extension MetalRenderer {
         return (0..<(width * height)).map { Float(words[$0 * 4]) }
     }
 }
+
+#endif

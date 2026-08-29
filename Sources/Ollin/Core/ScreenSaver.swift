@@ -1,3 +1,4 @@
+#if os(macOS)
 #if canImport(ScreenSaver)
 
 import AppKit
@@ -148,5 +149,7 @@ open class SketchSaverView: ScreenSaverView {
         sketch = nil
     }
 }
+
+#endif
 
 #endif

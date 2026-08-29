@@ -1,3 +1,4 @@
+#if os(macOS)
 #if canImport(AppKit)
 import AppKit
 #endif
@@ -134,4 +135,6 @@ extension ProjectionCalibration {
         return key(for: number?.uint32Value)
     }
 }
+#endif
+
 #endif

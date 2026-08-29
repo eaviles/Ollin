@@ -106,9 +106,13 @@ extension CaptureSource {
     /// index file; `identity` supplies an author, so a capture never depends on
     /// the machine having one configured and never signs a person's name to a
     /// commit a tool wrote.
+    ///
+    /// A phone or a tablet runs no other program, so there is no git to ask and
+    /// every answer here is nil.
     @discardableResult
     private static func git(_ arguments: [String], in directory: String?,
                             index: String? = nil, identity: Bool = false) -> String? {
+        #if os(macOS)
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         process.arguments = ["git"] + arguments
@@ -133,6 +137,9 @@ extension CaptureSource {
         // that way, so only a failure comes back as nil.
         return String(data: data, encoding: .utf8)?
             .trimmingCharacters(in: .whitespacesAndNewlines)
+        #else
+        return nil
+        #endif
     }
 }
 

@@ -374,7 +374,7 @@ public final class Image {
         let descriptor = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .rgba8Unorm, width: width, height: height, mipmapped: false)
         descriptor.usage = .shaderRead
-        descriptor.storageMode = .managed
+        descriptor.storageMode = ollinUploadStorageMode
         guard let texture = device.makeTexture(descriptor: descriptor) else { return nil }
         bytes.withUnsafeBytes { raw in
             guard let base = raw.baseAddress else { return }
@@ -393,7 +393,7 @@ public final class Image {
         let descriptor = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .rgba8Unorm_srgb, width: width, height: height, mipmapped: false)
         descriptor.usage = .shaderRead
-        descriptor.storageMode = .managed
+        descriptor.storageMode = ollinUploadStorageMode
         guard let texture = device.makeTexture(descriptor: descriptor) else { return nil }
         bytes.withUnsafeBytes { raw in
             guard let base = raw.baseAddress else { return }
@@ -423,7 +423,7 @@ public final class Image {
         let descriptor = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .bgra8Unorm_srgb, width: width, height: height, mipmapped: true)
         descriptor.usage = .shaderRead
-        descriptor.storageMode = .managed
+        descriptor.storageMode = ollinUploadStorageMode
         guard let texture = device.makeTexture(descriptor: descriptor) else { return nil }
         texture.replace(region: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0,
                         withBytes: bytes, bytesPerRow: bytesPerRow)

@@ -301,7 +301,7 @@ final class GlyphAtlas: @unchecked Sendable {
                 pixelFormat: .r8Unorm, width: GlyphAtlas.pageSize, height: GlyphAtlas.pageSize,
                 mipmapped: false)
             desc.usage = .shaderRead
-            desc.storageMode = .managed
+            desc.storageMode = ollinUploadStorageMode
             guard let made = device.makeTexture(descriptor: desc) else { return nil }
             texture = made
         }

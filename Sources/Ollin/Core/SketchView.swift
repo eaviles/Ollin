@@ -1,5 +1,9 @@
 import Foundation
+#if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import SwiftUI
 import MetalKit
 import QuartzCore
@@ -542,13 +546,16 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// The transport's face: during a replay the window title carries the
     /// position and the state, so a frame with nothing drawn on it can never
     /// read as a dead window.
+    /// A window on glass carries no title, so a replay there says nothing.
     private func updateReplayTitle(_ player: TakePlayer) {
+        #if os(macOS)
         guard let window = view?.window else { return }
         let total = max(player.take.frameCount, 1)
         let pct = min(100, Int((Double(sketch.frameCount) / Double(total) * 100).rounded()))
         let state = sketch.frameCount >= total ? "end, space starts over"
                   : replayPaused ? "paused" : "playing"
         window.title = "\(sketch.title) - replay \(pct)% | \(state)"
+        #endif
     }
 
     public init(sketch: Sketch, view: MTKView, device: MTLDevice) {
@@ -800,10 +807,12 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// a 120 Hz one (or onto a projector at 30) would otherwise keep asking for
     /// the old one for the rest of the run. Called by the installation host
     /// after the displays change.
+    #if os(macOS)
     func displayChanged(to screen: NSScreen?) {
         guard let rate = (screen ?? NSScreen.main)?.maximumFramesPerSecond else { return }
         view?.preferredFramesPerSecond = rate
     }
+    #endif
 
     /// One exponential smoothing step, at the factor the frame rate already
     /// uses. The first sample seeds the value, so a readout opens at the real
@@ -872,7 +881,9 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
             // Reflect where the cursor actually is before the first frame, so a
             // mouse-driven sketch isn't stuck reading (0, 0) — and rendering a
             // blank frame — until the pointer first moves over the window.
+            #if os(macOS)
             (view as? OllinMTKView)?.seedPointer()
+            #endif
             sketch.setup()
             restored?.applyAfterSetup(to: sketch)
             nextCheckpoint = elapsed + (checkpointInterval ?? .infinity)
@@ -949,9 +960,13 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         // being dragged is current in the frames drawn during the drag. It is
         // the view's own rectangle rather than the window's, so a host with a
         // sidebar or a title bar reports the canvas and not the chrome.
+        // A canvas on a phone or a tablet fills a screen it cannot be moved
+        // around, so there is no placement to read and the sketch keeps none.
+        #if os(macOS)
         sketch.setPlacement(canvas: SketchRunner.onScreen(view.convert(view.bounds, to: nil),
                                                           in: view.window),
                             screen: SketchRunner.desktopRect(view.window?.screen?.frame))
+        #endif
 
         // A camera-view snap from the host menu: request it before the sketch's
         // draw() runs, so its cameraShowcase/cameraControl/cameraMove call applies
@@ -1029,8 +1044,12 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         // the surrounding content change, so a value fixed at launch would
         // either clip highlights or send more than the panel can show. A
         // standard or wide sketch stops at white whatever the screen reports.
+        #if os(macOS)
         let headroom = view.window?.screen?
             .maximumExtendedDynamicRangeColorComponentValue ?? 1
+        #else
+        let headroom = view.window?.windowScene?.screen.currentEDRHeadroom ?? 1
+        #endif
         renderer.presentCeiling = sketch.colorOutput.ceiling(displayHeadroom: Float(headroom))
         sketch.setDisplayHeadroom(Double(headroom))
 
@@ -1203,6 +1222,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
     /// `drawableSize / backingScale` — that scale is unreliable before the view
     /// joins a window (it reads 1 on a Retina display), which silently doubled the
     /// canvas and left mouse coordinates at half scale.
+    #if os(macOS)
     /// A rectangle in AppKit's screen space as one a sketch can use: the origin
     /// moves to the top-left of the primary screen and y grows downward, which
     /// is how the canvas is measured. `nil` when there is no rectangle, or no
@@ -1232,6 +1252,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         guard let window else { return nil }
         return desktopRect(window.convertToScreen(rect))
     }
+    #endif
 
     private func updateCanvasSize(from view: MTKView, drawableSize _: CGSize) {
         if case .resizable = sketch.windowMode {
@@ -1246,6 +1267,8 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
 }
 
 // MARK: - Shared MTKView configuration
+
+#if os(macOS)
 
 /// An `MTKView` that reports the cursor position to its `Sketch` as
 /// `mouseX`/`mouseY`, in sketch coordinates (points, top-left origin). AppKit's
@@ -1709,6 +1732,8 @@ private extension KeyCode {
     }
 }
 
+#endif
+
 /// The standard display format: 8-bit BGRA, **sRGB-encoded**, so the GPU blends
 /// and resolves MSAA in linear light (the shaders output linear color and the
 /// target encodes on store). What a sketch presents into unless it declares a
@@ -1745,21 +1770,26 @@ private final class CanvasKeyFocus {
     var isFocused = false
 }
 
+/// The setup a canvas view takes on either window system, so the two sides of
+/// the seam cannot drift apart. The drawable's format and color space follow
+/// what the sketch asked to carry out (see `ColorOutput`). A `.standard` sketch
+/// takes the 8-bit sRGB drawable and leaves the color space nil; the wider
+/// outputs present into a float drawable, which has no encoding of its own, so
+/// the space has to be stated. `extended` additionally asks the system for
+/// brightness above SDR white, which is what makes the compositor grant this
+/// layer headroom.
 @MainActor
-func makeOllinMTKView(device: MTLDevice, size: CGSize, sketch: Sketch) -> OllinMTKView {
-    let view = OllinMTKView(frame: CGRect(origin: .zero, size: size), device: device)
-    view.sketch = sketch
-    // The drawable's format and color space follow what the sketch asked to
-    // carry out (see `ColorOutput`). A `.standard` sketch takes the 8-bit sRGB
-    // drawable and leaves the color space nil, exactly as before; the wider
-    // outputs present into a float drawable, which has no encoding of its own,
-    // so the space has to be stated. `extended` additionally asks the system for
-    // brightness above SDR white, which is what makes the compositor grant this
-    // layer headroom.
+func configureOllinCanvas(_ view: MTKView, sketch: Sketch) {
     let output = sketch.colorOutput
     view.colorPixelFormat = output.drawablePixelFormat
     if let space = output.displayColorSpace {
+        // The view carries the property on one platform and the layer does on
+        // the other; both land on the same layer.
+        #if os(macOS)
         view.colorspace = space
+        #else
+        (view.layer as? CAMetalLayer)?.colorspace = space
+        #endif
     }
     if let layer = view.layer as? CAMetalLayer {
         layer.wantsExtendedDynamicRangeContent = output.wantsExtendedDynamicRange
@@ -1769,6 +1799,15 @@ func makeOllinMTKView(device: MTLDevice, size: CGSize, sketch: Sketch) -> OllinM
     view.sampleCount = 1
     view.isPaused = false                    // run continuously...
     view.enableSetNeedsDisplay = false       // ...driven by the display timer
+}
+
+#if os(macOS)
+
+@MainActor
+func makeOllinMTKView(device: MTLDevice, size: CGSize, sketch: Sketch) -> OllinMTKView {
+    let view = OllinMTKView(frame: CGRect(origin: .zero, size: size), device: device)
+    view.sketch = sketch
+    configureOllinCanvas(view, sketch: sketch)
     // Ask a Force Touch trackpad for the drawing gesture rather than the default
     // one: a single stage over the full 0...1 range, so a press reads as a smooth
     // amount instead of arming the force-click that fires look-up mid-stroke.
@@ -1776,6 +1815,8 @@ func makeOllinMTKView(device: MTLDevice, size: CGSize, sketch: Sketch) -> OllinM
     view.preferredFramesPerSecond = NSScreen.main?.maximumFramesPerSecond ?? 60
     return view
 }
+
+#endif
 
 // MARK: - SwiftUI host
 
@@ -1812,7 +1853,11 @@ public struct SketchView: View {
     /// Owned stats for standalone/gallery hosts that don't inject their own.
     @State private var ownedStats = FrameStats()
     /// The floating "Show FPS" inspector panel, summoned by the menu toggle.
+    /// A detached panel belongs to a desk with windows on it, so the phone and
+    /// the tablet keep the on-canvas overlay and nothing else.
+    #if os(macOS)
     @State private var statsPanel = StatsPanelController()
+    #endif
     /// The shared toggle the "Show FPS" command flips.
     @AppStorage(OllinHUD.showStatsKey) private var showStats = false
 
@@ -1889,22 +1934,33 @@ public struct SketchView: View {
         .animation(.easeOut(duration: 0.2), value: keyFocus.isFocused)
         .onAppear { syncPanel() }
         .onChange(of: showStats) { _, _ in syncPanel() }
+        #if os(macOS)
         .onDisappear { statsPanel.close() }
+        #endif
     }
 
     /// Reflect the "Show FPS" toggle onto the floating panel. A no-op for hosts
     /// that opt out (the live host), which have their own inspector.
     private func syncPanel() {
+        #if os(macOS)
         guard showsInspectorPanel else { return }
         statsPanel.sync(visible: showStats, sketch: sketch, stats: stats)
+        #endif
     }
 }
 
+/// The one name for the two SwiftUI bridges, so the canvas below is written
+/// once. This is the AppKit/UIKit seam itself.
+#if os(macOS)
+private typealias CanvasRepresentable = NSViewRepresentable
+#else
+private typealias CanvasRepresentable = UIViewRepresentable
+#endif
+
 /// The `MTKView`-backed half of `SketchView`: it builds the renderer + runner and
 /// drives the per-frame loop. Kept private so the public surface is the SwiftUI
-/// `View` above (which layers the overlay on top); this stays the
-/// AppKit/UIKit-portability seam.
-private struct MetalCanvas: NSViewRepresentable {
+/// `View` above (which layers the overlay on top).
+private struct MetalCanvas: CanvasRepresentable {
     let sketch: Sketch
     let stats: FrameStats
     let cameraState: CameraOrientationState
@@ -1917,17 +1973,24 @@ private struct MetalCanvas: NSViewRepresentable {
         Coordinator()
     }
 
-    func makeNSView(context: Context) -> MTKView {
+    /// Build the canvas and the runner that drives it. The two window systems
+    /// name their entry points differently and share this body, so a change to
+    /// how a canvas starts reaches both.
+    private func makeCanvas(_ context: Context) -> MTKView {
         guard let device = MTLCreateSystemDefaultDevice() else {
             fatalError("Ollin requires a Metal-capable GPU.")
         }
         // Initial size only; SwiftUI resizes the view to its frame on layout.
         let view = makeOllinMTKView(device: device, size: sketch.canvasSize.cgSize, sketch: sketch)
+        // Keyboard focus and source-editing drags are both desk work: a touch
+        // canvas has no first responder to claim and no editor behind it.
+        #if os(macOS)
         view.claimsKeyboardOnAttach = (keyboardFocus == .automatic)
         view.onKeyboardFocusChange = { [weak keyFocus] focused in
             keyFocus?.isFocused = focused
         }
         view.shapeDragging = shapeDragging
+        #endif
         let runner = SketchRunner(sketch: sketch, view: view, device: device)
         runner.observeStats(into: stats)
         runner.observeOrientation(into: cameraState)
@@ -1937,10 +2000,12 @@ private struct MetalCanvas: NSViewRepresentable {
         return view
     }
 
-    func updateNSView(_ nsView: MTKView, context: Context) {
+    private func updateCanvas(_ view: MTKView) {
         // A host can install its editor after the view exists (the live host
         // mounts the canvas on the first successful compile).
-        (nsView as? OllinMTKView)?.shapeDragging = shapeDragging
+        #if os(macOS)
+        (view as? OllinMTKView)?.shapeDragging = shapeDragging
+        #endif
     }
 
     /// Stop the old view's loop when SwiftUI removes it — notably when the gallery
@@ -1948,11 +2013,29 @@ private struct MetalCanvas: NSViewRepresentable {
     /// each switch dismantles the previous `MetalCanvas`). Pausing the display
     /// timer and dropping the delegate keeps an abandoned view from ticking after
     /// it leaves the hierarchy, and releases the runner (and its renderer).
-    static func dismantleNSView(_ nsView: MTKView, coordinator: Coordinator) {
-        nsView.isPaused = true
-        nsView.delegate = nil
+    private static func dismantleCanvas(_ view: MTKView, _ coordinator: Coordinator) {
+        view.isPaused = true
+        view.delegate = nil
         coordinator.runner = nil
     }
+
+    #if os(macOS)
+    func makeNSView(context: Context) -> MTKView { makeCanvas(context) }
+
+    func updateNSView(_ nsView: MTKView, context: Context) { updateCanvas(nsView) }
+
+    static func dismantleNSView(_ nsView: MTKView, coordinator: Coordinator) {
+        dismantleCanvas(nsView, coordinator)
+    }
+    #else
+    func makeUIView(context: Context) -> MTKView { makeCanvas(context) }
+
+    func updateUIView(_ uiView: MTKView, context: Context) { updateCanvas(uiView) }
+
+    static func dismantleUIView(_ uiView: MTKView, coordinator: Coordinator) {
+        dismantleCanvas(uiView, coordinator)
+    }
+    #endif
 
     final class Coordinator {
         var runner: SketchRunner?
@@ -2077,6 +2160,7 @@ public enum OllinApp {
     /// the sketch in a `SketchView` inside a SwiftUI `App` (`OllinSketchApp`) —
     /// the same lifecycle the live host and gallery use. This is the
     /// `swift run Example-X` path, reached via `Sketch.main()`.
+    #if os(macOS)
     public static func run(_ sketch: Sketch) {
         // A piece asked to get itself back up becomes its own supervisor here,
         // and never reaches the line below: it starts the piece as a child
@@ -2088,6 +2172,12 @@ public enum OllinApp {
         standaloneSketch = sketch
         OllinSketchApp.main()
     }
+    #endif
+
+    // A window is measured against a desk it can be moved around. On a phone or
+    // a tablet the canvas takes the screen it is given, so the three sizes below
+    // have nothing to answer and stay here.
+    #if os(macOS)
 
     /// The window size for `sketch`, resolved from its `windowMode`. `.auto` and
     /// `.resizable` open at the screen-fit size (`.resizable` can then be dragged
@@ -2126,6 +2216,8 @@ public enum OllinApp {
     /// fitted to the screen. Hosts with their own chrome (the gallery, the live
     /// host) size their sketch pane to this.
     public static var defaultWindowSize: CGSize { windowSize(fitting: Sketch.defaultSize.cgSize) }
+
+    #endif
 
     /// Render one frame of `sketch` off-screen and return it as a `CGImage` — no
     /// window, no display loop. Drives the sketch headlessly: `setup()`, then
@@ -2517,6 +2609,8 @@ public enum OllinApp {
 
 }
 
+#if os(macOS)
+
 public extension Sketch {
     /// Entry point that lets a single sketch file be `@main` with no
     /// boilerplate:
@@ -2540,6 +2634,8 @@ public extension Sketch {
         OllinApp.run(Self())
     }
 }
+
+#endif
 
 public extension OllinApp {
     /// Handle the shared headless command-line surface (the export flags
@@ -3105,6 +3201,8 @@ public extension OllinApp {
 
 // MARK: - Standalone SwiftUI launcher
 
+#if os(macOS)
+
 /// SwiftUI `App` that runs a single `Sketch` — the `swift run Example-X`
 /// launcher behind `Sketch.main()` / `OllinApp.run`. The app *lifecycle* stays
 /// SwiftUI (it owns the main menu, so `OllinHUDCommands` plugs in), but the
@@ -3316,3 +3414,5 @@ private final class StandaloneAppDelegate: NSObject, NSApplicationDelegate {
         self.installationHost = host
     }
 }
+
+#endif
