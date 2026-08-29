@@ -41,6 +41,16 @@
 # if it still fails, this is the wrong tool. Check the process CPU too, since
 # a timeout at 2% CPU is a parked thread pool, not a busy machine.
 #
+# Nor do phases fix a test that measures its own wall clock, since the clock
+# starts when the test does and a run this size hands a task back minutes
+# later. Two rules kill that at the root, and both are in CLAUDE.md: probe
+# before reading the clock, and never touch the main actor from a suite that is
+# not on it (measured 2026-08-29 at 74.8 s for no hop, 142.6 s for one, 617.0 s
+# for two, in one 3,107-test run, against 2.5 s for the same suite alone).
+# DataFeedTests keeps its place below all the same: its last test loads through
+# the real system rather than a stub, and that load timed out inside a batch of
+# every target at once even with both rules applied.
+#
 # Agent sessions: the full run takes many minutes, well past a default command
 # timeout. Run it in the background or with an explicit long timeout, never as
 # a plain foreground call. To re-check a single "flaky" suite after a full-run

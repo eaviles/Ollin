@@ -173,13 +173,18 @@ import Ollin
         let tap = try #require(source.frameTap)
         let frame = image.currentCGImage()
 
+        // Both surfaces are read before the clock, since a starved task can
+        // wake past its own deadline having never looked once, and a loop that
+        // tests the deadline first then gives up over a result that is already
+        // published.
         let deadline = Date(timeIntervalSinceNow: 8)
         var published = false
-        while Date() < deadline {
+        while true {
             tap(frame)   // the analyzer drops frames while one is in flight
             // Reading both surfaces arms both conversions (the first read is what
             // turns each one on), so poll until both publish.
             if subjects.matte != nil, subjects.cutout != nil { published = true; break }
+            if Date() >= deadline { break }
             try? await Task.sleep(for: .milliseconds(50))
         }
         #expect(published)

@@ -291,14 +291,17 @@ import Ollin
         #expect(counter.count > 0, "the analysis tap received no frames")
     }
 
+    /// The read comes before the clock: a starved task can wake past its own
+    /// deadline having never looked once, and returning `nil` then reports a
+    /// frame that never arrived while the frame is sitting there.
     private func waitForFrame(_ capture: ScreenCapture,
                               timeout: Double = 6) async -> Image? {
         let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
+        while true {
             if let frame = capture.frame { return frame }
+            if Date() >= deadline { return nil }
             try? await Task.sleep(for: .milliseconds(50))
         }
-        return nil
     }
 }
 

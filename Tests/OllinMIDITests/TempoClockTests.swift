@@ -160,13 +160,16 @@ struct TempoEngineTests {
 @Suite
 struct TempoClockLoopbackTests {
 
+    /// The probe comes before the clock is read: a starved task can wake past
+    /// its own deadline having never looked, and giving up then reports nothing
+    /// arrived over a value that is already there.
     func waitFor<T>(timeout: Double = 3.0, _ probe: () -> T?) async -> T? {
         let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
+        while true {
             if let value = probe() { return value }
+            if Date() >= deadline { return nil }
             try? await Task.sleep(nanoseconds: 5_000_000)   // 5 ms
         }
-        return nil
     }
 
     @Test func followsAClockTrainAcrossTheLoopback() async {

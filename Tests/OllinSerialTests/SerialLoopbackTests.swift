@@ -14,13 +14,17 @@ struct SerialLoopbackTests {
     struct Timeout: Error {}
 
     /// Polls `probe` until it returns a non-nil value or the timeout elapses.
+    ///
+    /// The probe comes before the clock is read: a starved task can wake past
+    /// its own deadline having never looked, and giving up then throws over an
+    /// answer that is already there.
     func waitFor<T>(timeout: Double = 5.0, _ probe: () -> T?) async throws -> T {
         let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
+        while true {
             if let value = probe() { return value }
+            if Date() >= deadline { throw Timeout() }
             try await Task.sleep(nanoseconds: 5_000_000)   // 5 ms
         }
-        throw Timeout()
     }
 
     /// One pty pair: the manager descriptor the test reads and writes, and

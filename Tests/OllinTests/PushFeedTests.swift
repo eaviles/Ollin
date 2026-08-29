@@ -194,26 +194,33 @@ final class ScriptedCarrier: @unchecked Sendable {
 /// `PushFeed`: the wire shape parsed, and the redial behavior driven end to
 /// end. No GPU and no network, so it runs anywhere.
 ///
-/// Deliberately not `@MainActor`. Only `start()` needs the main actor, and a
-/// suite that polls from it starves behind the render suites under a full
-/// run, which reads as a timeout in a test that has nothing to do with the
-/// main thread.
+/// Deliberately not `@MainActor`, and **nothing here may touch the main actor,
+/// `start()` included.** A hop costs the queue, not the hop: the drawing suites
+/// are main-actor bound and run one at a time, so a job this suite enqueues
+/// waits for every one of them already in line. Measured inside the 3,107-test
+/// run on 2026-08-29, where the numbers are arithmetic in the number of visits:
+/// no hop 74.8 s, one hop 142.6 s, and `aSecondStartDoesNothing`, which called
+/// `start()` twice, 617.0 s, over the limit and the run's only failure. The
+/// same tests together take 2.5 s on their own. So a hop is not a cost, it is a
+/// coin toss on where in the queue the test lands, which is what made this
+/// suite red in one batch and green in the next. `start()` is nonisolated for
+/// that
+/// reason (`OllinApp.isRenderingHeadless` is the flag it reads, and it is
+/// `nonisolated(unsafe)` to keep it so). Reach for `MainActor.run` here and the
+/// timeouts come back.
 ///
-/// The hop to `start()` is `await MainActor.run`, and it must never park a
-/// thread on a semaphore instead. Test bodies run on the concurrency pool,
-/// which is exactly one thread per core: parking one there costs the whole
-/// process a worker, and this suite runs enough of these at once to take every
-/// worker there is. The pool is then empty while the main actor is busy with
-/// the render suites, so nothing anywhere in the process resumes (every
-/// `Task.sleep` in every other suite included), and the deadlines below expire
-/// on a machine doing nothing at all. Measured that way: eight of eight pool
-/// threads in `semaphore_wait_trap`, the process at 2% CPU, seven tests
-/// timing out together on a stopwatch none of them got to read.
-/// The time limit is a hang backstop, not a performance expectation. These
-/// tests take about 2.6 s together on their own, and minutes inside a full run
-/// while they queue behind the render suites, so it is sized to catch a feed
-/// that never dials rather than a machine that is busy. `dial(_:)` above is
-/// what has no deadline of its own.
+/// Nothing may park a thread on a semaphore either. Test bodies run on the
+/// concurrency pool, which is exactly one thread per core: parking one there
+/// costs the whole process a worker, and this suite runs enough of these at
+/// once to take every worker there is. Nothing anywhere in the process then
+/// resumes, every other suite's `Task.sleep` included, and the deadlines below
+/// expire on a machine doing nothing at all. Measured that way once: eight of
+/// eight pool threads in `semaphore_wait_trap`, the process at 2% CPU, seven
+/// tests timing out together on a stopwatch none of them got to read.
+///
+/// The time limit is a hang backstop, not a performance expectation. It is
+/// sized to catch a feed that never dials rather than a machine that is busy,
+/// and `dial(_:)` above is what has no deadline of its own.
 @Suite(.timeLimit(.minutes(5)))
 struct PushFeedTests {
 
@@ -230,13 +237,19 @@ struct PushFeedTests {
     /// failure already reset by the redial that cleared it. Nothing is slow
     /// there. The test is late, and an equality question has no answer once
     /// it is.
+    ///
+    /// The loop probes *before* it reads the clock, for the same reason. A task
+    /// this starved can wake past its own deadline having never looked once,
+    /// and a deadline test placed first then throws while the value it wanted
+    /// is sitting there. That is what the sibling suite failed on, thirteen
+    /// tests at once, with the stub's answer already in hand.
     func waitFor<T>(timeout: Double = 20.0, _ probe: () -> T?) async throws -> T {
         let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
+        while true {
             if let value = probe() { return value }
+            if Date() >= deadline { throw Timeout() }
             try await Task.sleep(nanoseconds: 5_000_000)   // 5 ms
         }
-        throw Timeout()
     }
 
     func parse(_ chunks: [String]) -> ServerSentEventParser.Reading {
@@ -335,7 +348,7 @@ struct PushFeedTests {
         defer { feed.stop() }
         #expect(feed.retryBase == 3)
 
-        await MainActor.run { feed.start() }
+        feed.start()
         carrier.transports[0].deliver(.retryHint(5))
         #expect(feed.retryBase == 5)
         carrier.transports[0].deliver(.retryHint(0.2))
@@ -353,7 +366,7 @@ struct PushFeedTests {
         let carrier = ScriptedCarrier()
         let feed = PushFeed("wss://feed.test/x", carriedBy: carrier.factory)
         defer { feed.stop() }
-        await MainActor.run { feed.start() }
+        feed.start()
 
         let transport = carrier.transports[0]
         #expect(transport.wasOpened)
@@ -373,7 +386,7 @@ struct PushFeedTests {
         let carrier = ScriptedCarrier()
         let feed = PushFeed("wss://feed.test/x", carriedBy: carrier.factory)
         defer { feed.stop() }
-        await MainActor.run { feed.start() }
+        feed.start()
 
         let transport = carrier.transports[0]
         transport.deliver(.opened)
@@ -386,7 +399,7 @@ struct PushFeedTests {
         let carrier = ScriptedCarrier()
         let feed = PushFeed("wss://feed.test/x", carriedBy: carrier.factory)
         defer { feed.stop() }
-        await MainActor.run { feed.start() }
+        feed.start()
 
         let transport = carrier.transports[0]
         transport.deliver(.opened)
@@ -402,7 +415,7 @@ struct PushFeedTests {
         let carrier = ScriptedCarrier()
         let feed = PushFeed("wss://feed.test/x", carriedBy: carrier.factory)
         defer { feed.stop() }
-        await MainActor.run { feed.start() }
+        feed.start()
 
         let transport = carrier.transports[0]
         transport.deliver(.opened)
@@ -420,7 +433,7 @@ struct PushFeedTests {
         let carrier = ScriptedCarrier()
         let feed = PushFeed("wss://feed.test/x", carriedBy: carrier.factory)
         defer { feed.stop() }
-        await MainActor.run { feed.start() }
+        feed.start()
 
         let transport = carrier.transports[0]
         transport.deliver(.opened)
@@ -437,7 +450,7 @@ struct PushFeedTests {
         let feed = PushFeed("wss://feed.test/x", greeting: #"{"op": "subscribe"}"#,
                             retryEvery: 1, carriedBy: carrier.factory)
         defer { feed.stop() }
-        await MainActor.run { feed.start() }
+        feed.start()
 
         let first = carrier.transports[0]
         first.deliver(.opened)
@@ -468,7 +481,7 @@ struct PushFeedTests {
         let carrier = ScriptedCarrier()
         let feed = PushFeed("wss://feed.test/x", retryEvery: 1, carriedBy: carrier.factory)
         defer { feed.stop() }
-        await MainActor.run { feed.start() }
+        feed.start()
 
         let first = carrier.transports[0]
         first.deliver(.opened)
@@ -484,7 +497,7 @@ struct PushFeedTests {
     @Test func stopHangsUpAndStaysDown() async throws {
         let carrier = ScriptedCarrier()
         let feed = PushFeed("wss://feed.test/x", retryEvery: 1, carriedBy: carrier.factory)
-        await MainActor.run { feed.start() }
+        feed.start()
 
         let transport = carrier.transports[0]
         transport.deliver(.opened)
@@ -504,7 +517,7 @@ struct PushFeedTests {
         let carrier = ScriptedCarrier()
         let feed = PushFeed("wss://feed.test/x", carriedBy: carrier.factory)
         defer { feed.stop() }
-        await MainActor.run { feed.start() }
+        feed.start()
 
         carrier.transports[0].deliver(.opened)
         feed.reconnect()
@@ -516,7 +529,7 @@ struct PushFeedTests {
         let carrier = ScriptedCarrier()
         let feed = PushFeed("wss://feed.test/x", retryEvery: 1, carriedBy: carrier.factory)
         defer { feed.stop() }
-        await MainActor.run { feed.start() }
+        feed.start()
 
         carrier.transports[0].deliver(.opened)
         carrier.transports[0].deliver(.ended("the server ended the stream"))
@@ -531,7 +544,7 @@ struct PushFeedTests {
         let carrier = ScriptedCarrier()
         let feed = PushFeed("wss://feed.test/x", carriedBy: carrier.factory)
         defer { feed.stop() }
-        await MainActor.run { feed.start() }
+        feed.start()
 
         let transport = carrier.transports[0]
         feed.send("too early")
@@ -545,8 +558,8 @@ struct PushFeedTests {
         let carrier = ScriptedCarrier()
         let feed = PushFeed("wss://feed.test/x", carriedBy: carrier.factory)
         defer { feed.stop() }
-        await MainActor.run { feed.start() }
-        await MainActor.run { feed.start() }
+        feed.start()
+        feed.start()
         #expect(carrier.transports.count == 1)
     }
 
@@ -554,7 +567,7 @@ struct PushFeedTests {
         let carrier = ScriptedCarrier()
         let feed = PushFeed("not an address", carriedBy: carrier.factory)
         defer { feed.stop() }
-        await MainActor.run { feed.start() }
+        feed.start()
 
         let problem = try await waitFor { feed.problem }
         #expect(problem.contains("not an address"))
@@ -581,7 +594,7 @@ struct PushFeedTests {
         ]], headers: ["X-Api-Key": "abc123"])
         defer { feed.stop() }
 
-        await MainActor.run { feed.start() }
+        feed.start()
         _ = try await waitFor { feed.updates >= 2 ? true : nil }
 
         let messages = feed.messages()
@@ -606,7 +619,7 @@ struct PushFeedTests {
         ])
         defer { feed.stop() }
 
-        await MainActor.run { feed.start() }
+        feed.start()
         _ = try await waitFor { feed.updates >= 2 ? true : nil }
 
         // The redial told the server where it was, so the blink loses nothing
@@ -625,7 +638,7 @@ struct PushFeedTests {
         ])
         defer { feed.stop() }
 
-        await MainActor.run { feed.start() }
+        feed.start()
         // Watch the redial, and not the 1 the failure count passed through:
         // the keepalive clears that the moment it lands. A second dial only
         // follows a failure, so the pair below is what says the keepalive
@@ -640,7 +653,7 @@ struct PushFeedTests {
         let (path, feed) = makeStream([[.respond(status: 204)]])
         defer { feed.stop() }
 
-        await MainActor.run { feed.start() }
+        feed.start()
         _ = try await waitFor { feed.isRunning ? nil : true }
         #expect(feed.problem == "the server ended the stream")
 
@@ -655,7 +668,7 @@ struct PushFeedTests {
         ])
         defer { feed.stop() }
 
-        await MainActor.run { feed.start() }
+        feed.start()
         // Same rule: the redial is a fact that stays true, while the drop's own
         // `problem` is cleared the instant the redial connects. What a server
         // error says is checked next door, on a feed that stays down.
@@ -671,7 +684,7 @@ struct PushFeedTests {
         let (_, feed) = makeStream([[.respond(status: 503), .finish]])
         defer { feed.stop() }
 
-        await MainActor.run { feed.start() }
+        feed.start()
         let problem = try await waitFor { feed.problem }
         #expect(problem.contains("503"))
         #expect(!feed.isConnected)
@@ -692,11 +705,91 @@ struct PushFeedTests {
         let feed = PushFeed(file)
         defer { feed.stop() }
 
-        await MainActor.run { feed.start() }
+        feed.start()
         // At least two, not exactly two: the file ends, so the feed redials and
         // reads it again. The last message is `n: 2` on every pass.
         _ = try await waitFor { feed.updates >= 2 ? true : nil }
         #expect(feed.json["n"].number == 2)
         feed.stop()   // the file ends, and a redial would only read it again
+    }
+}
+
+/// The export contract, and the one thing about this feed that is really about
+/// the main thread.
+///
+/// A headless drive owns the main thread from `setup()` through the last frame,
+/// so that is where a feed a sketch made asks whether it is being exported, and
+/// `start()` only believes the flag there. Its own suite, `@MainActor`, for two
+/// reasons: the suite next door must touch the main actor nowhere, and the flag
+/// set here is process-wide, so only a test that holds the main thread may set
+/// it (nothing else runs there while it does, and a feed on any other thread
+/// now knows the render is not its own).
+@Suite @MainActor
+struct PushFeedExportTests {
+
+    /// Says its piece the moment it is opened, which is what a real stream with
+    /// something waiting does. `start()` opens the connection before it waits,
+    /// so the wait is over before it begins and the test needs no second
+    /// thread to satisfy it.
+    final class EagerTransport: PushTransport, @unchecked Sendable {
+        let deliver: @Sendable (PushTransportEvent) -> Void
+        private(set) var wasClosed = false
+
+        init(deliver: @escaping @Sendable (PushTransportEvent) -> Void) {
+            self.deliver = deliver
+        }
+
+        func open() {
+            deliver(.opened)
+            deliver(.message(Data(#"{"n": 1}"#.utf8), isText: true, event: nil, id: nil))
+        }
+        func close() { wasClosed = true }
+        func send(_ text: String) {}
+    }
+
+    @Test func anExportReadsOneMessageAndHangsUp() {
+        let made = OSAllocatedUnfairLock(initialState: [EagerTransport]())
+        let feed = PushFeed("wss://feed.test/x", retryEvery: 1) { _, deliver in
+            let transport = EagerTransport(deliver: deliver)
+            made.withLock { $0.append(transport) }
+            return transport
+        }
+        defer { feed.stop() }
+
+        OllinApp.isRenderingHeadless = true
+        defer { OllinApp.isRenderingHeadless = false }
+        feed.start()
+
+        // One message, the connection let go, and no clock: an export that
+        // listened per frame would render something different every run.
+        #expect(feed.updates == 1)
+        #expect(feed.json["n"].number == 1)
+        #expect(!feed.isConnected)
+        #expect(feed.timeSinceUpdate == 0)
+        #expect(made.withLock { $0.count } == 1)
+        #expect(made.withLock { $0.first?.wasClosed } == true)
+    }
+
+    /// The same feed on any other thread reads the same flag and stays live,
+    /// because the render it can see belongs to somebody else. This is what
+    /// keeps a test process from handing its own renders to every feed under
+    /// test, and it is the whole reason `start()` needs no main actor.
+    @Test func aStartOffTheMainThreadIsNotPartOfTheExport() async {
+        let made = OSAllocatedUnfairLock(initialState: [EagerTransport]())
+        let feed = PushFeed("wss://feed.test/x", retryEvery: 1) { _, deliver in
+            let transport = EagerTransport(deliver: deliver)
+            made.withLock { $0.append(transport) }
+            return transport
+        }
+        defer { feed.stop() }
+
+        OllinApp.isRenderingHeadless = true
+        defer { OllinApp.isRenderingHeadless = false }
+        await Task.detached { feed.start() }.value
+
+        #expect(feed.updates == 1)
+        #expect(feed.isConnected)                                  // still up
+        #expect((feed.timeSinceUpdate ?? -1) >= 0)                 // a real clock
+        #expect(made.withLock { $0.first?.wasClosed } == false)
     }
 }

@@ -58,7 +58,7 @@ final class Tide: Sketch {
 
 | Call | What it does |
 |---|---|
-| `start()` | Asks now, then every `interval` seconds. A feed that is already running ignores it. |
+| `start()` | Asks now, then every `interval` seconds. A feed that is already running ignores it. Callable from anywhere, not only from `setup()` on the main thread. |
 | `stop()` | Stops asking. What arrived stays readable. A feed stops itself when it goes away. |
 | `refresh()` | Asks now rather than waiting for the next turn, which is what a key press or an incoming message binds to. Does nothing while a request is already in flight. |
 
@@ -217,7 +217,7 @@ Reconnection is the point, because a piece on a wall outlives any socket. The fe
 
 ### In an export
 
-In a headless export the feed reads once, while `start()` runs, and holds that answer for every frame. `timeSinceUpdate` reads zero throughout. An export that fetched per frame would render differently every run, and the export tier is built so that it does not.
+In a headless export the feed reads once, while `start()` runs, and holds that answer for every frame. `timeSinceUpdate` reads zero throughout. An export that fetched per frame would render differently every run, and the export tier is built so that it does not. The wait holds whichever thread called `start()`, which is `setup()`'s own in the ordinary case.
 
 <a name="headers"></a>
 

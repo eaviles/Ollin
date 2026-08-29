@@ -99,23 +99,33 @@ final class StubServer: URLProtocol {
 /// `DataFeed`: what the bytes are read as, and the polling behavior driven end
 /// to end. No GPU and no network, so it runs anywhere.
 ///
-/// Deliberately not `@MainActor`. Only `start()` needs the main actor, and a
-/// suite that polls from it starves behind the render suites under a full run,
-/// which reads as a timeout in a test that has nothing to do with the main
-/// thread.
+/// Deliberately not `@MainActor`, and nothing here may touch the main actor,
+/// `start()` included. The drawing suites are main-actor bound and run one at a
+/// time, so a job this suite enqueues waits for every one of them already in
+/// line, and the wait is far longer than anything this suite measures. The
+/// sibling suite carries the numbers ([[PushFeedTests]]), and `start()` is
+/// nonisolated so neither has to pay them.
 @Suite
 struct DataFeedTests {
 
     struct Timeout: Error {}
 
     /// Polls `probe` until it returns a non-nil value or the timeout elapses.
+    ///
+    /// The probe comes *before* the clock is read, and that order is the whole
+    /// helper. A test body on the concurrency pool can be starved past its own
+    /// deadline without having looked once, and a deadline test placed first
+    /// then throws while the answer it was waiting for is already sitting in
+    /// the feed. Measured on 2026-08-29: thirteen tests here threw `Timeout`
+    /// together inside a 3,107-test run, every one of them with the stub's
+    /// answer in hand.
     func waitFor<T>(timeout: Double = 20.0, _ probe: () -> T?) async throws -> T {
         let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
+        while true {
             if let value = probe() { return value }
+            if Date() >= deadline { throw Timeout() }
             try await Task.sleep(nanoseconds: 5_000_000)   // 5 ms
         }
-        throw Timeout()
     }
 
     /// A stub answering on its own path, with a feed pointed at it. The
@@ -204,7 +214,7 @@ struct DataFeedTests {
         defer { feed.stop() }
 
         #expect(feed.timeSinceUpdate == nil)      // nothing has arrived yet
-        await MainActor.run { feed.start() }
+        feed.start()
         _ = try await waitFor { feed.updates == 1 ? true : nil }
         #expect(feed.json["height"].number == 2.5)
         #expect(feed.text == #"{"height": 2.5}"#)
@@ -218,7 +228,7 @@ struct DataFeedTests {
         let (path, feed) = makePair(#"{"height": 2.5}"#)
         defer { feed.stop() }
 
-        await MainActor.run { feed.start() }
+        feed.start()
         _ = try await waitFor { feed.updates == 1 ? true : nil }
         feed.refresh()
         try await settle(feed, after: 2, at: path)
@@ -232,7 +242,7 @@ struct DataFeedTests {
         defer { feed.stop() }
         StubServer.answer(StubServer.Answer(body: #"{"height": 2.5}"#, etag: "\"v1\""), at: path)
 
-        await MainActor.run { feed.start() }
+        feed.start()
         _ = try await waitFor { feed.updates == 1 ? true : nil }
         feed.refresh()
         try await settle(feed, after: 2, at: path)
@@ -250,7 +260,7 @@ struct DataFeedTests {
         let (path, feed) = makePair(#"{"height": 2.5}"#)
         defer { feed.stop() }
 
-        await MainActor.run { feed.start() }
+        feed.start()
         _ = try await waitFor { feed.updates == 1 ? true : nil }
         StubServer.answer(StubServer.Answer(body: #"{"height": 4}"#), at: path)
         feed.refresh()
@@ -263,7 +273,7 @@ struct DataFeedTests {
         let (path, feed) = makePair(#"{"height": 2.5}"#)
         defer { feed.stop() }
 
-        await MainActor.run { feed.start() }
+        feed.start()
         _ = try await waitFor { feed.updates == 1 ? true : nil }
         StubServer.answer(StubServer.Answer(status: 500, body: "no"), at: path)
         feed.refresh()
@@ -281,7 +291,7 @@ struct DataFeedTests {
         defer { feed.stop() }
         StubServer.answer(StubServer.Answer(failure: .cannotConnectToHost), at: path)
 
-        await MainActor.run { feed.start() }
+        feed.start()
         let problem = try await waitFor { feed.problem }
         #expect(!problem.isEmpty)
         #expect(feed.failures == 1)
@@ -293,7 +303,7 @@ struct DataFeedTests {
         defer { feed.stop() }
         StubServer.answer(StubServer.Answer(failure: .timedOut), at: path)
 
-        await MainActor.run { feed.start() }
+        feed.start()
         _ = try await waitFor { feed.problem }
         StubServer.answer(StubServer.Answer(body: #"{"height": 1}"#), at: path)
         feed.refresh()
@@ -307,7 +317,7 @@ struct DataFeedTests {
         let feed = DataFeed("not an address", every: 300, answeredBy: [StubServer.self])
         defer { feed.stop() }
 
-        await MainActor.run { feed.start() }
+        feed.start()
         let problem = try await waitFor { feed.problem }
         #expect(problem.contains("not an address"))
         #expect(feed.json.isNull)
@@ -318,7 +328,7 @@ struct DataFeedTests {
         let (path, feed) = makePair("{}", headers: ["X-Api-Key": "abc123"])
         defer { feed.stop() }
 
-        await MainActor.run { feed.start() }
+        feed.start()
         _ = try await waitFor { StubServer.asks(at: path).first }
         #expect(StubServer.asks(at: path)[0].headers["x-api-key"] == "abc123")
         #expect(StubServer.asks(at: path)[0].path == path)
@@ -328,7 +338,7 @@ struct DataFeedTests {
         let (path, feed) = makePair("{}", every: 1)
         defer { feed.stop() }
 
-        await MainActor.run { feed.start() }
+        feed.start()
         _ = try await waitFor { StubServer.asks(at: path).count >= 1 ? true : nil }
         feed.stop()
         let asked = StubServer.asks(at: path).count
@@ -354,7 +364,7 @@ struct DataFeedTests {
         // misses any of the asking time (one over just the sleep, say)
         // undercounts the allowance and fails a starved run.
         let began = Date()
-        await MainActor.run { feed.start() }
+        feed.start()
         _ = try await waitFor { StubServer.asks(at: path).count >= 1 ? true : nil }
         feed.refresh()
         try await Task.sleep(nanoseconds: 3_300_000_000)
@@ -367,10 +377,10 @@ struct DataFeedTests {
         let (path, feed) = makePair("{}")
         defer { feed.stop() }
 
-        await MainActor.run { feed.start() }
+        feed.start()
         _ = try await waitFor { StubServer.asks(at: path).count == 1 ? true : nil }
-        await MainActor.run { feed.start() }
-        await MainActor.run { feed.start() }
+        feed.start()
+        feed.start()
         try await Task.sleep(nanoseconds: 300_000_000)
         #expect(StubServer.asks(at: path).count == 1)
     }
@@ -399,8 +409,12 @@ struct DataFeedTests {
         let feed = DataFeed(file, every: 300)
         defer { feed.stop() }
 
-        await MainActor.run { feed.start() }
-        _ = try await waitFor { feed.updates == 1 ? true : nil }
+        // Both waits ask `>=`, the counter rule: this one goes through the real
+        // loading system rather than a stub, so the answer can land while the
+        // test is still waiting for a thread, and an equality question has no
+        // answer by the time a late task gets to ask it.
+        feed.start()
+        _ = try await waitFor { feed.updates >= 1 ? true : nil }
         #expect(feed.json["height"].number == 1)
 
         feed.refresh()
@@ -409,7 +423,72 @@ struct DataFeedTests {
 
         try Data(#"{"height": 9}"#.utf8).write(to: file)
         feed.refresh()
-        _ = try await waitFor { feed.updates == 2 ? true : nil }
+        _ = try await waitFor { feed.updates >= 2 ? true : nil }
         #expect(feed.json["height"].number == 9)
+    }
+}
+
+/// The export contract, and the one thing about this feed that is really about
+/// the main thread.
+///
+/// A headless drive owns the main thread from `setup()` through the last frame,
+/// so that is where a feed a sketch made asks whether it is being exported, and
+/// `start()` only believes the flag there. Its own suite, `@MainActor`, for two
+/// reasons: the suite above must touch the main actor nowhere, and the flag set
+/// here is process-wide, so only a test that holds the main thread may set it
+/// (nothing else runs there while it does, and a feed on any other thread now
+/// knows the render is not its own).
+@Suite @MainActor
+struct DataFeedExportTests {
+
+    private func makeFeed(_ body: String, every interval: Double = 1)
+        -> (path: String, feed: DataFeed) {
+        let path = StubServer.claimPath()
+        StubServer.answer(StubServer.Answer(body: body), at: path)
+        let feed = DataFeed("https://feed.test\(path)", every: interval,
+                            answeredBy: [StubServer.self])
+        return (path, feed)
+    }
+
+    @Test func anExportReadsOnceBeforeStartReturns() {
+        let (path, feed) = makeFeed(#"{"height": 4}"#)
+        defer { feed.stop() }
+
+        OllinApp.isRenderingHeadless = true
+        defer { OllinApp.isRenderingHeadless = false }
+        feed.start()
+
+        // The answer is in by the time `start()` returns, with no waiting at
+        // the call site: that is what lets `setup()` hand the same numbers to
+        // every frame of the export.
+        #expect(feed.updates == 1)
+        #expect(feed.json["height"].number == 4)
+        #expect(feed.timeSinceUpdate == 0)
+        #expect(StubServer.asks(at: path).count == 1)
+    }
+
+    /// The same feed on any other thread reads the same flag and polls as
+    /// usual, because the render it can see belongs to somebody else. This is
+    /// what keeps a test process from handing its own renders to every feed
+    /// under test, and it is the whole reason `start()` needs no main actor.
+    @Test func aStartOffTheMainThreadIsNotPartOfTheExport() async throws {
+        let (path, feed) = makeFeed(#"{"height": 4}"#, every: 100_000)
+        defer { feed.stop() }
+
+        OllinApp.isRenderingHeadless = true
+        defer { OllinApp.isRenderingHeadless = false }
+        await Task.detached { feed.start() }.value
+
+        // Nothing is read synchronously here: the request is scheduled, so the
+        // answer arrives later and the clock is a real one.
+        let deadline = Date().addingTimeInterval(20)
+        while true {
+            if feed.updates >= 1 { break }
+            if Date() >= deadline { break }
+            try await Task.sleep(nanoseconds: 5_000_000)
+        }
+        #expect(feed.updates == 1)
+        #expect((feed.timeSinceUpdate ?? -1) > 0)
+        #expect(StubServer.asks(at: path).count == 1)
     }
 }

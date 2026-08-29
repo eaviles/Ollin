@@ -76,13 +76,19 @@ import os
     }
 
     /// Polls `read` every 50 ms until it returns a value or `seconds` elapse.
+    ///
+    /// The read comes before the clock: a starved task can wake past its own
+    /// deadline having never looked once, and returning `nil` then reports a
+    /// frame that never arrived while the frame is sitting there. Here that
+    /// reads as a soft skip rather than a failure, which is worse, since the
+    /// test then passes having checked nothing.
     private func waitFor<T>(seconds: Double, _ read: () -> T?) async -> T? {
         let deadline = Date(timeIntervalSinceNow: seconds)
-        while Date() < deadline {
+        while true {
             if let value = read() { return value }
+            if Date() >= deadline { return nil }
             try? await Task.sleep(for: .milliseconds(50))
         }
-        return nil
     }
 
     @Test func metadataLoads() async throws {
@@ -149,7 +155,14 @@ import os
         #expect(final.width == 64)
         #expect(final.height == 64)
 
-        // Removing the tap stops delivery.
+        // Removing the tap stops delivery, and the count is read *after* the
+        // removal returns on purpose: the guarantee is that nothing arrives
+        // from then on, not that nothing was in flight when the tap was
+        // cleared. Canceling the pump's timer only stops the next tick, and a
+        // tick already holding a pixel buffer would otherwise deliver it a
+        // millisecond later, which is the shape that failed here in a batch and
+        // passed on its own. The pump drops that frame and the removal waits
+        // for the tick to finish, so the count below cannot move.
         player.frameTap = nil
         let countAtRemoval = seen.withLock { $0.count }
         try? await Task.sleep(for: .milliseconds(300))

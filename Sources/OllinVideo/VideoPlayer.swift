@@ -3,6 +3,7 @@ import AVFoundation
 import CoreImage
 import CoreVideo
 import Metal
+import os
 
 /// Plays a video file into a sketch as a live image — recorded footage the way
 /// `Camera` is the live feed. Create one in `setup()`, `play()` it, then draw
@@ -456,6 +457,7 @@ private final class VideoFrameTapPump: @unchecked Sendable {
     init(output: AVPlayerItemVideoOutput, tap: @escaping FrameTap) {
         self.output = output
         self.tap = tap
+        queue.setSpecific(key: Self.onPumpQueue, value: true)
         let timer = DispatchSource.makeTimerSource(queue: queue)
         timer.schedule(deadline: .now(), repeating: .milliseconds(16))
         self.timer = timer
@@ -463,14 +465,37 @@ private final class VideoFrameTapPump: @unchecked Sendable {
         timer.resume()
     }
 
+    /// Cleared by `cancel()`, and read once more immediately before the tap is
+    /// called. Canceling a timer stops the *next* tick, and says nothing about
+    /// the one already running: a tick that has passed its guards is holding a
+    /// pixel buffer and is about to spend a millisecond or two turning it into
+    /// an image, so without this it delivers a frame after the caller cleared
+    /// the tap and believes nothing more can arrive.
+    private let live = OSAllocatedUnfairLock(initialState: true)
+
+    /// Set on the pump's own queue, so `cancel()` can tell whether it is being
+    /// called from inside a delivery and skip the drain that would deadlock.
+    private static let onPumpQueue = DispatchSpecificKey<Bool>()
+
     /// A resumed GCD timer is kept alive by the system until canceled, so the
     /// pump must cancel it explicitly (the handler's `weak self` keeps the
     /// timer from retaining the pump, which is what lets `deinit` run at all).
-    func cancel() { timer.cancel() }
+    ///
+    /// The empty `sync` is the drain: the queue is serial, so it runs after any
+    /// tick already under way, and the caller therefore holds no live delivery
+    /// once this returns. A tap that clears itself from inside its own callback
+    /// is running *on* that queue, where a `sync` would deadlock, so that case
+    /// takes the flag alone (it is the delivery, and there is no other).
+    func cancel() {
+        live.withLock { $0 = false }
+        timer.cancel()
+        if DispatchQueue.getSpecific(key: Self.onPumpQueue) != true { queue.sync {} }
+    }
 
-    deinit { timer.cancel() }
+    deinit { cancel() }
 
     private func tick() {
+        guard live.withLock({ $0 }) else { return }
         let itemTime = output.itemTime(forHostTime: CACurrentMediaTime())
         guard itemTime.isValid,
               output.hasNewPixelBuffer(forItemTime: itemTime),
@@ -478,6 +503,7 @@ private final class VideoFrameTapPump: @unchecked Sendable {
         else { return }
         let ciImage = CIImage(cvPixelBuffer: buffer)
         guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else { return }
+        guard live.withLock({ $0 }) else { return }
         tap(cgImage)
     }
 }

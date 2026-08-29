@@ -2145,7 +2145,15 @@ public enum OllinApp {
     /// timestep, no window, no runloop servicing between frames. Sources that
     /// normally follow a real clock (a playing video) read this to switch to a
     /// deterministic pull that follows the sketch clock instead.
-    package static var isRenderingHeadless = false
+    ///
+    /// Every headless drive sets it, drives, and clears it synchronously on one
+    /// thread, and the readers are the nonisolated live sources, so it is
+    /// `nonisolated(unsafe)` for the same reason `isVectorExporting` below is.
+    /// That is what lets a source that only consults this flag (`DataFeed.start`,
+    /// `PushFeed.start`) stay off the main actor: an isolated read here would
+    /// make every such call a hop, and a hop waits behind whatever the main
+    /// actor is already doing.
+    package nonisolated(unsafe) static var isRenderingHeadless = false
 
     /// True for the *whole* of a vector-export drive (`recordVectorFrame`),
     /// setup and warmup frames included, not just the recorded frame. Vector

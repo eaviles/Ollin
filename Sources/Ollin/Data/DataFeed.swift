@@ -87,8 +87,9 @@ public final class DataFeed: @unchecked Sendable {
         /// Bumped by `start()` and `stop()`, so work scheduled by a previous run
         /// recognizes that it has been orphaned and does nothing.
         var generation = 0
-        /// Read from the export state once, while `start()` runs on the main
-        /// actor, so the rest of the feed can consult it from any thread.
+        /// Read from the export state once, while `start()` runs on the thread
+        /// the drive owns, so the rest of the feed can consult it from any
+        /// thread.
         var headless = false
         var bytes: Data?
         var json: JSON = .null
@@ -172,10 +173,19 @@ public final class DataFeed: @unchecked Sendable {
     /// already running does nothing.
     ///
     /// In a headless export this reads once and returns when the answer is in,
-    /// so every exported frame draws the same numbers.
-    @MainActor
+    /// so every exported frame draws the same numbers, and the wait holds
+    /// whichever thread called, `setup()`'s main one normally. Nothing here
+    /// touches the main actor, so a piece is free to start a feed from a
+    /// background task as well.
     public func start() {
-        let headless = OllinApp.isRenderingHeadless
+        // A headless drive owns the main thread from `setup()` through the last
+        // frame, so a feed a sketch made asks there and gets its own export.
+        // A `start()` on any other thread is not part of that drive, and taking
+        // the flag at face value there is how a test process reads somebody
+        // else's render as its own: it renders headlessly back to back while
+        // its other tests run on the concurrency pool, and a feed that believes
+        // it is being exported reads once and never asks again.
+        let headless = Thread.isMainThread && OllinApp.isRenderingHeadless
         let generation: Int? = state.withLock {
             guard !$0.running else { return nil }
             $0.running = true

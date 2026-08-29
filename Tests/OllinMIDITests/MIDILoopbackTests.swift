@@ -13,13 +13,17 @@ import Ollin
 struct MIDILoopbackTests {
 
     /// Polls `probe` until non-nil or the timeout elapses.
+    ///
+    /// The probe comes before the clock is read: a starved task can wake past
+    /// its own deadline having never looked, and giving up then reports nothing
+    /// arrived over a message that already did.
     func waitFor<T>(timeout: Double = 3.0, _ probe: () -> T?) async -> T? {
         let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
+        while true {
             if let value = probe() { return value }
+            if Date() >= deadline { return nil }
             try? await Task.sleep(nanoseconds: 5_000_000)   // 5 ms
         }
-        return nil
     }
 
     /// Brings up a virtual-source output and an input connected to it, with the

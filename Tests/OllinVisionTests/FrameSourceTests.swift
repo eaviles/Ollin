@@ -36,13 +36,17 @@ import OllinVideo
     }
 
     /// Polls `read` every 50 ms until it returns a value or `seconds` elapse.
+    ///
+    /// The read comes before the clock: a starved task can wake past its own
+    /// deadline having never looked once, and returning `nil` then reports a
+    /// result that never arrived while the result is sitting there.
     private func waitFor<T>(seconds: Double, _ read: () -> T?) async -> T? {
         let deadline = Date(timeIntervalSinceNow: seconds)
-        while Date() < deadline {
+        while true {
             if let value = read() { return value }
+            if Date() >= deadline { return nil }
             try? await Task.sleep(for: .milliseconds(50))
         }
-        return nil
     }
 
     @Test func trackerRunsOverAManualSource() async throws {
