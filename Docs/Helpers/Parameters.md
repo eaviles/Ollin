@@ -26,6 +26,7 @@ final class Pulse: Sketch {
 - [Groups and icons](#groups)
 - [Show-rules: knobs that come and go](#show-rules)
 - [Where the controls appear](#controls)
+- [Saving what you turned](#saving)
 - [Scrubbing values](#scrubbing)
 - [Smoothing](#smoothing)
 - [Driving a knob from outside](#binding)
@@ -157,7 +158,32 @@ Under the live-reload host (`swift run OllinLive path/to/Sketch.swift`), every `
 
 A standalone run of an example gets the same controls in the inspector panel, under View ▸ Show Inspector (⌘/). The examples gallery shows them in its right sidebar.
 
-Headless export never opens an inspector, so a render uses the defaults written in code. Once a tuned value feels right, copy it back into the declaration.
+Headless export never opens an inspector, so a render uses the defaults written in code. Once a tuned value feels right, [save it into the declaration](#saving).
+
+<a name="saving"></a>
+
+### Saving what you turned
+
+A tuned value lives in the running process, and quitting drops it. The **Save to Sketch.swift** button under the knobs writes it down instead. Each value you turned goes into the `@Param` line that declared it:
+
+```swift
+@Param(0...200) var radius = 120.0            // before, and after the save:
+@Param(0...200) var radius = 86.5             // your file, one number newer
+```
+
+Only the knobs you actually moved are written. One nobody touched keeps whatever the file says, so editing a default by hand still takes effect. Everything around the value stays as you wrote it. The attribute, the range, the label, the spacing, and a comment at the end of the line all survive. The value is the only text that changes, because the file is scanned rather than written out again.
+
+Some knobs cannot be written, and the line under the button names the first one. A default the sketch works out has nothing to replace:
+
+```swift
+@Param(0...900) var radius = side / 3    // "radius is set to side / 3, so there is no value to replace."
+```
+
+That answer covers a default naming another value (`houseRadius`), one that is arithmetic (`600.0 / 2`), and one declared in another file. Write the value down if you want the knob to reach it.
+
+Two details are worth knowing. A number keeps the shape you gave it. A whole default stays whole while the value is whole, and a fraction always keeps its point. A color is written to four decimals, which is finer than one step of an 8-bit channel.
+
+In the live host the button writes the file, so the watcher reloads the sketch, exactly as your own save does. In the [performance host](../Tools/LiveCoding.md) it writes the code on the stage instead, and ⌘S still decides what reaches the disk. It is the same machinery as [dragging a shape](../Tools/DragToEdit.md), pointed at a property's default rather than a draw call's arguments.
 
 <a name="scrubbing"></a>
 

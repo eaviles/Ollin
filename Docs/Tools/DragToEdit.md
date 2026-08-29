@@ -72,6 +72,8 @@ The shape follows the pointer either way. What changes is the arithmetic behind 
 
 Moving, and only moving. A shape cannot yet be resized, rotated, or reordered by hand. Dragging does not turn a knob either: a `@Param` coordinate reads as a name, so it is refused with the message above. Both are separate pieces of work; see the [roadmap](../../ROADMAP.md#authoring-and-editor-tooling).
 
+A knob turned in the inspector goes back into the file by the same scanner, from a button rather than a drag. See [saving what you turned](../Helpers/Parameters.md#saving).
+
 ## See also
 
 - [Live reload](../../README.md#live-reload), the host this rides in

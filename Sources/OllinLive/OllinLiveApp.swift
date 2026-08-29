@@ -31,6 +31,7 @@ struct OllinLiveApp: App {
         if arguments.contains("--watchtest") { WatchTest.run() }    // headless; exits
         if arguments.contains("--paramtest") { ParamTest.run() }    // headless; exits
         if arguments.contains("--dragtest") { DragTest.run() }      // headless; exits
+        if arguments.contains("--savetest") { SaveTest.run() }      // headless; exits
 
         guard let pathArg = arguments.first(where: { !$0.hasPrefix("-") }) else {
             FileHandle.standardError.write(

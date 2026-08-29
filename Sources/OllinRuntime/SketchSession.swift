@@ -96,6 +96,22 @@ public final class SketchSession {
         paramValues[name] = value
     }
 
+    /// The knobs the user has turned, in declaration order, each carrying what
+    /// it holds right now. This is the set an inspector writes back into the
+    /// sketch: a knob nobody touched is left as the file declares it, and the
+    /// value written is the one on screen (a knob turned by hand and then moved
+    /// by a fader saves where the fader left it).
+    public var tunedParams: [(name: String, stored: ParamStored)] {
+        params.filter { paramValues[$0.name] != nil }.map { ($0.name, $0.param.stored) }
+    }
+
+    /// Forget tuned values that now stand in the sketch's own text, so the next
+    /// reload reads them from the file. Without this the tuned value keeps
+    /// winning, and editing that default by hand would look ignored.
+    public func forgetTunedParams(_ names: [String]) {
+        for name in names { paramValues.removeValue(forKey: name) }
+    }
+
     /// Record a variation seed the user navigated to, so it survives the next
     /// evaluation the way tuned knobs do.
     public func recordSeed(_ seed: Int) {

@@ -157,9 +157,11 @@ struct LiveCodingRootView: View {
                     VariationCardView(stats: session.core.stats) { seed in
                         session.core.recordSeed(seed)
                     }
-                    ParametersListView(params: session.core.params) { name, value in
-                        session.core.recordParam(name, value)
-                    }
+                    ParametersListView(params: session.core.params,
+                                       onChange: { name, value in
+                                           session.core.recordParam(name, value)
+                                       },
+                                       save: session.saveAction)
                 }
             }
             .padding(14)

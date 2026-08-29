@@ -53,6 +53,29 @@ final class EditorController {
         rehighlight()
     }
 
+    /// Replace the buffer with an edit made for the person at the keyboard (the
+    /// knob values written into their own `@Param` lines), keeping what
+    /// `setText` throws away: the caret, the scroll, and one undo step that
+    /// takes the whole thing back. It goes through the text view rather than the
+    /// storage so the change is an ordinary edit, which is what marks the
+    /// document dirty and leaves ⌘S the only thing that writes the file.
+    func replaceBuffer(with string: String) {
+        guard let textView else {
+            pendingText = string
+            return
+        }
+        let whole = NSRange(location: 0, length: (textView.string as NSString).length)
+        guard textView.shouldChangeText(in: whole, replacementString: string) else { return }
+        let caret = textView.selectedRange().location
+        let visible = textView.enclosingScrollView?.contentView.bounds.origin
+        textView.textStorage?.replaceCharacters(in: whole, with: string)
+        textView.didChangeText()
+        let length = (textView.string as NSString).length
+        textView.setSelectedRange(NSRange(location: min(caret, length), length: 0))
+        if let visible { textView.enclosingScrollView?.contentView.scroll(to: visible) }
+        rehighlight()
+    }
+
     /// Restyle after a user edit; also the dirty-tracking hook's companion
     /// (called by the representable's delegate).
     func handleTextChange() {

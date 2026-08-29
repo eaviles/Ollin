@@ -15,6 +15,10 @@ import Ollin
 // the named curves. `group:` names an inspector section, `icon:` gives the row
 // an SF Symbol. Numeric value boxes scrub: drag across one to change it
 // (Option = fine, Shift = coarse), or click to type.
+//
+// Under the live host, the button below the knobs writes the ones you turned
+// into the @Param lines here, so a set you like survives the run. Copy the
+// file somewhere of your own first if you would rather not edit this one.
 
 enum RingStyle: String, CaseIterable, ParamOption { case rings, dots, beads }
 

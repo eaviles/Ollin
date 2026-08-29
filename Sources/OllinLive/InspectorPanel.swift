@@ -20,9 +20,11 @@ struct InspectorPanel: View {
                     VariationCardView(stats: session.stats) { seed in
                         session.recordSeed(seed)
                     }
-                    ParametersListView(params: session.params) { name, value in
-                        session.recordParam(name, value)
-                    }
+                    ParametersListView(params: session.params,
+                                       onChange: { name, value in
+                                           session.recordParam(name, value)
+                                       },
+                                       save: session.saveAction)
                 }
             }
             .padding(14)

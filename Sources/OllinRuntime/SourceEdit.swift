@@ -162,16 +162,16 @@ package enum SourceEdit {
         return lower ..< upper
     }
 
-    private static func isSpace(_ b: UInt8) -> Bool {
+    static func isSpace(_ b: UInt8) -> Bool {
         b == UInt8(ascii: " ") || b == UInt8(ascii: "\n") || b == UInt8(ascii: "\t")
             || b == UInt8(ascii: "\r")
     }
 
-    private static func isDigit(_ b: UInt8) -> Bool {
+    static func isDigit(_ b: UInt8) -> Bool {
         b >= UInt8(ascii: "0") && b <= UInt8(ascii: "9")
     }
 
-    private static func isNameByte(_ b: UInt8) -> Bool {
+    static func isNameByte(_ b: UInt8) -> Bool {
         isDigit(b) || (b | 0x20) >= UInt8(ascii: "a") && (b | 0x20) <= UInt8(ascii: "z")
             || b == UInt8(ascii: "_") || b >= 0x80
     }
@@ -179,7 +179,7 @@ package enum SourceEdit {
     /// The index just past a string literal starting at `index` (a `"`),
     /// including the `"""` and raw `#"` forms, so a comma inside a string is
     /// never read as an argument separator.
-    private static func endOfString(_ bytes: [UInt8], from index: Int) -> Int {
+    static func endOfString(_ bytes: [UInt8], from index: Int) -> Int {
         let quote = UInt8(ascii: "\"")
         // A multi-line literal ends at its own three quotes.
         if index + 2 < bytes.count, bytes[index + 1] == quote, bytes[index + 2] == quote {
@@ -204,7 +204,7 @@ package enum SourceEdit {
 
     /// The index just past a comment starting at `index`. Block comments nest
     /// in Swift, so the depth is counted rather than the first `*/` taken.
-    private static func endOfComment(_ bytes: [UInt8], from index: Int) -> Int {
+    static func endOfComment(_ bytes: [UInt8], from index: Int) -> Int {
         if bytes[index + 1] == UInt8(ascii: "/") {
             var scan = index + 2
             while scan < bytes.count, bytes[scan] != UInt8(ascii: "\n") { scan += 1 }

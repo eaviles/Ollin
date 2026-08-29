@@ -203,6 +203,45 @@ final class LiveSession {
         core.recordSeed(seed)
     }
 
+    /// The inspector's save action: put the knobs the user turned into the
+    /// watched file. Built fresh on each read so the button always names the
+    /// file this session watches.
+    var saveAction: ParamSaveAction {
+        ParamSaveAction(title: "Save to \(fileName)") { [weak self] in
+            self?.saveParams()
+        }
+    }
+
+    /// Write the tuned knob values into the `@Param` lines they came from, and
+    /// say in one line what happened. Nothing here reaches into the running
+    /// sketch: the file is the only thing that changes, the watcher sees the
+    /// save, and the reload brings the values back from the text. That is why
+    /// the picture does not move when a save lands.
+    private func saveParams() -> String {
+        let values = core.tunedParams
+        guard !values.isEmpty else {
+            return "No knob has moved yet, so \(fileName) already says what the sketch draws."
+        }
+        guard let text = try? String(contentsOfFile: sketchPath, encoding: .utf8) else {
+            return "Could not read \(fileName)."
+        }
+        let result = ParamWrite.writing(text, values: values)
+        if result.text != text {
+            do {
+                try result.text.write(toFile: sketchPath, atomically: true, encoding: .utf8)
+            } catch {
+                return "Could not write \(fileName): \(error.localizedDescription)"
+            }
+        }
+        // The values stand in the file now, so the tuned set steps aside. Kept,
+        // it would keep winning, and a later hand edit of one of those defaults
+        // would look ignored.
+        core.forgetTunedParams(result.written)
+        let summary = ParamWrite.summary(of: result, in: fileName)
+        print("OllinLive: \(summary)")
+        return summary
+    }
+
     private func startWatching() {
         var dirs = [(sketchPath as NSString).deletingLastPathComponent]
         if let shaderDir {                    // also watch the shader folder

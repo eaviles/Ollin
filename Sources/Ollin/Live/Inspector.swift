@@ -696,6 +696,28 @@ private struct MonitorCostRow: View {
 
 // MARK: - Parameters
 
+/// What the parameters list offers under its cards: writing the knobs the user
+/// turned back into the `@Param` lines that declared them, so a good set
+/// outlives the run instead of being typed back by hand.
+///
+/// A host supplies it, since only a host knows which file the sketch was
+/// compiled from and whether it may be written to; a surface without one (the
+/// detached panel, the examples gallery) simply shows no button.
+public struct ParamSaveAction {
+    /// What the button reads, naming where the values land
+    /// ("Save to Sketch.swift").
+    public let title: String
+    /// Write them, and hand back the one line to show underneath (what landed,
+    /// and the first knob that could not), or `nil` to say nothing. It runs on
+    /// the main thread, where the button is pressed and the knobs are read.
+    public let run: @MainActor () -> String?
+
+    public init(title: String, run: @escaping @MainActor () -> String?) {
+        self.title = title
+        self.run = run
+    }
+}
+
 /// The parameter groups: for each group a header over a card of control rows,
 /// or an empty state when the sketch declares no `@Param` knobs. The control in
 /// each row follows the parameter's type (slider, stepper, toggle, menu, color
@@ -707,16 +729,23 @@ private struct MonitorCostRow: View {
 public struct ParametersListView: View {
     let params: [ParamHandle]
     let onChange: (String, ParamStored) -> Void
+    let save: ParamSaveAction?
 
     @SwiftUI.Environment(\.colorScheme) private var scheme
 
     /// The rows whose show-rule currently fails, seeded at init and re-polled by
     /// the body's task, so a rule flipping mid-run moves the list.
     @State private var hiddenIDs: Set<String>
+    /// What the last save said, kept until the next one: a refusal names the
+    /// knob it could not write, which is worth reading twice.
+    @State private var saveMessage: String?
 
-    public init(params: [ParamHandle], onChange: @escaping (String, ParamStored) -> Void = { _, _ in }) {
+    public init(params: [ParamHandle],
+                onChange: @escaping (String, ParamStored) -> Void = { _, _ in },
+                save: ParamSaveAction? = nil) {
         self.params = params
         self.onChange = onChange
+        self.save = save
         _hiddenIDs = State(initialValue: Self.hiddenIDs(in: params))
     }
 
@@ -758,6 +787,7 @@ public struct ParametersListView: View {
                 ForEach(sections, id: \.title) { group in
                     section(title: group.title) { card(for: group.handles) }
                 }
+                if let save { saveRow(save) }
             }
             // The visibility poll, on the rows' own 100ms sync-pull cadence.
             // Keyed on the handle identities so a reload's fresh params restart
@@ -798,6 +828,42 @@ public struct ParametersListView: View {
                 ParamRow(handle: handle, palette: palette, iconGutter: gutter,
                          onChange: { onChange(handle.name, $0) })
                     .id(ObjectIdentifier(handle.param))   // reset state on reload
+            }
+        }
+    }
+
+    /// The one action under the cards: put the values you turned into the
+    /// sketch that declared them. What it says afterwards stays until the next
+    /// press, since a refusal names the knob it could not write.
+    private func saveRow(_ save: ParamSaveAction) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Button {
+                saveMessage = save.run()
+            } label: {
+                HStack(spacing: 6) {
+                    SwiftUI.Image(systemName: "square.and.arrow.down")
+                        .font(.system(size: 10.5, weight: .semibold))
+                    Text(save.title)
+                        .font(.system(size: 11.5, weight: .medium))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                }
+                .foregroundStyle(OllinInspector.accent)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 7)
+                .background(palette.fieldFill, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .strokeBorder(palette.fieldStroke, lineWidth: 0.5))
+            }
+            .buttonStyle(.plain)
+            .help("Write the knobs you turned into the @Param lines they were declared on.")
+
+            if let saveMessage {
+                Text(saveMessage)
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(palette.textTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 2)
             }
         }
     }

@@ -370,7 +370,7 @@ Run it with `swift run OllinLive MySketches/HelloMotion.swift` and walk through 
 
 That leaves the four `@Param` lines. Look at the sidebar of the `OllinLive` window and you'll find they became a small control panel. `@Param("Speed", 0...2) var speed = 0.3` declares a knob with a label, a range, and a starting value, and the sketch reads it like any other property. Each knob arrived as the control its type asks for, so the two `Double`s became sliders, the whole-number `count` became a stepper, and `ground`, being a `Color`, became a well you can click to open a picker. There are more of these, including a toggle for a `Bool` and a draggable pad for a point, and you'll meet them as the guide goes on. The number beside any knob is live as well, so you can drag it sideways to scrub the value or click it to type one in.
 
-Play the panel while the piece runs. Your tuned values survive a save, which means you can edit the code, save, and find your knob positions carried over into the reloaded sketch instead of snapping back to the defaults. When a value feels right, copy it into the code as the new default. It's a habit worth building early, because almost every piece in this guide gets better once its magic numbers become knobs.
+Play the panel while the piece runs. Your tuned values survive a save, which means you can edit the code, save, and find your knob positions carried over into the reloaded sketch instead of snapping back to the defaults. It's a habit worth building early, because almost every piece in this guide gets better once its magic numbers become knobs.
 
 Before moving on, make the piece yours. Some directions worth trying:
 
@@ -379,6 +379,29 @@ Before moving on, make the piece yours. Some directions worth trying:
 - Add a second ring: another loop with a different base radius and its own speed.
 - Make the breathing depth (the `80`) a fifth knob and play it.
 - Replace `drawCircle` with `drawRect(center: Vector2(x, y), width: size, height: size)` and see how the character changes. Use the `center:` form here, because the positional `drawRect(x, y, size, size)` would hang each square down and to the right of its place on the ring.
+
+## Keeping the numbers you turned
+
+There is one thing the panel cannot do on its own, and it is the obvious one: remember. A tuned value lives in the running program, so quitting drops it. That is why tuning used to end by hand. You copied each knob position back into the code, one at a time, and hoped you read the right one.
+
+The button under the knobs does that for you. Press **Save to Sketch.swift**, and every value you turned goes into the `@Param` line that declared it.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/01-HelloOllin/KnobsToSource-dark.jpg">
+  <img src="Images/01-HelloOllin/KnobsToSource.jpg" alt="Two panels: a Radius slider at 120 above a waiting Save to Sketch.swift button, and the same slider turned down to 86.5 with the button pressed, with the @Param line under each panel showing the number it now carries" width="680">
+</picture>
+
+Only the knobs you actually moved are written, and only the value on the line changes. Your label, your range, your spacing, and the comment you left at the end are all where you put them. The host then reloads the sketch from the file, the same way it does after any save of your own.
+
+A number keeps the shape you gave it. A whole default stays whole while the value is whole, and one written with a point keeps its point. That second rule matters more than it looks, because `86` and `86.0` are different types to Swift, and only one of them is the knob you declared.
+
+The same limit as the drag applies, for the same reason. A default the sketch works out has no value to replace:
+
+```swift
+@Param(0...900) var radius = side / 3
+```
+
+The line under the button says so and names what stands there. Write a number in its place if you want the knob to reach it.
 
 ## Where this comes from
 
@@ -395,7 +418,7 @@ The `setup()` and `draw()` sketch model comes from [Processing](https://processi
 - [Dragging a shape](../Docs/Tools/DragToEdit.md): everything a Command-drag can move, what it writes, and why a calculation is refused by name.
 - [The reference offline](../Docs/Tools/Reference.md): `ollin docs` and `ollin examples` in full, including one section of a page, the search across everything, and what happens in a pipe.
 - [Input](../Docs/Helpers/Input.md): the keyboard, click hooks, and the rest of the mouse.
-- [Parameters](../Docs/Helpers/Parameters.md): the full knob family (toggles, menus, pads, and friends), grouping knobs into cards, icons, smoothing, and driving knobs from MIDI or OSC hardware.
+- [Parameters](../Docs/Helpers/Parameters.md): the full knob family (toggles, menus, pads, and friends), grouping knobs into cards, icons, smoothing, saving a tuned set back into the code, and driving knobs from MIDI or OSC hardware.
 - [Appendix A, Just enough Swift](A-JustEnoughSwift.md): the language met properly, every construct these sketches lean on taught in order. [The Swift quick reference](../Docs/Swift.md) is its terse sibling, for whenever a single construct felt mysterious.
 - Appendix B draws this chapter's math, one picture per idea: [Where things are](B-JustEnoughMath.md#where-things-are), [Angles and circles](B-JustEnoughMath.md#angles-and-circles), [Fractions, mapping, and wrapping](B-JustEnoughMath.md#fractions-mapping-and-wrapping).
 - Worked examples: [`Examples/Basic/HelloCircle`](../Examples/Basic/HelloCircle/Sketch.swift), the knobs demo [`Examples/Live/Parameters`](../Examples/Live/Parameters/Sketch.swift), and a page of shapes to drag around, [`Examples/Live/DragToEdit`](../Examples/Live/DragToEdit/Sketch.swift).

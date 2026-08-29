@@ -212,6 +212,41 @@ final class PerformanceSession {
         write(to: fileURL)
     }
 
+    // MARK: - Knobs back into the code
+
+    /// The inspector's save action. Here it writes the *buffer*, not the file:
+    /// the buffer is what the audience is reading and what ⌘↩ evaluates, and ⌘S
+    /// stays the only thing that touches the disk.
+    var saveAction: ParamSaveAction {
+        ParamSaveAction(title: "Save to the code") { [weak self] in
+            self?.saveParamsIntoBuffer()
+        }
+    }
+
+    /// Put the knobs the performer turned into the `@Param` lines on screen, so
+    /// the code the audience reads is the code that draws what they see. The
+    /// running sketch is left alone: the values are already in it, and rewriting
+    /// the text is not an evaluation.
+    private func saveParamsIntoBuffer() -> String {
+        let values = core.tunedParams
+        guard !values.isEmpty else {
+            return "No knob has moved yet, so the code already says what the sketch draws."
+        }
+        let text = editor.text()
+        let result = ParamWrite.writing(text, values: values)
+        if result.text != text {
+            editor.replaceBuffer(with: result.text)
+        }
+        // The code carries them now, so the tuned set steps aside and the next
+        // evaluation reads them from the buffer.
+        core.forgetTunedParams(result.written)
+        var summary = ParamWrite.summary(of: result, in: "the code")
+        if !result.written.isEmpty, fileURL != nil {
+            summary += " Press Command-S to keep them."
+        }
+        return summary
+    }
+
     func saveDocumentAs() {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.swiftSource]
