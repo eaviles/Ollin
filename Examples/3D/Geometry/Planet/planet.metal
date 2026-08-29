@@ -131,7 +131,11 @@ kernel void planet_surface(texture2d<float, access::read> src [[texture(0)]],
 
     float elev = src.read(gid).r;
     float pole = planet_polarity(dir);
-    float height = clamp((elev - SEA) / 0.30, 0.0, 1.0);   // 0 at the shore, 1 high
+    // 0 at the shore, 1 at the highest ground there is. The divisor is the range
+    // the elevation field actually uses above the waterline, measured rather than
+    // assumed: too small a one saturates, and then most of a continent reads as
+    // summit and the whole interior turns to rock.
+    float height = clamp((elev - SEA) / (1.0 - SEA), 0.0, 1.0);
 
     // Water. Three stops rather than two: the deep, the slope up to the shelf,
     // and the pale green over the shallowest of it, which is the color that says
@@ -144,52 +148,106 @@ kernel void planet_surface(texture2d<float, access::read> src [[texture(0)]],
     water = mix(water, abyss, smoothstep(0.30, 0.85, depth));
     water *= 0.94 + 0.12 * planet_fbm(dir * 26.0 + seed * 4.3, 3);
 
-    // The land is chosen the way a biome map is: warm or cold, wet or dry. Warmth
-    // falls off toward the poles and with altitude; wet is a slow field crossed
-    // with the rain belts (wet at the equator, dry at the horse latitudes, wet
-    // again in the middle latitudes).
-    float warmth = clamp(1.10 - 1.35 * pole * pole - 0.75 * height, 0.0, 1.0);
-    float belts = 0.5 + 0.5 * cos((pole - 0.06) * 11.0);
-    float wet = clamp(0.42 * belts
-                      + 0.72 * planet_contrast(planet_fbm(dir * 4.3 + seed * 3.1 + 31.0, 6), 1.5)
-                      - 0.14, 0.0, 1.0);
+    // How steep the ground is here, read off the height map itself. Flat low
+    // ground holds water and grows things; a slope sheds both and shows its rock.
+    // The x step is divided by the cosine of the latitude, because a map like this
+    // one packs its columns closer together as it climbs toward a pole, and
+    // without that a hillside would read as steeper the further north it stands.
+    uint xl = (gid.x + w - 1) % w, xr = (gid.x + 1) % w;
+    uint yu = gid.y > 0 ? gid.y - 1 : 0, yd = min(gid.y + 1, h - 1);
+    float dhx = (src.read(uint2(xr, gid.y)).r - src.read(uint2(xl, gid.y)).r)
+              / max(sqrt(1.0 - dir.y * dir.y), 0.25);
+    float dhy = src.read(uint2(gid.x, yd)).r - src.read(uint2(gid.x, yu)).r;
+    float slope = length(float2(dhx, dhy)) * float(w) / 2048.0;
 
-    float3 rainforest = srgbToLinear(float3(0.114, 0.220, 0.106));
-    float3 woodland = srgbToLinear(float3(0.204, 0.290, 0.145));
-    float3 grass = srgbToLinear(float3(0.365, 0.400, 0.216));
+    // The land is chosen the way a biome map is: warm or cold, wet or dry. Warmth
+    // falls off toward the poles and with altitude. Wet is four things at once,
+    // which is what keeps a continent from reading as two or three flat patches:
+    // the rain belts (wet at the equator, dry at the horse latitudes, wet again in
+    // the middle latitudes), a slow field for which quarter of a continent is
+    // green at all, a middling one for the regions inside it, a fine one for the
+    // grain, and the ground's own shape, since a valley holds what a ridge sheds.
+    float warmth = clamp(1.16 - 1.30 * pow(pole, 2.3) - 0.70 * height, 0.0, 1.0);
+    float belts = 0.5 + 0.5 * cos((pole - 0.05) * 8.8);
+    float wetBig = planet_contrast(planet_fbm(dir * 4.3 + seed * 3.1 + 31.0, 6), 1.5);
+    float wetMid = planet_contrast(planet_fbm(dir * 15.0 + seed * 4.7 + 17.0, 5), 1.35);
+    float wetFine = planet_fbm(dir * 55.0 + seed * 9.3, 4) - 0.5;
+    float wetGrain = planet_fbm(dir * 190.0 + seed * 13.1, 3) - 0.5;
+    float lowland = 1.0 - smoothstep(0.05, 0.55, height);
+    float sheltered = 1.0 - smoothstep(0.02, 0.13, slope);
+    float wet = clamp(0.22 * belts
+                      + 0.34 * wetBig
+                      + 0.34 * wetMid
+                      + 0.22 * wetFine
+                      + 0.10 * wetGrain
+                      + 0.12 * (lowland * sheltered - 0.35)
+                      - 0.05, 0.0, 1.0);
+
+    float3 rainforest = srgbToLinear(float3(0.106, 0.208, 0.094));
+    float3 woodland = srgbToLinear(float3(0.196, 0.286, 0.137));
+    float3 grass = srgbToLinear(float3(0.353, 0.396, 0.208));
     float3 steppe = srgbToLinear(float3(0.529, 0.478, 0.310));
-    float3 desert = srgbToLinear(float3(0.706, 0.588, 0.384));
+    float3 desert = srgbToLinear(float3(0.714, 0.596, 0.388));
+    float3 taiga = srgbToLinear(float3(0.145, 0.216, 0.157));
     float3 tundra = srgbToLinear(float3(0.400, 0.412, 0.353));
 
-    // Dry to wet along one ramp, then the cold end pulled toward tundra. Every
-    // step is a smoothstep, so nothing draws a border.
-    float3 ground = mix(desert, steppe, smoothstep(0.18, 0.36, wet));
-    ground = mix(ground, grass, smoothstep(0.34, 0.52, wet));
-    ground = mix(ground, woodland, smoothstep(0.48, 0.66, wet));
-    ground = mix(ground, rainforest, smoothstep(0.62, 0.86, wet) * smoothstep(0.45, 0.75, warmth));
-    ground = mix(ground, tundra, smoothstep(0.42, 0.16, warmth));
+    // Dry to wet along one ramp. Every step is a smoothstep, so nothing draws a
+    // border.
+    float3 ground = mix(desert, steppe, smoothstep(0.20, 0.32, wet));
+    ground = mix(ground, grass, smoothstep(0.34, 0.45, wet));
+    ground = mix(ground, woodland, smoothstep(0.46, 0.58, wet));
+    ground = mix(ground, rainforest, smoothstep(0.60, 0.76, wet)
+                                     * smoothstep(0.45, 0.75, warmth));
+
+    // The cold end is not one thing. A cold country with rain on it is forest,
+    // the widest band of trees there is, and only the cold country without rain
+    // is the bare ground that reads as tundra. Collapsing both into one color is
+    // what leaves a planet with a grey lid.
+    float3 cold = mix(tundra, taiga, smoothstep(0.26, 0.44, wet));
+    ground = mix(ground, cold, smoothstep(0.46, 0.18, warmth));
+
+    // The valleys of a dry country are still green, which is where a river would
+    // be. This is the cheap stand-in for one: the low flat ground of a place that
+    // is warm enough, greener than the country it runs through.
+    float3 riparian = srgbToLinear(float3(0.243, 0.318, 0.153));
+    float drainage = sheltered * lowland
+                   * smoothstep(0.20, 0.55, wet + 0.25 * wetFine)
+                   * smoothstep(0.25, 0.55, warmth);
+    ground = mix(ground, riparian, drainage * 0.55);
 
     // Sand where the ground meets the water, a strip a few texels wide.
     float3 beach = srgbToLinear(float3(0.769, 0.686, 0.514));
     ground = mix(ground, beach, (1.0 - smoothstep(0.0, 0.045, height))
                                 * smoothstep(0.10, 0.35, warmth));
 
-    // Rock as the ground climbs, and the rock itself banded by what it is made of.
+    // Rock, banded by what it is made of. It shows up two ways: high ground wears
+    // it, and so does any slope steep enough to shed its soil, which is what puts
+    // bare stone down the sides of a range and leaves the floor between them green.
     float3 rock = srgbToLinear(mix(float3(0.353, 0.322, 0.290),
                                    float3(0.451, 0.408, 0.365),
                                    planet_fbm(dir * 19.0 + seed * 6.1, 4)));
-    ground = mix(ground, rock, smoothstep(0.62, 1.00, height));
+    // The slope band is measured too: on this terrain the open country runs
+    // around 0.02 to 0.05, and only the ridge lines and the cliffs pass 0.05.
+    float bare = max(smoothstep(0.62, 0.92, height),
+                     smoothstep(0.050, 0.105, slope) * smoothstep(0.05, 0.40, height));
+    ground = mix(ground, rock, bare);
 
-    // Two grains over everything: a slow one for regional color, and a fine one
-    // at the scale of a few texels, which is most of what reads as detail.
+    // Three grains over everything, an octave apart: the regional color, the
+    // county-sized patchiness, and the fine mottle at the scale of a few texels,
+    // which together are most of what reads as detail from a distance.
     ground *= 0.90 + 0.20 * planet_fbm(dir * 13.0 + seed * 2.3 + 71.0, 4);
+    ground *= 0.93 + 0.14 * planet_fbm(dir * 38.0 + seed * 5.1 + 29.0, 4);
     ground *= 0.94 + 0.12 * planet_fbm(dir * 95.0 + seed * 8.7, 3);
+    // And a little color drift with it, so no two regions of one biome match.
+    ground *= float3(0.97 + 0.07 * planet_fbm(dir * 9.0 + seed * 1.7, 3),
+                     1.0,
+                     0.97 + 0.07 * planet_fbm(dir * 9.0 + seed * 1.7 + 41.0, 3));
 
     // Snow: down to sea level at the caps, only on the summits near the equator.
     // The line wanders, so a cap has a ragged edge rather than a drawn circle.
     float3 snow = srgbToLinear(float3(0.937, 0.949, 0.965));
     float wander = planet_fbm(dir * 7.0 + seed * 5.9 + 13.0, 4) - 0.5;
-    float snowLine = 0.96 - 0.34 * height + 0.20 * wander;
+    float snowLine = 0.96 - 0.46 * height + 0.20 * wander;
     float capped = smoothstep(snowLine - 0.10, snowLine + 0.05, pole);
     ground = mix(ground, snow * (0.84 + 0.22 * planet_fbm(dir * 70.0 + seed, 4)), capped);
 

@@ -89,6 +89,42 @@ struct PlanetMapTests {
         #expect(south > middle * 2, "south \(south) against the equator's \(middle)")
     }
 
+    /// A world is not one material. This is the pin for the failure that happened
+    /// twice here, both times from a ramp that saturated rather than from a wrong
+    /// color: the land came out as one flat expanse of bare stone with a few green
+    /// patches left in it.
+    ///
+    /// The measure is the blue share of each land color. Everything that grows, and
+    /// sand with it, keeps blue near an eighth of its total; stone and tundra sit
+    /// near a quarter, because they are grey. So the share of land reading grey is
+    /// one number, and it separates cleanly: 0.27 as the maps stand, against 0.46
+    /// with the height ramp put back the way it saturated. A colorless world also
+    /// costs the greenery, so that is checked too, though it is the weaker signal.
+    @Test(.enabled(if: Snapshot.hasMetal))
+    func theLandIsNotOneMaterial() throws {
+        let maps = try #require(PlanetMaps.baked())
+        let height = try #require(maps.read(maps.heightMap))
+        let surface = try #require(maps.read(maps.surfaceMap))
+
+        var land = 0, green = 0, stony = 0
+        for i in 0 ..< surface.texels.count {
+            guard height.texels[i].r >= Self.sea else { continue }
+            let c = surface.texels[i]
+            let sum = c.r + c.g + c.b
+            // Ice is not ground, and it is grey by nature, so it is left out.
+            guard sum > 1e-4, max(c.r, max(c.g, c.b)) <= 0.55 else { continue }
+            land += 1
+            if c.g > c.r && c.g > c.b { green += 1 }
+            if c.b / sum > 0.22 { stony += 1 }
+        }
+        #expect(land > 500, "only \(land) texels of ice-free land to measure")
+
+        let greenShare = Double(green) / Double(land)
+        let stonyShare = Double(stony) / Double(land)
+        #expect(stonyShare < 0.38, "\(stonyShare) of the land is bare grey")
+        #expect(greenShare > 0.30, "only \(greenShare) of the land grows anything")
+    }
+
     // MARK: The finish
 
     /// Water is nearly a mirror and ground is not, which is the whole reason a sun
