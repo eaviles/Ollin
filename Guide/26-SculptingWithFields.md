@@ -330,6 +330,25 @@ One thing the average can't know on its own is where a *moving object* was last 
 
 The [`TemporalAA` example](../Examples/3D/Effects/TemporalAA/Sketch.swift) is a trellis of thin tilted rods under a slow camera sway, with the toggle on a knob. An orbiting bar has a `withMotion` knob of its own. Flip them mid-motion and watch the edges stop crawling. The scenes where it makes the most difference are exactly that kind, so hairline geometry, high contrast, and movement.
 
+## Highlights that hold still: specular anti-aliasing
+
+The section above steadied the *edges* of things. Their highlights can crawl too, and jitter is not what fixes that.
+
+A polished surface turns a light into one small bright spot. Where the surface curves tightly, or a normal map turns quickly, a single pixel covers a whole range of surface directions. The spot can end up narrower than that pixel. Ollin shades each pixel once. So the one sample either lands on the spot or misses it, and which of those happens changes from frame to frame. That is the sparkle running over a bed of small shiny balls, a metal roof in the distance, or a bumpy map. The eight samples per pixel do not help: they sample the *shape*, and the shading still happens once.
+
+```swift
+material(.metal(roughness: 0.1))
+specularAntialiasing()      // the sparkle stops running
+```
+
+The call widens the roughness of each pixel by how far its own surface direction turns across it. A wider highlight is broader and dimmer. It fills the pixel instead of hiding inside it, so it stays where it is while the surface moves. The cost is two small measurements per pixel. There is no extra pass and no history to build up, and any Mac that runs Ollin can do it.
+
+It finds the detail on its own. A flat wall holds one direction across every pixel of it, so it comes back exactly as it was. A ball a few pixels wide is widened a lot. Nothing is widened past a fixed limit, which keeps the pixels along a silhouette from turning matte. `strength` scales the whole effect. 1 is the standard amount, 2 gives up more of the finish for more calm, and below 1 keeps more of the original sharpness.
+
+Two things it will not do. A highlight so bright that it has already gone flat white cannot be calmed, and widening it only spreads that white. Turn the strength down if a picture reads softer rather than steadier. The measurement also comes from the pixels next door, so detail far below one pixel is guessed rather than measured.
+
+The [`SpecularAntialias` example](../Examples/3D/Effects/SpecularAntialias/Sketch.swift) is a bed of small polished balls under one hard light, with the toggle and the strength on knobs. The plate standing behind them is flat, so it never changes. Watch the balls at the back of the bed, where they are smallest.
+
 ## The streak a shutter leaves: motion blur
 
 A rendered frame is an instant: everything in it is perfectly sharp, no matter how fast it was going. A film frame is not. A real camera's shutter stays open for a slice of each frame, and anything that moved during that slice smears along its path. Your eye has spent a lifetime learning that fast things streak. That's why rendered motion can feel like a strobe, since the picture keeps saying *is* when it should sometimes say *was going*. A sharp frame says where things are, and a streak says where they're going.
@@ -492,7 +511,7 @@ Distance fields as a drawing medium are the craft of the demoscene and Shadertoy
 - [Shadow art](../Docs/Generators/ShadowArt.md): the carving, what the solid really throws, and the rule for when two or three shadows can be cast at all.
 - [Isosurfaces and metaballs](../Docs/Generators/Isosurface.md): the mesh route in full, including all three merge knobs, how the marching handles the faces that could be joined two ways, and the resolution and cost rules.
 - [Combining 3D features](../Docs/3D/Combining.md): what fields take (materials, shadows, environments) and where they differ from meshes.
-- [The traced and temporal tiers](../Docs/3D/3D.md): ray-traced reflections, the global-illumination probe field, temporal anti-aliasing with `withMotion`, motion blur, and temporal upscaling, each with what it needs and what it costs.
+- [The traced and temporal tiers](../Docs/3D/3D.md): ray-traced reflections, the global-illumination probe field, temporal anti-aliasing with `withMotion`, specular anti-aliasing, motion blur, and temporal upscaling, each with what it needs and what it costs.
 - [Caustics](../Docs/3D/Caustics.md): what casts and what receives, the emitting light's priority, dispersion, the quality dial, and how the photon chain works.
 - [Lens flare](../Docs/3D/LensFlare.md): the lens as a stack of interfaces, writing your own prescription, the iris and its blades, which sources flare, and how a flare follows what the camera can see.
 - Appendix B draws this chapter's math, one picture per idea: [Per-pixel thinking and distance](B-JustEnoughMath.md#per-pixel-thinking-and-distance).

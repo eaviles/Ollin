@@ -4171,6 +4171,57 @@ clamp absorbs it as before.
 
 ---
 
+## Specular anti-aliasing
+
+Temporal AA above fixes the *shape* half of aliasing. `specularAntialiasing()`
+fixes the *shading* half, and the two are independent: MSAA takes 8 samples of
+the shape and 1 of the shading, so a highlight narrower than its pixel is
+sampled once whatever the sample count. The mechanism is one line of arithmetic
+in the lit mesh fragments (`ollin_ndf_filter_kernel` + `ollin_ndf_filtered` in
+`Shader3D.metal`), described with its invariants in the CAPABILITIES bullet.
+What belongs here is the measurement record, because three of the four
+measurements a reasonable person reaches for first are wrong, and the shipped
+envelope came out of that.
+
+**An absolute flicker metric rewards a dark picture.** The first probe measured
+the mean absolute second difference of luminance over a run of frames (a smooth
+pan cancels in a second difference; a speck that switches on for one frame does
+not). Filtering spreads a sparse clipped speck into many mid-tone pixels, so the
+*absolute* number rose 56% while the picture visibly improved. The metric has to
+be normalized or, better, measured against a converged reference.
+
+**The reference is real; the probe was not.** `exportRenderScale = 4` plus the
+headless temporal-AA supersample averages in linear light *before* the tone map,
+so it is a true ground truth. But the first three probes had no aliasing to fix:
+rendered at scale 1 and at scale 4, the far band's mean moved 0.5%. A fix for
+aliasing can only be judged on a scene that is shown to alias, and that check is
+two renders.
+
+**A bright light hides the problem and inverts the fix.** With roughness 0.10
+and an intensity of 4, the specular peak is around 30,000 and the tone map clips
+it to a flat white plateau. A flat plateau does not alias, so the plain render is
+already close to the truth, and widening the lobe only spreads that plateau: the
+filtered frame lands *further* from the converged one. Sweeping the intensity
+shows the sign flip cleanly (RMSE against truth, steep probe: off 19.8 /
+filtered 54.8 at intensity 4; off 4.30 / filtered 2.96 at 0.004). This is the
+shipped envelope and it is stated in `Docs/3D/3D.md` and the Guide rather than
+left for a user to discover.
+
+**What the shipped test measures.** Five frames a quarter of a degree apart of a
+rippled sheet far enough away that each pixel covers several ripples, under a
+light dim enough to stay in range. Crawl (mean absolute second difference,
+linear light, ×255): converged 0.039, unfiltered 0.148, filtered 0.112 at
+strength 1 and 0.087 at strength 2. The excess over the converged figure is the
+artifact, and a third of it goes at strength 1.
+
+**Debugging that worked.** Rendering the kernel itself as color bands (blue
+under 1e-4, green, yellow, orange, red at the cap) over a plain sphere gave a
+smooth radial ramp with a thin orange rim in one render, which is textbook, and
+settled that the code was right while the scene was wrong. Tint the term and
+render; do not tune.
+
+---
+
 ## Motion blur
 
 `motionBlur(shutter:)` is the velocity buffer's second customer: the published

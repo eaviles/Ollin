@@ -746,6 +746,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("taa",
                  note: "Thin tilted slats and a sphere under temporalAntialiasing(): pins the deterministic export path (N jittered geometry renders under the fixed sequence, averaged within the frame), the jittered-projection plumbing on the mesh path, and the weighted-sum normalization. Fixed camera, no time; runs on any Metal GPU.",
                  make: { TAAScene() }),
+    SnapshotCase("specular-antialias",
+                 note: "A bed of small polished balls under one hard light with specularAntialiasing() on: pins the widening itself (the roughness each pixel shades with, raised by how far its own normal turns across it), the derivative gate that leaves a flat surface alone, and the plumbing through the direct, area, and environment reads. The claim the feature makes is temporal and lives in SpecularAntialiasTests; this pins the picture the widening produces. Fixed camera, seeded placement, no time; runs on any Metal GPU.",
+                 make: { SpecularAntialiasScene() }),
     SnapshotCase("lens-flare",
                  note: "A lamp over a floor with slabs, drawn through the bundled Heliar prescription with lensFlare() on. Pins the whole optical chain: the ghost enumeration over the interface pairs that keep both bounces on one side of the iris, the paraxial matrices that place and size each one, the bladed iris shaping them, the anti-reflective coating coloring them, and the source-visibility fade. Fixed camera and lamp, no time; runs on any Metal GPU.",
                  make: { LensFlareScene() }),
@@ -814,6 +817,49 @@ private final class TAAScene: Sketch {
             drawSphere(radius: 0.55)
         }
         withState { fill(Color(white: 0.3)); translate(0, -0.1, 0); drawPlane(width: 9, depth: 9) }
+    }
+}
+
+/// A bed of small polished balls, each a few pixels across, under one hard light
+/// with `specularAntialiasing()` on. The balls carry the normal spread the filter
+/// widens by; the plate behind them is flat and must come through untouched.
+/// Seeded placement and a fixed camera, so the frame is deterministic.
+private final class SpecularAntialiasScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(white: 0.03))
+        perspective(eye: Vector3(0, 3.0, 8.2), target: Vector3(0, 0.1, 0),
+                    fieldOfView: .pi / 3.4, near: 0.5, far: 60)
+        directionalLight(.white, direction: Vector3(0.35, -0.5, 0.79), intensity: 0.9)
+        environment(.studio.intensity(0.35))
+        specularAntialiasing()
+        randomSeed(7)
+        var balls: [MeshInstance] = []
+        for row in 0..<25 {
+            for column in 0..<25 {
+                let x = -3.0 + 6.0 * Double(column) / 24.0
+                let z = -3.0 + 6.0 * Double(row) / 24.0
+                balls.append(MeshInstance(
+                    position: Vector3(x + random(-0.04, 0.04), 0.12, z + random(-0.04, 0.04)),
+                    scale: 0.12 * random(0.85, 1.15)))
+            }
+        }
+        fill(Color(white: 0.85))
+        material(.metal(roughness: 0.10))
+        drawMesh(Mesh.sphere(radius: 1, segments: 20, rings: 10), instances: balls)
+        withState {
+            fill(Color(white: 0.8))
+            material(.metal(roughness: 0.10))
+            translate(0, 1.4, -3.6)
+            drawBox(width: 6.6, height: 2.6, depth: 0.08)
+        }
+        withState {
+            fill(Color(white: 0.16))
+            material(.dielectric(roughness: 0.7))
+            translate(0, -0.02, 0)
+            drawBox(width: 14, height: 0.04, depth: 14)
+        }
     }
 }
 

@@ -1280,6 +1280,28 @@ open class Sketch {
     /// Stop temporally anti-aliasing (the default).
     public func noTemporalAntialiasing() { drawer.noTemporalAntialiasing() }
 
+    /// Keep the specular highlights of a lit 3D surface from flickering as it moves.
+    /// One pixel covers a whole range of shading normals wherever a surface curves
+    /// tightly or a normal map turns, and a highlight narrower than that range is a
+    /// speck the single sample in that pixel either lands on or misses, so a polished
+    /// curve, a bumpy map, or a shape far from the camera crawls with sparkle while it
+    /// turns. This widens the roughness of each pixel by how much its own normal
+    /// changes across it, which turns the missed speck into a slightly broader
+    /// highlight that stays where it is. `strength` scales that widening: 1 is the
+    /// published pixel filter, lower keeps more of the original sharpness, higher
+    /// calms a difficult surface at the cost of a duller highlight. It costs two
+    /// screen-space derivatives per pixel and no extra pass, works on any Metal GPU,
+    /// and applies to the physically-based finishes (`Material.metal`, `.dielectric`,
+    /// `.glass`, the map-driven surfaces), leaving the stylized shading models alone.
+    /// Per-frame state like the lights and camera, so call it in `draw()`. Pass
+    /// `false`, or call `noSpecularAntialiasing()`, to turn it back off.
+    public func specularAntialiasing(_ on: Bool = true, strength: Double = 1) {
+        drawer.specularAntialiasing(on, strength: strength)
+    }
+
+    /// Stop widening the roughness for the highlights (the default).
+    public func noSpecularAntialiasing() { drawer.noSpecularAntialiasing() }
+
     /// Temporally upscale the 3D scene this frame: the live window renders the
     /// whole canvas at a reduced resolution and reconstructs the full-size frame
     /// from the sub-pixel-jittered history, so a heavy scene keeps its frame rate

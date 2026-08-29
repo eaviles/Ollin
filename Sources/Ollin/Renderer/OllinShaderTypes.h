@@ -1014,6 +1014,13 @@ typedef struct {
     float causticsScale;          // that layer's resolution as a fraction of the drawable (the
                                   // fieldShadowScale rule: uv = position.xy · scale / texture
                                   // size), so a reduced-res caustics tier needs no shader change.
+    float specularFilter;         // geometric specular anti-aliasing (`specularAntialiasing()`):
+                                  // the variance of the pixel filter in image space, which scales
+                                  // the roughness the lit mesh fragments add for the spread of
+                                  // shading normals one pixel covers (0.25 at strength 1, the
+                                  // published σ = half a pixel). 0 is the gate: every fragment
+                                  // then skips its two normal derivatives and every roughness
+                                  // read is byte-identical to the unfiltered path.
     int   shadowCasterCount;      // valid entries in `shadowCasters` (0 = no shadows, and every
                                   // caster branch stays untaken, byte-identical to the unshadowed
                                   // path). Slot 0 is the primary caster the single-caster fields

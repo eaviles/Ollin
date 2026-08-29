@@ -242,6 +242,7 @@ let package = Package(
         example("3D/Effects/ContactShadows"),
         example("3D/Effects/MotionBlur"),
         example("3D/Effects/LensFlare"),
+        example("3D/Effects/SpecularAntialias"),
         example("3D/Effects/TemporalAA"),
         example("3D/Effects/Upscaling"),
         example("3D/Effects/FrameInterpolation"),

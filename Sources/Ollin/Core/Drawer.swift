@@ -604,6 +604,14 @@ final class Drawer {
     /// within each frame. Works on any Metal GPU (no ray tracing involved).
     private(set) var temporalAAEnabled = false
 
+    /// How much this frame widens the shading roughness of the lit meshes by the
+    /// spread of shading normals each pixel covers (see `specularAntialiasing`).
+    /// Per-frame state like the lights, and 0 (the default) is off: the fragments
+    /// then skip their normal derivatives and shade byte-identically. The value is
+    /// the caller's strength; the renderer turns it into the image-space filter
+    /// variance the shader reads.
+    private(set) var specularAAStrength: Double = 0
+
     /// Whether this frame temporally upscales the 3D scene (see
     /// `temporalUpscaling`). Per-frame state like `temporalAAEnabled`. When on
     /// (and a 3D camera is active, on a supporting GPU), the live renderer draws
@@ -2256,6 +2264,18 @@ final class Drawer {
     /// Stop temporally anti-aliasing (the default). Per-frame state.
     func noTemporalAntialiasing() { temporalAAEnabled = false }
 
+    /// Widen the shading roughness of the lit meshes by the spread of shading normals
+    /// each pixel covers, so a highlight too small for one sample stops flickering as
+    /// the surface moves. `strength` scales the widening (1 = the published pixel
+    /// filter). Per-frame state like the lights; set it in `draw()`. Physically-based
+    /// surfaces only, and inert on everything else.
+    func specularAntialiasing(_ enabled: Bool = true, strength: Double = 1) {
+        specularAAStrength = enabled ? max(0, strength) : 0
+    }
+
+    /// Stop widening the roughness (the default). Per-frame state.
+    func noSpecularAntialiasing() { specularAAStrength = 0 }
+
     /// Temporally upscale the 3D scene this frame: live, the whole canvas renders
     /// at a reduced resolution and is reconstructed full-size from the jittered
     /// history, buying performance headroom on a heavy scene. `quality` picks the
@@ -2468,6 +2488,11 @@ final class Drawer {
         if let eye = camera3D?.eye {
             u.cameraPosition = SIMD4<Float>(Float(eye.x), Float(eye.y), Float(eye.z), 0)
         }
+        // Geometric specular anti-aliasing: the sketch's strength becomes the variance of
+        // the pixel filter in image space, 0.25 at strength 1 for the published standard
+        // deviation of half a pixel. 0 is the gate the fragments read, so a frame that
+        // never asked for it shades exactly as before.
+        u.specularFilter = Float(0.25 * specularAAStrength)
         // Atmosphere: the fog/volumetric constants gate every carrier's fog branch
         // (w = 0 leaves it untaken, byte-identical). Packed ahead of the `.off` early
         // return below on purpose: fog is a property of the air, so an unlit
@@ -3790,6 +3815,7 @@ final class Drawer {
         causticsIntensity = 1
         causticsDispersion = 0
         temporalAAEnabled = false
+        specularAAStrength = 0
         temporalUpscalingEnabled = false
         temporalUpscalingQuality = .default
         frameInterpolationEnabled = false

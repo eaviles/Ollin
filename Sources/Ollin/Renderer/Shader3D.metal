@@ -2069,6 +2069,49 @@ fragment float4 ollin_mesh_fieldshadow_fragment(MeshOut in [[stage_in]],
     return meshFieldShadowFactor(in.worldPos, in.normal, light, fields, fieldNodes);
 }
 
+// Geometric specular anti-aliasing (`specularAntialiasing()`). One pixel covers a whole
+// range of shading normals wherever the surface curves or a normal map turns, and a
+// narrow highlight sampled once inside that range flickers as the surface moves: the
+// speck lands in the sample on one frame and misses it on the next. The published answer
+// is to treat that spread as part of the surface rather than as something to find. The
+// screen-space derivatives of the shading normal measure the spread, and adding it to the
+// roughness turns the missed speck into a slightly broader highlight that holds still.
+// Written from the published technique (normal-distribution filtering, in the isotropic
+// form that reads the world-space normal's own derivatives and so needs no tangent
+// frame); see the README Techniques list.
+//
+// The kernel is in α² units (α is the perceptual roughness squared, the linear roughness
+// the terms below use), so it adds straight onto α². `sigma2` is the variance of the
+// pixel filter in image space, 0.25 at strength 1 for its own σ of half a pixel, and the
+// cap is what stops a silhouette pixel, where one quad straddles two surfaces, from
+// turning matte. A zero `sigma2` returns zero, so a frame that does not filter never
+// takes the two derivatives and every roughness read below is byte-identical.
+//
+// The published work gives two kernels: the conservative one (twice this, the sum of the
+// covariance eigenvalues) takes out more of the aliasing and says plainly that it widens
+// more than the surface asks for, and the one below (their average) balances the two.
+// This takes the average, because a sketch that asked for polished metal should still
+// get polished metal, and doubling the strength reaches the conservative form for a
+// surface that needs it.
+constant float OLLIN_NDF_FILTER_CAP = 0.18;
+
+static inline float ollin_ndf_filter_kernel(float3 n, float sigma2) {
+    if (sigma2 <= 0.0) return 0.0;
+    float3 dndx = dfdx(n), dndy = dfdy(n);
+    return min(sigma2 * (dot(dndx, dndx) + dot(dndy, dndy)), OLLIN_NDF_FILTER_CAP);
+}
+
+// Widen one perceptual roughness by the kernel above. α = r², so α² = r⁴, and the
+// filtered roughness is the fourth root of the sum. A zero kernel returns the value it
+// was given rather than sending it through two roots, which is what keeps an unfiltered
+// frame bit-for-bit what it was. (The parameter cannot be called `kernel`, which is a
+// reserved word here.)
+static inline float ollin_ndf_filtered(float perceptual, float widen) {
+    if (widen <= 0.0) return perceptual;
+    float a2 = perceptual * perceptual;
+    return sqrt(sqrt(saturate(a2 * a2 + widen)));
+}
+
 // Physically-based (Cook-Torrance microfacet) BRDF terms for the metallic-roughness
 // model (shading model 3). Each takes the *perceptual* roughness and squares it for the
 // linear α internally, so the three stay in step. Written from the published technique
@@ -2736,6 +2779,12 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
                                   // the zero default derives a stable world frame.
                                   // Read only when the material carries anisotropy.
                                   , float4 tangent = float4(0.0)
+                                  // This pixel's normal-distribution filter kernel (α²
+                                  // units, `ollin_ndf_filter_kernel`), which widens the
+                                  // microfacet roughness by the spread of shading normals
+                                  // the pixel covers. The 0 every other carrier passes
+                                  // leaves each roughness read below exactly as it was.
+                                  , float roughKernel = 0.0
                                   ) {
     float3 n = normalize(normal);
     if (light.enabled == 0) {
@@ -2772,7 +2821,8 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
     // both scales the base down and sets the sheen's own strength. Zero coat and zero
     // sheen skip every new term, so existing materials shade byte-identically.
     float coat = (model == 3) ? mat.clearcoat : 0.0;
-    float coatRough = clamp((float)mat.clearcoatRoughness, 0.045, 1.0);
+    float coatRough = ollin_ndf_filtered(clamp((float)mat.clearcoatRoughness, 0.045, 1.0),
+                                         roughKernel);
     float3 sheenTint = mat.sheenColor.rgb;
     bool hasSheen = (model == 3) && (sheenTint.x + sheenTint.y + sheenTint.z > 0.0);
     float sheenRough = 1.0, sheenE = 0.0, sheenScale = 1.0;
@@ -2865,8 +2915,9 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
             // perceptual roughness; the Blinn-Phong models map their exponent onto the
             // equivalent GGX lobe width (alpha = sqrt(2/(shininess + 2)), so perceptual
             // roughness is its square root).
-            float rough = (model == 3) ? clamp((float)mat.roughness, 0.045, 1.0)
-                                       : clamp(sqrt(sqrt(2.0 / (shininess + 2.0))), 0.045, 1.0);
+            float rough = (model == 3)
+                        ? ollin_ndf_filtered(clamp((float)mat.roughness, 0.045, 1.0), roughKernel)
+                        : clamp(sqrt(sqrt(2.0 / (shininess + 2.0))), 0.045, 1.0);
             float NoV = saturate(dot(n, viewDir));
             float2 ltcUV = ollin_ltc_uv(rough, NoV);
             float4 lt1 = ltcMat.sample(ollinLTCSampler, ltcUV);
@@ -3070,7 +3121,8 @@ static inline float4 meshLitColor(float3 base, float alpha, float3 normal,
             // light's `color` the (intensity-premultiplied, linear) radiance.
             float NoL = max(raw, 0.0);
             if (NoL > 0.0) {
-                float rough = clamp((float)mat.roughness, 0.045, 1.0);
+                float rough = ollin_ndf_filtered(clamp((float)mat.roughness, 0.045, 1.0),
+                                                 roughKernel);
                 float NoV = max(dot(n, viewDir), 1e-4);
                 float NoH = max(dot(n, h), 0.0);
                 float VoH = max(dot(viewDir, h), 0.0);
@@ -3282,6 +3334,12 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
                                   // the zero default derives a stable world frame.
                                   // Read only when the material carries anisotropy.
                                   , float4 tangent = float4(0.0)
+                                  // This pixel's normal-distribution filter kernel (α²
+                                  // units, `ollin_ndf_filter_kernel`), which widens the
+                                  // microfacet roughness by the spread of shading normals
+                                  // the pixel covers. The 0 every other carrier passes
+                                  // leaves each roughness read below exactly as it was.
+                                  , float roughKernel = 0.0
                                   ) {
     float3 n = normalize(normal);
     if (light.enabled == 0) {
@@ -3315,7 +3373,8 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
     // both scales the base down and sets the sheen's own strength. Zero coat and zero
     // sheen skip every new term, so existing materials shade byte-identically.
     float coat = (model == 3) ? mat.clearcoat : 0.0;
-    float coatRough = clamp((float)mat.clearcoatRoughness, 0.045, 1.0);
+    float coatRough = ollin_ndf_filtered(clamp((float)mat.clearcoatRoughness, 0.045, 1.0),
+                                         roughKernel);
     float3 sheenTint = mat.sheenColor.rgb;
     bool hasSheen = (model == 3) && (sheenTint.x + sheenTint.y + sheenTint.z > 0.0);
     float sheenRough = 1.0, sheenE = 0.0, sheenScale = 1.0;
@@ -3408,8 +3467,9 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
             // perceptual roughness; the Blinn-Phong models map their exponent onto the
             // equivalent GGX lobe width (alpha = sqrt(2/(shininess + 2)), so perceptual
             // roughness is its square root).
-            float rough = (model == 3) ? clamp(pxRough, 0.045, 1.0)
-                                       : clamp(sqrt(sqrt(2.0 / (shininess + 2.0))), 0.045, 1.0);
+            float rough = (model == 3)
+                        ? ollin_ndf_filtered(clamp(pxRough, 0.045, 1.0), roughKernel)
+                        : clamp(sqrt(sqrt(2.0 / (shininess + 2.0))), 0.045, 1.0);
             float NoV = saturate(dot(n, viewDir));
             float2 ltcUV = ollin_ltc_uv(rough, NoV);
             float4 lt1 = ltcMat.sample(ollinLTCSampler, ltcUV);
@@ -3613,7 +3673,7 @@ static inline float4 meshLitColorMapped(float3 base, float alpha, float3 normal,
             // light's `color` the (intensity-premultiplied, linear) radiance.
             float NoL = max(raw, 0.0);
             if (NoL > 0.0) {
-                float rough = clamp(pxRough, 0.045, 1.0);
+                float rough = ollin_ndf_filtered(clamp(pxRough, 0.045, 1.0), roughKernel);
                 float NoV = max(dot(n, viewDir), 1e-4);
                 float NoH = max(dot(n, h), 0.0);
                 float VoH = max(dot(viewDir, h), 0.0);
@@ -4361,11 +4421,15 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
                                            // (0 outside the frame, and 0 whenever the feature is
                                            // off, which leaves the environment path untouched).
                                            , float4 sceneBehind = float4(0.0)
+                                           // This pixel's normal-distribution filter
+                                           // kernel (α² units); 0 leaves the environment
+                                           // reads below exactly as they were.
+                                           , float roughKernel = 0.0
                                            ) {
     constexpr sampler cubeSamp(filter::linear, mip_filter::linear, address::clamp_to_edge);
     constexpr sampler lutSamp(filter::linear, address::clamp_to_edge);
     float NoV = max(dot(n, viewDir), 1e-4);
-    float rough = clamp((float)mat.roughness, 0.045, 1.0);
+    float rough = ollin_ndf_filtered(clamp((float)mat.roughness, 0.045, 1.0), roughKernel);
     float3 R = reflect(-viewDir, n);
     // Anisotropy bends the base lobe's gather direction toward the surface's tangent
     // plane (the bent-normal trick), so the stretched highlight reads the environment
@@ -4487,7 +4551,8 @@ static inline float3 ollin_pbr_ibl_ambient(float3 base, float3 n, float3 viewDir
     // mirror direction; the coat is usually the smoother lobe, so the traced scene is
     // the better answer than a second prefiltered env sample would be).
     if (mat.clearcoat > 0.0) {
-        float coatRough = clamp((float)mat.clearcoatRoughness, 0.045, 1.0);
+        float coatRough = ollin_ndf_filtered(clamp((float)mat.clearcoatRoughness, 0.045, 1.0),
+                                             roughKernel);
         float Fc = (0.04 + 0.96 * pow(1.0 - NoV, 5.0)) * mat.clearcoat;
 #if OLLIN_RT_SHADOWS
         float3 coatRad = (light.rtReflections != 0)
@@ -4573,11 +4638,15 @@ static inline float3 ollin_pbr_ibl_ambient_mapped(float3 base, float3 n, float3 
                                            // (0 outside the frame, and 0 whenever the feature is
                                            // off, which leaves the environment path untouched).
                                            , float4 sceneBehind = float4(0.0)
+                                           // This pixel's normal-distribution filter
+                                           // kernel (α² units); 0 leaves the environment
+                                           // reads below exactly as they were.
+                                           , float roughKernel = 0.0
                                            ) {
     constexpr sampler cubeSamp(filter::linear, mip_filter::linear, address::clamp_to_edge);
     constexpr sampler lutSamp(filter::linear, address::clamp_to_edge);
     float NoV = max(dot(n, viewDir), 1e-4);
-    float rough = clamp(pxRough, 0.045, 1.0);
+    float rough = ollin_ndf_filtered(clamp(pxRough, 0.045, 1.0), roughKernel);
     float3 R = reflect(-viewDir, n);
     // Anisotropy bends the base lobe's gather direction toward the surface's tangent
     // plane (the bent-normal trick), so the stretched highlight reads the environment
@@ -4698,7 +4767,8 @@ static inline float3 ollin_pbr_ibl_ambient_mapped(float3 base, float3 n, float3 
     // mirror direction; the coat is usually the smoother lobe, so the traced scene is
     // the better answer than a second prefiltered env sample would be).
     if (mat.clearcoat > 0.0) {
-        float coatRough = clamp((float)mat.clearcoatRoughness, 0.045, 1.0);
+        float coatRough = ollin_ndf_filtered(clamp((float)mat.clearcoatRoughness, 0.045, 1.0),
+                                             roughKernel);
         float Fc = (0.04 + 0.96 * pow(1.0 - NoV, 5.0)) * mat.clearcoat;
 #if OLLIN_RT_SHADOWS
         float3 coatRad = (light.rtReflections != 0)
@@ -4859,6 +4929,12 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
     // on-screen pixel at the fill color, then shade + shadow it through the shared
     // tail (which returns it flat unchanged when no light is set).
     float3 base = srgbToLinear(in.color.rgb);
+    // The spread of shading normals this pixel covers, as roughness to add to the
+    // microfacet lobes below (`specularAntialiasing()`). Taken at the top of the
+    // fragment because the derivatives read the neighboring pixels of the same quad,
+    // which asks for control flow every pixel of it takes together. Zero while the
+    // frame is not filtering, and every read below is then what it always was.
+    float roughKernel = ollin_ndf_filter_kernel(normalize(in.normal), light.specularFilter);
     float4 meshFieldShadow = ollin_resolve_mesh_field_shadow(in.position.xy, in.worldPos, in.normal,
                                                              light, fields, fieldNodes, fieldShadowTex);
     // Contact shadows: the pre-marched screen-space visibility toward each caster,
@@ -4885,13 +4961,15 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
                             in.worldPos, mat, light, shadowMap, shadowSamp,
                             shadowCube, shadowCubeSamp, ltcMat, ltcAmp,
                             iesProfiles, cookies, sheenLUT,
-                            rtShadow, float4(-1.0), meshFieldShadow, rtThickness);
+                            rtShadow, float4(-1.0), meshFieldShadow, rtThickness,
+                            float4(0.0), roughKernel);   // no per-vertex tangent here
 #else
     float4 c = meshLitColor(base, in.color.a, in.normal,
                             in.worldPos, mat, light, shadowMap, shadowSamp,
                             shadowCube, shadowCubeSamp, ltcMat, ltcAmp,
                             iesProfiles, cookies, sheenLUT,
-                            float4(-1.0), meshFieldShadow);
+                            float4(-1.0), meshFieldShadow, float4(0.0), float4(0.0),
+                            roughKernel);
 #endif
     // Physically-based surfaces gather their ambient + reflections from the environment;
     // the other lit materials take the diffuse irradiance as their ambient (Gooch excepted).
@@ -4939,7 +5017,7 @@ fragment float4 ollin_mesh_fragment(MeshOut in [[stage_in]],
 #if OLLIN_RT_SHADOWS
                                        , float4(0.0), float3(0.0)   // a mesh traces its own exit
 #endif
-                                       , sceneBehind);
+                                       , sceneBehind, roughKernel);
     } else if (light.iblEnabled != 0 && mat.shadingModel != 2) {
 #if OLLIN_RT_SHADOWS
         if (light.giOrigin.w > 0.0) {
@@ -5223,6 +5301,9 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
     float4 tex = ollin_sample_wrapped(baseColorTex, samp, in.uv, mat.uvWrap);
     float3 base = tex.rgb * srgbToLinear(in.color.rgb);
     float alpha = in.color.a * tex.a;
+    // The normal spread under this pixel, taken at the top of the fragment as on the
+    // solid path (`specularAntialiasing()`; zero while the frame is not filtering).
+    float roughKernel = ollin_ndf_filter_kernel(normalize(in.normal), light.specularFilter);
     float4 meshFieldShadow = ollin_resolve_mesh_field_shadow(in.position.xy, in.worldPos, in.normal,
                                                              light, fields, fieldNodes, fieldShadowTex);
     // Contact shadows, folded into the caster dimmer exactly as on the solid path.
@@ -5242,12 +5323,14 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
     float4 c = meshLitColor(base, alpha, in.normal, in.worldPos, mat, light,
                             shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
                             ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT,
-                            rtShadow, float4(-1.0), meshFieldShadow, rtThickness);
+                            rtShadow, float4(-1.0), meshFieldShadow, rtThickness,
+                            float4(0.0), roughKernel);   // no per-vertex tangent here
 #else
     float4 c = meshLitColor(base, alpha, in.normal, in.worldPos, mat, light,
                             shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
                             ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT,
-                            float4(-1.0), meshFieldShadow);
+                            float4(-1.0), meshFieldShadow, float4(0.0), float4(0.0),
+                            roughKernel);
 #endif
 #if OLLIN_RT_SHADOWS
     // Probe-field bounce light, as on the solid path.
@@ -5289,7 +5372,7 @@ fragment float4 ollin_mesh_textured_fragment(MeshTexturedOut in [[stage_in]],
 #if OLLIN_RT_SHADOWS
                                        , float4(0.0), float3(0.0)   // a mesh traces its own exit
 #endif
-                                       , sceneBehind);
+                                       , sceneBehind, roughKernel);
     } else if (light.iblEnabled != 0 && mat.shadingModel != 2) {
 #if OLLIN_RT_SHADOWS
         if (light.giOrigin.w > 0.0) {
@@ -5421,6 +5504,10 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
     float3 bent = t * nmS.x + b * nmS.y + gn * nmS.z;
     float bentLen = length(bent);
     float3 N = (bentLen > 1e-6) ? bent / bentLen : normalize(gn);
+    // The spread of shading normals under this pixel, measured on the *mapped* normal:
+    // a map is what turns the surface fastest, so this is the path the widening was
+    // written for (`specularAntialiasing()`; zero while the frame is not filtering).
+    float roughKernel = ollin_ndf_filter_kernel(N, light.specularFilter);
     float4 meshFieldShadow = ollin_resolve_mesh_field_shadow(in.position.xy, in.worldPos, in.normal,
                                                              light, fields, fieldNodes, fieldShadowTex);
     if (light.contactShadow.x > 0.0) {
@@ -5438,12 +5525,13 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
     float4 c = meshLitColor(base, alpha, N, in.worldPos, mat, light,
                             shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
                             ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT,
-                            rtShadow, float4(-1.0), meshFieldShadow, rtThickness, in.tangent);
+                            rtShadow, float4(-1.0), meshFieldShadow, rtThickness, in.tangent,
+                            roughKernel);
 #else
     float4 c = meshLitColor(base, alpha, N, in.worldPos, mat, light,
                             shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
                             ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT,
-                            float4(-1.0), meshFieldShadow, float4(0.0), in.tangent);
+                            float4(-1.0), meshFieldShadow, float4(0.0), in.tangent, roughKernel);
 #endif
 #if OLLIN_RT_SHADOWS
     float3 gi = float3(0.0);
@@ -5483,7 +5571,7 @@ fragment float4 ollin_mesh_nm_fragment(MeshTexturedNMOut in [[stage_in]],
 #if OLLIN_RT_SHADOWS
                                        , float4(0.0), float3(0.0)   // a mesh traces its own exit
 #endif
-                                       , sceneBehind);
+                                       , sceneBehind, roughKernel);
     } else if (light.iblEnabled != 0 && mat.shadingModel != 2) {
 #if OLLIN_RT_SHADOWS
         if (light.giOrigin.w > 0.0) {
@@ -5890,6 +5978,12 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
     if (mat.emissive.w > 0.0) {
         emissive *= ollin_sample_map(emissiveTex, samp, uv, mat.uvWrap, marched, duvdx, duvdy).rgb;
     }
+    // The spread of shading normals under this pixel, on the fully resolved normal (map,
+    // detail map, and decals all included, since each of them turns the surface). Taken
+    // here rather than where `N` was last written, because the derivatives compare the
+    // pixels of a quad and so belong in control flow every pixel of it reaches. Zero
+    // while the frame is not filtering (`specularAntialiasing()`).
+    float roughKernel = ollin_ndf_filter_kernel(N, light.specularFilter);
     float4 meshFieldShadow = ollin_resolve_mesh_field_shadow(in.position.xy, in.worldPos, in.normal,
                                                              light, fields, fieldNodes, fieldShadowTex);
     if (light.contactShadow.x > 0.0) {
@@ -5907,12 +6001,13 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
     float4 c = meshLitColorMapped(base, alpha, N, in.worldPos, pxMetal, pxRough, pxAO, mat, light,
                             shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
                             ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT,
-                            rtShadow, float4(-1.0), meshFieldShadow, rtThickness, in.tangent);
+                            rtShadow, float4(-1.0), meshFieldShadow, rtThickness, in.tangent,
+                            roughKernel);
 #else
     float4 c = meshLitColorMapped(base, alpha, N, in.worldPos, pxMetal, pxRough, pxAO, mat, light,
                             shadowMap, shadowSamp, shadowCube, shadowCubeSamp,
                             ltcMat, ltcAmp, iesProfiles, cookies, sheenLUT,
-                            float4(-1.0), meshFieldShadow, float4(0.0), in.tangent);
+                            float4(-1.0), meshFieldShadow, float4(0.0), in.tangent, roughKernel);
 #endif
 #if OLLIN_RT_SHADOWS
     float3 gi = float3(0.0);
@@ -5954,7 +6049,7 @@ fragment float4 ollin_mesh_maps_fragment(MeshTexturedNMOut in [[stage_in]],
 #if OLLIN_RT_SHADOWS
                                        , float4(0.0), float3(0.0)   // a mesh traces its own exit
 #endif
-                                       , sceneBehind);
+                                       , sceneBehind, roughKernel);
     } else if (light.iblEnabled != 0 && mat.shadingModel != 2) {
 #if OLLIN_RT_SHADOWS
         if (light.giOrigin.w > 0.0) {

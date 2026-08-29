@@ -166,6 +166,7 @@ Scene-wide realism passes over the 3D frame.
 | [AerialPerspective](Effects/AerialPerspective/) | The depth cue that sells scale outdoors: air itself, between you and the far hill. |
 | [MotionBlur](Effects/MotionBlur/) | The streak a real camera's open shutter leaves on something moving. |
 | [TemporalAA](Effects/TemporalAA/) | Edges refined past MSAA by accumulating jittered frames. |
+| [SpecularAntialias](Effects/SpecularAntialias/) | Highlights too small for their pixel, held still instead of crawling. |
 | [Upscaling](Effects/Upscaling/) | Render small, reconstruct full size, keep the frame rate. |
 | [FrameInterpolation](Effects/FrameInterpolation/) | Draw half as often and let the display keep its rate, with a made frame in between. |
 | [LensFlare](Effects/LensFlare/) | The light a camera adds to a picture all by itself. |
