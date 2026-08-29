@@ -1,6 +1,8 @@
+#if os(macOS)
 import AppKit
-import Foundation
 import IOKit
+#endif
+import Foundation
 import Ollin
 
 /// What is on the other end of a pattern.
@@ -31,8 +33,11 @@ final class HapticHub {
 
     // MARK: - Seams the tests replace
 
-    /// Where a trackpad knock goes.
+    /// Where a trackpad knock goes. A phone and a tablet have no trackpad, so
+    /// the whole tier is a desk one.
+    #if os(macOS)
     var performer: NSHapticFeedbackPerformer = NSHapticFeedbackManager.defaultPerformer
+    #endif
 
     /// How a knock is put off until its moment. Tests replace this to read the
     /// timeline without waiting for it.
@@ -47,7 +52,11 @@ final class HapticHub {
     var clock: () -> Double = { CFAbsoluteTimeGetCurrent() }
 
     /// Whether this machine has a trackpad that can knock. Tests replace it.
+    #if os(macOS)
     var trackpadIsPresent: () -> Bool = { HapticHub.machineHasActuatingTrackpad() }
+    #else
+    var trackpadIsPresent: () -> Bool = { false }
+    #endif
 
     /// Whether this machine has a full haptic engine. Tests replace it.
     var engineIsPresent: () -> Bool = { DeviceHaptics.isSupported }
@@ -85,7 +94,11 @@ final class HapticHub {
         if OllinApp.isRenderingHeadless {
             return "touch is felt at the moment it happens, so an export has nowhere to put it."
         }
+        #if os(macOS)
         return "this machine has no trackpad that knocks and no haptic engine."
+        #else
+        return "this device has no haptic engine."
+        #endif
     }
 
     /// Forget what the hardware is, so it is worked out again. Tests call it
@@ -139,7 +152,9 @@ final class HapticHub {
         let now = clock()
         guard now - lastKnock >= TrackpadPlan.minimumSpacing else { return }
         lastKnock = now
+        #if os(macOS)
         performer.perform(knock.feel.systemPattern, performanceTime: .now)
+        #endif
     }
 
     private func noteSilenceOnce() {
@@ -157,6 +172,7 @@ final class HapticHub {
     /// machine with no actuator takes the call and does nothing, so asking the
     /// performer proves nothing. The device registry is the one place that
     /// says whether an actuator is there.
+    #if os(macOS)
     nonisolated static func machineHasActuatingTrackpad() -> Bool {
         guard let matching = IOServiceMatching("AppleMultitouchDevice") else { return false }
         var iterator: io_iterator_t = 0
@@ -173,8 +189,10 @@ final class HapticHub {
         }
         return false
     }
+    #endif
 }
 
+#if os(macOS)
 extension TrackpadKnock.Feel {
 
     /// The system feeling this asks for.
@@ -186,3 +204,4 @@ extension TrackpadKnock.Feel {
         }
     }
 }
+#endif

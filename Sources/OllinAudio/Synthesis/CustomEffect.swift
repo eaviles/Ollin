@@ -334,7 +334,14 @@ final class ClosureAudioUnit: AUAudioUnit {
         _ = registered
         let made = OSAllocatedUnfairLock<AVAudioUnit?>(initialState: nil)
         let done = DispatchSemaphore(value: 0)
-        AVAudioUnit.instantiate(with: componentDescription, options: .loadInProcess) { unit, _ in
+        // A unit is asked to load in this process, which is the only way it can
+        // load on a phone or a tablet, and there the option is not offered.
+        #if os(macOS)
+        let options: AudioComponentInstantiationOptions = .loadInProcess
+        #else
+        let options: AudioComponentInstantiationOptions = []
+        #endif
+        AVAudioUnit.instantiate(with: componentDescription, options: options) { unit, _ in
             made.withLock { $0 = unit }
             done.signal()
         }

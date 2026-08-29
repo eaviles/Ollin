@@ -182,7 +182,14 @@ public final class Camera: FrameSource, VideoFeed {
         case .builtIn:    type = .builtInWideAngleCamera
         case .continuity: type = .continuityCamera
         case .external:   type = .external
+        // The desk view is a camera a Mac makes out of a phone standing beside
+        // it. A phone has no such camera of its own, so the ask falls back to
+        // the one it has.
+        #if os(macOS)
         case .deskView:   type = .deskViewCamera
+        #else
+        case .deskView:   type = .builtInWideAngleCamera
+        #endif
         }
         let discovery = AVCaptureDevice.DiscoverySession(
             deviceTypes: [type], mediaType: .video, position: .unspecified)
