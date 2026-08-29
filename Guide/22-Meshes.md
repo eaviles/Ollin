@@ -115,6 +115,38 @@ So this is the lossy direction, and it says what it lost. Animation stays behind
 
 Both directions are worth having. `loadScene` is for a set that is still being built. This one is for the moment the file stops being the piece and becomes the material. [Bringing a scene over](../Docs/Tools/SceneImport.md) has the details.
 
+### A mesh from a word
+
+There is one more mesh you did not model, and you already have the material for it. A letter is a shape. A shape pushes into depth. So a word can be a solid that catches the light and throws a shadow, like anything else on the floor.
+
+```swift
+drawText3D("Ollin", size: 2, depth: 0.4)
+```
+
+One number there is worth reading twice. `size` is measured in world units, not in the canvas points [`textSize`](08-Words.md) uses. It is the em, so a capital stands about seven tenths of it. Everything else is what you would expect: the current fill colors it, a material finishes it, and it sits centered on the origin so you place it like a box.
+
+For anything that draws every frame, reach past the convenience call to the two builders under it. `Mesh.text` gives you the whole word as one mesh, built once and kept. `Mesh.textGlyphs` gives you the same word a letter at a time, each letter still in its place. Every letter knows its own center, which is what lets one turn about itself instead of about the word:
+
+```swift
+let letters = Mesh.textGlyphs("Ollin", size: 1.5, depth: 0.3)   // in setup()
+
+for (i, glyph) in letters.enumerated() {                        // in draw()
+    let pivot = glyph.center
+    withState {
+        translate(pivot)
+        rotateX(sin(time * 1.4 + Double(i) * 0.7))
+        translate(-pivot)
+        drawMesh(glyph)
+    }
+}
+```
+
+<img src="Images/22-Meshes/SolidType.jpg" alt="Two words on a dark floor: at the left the word Ollin as one gold solid turned to show its thickness and the hole in its O, at the right the same word in pale blue with each letter tipped back at its own angle" width="680">
+
+You may wonder why this is a call at all, when you could extrude the shapes yourself. Two things bite if you do. Text is laid out with y growing down the canvas, while the world counts y up, so a hand-rolled word arrives upside down. And a letter's curves are simplified against the size you ask for, so a letter one unit tall comes back as a lump. The call traces the outline large and scales it down, which is why a small letter is still a letter.
+
+A letter with a hole keeps it, since the caps come from the same triangulator every filled shape uses. What you cannot do is put a picture on the result, because an extrusion carries no texture coordinates. Color and material, then, rather than a photograph.
+
 ## A shape that only exists in four dimensions
 
 Here is a mesh you could not model, because the thing it draws does not fit in the room.

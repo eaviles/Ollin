@@ -252,6 +252,7 @@ Before the capabilities, the ideas they all assume. These seven pages live in th
 |---|---|---|---|
 | The camera | `camera()`, `perspective`, `ortho`; 2D sketches never pay for it | [Ch 21](21-3DGently.md) | [3D](../Docs/3D/3D.md) |
 | Solid primitives | Box, sphere, torus, knots, Platonic solids, lathes, extrusions, and more | [Ch 21](21-3DGently.md) | [3D](../Docs/3D/3D.md) |
+| Type as a solid | `drawText3D`, over the `Mesh.text` and `Mesh.textGlyphs` builders: a word extruded into a lit solid that throws a shadow, or the same word a letter at a time, each letter knowing where it sits | [Ch 22](22-Meshes.md) | [3D](../Docs/3D/3D.md#solid-type) |
 | Drainage | Rivers worked out from a `Heightfield` rather than drawn: hollows filled so water always has a way out, flow counted per cell, the network above a threshold as strokable reaches, Strahler ordering, and basins | [Ch 23](23-Landscapes.md) | [Drainage](../Docs/Generators/Drainage.md) |
 | Billiards | `Billiard`: a ball bouncing forever in a circle, an ellipse, a polygon, or a stadium, with posts standing in it; the path as strokable geometry, and the two orderly rooms beside the two disorderly ones | [Ch 18](18-IteratedForms.md) | [Billiards](../Docs/Generators/Billiards.md) |
 | Terrain | `Heightfield`: landscapes grown from noise or diamond-square, weathered by simulated rain and gravity, read out as a mesh, an image, or samples | [Ch 23](23-Landscapes.md) | [Terrain](../Docs/Generators/Terrain.md) |

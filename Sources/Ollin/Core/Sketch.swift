@@ -1899,6 +1899,18 @@ open class Sketch {
         drawer.drawMesh(.extrude(shape, depth: depth))
     }
 
+    /// Draw `string` as solid 3D type: the active outline font (`textFont`) set at
+    /// `size` **world units** and extruded `depth` deep, standing upright and
+    /// centered on the model origin. `textSize` does not apply, since it is
+    /// measured in canvas points and this is measured in world units.
+    ///
+    /// The convenience form, built fresh each call. `Mesh.text(...)` builds the
+    /// same solid once for a string that does not change, and `Mesh.textGlyphs`
+    /// returns it a letter at a time.
+    public func drawText3D(_ string: String, size: Double = 1, depth: Double = 0.25) {
+        drawer.drawText3D(string, size: size, depth: depth)
+    }
+
     /// Draw a surface of revolution by revolving a 2D `silhouette` (x = radius from
     /// the y-axis, y = height) around the y-axis — a vase/bowl from its side profile.
     public func drawLathe(_ silhouette: [Vector2], segments: Int = 48) {

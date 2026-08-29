@@ -27,6 +27,7 @@ Meshes, point clouds, and the 3D transform stack.
 | [Solids](Geometry/Solids/) | The closed-solid catalog (box, sphere, cylinder, torus, the Platonics, and more) as colorful clay shaded by the auto-lit default. |
 | [ShadowArt](Geometry/ShadowArt/) | A solid carved so that it throws a ring from the front and a cross from the side, with what it really throws drawn beside what was asked for (`shadowArt`, `shadow(from:)`). |
 | [ShapeFactory](Geometry/ShapeFactory/) | The parametric/profile mesh set (Möbius, Klein, superellipsoid, supershape, extrude, lathe) morphing on `time`. |
+| [SolidType](Geometry/SolidType/) | A word extruded into a solid that catches the light and throws a shadow, and the same word a letter at a time, each nodding about its own center (`drawText3D`, `Mesh.text`, `Mesh.textGlyphs`). |
 | [Ocean](Geometry/Ocean/) | A sea built from its own wave spectrum: one inverse Fourier transform on the GPU makes the surface, drawn as water with no geometry anywhere (`oceanField`, `drawOcean`). |
 | [Planet](Geometry/Planet/) | A world with nothing loaded: six compute kernels bake its elevation, surface, relief, finish, city lights and weather once, spheres wear them under one sun, and the terminator decides both where the cities show and where the air glows. |
 | [LoadedMesh](Geometry/LoadedMesh/) | A mesh loaded from a file (`.obj`/`.usdz`/`.gltf`/…); drop one in with `OLLIN_MESH=<path>` (or use the bundled crystal), recentered, scaled to fit, and lit. |

@@ -33,6 +33,7 @@ The default font is `OutlineFont.systemMedium`, the system UI face (San Francisc
 - [Text on a path](#onpath) - lay glyphs along a curve
 - [Box layout](#box) - wrap a paragraph into a rectangle
 - [textToShapes](#texttoshapes) - text as first-class geometry
+- [Type as a solid](#solid) - `drawText3D`, a word extruded into a 3D mesh
 - [Metrics](#metrics) - `textAscent` / `textDescent` / `textLeading` / `textBounds`
 - [Every script](#scripts) - Arabic, Devanagari, Thai, Japanese, emoji, and what changes
 - [textDirection](#textdirection) - which way a line runs
@@ -404,6 +405,18 @@ for shape in textToShapes("ollin", width / 2, height / 2) {
 An emoji has no geometry to hand back, since the font stores it as a bitmap. It is left out, with a note printed once. `drawText` still draws it. See [Every script](#scripts).
 
 One more thing to know about the returned geometry is that the outline points come back **unevenly spaced**, the raw layout vertices, dense on curves and sparse on straights. That's fine for warping and filling, but marks placed one-per-point (dots, dashes, particles) would clump. Respace a glyph first with [`resampled(spacing:)`](Geometry.md#contour), as `shape.resampled(spacing: 8)` or per contour, and the marks spread evenly. The `PointShimmer` and `GlyphContours` examples do exactly this.
+
+<a name="solid"></a>
+
+### Type as a solid
+
+Glyphs are shapes, and a shape extrudes, so a word can be a 3D solid that takes a material and throws a shadow:
+
+```swift
+drawText3D("Ollin", size: 2, depth: 0.4)
+```
+
+`size` is measured in **world units**, not the canvas points `textSize` uses, and only the *font* comes from the text state. `Mesh.text(...)` builds the same word once for a string that does not change, and `Mesh.textGlyphs(...)` returns it a letter at a time, each letter knowing where it sits. Two traps live under those calls (canvas y runs down while the world's runs up, and a glyph is simplified against the size it is asked for), which is why this is a call rather than an extrusion you write yourself. See [3D](../3D/3D.md#solid-type) for the whole story, and the [`3D/SolidType`](../../Examples/3D/Geometry/SolidType/) example.
 
 <a name="metrics"></a>
 

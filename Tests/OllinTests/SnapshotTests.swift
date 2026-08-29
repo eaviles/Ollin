@@ -209,6 +209,9 @@ private let snapshotMetalCases: [SnapshotCase] = [
     SnapshotCase("subdivision-surfaces",
                  note: "A cube and an extruded star smoothed with mesh.subdivided under a fixed camera (no time, no random): the cube through the quad rules at levels 1 and 3 with its wireframe cage ghosted over the level-3 solid, the star through both the quad and triangle rules. Pins the whole pipeline: the positional weld of flat-shaded cage vertices, quad recovery from the generator triangle pattern, the Catmull-Clark and Loop masks with the limit push, and the smooth-normal output the lighting reads.",
                  make: { SubdivisionSurfaceScene() }),
+    SnapshotCase("solid-type",
+                 note: "A word extruded into solid type under a fixed camera (no time, no random): the whole string as one mesh, turned so its walls show, above the same string a glyph at a time, each letter tipped about its own center. Pins the type-to-solid path end to end: the glyph outlines traced at the reference em and scaled to world units (a size asked for directly collapses under the outline simplifier), the half turn that stands canvas y-down geometry up in a y-up world without mirroring the winding, the counters of O and g surviving as holes through the triangulated caps, and the per-glyph split keeping each letter in its place.",
+                 make: { SolidTypeScene() }),
     SnapshotCase("mesh-growth",
                  note: "Two seeded surfaces grown to a fixed step count under a fixed camera (no time, one pinned seed each): a sphere under the uniform driver, which folds evenly all over, and one under a banded field driver, which ruffles only where the band grows. Pins the growth pipeline end to end: the welded input topology, the growth springs and two-hop self-avoidance, the split/collapse/flip remeshing that keeps the surface a closed manifold while its topology churns, and the bending term that decides how big the folds come out.",
                  make: { MeshGrowthScene() }),
@@ -7667,6 +7670,43 @@ private final class MetaballsScene: Sketch {
         camera(Camera3D.orbiting(target: Vector3(0.6, 0, 0), radius: 9.5,
                                  azimuth: 0.55, elevation: 0.35, fieldOfView: .pi / 4))
         drawMesh(field.mesh(resolution: 64))
+    }
+}
+
+/// Solid type: a word as one extruded mesh, and the same word a glyph at a
+/// time with each letter tipped. Fixed camera, no time, no randomness.
+private final class SolidTypeScene: Sketch {
+    override var canvasSize: CanvasSize { .square(256) }
+
+    override func draw() {
+        background(Color(hex: 0x0A0D12))
+        lightingPreset(.studio)
+        camera(Camera3D.orbiting(target: .zero, radius: 7.2,
+                                 azimuth: 0.35, elevation: 0.22, fieldOfView: .pi / 4))
+
+        // Two letters with counters, one of them below the baseline, so the
+        // holes and the block's ink bounds are both in the picture.
+        let word = "Og"
+        withState {
+            translate(0, 1.15, 0)
+            rotateY(0.6)
+            fill(Color(hex: 0xE8C88A))
+            // The convenience call, so the font-from-state path is pinned too.
+            drawText3D(word, size: 1.7, depth: 0.45)
+        }
+        withState {
+            translate(0, -1.15, 0)
+            fill(Color(hex: 0x53D1FF))
+            for (i, glyph) in Mesh.textGlyphs(word, size: 1.7, depth: 0.45).enumerated() {
+                let pivot = glyph.center
+                withState {
+                    translate(pivot)
+                    rotateX(i == 0 ? 0.5 : -0.5)
+                    translate(-pivot)
+                    drawMesh(glyph)
+                }
+            }
+        }
     }
 }
 

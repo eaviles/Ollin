@@ -190,6 +190,7 @@ let package = Package(
         example("3D/Geometry/StrangeAttractor"),
         example("3D/Geometry/Transforms"),
         example("3D/Geometry/Solids"),
+        example("3D/Geometry/SolidType"),
         example("3D/Geometry/HopfFibration"),
         example("3D/Geometry/Ocean"),
         // The maps are baked by compute kernels in their own .metal file, and the

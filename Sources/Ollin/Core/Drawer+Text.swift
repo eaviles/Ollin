@@ -369,6 +369,20 @@ extension Drawer {
         }
     }
 
+    /// Draw `string` as solid type in the 3D scene: the active outline font set
+    /// at `size` world units and extruded `depth` deep, standing upright and
+    /// centered on the model origin. Only the *font* comes from the text state
+    /// (with `textAlign`'s horizontal half lining up the rows of a multi-line
+    /// string), since `textSize` is measured in canvas points and this size is
+    /// measured in world units.
+    func drawText3D(_ string: String, size: Double, depth: Double) {
+        guard case .outline(let font) = currentFont else {
+            noteOnce("drawText3D builds its solid from glyph outlines, so it needs an outline font; the active font is a pixel-grid or single-line face, and nothing was drawn.")
+            return
+        }
+        drawMesh(.text(string, font: font, size: size, depth: depth, align: textAlignH))
+    }
+
     /// The on-screen width of `string`'s widest line, in points, at the active
     /// `textFont` / `textSize` — for laying text out.
     func textWidth(_ string: String) -> Double {
