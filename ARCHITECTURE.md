@@ -4214,6 +4214,15 @@ linear light, ×255): converged 0.039, unfiltered 0.148, filtered 0.112 at
 strength 1 and 0.087 at strength 2. The excess over the converged figure is the
 artifact, and a third of it goes at strength 1.
 
+**What it buys, stated in numbers.** On the example's own frame, against a
+sixteen-sample reference of the same frame: the plain render's mean luminance
+sits 11% under it (it misses most of its specks) and the filtered one 17% over it
+(a widened highlight spreads further than the surface really scatters). Per-pixel
+RMSE is higher filtered than plain, because the reference is speckled and the
+filtered frame is smooth. Neither number is the point. The technique trades
+still-frame accuracy for temporal steadiness, and the crawl figures above are
+where it is judged.
+
 **Debugging that worked.** Rendering the kernel itself as color bands (blue
 under 1e-4, green, yellow, orange, red at the cap) over a plain sphere gave a
 smooth radial ramp with a thin orange rim in one render, which is textbook, and
