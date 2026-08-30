@@ -72,6 +72,12 @@ extension MetalRenderer {
         return true
     }
 
+    /// How many times the first gap of a made-frame export is encoded. The
+    /// interpolator's first encodes after a reset repeat their input, so the
+    /// count is what it takes to reach a real in-between frame; measured, not
+    /// guessed (see `SlowMotionTests`).
+    static let madeFrameWarmUpEncodes = 3
+
     /// Whether `device` supports the platform frame interpolator.
     static func frameInterpolationSupported(on device: MTLDevice) -> Bool {
         MTLFXFrameInterpolatorDescriptor.supportsDevice(device)
@@ -188,10 +194,22 @@ extension MetalRenderer {
         }
 
         let aspect = outputHeight > 0 ? Double(outputWidth) / Double(outputHeight) : 1
-        let motion = upscalerMotion ?? encodeFXVelocityFill(
-            drawer, camera: camera, into: cb, depth: depth, fallbackColor: drawn,
-            meshBuffer: meshBuffer, motion: slot.motion,
-            width: inputWidth, height: inputHeight, aspect: aspect)
+        // The fill writes the whole-frame motion field into the texture it is
+        // handed and returns only the mover pass, which the blur wants. So the
+        // field is `slot.motion`, never the return value: that one carries the
+        // sentinel -16384 in every pixel no mover wrote, and handing it over as
+        // motion warps the whole frame. The upscaler beside this reads the same
+        // pair the same way.
+        let motion: MTLTexture?
+        if let upscalerMotion {
+            motion = upscalerMotion
+        } else {
+            _ = encodeFXVelocityFill(drawer, camera: camera, into: cb, depth: depth,
+                                     fallbackColor: drawn, meshBuffer: meshBuffer,
+                                     motion: slot.motion,
+                                     width: inputWidth, height: inputHeight, aspect: aspect)
+            motion = slot.motion
+        }
 
         let fx = slot.interpolator
         fx.colorTexture = slot.colors[next]
@@ -222,6 +240,163 @@ extension MetalRenderer {
         slot.newest = next
         heldFrame = slot.colors[next]
         return slot.output
+    }
+
+    // MARK: The same frames, off the clock
+
+    /// Why a made frame cannot be built for this drawer, or `nil` when it can.
+    /// The interpolator reads a depth buffer and the camera's own motion, so it
+    /// needs a 3D scene under a camera with a field of view, on a GPU that
+    /// carries the feature. An export says this out loud and draws every frame
+    /// instead, which costs more and is never worse.
+    func madeFrameRefusal(_ drawer: Drawer) -> String? {
+        guard let camera = drawer.camera3D else {
+            return "made frames need a 3D scene: the interpolator reads the depth buffer and the camera's own motion, and a flat sketch has neither"
+        }
+        guard MetalRenderer.verticalFieldOfView(camera, aspect: 1) != nil else {
+            return "made frames need a camera with a field of view, and an orthographic scene has none"
+        }
+        if !interpolationSupportChecked {
+            interpolationSupportChecked = true
+            interpolationSupported = MetalRenderer.frameInterpolationSupported(on: device)
+        }
+        guard interpolationSupported else {
+            return "made frames need a GPU with frame-interpolation support, and this one has none"
+        }
+        return nil
+    }
+
+    /// Keep what the next made frame is built from: the picture this export
+    /// frame finished with, and the depth its geometry pass resolved. Called by
+    /// the headless render just before it presents. Silent unless a slow-motion
+    /// export asked for made frames.
+    func keepForMadeFrame(_ drawer: Drawer, presented: MTLTexture, depth: MTLTexture?,
+                          meshBuffer: MTLBuffer?, into cb: MTLCommandBuffer,
+                          inputWidth: Int, inputHeight: Int,
+                          outputWidth: Int, outputHeight: Int) {
+        guard exportMadeFrames, let depth, madeFrameRefusal(drawer) == nil else { return }
+        let slot: FXInterpolatorSlot
+        if let existing = exportInterpolationSlot, existing.inputW == inputWidth,
+           existing.inputH == inputHeight, existing.outputW == outputWidth,
+           existing.outputH == outputHeight {
+            slot = existing
+        } else {
+            guard let fresh = makeInterpolatorSlot(inputWidth: inputWidth, inputHeight: inputHeight,
+                                                   outputWidth: outputWidth, outputHeight: outputHeight) else {
+                // Building it failing would be retried every frame; treat it as
+                // absent, and the export says so once and draws every frame.
+                exportMadeFrames = false
+                return
+            }
+            exportInterpolationSlot = fresh
+            slot = fresh
+        }
+        // Into the half of the pair the interpolator is not about to read.
+        // `newest` moves in `exportMadeFrame`, once the pair has been used.
+        guard let blit = cb.makeBlitCommandEncoder() else { return }
+        blit.copy(from: presented, sourceSlice: 0, sourceLevel: 0,
+                  sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+                  sourceSize: MTLSize(width: outputWidth, height: outputHeight, depth: 1),
+                  to: slot.colors[1 - slot.newest], destinationSlice: 0, destinationLevel: 0,
+                  destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
+        blit.endEncoding()
+        exportInterpolationDepth = depth
+        exportInterpolationMesh = meshBuffer
+    }
+
+    /// The frame that belongs between the last two drawn export frames, read
+    /// back the way a drawn one is. `nil` before there is a pair to work from,
+    /// or whenever made frames are not running.
+    ///
+    /// Its own command buffer, run to completion like the render before it: the
+    /// export drive is synchronous frame by frame, and the pair it reads was
+    /// finished by that render.
+    func exportMadeFrame(_ drawer: Drawer, deltaTime: Double,
+                         width outWidth: Int, height outHeight: Int) -> (buffer: MTLBuffer, bytesPerRow: Int)? {
+        guard exportMadeFrames, let slot = exportInterpolationSlot,
+              let depth = exportInterpolationDepth,
+              let camera = drawer.camera3D, madeFrameRefusal(drawer) == nil else { return nil }
+        let next = 1 - slot.newest
+        // The first drawn frame has nothing before it to sit between.
+        guard slot.hasPrevious else {
+            slot.hasPrevious = true
+            slot.newest = next
+            return nil
+        }
+        guard let cb = commandQueue.makeCommandBuffer() else { return nil }
+
+        let aspect = outHeight > 0 ? Double(outWidth) / Double(outHeight) : 1
+        // The filled field, not the mover pass the fill hands back: see the note
+        // in `applyFrameInterpolation`.
+        _ = encodeFXVelocityFill(drawer, camera: camera, into: cb, depth: depth,
+                                 fallbackColor: slot.colors[next],
+                                 meshBuffer: exportInterpolationMesh, motion: slot.motion,
+                                 width: slot.inputW, height: slot.inputH, aspect: aspect)
+
+        let fx = slot.interpolator
+        fx.colorTexture = slot.colors[next]
+        fx.prevColorTexture = slot.colors[slot.newest]
+        fx.depthTexture = depth
+        fx.motionTexture = slot.motion
+        fx.outputTexture = slot.output
+        fx.motionVectorScaleX = 1
+        fx.motionVectorScaleY = 1
+        fx.jitterOffsetX = 0
+        fx.jitterOffsetY = 0
+        // The gap the made frame sits in the middle of, which is one step of the
+        // sketch's own clock rather than anything the wall clock did.
+        fx.deltaTime = Float(deltaTime)
+        fx.nearPlane = Float(camera.near)
+        fx.farPlane = Float(camera.far)
+        fx.fieldOfView = Float(MetalRenderer.verticalFieldOfView(camera, aspect: aspect) ?? 60)
+        fx.aspectRatio = Float(aspect)
+        fx.isDepthReversed = false
+        // The interpolator carries history, and the first two encodes after a
+        // reset hand back the frame they were given rather than one between the
+        // pair. On screen that is invisible: it costs the first made frame of a
+        // run. In a file it is two repeated pictures at the head of the clip, so
+        // the first gap is encoded three times and only the last one is kept.
+        // The extra encodes cost a few milliseconds, once per export.
+        let encodes = slot.needsReset ? MetalRenderer.madeFrameWarmUpEncodes : 1
+        fx.shouldResetHistory = slot.needsReset
+        slot.needsReset = false
+        for pass in 0..<encodes {
+            if pass > 0 { fx.shouldResetHistory = false }
+            fx.encode(commandBuffer: cb)
+        }
+
+        // Through the same present pass a drawn frame takes, so a made frame is
+        // tone-mapped and dithered identically and the two sit together in one
+        // file without a step in tone.
+        let bytesPerRow = outWidth * displayBytesPerPixel
+        let byteCount = bytesPerRow * outHeight
+        guard let display = makeDisplayTexture(width: outWidth, height: outHeight),
+              let readback = device.makeBuffer(length: byteCount, options: .storageModeShared),
+              let presentEncoder = cb.makeRenderCommandEncoder(descriptor: presentPass(into: display))
+        else { return nil }
+        encodePresent(from: slot.output, drawer: drawer, into: presentEncoder)
+        presentEncoder.endEncoding()
+        guard let blit = cb.makeBlitCommandEncoder() else { return nil }
+        blit.copy(from: display, sourceSlice: 0, sourceLevel: 0,
+                  sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+                  sourceSize: MTLSize(width: outWidth, height: outHeight, depth: 1),
+                  to: readback, destinationOffset: 0,
+                  destinationBytesPerRow: bytesPerRow, destinationBytesPerImage: byteCount)
+        blit.endEncoding()
+        cb.commit()
+        cb.waitUntilCompleted()
+
+        slot.newest = next
+        return (readback, bytesPerRow)
+    }
+
+    /// Forget an export's interpolation state, so the next one starts with no
+    /// history of somebody else's run.
+    func endExportMadeFrames() {
+        exportMadeFrames = false
+        exportInterpolationSlot = nil
+        exportInterpolationDepth = nil
+        exportInterpolationMesh = nil
     }
 
     /// TEST SEAM: run the interpolator over crafted frames and read the made one

@@ -4478,8 +4478,44 @@ measures where the made frame puts the mark: halfway, within 1.5 px, from the
 third made frame on. The first two repeat the drawn frame, which is the platform's
 warm-up and is pinned as such, since it is also what makes starting up
 artifact-free. Forcing `shouldResetHistory` every step collapses every made frame
-onto the drawn one and reads red. The exported frames are pinned byte-identical to
-not asking at all.
+onto the drawn one and reads red. A frame grab is pinned byte-identical to not
+asking at all, and so is an export until it asks for made frames itself.
+
+**A second wiring bug hid behind the first, and only an export could find it.**
+`encodeFXVelocityFill` writes the whole-frame motion field into the texture it is
+handed and *returns the mover pass*, whose unwritten texels carry the sentinel
+`OLLIN_VELOCITY_NONE` (-16384) that the fill itself reads as "use the camera
+reprojection here". The upscaler beside it binds `slot.motion`, the filled field.
+The interpolator bound the return value. So a frame that declared no mover handed
+the interpolator no motion at all, which looks fine, and a frame that declared one
+handed it -16384 pixels of motion everywhere the mover was not, which warps the
+whole picture. On screen at 60 fps that is a shimmer nobody had named. Measured
+against the same moments drawn for real, the made frame landed about eighty times
+further from the truth than simply holding a neighbor would, and the floor's
+silhouette flattened into a straight line across the frame. The counterfactual
+that isolated it was a scene with the same motion and no `withMotion` call, which
+came back exact. Both paths bind `slot.motion` now.
+
+**Slow motion in an export** (`--slow-motion N --made-frames`) is the same
+interpolator driven from the headless side, and the shape differs in three ways
+that matter. It keeps its own slot, since the two drives never run together and an
+export starts with no history to carry. The render and the made frame are separate
+command buffers: `keepForMadeFrame` copies the finished picture into the pair and
+holds the resolved depth as the render commits, and `exportMadeFrame` runs the
+fill, the interpolator, the present pass, and the read-back afterward, because the
+export drive is synchronous frame by frame anyway. And `newest` moves only when a
+gap is actually consumed, so a warmup frame's copy is harmless: it overwrites the
+same half of the pair, and the first captured frame is still paired with the frame
+before it.
+
+The first gap of a clip cannot be filled. Encoding that pair three times moves the
+first real in-between frame from the third gap to the second, and encoding it six
+times does no better, so the interpolator wants a distinct pair rather than a
+count. The head of a made clip therefore holds one picture twice, which is the
+same thing the live window does when it starts, and the export documents it rather
+than hiding it. What a made frame is worth was measured the same way: about six
+times closer to the truth than either neighbor (mean 0.13 of 255 against 0.67 to
+0.97), at about 11 ms against 20 ms for a drawn frame at 1080 square.
 
 ---
 

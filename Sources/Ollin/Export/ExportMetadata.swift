@@ -32,6 +32,12 @@ struct ExportMetadata {
     /// so a `-dirty` run stays recoverable. `nil` when the flag was absent or
     /// the tree was already clean (`gitHash` is then the whole answer).
     var captureCommit: String? = nil
+    /// The slow motion an export was written under. `nil` when the file plays
+    /// at the rate the sketch ran, which is every other export. `fps` stays the
+    /// rate the *clock* ran at either way, so a still re-renders from the
+    /// recipe unchanged; the file itself plays at `fps / factor` under the
+    /// drawn form, and at `fps` under the made one.
+    var slowMotion: SlowMotion? = nil
 
     /// Capture the recipe from `sketch` as it stands: the last seeds applied,
     /// every `@Param`'s current value, and the working tree's git commit.
@@ -72,6 +78,13 @@ struct ExportMetadata {
         if let captureCommit { fields.append("\"capture\":\(jsonString(captureCommit))") }
         if let frame { fields.append("\"frame\":\(frame)") }
         if let fps { fields.append("\"fps\":\(jsonNumber(fps))") }
+        if let slowMotion, slowMotion.isActive {
+            fields.append("\"slowMotion\":\(jsonNumber(slowMotion.factor))")
+            // Said only when it is true: every other export writes drawn frames,
+            // and a file that holds pictures the sketch never drew has to say so
+            // where the rest of its recipe is.
+            if slowMotion.source == .made { fields.append("\"madeFrames\":true") }
+        }
         return "{\(fields.joined(separator: ","))}"
     }
 

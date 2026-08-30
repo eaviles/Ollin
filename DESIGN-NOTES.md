@@ -163,7 +163,6 @@ Ways a sketch leaves the window, beside the flat image / video / GIF / SVG expor
 Deeper use of the Metal core and Apple displays, every item opt-in so the 2D path stays untaxed.
 
 - **Dolby Vision.** The static HDR10 metadata an extended sketch exports describes the whole file; Dolby Vision carries per-scene metadata instead, which a generative piece could drive from what it knows it just drew. It needs the licensed encoder path rather than AVFoundation's plain HDR writer, so it is a licensing question first and an API question second.
-- **Exploratory.** Made frames in an export: the interpolator that fills the gaps on the live window, pointed at a file instead, so a sketch renders sixty frames a second and writes a quarter-speed video of two hundred and forty. The design question is not the effect but the promise: every export writes only frames the sketch drew, so this one needs a flag that says what it is handing over.
 
 ## Authoring and editor tooling
 

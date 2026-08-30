@@ -80,6 +80,22 @@ extension MetalRenderer {
                                          depth: Float = 0.5,
                                          deltaTime: Double = 1.0 / 30) -> [[Float]]? { nil }
 
+    // MARK: The same frames, off the clock
+
+    func madeFrameRefusal(_ drawer: Drawer) -> String? {
+        "made frames need a GPU with frame-interpolation support, and this one has none"
+    }
+
+    func keepForMadeFrame(_ drawer: Drawer, presented: MTLTexture, depth: MTLTexture?,
+                          meshBuffer: MTLBuffer?, into cb: MTLCommandBuffer,
+                          inputWidth: Int, inputHeight: Int,
+                          outputWidth: Int, outputHeight: Int) {}
+
+    func exportMadeFrame(_ drawer: Drawer, deltaTime: Double,
+                         width: Int, height: Int) -> (buffer: MTLBuffer, bytesPerRow: Int)? { nil }
+
+    func endExportMadeFrames() { exportMadeFrames = false }
+
     // MARK: Drawing smaller and upscaling
 
     func temporalUpscalingActive(_ drawer: Drawer) -> Bool { false }

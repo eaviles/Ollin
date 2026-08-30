@@ -1258,6 +1258,17 @@ final class MetalRenderer {
     /// The drawn frame waiting for the next refresh, set when a made frame went
     /// to the screen in its place. Read by the runner through `hasHeldFrame`.
     var heldFrame: MTLTexture?
+    /// Whether an export asked for slow motion out of made frames, which is what
+    /// makes the headless render keep the picture and the depth a made frame is
+    /// built from. Its own slot rather than the live one: the two drives never
+    /// run together, and an export starts with no history to carry.
+    var exportMadeFrames = false
+    var exportInterpolationSlot: FXInterpolatorSlot?
+    /// The depth the last export render resolved and the mesh buffer it drew
+    /// from, which the made frame's motion fill reads. Held only between one
+    /// render and the made frame built right after it.
+    var exportInterpolationDepth: MTLTexture?
+    var exportInterpolationMesh: MTLBuffer?
     /// Whether the host can give up a refresh to a made frame. The renderer
     /// cannot see the conditions that decide it (a take being played or
     /// recorded, a still sketch, a wall of displays that all want every frame),
@@ -2391,7 +2402,9 @@ final class MetalRenderer {
             pass.depthAttachment.clearDepth = 1.0
             pass.depthAttachment.storeAction = .dontCare
             passDepthFormat = depthPixelFormat
-            if motionBlurActive(drawer) || lensFlareActive(drawer),
+            // Slow motion out of made frames reads the same resolved depth the
+            // blur and the flare do, so it joins them rather than adding a pass.
+            if motionBlurActive(drawer) || lensFlareActive(drawer) || exportMadeFrames,
                let resolve = makeDepthResolve(width: width, height: height) {
                 pass.depthAttachment.resolveTexture = resolve
                 pass.depthAttachment.storeAction = .multisampleResolve
@@ -2661,6 +2674,13 @@ final class MetalRenderer {
             presented = applyFrameFilters(drawer, resolved: flared, width: outWidth, height: outHeight,
                                           into: commandBuffer, pooled: false)
         }
+        // A slow-motion export that fills its gaps with made frames keeps this
+        // frame's picture and depth, so the frame between this one and the next
+        // can be built from the pair. Does nothing for every other export.
+        keepForMadeFrame(drawer, presented: presented, depth: sceneDepthResolve,
+                         meshBuffer: meshBuf, into: commandBuffer,
+                         inputWidth: width, inputHeight: height,
+                         outputWidth: outWidth, outputHeight: outHeight)
         guard let presentEncoder = countedEncoder(commandBuffer, presentPass(into: displayTexture)) else { return nil }
         encodePresent(from: presented, drawer: drawer, into: presentEncoder)
         presentEncoder.endEncoding()

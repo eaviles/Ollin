@@ -35,6 +35,7 @@ swift run OllinLive MySketches/Loop.swift --export poster.png --frame 90
 - [Spatial video](Spatial.md#spatial-video) - `--export-spatial`, a stereo pair per frame for a headset (its own page)
 - [Animated GIF](#animated-gif) - `--export-gif`, `OllinApp.exportGIF`
 - [Perfect loops](#perfect-loops) - `--export-loop`, `Sketch.loopDuration`
+- [Slow motion](#slow-motion) - `--slow-motion`, `--made-frames`, a file that plays slower than the sketch ran
 - [Vector: SVG](#vector-svg) - `--export-svg`, `OllinApp.svg` / `exportSVG`
 - [Vector: PDF](#vector-pdf) - `--export-pdf`, `OllinApp.pdf` / `exportPDF`, paper sizes
 - [What SVG export records](#what-svg-export-records) - the shape mapping and the limits
@@ -202,6 +203,69 @@ The frame count is derived as `loopDuration × fps`. The output format follows t
 To make a sketch loop-clean, drive every moving part from a phase that repeats over the period. That means `loopProgress(over:)` / `pingPong(over:)`, [looping noise](../Generators/Noise.md) with `noise(loop:)` / `signedNoise(loop:)`, or an angle built as `phase * .tau`. One term of plain `time`, or a `sin(time * k)` whose period doesn't divide the loop, breaks the seam. The [`Motion/PerfectLoop`](../../Examples/Motion/PerfectLoop/Sketch.swift) example is the worked reference. It declares `loopDuration`, and its frame one period later renders pixel-identical to frame zero.
 
 There's no separate code entry point. In Swift, derive the count yourself and call the encoder, as `OllinApp.exportGIF(sketch, to: path, frames: Int(duration * fps), fps: fps)`.
+
+### Slow motion
+
+An export writes the frames a sketch drew, at the rate it drew them, so a video plays at the speed you watched. `--slow-motion` is the one place those two rates come apart:
+
+```sh
+swift run --package-path Examples Example-Motion-Breathing --export-video slow.mp4 --seconds 4 --slow-motion 4
+```
+
+That renders four seconds of the sketch's own time and writes sixteen seconds of video. The file keeps its `--fps`, and the run is covered by four times as many frames, so the motion takes four times as long to play. It works on `--export-sequence`, `--export-video`, `--export-gif`, and `--export-loop` (one lap still closes; it just takes longer to watch).
+
+Two numbers are worth keeping straight, and the export prints both:
+
+- `--seconds` counts the **sketch's** own time, as it always has. Four seconds at factor 4 is a sixteen-second file.
+- `--frames` counts the frames written to the **file**. Ninety-six frames at 30 fps is 3.2 seconds of video whatever the factor is.
+
+By default every one of those frames is drawn. The clock steps `factor` times finer, `deltaTime` shrinks to match, and the sketch is asked for each moment in between. That is exact, it works for any sketch, and it costs the factor's worth of render time.
+
+**Motion measured in seconds slows down. Motion measured in frames does not.** A radius built from `sin(time)`, or a position advanced by `speed * deltaTime`, is a function of the clock, so a finer clock slows it down. A position advanced by a fixed step once per `draw()`, with no `deltaTime` in it, moves the same amount per frame however fast the clock runs. A finer clock hands it more frames, and it arrives at the same place at the same time. Made frames are the answer for that sketch.
+
+#### Frames the GPU makes
+
+`--made-frames` draws the frames it would have drawn anyway and asks the GPU to build the ones between them out of the pair on either side:
+
+```sh
+swift run --package-path Examples Example-3D-Effects-FrameInterpolation --export-video half.mp4 --seconds 4 --slow-motion 2 --made-frames
+```
+
+It is the same platform interpolator [`frameInterpolation()`](../3D/3D.md) puts on the live window, pointed at a file. It exists for two reasons. Half the pictures cost less than half the render. It is also the only form that slows down a sketch whose motion is measured in frames.
+
+It hands over pictures the sketch never drew, so it has to be asked for by name. It says so twice: on the console while it runs, and in the [reproduction recipe](#reproducibility-metadata) the file carries, as `"madeFrames":true`.
+
+What it needs, and what it costs:
+
+| | Drawn (the default) | Made (`--made-frames`) |
+|---|---|---|
+| Works on | any sketch | a 3D scene under a perspective camera |
+| Factors | any number above 1 | 2, since the platform fills one frame per gap |
+| Every frame is | drawn by the sketch | half drawn, half built from the pair around it |
+| Cost | the factor's worth of render time | measured at 1.9 s where drawing every frame took 2.4 s |
+
+The saving grows with how expensive a frame is to draw. On a busy 3D scene at 1080 square, a made frame took about 11 ms against 20 ms for a drawn one. At nine times the sampling (`--render-scale 3`) the same clip took 3.3 seconds against 5.1.
+
+Three limits are worth knowing before you use it:
+
+- **The first gap of a clip repeats.** The interpolator carries history, and one pair of frames is not enough to build any. So the head of a made clip holds one picture twice. It is the same thing the live window does when it starts.
+- **Flat marks over the scene can smear.** The interpolator reads the depth buffer, and a caption or a HUD drawn in 2D has no depth, so it can be warped where the scene behind it moves. Text is where you notice it first.
+- **A sketch with no 3D camera is refused**, by name, before anything is written. Drop the flag and every frame is drawn instead, which costs more time and is never worse.
+
+#### What else moves with it
+
+The **recipe** each file carries records `"slowMotion"`. Its `"fps"` is the rate the *clock* ran at, not the rate the file plays. So a still re-renders from it unchanged, and `--export --frame N --fps F` lands on the same moment.
+
+The **sound** a sketch makes is laid on the file's own timeline. A slow-motion clip is scored across its full length rather than falling silent early, and notes arrive where the picture they belong to is.
+
+A **take** cannot be replayed in slow motion. A take carries one frame of recorded input per drawn frame, and a finer clock has nothing to read between them. So `--replay` beside `--slow-motion` is refused rather than played wrong.
+
+In code it is one argument, `slowMotion:`, on `exportSequence`, `exportVideo`, and `exportGIF`:
+
+```swift
+OllinApp.exportVideo(sketch, to: "slow.mp4", frames: 480, fps: 60, slowMotion: .drawn(4))
+OllinApp.exportSequence(sketch, to: "frames", frames: 240, fps: 30, slowMotion: .made(2))
+```
 
 ### Vector: SVG
 

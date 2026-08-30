@@ -2377,7 +2377,8 @@ public enum OllinApp {
     public static func exportSequence(_ sketch: Sketch, to directory: String,
                                       frames: Int, fps: Double = 60,
                                       startFrame: Int = 1, skipSeconds: Double = 0,
-                                      quality: RenderQuality = .detail) {
+                                      quality: RenderQuality = .detail,
+                                      slowMotion: SlowMotion? = nil) {
         guard frames > 0 else { return }
         do {
             try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
@@ -2386,15 +2387,22 @@ public enum OllinApp {
         }
 
         let size = sketch.canvasSize
-        let skipFrames = max(0, Int((skipSeconds * fps).rounded()))
+        let motion = (slowMotion?.isActive ?? false) ? slowMotion : nil
+        // The clock the sketch is driven at, which is the rate these numbered
+        // frames belong to: assemble them at `fps` and the motion plays slow.
+        let clock = motion?.clockRate(playingAt: fps) ?? fps
+        let skipFrames = max(0, Int((skipSeconds * clock).rounded()))
         let skipNote = skipFrames > 0 ? String(format: " (after %gs warmup)", skipSeconds) : ""
         print("Ollin: exporting \(frames) frames at \(Int(fps)) fps\(skipNote) → \(directory) (\(size.width)×\(size.height))")
+        if let motion { print(motion.note(written: frames, fps: fps)) }
 
         let elapsed = renderFrames(sketch, frames: frames, fps: fps, skipSeconds: skipSeconds,
-                                   quality: quality) { frame, index in
+                                   quality: quality, slowMotion: motion) { frame, index in
             // Captured per frame (cheap: the git lookup is cached) so each
             // file's recipe names the sketch-clock frame it shows.
-            let recipe = ExportMetadata.capture(from: sketch, frame: skipFrames + index, fps: fps).recipe
+            var meta = ExportMetadata.capture(from: sketch, frame: skipFrames + index, fps: clock)
+            meta.slowMotion = motion
+            let recipe = meta.recipe
             let name = String(format: "frame-%05d.png", startFrame + index)
             let path = (directory as NSString).appendingPathComponent(name)
             guard let cgImage = frame.image, writePNG(cgImage, to: path, recipe: recipe) else {
@@ -2446,6 +2454,7 @@ public enum OllinApp {
     static func renderFrames(_ sketch: Sketch, frames: Int, fps: Double,
                              skipSeconds: Double, quality: RenderQuality = .detail,
                              encoding: PresentEncoding? = nil,
+                             slowMotion: SlowMotion? = nil,
                              write: (RenderedFrame, Int) -> Void) -> Double {
         guard let device = MTLCreateSystemDefaultDevice() else {
             fatalError("Ollin requires a Metal-capable GPU.")
@@ -2476,11 +2485,36 @@ public enum OllinApp {
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
         sketch.setup()
 
-        let skipFrames = max(0, Int((skipSeconds * fps).rounded()))
+        // Slow motion parts the two rates an export usually shares. The file
+        // still plays at `fps`; the sketch's own clock runs at `clock`. The
+        // drawn form steps that clock finer and draws every written frame, so
+        // `drawnFrames` and `frames` agree; the made form leaves the clock alone
+        // and fills the gaps afterward, so it draws fewer than it writes.
+        let motion = (slowMotion?.isActive ?? false) ? slowMotion : nil
+        let clock = motion?.clockRate(playingAt: fps) ?? fps
+        let drawnFrames = motion?.drawnFrames(forWritten: frames) ?? frames
+        // Made frames are built from the picture and depth each render leaves
+        // behind, so the render has to be told to keep them.
+        renderer.exportMadeFrames = motion?.source == .made
+        defer { renderer.endExportMadeFrames() }
+
+        let skipFrames = max(0, Int((skipSeconds * clock).rounded()))
         let wallStart = CACurrentMediaTime()
-        for k in 0..<(skipFrames + frames) {
-            sketch.advance(time: Double(k) / fps, deltaTime: 1 / fps, frameRate: fps)
+        var written = 0                                   // 0-based index handed to `write`
+        for k in 0..<(skipFrames + drawnFrames) {
+            sketch.advance(time: Double(k) / clock, deltaTime: 1 / clock, frameRate: clock)
             sketch.performDraw()                          // run every frame so state settles
+
+            // Whether the interpolator can work on this sketch at all is only
+            // knowable once it has drawn, so it is asked at the first frame,
+            // before a single file has been written.
+            if k == 0, motion?.source == .made,
+               let refusal = renderer.madeFrameRefusal(sketch.drawer) {
+                fflush(stdout)          // so the refusal reads after the header
+                FileHandle.standardError.write(Data(
+                    "Ollin: \(refusal).\nDrop --made-frames and every frame is drawn instead, which costs more time and is never worse.\n".utf8))
+                exit(1)
+            }
 
             // In accumulation mode (`noClear`) the persistent pile must build every
             // frame — including warmup — so render into it always; otherwise warmup
@@ -2507,19 +2541,44 @@ public enum OllinApp {
             guard let rendered else {
                 fatalError("Ollin: failed to render frame \(k)")
             }
-            let done = k - skipFrames + 1                  // 1-based count of written frames
-            write(RenderedFrame(renderer: renderer, buffer: rendered.buffer,
-                                bytesPerRow: rendered.bytesPerRow,
-                                width: width, height: height), done - 1)
+            let done = k - skipFrames + 1                  // 1-based count of drawn frames
+            // The made frame goes first: it belongs between the frame just drawn
+            // and the one before it, and it is built from the pair the render
+            // left behind. Nothing comes back for the first frame of a run,
+            // which has nothing before it to sit between.
+            if motion?.source == .made {
+                if let made = renderer.exportMadeFrame(sketch.drawer, deltaTime: 1 / clock,
+                                                       width: width, height: height),
+                   written < frames {
+                    write(RenderedFrame(renderer: renderer, buffer: made.buffer,
+                                        bytesPerRow: made.bytesPerRow,
+                                        width: width, height: height), written)
+                    written += 1
+                }
+            }
+            if written < frames {
+                write(RenderedFrame(renderer: renderer, buffer: rendered.buffer,
+                                    bytesPerRow: rendered.bytesPerRow,
+                                    width: width, height: height), written)
+                written += 1
+            }
 
             // A single rewriting progress line: pct done · render throughput.
+            // It counts what the sketch draws, which is what the time is going
+            // into; under made-frame slow motion the file holds more than that.
             let elapsed = CACurrentMediaTime() - wallStart
             let renderFPS = elapsed > 0 ? Double(done) / elapsed : 0
             let line = String(format: "\r  rendering %d/%d (%d%%) · %.0f fps    ",
-                              done, frames, done * 100 / frames, renderFPS)
+                              done, drawnFrames, done * 100 / drawnFrames, renderFPS)
             FileHandle.standardError.write(Data(line.utf8))
         }
         FileHandle.standardError.write(Data("\n".utf8))
+        // A gap that could not be filled leaves the file short, and a short file
+        // that says nothing is the worst way to find out.
+        if motion?.source == .made, written < frames {
+            FileHandle.standardError.write(Data(
+                "Ollin: the interpolator stopped making frames, so the file holds \(written) of the \(frames) asked for\n".utf8))
+        }
         return CACurrentMediaTime() - wallStart
     }
 
@@ -2706,6 +2765,46 @@ public extension OllinApp {
            let n = Int(args[i + 1]) {
             exportRenderScale = max(1, n)
         }
+        // `--slow-motion N` writes a file that plays N times slower than the
+        // sketch ran: the clock steps N times finer, the file keeps its `--fps`,
+        // and `--seconds` still counts seconds of the sketch's own time (see
+        // `SlowMotion`). Pre-parsed like the render scale, so it applies to
+        // whichever export flag follows.
+        let slowMotion: SlowMotion? = {
+            let made = args.contains("--made-frames")
+            guard let i = args.firstIndex(of: "--slow-motion") else {
+                // `--made-frames` on its own is the half-speed it can do.
+                return made ? .made(2) : nil
+            }
+            guard i + 1 < args.count, let factor = Double(args[i + 1]), factor.isFinite, factor > 1 else {
+                FileHandle.standardError.write(Data(
+                    "usage: --slow-motion N [--made-frames], N a number above 1 (2 is half speed, 4 is quarter speed)\n".utf8))
+                exit(1)
+            }
+            // A take holds one recorded frame of input per drawn frame, so a
+            // finer clock would run through it several times too fast. Say so
+            // rather than writing a video whose gestures are wrong.
+            if args.contains("--replay"), !made {
+                FileHandle.standardError.write(Data(
+                    "--slow-motion cannot replay a take: a take carries one frame of input per drawn frame, and a finer clock has nothing to read between them\n".utf8))
+                exit(1)
+            }
+            // The platform makes one frame per gap and offers no way to ask for
+            // a moment other than the middle, so half speed is what it can do.
+            if made, factor != 2 {
+                FileHandle.standardError.write(Data(
+                    "--made-frames fills one frame per gap, so it does half speed: pass --slow-motion 2, or drop --made-frames and every frame is drawn\n".utf8))
+                exit(1)
+            }
+            // A still has nothing to slow down, and the vector and spatial
+            // exports take their own path, so say so rather than doing nothing.
+            let takesIt = ["--export-sequence", "--export-video", "--export-gif", "--export-loop"]
+            if !takesIt.contains(where: args.contains) {
+                FileHandle.standardError.write(Data(
+                    "note: --slow-motion applies to \(takesIt.joined(separator: ", ")); nothing here reads it\n".utf8))
+            }
+            return made ? .made(factor) : .drawn(factor)
+        }()
         // `--path-traced [N]` switches the still/sequence/video exports to the
         // offline path tracer (see `PathTracing`), N samples per pixel; bare, the
         // count comes from the render-quality tier. Pre-parsed like the quality so
@@ -2771,7 +2870,9 @@ public extension OllinApp {
             let fps = value("--fps").flatMap(Double.init) ?? 60
             var frames = value("--frames").flatMap(Int.init) ?? 0
             if frames <= 0, let seconds = value("--seconds").flatMap(Double.init) {
-                frames = Int((seconds * fps).rounded())
+                // `--seconds` counts the sketch's own time under slow motion too,
+                // so covering it takes the factor's worth of extra frames.
+                frames = Int((seconds * fps * (slowMotion?.factor ?? 1)).rounded())
             }
             // Replaying with no length given renders the whole take.
             if frames <= 0, let replayTake { frames = replayTake.frameCount }
@@ -2779,11 +2880,12 @@ public extension OllinApp {
             let skip = value("--skip").flatMap(Double.init) ?? 0
             guard frames > 0 else {
                 FileHandle.standardError.write(Data(
-                    "usage: --export-sequence <dir> (--frames N | --seconds S) [--fps F] [--skip S] [--start N]\n".utf8))
+                    "usage: --export-sequence <dir> (--frames N | --seconds S) [--fps F] [--skip S] [--start N] [--slow-motion N]\n".utf8))
                 return true
             }
             OllinApp.exportSequence(make(), to: dir, frames: frames, fps: fps,
-                                    startFrame: start, skipSeconds: skip, quality: renderQuality)
+                                    startFrame: start, skipSeconds: skip, quality: renderQuality,
+                                    slowMotion: slowMotion)
             return true
         }
         // `--export-loop <path> [--fps F] [--skip S] [--gif-width PX] [--codec C]
@@ -2813,7 +2915,9 @@ public extension OllinApp {
             // the rate; compute the lap against the rate that will actually
             // play, or the frame count drifts off one period.
             let loopFPS = isGIF ? 100 / Double(max(2, Int((100 / fps).rounded()))) : fps
-            let exact = duration * loopFPS
+            // One lap either way: slow motion covers the same period with the
+            // factor's worth of extra frames, so the loop still closes.
+            let exact = duration * loopFPS * (slowMotion?.factor ?? 1)
             let frames = max(1, Int(exact.rounded()))
             if abs(exact - exact.rounded()) > 1e-6 {
                 FileHandle.standardError.write(Data(
@@ -2822,7 +2926,8 @@ public extension OllinApp {
             if isGIF {
                 let width = value("--gif-width").flatMap(Int.init)
                 OllinApp.exportGIF(sketch, to: path, frames: frames, fps: loopFPS,
-                                   width: width, skipSeconds: skip, renderQuality: renderQuality)
+                                   width: width, skipSeconds: skip, renderQuality: renderQuality,
+                                   slowMotion: slowMotion)
             } else {
                 var codec = VideoCodec.h264
                 if let name = value("--codec") {
@@ -2837,7 +2942,8 @@ public extension OllinApp {
                 let quality = value("--quality").flatMap(Double.init)
                 OllinApp.exportVideo(sketch, to: path, frames: frames, fps: fps,
                                      codec: codec, bitsPerSecond: bitrate, quality: quality,
-                                     renderQuality: renderQuality, skipSeconds: skip)
+                                     renderQuality: renderQuality, skipSeconds: skip,
+                                     slowMotion: slowMotion)
             }
             return true
         }
@@ -2852,7 +2958,8 @@ public extension OllinApp {
             let fps = value("--fps").flatMap(Double.init) ?? 60
             var frames = value("--frames").flatMap(Int.init) ?? 0
             if frames <= 0, let seconds = value("--seconds").flatMap(Double.init) {
-                frames = Int((seconds * fps).rounded())
+                // `--seconds` counts the sketch's own time under slow motion too.
+                frames = Int((seconds * fps * (slowMotion?.factor ?? 1)).rounded())
             }
             // Replaying with no length given renders the whole take.
             if frames <= 0, let replayTake { frames = replayTake.frameCount }
@@ -2870,12 +2977,13 @@ public extension OllinApp {
             let quality = value("--quality").flatMap(Double.init)
             guard frames > 0 else {
                 FileHandle.standardError.write(Data(
-                    "usage: --export-video <path> (--frames N | --seconds S) [--fps F] [--skip S] [--codec C] [--bitrate MBPS] [--quality 0..1]\n".utf8))
+                    "usage: --export-video <path> (--frames N | --seconds S) [--fps F] [--skip S] [--codec C] [--bitrate MBPS] [--quality 0..1] [--slow-motion N]\n".utf8))
                 return true
             }
             OllinApp.exportVideo(make(), to: args[i + 1], frames: frames, fps: fps,
                                  codec: codec, bitsPerSecond: bitrate, quality: quality,
-                                 renderQuality: renderQuality, skipSeconds: skip)
+                                 renderQuality: renderQuality, skipSeconds: skip,
+                                 slowMotion: slowMotion)
             return true
         }
         // `--export-spatial <path.mov> (--frames N | --seconds S) [--fps F] [--skip S]
@@ -2924,7 +3032,8 @@ public extension OllinApp {
             let fps = value("--fps").flatMap(Double.init) ?? 25
             var frames = value("--frames").flatMap(Int.init) ?? 0
             if frames <= 0, let seconds = value("--seconds").flatMap(Double.init) {
-                frames = Int((seconds * fps).rounded())
+                // `--seconds` counts the sketch's own time under slow motion too.
+                frames = Int((seconds * fps * (slowMotion?.factor ?? 1)).rounded())
             }
             // Replaying with no length given renders the whole take.
             if frames <= 0, let replayTake { frames = replayTake.frameCount }
@@ -2932,11 +3041,12 @@ public extension OllinApp {
             let width = value("--gif-width").flatMap(Int.init)
             guard frames > 0 else {
                 FileHandle.standardError.write(Data(
-                    "usage: --export-gif <path> (--frames N | --seconds S) [--fps F] [--skip S] [--gif-width PX]\n".utf8))
+                    "usage: --export-gif <path> (--frames N | --seconds S) [--fps F] [--skip S] [--gif-width PX] [--slow-motion N]\n".utf8))
                 return true
             }
             OllinApp.exportGIF(make(), to: args[i + 1], frames: frames, fps: fps,
-                               width: width, skipSeconds: skip, renderQuality: renderQuality)
+                               width: width, skipSeconds: skip, renderQuality: renderQuality,
+                               slowMotion: slowMotion)
             return true
         }
         // `--export-grid <path.png> [--seeds N] [--columns C] [--tile PX]

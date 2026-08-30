@@ -16,8 +16,10 @@ import Ollin
 /// not. Two things to look for: a drawn frame waits one refresh before it is
 /// shown, so the mouse-driven camera feels about 16 ms later, and a mark moving
 /// faster than the interpolator can follow (turn `speed` up) is repeated rather
-/// than smeared. Exports never interpolate: what you keep is the frames the
-/// sketch drew.
+/// than smeared. An export keeps the frames the sketch drew, unless it is asked
+/// for slow motion out of made frames:
+///
+///     --export-video half.mp4 --seconds 4 --slow-motion 2 --made-frames
 @main
 final class FrameInterpolation: Sketch {
 

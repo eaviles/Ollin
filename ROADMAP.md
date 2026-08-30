@@ -148,7 +148,6 @@ See the [design notes](DESIGN-NOTES.md#a-third-party-extension-ecosystem).
 
 Lower-confidence ideas kept on record but deliberately not near-term: each is plausible on the platform, but speculative enough that it shouldn't crowd the planned work above. Distinct from [On the horizon](#on-the-horizon), which is the platform-gated later legs (iOS, visionOS, AR), not uncertainty.
 
-- **Made frames in an export.** `frameInterpolation()` puts the platform's interpolated frames on the live window, and every export deliberately writes only the frames the sketch drew. Slow motion is the case where a made frame is the point rather than a compromise: render sixty a second and write two hundred and forty for a quarter-speed video. It needs a flag that says plainly what a viewer is being handed, because it breaks the only-what-you-drew contract the other exports keep.
 - **Text-to-image as a material.** On-device diffusion a sketch could invoke as an optional, labeled material. The one to weigh hardest against the AI boundary, since it sits closest to the contested use, so it lives here rather than in the planned [authoring tier](#authoring-and-editor-tooling); see the AI stance stated there.
 - **SharePlay co-creation.** Two people tuning one sketch together over a FaceTime call (GroupActivities). The most speculative of the [collaboration](#collaboration-and-multi-device) ideas.
 

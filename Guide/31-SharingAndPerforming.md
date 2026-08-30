@@ -98,6 +98,33 @@ swift run OllinLive MySketches/Finale.swift --export-gif finale.gif --seconds 4 
 
 Reach for video first, because it's almost always the right choice. The default `h264` plays everywhere. `--codec hevc` is better quality per byte when the file needs to be smaller. The two ProRes profiles are for edit timelines rather than for sharing. `--bitrate` (in Mbit/s) is the file-size dial, and a 1080-square piece looks clean around 10 to 15 in `h264`. The GIF is for the short loop. It's palette-limited and heavy per second, so keep it a few seconds and downscale with `--gif-width`. A piece where *every* pixel changes every frame defeats GIF compression entirely and balloons the file. A drifting full-canvas field is that kind of piece. [Chapter 3](03-MotionAndTime.md)'s perfectly looping phase tricks are exactly what a GIF wants.
 
+## Slower than it happened
+
+Some pieces move faster than the eye can follow. A collision, a burst, the half-second where the whole thing resolves. On screen you can only watch it again. In a file you can slow it down:
+
+```sh
+swift run OllinLive MySketches/Finale.swift --export-video slow.mp4 --seconds 4 --slow-motion 4
+```
+
+That renders four seconds of the sketch's own time and writes sixteen seconds of video. Nothing about the file changes: it still plays at its `--fps`. What changes is how many frames cover the run. The clock steps four times finer, so the sketch is asked for the moments in between. The motion then takes four times as long to play.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Images/31-SharingAndPerforming/SlowerThanItHappened-dark.jpg">
+  <img src="Images/31-SharingAndPerforming/SlowerThanItHappened.jpg" alt="Two rows of exported frames of a mark crossing a track: a top row of four frames outlined in orange labeled what the sketch drew, 30 a second, and a bottom row of ten frames labeled --slow-motion 3, 90 a second, with hairlines joining each top frame to the bottom frame showing the same moment" width="680">
+</picture>
+
+`--seconds` still counts the sketch's own time, as it always has. The export prints both numbers so you never have to work it out.
+
+There is one trap, and it is worth knowing before you reach for this. **Motion measured in seconds slows down. Motion measured in frames does not.** A radius built from `sin(time)` is a function of the clock, so a finer clock slows it. So is a position advanced by `speed * deltaTime`. But a position advanced by a fixed step once per `draw()`, with no `deltaTime` in it, moves the same amount per frame however fast the clock runs. Give it more frames and it simply arrives at the same place at the same time. If your slow-motion export came out at ordinary speed, that is why, and [Chapter 3](03-MotionAndTime.md)'s `deltaTime` is the fix.
+
+There is a second way, for when the first is too slow or your motion is measured in frames:
+
+```sh
+swift run OllinLive MySketches/Finale.swift --export-video half.mp4 --seconds 4 --slow-motion 2 --made-frames
+```
+
+`--made-frames` draws the frames it would have drawn anyway, and asks the GPU to build the ones in between out of the pair on either side. It is the same interpolator a live window can use. It hands you pictures your sketch never drew, so it says so on the console and writes `"madeFrames":true` into the file's own recipe. It needs a 3D scene under a perspective camera, and it does half speed only. Use it when a frame is expensive to draw, and use the drawn form the rest of the time. The full comparison is in [`Docs/Output/Export.md`](../Docs/Output/Export.md#slow-motion).
+
 ## Vector: the plotter path
 
 [Chapter 15](15-ShapesAsMaterial.md) promised that shapes held as geometry could leave as geometry, and `--export-svg` is that promise kept:

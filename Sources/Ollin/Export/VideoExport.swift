@@ -62,8 +62,14 @@ public extension OllinApp {
                             bitsPerSecond: Int? = nil,
                             quality: Double? = nil,
                             renderQuality: RenderQuality = .detail,
-                            skipSeconds: Double = 0) {
+                            skipSeconds: Double = 0,
+                            slowMotion: SlowMotion? = nil) {
         guard frames > 0 else { return }
+        // `frames` is what the file holds either way. Under slow motion the
+        // sketch's own clock is a different rate, and the recipe carries that
+        // one, so a still re-renders from it unchanged.
+        let motion = (slowMotion?.isActive ?? false) ? slowMotion : nil
+        let clock = motion?.clockRate(playingAt: fps) ?? fps
 
         let fileType: AVFileType
         switch (path as NSString).pathExtension.lowercased() {
@@ -181,14 +187,18 @@ public extension OllinApp {
         let timescale = Int32((fps * 1000).rounded())
 
         print("Ollin: exporting \(frames) frames at \(Int(fps)) fps → \(path) (\(size.width)×\(size.height), \(codec.rawValue))")
+        if let motion { print(motion.note(written: frames, fps: fps)) }
         let elapsed = renderFrames(sketch, frames: frames, fps: fps, skipSeconds: skipSeconds,
                                    quality: renderQuality,
-                                   encoding: output == .extended ? .pqRec2020 : nil) { frame, index in
+                                   encoding: output == .extended ? .pqRec2020 : nil,
+                                   slowMotion: motion) { frame, index in
             if index == 0 {
                 // Writing starts on the first frame, after the sketch has run
                 // `setup()`, so the reproduction recipe can carry the seed it
                 // applied there (writer metadata must be set before writing).
-                let recipe = ExportMetadata.capture(from: sketch, fps: fps).recipe
+                var meta = ExportMetadata.capture(from: sketch, fps: clock)
+                meta.slowMotion = motion
+                let recipe = meta.recipe
                 let description = AVMutableMetadataItem()
                 description.identifier = .commonIdentifierDescription
                 description.value = recipe as NSString
@@ -308,8 +318,10 @@ public extension OllinApp {
                           frames: Int, fps: Double = 25,
                           width targetWidth: Int? = nil,
                           skipSeconds: Double = 0,
-                          renderQuality: RenderQuality = .detail) {
+                          renderQuality: RenderQuality = .detail,
+                          slowMotion: SlowMotion? = nil) {
         guard frames > 0 else { return }
+        let motion = (slowMotion?.isActive ?? false) ? slowMotion : nil
 
         let delay = Double(max(2, Int((100 / fps).rounded()))) / 100   // decoders clamp delays under 2cs
         let effectiveFPS = 1 / delay
@@ -340,8 +352,10 @@ public extension OllinApp {
         ] as CFDictionary
 
         print("Ollin: exporting \(effectiveFrames) frames at \(Int(effectiveFPS.rounded())) fps → \(path) (\(outWidth)×\(outHeight), gif)")
+        if let motion { print(motion.note(written: effectiveFrames, fps: effectiveFPS)) }
         let elapsed = renderFrames(sketch, frames: effectiveFrames, fps: effectiveFPS,
-                                   skipSeconds: skipSeconds, quality: renderQuality) { rendered, index in
+                                   skipSeconds: skipSeconds, quality: renderQuality,
+                                   slowMotion: motion) { rendered, index in
             guard let cgImage = rendered.image else {
                 fatalError("Ollin: failed to read frame \(index) back")
             }
